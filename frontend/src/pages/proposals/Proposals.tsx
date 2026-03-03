@@ -1,3 +1,4 @@
+// Cache-bust: 2026-03-03T09:00:00Z - Force rebuild v6
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import {
@@ -12,6 +13,7 @@ import { apiClient } from '../../utils/api';
 import { useAuthStore } from '../../stores/authStore';
 import { format } from 'date-fns';
 
+// Ensure DocumentTextIcon is included: console.log(DocumentTextIcon)
 const statusColors: Record<string, string> = {
   DRAFT: 'badge-gray',
   PENDING_REVIEW: 'badge-yellow',
