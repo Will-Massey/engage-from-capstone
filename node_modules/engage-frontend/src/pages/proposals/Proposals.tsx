@@ -13,7 +13,8 @@ import { apiClient } from '../../utils/api';
 import { useAuthStore } from '../../stores/authStore';
 import { format } from 'date-fns';
 
-// Ensure DocumentTextIcon is included: console.log(DocumentTextIcon)
+// Prevent tree-shaking of DocumentTextIcon
+const _iconRef = DocumentTextIcon;
 const statusColors: Record<string, string> = {
   DRAFT: 'badge-gray',
   PENDING_REVIEW: 'badge-yellow',
