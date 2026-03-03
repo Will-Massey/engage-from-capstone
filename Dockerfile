@@ -6,7 +6,7 @@ ARG CACHE_BUST=20260303184500
 WORKDIR /app/frontend
 
 # Invalidate cache by writing timestamp
-RUN echo "2026-03-03T18:45:00Z" > /tmp/cache-bust
+RUN echo "20260303193600" > /tmp/cache-bust
 COPY frontend/package*.json ./
 RUN npm cache clean --force && npm install
 
