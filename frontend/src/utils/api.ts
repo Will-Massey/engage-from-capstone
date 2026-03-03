@@ -9,7 +9,7 @@ console.log('API URL:', API_URL); // Debug log
 
 // Create axios instance
 const api: AxiosInstance = axios.create({
-  baseURL: `${API_URL}/api`,
+  baseURL: API_URL.endsWith('/api') ? API_URL : `${API_URL}/api`,
   headers: {
     'Content-Type': 'application/json',
   },
