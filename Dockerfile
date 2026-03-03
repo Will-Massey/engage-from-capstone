@@ -17,6 +17,7 @@ RUN echo "const x = require('./src/pages/proposals/Proposals.tsx'); console.log(
 
 # Build
 RUN npx vite build --mode production
+RUN echo "=== BUILD OUTPUT ===" && ls -la dist/ && ls -la dist/assets/ 2>/dev/null || echo "No assets dir"
 
 # Stage 2: Backend
 FROM node:20-alpine AS backend-build
