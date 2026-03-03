@@ -19,8 +19,8 @@ COPY frontend/ ./
 RUN echo "=== Checking for DocumentTextIcon in source ===" && \
     grep -n "DocumentTextIcon" src/pages/proposals/Proposals.tsx || echo "WARNING: Icon not found in source!"
 
-# Skip TypeScript checking and just build with Vite
-RUN npx vite build --mode production 2>&1 || (echo "Frontend build completed with errors, continuing..." && mkdir -p dist && echo '<html><body>Frontend build pending</body></html>' > dist/index.html)
+# Build with Vite - fail if build fails (don't mask errors)
+RUN npx vite build --mode production
 
 # Debug: Show what was built
 RUN echo "=== Frontend build output ===" && \
