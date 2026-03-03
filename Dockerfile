@@ -1,19 +1,17 @@
 # Multi-stage Dockerfile for Engage by Capstone
 # Stage 1: Build frontend
 FROM node:20-alpine AS frontend-builder
-# Cache-bust: 2026-03-03T09:45:00Z-v9
-ARG CACHE_BUST=1706125481
+ARG CACHE_BUST=20260303184500
 
 WORKDIR /app/frontend
 
-# Use CACHE_BUST arg to invalidate Docker layer cache
-ARG CACHE_BUST
-RUN echo "Cache bust: $CACHE_BUST"
+# Invalidate cache by writing timestamp
+RUN echo "2026-03-03T18:45:00Z" > /tmp/cache-bust
 COPY frontend/package*.json ./
 RUN npm cache clean --force && npm install
 
-# Copy frontend source - FORCE REBUILD v2
-COPY frontend/ ./
+# Copy frontend source - cache-bust: 2026-03-03T18:45:00Z
+COPY --chown=node:node frontend/ ./
 
 # Debug: Show the Proposals.tsx import line
 RUN echo "=== Checking for DocumentTextIcon in source ===" && \
