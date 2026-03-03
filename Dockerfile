@@ -4,7 +4,7 @@ FROM node:20-alpine AS frontend-builder
 
 WORKDIR /app/frontend
 
-# Force rebuild by changing this line - Build time: 2026-03-03T09:00:00Z - v4 - cache-bust
+# Force rebuild by changing this line - Build time: 2026-03-03T09:15:00Z - v7 - final-cache-bust
 COPY frontend/package*.json ./
 RUN npm cache clean --force && npm install
 
