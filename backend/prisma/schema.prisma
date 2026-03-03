@@ -1,0 +1,542 @@
+generator client {
+  provider      = "prisma-client-js"
+  binaryTargets = ["native", "linux-musl-openssl-3.0.x"]
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ==================== ENUMS ====================
+
+enum BillingCycle {
+  FIXED_DATE
+  WEEKLY
+  MONTHLY
+  QUARTERLY
+  ANNUALLY
+}
+
+enum VATRate {
+  ZERO
+  REDUCED_5
+  STANDARD_20
+  EXEMPT
+}
+
+enum UserRole {
+  ADMIN
+  PARTNER
+  MANAGER
+  SENIOR
+  JUNIOR
+}
+
+enum CompanyType {
+  SOLE_TRADER
+  PARTNERSHIP
+  LIMITED_COMPANY
+  LLP
+  CHARITY
+  NON_PROFIT
+}
+
+enum MTDITSAStatus {
+  NOT_REQUIRED
+  ELIGIBLE
+  MANDATORY
+  OPTED_IN
+  EXEMPT
+  REQUIRED_2026
+  REQUIRED_2027
+  REQUIRED_2028
+}
+
+enum ProposalStatus {
+  DRAFT
+  SENT
+  VIEWED
+  ACCEPTED
+  DECLINED
+  EXPIRED
+}
+
+enum PricingFrequency {
+  ONE_TIME
+  WEEKLY
+  MONTHLY
+  QUARTERLY
+  ANNUALLY
+}
+
+enum ServiceCategory {
+  COMPLIANCE
+  ADVISORY
+  TAX
+  PAYROLL
+  BOOKKEEPING
+  AUDIT
+  CONSULTING
+}
+
+enum PricingModel {
+  FIXED
+  HOURLY
+  TIERED
+  CUSTOM
+}
+
+// ==================== TENANT MODELS ====================
+
+model Tenant {
+  id             String   @id @default(uuid())
+  subdomain      String   @unique
+  name           String
+  logo           String?
+  primaryColor   String   @default("#0ea5e9")
+  secondaryColor String   @default("#0284c7")
+  isActive       Boolean  @default(true)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  // Settings stored as JSON string
+  settings String @default("{}")
+
+  // VAT Settings
+  vatRegistered Boolean @default(true)
+  vatNumber     String?
+  defaultVatRate VATRate @default(STANDARD_20)
+  autoApplyVat   Boolean @default(true)
+
+  // Relations
+  users        User[]
+  clients      Client[]
+  proposals    Proposal[]
+  services     ServiceTemplate[]
+  pricingRules PricingRule[]
+  templates    ProposalTemplate[]
+  activityLogs ActivityLog[]
+
+  @@index([subdomain])
+  @@index([isActive])
+}
+
+// ==================== USER MODELS ====================
+
+model User {
+  id            String    @id @default(uuid())
+  email         String
+  passwordHash  String
+  firstName     String
+  lastName      String
+  role          UserRole  @default(JUNIOR)
+  isActive      Boolean   @default(true)
+  lastLoginAt   DateTime?
+  emailVerified DateTime?
+  avatar        String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  // Tenant relation
+  tenantId String
+  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  // Relations
+  createdProposals Proposal[] @relation("CreatedProposals")
+  activityLogs     ActivityLog[]
+  refreshTokens    RefreshToken[]
+
+  @@unique([email, tenantId])
+  @@index([tenantId])
+  @@index([role])
+}
+
+model RefreshToken {
+  id        String   @id @default(uuid())
+  token     String   @unique
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([token])
+  @@index([userId])
+}
+
+// ==================== CLIENT MODELS ====================
+
+model Client {
+  id              String       @id @default(uuid())
+  name            String
+  companyType     CompanyType  @default(SOLE_TRADER)
+  contactEmail    String
+  contactPhone    String?
+  contactName     String?
+
+  // Company details
+  companyNumber String?
+  utr           String?
+  vatNumber     String?
+  vatRegistered Boolean @default(false)
+
+  // Address stored as JSON string
+  address String?
+
+  // MTD ITSA
+  mtditsaStatus   MTDITSAStatus @default(NOT_REQUIRED)
+  mtditsaIncome   Float?
+  mtditsaEligible Boolean @default(false)
+
+  // Business info
+  industry      String?
+  employeeCount Int?
+  turnover      Float?
+  yearEnd       String?
+
+  // Metadata
+  notes    String?
+  tags     String @default("") // Comma-separated tags
+  isActive Boolean @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Tenant relation
+  tenantId String
+  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  // Relations
+  proposals Proposal[]
+
+  @@unique([tenantId, contactEmail])
+  @@index([tenantId])
+  @@index([companyType])
+  @@index([mtditsaStatus])
+}
+
+// ==================== PROPOSAL MODELS ====================
+
+model Proposal {
+  id              String         @id @default(uuid())
+  reference       String         @unique
+  title           String
+  status          ProposalStatus @default(DRAFT)
+
+  // Dates
+  validUntil   DateTime
+  sentAt       DateTime?
+  viewedAt     DateTime?
+  acceptedAt   DateTime?
+  declinedAt   DateTime?
+  expiredAt    DateTime?
+
+  // Pricing
+  subtotal       Float   @default(0)
+  discountType   String?
+  discountValue  Float   @default(0)
+  discountAmount Float   @default(0)
+  vatRate        Float   @default(20)
+  vatAmount      Float   @default(0)
+  total          Float   @default(0)
+
+  // Payment terms
+  paymentTerms     String           @default("30 days")
+  paymentFrequency PricingFrequency @default(MONTHLY)
+
+  // Content
+  coverLetter  String?
+  terms        String?
+  notes        String?
+  customFields String @default("{}")
+
+  // UK Compliant Engagement Letter
+  engagementLetter String?
+  termsAccepted    Boolean   @default(false)
+  termsAcceptedAt  DateTime?
+
+  // Acceptance
+  acceptedBy   String?
+  acceptedByIp String?
+  signature    String?
+
+  // Sharing & Public Access
+  shareToken        String?   @unique
+  shareTokenExpiry  DateTime?
+  publicAccessEnabled Boolean @default(false)
+
+  // Email Tracking
+  lastEmailedAt  DateTime?
+  emailHistory   String @default("[]")
+
+  // Metadata
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  tenantId String
+  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  clientId String
+  client   Client @relation(fields: [clientId], references: [id], onDelete: Cascade)
+
+  createdById String
+  createdBy   User   @relation("CreatedProposals", fields: [createdById], references: [id])
+
+  services     ProposalService[]
+  activityLogs ActivityLog[]
+  documents    ProposalDocument[]
+  views        ProposalView[]
+  signatures   ProposalSignature[]
+
+  @@index([tenantId])
+  @@index([clientId])
+  @@index([status])
+  @@index([reference])
+  @@index([shareToken])
+  @@index([createdAt])
+}
+
+model ProposalService {
+  id          String @id @default(uuid())
+  name        String
+  description String?
+
+  // Pricing
+  quantity        Float @default(1)
+  unitPrice       Float
+  discountPercent Float @default(0)
+  total           Float
+
+  // Billing
+  frequency  PricingFrequency @default(MONTHLY)
+  isOptional Boolean @default(false)
+
+  // Metadata
+  sortOrder Int @default(0)
+
+  // Relations
+  proposalId String
+  proposal   Proposal @relation(fields: [proposalId], references: [id], onDelete: Cascade)
+
+  serviceTemplateId String?
+  serviceTemplate   ServiceTemplate? @relation(fields: [serviceTemplateId], references: [id])
+
+  @@index([proposalId])
+}
+
+model ProposalDocument {
+  id         String   @id @default(uuid())
+  name       String
+  fileUrl    String
+  fileType   String
+  fileSize   Int
+  uploadedAt DateTime @default(now())
+
+  proposalId String
+  proposal   Proposal @relation(fields: [proposalId], references: [id], onDelete: Cascade)
+
+  @@index([proposalId])
+}
+
+// Proposal View Tracking
+model ProposalView {
+  id        String   @id @default(uuid())
+  viewedAt  DateTime @default(now())
+  ipAddress String?
+  userAgent String?
+  viewDuration Int?  // Duration in seconds
+  completed Boolean  @default(false)
+
+  proposalId String
+  proposal   Proposal @relation(fields: [proposalId], references: [id], onDelete: Cascade)
+
+  @@index([proposalId])
+  @@index([viewedAt])
+}
+
+// Electronic Signature (UK Compliant)
+model ProposalSignature {
+  id        String   @id @default(uuid())
+  signedBy  String
+  signedByRole String
+  signatureData String // Base64 encoded signature image
+  signedAt  DateTime @default(now())
+  ipAddress String?
+  agreementVersion String
+  agreementAccepted Boolean
+
+  proposalId String
+  proposal   Proposal @relation(fields: [proposalId], references: [id], onDelete: Cascade)
+
+  @@index([proposalId])
+  @@index([signedAt])
+}
+
+// ==================== SERVICE TEMPLATE MODELS ====================
+
+model ServiceTemplate {
+  id              String @id @default(uuid())
+  category        ServiceCategory
+  subcategory     String?
+  name            String
+  description     String
+  longDescription String?
+
+  // Pricing
+  basePrice    Float @default(0)
+  baseHours    Float @default(1)
+  pricingModel PricingModel @default(FIXED)
+
+  // Billing Cycle Configuration
+  billingCycle      BillingCycle @default(MONTHLY)
+  vatRate           VATRate      @default(STANDARD_20)
+  isVatApplicable   Boolean      @default(true)
+  fixedBillingDate  DateTime?
+  billingDayOfMonth Int?         // 1-31 for monthly billing
+  annualEquivalent  Float?       // Annual cost for monthly calculation
+
+  // Legacy Configuration (kept for compatibility)
+  frequencyOptions String @default("MONTHLY,QUARTERLY,ANNUALLY")
+  defaultFrequency PricingFrequency @default(MONTHLY)
+
+  // Complexity stored as JSON string
+  complexityFactors String @default("[]")
+
+  // Requirements and deliverables stored as JSON strings
+  requirements String @default("[]")
+  deliverables String @default("[]")
+
+  // UK Compliance
+  applicableEntityTypes String @default("LIMITED_COMPANY,SOLE_TRADER")
+  regulatoryNotes       String?
+
+  // Metadata
+  tags      String  @default("")
+  isActive  Boolean @default(true)
+  isPopular Boolean @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  tenantId String
+  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  proposalServices ProposalService[]
+  pricingRules     PricingRule[]
+
+  @@index([tenantId])
+  @@index([category])
+  @@index([isActive])
+}
+
+// ==================== PROPOSAL TEMPLATE MODELS ====================
+
+model ProposalTemplate {
+  id          String   @id @default(uuid())
+  name        String
+  description String?
+
+  // Target
+  targetEntityType String?
+  targetIndustry   String?
+
+  // Content
+  title String
+  coverLetter String?
+  terms       String?
+
+  // Services included stored as JSON string
+  serviceConfig String @default("[]")
+
+  // Pricing defaults stored as JSON string
+  defaultPricing String @default("{}")
+
+  // Usage
+  usageCount Int?
+  lastUsedAt DateTime?
+
+  // Metadata
+  isActive  Boolean  @default(true)
+  isDefault Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  tenantId String
+  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  createdById String?
+
+  @@index([tenantId])
+  @@index([isDefault])
+  @@index([targetEntityType])
+}
+
+// ==================== PRICING RULE MODELS ====================
+
+model PricingRule {
+  id          String @id @default(uuid())
+  name        String
+  description String?
+
+  // Condition stored as JSON string
+  conditionField    String
+  conditionOperator String
+  conditionValue    String // JSON string
+
+  // Adjustment
+  adjustmentType  String
+  adjustmentValue Float
+
+  // Application
+  priority Int     @default(0)
+  isActive Boolean @default(true)
+
+  // Metadata
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  tenantId String
+  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  serviceId String
+  service   ServiceTemplate @relation(fields: [serviceId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId])
+  @@index([serviceId])
+  @@index([isActive])
+}
+
+// ==================== ACTIVITY LOG ====================
+
+model ActivityLog {
+  id         String   @id @default(uuid())
+  action     String
+  entityType String
+  entityId   String?
+
+  // Details
+  description String?
+  metadata    String @default("{}")
+  ipAddress   String?
+  userAgent   String?
+
+  createdAt DateTime @default(now())
+
+  // Relations
+  tenantId String
+  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  userId String?
+  user   User? @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  proposalId String?
+  proposal   Proposal? @relation(fields: [proposalId], references: [id], onDelete: SetNull)
+
+  @@index([tenantId])
+  @@index([userId])
+  @@index([proposalId])
+  @@index([entityType, entityId])
+  @@index([createdAt])
+}
