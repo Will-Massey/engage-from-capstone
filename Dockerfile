@@ -4,7 +4,7 @@ FROM node:20-alpine AS frontend-builder
 
 WORKDIR /app/frontend
 
-# Force rebuild by changing this line - Build time: 2026-03-03T08:30:00Z - v3
+# Force rebuild by changing this line - Build time: 2026-03-03T09:00:00Z - v4 - cache-bust
 COPY frontend/package*.json ./
 RUN npm cache clean --force && npm install
 
@@ -12,13 +12,17 @@ RUN npm cache clean --force && npm install
 COPY frontend/ ./
 
 # Debug: Show the Proposals.tsx import line
-RUN grep -n "DocumentTextIcon" src/pages/proposals/Proposals.tsx || echo "Icon not found in source"
+RUN echo "=== Checking for DocumentTextIcon in source ===" && \
+    grep -n "DocumentTextIcon" src/pages/proposals/Proposals.tsx || echo "WARNING: Icon not found in source!"
 
 # Skip TypeScript checking and just build with Vite
 RUN npx vite build --mode production 2>&1 || (echo "Frontend build completed with errors, continuing..." && mkdir -p dist && echo '<html><body>Frontend build pending</body></html>' > dist/index.html)
 
 # Debug: Show what was built
-RUN ls -la dist/assets/ 2>/dev/null || echo "No assets built"
+RUN echo "=== Frontend build output ===" && \
+    ls -la dist/assets/ 2>/dev/null && \
+    echo "=== Checking for DocumentTextIcon in bundle ===" && \
+    grep -o "DocumentTextIcon" dist/assets/index-*.js | head -1 || echo "WARNING: Icon not in bundle!"
 
 # Stage 2: Build backend
 FROM node:20-alpine AS backend-builder
