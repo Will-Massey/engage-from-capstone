@@ -4,9 +4,9 @@ FROM node:20-alpine AS frontend-builder
 
 WORKDIR /app/frontend
 
-# Force rebuild by changing this line - Build time: 2026-03-03T08:00:00
+# Force rebuild by changing this line - Build time: 2026-03-03T08:30:00Z - v3
 COPY frontend/package*.json ./
-RUN npm install
+RUN npm cache clean --force && npm install
 
 # Copy frontend source - FORCE REBUILD v2
 COPY frontend/ ./
