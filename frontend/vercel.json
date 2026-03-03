@@ -1,7 +1,0 @@
-﻿{
-  "buildCommand": "npx vite build --mode production",
-  "outputDirectory": "dist",
-  "rewrites": [
-    { "source": "/(.*)", "destination": "/index.html" }
-  ]
-}

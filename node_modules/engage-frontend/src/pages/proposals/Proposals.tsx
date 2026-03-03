@@ -15,6 +15,7 @@ import { format } from 'date-fns';
 
 // Prevent tree-shaking of DocumentTextIcon
 const _iconRef = DocumentTextIcon;
+console.log('Icon loaded:', _iconRef.name);
 const statusColors: Record<string, string> = {
   DRAFT: 'badge-gray',
   PENDING_REVIEW: 'badge-yellow',
