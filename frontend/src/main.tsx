@@ -3,7 +3,7 @@ import ReactDOM from 'react-dom/client';
 import { BrowserRouter } from 'react-router-dom';
 import { Toaster } from 'react-hot-toast';
 import App from './App';
-// Build v2 - Cache bust: DocumentTextIcon fix
+// Build v3 - 2026-03-03T17:39:48Z
 import './index.css';
 
 ReactDOM.createRoot(document.getElementById('root')!).render(

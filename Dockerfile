@@ -2,7 +2,7 @@
 # Stage 1: Build frontend
 FROM node:20-alpine AS frontend-builder
 # Cache-bust: 2026-03-03T09:45:00Z-v9
-ARG CACHE_BUST=9
+ARG CACHE_BUST=1706125481
 
 WORKDIR /app/frontend
 
