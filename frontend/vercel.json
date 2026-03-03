@@ -1,0 +1,11 @@
+﻿{
+  "buildCommand": "npx vite build --mode production",
+  "outputDirectory": "dist",
+  "framework": null,
+  "rewrites": [
+    { "source": "/(.*)", "destination": "/index.html" }
+  ],
+  "env": {
+    "VITE_API_URL": "https://engage-by-capstone-production.up.railway.app/api"
+  }
+}
