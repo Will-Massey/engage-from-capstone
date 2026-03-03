@@ -2,6 +2,9 @@
 builder = "DOCKERFILE"
 dockerfilePath = "Dockerfile"
 
+[build.args]
+CACHE_BUST = "9"
+
 [deploy]
 startCommand = "node dist/index.js"
 healthcheckPath = "/health"

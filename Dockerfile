@@ -1,11 +1,14 @@
 # Multi-stage Dockerfile for Engage by Capstone
 # Stage 1: Build frontend
 FROM node:20-alpine AS frontend-builder
-# Cache-bust: 2026-03-03T09:30:00Z-v8
+# Cache-bust: 2026-03-03T09:45:00Z-v9
+ARG CACHE_BUST=9
 
 WORKDIR /app/frontend
 
-# Force rebuild by changing this line - Build time: 2026-03-03T09:15:00Z - v7 - final-cache-bust
+# Use CACHE_BUST arg to invalidate Docker layer cache
+ARG CACHE_BUST
+RUN echo "Cache bust: $CACHE_BUST"
 COPY frontend/package*.json ./
 RUN npm cache clean --force && npm install
 
