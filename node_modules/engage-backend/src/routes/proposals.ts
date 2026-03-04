@@ -6,6 +6,7 @@ import { authenticate, authorize } from '../middleware/auth.js';
 import { asyncHandler, ApiError } from '../middleware/errorHandler.js';
 import { PricingEngine } from '../services/pricingEngine.js';
 import { PDFGenerator } from '../services/pdfGenerator.js';
+import logger from '../config/logger.js';
 // generateReference helper function
 const generateReference = (prefix: string = 'PROP'): string => {
   const timestamp = Date.now().toString(36).toUpperCase();
@@ -432,7 +433,7 @@ router.put(
 
 /**
  * POST /api/proposals/:id/send
- * Send proposal to client
+ * Send proposal to client via email with PDF
  */
 router.post(
   '/:id/send',
@@ -441,6 +442,7 @@ router.post(
   asyncHandler(async (req, res) => {
     const { id } = req.params;
 
+    // Get proposal with full details
     const proposal = await prisma.proposal.findFirst({
       where: {
         id,
@@ -448,6 +450,8 @@ router.post(
       },
       include: {
         client: true,
+        services: true,
+        tenant: true,
       },
     });
 
@@ -457,6 +461,93 @@ router.post(
 
     if (proposal.status !== 'DRAFT' && proposal.status !== 'PENDING_REVIEW') {
       throw new ApiError('INVALID_STATUS', 'Proposal must be in draft status to send', 400);
+    }
+
+    if (!proposal.client.contactEmail) {
+      throw new ApiError('NO_CLIENT_EMAIL', 'Client does not have an email address', 400);
+    }
+
+    // Import services
+    const { EmailService } = await import('../services/emailService.js');
+    const { PDFGenerator } = await import('../services/pdfGenerator.js');
+
+    // Generate PDF
+    const pdfBuffer = await PDFGenerator.generateProposal(id);
+
+    // Initialize email service with environment variables for now
+    // In production, this should come from tenant email settings
+    const emailProvider = process.env.EMAIL_PROVIDER as any || 'smtp';
+    const emailConfig: any = {
+      provider: emailProvider,
+      fromName: proposal.tenant.name,
+      fromEmail: process.env.EMAIL_FROM || 'noreply@engagebycapstone.co.uk',
+    };
+
+    if (emailProvider === 'smtp') {
+      emailConfig.smtp = {
+        host: process.env.SMTP_HOST || '',
+        port: parseInt(process.env.SMTP_PORT || '587'),
+        secure: process.env.SMTP_SECURE === 'true',
+        user: process.env.SMTP_USER || '',
+        pass: process.env.SMTP_PASS || '',
+      };
+    } else if (emailProvider === 'gmail') {
+      emailConfig.gmail = {
+        clientId: process.env.GMAIL_CLIENT_ID || '',
+        clientSecret: process.env.GMAIL_CLIENT_SECRET || '',
+        refreshToken: process.env.GMAIL_REFRESH_TOKEN || '',
+        user: process.env.GMAIL_USER || '',
+      };
+    } else if (emailProvider === 'microsoft365') {
+      emailConfig.outlook = {
+        clientId: process.env.MICROSOFT_CLIENT_ID || '',
+        clientSecret: process.env.MICROSOFT_CLIENT_SECRET || '',
+        refreshToken: process.env.MICROSOFT_REFRESH_TOKEN || '',
+        user: process.env.MICROSOFT_USER || '',
+      };
+    }
+
+    // Check if email is configured
+    if (!emailConfig.smtp?.host && !emailConfig.gmail?.clientId && !emailConfig.outlook?.clientId) {
+      // For demo/development, just mark as sent without email
+      logger.warn('Email not configured, marking proposal as sent without email');
+    } else {
+      const emailService = new EmailService(emailConfig);
+
+      // Build view link
+      const frontendUrl = process.env.FRONTEND_URL || 'https://engagebycapstone.co.uk';
+      const viewLink = `${frontendUrl}/proposals/share/${proposal.shareToken || id}`;
+
+      // Format total amount
+      const totalAmount = new Intl.NumberFormat('en-GB', {
+        style: 'currency',
+        currency: 'GBP',
+      }).format(proposal.total);
+
+      // Send email
+      const emailResult = await emailService.sendProposalEmail({
+        to: proposal.client.contactEmail,
+        clientName: proposal.client.name,
+        proposalTitle: proposal.title,
+        proposalReference: proposal.reference,
+        viewLink,
+        senderName: `${req.user!.firstName} ${req.user!.lastName}`,
+        senderPosition: req.user!.role,
+        senderEmail: req.user!.email,
+        validUntil: new Date(proposal.validUntil).toLocaleDateString('en-GB', {
+          day: 'numeric',
+          month: 'long',
+          year: 'numeric',
+        }),
+        tenantName: proposal.tenant.name,
+        totalAmount,
+        serviceCount: proposal.services.length,
+        attachment: pdfBuffer,
+      });
+
+      if (!emailResult.success) {
+        throw new ApiError('EMAIL_SEND_FAILED', `Failed to send email: ${emailResult.error}`, 500);
+      }
     }
 
     // Update status
@@ -476,13 +567,14 @@ router.post(
         action: 'PROPOSAL_SENT',
         entityType: 'PROPOSAL',
         entityId: proposal.id,
-        description: `Sent proposal "${proposal.title}" to ${proposal.client.name}`,
+        description: `Sent proposal "${proposal.title}" to ${proposal.client.name} via email`,
       },
     });
 
     res.json({
       success: true,
       data: updatedProposal,
+      message: 'Proposal sent successfully',
     });
   })
 );
