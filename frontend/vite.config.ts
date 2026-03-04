@@ -10,6 +10,12 @@ export default defineConfig({
     VitePWA({
       registerType: 'autoUpdate',
       includeAssets: ['favicon.ico', 'apple-touch-icon.png', 'masked-icon.svg'],
+      workbox: {
+        // Don't cache API routes - let them go to the network
+        navigateFallbackDenylist: [/^\/api/, /^\/uploads/],
+        // Exclude API routes from precaching
+        globIgnores: ['**/api/**', '**/uploads/**'],
+      },
       manifest: {
         name: 'Engage by Capstone',
         short_name: 'Proposals',
