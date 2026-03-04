@@ -48,7 +48,8 @@ const allowedOrigins = [
   'http://localhost:5173',
   'https://frontend-fawn-eta-13.vercel.app',
   'https://frontend-7bwwe5u7u-will-masseys-projects-b935486d.vercel.app',
-  'https://frontend-o4blqd5z2-will-masseys-projects-b935486d.vercel.app'
+  'https://frontend-o4blqd5z2-will-masseys-projects-b935486d.vercel.app',
+  'https://frontend-go1ntbkne-will-masseys-projects-b935486d.vercel.app'
 ].filter(Boolean);
 
 const corsOptions = {
