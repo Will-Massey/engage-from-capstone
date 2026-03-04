@@ -1,5 +1,7 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useAuthStore } from '../stores/authStore';
+import { apiClient } from '../utils/api';
+import toast from 'react-hot-toast';
 import {
   UserCircleIcon,
   BuildingOfficeIcon,
@@ -23,6 +25,47 @@ const tabs = [
 const Settings = () => {
   const { user, tenant } = useAuthStore();
   const [activeTab, setActiveTab] = useState('profile');
+  const [isProcessingOAuth, setIsProcessingOAuth] = useState(false);
+
+  // Handle OAuth callback
+  useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const oauth = urlParams.get('oauth');
+    const code = urlParams.get('code');
+    const provider = urlParams.get('provider');
+    const error = urlParams.get('error');
+
+    if (error) {
+      toast.error(`OAuth failed: ${error}`);
+      // Clean up URL
+      window.history.replaceState({}, document.title, window.location.pathname);
+      return;
+    }
+
+    if (oauth === 'success' && code && provider) {
+      setIsProcessingOAuth(true);
+      setActiveTab('email'); // Switch to email tab
+      
+      // Exchange code for tokens
+      exchangeCodeForTokens(provider, code);
+      
+      // Clean up URL
+      window.history.replaceState({}, document.title, window.location.pathname);
+    }
+  }, []);
+
+  const exchangeCodeForTokens = async (provider: string, code: string) => {
+    try {
+      const response = await apiClient.post(`/email/auth/${provider}/callback`, { code }) as any;
+      if (response.success) {
+        toast.success(`${provider === 'microsoft365' ? 'Microsoft 365' : provider} connected successfully!`);
+      }
+    } catch (error: any) {
+      toast.error(error.response?.data?.error?.message || 'Failed to complete OAuth connection');
+    } finally {
+      setIsProcessingOAuth(false);
+    }
+  };
 
   return (
     <div className="space-y-6 animate-fade-in">
@@ -173,6 +216,12 @@ const Settings = () => {
 
           {activeTab === 'email' && (
             <div className="card p-6">
+              {isProcessingOAuth && (
+                <div className="mb-4 p-4 bg-blue-50 text-blue-700 rounded-lg flex items-center">
+                  <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-blue-600 mr-3"></div>
+                  Completing OAuth connection...
+                </div>
+              )}
               <EmailSettings />
             </div>
           )}
