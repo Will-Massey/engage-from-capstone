@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { apiClient } from '../../utils/api';
 import toast from 'react-hot-toast';
 import { EnvelopeIcon, CheckCircleIcon, ExclamationCircleIcon } from '@heroicons/react/24/outline';
+import OAuthConnect from './OAuthConnect';
 
 type EmailProvider = 'smtp' | 'gmail' | 'outlook' | 'microsoft365';
 
@@ -267,15 +268,13 @@ const EmailSettings = () => {
 
       {/* OAuth Providers */}
       {(config.provider === 'gmail' || config.provider === 'outlook' || config.provider === 'microsoft365') && (
-        <div className="p-4 bg-yellow-50 rounded-lg border border-yellow-200">
-          <h4 className="font-medium text-yellow-900">
-            {config.provider === 'gmail' ? 'Gmail' : 'Microsoft'} OAuth2 Setup
-          </h4>
-          <p className="mt-1 text-sm text-yellow-700">
-            OAuth2 configuration requires setup in the Google/Microsoft Developer Console.
-            Contact your administrator to configure OAuth2 credentials.
-          </p>
-        </div>
+        <OAuthConnect 
+          provider={config.provider} 
+          onConnected={() => {
+            setConnectionStatus('success');
+            toast.success(`${config.provider === 'gmail' ? 'Gmail' : 'Microsoft 365'} connected successfully`);
+          }}
+        />
       )}
 
       {/* Connection Status */}
