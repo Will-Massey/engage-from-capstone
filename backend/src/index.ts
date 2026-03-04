@@ -19,6 +19,8 @@ import serviceRoutes from './routes/services.js';
 import enhancedServiceRoutes from './routes/services-new.js';
 import tenantRoutes from './routes/tenants.js';
 import emailRoutes from './routes/email.js';
+import { asyncHandler, ApiError } from './middleware/errorHandler.js';
+import { EmailService } from './services/emailService.js';
 
 // Import middleware
 import { extractTenant } from './middleware/tenant.js';
@@ -135,13 +137,35 @@ app.get('/health', async (req, res) => {
   });
 });
 
+// OAuth callback routes (public - must be before protected routes)
+app.get('/api/email/auth/:provider/callback', asyncHandler(async (req, res) => {
+  const { provider } = req.params;
+  const { code, error, state } = req.query;
+  
+  const validProviders = ['microsoft365', 'outlook', 'gmail'];
+  if (!validProviders.includes(provider)) {
+    return res.redirect(`${process.env.FRONTEND_URL || 'https://engagebycapstone.co.uk'}/settings?error=invalid_provider`);
+  }
+  
+  if (error) {
+    return res.redirect(`${process.env.FRONTEND_URL || 'https://engagebycapstone.co.uk'}/settings?error=${encodeURIComponent(error as string)}`);
+  }
+  
+  if (!code) {
+    return res.redirect(`${process.env.FRONTEND_URL || 'https://engagebycapstone.co.uk'}/settings?error=no_code_received`);
+  }
+  
+  // Redirect to frontend with code
+  res.redirect(`${process.env.FRONTEND_URL || 'https://engagebycapstone.co.uk'}/settings?oauth=success&provider=${provider}&code=${code}&state=${state}`);
+}));
+
 // API routes
 app.use('/api/auth', extractTenant, authRoutes);
 app.use('/api/proposals', extractTenant, proposalRoutes);
-app.use('/api/proposals', proposalShareRoutes); // Shares, emails, signatures (some public)
+app.use('/api/proposals', proposalShareRoutes);
 app.use('/api/clients', extractTenant, clientRoutes);
 app.use('/api/services', extractTenant, serviceRoutes);
-app.use('/api/services/v2', extractTenant, enhancedServiceRoutes); // Billing cycles, VAT, catalog
+app.use('/api/services/v2', extractTenant, enhancedServiceRoutes);
 app.use('/api/tenants', tenantRoutes);
 app.use('/api/email', extractTenant, emailRoutes);
 app.use('/api/companies-house', companiesHouseRoutes);
