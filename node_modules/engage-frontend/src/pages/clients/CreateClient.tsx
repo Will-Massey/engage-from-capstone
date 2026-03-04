@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -9,6 +9,8 @@ import {
   UserIcon,
   UsersIcon,
   HomeIcon,
+  MagnifyingGlassIcon,
+  CheckIcon,
 } from '@heroicons/react/24/outline';
 import { apiClient } from '../../utils/api';
 import { useAuthStore } from '../../stores/authStore';
@@ -55,6 +57,7 @@ const CreateClient = () => {
     register,
     handleSubmit,
     watch,
+    setValue,
     formState: { errors },
   } = useForm<ClientForm>({
     resolver: zodResolver(clientSchema),
@@ -66,6 +69,71 @@ const CreateClient = () => {
 
   const watchCompanyType = watch('companyType');
   const watchMtditsaIncome = watch('mtditsaIncome');
+
+  // Companies House search state
+  const [chSearchQuery, setChSearchQuery] = useState('');
+  const [chSearchResults, setChSearchResults] = useState<Array<{
+    companyNumber: string;
+    companyName: string;
+    companyStatus: string;
+    companyType: string;
+  }>>([]);
+  const [chSearching, setChSearching] = useState(false);
+  const [chShowResults, setChShowResults] = useState(false);
+  const [chSelectedCompany, setChSelectedCompany] = useState<string | null>(null);
+
+  // Search Companies House
+  const searchCompaniesHouse = async () => {
+    if (!chSearchQuery.trim() || chSearchQuery.length < 2) return;
+    
+    setChSearching(true);
+    try {
+      const response = await apiClient.get(`/companies-house/search?q=${encodeURIComponent(chSearchQuery)}&limit=5`) as any;
+      if (response.success) {
+        setChSearchResults(response.data || []);
+        setChShowResults(true);
+      }
+    } catch (error) {
+      toast.error('Failed to search Companies House');
+    } finally {
+      setChSearching(false);
+    }
+  };
+
+  // Get company details and auto-populate form
+  const selectCompany = async (companyNumber: string) => {
+    setChSelectedCompany(companyNumber);
+    try {
+      const response = await apiClient.get(`/companies-house/company/${companyNumber}`) as any;
+      if (response.success) {
+        const company = response.data;
+        
+        // Auto-populate form fields
+        setValue('name', company.companyName);
+        setValue('companyNumber', company.companyNumber);
+        if (company.address) {
+          setValue('addressLine1', company.address.line1 || '');
+          setValue('addressLine2', company.address.line2 || '');
+          setValue('city', company.address.city || '');
+          setValue('postcode', company.address.postcode || '');
+        }
+        
+        toast.success('Company details loaded');
+        setChShowResults(false);
+      }
+    } catch (error) {
+      toast.error('Failed to load company details');
+    }
+  };
+
+  // Close search results when clicking outside
+  useEffect(() => {
+    const handleClickOutside = () => setChShowResults(false);
+    if (chShowResults) {
+      document.addEventListener('click', handleClickOutside);
+      return () => document.removeEventListener('click', handleClickOutside);
+    }
+  }, [chShowResults]);
 
   const onSubmit = async (data: ClientForm) => {
     setIsLoading(true);
@@ -171,6 +239,78 @@ const CreateClient = () => {
                 ))}
               </div>
             </div>
+
+            {/* Companies House Search - Only for LIMITED_COMPANY and LLP */}
+            {(watchCompanyType === 'LIMITED_COMPANY' || watchCompanyType === 'LLP') && (
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                <label className="block text-sm font-medium text-blue-900 mb-2">
+                  <MagnifyingGlassIcon className="h-4 w-4 inline mr-1" />
+                  Search Companies House
+                </label>
+                <p className="text-xs text-blue-700 mb-3">
+                  Search for a company to auto-fill details
+                </p>
+                <div className="relative">
+                  <div className="flex gap-2">
+                    <input
+                      type="text"
+                      value={chSearchQuery}
+                      onChange={(e) => setChSearchQuery(e.target.value)}
+                      onClick={(e) => e.stopPropagation()}
+                      onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), searchCompaniesHouse())}
+                      className="flex-1 input-field text-sm"
+                      placeholder="Enter company name..."
+                    />
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        searchCompaniesHouse();
+                      }}
+                      disabled={chSearching || chSearchQuery.length < 2}
+                      className="btn-secondary text-sm px-4 disabled:opacity-50"
+                    >
+                      {chSearching ? 'Searching...' : 'Search'}
+                    </button>
+                  </div>
+                  
+                  {/* Search Results Dropdown */}
+                  {chShowResults && chSearchResults.length > 0 && (
+                    <div className="absolute z-10 w-full mt-1 bg-white border border-gray-200 rounded-md shadow-lg max-h-60 overflow-auto">
+                      {chSearchResults.map((result) => (
+                        <button
+                          key={result.companyNumber}
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            selectCompany(result.companyNumber);
+                          }}
+                          className="w-full text-left px-4 py-3 hover:bg-gray-50 border-b border-gray-100 last:border-0"
+                        >
+                          <div className="flex items-center justify-between">
+                            <div>
+                              <p className="font-medium text-gray-900">{result.companyName}</p>
+                              <p className="text-sm text-gray-500">
+                                {result.companyNumber} • {result.companyStatus}
+                              </p>
+                            </div>
+                            {chSelectedCompany === result.companyNumber && (
+                              <CheckIcon className="h-5 w-5 text-green-500" />
+                            )}
+                          </div>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                  
+                  {chShowResults && chSearchResults.length === 0 && !chSearching && (
+                    <div className="absolute z-10 w-full mt-1 bg-white border border-gray-200 rounded-md shadow-lg p-4 text-center text-gray-500">
+                      No companies found
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
 
             {/* Name */}
             <div>

@@ -108,6 +108,12 @@ api.interceptors.response.use(
 
 // API helper functions
 export const apiClient = {
+  // Generic HTTP methods
+  get: (url: string, config?: any) => api.get(url, config),
+  post: (url: string, data?: any, config?: any) => api.post(url, data, config),
+  put: (url: string, data?: any, config?: any) => api.put(url, data, config),
+  delete: (url: string, config?: any) => api.delete(url, config),
+  
   // Auth
   login: (email: string, password: string, tenantId?: string) =>
     api.post('/auth/login', { email, password, tenantId }),
