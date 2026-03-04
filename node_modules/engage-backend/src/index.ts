@@ -52,16 +52,26 @@ const allowedOrigins = [
   'https://frontend-go1ntbkne-will-masseys-projects-b935486d.vercel.app'
 ].filter(Boolean);
 
+// Regex to match any Vercel preview URL from this project
+const vercelProjectPattern = /^https:\/\/frontend-[a-z0-9]+-will-masseys-projects-b935486d\.vercel\.app$/;
+
 const corsOptions = {
   origin: function (origin: string | undefined, callback: (err: Error | null, allow?: boolean) => void) {
     // Allow requests with no origin (like mobile apps or curl requests)
     if (!origin) return callback(null, true);
+    
+    // Check exact matches
     if (allowedOrigins.includes(origin)) {
-      callback(null, true);
-    } else {
-      console.warn(`CORS blocked for origin: ${origin}`);
-      callback(new Error('Not allowed by CORS'));
+      return callback(null, true);
     }
+    
+    // Check Vercel preview URL pattern
+    if (vercelProjectPattern.test(origin)) {
+      return callback(null, true);
+    }
+    
+    console.warn(`CORS blocked for origin: ${origin}`);
+    callback(new Error('Not allowed by CORS'));
   },
   credentials: true,
 };
