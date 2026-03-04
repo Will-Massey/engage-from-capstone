@@ -396,4 +396,217 @@ router.delete(
   })
 );
 
+// ============================================================================
+// NEW SIMPLIFIED OAUTH ROUTES (for frontend OAuthConnect component)
+// ============================================================================
+
+// Generate random state for OAuth
+const generateState = () => {
+  return Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
+};
+
+// Get OAuth status for a provider
+router.get(
+  '/auth/:provider(microsoft365|outlook|gmail)/status',
+  authenticate,
+  asyncHandler(async (req, res) => {
+    const { provider } = req.params;
+    const tenantId = req.tenantId!;
+
+    const tenant = await prisma.tenant.findUnique({
+      where: { id: tenantId },
+      select: { settings: true },
+    });
+
+    if (!tenant) {
+      throw new ApiError('TENANT_NOT_FOUND', 'Tenant not found', 404);
+    }
+
+    const settings = JSON.parse(tenant.settings || '{}');
+    const emailConfig = settings.email;
+
+    const isConnected = emailConfig?.provider === provider && 
+      (emailConfig[provider]?.refreshToken || emailConfig[provider === 'microsoft365' ? 'outlook' : provider]?.refreshToken);
+
+    res.json({
+      success: true,
+      data: {
+        isConnected: !!isConnected,
+        provider,
+        user: isConnected ? (emailConfig[provider]?.user || emailConfig.outlook?.user) : undefined,
+      },
+    });
+  })
+);
+
+// Get OAuth URL for a provider
+router.get(
+  '/auth/:provider(microsoft365|outlook|gmail)/url',
+  authenticate,
+  asyncHandler(async (req, res) => {
+    const { provider } = req.params;
+    const state = generateState();
+
+    const redirectUri = `${process.env.API_URL || 'https://engage-by-capstone-production.up.railway.app'}/api/email/auth/${provider}/callback`;
+
+    let url: string;
+
+    if (provider === 'gmail') {
+      const clientId = process.env.GMAIL_CLIENT_ID;
+      if (!clientId) {
+        throw new ApiError('NOT_CONFIGURED', 'Gmail OAuth not configured on server', 500);
+      }
+      url = EmailService.generateGmailAuthUrl(clientId, redirectUri);
+    } else {
+      // Microsoft 365 or Outlook
+      const clientId = process.env.MICROSOFT_CLIENT_ID;
+      if (!clientId) {
+        throw new ApiError('NOT_CONFIGURED', 'Microsoft OAuth not configured on server', 500);
+      }
+      url = EmailService.generateMicrosoftAuthUrl(clientId, redirectUri);
+    }
+
+    res.json({
+      success: true,
+      data: {
+        url,
+        state,
+      },
+    });
+  })
+);
+
+// OAuth callback handler
+router.get(
+  '/auth/:provider(microsoft365|outlook|gmail)/callback',
+  asyncHandler(async (req, res) => {
+    const { provider } = req.params;
+    const { code, error, state } = req.query;
+
+    if (error) {
+      // Redirect back to frontend with error
+      const frontendUrl = process.env.FRONTEND_URL || 'https://engagebycapstone.co.uk';
+      return res.redirect(`${frontendUrl}/settings?error=${encodeURIComponent(error as string)}`);
+    }
+
+    if (!code) {
+      const frontendUrl = process.env.FRONTEND_URL || 'https://engagebycapstone.co.uk';
+      return res.redirect(`${frontendUrl}/settings?error=no_code_received`);
+    }
+
+    // Store the code temporarily (in production, use Redis or similar)
+    // For now, redirect back to frontend with success
+    const frontendUrl = process.env.FRONTEND_URL || 'https://engagebycapstone.co.uk';
+    res.redirect(`${frontendUrl}/settings?oauth=success&provider=${provider}&code=${code}&state=${state}`);
+  })
+);
+
+// Exchange code for tokens (called by frontend)
+router.post(
+  '/auth/:provider(microsoft365|outlook|gmail)/callback',
+  authenticate,
+  asyncHandler(async (req, res) => {
+    const { provider } = req.params;
+    const { code } = req.body;
+    const tenantId = req.tenantId!;
+
+    if (!code) {
+      throw new ApiError('INVALID_CODE', 'Authorization code required', 400);
+    }
+
+    const redirectUri = `${process.env.API_URL || 'https://engage-by-capstone-production.up.railway.app'}/api/email/auth/${provider}/callback`;
+
+    let tokens: { refreshToken: string; accessToken: string; user?: string };
+
+    try {
+      if (provider === 'gmail') {
+        const clientId = process.env.GMAIL_CLIENT_ID!;
+        const clientSecret = process.env.GMAIL_CLIENT_SECRET!;
+        tokens = await EmailService.exchangeGmailCode(clientId, clientSecret, redirectUri, code);
+      } else {
+        // Microsoft 365 or Outlook
+        const clientId = process.env.MICROSOFT_CLIENT_ID!;
+        const clientSecret = process.env.MICROSOFT_CLIENT_SECRET!;
+        tokens = await EmailService.exchangeMicrosoftCode(clientId, clientSecret, redirectUri, code);
+      }
+
+      // Save to tenant settings
+      const tenant = await prisma.tenant.findUnique({
+        where: { id: tenantId },
+        select: { settings: true },
+      });
+
+      if (!tenant) {
+        throw new ApiError('TENANT_NOT_FOUND', 'Tenant not found', 404);
+      }
+
+      const settings = JSON.parse(tenant.settings || '{}');
+      
+      if (!settings.email) {
+        settings.email = {};
+      }
+
+      settings.email.provider = provider;
+      settings.email[provider === 'microsoft365' ? 'outlook' : provider] = {
+        clientId: provider === 'gmail' ? process.env.GMAIL_CLIENT_ID : process.env.MICROSOFT_CLIENT_ID,
+        clientSecret: provider === 'gmail' ? process.env.GMAIL_CLIENT_SECRET : process.env.MICROSOFT_CLIENT_SECRET,
+        refreshToken: tokens.refreshToken,
+        user: tokens.user || req.user?.email,
+      };
+
+      await prisma.tenant.update({
+        where: { id: tenantId },
+        data: { settings: JSON.stringify(settings) },
+      });
+
+      res.json({
+        success: true,
+        data: {
+          user: tokens.user || req.user?.email,
+          provider,
+        },
+      });
+    } catch (error: any) {
+      logger.error('OAuth exchange failed:', error);
+      throw new ApiError('OAUTH_FAILED', error.message || 'Failed to exchange authorization code', 500);
+    }
+  })
+);
+
+// Disconnect OAuth provider
+router.post(
+  '/auth/:provider(microsoft365|outlook|gmail)/disconnect',
+  authenticate,
+  asyncHandler(async (req, res) => {
+    const { provider } = req.params;
+    const tenantId = req.tenantId!;
+
+    const tenant = await prisma.tenant.findUnique({
+      where: { id: tenantId },
+      select: { settings: true },
+    });
+
+    if (!tenant) {
+      throw new ApiError('TENANT_NOT_FOUND', 'Tenant not found', 404);
+    }
+
+    const settings = JSON.parse(tenant.settings || '{}');
+
+    if (settings.email?.provider === provider) {
+      delete settings.email[provider === 'microsoft365' ? 'outlook' : provider];
+      settings.email.provider = 'smtp'; // Fallback to SMTP
+
+      await prisma.tenant.update({
+        where: { id: tenantId },
+        data: { settings: JSON.stringify(settings) },
+      });
+    }
+
+    res.json({
+      success: true,
+      message: `${provider} disconnected successfully`,
+    });
+  })
+);
+
 export default router;
