@@ -460,10 +460,11 @@ router.get(
     } else {
       // Microsoft 365 or Outlook
       const clientId = process.env.MICROSOFT_CLIENT_ID;
+      const tenantId = process.env.MICROSOFT_TENANT_ID;
       if (!clientId) {
         throw new ApiError('NOT_CONFIGURED', 'Microsoft OAuth not configured on server', 500);
       }
-      url = EmailService.generateMicrosoftAuthUrl(clientId, redirectUri);
+      url = EmailService.generateMicrosoftAuthUrl(clientId, redirectUri, tenantId);
     }
 
     res.json({
@@ -527,7 +528,8 @@ router.post(
         // Microsoft 365 or Outlook
         const clientId = process.env.MICROSOFT_CLIENT_ID!;
         const clientSecret = process.env.MICROSOFT_CLIENT_SECRET!;
-        tokens = await EmailService.exchangeMicrosoftCode(clientId, clientSecret, redirectUri, code);
+        const tenantId = process.env.MICROSOFT_TENANT_ID;
+        tokens = await EmailService.exchangeMicrosoftCode(clientId, clientSecret, redirectUri, code, tenantId);
       }
 
       // Save to tenant settings

@@ -383,14 +383,17 @@ export class EmailService {
   }
 
   // Generate Microsoft OAuth2 URL for setup
-  static generateMicrosoftAuthUrl(clientId: string, redirectUri: string): string {
+  static generateMicrosoftAuthUrl(clientId: string, redirectUri: string, tenantId?: string): string {
     const scopes = [
       'offline_access',
       'https://outlook.office365.com/SMTP.Send',
       'User.Read',
     ];
 
-    return `https://login.microsoftonline.com/common/oauth2/v2.0/authorize?` +
+    // Use 'common' for multi-tenant apps, or specific tenant ID for single-tenant
+    const tenant = tenantId || 'common';
+
+    return `https://login.microsoftonline.com/${tenant}/oauth2/v2.0/authorize?` +
       `client_id=${encodeURIComponent(clientId)}` +
       `&response_type=code` +
       `&redirect_uri=${encodeURIComponent(redirectUri)}` +
@@ -403,9 +406,11 @@ export class EmailService {
     clientId: string,
     clientSecret: string,
     redirectUri: string,
-    code: string
-  ): Promise<{ refreshToken: string; accessToken: string }> {
-    const response = await fetch('https://login.microsoftonline.com/common/oauth2/v2.0/token', {
+    code: string,
+    tenantId?: string
+  ): Promise<{ refreshToken: string; accessToken: string; user?: string }> {
+    const tenant = tenantId || 'common';
+    const response = await fetch(`https://login.microsoftonline.com/${tenant}/oauth2/v2.0/token`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/x-www-form-urlencoded',
@@ -428,6 +433,7 @@ export class EmailService {
     return {
       refreshToken: data.refresh_token,
       accessToken: data.access_token,
+      user: data.id_token ? JSON.parse(Buffer.from(data.id_token.split('.')[1], 'base64').toString()).email : undefined,
     };
   }
 }
