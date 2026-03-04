@@ -137,23 +137,11 @@ app.get('/health', async (req, res) => {
   });
 });
 
-// Test endpoint to verify routing is working
-app.get('/api/test-oauth', (req, res) => {
-  res.json({ success: true, message: 'OAuth test endpoint works' });
-});
-
-// OAuth callback routes (public - must be before protected routes)
-app.get('/api/oauth/callback/:provider', (req, res) => {
-  logger.info(`OAuth callback hit: provider=${req.params.provider}, query=${JSON.stringify(req.query)}`);
+// OAuth callback routes - specific paths for each provider
+const handleOAuthCallback = (provider: string) => (req: any, res: any) => {
+  logger.info(`OAuth callback hit: provider=${provider}, query=${JSON.stringify(req.query)}`);
   
-  const { provider } = req.params;
   const { code, error, state } = req.query;
-  
-  const validProviders = ['microsoft365', 'outlook', 'gmail'];
-  if (!validProviders.includes(provider)) {
-    logger.warn(`Invalid provider: ${provider}`);
-    return res.redirect(`${process.env.FRONTEND_URL || 'https://engagebycapstone.co.uk'}/settings?error=invalid_provider`);
-  }
   
   if (error) {
     logger.warn(`OAuth error: ${error}`);
@@ -168,7 +156,12 @@ app.get('/api/oauth/callback/:provider', (req, res) => {
   logger.info(`OAuth success for ${provider}, redirecting to frontend`);
   // Redirect to frontend with code
   res.redirect(`${process.env.FRONTEND_URL || 'https://engagebycapstone.co.uk'}/settings?oauth=success&provider=${provider}&code=${code}&state=${state}`);
-});
+};
+
+// Specific OAuth callback routes
+app.get('/api/oauth/callback/outlook', handleOAuthCallback('outlook'));
+app.get('/api/oauth/callback/microsoft365', handleOAuthCallback('microsoft365'));
+app.get('/api/oauth/callback/gmail', handleOAuthCallback('gmail'));}}]}>C:	mpix-oauth.json
 
 // API routes
 app.use('/api/auth', extractTenant, authRoutes);
