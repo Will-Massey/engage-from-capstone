@@ -292,21 +292,28 @@ export class EmailService {
     proposalReference: string;
     viewLink: string;
     senderName: string;
-    senderPosition: string;
+    senderPosition?: string;
+    senderEmail: string;
     validUntil: string;
+    tenantName: string;
+    totalAmount?: string;
+    serviceCount?: number;
     attachment?: Buffer;
   }): Promise<{ success: boolean; messageId?: string; error?: string }> {
-    const { generateProposalEmailTemplate } = await import('../templates/ukEngagementLetter.js');
+    const { generateProposalEmailTemplate } = await import('../templates/proposalEmail.js');
 
     const emailTemplate = generateProposalEmailTemplate({
       clientName: params.clientName,
-      practiceName: this.config.fromName,
+      tenantName: params.tenantName || this.config.fromName,
       proposalReference: params.proposalReference,
       proposalTitle: params.proposalTitle,
       viewLink: params.viewLink,
       senderName: params.senderName,
       senderPosition: params.senderPosition,
+      senderEmail: params.senderEmail,
       validUntil: params.validUntil,
+      totalAmount: params.totalAmount,
+      serviceCount: params.serviceCount,
     });
 
     const attachments = [];
@@ -320,7 +327,7 @@ export class EmailService {
 
     return this.sendEmail({
       to: params.to,
-      subject: emailTemplate.subject,
+      subject: `Proposal: ${params.proposalTitle} - ${params.proposalReference}`,
       html: emailTemplate.html,
       text: emailTemplate.text,
       attachments,
