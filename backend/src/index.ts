@@ -137,8 +137,13 @@ app.get('/health', async (req, res) => {
   });
 });
 
+// Test endpoint to verify routing is working
+app.get('/api/test-oauth', (req, res) => {
+  res.json({ success: true, message: 'OAuth test endpoint works' });
+});
+
 // OAuth callback routes (public - must be before protected routes)
-app.get('/api/email/auth/:provider/callback', (req, res) => {
+app.get('/api/oauth/callback/:provider', (req, res) => {
   logger.info(`OAuth callback hit: provider=${req.params.provider}, query=${JSON.stringify(req.query)}`);
   
   const { provider } = req.params;
