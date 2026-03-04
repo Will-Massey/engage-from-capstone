@@ -461,7 +461,7 @@ router.get(
     
     const state = generateState();
 
-    const redirectUri = `${process.env.API_URL || 'https://engage-by-capstone-production.up.railway.app'}/api/email/auth/${provider}/callback`;
+    const redirectUri = `${process.env.API_URL || 'https://engage-by-capstone-production.up.railway.app'}/api/oauth/callback/${provider}`;
 
     let url: string;
 
@@ -543,7 +543,7 @@ router.post(
       throw new ApiError('INVALID_CODE', 'Authorization code required', 400);
     }
 
-    const redirectUri = `${process.env.API_URL || 'https://engage-by-capstone-production.up.railway.app'}/api/email/auth/${provider}/callback`;
+    const redirectUri = `${process.env.API_URL || 'https://engage-by-capstone-production.up.railway.app'}/api/oauth/callback/${provider}`;
 
     let tokens: { refreshToken: string; accessToken: string; user?: string };
 
