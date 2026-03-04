@@ -407,10 +407,17 @@ const generateState = () => {
 
 // Get OAuth status for a provider
 router.get(
-  '/auth/:provider(microsoft365|outlook|gmail)/status',
+  '/auth/:provider/status',
   authenticate,
   asyncHandler(async (req, res) => {
     const { provider } = req.params;
+    
+    // Validate provider
+    const validProviders = ['microsoft365', 'outlook', 'gmail'];
+    if (!validProviders.includes(provider)) {
+      throw new ApiError('INVALID_PROVIDER', 'Invalid email provider', 400);
+    }
+    
     const tenantId = req.tenantId!;
 
     const tenant = await prisma.tenant.findUnique({
@@ -441,10 +448,17 @@ router.get(
 
 // Get OAuth URL for a provider
 router.get(
-  '/auth/:provider(microsoft365|outlook|gmail)/url',
+  '/auth/:provider/url',
   authenticate,
   asyncHandler(async (req, res) => {
     const { provider } = req.params;
+    
+    // Validate provider
+    const validProviders = ['microsoft365', 'outlook', 'gmail'];
+    if (!validProviders.includes(provider)) {
+      throw new ApiError('INVALID_PROVIDER', 'Invalid email provider', 400);
+    }
+    
     const state = generateState();
 
     const redirectUri = `${process.env.API_URL || 'https://engage-by-capstone-production.up.railway.app'}/api/email/auth/${provider}/callback`;
@@ -477,12 +491,19 @@ router.get(
   })
 );
 
-// OAuth callback handler
+// OAuth callback handler - simplified without regex pattern
 router.get(
-  '/auth/:provider(microsoft365|outlook|gmail)/callback',
+  '/auth/:provider/callback',
   asyncHandler(async (req, res) => {
     const { provider } = req.params;
     const { code, error, state } = req.query;
+
+    // Validate provider
+    const validProviders = ['microsoft365', 'outlook', 'gmail'];
+    if (!validProviders.includes(provider)) {
+      const frontendUrl = process.env.FRONTEND_URL || 'https://engagebycapstone.co.uk';
+      return res.redirect(`${frontendUrl}/settings?error=invalid_provider`);
+    }
 
     if (error) {
       // Redirect back to frontend with error
@@ -504,10 +525,17 @@ router.get(
 
 // Exchange code for tokens (called by frontend)
 router.post(
-  '/auth/:provider(microsoft365|outlook|gmail)/callback',
+  '/auth/:provider/callback',
   authenticate,
   asyncHandler(async (req, res) => {
     const { provider } = req.params;
+    
+    // Validate provider
+    const validProviders = ['microsoft365', 'outlook', 'gmail'];
+    if (!validProviders.includes(provider)) {
+      throw new ApiError('INVALID_PROVIDER', 'Invalid email provider', 400);
+    }
+    
     const { code } = req.body;
     const tenantId = req.tenantId!;
 
@@ -577,10 +605,17 @@ router.post(
 
 // Disconnect OAuth provider
 router.post(
-  '/auth/:provider(microsoft365|outlook|gmail)/disconnect',
+  '/auth/:provider/disconnect',
   authenticate,
   asyncHandler(async (req, res) => {
     const { provider } = req.params;
+    
+    // Validate provider
+    const validProviders = ['microsoft365', 'outlook', 'gmail'];
+    if (!validProviders.includes(provider)) {
+      throw new ApiError('INVALID_PROVIDER', 'Invalid email provider', 400);
+    }
+    
     const tenantId = req.tenantId!;
 
     const tenant = await prisma.tenant.findUnique({
