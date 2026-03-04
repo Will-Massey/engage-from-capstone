@@ -138,26 +138,32 @@ app.get('/health', async (req, res) => {
 });
 
 // OAuth callback routes (public - must be before protected routes)
-app.get('/api/email/auth/:provider/callback', asyncHandler(async (req, res) => {
+app.get('/api/email/auth/:provider/callback', (req, res) => {
+  logger.info(`OAuth callback hit: provider=${req.params.provider}, query=${JSON.stringify(req.query)}`);
+  
   const { provider } = req.params;
   const { code, error, state } = req.query;
   
   const validProviders = ['microsoft365', 'outlook', 'gmail'];
   if (!validProviders.includes(provider)) {
+    logger.warn(`Invalid provider: ${provider}`);
     return res.redirect(`${process.env.FRONTEND_URL || 'https://engagebycapstone.co.uk'}/settings?error=invalid_provider`);
   }
   
   if (error) {
+    logger.warn(`OAuth error: ${error}`);
     return res.redirect(`${process.env.FRONTEND_URL || 'https://engagebycapstone.co.uk'}/settings?error=${encodeURIComponent(error as string)}`);
   }
   
   if (!code) {
+    logger.warn('No code received');
     return res.redirect(`${process.env.FRONTEND_URL || 'https://engagebycapstone.co.uk'}/settings?error=no_code_received`);
   }
   
+  logger.info(`OAuth success for ${provider}, redirecting to frontend`);
   // Redirect to frontend with code
   res.redirect(`${process.env.FRONTEND_URL || 'https://engagebycapstone.co.uk'}/settings?oauth=success&provider=${provider}&code=${code}&state=${state}`);
-}));
+});
 
 // API routes
 app.use('/api/auth', extractTenant, authRoutes);
