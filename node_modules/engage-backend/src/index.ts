@@ -161,7 +161,7 @@ const handleOAuthCallback = (provider: string) => (req: any, res: any) => {
 // Specific OAuth callback routes
 app.get('/api/oauth/callback/outlook', handleOAuthCallback('outlook'));
 app.get('/api/oauth/callback/microsoft365', handleOAuthCallback('microsoft365'));
-app.get('/api/oauth/callback/gmail', handleOAuthCallback('gmail'));}}]}>C:	mpix-oauth.json
+app.get('/api/oauth/callback/gmail', handleOAuthCallback('gmail'));
 
 // API routes
 app.use('/api/auth', extractTenant, authRoutes);
