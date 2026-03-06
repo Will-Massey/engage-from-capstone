@@ -202,6 +202,11 @@ app.use((req, res, next) => {
   next();
 });
 
+// Simple ping endpoint for Railway healthcheck (no DB required)
+app.get('/ping', (req, res) => {
+  res.json({ status: 'ok', timestamp: new Date().toISOString() });
+});
+
 // Health check endpoint
 app.get('/health', async (req, res) => {
   const dbHealth = await checkDatabaseHealth();
