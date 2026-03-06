@@ -21,6 +21,7 @@ import CreateClient from './pages/clients/CreateClient';
 import Services from './pages/services/Services';
 import ServiceDetail from './pages/services/ServiceDetail';
 import Settings from './pages/Settings';
+import Subscription from './pages/Subscription';
 import NotFound from './pages/NotFound';
 import PublicProposalView from './pages/public/ProposalView';
 
@@ -126,6 +127,7 @@ function App() {
         
         {/* Settings */}
         <Route path="settings" element={<Settings />} />
+        <Route path="subscription" element={<Subscription />} />
       </Route>
 
       {/* Public Proposal View (No authentication required) */}

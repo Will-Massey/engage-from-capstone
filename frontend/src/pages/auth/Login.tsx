@@ -52,13 +52,13 @@ const Login = () => {
 
   return (
     <div>
-      <h2 className="text-2xl font-bold text-gray-900 mb-2">Welcome back</h2>
-      <p className="text-gray-500 mb-6">Sign in to your Engage account</p>
+      <h2 className="text-2xl font-bold text-slate-900 mb-2">Welcome back</h2>
+      <p className="text-slate-600 mb-6">Sign in to your Engage account</p>
 
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
         {/* Email */}
         <div>
-          <label htmlFor="email" className="block text-sm font-medium text-gray-700">
+          <label htmlFor="email" className="block text-sm font-medium text-slate-800">
             Email address
           </label>
           <div className="mt-1">
@@ -77,7 +77,7 @@ const Login = () => {
 
         {/* Password */}
         <div>
-          <label htmlFor="password" className="block text-sm font-medium text-gray-700">
+          <label htmlFor="password" className="block text-sm font-medium text-slate-800">
             Password
           </label>
           <div className="mt-1 relative">
@@ -91,7 +91,7 @@ const Login = () => {
             <button
               type="button"
               onClick={() => setShowPassword(!showPassword)}
-              className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-500"
+              className="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-400 hover:text-slate-600"
             >
               {showPassword ? (
                 <EyeSlashIcon className="h-5 w-5" />
@@ -111,9 +111,9 @@ const Login = () => {
             <input
               {...register('rememberMe')}
               type="checkbox"
-              className="h-4 w-4 text-primary-600 focus:ring-primary-500 border-gray-300 rounded"
+              className="h-4 w-4 text-primary-600 focus:ring-primary-500 border-slate-300 rounded"
             />
-            <label htmlFor="remember-me" className="ml-2 block text-sm text-gray-600">
+            <label htmlFor="remember-me" className="ml-2 block text-sm text-slate-700">
               Remember me
             </label>
           </div>
@@ -144,19 +144,21 @@ const Login = () => {
         </button>
       </form>
 
-      {/* Demo hint */}
-      <div className="mt-6 p-4 bg-primary-50 rounded-lg border border-primary-100">
-        <p className="text-sm text-primary-800">
-          <strong>Demo credentials:</strong>
-          <br />
-          Email: admin@demo.practice
-          <br />
-          Password: DemoPass123!
-        </p>
-      </div>
+      {/* Demo hint - only shown in development */}
+      {import.meta.env.DEV && (
+        <div className="mt-6 p-4 bg-primary-50 rounded-lg border border-primary-100">
+          <p className="text-sm text-primary-800">
+            <strong>Demo credentials:</strong>
+            <br />
+            Email: admin@demo.practice
+            <br />
+            Password: DemoPass123!
+          </p>
+        </div>
+      )}
 
       {/* Sign up link */}
-      <p className="mt-6 text-center text-sm text-gray-600">
+      <p className="mt-6 text-center text-sm text-slate-700">
         Don't have an account?{' '}
         <Link to="/register" className="font-medium text-primary-600 hover:text-primary-500">
           Start your free trial

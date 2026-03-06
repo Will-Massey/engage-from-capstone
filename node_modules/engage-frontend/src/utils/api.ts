@@ -5,7 +5,7 @@ import { useAuthStore } from '../stores/authStore';
 // API base URL
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
 
-console.log('API URL:', API_URL); // Debug log
+// API URL is configured from environment
 
 // Create axios instance
 const api: AxiosInstance = axios.create({
@@ -14,7 +14,14 @@ const api: AxiosInstance = axios.create({
     'Content-Type': 'application/json',
   },
   timeout: 30000,
+  withCredentials: true, // Required for cookies (httpOnly auth + CSRF)
 });
+
+// Get CSRF token from cookie
+const getCsrfToken = (): string | null => {
+  const match = document.cookie.match(/csrfToken=([^;]+)/);
+  return match ? match[1] : null;
+};
 
 // Request interceptor
 api.interceptors.request.use(
@@ -29,6 +36,14 @@ api.interceptors.request.use(
     // Add tenant header if available
     if (tenant) {
       config.headers['X-Tenant-Id'] = tenant.id;
+    }
+
+    // Add CSRF token for state-changing requests
+    if (['POST', 'PUT', 'DELETE', 'PATCH'].includes(config.method?.toUpperCase() || '')) {
+      const csrfToken = getCsrfToken();
+      if (csrfToken) {
+        config.headers['X-CSRF-Token'] = csrfToken;
+      }
     }
 
     return config;
@@ -198,6 +213,43 @@ export const apiClient = {
     api.get(`/tenants/check-subdomain/${subdomain}`),
 
   getOnboardingStatus: () => api.get('/tenants/onboarding-status'),
+
+  getTenantSettings: () => api.get('/tenants/settings'),
+
+  updateTenantSettings: (data: any) => api.put('/tenants/settings', data),
+
+  // Users
+  updateMe: (data: any) => api.put('/auth/me', data),
+
+  getUsers: () => api.get('/auth/users'),
+
+  createUser: (data: any) => api.post('/auth/users', data),
+
+  updateUser: (id: string, data: any) => api.put(`/auth/users/${id}`, data),
+
+  deleteUser: (id: string) => api.delete(`/auth/users/${id}`),
+
+  changePassword: (data: { currentPassword: string; newPassword: string }) =>
+    api.put('/auth/change-password', data),
+
+  // Proposal Activity
+  recordProposalView: (id: string) => api.post(`/proposals/${id}/view`, {}),
+
+  getProposalActivity: (id: string) => api.get(`/proposals/${id}/activity`),
+
+  // Payments
+  getStripeConfig: () => api.get('/payments/config'),
+
+  createSubscription: (data: { priceId: string; paymentMethodId: string }) =>
+    api.post('/payments/create-subscription', data),
+
+  getSubscription: () => api.get('/payments/subscription'),
+
+  cancelSubscription: () => api.post('/payments/cancel-subscription', {}),
+
+  reactivateSubscription: () => api.post('/payments/reactivate-subscription', {}),
+
+  createSetupIntent: () => api.post('/payments/create-setup-intent', {}),
 };
 
 export default api;

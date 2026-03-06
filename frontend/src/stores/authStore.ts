@@ -14,6 +14,7 @@ export interface Tenant {
   name: string;
   subdomain: string;
   primaryColor: string;
+  logo?: string;
   settings: {
     defaultCurrency: string;
     professionalBody?: string;
@@ -48,7 +49,7 @@ export const useAuthStore = create<AuthState>()(
         set({
           user,
           tenant,
-          token,
+          token, // Token kept in memory only, not persisted
           isAuthenticated: true,
           isLoading: false,
         }),
@@ -71,10 +72,13 @@ export const useAuthStore = create<AuthState>()(
     }),
     {
       name: 'auth-storage',
+      // SECURITY FIX: Token is NOT persisted to localStorage
+      // Only user and tenant data is persisted
+      // Token is stored in memory only and httpOnly cookie is used for auth
       partialize: (state) => ({
         user: state.user,
         tenant: state.tenant,
-        token: state.token,
+        // token: intentionally NOT persisted - security fix
         isAuthenticated: state.isAuthenticated,
       }),
     }

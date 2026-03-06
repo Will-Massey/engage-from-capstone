@@ -1,21 +1,33 @@
 @echo off
-echo Starting Engage by Capstone Development Servers...
+echo 🚀 Starting Engage by Capstone Development Servers
+echo =================================================
 echo.
 
-REM Start backend in a new window
-echo Starting Backend Server...
+REM Kill any existing Node processes
+echo 🧹 Cleaning up existing processes...
+taskkill /F /IM node.exe 2>nul
+timeout /t 2 /nobreak >nul
+
+REM Start Backend
+echo 📦 Starting Backend (Port 3001)...
 start "Backend Server" cmd /k "cd backend && npm run dev"
 
 REM Wait a moment
-timeout /t 2 /nobreak > nul
+timeout /t 3 /nobreak >nul
 
-REM Start frontend in a new window
-echo Starting Frontend Server...
+REM Start Frontend
+echo 🎨 Starting Frontend (Port 5173)...
 start "Frontend Server" cmd /k "cd frontend && npm run dev"
 
 echo.
-echo Both servers are starting in separate windows...
-echo Backend will be available at: http://localhost:3001
-echo Frontend will be available at: http://localhost:5173
+echo ✅ Servers starting in new windows...
+echo.
+echo URLs:
+echo   Frontend: http://localhost:5173
+echo   Backend:  http://localhost:3001
+echo.
+echo Demo Login:
+echo   Email: admin@demo.practice
+echo   Password: DemoPass123!
 echo.
 pause

@@ -5,6 +5,7 @@
 
 import nodemailer from 'nodemailer';
 import { google } from 'googleapis';
+import { decrypt } from '../utils/encryption.js';
 import logger from '../config/logger.js';
 
 // Email provider types
@@ -112,9 +113,9 @@ export class EmailService {
         user: this.config.smtp.user,
         pass: this.config.smtp.pass,
       },
-      tls: {
-        rejectUnauthorized: false,
-      },
+      tls: process.env.NODE_ENV === 'production' ? {
+        rejectUnauthorized: true,
+      } : undefined,
     });
 
     // Verify connection
@@ -450,7 +451,7 @@ export function createEmailService(): EmailService | null {
   const config: EmailConfig = {
     provider,
     fromName: process.env.EMAIL_FROM_NAME || 'Engage by Capstone',
-    fromEmail: process.env.EMAIL_FROM_ADDRESS || 'noreply@engage.capstone.co.uk',
+    fromEmail: process.env.EMAIL_FROM_ADDRESS || 'sales@capstonesoftware.co.uk',
   };
 
   switch (provider) {

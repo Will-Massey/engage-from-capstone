@@ -104,8 +104,8 @@ const Onboarding = () => {
 
   return (
     <div>
-      <h2 className="text-2xl font-bold text-gray-900 mb-2">Create your account</h2>
-      <p className="text-gray-600 mb-6">Get started with your 14-day free trial</p>
+      <h2 className="text-2xl font-bold text-slate-900 mb-2">Create your account</h2>
+      <p className="text-slate-700 mb-6">Get started with your 14-day free trial</p>
 
       {/* Progress steps */}
       <div className="mb-8">
@@ -118,7 +118,7 @@ const Onboarding = () => {
                     ? 'bg-primary-600 text-white'
                     : currentStep === step.id
                     ? 'bg-primary-100 text-primary-700 border-2 border-primary-600'
-                    : 'bg-gray-100 text-gray-500'
+                    : 'bg-slate-100 text-slate-600'
                 }`}
               >
                 {currentStep > step.id ? (
@@ -129,13 +129,13 @@ const Onboarding = () => {
               </div>
               <span
                 className={`ml-2 text-sm font-medium ${
-                  currentStep >= step.id ? 'text-gray-900' : 'text-gray-500'
+                  currentStep >= step.id ? 'text-slate-900' : 'text-slate-600'
                 }`}
               >
                 {step.name}
               </span>
               {index < steps.length - 1 && (
-                <div className="w-12 h-0.5 mx-4 bg-gray-200" />
+                <div className="w-12 h-0.5 mx-4 bg-slate-200" />
               )}
             </div>
           ))}
@@ -147,7 +147,7 @@ const Onboarding = () => {
         {currentStep === 1 && (
           <div className="space-y-6 animate-fade-in">
             <div>
-              <label className="block text-sm font-medium text-gray-700">
+              <label className="block text-sm font-medium text-slate-800">
                 Practice Name
               </label>
               <input
@@ -161,7 +161,7 @@ const Onboarding = () => {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700">
+              <label className="block text-sm font-medium text-slate-800">
                 Subdomain
               </label>
               <div className="mt-1 flex rounded-lg shadow-sm">
@@ -171,7 +171,7 @@ const Onboarding = () => {
                   className="flex-1 rounded-l-lg border-r-0 input-field"
                   placeholder="your-practice"
                 />
-                <span className="inline-flex items-center px-3 rounded-r-lg border border-l-0 border-gray-300 bg-gray-50 text-gray-500 text-sm">
+                <span className="inline-flex items-center px-3 rounded-r-lg border border-l-0 border-slate-300 bg-slate-50 text-slate-600 text-sm">
                   .engage.capstone.co.uk
                 </span>
               </div>
@@ -201,7 +201,7 @@ const Onboarding = () => {
           <div className="space-y-6 animate-fade-in">
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700">
+                <label className="block text-sm font-medium text-slate-800">
                   First Name
                 </label>
                 <input
@@ -213,7 +213,7 @@ const Onboarding = () => {
                 )}
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700">
+                <label className="block text-sm font-medium text-slate-800">
                   Last Name
                 </label>
                 <input
@@ -227,7 +227,7 @@ const Onboarding = () => {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700">
+              <label className="block text-sm font-medium text-slate-800">
                 Email Address
               </label>
               <input
@@ -241,7 +241,7 @@ const Onboarding = () => {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700">
+              <label className="block text-sm font-medium text-slate-800">
                 Password
               </label>
               <input
@@ -278,15 +278,15 @@ const Onboarding = () => {
           <div className="space-y-6 animate-fade-in">
             <div className="bg-gray-50 rounded-lg p-4 space-y-3">
               <div>
-                <span className="text-sm text-gray-500">Practice:</span>
+                <span className="text-sm text-slate-600">Practice:</span>
                 <p className="font-medium">{watch('name')}</p>
               </div>
               <div>
-                <span className="text-sm text-gray-500">Subdomain:</span>
+                <span className="text-sm text-slate-600">Subdomain:</span>
                 <p className="font-medium">{watch('subdomain')}.engage.capstone.co.uk</p>
               </div>
               <div>
-                <span className="text-sm text-gray-500">Admin:</span>
+                <span className="text-sm text-slate-600">Admin:</span>
                 <p className="font-medium">
                   {watch('adminFirstName')} {watch('adminLastName')} ({watch('adminEmail')})
                 </p>
@@ -297,9 +297,9 @@ const Onboarding = () => {
               <input
                 type="checkbox"
                 required
-                className="mt-1 h-4 w-4 text-primary-600 border-gray-300 rounded"
+                className="mt-1 h-4 w-4 text-primary-600 border-slate-300 rounded"
               />
-              <label className="ml-2 text-sm text-gray-600">
+              <label className="ml-2 text-sm text-slate-700">
                 I agree to the{' '}
                 <a href="#" className="text-primary-600 hover:text-primary-500">Terms of Service</a>
                 {' '}and{' '}

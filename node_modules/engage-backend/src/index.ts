@@ -7,6 +7,7 @@ import cors from 'cors';
 import helmet from 'helmet';
 import morgan from 'morgan';
 import rateLimit from 'express-rate-limit';
+import cookieParser from 'cookie-parser';
 import path from 'path';
 
 // Import routes
@@ -19,6 +20,7 @@ import serviceRoutes from './routes/services.js';
 import enhancedServiceRoutes from './routes/services-new.js';
 import tenantRoutes from './routes/tenants.js';
 import emailRoutes from './routes/email.js';
+import paymentRoutes from './routes/payments.js';
 import { asyncHandler, ApiError } from './middleware/errorHandler.js';
 import { EmailService } from './services/emailService.js';
 
@@ -32,15 +34,47 @@ import { checkDatabaseHealth } from './config/database.js';
 const app = express();
 const PORT = process.env.PORT || 3001;
 
-// Security middleware - CSP disabled for now to allow external resources
+// Security middleware - CSP configured for production
 app.use(helmet({
-  contentSecurityPolicy: false,
+  contentSecurityPolicy: {
+    directives: {
+      defaultSrc: ["'self'"],
+      scriptSrc: ["'self'", "'unsafe-inline'", "'unsafe-eval'"],
+      styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
+      fontSrc: ["'self'", "https://fonts.gstatic.com"],
+      imgSrc: ["'self'", "data:", "blob:", "https:"],
+      connectSrc: ["'self'", process.env.FRONTEND_URL || "http://localhost:5173"],
+      frameSrc: ["'self'"],
+      objectSrc: ["'none'"],
+      baseUri: ["'self'"],
+      formAction: ["'self'"],
+    },
+  },
+  crossOriginEmbedderPolicy: false,
+  // HSTS - HTTP Strict Transport Security
+  hsts: {
+    maxAge: 31536000, // 1 year in seconds
+    includeSubDomains: true,
+    preload: true,
+  },
+  // Additional security headers
+  hidePoweredBy: true,
+  ieNoOpen: true,
+  noSniff: true,
+  originAgentCluster: true,
+  permittedCrossDomainPolicies: true,
+  referrerPolicy: { policy: 'strict-origin-when-cross-origin' },
+  xssFilter: true,
 }));
 
 // CORS configuration - allow multiple origins
 const allowedOrigins = [
   process.env.FRONTEND_URL,
+  'https://engage.capstonesoftware.co.uk',
   'http://localhost:5173',
+  'http://127.0.0.1:5173',
+  'http://192.168.1.86:5173',
+  'http://100.83.223.249:5173',
   'https://frontend-fawn-eta-13.vercel.app',
   'https://frontend-7bwwe5u7u-will-masseys-projects-b935486d.vercel.app',
   'https://frontend-o4blqd5z2-will-masseys-projects-b935486d.vercel.app',
@@ -50,10 +84,23 @@ const allowedOrigins = [
 // Regex to match any Vercel preview URL from this project
 const vercelProjectPattern = /^https:\/\/frontend-[a-z0-9]+-will-masseys-projects-b935486d\.vercel\.app$/;
 
+// In development, allow all localhost origins
+const isDevelopment = process.env.NODE_ENV !== 'production';
+
 const corsOptions = {
   origin: function (origin: string | undefined, callback: (err: Error | null, allow?: boolean) => void) {
     // Allow requests with no origin (like mobile apps or curl requests)
     if (!origin) return callback(null, true);
+    
+    // In development, allow all localhost origins
+    if (isDevelopment && (
+      origin.startsWith('http://localhost:') || 
+      origin.startsWith('http://127.0.0.1:') ||
+      /^http:\/\/192\.168\.\d+\.\d+:\d+$/.test(origin) ||
+      /^http:\/\/100\.\d+\.\d+\.\d+:\d+$/.test(origin)
+    )) {
+      return callback(null, true);
+    }
     
     // Check exact matches
     if (allowedOrigins.includes(origin)) {
@@ -69,9 +116,14 @@ const corsOptions = {
     callback(new Error('Not allowed by CORS'));
   },
   credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Tenant-Id', 'X-Request-Id', 'X-CSRF-Token'],
 };
 
 app.use(cors(corsOptions));
+
+// Handle preflight requests explicitly
+app.options('*', cors(corsOptions));
 
 // Rate limiting
 const limiter = rateLimit({
@@ -104,6 +156,23 @@ const authLimiter = rateLimit({
 app.use('/api/auth/login', authLimiter);
 app.use('/api/auth/register', authLimiter);
 
+// Stricter rate limiting for public proposal endpoints (viewing/signing)
+const publicProposalLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 30, // Limit each IP to 30 requests per windowMs
+  message: {
+    success: false,
+    error: {
+      code: 'RATE_LIMIT_EXCEEDED',
+      message: 'Too many requests. Please try again later.',
+    },
+  },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+app.use('/api/proposals/view', publicProposalLimiter);
+
 // Logging
 app.use(morgan('combined', {
   stream: {
@@ -111,9 +180,21 @@ app.use(morgan('combined', {
   },
 }));
 
+// Cookie parsing (required for CSRF and auth cookies)
+app.use(cookieParser());
+
 // Body parsing
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
+
+// Import CSRF middleware
+import { setCsrfCookie, csrfProtection } from './middleware/auth.js';
+
+// CSRF protection - set cookie on all requests
+app.use(setCsrfCookie);
+
+// Apply CSRF protection to API routes (except auth login/register)
+app.use('/api', csrfProtection);
 
 // Request ID middleware
 app.use((req, res, next) => {
@@ -133,6 +214,30 @@ app.get('/health', async (req, res) => {
       timestamp: new Date().toISOString(),
       version: process.env.npm_package_version || '1.0.0',
       environment: process.env.NODE_ENV || 'development',
+    },
+  });
+});
+
+// API health check for Railway
+app.get('/api/health', async (req, res) => {
+  const dbHealth = await checkDatabaseHealth();
+  
+  if (!dbHealth.healthy) {
+    return res.status(503).json({
+      success: false,
+      error: {
+        code: 'UNHEALTHY',
+        message: 'Database connection failed',
+      },
+    });
+  }
+  
+  res.json({
+    success: true,
+    data: {
+      status: 'healthy',
+      database: 'connected',
+      timestamp: new Date().toISOString(),
     },
   });
 });
@@ -172,6 +277,7 @@ app.use('/api/services', extractTenant, serviceRoutes);
 app.use('/api/services/v2', extractTenant, enhancedServiceRoutes);
 app.use('/api/tenants', tenantRoutes);
 app.use('/api/email', extractTenant, emailRoutes);
+app.use('/api/payments', extractTenant, paymentRoutes);
 app.use('/api/companies-house', companiesHouseRoutes);
 
 // API status endpoint

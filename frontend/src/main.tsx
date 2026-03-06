@@ -3,8 +3,12 @@ import ReactDOM from 'react-dom/client';
 import { BrowserRouter } from 'react-router-dom';
 import { Toaster } from 'react-hot-toast';
 import App from './App';
+import { initializeTheme } from './stores/themeStore';
 // Build v3 - 2026-03-03T17:39:48Z
 import './index.css';
+
+// Initialize theme before rendering
+initializeTheme();
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>

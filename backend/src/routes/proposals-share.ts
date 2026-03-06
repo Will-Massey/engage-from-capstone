@@ -529,9 +529,10 @@ router.post(
   })
 );
 
-// Get signature image (authenticated or with token)
+// Get signature image (authenticated only)
 router.get(
   '/signatures/:id/image',
+  authenticate,
   asyncHandler(async (req, res) => {
     const { id } = req.params;
 

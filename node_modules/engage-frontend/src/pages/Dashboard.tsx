@@ -117,7 +117,7 @@ const Dashboard = () => {
         recentClients: clients.slice(0, 5),
       });
     } catch (error) {
-      console.error('Failed to load dashboard data', error);
+      // Error handled by UI
     } finally {
       setIsLoading(false);
     }
@@ -178,10 +178,10 @@ const Dashboard = () => {
           <div className="flex items-center space-x-3">
             <img src="/images/capstone-icon.svg" alt="Capstone" className="h-10 w-10" />
             <div>
-              <h1 className="text-2xl font-bold text-gray-900">
+              <h1 className="text-2xl font-bold text-slate-900">
                 Good {new Date().getHours() < 12 ? 'morning' : new Date().getHours() < 17 ? 'afternoon' : 'evening'}, {user?.firstName}! 👋
               </h1>
-              <p className="mt-1 text-sm text-gray-500">
+              <p className="mt-1 text-sm text-slate-600">
                 Here's what's happening with {tenant?.name || 'your practice'} today
               </p>
             </div>
@@ -213,15 +213,22 @@ const Dashboard = () => {
         {statsCards.map((stat, index) => (
           <div
             key={stat.name}
-            className="stat-card hover-lift"
+            className={`rounded-xl border-2 p-6 hover:shadow-lg transition-all duration-300 ${stat.bgColor} ${
+              stat.name.includes('Revenue') ? 'border-green-400' :
+              stat.name.includes('Proposals') ? 'border-blue-400' :
+              stat.name.includes('Conversion') ? 'border-purple-400' :
+              'border-orange-400'
+            }`}
             style={{ animationDelay: `${index * 100}ms` }}
           >
             <div className="flex items-center justify-between">
-              <div className={`icon-box-lg rounded-xl bg-gradient-to-br ${stat.color} text-white shadow-lg`}>
+              <div className={`w-12 h-12 rounded-xl bg-gradient-to-br ${stat.color} text-white shadow-lg flex items-center justify-center`}>
                 <stat.icon className="h-6 w-6" />
               </div>
-              <div className={`flex items-center text-sm font-medium ${
-                stat.trend === 'up' ? 'text-green-600' : stat.trend === 'down' ? 'text-red-600' : 'text-gray-500'
+              <div className={`flex items-center text-sm font-bold px-2 py-1 rounded-full ${
+                stat.trend === 'up' ? 'bg-green-100 text-green-700' : 
+                stat.trend === 'down' ? 'bg-red-100 text-red-700' : 
+                'bg-slate-100 text-slate-600'
               }`}>
                 {stat.trend === 'up' && <ArrowUpIcon className="h-4 w-4 mr-1" />}
                 {stat.trend === 'down' && <ArrowDownIcon className="h-4 w-4 mr-1" />}
@@ -229,8 +236,13 @@ const Dashboard = () => {
               </div>
             </div>
             <div className="mt-4">
-              <p className="text-sm font-medium text-gray-600">{stat.name}</p>
-              <p className="text-2xl font-bold text-gray-900">{stat.value}</p>
+              <p className="text-sm font-bold text-slate-700 uppercase tracking-wide">{stat.name}</p>
+              <p className={`text-3xl font-extrabold mt-1 ${
+                stat.name.includes('Revenue') ? 'text-green-700' :
+                stat.name.includes('Proposals') ? 'text-blue-700' :
+                stat.name.includes('Conversion') ? 'text-purple-700' :
+                'text-orange-700'
+              }`}>{stat.value}</p>
             </div>
           </div>
         ))}
@@ -266,14 +278,14 @@ const Dashboard = () => {
       {/* Charts Row */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Revenue Chart */}
-        <div className="card p-6 lg:col-span-2">
+        <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-6 lg:col-span-2">
           <div className="flex items-center justify-between mb-6">
             <div>
               <h2 className="section-title">Revenue Overview</h2>
               <p className="section-subtitle">Monthly revenue from accepted proposals</p>
             </div>
             <div className="flex items-center space-x-2">
-              <span className="flex items-center text-sm text-gray-500">
+              <span className="flex items-center text-sm text-slate-600">
                 <span className="w-3 h-3 rounded-full bg-primary-500 mr-2"></span>
                 Revenue
               </span>
@@ -289,8 +301,8 @@ const Dashboard = () => {
                   </linearGradient>
                 </defs>
                 <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" />
-                <XAxis dataKey="name" stroke="#6B7280" fontSize={12} />
-                <YAxis stroke="#6B7280" fontSize={12} tickFormatter={(value) => `£${value/1000}k`} />
+                <XAxis dataKey="name" stroke="#374151" fontSize={12} tick={{fill: '#374151'}} />
+                <YAxis stroke="#374151" fontSize={12} tick={{fill: '#374151'}} tickFormatter={(value) => `£${value/1000}k`} />
                 <Tooltip
                   formatter={(value: number) => [`£${value.toLocaleString()}`, 'Revenue']}
                   contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)' }}
@@ -309,7 +321,7 @@ const Dashboard = () => {
         </div>
 
         {/* Proposal Status */}
-        <div className="card p-6">
+        <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-6">
           <h2 className="section-title mb-1">Proposal Status</h2>
           <p className="section-subtitle mb-6">Current proposal distribution</p>
           <div className="h-48">
@@ -334,12 +346,12 @@ const Dashboard = () => {
           </div>
           <div className="mt-4 space-y-2">
             {proposalStatusData.map((item) => (
-              <div key={item.name} className="flex items-center justify-between text-sm">
+              <div key={item.name} className="flex items-center justify-between text-sm text-slate-700">
                 <span className="flex items-center">
                   <span className="w-3 h-3 rounded-full mr-2" style={{ backgroundColor: item.color }}></span>
                   {item.name}
                 </span>
-                <span className="font-medium">{item.value}</span>
+                <span className="font-medium text-slate-900">{item.value}</span>
               </div>
             ))}
           </div>
@@ -349,15 +361,15 @@ const Dashboard = () => {
       {/* Activity & Recent Items */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Weekly Activity Chart */}
-        <div className="card p-6 lg:col-span-2">
+        <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-6 lg:col-span-2">
           <h2 className="section-title mb-1">Weekly Activity</h2>
           <p className="section-subtitle mb-6">Proposals created vs views this week</p>
           <div className="h-64">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={weeklyActivity}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" />
-                <XAxis dataKey="day" stroke="#6B7280" fontSize={12} />
-                <YAxis stroke="#6B7280" fontSize={12} />
+                <XAxis dataKey="day" stroke="#374151" fontSize={12} tick={{fill: '#374151'}} />
+                <YAxis stroke="#374151" fontSize={12} tick={{fill: '#374151'}} />
                 <Tooltip
                   contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)' }}
                 />
@@ -369,10 +381,10 @@ const Dashboard = () => {
         </div>
 
         {/* Recent Activity */}
-        <div className="card p-6">
+        <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-6">
           <div className="flex items-center justify-between mb-4">
             <h2 className="section-title">Recent Activity</h2>
-            <button className="text-sm text-primary-600 hover:text-primary-700 font-medium">
+            <button className="text-sm text-blue-600 hover:text-blue-700 font-medium">
               View all
             </button>
           </div>
@@ -384,13 +396,13 @@ const Dashboard = () => {
                   activity.color === 'green' ? 'bg-green-100 text-green-600' :
                   activity.color === 'purple' ? 'bg-purple-100 text-purple-600' :
                   activity.color === 'orange' ? 'bg-orange-100 text-orange-600' :
-                  'bg-gray-100 text-gray-600'
+                  'bg-slate-100 text-slate-700'
                 }`}>
                   <activity.icon className="h-4 w-4" />
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm text-gray-900">{activity.message}</p>
-                  <p className="text-xs text-gray-500 mt-1">{activity.time}</p>
+                  <p className="text-sm text-slate-900">{activity.message}</p>
+                  <p className="text-xs text-slate-600 mt-1">{activity.time}</p>
                 </div>
               </div>
             ))}
@@ -401,20 +413,20 @@ const Dashboard = () => {
       {/* Two column layout */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Recent Proposals */}
-        <div className="card overflow-hidden">
-          <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
+        <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+          <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between">
             <div>
               <h2 className="section-title">Recent Proposals</h2>
-              <p className="text-sm text-gray-500">Latest proposal activity</p>
+              <p className="text-sm text-slate-600">Latest proposal activity</p>
             </div>
             <Link to="/proposals" className="text-sm text-primary-600 hover:text-primary-500 font-medium">
               View all
             </Link>
           </div>
-          <div className="divide-y divide-gray-100">
+          <div className="divide-y divide-slate-100">
             {stats.recentProposals.length === 0 ? (
-              <div className="p-6 text-center text-gray-500">
-                <SparklesIcon className="mx-auto h-12 w-12 text-gray-300 mb-3" />
+              <div className="p-6 text-center text-slate-600">
+                <SparklesIcon className="mx-auto h-12 w-12 text-slate-300 mb-3" />
                 <p>No proposals yet.</p>
                 <Link to="/proposals/new" className="text-primary-600 font-medium">
                   Create your first proposal
@@ -425,12 +437,12 @@ const Dashboard = () => {
                 <Link
                   key={proposal.id}
                   to={`/proposals/${proposal.id}`}
-                  className="block px-6 py-4 hover:bg-gray-50 transition-colors"
+                  className="block px-6 py-4 hover:bg-slate-50 transition-colors"
                 >
                   <div className="flex items-center justify-between">
                     <div className="min-w-0">
-                      <p className="text-sm font-medium text-gray-900 truncate">{proposal.title}</p>
-                      <p className="text-xs text-gray-500 mt-1">
+                      <p className="text-sm font-medium text-slate-900 truncate">{proposal.title}</p>
+                      <p className="text-xs text-slate-600 mt-1">
                         {proposal.client?.name} • {proposal.reference}
                       </p>
                     </div>
@@ -443,7 +455,7 @@ const Dashboard = () => {
                       }`}>
                         {proposal.status}
                       </span>
-                      <p className="text-sm font-medium text-gray-900 mt-1">
+                      <p className="text-sm font-medium text-slate-900 mt-1">
                         £{proposal.total?.toLocaleString()}
                       </p>
                     </div>
@@ -455,20 +467,20 @@ const Dashboard = () => {
         </div>
 
         {/* Recent Clients */}
-        <div className="card overflow-hidden">
-          <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
+        <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+          <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between">
             <div>
               <h2 className="section-title">Recent Clients</h2>
-              <p className="text-sm text-gray-500">New and updated clients</p>
+              <p className="text-sm text-slate-600">New and updated clients</p>
             </div>
             <Link to="/clients" className="text-sm text-primary-600 hover:text-primary-500 font-medium">
               View all
             </Link>
           </div>
-          <div className="divide-y divide-gray-100">
+          <div className="divide-y divide-slate-100">
             {stats.recentClients.length === 0 ? (
-              <div className="p-6 text-center text-gray-500">
-                <UsersIcon className="mx-auto h-12 w-12 text-gray-300 mb-3" />
+              <div className="p-6 text-center text-slate-600">
+                <UsersIcon className="mx-auto h-12 w-12 text-slate-300 mb-3" />
                 <p>No clients yet.</p>
                 <Link to="/clients/new" className="text-primary-600 font-medium">
                   Add your first client
@@ -479,7 +491,7 @@ const Dashboard = () => {
                 <Link
                   key={client.id}
                   to={`/clients/${client.id}`}
-                  className="block px-6 py-4 hover:bg-gray-50 transition-colors"
+                  className="block px-6 py-4 hover:bg-slate-50 transition-colors"
                 >
                   <div className="flex items-center justify-between">
                     <div className="flex items-center min-w-0">
@@ -487,8 +499,8 @@ const Dashboard = () => {
                         {client.name?.charAt(0)}
                       </div>
                       <div className="ml-3 min-w-0">
-                        <p className="text-sm font-medium text-gray-900 truncate">{client.name}</p>
-                        <p className="text-xs text-gray-500">
+                        <p className="text-sm font-medium text-slate-900 truncate">{client.name}</p>
+                        <p className="text-xs text-slate-600">
                           {client.companyType?.replace(/_/g, ' ')} • {client.contactEmail}
                         </p>
                       </div>
@@ -497,7 +509,7 @@ const Dashboard = () => {
                       {client.mtditsaEligible && (
                         <span className="badge badge-orange">MTD ITSA</span>
                       )}
-                      <p className="text-xs text-gray-500 mt-1">
+                      <p className="text-xs text-slate-600 mt-1">
                         {client._count?.proposals || 0} proposals
                       </p>
                     </div>
@@ -510,32 +522,32 @@ const Dashboard = () => {
       </div>
 
       {/* Quick Actions */}
-      <div className="card p-6">
+      <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-6">
         <h2 className="section-title mb-4">Quick Actions</h2>
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
           <Link to="/proposals/new" className="group p-4 rounded-xl bg-gradient-to-br from-blue-50 to-blue-100 hover:from-blue-100 hover:to-blue-200 transition-all text-center">
             <div className="icon-box-lg mx-auto bg-blue-500 text-white rounded-xl shadow-lg mb-3 group-hover:scale-110 transition-transform">
               <DocumentTextIcon className="h-6 w-6" />
             </div>
-            <p className="text-sm font-medium text-gray-900">New Proposal</p>
+            <p className="text-sm font-medium text-slate-900">New Proposal</p>
           </Link>
           <Link to="/clients/new" className="group p-4 rounded-xl bg-gradient-to-br from-green-50 to-green-100 hover:from-green-100 hover:to-green-200 transition-all text-center">
             <div className="icon-box-lg mx-auto bg-green-500 text-white rounded-xl shadow-lg mb-3 group-hover:scale-110 transition-transform">
               <UsersIcon className="h-6 w-6" />
             </div>
-            <p className="text-sm font-medium text-gray-900">Add Client</p>
+            <p className="text-sm font-medium text-slate-900">Add Client</p>
           </Link>
           <Link to="/services" className="group p-4 rounded-xl bg-gradient-to-br from-purple-50 to-purple-100 hover:from-purple-100 hover:to-purple-200 transition-all text-center">
             <div className="icon-box-lg mx-auto bg-purple-500 text-white rounded-xl shadow-lg mb-3 group-hover:scale-110 transition-transform">
               <SparklesIcon className="h-6 w-6" />
             </div>
-            <p className="text-sm font-medium text-gray-900">Services</p>
+            <p className="text-sm font-medium text-slate-900">Services</p>
           </Link>
           <button className="group p-4 rounded-xl bg-gradient-to-br from-orange-50 to-orange-100 hover:from-orange-100 hover:to-orange-200 transition-all text-center">
             <div className="icon-box-lg mx-auto bg-orange-500 text-white rounded-xl shadow-lg mb-3 group-hover:scale-110 transition-transform">
               <BellIcon className="h-6 w-6" />
             </div>
-            <p className="text-sm font-medium text-gray-900">Reminders</p>
+            <p className="text-sm font-medium text-slate-900">Reminders</p>
           </button>
         </div>
       </div>

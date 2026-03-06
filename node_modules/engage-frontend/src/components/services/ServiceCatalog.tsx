@@ -119,7 +119,7 @@ const ServiceCatalog = ({ onImport }: ServiceCatalogProps) => {
     } catch (error: any) {
       if (error.response?.data?.error?.code === 'SERVICE_EXISTS') {
         setImportedServices((prev) => new Set(prev).add(service.name));
-        toast.info(`${service.name} already exists in your practice`);
+        toast.success(`${service.name} already exists in your practice`);
       } else {
         toast.error(`Failed to import: ${service.name}`);
       }
@@ -137,7 +137,7 @@ const ServiceCatalog = ({ onImport }: ServiceCatalogProps) => {
     const toImport = categoryServices.filter((s) => !importedServices.has(s.name));
 
     if (toImport.length === 0) {
-      toast.info('All services in this category are already imported');
+      toast.success('All services in this category are already imported');
       return;
     }
 

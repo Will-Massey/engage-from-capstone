@@ -44,11 +44,11 @@ router.get(
         success: true,
         data: results.map(company => ({
           companyNumber: company.company_number,
-          companyName: company.company_name,
+          companyName: company.title || company.company_name, // Search returns 'title', details returns 'company_name'
           companyStatus: company.company_status,
           companyType: company.company_type,
           dateOfCreation: company.date_of_creation,
-          address: company.registered_office_address,
+          address: company.registered_office_address || company.address,
         })),
         query: q,
       });

@@ -1,49 +1,54 @@
-# Multi-stage Dockerfile for Engage by Capstone
-# Cache-bust: 2026-03-03T20:35:00Z-v10
+# Multi-stage build for production
+FROM node:20-alpine AS builder
 
-# Stage 1: Build frontend (completely restructured)
-FROM node:20-alpine AS frontend-build
-WORKDIR /build
-
-# Copy and install first
-COPY frontend/package*.json ./
-RUN npm install
-
-# Copy source
-COPY frontend/ ./
-
-# Reference icon to prevent tree-shaking
-RUN echo "const x = require('./src/pages/proposals/Proposals.tsx'); console.log('DocumentTextIcon ref:', x);" > /tmp/icon-ref.js
-
-# Build
-RUN npx vite build --mode production
-RUN echo "=== BUILD OUTPUT ===" && ls -la dist/ && ls -la dist/assets/ 2>/dev/null || echo "No assets dir"
-
-# Stage 2: Backend
-FROM node:20-alpine AS backend-build
-WORKDIR /build
-COPY backend/package*.json ./
-RUN npm install
-COPY shared/ /shared/
-WORKDIR /shared
-RUN npm install || true && npm run build || exit 0
-WORKDIR /build
-COPY backend/ ./
-RUN npx prisma generate
-RUN npm run build || exit 0
-
-# Stage 3: Production
-FROM node:20-alpine AS production
-RUN apk add --no-cache postgresql-client openssl libssl3
+# Set working directory
 WORKDIR /app
-COPY backend/package*.json ./
-RUN npm install --only=production
-COPY --from=backend-build /build/dist ./dist
-COPY --from=backend-build /build/prisma ./prisma
-COPY --from=backend-build /build/node_modules/.prisma ./node_modules/.prisma
-COPY --from=backend-build /shared/dist /app/shared/dist
-COPY shared/package*.json /app/shared/
+
+# Copy package files
+COPY package*.json ./
+COPY backend/package*.json ./backend/
+
+# Install dependencies
+RUN npm ci
+
+# Copy source code
+COPY backend ./backend
+COPY prisma ./prisma
+
+# Generate Prisma client
 RUN npx prisma generate
-COPY --from=frontend-build /build/dist ./public
+
+# Build the application
+RUN cd backend && npm run build
+
+# Production stage
+FROM node:20-alpine AS production
+
+# Install PostgreSQL client for migrations
+RUN apk add --no-cache postgresql-client
+
+# Set working directory
+WORKDIR /app
+
+# Copy package files
+COPY package*.json ./
+COPY backend/package*.json ./backend/
+
+# Install production dependencies only
+RUN npm ci --only=production
+
+# Copy built application from builder
+COPY --from=builder /app/backend/dist ./backend/dist
+COPY --from=builder /app/node_modules/.prisma ./node_modules/.prisma
+COPY --from=builder /app/node_modules/@prisma ./node_modules/@prisma
+COPY prisma ./prisma
+
+# Expose port
 EXPOSE 3001
-CMD ["node", "dist/index.js"]
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=3s --start=5s --retries=3 \
+  CMD node -e "require('http').get('http://localhost:3001/api/health', (r) => r.statusCode === 200 ? process.exit(0) : process.exit(1))"
+
+# Start the application
+CMD ["node", "backend/dist/index.js"]

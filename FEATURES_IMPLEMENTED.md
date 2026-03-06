@@ -155,7 +155,7 @@ Each service includes:
 ```env
 EMAIL_PROVIDER=smtp|gmail|outlook
 EMAIL_FROM_NAME="Your Practice Name"
-EMAIL_FROM_ADDRESS=noreply@yourpractice.co.uk
+EMAIL_FROM_ADDRESS=sales@capstonesoftware.co.uk
 
 # SMTP
 SMTP_HOST=smtp.gmail.com

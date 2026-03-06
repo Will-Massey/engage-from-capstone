@@ -23,30 +23,30 @@ const validateCompanyNumber = (number: string): boolean => {
 
 const router = Router();
 
-// Validation schemas
+// Validation schemas - relaxed validation, only required fields
 const addressSchema = z.object({
-  line1: z.string().min(1, 'Address line 1 is required'),
+  line1: z.string().optional(),
   line2: z.string().optional(),
-  city: z.string().min(1, 'City is required'),
-  postcode: z.string().regex(/^[A-Z]{1,2}[0-9][A-Z0-9]?\s?[0-9][A-Z]{2}$/i, 'Invalid UK postcode'),
+  city: z.string().optional(),
+  postcode: z.string().optional(),
   country: z.string().default('United Kingdom'),
 });
 
 const createClientSchema = z.object({
   name: z.string().min(1, 'Client name is required'),
   companyType: z.nativeEnum(CompanyType),
-  contactEmail: z.string().email('Invalid email address'),
+  contactEmail: z.string().min(1, 'Email is required'),
   contactPhone: z.string().optional(),
   contactName: z.string().optional(),
   companyNumber: z.string().optional(),
-  utr: z.string().regex(/^\d{10}$/, 'UTR must be 10 digits').optional(),
+  utr: z.string().optional(),
   vatNumber: z.string().optional(),
   vatRegistered: z.boolean().default(false),
   address: addressSchema.optional(),
   industry: z.string().optional(),
   employeeCount: z.number().int().min(0).optional(),
   turnover: z.number().min(0).optional(),
-  yearEnd: z.string().regex(/^\d{2}-\d{2}$/, 'Year end must be in MM-DD format').optional(),
+  yearEnd: z.string().optional(),
   mtditsaIncome: z.number().min(0).optional(),
   notes: z.string().optional(),
   tags: z.array(z.string()).optional(),
@@ -197,11 +197,16 @@ router.post(
       throw new ApiError('DUPLICATE_EMAIL', 'A client with this email already exists', 409);
     }
 
-    // Calculate MTD ITSA status if income provided
+    // Calculate MTD ITSA status if income provided AND client is a sole trader or partnership
+    // MTD ITSA only applies to self-employed individuals (sole traders) and some partnerships
+    // Limited companies, LLPs, charities, and non-profits are NOT subject to MTD ITSA
     let mtditsaStatus: MTDITSAStatus = MTDITSAStatus.NOT_REQUIRED;
     let mtditsaEligible = false;
 
-    if (data.mtditsaIncome) {
+    const isMtditsaApplicable = data.companyType === CompanyType.SOLE_TRADER || 
+                                 data.companyType === CompanyType.PARTNERSHIP;
+    
+    if (data.mtditsaIncome && isMtditsaApplicable) {
       const assessment = MTDITSAService.calculateStatus(
         data.mtditsaIncome,
         [],
@@ -213,16 +218,17 @@ router.post(
       mtditsaEligible = assessment.isRequired;
     }
 
-    // Create client
+    // Create client - omit tags and address from spread since we handle them separately
+    const { tags, address, ...clientData } = data;
     const client = await prisma.client.create({
       data: {
-        ...data,
+        ...clientData,
         tenantId: req.tenantId,
         mtditsaStatus,
         mtditsaEligible,
-        address: data.address as any,
-        tags: data.tags || [],
-      },
+        address: address ? JSON.stringify(address) : undefined,
+        tags: tags ? tags.join(',') : '',
+      } as any,
     });
 
     // Log activity
@@ -283,29 +289,42 @@ router.put(
       }
     }
 
-    // Recalculate MTD ITSA status if income changed
-    let mtditsaData = {};
-    if (data.mtditsaIncome !== undefined) {
+    // Recalculate MTD ITSA status if income changed AND client is applicable type
+    // MTD ITSA only applies to sole traders and partnerships
+    let mtditsaData: { mtditsaStatus?: MTDITSAStatus; mtditsaEligible?: boolean } = {};
+    const companyType = data.companyType || existingClient.companyType;
+    const isMtditsaApplicable = companyType === CompanyType.SOLE_TRADER || 
+                                 companyType === CompanyType.PARTNERSHIP;
+    
+    if (data.mtditsaIncome !== undefined && isMtditsaApplicable) {
       const assessment = MTDITSAService.calculateStatus(
         data.mtditsaIncome,
         [],
         {
-          isCharity: data.companyType === CompanyType.CHARITY || existingClient.companyType === CompanyType.CHARITY,
+          isCharity: false, // Already filtered for SOLE_TRADER/PARTNERSHIP
         }
       );
       mtditsaData = {
         mtditsaStatus: assessment.status,
         mtditsaEligible: assessment.isRequired,
       };
+    } else if (data.mtditsaIncome !== undefined && !isMtditsaApplicable) {
+      // If client type changed to non-applicable, reset MTD ITSA status
+      mtditsaData = {
+        mtditsaStatus: MTDITSAStatus.NOT_REQUIRED,
+        mtditsaEligible: false,
+      };
     }
 
     // Update client
+    const { tags: updateTags, address: updateAddress, ...updateData } = data;
     const client = await prisma.client.update({
       where: { id },
       data: {
-        ...data,
+        ...updateData,
         ...mtditsaData,
-        address: data.address as any,
+        address: updateAddress as any,
+        tags: updateTags ? updateTags.join(',') : undefined,
       },
     });
 
@@ -331,6 +350,7 @@ router.put(
 /**
  * POST /api/clients/:id/mtditsa-assessment
  * Run MTD ITSA assessment for client
+ * NOTE: MTD ITSA only applies to SOLE_TRADER and PARTNERSHIP entity types
  */
 router.post(
   '/:id/mtditsa-assessment',
@@ -352,13 +372,25 @@ router.post(
       throw new ApiError('NOT_FOUND', 'Client not found', 404);
     }
 
+    // MTD ITSA only applies to sole traders and partnerships
+    const isMtditsaApplicable = client.companyType === CompanyType.SOLE_TRADER || 
+                                 client.companyType === CompanyType.PARTNERSHIP;
+    
+    if (!isMtditsaApplicable) {
+      throw new ApiError(
+        'NOT_APPLICABLE',
+        `MTD ITSA does not apply to ${client.companyType.toLowerCase().replace('_', ' ')} entities. It only applies to sole traders and partnerships.`,
+        400
+      );
+    }
+
     const annualIncome = client.mtditsaIncome || client.turnover || 0;
 
     const assessment = MTDITSAService.calculateStatus(
       annualIncome,
-      incomeSources,
+      incomeSources as Array<{ type: 'SELF_EMPLOYMENT' | 'PROPERTY' | 'PARTNERSHIP' | 'OTHER'; amount: number }>,
       {
-        isCharity: client.companyType === CompanyType.CHARITY,
+        isCharity: false, // Already validated as SOLE_TRADER or PARTNERSHIP
         partnershipTurnover: incomeSources.find(s => s.type === 'PARTNERSHIP')?.amount,
       }
     );

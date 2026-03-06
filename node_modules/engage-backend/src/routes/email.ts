@@ -8,6 +8,7 @@ import { prisma } from '../config/database.js';
 import { asyncHandler, ApiError } from '../middleware/errorHandler.js';
 import { authenticate } from '../middleware/auth.js';
 import { createEmailService, EmailService } from '../services/emailService.js';
+import { encrypt, decrypt } from '../utils/encryption.js';
 import logger from '../config/logger.js';
 
 const router = Router();
@@ -400,9 +401,10 @@ router.delete(
 // NEW SIMPLIFIED OAUTH ROUTES (for frontend OAuthConnect component)
 // ============================================================================
 
-// Generate random state for OAuth
+// Generate cryptographically secure random state for OAuth
+import crypto from 'crypto';
 const generateState = () => {
-  return Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
+  return crypto.randomBytes(32).toString('hex');
 };
 
 // Get OAuth status for a provider
@@ -579,8 +581,10 @@ router.post(
       settings.email.provider = provider;
       settings.email[provider === 'microsoft365' ? 'outlook' : provider] = {
         clientId: provider === 'gmail' ? process.env.GMAIL_CLIENT_ID : process.env.MICROSOFT_CLIENT_ID,
-        clientSecret: provider === 'gmail' ? process.env.GMAIL_CLIENT_SECRET : process.env.MICROSOFT_CLIENT_SECRET,
-        refreshToken: tokens.refreshToken,
+        // Store clientSecret encrypted for security
+        clientSecret: encrypt(provider === 'gmail' ? process.env.GMAIL_CLIENT_SECRET || '' : process.env.MICROSOFT_CLIENT_SECRET || ''),
+        // Store refresh token encrypted - this is the most sensitive credential
+        refreshToken: encrypt(tokens.refreshToken),
         user: tokens.user || req.user?.email,
       };
 
