@@ -13,10 +13,9 @@ RUN npm ci
 
 # Copy source code
 COPY backend ./backend
-COPY prisma ./prisma
 
 # Generate Prisma client
-RUN npx prisma generate
+RUN npx prisma generate --schema=backend/prisma/schema.prisma
 
 # Build the application
 RUN cd backend && npm run build
@@ -41,7 +40,7 @@ RUN npm ci --only=production
 COPY --from=builder /app/backend/dist ./backend/dist
 COPY --from=builder /app/node_modules/.prisma ./node_modules/.prisma
 COPY --from=builder /app/node_modules/@prisma ./node_modules/@prisma
-COPY prisma ./prisma
+COPY --from=builder /app/backend/prisma ./prisma
 
 # Expose port
 EXPOSE 3001
