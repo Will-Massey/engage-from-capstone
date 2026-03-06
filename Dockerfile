@@ -4,18 +4,20 @@ FROM node:20-alpine AS builder
 # Set working directory
 WORKDIR /app
 
-# Copy package files
+# Copy root package files
 COPY package*.json ./
+
+# Copy backend package files
 COPY backend/package*.json ./backend/
 
-# Install dependencies
+# Install all dependencies (including workspaces)
 RUN npm ci
 
 # Copy source code
 COPY backend ./backend
 
 # Generate Prisma client
-RUN npx prisma generate --schema=backend/prisma/schema.prisma
+RUN cd backend && npx prisma generate
 
 # Build the application
 RUN cd backend && npm run build
@@ -29,8 +31,10 @@ RUN apk add --no-cache postgresql-client
 # Set working directory
 WORKDIR /app
 
-# Copy package files
+# Copy root package files
 COPY package*.json ./
+
+# Copy backend package files
 COPY backend/package*.json ./backend/
 
 # Install production dependencies only
@@ -38,9 +42,9 @@ RUN npm ci --only=production
 
 # Copy built application from builder
 COPY --from=builder /app/backend/dist ./backend/dist
+COPY --from=builder /app/backend/prisma ./prisma
 COPY --from=builder /app/node_modules/.prisma ./node_modules/.prisma
 COPY --from=builder /app/node_modules/@prisma ./node_modules/@prisma
-COPY --from=builder /app/backend/prisma ./prisma
 
 # Expose port
 EXPOSE 3001
