@@ -214,11 +214,11 @@ router.post(
     // Calculate pricing
     const pricingEngine = new PricingEngine(req.tenantId);
     const pricing = await pricingEngine.calculateProposalPricing(
-      data.services,
+      data.services as { serviceId: string; quantity: number; discountPercent?: number; }[],
       {
         turnover: client.turnover,
         employeeCount: client.employeeCount,
-        region: client.address?.country,
+        region: (client.address as any)?.country,
       },
       data.discountType && data.discountValue
         ? { type: data.discountType, value: data.discountValue }
@@ -255,12 +255,12 @@ router.post(
         terms: data.terms,
         notes: data.notes,
         services: {
-          create: pricing.services.map((svc) => ({
+          create: pricing.services.map((svc: any) => ({
             name: svc.serviceTemplate?.name || 'Service',
             description: svc.serviceTemplate?.description,
             quantity: svc.quantity,
             unitPrice: svc.basePrice,
-            discountPercent: data.services.find(s => s.serviceId === svc.serviceId)?.discountPercent || 0,
+            discountPercent: (data.services as any[]).find(s => s.serviceId === svc.serviceId)?.discountPercent || 0,
             total: svc.finalPrice,
             frequency: svc.serviceTemplate?.defaultFrequency || 'MONTHLY',
             serviceTemplateId: svc.serviceId,
@@ -335,11 +335,11 @@ router.put(
     if (data.services) {
       const pricingEngine = new PricingEngine(req.tenantId);
       pricing = await pricingEngine.calculateProposalPricing(
-        data.services,
+        data.services as { serviceId: string; quantity: number; discountPercent?: number; }[],
         {
           turnover: existingProposal.client.turnover,
           employeeCount: existingProposal.client.employeeCount,
-          region: existingProposal.client.address?.country,
+          region: (existingProposal.client.address as any)?.country,
         },
         data.discountType && data.discountValue
           ? { type: data.discountType, value: data.discountValue }
@@ -459,7 +459,7 @@ router.post(
       throw new ApiError('NOT_FOUND', 'Proposal not found', 404);
     }
 
-    if (proposal.status !== 'DRAFT' && proposal.status !== 'PENDING_REVIEW') {
+    if (proposal.status !== 'DRAFT') {
       throw new ApiError('INVALID_STATUS', 'Proposal must be in draft status to send', 400);
     }
 

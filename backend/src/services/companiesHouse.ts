@@ -88,7 +88,7 @@ export class CompaniesHouseService {
         throw new Error(`Companies House API error: ${response.status} ${response.statusText}`);
       }
 
-      const data = await response.json();
+      const data = await response.json() as any;
       return data.items || [];
     } catch (error) {
       logger.error('Companies House search error:', error);
@@ -124,7 +124,7 @@ export class CompaniesHouseService {
       }
 
       const data = await response.json();
-      return data;
+      return data as CompanyDetails;
     } catch (error) {
       logger.error('Companies House get details error:', error);
       throw error;

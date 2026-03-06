@@ -148,7 +148,7 @@ router.put(
     });
 
     // Test connection
-    let testResult = { success: false, error: 'Not tested' };
+    let testResult: { success: boolean; error?: string } = { success: false, error: 'Not tested' };
     try {
       const emailService = new EmailService({
         provider: config.provider,
@@ -469,10 +469,11 @@ router.get(
 
     if (provider === 'gmail') {
       const clientId = process.env.GMAIL_CLIENT_ID;
-      if (!clientId) {
+      const clientSecret = process.env.GMAIL_CLIENT_SECRET;
+      if (!clientId || !clientSecret) {
         throw new ApiError('NOT_CONFIGURED', 'Gmail OAuth not configured on server', 500);
       }
-      url = EmailService.generateGmailAuthUrl(clientId, redirectUri);
+      url = EmailService.generateGmailAuthUrl(clientId, clientSecret, redirectUri);
     } else {
       // Microsoft 365 or Outlook
       const clientId = process.env.MICROSOFT_CLIENT_ID;

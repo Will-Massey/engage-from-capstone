@@ -163,7 +163,13 @@ router.post(
           select: {
             firstName: true,
             lastName: true,
+            email: true,
             role: true,
+          },
+        },
+        tenant: {
+          select: {
+            name: true,
           },
         },
       },
@@ -212,6 +218,8 @@ router.post(
       viewLink: shareUrl,
       senderName,
       senderPosition: proposal.createdBy.role,
+      senderEmail: (proposal.createdBy as any).email,
+      tenantName: (proposal as any).tenant?.name || 'Unknown',
       validUntil: new Date(proposal.validUntil).toLocaleDateString('en-GB'),
       attachment: pdfAttachment,
     });

@@ -15,23 +15,23 @@ export type EmailProvider = 'smtp' | 'gmail' | 'outlook' | 'microsoft365';
 export interface EmailConfig {
   provider: EmailProvider;
   smtp?: {
-    host: string;
-    port: number;
-    secure: boolean;
-    user: string;
-    pass: string;
+    host?: string;
+    port?: number;
+    secure?: boolean;
+    user?: string;
+    pass?: string;
   };
   gmail?: {
-    clientId: string;
-    clientSecret: string;
-    refreshToken: string;
-    user: string;
+    clientId?: string;
+    clientSecret?: string;
+    refreshToken?: string;
+    user?: string;
   };
   outlook?: {
-    clientId: string;
-    clientSecret: string;
-    refreshToken: string;
-    user: string;
+    clientId?: string;
+    clientSecret?: string;
+    refreshToken?: string;
+    user?: string;
   };
   fromName: string;
   fromEmail: string;
@@ -219,7 +219,7 @@ export class EmailService {
         throw new Error(`Outlook token refresh failed: ${response.statusText}`);
       }
 
-      const data = await response.json();
+      const data = await response.json() as any;
       return data.access_token;
     } catch (error) {
       logger.error('Failed to get Outlook access token:', error);
@@ -429,7 +429,7 @@ export class EmailService {
       throw new Error(`Token exchange failed: ${response.statusText}`);
     }
 
-    const data = await response.json();
+    const data = await response.json() as any;
 
     return {
       refreshToken: data.refresh_token,
