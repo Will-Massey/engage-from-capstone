@@ -174,7 +174,7 @@ const EmailSettings = () => {
             type="email"
             value={config.fromEmail}
             onChange={(e) => setConfig({ ...config, fromEmail: e.target.value })}
-            placeholder="noreply@yourpractice.co.uk"
+            placeholder="sales@capstonesoftware.co.uk"
             className="mt-1 input-field"
           />
         </div>
@@ -311,7 +311,7 @@ const EmailSettings = () => {
               type="email"
               value={testEmail}
               onChange={(e) => setTestEmail(e.target.value)}
-              placeholder="test@example.com"
+              placeholder="test@capstonesoftware.co.uk"
               className="input-field w-48"
             />
             <button

@@ -127,10 +127,29 @@ export class PDFGenerator {
    * Draw header section
    */
   private static drawHeader(doc: PDFKit.PDFDocument, proposal: ProposalData, primaryColor: string) {
-    // Logo placeholder or actual logo
-    doc.fontSize(24)
-       .fillColor(primaryColor)
-       .text(proposal.tenant.name, 50, 50);
+    // Company Logo (if available)
+    if (proposal.tenant.logo) {
+      try {
+        // Handle base64 logo
+        const logoData = proposal.tenant.logo;
+        if (logoData.startsWith('data:image')) {
+          const base64Data = logoData.split(',')[1];
+          const imgBuffer = Buffer.from(base64Data, 'base64');
+          doc.image(imgBuffer, 50, 40, { width: 120 });
+          doc.y = 130; // Move down past logo
+        }
+      } catch (error) {
+        // Fall back to text if logo fails
+        doc.fontSize(24)
+           .fillColor(primaryColor)
+           .text(proposal.tenant.name, 50, 50);
+      }
+    } else {
+      // No logo - use company name
+      doc.fontSize(24)
+         .fillColor(primaryColor)
+         .text(proposal.tenant.name, 50, 50);
+    }
 
     // Proposal title
     doc.fontSize(14)
@@ -220,29 +239,83 @@ export class PDFGenerator {
   }
 
   /**
-   * Draw cover letter
+   * Draw cover letter / Introduction
    */
   private static drawCoverLetter(doc: PDFKit.PDFDocument, proposal: ProposalData) {
-    doc.fontSize(16)
+    // Introduction Header
+    doc.fontSize(18)
        .fillColor('#333333')
-       .text('Letter of Engagement', { align: 'center' });
+       .text('Introduction', { align: 'center' });
 
-    doc.moveDown(2);
+    doc.moveDown(1);
+
+    // Decorative line
+    doc.moveTo(200, doc.y)
+       .lineTo(400, doc.y)
+       .strokeColor('#cccccc')
+       .lineWidth(1)
+       .stroke();
+
+    doc.moveDown(1);
 
     doc.fontSize(11)
        .fillColor('#444444');
 
-    // Split cover letter into paragraphs
-    const paragraphs = (proposal.coverLetter || '').split('\n\n');
-    paragraphs.forEach((paragraph) => {
-      if (paragraph.trim()) {
-        doc.text(paragraph.trim(), {
-          align: 'justify',
-          lineGap: 5,
-        });
-        doc.moveDown(1);
-      }
-    });
+    // Default introduction template if no custom cover letter
+    if (!proposal.coverLetter || proposal.coverLetter.trim().length < 50) {
+      // Use default template
+      const defaultIntro = `Dear ${proposal.client.name},
+
+Thank you for considering ${proposal.tenant.name} for your accounting and business advisory needs. We appreciate the opportunity to present this proposal outlining our services and how we can support your business.
+
+Following a thorough understanding of your requirements, we have prepared a tailored service package designed to provide you with comprehensive support while ensuring compliance with all relevant regulations.
+
+This proposal details:
+• The specific services we recommend for your business
+• Transparent pricing with no hidden costs
+• Our terms of engagement and service standards
+• Next steps to get started
+
+We believe in building long-term partnerships with our clients based on trust, transparency, and exceptional service delivery.
+
+Please review this proposal at your convenience. Should you have any questions or require any clarification, please do not hesitate to contact us.
+
+We look forward to the possibility of working with you.
+
+Yours sincerely,
+
+${proposal.createdBy.firstName} ${proposal.createdBy.lastName}
+${proposal.tenant.name}`;
+
+      const paragraphs = defaultIntro.split('\n\n');
+      paragraphs.forEach((paragraph) => {
+        if (paragraph.trim()) {
+          doc.text(paragraph.trim(), {
+            align: 'justify',
+            lineGap: 5,
+          });
+          doc.moveDown(1);
+        }
+      });
+    } else {
+      // Use custom cover letter
+      const paragraphs = proposal.coverLetter.split('\n\n');
+      paragraphs.forEach((paragraph) => {
+        if (paragraph.trim()) {
+          doc.text(paragraph.trim(), {
+            align: 'justify',
+            lineGap: 5,
+          });
+          doc.moveDown(1);
+        }
+      });
+    }
+
+    // Page break before T&Cs note
+    doc.moveDown(2);
+    doc.fontSize(10)
+       .fillColor('#666666')
+       .text('Please turn over for full Terms and Conditions of Engagement →', { align: 'center' });
   }
 
   /**

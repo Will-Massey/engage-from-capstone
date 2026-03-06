@@ -145,12 +145,12 @@ const PublicProposalView = () => {
 
   if (error) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4">
+      <div className="min-h-screen flex items-center justify-center bg-slate-50 px-4">
         <div className="max-w-md w-full bg-white rounded-xl shadow-lg p-8 text-center">
           <ExclamationCircleIcon className="mx-auto h-16 w-16 text-red-500" />
-          <h2 className="mt-4 text-xl font-semibold text-gray-900">Proposal Not Available</h2>
-          <p className="mt-2 text-gray-600">{error}</p>
-          <p className="mt-4 text-sm text-gray-500">
+          <h2 className="mt-4 text-xl font-semibold text-slate-900">Proposal Not Available</h2>
+          <p className="mt-2 text-slate-700">{error}</p>
+          <p className="mt-4 text-sm text-slate-600">
             Please contact the sender if you believe this is an error.
           </p>
         </div>
@@ -163,14 +163,14 @@ const PublicProposalView = () => {
   const isExpired = new Date(proposal.validUntil) < new Date();
 
   return (
-    <div className="min-h-screen bg-gray-50 py-8 px-4 sm:px-6 lg:px-8">
+    <div className="min-h-screen bg-slate-50 py-8 px-4 sm:px-6 lg:px-8">
       <div className="max-w-4xl mx-auto">
         {/* Header */}
         <div className="bg-white rounded-t-xl shadow-sm p-6 border-b">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm text-gray-500">Proposal from</p>
-              <h1 className="text-2xl font-bold text-gray-900">{proposal.tenant.name}</h1>
+              <p className="text-sm text-slate-600">Proposal from</p>
+              <h1 className="text-2xl font-bold text-slate-900">{proposal.tenant.name}</h1>
             </div>
             {proposal.tenant.logo && (
               <img src={proposal.tenant.logo} alt="Logo" className="h-12" />
@@ -205,18 +205,18 @@ const PublicProposalView = () => {
 
           {/* Proposal Details */}
           <div>
-            <h2 className="text-xl font-semibold text-gray-900">{proposal.title}</h2>
-            <p className="text-sm text-gray-500 mt-1">Reference: {proposal.reference}</p>
-            <p className="text-sm text-gray-500">
+            <h2 className="text-xl font-semibold text-slate-900">{proposal.title}</h2>
+            <p className="text-sm text-slate-600 mt-1">Reference: {proposal.reference}</p>
+            <p className="text-sm text-slate-600">
               Valid until: {formatDate(proposal.validUntil)}
             </p>
           </div>
 
           {/* Client */}
           <div className="border-t pt-6">
-            <h3 className="text-sm font-medium text-gray-500 uppercase tracking-wide">Prepared For</h3>
-            <p className="mt-1 text-lg font-medium text-gray-900">{proposal.client.name}</p>
-            <p className="text-sm text-gray-500 capitalize">
+            <h3 className="text-sm font-medium text-slate-600 uppercase tracking-wide">Prepared For</h3>
+            <p className="mt-1 text-lg font-medium text-slate-900">{proposal.client.name}</p>
+            <p className="text-sm text-slate-600 capitalize">
               {proposal.client.companyType.replace(/_/g, ' ')}
             </p>
           </div>
@@ -224,8 +224,8 @@ const PublicProposalView = () => {
           {/* Cover Letter */}
           {proposal.coverLetter && (
             <div className="border-t pt-6">
-              <h3 className="text-sm font-medium text-gray-500 uppercase tracking-wide">Cover Letter</h3>
-              <div className="mt-2 prose prose-sm max-w-none text-gray-700">
+              <h3 className="text-sm font-medium text-slate-600 uppercase tracking-wide">Cover Letter</h3>
+              <div className="mt-2 prose prose-sm max-w-none text-slate-800">
                 {proposal.coverLetter.split('\n').map((paragraph, i) => (
                   <p key={i}>{paragraph}</p>
                 ))}
@@ -235,32 +235,32 @@ const PublicProposalView = () => {
 
           {/* Services */}
           <div className="border-t pt-6">
-            <h3 className="text-sm font-medium text-gray-500 uppercase tracking-wide">Services</h3>
+            <h3 className="text-sm font-medium text-slate-600 uppercase tracking-wide">Services</h3>
             <div className="mt-4 space-y-4">
               {proposal.services.map((service) => (
                 <div
                   key={service.id}
-                  className="flex justify-between items-start p-4 bg-gray-50 rounded-lg"
+                  className="flex justify-between items-start p-4 bg-slate-50 rounded-lg"
                 >
                   <div className="flex-1">
                     <div className="flex items-center">
-                      <h4 className="font-medium text-gray-900">{service.name}</h4>
+                      <h4 className="font-medium text-slate-900">{service.name}</h4>
                       {service.isOptional && (
-                        <span className="ml-2 px-2 py-0.5 text-xs bg-gray-200 text-gray-600 rounded-full">
+                        <span className="ml-2 px-2 py-0.5 text-xs bg-slate-200 text-slate-700 rounded-full">
                           Optional
                         </span>
                       )}
                     </div>
                     {service.description && (
-                      <p className="text-sm text-gray-500 mt-1">{service.description}</p>
+                      <p className="text-sm text-slate-600 mt-1">{service.description}</p>
                     )}
-                    <p className="text-sm text-gray-500 mt-1">
+                    <p className="text-sm text-slate-600 mt-1">
                       {service.quantity} x {formatCurrency(service.unitPrice)} /{' '}
                       {service.frequency.toLowerCase()}
                     </p>
                   </div>
                   <div className="text-right">
-                    <p className="font-medium text-gray-900">{formatCurrency(service.total)}</p>
+                    <p className="font-medium text-slate-900">{formatCurrency(service.total)}</p>
                   </div>
                 </div>
               ))}
@@ -271,19 +271,19 @@ const PublicProposalView = () => {
           <div className="border-t pt-6">
             <div className="space-y-2">
               <div className="flex justify-between text-sm">
-                <span className="text-gray-600">Subtotal</span>
+                <span className="text-slate-700">Subtotal</span>
                 <span className="font-medium">{formatCurrency(proposal.subtotal)}</span>
               </div>
               <div className="flex justify-between text-sm">
-                <span className="text-gray-600">VAT</span>
+                <span className="text-slate-700">VAT</span>
                 <span className="font-medium">{formatCurrency(proposal.vatAmount)}</span>
               </div>
               <div className="flex justify-between text-lg font-semibold pt-2 border-t">
-                <span className="text-gray-900">Total</span>
-                <span className="text-gray-900">{formatCurrency(proposal.total)}</span>
+                <span className="text-slate-900">Total</span>
+                <span className="text-slate-900">{formatCurrency(proposal.total)}</span>
               </div>
             </div>
-            <p className="text-sm text-gray-500 mt-2">
+            <p className="text-sm text-slate-600 mt-2">
               Payment terms: {proposal.paymentTerms}
             </p>
           </div>
@@ -291,11 +291,11 @@ const PublicProposalView = () => {
           {/* Terms & Conditions */}
           {!isAccepted && !isExpired && (
             <div className="border-t pt-6">
-              <h3 className="text-sm font-medium text-gray-500 uppercase tracking-wide">
+              <h3 className="text-sm font-medium text-slate-600 uppercase tracking-wide">
                 Terms & Conditions
               </h3>
-              <div className="mt-4 p-4 bg-gray-50 rounded-lg max-h-60 overflow-y-auto">
-                <pre className="text-sm text-gray-700 whitespace-pre-wrap font-sans">
+              <div className="mt-4 p-4 bg-slate-50 rounded-lg max-h-60 overflow-y-auto">
+                <pre className="text-sm text-slate-800 whitespace-pre-wrap font-sans">
                   {proposal.terms || 'Standard terms and conditions apply.'}
                 </pre>
               </div>
@@ -307,7 +307,7 @@ const PublicProposalView = () => {
                   onChange={(e) => setTermsAccepted(e.target.checked)}
                   className="mt-1 h-4 w-4 text-primary-600 rounded"
                 />
-                <label htmlFor="terms" className="ml-2 text-sm text-gray-700">
+                <label htmlFor="terms" className="ml-2 text-sm text-slate-800">
                   I have read and agree to the terms and conditions outlined above.
                 </label>
               </div>
@@ -330,11 +330,11 @@ const PublicProposalView = () => {
           {/* Signature Pad */}
           {!isAccepted && !isExpired && showSignature && (
             <div className="border-t pt-6">
-              <h3 className="text-lg font-medium text-gray-900 mb-4">Electronic Signature</h3>
+              <h3 className="text-lg font-medium text-slate-900 mb-4">Electronic Signature</h3>
               <div className="space-y-4">
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700">Full Name</label>
+                    <label className="block text-sm font-medium text-slate-800">Full Name</label>
                     <input
                       type="text"
                       value={signerName}
@@ -344,7 +344,7 @@ const PublicProposalView = () => {
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700">Role/Title</label>
+                    <label className="block text-sm font-medium text-slate-800">Role/Title</label>
                     <input
                       type="text"
                       value={signerRole}
@@ -378,7 +378,7 @@ const PublicProposalView = () => {
         </div>
 
         {/* Footer */}
-        <div className="bg-gray-100 rounded-b-xl p-4 text-center text-sm text-gray-500">
+        <div className="bg-slate-100 rounded-b-xl p-4 text-center text-sm text-slate-600">
           Powered by Engage by Capstone • Professional Proposal Platform
         </div>
       </div>

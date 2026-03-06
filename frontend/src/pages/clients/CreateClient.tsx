@@ -18,23 +18,33 @@ import toast from 'react-hot-toast';
 
 const clientSchema = z.object({
   name: z.string().min(1, 'Client name is required'),
-  companyType: z.enum(['LIMITED_COMPANY', 'SOLE_TRADER', 'PARTNERSHIP', 'LLP', 'CHARITY']),
-  contactEmail: z.string().email('Please enter a valid email'),
+  companyType: z.enum(['LIMITED_COMPANY', 'SOLE_TRADER', 'PARTNERSHIP', 'LLP', 'CHARITY', 'NON_PROFIT']),
+  contactEmail: z.string().min(1, 'Email is required').email('Please enter a valid email'),
   contactPhone: z.string().optional(),
   contactName: z.string().optional(),
   companyNumber: z.string().optional(),
-  utr: z.string().regex(/^\d{10}$/, 'UTR must be 10 digits').optional().or(z.literal('')),
+  utr: z.string().optional(),
   vatRegistered: z.boolean().default(false),
   industry: z.string().optional(),
-  employeeCount: z.number().min(0).optional(),
-  turnover: z.number().min(0).optional(),
-  mtditsaIncome: z.number().min(0).optional(),
+  // Handle empty number inputs (NaN from valueAsNumber)
+  employeeCount: z.preprocess(
+    (val) => (val === '' || val === null || val === undefined || Number.isNaN(val)) ? undefined : Number(val),
+    z.number().min(0).optional()
+  ),
+  turnover: z.preprocess(
+    (val) => (val === '' || val === null || val === undefined || Number.isNaN(val)) ? undefined : Number(val),
+    z.number().min(0).optional()
+  ),
+  mtditsaIncome: z.preprocess(
+    (val) => (val === '' || val === null || val === undefined || Number.isNaN(val)) ? undefined : Number(val),
+    z.number().min(0).optional()
+  ),
   notes: z.string().optional(),
-  // Address
+  // Address - all optional
   addressLine1: z.string().optional(),
   addressLine2: z.string().optional(),
   city: z.string().optional(),
-  postcode: z.string().regex(/^[A-Z]{1,2}[0-9][A-Z0-9]?\s?[0-9][A-Z]{2}$/i, 'Invalid UK postcode').optional().or(z.literal('')),
+  postcode: z.string().optional(),
 });
 
 type ClientForm = z.infer<typeof clientSchema>;
@@ -45,6 +55,7 @@ const companyTypes = [
   { id: 'PARTNERSHIP', label: 'Partnership', icon: UsersIcon },
   { id: 'LLP', label: 'Limited Liability Partnership', icon: BuildingOfficeIcon },
   { id: 'CHARITY', label: 'Charity', icon: HomeIcon },
+  { id: 'NON_PROFIT', label: 'Non-Profit Organisation', icon: HomeIcon },
 ];
 
 const CreateClient = () => {
@@ -58,14 +69,17 @@ const CreateClient = () => {
     handleSubmit,
     watch,
     setValue,
-    formState: { errors },
+    formState: { errors, isValid },
   } = useForm<ClientForm>({
     resolver: zodResolver(clientSchema),
     defaultValues: {
       companyType: 'LIMITED_COMPANY',
       vatRegistered: false,
     },
+    mode: 'onChange',
   });
+
+  // Form validation debug removed
 
   const watchCompanyType = watch('companyType');
   const watchMtditsaIncome = watch('mtditsaIncome');
@@ -106,10 +120,10 @@ const CreateClient = () => {
     try {
       const response = await apiClient.get(`/companies-house/company/${companyNumber}`) as any;
       if (response.success) {
-        const company = response.data;
+        const company = response.data.formatted; // Use formatted data from backend
         
         // Auto-populate form fields
-        setValue('name', company.companyName);
+        setValue('name', company.name);
         setValue('companyNumber', company.companyNumber);
         if (company.address) {
           setValue('addressLine1', company.address.line1 || '');
@@ -137,11 +151,22 @@ const CreateClient = () => {
 
   const onSubmit = async (data: ClientForm) => {
     setIsLoading(true);
+    toast.loading('Creating client...');
     try {
+      
+      // Build address only if any field is provided
+      const address = data.addressLine1 || data.city || data.postcode ? {
+        line1: data.addressLine1 || '',
+        line2: data.addressLine2 || '',
+        city: data.city || '',
+        postcode: data.postcode || '',
+        country: 'United Kingdom',
+      } : undefined;
+      
       const response = await apiClient.createClient({
         name: data.name,
         companyType: data.companyType,
-        contactEmail: data.contactEmail,
+        contactEmail: data.contactEmail || undefined,
         contactPhone: data.contactPhone,
         contactName: data.contactName,
         companyNumber: data.companyNumber || undefined,
@@ -152,27 +177,27 @@ const CreateClient = () => {
         turnover: data.turnover,
         mtditsaIncome: data.mtditsaIncome,
         notes: data.notes,
-        address: data.addressLine1 ? {
-          line1: data.addressLine1,
-          line2: data.addressLine2,
-          city: data.city,
-          postcode: data.postcode,
-          country: 'United Kingdom',
-        } : undefined,
+        address,
       }) as any;
 
+      toast.dismiss();
       if (response.success) {
         toast.success('Client created successfully');
         navigate(`/clients/${response.data.id}`);
       }
-    } catch (error) {
-      // Error handled by API interceptor
+    } catch (error: any) {
+      toast.dismiss();
+      // Error handled by toast notification
+      toast.error(error.message || 'Failed to create client');
     } finally {
       setIsLoading(false);
     }
   };
 
-  const needsMtditsaWarning = watchMtditsaIncome && watchMtditsaIncome >= 30000;
+  // MTD ITSA only applies to Sole Traders and Partnerships
+  const mtditsaApplicableTypes = ['SOLE_TRADER', 'PARTNERSHIP'];
+  const isMtditsaApplicable = mtditsaApplicableTypes.includes(watchCompanyType);
+  const needsMtditsaWarning = isMtditsaApplicable && watchMtditsaIncome && watchMtditsaIncome >= 30000;
 
   return (
     <div className="max-w-3xl mx-auto animate-fade-in">
@@ -209,7 +234,10 @@ const CreateClient = () => {
         </div>
       </div>
 
-      <form onSubmit={handleSubmit(onSubmit)} className="card p-6">
+      <form onSubmit={handleSubmit(onSubmit, (errors) => {
+        // Validation errors displayed in form
+        toast.error('Please fill in all required fields');
+      })} className="card p-6">
         {step === 1 && (
           <div className="space-y-6 animate-fade-in">
             {/* Company Type */}
@@ -416,7 +444,12 @@ const CreateClient = () => {
               </div>
               {needsMtditsaWarning && (
                 <p className="mt-2 text-sm text-orange-600 bg-orange-50 p-2 rounded">
-                  ⚠️ This client may need to comply with MTD ITSA from April 2026
+                  ⚠️ This sole trader may need to comply with MTD ITSA from April 2026
+                </p>
+              )}
+              {!isMtditsaApplicable && watchMtditsaIncome && watchMtditsaIncome > 0 && (
+                <p className="mt-2 text-sm text-blue-600 bg-blue-50 p-2 rounded">
+                  ℹ️ MTD ITSA does not apply to {companyTypes.find(t => t.id === watchCompanyType)?.label || 'this entity type'}. It only applies to Sole Traders and Partnerships.
                 </p>
               )}
             </div>
@@ -480,6 +513,7 @@ const CreateClient = () => {
                 type="submit"
                 disabled={isLoading}
                 className="btn-primary"
+                onClick={() => {}}
               >
                 {isLoading ? 'Creating...' : 'Create Client'}
               </button>

@@ -6,6 +6,7 @@ interface AuthLayoutProps {
 
 const AuthLayout = ({ children }: AuthLayoutProps) => {
   const { tenant } = useAuthStore();
+  const logoUrl = tenant?.logo || '/images/engage-logo.svg';
 
   return (
     <div className="min-h-screen flex flex-col justify-center bg-gradient-to-br from-capstone-900 via-capstone-800 to-primary-900 py-12 px-4 sm:px-6 lg:px-8">
@@ -20,8 +21,8 @@ const AuthLayout = ({ children }: AuthLayoutProps) => {
         <div className="flex flex-col items-center">
           <div className="flex items-center space-x-3">
             <img 
-              src="/images/engage-logo.svg" 
-              alt="Engage by Capstone" 
+              src={logoUrl}
+              alt={tenant?.name || 'Engage by Capstone'}
               className="h-16 w-auto"
             />
           </div>

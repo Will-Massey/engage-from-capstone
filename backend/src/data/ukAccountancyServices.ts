@@ -28,7 +28,7 @@ export interface ServiceTemplate {
   basePrice: number;
   baseHours: number;
   pricingModel: 'FIXED' | 'HOURLY' | 'TIERED';
-  billingCycle: 'FIXED_DATE' | 'WEEKLY' | 'MONTHLY' | 'QUARTERLY' | 'ANNUALLY';
+  billingCycle: 'WEEKLY' | 'MONTHLY' | 'QUARTERLY' | 'ANNUALLY';
   isVatApplicable: boolean;
   vatRate: 'STANDARD_20' | 'REDUCED_5' | 'ZERO' | 'EXEMPT';
   annualEquivalent?: number;
@@ -199,11 +199,11 @@ export const complianceServices: ServiceTemplate[] = [
     basePrice: 250,
     baseHours: 2,
     pricingModel: 'FIXED',
-    billingCycle: 'FIXED_DATE',
+    billingCycle: 'ANNUALLY',
     isVatApplicable: true,
     vatRate: 'STANDARD_20',
-    frequencyOptions: ['FIXED_DATE'],
-    defaultFrequency: 'FIXED_DATE',
+    frequencyOptions: ['ANNUALLY'],
+    defaultFrequency: 'ANNUALLY',
     applicableEntityTypes: ['LIMITED_COMPANY', 'SOLE_TRADER', 'PARTNERSHIP', 'LLP'],
     complexityFactors: [
       { field: 'isGroupRegistration', operator: 'eq', value: true, adjustmentType: 'PERCENTAGE', adjustmentValue: 100, description: 'Group VAT registration' },
@@ -332,11 +332,11 @@ export const advisoryServices: ServiceTemplate[] = [
     basePrice: 750,
     baseHours: 5,
     pricingModel: 'FIXED',
-    billingCycle: 'FIXED_DATE',
+    billingCycle: 'ANNUALLY',
     isVatApplicable: true,
     vatRate: 'STANDARD_20',
-    frequencyOptions: ['FIXED_DATE'],
-    defaultFrequency: 'FIXED_DATE',
+    frequencyOptions: ['ANNUALLY'],
+    defaultFrequency: 'ANNUALLY',
     applicableEntityTypes: ['SOLE_TRADER', 'PARTNERSHIP'],
     complexityFactors: [
       { field: 'hasMultipleBusinesses', operator: 'eq', value: true, adjustmentType: 'PERCENTAGE', adjustmentValue: 40, description: 'Multiple business structures' },
@@ -381,11 +381,11 @@ export const advisoryServices: ServiceTemplate[] = [
     basePrice: 2500,
     baseHours: 15,
     pricingModel: 'TIERED',
-    billingCycle: 'FIXED_DATE',
+    billingCycle: 'ANNUALLY',
     isVatApplicable: true,
     vatRate: 'STANDARD_20',
-    frequencyOptions: ['FIXED_DATE'],
-    defaultFrequency: 'FIXED_DATE',
+    frequencyOptions: ['ANNUALLY'],
+    defaultFrequency: 'ANNUALLY',
     applicableEntityTypes: ['LIMITED_COMPANY'],
     complexityFactors: [
       { field: 'rdExpenditure', operator: 'gt', value: 500000, adjustmentType: 'PERCENTAGE', adjustmentValue: 20, description: 'Large R&D spend' },
@@ -457,11 +457,11 @@ export const advisoryServices: ServiceTemplate[] = [
     basePrice: 1500,
     baseHours: 12,
     pricingModel: 'FIXED',
-    billingCycle: 'FIXED_DATE',
+    billingCycle: 'ANNUALLY',
     isVatApplicable: true,
     vatRate: 'STANDARD_20',
-    frequencyOptions: ['FIXED_DATE'],
-    defaultFrequency: 'FIXED_DATE',
+    frequencyOptions: ['ANNUALLY'],
+    defaultFrequency: 'ANNUALLY',
     applicableEntityTypes: ['LIMITED_COMPANY', 'LLP', 'PARTNERSHIP'],
     complexityFactors: [
       { field: 'fundingAmount', operator: 'gt', value: 500000, adjustmentType: 'PERCENTAGE', adjustmentValue: 30, description: 'Large funding requirement' },
@@ -479,7 +479,7 @@ export const advisoryServices: ServiceTemplate[] = [
 
 export const mtditsaServices: ServiceTemplate[] = [
   {
-    category: 'MTD_ITSA',
+    category: 'TAX',
     subcategory: 'Quarterly Returns',
     name: 'MTD ITSA Quarterly Return',
     description: 'Making Tax Digital quarterly income tax return',
@@ -504,7 +504,7 @@ export const mtditsaServices: ServiceTemplate[] = [
     isPopular: true,
   },
   {
-    category: 'MTD_ITSA',
+    category: 'TAX',
     subcategory: 'Digital Record Keeping',
     name: 'MTD Digital Setup & Training',
     description: 'Setup of MTD-compatible software and training',
@@ -512,11 +512,11 @@ export const mtditsaServices: ServiceTemplate[] = [
     basePrice: 450,
     baseHours: 3,
     pricingModel: 'FIXED',
-    billingCycle: 'FIXED_DATE',
+    billingCycle: 'ANNUALLY',
     isVatApplicable: true,
     vatRate: 'STANDARD_20',
-    frequencyOptions: ['FIXED_DATE'],
-    defaultFrequency: 'FIXED_DATE',
+    frequencyOptions: ['ANNUALLY'],
+    defaultFrequency: 'ANNUALLY',
     applicableEntityTypes: ['SOLE_TRADER', 'LANDLORD'],
     complexityFactors: [
       { field: 'hasMultipleIncomeStreams', operator: 'eq', value: true, adjustmentType: 'PERCENTAGE', adjustmentValue: 25, description: 'Multiple income sources' },
@@ -533,7 +533,7 @@ export const mtditsaServices: ServiceTemplate[] = [
 
 export const specialistServices: ServiceTemplate[] = [
   {
-    category: 'SPECIALIST',
+    category: 'CONSULTING',
     subcategory: 'Audit',
     name: 'Statutory Audit',
     description: 'Full statutory audit for companies requiring audit',
@@ -559,7 +559,7 @@ export const specialistServices: ServiceTemplate[] = [
     isPopular: false,
   },
   {
-    category: 'SPECIALIST',
+    category: 'CONSULTING',
     subcategory: 'Forensic',
     name: 'Forensic Accounting',
     description: 'Investigation and analysis for disputes or fraud',
@@ -567,11 +567,11 @@ export const specialistServices: ServiceTemplate[] = [
     basePrice: 2500,
     baseHours: 20,
     pricingModel: 'HOURLY',
-    billingCycle: 'FIXED_DATE',
+    billingCycle: 'ANNUALLY',
     isVatApplicable: true,
     vatRate: 'STANDARD_20',
-    frequencyOptions: ['FIXED_DATE'],
-    defaultFrequency: 'FIXED_DATE',
+    frequencyOptions: ['ANNUALLY'],
+    defaultFrequency: 'ANNUALLY',
     applicableEntityTypes: ['LIMITED_COMPANY', 'SOLE_TRADER', 'PARTNERSHIP'],
     complexityFactors: [],
     requirements: ['Case details', 'Financial records', 'Legal documentation'],
@@ -581,7 +581,7 @@ export const specialistServices: ServiceTemplate[] = [
     isPopular: false,
   },
   {
-    category: 'SPECIALIST',
+    category: 'CONSULTING',
     subcategory: 'International',
     name: 'International Tax Planning',
     description: 'Cross-border tax planning and compliance',
@@ -589,11 +589,11 @@ export const specialistServices: ServiceTemplate[] = [
     basePrice: 2000,
     baseHours: 15,
     pricingModel: 'FIXED',
-    billingCycle: 'FIXED_DATE',
+    billingCycle: 'ANNUALLY',
     isVatApplicable: true,
     vatRate: 'STANDARD_20',
     frequencyOptions: ['FIXED_DATE', 'ANNUALLY'],
-    defaultFrequency: 'FIXED_DATE',
+    defaultFrequency: 'ANNUALLY',
     applicableEntityTypes: ['LIMITED_COMPANY'],
     complexityFactors: [
       { field: 'jurisdictionCount', operator: 'gt', value: 2, adjustmentType: 'PERCENTAGE', adjustmentValue: 30, description: 'Multiple jurisdictions' },
@@ -605,7 +605,7 @@ export const specialistServices: ServiceTemplate[] = [
     isPopular: false,
   },
   {
-    category: 'SPECIALIST',
+    category: 'CONSULTING',
     subcategory: 'Succession',
     name: 'Exit & Succession Planning',
     description: 'Business exit and succession planning advice',
@@ -613,11 +613,11 @@ export const specialistServices: ServiceTemplate[] = [
     basePrice: 3000,
     baseHours: 20,
     pricingModel: 'FIXED',
-    billingCycle: 'FIXED_DATE',
+    billingCycle: 'ANNUALLY',
     isVatApplicable: true,
     vatRate: 'STANDARD_20',
-    frequencyOptions: ['FIXED_DATE'],
-    defaultFrequency: 'FIXED_DATE',
+    frequencyOptions: ['ANNUALLY'],
+    defaultFrequency: 'ANNUALLY',
     applicableEntityTypes: ['LIMITED_COMPANY', 'PARTNERSHIP'],
     complexityFactors: [
       { field: 'businessValue', operator: 'gt', value: 2000000, adjustmentType: 'PERCENTAGE', adjustmentValue: 30, description: 'High value business' },
@@ -669,11 +669,11 @@ export const bookkeepingServices: ServiceTemplate[] = [
     basePrice: 650,
     baseHours: 5,
     pricingModel: 'FIXED',
-    billingCycle: 'FIXED_DATE',
+    billingCycle: 'ANNUALLY',
     isVatApplicable: true,
     vatRate: 'STANDARD_20',
-    frequencyOptions: ['FIXED_DATE'],
-    defaultFrequency: 'FIXED_DATE',
+    frequencyOptions: ['ANNUALLY'],
+    defaultFrequency: 'ANNUALLY',
     applicableEntityTypes: ['LIMITED_COMPANY', 'SOLE_TRADER', 'PARTNERSHIP', 'LLP'],
     complexityFactors: [
       { field: 'hasMultipleEntities', operator: 'eq', value: true, adjustmentType: 'PERCENTAGE', adjustmentValue: 50, description: 'Multiple entities' },

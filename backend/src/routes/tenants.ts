@@ -23,7 +23,7 @@ const createTenantSchema = z.object({
   settings: z.object({
     defaultCurrency: z.string().default('GBP'),
     vatRegistered: z.boolean().default(true),
-    professionalBody: z.enum(['ACCA', 'ICAEW', 'AAT', 'CIMA', 'ICAS', 'CTA']).optional(),
+    professionalBody: z.enum(['ACCA', 'ICAEW', 'AAT', 'CIMA', 'ICAS', 'CTA', 'CPAA']).optional(),
     companyRegistration: z.string().optional(),
     vatNumber: z.string().optional(),
     address: z.object({
@@ -45,7 +45,7 @@ const updateTenantSchema = z.object({
     defaultCurrency: z.string().optional(),
     defaultPaymentTerms: z.number().optional(),
     vatRegistered: z.boolean().optional(),
-    professionalBody: z.enum(['ACCA', 'ICAEW', 'AAT', 'CIMA', 'ICAS', 'CTA']).optional(),
+    professionalBody: z.enum(['ACCA', 'ICAEW', 'AAT', 'CIMA', 'ICAS', 'CTA', 'CPAA']).optional(),
     companyRegistration: z.string().optional(),
     vatNumber: z.string().optional(),
     address: z.object({
@@ -523,6 +523,22 @@ router.put(
         mtditsaDeadlines: z.boolean().optional(),
         weeklySummary: z.boolean().optional(),
       }).optional(),
+      professionalBody: z.enum(['ACCA', 'ICAEW', 'ICAS', 'CIMA', 'AAT', 'CPAA', 'OTHER']).optional(),
+      companyRegistration: z.string().optional(),
+      phone: z.string().optional(),
+      website: z.string().optional(),
+      address: z.object({
+        line1: z.string(),
+        line2: z.string().optional(),
+        city: z.string(),
+        postcode: z.string(),
+        country: z.string(),
+      }).optional(),
+      insurerName: z.string().optional(),
+      governingLaw: z.enum(['England and Wales', 'Scotland', 'Northern Ireland']).optional(),
+      fcaAuthorised: z.boolean().optional(),
+      privacyPolicyUrl: z.string().optional(),
+      termsVersion: z.string().optional(),
     });
 
     const data = schema.parse(req.body);
@@ -538,7 +554,20 @@ router.put(
     // Merge new settings
     const updatedSettings = {
       ...currentSettings,
-      ...data,
+      vat: data.vat || currentSettings.vat,
+      branding: data.branding || currentSettings.branding,
+      email: data.email || currentSettings.email,
+      notifications: data.notifications || currentSettings.notifications,
+      professionalBody: data.professionalBody || currentSettings.professionalBody,
+      companyRegistration: data.companyRegistration || currentSettings.companyRegistration,
+      phone: data.phone || currentSettings.phone,
+      website: data.website || currentSettings.website,
+      address: data.address || currentSettings.address,
+      insurerName: data.insurerName || currentSettings.insurerName,
+      governingLaw: data.governingLaw || currentSettings.governingLaw,
+      fcaAuthorised: data.fcaAuthorised || currentSettings.fcaAuthorised,
+      privacyPolicyUrl: data.privacyPolicyUrl || currentSettings.privacyPolicyUrl,
+      termsVersion: data.termsVersion || currentSettings.termsVersion,
     };
 
     // Update tenant

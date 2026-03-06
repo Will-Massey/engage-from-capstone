@@ -8,22 +8,39 @@ import {
   ArrowDownTrayIcon,
   EyeIcon,
   DocumentTextIcon,
+  CheckCircleIcon,
+  ClockIcon,
+  LinkIcon,
+  EnvelopeIcon,
+  PencilIcon,
+  DocumentDuplicateIcon,
+  ExclamationTriangleIcon,
 } from '@heroicons/react/24/outline';
 import { apiClient } from '../../utils/api';
 import { useAuthStore } from '../../stores/authStore';
 import { format } from 'date-fns';
+import toast from 'react-hot-toast';
 
-// Prevent tree-shaking of DocumentTextIcon
-const _iconRef = DocumentTextIcon;
-console.log('Icon loaded:', _iconRef.name);
+// Prevent tree-shaking
+const _iconRefs = [DocumentTextIcon, CheckCircleIcon, ClockIcon];
+// Icons loaded successfully
+
 const statusColors: Record<string, string> = {
   DRAFT: 'badge-gray',
-  PENDING_REVIEW: 'badge-yellow',
   SENT: 'badge-blue',
-  VIEWED: 'badge-blue',
+  VIEWED: 'badge-purple',
   ACCEPTED: 'badge-green',
   DECLINED: 'badge-red',
-  EXPIRED: 'badge-red',
+  EXPIRED: 'badge-orange',
+};
+
+const statusLabels: Record<string, string> = {
+  DRAFT: 'Draft',
+  SENT: 'Sent',
+  VIEWED: 'Viewed',
+  ACCEPTED: 'Accepted',
+  DECLINED: 'Declined',
+  EXPIRED: 'Expired',
 };
 
 const Proposals = () => {
@@ -51,7 +68,7 @@ const Proposals = () => {
       setProposals(response.data || []);
       setMeta(response.meta || { page: 1, totalPages: 1, total: 0 });
     } catch (error) {
-      console.error('Failed to load proposals', error);
+      // Error handled by UI
     } finally {
       setIsLoading(false);
     }
@@ -75,8 +92,60 @@ const Proposals = () => {
       document.body.removeChild(a);
       window.URL.revokeObjectURL(url);
     } catch (error) {
-      console.error('Failed to download PDF', error);
+      // Error handled by UI
     }
+  };
+
+  const sendProposalEmail = async (id: string) => {
+    try {
+      await apiClient.post(`/proposals/${id}/email`, {});
+      toast.success('Proposal sent via email');
+      loadProposals();
+    } catch (error) {
+      toast.error('Failed to send proposal');
+    }
+  };
+
+  const copyProposalLink = (shareToken: string) => {
+    const link = `${window.location.origin}/view/${shareToken}`;
+    navigator.clipboard.writeText(link);
+    toast.success('Proposal link copied to clipboard');
+  };
+
+  const duplicateProposal = async (proposal: any) => {
+    try {
+      const response = await apiClient.createProposal({
+        clientId: proposal.clientId,
+        title: `${proposal.title} (Copy)`,
+        coverLetter: proposal.coverLetter,
+        terms: proposal.terms,
+        services: proposal.services.map((s: any) => ({
+          serviceId: s.serviceTemplateId,
+          quantity: s.quantity,
+          unitPrice: s.unitPrice,
+          billingFrequency: s.frequency,
+          discountPercent: s.discountPercent,
+          description: s.description,
+        })),
+      }) as any;
+      
+      if (response.success) {
+        toast.success('Proposal duplicated');
+        loadProposals();
+      }
+    } catch (error) {
+      toast.error('Failed to duplicate proposal');
+    }
+  };
+
+  const checkExpired = (validUntil: string) => {
+    return new Date(validUntil) < new Date();
+  };
+
+  const formatViewCount = (count: number) => {
+    if (count === 0) return 'Not viewed';
+    if (count === 1) return '1 view';
+    return `${count} views`;
   };
 
   return (
@@ -84,8 +153,8 @@ const Proposals = () => {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Proposals</h1>
-          <p className="mt-1 text-sm text-gray-500">
+          <h1 className="text-2xl font-bold text-slate-900">Proposals</h1>
+          <p className="mt-1 text-sm text-slate-600">
             Manage your client proposals and track their status
           </p>
         </div>
@@ -100,18 +169,18 @@ const Proposals = () => {
       </div>
 
       {/* Filters */}
-      <div className="card p-4">
+      <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-4">
         <div className="flex flex-col sm:flex-row gap-4">
           <form onSubmit={handleSearch} className="flex-1">
             <div className="relative">
               <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                <MagnifyingGlassIcon className="h-5 w-5 text-gray-400" />
+                <MagnifyingGlassIcon className="h-5 w-5 text-slate-400" />
               </div>
               <input
                 type="text"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="input-field pl-10"
+                className="w-full pl-10 pr-4 py-2 rounded-lg border border-slate-300 bg-white text-slate-900 placeholder-slate-400 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
                 placeholder="Search proposals, clients, or references..."
               />
             </div>
@@ -121,7 +190,7 @@ const Proposals = () => {
             <select
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value)}
-              className="input-field w-40"
+              className="w-40 px-3 py-2 rounded-lg border border-slate-300 bg-white text-slate-900 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
             >
               <option value="">All Status</option>
               <option value="DRAFT">Draft</option>
@@ -133,7 +202,7 @@ const Proposals = () => {
 
             <button
               onClick={loadProposals}
-              className="btn-secondary"
+              className="px-4 py-2 bg-white text-slate-700 border border-slate-300 rounded-lg hover:bg-slate-50 hover:border-slate-400 flex items-center text-sm font-medium"
             >
               <FunnelIcon className="h-4 w-4 mr-1" />
               Filter
@@ -143,16 +212,16 @@ const Proposals = () => {
       </div>
 
       {/* Proposals table */}
-      <div className="card overflow-hidden">
+      <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
         {isLoading ? (
           <div className="flex items-center justify-center h-64">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600"></div>
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
           </div>
         ) : proposals.length === 0 ? (
           <div className="text-center py-16">
-            <DocumentTextIcon className="mx-auto h-12 w-12 text-gray-300" />
-            <h3 className="mt-4 text-lg font-medium text-gray-900">No proposals found</h3>
-            <p className="mt-2 text-sm text-gray-500">
+            <DocumentTextIcon className="mx-auto h-12 w-12 text-slate-300" />
+            <h3 className="mt-4 text-lg font-medium text-slate-900">No proposals found</h3>
+            <p className="mt-2 text-sm text-slate-600">
               Get started by creating your first proposal
             </p>
             <Link
@@ -165,84 +234,158 @@ const Proposals = () => {
           </div>
         ) : (
           <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-gray-200">
-              <thead className="bg-gray-50">
+            <table className="min-w-[1100px] w-full divide-y divide-slate-200">
+              <thead className="bg-slate-50">
                 <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-4 py-3 text-left text-xs font-medium text-slate-600 uppercase tracking-wider w-[22%]">
                     Proposal
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-4 py-3 text-left text-xs font-medium text-slate-600 uppercase tracking-wider w-[22%]">
                     Client
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-3 py-3 text-left text-xs font-medium text-slate-600 uppercase tracking-wider w-[10%]">
                     Status
                   </th>
-                  <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-3 py-3 text-center text-xs font-medium text-slate-600 uppercase tracking-wider w-[8%]">
+                    Views
+                  </th>
+                  <th className="px-4 py-3 text-right text-xs font-medium text-slate-600 uppercase tracking-wider w-[12%]">
                     Amount
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Date
+                  <th className="px-4 py-3 text-left text-xs font-medium text-slate-600 uppercase tracking-wider w-[14%] whitespace-nowrap">
+                    Valid Until
                   </th>
-                  <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-3 py-3 text-right text-xs font-medium text-slate-600 uppercase tracking-wider w-[12%]">
                     Actions
                   </th>
                 </tr>
               </thead>
-              <tbody className="bg-white divide-y divide-gray-200">
-                {proposals.map((proposal) => (
-                  <tr key={proposal.id} className="hover:bg-gray-50">
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div>
-                        <Link
-                          to={`/proposals/${proposal.id}`}
-                          className="text-sm font-medium text-gray-900 hover:text-primary-600"
-                        >
-                          {proposal.title}
-                        </Link>
-                        <p className="text-xs text-gray-500">{proposal.reference}</p>
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm text-gray-900">{proposal.client?.name}</div>
-                      <div className="text-xs text-gray-500">
-                        {proposal.client?.companyType?.replace(/_/g, ' ')}
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <span className={`badge ${statusColors[proposal.status] || 'badge-gray'}`}>
-                        {proposal.status}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-right">
-                      <div className="text-sm font-medium text-gray-900">
-                        £{proposal.total?.toLocaleString()}
-                      </div>
-                      <div className="text-xs text-gray-500">
-                        {proposal.paymentFrequency?.toLowerCase()}
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {proposal.createdAt && format(new Date(proposal.createdAt), 'dd MMM yyyy')}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                      <div className="flex items-center justify-end space-x-2">
-                        <Link
-                          to={`/proposals/${proposal.id}`}
-                          className="text-primary-600 hover:text-primary-900"
-                        >
-                          <EyeIcon className="h-5 w-5" />
-                        </Link>
-                        <button
-                          onClick={() => downloadPDF(proposal.id, proposal.reference)}
-                          className="text-gray-400 hover:text-gray-600"
-                          title="Download PDF"
-                        >
-                          <ArrowDownTrayIcon className="h-5 w-5" />
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
+              <tbody className="bg-white divide-y divide-slate-200">
+                {proposals.map((proposal) => {
+                  const isExpired = checkExpired(proposal.validUntil);
+                  const displayStatus = isExpired && proposal.status !== 'ACCEPTED' && proposal.status !== 'DECLINED' 
+                    ? 'EXPIRED' 
+                    : proposal.status;
+                  
+                  return (
+                    <tr key={proposal.id} className="hover:bg-slate-50">
+                      <td className="px-4 py-4 whitespace-nowrap">
+                        <div>
+                          <Link
+                            to={`/proposals/${proposal.id}`}
+                            className="text-sm font-medium text-slate-900 hover:text-blue-600 truncate max-w-[200px] block"
+                          >
+                            {proposal.title}
+                          </Link>
+                          <p className="text-xs text-slate-600">{proposal.reference}</p>
+                        </div>
+                      </td>
+                      <td className="px-4 py-4 whitespace-nowrap">
+                        <div className="text-sm text-slate-900 truncate max-w-[180px]">{proposal.client?.name}</div>
+                        <div className="text-xs text-slate-600">
+                          {proposal.client?.companyType?.replace(/_/g, ' ')}
+                        </div>
+                      </td>
+                      <td className="px-3 py-4 whitespace-nowrap">
+                        <div className="flex items-center space-x-1">
+                          <span className={`badge ${statusColors[displayStatus] || 'badge-gray'}`}>
+                            {statusLabels[displayStatus] || displayStatus}
+                          </span>
+                          {proposal.signatures?.length > 0 && (
+                            <CheckCircleIcon className="h-4 w-4 text-green-500" title="Signed" />
+                          )}
+                        </div>
+                      </td>
+                      <td className="px-3 py-4 whitespace-nowrap text-center">
+                        <div className="flex items-center justify-center space-x-1">
+                          <EyeIcon className="h-4 w-4 text-slate-400" />
+                          <span className="text-sm text-slate-700">
+                            {formatViewCount(proposal._count?.views || 0)}
+                          </span>
+                        </div>
+                      </td>
+                      <td className="px-4 py-4 whitespace-nowrap text-right">
+                        <div className="text-sm font-medium text-slate-900">
+                          £{proposal.total?.toLocaleString()}
+                        </div>
+                        <div className="text-xs text-slate-600">
+                          {proposal.paymentFrequency?.toLowerCase()}
+                        </div>
+                      </td>
+                      <td className="px-4 py-4 whitespace-nowrap">
+                        <div className={`text-sm ${isExpired ? 'text-red-600 font-medium' : 'text-slate-600'}`}>
+                          {proposal.validUntil && format(new Date(proposal.validUntil), 'dd MMM yyyy')}
+                          {isExpired && proposal.status !== 'ACCEPTED' && proposal.status !== 'DECLINED' && (
+                            <span className="ml-1 text-xs">(Expired)</span>
+                          )}
+                        </div>
+                      </td>
+                      <td className="px-3 py-4 whitespace-nowrap text-right text-sm font-medium">
+                        <div className="flex items-center justify-end space-x-1">
+                          {/* View */}
+                          <Link
+                            to={`/proposals/${proposal.id}`}
+                            className="p-1 text-blue-600 hover:text-blue-800"
+                            title="View"
+                          >
+                            <EyeIcon className="h-5 w-5" />
+                          </Link>
+                          
+                          {/* Edit - if draft or expired */}
+                          {(proposal.status === 'DRAFT' || isExpired) && (
+                            <Link
+                              to={`/proposals/${proposal.id}/edit`}
+                              className="p-1 text-slate-500 hover:text-slate-700"
+                              title="Edit"
+                            >
+                              <PencilIcon className="h-5 w-5" />
+                            </Link>
+                          )}
+                          
+                          {/* Send Email */}
+                          {proposal.status !== 'ACCEPTED' && proposal.status !== 'DECLINED' && !isExpired && (
+                            <button
+                              onClick={() => sendProposalEmail(proposal.id)}
+                              className="p-1 text-slate-500 hover:text-blue-600"
+                              title="Send Email"
+                            >
+                              <EnvelopeIcon className="h-5 w-5" />
+                            </button>
+                          )}
+                          
+                          {/* Copy Link */}
+                          {proposal.shareToken && (
+                            <button
+                              onClick={() => copyProposalLink(proposal.shareToken)}
+                              className="p-1 text-slate-500 hover:text-green-600"
+                              title="Copy Link"
+                            >
+                              <LinkIcon className="h-5 w-5" />
+                            </button>
+                          )}
+                          
+                          {/* Duplicate/Resubmit */}
+                          <button
+                            onClick={() => duplicateProposal(proposal)}
+                            className="p-1 text-slate-500 hover:text-purple-600"
+                            title={isExpired ? "Resubmit" : "Duplicate"}
+                          >
+                            <DocumentDuplicateIcon className="h-5 w-5" />
+                          </button>
+                          
+                          {/* Download PDF */}
+                          <button
+                            onClick={() => downloadPDF(proposal.id, proposal.reference)}
+                            className="p-1 text-slate-500 hover:text-slate-700"
+                            title="Download PDF"
+                          >
+                            <ArrowDownTrayIcon className="h-5 w-5" />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>
@@ -250,22 +393,22 @@ const Proposals = () => {
 
         {/* Pagination */}
         {meta.totalPages > 1 && (
-          <div className="px-6 py-4 border-t border-gray-200 flex items-center justify-between">
-            <div className="text-sm text-gray-500">
+          <div className="px-6 py-4 border-t border-slate-200 flex items-center justify-between">
+            <div className="text-sm text-slate-600">
               Showing page {meta.page} of {meta.totalPages}
             </div>
             <div className="flex space-x-2">
               <button
                 onClick={() => setMeta({ ...meta, page: meta.page - 1 })}
                 disabled={meta.page === 1}
-                className="btn-secondary py-1.5 px-3 text-sm disabled:opacity-50"
+                className="px-3 py-1.5 bg-white text-slate-700 border border-slate-300 rounded-lg hover:bg-slate-50 text-sm font-medium disabled:opacity-50"
               >
                 Previous
               </button>
               <button
                 onClick={() => setMeta({ ...meta, page: meta.page + 1 })}
                 disabled={meta.page === meta.totalPages}
-                className="btn-secondary py-1.5 px-3 text-sm disabled:opacity-50"
+                className="px-3 py-1.5 bg-white text-slate-700 border border-slate-300 rounded-lg hover:bg-slate-50 text-sm font-medium disabled:opacity-50"
               >
                 Next
               </button>

@@ -108,7 +108,7 @@ router.get(
             },
           },
           _count: {
-            select: { services: true },
+            select: { services: true, views: true },
           },
         },
         skip,
@@ -195,7 +195,7 @@ router.get(
 router.post(
   '/',
   authenticate,
-  authorize('PARTNER', 'MANAGER', 'SENIOR'),
+  authorize('PARTNER', 'MANAGER', 'SENIOR', 'ADMIN'),
   asyncHandler(async (req, res) => {
     const data = createProposalSchema.parse(req.body);
 
@@ -480,7 +480,7 @@ router.post(
     const emailConfig: any = {
       provider: emailProvider,
       fromName: proposal.tenant.name,
-      fromEmail: process.env.EMAIL_FROM || 'noreply@engagebycapstone.co.uk',
+      fromEmail: process.env.EMAIL_FROM || 'sales@capstonesoftware.co.uk',
     };
 
     if (emailProvider === 'smtp') {
@@ -588,7 +588,7 @@ router.post(
   authenticate,
   asyncHandler(async (req, res) => {
     const { id } = req.params;
-    const { acceptedBy, signature } = req.body;
+    const { acceptedBy, signature, signatoryPosition } = req.body;
 
     const proposal = await prisma.proposal.findFirst({
       where: {
@@ -613,6 +613,7 @@ router.post(
         acceptedAt: new Date(),
         acceptedBy: acceptedBy || req.user?.firstName + ' ' + req.user?.lastName,
         signature,
+        signatoryPosition,
       },
     });
 
@@ -711,6 +712,100 @@ router.delete(
     res.json({
       success: true,
       data: { message: 'Proposal deleted successfully' },
+    });
+  })
+);
+
+/**
+ * POST /api/proposals/:id/view
+ * Record proposal view and update status to VIEWED
+ */
+router.post(
+  '/:id/view',
+  authenticate,
+  asyncHandler(async (req, res) => {
+    const { id } = req.params;
+
+    const proposal = await prisma.proposal.findFirst({
+      where: {
+        id,
+        tenantId: req.tenantId,
+      },
+    });
+
+    if (!proposal) {
+      throw new ApiError('NOT_FOUND', 'Proposal not found', 404);
+    }
+
+    // Update status to VIEWED if currently SENT
+    if (proposal.status === 'SENT') {
+      await prisma.proposal.update({
+        where: { id },
+        data: { status: 'VIEWED' },
+      });
+    }
+
+    // Record view in activity log
+    await prisma.activityLog.create({
+      data: {
+        tenantId: req.tenantId,
+        userId: req.user!.id,
+        action: 'PROPOSAL_VIEWED',
+        entityType: 'PROPOSAL',
+        entityId: proposal.id,
+        description: `Viewed proposal "${proposal.title}"`,
+      },
+    });
+
+    res.json({
+      success: true,
+      data: { message: 'View recorded', status: proposal.status === 'SENT' ? 'VIEWED' : proposal.status },
+    });
+  })
+);
+
+/**
+ * GET /api/proposals/:id/activity
+ * Get proposal activity log
+ */
+router.get(
+  '/:id/activity',
+  authenticate,
+  asyncHandler(async (req, res) => {
+    const { id } = req.params;
+
+    const proposal = await prisma.proposal.findFirst({
+      where: {
+        id,
+        tenantId: req.tenantId,
+      },
+    });
+
+    if (!proposal) {
+      throw new ApiError('NOT_FOUND', 'Proposal not found', 404);
+    }
+
+    const activities = await prisma.activityLog.findMany({
+      where: {
+        entityType: 'PROPOSAL',
+        entityId: id,
+        tenantId: req.tenantId,
+      },
+      include: {
+        user: {
+          select: {
+            firstName: true,
+            lastName: true,
+            email: true,
+          },
+        },
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+
+    res.json({
+      success: true,
+      data: activities,
     });
   })
 );

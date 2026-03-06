@@ -116,13 +116,28 @@ export async function trackProposalView(
       },
     });
 
-    // Update proposal viewedAt if first view
-    await prisma.proposal.update({
+    // Update proposal viewedAt and status if first view
+    const proposal = await prisma.proposal.findUnique({
       where: { id: proposalId },
-      data: {
-        viewedAt: new Date(),
-      },
+      select: { status: true, viewedAt: true },
     });
+
+    if (proposal && !proposal.viewedAt) {
+      await prisma.proposal.update({
+        where: { id: proposalId },
+        data: {
+          viewedAt: new Date(),
+          status: 'VIEWED',
+        },
+      });
+    } else {
+      await prisma.proposal.update({
+        where: { id: proposalId },
+        data: {
+          viewedAt: new Date(),
+        },
+      });
+    }
 
     logger.info(`Tracked view for proposal ${proposalId}`);
   } catch (error) {

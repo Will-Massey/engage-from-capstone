@@ -3,7 +3,11 @@ import jwt from 'jsonwebtoken';
 import { prisma } from '../config/database.js';
 import { UserRole } from '@prisma/client';
 
-const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key';
+const JWT_SECRET = process.env.JWT_SECRET;
+
+if (!JWT_SECRET) {
+  throw new Error('JWT_SECRET environment variable is required');
+}
 
 // Extended request type with user and tenant
 declare global {
@@ -240,4 +244,62 @@ export const optionalAuth = async (
   }
 };
 
-export default { authenticate, authorize, optionalAuth, generateToken, generateRefreshToken };
+// CSRF Protection - Double Submit Cookie Pattern
+import crypto from 'crypto';
+
+// Generate CSRF token
+export const generateCsrfToken = (): string => {
+  return crypto.randomBytes(32).toString('hex');
+};
+
+// CSRF protection middleware
+export const csrfProtection = (req: Request, res: Response, next: NextFunction): void => {
+  // Skip CSRF for GET, HEAD, OPTIONS requests (they should be safe)
+  if (['GET', 'HEAD', 'OPTIONS'].includes(req.method)) {
+    next();
+    return;
+  }
+
+  // Skip CSRF for public routes (webhooks, OAuth callbacks, public proposals)
+  const publicPaths = [
+    '/api/payments/webhook',
+    '/api/oauth/callback',
+    '/api/proposals/view', // Public proposal viewing and signing
+  ];
+  if (publicPaths.some(path => req.path.startsWith(path))) {
+    next();
+    return;
+  }
+
+  const csrfToken = req.headers['x-csrf-token'] as string;
+  const csrfCookie = req.cookies?.csrfToken;
+
+  if (!csrfToken || !csrfCookie || csrfToken !== csrfCookie) {
+    res.status(403).json({
+      success: false,
+      error: {
+        code: 'CSRF_INVALID',
+        message: 'CSRF token validation failed',
+      },
+    });
+    return;
+  }
+
+  next();
+};
+
+// Set CSRF cookie middleware
+export const setCsrfCookie = (req: Request, res: Response, next: NextFunction): void => {
+  if (!req.cookies?.csrfToken) {
+    const csrfToken = generateCsrfToken();
+    res.cookie('csrfToken', csrfToken, {
+      httpOnly: false, // Must be accessible by JavaScript
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'strict',
+      maxAge: 24 * 60 * 60 * 1000, // 24 hours
+    });
+  }
+  next();
+};
+
+export default { authenticate, authorize, optionalAuth, generateToken, generateRefreshToken, csrfProtection, setCsrfCookie };

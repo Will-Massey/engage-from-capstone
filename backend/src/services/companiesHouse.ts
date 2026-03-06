@@ -14,7 +14,8 @@ export interface CompaniesHouseConfig {
 
 export interface CompanySearchResult {
   company_number: string;
-  company_name: string;
+  company_name?: string;  // Not present in search results, only in details
+  title?: string;         // Search results use 'title' instead of 'company_name'
   company_status: string;
   company_type: string;
   date_of_creation: string;
@@ -24,6 +25,14 @@ export interface CompanySearchResult {
     locality?: string;
     postal_code?: string;
     country?: string;
+  };
+  // Search results may have address in different format
+  address?: {
+    address_line_1?: string;
+    locality?: string;
+    postal_code?: string;
+    premises?: string;
+    region?: string;
   };
 }
 
