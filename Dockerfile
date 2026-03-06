@@ -1,6 +1,9 @@
 # Multi-stage build for production
 FROM node:20-alpine AS builder
 
+# Install OpenSSL for Prisma
+RUN apk add --no-cache openssl
+
 # Set working directory
 WORKDIR /app
 
@@ -25,8 +28,8 @@ RUN cd backend && npm run build
 # Production stage
 FROM node:20-alpine AS production
 
-# Install PostgreSQL client for migrations
-RUN apk add --no-cache postgresql-client
+# Install PostgreSQL client and OpenSSL for Prisma
+RUN apk add --no-cache postgresql-client openssl
 
 # Set working directory
 WORKDIR /app
@@ -51,7 +54,7 @@ EXPOSE 3001
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
-  CMD node -e "require('http').get('http://localhost:3001/api/health', (r) => r.statusCode === 200 ? process.exit(0) : process.exit(1))"
+  CMD node -e "require('http').get('http://localhost:3001/ping', (r) => r.statusCode === 200 ? process.exit(0) : process.exit(1))"
 
 # Start the application
 CMD ["node", "backend/dist/index.js"]
