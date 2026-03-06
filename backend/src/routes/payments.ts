@@ -8,6 +8,13 @@ import { asyncHandler, ApiError } from '../middleware/errorHandler.js';
 
 const router = Router();
 
+// Helper to check if Stripe is configured
+const checkStripe = () => {
+  if (!stripe) {
+    throw new ApiError('STRIPE_NOT_CONFIGURED', 'Payments are not configured. Please contact support.', 503);
+  }
+};
+
 /**
  * GET /api/payments/config
  * Get Stripe publishable key
@@ -35,6 +42,7 @@ router.post(
   authenticate,
   authorize('PARTNER'),
   asyncHandler(async (req, res) => {
+    checkStripe();
     const schema = z.object({
       priceId: z.string(),
       paymentMethodId: z.string(),
@@ -128,6 +136,7 @@ router.get(
   '/subscription',
   authenticate,
   asyncHandler(async (req, res) => {
+    checkStripe();
     const tenantId = req.tenantId!;
 
     const tenant = await prisma.tenant.findUnique({
@@ -178,6 +187,7 @@ router.post(
   authenticate,
   authorize('PARTNER'),
   asyncHandler(async (req, res) => {
+    checkStripe();
     const tenantId = req.tenantId!;
 
     const tenant = await prisma.tenant.findUnique({
@@ -221,6 +231,7 @@ router.post(
   authenticate,
   authorize('PARTNER'),
   asyncHandler(async (req, res) => {
+    checkStripe();
     const tenantId = req.tenantId!;
 
     const tenant = await prisma.tenant.findUnique({
@@ -263,6 +274,7 @@ router.post(
   authenticate,
   authorize('PARTNER'),
   asyncHandler(async (req, res) => {
+    checkStripe();
     const tenantId = req.tenantId!;
 
     const tenant = await prisma.tenant.findUnique({
@@ -296,6 +308,7 @@ router.post(
   '/webhook',
   express.raw({ type: 'application/json' }),
   asyncHandler(async (req, res) => {
+    checkStripe();
     const sig = req.headers['stripe-signature'];
     const endpointSecret = process.env.STRIPE_WEBHOOK_SECRET;
 
