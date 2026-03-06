@@ -5,7 +5,7 @@ const STRIPE_SECRET_KEY = process.env.STRIPE_SECRET_KEY;
 // Make Stripe optional - app can start without payments configured
 export const stripe = STRIPE_SECRET_KEY 
   ? new Stripe(STRIPE_SECRET_KEY, {
-      apiVersion: '2024-12-18.acacia',
+      apiVersion: '2025-02-24.acacia' as any,
       typescript: true,
     })
   : null;

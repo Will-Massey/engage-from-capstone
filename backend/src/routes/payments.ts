@@ -161,9 +161,9 @@ router.get(
     }
 
     // Get subscription details from Stripe
-    const subscription = await stripe.subscriptions.retrieve(
+    const subscription = await stripe!.subscriptions.retrieve(
       tenant.stripeSubscriptionId
-    );
+    ) as any;
 
     res.json({
       success: true,
@@ -200,10 +200,10 @@ router.post(
     }
 
     // Cancel at period end
-    const subscription = await stripe.subscriptions.update(
+    const subscription = await stripe!.subscriptions.update(
       tenant.stripeSubscriptionId,
       { cancel_at_period_end: true }
-    );
+    ) as any;
 
     // Update tenant
     await prisma.tenant.update({

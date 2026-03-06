@@ -106,7 +106,7 @@ export class PricingEngine {
 
     // Calculate complexity multiplier
     const complexityMultiplier = this.calculateComplexityMultiplier(
-      service.complexityFactors as any[],
+      (service as any).complexityFactors || [],
       clientData
     );
 

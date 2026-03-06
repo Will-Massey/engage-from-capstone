@@ -123,6 +123,8 @@ router.post(
     const token = generateToken({
       id: result.user.id,
       email: result.user.email,
+      firstName: result.user.firstName,
+      lastName: result.user.lastName,
       role: result.user.role,
       tenantId: result.user.tenantId,
     });
@@ -407,10 +409,10 @@ async function createDefaultServices(tx: any, tenantId: string) {
       data: {
         ...service,
         tenantId,
-        complexityFactors: service.complexityFactors || [],
-        requirements: service.requirements || [],
-        deliverables: service.deliverables || [],
-        tags: service.tags || [],
+        complexityFactors: (service as any).complexityFactors || [],
+        requirements: (service as any).requirements || [],
+        deliverables: (service as any).deliverables || [],
+        tags: (service as any).tags || [],
         isActive: true,
       },
     });

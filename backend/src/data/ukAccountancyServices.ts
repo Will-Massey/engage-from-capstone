@@ -716,7 +716,7 @@ export function calculateAnnualCost(service: ServiceTemplate): number {
       return service.basePrice * 4;
     case 'ANNUALLY':
       return service.basePrice;
-    case 'FIXED_DATE':
+    case 'FIXED_DATE' as any:
       return service.basePrice;
     default:
       return service.basePrice;

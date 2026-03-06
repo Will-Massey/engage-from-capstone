@@ -227,6 +227,18 @@ export class MTDITSAService {
         'Making Tax Digital for Income Tax Self Assessment (MTD ITSA) is not currently required. ' +
         'You should continue submitting your Self Assessment tax return annually.',
       
+      [MTDITSAStatus.ELIGIBLE]:
+        'You are eligible for MTD ITSA but not yet required to join. ' +
+        'You may opt in voluntarily to get used to the new system.',
+      
+      [MTDITSAStatus.MANDATORY]:
+        'You must comply with MTD ITSA requirements. ' +
+        'This means submitting quarterly updates digitally using compatible software.',
+      
+      [MTDITSAStatus.OPTED_IN]:
+        'You have voluntarily opted into MTD ITSA. ' +
+        'You are now required to submit quarterly updates digitally.',
+      
       [MTDITSAStatus.REQUIRED_2026]:
         'You must comply with MTD ITSA from April 2026. This means submitting quarterly updates ' +
         'of your income and expenses digitally using compatible software.',

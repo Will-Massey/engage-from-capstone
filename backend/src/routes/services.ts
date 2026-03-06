@@ -195,12 +195,12 @@ router.post(
 
     const service = await prisma.serviceTemplate.create({
       data: {
-        ...data,
+        ...data as any,
         tenantId: req.tenantId,
-        complexityFactors: data.complexityFactors as any,
-        requirements: data.requirements,
-        deliverables: data.deliverables,
-        tags: data.tags,
+        complexityFactors: JSON.stringify(data.complexityFactors),
+        requirements: JSON.stringify(data.requirements),
+        deliverables: JSON.stringify(data.deliverables),
+        tags: data.tags?.join(','),
       },
     });
 
@@ -249,11 +249,11 @@ router.put(
     const service = await prisma.serviceTemplate.update({
       where: { id },
       data: {
-        ...data,
-        complexityFactors: data.complexityFactors as any,
-        requirements: data.requirements,
-        deliverables: data.deliverables,
-        tags: data.tags,
+        ...data as any,
+        complexityFactors: data.complexityFactors ? JSON.stringify(data.complexityFactors) : undefined,
+        requirements: data.requirements ? JSON.stringify(data.requirements) : undefined,
+        deliverables: data.deliverables ? JSON.stringify(data.deliverables) : undefined,
+        tags: data.tags?.join(','),
       },
     });
 
@@ -362,12 +362,12 @@ router.post(
 
     const rule = await prisma.pricingRule.create({
       data: {
-        ...data,
+        ...data as any,
         tenantId: req.tenantId,
         serviceId: id,
         conditionValue: data.conditionValue,
         isActive: true,
-      },
+      } as any,
     });
 
     res.status(201).json({

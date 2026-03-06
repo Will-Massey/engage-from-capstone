@@ -121,7 +121,7 @@ router.post(
     const service = await prisma.serviceTemplate.create({
       data: {
         tenantId,
-        category: catalogService.category,
+        category: catalogService.category as any,
         subcategory: catalogService.subcategory,
         name: catalogService.name,
         description: catalogService.description,
@@ -133,7 +133,7 @@ router.post(
         vatRate: catalogService.vatRate,
         isVatApplicable: catalogService.isVatApplicable,
         frequencyOptions: catalogService.frequencyOptions.join(','),
-        defaultFrequency: catalogService.defaultFrequency,
+        defaultFrequency: catalogService.defaultFrequency as any,
         applicableEntityTypes: catalogService.applicableEntityTypes.join(','),
         complexityFactors: JSON.stringify(catalogService.complexityFactors),
         requirements: JSON.stringify(catalogService.requirements),
@@ -195,7 +195,7 @@ router.post(
         await prisma.serviceTemplate.create({
           data: {
             tenantId,
-            category: catalogService.category,
+            category: catalogService.category as any,
             subcategory: catalogService.subcategory,
             name: catalogService.name,
             description: catalogService.description,
@@ -207,7 +207,7 @@ router.post(
             vatRate: catalogService.vatRate,
             isVatApplicable: catalogService.isVatApplicable,
             frequencyOptions: catalogService.frequencyOptions.join(','),
-            defaultFrequency: catalogService.defaultFrequency,
+            defaultFrequency: catalogService.defaultFrequency as any,
             applicableEntityTypes: catalogService.applicableEntityTypes.join(','),
             complexityFactors: JSON.stringify(catalogService.complexityFactors),
             requirements: JSON.stringify(catalogService.requirements),
