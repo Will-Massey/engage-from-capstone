@@ -84,6 +84,9 @@ const allowedOrigins = [
 // Regex to match any Vercel preview URL from this project
 const vercelProjectPattern = /^https:\/\/frontend-[a-z0-9]+-will-masseys-projects-b935486d\.vercel\.app$/;
 
+// Regex to match any Render.com subdomain
+const renderPattern = /^https:\/\/.*\.onrender\.com$/;
+
 // In development, allow all localhost origins
 const isDevelopment = process.env.NODE_ENV !== 'production';
 
@@ -109,6 +112,11 @@ const corsOptions = {
     
     // Check Vercel preview URL pattern
     if (vercelProjectPattern.test(origin)) {
+      return callback(null, true);
+    }
+    
+    // Check Render.com URL pattern
+    if (renderPattern.test(origin)) {
       return callback(null, true);
     }
     
