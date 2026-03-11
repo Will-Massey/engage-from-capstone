@@ -6,6 +6,8 @@
 
 Engage is a revolutionary UK accounting proposal platform built for instant, compliant proposal generation. Create professional proposals in under 5 minutes with built-in MTD ITSA automation.
 
+[![Deploy to Render](https://render.com/images/deploy-to-render-button.svg)](https://dashboard.render.com/select-repo?type=blueprint)
+
 ## 🎯 Key Features
 
 - **⚡ Sub-5-minute proposal creation** - 6-24x faster than industry average
