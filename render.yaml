@@ -8,10 +8,10 @@ services:
     runtime: node
     plan: standard
     buildCommand: |
-      npm ci --include=dev && 
+      npm ci --include=dev && npm install -g typescript && 
       cd shared && npm ci && npm run build && 
       cd ../backend && npm ci && npm run db:generate && 
-      cd .. && npm install typescript --save-dev && npx tsc --project backend/tsconfig.json
+      tsc --project tsconfig.json
     startCommand: cd backend && npm start
     healthCheckPath: /api/health
     envVars:
@@ -72,10 +72,10 @@ services:
     name: engage-frontend
     runtime: static
     buildCommand: |
-      rm -rf node_modules && 
+      rm -rf node_modules && npm install -g vite typescript && 
       cd shared && npm ci && npm run build && cd .. && 
       npm ci --include=dev && 
-      cd frontend && npm run build
+      cd frontend && vite build
     staticPublishPath: ./frontend/dist
     envVars:
       - key: VITE_API_URL
