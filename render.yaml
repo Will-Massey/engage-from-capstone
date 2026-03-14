@@ -7,7 +7,7 @@ services:
     name: engage-backend
     runtime: node
     plan: standard
-    buildCommand: npm ci --include=dev && npm install prisma@5.22.0 --save-dev && cd shared && npm ci && npm run build && cd ../backend && npx prisma generate && ../node_modules/.bin/tsc
+    buildCommand: npm ci --include=dev && cd shared && npm ci && npm run build && cd ../backend && node ../node_modules/prisma/build/index.js generate && ../node_modules/.bin/tsc
     startCommand: cd backend && npm start
     healthCheckPath: /api/health
     envVars:
