@@ -7,7 +7,7 @@ services:
     name: engage-backend
     runtime: node
     plan: standard
-    buildCommand: npm ci && cd shared && npm ci && npm run build && cd ../backend && npm ci && npm install typescript --save-dev && npx prisma generate && npx tsc
+    buildCommand: npm ci --include=dev && cd shared && npm ci && npm run build && cd ../backend && npx prisma generate && ../node_modules/.bin/tsc
     startCommand: cd backend && npm start
     healthCheckPath: /api/health
     envVars:
@@ -63,7 +63,7 @@ services:
         sync: false
     autoDeploy: true
 
-  # Frontend Static Site - Build from root but isolate frontend
+  # Frontend Static Site - Build from root with workspaces
   - type: web
     name: engage-frontend
     runtime: static
