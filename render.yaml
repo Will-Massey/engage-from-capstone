@@ -7,7 +7,7 @@ services:
     name: engage-backend
     runtime: node
     plan: standard
-    buildCommand: npm ci && cd shared && npm ci && npm run build && cd ../backend && npm ci && npx prisma generate && npm run build
+    buildCommand: npm ci && cd shared && npm ci && npm run build && cd ../backend && npm ci && npm install typescript --save-dev && npx prisma generate && npx tsc
     startCommand: cd backend && npm start
     healthCheckPath: /api/health
     envVars:
