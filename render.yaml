@@ -11,7 +11,7 @@ services:
       npm ci --include=dev && 
       cd shared && npm ci && npm run build && 
       cd ../backend && npm ci && npm run db:generate && 
-      cd .. && npx tsc --project backend/tsconfig.json
+      cd .. && npm install typescript --save-dev && npx tsc --project backend/tsconfig.json
     startCommand: cd backend && npm start
     healthCheckPath: /api/health
     envVars:
