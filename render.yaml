@@ -67,13 +67,11 @@ services:
   - type: web
     name: engage-frontend
     runtime: static
-    buildCommand: cd shared && npm ci && npm run build && cd ../frontend && npm ci && npm run build
+    buildCommand: cd shared && npm ci && npm run build && cd ../frontend && npm ci --include=dev && npm run build
     staticPublishPath: ./frontend/dist
     envVars:
       - key: VITE_API_URL
         value: https://engage-backend.onrender.com
-      - key: NODE_ENV
-        value: production
     autoDeploy: true
 
 databases:
