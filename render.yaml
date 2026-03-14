@@ -7,7 +7,7 @@ services:
     name: engage-backend
     runtime: node
     plan: standard
-    buildCommand: npm ci --include=dev && cd shared && npm ci && npm run build && cd ../backend && npm install && npm run db:generate && ../node_modules/.bin/tsc
+    buildCommand: npm ci --include=dev && cd shared && npm ci && npm run build && cd ../backend && npm install && npm run db:generate && ../../node_modules/.bin/tsc
     startCommand: cd backend && npm start
     healthCheckPath: /api/health
     envVars:
