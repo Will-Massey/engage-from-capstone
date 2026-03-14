@@ -70,7 +70,8 @@ services:
     buildCommand: |
       cd shared && npm ci && npm run build && 
       cd ../frontend && rm -rf node_modules package-lock.json && 
-      npm install && npm run build
+      npm install --legacy-peer-deps && 
+      npx vite build
     staticPublishPath: ./frontend/dist
     envVars:
       - key: VITE_API_URL
