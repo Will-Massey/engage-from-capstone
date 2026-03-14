@@ -126,7 +126,7 @@ export class PDFGenerator {
   /**
    * Draw header section
    */
-  private static drawHeader(doc: PDFKit.PDFDocument, proposal: ProposalData, primaryColor: string) {
+  private static drawHeader(doc: PDFDocument, proposal: ProposalData, primaryColor: string) {
     // Company Logo (if available)
     if (proposal.tenant.logo) {
       try {
@@ -181,7 +181,7 @@ export class PDFGenerator {
   /**
    * Draw client information
    */
-  private static drawClientInfo(doc: PDFKit.PDFDocument, proposal: ProposalData) {
+  private static drawClientInfo(doc: PDFDocument, proposal: ProposalData) {
     const startY = doc.y + 20;
 
     // Prepared for
@@ -241,7 +241,7 @@ export class PDFGenerator {
   /**
    * Draw cover letter / Introduction
    */
-  private static drawCoverLetter(doc: PDFKit.PDFDocument, proposal: ProposalData) {
+  private static drawCoverLetter(doc: PDFDocument, proposal: ProposalData) {
     // Introduction Header
     doc.fontSize(18)
        .fillColor('#333333')
@@ -321,7 +321,7 @@ ${proposal.tenant.name}`;
   /**
    * Draw services section
    */
-  private static drawServices(doc: PDFKit.PDFDocument, proposal: ProposalData, primaryColor: string) {
+  private static drawServices(doc: PDFDocument, proposal: ProposalData, primaryColor: string) {
     doc.fontSize(16)
        .fillColor('#333333')
        .text('Services', { align: 'center' });
@@ -392,7 +392,7 @@ ${proposal.tenant.name}`;
   /**
    * Draw pricing summary
    */
-  private static drawPricing(doc: PDFKit.PDFDocument, proposal: ProposalData, primaryColor: string) {
+  private static drawPricing(doc: PDFDocument, proposal: ProposalData, primaryColor: string) {
     doc.moveDown(2);
 
     const rightX = 350;
@@ -437,7 +437,7 @@ ${proposal.tenant.name}`;
   /**
    * Draw terms and conditions
    */
-  private static drawTerms(doc: PDFKit.PDFDocument, proposal: ProposalData, primaryColor: string) {
+  private static drawTerms(doc: PDFDocument, proposal: ProposalData, primaryColor: string) {
     doc.fontSize(16)
        .fillColor('#333333')
        .text('Terms & Conditions', { align: 'center' });
@@ -462,7 +462,7 @@ ${proposal.tenant.name}`;
   /**
    * Draw acceptance page
    */
-  private static drawAcceptance(doc: PDFKit.PDFDocument, proposal: ProposalData, primaryColor: string) {
+  private static drawAcceptance(doc: PDFDocument, proposal: ProposalData, primaryColor: string) {
     doc.fontSize(16)
        .fillColor('#333333')
        .text('Acceptance', { align: 'center' });
