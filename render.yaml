@@ -6,7 +6,7 @@ services:
   - type: web
     name: engage-backend
     runtime: node
-    plan: starter
+    plan: standard
     rootDir: backend
     buildCommand: |
       echo "=== ENGAGE BACKEND BUILD ===" &&
@@ -72,7 +72,7 @@ services:
   - type: web
     name: engage-frontend
     runtime: static
-    plan: starter
+    plan: free
     rootDir: frontend
     buildCommand: |
       echo "=== ENGAGE FRONTEND BUILD ===" &&
@@ -89,7 +89,7 @@ services:
 
 databases:
   - name: engage-db
-    plan: starter
+    plan: free
     databaseName: engage_production
     user: engage_user
 
