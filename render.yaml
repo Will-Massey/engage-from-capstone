@@ -63,17 +63,15 @@ services:
         sync: false
     autoDeploy: true
 
-  # Frontend Static Site
+  # Frontend Static Site - Build from root but isolate frontend
   - type: web
     name: engage-frontend
     runtime: static
     buildCommand: |
-      cd shared && npm ci && npm run build && 
-      cd ../frontend && rm -rf node_modules package-lock.json && 
-      npm init -y && 
-      npm install vite@5.0.8 @vitejs/plugin-react@4.2.1 vite-plugin-pwa@0.17.4 react react-dom react-hook-form react-hot-toast react-router-dom axios date-fns recharts zod zustand @headlessui/react @heroicons/react @hookform/resolvers @stripe/react-stripe-js @stripe/stripe-js && 
-      npm install typescript @types/react @types/react-dom @types/node tailwindcss postcss autoprefixer eslint --save-dev && 
-      npx vite build
+      rm -rf node_modules && 
+      cd shared && npm ci && npm run build && cd .. && 
+      npm ci --include=dev && 
+      cd frontend && npm run build
     staticPublishPath: ./frontend/dist
     envVars:
       - key: VITE_API_URL
