@@ -7,13 +7,8 @@ services:
     name: engage-backend
     runtime: node
     plan: standard
-    rootDir: backend
-    buildCommand: |
-      echo "=== ENGAGE BACKEND BUILD ===" &&
-      npm ci &&
-      cd ../shared && npm ci && npm run build &&
-      cd ../backend && npx prisma generate && npm run build
-    startCommand: npm start
+    buildCommand: npm ci && cd shared && npm ci && npm run build && cd backend && npx prisma generate && npm run build
+    startCommand: cd backend && npm start
     healthCheckPath: /api/health
     envVars:
       - key: NODE_ENV
@@ -72,13 +67,8 @@ services:
   - type: web
     name: engage-frontend
     runtime: static
-    rootDir: frontend
-    buildCommand: |
-      echo "=== ENGAGE FRONTEND BUILD ===" &&
-      npm ci &&
-      cd ../shared && npm ci && npm run build &&
-      cd ../frontend && npm run build
-    staticPublishPath: dist
+    buildCommand: npm ci && cd shared && npm ci && npm run build && cd frontend && npm run build
+    staticPublishPath: frontend/dist
     envVars:
       - key: VITE_API_URL
         value: https://engage-backend.onrender.com
