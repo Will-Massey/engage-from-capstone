@@ -72,7 +72,6 @@ services:
   - type: web
     name: engage-frontend
     runtime: static
-    plan: free
     rootDir: frontend
     buildCommand: |
       echo "=== ENGAGE FRONTEND BUILD ===" &&
