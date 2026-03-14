@@ -70,8 +70,7 @@ services:
     buildCommand: |
       cd shared && npm ci && npm run build && 
       cd ../frontend && rm -rf node_modules package-lock.json && 
-      npm install vite @vitejs/plugin-react vite-plugin-pwa --save-dev && 
-      npm install && 
+      npm install --workspaces=false && 
       ./node_modules/.bin/vite build
     staticPublishPath: ./frontend/dist
     envVars:
