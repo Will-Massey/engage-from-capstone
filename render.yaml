@@ -10,8 +10,8 @@ services:
     buildCommand: |
       npm ci --include=dev && 
       cd shared && npm ci && npm run build && 
-      cd ../backend && npm ci && npm install typescript && npm run db:generate && 
-      node ./node_modules/typescript/bin/tsc
+      cd ../backend && npm ci && npm run db:generate && 
+      cd .. && npx tsc --project backend/tsconfig.json
     startCommand: cd backend && npm start
     healthCheckPath: /api/health
     envVars:
