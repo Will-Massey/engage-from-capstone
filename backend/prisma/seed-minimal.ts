@@ -7,20 +7,29 @@ async function main() {
   console.log('🌱 Creating minimal demo data...');
 
   try {
-    // Create demo tenant with minimal fields
-    const tenant = await prisma.tenant.create({
-      data: {
+    // Create demo tenant with minimal fields (upsert to handle existing)
+    const tenant = await prisma.tenant.upsert({
+      where: { subdomain: 'demo' },
+      update: {},
+      create: {
         name: 'Demo Practice',
         subdomain: 'demo',
       },
     });
-    console.log('✅ Created tenant:', tenant.id);
+    console.log('✅ Created/Found tenant:', tenant.id);
 
     // Create admin user with minimal fields
     const hashedPassword = await bcrypt.hash('DemoPass123!', 12);
     
-    const user = await prisma.user.create({
-      data: {
+    const user = await prisma.user.upsert({
+      where: { 
+        email_tenantId: {
+          email: 'admin@demo.practice',
+          tenantId: tenant.id,
+        }
+      },
+      update: { passwordHash: hashedPassword },
+      create: {
         email: 'admin@demo.practice',
         passwordHash: hashedPassword,
         firstName: 'Admin',
@@ -28,7 +37,7 @@ async function main() {
         tenantId: tenant.id,
       },
     });
-    console.log('✅ Created user:', user.email);
+    console.log('✅ Created/Updated user:', user.email);
 
     console.log('\n🎉 Demo data created!');
     console.log('Login: admin@demo.practice / DemoPass123!');
