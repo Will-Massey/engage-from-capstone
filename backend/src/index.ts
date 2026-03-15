@@ -211,7 +211,13 @@ import { setCsrfCookie, csrfProtection } from './middleware/auth.js';
 app.use(setCsrfCookie);
 
 // Apply CSRF protection to API routes (except auth login/register)
-app.use('/api', csrfProtection);
+app.use('/api', (req, res, next) => {
+  // Skip CSRF for auth routes
+  if (req.path.startsWith('/auth/')) {
+    return next();
+  }
+  return csrfProtection(req, res, next);
+});
 
 // Request ID middleware
 app.use((req, res, next) => {
