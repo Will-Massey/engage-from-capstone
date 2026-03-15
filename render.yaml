@@ -67,16 +67,13 @@ services:
         sync: false
     autoDeploy: true
 
-  # Frontend Static Site - Build from root with workspaces
+  # Frontend Static Site
   - type: web
     name: engage-frontend
     runtime: static
-    buildCommand: |
-      rm -rf node_modules && npm install -g vite typescript && 
-      cd shared && npm ci && npm run build && cd .. && 
-      npm ci --include=dev && 
-      cd frontend && rm -rf node_modules && npm install && npx vite build
-    staticPublishPath: ./frontend/dist
+    rootDir: frontend
+    buildCommand: npm install && npm run build
+    staticPublishPath: dist
     envVars:
       - key: VITE_API_URL
         value: https://engage-backend.onrender.com
