@@ -13,14 +13,8 @@ export const extractTenant = async (
     const subdomain = extractSubdomain(host);
 
     if (!subdomain) {
-      res.status(400).json({
-        success: false,
-        error: {
-          code: 'NO_SUBDOMAIN',
-          message: 'Subdomain is required',
-        },
-      });
-      return;
+      // No subdomain - continue without tenant (routes can handle this)
+      return next();
     }
 
     // Find tenant by subdomain
@@ -32,14 +26,8 @@ export const extractTenant = async (
     });
 
     if (!tenant) {
-      res.status(404).json({
-        success: false,
-        error: {
-          code: 'TENANT_NOT_FOUND',
-          message: 'Tenant not found or inactive',
-        },
-      });
-      return;
+      // Tenant not found - continue without tenant (routes can handle this)
+      return next();
     }
 
     // Attach tenant to request
@@ -49,13 +37,8 @@ export const extractTenant = async (
     next();
   } catch (error) {
     console.error('Tenant extraction error:', error);
-    res.status(500).json({
-      success: false,
-      error: {
-        code: 'INTERNAL_ERROR',
-        message: 'Failed to extract tenant',
-      },
-    });
+    // Continue without tenant on error
+    next();
   }
 };
 
@@ -73,6 +56,11 @@ function extractSubdomain(hostname: string): string | null {
 
   // Handle Railway domains - use default tenant
   if (hostname.includes('up.railway.app')) {
+    return 'demo';
+  }
+
+  // Handle Render domains - use default tenant
+  if (hostname.includes('onrender.com')) {
     return 'demo';
   }
 
