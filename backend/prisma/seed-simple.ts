@@ -1,78 +1,58 @@
-import { PrismaClient, UserRole } from '@prisma/client';
+import { PrismaClient } from '@prisma/client';
 import bcrypt from 'bcryptjs';
 
 const prisma = new PrismaClient();
 
 async function main() {
-  console.log('🌱 Starting simple database seed...');
-
-  // Clean existing data (in correct order)
-  await prisma.$transaction([
-    prisma.proposalSignature.deleteMany(),
-    prisma.proposalView.deleteMany(),
-    prisma.proposalDocument.deleteMany(),
-    prisma.proposalService.deleteMany(),
-    prisma.proposal.deleteMany(),
-    prisma.pricingRule.deleteMany(),
-    prisma.serviceTemplate.deleteMany(),
-    prisma.proposalTemplate.deleteMany(),
-    prisma.client.deleteMany(),
-    prisma.refreshToken.deleteMany(),
-    prisma.user.deleteMany(),
-    prisma.tenant.deleteMany(),
-  ]);
-
-  console.log('🧹 Cleaned existing data');
+  console.log('🌱 Creating simple demo data...');
 
   // Create demo tenant
-  const demoTenant = await prisma.tenant.create({
-    data: {
-      subdomain: 'demo',
-      name: 'Demo Accounting Practice',
-      primaryColor: '#0ea5e9',
-      secondaryColor: '#38bdf8',
-      vatRegistered: true,
-      vatNumber: 'GB123456789',
-      defaultVatRate: 'STANDARD_20',
-      settings: JSON.stringify({
-        defaultCurrency: 'GBP',
-        defaultPaymentTerms: 30,
-        address: {
-          line1: '123 Finance Street',
-          city: 'London',
-          postcode: 'EC1A 1BB',
-          country: 'United Kingdom',
-        },
-      }),
+  const tenant = await prisma.tenant.upsert({
+    where: { slug: 'demo-practice' },
+    update: {},
+    create: {
+      name: 'Smith & Associates Accounting',
+      slug: 'demo-practice',
+      email: 'contact@smithaccounting.co.uk',
+      phone: '+44 20 7123 4567',
+      address: '123 Business Street, London, EC1A 1BB',
+      website: 'https://smithaccounting.co.uk',
+      subscriptionTier: 'PROFESSIONAL',
+      subscriptionStatus: 'ACTIVE',
+      emailQuota: 1000,
+      storageQuota: 5368709120, // 5GB
     },
   });
-
-  console.log('✅ Created demo tenant:', demoTenant.name);
+  console.log('✅ Created demo tenant:', tenant.name);
 
   // Create admin user
-  const passwordHash = await bcrypt.hash('DemoPass123!', 12);
+  const hashedPassword = await bcrypt.hash('DemoPass123!', 12);
   
-  const adminUser = await prisma.user.create({
-    data: {
+  const admin = await prisma.user.upsert({
+    where: { email: 'admin@demo.practice' },
+    update: {},
+    create: {
       email: 'admin@demo.practice',
-      passwordHash,
+      password: hashedPassword,
       firstName: 'Admin',
       lastName: 'User',
-      role: UserRole.ADMIN,
+      role: 'ADMIN',
+      tenantId: tenant.id,
       isActive: true,
-      tenantId: demoTenant.id,
+      emailVerified: true,
     },
   });
+  console.log('✅ Created admin user:', admin.email);
 
-  console.log('✅ Created admin user:', adminUser.email);
-  console.log('   Password: DemoPass123!');
-
-  console.log('🎉 Seed completed successfully!');
+  console.log('\n🎉 Demo data created successfully!');
+  console.log('\nLogin credentials:');
+  console.log('  Email: admin@demo.practice');
+  console.log('  Password: DemoPass123!');
 }
 
 main()
   .catch((e) => {
-    console.error('❌ Seed failed:', e);
+    console.error(e);
     process.exit(1);
   })
   .finally(async () => {
