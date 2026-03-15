@@ -33,7 +33,7 @@ async function main() {
     update: {},
     create: {
       email: 'admin@demo.practice',
-      password: hashedPassword,
+      passwordHash: hashedPassword,
       firstName: 'Admin',
       lastName: 'User',
       role: 'ADMIN',
