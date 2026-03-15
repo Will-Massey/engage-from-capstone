@@ -204,20 +204,17 @@ app.use(cookieParser());
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
+// Mount auth routes BEFORE CSRF protection
+app.use('/api/auth', extractTenant, authRoutes);
+
 // Import CSRF middleware
 import { setCsrfCookie, csrfProtection } from './middleware/auth.js';
 
 // CSRF protection - set cookie on all requests
 app.use(setCsrfCookie);
 
-// Apply CSRF protection to API routes (except auth login/register)
-app.use('/api', (req, res, next) => {
-  // Skip CSRF for auth routes
-  if (req.path.startsWith('/auth/')) {
-    return next();
-  }
-  return csrfProtection(req, res, next);
-});
+// Apply CSRF protection to all API routes
+app.use('/api', csrfProtection);
 
 // Request ID middleware
 app.use((req, res, next) => {
@@ -296,8 +293,7 @@ app.get('/api/oauth/callback/outlook', handleOAuthCallback('outlook'));
 app.get('/api/oauth/callback/microsoft365', handleOAuthCallback('microsoft365'));
 app.get('/api/oauth/callback/gmail', handleOAuthCallback('gmail'));
 
-// API routes
-app.use('/api/auth', extractTenant, authRoutes);
+// API routes (auth already mounted above)
 app.use('/api/proposals', extractTenant, proposalRoutes);
 app.use('/api/proposals', proposalShareRoutes);
 app.use('/api/clients', extractTenant, clientRoutes);
