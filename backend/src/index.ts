@@ -71,6 +71,7 @@ app.use(helmet({
 const allowedOrigins = [
   process.env.FRONTEND_URL,
   'https://engage.capstonesoftware.co.uk',
+  'https://engage-frontend-0g6u.onrender.com',
   'http://localhost:5173',
   'http://127.0.0.1:5173',
   'http://192.168.1.86:5173',
@@ -87,6 +88,9 @@ const vercelProjectPattern = /^https:\/\/frontend-[a-z0-9]+-will-masseys-project
 // Regex to match any Render.com subdomain
 const renderPattern = /^https:\/\/.*\.onrender\.com$/;
 
+// For Render deployment - temporarily allow all Render origins
+const RENDER_DEPLOYMENT = true;
+
 // In development, allow all localhost origins
 const isDevelopment = process.env.NODE_ENV !== 'production';
 
@@ -94,6 +98,11 @@ const corsOptions = {
   origin: function (origin: string | undefined, callback: (err: Error | null, allow?: boolean) => void) {
     // Allow requests with no origin (like mobile apps or curl requests)
     if (!origin) return callback(null, true);
+    
+    // For Render deployment - allow all onrender.com origins
+    if (RENDER_DEPLOYMENT && origin.includes('onrender.com')) {
+      return callback(null, true);
+    }
     
     // In development, allow all localhost origins
     if (isDevelopment && (
