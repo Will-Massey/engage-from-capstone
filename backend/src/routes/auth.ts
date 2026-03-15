@@ -35,8 +35,23 @@ router.post(
   asyncHandler(async (req, res) => {
     const { email, password, tenantId } = loginSchema.parse(req.body);
 
-    // Determine tenant ID from subdomain or body
-    const resolvedTenantId = tenantId || req.tenantId;
+    // Determine tenant ID from subdomain, body, or look up user by email
+    let resolvedTenantId = tenantId || req.tenantId;
+    
+    // If no tenant provided, try to find user by email only
+    if (!resolvedTenantId) {
+      const userByEmail = await prisma.user.findFirst({
+        where: {
+          email: email.toLowerCase(),
+          isActive: true,
+        },
+        include: { tenant: true },
+      });
+      
+      if (userByEmail) {
+        resolvedTenantId = userByEmail.tenantId;
+      }
+    }
 
     if (!resolvedTenantId) {
       throw new ApiError('NO_TENANT', 'Tenant identifier is required', 400);
