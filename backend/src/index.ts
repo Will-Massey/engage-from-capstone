@@ -142,20 +142,7 @@ app.use(cors(corsOptions));
 // Handle preflight requests explicitly
 app.options('*', cors(corsOptions));
 
-// Rate limiting
-const limiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 100, // Limit each IP to 100 requests per windowMs
-  message: {
-    success: false,
-    error: {
-      code: 'RATE_LIMIT_EXCEEDED',
-      message: 'Too many requests, please try again later',
-    },
-  },
-});
 
-app.use('/api/', limiter);
 
 // Stricter rate limiting for auth endpoints
 const authLimiter = rateLimit({
@@ -243,7 +230,7 @@ app.get('/health', async (req, res) => {
   });
 });
 
-// API health check for Railway
+// API health check for Railway (before rate limiting)
 app.get('/api/health', async (req, res) => {
   const dbHealth = await checkDatabaseHealth();
   
@@ -266,6 +253,22 @@ app.get('/api/health', async (req, res) => {
     },
   });
 });
+
+// Rate limiting - skip for health checks
+const limiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 100, // Limit each IP to 100 requests per windowMs
+  skip: (req) => req.path === '/api/health', // Skip health checks
+  message: {
+    success: false,
+    error: {
+      code: 'RATE_LIMIT_EXCEEDED',
+      message: 'Too many requests, please try again later',
+    },
+  },
+});
+
+app.use('/api/', limiter);
 
 // OAuth callback routes - specific paths for each provider
 const handleOAuthCallback = (provider: string) => (req: any, res: any) => {
