@@ -930,7 +930,7 @@ Let's build your financial foundation.
               <h2 className="text-xl font-semibold text-slate-900">Create New Client</h2>
               <button
                 onClick={() => setShowCreateClient(false)}
-                className="p-2 hover:bg-slate-100 hover:bg-slate-200 rounded-lg transition-colors"
+                className="p-2 hover:bg-slate-100 rounded-lg transition-colors"
               >
                 <XMarkIcon className="w-6 h-6 text-slate-500" />
               </button>

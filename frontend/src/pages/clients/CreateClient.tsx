@@ -215,7 +215,7 @@ const CreateClient = ({ onSuccess, onCancel }: CreateClientProps = {}) => {
         {onCancel ? (
           <button
             onClick={onCancel}
-            className="inline-flex items-center text-sm text-gray-500 hover:text-gray-700"
+            className="inline-flex items-center text-sm text-slate-500 hover:text-slate-700"
           >
             <ArrowLeftIcon className="h-4 w-4 mr-1" />
             Cancel
@@ -223,30 +223,30 @@ const CreateClient = ({ onSuccess, onCancel }: CreateClientProps = {}) => {
         ) : (
           <Link
             to="/clients"
-            className="inline-flex items-center text-sm text-gray-500 hover:text-gray-700"
+            className="inline-flex items-center text-sm text-slate-500 hover:text-slate-700"
           >
             <ArrowLeftIcon className="h-4 w-4 mr-1" />
             Back to clients
           </Link>
         )}
-        <h1 className="text-2xl font-bold text-gray-900 mt-4">Add New Client</h1>
-        <p className="text-sm text-gray-500">Enter your client's details to get started</p>
+        <h1 className="text-2xl font-bold text-slate-900 mt-4">Add New Client</h1>
+        <p className="text-sm text-slate-500">Enter your client's details to get started</p>
       </div>
 
       {/* Progress */}
       <div className="mb-8">
         <div className="flex items-center">
-          <div className={`flex-1 h-2 rounded-full ${step >= 1 ? 'bg-primary-500' : 'bg-gray-200'}`} />
+          <div className={`flex-1 h-2 rounded-full ${step >= 1 ? 'bg-blue-500' : 'bg-slate-200'}`} />
           <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium ${
-            step >= 1 ? 'bg-primary-600 text-white' : 'bg-gray-200 text-gray-600'
+            step >= 1 ? 'bg-blue-600 text-white' : 'bg-slate-200 text-slate-600'
           }`}>1</div>
-          <div className={`flex-1 h-2 rounded-full ${step >= 2 ? 'bg-primary-500' : 'bg-gray-200'}`} />
+          <div className={`flex-1 h-2 rounded-full ${step >= 2 ? 'bg-blue-500' : 'bg-slate-200'}`} />
           <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium ${
-            step >= 2 ? 'bg-primary-600 text-white' : 'bg-gray-200 text-gray-600'
+            step >= 2 ? 'bg-blue-600 text-white' : 'bg-slate-200 text-slate-600'
           }`}>2</div>
-          <div className={`flex-1 h-2 rounded-full ${step >= 3 ? 'bg-primary-500' : 'bg-gray-200'}`} />
+          <div className={`flex-1 h-2 rounded-full ${step >= 3 ? 'bg-blue-500' : 'bg-slate-200'}`} />
         </div>
-        <div className="flex justify-between mt-2 text-sm text-gray-500">
+        <div className="flex justify-between mt-2 text-sm text-slate-500">
           <span>Basic Info</span>
           <span>Details</span>
           <span>Review</span>
@@ -261,7 +261,7 @@ const CreateClient = ({ onSuccess, onCancel }: CreateClientProps = {}) => {
           <div className="space-y-6 animate-fade-in">
             {/* Company Type */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-3">
+              <label className="block text-sm font-medium text-slate-700 mb-3">
                 Company Type
               </label>
               <div className="grid grid-cols-2 gap-3">
@@ -270,8 +270,8 @@ const CreateClient = ({ onSuccess, onCancel }: CreateClientProps = {}) => {
                     key={type.id}
                     className={`relative flex flex-col items-center p-4 border-2 rounded-lg cursor-pointer transition-colors ${
                       watchCompanyType === type.id
-                        ? 'border-primary-500 bg-primary-50'
-                        : 'border-gray-200 hover:border-gray-300'
+                        ? 'border-blue-500 bg-blue-50'
+                        : 'border-slate-200 hover:border-slate-300'
                     }`}
                   >
                     <input
@@ -280,8 +280,8 @@ const CreateClient = ({ onSuccess, onCancel }: CreateClientProps = {}) => {
                       {...register('companyType')}
                       className="sr-only"
                     />
-                    <type.icon className="h-8 w-8 text-gray-400 mb-2" />
-                    <span className="text-sm font-medium text-gray-900">{type.label}</span>
+                    <type.icon className="h-8 w-8 text-slate-400 mb-2" />
+                    <span className="text-sm font-medium text-slate-900">{type.label}</span>
                   </label>
                 ))}
               </div>
@@ -323,7 +323,7 @@ const CreateClient = ({ onSuccess, onCancel }: CreateClientProps = {}) => {
                   
                   {/* Search Results Dropdown */}
                   {chShowResults && chSearchResults.length > 0 && (
-                    <div className="absolute z-10 w-full mt-1 bg-white border border-gray-200 rounded-md shadow-lg max-h-60 overflow-auto">
+                    <div className="absolute z-10 w-full mt-1 bg-white border border-slate-200 rounded-md shadow-lg max-h-60 overflow-auto">
                       {chSearchResults.map((result) => (
                         <button
                           key={result.companyNumber}
@@ -332,12 +332,12 @@ const CreateClient = ({ onSuccess, onCancel }: CreateClientProps = {}) => {
                             e.stopPropagation();
                             selectCompany(result.companyNumber);
                           }}
-                          className="w-full text-left px-4 py-3 hover:bg-gray-50 border-b border-gray-100 last:border-0"
+                          className="w-full text-left px-4 py-3 hover:bg-slate-50 border-b border-slate-100 last:border-0"
                         >
                           <div className="flex items-center justify-between">
                             <div>
-                              <p className="font-medium text-gray-900">{result.companyName}</p>
-                              <p className="text-sm text-gray-500">
+                              <p className="font-medium text-slate-900">{result.companyName}</p>
+                              <p className="text-sm text-slate-500">
                                 {result.companyNumber} • {result.companyStatus}
                               </p>
                             </div>
@@ -351,7 +351,7 @@ const CreateClient = ({ onSuccess, onCancel }: CreateClientProps = {}) => {
                   )}
                   
                   {chShowResults && chSearchResults.length === 0 && !chSearching && (
-                    <div className="absolute z-10 w-full mt-1 bg-white border border-gray-200 rounded-md shadow-lg p-4 text-center text-gray-500">
+                    <div className="absolute z-10 w-full mt-1 bg-white border border-slate-200 rounded-md shadow-lg p-4 text-center text-slate-500">
                       No companies found
                     </div>
                   )}
@@ -361,7 +361,7 @@ const CreateClient = ({ onSuccess, onCancel }: CreateClientProps = {}) => {
 
             {/* Name */}
             <div>
-              <label className="block text-sm font-medium text-gray-700">
+              <label className="block text-sm font-medium text-slate-700">
                 Client Name
               </label>
               <input
@@ -376,7 +376,7 @@ const CreateClient = ({ onSuccess, onCancel }: CreateClientProps = {}) => {
 
             {/* Email */}
             <div>
-              <label className="block text-sm font-medium text-gray-700">
+              <label className="block text-sm font-medium text-slate-700">
                 Email Address
               </label>
               <input
@@ -392,7 +392,7 @@ const CreateClient = ({ onSuccess, onCancel }: CreateClientProps = {}) => {
 
             {/* Phone */}
             <div>
-              <label className="block text-sm font-medium text-gray-700">
+              <label className="block text-sm font-medium text-slate-700">
                 Phone Number (optional)
               </label>
               <input
@@ -420,7 +420,7 @@ const CreateClient = ({ onSuccess, onCancel }: CreateClientProps = {}) => {
             {/* Company Number */}
             {(watchCompanyType === 'LIMITED_COMPANY' || watchCompanyType === 'LLP') && (
               <div>
-                <label className="block text-sm font-medium text-gray-700">
+                <label className="block text-sm font-medium text-slate-700">
                   Company Number
                 </label>
                 <input
@@ -433,7 +433,7 @@ const CreateClient = ({ onSuccess, onCancel }: CreateClientProps = {}) => {
 
             {/* UTR */}
             <div>
-              <label className="block text-sm font-medium text-gray-700">
+              <label className="block text-sm font-medium text-slate-700">
                 Unique Taxpayer Reference (UTR)
               </label>
               <input
@@ -449,11 +449,11 @@ const CreateClient = ({ onSuccess, onCancel }: CreateClientProps = {}) => {
 
             {/* Turnover */}
             <div>
-              <label className="block text-sm font-medium text-gray-700">
+              <label className="block text-sm font-medium text-slate-700">
                 Estimated Annual Turnover/Income
               </label>
               <div className="mt-1 relative">
-                <span className="absolute inset-y-0 left-0 pl-3 flex items-center text-gray-500">£</span>
+                <span className="absolute inset-y-0 left-0 pl-3 flex items-center text-slate-500">£</span>
                 <input
                   {...register('mtditsaIncome', { valueAsNumber: true })}
                   type="number"
@@ -475,7 +475,7 @@ const CreateClient = ({ onSuccess, onCancel }: CreateClientProps = {}) => {
 
             {/* Employee Count */}
             <div>
-              <label className="block text-sm font-medium text-gray-700">
+              <label className="block text-sm font-medium text-slate-700">
                 Number of Employees
               </label>
               <input
@@ -488,7 +488,7 @@ const CreateClient = ({ onSuccess, onCancel }: CreateClientProps = {}) => {
 
             {/* Address */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <label className="block text-sm font-medium text-slate-700 mb-2">
                 Address
               </label>
               <div className="space-y-3">

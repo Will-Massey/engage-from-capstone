@@ -158,7 +158,7 @@ const ProposalDetail = () => {
   if (isLoading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600"></div>
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
       </div>
     );
   }
@@ -167,7 +167,7 @@ const ProposalDetail = () => {
     return (
       <div className="text-center py-16">
         <h2 className="text-xl font-semibold text-slate-900">Proposal not found</h2>
-        <Link to="/proposals" className="mt-4 text-primary-600 hover:text-primary-500">
+        <Link to="/proposals" className="mt-4 text-blue-600 hover:text-blue-700">
           Back to proposals
         </Link>
       </div>

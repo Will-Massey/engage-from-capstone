@@ -26,12 +26,12 @@ const _iconRefs = [DocumentTextIcon, CheckCircleIcon, ClockIcon];
 // Icons loaded successfully
 
 const statusColors: Record<string, string> = {
-  DRAFT: 'badge-gray',
-  SENT: 'badge-blue',
-  VIEWED: 'badge-purple',
-  ACCEPTED: 'badge-green',
-  DECLINED: 'badge-red',
-  EXPIRED: 'badge-orange',
+  DRAFT: 'bg-slate-100 text-slate-700',
+  SENT: 'bg-blue-100 text-blue-700',
+  VIEWED: 'bg-purple-100 text-purple-700',
+  ACCEPTED: 'bg-green-100 text-green-700',
+  DECLINED: 'bg-red-100 text-red-700',
+  EXPIRED: 'bg-orange-100 text-orange-700',
 };
 
 const statusLabels: Record<string, string> = {
@@ -160,8 +160,7 @@ const Proposals = () => {
         </div>
         <Link
           to="/proposals/new"
-          className="btn-primary inline-flex"
-          style={{ backgroundColor: tenant?.primaryColor || '#0ea5e9' }}
+          className="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium transition-colors"
         >
           <PlusIcon className="h-5 w-5 mr-2" />
           Create Proposal
@@ -226,7 +225,7 @@ const Proposals = () => {
             </p>
             <Link
               to="/proposals/new"
-              className="mt-6 btn-primary inline-flex"
+              className="mt-6 inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium transition-colors"
             >
               <PlusIcon className="h-5 w-5 mr-2" />
               Create Proposal
@@ -288,7 +287,7 @@ const Proposals = () => {
                       </td>
                       <td className="px-3 py-4 whitespace-nowrap">
                         <div className="flex items-center space-x-1">
-                          <span className={`badge ${statusColors[displayStatus] || 'badge-gray'}`}>
+                          <span className={`inline-flex px-2.5 py-0.5 rounded-full text-xs font-medium ${statusColors[displayStatus] || 'bg-slate-100 text-slate-700'}`}>
                             {statusLabels[displayStatus] || displayStatus}
                           </span>
                           {proposal.signatures?.length > 0 && (
