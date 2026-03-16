@@ -25,7 +25,8 @@ import { asyncHandler, ApiError } from './middleware/errorHandler.js';
 import { EmailService } from './services/emailService.js';
 
 // Import middleware
-import { extractTenant } from './middleware/tenant.js';
+// Use simple tenant extraction for Render deployment
+import { extractTenant } from './middleware/tenant-simple.js';
 import { errorHandler, notFoundHandler } from './middleware/errorHandler.js';
 import logger from './config/logger.js';
 import { checkDatabaseHealth } from './config/database.js';
