@@ -2,7 +2,7 @@ import { Router } from 'express';
 import bcrypt from 'bcryptjs';
 import { z } from 'zod';
 import { prisma } from '../config/database.js';
-import { authenticate, authorize, generateToken, generateRefreshToken } from '../middleware/auth.js';
+import { authenticate, authorize, generateToken, generateRefreshToken, generateCsrfToken } from '../middleware/auth.js';
 import { asyncHandler, ApiError } from '../middleware/errorHandler.js';
 
 const router = Router();
@@ -111,6 +111,15 @@ router.post(
       secure: isProduction,
       sameSite: 'strict',
       maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
+    });
+    
+    // Set CSRF token cookie (required for state-changing requests)
+    const csrfToken = generateCsrfToken();
+    res.cookie('csrfToken', csrfToken, {
+      httpOnly: false, // Must be accessible by JavaScript
+      secure: isProduction,
+      sameSite: 'strict',
+      maxAge: 24 * 60 * 60 * 1000, // 24 hours
     });
 
     res.json({
