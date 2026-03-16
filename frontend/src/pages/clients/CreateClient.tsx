@@ -58,7 +58,12 @@ const companyTypes = [
   { id: 'NON_PROFIT', label: 'Non-Profit Organisation', icon: HomeIcon },
 ];
 
-const CreateClient = () => {
+interface CreateClientProps {
+  onSuccess?: (client: any) => void;
+  onCancel?: () => void;
+}
+
+const CreateClient = ({ onSuccess, onCancel }: CreateClientProps = {}) => {
   const navigate = useNavigate();
   const { tenant } = useAuthStore();
   const [isLoading, setIsLoading] = useState(false);
@@ -183,7 +188,11 @@ const CreateClient = () => {
       toast.dismiss();
       if (response.success) {
         toast.success('Client created successfully');
-        navigate(`/clients/${response.data.id}`);
+        if (onSuccess) {
+          onSuccess(response.data);
+        } else {
+          navigate(`/clients/${response.data.id}`);
+        }
       }
     } catch (error: any) {
       toast.dismiss();
@@ -203,13 +212,23 @@ const CreateClient = () => {
     <div className="max-w-3xl mx-auto animate-fade-in">
       {/* Header */}
       <div className="mb-6">
-        <Link
-          to="/clients"
-          className="inline-flex items-center text-sm text-gray-500 hover:text-gray-700"
-        >
-          <ArrowLeftIcon className="h-4 w-4 mr-1" />
-          Back to clients
-        </Link>
+        {onCancel ? (
+          <button
+            onClick={onCancel}
+            className="inline-flex items-center text-sm text-gray-500 hover:text-gray-700"
+          >
+            <ArrowLeftIcon className="h-4 w-4 mr-1" />
+            Cancel
+          </button>
+        ) : (
+          <Link
+            to="/clients"
+            className="inline-flex items-center text-sm text-gray-500 hover:text-gray-700"
+          >
+            <ArrowLeftIcon className="h-4 w-4 mr-1" />
+            Back to clients
+          </Link>
+        )}
         <h1 className="text-2xl font-bold text-gray-900 mt-4">Add New Client</h1>
         <p className="text-sm text-gray-500">Enter your client's details to get started</p>
       </div>

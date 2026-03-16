@@ -3,6 +3,7 @@ import { useNavigate, Link } from 'react-router-dom';
 import { apiClient } from '../../utils/api';
 import { useAuthStore } from '../../stores/authStore';
 import toast from 'react-hot-toast';
+import CreateClient from '../clients/CreateClient';
 import {
   ArrowRightIcon,
   ArrowLeftIcon,
@@ -921,6 +922,33 @@ Let's build your financial foundation.
         )}
       </div>
       
+      {/* Create Client Modal */}
+      {showCreateClient && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white dark:bg-slate-800 rounded-2xl w-full max-w-4xl max-h-[90vh] overflow-auto">
+            <div className="p-6 border-b border-slate-200 dark:border-slate-700 flex justify-between items-center">
+              <h2 className="text-xl font-semibold text-slate-900 dark:text-white">Create New Client</h2>
+              <button
+                onClick={() => setShowCreateClient(false)}
+                className="p-2 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg transition-colors"
+              >
+                <XMarkIcon className="w-6 h-6 text-slate-500" />
+              </button>
+            </div>
+            <div className="p-6">
+              <CreateClient 
+                onSuccess={(client) => {
+                  setClients([...clients, client]);
+                  setSelectedClient(client);
+                  setShowCreateClient(false);
+                }}
+                onCancel={() => setShowCreateClient(false)}
+              />
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Navigation Buttons */}
       <div className="mt-6 flex justify-between">
         <button
