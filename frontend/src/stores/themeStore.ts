@@ -1,33 +1,26 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 
-type Theme = 'light' | 'dark' | 'system';
+type Theme = 'light';
 
 interface ThemeState {
   theme: Theme;
-  resolvedTheme: 'light' | 'dark';
+  resolvedTheme: 'light';
   setTheme: (theme: Theme) => void;
-  toggleTheme: () => void;
 }
 
 // Unified storage key for all Capstone products
 const UNIFIED_KEY = 'capstone-theme';
 const THEME_CHANGE_EVENT = 'capstone-theme-change';
 
-// Helper to resolve system preference
-const getSystemTheme = (): 'light' | 'dark' => {
-  if (typeof window === 'undefined') return 'light';
-  return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+// Always use light theme
+const getSystemTheme = (): 'light' => {
+  return 'light';
 };
 
-// Get theme from unified storage
+// Get theme from unified storage - always light
 const getUnifiedTheme = (): Theme => {
-  if (typeof window === 'undefined') return 'system';
-  const stored = localStorage.getItem(UNIFIED_KEY);
-  if (stored && ['light', 'dark', 'system'].includes(stored)) {
-    return stored as Theme;
-  }
-  return 'system';
+  return 'light';
 };
 
 // Set theme in unified storage
@@ -44,107 +37,51 @@ const setUnifiedTheme = (theme: Theme) => {
   window.dispatchEvent(new CustomEvent(THEME_CHANGE_EVENT, { detail: { theme } }));
 };
 
-// Apply theme to document
-const applyTheme = (theme: 'light' | 'dark') => {
+// Apply theme to document - always light
+const applyTheme = (theme: 'light') => {
   if (typeof document === 'undefined') return;
   
   const root = document.documentElement;
-  if (theme === 'dark') {
-    root.classList.add('dark');
-    root.setAttribute('data-theme', 'dark');
-  } else {
-    root.classList.remove('dark');
-    root.setAttribute('data-theme', 'light');
-  }
+  root.classList.remove('dark');
+  root.setAttribute('data-theme', 'light');
   
   // Update meta theme-color
   const metaThemeColor = document.querySelector('meta[name="theme-color"]');
   if (metaThemeColor) {
-    metaThemeColor.setAttribute('content', theme === 'dark' ? '#0f172a' : '#ffffff');
+    metaThemeColor.setAttribute('content', '#ffffff');
   }
 };
 
 export const useThemeStore = create<ThemeState>()(
   persist(
-    (set, get) => ({
-      theme: 'system',
-      resolvedTheme: getSystemTheme(),
+    (set) => ({
+      theme: 'light' as Theme,
+      resolvedTheme: 'light',
       
       setTheme: (theme) => {
-        const resolved = theme === 'system' ? getSystemTheme() : theme;
-        set({ theme, resolvedTheme: resolved });
-        applyTheme(resolved);
-        setUnifiedTheme(theme);
-      },
-      
-      toggleTheme: () => {
-        const current = get().resolvedTheme;
-        const newTheme = current === 'light' ? 'dark' : 'light';
-        set({ theme: newTheme, resolvedTheme: newTheme });
-        applyTheme(newTheme);
-        setUnifiedTheme(newTheme);
+        set({ theme: 'light', resolvedTheme: 'light' });
+        applyTheme('light');
+        setUnifiedTheme('light');
       },
     }),
     {
-      name: 'theme-storage', // Keep for backward compatibility
+      name: 'theme-storage',
       onRehydrateStorage: () => (state) => {
-        // Apply theme when store is rehydrated, but use unified storage as source of truth
+        // Always force light theme
         if (state) {
-          const unifiedTheme = getUnifiedTheme();
-          const resolved = unifiedTheme === 'system' ? getSystemTheme() : unifiedTheme;
-          
-          state.theme = unifiedTheme;
-          state.resolvedTheme = resolved;
-          applyTheme(resolved);
+          state.theme = 'light';
+          state.resolvedTheme = 'light';
+          applyTheme('light');
         }
       },
     }
   )
 );
 
-// Initialize theme on app load
+// Initialize theme on app load - always light
 export const initializeTheme = () => {
-  const store = useThemeStore.getState();
-  
-  // Always use unified storage as source of truth
-  const unifiedTheme = getUnifiedTheme();
-  const resolved = unifiedTheme === 'system' ? getSystemTheme() : unifiedTheme;
-  
-  store.setTheme(unifiedTheme);
-  
-  // Listen for storage changes from other tabs/pages (e.g., AccountFlow)
-  if (typeof window !== 'undefined') {
-    window.addEventListener('storage', (e) => {
-      if (e.key === UNIFIED_KEY) {
-        const newTheme = (e.newValue as Theme) || 'system';
-        const newResolved = newTheme === 'system' ? getSystemTheme() : newTheme;
-        
-        // Update store without triggering another storage event
-        useThemeStore.setState({ theme: newTheme, resolvedTheme: newResolved });
-        applyTheme(newResolved);
-      }
-    });
-    
-    // Listen for custom events from same window
-    window.addEventListener(THEME_CHANGE_EVENT, (e: any) => {
-      const newTheme = e.detail?.theme as Theme;
-      if (newTheme) {
-        const newResolved = newTheme === 'system' ? getSystemTheme() : newTheme;
-        useThemeStore.setState({ theme: newTheme, resolvedTheme: newResolved });
-        applyTheme(newResolved);
-      }
-    });
-    
-    // Listen for system theme changes
-    const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
-    mediaQuery.addEventListener('change', (e) => {
-      if (store.theme === 'system') {
-        const newTheme = e.matches ? 'dark' : 'light';
-        useThemeStore.setState({ resolvedTheme: newTheme });
-        applyTheme(newTheme);
-      }
-    });
-  }
+  useThemeStore.setState({ theme: 'light', resolvedTheme: 'light' });
+  applyTheme('light');
 };
 
 export default useThemeStore;
