@@ -40,7 +40,7 @@ router.get(
 router.post(
   '/create-subscription',
   authenticate,
-  authorize('PARTNER'),
+  authorize('ADMIN', 'PARTNER'),
   asyncHandler(async (req, res) => {
     checkStripe();
     const schema = z.object({
@@ -185,7 +185,7 @@ router.get(
 router.post(
   '/cancel-subscription',
   authenticate,
-  authorize('PARTNER'),
+  authorize('ADMIN', 'PARTNER'),
   asyncHandler(async (req, res) => {
     checkStripe();
     const tenantId = req.tenantId!;
@@ -229,7 +229,7 @@ router.post(
 router.post(
   '/reactivate-subscription',
   authenticate,
-  authorize('PARTNER'),
+  authorize('ADMIN', 'PARTNER'),
   asyncHandler(async (req, res) => {
     checkStripe();
     const tenantId = req.tenantId!;
@@ -272,7 +272,7 @@ router.post(
 router.post(
   '/create-setup-intent',
   authenticate,
-  authorize('PARTNER'),
+  authorize('ADMIN', 'PARTNER'),
   asyncHandler(async (req, res) => {
     checkStripe();
     const tenantId = req.tenantId!;

@@ -181,7 +181,7 @@ router.get(
 router.post(
   '/',
   authenticate,
-  authorize('PARTNER', 'MANAGER', 'SENIOR'),
+  authorize('ADMIN', 'PARTNER', 'MANAGER', 'SENIOR'),
   asyncHandler(async (req, res) => {
     const data = createClientSchema.parse(req.body);
 
@@ -257,7 +257,7 @@ router.post(
 router.put(
   '/:id',
   authenticate,
-  authorize('PARTNER', 'MANAGER', 'SENIOR'),
+  authorize('ADMIN', 'PARTNER', 'MANAGER', 'SENIOR'),
   asyncHandler(async (req, res) => {
     const { id } = req.params;
     const data = updateClientSchema.parse(req.body);
@@ -459,7 +459,7 @@ router.get(
 router.delete(
   '/:id',
   authenticate,
-  authorize('PARTNER', 'MANAGER'),
+  authorize('ADMIN', 'PARTNER', 'MANAGER'),
   asyncHandler(async (req, res) => {
     const { id } = req.params;
 

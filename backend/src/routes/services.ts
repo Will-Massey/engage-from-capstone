@@ -189,7 +189,7 @@ router.get(
 router.post(
   '/',
   authenticate,
-  authorize('PARTNER', 'MANAGER'),
+  authorize('ADMIN', 'PARTNER', 'MANAGER'),
   asyncHandler(async (req, res) => {
     const data = createServiceSchema.parse(req.body);
 
@@ -230,7 +230,7 @@ router.post(
 router.put(
   '/:id',
   authenticate,
-  authorize('PARTNER', 'MANAGER'),
+  authorize('ADMIN', 'PARTNER', 'MANAGER'),
   asyncHandler(async (req, res) => {
     const { id } = req.params;
     const data = updateServiceSchema.parse(req.body);
@@ -283,7 +283,7 @@ router.put(
 router.post(
   '/:id/duplicate',
   authenticate,
-  authorize('PARTNER', 'MANAGER', 'SENIOR'),
+  authorize('ADMIN', 'PARTNER', 'MANAGER', 'SENIOR'),
   asyncHandler(async (req, res) => {
     const { id } = req.params;
 
@@ -344,7 +344,7 @@ router.post(
 router.post(
   '/:id/pricing-rules',
   authenticate,
-  authorize('PARTNER', 'MANAGER'),
+  authorize('ADMIN', 'PARTNER', 'MANAGER'),
   asyncHandler(async (req, res) => {
     const { id } = req.params;
     const data = pricingRuleSchema.parse(req.body);
@@ -418,7 +418,7 @@ router.post(
 router.delete(
   '/:id',
   authenticate,
-  authorize('PARTNER', 'MANAGER'),
+  authorize('ADMIN', 'PARTNER', 'MANAGER'),
   asyncHandler(async (req, res) => {
     const { id } = req.params;
 

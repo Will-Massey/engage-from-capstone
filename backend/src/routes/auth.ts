@@ -484,7 +484,7 @@ router.put(
 router.get(
   '/users',
   authenticate,
-  authorize('PARTNER', 'MANAGER'),
+  authorize('ADMIN', 'PARTNER', 'MANAGER'),
   asyncHandler(async (req, res) => {
     const users = await prisma.user.findMany({
       where: {
@@ -518,7 +518,7 @@ router.get(
 router.post(
   '/users',
   authenticate,
-  authorize('PARTNER', 'MANAGER'),
+  authorize('ADMIN', 'PARTNER', 'MANAGER'),
   asyncHandler(async (req, res) => {
     const createUserSchema = z.object({
       email: z.string().email('Invalid email'),
@@ -579,7 +579,7 @@ router.post(
 router.put(
   '/users/:id',
   authenticate,
-  authorize('PARTNER', 'MANAGER'),
+  authorize('ADMIN', 'PARTNER', 'MANAGER'),
   asyncHandler(async (req, res) => {
     const { id } = req.params;
 
@@ -650,7 +650,7 @@ router.put(
 router.delete(
   '/users/:id',
   authenticate,
-  authorize('PARTNER', 'MANAGER'),
+  authorize('ADMIN', 'PARTNER', 'MANAGER'),
   asyncHandler(async (req, res) => {
     const { id } = req.params;
 

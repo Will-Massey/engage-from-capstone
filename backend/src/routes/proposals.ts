@@ -305,7 +305,7 @@ router.post(
 router.put(
   '/:id',
   authenticate,
-  authorize('PARTNER', 'MANAGER', 'SENIOR'),
+  authorize('ADMIN', 'PARTNER', 'MANAGER', 'SENIOR'),
   asyncHandler(async (req, res) => {
     const { id } = req.params;
     const data = updateProposalSchema.parse(req.body);
@@ -438,7 +438,7 @@ router.put(
 router.post(
   '/:id/send',
   authenticate,
-  authorize('PARTNER', 'MANAGER', 'SENIOR'),
+  authorize('ADMIN', 'PARTNER', 'MANAGER', 'SENIOR'),
   asyncHandler(async (req, res) => {
     const { id } = req.params;
 
@@ -674,7 +674,7 @@ router.get(
 router.delete(
   '/:id',
   authenticate,
-  authorize('PARTNER', 'MANAGER'),
+  authorize('ADMIN', 'PARTNER', 'MANAGER'),
   asyncHandler(async (req, res) => {
     const { id } = req.params;
 
