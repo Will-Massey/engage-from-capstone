@@ -206,7 +206,7 @@ const CreateClient = ({ onSuccess, onCancel }: CreateClientProps = {}) => {
   // MTD ITSA only applies to Sole Traders and Partnerships
   const mtditsaApplicableTypes = ['SOLE_TRADER', 'PARTNERSHIP'];
   const isMtditsaApplicable = mtditsaApplicableTypes.includes(watchCompanyType);
-  const needsMtditsaWarning = isMtditsaApplicable && watchMtditsaIncome && watchMtditsaIncome >= 30000;
+  const needsMtditsaWarning = isMtditsaApplicable && Number.isFinite(watchMtditsaIncome) && watchMtditsaIncome >= 30000;
 
   return (
     <div className="max-w-3xl mx-auto animate-fade-in">
@@ -455,8 +455,9 @@ const CreateClient = ({ onSuccess, onCancel }: CreateClientProps = {}) => {
               <div className="mt-1 relative">
                 <span className="absolute inset-y-0 left-0 pl-3 flex items-center text-slate-500">£</span>
                 <input
-                  {...register('mtditsaIncome', { valueAsNumber: true })}
-                  type="number"
+                  {...register('mtditsaIncome')}
+                  type="text"
+                  inputMode="numeric"
                   className="input-field pl-7"
                   placeholder="50000"
                 />
@@ -466,7 +467,7 @@ const CreateClient = ({ onSuccess, onCancel }: CreateClientProps = {}) => {
                   ⚠️ This sole trader may need to comply with MTD ITSA from April 2026
                 </p>
               )}
-              {!isMtditsaApplicable && watchMtditsaIncome && watchMtditsaIncome > 0 && (
+              {!isMtditsaApplicable && Number.isFinite(watchMtditsaIncome) && watchMtditsaIncome > 0 && (
                 <p className="mt-2 text-sm text-blue-600 bg-blue-50 p-2 rounded">
                   ℹ️ MTD ITSA does not apply to {companyTypes.find(t => t.id === watchCompanyType)?.label || 'this entity type'}. It only applies to Sole Traders and Partnerships.
                 </p>
@@ -479,8 +480,9 @@ const CreateClient = ({ onSuccess, onCancel }: CreateClientProps = {}) => {
                 Number of Employees
               </label>
               <input
-                {...register('employeeCount', { valueAsNumber: true })}
-                type="number"
+                {...register('employeeCount')}
+                type="text"
+                inputMode="numeric"
                 className="mt-1 input-field"
                 placeholder="0"
               />
