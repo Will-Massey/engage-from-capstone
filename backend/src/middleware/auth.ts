@@ -261,11 +261,12 @@ export const csrfProtection = (req: Request, res: Response, next: NextFunction):
   }
 
   // Skip CSRF for public routes (webhooks, OAuth callbacks, public proposals)
+  // Note: paths are relative to where CSRF middleware is mounted (/api)
   const publicPaths = [
-    '/api/payments/webhook',
-    '/api/oauth/callback',
-    '/api/proposals/view', // Public proposal viewing and signing
-    '/api/clients', // TEMPORARY: Skip CSRF for client creation during testing
+    '/payments/webhook',
+    '/oauth/callback',
+    '/proposals/view', // Public proposal viewing and signing
+    '/clients', // TEMPORARY: Skip CSRF for client creation during testing
   ];
   if (publicPaths.some(path => req.path.startsWith(path))) {
     next();
@@ -274,10 +275,11 @@ export const csrfProtection = (req: Request, res: Response, next: NextFunction):
   
   // Debug logging
   console.log('[CSRF Debug]', {
+    originalUrl: req.originalUrl,
     path: req.path,
     method: req.method,
-    csrfHeader: req.headers['x-csrf-token'],
-    csrfCookie: req.cookies?.csrfToken,
+    csrfHeader: req.headers['x-csrf-token']?.slice(0, 10) + '...',
+    hasCsrfCookie: !!req.cookies?.csrfToken,
     allCookies: Object.keys(req.cookies || {}),
   });
 
