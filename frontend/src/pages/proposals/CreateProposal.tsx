@@ -409,12 +409,12 @@ Let's build your financial foundation.
     <div className="max-w-6xl mx-auto animate-fade-in">
       {/* Header */}
       <div className="mb-8">
-        <Link to="/proposals" className="inline-flex items-center text-sm text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-300 mb-4">
+        <Link to="/proposals" className="inline-flex items-center text-sm text-slate-500 hover:text-slate-700 text-slate-500 hover:text-slate-700 mb-4">
           <ArrowLeftIcon className="h-4 w-4 mr-1" />
           Back to proposals
         </Link>
-        <h1 className="text-2xl font-bold text-slate-900 dark:text-white">Create Proposal</h1>
-        <p className="text-slate-500 dark:text-slate-400">Build a professional proposal in 3 simple steps</p>
+        <h1 className="text-2xl font-bold text-slate-900">Create Proposal</h1>
+        <p className="text-slate-500">Build a professional proposal in 3 simple steps</p>
       </div>
       
       {/* Progress Steps */}
@@ -428,16 +428,16 @@ Let's build your financial foundation.
                     ? 'bg-green-500 text-white' 
                     : currentStep === step.id
                     ? 'bg-blue-600 text-white'
-                    : 'bg-slate-200 text-slate-500 dark:bg-slate-700 dark:text-slate-400'
+                    : 'bg-slate-200 text-slate-500 bg-slate-100 text-slate-500'
                   }`}>
                   {currentStep > step.id ? <CheckIcon className="w-5 h-5" /> : step.id}
                 </div>
-                <span className={`mt-2 text-xs font-medium ${currentStep === step.id ? 'text-blue-600 dark:text-blue-400' : 'text-slate-500 dark:text-slate-400'}`}>
+                <span className={`mt-2 text-xs font-medium ${currentStep === step.id ? 'text-blue-600' : 'text-slate-500'}`}>
                   {step.name}
                 </span>
               </div>
               {index < STEPS.length - 1 && (
-                <div className={`flex-1 h-0.5 mx-4 transition-colors ${currentStep > step.id ? 'bg-green-500' : 'bg-slate-200 dark:bg-slate-700'}`} />
+                <div className={`flex-1 h-0.5 mx-4 transition-colors ${currentStep > step.id ? 'bg-green-500' : 'bg-slate-200 bg-slate-100'}`} />
               )}
             </div>
           ))}
@@ -445,11 +445,11 @@ Let's build your financial foundation.
       </div>
       
       {/* Step Content */}
-      <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-soft border border-slate-200 dark:border-slate-700 overflow-hidden">
+      <div className="bg-white rounded-2xl shadow-soft border border-slate-200 overflow-hidden">
         {/* STEP 1: Select Client */}
         {currentStep === 1 && (
           <div className="p-8">
-            <h2 className="text-xl font-semibold text-slate-900 dark:text-white mb-6">
+            <h2 className="text-xl font-semibold text-slate-900 mb-6">
               Who is this proposal for?
             </h2>
             
@@ -462,12 +462,12 @@ Let's build your financial foundation.
                   placeholder="Search clients..."
                   value={clientSearch}
                   onChange={(e) => setClientSearch(e.target.value)}
-                  className="w-full pl-10 pr-4 py-3 rounded-xl border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  className="w-full pl-10 pr-4 py-3 rounded-xl border border-slate-200 bg-white text-slate-900 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 />
               </div>
               <button
                 onClick={() => setShowCreateClient(true)}
-                className="px-4 py-3 bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 rounded-xl font-medium hover:bg-blue-100 dark:hover:bg-blue-900/50 transition-colors flex items-center gap-2"
+                className="px-4 py-3 bg-blue-100 bg-blue-50 text-blue-600 rounded-xl font-medium hover:bg-blue-100 hover:bg-blue-50 transition-colors flex items-center gap-2"
               >
                 <PlusIcon className="w-5 h-5" />
                 New Client
@@ -477,7 +477,7 @@ Let's build your financial foundation.
             {/* Client List */}
             <div className="space-y-3">
               {filteredClients.length === 0 ? (
-                <div className="text-center py-12 text-slate-500 dark:text-slate-400">
+                <div className="text-center py-12 text-slate-500">
                   <BuildingOfficeIcon className="w-12 h-12 mx-auto mb-3 opacity-50" />
                   <p>No clients found. Create your first client to continue.</p>
                 </div>
@@ -488,18 +488,18 @@ Let's build your financial foundation.
                     onClick={() => setSelectedClient(client)}
                     className={`w-full p-4 rounded-xl border-2 transition-all text-left flex items-center gap-4
                       ${selectedClient?.id === client.id
-                        ? 'border-blue-500 bg-blue-100 dark:bg-blue-900/20'
-                        : 'border-slate-200 dark:border-slate-200 hover:border-slate-300 dark:hover:border-slate-600 hover:bg-white dark:hover:bg-slate-700/50'
+                        ? 'border-blue-500 bg-blue-100 bg-blue-50'
+                        : 'border-slate-200  hover:border-slate-300 hover:border-slate-300 hover:bg-white hover:bg-slate-200/50'
                       }`}
                   >
                     <div className="w-12 h-12 rounded-full bg-gradient-to-br from-blue-500 to-blue-700 flex items-center justify-center text-white font-semibold">
                       {client.name.charAt(0)}
                     </div>
                     <div className="flex-1">
-                      <h3 className="font-semibold text-slate-900 dark:text-white">{client.name}</h3>
-                      <p className="text-sm text-slate-500 dark:text-slate-400">{client.contactEmail}</p>
+                      <h3 className="font-semibold text-slate-900">{client.name}</h3>
+                      <p className="text-sm text-slate-500">{client.contactEmail}</p>
                     </div>
-                    <span className="text-xs px-2 py-1 bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 rounded-full">
+                    <span className="text-xs px-2 py-1 bg-slate-100 text-slate-600 rounded-full">
                       {client.companyType.replace(/_/g, ' ')}
                     </span>
                     {selectedClient?.id === client.id && (
@@ -512,10 +512,10 @@ Let's build your financial foundation.
             
             {/* Selected Client Preview */}
             {selectedClient && (
-              <div className="mt-6 p-4 bg-green-50 dark:bg-green-900/20 rounded-xl border border-green-200 dark:border-green-800">
+              <div className="mt-6 p-4 bg-green-50 bg-green-50 rounded-xl border border-green-200 border-green-200">
                 <div className="flex items-center gap-3">
-                  <CheckIcon className="w-5 h-5 text-green-600 dark:text-green-400" />
-                  <span className="text-green-800 dark:text-green-200">
+                  <CheckIcon className="w-5 h-5 text-green-600 text-green-600" />
+                  <span className="text-green-800 text-green-800">
                     Selected: <strong>{selectedClient.name}</strong>
                   </span>
                 </div>
@@ -528,26 +528,26 @@ Let's build your financial foundation.
         {currentStep === 2 && (
           <div className="flex h-[600px]">
             {/* Left: Service Catalog */}
-            <div className="w-1/2 border-r border-slate-200 dark:border-slate-200 flex flex-col">
-              <div className="p-4 border-b border-slate-200 dark:border-slate-200">
-                <h3 className="font-semibold text-slate-900 dark:text-white mb-3">Service Catalog</h3>
+            <div className="w-1/2 border-r border-slate-200  flex flex-col">
+              <div className="p-4 border-b border-slate-200 ">
+                <h3 className="font-semibold text-slate-900 mb-3">Service Catalog</h3>
                 <input
                   type="text"
                   placeholder="Search services..."
                   value={serviceSearch}
                   onChange={(e) => setServiceSearch(e.target.value)}
-                  className="w-full px-4 py-2 rounded-lg border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-900 dark:text-white"
+                  className="w-full px-4 py-2 rounded-lg border border-slate-200 bg-white text-slate-900"
                 />
               </div>
               
               {/* Category Tabs */}
-              <div className="flex gap-2 p-4 overflow-x-auto border-b border-slate-200 dark:border-slate-200">
+              <div className="flex gap-2 p-4 overflow-x-auto border-b border-slate-200 ">
                 <button
                   onClick={() => setSelectedCategory('ALL')}
                   className={`px-3 py-1.5 rounded-full text-sm font-medium whitespace-nowrap transition-colors
                     ${selectedCategory === 'ALL'
-                      ? 'bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300'
-                      : 'bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-600'
+                      ? 'bg-blue-100 text-blue-700'
+                      : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
                     }`}
                 >
                   All Services
@@ -559,7 +559,7 @@ Let's build your financial foundation.
                     className={`px-3 py-1.5 rounded-full text-sm font-medium whitespace-nowrap transition-colors flex items-center gap-1
                       ${selectedCategory === cat.id
                         ? `${cat.color} ring-2 ring-offset-1 ring-current`
-                        : 'bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-600'
+                        : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
                       }`}
                   >
                     <span>{cat.icon}</span>
@@ -574,26 +574,26 @@ Let's build your financial foundation.
                   <button
                     key={service.id}
                     onClick={() => addService(service)}
-                    className="w-full p-3 rounded-lg border border-slate-200 dark:border-slate-200 hover:border-blue-300 dark:hover:border-blue-700 hover:bg-blue-100 dark:hover:bg-blue-900/20 transition-all text-left group"
+                    className="w-full p-3 rounded-lg border border-slate-200  hover:border-blue-300 hover:border-blue-300 hover:bg-blue-100 hover:bg-blue-50 transition-all text-left group"
                   >
                     <div className="flex justify-between items-start">
                       <div>
-                        <h4 className="font-medium text-slate-900 dark:text-white group-hover:text-blue-600 dark:group-hover:text-blue-400">
+                        <h4 className="font-medium text-slate-900 group-hover:text-blue-600">
                           {service.name}
                         </h4>
                         {service.description && (
-                          <p className="text-sm text-slate-500 dark:text-slate-400 line-clamp-1">{service.description}</p>
+                          <p className="text-sm text-slate-500 line-clamp-1">{service.description}</p>
                         )}
                       </div>
-                      <span className="font-semibold text-slate-900 dark:text-white">
+                      <span className="font-semibold text-slate-900">
                         £{service.basePrice.toLocaleString()}
                       </span>
                     </div>
                     <div className="mt-2 flex items-center gap-2">
-                      <span className="text-xs px-2 py-0.5 bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 rounded">
+                      <span className="text-xs px-2 py-0.5 bg-slate-100 text-slate-600 rounded">
                         {service.category}
                       </span>
-                      <span className="text-xs text-slate-400 dark:text-slate-500">
+                      <span className="text-xs text-slate-400 text-slate-400">
                         {service.billingCycle}
                       </span>
                     </div>
@@ -603,45 +603,45 @@ Let's build your financial foundation.
             </div>
             
             {/* Right: Selected Services */}
-            <div className="w-1/2 flex flex-col bg-slate-50 dark:bg-slate-900">
-              <div className="p-4 border-b border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800">
-                <h3 className="font-semibold text-slate-900 dark:text-white">
+            <div className="w-1/2 flex flex-col bg-slate-50 bg-white">
+              <div className="p-4 border-b border-slate-200 bg-white">
+                <h3 className="font-semibold text-slate-900">
                   Selected Services ({selectedServices.length})
                 </h3>
               </div>
               
               <div className="flex-1 overflow-y-auto p-4 space-y-3">
                 {selectedServices.length === 0 ? (
-                  <div className="text-center py-12 text-slate-400 dark:text-slate-500">
+                  <div className="text-center py-12 text-slate-400 text-slate-400">
                     <p>Click services on the left to add them</p>
                   </div>
                 ) : (
                   selectedServices.map((service, index) => (
                     <div
                       key={service.id}
-                      className="bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 p-4 shadow-sm"
+                      className="bg-white rounded-lg border border-slate-200 p-4 shadow-sm"
                     >
                       <div className="flex justify-between items-start mb-3">
                         <div>
-                          <h4 className="font-medium text-slate-900 dark:text-white">{service.name}</h4>
-                          <p className="text-xs text-slate-500 dark:text-slate-400">{service.category}</p>
+                          <h4 className="font-medium text-slate-900">{service.name}</h4>
+                          <p className="text-xs text-slate-500">{service.category}</p>
                         </div>
                         <div className="flex items-center gap-1">
                           <button
                             onClick={() => setEditingService(editingService === service.id ? null : service.id)}
-                            className="p-1 text-slate-400 hover:text-blue-600 dark:hover:text-blue-400"
+                            className="p-1 text-slate-400 hover:text-blue-600 hover:text-blue-600"
                           >
                             <PencilIcon className="w-4 h-4" />
                           </button>
                           <button
                             onClick={() => duplicateService(service)}
-                            className="p-1 text-slate-400 hover:text-blue-600 dark:hover:text-blue-400"
+                            className="p-1 text-slate-400 hover:text-blue-600 hover:text-blue-600"
                           >
                             <DocumentDuplicateIcon className="w-4 h-4" />
                           </button>
                           <button
                             onClick={() => removeService(service.id)}
-                            className="p-1 text-slate-400 hover:text-red-600 dark:hover:text-red-400"
+                            className="p-1 text-slate-400 hover:text-red-600 hover:text-red-600"
                           >
                             <TrashIcon className="w-4 h-4" />
                           </button>
@@ -651,43 +651,43 @@ Let's build your financial foundation.
                       {/* Inline Edit Controls */}
                       <div className="grid grid-cols-4 gap-2 text-sm">
                         <div>
-                          <label className="text-xs text-slate-500 dark:text-slate-400">Qty</label>
+                          <label className="text-xs text-slate-500">Qty</label>
                           <input
                             type="number"
                             min="1"
                             value={service.quantity}
                             onChange={(e) => updateService(service.id, { quantity: parseInt(e.target.value) || 1 })}
-                            className="w-full px-2 py-1 rounded border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-900 dark:text-white text-sm"
+                            className="w-full px-2 py-1 rounded border border-slate-200 bg-white text-slate-900 text-sm"
                           />
                         </div>
                         <div>
-                          <label className="text-xs text-slate-500 dark:text-slate-400">Unit £</label>
+                          <label className="text-xs text-slate-500">Unit £</label>
                           <input
                             type="number"
                             min="0"
                             step="0.01"
                             value={service.unitPrice}
                             onChange={(e) => updateService(service.id, { unitPrice: parseFloat(e.target.value) || 0 })}
-                            className="w-full px-2 py-1 rounded border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-900 dark:text-white text-sm"
+                            className="w-full px-2 py-1 rounded border border-slate-200 bg-white text-slate-900 text-sm"
                           />
                         </div>
                         <div>
-                          <label className="text-xs text-slate-500 dark:text-slate-400">Discount %</label>
+                          <label className="text-xs text-slate-500">Discount %</label>
                           <input
                             type="number"
                             min="0"
                             max="100"
                             value={service.discountPercent}
                             onChange={(e) => updateService(service.id, { discountPercent: parseFloat(e.target.value) || 0 })}
-                            className="w-full px-2 py-1 rounded border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-900 dark:text-white text-sm"
+                            className="w-full px-2 py-1 rounded border border-slate-200 bg-white text-slate-900 text-sm"
                           />
                         </div>
                         <div>
-                          <label className="text-xs text-slate-500 dark:text-slate-400">VAT %</label>
+                          <label className="text-xs text-slate-500">VAT %</label>
                           <select
                             value={service.vatRate}
                             onChange={(e) => updateService(service.id, { vatRate: parseFloat(e.target.value) || 0 })}
-                            className="w-full px-2 py-1 rounded border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-900 dark:text-white text-sm"
+                            className="w-full px-2 py-1 rounded border border-slate-200 bg-white text-slate-900 text-sm"
                           >
                             <option value={0}>0%</option>
                             <option value={5}>5%</option>
@@ -697,17 +697,17 @@ Let's build your financial foundation.
                       </div>
                       
                       {/* Line Totals */}
-                      <div className="mt-3 pt-3 border-t border-slate-100 dark:border-slate-200">
-                        <div className="flex justify-between text-xs text-slate-500 dark:text-slate-400 mb-1">
+                      <div className="mt-3 pt-3 border-t border-slate-100 ">
+                        <div className="flex justify-between text-xs text-slate-500 mb-1">
                           <span>Net: £{service.total.toFixed(2)}</span>
                           <span>VAT ({service.vatRate}%): £{service.vatAmount.toFixed(2)}</span>
                         </div>
                         <div className="flex justify-between items-center">
-                          <span className="text-xs text-slate-500 dark:text-slate-400">
+                          <span className="text-xs text-slate-500">
                             {service.quantity} × £{service.unitPrice}
                             {service.discountPercent > 0 && ` (-${service.discountPercent}%)`}
                           </span>
-                          <span className="font-semibold text-blue-600 dark:text-blue-400">
+                          <span className="font-semibold text-blue-600">
                             £{service.grossTotal.toLocaleString('en-GB', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                           </span>
                         </div>
@@ -719,10 +719,10 @@ Let's build your financial foundation.
               
               {/* Running Total */}
               {selectedServices.length > 0 && (
-                <div className="p-4 bg-white dark:bg-slate-800 border-t border-slate-200 dark:border-slate-700">
+                <div className="p-4 bg-white border-t border-slate-200">
                   <div className="flex justify-between items-center">
-                    <span className="text-slate-600 dark:text-slate-300">Subtotal</span>
-                    <span className="font-semibold text-slate-900 dark:text-white">
+                    <span className="text-slate-600">Subtotal</span>
+                    <span className="font-semibold text-slate-900">
                       £{summary.subtotal.toLocaleString('en-GB', { minimumFractionDigits: 2 })}
                     </span>
                   </div>
@@ -735,7 +735,7 @@ Let's build your financial foundation.
         {/* STEP 3: Review & Send */}
         {currentStep === 3 && (
           <div className="p-8">
-            <h2 className="text-xl font-semibold text-slate-900 dark:text-white mb-6">
+            <h2 className="text-xl font-semibold text-slate-900 mb-6">
               Review and Send
             </h2>
             
@@ -744,7 +744,7 @@ Let's build your financial foundation.
               <div className="col-span-2 space-y-6">
                 {/* Title */}
                 <div>
-                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
+                  <label className="block text-sm font-medium text-slate-700 text-slate-600 mb-2">
                     Proposal Title
                   </label>
                   <input
@@ -752,13 +752,13 @@ Let's build your financial foundation.
                     value={proposalTitle}
                     onChange={(e) => setProposalTitle(e.target.value)}
                     placeholder="e.g., Annual Accounting Services 2026"
-                    className="w-full px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-900 dark:text-white text-lg"
+                    className="w-full px-4 py-3 rounded-xl border border-slate-200 bg-white text-slate-900 text-lg"
                   />
                 </div>
                 
                 {/* Cover Template */}
                 <div>
-                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
+                  <label className="block text-sm font-medium text-slate-700 text-slate-600 mb-2">
                     Cover Letter Style
                   </label>
                   <div className="grid grid-cols-3 gap-3">
@@ -768,12 +768,12 @@ Let's build your financial foundation.
                         onClick={() => setCoverTemplate(template.id)}
                         className={`p-4 rounded-xl border-2 text-left transition-all
                           ${coverTemplate === template.id
-                            ? 'border-blue-500 bg-blue-100 dark:bg-blue-900/20'
-                            : 'border-slate-200 dark:border-slate-200 hover:border-slate-300 dark:hover:border-slate-600'
+                            ? 'border-blue-500 bg-blue-100 bg-blue-50'
+                            : 'border-slate-200  hover:border-slate-300 hover:border-slate-300'
                           }`}
                       >
-                        <h4 className="font-medium text-slate-900 dark:text-white">{template.name}</h4>
-                        <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">{template.description}</p>
+                        <h4 className="font-medium text-slate-900">{template.name}</h4>
+                        <p className="text-xs text-slate-500 mt-1">{template.description}</p>
                       </button>
                     ))}
                   </div>
@@ -781,32 +781,32 @@ Let's build your financial foundation.
                 
                 {/* Valid Until */}
                 <div>
-                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
+                  <label className="block text-sm font-medium text-slate-700 text-slate-600 mb-2">
                     Valid Until
                   </label>
                   <input
                     type="date"
                     value={validUntil}
                     onChange={(e) => setValidUntil(e.target.value)}
-                    className="px-4 py-2 rounded-lg border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-900 dark:text-white"
+                    className="px-4 py-2 rounded-lg border border-slate-200 bg-white text-slate-900"
                   />
                 </div>
                 
                 {/* Services Summary */}
-                <div className="bg-white dark:bg-slate-800 rounded-xl p-6 border border-slate-200 dark:border-slate-700">
-                  <h3 className="font-semibold text-slate-900 dark:text-white mb-4">Services Summary</h3>
+                <div className="bg-white rounded-xl p-6 border border-slate-200">
+                  <h3 className="font-semibold text-slate-900 mb-4">Services Summary</h3>
                   <div className="space-y-3">
                     {selectedServices.map((service) => (
                       <div key={service.id} className="flex justify-between text-sm">
-                        <span className="text-slate-700 dark:text-slate-300">
+                        <span className="text-slate-700 text-slate-600">
                           {service.name} ({service.quantity} × £{service.unitPrice})
                           {service.discountPercent > 0 && (
-                            <span className="text-green-600 dark:text-green-400 ml-1">
+                            <span className="text-green-600 text-green-600 ml-1">
                               -{service.discountPercent}%
                             </span>
                           )}
                         </span>
-                        <span className="font-medium text-slate-900 dark:text-white">
+                        <span className="font-medium text-slate-900">
                           £{service.total.toLocaleString('en-GB', { minimumFractionDigits: 2 })}
                         </span>
                       </div>
@@ -818,13 +818,13 @@ Let's build your financial foundation.
               {/* Right: Pricing & Totals */}
               <div className="space-y-6">
                 {/* VAT Settings */}
-                <div className="bg-white dark:bg-slate-800 rounded-xl p-6 border border-slate-200 dark:border-slate-700">
+                <div className="bg-white rounded-xl p-6 border border-slate-200">
                   <div className="flex items-center justify-between mb-4">
-                    <span className="font-medium text-slate-900 dark:text-white">Include VAT</span>
+                    <span className="font-medium text-slate-900">Include VAT</span>
                     <button
                       onClick={() => setIncludeVat(!includeVat)}
                       className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors
-                        ${includeVat ? 'bg-blue-600' : 'bg-slate-200 dark:bg-slate-700'}`}
+                        ${includeVat ? 'bg-blue-600' : 'bg-slate-200 bg-slate-100'}`}
                     >
                       <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform
                         ${includeVat ? 'translate-x-6' : 'translate-x-1'}`} />
@@ -833,11 +833,11 @@ Let's build your financial foundation.
                   
                   {includeVat && (
                     <div>
-                      <label className="block text-xs text-slate-500 dark:text-slate-400 mb-1">VAT Rate</label>
+                      <label className="block text-xs text-slate-500 mb-1">VAT Rate</label>
                       <select
                         value={vatRate}
                         onChange={(e) => setVatRate(parseInt(e.target.value))}
-                        className="w-full px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-900 dark:text-white"
+                        className="w-full px-3 py-2 rounded-lg border border-slate-200 bg-white text-slate-900"
                       >
                         <option value={0}>0%</option>
                         <option value={5}>5%</option>
@@ -848,36 +848,36 @@ Let's build your financial foundation.
                 </div>
                 
                 {/* Totals */}
-                <div className="bg-white dark:bg-slate-800 rounded-xl p-6 border border-slate-200 dark:border-slate-700">
-                  <h3 className="font-semibold text-slate-900 dark:text-white mb-4 flex items-center gap-2">
+                <div className="bg-white rounded-xl p-6 border border-slate-200">
+                  <h3 className="font-semibold text-slate-900 mb-4 flex items-center gap-2">
                     <CalculatorIcon className="w-5 h-5" />
                     Totals
                   </h3>
                   
                   <div className="space-y-3 text-sm">
-                    <div className="flex justify-between text-slate-600 dark:text-slate-400">
+                    <div className="flex justify-between text-slate-600 text-slate-500">
                       <span>Subtotal</span>
                       <span>£{summary.subtotal.toLocaleString('en-GB', { minimumFractionDigits: 2 })}</span>
                     </div>
                     
                     {summary.discountAmount > 0 && (
-                      <div className="flex justify-between text-green-600 dark:text-green-400">
+                      <div className="flex justify-between text-green-600 text-green-600">
                         <span>Discount</span>
                         <span>-£{summary.discountAmount.toLocaleString('en-GB', { minimumFractionDigits: 2 })}</span>
                       </div>
                     )}
                     
                     {includeVat && (
-                      <div className="flex justify-between text-slate-600 dark:text-slate-400">
+                      <div className="flex justify-between text-slate-600 text-slate-500">
                         <span>VAT ({vatRate}%)</span>
                         <span>£{summary.vatAmount.toLocaleString('en-GB', { minimumFractionDigits: 2 })}</span>
                       </div>
                     )}
                     
-                    <div className="pt-3 border-t border-slate-200 dark:border-slate-200">
+                    <div className="pt-3 border-t border-slate-200 ">
                       <div className="flex justify-between items-center">
-                        <span className="font-semibold text-slate-900 dark:text-white">Total</span>
-                        <span className="text-2xl font-bold text-blue-600 dark:text-blue-400">
+                        <span className="font-semibold text-slate-900">Total</span>
+                        <span className="text-2xl font-bold text-blue-600">
                           £{summary.total.toLocaleString('en-GB', { minimumFractionDigits: 2 })}
                         </span>
                       </div>
@@ -909,7 +909,7 @@ Let's build your financial foundation.
                     <button
                       onClick={() => createProposal({ method: 'email', email: selectedClient.contactEmail })}
                       disabled={sending || !canProceed()}
-                      className="w-full py-3 px-4 bg-white dark:bg-white border-2 border-blue-600 text-blue-600 dark:text-blue-400 hover:bg-blue-100 dark:hover:bg-blue-900/20 disabled:opacity-50 disabled:cursor-not-allowed rounded-xl font-medium transition-colors flex items-center justify-center gap-2"
+                      className="w-full py-3 px-4 bg-white  border-2 border-blue-600 text-blue-600 hover:bg-blue-100 hover:bg-blue-50 disabled:opacity-50 disabled:cursor-not-allowed rounded-xl font-medium transition-colors flex items-center justify-center gap-2"
                     >
                       <ArrowRightIcon className="w-5 h-5" />
                       Send via Email
@@ -925,12 +925,12 @@ Let's build your financial foundation.
       {/* Create Client Modal */}
       {showCreateClient && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white dark:bg-slate-800 rounded-2xl w-full max-w-4xl max-h-[90vh] overflow-auto">
-            <div className="p-6 border-b border-slate-200 dark:border-slate-700 flex justify-between items-center">
-              <h2 className="text-xl font-semibold text-slate-900 dark:text-white">Create New Client</h2>
+          <div className="bg-white rounded-2xl w-full max-w-4xl max-h-[90vh] overflow-auto">
+            <div className="p-6 border-b border-slate-200 flex justify-between items-center">
+              <h2 className="text-xl font-semibold text-slate-900">Create New Client</h2>
               <button
                 onClick={() => setShowCreateClient(false)}
-                className="p-2 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg transition-colors"
+                className="p-2 hover:bg-slate-100 hover:bg-slate-200 rounded-lg transition-colors"
               >
                 <XMarkIcon className="w-6 h-6 text-slate-500" />
               </button>
@@ -954,7 +954,7 @@ Let's build your financial foundation.
         <button
           onClick={() => setCurrentStep(Math.max(1, currentStep - 1))}
           disabled={currentStep === 1}
-          className="px-6 py-3 rounded-xl border border-slate-200 dark:border-slate-200 text-slate-700 dark:text-slate-300 hover:bg-white dark:hover:bg-white disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center gap-2"
+          className="px-6 py-3 rounded-xl border border-slate-200  text-slate-700 text-slate-600 hover:bg-white hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center gap-2"
         >
           <ArrowLeftIcon className="w-5 h-5" />
           Back

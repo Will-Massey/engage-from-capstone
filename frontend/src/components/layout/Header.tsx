@@ -28,13 +28,13 @@ const Header = ({ onMenuClick }: HeaderProps) => {
   };
 
   return (
-    <header className="sticky top-0 z-30 bg-slate-900 border-b border-slate-700">
+    <header className="sticky top-0 z-30 bg-white border-b border-slate-200 shadow-soft">
       <div className="flex items-center justify-between h-16 px-4 sm:px-6 lg:px-8">
         {/* Left side */}
         <div className="flex items-center">
           <button
             onClick={onMenuClick}
-            className="p-2 -ml-2 text-slate-300 rounded-lg hover:text-white hover:bg-slate-800 lg:hidden"
+            className="p-2 -ml-2 text-slate-500 rounded-lg hover:text-slate-700 hover:bg-slate-100 lg:hidden"
           >
             <Bars3Icon className="w-6 h-6" />
           </button>
@@ -43,14 +43,14 @@ const Header = ({ onMenuClick }: HeaderProps) => {
           <div className="hidden md:flex items-center ml-4 space-x-3">
             <Link
               to="/proposals/new"
-              className="inline-flex items-center px-3 py-1.5 text-sm font-medium text-white rounded-lg transition-all bg-gradient-to-r from-primary-600 to-primary-700 hover:from-primary-500 hover:to-primary-600 shadow-lg shadow-primary-900/30"
+              className="inline-flex items-center px-4 py-2 text-sm font-semibold text-white rounded-lg transition-all bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-700 hover:to-blue-600 shadow-lg shadow-blue-500/25"
             >
               <PlusIcon className="w-4 h-4 mr-1.5" />
               New Proposal
             </Link>
             <Link
               to="/clients/new"
-              className="inline-flex items-center px-3 py-1.5 text-sm font-medium text-slate-200 bg-slate-800 border border-slate-600 rounded-lg hover:bg-slate-700 hover:text-white transition-all"
+              className="inline-flex items-center px-4 py-2 text-sm font-semibold text-slate-700 bg-white border-2 border-slate-200 rounded-lg hover:bg-slate-50 hover:border-slate-300 transition-all"
             >
               <PlusIcon className="w-4 h-4 mr-1.5" />
               New Client
@@ -64,12 +64,12 @@ const Header = ({ onMenuClick }: HeaderProps) => {
           <div className="hidden md:flex items-center">
             <div className="relative">
               <div className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
-                <MagnifyingGlassIcon className="w-4 h-4 text-gray-400" />
+                <MagnifyingGlassIcon className="w-4 h-4 text-slate-400" />
               </div>
               <input
                 type="text"
                 placeholder="Search..."
-                className="w-64 pl-10 pr-4 py-1.5 text-sm bg-slate-800 border-slate-600 text-white placeholder-slate-400 rounded-lg focus:ring-blue-500 focus:border-blue-500"
+                className="w-64 pl-10 pr-4 py-2 text-sm bg-slate-50 border border-slate-200 text-slate-800 placeholder-slate-400 rounded-lg focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500"
               />
             </div>
           </div>
@@ -78,7 +78,7 @@ const Header = ({ onMenuClick }: HeaderProps) => {
           <ThemeToggle />
 
           {/* Notifications */}
-          <button className="p-2 text-gray-400 rounded-lg hover:text-white hover:bg-capstone-800 relative">
+          <button className="p-2 text-slate-500 rounded-lg hover:text-slate-700 hover:bg-slate-100 relative">
             <BellIcon className="w-6 h-6" />
             <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-blue-500 rounded-full"></span>
           </button>
@@ -87,23 +87,23 @@ const Header = ({ onMenuClick }: HeaderProps) => {
           <div className="relative">
             <button
               onClick={() => setShowUserMenu(!showUserMenu)}
-              className="flex items-center space-x-2 p-2 rounded-lg hover:bg-capstone-800"
+              className="flex items-center space-x-2 p-2 rounded-lg hover:bg-slate-100"
             >
               <div className="w-8 h-8 rounded-full bg-gradient-to-br from-blue-500 to-blue-700 flex items-center justify-center text-white text-sm font-medium">
                 {user?.firstName?.charAt(0)}
               </div>
-              <span className="hidden sm:block text-sm font-medium text-slate-200">
+              <span className="hidden sm:block text-sm font-medium text-slate-700">
                 {user?.firstName}
               </span>
             </button>
 
             {/* Dropdown */}
             {showUserMenu && (
-              <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border border-gray-100 py-1 animate-fade-in">
+              <div className="absolute right-0 mt-2 w-48 bg-white rounded-xl shadow-lg border border-slate-200 py-1 animate-fade-in">
                 <Link
                   to="/settings"
                   onClick={() => setShowUserMenu(false)}
-                  className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
+                  className="flex items-center px-4 py-2 text-sm text-slate-700 hover:bg-slate-50"
                 >
                   <UserCircleIcon className="w-4 h-4 mr-2" />
                   Profile
@@ -122,18 +122,18 @@ const Header = ({ onMenuClick }: HeaderProps) => {
       </div>
 
       {/* Mobile quick actions */}
-      <div className="md:hidden px-4 pb-3 border-t border-capstone-800">
+      <div className="md:hidden px-4 pb-3 border-t border-slate-200">
         <div className="flex space-x-2 mt-3">
           <Link
             to="/proposals/new"
-            className="flex-1 inline-flex items-center justify-center px-3 py-2 text-sm font-medium text-white rounded-lg bg-gradient-to-r from-blue-600 to-blue-700"
+            className="flex-1 inline-flex items-center justify-center px-3 py-2 text-sm font-semibold text-white rounded-lg bg-gradient-to-r from-blue-600 to-blue-500"
           >
             <PlusIcon className="w-4 h-4 mr-1.5" />
             New Proposal
           </Link>
           <Link
             to="/clients/new"
-            className="flex-1 inline-flex items-center justify-center px-3 py-2 text-sm font-medium text-slate-200 bg-slate-800 border border-slate-600 rounded-lg hover:bg-slate-700 hover:text-white"
+            className="flex-1 inline-flex items-center justify-center px-3 py-2 text-sm font-semibold text-slate-700 bg-white border-2 border-slate-200 rounded-lg hover:bg-slate-50"
           >
             <PlusIcon className="w-4 h-4 mr-1.5" />
             New Client
