@@ -28,8 +28,10 @@ import { EmailService } from './services/emailService.js';
 // Use simple tenant extraction for Render deployment
 import { extractTenant } from './middleware/tenant-simple.js';
 import { errorHandler, notFoundHandler } from './middleware/errorHandler.js';
-import logger from './config/logger.js';
+import logger, { requestLogger } from './utils/logger.js';
 import { checkDatabaseHealth } from './config/database.js';
+import { cache } from './utils/cache.js';
+import healthRouter from './routes/health.js';
 
 // Initialize Express app
 const app = express();
@@ -204,55 +206,19 @@ app.use(setCsrfCookie);
 // Apply CSRF protection to all API routes
 app.use('/api', csrfProtection);
 
-// Request ID middleware
+// Request ID middleware - use crypto for better randomness
+import { randomUUID } from 'crypto';
 app.use((req, res, next) => {
-  (req as any).requestId = Math.random().toString(36).substring(2, 15);
+  (req as any).requestId = randomUUID();
   next();
 });
 
-// Simple ping endpoint for Railway healthcheck (no DB required)
-app.get('/ping', (req, res) => {
-  res.json({ status: 'ok', timestamp: new Date().toISOString() });
-});
+// Request logging
+app.use(requestLogger);
 
-// Health check endpoint
-app.get('/health', async (req, res) => {
-  const dbHealth = await checkDatabaseHealth();
-  
-  res.json({
-    success: true,
-    data: {
-      status: dbHealth.healthy ? 'healthy' : 'unhealthy',
-      database: dbHealth.healthy ? 'connected' : 'disconnected',
-      timestamp: new Date().toISOString(),
-      version: process.env.npm_package_version || '1.0.0',
-      environment: process.env.NODE_ENV || 'development',
-    },
-  });
-});
-
-// API health check for Railway (before rate limiting)
-app.get('/api/health', async (req, res) => {
-  const dbHealth = await checkDatabaseHealth();
-  
-  if (!dbHealth.healthy) {
-    return res.status(503).json({
-      success: false,
-      error: {
-        code: 'UNHEALTHY',
-        message: 'Database connection failed',
-      },
-    });
-  }
-  
-  res.json({
-    success: true,
-    data: {
-      status: 'healthy',
-      database: 'connected',
-      timestamp: new Date().toISOString(),
-    },
-  });
+// Initialize cache on startup (non-blocking)
+cache.connect().catch(err => {
+  logger.error('Failed to connect to Redis:', err);
 });
 
 // Rate limiting - skip for health checks
@@ -328,6 +294,12 @@ app.get('/api/status', (req, res) => {
 // Static files for uploads
 app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
 
+// Health check routes (must be BEFORE static files and SPA handler)
+app.use('/ping', (_req, res) => {
+  res.status(200).json({ status: 'ok', timestamp: new Date().toISOString() });
+});
+app.use('/health', healthRouter);
+
 // Serve static frontend files
 const publicPath = path.join(process.cwd(), 'public');
 app.use(express.static(publicPath));
@@ -367,13 +339,15 @@ app.listen(PORT, () => {
 });
 
 // Handle graceful shutdown
-process.on('SIGTERM', () => {
+process.on('SIGTERM', async () => {
   logger.info('SIGTERM received, shutting down gracefully');
+  await cache.disconnect();
   process.exit(0);
 });
 
-process.on('SIGINT', () => {
+process.on('SIGINT', async () => {
   logger.info('SIGINT received, shutting down gracefully');
+  await cache.disconnect();
   process.exit(0);
 });
 
