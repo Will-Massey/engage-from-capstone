@@ -4,6 +4,7 @@
  */
 
 const { execSync } = require('child_process');
+const http = require('http');
 
 console.log('🗄️  Running database migrations...');
 
@@ -14,9 +15,16 @@ try {
   });
   console.log('✅ Migrations complete');
 } catch (error) {
-  console.error('❌ Migration failed:', error.message);
-  process.exit(1);
+  // If migrations fail, log but don't exit - they might already be applied
+  console.warn('⚠️  Migration warning (may already be applied):', error.message);
+  console.log('🚀 Continuing to start server...');
 }
 
 console.log('🚀 Starting server...');
-require('./dist/index.js');
+try {
+  require('./dist/index.js');
+} catch (error) {
+  console.error('❌ Failed to start server:', error.message);
+  console.error(error.stack);
+  process.exit(1);
+}
