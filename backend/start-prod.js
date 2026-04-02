@@ -4,7 +4,14 @@
  */
 
 const { execSync } = require('child_process');
-const http = require('http');
+
+console.log('========================================');
+console.log('🚀 Engage Backend Starting...');
+console.log('========================================');
+console.log('📁 Current directory:', process.cwd());
+console.log('📦 NODE_ENV:', process.env.NODE_ENV);
+console.log('🌐 PORT:', process.env.PORT);
+console.log('');
 
 console.log('🗄️  Running database migrations...');
 
@@ -15,14 +22,16 @@ try {
   });
   console.log('✅ Migrations complete');
 } catch (error) {
-  // If migrations fail, log but don't exit - they might already be applied
   console.warn('⚠️  Migration warning (may already be applied):', error.message);
-  console.log('🚀 Continuing to start server...');
 }
 
+console.log('');
 console.log('🚀 Starting server...');
+console.log('========================================');
+
 try {
   require('./dist/index.js');
+  console.log('✅ Server module loaded');
 } catch (error) {
   console.error('❌ Failed to start server:', error.message);
   console.error(error.stack);
