@@ -14,7 +14,7 @@ services:
       cd ../backend && npm ci && npm run db:generate && 
       npm run build && 
       ls -la dist/
-    startCommand: cd backend && node dist/index.js
+    startCommand: cd backend && node start-prod.js
     healthCheckPath: /api/health
     envVars:
       - key: NODE_ENV
