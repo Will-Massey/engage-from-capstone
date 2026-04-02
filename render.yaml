@@ -1,12 +1,13 @@
 # Render Blueprint for Engage by Capstone
 # Deploy: https://dashboard.render.com/select-repo?type=blueprint
+# FREE TIER - Sleeps after 15 min inactivity, wakes on request
 
 services:
-  # Backend API Service
+  # Backend API Service (Free Tier - Auto-sleep to prevent costs)
   - type: web
     name: engage-backend
     runtime: node
-    plan: standard
+    plan: free
     buildCommand: |
       npm ci --include=dev && npm install -g typescript && 
       cd shared && npm ci && npm run build && 
