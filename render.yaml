@@ -12,7 +12,7 @@ services:
       npm ci --include=dev && npm install -g typescript && 
       cd shared && npm ci && npm run build && 
       cd ../backend && npm ci && npm run db:generate && 
-      tsc --project tsconfig.json && 
+      npm run build && 
       ls -la dist/
     startCommand: cd backend && node dist/index.js
     healthCheckPath: /api/health
