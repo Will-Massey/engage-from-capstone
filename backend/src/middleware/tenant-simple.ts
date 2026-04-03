@@ -9,11 +9,20 @@ export const extractTenant = async (
 ): Promise<void> => {
   try {
     // For Render deployment, always use demo tenant
-    const tenant = await prisma.tenant.findFirst({
+    // Try demo-practice first (older seeds), then demo (newer seeds)
+    let tenant = await prisma.tenant.findFirst({
       where: {
         subdomain: 'demo-practice',
       },
     });
+
+    if (!tenant) {
+      tenant = await prisma.tenant.findFirst({
+        where: {
+          subdomain: 'demo',
+        },
+      });
+    }
 
     if (tenant) {
       req.tenantId = tenant.id;
