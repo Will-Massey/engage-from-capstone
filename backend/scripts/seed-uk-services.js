@@ -40,13 +40,9 @@ async function main() {
     },
   });
 
-  await prisma.proposal.deleteMany({
-    where: { tenantId: tenant.id },
-  });
-
-  await prisma.serviceTemplate.deleteMany({
-    where: { tenantId: tenant.id },
-  });
+  await prisma.proposal.deleteMany({ where: { tenantId: tenant.id } });
+  await prisma.pricingRule.deleteMany({ where: { tenantId: tenant.id } });
+  await prisma.serviceTemplate.deleteMany({ where: { tenantId: tenant.id } });
 
   console.log('✅ Cleared old services and demo proposals');
 
@@ -446,43 +442,36 @@ This is an ideal solution for home-based business owners, non-UK directors, and 
     },
   ];
 
-  // Create services sequentially to avoid connection pool exhaustion on free tier
-  const created = [];
-  for (const service of services) {
-    try {
-      const s = await prisma.serviceTemplate.create({
-        data: {
-          tenantId: tenant.id,
-          category: service.category,
-          name: service.name,
-          description: service.description,
-          longDescription: service.longDescription,
-          basePrice: service.basePrice,
-          baseHours: service.baseHours,
-          pricingModel: service.pricingModel,
-          frequencyOptions: service.frequencyOptions,
-          defaultFrequency: service.defaultFrequency,
-          applicableEntityTypes: service.applicableEntityTypes,
-          tags: service.tags,
-          isActive: true,
-          isPopular: service.isPopular || false,
-          regulatoryNotes: service.regulatoryNotes || null,
-          complexityFactors: JSON.stringify([]),
-          requirements: JSON.stringify([]),
-          deliverables: JSON.stringify([]),
-        },
-      });
-      created.push(s);
-      console.log(`  ✅ ${service.name}`);
-    } catch (err) {
-      console.error(`  ❌ Failed to create "${service.name}":`, err.message);
-      throw err; // Stop so we can diagnose
-    }
-  }
+  // Use createMany for a single fast insert — avoids startup timeout on free tier
+  const serviceData = services.map((service) => ({
+    tenantId: tenant.id,
+    category: service.category,
+    name: service.name,
+    description: service.description,
+    longDescription: service.longDescription,
+    basePrice: service.basePrice,
+    baseHours: service.baseHours,
+    pricingModel: service.pricingModel,
+    frequencyOptions: service.frequencyOptions,
+    defaultFrequency: service.defaultFrequency,
+    applicableEntityTypes: service.applicableEntityTypes,
+    tags: service.tags,
+    isActive: true,
+    isPopular: service.isPopular || false,
+    regulatoryNotes: service.regulatoryNotes || null,
+    complexityFactors: JSON.stringify([]),
+    requirements: JSON.stringify([]),
+    deliverables: JSON.stringify([]),
+  }));
 
-  console.log(`✅ Created ${created.length} UK accountancy services`);
+  const result = await prisma.serviceTemplate.createMany({
+    data: serviceData,
+    skipDuplicates: false,
+  });
+
+  console.log(`✅ Created ${result.count} UK accountancy services`);
   console.log('\n📋 Service Catalog Summary:');
-  const byCategory = created.reduce((acc, s) => {
+  const byCategory = services.reduce((acc, s) => {
     acc[s.category] = (acc[s.category] || 0) + 1;
     return acc;
   }, {});
