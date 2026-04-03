@@ -11,17 +11,23 @@ const prisma = new PrismaClient();
 async function main() {
   console.log('🌱 Checking UK Accountancy Service Catalog...');
 
-  // Find demo tenant
-  const tenant = await prisma.tenant.findFirst({
-    where: { subdomain: 'demo' },
+  // Find demo tenant — try demo-practice first (legacy), then demo
+  let tenant = await prisma.tenant.findFirst({
+    where: { subdomain: 'demo-practice' },
   });
+
+  if (!tenant) {
+    tenant = await prisma.tenant.findFirst({
+      where: { subdomain: 'demo' },
+    });
+  }
 
   if (!tenant) {
     console.log('⚠️  No demo tenant found. Skipping service seed.');
     return;
   }
 
-  console.log(`✅ Found tenant: ${tenant.name}`);
+  console.log(`✅ Found tenant: ${tenant.name} (${tenant.subdomain})`);
 
   // Check if the full UK catalog is already present (idempotency guard)
   const existingKeyService = await prisma.serviceTemplate.findFirst({
@@ -39,11 +45,26 @@ async function main() {
     return;
   }
 
-  // Remove existing demo services for this tenant so we can replace cleanly
-  const deleted = await prisma.serviceTemplate.deleteMany({
+  console.log('🗑️  Clearing old demo data for fresh UK catalog...');
+
+  // Safely delete any proposal services and proposals that reference old templates
+  await prisma.proposalService.deleteMany({
+    where: {
+      proposal: {
+        tenantId: tenant.id,
+      },
+    },
+  });
+
+  await prisma.proposal.deleteMany({
     where: { tenantId: tenant.id },
   });
-  console.log(`🗑️  Cleared ${deleted.count} existing services`);
+
+  await prisma.serviceTemplate.deleteMany({
+    where: { tenantId: tenant.id },
+  });
+
+  console.log('✅ Cleared old services and demo proposals');
 
   const services = [
     // ========================================
@@ -481,7 +502,7 @@ This is an ideal solution for home-based business owners, non-UK directors, and 
 
 main()
   .catch((e) => {
-    console.error(e);
+    console.error('❌ Seed failed:', e);
     process.exit(1);
   })
   .finally(async () => {

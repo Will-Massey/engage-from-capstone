@@ -22,10 +22,14 @@ try {
   console.warn('⚠️  Migration warning:', error.message);
 }
 
-// Seed UK accountancy services (safe — idempotent, only seeds if catalog is missing)
+// Seed UK accountancy services (blocks until complete — safe and idempotent)
 console.log('🌱 Checking UK service catalog...');
 try {
-  require('./scripts/seed-uk-services.js');
+  execSync('node ./scripts/seed-uk-services.js', {
+    stdio: 'inherit',
+    timeout: 120000,
+  });
+  console.log('✅ Seed check complete');
 } catch (error) {
   console.warn('⚠️  Seed check warning:', error.message);
 }
