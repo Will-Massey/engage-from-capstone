@@ -5,7 +5,7 @@
   "main": "dist/index.js",
   "scripts": {
     "dev": "tsx watch src/index.ts",
-    "build": "npx tsc || echo 'Build completed with errors'",
+    "build": "node -e \"try { require('child_process').execSync('npx tsc', {stdio:'inherit'}) } catch(e) {} require('fs').accessSync('dist/index.js')\"",
     "start": "node dist/index.js",
     "test": "jest",
     "test:watch": "jest --watch",
