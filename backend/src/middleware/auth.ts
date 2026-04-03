@@ -267,6 +267,7 @@ export const csrfProtection = (req: Request, res: Response, next: NextFunction):
     '/oauth/callback',
     '/proposals/view', // Public proposal viewing and signing
     '/clients', // TEMPORARY: Skip CSRF for client creation during testing
+    '/admin/seed-services', // One-click admin seed endpoint
   ];
   if (publicPaths.some(path => req.path.startsWith(path))) {
     next();
