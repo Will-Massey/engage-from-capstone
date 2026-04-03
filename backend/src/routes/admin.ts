@@ -197,47 +197,61 @@ router.post(
       return res.status(400).json({ success: false, error: { code: 'NO_TENANT', message: 'Tenant not resolved' } });
     }
 
-    // Clean up old data for this tenant
-    await prisma.proposalService.deleteMany({
-      where: { proposal: { tenantId } },
-    });
-    await prisma.proposal.deleteMany({ where: { tenantId } });
-    await prisma.pricingRule.deleteMany({ where: { tenantId } });
-    await prisma.serviceTemplate.deleteMany({ where: { tenantId } });
-
-    // Insert full catalog in one query
-    const data = servicesData.map((s) => ({
-      tenantId,
-      category: s.category as any,
-      name: s.name,
-      description: s.description,
-      longDescription: s.longDescription,
-      basePrice: s.basePrice,
-      baseHours: s.baseHours,
-      pricingModel: s.pricingModel as any,
-      frequencyOptions: s.frequencyOptions,
-      defaultFrequency: s.defaultFrequency as any,
-      applicableEntityTypes: s.applicableEntityTypes,
-      tags: s.tags,
-      isActive: true,
-      isPopular: s.isPopular || false,
-      regulatoryNotes: s.regulatoryNotes || null,
-      complexityFactors: JSON.stringify([]),
-      requirements: JSON.stringify([]),
-      deliverables: JSON.stringify([]),
-    }));
-
-    const result = await prisma.serviceTemplate.createMany({ data });
+    const result = await seedServicesForTenant(tenantId);
 
     res.json({
       success: true,
-      data: {
-        created: result.count,
-        totalExpected: servicesData.length,
-      },
-      message: `Seeded ${result.count} UK accountancy services`,
+      data: result,
+      message: `Seeded ${result.created} UK accountancy services`,
     });
   })
 );
+
+export async function findDemoTenant() {
+  let tenant = await prisma.tenant.findFirst({ where: { subdomain: 'demo-practice' } });
+  if (!tenant) {
+    tenant = await prisma.tenant.findFirst({ where: { subdomain: 'demo' } });
+  }
+  return tenant;
+}
+
+export async function seedServicesForTenant(tenantId: string) {
+  // Clean up old data for this tenant
+  await prisma.proposalService.deleteMany({
+    where: { proposal: { tenantId } },
+  });
+  await prisma.proposal.deleteMany({ where: { tenantId } });
+  await prisma.pricingRule.deleteMany({ where: { tenantId } });
+  await prisma.serviceTemplate.deleteMany({ where: { tenantId } });
+
+  // Insert full catalog in one query
+  const data = servicesData.map((s) => ({
+    tenantId,
+    category: s.category as any,
+    name: s.name,
+    description: s.description,
+    longDescription: s.longDescription,
+    basePrice: s.basePrice,
+    baseHours: s.baseHours,
+    pricingModel: s.pricingModel as any,
+    frequencyOptions: s.frequencyOptions,
+    defaultFrequency: s.defaultFrequency as any,
+    applicableEntityTypes: s.applicableEntityTypes,
+    tags: s.tags,
+    isActive: true,
+    isPopular: s.isPopular || false,
+    regulatoryNotes: s.regulatoryNotes || null,
+    complexityFactors: JSON.stringify([]),
+    requirements: JSON.stringify([]),
+    deliverables: JSON.stringify([]),
+  }));
+
+  const result = await prisma.serviceTemplate.createMany({ data });
+
+  return {
+    created: result.count,
+    totalExpected: servicesData.length,
+  };
+}
 
 export default router;

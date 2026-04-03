@@ -198,6 +198,28 @@ app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 // Mount auth routes BEFORE CSRF protection
 app.use('/api/auth', extractTenant, authRoutes);
 
+// Public one-click seed endpoint (no auth/CSRF required — protected by secret key)
+app.get('/api/seed-services-public', async (req, res) => {
+  const secret = req.query.key;
+  if (secret !== 'capstone-uk-2026') {
+    res.status(403).json({ success: false, error: { code: 'FORBIDDEN', message: 'Invalid key' } });
+    return;
+  }
+
+  try {
+    const { seedServicesForTenant, findDemoTenant } = await import('./routes/admin.js');
+    const tenant = await findDemoTenant();
+    if (!tenant) {
+      res.status(404).json({ success: false, error: { code: 'NO_TENANT', message: 'No demo tenant found' } });
+      return;
+    }
+    const result = await seedServicesForTenant(tenant.id);
+    res.json({ success: true, data: result, message: `Seeded ${result.created} UK accountancy services` });
+  } catch (error: any) {
+    res.status(500).json({ success: false, error: { code: 'SEED_ERROR', message: error.message } });
+  }
+});
+
 // Import CSRF middleware
 import { setCsrfCookie, csrfProtection } from './middleware/auth.js';
 
