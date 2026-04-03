@@ -9,10 +9,9 @@ services:
     runtime: node
     plan: free
     buildCommand: |
-      npm ci --include=dev && npm install -g typescript && 
+      npm ci --include=dev && 
       cd shared && npm ci && npm run build && 
       cd ../backend && npm ci && npm run db:generate && 
-      npm run build && 
       ls -la dist/
     startCommand: cd backend && node start-prod.js
     healthCheckPath: /health
