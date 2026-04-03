@@ -29,22 +29,6 @@ async function main() {
 
   console.log(`✅ Found tenant: ${tenant.name} (${tenant.subdomain})`);
 
-  // Check if the full UK catalog is already present (idempotency guard)
-  const existingKeyService = await prisma.serviceTemplate.findFirst({
-    where: {
-      tenantId: tenant.id,
-      name: 'Annual Accounts Preparation & Filing',
-    },
-  });
-
-  if (existingKeyService) {
-    const totalCount = await prisma.serviceTemplate.count({
-      where: { tenantId: tenant.id },
-    });
-    console.log(`✅ UK service catalog already present (${totalCount} services). Skipping seed.`);
-    return;
-  }
-
   console.log('🗑️  Clearing old demo data for fresh UK catalog...');
 
   // Safely delete any proposal services and proposals that reference old templates
