@@ -446,9 +446,11 @@ This is an ideal solution for home-based business owners, non-UK directors, and 
     },
   ];
 
-  const created = await Promise.all(
-    services.map((service) =>
-      prisma.serviceTemplate.create({
+  // Create services sequentially to avoid connection pool exhaustion on free tier
+  const created = [];
+  for (const service of services) {
+    try {
+      const s = await prisma.serviceTemplate.create({
         data: {
           tenantId: tenant.id,
           category: service.category,
@@ -469,9 +471,14 @@ This is an ideal solution for home-based business owners, non-UK directors, and 
           requirements: JSON.stringify([]),
           deliverables: JSON.stringify([]),
         },
-      })
-    )
-  );
+      });
+      created.push(s);
+      console.log(`  ✅ ${service.name}`);
+    } catch (err) {
+      console.error(`  ❌ Failed to create "${service.name}":`, err.message);
+      throw err; // Stop so we can diagnose
+    }
+  }
 
   console.log(`✅ Created ${created.length} UK accountancy services`);
   console.log('\n📋 Service Catalog Summary:');
