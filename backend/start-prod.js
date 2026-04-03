@@ -22,10 +22,10 @@ try {
   console.warn('⚠️  Migration warning:', error.message);
 }
 
-// Seed database if empty (safe — only runs when no services exist)
-console.log('🌱 Checking if seed is needed...');
+// Seed UK accountancy services (safe — idempotent, only seeds if catalog is missing)
+console.log('🌱 Checking UK service catalog...');
 try {
-  require('./scripts/seed-if-empty.js');
+  require('./scripts/seed-uk-services.js');
 } catch (error) {
   console.warn('⚠️  Seed check warning:', error.message);
 }
