@@ -70,10 +70,9 @@ services:
   - type: web
     name: engage-frontend
     runtime: static
-    buildCommand: |
-      npm ci &&
-      cd frontend && npm run build
-    staticPublishPath: frontend/dist
+    rootDir: frontend
+    buildCommand: npm install --include=dev && npm run build && ls -la dist/
+    staticPublishPath: ./dist
     envVars:
       - key: VITE_API_URL
         value: https://engage-backend.onrender.com
