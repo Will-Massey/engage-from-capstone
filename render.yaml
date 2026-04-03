@@ -9,12 +9,9 @@ services:
     runtime: node
     plan: free
     buildCommand: |
-      npm install --include=dev && 
-      cd shared && npm install && npm run build && 
-      cd ../backend && npm install && npm run db:generate && 
-      npm run build && 
-      ls -la dist/
-    startCommand: cd backend && node start-prod.js
+      npm ci &&
+      cd backend && npm run db:generate && npm run build
+    startCommand: cd backend && npm start
     healthCheckPath: /ping
     envVars:
       - key: NODE_ENV
@@ -73,9 +70,10 @@ services:
   - type: web
     name: engage-frontend
     runtime: static
-    rootDir: frontend
-    buildCommand: npm install --include=dev && npm run build && ls -la dist/
-    staticPublishPath: dist
+    buildCommand: |
+      npm ci &&
+      cd frontend && npm run build
+    staticPublishPath: frontend/dist
     envVars:
       - key: VITE_API_URL
         value: https://engage-backend.onrender.com
