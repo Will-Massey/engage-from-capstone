@@ -9,9 +9,9 @@ services:
     runtime: node
     plan: free
     buildCommand: |
-      npm ci --include=dev && 
-      cd shared && npm ci && npm run build && 
-      cd ../backend && npm ci && npm run db:generate && 
+      npm install --include=dev && 
+      cd shared && npm install && npm run build && 
+      cd ../backend && npm install && npm run db:generate && 
       ls -la dist/
     startCommand: cd backend && node start-prod.js
     healthCheckPath: /health
