@@ -29,7 +29,7 @@ const Sidebar = ({ isOpen, onClose }: SidebarProps) => {
   const { user, tenant, clearAuth } = useAuthStore();
   const location = useLocation();
   
-  const logoUrl = tenant?.logo || '/images/engage-logo.svg';
+  const logoUrl = tenant?.logo || '/images/capstone-logo.svg';
 
   const handleLogout = () => {
     clearAuth();

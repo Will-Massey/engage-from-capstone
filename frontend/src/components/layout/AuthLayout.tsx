@@ -6,7 +6,7 @@ interface AuthLayoutProps {
 
 const AuthLayout = ({ children }: AuthLayoutProps) => {
   const { tenant } = useAuthStore();
-  const logoUrl = tenant?.logo || '/images/engage-logo.svg';
+  const logoUrl = tenant?.logo || '/images/capstone-logo.svg';
 
   return (
     <div className="min-h-screen flex flex-col justify-center bg-gradient-to-br from-capstone-900 via-capstone-800 to-primary-900 py-12 px-4 sm:px-6 lg:px-8">
