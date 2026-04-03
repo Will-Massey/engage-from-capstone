@@ -4,17 +4,14 @@
  */
 
 const { execSync } = require('child_process');
+const express = require('express');
 
 console.log('========================================');
 console.log('🚀 Engage Backend Starting...');
 console.log('========================================');
-console.log('📁 Current directory:', process.cwd());
-console.log('📦 NODE_ENV:', process.env.NODE_ENV);
-console.log('🌐 PORT:', process.env.PORT);
-console.log('');
 
+// Run migrations
 console.log('🗄️  Running database migrations...');
-
 try {
   execSync('npx prisma migrate deploy', { 
     stdio: 'inherit',
@@ -22,18 +19,18 @@ try {
   });
   console.log('✅ Migrations complete');
 } catch (error) {
-  console.warn('⚠️  Migration warning (may already be applied):', error.message);
+  console.warn('⚠️  Migration warning:', error.message);
 }
 
-console.log('');
-console.log('🚀 Starting server...');
-console.log('========================================');
-
+// Seed database if empty (safe — only runs when no services exist)
+console.log('🌱 Checking if seed is needed...');
 try {
-  require('./dist/index.js');
-  console.log('✅ Server module loaded');
+  require('./scripts/seed-if-empty.js');
 } catch (error) {
-  console.error('❌ Failed to start server:', error.message);
-  console.error(error.stack);
-  process.exit(1);
+  console.warn('⚠️  Seed check warning:', error.message);
 }
+
+console.log('🚀 Loading server...');
+
+// Import and start the server
+require('./dist/index.js');
