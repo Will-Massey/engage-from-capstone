@@ -32,6 +32,7 @@ import logger, { requestLogger } from './utils/logger.js';
 import { checkDatabaseHealth } from './config/database.js';
 import { cache } from './utils/cache.js';
 import healthRouter from './routes/health.js';
+import adminRouter from './routes/admin.js';
 
 // Initialize Express app
 const app = express();
@@ -273,6 +274,7 @@ app.use('/api/tenants', tenantRoutes);
 app.use('/api/email', extractTenant, emailRoutes);
 app.use('/api/payments', extractTenant, paymentRoutes);
 app.use('/api/companies-house', companiesHouseRoutes);
+app.use('/api/admin', extractTenant, adminRouter);
 
 // API status endpoint
 app.get('/api/status', (req, res) => {
