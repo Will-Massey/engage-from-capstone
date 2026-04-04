@@ -9,7 +9,7 @@ services:
     runtime: node
     plan: free
     buildCommand: |
-      npm ci &&
+      npm install &&
       npx tsc --project backend/tsconfig.json &&
       cd backend && npx prisma generate
     startCommand: cd backend && npm start
