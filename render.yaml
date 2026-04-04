@@ -10,6 +10,7 @@ services:
     plan: free
     buildCommand: |
       npm install &&
+      rm -rf backend/dist &&
       npx tsc --project backend/tsconfig.json &&
       cd backend && npx prisma generate
     startCommand: cd backend && npm start
