@@ -10,7 +10,8 @@ services:
     plan: free
     buildCommand: |
       npm ci &&
-      cd backend && npm run db:generate && npm run build
+      npx tsc --project backend/tsconfig.json &&
+      cd backend && npx prisma generate
     startCommand: cd backend && npm start
     healthCheckPath: /ping
     envVars:
