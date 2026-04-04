@@ -5,7 +5,7 @@
   "main": "dist/index.js",
   "scripts": {
     "dev": "tsx watch src/index.ts",
-    "build": "node ../../node_modules/typescript/bin/tsc || node ../node_modules/typescript/bin/tsc || npx tsc"
+    "build": "node ../../node_modules/typescript/bin/tsc || node ../node_modules/typescript/bin/tsc || npx tsc",
     "start": "node start-prod.js",
     "test": "jest",
     "test:watch": "jest --watch",
