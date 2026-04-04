@@ -370,7 +370,7 @@ app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
 
 // Health check routes (must be BEFORE static files and SPA handler)
 app.use('/ping', (_req, res) => {
-  res.status(200).json({ status: 'ok', timestamp: new Date().toISOString() });
+  res.status(200).json({ status: 'ok', timestamp: new Date().toISOString(), build: 'seed-fix-7a515bfa' });
 });
 app.use('/health', healthRouter);
 
