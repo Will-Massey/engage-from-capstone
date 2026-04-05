@@ -243,6 +243,25 @@ app.get('/api/seed-services-public', async (req, res) => {
             { category: 'TECHNICAL', name: 'Dext Subscription & Setup', description: 'Dext (formerly Receipt Bank) implementation for automated receipt and invoice capture, including supplier rules and publishing workflows.', longDescription: 'We set up Dext to automate your receipt and invoice processing, reducing manual data entry and improving record-keeping accuracy. Our service includes: Dext account configuration, supplier rule creation, integration with your accounting software (Xero, QuickBooks, Sage), mobile app training for directors and staff, multi-user setup, and automated publishing workflows. We configure Dext to handle VAT splits, foreign currency invoices, and mileage claims, ensuring your bookkeeping is as efficient and paperless as possible.', basePrice: 350, baseHours: 2, pricingModel: 'FIXED', frequencyOptions: 'ONE_TIME', defaultFrequency: 'ONE_TIME', applicableEntityTypes: 'LIMITED_COMPANY,SOLE_TRADER,PARTNERSHIP,LLP', tags: 'dext,receipt-bank,automation,expenses,integration', regulatoryNotes: 'Dext subscription fees are separate and billed directly by Dext.' },
             { category: 'SPECIALIZED', name: 'Registered Office Address Service', description: 'Use of our professional registered office address for Companies House and HMRC correspondence, with same-day mail scanning.', longDescription: 'Use our prestigious UK registered office address for your company, ensuring your personal address remains private and your statutory mail is handled professionally. Our service includes: registered office address for Companies House and HMRC, same-day scanning and email forwarding of statutory mail, secure storage of original documents, reminder service for filing deadlines, and assistance with official correspondence from Companies House and HMRC. This is an ideal solution for home-based business owners, non-UK directors, and anyone who values privacy and professionalism.', basePrice: 150, baseHours: 0.1, pricingModel: 'FIXED', frequencyOptions: 'ANNUALLY', defaultFrequency: 'ANNUALLY', applicableEntityTypes: 'LIMITED_COMPANY,LLP', tags: 'registered-office,address,companies-house,mail-forwarding', isPopular: true, regulatoryNotes: 'A UK company must maintain a registered office address in the same jurisdiction where it is incorporated (England & Wales, Scotland, or Northern Ireland).' },
         ];
+        // Ensure PostgreSQL enums have all required values for the UK catalog
+        await database_js_1.prisma.$executeRawUnsafe(`DO $$
+    BEGIN
+      IF NOT EXISTS (SELECT 1 FROM pg_enum e JOIN pg_type t ON e.enumtypid = t.oid WHERE t.typname = 'ServiceCategory' AND e.enumlabel = 'TECHNICAL') THEN
+        ALTER TYPE "ServiceCategory" ADD VALUE 'TECHNICAL';
+      END IF;
+    END $$;`);
+        await database_js_1.prisma.$executeRawUnsafe(`DO $$
+    BEGIN
+      IF NOT EXISTS (SELECT 1 FROM pg_enum e JOIN pg_type t ON e.enumtypid = t.oid WHERE t.typname = 'ServiceCategory' AND e.enumlabel = 'SPECIALIZED') THEN
+        ALTER TYPE "ServiceCategory" ADD VALUE 'SPECIALIZED';
+      END IF;
+    END $$;`);
+        await database_js_1.prisma.$executeRawUnsafe(`DO $$
+    BEGIN
+      IF NOT EXISTS (SELECT 1 FROM pg_enum e JOIN pg_type t ON e.enumtypid = t.oid WHERE t.typname = 'PricingModel' AND e.enumlabel = 'PER_EMPLOYEE') THEN
+        ALTER TYPE "PricingModel" ADD VALUE 'PER_EMPLOYEE';
+      END IF;
+    END $$;`);
         const data = servicesData.map((s) => ({
             tenantId: tenant.id,
             category: s.category,
