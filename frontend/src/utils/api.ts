@@ -223,6 +223,9 @@ export const apiClient = {
 
   getUsers: () => api.get('/auth/users'),
 
+  // Dashboard
+  getDashboardStats: () => api.get('/proposals/stats/dashboard'),
+
   createUser: (data: any) => api.post('/auth/users', data),
 
   updateUser: (id: string, data: any) => api.put(`/auth/users/${id}`, data),

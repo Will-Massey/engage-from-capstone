@@ -35,40 +35,34 @@ import { apiClient } from '../utils/api';
 import { useAuthStore } from '../stores/authStore';
 import { format, subDays, startOfMonth, endOfMonth } from 'date-fns';
 
-// Mock data for charts
-const revenueData = [
-  { name: 'Jan', value: 12500 },
-  { name: 'Feb', value: 15200 },
-  { name: 'Mar', value: 18900 },
-  { name: 'Apr', value: 16400 },
-  { name: 'May', value: 22100 },
-  { name: 'Jun', value: 25800 },
+// Default/loading data for charts (will be replaced with API data)
+const defaultRevenueData = [
+  { name: 'Jan', value: 0 },
+  { name: 'Feb', value: 0 },
+  { name: 'Mar', value: 0 },
+  { name: 'Apr', value: 0 },
+  { name: 'May', value: 0 },
+  { name: 'Jun', value: 0 },
 ];
 
-const proposalStatusData = [
-  { name: 'Draft', value: 12, color: '#9CA3AF' },
-  { name: 'Sent', value: 8, color: '#3B82F6' },
-  { name: 'Accepted', value: 15, color: '#10B981' },
-  { name: 'Declined', value: 3, color: '#EF4444' },
+const defaultProposalStatusData = [
+  { name: 'Draft', value: 0, color: '#9CA3AF' },
+  { name: 'Sent', value: 0, color: '#3B82F6' },
+  { name: 'Accepted', value: 0, color: '#10B981' },
+  { name: 'Declined', value: 0, color: '#EF4444' },
 ];
 
-const weeklyActivity = [
-  { day: 'Mon', proposals: 3, views: 12 },
-  { day: 'Tue', proposals: 5, views: 18 },
-  { day: 'Wed', proposals: 2, views: 8 },
-  { day: 'Thu', proposals: 7, views: 24 },
-  { day: 'Fri', proposals: 4, views: 15 },
-  { day: 'Sat', proposals: 1, views: 5 },
-  { day: 'Sun', proposals: 0, views: 3 },
+const defaultWeeklyActivity = [
+  { day: 'Mon', proposals: 0, views: 0 },
+  { day: 'Tue', proposals: 0, views: 0 },
+  { day: 'Wed', proposals: 0, views: 0 },
+  { day: 'Thu', proposals: 0, views: 0 },
+  { day: 'Fri', proposals: 0, views: 0 },
+  { day: 'Sat', proposals: 0, views: 0 },
+  { day: 'Sun', proposals: 0, views: 0 },
 ];
 
-const recentActivity = [
-  { id: 1, type: 'proposal_sent', message: 'Proposal sent to TechStart Ltd', time: '2 hours ago', icon: EnvelopeIcon, color: 'blue' },
-  { id: 2, type: 'proposal_accepted', message: 'Sarah Smith accepted proposal PROP-2024-002', time: '4 hours ago', icon: CheckCircleIcon, color: 'green' },
-  { id: 3, type: 'client_added', message: 'New client added: Green Energy Solutions LLP', time: '6 hours ago', icon: UsersIcon, color: 'purple' },
-  { id: 4, type: 'mtd_reminder', message: 'MTD ITSA deadline approaching for 3 clients', time: '1 day ago', icon: ClockIcon, color: 'orange' },
-  { id: 5, type: 'proposal_viewed', message: 'Proposal PROP-2024-001 viewed by TechStart Ltd', time: '1 day ago', icon: DocumentTextIcon, color: 'gray' },
-];
+const defaultRecentActivity: any[] = [];
 
 const Dashboard = () => {
   const { tenant, user } = useAuthStore();
@@ -82,6 +76,12 @@ const Dashboard = () => {
     recentProposals: [],
     recentClients: [],
   });
+  const [chartData, setChartData] = useState({
+    revenueData: defaultRevenueData,
+    proposalStatusData: defaultProposalStatusData,
+    weeklyActivity: defaultWeeklyActivity,
+    recentActivity: defaultRecentActivity,
+  });
   const [isLoading, setIsLoading] = useState(true);
   const [dateRange, setDateRange] = useState('30days');
 
@@ -93,9 +93,10 @@ const Dashboard = () => {
     try {
       setIsLoading(true);
       
-      const [proposalsRes, clientsRes] = await Promise.all([
+      const [proposalsRes, clientsRes, dashboardRes] = await Promise.all([
         apiClient.getProposals({ limit: 5 }) as Promise<any>,
         apiClient.getClients({ limit: 5 }) as Promise<any>,
+        apiClient.getDashboardStats() as Promise<any>,
       ]);
 
       const proposals = proposalsRes.data || [];
@@ -116,8 +117,18 @@ const Dashboard = () => {
         recentProposals: proposals.slice(0, 5),
         recentClients: clients.slice(0, 5),
       });
+
+      // Set chart data from API
+      if (dashboardRes.success && dashboardRes.data) {
+        setChartData({
+          revenueData: dashboardRes.data.revenueData?.length > 0 ? dashboardRes.data.revenueData : defaultRevenueData,
+          proposalStatusData: dashboardRes.data.proposalStatusData?.length > 0 ? dashboardRes.data.proposalStatusData : defaultProposalStatusData,
+          weeklyActivity: dashboardRes.data.weeklyActivity?.length > 0 ? dashboardRes.data.weeklyActivity : defaultWeeklyActivity,
+          recentActivity: dashboardRes.data.recentActivity || [],
+        });
+      }
     } catch (error) {
-      // Error handled by UI
+      // Error handled by UI - will use default empty data
     } finally {
       setIsLoading(false);
     }
@@ -293,7 +304,7 @@ const Dashboard = () => {
           </div>
           <div className="h-64">
             <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={revenueData}>
+              <AreaChart data={chartData.revenueData}>
                 <defs>
                   <linearGradient id="colorRevenue" x1="0" y1="0" x2="0" y2="1">
                     <stop offset="5%" stopColor="#0ea5e9" stopOpacity={0.3}/>
@@ -328,7 +339,7 @@ const Dashboard = () => {
             <ResponsiveContainer width="100%" height="100%">
               <PieChart>
                 <Pie
-                  data={proposalStatusData}
+                  data={chartData.proposalStatusData}
                   cx="50%"
                   cy="50%"
                   innerRadius={50}
@@ -345,7 +356,7 @@ const Dashboard = () => {
             </ResponsiveContainer>
           </div>
           <div className="mt-4 space-y-2">
-            {proposalStatusData.map((item) => (
+            {chartData.proposalStatusData.map((item) => (
               <div key={item.name} className="flex items-center justify-between text-sm text-slate-700">
                 <span className="flex items-center">
                   <span className="w-3 h-3 rounded-full mr-2" style={{ backgroundColor: item.color }}></span>
@@ -366,7 +377,7 @@ const Dashboard = () => {
           <p className="section-subtitle mb-6">Proposals created vs views this week</p>
           <div className="h-64">
             <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={weeklyActivity}>
+              <BarChart data={chartData.weeklyActivity}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" />
                 <XAxis dataKey="day" stroke="#374151" fontSize={12} tick={{fill: '#374151'}} />
                 <YAxis stroke="#374151" fontSize={12} tick={{fill: '#374151'}} />
@@ -389,23 +400,27 @@ const Dashboard = () => {
             </button>
           </div>
           <div className="space-y-4">
-            {recentActivity.map((activity) => (
-              <div key={activity.id} className="flex items-start space-x-3">
-                <div className={`icon-box-sm rounded-lg flex-shrink-0 ${
-                  activity.color === 'blue' ? 'bg-blue-100 text-blue-600' :
-                  activity.color === 'green' ? 'bg-green-100 text-green-600' :
-                  activity.color === 'purple' ? 'bg-purple-100 text-purple-600' :
-                  activity.color === 'orange' ? 'bg-orange-100 text-orange-600' :
-                  'bg-slate-100 text-slate-700'
-                }`}>
-                  <activity.icon className="h-4 w-4" />
+            {chartData.recentActivity.length === 0 ? (
+              <p className="text-sm text-slate-500 text-center py-4">No recent activity</p>
+            ) : (
+              chartData.recentActivity.map((activity: any) => (
+                <div key={activity.id} className="flex items-start space-x-3">
+                  <div className={`icon-box-sm rounded-lg flex-shrink-0 ${
+                    activity.color === 'blue' ? 'bg-blue-100 text-blue-600' :
+                    activity.color === 'green' ? 'bg-green-100 text-green-600' :
+                    activity.color === 'purple' ? 'bg-purple-100 text-purple-600' :
+                    activity.color === 'orange' ? 'bg-orange-100 text-orange-600' :
+                    'bg-slate-100 text-slate-700'
+                  }`}>
+                    <DocumentTextIcon className="h-4 w-4" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm text-slate-900">{activity.message}</p>
+                    <p className="text-xs text-slate-600 mt-1">{activity.time}</p>
+                  </div>
                 </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm text-slate-900">{activity.message}</p>
-                  <p className="text-xs text-slate-600 mt-1">{activity.time}</p>
-                </div>
-              </div>
-            ))}
+              ))
+            )}
           </div>
         </div>
       </div>

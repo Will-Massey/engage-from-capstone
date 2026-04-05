@@ -1,7 +1,7 @@
 # Engage by Capstone — Agent Guide
 
 > **Purpose:** This document exists for AI coding agents. It summarises the project architecture, conventions, and workflows so you can be productive immediately.  
-> **Last updated:** 2026-04-03
+> **Last updated:** 2026-04-05
 
 ---
 
@@ -9,11 +9,12 @@
 
 **Engage by Capstone** is a professional proposal-generation platform built for UK accountancy practices. It enables firms to create, share, and electronically sign compliant engagement letters and proposals in under five minutes. Key capabilities include:
 
-- Multi-tenant architecture (one database, row-level tenant isolation)
-- Role-based access control: `ADMIN`, `PARTNER`, `MANAGER`, `SENIOR`, `JUNIOR`
-- UK-specific compliance: MTD ITSA assessment, Companies House lookup, VAT handling
-- PDF generation, electronic signatures, and proposal activity tracking
-- Stripe subscription billing integration
+- **Multi-tenant architecture** (one database, row-level tenant isolation via `tenantId`)
+- **Role-based access control:** `ADMIN`, `PARTNER`, `MANAGER`, `SENIOR`, `JUNIOR`
+- **UK-specific compliance:** MTD ITSA assessment, Companies House lookup, VAT handling
+- **PDF generation, electronic signatures, and proposal activity tracking**
+- **Stripe subscription billing integration** with webhook handling
+- **Public proposal sharing** via secure tokens with view tracking
 
 ---
 
@@ -21,13 +22,13 @@
 
 | Layer | Tech |
 |-------|------|
-| **Monorepo tooling** | pnpm workspaces (`pnpm-workspace.yaml`) + Turbo (`turbo.json`) |
+| **Monorepo tooling** | npm workspaces + Turbo (`turbo.json`) + pnpm-workspace.yaml |
 | **Backend** | Node.js 18+, Express.js, TypeScript, Prisma 5.22, PostgreSQL 14+ |
 | **Frontend** | React 18, TypeScript, Vite 5, Tailwind CSS 3, Zustand 4 |
 | **Shared code** | Plain TypeScript package (`shared/`) exposing enums, interfaces, and utilities |
 | **Testing** | Jest (backend), Vitest (frontend) |
 | **Caching** | Redis (via `ioredis` / `redis`) — optional but configured |
-| **Package manager** | npm (root `package-lock.json` exists; `pnpm-workspace.yaml` is also present for pnpm users) |
+| **Package manager** | npm (root `package-lock.json` exists) |
 
 ---
 
@@ -38,7 +39,7 @@ engage/
 ├── backend/               # Express API
 │   ├── src/
 │   │   ├── config/        # database, env, logger, redis, stripe
-│   │   ├── data/          # seed data (e.g. UK accountancy services)
+│   │   ├── data/          # seed data (UK accountancy services)
 │   │   ├── errors/        # custom error classes
 │   │   ├── middleware/    # auth, errorHandler, healthCheck, tenant-*
 │   │   ├── routes/        # Express route modules
@@ -48,24 +49,32 @@ engage/
 │   │   ├── types/         # backend-specific TS types
 │   │   └── utils/         # cache, encryption, logger helpers
 │   ├── prisma/
-│   │   └── schema.prisma  # full Prisma schema (616 lines)
-│   └── tests/             # Jest tests (currently empty directory)
+│   │   ├── schema.prisma  # full Prisma schema (558 lines)
+│   │   ├── seed-enhanced.ts
+│   │   └── migrations/    # Prisma migration files
+│   └── dist/              # Compiled JavaScript output
 ├── frontend/              # React SPA
 │   ├── src/
 │   │   ├── components/    # React components (grouped by feature + ui/ primitives)
 │   │   ├── data/          # static data (e.g. defaultTerms)
-│   │   ├── hooks/         # custom React hooks
 │   │   ├── pages/         # route-level page components
 │   │   ├── stores/        # Zustand stores (auth, theme)
-│   │   ├── types/         # frontend-specific TS types
 │   │   └── utils/         # helpers (api.ts is the main axios client)
-│   └── public/            # static assets
+│   ├── public/            # static assets
+│   └── dist/              # Vite build output
 ├── shared/                # Cross-package types & utilities
-│   └── src/
-│       └── index.ts       # Enums, interfaces, validation, pricing engine, MTD ITSA calculator
-├── docs/                  # Additional documentation
-├── landing/               # Landing page assets (minimal)
-└── scripts/               # Deployment and utility scripts
+│   ├── src/
+│   │   └── index.ts       # Enums, interfaces, validation, pricing engine, MTD ITSA calculator
+│   ├── dist/              # Compiled output
+│   └── package.json
+├── landing/               # Landing page assets
+├── scripts/               # Deployment and utility scripts
+├── docker-compose.yml     # Local development with PostgreSQL + Redis
+├── render.yaml            # Render Blueprint for deployment
+├── railway.toml           # Railway deployment config
+├── Dockerfile             # Production Docker build
+├── Dockerfile.backend.optimized
+└── Dockerfile.frontend.optimized
 ```
 
 ---
@@ -145,7 +154,7 @@ cd frontend && npm run lint  # eslint . --ext ts,tsx
   1. `dotenv.config()` loads env vars **first**
   2. Auth routes mounted **before** CSRF protection
   3. CSRF cookie set globally; CSRF validation applied to `/api/*`
-  4. Tenant extraction middleware (`extractTenant` from `tenant-simple.js`) on API routes
+  4. Tenant extraction middleware (`extractTenant` from `tenant-simple.ts`) on API routes
   5. API routes mounted
   6. Static files served from `public/`
   7. SPA fallback (`index.html`) for non-API routes
@@ -206,7 +215,7 @@ All backend routes should return:
 
 When adding tests:
 - Place backend tests next to the code under `backend/tests/` or co-located (`*.test.ts`).
-- Place frontend tests co-located (`*.test.tsx`) or in `frontend/src/__tests__/`.
+- Place frontend tests co-located (`*.test.tsx`) or in `frontend/src/__tests__/`. Tests should use `*.test.ts` or `*.spec.ts` naming.
 
 ---
 
@@ -239,29 +248,66 @@ Services: PostgreSQL, Redis, backend (`:3001`), frontend (`:80`), Adminer (`:808
 - Health check path: `/ping`.
 
 ### Environment variables (required for production)
-- `DATABASE_URL` — PostgreSQL connection string
-- `JWT_SECRET` — min 32 chars
-- `JWT_EXPIRES_IN` — e.g. `24h`
-- `JWT_REFRESH_EXPIRES_IN` — e.g. `7d`
-- `FRONTEND_URL` — CORS origin
-- `REDIS_URL` — optional but recommended
-- `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS` — email delivery
-- `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET` — payments
-- `COMPANIES_HOUSE_API_KEY` — UK company lookup
+| Variable | Description |
+|----------|-------------|
+| `DATABASE_URL` | PostgreSQL connection string |
+| `JWT_SECRET` | Min 32 characters |
+| `JWT_EXPIRES_IN` | e.g. `24h` |
+| `JWT_REFRESH_EXPIRES_IN` | e.g. `7d` |
+| `FRONTEND_URL` | CORS origin |
+| `REDIS_URL` | Optional but recommended |
+| `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS` | Email delivery |
+| `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET` | Payments |
+| `STRIPE_PUBLISHABLE_KEY` | Frontend Stripe integration |
+| `COMPANIES_HOUSE_API_KEY` | UK company lookup |
 
 ---
 
-## 11. Common Pitfalls
+## 11. Database Schema Overview
+
+The Prisma schema defines the following main models:
+
+| Model | Purpose |
+|-------|---------|
+| `Tenant` | Multi-tenant isolation; contains subdomain, branding colors, VAT settings, Stripe IDs |
+| `User` | Account users with role-based access (ADMIN, PARTNER, MANAGER, SENIOR, JUNIOR) |
+| `Client` | Client records with Companies House data, MTD ITSA status, addresses |
+| `Proposal` | Core proposal entity with pricing, status tracking, signatures |
+| `ProposalService` | Line items for proposals linked to service templates |
+| `ServiceTemplate` | Reusable service definitions with pricing models |
+| `ProposalTemplate` | Pre-configured proposal templates |
+| `PricingRule` | Dynamic pricing adjustments based on conditions |
+| `ActivityLog` | Audit trail for tenant activities |
+| `RefreshToken` | JWT refresh token storage |
+| `ProposalView` | Proposal view tracking for analytics |
+| `ProposalSignature` | Electronic signature records (UK compliant) |
+
+### Key Enums
+- `UserRole`: ADMIN, PARTNER, MANAGER, SENIOR, JUNIOR
+- `CompanyType`: SOLE_TRADER, PARTNERSHIP, LIMITED_COMPANY, LLP, CHARITY, NON_PROFIT
+- `ProposalStatus`: DRAFT, SENT, VIEWED, ACCEPTED, DECLINED, EXPIRED
+- `MTDITSAStatus`: NOT_REQUIRED, ELIGIBLE, MANDATORY, OPTED_IN, EXEMPT, REQUIRED_2026, REQUIRED_2027, REQUIRED_2028
+- `ServiceCategory`: COMPLIANCE, ADVISORY, TAX, PAYROLL, BOOKKEEPING, AUDIT, CONSULTING, TECHNICAL, SPECIALIZED
+
+---
+
+## 12. Common Pitfalls
 
 1. **Import extensions in backend:** Always use `.js` in backend TypeScript imports (e.g. `from './auth.js'`). The TS compiler does not rewrite them because `module: "CommonJS"` is paired with `esModuleInterop`.
+
 2. **Shared package must be built first:** Run `npm run build:shared` before building backend or frontend, otherwise path-alias resolution may fail.
+
 3. **Prisma client regeneration:** After any schema change, run `npm run db:generate` before building or running.
+
 4. **CSRF on public routes:** The backend skips CSRF for `/api/proposals/view/*`, `/api/payments/webhook`, and OAuth callbacks. If you add new webhook or public endpoints, add them to the `publicPaths` array in `backend/src/middleware/auth.ts`.
+
 5. **CORS whitelisting:** Render and Vercel preview URLs are regex-matched. If deploying to a new domain, add it to `allowedOrigins` in `backend/src/index.ts`.
+
+6. **TypeScript strict mode:** Both backend and frontend have `strict: false`. Do not enable without extensive testing as the codebase relies on loose type checking.
 
 ---
 
-## 12. Quick Reference — File-to-Concern Map
+## 13. Quick Reference — File-to-Concern Map
 
 | Concern | File(s) |
 |---------|---------|
@@ -277,3 +323,41 @@ Services: PostgreSQL, Redis, backend (`:3001`), frontend (`:80`), Adminer (`:808
 | Route definitions (React) | `frontend/src/App.tsx` |
 | Tailwind theme | `frontend/tailwind.config.js` |
 | Vite config | `frontend/vite.config.ts` |
+| Shared types | `shared/src/index.ts` |
+| Proposal sharing | `backend/src/services/proposalSharingService.ts` |
+| Companies House | `backend/src/services/companiesHouse.ts`, `backend/src/routes/companiesHouse.ts` |
+| Tenant middleware | `backend/src/middleware/tenant-simple.ts` |
+
+---
+
+## 14. External Integrations
+
+| Service | Purpose | Key Files |
+|---------|---------|-----------|
+| **Stripe** | Subscription billing, payments | `backend/src/routes/payments.ts`, `backend/src/config/stripe.ts` |
+| **Companies House** | UK company lookup | `backend/src/services/companiesHouse.ts` |
+| **SMTP (Nodemailer)** | Email delivery | `backend/src/services/emailService.ts` |
+| **Redis** | Caching, session storage | `backend/src/config/redis.ts` |
+| **PDFKit** | PDF generation | `backend/src/services/pdfGenerator.ts` |
+
+---
+
+## 15. Development Workflow
+
+### Adding a new feature
+1. Update Prisma schema if needed
+2. Run `npm run db:generate` and `npm run db:migrate`
+3. Add backend route in `backend/src/routes/`
+4. Add frontend page/component in `frontend/src/`
+5. Update shared types in `shared/src/index.ts` if needed
+6. Build shared: `npm run build:shared`
+7. Test locally with `npm run dev:backend` and `npm run dev:frontend`
+
+### Before committing
+1. Run `npm run build` to ensure everything compiles
+2. Check for TypeScript errors (despite `strict: false`)
+3. Test critical paths (auth, proposal creation, PDF generation)
+
+---
+
+*Built with ❤️ by Capstone*

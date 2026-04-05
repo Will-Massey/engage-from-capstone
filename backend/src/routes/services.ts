@@ -168,6 +168,9 @@ router.get(
           where: { isActive: true },
           orderBy: { priority: 'desc' },
         },
+        _count: {
+          select: { proposalServices: true },
+        },
       },
     });
 
