@@ -10,7 +10,6 @@ services:
     plan: free
     buildCommand: |
       npm install &&
-      (node backend/node_modules/typescript/bin/tsc --project backend/tsconfig.json || node node_modules/typescript/bin/tsc --project backend/tsconfig.json || true) &&
       cd backend && npx prisma generate
     startCommand: cd backend && npm start
     healthCheckPath: /ping
