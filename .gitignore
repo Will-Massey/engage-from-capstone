@@ -56,3 +56,5 @@ prisma/migrations/*/migration_lock.toml
 tmp/
 temp/
 *.tmp
+node_modules
+node_modules

@@ -1,0 +1,215 @@
+# =============================================================================
+# Security Scanning Workflow
+# =============================================================================
+name: Security Scan
+
+on:
+  schedule:
+    # Run daily at 2 AM UTC
+    - cron: '0 2 * * *'
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  # ---------------------------------------------------------------------------
+  # Dependency Vulnerability Scan
+  # ---------------------------------------------------------------------------
+  dependency-scan:
+    name: Dependency Vulnerability Scan
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v3
+        with:
+          version: '9'
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Run npm audit
+        run: pnpm audit --audit-level=moderate
+        continue-on-error: true
+
+      - name: Run Snyk to check for vulnerabilities
+        uses: snyk/actions/node@master
+        continue-on-error: true
+        env:
+          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+        with:
+          args: --severity-threshold=high
+
+      - name: Upload Snyk results to GitHub Security
+        uses: github/codeql-action/upload-sarif@v3
+        if: always()
+        with:
+          sarif_file: snyk.sarif
+
+  # ---------------------------------------------------------------------------
+  # CodeQL Analysis
+  # ---------------------------------------------------------------------------
+  codeql:
+    name: CodeQL Analysis
+    runs-on: ubuntu-latest
+    permissions:
+      actions: read
+      contents: read
+      security-events: write
+
+    strategy:
+      fail-fast: false
+      matrix:
+        language: ['javascript', 'typescript']
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@v3
+        with:
+          languages: ${{ matrix.language }}
+          queries: security-extended,security-and-quality
+
+      - name: Autobuild
+        uses: github/codeql-action/autobuild@v3
+
+      - name: Perform CodeQL Analysis
+        uses: github/codeql-action/analyze@v3
+
+  # ---------------------------------------------------------------------------
+  # Container Image Scan
+  # ---------------------------------------------------------------------------
+  container-scan:
+    name: Container Image Scan
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build backend image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: ./Dockerfile.backend.optimized
+          load: true
+          tags: engage-backend:scan
+
+      - name: Build frontend image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: ./Dockerfile.frontend.optimized
+          load: true
+          tags: engage-frontend:scan
+
+      - name: Run Trivy vulnerability scanner on backend
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: engage-backend:scan
+          format: 'sarif'
+          output: 'trivy-backend-results.sarif'
+
+      - name: Run Trivy vulnerability scanner on frontend
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: engage-frontend:scan
+          format: 'sarif'
+          output: 'trivy-frontend-results.sarif'
+
+      - name: Upload Trivy backend scan results
+        uses: github/codeql-action/upload-sarif@v3
+        if: always()
+        with:
+          sarif_file: trivy-backend-results.sarif
+          category: trivy-backend
+
+      - name: Upload Trivy frontend scan results
+        uses: github/codeql-action/upload-sarif@v3
+        if: always()
+        with:
+          sarif_file: trivy-frontend-results.sarif
+          category: trivy-frontend
+
+  # ---------------------------------------------------------------------------
+  # Secret Scanning
+  # ---------------------------------------------------------------------------
+  secret-scan:
+    name: Secret Detection
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Run GitLeaks
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITLEAKS_LICENSE: ${{ secrets.GITLEAKS_LICENSE }}
+
+  # ---------------------------------------------------------------------------
+  # Infrastructure Security Scan
+  # ---------------------------------------------------------------------------
+  infrastructure-scan:
+    name: Infrastructure Security Scan
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Run Checkov
+        uses: bridgecrewio/checkov-action@master
+        with:
+          directory: ./terraform
+          framework: terraform
+          output_format: sarif
+          output_file_path: checkov-results.sarif
+
+      - name: Upload Checkov scan results
+        uses: github/codeql-action/upload-sarif@v3
+        if: always()
+        with:
+          sarif_file: checkov-results.sarif
+          category: checkov
+
+  # ---------------------------------------------------------------------------
+  # SSL/TLS Configuration Check
+  # ---------------------------------------------------------------------------
+  ssl-check:
+    name: SSL/TLS Configuration Check
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
+    steps:
+      - name: Check SSL Labs Grade
+        run: |
+          # Install ssllabs-scan
+          wget https://github.com/ssllabs/ssllabs-scan/releases/download/v1.5.0/ssllabs-scan_v1.5.0-linux-amd64.tgz
+          tar -xzf ssllabs-scan_v1.5.0-linux-amd64.tgz
+          
+          # Run scan
+          ./ssllabs-scan engage.capstonesoftware.co.uk > ssl-report.json
+          
+          # Check grade
+          GRADE=$(cat ssl-report.json | jq -r '.[0].endpoints[0].grade')
+          echo "SSL Grade: $GRADE"
+          
+          if [ "$GRADE" != "A+" ] && [ "$GRADE" != "A" ]; then
+            echo "SSL grade is not A or A+"
+            exit 1
+          fi

@@ -1,0 +1,369 @@
+- generic [ref=e2]:
+  - generic [ref=e3]:
+    - banner [ref=e4]:
+      - generic [ref=e5]:
+        - link "Render" [ref=e7] [cursor=pointer]:
+          - /url: /
+          - img "Render" [ref=e8]
+        - button "M My Workspace" [ref=e12] [cursor=pointer]:
+          - generic [ref=e13]:
+            - generic [ref=e14]: M
+            - generic "My Workspace" [ref=e15]
+            - img [ref=e16]
+      - generic [ref=e20]:
+        - navigation [ref=e21]:
+          - list [ref=e22]:
+            - listitem [ref=e23]:
+              - generic [ref=e24]:
+                - img [ref=e25]
+                - generic [ref=e29]: Projects
+        - button "Search Ctrl + K" [ref=e31] [cursor=pointer]:
+          - img [ref=e33]
+          - text: Search
+          - generic [ref=e35]:
+            - img [ref=e36]
+            - generic [ref=e38]: Ctrl
+            - generic [ref=e39]: +
+            - generic [ref=e40]: K
+            - generic [ref=e41]: K
+      - generic [ref=e42]:
+        - button "New" [ref=e44] [cursor=pointer]:
+          - generic [ref=e45]:
+            - img [ref=e46]
+            - generic [ref=e48]: New
+        - button "Help" [ref=e50] [cursor=pointer]:
+          - img "Help" [ref=e51]
+        - button "w" [ref=e56] [cursor=pointer]:
+          - generic [ref=e58]: w
+    - generic [ref=e59]:
+      - navigation [ref=e60]:
+        - separator [ref=e61]
+        - generic [ref=e63]:
+          - list [ref=e64]:
+            - listitem [ref=e65]:
+              - link "Projects" [ref=e66] [cursor=pointer]:
+                - /url: /
+                - img [ref=e67]
+                - generic [ref=e71]: Projects
+            - listitem [ref=e72]:
+              - link "Blueprints" [ref=e73] [cursor=pointer]:
+                - /url: /blueprints
+                - img [ref=e74]
+                - generic [ref=e79]: Blueprints
+            - listitem [ref=e80]:
+              - link "Environment Groups" [ref=e81] [cursor=pointer]:
+                - /url: /env-groups
+                - img [ref=e82]
+                - generic [ref=e88]: Environment Groups
+          - generic [ref=e89]:
+            - generic [ref=e90]: Integrations
+            - list "Integrations" [ref=e91]:
+              - listitem [ref=e92]:
+                - link "Observability" [ref=e93] [cursor=pointer]:
+                  - /url: /observability
+                  - img [ref=e94]
+                  - generic [ref=e96]: Observability
+              - listitem [ref=e97]:
+                - link "Webhooks" [ref=e98] [cursor=pointer]:
+                  - /url: /webhooks
+                  - img [ref=e99]
+                  - generic [ref=e103]: Webhooks
+              - listitem [ref=e104]:
+                - link "Notifications" [ref=e105] [cursor=pointer]:
+                  - /url: /notifications
+                  - img [ref=e106]
+                  - generic [ref=e116]: Notifications
+          - generic [ref=e117]:
+            - generic [ref=e118]: Networking
+            - list "Networking" [ref=e119]:
+              - listitem [ref=e120]:
+                - link "Private Links" [ref=e121] [cursor=pointer]:
+                  - /url: /private-links
+                  - img [ref=e122]
+                  - generic [ref=e124]: Private Links
+          - generic [ref=e125]:
+            - generic [ref=e126]: Workspace
+            - list "Workspace" [ref=e127]:
+              - listitem [ref=e128]:
+                - link "Billing" [ref=e129] [cursor=pointer]:
+                  - /url: /w/tea-d6m1tuchg0os73b285p0/billing
+                  - img [ref=e130]
+                  - generic [ref=e133]: Billing
+              - listitem [ref=e134]:
+                - link "Settings" [ref=e135] [cursor=pointer]:
+                  - /url: /w/tea-d6m1tuchg0os73b285p0/settings
+                  - img [ref=e136]
+                  - generic [ref=e139]: Settings
+        - generic [ref=e141]:
+          - button "Collapse items" [expanded] [ref=e142] [cursor=pointer]:
+            - img [ref=e143]
+          - list "Footer navigation" [ref=e145]:
+            - listitem [ref=e146]:
+              - link "Changelog" [ref=e147] [cursor=pointer]:
+                - /url: https://render.com/changelog
+                - img [ref=e148]
+                - generic [ref=e153]: Changelog
+            - listitem [ref=e154]:
+              - link "Invite a friend" [ref=e155] [cursor=pointer]:
+                - /url: /invites
+                - img [ref=e156]
+                - generic [ref=e158]: Invite a friend
+            - listitem [ref=e159]:
+              - button "Contact support" [ref=e160] [cursor=pointer]:
+                - img [ref=e161]
+                - generic [ref=e165]: Contact support
+          - link "Render Status" [ref=e167] [cursor=pointer]:
+            - /url: https://status.render.com
+            - img [ref=e168]
+            - generic [ref=e170]: Render Status
+      - main [ref=e172]:
+        - generic [ref=e173]:
+          - heading "Overview" [level=1] [ref=e175]
+          - button "New" [ref=e179] [cursor=pointer]:
+            - generic [ref=e180]:
+              - img [ref=e181]
+              - generic [ref=e183]: New
+              - img [ref=e184]
+        - generic [ref=e186]:
+          - generic [ref=e187]:
+            - generic [ref=e190]: Projects
+            - list [ref=e191]:
+              - listitem [ref=e192]:
+                - link "My project Loading..." [ref=e193] [cursor=pointer]:
+                  - /url: /project/prj-d6m25t5actks73fq39lg
+                  - generic [ref=e194]:
+                    - heading "My project" [level=6] [ref=e195]:
+                      - generic [ref=e196]: My project
+                    - img "Loading..." [ref=e198]
+              - listitem [ref=e201]:
+                - link "Capstone-Accountflow Loading..." [ref=e202] [cursor=pointer]:
+                  - /url: /project/prj-d6nfd0tm5p6s738c3bgg
+                  - generic [ref=e203]:
+                    - heading "Capstone-Accountflow" [level=6] [ref=e204]:
+                      - generic [ref=e205]: Capstone-Accountflow
+                    - img "Loading..." [ref=e207]
+              - listitem [ref=e210]:
+                - link "Engage Loading..." [ref=e211] [cursor=pointer]:
+                  - /url: /project/prj-d6qkd77afjfc73epncn0
+                  - generic [ref=e212]:
+                    - heading "Engage" [level=6] [ref=e213]:
+                      - generic [ref=e214]: Engage
+                    - img "Loading..." [ref=e216]
+              - listitem [ref=e219]:
+                - link "Create new project" [ref=e221] [cursor=pointer]:
+                  - /url: /new/project
+                  - img [ref=e223]
+                  - text: Create new project
+          - generic [ref=e225]:
+            - generic [ref=e227]: Ungrouped Services
+            - generic [ref=e228]:
+              - list [ref=e231]:
+                - listitem [ref=e232]:
+                  - tab "active (6)" [selected] [ref=e233] [cursor=pointer]:
+                    - generic [ref=e234]:
+                      - generic [ref=e235]: active
+                      - generic [ref=e236]: (6)
+                - listitem [ref=e237]:
+                  - tab "suspended (0)" [ref=e238] [cursor=pointer]:
+                    - generic [ref=e239]:
+                      - generic [ref=e240]: suspended
+                      - generic [ref=e241]: (0)
+                - listitem [ref=e242]:
+                  - tab "all (6)" [ref=e243] [cursor=pointer]:
+                    - generic [ref=e244]:
+                      - generic [ref=e245]: all
+                      - generic [ref=e246]: (6)
+              - generic [ref=e247]:
+                - generic [ref=e248]: Search services
+                - generic [ref=e249]:
+                  - img
+                  - textbox "Search services" [ref=e250]
+            - table [ref=e252]:
+              - rowgroup [ref=e253]:
+                - row "Select all rows id Service Name 6 total rows Status Runtime Region Updated" [ref=e254]:
+                  - columnheader "Select all rows":
+                    - generic [ref=e257] [cursor=pointer]:
+                      - checkbox "Select all rows" [ref=e258]
+                      - generic [ref=e260]: Select all rows
+                  - columnheader "id" [ref=e261]:
+                    - button "id" [ref=e262] [cursor=pointer]:
+                      - generic [ref=e263]: id
+                  - columnheader "Service Name 6 total rows" [ref=e264]:
+                    - button "Service Name 6 total rows" [ref=e265] [cursor=pointer]:
+                      - generic [ref=e266]:
+                        - generic [ref=e267]: Service Name
+                        - generic "6 total rows" [ref=e268]: "6"
+                  - columnheader "Status" [ref=e269]:
+                    - button "Status" [ref=e270] [cursor=pointer]:
+                      - generic [ref=e271]: Status
+                  - columnheader "Runtime" [ref=e272]:
+                    - button "Runtime" [ref=e273] [cursor=pointer]:
+                      - generic [ref=e274]: Runtime
+                  - columnheader "Region" [ref=e275]:
+                    - button "Region" [ref=e276] [cursor=pointer]:
+                      - generic [ref=e277]: Region
+                  - columnheader "Updated" [ref=e278]:
+                    - button "Updated" [ref=e279] [cursor=pointer]:
+                      - generic [ref=e280]: Updated
+                      - img [ref=e281]
+                  - columnheader [ref=e283]
+              - rowgroup [ref=e284]:
+                - row "Select row accountflow Node frankfurt 2h Options" [ref=e285]:
+                  - cell "Select row":
+                    - generic [ref=e288] [cursor=pointer]:
+                      - checkbox "Select row" [ref=e289]
+                      - generic [ref=e291]: Select row
+                  - cell [ref=e292]:
+                    - img [ref=e295]
+                  - cell "accountflow" [ref=e297]:
+                    - link "accountflow" [ref=e299] [cursor=pointer]:
+                      - /url: /web/srv-d6m279p5pdvs738nme1g
+                      - generic [ref=e300]: accountflow
+                  - cell [ref=e301]
+                  - cell "Node" [ref=e302]:
+                    - generic "Node" [ref=e304]
+                  - cell "frankfurt" [ref=e305]
+                  - cell "2h" [ref=e306]:
+                    - time [ref=e307]: 2h
+                  - cell "Options" [ref=e308]:
+                    - button "Options" [ref=e311] [cursor=pointer]:
+                      - generic [ref=e312]: Options
+                      - img [ref=e313]
+                - row "Select row engage-backend Node oregon 16h Options" [ref=e317]:
+                  - cell "Select row":
+                    - generic [ref=e320] [cursor=pointer]:
+                      - checkbox "Select row" [ref=e321]
+                      - generic [ref=e323]: Select row
+                  - cell [ref=e324]:
+                    - img [ref=e327]
+                  - cell "engage-backend" [ref=e329]:
+                    - generic [ref=e330]:
+                      - link "engage-backend" [ref=e331] [cursor=pointer]:
+                        - /url: /web/srv-d6qkjlua2pns73a2r1fg
+                        - generic [ref=e332]: engage-backend
+                      - link [ref=e335] [cursor=pointer]:
+                        - /url: /blueprint/exs-d6olm0q4d50c73bk90hg
+                        - img [ref=e336]
+                  - cell [ref=e341]
+                  - cell "Node" [ref=e342]:
+                    - generic "Node" [ref=e344]
+                  - cell "oregon" [ref=e345]
+                  - cell "16h" [ref=e346]:
+                    - time [ref=e347]: 16h
+                  - cell "Options" [ref=e348]:
+                    - button "Options" [ref=e351] [cursor=pointer]:
+                      - generic [ref=e352]: Options
+                      - img [ref=e353]
+                - row "Select row engage-frontend Static global 16h Options" [ref=e357]:
+                  - cell "Select row":
+                    - generic [ref=e360] [cursor=pointer]:
+                      - checkbox "Select row" [ref=e361]
+                      - generic [ref=e363]: Select row
+                  - cell [ref=e364]:
+                    - img [ref=e367]
+                  - cell "engage-frontend" [ref=e370]:
+                    - generic [ref=e371]:
+                      - link "engage-frontend" [ref=e372] [cursor=pointer]:
+                        - /url: /static/srv-d6qkjbma2pns73a2qod0
+                        - generic [ref=e373]: engage-frontend
+                      - link [ref=e376] [cursor=pointer]:
+                        - /url: /blueprint/exs-d6olm0q4d50c73bk90hg
+                        - img [ref=e377]
+                  - cell [ref=e382]
+                  - cell "Static" [ref=e383]:
+                    - generic "Static" [ref=e385]
+                  - cell "global" [ref=e386]
+                  - cell "16h" [ref=e387]:
+                    - time [ref=e388]: 16h
+                  - cell "Options" [ref=e389]:
+                    - button "Options" [ref=e392] [cursor=pointer]:
+                      - generic [ref=e393]: Options
+                      - img [ref=e394]
+                - row "Select row accountflow - backup Node frankfurt 16h Options" [ref=e398]:
+                  - cell "Select row":
+                    - generic [ref=e401] [cursor=pointer]:
+                      - checkbox "Select row" [ref=e402]
+                      - generic [ref=e404]: Select row
+                  - cell [ref=e405]:
+                    - img [ref=e408]
+                  - cell "accountflow - backup" [ref=e412]:
+                    - link "accountflow - backup" [ref=e414] [cursor=pointer]:
+                      - /url: /cron/crn-d6rchff5r7bs738u8qo0
+                      - generic [ref=e415]: accountflow - backup
+                  - cell [ref=e416]
+                  - cell "Node" [ref=e417]:
+                    - generic "Node" [ref=e419]
+                  - cell "frankfurt" [ref=e420]
+                  - cell "16h" [ref=e421]:
+                    - time [ref=e422]: 16h
+                  - cell "Options" [ref=e423]:
+                    - button "Options" [ref=e426] [cursor=pointer]:
+                      - generic [ref=e427]: Options
+                      - img [ref=e428]
+                - row "Select row mileage-tracker Static global 3d Options" [ref=e432]:
+                  - cell "Select row":
+                    - generic [ref=e435] [cursor=pointer]:
+                      - checkbox "Select row" [ref=e436]
+                      - generic [ref=e438]: Select row
+                  - cell [ref=e439]:
+                    - img [ref=e442]
+                  - cell "mileage-tracker" [ref=e445]:
+                    - generic [ref=e446]:
+                      - link "mileage-tracker" [ref=e447] [cursor=pointer]:
+                        - /url: /static/srv-d75aaf24d50c7399vge0
+                        - generic [ref=e448]: mileage-tracker
+                      - link [ref=e451] [cursor=pointer]:
+                        - /url: /blueprint/exs-d759rca4d50c73e8kal0
+                        - img [ref=e452]
+                  - cell [ref=e457]
+                  - cell "Static" [ref=e458]:
+                    - generic "Static" [ref=e460]
+                  - cell "global" [ref=e461]
+                  - cell "3d" [ref=e462]:
+                    - time [ref=e463]: 3d
+                  - cell "Options" [ref=e464]:
+                    - button "Options" [ref=e467] [cursor=pointer]:
+                      - generic [ref=e468]: Options
+                      - img [ref=e469]
+                - row "Select row engage-db PostgreSQL 18 oregon 20d Options" [ref=e473]:
+                  - cell "Select row":
+                    - generic [ref=e476] [cursor=pointer]:
+                      - checkbox "Select row" [ref=e477]
+                      - generic [ref=e479]: Select row
+                  - cell [ref=e480]:
+                    - img [ref=e483]
+                  - cell "engage-db" [ref=e485]:
+                    - generic [ref=e486]:
+                      - link "engage-db" [ref=e487] [cursor=pointer]:
+                        - /url: /d/dpg-d6qkjbma2pns73a2qoe0-a
+                        - generic [ref=e488]: engage-db
+                      - link [ref=e491] [cursor=pointer]:
+                        - /url: /blueprint/exs-d6olm0q4d50c73bk90hg
+                        - img [ref=e492]
+                  - cell [ref=e497]
+                  - cell "PostgreSQL 18" [ref=e498]:
+                    - generic "PostgreSQL 18" [ref=e500]
+                  - cell "oregon" [ref=e501]
+                  - cell "20d" [ref=e502]:
+                    - time [ref=e503]: 20d
+                  - cell "Options" [ref=e504]:
+                    - button "Options" [ref=e507] [cursor=pointer]:
+                      - generic [ref=e508]: Options
+                      - img [ref=e509]
+  - generic:
+    - generic:
+      - generic: "0 services selected:"
+      - generic:
+        - generic:
+          - generic:
+            - button:
+              - generic:
+                - img
+              - generic: Move
+              - img
+    - generic:
+      - separator
+      - generic:
+        - generic:
+          - button:
+            - img

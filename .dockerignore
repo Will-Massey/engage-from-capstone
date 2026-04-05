@@ -1,49 +1,54 @@
 # Dependencies
 node_modules
-*/node_modules
+.pnpm-store
 
 # Build outputs
 dist
-*/dist
 build
-*/build
+*.tsbuildinfo
 
-# Cache
-.cache
-*/.cache
-.parcel-cache
-.vite
-*/.vite
+# Environment
+.env
+.env.*
+!.env.example
+
+# Development
+.git
+.gitignore
+.github
+.vscode
+.idea
+*.md
+!README.md
+
+# Testing
+coverage
+.nyc_output
+*.test.ts
+*.test.tsx
+*.spec.ts
+*.spec.tsx
+__tests__
+__mocks__
 
 # Logs
 logs
 *.log
 npm-debug.log*
-
-# Environment
-.env
-.env.local
-.env.*.local
-
-# IDE
-.vscode
-.idea
-*.swp
-*.swo
-
-# OS
-.DS_Store
-Thumbs.db
-
-# Git
-.git
-.gitignore
-
-# Testing
-coverage
-*.test.ts
-*.test.tsx
+pnpm-debug.log*
 
 # Misc
-*.md
-docs
+.DS_Store
+*.swp
+*.swo
+*~
+
+# Docker
+Dockerfile*
+docker-compose*
+.docker
+
+# CI/CD - keep essential workflows
+.github/workflows/*.yml
+!.github/workflows/ci-cd.yml
+!.github/workflows/security.yml

@@ -1,0 +1,97 @@
+# syntax=docker/dockerfile:1.7
+# =============================================================================
+# Engage Backend - Ultra-Optimized Dockerfile
+# =============================================================================
+# BuildKit features:
+# - Mount caching for npm/pnpm
+# - Parallel layer builds
+# =============================================================================
+
+# ---------------------------------------------------------------------------
+# Stage 1: Dependencies with mount caching
+# ---------------------------------------------------------------------------
+FROM node:20-alpine AS deps
+WORKDIR /app
+
+# Install only essential packages
+RUN apk add --no-cache libc6-compat
+
+# Enable pnpm
+RUN corepack enable && corepack prepare pnpm@9.0.0 --activate
+
+# Copy lockfiles first for optimal caching
+COPY pnpm-lock.yaml package.json pnpm-workspace.yaml ./
+COPY backend/package.json ./backend/
+COPY shared/package.json ./shared/
+
+# Install with mount cache - massive speedup on rebuilds
+RUN --mount=type=cache,target=/root/.local/share/pnpm/store \
+    pnpm install --frozen-lockfile --prefer-offline
+
+# ---------------------------------------------------------------------------
+# Stage 2: Builder with Prisma cache
+# ---------------------------------------------------------------------------
+FROM node:20-alpine AS builder
+WORKDIR /app
+
+RUN apk add --no-cache libc6-compat openssl
+RUN corepack enable && corepack prepare pnpm@9.0.0 --activate
+
+# Copy dependencies from deps stage
+COPY --from=deps /app/node_modules ./node_modules
+COPY --from=deps /app/backend/node_modules ./backend/node_modules
+COPY --from=deps /app/shared/node_modules ./shared/node_modules
+
+# Copy source
+COPY . .
+
+# Generate Prisma with cache mount
+RUN --mount=type=cache,target=/app/backend/node_modules/.prisma \
+    cd backend && pnpm prisma generate
+
+# Build with Turbo for parallel execution
+RUN pnpm turbo run build --filter=shared --filter=backend
+
+# ---------------------------------------------------------------------------
+# Stage 3: Production - Minimal image
+# ---------------------------------------------------------------------------
+FROM node:20-alpine AS production
+
+# Security hardening
+RUN addgroup --system --gid 1001 nodejs && \
+    adduser --system --uid 1001 engage
+
+# Only install dumb-init for signal handling
+RUN apk add --no-cache dumb-init curl
+
+WORKDIR /app
+
+ENV NODE_ENV=production
+ENV PORT=3001
+ENV HOST=0.0.0.0
+
+# Copy only production node_modules
+COPY --from=deps --chown=engage:nodejs /app/node_modules ./node_modules
+COPY --from=deps --chown=engage:nodejs /app/backend/node_modules ./backend/node_modules
+COPY --from=deps --chown=engage:nodejs /app/shared/node_modules ./shared/node_modules
+
+# Copy built artifacts
+COPY --from=builder --chown=engage:nodejs /app/backend/dist ./backend/dist
+COPY --from=builder --chown=engage:nodejs /app/shared/dist ./shared/dist
+COPY --from=builder --chown=engage:nodejs /app/backend/prisma ./backend/prisma
+COPY --from=builder --chown=engage:nodejs /app/backend/package.json ./backend/
+COPY --from=builder --chown=engage:nodejs /app/package.json ./
+
+# Copy Prisma generated client
+COPY --from=builder --chown=engage:nodejs /app/backend/node_modules/.prisma ./backend/node_modules/.prisma
+COPY --from=builder --chown=engage:nodejs /app/backend/node_modules/@prisma ./backend/node_modules/@prisma
+
+USER engage
+
+EXPOSE 3001
+
+HEALTHCHECK --interval=30s --timeout=3s --start-period=10s --retries=3 \
+    CMD curl -f http://localhost:3001/health || exit 1
+
+ENTRYPOINT ["dumb-init", "--"]
+CMD ["node", "backend/dist/index.js"]

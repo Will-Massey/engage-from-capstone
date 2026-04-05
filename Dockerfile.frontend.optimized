@@ -1,0 +1,65 @@
+# syntax=docker/dockerfile:1.7
+# =============================================================================
+# Engage Frontend - Ultra-Optimized Dockerfile
+# =============================================================================
+
+# ---------------------------------------------------------------------------
+# Stage 1: Dependencies
+# ---------------------------------------------------------------------------
+FROM node:20-alpine AS deps
+WORKDIR /app
+
+RUN corepack enable && corepack prepare pnpm@9.0.0 --activate
+
+COPY pnpm-lock.yaml package.json pnpm-workspace.yaml ./
+COPY frontend/package.json ./frontend/
+COPY shared/package.json ./shared/
+
+RUN --mount=type=cache,target=/root/.local/share/pnpm/store \
+    pnpm install --frozen-lockfile --prefer-offline
+
+# ---------------------------------------------------------------------------
+# Stage 2: Builder
+# ---------------------------------------------------------------------------
+FROM node:20-alpine AS builder
+WORKDIR /app
+
+RUN corepack enable && corepack prepare pnpm@9.0.0 --activate
+
+COPY --from=deps /app/node_modules ./node_modules
+COPY --from=deps /app/frontend/node_modules ./frontend/node_modules
+COPY --from=deps /app/shared/node_modules ./shared/node_modules
+
+COPY . .
+
+# Build args for Vite
+ARG VITE_API_URL
+ARG VITE_SENTRY_DSN
+ARG VITE_APP_ENV
+ENV VITE_API_URL=${VITE_API_URL}
+ENV VITE_SENTRY_DSN=${VITE_SENTRY_DSN}
+ENV VITE_APP_ENV=${VITE_APP_ENV}
+
+RUN pnpm turbo run build --filter=shared --filter=frontend
+
+# ---------------------------------------------------------------------------
+# Stage 3: Production with Nginx
+# ---------------------------------------------------------------------------
+FROM nginx:1.25-alpine AS production
+
+# Remove default config
+RUN rm /etc/nginx/conf.d/default.conf
+
+# Copy optimized nginx config
+COPY nginx.conf /etc/nginx/conf.d/default.conf
+COPY --from=builder /app/frontend/dist /usr/share/nginx/html
+
+# Security: non-root nginx
+RUN adduser -S -D -H -u 101 -s /sbin/nologin nginx-user 2>/dev/null || true
+
+EXPOSE 80
+
+HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
+    CMD wget --no-verbose --tries=1 --spider http://localhost/health || exit 1
+
+CMD ["nginx", "-g", "daemon off;"]
