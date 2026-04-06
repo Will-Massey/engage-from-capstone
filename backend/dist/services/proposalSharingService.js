@@ -1,38 +1,21 @@
-"use strict";
 /**
  * Proposal Sharing, Tracking, and e-Signature Service
  * UK compliant proposal viewing and electronic signature handling
  */
-var __importDefault = (this && this.__importDefault) || function (mod) {
-    return (mod && mod.__esModule) ? mod : { "default": mod };
-};
-Object.defineProperty(exports, "__esModule", { value: true });
-exports.generateShareToken = generateShareToken;
-exports.createShareableLink = createShareableLink;
-exports.revokeShareableLink = revokeShareableLink;
-exports.getProposalByShareToken = getProposalByShareToken;
-exports.trackProposalView = trackProposalView;
-exports.getProposalViewStats = getProposalViewStats;
-exports.recordElectronicSignature = recordElectronicSignature;
-exports.getProposalSignatures = getProposalSignatures;
-exports.getSignatureImage = getSignatureImage;
-exports.generateComplianceAuditTrail = generateComplianceAuditTrail;
-exports.isShareTokenValid = isShareTokenValid;
-exports.generateProposalPdfUrl = generateProposalPdfUrl;
-const uuid_1 = require("uuid");
-const database_js_1 = require("../config/database.js");
-const logger_js_1 = __importDefault(require("../config/logger.js"));
+import { v4 as uuidv4 } from 'uuid';
+import { prisma } from '../config/database.js';
+import logger from '../config/logger.js';
 // Generate unique share token
-function generateShareToken() {
-    return (0, uuid_1.v4)().replace(/-/g, '').substring(0, 32);
+export function generateShareToken() {
+    return uuidv4().replace(/-/g, '').substring(0, 32);
 }
 // Create shareable proposal link
-async function createShareableLink(proposalId, expiryDays = 30, tenantSubdomain) {
+export async function createShareableLink(proposalId, expiryDays = 30, tenantSubdomain) {
     try {
         const token = generateShareToken();
         const expiresAt = new Date();
         expiresAt.setDate(expiresAt.getDate() + expiryDays);
-        await database_js_1.prisma.proposal.update({
+        await prisma.proposal.update({
             where: { id: proposalId },
             data: {
                 shareToken: token,
@@ -42,18 +25,18 @@ async function createShareableLink(proposalId, expiryDays = 30, tenantSubdomain)
         });
         const baseUrl = process.env.PUBLIC_PROPOSAL_URL || `https://${tenantSubdomain}.engage.capstone.co.uk`;
         const shareUrl = `${baseUrl}/proposals/view/${token}`;
-        logger_js_1.default.info(`Created shareable link for proposal ${proposalId}`);
+        logger.info(`Created shareable link for proposal ${proposalId}`);
         return { token, shareUrl, expiresAt };
     }
     catch (error) {
-        logger_js_1.default.error('Failed to create shareable link:', error);
+        logger.error('Failed to create shareable link:', error);
         throw error;
     }
 }
 // Revoke shareable link
-async function revokeShareableLink(proposalId) {
+export async function revokeShareableLink(proposalId) {
     try {
-        await database_js_1.prisma.proposal.update({
+        await prisma.proposal.update({
             where: { id: proposalId },
             data: {
                 shareToken: null,
@@ -61,17 +44,17 @@ async function revokeShareableLink(proposalId) {
                 publicAccessEnabled: false,
             },
         });
-        logger_js_1.default.info(`Revoked shareable link for proposal ${proposalId}`);
+        logger.info(`Revoked shareable link for proposal ${proposalId}`);
     }
     catch (error) {
-        logger_js_1.default.error('Failed to revoke shareable link:', error);
+        logger.error('Failed to revoke shareable link:', error);
         throw error;
     }
 }
 // Get proposal by share token
-async function getProposalByShareToken(token) {
+export async function getProposalByShareToken(token) {
     try {
-        const proposal = await database_js_1.prisma.proposal.findFirst({
+        const proposal = await prisma.proposal.findFirst({
             where: {
                 shareToken: token,
                 publicAccessEnabled: true,
@@ -100,14 +83,14 @@ async function getProposalByShareToken(token) {
         return proposal;
     }
     catch (error) {
-        logger_js_1.default.error('Failed to get proposal by share token:', error);
+        logger.error('Failed to get proposal by share token:', error);
         return null;
     }
 }
 // Track proposal view
-async function trackProposalView(proposalId, ipAddress, userAgent) {
+export async function trackProposalView(proposalId, ipAddress, userAgent) {
     try {
-        await database_js_1.prisma.proposalView.create({
+        await prisma.proposalView.create({
             data: {
                 proposalId,
                 ipAddress,
@@ -116,12 +99,12 @@ async function trackProposalView(proposalId, ipAddress, userAgent) {
             },
         });
         // Update proposal viewedAt and status if first view
-        const proposal = await database_js_1.prisma.proposal.findUnique({
+        const proposal = await prisma.proposal.findUnique({
             where: { id: proposalId },
             select: { status: true, viewedAt: true },
         });
         if (proposal && !proposal.viewedAt) {
-            await database_js_1.prisma.proposal.update({
+            await prisma.proposal.update({
                 where: { id: proposalId },
                 data: {
                     viewedAt: new Date(),
@@ -130,31 +113,31 @@ async function trackProposalView(proposalId, ipAddress, userAgent) {
             });
         }
         else {
-            await database_js_1.prisma.proposal.update({
+            await prisma.proposal.update({
                 where: { id: proposalId },
                 data: {
                     viewedAt: new Date(),
                 },
             });
         }
-        logger_js_1.default.info(`Tracked view for proposal ${proposalId}`);
+        logger.info(`Tracked view for proposal ${proposalId}`);
     }
     catch (error) {
-        logger_js_1.default.error('Failed to track proposal view:', error);
+        logger.error('Failed to track proposal view:', error);
     }
 }
 // Get proposal view statistics
-async function getProposalViewStats(proposalId) {
+export async function getProposalViewStats(proposalId) {
     try {
         const [viewCount, uniqueViews, lastView] = await Promise.all([
-            database_js_1.prisma.proposalView.count({
+            prisma.proposalView.count({
                 where: { proposalId },
             }),
-            database_js_1.prisma.proposalView.groupBy({
+            prisma.proposalView.groupBy({
                 by: ['ipAddress'],
                 where: { proposalId },
             }),
-            database_js_1.prisma.proposalView.findFirst({
+            prisma.proposalView.findFirst({
                 where: { proposalId },
                 orderBy: { viewedAt: 'desc' },
             }),
@@ -163,7 +146,7 @@ async function getProposalViewStats(proposalId) {
             totalViews: viewCount,
             uniqueViews: uniqueViews.length,
             lastViewedAt: lastView?.viewedAt,
-            firstViewedAt: await database_js_1.prisma.proposalView
+            firstViewedAt: await prisma.proposalView
                 .findFirst({
                 where: { proposalId },
                 orderBy: { viewedAt: 'asc' },
@@ -172,19 +155,19 @@ async function getProposalViewStats(proposalId) {
         };
     }
     catch (error) {
-        logger_js_1.default.error('Failed to get proposal view stats:', error);
+        logger.error('Failed to get proposal view stats:', error);
         return null;
     }
 }
 // Record electronic signature
-async function recordElectronicSignature(data) {
+export async function recordElectronicSignature(data) {
     try {
         // Validate signature data
         if (!data.signatureData || data.signatureData.length < 100) {
             return { success: false, error: 'Invalid signature data' };
         }
         // Create signature record
-        await database_js_1.prisma.proposalSignature.create({
+        await prisma.proposalSignature.create({
             data: {
                 proposalId: data.proposalId,
                 signedBy: data.signedBy,
@@ -197,7 +180,7 @@ async function recordElectronicSignature(data) {
             },
         });
         // Update proposal status
-        await database_js_1.prisma.proposal.update({
+        await prisma.proposal.update({
             where: { id: data.proposalId },
             data: {
                 status: 'ACCEPTED',
@@ -208,18 +191,18 @@ async function recordElectronicSignature(data) {
                 termsAcceptedAt: new Date(),
             },
         });
-        logger_js_1.default.info(`Electronic signature recorded for proposal ${data.proposalId}`);
+        logger.info(`Electronic signature recorded for proposal ${data.proposalId}`);
         return { success: true };
     }
     catch (error) {
-        logger_js_1.default.error('Failed to record electronic signature:', error);
+        logger.error('Failed to record electronic signature:', error);
         return { success: false, error: error.message };
     }
 }
 // Get signatures for a proposal
-async function getProposalSignatures(proposalId) {
+export async function getProposalSignatures(proposalId) {
     try {
-        const signatures = await database_js_1.prisma.proposalSignature.findMany({
+        const signatures = await prisma.proposalSignature.findMany({
             where: { proposalId },
             orderBy: { signedAt: 'desc' },
             select: {
@@ -236,30 +219,30 @@ async function getProposalSignatures(proposalId) {
         return signatures;
     }
     catch (error) {
-        logger_js_1.default.error('Failed to get proposal signatures:', error);
+        logger.error('Failed to get proposal signatures:', error);
         return [];
     }
 }
 // Get signature image
-async function getSignatureImage(signatureId) {
+export async function getSignatureImage(signatureId) {
     try {
-        const signature = await database_js_1.prisma.proposalSignature.findUnique({
+        const signature = await prisma.proposalSignature.findUnique({
             where: { id: signatureId },
             select: { signatureData: true },
         });
         return signature?.signatureData || null;
     }
     catch (error) {
-        logger_js_1.default.error('Failed to get signature image:', error);
+        logger.error('Failed to get signature image:', error);
         return null;
     }
 }
 // Generate compliance audit trail for a proposal
-async function generateComplianceAuditTrail(proposalId) {
+export async function generateComplianceAuditTrail(proposalId) {
     const auditTrail = [];
     try {
         // Get proposal with related data
-        const proposal = await database_js_1.prisma.proposal.findUnique({
+        const proposal = await prisma.proposal.findUnique({
             where: { id: proposalId },
             include: {
                 views: {
@@ -339,12 +322,12 @@ async function generateComplianceAuditTrail(proposalId) {
         return auditTrail.sort((a, b) => a.timestamp.getTime() - b.timestamp.getTime());
     }
     catch (error) {
-        logger_js_1.default.error('Failed to generate compliance audit trail:', error);
+        logger.error('Failed to generate compliance audit trail:', error);
         return auditTrail;
     }
 }
 // Validate share token
-function isShareTokenValid(proposal, token) {
+export function isShareTokenValid(proposal, token) {
     if (!proposal.publicAccessEnabled) {
         return { valid: false, reason: 'Public access disabled' };
     }
@@ -357,11 +340,11 @@ function isShareTokenValid(proposal, token) {
     return { valid: true };
 }
 // Generate proposal PDF URL for sharing
-function generateProposalPdfUrl(token, tenantSubdomain) {
+export function generateProposalPdfUrl(token, tenantSubdomain) {
     const baseUrl = process.env.PUBLIC_PROPOSAL_URL || `https://${tenantSubdomain}.engage.capstone.co.uk`;
     return `${baseUrl}/api/proposals/view/${token}/pdf`;
 }
-exports.default = {
+export default {
     generateShareToken,
     createShareableLink,
     revokeShareableLink,
@@ -375,4 +358,3 @@ exports.default = {
     isShareTokenValid,
     generateProposalPdfUrl,
 };
-//# sourceMappingURL=proposalSharingService.js.map

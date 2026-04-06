@@ -1,13 +1,8 @@
-"use strict";
 /**
  * UK Compliant Engagement Letter Template
  * Based on ACCA and ICAEW guidelines for professional engagement letters
  */
-Object.defineProperty(exports, "__esModule", { value: true });
-exports.generateEngagementLetter = generateEngagementLetter;
-exports.generateProposalTerms = generateProposalTerms;
-exports.generateProposalEmailTemplate = generateProposalEmailTemplate;
-function generateEngagementLetter(data) {
+export function generateEngagementLetter(data) {
     const vatClause = data.vatApplicable
         ? `Our fees are subject to VAT at the prevailing rate (currently 20%). Our VAT registration number is ${data.practiceVatNumber || '[VAT NUMBER]'}.`
         : 'Our fees are not subject to VAT.';
@@ -259,7 +254,7 @@ I confirm that:
 `;
 }
 // Standard proposal terms and conditions (shorter version for proposals)
-function generateProposalTerms() {
+export function generateProposalTerms() {
     return `# TERMS AND CONDITIONS OF SERVICE
 
 ## 1. Acceptance of Proposal
@@ -319,7 +314,7 @@ Your electronic or physical signature on this proposal constitutes acceptance of
 `;
 }
 // Generate email template for proposal sending
-function generateProposalEmailTemplate(data) {
+export function generateProposalEmailTemplate(data) {
     const subject = `Proposal: ${data.proposalTitle} - ${data.proposalReference}`;
     const html = `
 <!DOCTYPE html>
@@ -412,9 +407,8 @@ This email contains confidential information. If you received this in error, ple
 `;
     return { subject, html, text };
 }
-exports.default = {
+export default {
     generateEngagementLetter,
     generateProposalTerms,
     generateProposalEmailTemplate,
 };
-//# sourceMappingURL=ukEngagementLetter.js.map

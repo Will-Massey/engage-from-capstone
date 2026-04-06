@@ -1,11 +1,5 @@
-"use strict";
-var __importDefault = (this && this.__importDefault) || function (mod) {
-    return (mod && mod.__esModule) ? mod : { "default": mod };
-};
-Object.defineProperty(exports, "__esModule", { value: true });
-exports.requestLogger = void 0;
-const winston_1 = __importDefault(require("winston"));
-const { combine, timestamp, json, errors, printf, colorize } = winston_1.default.format;
+import winston from 'winston';
+const { combine, timestamp, json, errors, printf, colorize } = winston.format;
 // Environment-based configuration
 const isDevelopment = process.env.NODE_ENV === 'development';
 const logLevel = process.env.LOG_LEVEL || (isDevelopment ? 'debug' : 'info');
@@ -18,14 +12,14 @@ const devFormat = printf(({ level, message, timestamp, ...metadata }) => {
     }
     return msg;
 });
-const logger = winston_1.default.createLogger({
+const logger = winston.createLogger({
     level: logLevel,
     defaultMeta: {
         service: 'engage-backend',
         environment: process.env.NODE_ENV || 'development',
     },
     transports: [
-        new winston_1.default.transports.Console({
+        new winston.transports.Console({
             format: logFormat === 'json'
                 ? combine(timestamp(), json(), errors({ stack: true }))
                 : combine(colorize(), timestamp(), devFormat),
@@ -33,7 +27,7 @@ const logger = winston_1.default.createLogger({
     ],
 });
 // Request logging middleware
-const requestLogger = (req, res, next) => {
+export const requestLogger = (req, res, next) => {
     const start = Date.now();
     res.on('finish', () => {
         const duration = Date.now() - start;
@@ -48,6 +42,4 @@ const requestLogger = (req, res, next) => {
     });
     next();
 };
-exports.requestLogger = requestLogger;
-exports.default = logger;
-//# sourceMappingURL=logger.js.map
+export default logger;

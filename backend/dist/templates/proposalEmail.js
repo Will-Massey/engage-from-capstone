@@ -1,16 +1,11 @@
-"use strict";
 /**
  * Email Templates for Proposal Emails
  * Professional UK accounting firm templates
  */
-Object.defineProperty(exports, "__esModule", { value: true });
-exports.generateProposalEmailTemplate = generateProposalEmailTemplate;
-exports.generateProposalReminderTemplate = generateProposalReminderTemplate;
-exports.generateProposalAcceptedTemplate = generateProposalAcceptedTemplate;
 /**
  * Generate professional HTML email template for proposal
  */
-function generateProposalEmailTemplate(data) {
+export function generateProposalEmailTemplate(data) {
     const html = `<!DOCTYPE html>
 <html>
 <head>
@@ -118,7 +113,7 @@ https://engagebycapstone.co.uk
 /**
  * Generate reminder email for pending proposals
  */
-function generateProposalReminderTemplate(data) {
+export function generateProposalReminderTemplate(data) {
     const html = `<!DOCTYPE html>
 <html>
 <head>
@@ -201,7 +196,7 @@ Sent via Engage by Capstone
 /**
  * Generate acceptance confirmation email
  */
-function generateProposalAcceptedTemplate(data) {
+export function generateProposalAcceptedTemplate(data) {
     const html = `<!DOCTYPE html>
 <html>
 <head>
@@ -277,4 +272,3 @@ function escapeHtml(text) {
     const div = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;' };
     return text.replace(/[&<>"']/g, (m) => div[m]);
 }
-//# sourceMappingURL=proposalEmail.js.map

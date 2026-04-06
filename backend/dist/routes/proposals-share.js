@@ -1,32 +1,27 @@
-"use strict";
 /**
  * Proposal Sharing, Tracking, and e-Signature Routes
  */
-var __importDefault = (this && this.__importDefault) || function (mod) {
-    return (mod && mod.__esModule) ? mod : { "default": mod };
-};
-Object.defineProperty(exports, "__esModule", { value: true });
-const express_1 = require("express");
-const zod_1 = require("zod");
-const database_js_1 = require("../config/database.js");
-const errorHandler_js_1 = require("../middleware/errorHandler.js");
-const auth_js_1 = require("../middleware/auth.js");
-const ukEngagementLetter_js_1 = require("../templates/ukEngagementLetter.js");
-const proposalSharingService_js_1 = require("../services/proposalSharingService.js");
-const emailService_js_1 = require("../services/emailService.js");
-const logger_js_1 = __importDefault(require("../config/logger.js"));
-const router = (0, express_1.Router)();
+import { Router } from 'express';
+import { z } from 'zod';
+import { prisma } from '../config/database.js';
+import { asyncHandler, ApiError } from '../middleware/errorHandler.js';
+import { authenticate } from '../middleware/auth.js';
+import { generateProposalTerms } from '../templates/ukEngagementLetter.js';
+import { createShareableLink, revokeShareableLink, getProposalByShareToken, trackProposalView, getProposalViewStats, recordElectronicSignature, getProposalSignatures, getSignatureImage, generateComplianceAuditTrail, generateProposalPdfUrl, } from '../services/proposalSharingService.js';
+import { createEmailService } from '../services/emailService.js';
+import logger from '../config/logger.js';
+const router = Router();
 // Create shareable link for proposal
-router.post('/:id/share', auth_js_1.authenticate, (0, errorHandler_js_1.asyncHandler)(async (req, res) => {
-    const schema = zod_1.z.object({
-        expiryDays: zod_1.z.number().min(1).max(90).default(30),
+router.post('/:id/share', authenticate, asyncHandler(async (req, res) => {
+    const schema = z.object({
+        expiryDays: z.number().min(1).max(90).default(30),
     });
     const { expiryDays } = schema.parse(req.body);
     const { id } = req.params;
     const tenantId = req.tenantId;
     const tenant = req.tenant;
     // Verify proposal exists and belongs to tenant
-    const proposal = await database_js_1.prisma.proposal.findFirst({
+    const proposal = await prisma.proposal.findFirst({
         where: {
             id,
             tenantId,
@@ -36,11 +31,11 @@ router.post('/:id/share', auth_js_1.authenticate, (0, errorHandler_js_1.asyncHan
         },
     });
     if (!proposal) {
-        throw new errorHandler_js_1.ApiError('PROPOSAL_NOT_FOUND', 'Proposal not found', 404);
+        throw new ApiError('PROPOSAL_NOT_FOUND', 'Proposal not found', 404);
     }
-    const { token, shareUrl, expiresAt } = await (0, proposalSharingService_js_1.createShareableLink)(id, expiryDays, tenant.subdomain);
+    const { token, shareUrl, expiresAt } = await createShareableLink(id, expiryDays, tenant.subdomain);
     // Log activity
-    await database_js_1.prisma.activityLog.create({
+    await prisma.activityLog.create({
         data: {
             tenantId,
             userId: req.user.id,
@@ -62,26 +57,26 @@ router.post('/:id/share', auth_js_1.authenticate, (0, errorHandler_js_1.asyncHan
             token,
             shareUrl,
             expiresAt,
-            pdfUrl: (0, proposalSharingService_js_1.generateProposalPdfUrl)(token, tenant.subdomain),
+            pdfUrl: generateProposalPdfUrl(token, tenant.subdomain),
         },
     });
 }));
 // Revoke shareable link
-router.delete('/:id/share', auth_js_1.authenticate, (0, errorHandler_js_1.asyncHandler)(async (req, res) => {
+router.delete('/:id/share', authenticate, asyncHandler(async (req, res) => {
     const { id } = req.params;
     const tenantId = req.tenantId;
-    const proposal = await database_js_1.prisma.proposal.findFirst({
+    const proposal = await prisma.proposal.findFirst({
         where: {
             id,
             tenantId,
         },
     });
     if (!proposal) {
-        throw new errorHandler_js_1.ApiError('PROPOSAL_NOT_FOUND', 'Proposal not found', 404);
+        throw new ApiError('PROPOSAL_NOT_FOUND', 'Proposal not found', 404);
     }
-    await (0, proposalSharingService_js_1.revokeShareableLink)(id);
+    await revokeShareableLink(id);
     // Log activity
-    await database_js_1.prisma.activityLog.create({
+    await prisma.activityLog.create({
         data: {
             tenantId,
             userId: req.user.id,
@@ -99,20 +94,20 @@ router.delete('/:id/share', auth_js_1.authenticate, (0, errorHandler_js_1.asyncH
     });
 }));
 // Send proposal via email
-router.post('/:id/email', auth_js_1.authenticate, (0, errorHandler_js_1.asyncHandler)(async (req, res) => {
-    const schema = zod_1.z.object({
-        to: zod_1.z.string().email(),
-        cc: zod_1.z.array(zod_1.z.string().email()).optional(),
-        subject: zod_1.z.string().optional(),
-        message: zod_1.z.string().optional(),
-        includePdf: zod_1.z.boolean().default(true),
+router.post('/:id/email', authenticate, asyncHandler(async (req, res) => {
+    const schema = z.object({
+        to: z.string().email(),
+        cc: z.array(z.string().email()).optional(),
+        subject: z.string().optional(),
+        message: z.string().optional(),
+        includePdf: z.boolean().default(true),
     });
     const { to, cc, subject, message, includePdf } = schema.parse(req.body);
     const { id } = req.params;
     const tenantId = req.tenantId;
     const tenant = req.tenant;
     // Get proposal
-    const proposal = await database_js_1.prisma.proposal.findFirst({
+    const proposal = await prisma.proposal.findFirst({
         where: {
             id,
             tenantId,
@@ -135,12 +130,12 @@ router.post('/:id/email', auth_js_1.authenticate, (0, errorHandler_js_1.asyncHan
         },
     });
     if (!proposal) {
-        throw new errorHandler_js_1.ApiError('PROPOSAL_NOT_FOUND', 'Proposal not found', 404);
+        throw new ApiError('PROPOSAL_NOT_FOUND', 'Proposal not found', 404);
     }
     // Create or get shareable link
     let shareUrl;
     if (!proposal.shareToken || !proposal.publicAccessEnabled) {
-        const result = await (0, proposalSharingService_js_1.createShareableLink)(id, 30, tenant.subdomain);
+        const result = await createShareableLink(id, 30, tenant.subdomain);
         shareUrl = result.shareUrl;
     }
     else {
@@ -149,9 +144,9 @@ router.post('/:id/email', auth_js_1.authenticate, (0, errorHandler_js_1.asyncHan
         shareUrl = `${baseUrl}/proposals/view/${proposal.shareToken}`;
     }
     // Initialize email service
-    const emailService = (0, emailService_js_1.createEmailService)();
+    const emailService = createEmailService();
     if (!emailService) {
-        throw new errorHandler_js_1.ApiError('EMAIL_NOT_CONFIGURED', 'Email service not configured', 500);
+        throw new ApiError('EMAIL_NOT_CONFIGURED', 'Email service not configured', 500);
     }
     // Generate PDF if needed
     let pdfAttachment;
@@ -175,7 +170,7 @@ router.post('/:id/email', auth_js_1.authenticate, (0, errorHandler_js_1.asyncHan
         attachment: pdfAttachment,
     });
     if (!result.success) {
-        throw new errorHandler_js_1.ApiError('EMAIL_FAILED', result.error || 'Failed to send email', 500);
+        throw new ApiError('EMAIL_FAILED', result.error || 'Failed to send email', 500);
     }
     // Update proposal email history
     const emailHistory = JSON.parse(proposal.emailHistory || '[]');
@@ -186,7 +181,7 @@ router.post('/:id/email', auth_js_1.authenticate, (0, errorHandler_js_1.asyncHan
         subject: subject || `Proposal: ${proposal.title}`,
         messageId: result.messageId,
     });
-    await database_js_1.prisma.proposal.update({
+    await prisma.proposal.update({
         where: { id },
         data: {
             lastEmailedAt: new Date(),
@@ -196,7 +191,7 @@ router.post('/:id/email', auth_js_1.authenticate, (0, errorHandler_js_1.asyncHan
         },
     });
     // Log activity
-    await database_js_1.prisma.activityLog.create({
+    await prisma.activityLog.create({
         data: {
             tenantId,
             userId: req.user.id,
@@ -223,60 +218,60 @@ router.post('/:id/email', auth_js_1.authenticate, (0, errorHandler_js_1.asyncHan
     });
 }));
 // Get proposal view statistics
-router.get('/:id/views', auth_js_1.authenticate, (0, errorHandler_js_1.asyncHandler)(async (req, res) => {
+router.get('/:id/views', authenticate, asyncHandler(async (req, res) => {
     const { id } = req.params;
     const tenantId = req.tenantId;
     // Verify proposal exists and belongs to tenant
-    const proposal = await database_js_1.prisma.proposal.findFirst({
+    const proposal = await prisma.proposal.findFirst({
         where: {
             id,
             tenantId,
         },
     });
     if (!proposal) {
-        throw new errorHandler_js_1.ApiError('PROPOSAL_NOT_FOUND', 'Proposal not found', 404);
+        throw new ApiError('PROPOSAL_NOT_FOUND', 'Proposal not found', 404);
     }
-    const stats = await (0, proposalSharingService_js_1.getProposalViewStats)(id);
+    const stats = await getProposalViewStats(id);
     res.json({
         success: true,
         data: stats,
     });
 }));
 // Get compliance audit trail
-router.get('/:id/audit-trail', auth_js_1.authenticate, (0, errorHandler_js_1.asyncHandler)(async (req, res) => {
+router.get('/:id/audit-trail', authenticate, asyncHandler(async (req, res) => {
     const { id } = req.params;
     const tenantId = req.tenantId;
     // Verify proposal exists and belongs to tenant
-    const proposal = await database_js_1.prisma.proposal.findFirst({
+    const proposal = await prisma.proposal.findFirst({
         where: {
             id,
             tenantId,
         },
     });
     if (!proposal) {
-        throw new errorHandler_js_1.ApiError('PROPOSAL_NOT_FOUND', 'Proposal not found', 404);
+        throw new ApiError('PROPOSAL_NOT_FOUND', 'Proposal not found', 404);
     }
-    const auditTrail = await (0, proposalSharingService_js_1.generateComplianceAuditTrail)(id);
+    const auditTrail = await generateComplianceAuditTrail(id);
     res.json({
         success: true,
         data: auditTrail,
     });
 }));
 // Get proposal signatures
-router.get('/:id/signatures', auth_js_1.authenticate, (0, errorHandler_js_1.asyncHandler)(async (req, res) => {
+router.get('/:id/signatures', authenticate, asyncHandler(async (req, res) => {
     const { id } = req.params;
     const tenantId = req.tenantId;
     // Verify proposal exists and belongs to tenant
-    const proposal = await database_js_1.prisma.proposal.findFirst({
+    const proposal = await prisma.proposal.findFirst({
         where: {
             id,
             tenantId,
         },
     });
     if (!proposal) {
-        throw new errorHandler_js_1.ApiError('PROPOSAL_NOT_FOUND', 'Proposal not found', 404);
+        throw new ApiError('PROPOSAL_NOT_FOUND', 'Proposal not found', 404);
     }
-    const signatures = await (0, proposalSharingService_js_1.getProposalSignatures)(id);
+    const signatures = await getProposalSignatures(id);
     res.json({
         success: true,
         data: signatures,
@@ -286,14 +281,14 @@ router.get('/:id/signatures', auth_js_1.authenticate, (0, errorHandler_js_1.asyn
 // PUBLIC ROUTES (No authentication required)
 // ============================================
 // View proposal by share token (public)
-router.get('/view/:token', (0, errorHandler_js_1.asyncHandler)(async (req, res) => {
+router.get('/view/:token', asyncHandler(async (req, res) => {
     const { token } = req.params;
-    const proposal = await (0, proposalSharingService_js_1.getProposalByShareToken)(token);
+    const proposal = await getProposalByShareToken(token);
     if (!proposal) {
-        throw new errorHandler_js_1.ApiError('PROPOSAL_NOT_FOUND', 'Proposal not found or link expired', 404);
+        throw new ApiError('PROPOSAL_NOT_FOUND', 'Proposal not found or link expired', 404);
     }
     // Track view
-    await (0, proposalSharingService_js_1.trackProposalView)(proposal.id, req.ip || null, req.headers['user-agent'] || null);
+    await trackProposalView(proposal.id, req.ip || null, req.headers['user-agent'] || null);
     // Return proposal data (without sensitive fields)
     res.json({
         success: true,
@@ -333,13 +328,13 @@ router.get('/view/:token', (0, errorHandler_js_1.asyncHandler)(async (req, res) 
     });
 }));
 // Get proposal terms by share token (public)
-router.get('/view/:token/terms', (0, errorHandler_js_1.asyncHandler)(async (req, res) => {
+router.get('/view/:token/terms', asyncHandler(async (req, res) => {
     const { token } = req.params;
-    const proposal = await (0, proposalSharingService_js_1.getProposalByShareToken)(token);
+    const proposal = await getProposalByShareToken(token);
     if (!proposal) {
-        throw new errorHandler_js_1.ApiError('PROPOSAL_NOT_FOUND', 'Proposal not found or link expired', 404);
+        throw new ApiError('PROPOSAL_NOT_FOUND', 'Proposal not found or link expired', 404);
     }
-    const terms = proposal.terms || (0, ukEngagementLetter_js_1.generateProposalTerms)();
+    const terms = proposal.terms || generateProposalTerms();
     res.json({
         success: true,
         data: {
@@ -349,26 +344,26 @@ router.get('/view/:token/terms', (0, errorHandler_js_1.asyncHandler)(async (req,
     });
 }));
 // Submit electronic signature (public)
-router.post('/view/:token/sign', (0, errorHandler_js_1.asyncHandler)(async (req, res) => {
-    const schema = zod_1.z.object({
-        signedBy: zod_1.z.string().min(2),
-        signedByRole: zod_1.z.string().min(2),
-        signatureData: zod_1.z.string().min(100), // Base64 signature image
-        agreementAccepted: zod_1.z.boolean(),
+router.post('/view/:token/sign', asyncHandler(async (req, res) => {
+    const schema = z.object({
+        signedBy: z.string().min(2),
+        signedByRole: z.string().min(2),
+        signatureData: z.string().min(100), // Base64 signature image
+        agreementAccepted: z.boolean(),
     });
     const { signedBy, signedByRole, signatureData, agreementAccepted } = schema.parse(req.body);
     const { token } = req.params;
-    const proposal = await (0, proposalSharingService_js_1.getProposalByShareToken)(token);
+    const proposal = await getProposalByShareToken(token);
     if (!proposal) {
-        throw new errorHandler_js_1.ApiError('PROPOSAL_NOT_FOUND', 'Proposal not found or link expired', 404);
+        throw new ApiError('PROPOSAL_NOT_FOUND', 'Proposal not found or link expired', 404);
     }
     if (proposal.status === 'ACCEPTED') {
-        throw new errorHandler_js_1.ApiError('PROPOSAL_ALREADY_ACCEPTED', 'This proposal has already been accepted', 400);
+        throw new ApiError('PROPOSAL_ALREADY_ACCEPTED', 'This proposal has already been accepted', 400);
     }
     if (!agreementAccepted) {
-        throw new errorHandler_js_1.ApiError('AGREEMENT_REQUIRED', 'You must accept the terms and conditions', 400);
+        throw new ApiError('AGREEMENT_REQUIRED', 'You must accept the terms and conditions', 400);
     }
-    const result = await (0, proposalSharingService_js_1.recordElectronicSignature)({
+    const result = await recordElectronicSignature({
         proposalId: proposal.id,
         signedBy,
         signedByRole,
@@ -377,18 +372,18 @@ router.post('/view/:token/sign', (0, errorHandler_js_1.asyncHandler)(async (req,
         agreementVersion: 'PRO-2024-001',
     });
     if (!result.success) {
-        throw new errorHandler_js_1.ApiError('SIGNATURE_FAILED', result.error || 'Failed to record signature', 500);
+        throw new ApiError('SIGNATURE_FAILED', result.error || 'Failed to record signature', 500);
     }
     // Send notification email to practice
     try {
-        const emailService = (0, emailService_js_1.createEmailService)();
+        const emailService = createEmailService();
         if (emailService) {
             // TODO: Get practice notification email from settings
             // await emailService.sendEmail({...});
         }
     }
     catch (error) {
-        logger_js_1.default.error('Failed to send acceptance notification:', error);
+        logger.error('Failed to send acceptance notification:', error);
     }
     res.json({
         success: true,
@@ -400,11 +395,11 @@ router.post('/view/:token/sign', (0, errorHandler_js_1.asyncHandler)(async (req,
     });
 }));
 // Get signature image (authenticated only)
-router.get('/signatures/:id/image', auth_js_1.authenticate, (0, errorHandler_js_1.asyncHandler)(async (req, res) => {
+router.get('/signatures/:id/image', authenticate, asyncHandler(async (req, res) => {
     const { id } = req.params;
-    const signatureData = await (0, proposalSharingService_js_1.getSignatureImage)(id);
+    const signatureData = await getSignatureImage(id);
     if (!signatureData) {
-        throw new errorHandler_js_1.ApiError('SIGNATURE_NOT_FOUND', 'Signature not found', 404);
+        throw new ApiError('SIGNATURE_NOT_FOUND', 'Signature not found', 404);
     }
     // Return as base64 or redirect to data URL
     res.json({
@@ -415,11 +410,11 @@ router.get('/signatures/:id/image', auth_js_1.authenticate, (0, errorHandler_js_
     });
 }));
 // Download proposal PDF by token (public)
-router.get('/view/:token/pdf', (0, errorHandler_js_1.asyncHandler)(async (req, res) => {
+router.get('/view/:token/pdf', asyncHandler(async (req, res) => {
     const { token } = req.params;
-    const proposal = await (0, proposalSharingService_js_1.getProposalByShareToken)(token);
+    const proposal = await getProposalByShareToken(token);
     if (!proposal) {
-        throw new errorHandler_js_1.ApiError('PROPOSAL_NOT_FOUND', 'Proposal not found or link expired', 404);
+        throw new ApiError('PROPOSAL_NOT_FOUND', 'Proposal not found or link expired', 404);
     }
     // TODO: Generate and return PDF
     // For now, return a placeholder response
@@ -431,5 +426,4 @@ router.get('/view/:token/pdf', (0, errorHandler_js_1.asyncHandler)(async (req, r
         },
     });
 }));
-exports.default = router;
-//# sourceMappingURL=proposals-share.js.map
+export default router;

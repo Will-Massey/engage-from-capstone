@@ -1,18 +1,12 @@
-"use strict";
-var __importDefault = (this && this.__importDefault) || function (mod) {
-    return (mod && mod.__esModule) ? mod : { "default": mod };
-};
-Object.defineProperty(exports, "__esModule", { value: true });
-exports.PDFGenerator = void 0;
-const pdfkit_1 = __importDefault(require("pdfkit"));
-const database_js_1 = require("../config/database.js");
-class PDFGenerator {
+import PDFDocument from 'pdfkit';
+import { prisma } from '../config/database.js';
+export class PDFGenerator {
     /**
      * Generate a professional proposal PDF
      */
     static async generateProposal(proposalId) {
         // Fetch proposal with all related data
-        const proposal = await database_js_1.prisma.proposal.findUnique({
+        const proposal = await prisma.proposal.findUnique({
             where: { id: proposalId },
             include: {
                 client: true,
@@ -34,7 +28,7 @@ class PDFGenerator {
     static createPDF(proposal) {
         return new Promise((resolve, reject) => {
             try {
-                const doc = new pdfkit_1.default({ margin: 50 });
+                const doc = new PDFDocument({ margin: 50 });
                 const chunks = [];
                 doc.on('data', (chunk) => chunks.push(chunk));
                 doc.on('end', () => resolve(Buffer.concat(chunks)));
@@ -428,6 +422,4 @@ ${proposal.tenant.name}`;
         });
     }
 }
-exports.PDFGenerator = PDFGenerator;
-exports.default = PDFGenerator;
-//# sourceMappingURL=pdfGenerator.js.map
+export default PDFGenerator;

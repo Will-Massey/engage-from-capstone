@@ -1,4 +1,3 @@
-"use strict";
 /**
  * =============================================================================
  * Redis Cache Utility
@@ -11,14 +10,8 @@
  * - Circuit breaker pattern
  * =============================================================================
  */
-var __importDefault = (this && this.__importDefault) || function (mod) {
-    return (mod && mod.__esModule) ? mod : { "default": mod };
-};
-Object.defineProperty(exports, "__esModule", { value: true });
-exports.CacheKeys = exports.cache = void 0;
-exports.cached = cached;
-const redis_1 = require("redis");
-const logger_1 = __importDefault(require("./logger"));
+import { createClient } from 'redis';
+import logger from './logger';
 // =============================================================================
 // Configuration
 // =============================================================================
@@ -37,15 +30,15 @@ class CacheClient {
         this.circuitOpen = false;
         this.circuitResetTimeout = null;
         if (!REDIS_URL) {
-            logger_1.default.warn('Redis URL not configured, caching disabled');
+            logger.warn('Redis URL not configured, caching disabled');
             return;
         }
-        this.client = (0, redis_1.createClient)({
+        this.client = createClient({
             url: REDIS_URL,
             socket: {
                 reconnectStrategy: (retries) => {
                     if (retries > MAX_RETRIES) {
-                        logger_1.default.error('Max Redis reconnection attempts reached');
+                        logger.error('Max Redis reconnection attempts reached');
                         this.openCircuit();
                         return false;
                     }
@@ -59,23 +52,23 @@ class CacheClient {
         if (!this.client)
             return;
         this.client.on('connect', () => {
-            logger_1.default.info('Redis client connected');
+            logger.info('Redis client connected');
             this.isConnected = true;
             this.retryCount = 0;
             this.closeCircuit();
         });
         this.client.on('error', (err) => {
-            logger_1.default.error('Redis client error:', err);
+            logger.error('Redis client error:', err);
             this.isConnected = false;
         });
         this.client.on('disconnect', () => {
-            logger_1.default.warn('Redis client disconnected');
+            logger.warn('Redis client disconnected');
             this.isConnected = false;
         });
     }
     openCircuit() {
         this.circuitOpen = true;
-        logger_1.default.warn('Cache circuit breaker opened');
+        logger.warn('Cache circuit breaker opened');
         // Reset circuit after 30 seconds
         this.circuitResetTimeout = setTimeout(() => {
             this.closeCircuit();
@@ -87,7 +80,7 @@ class CacheClient {
             clearTimeout(this.circuitResetTimeout);
             this.circuitResetTimeout = null;
         }
-        logger_1.default.info('Cache circuit breaker closed');
+        logger.info('Cache circuit breaker closed');
     }
     async connect() {
         if (!this.client || this.isConnected)
@@ -96,7 +89,7 @@ class CacheClient {
             await this.client.connect();
         }
         catch (error) {
-            logger_1.default.error('Failed to connect to Redis:', error);
+            logger.error('Failed to connect to Redis:', error);
             throw error;
         }
     }
@@ -108,7 +101,7 @@ class CacheClient {
             this.isConnected = false;
         }
         catch (error) {
-            logger_1.default.error('Error disconnecting from Redis:', error);
+            logger.error('Error disconnecting from Redis:', error);
         }
     }
     // =============================================================================
@@ -124,7 +117,7 @@ class CacheClient {
             return JSON.parse(value);
         }
         catch (error) {
-            logger_1.default.error('Cache get error:', { key, error });
+            logger.error('Cache get error:', { key, error });
             return null;
         }
     }
@@ -136,7 +129,7 @@ class CacheClient {
             await this.client.setEx(key, ttl, serialized);
         }
         catch (error) {
-            logger_1.default.error('Cache set error:', { key, error });
+            logger.error('Cache set error:', { key, error });
         }
     }
     async delete(key) {
@@ -146,7 +139,7 @@ class CacheClient {
             await this.client.del(key);
         }
         catch (error) {
-            logger_1.default.error('Cache delete error:', { key, error });
+            logger.error('Cache delete error:', { key, error });
         }
     }
     async deletePattern(pattern) {
@@ -159,7 +152,7 @@ class CacheClient {
             }
         }
         catch (error) {
-            logger_1.default.error('Cache delete pattern error:', { pattern, error });
+            logger.error('Cache delete pattern error:', { pattern, error });
         }
     }
     async exists(key) {
@@ -170,7 +163,7 @@ class CacheClient {
             return result === 1;
         }
         catch (error) {
-            logger_1.default.error('Cache exists error:', { key, error });
+            logger.error('Cache exists error:', { key, error });
             return false;
         }
     }
@@ -181,7 +174,7 @@ class CacheClient {
             return await this.client.ttl(key);
         }
         catch (error) {
-            logger_1.default.error('Cache ttl error:', { key, error });
+            logger.error('Cache ttl error:', { key, error });
             return -1;
         }
     }
@@ -192,7 +185,7 @@ class CacheClient {
             return await this.client.incrBy(key, amount);
         }
         catch (error) {
-            logger_1.default.error('Cache increment error:', { key, error });
+            logger.error('Cache increment error:', { key, error });
             return 0;
         }
     }
@@ -203,7 +196,7 @@ class CacheClient {
             await this.client.expire(key, seconds);
         }
         catch (error) {
-            logger_1.default.error('Cache expire error:', { key, error });
+            logger.error('Cache expire error:', { key, error });
         }
     }
     // =============================================================================
@@ -230,7 +223,7 @@ class CacheClient {
                 }
             }
             catch (error) {
-                logger_1.default.error('Cache warming error:', { key, error });
+                logger.error('Cache warming error:', { key, error });
             }
         });
         await Promise.all(promises);
@@ -239,24 +232,24 @@ class CacheClient {
 // =============================================================================
 // Singleton Instance
 // =============================================================================
-exports.cache = new CacheClient();
+export const cache = new CacheClient();
 // =============================================================================
 // Cache Decorator
 // =============================================================================
-function cached(keyGenerator, ttl = DEFAULT_TTL) {
+export function cached(keyGenerator, ttl = DEFAULT_TTL) {
     return function (target, propertyKey, descriptor) {
         const originalMethod = descriptor.value;
         descriptor.value = async function (...args) {
             const cacheKey = keyGenerator(...args);
             // Try to get from cache
-            const cached = await exports.cache.get(cacheKey);
+            const cached = await cache.get(cacheKey);
             if (cached !== null) {
                 return cached;
             }
             // Execute original method
             const result = await originalMethod.apply(this, args);
             // Store in cache
-            await exports.cache.set(cacheKey, result, ttl);
+            await cache.set(cacheKey, result, ttl);
             return result;
         };
         return descriptor;
@@ -265,15 +258,14 @@ function cached(keyGenerator, ttl = DEFAULT_TTL) {
 // =============================================================================
 // Cache Key Generators
 // =============================================================================
-exports.CacheKeys = {
-    user: (userId) => exports.cache.generateKey('user', userId),
-    proposal: (proposalId) => exports.cache.generateKey('proposal', proposalId),
-    proposalsByUser: (userId) => exports.cache.generateKey('proposals', 'user', userId),
-    company: (companyId) => exports.cache.generateKey('company', companyId),
-    searchResults: (query) => exports.cache.generateKey('search', query),
-    dashboard: (userId) => exports.cache.generateKey('dashboard', userId),
-    rateLimit: (identifier) => exports.cache.generateKey('ratelimit', identifier),
-    session: (sessionId) => exports.cache.generateKey('session', sessionId),
+export const CacheKeys = {
+    user: (userId) => cache.generateKey('user', userId),
+    proposal: (proposalId) => cache.generateKey('proposal', proposalId),
+    proposalsByUser: (userId) => cache.generateKey('proposals', 'user', userId),
+    company: (companyId) => cache.generateKey('company', companyId),
+    searchResults: (query) => cache.generateKey('search', query),
+    dashboard: (userId) => cache.generateKey('dashboard', userId),
+    rateLimit: (identifier) => cache.generateKey('ratelimit', identifier),
+    session: (sessionId) => cache.generateKey('session', sessionId),
 };
-exports.default = exports.cache;
-//# sourceMappingURL=cache.js.map
+export default cache;

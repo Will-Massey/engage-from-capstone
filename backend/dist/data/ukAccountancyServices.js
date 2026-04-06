@@ -1,28 +1,23 @@
-"use strict";
 /**
  * Comprehensive UK Accountancy Services Catalog
  * Based on typical services offered by UK accounting practices
  * All pricing is indicative and should be customised per practice
  */
-Object.defineProperty(exports, "__esModule", { value: true });
-exports.serviceCategories = exports.allServices = exports.bookkeepingServices = exports.specialistServices = exports.mtditsaServices = exports.advisoryServices = exports.complianceServices = exports.vatRates = exports.billingCycles = void 0;
-exports.calculateAnnualCost = calculateAnnualCost;
-exports.calculateMonthlyEquivalent = calculateMonthlyEquivalent;
-exports.billingCycles = [
+export const billingCycles = [
     { value: 'MONTHLY', label: 'Monthly', description: 'Split annual cost over 12 equal payments' },
     { value: 'QUARTERLY', label: 'Quarterly', description: '4 payments per year' },
     { value: 'ANNUALLY', label: 'Annually', description: 'Single annual payment' },
     { value: 'WEEKLY', label: 'Weekly', description: '52 weekly payments' },
     { value: 'FIXED_DATE', label: 'Fixed Date', description: 'Bill on specific date(s)' },
 ];
-exports.vatRates = [
+export const vatRates = [
     { value: 'STANDARD_20', label: 'Standard Rate (20%)', rate: 20 },
     { value: 'REDUCED_5', label: 'Reduced Rate (5%)', rate: 5 },
     { value: 'ZERO', label: 'Zero Rated (0%)', rate: 0 },
     { value: 'EXEMPT', label: 'VAT Exempt', rate: 0 },
 ];
 // ==================== COMPLIANCE SERVICES ====================
-exports.complianceServices = [
+export const complianceServices = [
     // Annual Accounts
     {
         category: 'COMPLIANCE',
@@ -288,7 +283,7 @@ exports.complianceServices = [
     },
 ];
 // ==================== ADVISORY SERVICES ====================
-exports.advisoryServices = [
+export const advisoryServices = [
     {
         category: 'ADVISORY',
         subcategory: 'Business Planning',
@@ -441,7 +436,7 @@ exports.advisoryServices = [
     },
 ];
 // ==================== MTD ITSA SERVICES ====================
-exports.mtditsaServices = [
+export const mtditsaServices = [
     {
         category: 'TAX',
         subcategory: 'Quarterly Returns',
@@ -493,7 +488,7 @@ exports.mtditsaServices = [
     },
 ];
 // ==================== SPECIALIST SERVICES ====================
-exports.specialistServices = [
+export const specialistServices = [
     {
         category: 'CONSULTING',
         subcategory: 'Audit',
@@ -592,7 +587,7 @@ exports.specialistServices = [
     },
 ];
 // ==================== BOOKKEEPING SERVICES ====================
-exports.bookkeepingServices = [
+export const bookkeepingServices = [
     {
         category: 'BOOKKEEPING',
         subcategory: 'Full Service',
@@ -647,15 +642,15 @@ exports.bookkeepingServices = [
     },
 ];
 // Combine all services
-exports.allServices = [
-    ...exports.complianceServices,
-    ...exports.advisoryServices,
-    ...exports.mtditsaServices,
-    ...exports.specialistServices,
-    ...exports.bookkeepingServices,
+export const allServices = [
+    ...complianceServices,
+    ...advisoryServices,
+    ...mtditsaServices,
+    ...specialistServices,
+    ...bookkeepingServices,
 ];
 // Service categories for UI
-exports.serviceCategories = [
+export const serviceCategories = [
     { id: 'COMPLIANCE', label: 'Compliance', description: 'Statutory filing and regulatory requirements', icon: 'ClipboardDocumentCheckIcon' },
     { id: 'ADVISORY', label: 'Advisory', description: 'Strategic business and tax advice', icon: 'LightBulbIcon' },
     { id: 'MTD_ITSA', label: 'MTD ITSA', description: 'Making Tax Digital for Income Tax', icon: 'ComputerDesktopIcon' },
@@ -663,7 +658,7 @@ exports.serviceCategories = [
     { id: 'BOOKKEEPING', label: 'Bookkeeping', description: 'Day-to-day record keeping', icon: 'BookOpenIcon' },
 ];
 // Helper function to get annual cost
-function calculateAnnualCost(service) {
+export function calculateAnnualCost(service) {
     switch (service.billingCycle) {
         case 'WEEKLY':
             return service.basePrice * 52;
@@ -680,8 +675,7 @@ function calculateAnnualCost(service) {
     }
 }
 // Helper function to get monthly equivalent
-function calculateMonthlyEquivalent(service) {
+export function calculateMonthlyEquivalent(service) {
     return calculateAnnualCost(service) / 12;
 }
-exports.default = exports.allServices;
-//# sourceMappingURL=ukAccountancyServices.js.map
+export default allServices;

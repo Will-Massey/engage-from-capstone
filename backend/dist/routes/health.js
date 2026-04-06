@@ -1,12 +1,10 @@
-"use strict";
 /**
  * Health Check Routes
  */
-Object.defineProperty(exports, "__esModule", { value: true });
-const express_1 = require("express");
-const client_1 = require("@prisma/client");
-const router = (0, express_1.Router)();
-const prisma = new client_1.PrismaClient();
+import { Router } from 'express';
+import { PrismaClient } from '@prisma/client';
+const router = Router();
+const prisma = new PrismaClient();
 // Root health endpoint (for Render and load balancers)
 router.get('/', async (_req, res) => {
     try {
@@ -61,5 +59,4 @@ router.get('/ready', async (_req, res) => {
 router.get('/live', (_req, res) => {
     res.status(200).json({ alive: true });
 });
-exports.default = router;
-//# sourceMappingURL=health.js.map
+export default router;

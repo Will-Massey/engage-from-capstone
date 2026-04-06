@@ -1,23 +1,17 @@
-"use strict";
 /**
  * Password Reset Service
  * Secure token-based password reset functionality
  */
-var __importDefault = (this && this.__importDefault) || function (mod) {
-    return (mod && mod.__esModule) ? mod : { "default": mod };
-};
-Object.defineProperty(exports, "__esModule", { value: true });
-exports.passwordResetService = exports.PasswordResetService = void 0;
-const crypto_1 = __importDefault(require("crypto"));
-class PasswordResetService {
+import crypto from 'crypto';
+export class PasswordResetService {
     /**
      * Generate a secure password reset token
      */
     generateToken() {
         // Generate 32 bytes of random data
-        const token = crypto_1.default.randomBytes(32).toString('hex');
+        const token = crypto.randomBytes(32).toString('hex');
         // Create hash for storage
-        const tokenHash = crypto_1.default
+        const tokenHash = crypto
             .createHash('sha256')
             .update(token)
             .digest('hex');
@@ -33,7 +27,7 @@ class PasswordResetService {
      * Hash a token for comparison
      */
     hashToken(token) {
-        return crypto_1.default
+        return crypto
             .createHash('sha256')
             .update(token)
             .digest('hex');
@@ -43,7 +37,7 @@ class PasswordResetService {
      */
     generateSecurePassword(length = 16) {
         const charset = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*';
-        const bytes = crypto_1.default.randomBytes(length);
+        const bytes = crypto.randomBytes(length);
         let password = '';
         for (let i = 0; i < length; i++) {
             password += charset[bytes[i] % charset.length];
@@ -76,7 +70,5 @@ class PasswordResetService {
         };
     }
 }
-exports.PasswordResetService = PasswordResetService;
-exports.passwordResetService = new PasswordResetService();
-exports.default = exports.passwordResetService;
-//# sourceMappingURL=passwordResetService.js.map
+export const passwordResetService = new PasswordResetService();
+export default passwordResetService;
