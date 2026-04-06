@@ -29,6 +29,7 @@ import { randomUUID } from "crypto";
 dotenv.config();
 var app = express();
 var PORT = process.env.PORT || 3001;
+app.set("trust proxy", 1);
 app.use(helmet({
   contentSecurityPolicy: {
     directives: {

@@ -38,6 +38,9 @@ import setupRouter from './routes/setup.js';
 const app = express();
 const PORT = process.env.PORT || 3001;
 
+// Trust proxy - required for rate limiting behind Render's load balancer
+app.set('trust proxy', 1);
+
 // Security middleware - CSP configured for production
 app.use(helmet({
   contentSecurityPolicy: {
