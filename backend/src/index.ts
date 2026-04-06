@@ -32,6 +32,7 @@ import logger, { requestLogger } from './utils/logger.js';
 import { checkDatabaseHealth } from './config/database.js';
 import { cache } from './utils/cache.js';
 import healthRouter from './routes/health.js';
+import setupRouter from './routes/setup.js';
 
 // Initialize Express app
 const app = express();
@@ -196,6 +197,9 @@ app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
 // Mount auth routes BEFORE CSRF protection
 app.use('/api/auth', extractTenant, authRoutes);
+
+// Setup endpoint - no auth required, one-time database initialization
+app.use('/api/setup', setupRouter);
 
 // Public one-click seed endpoint (no auth/CSRF required — protected by secret key)
 import { prisma } from './config/database.js';
