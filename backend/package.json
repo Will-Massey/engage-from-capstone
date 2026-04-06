@@ -5,7 +5,7 @@
   "main": "dist/index.js",
   "scripts": {
     "dev": "tsx watch src/index.ts",
-    "build": "node -e \"try { require('child_process').execSync('node ../../node_modules/typescript/bin/tsc --project tsconfig.json', {stdio:'inherit'}) } catch(e) {} require('fs').accessSync('dist/index.js')\"",
+    "build": "npx tsc --project tsconfig.json",
     "start": "node start-prod.js",
     "test": "jest",
     "test:watch": "jest --watch",
