@@ -1,10 +1,8 @@
 /**
- * Production Startup Script
- * Runs migrations then starts the server
+ * Production Startup Script (ESM)
  */
 
-const { execSync } = require('child_process');
-const express = require('express');
+import { execSync } from 'child_process';
 
 console.log('========================================');
 console.log('🚀 Engage Backend Starting...');
@@ -22,7 +20,7 @@ try {
   console.warn('⚠️  Migration warning:', error.message);
 }
 
-// Seed UK accountancy services (blocks until complete — safe and idempotent)
+// Seed UK accountancy services
 console.log('🌱 Checking UK service catalog...');
 try {
   execSync('node ./scripts/seed-uk-services.js', {
@@ -36,5 +34,5 @@ try {
 
 console.log('🚀 Loading server...');
 
-// Import and start the server
-require('./dist/index.js');
+// Import and start the server (ESM)
+await import('./dist/index.js');

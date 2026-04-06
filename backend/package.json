@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "tsx watch src/index.ts",
     "build": "npx tsc --project tsconfig.json",
-    "start": "node start-prod.js",
+    "start": "node start-prod.mjs",
     "test": "jest",
     "test:watch": "jest --watch",
     "db:migrate": "prisma migrate dev",
