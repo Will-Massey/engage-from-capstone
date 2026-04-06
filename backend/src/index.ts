@@ -432,11 +432,12 @@ app.use(notFoundHandler);
 // Error handler
 app.use(errorHandler);
 
-// Start server
-app.listen(PORT, () => {
+// Start server - bind to 0.0.0.0 for Render
+const HOST = process.env.HOST || '0.0.0.0';
+app.listen(PORT, HOST, () => {
   logger.info(`🚀 Engage by Capstone API running on port ${PORT}`);
   logger.info(`📊 Environment: ${process.env.NODE_ENV || 'development'}`);
-  logger.info(`🔗 API URL: http://localhost:${PORT}`);
+  logger.info(`🔗 API URL: http://${HOST}:${PORT}`);
 });
 
 // Handle graceful shutdown
