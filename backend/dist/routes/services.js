@@ -142,6 +142,9 @@ router.get('/:id', auth_js_1.authenticate, (0, errorHandler_js_1.asyncHandler)(a
                 where: { isActive: true },
                 orderBy: { priority: 'desc' },
             },
+            _count: {
+                select: { proposalServices: true },
+            },
         },
     });
     if (!service) {

@@ -714,5 +714,118 @@ router.get('/:id/activity', auth_js_1.authenticate, (0, errorHandler_js_1.asyncH
         data: activities,
     });
 }));
+/**
+ * GET /api/proposals/stats/dashboard
+ * Get dashboard statistics
+ */
+router.get('/stats/dashboard', auth_js_1.authenticate, (0, errorHandler_js_1.asyncHandler)(async (req, res) => {
+    const tenantId = req.tenantId;
+    const now = new Date();
+    const sixMonthsAgo = new Date(now.getFullYear(), now.getMonth() - 5, 1);
+    const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+    // Get monthly revenue data (accepted proposals)
+    const monthlyRevenue = await database_js_1.prisma.$queryRaw `
+      SELECT 
+        DATE_TRUNC('month', "createdAt") as month,
+        SUM(total) as revenue,
+        COUNT(*) as count
+      FROM "Proposal"
+      WHERE "tenantId" = ${tenantId}
+        AND status = 'ACCEPTED'
+        AND "createdAt" >= ${sixMonthsAgo}
+      GROUP BY DATE_TRUNC('month', "createdAt")
+      ORDER BY month ASC
+    `;
+    // Format revenue data
+    const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    const revenueData = monthlyRevenue.map((row) => ({
+        name: monthNames[new Date(row.month).getMonth()],
+        value: Number(row.revenue) || 0,
+    }));
+    // Get proposal status counts
+    const statusCounts = await database_js_1.prisma.proposal.groupBy({
+        by: ['status'],
+        where: { tenantId },
+        _count: { status: true },
+    });
+    const statusColors = {
+        DRAFT: '#9CA3AF',
+        SENT: '#3B82F6',
+        VIEWED: '#8B5CF6',
+        ACCEPTED: '#10B981',
+        DECLINED: '#EF4444',
+        EXPIRED: '#6B7280',
+    };
+    const proposalStatusData = statusCounts.map((s) => ({
+        name: s.status.charAt(0) + s.status.slice(1).toLowerCase(),
+        value: s._count.status,
+        color: statusColors[s.status] || '#9CA3AF',
+    }));
+    // Get daily activity for last 7 days
+    const dailyActivity = await database_js_1.prisma.$queryRaw `
+      SELECT 
+        DATE("createdAt") as day,
+        COUNT(*) FILTER (WHERE "entityType" = 'PROPOSAL') as proposals,
+        COUNT(*) FILTER (WHERE action = 'VIEWED') as views
+      FROM "ActivityLog"
+      WHERE "tenantId" = ${tenantId}
+        AND "createdAt" >= ${new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000)}
+      GROUP BY DATE("createdAt")
+      ORDER BY day ASC
+    `;
+    const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+    const weeklyActivity = dailyActivity.map((row) => ({
+        day: dayNames[new Date(row.day).getDay()],
+        proposals: Number(row.proposals) || 0,
+        views: Number(row.views) || 0,
+    }));
+    // Get recent activity
+    const recentActivities = await database_js_1.prisma.activityLog.findMany({
+        where: { tenantId },
+        include: {
+            user: {
+                select: { firstName: true, lastName: true },
+            },
+        },
+        orderBy: { createdAt: 'desc' },
+        take: 10,
+    });
+    // Map activities to frontend format
+    const activityTypeMap = {
+        CREATED: { type: 'proposal_created', message: 'New proposal created', color: 'blue' },
+        SENT: { type: 'proposal_sent', message: 'Proposal sent', color: 'purple' },
+        VIEWED: { type: 'proposal_viewed', message: 'Proposal viewed', color: 'gray' },
+        ACCEPTED: { type: 'proposal_accepted', message: 'Proposal accepted', color: 'green' },
+        DECLINED: { type: 'proposal_declined', message: 'Proposal declined', color: 'red' },
+    };
+    const recentActivity = recentActivities.map((activity, index) => {
+        const mapped = activityTypeMap[activity.action] || {
+            type: 'generic',
+            message: activity.description || 'Activity recorded',
+            color: 'gray'
+        };
+        return {
+            id: activity.id,
+            type: mapped.type,
+            message: mapped.message + (activity.entityId ? ` (${activity.entityId.slice(0, 8)})` : ''),
+            time: new Date(activity.createdAt).toLocaleDateString('en-GB', {
+                day: 'numeric',
+                month: 'short',
+                hour: '2-digit',
+                minute: '2-digit',
+            }),
+            color: mapped.color,
+        };
+    });
+    res.json({
+        success: true,
+        data: {
+            revenueData,
+            proposalStatusData,
+            weeklyActivity,
+            recentActivity,
+        },
+    });
+}));
 exports.default = router;
 //# sourceMappingURL=proposals.js.map
