@@ -3,30 +3,30 @@ name: Deploy to Render
 on:
   push:
     branches: [master, main]
-  workflow_dispatch: # Allows manual trigger
+  workflow_dispatch:
 
 jobs:
   deploy-backend:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
       - name: Deploy Backend to Render
-        uses: johnbeynon/render-deploy-action@v0.0.8
-        with:
-          service-id: ${{ secrets.RENDER_BACKEND_SERVICE_ID }}
-          api-key: ${{ secrets.RENDER_API_KEY }}
+        run: |
+          echo "Deploying backend..."
+          curl -X POST "https://api.render.com/v1/services/${{ secrets.RENDER_BACKEND_SERVICE_ID }}/deploys" \
+            -H "Authorization: Bearer ${{ secrets.RENDER_API_KEY }}" \
+            -H "Content-Type: application/json" \
+            -d '{"clearCache": false}'
+          echo "Backend deploy triggered"
 
   deploy-frontend:
     runs-on: ubuntu-latest
-    needs: deploy-backend # Deploy frontend after backend
+    needs: deploy-backend
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
       - name: Deploy Frontend to Render
-        uses: johnbeynon/render-deploy-action@v0.0.8
-        with:
-          service-id: ${{ secrets.RENDER_FRONTEND_SERVICE_ID }}
-          api-key: ${{ secrets.RENDER_API_KEY }}
+        run: |
+          echo "Deploying frontend..."
+          curl -X POST "https://api.render.com/v1/services/${{ secrets.RENDER_FRONTEND_SERVICE_ID }}/deploys" \
+            -H "Authorization: Bearer ${{ secrets.RENDER_API_KEY }}" \
+            -H "Content-Type: application/json" \
+            -d '{"clearCache": false}'
+          echo "Frontend deploy triggered"
