@@ -347,7 +347,7 @@ const Dashboard = () => {
                   paddingAngle={4}
                   dataKey="value"
                 >
-                  {proposalStatusData.map((entry, index) => (
+                  {chartData.proposalStatusData.map((entry, index) => (
                     <Cell key={`cell-${index}`} fill={entry.color} />
                   ))}
                 </Pie>
