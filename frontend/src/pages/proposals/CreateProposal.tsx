@@ -278,20 +278,25 @@ const CreateProposal = () => {
           toast.success('Proposal created and sent!');
         } else {
           // Generate shareable link first
-          const shareResponse = await apiClient.post(`/proposals/${proposalId}/share`, {
-            expiryDays: 30
-          }) as any;
-          
-          if (shareResponse.success) {
-            const shareUrl = shareResponse.data.shareUrl;
-            try {
-              await navigator.clipboard.writeText(shareUrl);
-              toast.success(`Link copied! ${shareUrl}`);
-            } catch (e) {
-              toast.success(`Proposal created! Link: ${shareUrl}`);
+          try {
+            const shareResponse = await apiClient.post(`/proposals/${proposalId}/share`, {
+              expiryDays: 30
+            }) as any;
+            
+            if (shareResponse.success) {
+              const shareUrl = shareResponse.data.shareUrl;
+              try {
+                await navigator.clipboard.writeText(shareUrl);
+                toast.success(`Link copied! ${shareUrl}`);
+              } catch (e) {
+                toast.success(`Proposal created! Link: ${shareUrl}`);
+              }
+            } else {
+              toast.error('Failed to generate share link');
             }
-          } else {
-            toast.error('Failed to generate share link');
+          } catch (shareError) {
+            console.error('Share error:', shareError);
+            toast.error('Failed to create share link');
           }
         }
         
