@@ -277,10 +277,18 @@ const CreateProposal = () => {
           });
           toast.success('Proposal created and sent!');
         } else {
-          // Copy link to clipboard
-          const shareUrl = `${window.location.origin}/proposals/view/${response.data.shareToken}`;
-          await navigator.clipboard.writeText(shareUrl);
-          toast.success('Proposal created! Link copied to clipboard');
+          // Generate shareable link first
+          const shareResponse = await apiClient.post(`/proposals/${proposalId}/share`, {
+            expiryDays: 30
+          }) as any;
+          
+          if (shareResponse.success) {
+            const shareUrl = shareResponse.data.shareUrl;
+            await navigator.clipboard.writeText(shareUrl);
+            toast.success('Proposal created! Link copied to clipboard');
+          } else {
+            toast.success('Proposal created but failed to generate share link');
+          }
         }
         
         navigate('/proposals');
