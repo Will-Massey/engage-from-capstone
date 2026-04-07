@@ -363,7 +363,7 @@ app.get('/api/oauth/callback/gmail', handleOAuthCallback('gmail'));
 
 // API routes (auth already mounted above)
 app.use('/api/proposals', extractTenant, proposalRoutes);
-app.use('/api/proposals', extractTenant, proposalShareRoutes);
+app.use('/api/proposals', proposalShareRoutes);
 app.use('/api/clients', extractTenant, clientRoutes);
 app.use('/api/services', extractTenant, serviceRoutes);
 app.use('/api/services/v2', extractTenant, enhancedServiceRoutes);

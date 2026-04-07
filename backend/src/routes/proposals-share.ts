@@ -7,6 +7,7 @@ import { z } from 'zod';
 import { prisma } from '../config/database.js';
 import { asyncHandler, ApiError } from '../middleware/errorHandler.js';
 import { authenticate } from '../middleware/auth.js';
+import { extractTenant } from '../middleware/tenant-simple.js';
 import { generateProposalTerms } from '../templates/ukEngagementLetter.js';
 import {
   createShareableLink,
@@ -25,6 +26,9 @@ import { createEmailService } from '../services/emailService.js';
 import logger from '../config/logger.js';
 
 const router = Router();
+
+// Apply tenant extraction to all routes
+router.use(extractTenant);
 
 // Create shareable link for proposal
 router.post(
