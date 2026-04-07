@@ -4,7 +4,7 @@ import { BrowserRouter } from 'react-router-dom';
 import { Toaster } from 'react-hot-toast';
 import App from './App';
 import { initializeTheme } from './stores/themeStore';
-// Build v3 - 2026-03-03T17:39:48Z
+// Build v4 - 2026-04-07T18:45:00Z - No Stripe
 import './index.css';
 
 // Initialize theme before rendering
