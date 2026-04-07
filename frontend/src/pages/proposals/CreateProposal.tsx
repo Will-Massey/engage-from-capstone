@@ -284,10 +284,14 @@ const CreateProposal = () => {
           
           if (shareResponse.success) {
             const shareUrl = shareResponse.data.shareUrl;
-            await navigator.clipboard.writeText(shareUrl);
-            toast.success('Proposal created! Link copied to clipboard');
+            try {
+              await navigator.clipboard.writeText(shareUrl);
+              toast.success(`Link copied! ${shareUrl}`);
+            } catch (e) {
+              toast.success(`Proposal created! Link: ${shareUrl}`);
+            }
           } else {
-            toast.success('Proposal created but failed to generate share link');
+            toast.error('Failed to generate share link');
           }
         }
         
