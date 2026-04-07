@@ -1,4 +1,4 @@
-import logger from '../utils/logger';
+import logger from '../utils/logger.js';
 // Async handler wrapper to catch errors in async routes
 export const asyncHandler = (fn) => {
     return (req, res, next) => {
