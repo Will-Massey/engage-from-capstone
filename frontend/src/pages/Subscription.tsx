@@ -43,12 +43,14 @@ const Subscription = () => {
       const response = await apiClient.getStripeConfig() as any;
       if (response.success) {
         setTiers(response.data.tiers);
-        if (response.data.publishableKey) {
+        // Only load Stripe if properly configured
+        if (response.data.publishableKey && response.data.publishableKey !== 'pk_test_') {
           setStripePromise(loadStripe(response.data.publishableKey));
         }
       }
     } catch (error) {
-      // Error handled by UI
+      // Error handled by UI - Stripe not available
+      console.log('Stripe not configured');
     }
   };
 
