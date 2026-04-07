@@ -226,7 +226,7 @@ export const setCsrfCookie = (req, res, next) => {
         res.cookie('csrfToken', csrfToken, {
             httpOnly: false, // Must be accessible by JavaScript
             secure: process.env.NODE_ENV === 'production',
-            sameSite: 'strict',
+            sameSite: "none",
             maxAge: 24 * 60 * 60 * 1000, // 24 hours
         });
     }
