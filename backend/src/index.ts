@@ -38,9 +38,6 @@ import setupRouter from './routes/setup.js';
 const app = express();
 const PORT = process.env.PORT || 3001;
 
-// Trust proxy - required for rate limiting behind Render's load balancer
-app.set('trust proxy', 1);
-
 // Security middleware - CSP configured for production
 app.use(helmet({
   contentSecurityPolicy: {
@@ -432,12 +429,11 @@ app.use(notFoundHandler);
 // Error handler
 app.use(errorHandler);
 
-// Start server - bind to 0.0.0.0 for Render
-const HOST = process.env.HOST || '0.0.0.0';
-app.listen(PORT, HOST, () => {
+// Start server
+app.listen(PORT, () => {
   logger.info(`🚀 Engage by Capstone API running on port ${PORT}`);
   logger.info(`📊 Environment: ${process.env.NODE_ENV || 'development'}`);
-  logger.info(`🔗 API URL: http://${HOST}:${PORT}`);
+  logger.info(`🔗 API URL: http://localhost:${PORT}`);
 });
 
 // Handle graceful shutdown
