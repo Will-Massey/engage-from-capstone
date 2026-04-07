@@ -275,7 +275,7 @@ app.get("/api/oauth/callback/outlook", handleOAuthCallback("outlook"));
 app.get("/api/oauth/callback/microsoft365", handleOAuthCallback("microsoft365"));
 app.get("/api/oauth/callback/gmail", handleOAuthCallback("gmail"));
 app.use("/api/proposals", extractTenant, proposalRoutes);
-app.use("/api/proposals", proposalShareRoutes);
+app.use("/api/proposals", extractTenant, proposalShareRoutes);
 app.use("/api/clients", extractTenant, clientRoutes);
 app.use("/api/services", extractTenant, serviceRoutes);
 app.use("/api/services/v2", extractTenant, enhancedServiceRoutes);
