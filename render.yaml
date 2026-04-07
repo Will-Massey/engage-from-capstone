@@ -77,6 +77,10 @@ services:
       - key: VITE_API_URL
         value: https://engage-backend-e1ue.onrender.com
     autoDeploy: true
+    routes:
+      - type: rewrite
+        source: /*
+        destination: /index.html
 
 databases:
   - name: engage-db
