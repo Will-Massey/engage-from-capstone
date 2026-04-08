@@ -513,21 +513,62 @@ router.post(
       signatureData,
       ipAddress: req.ip || null,
       agreementVersion: 'PRO-2024-001',
+      tenantId: proposal.tenantId,
     });
 
     if (!result.success) {
       throw new ApiError('SIGNATURE_FAILED', result.error || 'Failed to record signature', 500);
     }
 
-    // Send notification email to practice
+    // Send acceptance notification to practice
     try {
       const emailService = createEmailService();
       if (emailService) {
-        // TODO: Get practice notification email from settings
-        // await emailService.sendEmail({...});
+        // Get proposal creator details for notification
+        const fullProposal = await prisma.proposal.findUnique({
+          where: { id: proposal.id },
+          include: {
+            createdBy: {
+              select: { email: true, firstName: true, lastName: true },
+            },
+            client: true,
+          },
+        });
+
+        if (fullProposal?.createdBy?.email) {
+          // Generate signed proposal PDF
+          const { PDFGenerator } = await import('../services/pdfGenerator.js');
+          const proposalPdf = await PDFGenerator.generateProposal(proposal.id);
+
+          // Get signature image
+          const signatureImage = await getSignatureImage(result.signatureId!);
+
+          // Send notification email
+          await emailService.sendAcceptanceNotification({
+            to: fullProposal.createdBy.email,
+            clientName: fullProposal.client.name,
+            proposalTitle: fullProposal.title,
+            proposalReference: fullProposal.reference,
+            acceptedAt: new Date(),
+            totalAmount: `£${fullProposal.total.toFixed(2)}`,
+            signedBy,
+            signedByRole,
+            proposalPdf,
+            signaturePng: signatureImage ? Buffer.from(signatureImage.split(',')[1], 'base64') : undefined,
+          });
+
+          // Update acceptance notified timestamp
+          await prisma.proposal.update({
+            where: { id: proposal.id },
+            data: { acceptanceNotifiedAt: new Date() },
+          });
+
+          logger.info(`Acceptance notification sent for proposal ${proposal.id}`);
+        }
       }
     } catch (error) {
       logger.error('Failed to send acceptance notification:', error);
+      // Don't fail the request - signature was still recorded
     }
 
     res.json({

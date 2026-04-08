@@ -6,6 +6,7 @@
 import { v4 as uuidv4 } from 'uuid';
 import { prisma } from '../config/database.js';
 import logger from '../config/logger.js';
+import { saveSignaturePng, readSignature } from './fileStorage.js';
 
 // Generate unique share token
 export function generateShareToken(): string {
@@ -187,25 +188,34 @@ export interface ElectronicSignatureData {
   signatureData: string; // Base64 encoded
   ipAddress: string | null;
   agreementVersion: string;
+  tenantId: string;
 }
 
 // Record electronic signature
 export async function recordElectronicSignature(
   data: ElectronicSignatureData
-): Promise<{ success: boolean; error?: string }> {
+): Promise<{ success: boolean; error?: string; signatureId?: string }> {
   try {
     // Validate signature data
     if (!data.signatureData || data.signatureData.length < 100) {
       return { success: false, error: 'Invalid signature data' };
     }
 
-    // Create signature record
-    await prisma.proposalSignature.create({
+    // Save signature as PNG file
+    const signatureFilePath = await saveSignaturePng(
+      data.tenantId,
+      data.proposalId,
+      data.signatureData
+    );
+
+    // Create signature record with file path
+    const signature = await prisma.proposalSignature.create({
       data: {
         proposalId: data.proposalId,
         signedBy: data.signedBy,
         signedByRole: data.signedByRole,
-        signatureData: data.signatureData,
+        signatureData: data.signatureData, // Keep base64 for backward compatibility
+        signatureFilePath: signatureFilePath,
         signedAt: new Date(),
         ipAddress: data.ipAddress,
         agreementVersion: data.agreementVersion,
@@ -228,7 +238,7 @@ export async function recordElectronicSignature(
 
     logger.info(`Electronic signature recorded for proposal ${data.proposalId}`);
 
-    return { success: true };
+    return { success: true, signatureId: signature.id };
   } catch (error: any) {
     logger.error('Failed to record electronic signature:', error);
     return { success: false, error: error.message };
@@ -261,14 +271,22 @@ export async function getProposalSignatures(proposalId: string) {
 }
 
 // Get signature image
-export async function getSignatureImage(signatureId: string) {
+export async function getSignatureImage(signatureId: string): Promise<string | null> {
   try {
     const signature = await prisma.proposalSignature.findUnique({
       where: { id: signatureId },
-      select: { signatureData: true },
+      select: { signatureData: true, signatureFilePath: true },
     });
 
-    return signature?.signatureData || null;
+    if (!signature) return null;
+
+    // Prefer file-based storage if available
+    if (signature.signatureFilePath) {
+      return readSignature(signature.signatureFilePath);
+    }
+
+    // Fall back to base64 data
+    return signature.signatureData;
   } catch (error) {
     logger.error('Failed to get signature image:', error);
     return null;

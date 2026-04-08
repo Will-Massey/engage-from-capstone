@@ -21,6 +21,7 @@ import enhancedServiceRoutes from './routes/services-new.js';
 import tenantRoutes from './routes/tenants.js';
 import emailRoutes from './routes/email.js';
 import paymentRoutes from './routes/payments.js';
+import coverLetterTemplateRoutes from './routes/coverLetterTemplates.js';
 import { asyncHandler, ApiError } from './middleware/errorHandler.js';
 import { EmailService } from './services/emailService.js';
 
@@ -371,6 +372,7 @@ app.use('/api/tenants', tenantRoutes);
 app.use('/api/email', extractTenant, emailRoutes);
 app.use('/api/payments', extractTenant, paymentRoutes);
 app.use('/api/companies-house', companiesHouseRoutes);
+app.use('/api/cover-letter-templates', extractTenant, coverLetterTemplateRoutes);
 
 // API status endpoint
 app.get('/api/status', (req, res) => {
@@ -429,11 +431,40 @@ app.use(notFoundHandler);
 // Error handler
 app.use(errorHandler);
 
+// Schedule renewal reminder job (daily at 9 AM)
+import { runRenewalReminders } from './jobs/renewalReminders.js';
+
+// Run immediately on startup in production, or every 24 hours
+const RENEWAL_CHECK_INTERVAL = 24 * 60 * 60 * 1000; // 24 hours
+
+function scheduleRenewalReminders() {
+  logger.info('📅 Scheduling renewal reminder job...');
+  
+  // Run once at startup (with delay to let server fully start)
+  setTimeout(() => {
+    runRenewalReminders().catch(err => {
+      logger.error('Initial renewal reminder check failed:', err);
+    });
+  }, 60000); // 1 minute delay
+  
+  // Then run every 24 hours
+  setInterval(() => {
+    runRenewalReminders().catch(err => {
+      logger.error('Scheduled renewal reminder check failed:', err);
+    });
+  }, RENEWAL_CHECK_INTERVAL);
+  
+  logger.info('✅ Renewal reminder job scheduled (every 24 hours)');
+}
+
 // Start server
 app.listen(PORT, () => {
   logger.info(`🚀 Engage by Capstone API running on port ${PORT}`);
   logger.info(`📊 Environment: ${process.env.NODE_ENV || 'development'}`);
   logger.info(`🔗 API URL: http://localhost:${PORT}`);
+  
+  // Schedule background jobs
+  scheduleRenewalReminders();
 });
 
 // Handle graceful shutdown

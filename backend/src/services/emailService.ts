@@ -335,6 +335,55 @@ export class EmailService {
     });
   }
 
+  async sendAcceptanceNotification(params: {
+    to: string;
+    clientName: string;
+    proposalTitle: string;
+    proposalReference: string;
+    acceptedAt: Date;
+    totalAmount: string;
+    signedBy: string;
+    signedByRole: string;
+    proposalPdf: Buffer;
+    signaturePng?: Buffer;
+  }): Promise<{ success: boolean; messageId?: string; error?: string }> {
+    const { generateAcceptanceNotification } = await import('../templates/acceptanceNotification.js');
+
+    const { html, text, subject } = generateAcceptanceNotification({
+      clientName: params.clientName,
+      proposalTitle: params.proposalTitle,
+      proposalReference: params.proposalReference,
+      acceptedAt: params.acceptedAt,
+      totalAmount: params.totalAmount,
+      signedBy: params.signedBy,
+      signedByRole: params.signedByRole,
+    });
+
+    const attachments = [
+      {
+        filename: `Proposal_${params.proposalReference}_Signed.pdf`,
+        content: params.proposalPdf,
+        contentType: 'application/pdf',
+      },
+    ];
+
+    if (params.signaturePng) {
+      attachments.push({
+        filename: `Signature_${params.proposalReference}.png`,
+        content: params.signaturePng,
+        contentType: 'image/png',
+      });
+    }
+
+    return this.sendEmail({
+      to: params.to,
+      subject,
+      html,
+      text,
+      attachments,
+    });
+  }
+
   async verifyConnection(): Promise<{ success: boolean; error?: string }> {
     try {
       if (!this.transporter) {

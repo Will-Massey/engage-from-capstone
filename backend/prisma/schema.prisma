@@ -91,6 +91,12 @@ enum PricingModel {
   PER_TRANSACTION
 }
 
+enum CoverLetterTone {
+  PROFESSIONAL
+  FRIENDLY
+  MODERN
+}
+
 // ==================== TENANT MODELS ====================
 
 model Tenant {
@@ -122,13 +128,14 @@ model Tenant {
   lastPaymentDate       DateTime?
 
   // Relations
-  users        User[]
-  clients      Client[]
-  proposals    Proposal[]
-  services     ServiceTemplate[]
-  pricingRules PricingRule[]
-  templates    ProposalTemplate[]
-  activityLogs ActivityLog[]
+  users                 User[]
+  clients               Client[]
+  proposals             Proposal[]
+  services              ServiceTemplate[]
+  pricingRules          PricingRule[]
+  templates             ProposalTemplate[]
+  coverLetterTemplates  CoverLetterTemplate[]
+  activityLogs          ActivityLog[]
 
   @@index([subdomain])
   @@index([isActive])
@@ -245,6 +252,16 @@ model Proposal {
   acceptedAt   DateTime?
   declinedAt   DateTime?
   expiredAt    DateTime?
+  
+  // Renewal tracking
+  renewalDate          DateTime?
+  renewalReminderSent  Boolean   @default(false)
+  renewalReminderSentAt DateTime?
+  isRenewal            Boolean   @default(false)
+  originalProposalId   String?
+  
+  // Acceptance notification
+  acceptanceNotifiedAt DateTime?
 
   // Pricing
   subtotal       Float   @default(0)
@@ -376,7 +393,8 @@ model ProposalSignature {
   id        String   @id @default(uuid())
   signedBy  String
   signedByRole String
-  signatureData String // Base64 encoded signature image
+  signatureData String? // Base64 encoded signature image (legacy)
+  signatureFilePath String? // Path to PNG file (new)
   signedAt  DateTime @default(now())
   ipAddress String?
   agreementVersion String
@@ -486,6 +504,23 @@ model ProposalTemplate {
   @@index([tenantId])
   @@index([isDefault])
   @@index([targetEntityType])
+}
+
+model CoverLetterTemplate {
+  id          String          @id @default(uuid())
+  tenantId    String
+  tenant      Tenant          @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  name        String
+  tone        CoverLetterTone @default(PROFESSIONAL)
+  content     String          // Template content with {{mergeFields}}
+  isDefault   Boolean         @default(false)
+  isSystem    Boolean         @default(false)  // Pre-designed templates
+  createdById String?
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+
+  @@index([tenantId])
+  @@index([isDefault])
 }
 
 // ==================== PRICING RULE MODELS ====================

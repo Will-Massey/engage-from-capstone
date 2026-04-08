@@ -811,6 +811,118 @@ router.get(
 );
 
 /**
+ * POST /api/proposals/:id/create-renewal
+ * Create a renewal proposal from an existing accepted proposal
+ */
+router.post(
+  '/:id/create-renewal',
+  authenticate,
+  authorize('ADMIN', 'PARTNER', 'MANAGER', 'SENIOR'),
+  asyncHandler(async (req, res) => {
+    const { id } = req.params;
+
+    // Get the original proposal
+    const originalProposal = await prisma.proposal.findFirst({
+      where: {
+        id,
+        tenantId: req.tenantId,
+        status: 'ACCEPTED',
+      },
+      include: {
+        client: true,
+        services: true,
+      },
+    });
+
+    if (!originalProposal) {
+      throw new ApiError('NOT_FOUND', 'Accepted proposal not found', 404);
+    }
+
+    // Generate new reference
+    const reference = generateReference('PROP');
+
+    // Set valid until (default 30 days)
+    const validUntil = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
+
+    // Calculate renewal date (12 months from now)
+    const renewalDate = new Date();
+    renewalDate.setFullYear(renewalDate.getFullYear() + 1);
+
+    // Create renewal proposal
+    const renewalProposal = await prisma.proposal.create({
+      data: {
+        reference,
+        title: `${originalProposal.title} (Renewal)`,
+        tenantId: req.tenantId,
+        clientId: originalProposal.clientId,
+        createdById: req.user!.id,
+        status: 'DRAFT',
+        validUntil,
+        subtotal: originalProposal.subtotal,
+        discountType: originalProposal.discountType,
+        discountValue: originalProposal.discountValue,
+        discountAmount: originalProposal.discountAmount,
+        vatAmount: originalProposal.vatAmount,
+        total: originalProposal.total,
+        paymentTerms: originalProposal.paymentTerms,
+        paymentFrequency: originalProposal.paymentFrequency,
+        coverLetter: originalProposal.coverLetter,
+        terms: originalProposal.terms,
+        notes: `Renewal of proposal ${originalProposal.reference}. ${originalProposal.notes || ''}`,
+        isRenewal: true,
+        originalProposalId: originalProposal.id,
+        renewalDate,
+        services: {
+          create: originalProposal.services.map((svc) => ({
+            name: svc.name,
+            description: svc.description,
+            quantity: svc.quantity,
+            unitPrice: svc.unitPrice,
+            discountPercent: svc.discountPercent,
+            total: svc.total,
+            frequency: svc.frequency,
+            isOptional: svc.isOptional,
+            serviceTemplateId: svc.serviceTemplateId,
+          })),
+        },
+      },
+      include: {
+        client: true,
+        services: true,
+        createdBy: {
+          select: {
+            firstName: true,
+            lastName: true,
+          },
+        },
+      },
+    });
+
+    // Log activity
+    await prisma.activityLog.create({
+      data: {
+        tenantId: req.tenantId,
+        userId: req.user!.id,
+        action: 'PROPOSAL_RENEWAL_CREATED',
+        entityType: 'PROPOSAL',
+        entityId: renewalProposal.id,
+        description: `Created renewal proposal "${renewalProposal.title}" from ${originalProposal.reference}`,
+        metadata: JSON.stringify({
+          originalProposalId: originalProposal.id,
+          originalReference: originalProposal.reference,
+        }),
+      },
+    });
+
+    res.status(201).json({
+      success: true,
+      data: renewalProposal,
+      message: 'Renewal proposal created successfully',
+    });
+  })
+);
+
+/**
  * GET /api/proposals/stats/dashboard
  * Get dashboard statistics
  */

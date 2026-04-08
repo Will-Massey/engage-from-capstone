@@ -16,10 +16,14 @@ interface ProposalData {
   vatAmount: number;
   total: number;
   paymentTerms: string;
+  paymentFrequency: string;
   coverLetter?: string;
   terms?: string;
   notes?: string;
   createdAt: Date;
+  acceptedAt?: Date;
+  acceptedBy?: string;
+  signature?: string;
   client: {
     name: string;
     companyType: string;
@@ -431,8 +435,27 @@ ${proposal.tenant.name}`;
        .text('Total:', rightX, y)
        .text(this.formatCurrency(proposal.total), 490, y, { align: 'right' });
 
+    // Monthly payment display for monthly services
+    const monthlyServices = proposal.services.filter(s => s.frequency === 'MONTHLY');
+    if (monthlyServices.length > 0) {
+      const monthlyTotal = monthlyServices.reduce((sum, s) => sum + s.total, 0);
+      const monthlyVat = monthlyTotal * 0.2;
+      const monthlyWithVat = monthlyTotal + monthlyVat;
+      
+      y += 35;
+      doc.fontSize(12)
+         .fillColor(primaryColor)
+         .text('Monthly Payment:', rightX, y)
+         .text(this.formatCurrency(monthlyWithVat), 490, y, { align: 'right' });
+      
+      y += 18;
+      doc.fontSize(9)
+         .fillColor('#888888')
+         .text(`(${monthlyServices.length} monthly service${monthlyServices.length > 1 ? 's' : ''})`, rightX, y);
+    }
+
     // Payment terms
-    y += 40;
+    y += 30;
     doc.fontSize(10)
        .fillColor('#666666')
        .text(`Payment Terms: ${proposal.paymentTerms}`, rightX, y);
