@@ -64,6 +64,8 @@ router.get(
   asyncHandler(async (req, res) => {
     const { status, clientId, search, page = '1', limit = '20' } = req.query;
 
+    logger.info(`Fetching proposals for tenant: ${req.tenantId}, user: ${req.user?.id}`);
+
     const skip = (parseInt(page as string) - 1) * parseInt(limit as string);
     const take = parseInt(limit as string);
 
@@ -270,6 +272,8 @@ router.post(
     const customTotal = Math.round((customSubtotal + customVatAmount) * 100) / 100;
 
     // Create proposal with services
+    logger.info(`Creating proposal for tenant: ${req.tenantId}, user: ${req.user!.id}, client: ${data.clientId}`);
+    
     const proposal = await prisma.proposal.create({
       data: {
         reference,

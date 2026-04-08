@@ -1,5 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
 import { prisma } from '../config/database.js';
+import logger from '../config/logger.js';
 
 // Simple tenant extraction - always use 'demo' for Render
 export const extractTenant = async (
@@ -27,11 +28,14 @@ export const extractTenant = async (
     if (tenant) {
       req.tenantId = tenant.id;
       (req as any).tenant = tenant;
+      logger.debug(`Tenant extracted: ${tenant.subdomain} (${tenant.id}) for path: ${req.path}`);
+    } else {
+      logger.warn(`No tenant found for request: ${req.path}`);
     }
 
     next();
   } catch (error) {
-    console.error('Tenant extraction error:', error);
+    logger.error('Tenant extraction error:', error);
     // Continue without tenant
     next();
   }
