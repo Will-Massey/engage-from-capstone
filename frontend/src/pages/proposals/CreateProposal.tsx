@@ -819,23 +819,64 @@ Let's build your financial foundation.
                   />
                 </div>
                 
-                {/* Services Summary */}
+                {/* Services Summary - Editable in Step 3 */}
                 <div className="bg-white rounded-xl p-6 border border-slate-200">
                   <h3 className="font-semibold text-slate-900 mb-4">Services Summary</h3>
-                  <div className="space-y-3">
-                    {selectedServices.map((service) => (
-                      <div key={service.id} className="flex justify-between text-sm">
-                        <span className="text-slate-700 text-slate-600">
-                          {service.name} ({service.quantity} × £{service.unitPrice})
-                          {service.discountPercent > 0 && (
-                            <span className="text-green-600 text-green-600 ml-1">
-                              -{service.discountPercent}%
-                            </span>
-                          )}
-                        </span>
-                        <span className="font-medium text-slate-900">
-                          £{service.total.toLocaleString('en-GB', { minimumFractionDigits: 2 })}
-                        </span>
+                  <div className="space-y-4">
+                    {selectedServices.map((service, index) => (
+                      <div key={service.id} className="border-b border-slate-100 pb-3 last:border-0 last:pb-0">
+                        <div className="flex justify-between items-start mb-2">
+                          <span className="text-sm font-medium text-slate-900">{service.name}</span>
+                          <span className="text-sm font-bold text-slate-900">
+                            £{service.total.toLocaleString('en-GB', { minimumFractionDigits: 2 })}
+                          </span>
+                        </div>
+                        
+                        {/* Inline editing controls */}
+                        <div className="grid grid-cols-3 gap-2 text-xs">
+                          <div>
+                            <label className="block text-slate-500 mb-1">Qty</label>
+                            <input
+                              type="number"
+                              min="1"
+                              step="1"
+                              value={service.quantity}
+                              onChange={(e) => updateService(service.id, { quantity: parseFloat(e.target.value) || 1 })}
+                              className="w-full px-2 py-1 rounded border border-slate-200 text-center"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-slate-500 mb-1">Price (£)</label>
+                            <input
+                              type="number"
+                              min="0"
+                              step="0.01"
+                              value={service.unitPrice}
+                              onChange={(e) => updateService(service.id, { unitPrice: parseFloat(e.target.value) || 0 })}
+                              className="w-full px-2 py-1 rounded border border-slate-200 text-center"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-slate-500 mb-1">Disc (%)</label>
+                            <input
+                              type="number"
+                              min="0"
+                              max="100"
+                              value={service.discountPercent}
+                              onChange={(e) => updateService(service.id, { discountPercent: parseFloat(e.target.value) || 0 })}
+                              className="w-full px-2 py-1 rounded border border-slate-200 text-center"
+                            />
+                          </div>
+                        </div>
+                        
+                        {/* Remove button */}
+                        <button
+                          onClick={() => removeService(service.id)}
+                          className="mt-2 text-xs text-red-600 hover:text-red-800 flex items-center gap-1"
+                        >
+                          <TrashIcon className="w-3 h-3" />
+                          Remove
+                        </button>
                       </div>
                     ))}
                   </div>
