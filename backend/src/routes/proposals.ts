@@ -24,6 +24,7 @@ const createProposalSchema = z.object({
   services: z.array(z.object({
     serviceId: z.string(),
     quantity: z.number().min(1).default(1),
+    unitPrice: z.number().min(0).optional(), // Allow custom unit price
     discountPercent: z.number().min(0).max(100).optional(),
   })).min(1, 'At least one service is required'),
   validUntil: z.string().datetime().optional(),
@@ -233,6 +234,41 @@ router.post(
       ? new Date(data.validUntil)
       : new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
 
+    // Prepare services with custom pricing
+    const servicesWithCustomPricing = pricing.services.map((svc: any) => {
+      // Find the original service data to check for custom unit price
+      const originalService = (data.services as any[]).find(s => s.serviceId === svc.serviceId);
+      const customUnitPrice = originalService?.unitPrice;
+      
+      // Use custom unit price if provided, otherwise use the calculated base price
+      const finalUnitPrice = customUnitPrice !== undefined && customUnitPrice > 0 
+        ? customUnitPrice 
+        : svc.basePrice;
+      
+      // Recalculate total with custom unit price if applicable
+      const quantity = svc.quantity;
+      const discountPercent = originalService?.discountPercent || 0;
+      const baseTotal = finalUnitPrice * quantity;
+      const discountAmount = baseTotal * (discountPercent / 100);
+      const finalTotal = baseTotal - discountAmount;
+      
+      return {
+        name: svc.serviceTemplate?.name || 'Service',
+        description: svc.serviceTemplate?.description,
+        quantity: quantity,
+        unitPrice: finalUnitPrice,
+        discountPercent: discountPercent,
+        total: finalTotal,
+        frequency: svc.serviceTemplate?.defaultFrequency || 'MONTHLY',
+        serviceTemplateId: svc.serviceId,
+      };
+    });
+
+    // Recalculate proposal totals based on custom pricing
+    const customSubtotal = servicesWithCustomPricing.reduce((sum: number, svc: any) => sum + svc.total, 0);
+    const customVatAmount = Math.round(customSubtotal * 0.2 * 100) / 100; // 20% VAT
+    const customTotal = Math.round((customSubtotal + customVatAmount) * 100) / 100;
+
     // Create proposal with services
     const proposal = await prisma.proposal.create({
       data: {
@@ -243,28 +279,19 @@ router.post(
         createdById: req.user!.id,
         status: 'DRAFT',
         validUntil,
-        subtotal: pricing.subtotal,
+        subtotal: customSubtotal,
         discountType: data.discountType,
         discountValue: data.discountValue,
-        discountAmount: pricing.globalDiscount,
-        vatAmount: pricing.vatAmount,
-        total: pricing.total,
+        discountAmount: 0, // Line-level discounts are already applied
+        vatAmount: customVatAmount,
+        total: customTotal,
         paymentTerms: data.paymentTerms || '30 days',
         paymentFrequency: data.paymentFrequency || 'MONTHLY',
         coverLetter: data.coverLetter,
         terms: data.terms,
         notes: data.notes,
         services: {
-          create: pricing.services.map((svc: any) => ({
-            name: svc.serviceTemplate?.name || 'Service',
-            description: svc.serviceTemplate?.description,
-            quantity: svc.quantity,
-            unitPrice: svc.basePrice,
-            discountPercent: (data.services as any[]).find(s => s.serviceId === svc.serviceId)?.discountPercent || 0,
-            total: svc.finalPrice,
-            frequency: svc.serviceTemplate?.defaultFrequency || 'MONTHLY',
-            serviceTemplateId: svc.serviceId,
-          })),
+          create: servicesWithCustomPricing,
         },
       },
       include: {

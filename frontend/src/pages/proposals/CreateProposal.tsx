@@ -258,10 +258,11 @@ const CreateProposal = () => {
     try {
       // Format services for the backend API
       const servicesData = selectedServices.map(s => {
-        console.log('Service:', s.name, 'serviceTemplateId:', s.serviceTemplateId, 'id:', s.id);
+        console.log('Service:', s.name, 'serviceTemplateId:', s.serviceTemplateId, 'id:', s.id, 'unitPrice:', s.unitPrice);
         return {
           serviceId: s.serviceTemplateId, // Use original service template ID
           quantity: s.quantity,
+          unitPrice: s.unitPrice, // Include the edited unit price
           discountPercent: s.discountPercent,
         };
       });
