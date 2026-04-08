@@ -45,6 +45,7 @@ interface SelectedService extends Service {
   vatAmount: number; // VAT amount for this line
   grossTotal: number; // Total including VAT
   serviceTemplateId: string; // Original service ID for backend
+  frequency: string; // MONTHLY, QUARTERLY, ANNUALLY, ONE_TIME
 }
 
 interface ProposalSummary {
@@ -52,6 +53,8 @@ interface ProposalSummary {
   discountAmount: number;
   vatAmount: number;
   total: number;
+  monthlyTotal: number; // Total of monthly services only
+  monthlyServiceCount: number;
 }
 
 const STEPS = [
@@ -170,7 +173,13 @@ const CreateProposal = () => {
       : 0;
     const total = subtotal + vatAmount;
     
-    return { subtotal, discountAmount, vatAmount, total };
+    // Calculate monthly total (only for monthly services)
+    const monthlyServices = selectedServices.filter(s => 
+      s.frequency === 'MONTHLY' || s.billingCycle === 'MONTHLY'
+    );
+    const monthlyTotal = monthlyServices.reduce((sum, s) => sum + s.grossTotal, 0);
+    
+    return { subtotal, discountAmount, vatAmount, total, monthlyTotal, monthlyServiceCount: monthlyServices.length };
   }, [selectedServices, includeVat]);
   
   // Add service
@@ -191,6 +200,7 @@ const CreateProposal = () => {
       vatAmount: service.basePrice * 0.2, // VAT amount
       grossTotal: service.basePrice * 1.2, // Gross total
       serviceTemplateId: service.id, // Store original service ID
+      frequency: service.billingCycle || 'MONTHLY', // Default to monthly
     };
     setSelectedServices([...selectedServices, newService]);
     toast.success(`${service.name} added`);
@@ -899,6 +909,23 @@ Let's build your financial foundation.
                         </span>
                       </div>
                     </div>
+                    
+                    {/* Monthly Payment Display */}
+                    {summary.monthlyTotal > 0 && (
+                      <div className="pt-3 mt-3 border-t border-slate-100">
+                        <div className="flex justify-between items-center">
+                          <div>
+                            <span className="font-semibold text-slate-900">Monthly Payment</span>
+                            <p className="text-xs text-slate-500">
+                              {summary.monthlyServiceCount} monthly service{summary.monthlyServiceCount > 1 ? 's' : ''}
+                            </p>
+                          </div>
+                          <span className="text-xl font-bold text-emerald-600">
+                            £{summary.monthlyTotal.toLocaleString('en-GB', { minimumFractionDigits: 2 })}
+                          </span>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 </div>
                 

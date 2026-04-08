@@ -148,6 +148,26 @@ const Proposals = () => {
     return `${count} views`;
   };
 
+  // Calculate days until renewal
+  const getDaysUntilRenewal = (renewalDate: string) => {
+    if (!renewalDate) return null;
+    const days = Math.ceil((new Date(renewalDate).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24));
+    return days;
+  };
+
+  // Create renewal proposal
+  const createRenewal = async (proposalId: string) => {
+    try {
+      const response = await apiClient.post(`/proposals/${proposalId}/create-renewal`, {}) as any;
+      if (response.success) {
+        toast.success('Renewal proposal created');
+        loadProposals();
+      }
+    } catch (error) {
+      toast.error('Failed to create renewal');
+    }
+  };
+
   return (
     <div className="space-y-6 animate-fade-in">
       {/* Header */}
@@ -189,7 +209,7 @@ const Proposals = () => {
             <select
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value)}
-              className="w-40 px-3 py-2 rounded-lg border border-slate-300 bg-white text-slate-900 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
+              className="w-44 px-3 py-2 rounded-lg border border-slate-300 bg-white text-slate-900 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
             >
               <option value="">All Status</option>
               <option value="DRAFT">Draft</option>
@@ -197,6 +217,7 @@ const Proposals = () => {
               <option value="ACCEPTED">Accepted</option>
               <option value="DECLINED">Declined</option>
               <option value="EXPIRED">Expired</option>
+              <option value="RENEWALS_DUE">Renewals Due (30 days)</option>
             </select>
 
             <button
@@ -286,12 +307,41 @@ const Proposals = () => {
                         </div>
                       </td>
                       <td className="px-3 py-4 whitespace-nowrap">
-                        <div className="flex items-center space-x-1">
-                          <span className={`inline-flex px-2.5 py-0.5 rounded-full text-xs font-medium ${statusColors[displayStatus] || 'bg-slate-100 text-slate-700'}`}>
-                            {statusLabels[displayStatus] || displayStatus}
-                          </span>
-                          {proposal.signatures?.length > 0 && (
-                            <CheckCircleIcon className="h-4 w-4 text-green-500" title="Signed" />
+                        <div className="flex flex-col gap-1">
+                          <div className="flex items-center space-x-1">
+                            <span className={`inline-flex px-2.5 py-0.5 rounded-full text-xs font-medium ${statusColors[displayStatus] || 'bg-slate-100 text-slate-700'}`}>
+                              {statusLabels[displayStatus] || displayStatus}
+                            </span>
+                            {proposal.signatures?.length > 0 && (
+                              <CheckCircleIcon className="h-4 w-4 text-green-500" title="Signed" />
+                            )}
+                          </div>
+                          {/* Renewal Badge */}
+                          {proposal.status === 'ACCEPTED' && proposal.renewalDate && (
+                            (() => {
+                              const daysUntil = getDaysUntilRenewal(proposal.renewalDate);
+                              if (daysUntil === null) return null;
+                              if (daysUntil <= 0) return (
+                                <span className="inline-flex px-2 py-0.5 rounded text-xs font-medium bg-red-100 text-red-700">
+                                  Renewal overdue
+                                </span>
+                              );
+                              if (daysUntil <= 30) return (
+                                <span className="inline-flex px-2 py-0.5 rounded text-xs font-medium bg-amber-100 text-amber-700">
+                                  Renews in {daysUntil} days
+                                </span>
+                              );
+                              return (
+                                <span className="inline-flex px-2 py-0.5 rounded text-xs font-medium bg-emerald-100 text-emerald-700">
+                                  Renews in {daysUntil} days
+                                </span>
+                              );
+                            })()
+                          )}
+                          {proposal.isRenewal && (
+                            <span className="inline-flex px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-700">
+                              Renewal
+                            </span>
                           )}
                         </div>
                       </td>
@@ -371,6 +421,17 @@ const Proposals = () => {
                           >
                             <DocumentDuplicateIcon className="h-5 w-5" />
                           </button>
+                          
+                          {/* Create Renewal - for accepted proposals */}
+                          {proposal.status === 'ACCEPTED' && !proposal.isRenewal && (
+                            <button
+                              onClick={() => createRenewal(proposal.id)}
+                              className="p-1 text-slate-500 hover:text-emerald-600"
+                              title="Create Renewal"
+                            >
+                              <CheckCircleIcon className="h-5 w-5" />
+                            </button>
+                          )}
                           
                           {/* Download PDF */}
                           <button
