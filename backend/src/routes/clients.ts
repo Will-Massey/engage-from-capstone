@@ -77,6 +77,8 @@ router.get(
       sortOrder = 'desc'
     } = req.query;
 
+    logger.info(`Fetching clients for tenant: ${req.tenantId}, user: ${req.user?.id}`);
+
     const skip = (parseInt(page as string) - 1) * parseInt(limit as string);
     const take = parseInt(limit as string);
 
@@ -185,6 +187,8 @@ router.post(
   asyncHandler(async (req, res) => {
     const data = createClientSchema.parse(req.body);
 
+    logger.info(`Creating client for tenant: ${req.tenantId}, user: ${req.user?.id}, email: ${data.contactEmail}`);
+
     // Check for duplicate email
     const existingClient = await prisma.client.findFirst({
       where: {
@@ -194,6 +198,7 @@ router.post(
     });
 
     if (existingClient) {
+      logger.warn(`Duplicate client email: ${data.contactEmail} for tenant: ${req.tenantId}`);
       throw new ApiError('DUPLICATE_EMAIL', 'A client with this email already exists', 409);
     }
 

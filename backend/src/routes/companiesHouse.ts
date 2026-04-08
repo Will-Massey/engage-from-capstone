@@ -27,9 +27,12 @@ router.get(
 
     const { q, limit } = schema.parse(req.query);
 
+    logger.info(`Companies House search for: ${q}, tenant: ${req.tenantId}`);
+
     // Check if service is configured
     const chService = createCompaniesHouseService();
     if (!chService) {
+      logger.error('Companies House API key not configured');
       throw new ApiError(
         'NOT_CONFIGURED',
         'Companies House API not configured. Please set COMPANIES_HOUSE_API_KEY environment variable.',
