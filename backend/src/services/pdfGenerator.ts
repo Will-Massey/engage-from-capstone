@@ -385,6 +385,15 @@ ${proposal.tenant.name}`;
       doc.text(service.quantity.toString(), colX.qty, y)
          .text(this.formatCurrency(service.unitPrice), colX.price, y)
          .text(this.formatCurrency(service.total), colX.total, y);
+      
+      // Show frequency
+      if (service.frequency && service.frequency !== 'ONE_TIME') {
+        doc.fontSize(8)
+           .fillColor('#888888')
+           .text(`(${service.frequency.toLowerCase()})`, colX.price, y + 12);
+        doc.fontSize(10)
+           .fillColor('#333333');
+      }
 
       y += service.description ? 50 : 30;
     });

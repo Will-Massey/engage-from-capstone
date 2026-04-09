@@ -214,19 +214,45 @@ router.post(
       throw new ApiError('CLIENT_NOT_FOUND', 'Client not found', 404);
     }
 
-    // Calculate pricing
-    const pricingEngine = new PricingEngine(req.tenantId);
-    const pricing = await pricingEngine.calculateProposalPricing(
-      data.services as { serviceId: string; quantity: number; discountPercent?: number; }[],
-      {
-        turnover: client.turnover,
-        employeeCount: client.employeeCount,
-        region: (client.address as any)?.country,
+    // Fetch service templates for frequency and name info
+    const serviceTemplates = await prisma.serviceTemplate.findMany({
+      where: {
+        id: { in: data.services.map((s: any) => s.serviceId) },
       },
-      data.discountType && data.discountValue
-        ? { type: data.discountType, value: data.discountValue }
-        : undefined
-    );
+    });
+
+    // Prepare services with custom pricing (bypass PricingEngine for custom prices)
+    const servicesWithCustomPricing = data.services.map((svc: any) => {
+      const template = serviceTemplates.find((t) => t.id === svc.serviceId);
+      
+      // Use custom unit price if provided, otherwise use template base price
+      const finalUnitPrice = svc.unitPrice !== undefined && svc.unitPrice > 0 
+        ? svc.unitPrice 
+        : (template?.basePrice || 0);
+      
+      // Recalculate total with custom unit price
+      const quantity = svc.quantity || 1;
+      const discountPercent = svc.discountPercent || 0;
+      const baseTotal = finalUnitPrice * quantity;
+      const discountAmount = baseTotal * (discountPercent / 100);
+      const finalTotal = baseTotal - discountAmount;
+      
+      return {
+        name: template?.name || 'Service',
+        description: template?.description,
+        quantity: quantity,
+        unitPrice: finalUnitPrice,
+        discountPercent: discountPercent,
+        total: finalTotal,
+        frequency: template?.defaultFrequency || 'MONTHLY',
+        serviceTemplateId: svc.serviceId,
+      };
+    });
+
+    // Calculate proposal totals
+    const customSubtotal = servicesWithCustomPricing.reduce((sum: number, svc: any) => sum + svc.total, 0);
+    const customVatAmount = Math.round(customSubtotal * 0.2 * 100) / 100; // 20% VAT
+    const customTotal = Math.round((customSubtotal + customVatAmount) * 100) / 100;
 
     // Generate reference
     const reference = generateReference('PROP');
@@ -235,41 +261,6 @@ router.post(
     const validUntil = data.validUntil
       ? new Date(data.validUntil)
       : new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
-
-    // Prepare services with custom pricing
-    const servicesWithCustomPricing = pricing.services.map((svc: any) => {
-      // Find the original service data to check for custom unit price
-      const originalService = (data.services as any[]).find(s => s.serviceId === svc.serviceId);
-      const customUnitPrice = originalService?.unitPrice;
-      
-      // Use custom unit price if provided, otherwise use the calculated base price
-      const finalUnitPrice = customUnitPrice !== undefined && customUnitPrice > 0 
-        ? customUnitPrice 
-        : svc.basePrice;
-      
-      // Recalculate total with custom unit price if applicable
-      const quantity = svc.quantity;
-      const discountPercent = originalService?.discountPercent || 0;
-      const baseTotal = finalUnitPrice * quantity;
-      const discountAmount = baseTotal * (discountPercent / 100);
-      const finalTotal = baseTotal - discountAmount;
-      
-      return {
-        name: svc.serviceTemplate?.name || 'Service',
-        description: svc.serviceTemplate?.description,
-        quantity: quantity,
-        unitPrice: finalUnitPrice,
-        discountPercent: discountPercent,
-        total: finalTotal,
-        frequency: svc.serviceTemplate?.defaultFrequency || 'MONTHLY',
-        serviceTemplateId: svc.serviceId,
-      };
-    });
-
-    // Recalculate proposal totals based on custom pricing
-    const customSubtotal = servicesWithCustomPricing.reduce((sum: number, svc: any) => sum + svc.total, 0);
-    const customVatAmount = Math.round(customSubtotal * 0.2 * 100) / 100; // 20% VAT
-    const customTotal = Math.round((customSubtotal + customVatAmount) * 100) / 100;
 
     // Create proposal with services
     logger.info(`Creating proposal for tenant: ${req.tenantId}, user: ${req.user!.id}, client: ${data.clientId}`);

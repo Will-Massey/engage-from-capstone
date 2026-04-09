@@ -621,8 +621,8 @@ Let's build your financial foundation.
                       <span className="text-xs px-2 py-0.5 bg-slate-100 text-slate-600 rounded">
                         {service.category}
                       </span>
-                      <span className="text-xs text-slate-400 text-slate-400">
-                        {service.billingCycle}
+                      <span className={`text-xs px-2 py-0.5 rounded ${service.billingCycle === 'MONTHLY' ? 'bg-green-100 text-green-700' : service.billingCycle === 'ANNUALLY' ? 'bg-blue-100 text-blue-700' : 'bg-slate-100 text-slate-600'}`}>
+                        {service.billingCycle === 'MONTHLY' ? '£' + service.basePrice.toLocaleString() + '/month' : service.billingCycle === 'ANNUALLY' ? '£' + service.basePrice.toLocaleString() + '/year' : service.billingCycle === 'QUARTERLY' ? '£' + service.basePrice.toLocaleString() + '/quarter' : '£' + service.basePrice.toLocaleString()}
                       </span>
                     </div>
                   </button>
@@ -827,7 +827,12 @@ Let's build your financial foundation.
                     {selectedServices.map((service, index) => (
                       <div key={service.id} className="border-b border-slate-100 pb-3 last:border-0 last:pb-0">
                         <div className="flex justify-between items-start mb-2">
-                          <span className="text-sm font-medium text-slate-900">{service.name}</span>
+                          <div>
+                            <span className="text-sm font-medium text-slate-900">{service.name}</span>
+                            <span className="text-xs text-slate-500 ml-2">
+                              ({service.frequency?.toLowerCase() || 'monthly'})
+                            </span>
+                          </div>
                           <span className="text-sm font-bold text-slate-900">
                             £{service.total.toLocaleString('en-GB', { minimumFractionDigits: 2 })}
                           </span>
