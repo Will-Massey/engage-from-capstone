@@ -209,11 +209,7 @@ async function findDemoTenant() {
     return tenant;
 }
 async function seedServicesForTenant(tenantId) {
-    // Clean up old data for this tenant
-    await database_js_1.prisma.proposalService.deleteMany({
-        where: { proposal: { tenantId } },
-    });
-    await database_js_1.prisma.proposal.deleteMany({ where: { tenantId } });
+    // Clean up old service templates only - NEVER delete proposals or client data
     await database_js_1.prisma.pricingRule.deleteMany({ where: { tenantId } });
     await database_js_1.prisma.serviceTemplate.deleteMany({ where: { tenantId } });
     // Insert full catalog in one query

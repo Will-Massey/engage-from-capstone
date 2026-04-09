@@ -216,11 +216,7 @@ export async function findDemoTenant() {
 }
 
 export async function seedServicesForTenant(tenantId: string) {
-  // Clean up old data for this tenant
-  await prisma.proposalService.deleteMany({
-    where: { proposal: { tenantId } },
-  });
-  await prisma.proposal.deleteMany({ where: { tenantId } });
+  // Clean up old service templates only - NEVER delete proposals or client data
   await prisma.pricingRule.deleteMany({ where: { tenantId } });
   await prisma.serviceTemplate.deleteMany({ where: { tenantId } });
 
