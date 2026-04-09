@@ -668,5 +668,22 @@ router.delete('/me', auth_js_1.authenticate, (0, errorHandler_js_1.asyncHandler)
         },
     });
 }));
+/**
+ * GET /api/auth/csrf-token
+ * Get CSRF token for cross-domain requests
+ */
+router.get('/csrf-token', (0, errorHandler_js_1.asyncHandler)(async (req, res) => {
+    const csrfToken = (0, auth_js_1.generateCsrfToken)();
+    res.cookie('csrfToken', csrfToken, {
+        httpOnly: false,
+        secure: true,
+        sameSite: 'none',
+        maxAge: 24 * 60 * 60 * 1000,
+    });
+    res.json({
+        success: true,
+        data: { csrfToken },
+    });
+}));
 exports.default = router;
 //# sourceMappingURL=auth.js.map

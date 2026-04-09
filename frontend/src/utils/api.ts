@@ -23,9 +23,31 @@ const getCsrfToken = (): string | null => {
   return match ? match[1] : null;
 };
 
+// Fetch CSRF token from backend
+let csrfTokenPromise: Promise<string> | null = null;
+const fetchCsrfToken = async (): Promise<string> => {
+  const existingToken = getCsrfToken();
+  if (existingToken) return existingToken;
+  
+  // Deduplicate concurrent requests
+  if (csrfTokenPromise) return csrfTokenPromise;
+  
+  csrfTokenPromise = axios.get(`${API_URL}/api/auth/csrf-token`, {
+    withCredentials: true,
+  }).then((res: any) => {
+    csrfTokenPromise = null;
+    return res.data?.data?.csrfToken || getCsrfToken();
+  }).catch(() => {
+    csrfTokenPromise = null;
+    return '';
+  });
+  
+  return csrfTokenPromise;
+};
+
 // Request interceptor
 api.interceptors.request.use(
-  (config) => {
+  async (config) => {
     const token = useAuthStore.getState().token;
     const tenant = useAuthStore.getState().tenant;
 
@@ -40,7 +62,7 @@ api.interceptors.request.use(
 
     // Add CSRF token for state-changing requests
     if (['POST', 'PUT', 'DELETE', 'PATCH'].includes(config.method?.toUpperCase() || '')) {
-      const csrfToken = getCsrfToken();
+      const csrfToken = await fetchCsrfToken();
       if (csrfToken) {
         config.headers['X-CSRF-Token'] = csrfToken;
       }

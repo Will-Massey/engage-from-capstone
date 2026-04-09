@@ -838,4 +838,25 @@ router.delete(
   })
 );
 
+/**
+ * GET /api/auth/csrf-token
+ * Get CSRF token for cross-domain requests
+ */
+router.get(
+  '/csrf-token',
+  asyncHandler(async (req, res) => {
+    const csrfToken = generateCsrfToken();
+    res.cookie('csrfToken', csrfToken, {
+      httpOnly: false,
+      secure: true,
+      sameSite: 'none',
+      maxAge: 24 * 60 * 60 * 1000,
+    });
+    res.json({
+      success: true,
+      data: { csrfToken },
+    });
+  })
+);
+
 export default router;
