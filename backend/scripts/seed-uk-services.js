@@ -29,22 +29,17 @@ async function main() {
 
   console.log(`✅ Found tenant: ${tenant.name} (${tenant.subdomain})`);
 
-  console.log('🗑️  Clearing old demo data for fresh UK catalog...');
-
-  // Safely delete any proposal services and proposals that reference old templates
-  await prisma.proposalService.deleteMany({
-    where: {
-      proposal: {
-        tenantId: tenant.id,
-      },
-    },
+  // Check if services already exist for this tenant
+  const existingCount = await prisma.serviceTemplate.count({
+    where: { tenantId: tenant.id }
   });
 
-  await prisma.proposal.deleteMany({ where: { tenantId: tenant.id } });
-  await prisma.pricingRule.deleteMany({ where: { tenantId: tenant.id } });
-  await prisma.serviceTemplate.deleteMany({ where: { tenantId: tenant.id } });
+  if (existingCount > 0) {
+    console.log(`✅ Tenant already has ${existingCount} services. Skipping seed to preserve data.`);
+    return;
+  }
 
-  console.log('✅ Cleared old services and demo proposals');
+  console.log('🌱 Seeding UK accountancy services...');
 
   const services = [
     // ========================================
@@ -454,6 +449,7 @@ This is an ideal solution for home-based business owners, non-UK directors, and 
     pricingModel: service.pricingModel,
     frequencyOptions: service.frequencyOptions,
     defaultFrequency: service.defaultFrequency,
+    billingCycle: service.defaultFrequency, // Set billingCycle for frontend compatibility
     applicableEntityTypes: service.applicableEntityTypes,
     tags: service.tags,
     isActive: true,

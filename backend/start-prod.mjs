@@ -8,24 +8,25 @@ console.log('========================================');
 console.log('🚀 Engage Backend Starting...');
 console.log('========================================');
 
-// Run migrations
+// Run migrations with shorter timeout to fail fast
 console.log('🗄️  Running database migrations...');
 try {
   execSync('npx prisma migrate deploy', { 
     stdio: 'inherit',
-    timeout: 120000
+    timeout: 60000 // 60 seconds - fail fast if DB is down
   });
   console.log('✅ Migrations complete');
 } catch (error) {
-  console.warn('⚠️  Migration warning:', error.message);
+  console.warn('⚠️  Migration failed (DB may be down):', error.message);
+  console.log('🚀 Starting server anyway - will retry on requests...');
 }
 
-// Seed UK accountancy services
+// Seed UK accountancy services (non-blocking)
 console.log('🌱 Checking UK service catalog...');
 try {
   execSync('node ./scripts/seed-uk-services.js', {
     stdio: 'inherit',
-    timeout: 120000,
+    timeout: 30000, // 30 seconds
   });
   console.log('✅ Seed check complete');
 } catch (error) {

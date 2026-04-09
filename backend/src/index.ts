@@ -220,8 +220,14 @@ app.get('/api/seed-services-public', async (req, res) => {
       return;
     }
 
-    await prisma.proposalService.deleteMany({ where: { proposal: { tenantId: tenant.id } } });
-    await prisma.proposal.deleteMany({ where: { tenantId: tenant.id } });
+    // Check if services already exist - don't delete proposals if they do
+    const existingCount = await prisma.serviceTemplate.count({ where: { tenantId: tenant.id } });
+    if (existingCount > 0) {
+      res.json({ success: true, data: { message: `Tenant already has ${existingCount} services. No changes made.`, servicesCount: existingCount } });
+      return;
+    }
+
+    // Only clean up service templates, NOT proposals
     await prisma.pricingRule.deleteMany({ where: { tenantId: tenant.id } });
     await prisma.serviceTemplate.deleteMany({ where: { tenantId: tenant.id } });
 
@@ -279,6 +285,7 @@ app.get('/api/seed-services-public', async (req, res) => {
       pricingModel: s.pricingModel,
       frequencyOptions: s.frequencyOptions,
       defaultFrequency: s.defaultFrequency,
+      billingCycle: s.defaultFrequency, // Set billingCycle for frontend compatibility
       applicableEntityTypes: s.applicableEntityTypes,
       tags: s.tags,
       isActive: true,
@@ -397,8 +404,13 @@ app.get('/api/status', (req, res) => {
 app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
 
 // Health check routes (must be BEFORE static files and SPA handler)
-app.use('/ping', (_req, res) => {
-  res.status(200).json({ status: 'ok', timestamp: new Date().toISOString(), build: 'seed-fix-7a515bfa' });
+app.use('/ping', async (_req, res) => {
+  const dbHealth = await checkDatabaseHealth();
+  if (dbHealth.healthy) {
+    res.status(200).json({ status: 'ok', timestamp: new Date().toISOString() });
+  } else {
+    res.status(503).json({ status: 'error', message: 'Database unavailable', timestamp: new Date().toISOString() });
+  }
 });
 app.use('/health', healthRouter);
 

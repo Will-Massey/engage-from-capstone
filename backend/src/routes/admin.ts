@@ -232,6 +232,7 @@ export async function seedServicesForTenant(tenantId: string) {
     pricingModel: s.pricingModel as any,
     frequencyOptions: s.frequencyOptions,
     defaultFrequency: s.defaultFrequency as any,
+    billingCycle: s.defaultFrequency as any, // Set billingCycle for frontend compatibility
     applicableEntityTypes: s.applicableEntityTypes,
     tags: s.tags,
     isActive: true,
