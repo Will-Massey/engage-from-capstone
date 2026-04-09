@@ -1,10 +1,16 @@
-import { Router } from 'express';
-import { z } from 'zod';
-import { CompanyType, MTDITSAStatus } from '@prisma/client';
-import { prisma } from '../config/database.js';
-import { authenticate, authorize } from '../middleware/auth.js';
-import { asyncHandler, ApiError } from '../middleware/errorHandler.js';
-import { MTDITSAService } from '../services/mtditsa.js';
+"use strict";
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
+Object.defineProperty(exports, "__esModule", { value: true });
+const express_1 = require("express");
+const zod_1 = require("zod");
+const client_1 = require("@prisma/client");
+const database_js_1 = require("../config/database.js");
+const auth_js_1 = require("../middleware/auth.js");
+const errorHandler_js_1 = require("../middleware/errorHandler.js");
+const mtditsa_js_1 = require("../services/mtditsa.js");
+const logger_js_1 = __importDefault(require("../config/logger.js"));
 // Validation helper functions
 const validateUKPostcode = (postcode) => {
     const postcodeRegex = /^[A-Z]{1,2}[0-9][A-Z0-9]?\s?[0-9][A-Z]{2}$/i;
@@ -18,45 +24,46 @@ const validateCompanyNumber = (number) => {
     const companyNumberRegex = /^[A-Za-z0-9]{6,8}$/;
     return companyNumberRegex.test(number);
 };
-const router = Router();
+const router = (0, express_1.Router)();
 // Validation schemas - relaxed validation, only required fields
-const addressSchema = z.object({
-    line1: z.string().optional(),
-    line2: z.string().optional(),
-    city: z.string().optional(),
-    postcode: z.string().optional(),
-    country: z.string().default('United Kingdom'),
+const addressSchema = zod_1.z.object({
+    line1: zod_1.z.string().optional(),
+    line2: zod_1.z.string().optional(),
+    city: zod_1.z.string().optional(),
+    postcode: zod_1.z.string().optional(),
+    country: zod_1.z.string().default('United Kingdom'),
 });
-const createClientSchema = z.object({
-    name: z.string().min(1, 'Client name is required'),
-    companyType: z.nativeEnum(CompanyType),
-    contactEmail: z.string().min(1, 'Email is required'),
-    contactPhone: z.string().optional(),
-    contactName: z.string().optional(),
-    companyNumber: z.string().optional(),
-    utr: z.string().optional(),
-    vatNumber: z.string().optional(),
-    vatRegistered: z.boolean().default(false),
+const createClientSchema = zod_1.z.object({
+    name: zod_1.z.string().min(1, 'Client name is required'),
+    companyType: zod_1.z.nativeEnum(client_1.CompanyType),
+    contactEmail: zod_1.z.string().min(1, 'Email is required'),
+    contactPhone: zod_1.z.string().optional(),
+    contactName: zod_1.z.string().optional(),
+    companyNumber: zod_1.z.string().optional(),
+    utr: zod_1.z.string().optional(),
+    vatNumber: zod_1.z.string().optional(),
+    vatRegistered: zod_1.z.boolean().default(false),
     address: addressSchema.optional(),
-    industry: z.string().optional(),
-    employeeCount: z.number().int().min(0).optional(),
-    turnover: z.number().min(0).optional(),
-    yearEnd: z.string().optional(),
-    mtditsaIncome: z.number().min(0).optional(),
-    notes: z.string().optional(),
-    tags: z.array(z.string()).optional(),
+    industry: zod_1.z.string().optional(),
+    employeeCount: zod_1.z.number().int().min(0).optional(),
+    turnover: zod_1.z.number().min(0).optional(),
+    yearEnd: zod_1.z.string().optional(),
+    mtditsaIncome: zod_1.z.number().min(0).optional(),
+    notes: zod_1.z.string().optional(),
+    tags: zod_1.z.array(zod_1.z.string()).optional(),
 });
 const updateClientSchema = createClientSchema.partial();
-const incomeSourceSchema = z.object({
-    type: z.enum(['SELF_EMPLOYMENT', 'PROPERTY', 'PARTNERSHIP', 'OTHER']),
-    amount: z.number().min(0),
+const incomeSourceSchema = zod_1.z.object({
+    type: zod_1.z.enum(['SELF_EMPLOYMENT', 'PROPERTY', 'PARTNERSHIP', 'OTHER']),
+    amount: zod_1.z.number().min(0),
 });
 /**
  * GET /api/clients
  * List clients for tenant
  */
-router.get('/', authenticate, asyncHandler(async (req, res) => {
+router.get('/', auth_js_1.authenticate, (0, errorHandler_js_1.asyncHandler)(async (req, res) => {
     const { search, companyType, mtditsaStatus, page = '1', limit = '20', sortBy = 'createdAt', sortOrder = 'desc' } = req.query;
+    logger_js_1.default.info(`Fetching clients for tenant: ${req.tenantId}, user: ${req.user?.id}`);
     const skip = (parseInt(page) - 1) * parseInt(limit);
     const take = parseInt(limit);
     // Build where clause
@@ -80,7 +87,7 @@ router.get('/', authenticate, asyncHandler(async (req, res) => {
     }
     // Get clients with count
     const [clients, total] = await Promise.all([
-        prisma.client.findMany({
+        database_js_1.prisma.client.findMany({
             where,
             include: {
                 _count: {
@@ -91,7 +98,7 @@ router.get('/', authenticate, asyncHandler(async (req, res) => {
             take,
             orderBy: { [sortBy]: sortOrder },
         }),
-        prisma.client.count({ where }),
+        database_js_1.prisma.client.count({ where }),
     ]);
     res.json({
         success: true,
@@ -108,9 +115,9 @@ router.get('/', authenticate, asyncHandler(async (req, res) => {
  * GET /api/clients/:id
  * Get single client
  */
-router.get('/:id', authenticate, asyncHandler(async (req, res) => {
+router.get('/:id', auth_js_1.authenticate, (0, errorHandler_js_1.asyncHandler)(async (req, res) => {
     const { id } = req.params;
-    const client = await prisma.client.findFirst({
+    const client = await database_js_1.prisma.client.findFirst({
         where: {
             id,
             tenantId: req.tenantId,
@@ -131,7 +138,7 @@ router.get('/:id', authenticate, asyncHandler(async (req, res) => {
         },
     });
     if (!client) {
-        throw new ApiError('NOT_FOUND', 'Client not found', 404);
+        throw new errorHandler_js_1.ApiError('NOT_FOUND', 'Client not found', 404);
     }
     res.json({
         success: true,
@@ -142,35 +149,37 @@ router.get('/:id', authenticate, asyncHandler(async (req, res) => {
  * POST /api/clients
  * Create new client
  */
-router.post('/', authenticate, authorize('ADMIN', 'PARTNER', 'MANAGER', 'SENIOR'), asyncHandler(async (req, res) => {
+router.post('/', auth_js_1.authenticate, (0, auth_js_1.authorize)('ADMIN', 'PARTNER', 'MANAGER', 'SENIOR'), (0, errorHandler_js_1.asyncHandler)(async (req, res) => {
     const data = createClientSchema.parse(req.body);
+    logger_js_1.default.info(`Creating client for tenant: ${req.tenantId}, user: ${req.user?.id}, email: ${data.contactEmail}`);
     // Check for duplicate email
-    const existingClient = await prisma.client.findFirst({
+    const existingClient = await database_js_1.prisma.client.findFirst({
         where: {
             tenantId: req.tenantId,
             contactEmail: data.contactEmail,
         },
     });
     if (existingClient) {
-        throw new ApiError('DUPLICATE_EMAIL', 'A client with this email already exists', 409);
+        logger_js_1.default.warn(`Duplicate client email: ${data.contactEmail} for tenant: ${req.tenantId}`);
+        throw new errorHandler_js_1.ApiError('DUPLICATE_EMAIL', 'A client with this email already exists', 409);
     }
     // Calculate MTD ITSA status if income provided AND client is a sole trader or partnership
     // MTD ITSA only applies to self-employed individuals (sole traders) and some partnerships
     // Limited companies, LLPs, charities, and non-profits are NOT subject to MTD ITSA
-    let mtditsaStatus = MTDITSAStatus.NOT_REQUIRED;
+    let mtditsaStatus = client_1.MTDITSAStatus.NOT_REQUIRED;
     let mtditsaEligible = false;
-    const isMtditsaApplicable = data.companyType === CompanyType.SOLE_TRADER ||
-        data.companyType === CompanyType.PARTNERSHIP;
+    const isMtditsaApplicable = data.companyType === client_1.CompanyType.SOLE_TRADER ||
+        data.companyType === client_1.CompanyType.PARTNERSHIP;
     if (data.mtditsaIncome && isMtditsaApplicable) {
-        const assessment = MTDITSAService.calculateStatus(data.mtditsaIncome, [], {
-            isCharity: data.companyType === CompanyType.CHARITY,
+        const assessment = mtditsa_js_1.MTDITSAService.calculateStatus(data.mtditsaIncome, [], {
+            isCharity: data.companyType === client_1.CompanyType.CHARITY,
         });
         mtditsaStatus = assessment.status;
         mtditsaEligible = assessment.isRequired;
     }
     // Create client - omit tags and address from spread since we handle them separately
     const { tags, address, ...clientData } = data;
-    const client = await prisma.client.create({
+    const client = await database_js_1.prisma.client.create({
         data: {
             ...clientData,
             tenantId: req.tenantId,
@@ -181,7 +190,7 @@ router.post('/', authenticate, authorize('ADMIN', 'PARTNER', 'MANAGER', 'SENIOR'
         },
     });
     // Log activity
-    await prisma.activityLog.create({
+    await database_js_1.prisma.activityLog.create({
         data: {
             tenantId: req.tenantId,
             userId: req.user.id,
@@ -200,22 +209,22 @@ router.post('/', authenticate, authorize('ADMIN', 'PARTNER', 'MANAGER', 'SENIOR'
  * PUT /api/clients/:id
  * Update client
  */
-router.put('/:id', authenticate, authorize('ADMIN', 'PARTNER', 'MANAGER', 'SENIOR'), asyncHandler(async (req, res) => {
+router.put('/:id', auth_js_1.authenticate, (0, auth_js_1.authorize)('ADMIN', 'PARTNER', 'MANAGER', 'SENIOR'), (0, errorHandler_js_1.asyncHandler)(async (req, res) => {
     const { id } = req.params;
     const data = updateClientSchema.parse(req.body);
     // Check client exists
-    const existingClient = await prisma.client.findFirst({
+    const existingClient = await database_js_1.prisma.client.findFirst({
         where: {
             id,
             tenantId: req.tenantId,
         },
     });
     if (!existingClient) {
-        throw new ApiError('NOT_FOUND', 'Client not found', 404);
+        throw new errorHandler_js_1.ApiError('NOT_FOUND', 'Client not found', 404);
     }
     // Check email uniqueness if changing
     if (data.contactEmail && data.contactEmail !== existingClient.contactEmail) {
-        const duplicateEmail = await prisma.client.findFirst({
+        const duplicateEmail = await database_js_1.prisma.client.findFirst({
             where: {
                 tenantId: req.tenantId,
                 contactEmail: data.contactEmail,
@@ -223,17 +232,17 @@ router.put('/:id', authenticate, authorize('ADMIN', 'PARTNER', 'MANAGER', 'SENIO
             },
         });
         if (duplicateEmail) {
-            throw new ApiError('DUPLICATE_EMAIL', 'A client with this email already exists', 409);
+            throw new errorHandler_js_1.ApiError('DUPLICATE_EMAIL', 'A client with this email already exists', 409);
         }
     }
     // Recalculate MTD ITSA status if income changed AND client is applicable type
     // MTD ITSA only applies to sole traders and partnerships
     let mtditsaData = {};
     const companyType = data.companyType || existingClient.companyType;
-    const isMtditsaApplicable = companyType === CompanyType.SOLE_TRADER ||
-        companyType === CompanyType.PARTNERSHIP;
+    const isMtditsaApplicable = companyType === client_1.CompanyType.SOLE_TRADER ||
+        companyType === client_1.CompanyType.PARTNERSHIP;
     if (data.mtditsaIncome !== undefined && isMtditsaApplicable) {
-        const assessment = MTDITSAService.calculateStatus(data.mtditsaIncome, [], {
+        const assessment = mtditsa_js_1.MTDITSAService.calculateStatus(data.mtditsaIncome, [], {
             isCharity: false, // Already filtered for SOLE_TRADER/PARTNERSHIP
         });
         mtditsaData = {
@@ -244,13 +253,13 @@ router.put('/:id', authenticate, authorize('ADMIN', 'PARTNER', 'MANAGER', 'SENIO
     else if (data.mtditsaIncome !== undefined && !isMtditsaApplicable) {
         // If client type changed to non-applicable, reset MTD ITSA status
         mtditsaData = {
-            mtditsaStatus: MTDITSAStatus.NOT_REQUIRED,
+            mtditsaStatus: client_1.MTDITSAStatus.NOT_REQUIRED,
             mtditsaEligible: false,
         };
     }
     // Update client
     const { tags: updateTags, address: updateAddress, ...updateData } = data;
-    const client = await prisma.client.update({
+    const client = await database_js_1.prisma.client.update({
         where: { id },
         data: {
             ...updateData,
@@ -260,7 +269,7 @@ router.put('/:id', authenticate, authorize('ADMIN', 'PARTNER', 'MANAGER', 'SENIO
         },
     });
     // Log activity
-    await prisma.activityLog.create({
+    await database_js_1.prisma.activityLog.create({
         data: {
             tenantId: req.tenantId,
             userId: req.user.id,
@@ -280,33 +289,33 @@ router.put('/:id', authenticate, authorize('ADMIN', 'PARTNER', 'MANAGER', 'SENIO
  * Run MTD ITSA assessment for client
  * NOTE: MTD ITSA only applies to SOLE_TRADER and PARTNERSHIP entity types
  */
-router.post('/:id/mtditsa-assessment', authenticate, asyncHandler(async (req, res) => {
+router.post('/:id/mtditsa-assessment', auth_js_1.authenticate, (0, errorHandler_js_1.asyncHandler)(async (req, res) => {
     const { id } = req.params;
-    const { incomeSources = [] } = z.object({
-        incomeSources: z.array(incomeSourceSchema).optional(),
+    const { incomeSources = [] } = zod_1.z.object({
+        incomeSources: zod_1.z.array(incomeSourceSchema).optional(),
     }).parse(req.body);
-    const client = await prisma.client.findFirst({
+    const client = await database_js_1.prisma.client.findFirst({
         where: {
             id,
             tenantId: req.tenantId,
         },
     });
     if (!client) {
-        throw new ApiError('NOT_FOUND', 'Client not found', 404);
+        throw new errorHandler_js_1.ApiError('NOT_FOUND', 'Client not found', 404);
     }
     // MTD ITSA only applies to sole traders and partnerships
-    const isMtditsaApplicable = client.companyType === CompanyType.SOLE_TRADER ||
-        client.companyType === CompanyType.PARTNERSHIP;
+    const isMtditsaApplicable = client.companyType === client_1.CompanyType.SOLE_TRADER ||
+        client.companyType === client_1.CompanyType.PARTNERSHIP;
     if (!isMtditsaApplicable) {
-        throw new ApiError('NOT_APPLICABLE', `MTD ITSA does not apply to ${client.companyType.toLowerCase().replace('_', ' ')} entities. It only applies to sole traders and partnerships.`, 400);
+        throw new errorHandler_js_1.ApiError('NOT_APPLICABLE', `MTD ITSA does not apply to ${client.companyType.toLowerCase().replace('_', ' ')} entities. It only applies to sole traders and partnerships.`, 400);
     }
     const annualIncome = client.mtditsaIncome || client.turnover || 0;
-    const assessment = MTDITSAService.calculateStatus(annualIncome, incomeSources, {
+    const assessment = mtditsa_js_1.MTDITSAService.calculateStatus(annualIncome, incomeSources, {
         isCharity: false, // Already validated as SOLE_TRADER or PARTNERSHIP
         partnershipTurnover: incomeSources.find(s => s.type === 'PARTNERSHIP')?.amount,
     });
     // Update client with new status
-    await prisma.client.update({
+    await database_js_1.prisma.client.update({
         where: { id },
         data: {
             mtditsaStatus: assessment.status,
@@ -317,9 +326,9 @@ router.post('/:id/mtditsa-assessment', authenticate, asyncHandler(async (req, re
         success: true,
         data: {
             ...assessment,
-            obligationExplanation: MTDITSAService.getObligationExplanation(assessment.status),
-            softwareRecommendations: MTDITSAService.getSoftwareRecommendations(),
-            serviceRecommendations: MTDITSAService.generateServiceRecommendations(assessment),
+            obligationExplanation: mtditsa_js_1.MTDITSAService.getObligationExplanation(assessment.status),
+            softwareRecommendations: mtditsa_js_1.MTDITSAService.getSoftwareRecommendations(),
+            serviceRecommendations: mtditsa_js_1.MTDITSAService.generateServiceRecommendations(assessment),
         },
     });
 }));
@@ -327,19 +336,19 @@ router.post('/:id/mtditsa-assessment', authenticate, asyncHandler(async (req, re
  * GET /api/clients/:id/mtditsa-timeline
  * Get MTD ITSA quarterly timeline for client
  */
-router.get('/:id/mtditsa-timeline', authenticate, asyncHandler(async (req, res) => {
+router.get('/:id/mtditsa-timeline', auth_js_1.authenticate, (0, errorHandler_js_1.asyncHandler)(async (req, res) => {
     const { id } = req.params;
     const { taxYear = new Date().getFullYear() } = req.query;
-    const client = await prisma.client.findFirst({
+    const client = await database_js_1.prisma.client.findFirst({
         where: {
             id,
             tenantId: req.tenantId,
         },
     });
     if (!client) {
-        throw new ApiError('NOT_FOUND', 'Client not found', 404);
+        throw new errorHandler_js_1.ApiError('NOT_FOUND', 'Client not found', 404);
     }
-    const deadlines = MTDITSAService.calculateQuarterlyDeadlines(parseInt(taxYear));
+    const deadlines = mtditsa_js_1.MTDITSAService.calculateQuarterlyDeadlines(parseInt(taxYear));
     res.json({
         success: true,
         data: {
@@ -354,24 +363,24 @@ router.get('/:id/mtditsa-timeline', authenticate, asyncHandler(async (req, res) 
  * DELETE /api/clients/:id
  * Soft delete client
  */
-router.delete('/:id', authenticate, authorize('ADMIN', 'PARTNER', 'MANAGER'), asyncHandler(async (req, res) => {
+router.delete('/:id', auth_js_1.authenticate, (0, auth_js_1.authorize)('ADMIN', 'PARTNER', 'MANAGER'), (0, errorHandler_js_1.asyncHandler)(async (req, res) => {
     const { id } = req.params;
-    const client = await prisma.client.findFirst({
+    const client = await database_js_1.prisma.client.findFirst({
         where: {
             id,
             tenantId: req.tenantId,
         },
     });
     if (!client) {
-        throw new ApiError('NOT_FOUND', 'Client not found', 404);
+        throw new errorHandler_js_1.ApiError('NOT_FOUND', 'Client not found', 404);
     }
     // Soft delete
-    await prisma.client.update({
+    await database_js_1.prisma.client.update({
         where: { id },
         data: { isActive: false },
     });
     // Log activity
-    await prisma.activityLog.create({
+    await database_js_1.prisma.activityLog.create({
         data: {
             tenantId: req.tenantId,
             userId: req.user.id,
@@ -390,7 +399,7 @@ router.delete('/:id', authenticate, authorize('ADMIN', 'PARTNER', 'MANAGER'), as
  * GET /api/clients/validate/utr/:utr
  * Validate UTR format
  */
-router.get('/validate/utr/:utr', authenticate, asyncHandler(async (req, res) => {
+router.get('/validate/utr/:utr', auth_js_1.authenticate, (0, errorHandler_js_1.asyncHandler)(async (req, res) => {
     const { utr } = req.params;
     const isValid = validateUTR(utr);
     res.json({
@@ -406,7 +415,7 @@ router.get('/validate/utr/:utr', authenticate, asyncHandler(async (req, res) => 
  * GET /api/clients/validate/company-number/:number
  * Validate company number format
  */
-router.get('/validate/company-number/:number', authenticate, asyncHandler(async (req, res) => {
+router.get('/validate/company-number/:number', auth_js_1.authenticate, (0, errorHandler_js_1.asyncHandler)(async (req, res) => {
     const { number } = req.params;
     const isValid = validateCompanyNumber(number);
     res.json({
@@ -418,4 +427,5 @@ router.get('/validate/company-number/:number', authenticate, asyncHandler(async 
         },
     });
 }));
-export default router;
+exports.default = router;
+//# sourceMappingURL=clients.js.map

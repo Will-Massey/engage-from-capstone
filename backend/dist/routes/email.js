@@ -1,27 +1,32 @@
+"use strict";
 /**
  * Email Configuration and Testing Routes
  */
-import { Router } from 'express';
-import { z } from 'zod';
-import { prisma } from '../config/database.js';
-import { asyncHandler, ApiError } from '../middleware/errorHandler.js';
-import { authenticate } from '../middleware/auth.js';
-import { EmailService } from '../services/emailService.js';
-import { encrypt } from '../utils/encryption.js';
-import logger from '../config/logger.js';
-const router = Router();
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
+Object.defineProperty(exports, "__esModule", { value: true });
+const express_1 = require("express");
+const zod_1 = require("zod");
+const database_js_1 = require("../config/database.js");
+const errorHandler_js_1 = require("../middleware/errorHandler.js");
+const auth_js_1 = require("../middleware/auth.js");
+const emailService_js_1 = require("../services/emailService.js");
+const encryption_js_1 = require("../utils/encryption.js");
+const logger_js_1 = __importDefault(require("../config/logger.js"));
+const router = (0, express_1.Router)();
 // Get email configuration for tenant
-router.get('/config', authenticate, asyncHandler(async (req, res) => {
+router.get('/config', auth_js_1.authenticate, (0, errorHandler_js_1.asyncHandler)(async (req, res) => {
     const tenantId = req.tenantId;
     // Get tenant settings
-    const tenant = await prisma.tenant.findUnique({
+    const tenant = await database_js_1.prisma.tenant.findUnique({
         where: { id: tenantId },
         select: {
             settings: true,
         },
     });
     if (!tenant) {
-        throw new ApiError('TENANT_NOT_FOUND', 'Tenant not found', 404);
+        throw new errorHandler_js_1.ApiError('TENANT_NOT_FOUND', 'Tenant not found', 404);
     }
     const settings = JSON.parse(tenant.settings || '{}');
     const emailConfig = settings.email || {};
@@ -58,48 +63,48 @@ router.get('/config', authenticate, asyncHandler(async (req, res) => {
     });
 }));
 // Update email configuration
-router.put('/config', authenticate, asyncHandler(async (req, res) => {
-    const schema = z.object({
-        provider: z.enum(['smtp', 'gmail', 'outlook', 'microsoft365']),
-        fromName: z.string().min(1),
-        fromEmail: z.string().email(),
-        smtp: z
+router.put('/config', auth_js_1.authenticate, (0, errorHandler_js_1.asyncHandler)(async (req, res) => {
+    const schema = zod_1.z.object({
+        provider: zod_1.z.enum(['smtp', 'gmail', 'outlook', 'microsoft365']),
+        fromName: zod_1.z.string().min(1),
+        fromEmail: zod_1.z.string().email(),
+        smtp: zod_1.z
             .object({
-            host: z.string(),
-            port: z.number(),
-            secure: z.boolean(),
-            user: z.string(),
-            pass: z.string(),
+            host: zod_1.z.string(),
+            port: zod_1.z.number(),
+            secure: zod_1.z.boolean(),
+            user: zod_1.z.string(),
+            pass: zod_1.z.string(),
         })
             .optional(),
-        gmail: z
+        gmail: zod_1.z
             .object({
-            clientId: z.string(),
-            clientSecret: z.string(),
-            refreshToken: z.string(),
-            user: z.string().email(),
+            clientId: zod_1.z.string(),
+            clientSecret: zod_1.z.string(),
+            refreshToken: zod_1.z.string(),
+            user: zod_1.z.string().email(),
         })
             .optional(),
-        outlook: z
+        outlook: zod_1.z
             .object({
-            clientId: z.string(),
-            clientSecret: z.string(),
-            refreshToken: z.string(),
-            user: z.string().email(),
+            clientId: zod_1.z.string(),
+            clientSecret: zod_1.z.string(),
+            refreshToken: zod_1.z.string(),
+            user: zod_1.z.string().email(),
         })
             .optional(),
     });
     const config = schema.parse(req.body);
     const tenantId = req.tenantId;
     // Get current settings
-    const tenant = await prisma.tenant.findUnique({
+    const tenant = await database_js_1.prisma.tenant.findUnique({
         where: { id: tenantId },
         select: {
             settings: true,
         },
     });
     if (!tenant) {
-        throw new ApiError('TENANT_NOT_FOUND', 'Tenant not found', 404);
+        throw new errorHandler_js_1.ApiError('TENANT_NOT_FOUND', 'Tenant not found', 404);
     }
     const settings = JSON.parse(tenant.settings || '{}');
     // Update email config
@@ -118,7 +123,7 @@ router.put('/config', authenticate, asyncHandler(async (req, res) => {
         settings.email.outlook = config.outlook;
     }
     // Save settings
-    await prisma.tenant.update({
+    await database_js_1.prisma.tenant.update({
         where: { id: tenantId },
         data: {
             settings: JSON.stringify(settings),
@@ -127,7 +132,7 @@ router.put('/config', authenticate, asyncHandler(async (req, res) => {
     // Test connection
     let testResult = { success: false, error: 'Not tested' };
     try {
-        const emailService = new EmailService({
+        const emailService = new emailService_js_1.EmailService({
             provider: config.provider,
             fromName: config.fromName,
             fromEmail: config.fromEmail,
@@ -156,15 +161,15 @@ router.put('/config', authenticate, asyncHandler(async (req, res) => {
     });
 }));
 // Test email configuration
-router.post('/test', authenticate, asyncHandler(async (req, res) => {
-    const schema = z.object({
-        testEmail: z.string().email(),
+router.post('/test', auth_js_1.authenticate, (0, errorHandler_js_1.asyncHandler)(async (req, res) => {
+    const schema = zod_1.z.object({
+        testEmail: zod_1.z.string().email(),
     });
     const { testEmail } = schema.parse(req.body);
     const tenantId = req.tenantId;
     const user = req.user;
     // Get tenant settings
-    const tenant = await prisma.tenant.findUnique({
+    const tenant = await database_js_1.prisma.tenant.findUnique({
         where: { id: tenantId },
         select: {
             name: true,
@@ -172,15 +177,15 @@ router.post('/test', authenticate, asyncHandler(async (req, res) => {
         },
     });
     if (!tenant) {
-        throw new ApiError('TENANT_NOT_FOUND', 'Tenant not found', 404);
+        throw new errorHandler_js_1.ApiError('TENANT_NOT_FOUND', 'Tenant not found', 404);
     }
     const settings = JSON.parse(tenant.settings || '{}');
     const emailConfig = settings.email;
     if (!emailConfig || !emailConfig.provider) {
-        throw new ApiError('EMAIL_NOT_CONFIGURED', 'Email not configured for this practice', 400);
+        throw new errorHandler_js_1.ApiError('EMAIL_NOT_CONFIGURED', 'Email not configured for this practice', 400);
     }
     // Create email service
-    const emailService = new EmailService({
+    const emailService = new emailService_js_1.EmailService({
         provider: emailConfig.provider,
         fromName: emailConfig.fromName,
         fromEmail: emailConfig.fromEmail,
@@ -202,7 +207,7 @@ router.post('/test', authenticate, asyncHandler(async (req, res) => {
         text: `Test Email\n\nThis is a test email from ${tenant.name} using Engage by Capstone.\n\nIf you received this, your email configuration is working correctly!\n\nSent by: ${user.firstName} ${user.lastName}`,
     });
     if (!result.success) {
-        throw new ApiError('EMAIL_FAILED', result.error || 'Failed to send test email', 500);
+        throw new errorHandler_js_1.ApiError('EMAIL_FAILED', result.error || 'Failed to send test email', 500);
     }
     res.json({
         success: true,
@@ -214,13 +219,13 @@ router.post('/test', authenticate, asyncHandler(async (req, res) => {
     });
 }));
 // Get Gmail OAuth URL
-router.get('/auth/gmail/url', authenticate, asyncHandler(async (req, res) => {
-    const schema = z.object({
-        clientId: z.string(),
-        redirectUri: z.string().url(),
+router.get('/auth/gmail/url', auth_js_1.authenticate, (0, errorHandler_js_1.asyncHandler)(async (req, res) => {
+    const schema = zod_1.z.object({
+        clientId: zod_1.z.string(),
+        redirectUri: zod_1.z.string().url(),
     });
     const { clientId, redirectUri } = schema.parse(req.query);
-    const url = EmailService.generateGmailAuthUrl(clientId, '', redirectUri);
+    const url = emailService_js_1.EmailService.generateGmailAuthUrl(clientId, '', redirectUri);
     res.json({
         success: true,
         data: {
@@ -229,28 +234,28 @@ router.get('/auth/gmail/url', authenticate, asyncHandler(async (req, res) => {
     });
 }));
 // Exchange Gmail code for tokens
-router.post('/auth/gmail/exchange', authenticate, asyncHandler(async (req, res) => {
-    const schema = z.object({
-        clientId: z.string(),
-        clientSecret: z.string(),
-        redirectUri: z.string().url(),
-        code: z.string(),
+router.post('/auth/gmail/exchange', auth_js_1.authenticate, (0, errorHandler_js_1.asyncHandler)(async (req, res) => {
+    const schema = zod_1.z.object({
+        clientId: zod_1.z.string(),
+        clientSecret: zod_1.z.string(),
+        redirectUri: zod_1.z.string().url(),
+        code: zod_1.z.string(),
     });
     const { clientId, clientSecret, redirectUri, code } = schema.parse(req.body);
-    const tokens = await EmailService.exchangeGmailCode(clientId, clientSecret, redirectUri, code);
+    const tokens = await emailService_js_1.EmailService.exchangeGmailCode(clientId, clientSecret, redirectUri, code);
     res.json({
         success: true,
         data: tokens,
     });
 }));
 // Get Microsoft/Outlook OAuth URL
-router.get('/auth/microsoft/url', authenticate, asyncHandler(async (req, res) => {
-    const schema = z.object({
-        clientId: z.string(),
-        redirectUri: z.string().url(),
+router.get('/auth/microsoft/url', auth_js_1.authenticate, (0, errorHandler_js_1.asyncHandler)(async (req, res) => {
+    const schema = zod_1.z.object({
+        clientId: zod_1.z.string(),
+        redirectUri: zod_1.z.string().url(),
     });
     const { clientId, redirectUri } = schema.parse(req.query);
-    const url = EmailService.generateMicrosoftAuthUrl(clientId, redirectUri);
+    const url = emailService_js_1.EmailService.generateMicrosoftAuthUrl(clientId, redirectUri);
     res.json({
         success: true,
         data: {
@@ -259,35 +264,35 @@ router.get('/auth/microsoft/url', authenticate, asyncHandler(async (req, res) =>
     });
 }));
 // Exchange Microsoft code for tokens
-router.post('/auth/microsoft/exchange', authenticate, asyncHandler(async (req, res) => {
-    const schema = z.object({
-        clientId: z.string(),
-        clientSecret: z.string(),
-        redirectUri: z.string().url(),
-        code: z.string(),
+router.post('/auth/microsoft/exchange', auth_js_1.authenticate, (0, errorHandler_js_1.asyncHandler)(async (req, res) => {
+    const schema = zod_1.z.object({
+        clientId: zod_1.z.string(),
+        clientSecret: zod_1.z.string(),
+        redirectUri: zod_1.z.string().url(),
+        code: zod_1.z.string(),
     });
     const { clientId, clientSecret, redirectUri, code } = schema.parse(req.body);
-    const tokens = await EmailService.exchangeMicrosoftCode(clientId, clientSecret, redirectUri, code);
+    const tokens = await emailService_js_1.EmailService.exchangeMicrosoftCode(clientId, clientSecret, redirectUri, code);
     res.json({
         success: true,
         data: tokens,
     });
 }));
 // Delete email configuration
-router.delete('/config', authenticate, asyncHandler(async (req, res) => {
+router.delete('/config', auth_js_1.authenticate, (0, errorHandler_js_1.asyncHandler)(async (req, res) => {
     const tenantId = req.tenantId;
-    const tenant = await prisma.tenant.findUnique({
+    const tenant = await database_js_1.prisma.tenant.findUnique({
         where: { id: tenantId },
         select: {
             settings: true,
         },
     });
     if (!tenant) {
-        throw new ApiError('TENANT_NOT_FOUND', 'Tenant not found', 404);
+        throw new errorHandler_js_1.ApiError('TENANT_NOT_FOUND', 'Tenant not found', 404);
     }
     const settings = JSON.parse(tenant.settings || '{}');
     delete settings.email;
-    await prisma.tenant.update({
+    await database_js_1.prisma.tenant.update({
         where: { id: tenantId },
         data: {
             settings: JSON.stringify(settings),
@@ -302,25 +307,25 @@ router.delete('/config', authenticate, asyncHandler(async (req, res) => {
 // NEW SIMPLIFIED OAUTH ROUTES (for frontend OAuthConnect component)
 // ============================================================================
 // Generate cryptographically secure random state for OAuth
-import crypto from 'crypto';
+const crypto_1 = __importDefault(require("crypto"));
 const generateState = () => {
-    return crypto.randomBytes(32).toString('hex');
+    return crypto_1.default.randomBytes(32).toString('hex');
 };
 // Get OAuth status for a provider
-router.get('/auth/:provider/status', authenticate, asyncHandler(async (req, res) => {
+router.get('/auth/:provider/status', auth_js_1.authenticate, (0, errorHandler_js_1.asyncHandler)(async (req, res) => {
     const { provider } = req.params;
     // Validate provider
     const validProviders = ['microsoft365', 'outlook', 'gmail'];
     if (!validProviders.includes(provider)) {
-        throw new ApiError('INVALID_PROVIDER', 'Invalid email provider', 400);
+        throw new errorHandler_js_1.ApiError('INVALID_PROVIDER', 'Invalid email provider', 400);
     }
     const tenantId = req.tenantId;
-    const tenant = await prisma.tenant.findUnique({
+    const tenant = await database_js_1.prisma.tenant.findUnique({
         where: { id: tenantId },
         select: { settings: true },
     });
     if (!tenant) {
-        throw new ApiError('TENANT_NOT_FOUND', 'Tenant not found', 404);
+        throw new errorHandler_js_1.ApiError('TENANT_NOT_FOUND', 'Tenant not found', 404);
     }
     const settings = JSON.parse(tenant.settings || '{}');
     const emailConfig = settings.email;
@@ -336,12 +341,12 @@ router.get('/auth/:provider/status', authenticate, asyncHandler(async (req, res)
     });
 }));
 // Get OAuth URL for a provider
-router.get('/auth/:provider/url', authenticate, asyncHandler(async (req, res) => {
+router.get('/auth/:provider/url', auth_js_1.authenticate, (0, errorHandler_js_1.asyncHandler)(async (req, res) => {
     const { provider } = req.params;
     // Validate provider
     const validProviders = ['microsoft365', 'outlook', 'gmail'];
     if (!validProviders.includes(provider)) {
-        throw new ApiError('INVALID_PROVIDER', 'Invalid email provider', 400);
+        throw new errorHandler_js_1.ApiError('INVALID_PROVIDER', 'Invalid email provider', 400);
     }
     const state = generateState();
     const redirectUri = `${process.env.API_URL || 'https://engage-by-capstone-production.up.railway.app'}/api/oauth/callback/${provider}`;
@@ -350,18 +355,18 @@ router.get('/auth/:provider/url', authenticate, asyncHandler(async (req, res) =>
         const clientId = process.env.GMAIL_CLIENT_ID;
         const clientSecret = process.env.GMAIL_CLIENT_SECRET;
         if (!clientId || !clientSecret) {
-            throw new ApiError('NOT_CONFIGURED', 'Gmail OAuth not configured on server', 500);
+            throw new errorHandler_js_1.ApiError('NOT_CONFIGURED', 'Gmail OAuth not configured on server', 500);
         }
-        url = EmailService.generateGmailAuthUrl(clientId, clientSecret, redirectUri);
+        url = emailService_js_1.EmailService.generateGmailAuthUrl(clientId, clientSecret, redirectUri);
     }
     else {
         // Microsoft 365 or Outlook
         const clientId = process.env.MICROSOFT_CLIENT_ID;
         if (!clientId) {
-            throw new ApiError('NOT_CONFIGURED', 'Microsoft OAuth not configured on server', 500);
+            throw new errorHandler_js_1.ApiError('NOT_CONFIGURED', 'Microsoft OAuth not configured on server', 500);
         }
         // Use 'common' for multi-tenant apps - allows any organization
-        url = EmailService.generateMicrosoftAuthUrl(clientId, redirectUri, 'common');
+        url = emailService_js_1.EmailService.generateMicrosoftAuthUrl(clientId, redirectUri, 'common');
     }
     res.json({
         success: true,
@@ -372,7 +377,7 @@ router.get('/auth/:provider/url', authenticate, asyncHandler(async (req, res) =>
     });
 }));
 // OAuth callback handler - simplified without regex pattern
-router.get('/auth/:provider/callback', asyncHandler(async (req, res) => {
+router.get('/auth/:provider/callback', (0, errorHandler_js_1.asyncHandler)(async (req, res) => {
     const { provider } = req.params;
     const { code, error, state } = req.query;
     // Validate provider
@@ -396,17 +401,17 @@ router.get('/auth/:provider/callback', asyncHandler(async (req, res) => {
     res.redirect(`${frontendUrl}/settings?oauth=success&provider=${provider}&code=${code}&state=${state}`);
 }));
 // Exchange code for tokens (called by frontend)
-router.post('/auth/:provider/callback', authenticate, asyncHandler(async (req, res) => {
+router.post('/auth/:provider/callback', auth_js_1.authenticate, (0, errorHandler_js_1.asyncHandler)(async (req, res) => {
     const { provider } = req.params;
     // Validate provider
     const validProviders = ['microsoft365', 'outlook', 'gmail'];
     if (!validProviders.includes(provider)) {
-        throw new ApiError('INVALID_PROVIDER', 'Invalid email provider', 400);
+        throw new errorHandler_js_1.ApiError('INVALID_PROVIDER', 'Invalid email provider', 400);
     }
     const { code } = req.body;
     const tenantId = req.tenantId;
     if (!code) {
-        throw new ApiError('INVALID_CODE', 'Authorization code required', 400);
+        throw new errorHandler_js_1.ApiError('INVALID_CODE', 'Authorization code required', 400);
     }
     const redirectUri = `${process.env.API_URL || 'https://engage-by-capstone-production.up.railway.app'}/api/oauth/callback/${provider}`;
     let tokens;
@@ -414,22 +419,22 @@ router.post('/auth/:provider/callback', authenticate, asyncHandler(async (req, r
         if (provider === 'gmail') {
             const clientId = process.env.GMAIL_CLIENT_ID;
             const clientSecret = process.env.GMAIL_CLIENT_SECRET;
-            tokens = await EmailService.exchangeGmailCode(clientId, clientSecret, redirectUri, code);
+            tokens = await emailService_js_1.EmailService.exchangeGmailCode(clientId, clientSecret, redirectUri, code);
         }
         else {
             // Microsoft 365 or Outlook
             const clientId = process.env.MICROSOFT_CLIENT_ID;
             const clientSecret = process.env.MICROSOFT_CLIENT_SECRET;
             // Use 'common' for multi-tenant apps
-            tokens = await EmailService.exchangeMicrosoftCode(clientId, clientSecret, redirectUri, code, 'common');
+            tokens = await emailService_js_1.EmailService.exchangeMicrosoftCode(clientId, clientSecret, redirectUri, code, 'common');
         }
         // Save to tenant settings
-        const tenant = await prisma.tenant.findUnique({
+        const tenant = await database_js_1.prisma.tenant.findUnique({
             where: { id: tenantId },
             select: { settings: true },
         });
         if (!tenant) {
-            throw new ApiError('TENANT_NOT_FOUND', 'Tenant not found', 404);
+            throw new errorHandler_js_1.ApiError('TENANT_NOT_FOUND', 'Tenant not found', 404);
         }
         const settings = JSON.parse(tenant.settings || '{}');
         if (!settings.email) {
@@ -439,12 +444,12 @@ router.post('/auth/:provider/callback', authenticate, asyncHandler(async (req, r
         settings.email[provider === 'microsoft365' ? 'outlook' : provider] = {
             clientId: provider === 'gmail' ? process.env.GMAIL_CLIENT_ID : process.env.MICROSOFT_CLIENT_ID,
             // Store clientSecret encrypted for security
-            clientSecret: encrypt(provider === 'gmail' ? process.env.GMAIL_CLIENT_SECRET || '' : process.env.MICROSOFT_CLIENT_SECRET || ''),
+            clientSecret: (0, encryption_js_1.encrypt)(provider === 'gmail' ? process.env.GMAIL_CLIENT_SECRET || '' : process.env.MICROSOFT_CLIENT_SECRET || ''),
             // Store refresh token encrypted - this is the most sensitive credential
-            refreshToken: encrypt(tokens.refreshToken),
+            refreshToken: (0, encryption_js_1.encrypt)(tokens.refreshToken),
             user: tokens.user || req.user?.email,
         };
-        await prisma.tenant.update({
+        await database_js_1.prisma.tenant.update({
             where: { id: tenantId },
             data: { settings: JSON.stringify(settings) },
         });
@@ -457,31 +462,31 @@ router.post('/auth/:provider/callback', authenticate, asyncHandler(async (req, r
         });
     }
     catch (error) {
-        logger.error('OAuth exchange failed:', error);
-        throw new ApiError('OAUTH_FAILED', error.message || 'Failed to exchange authorization code', 500);
+        logger_js_1.default.error('OAuth exchange failed:', error);
+        throw new errorHandler_js_1.ApiError('OAUTH_FAILED', error.message || 'Failed to exchange authorization code', 500);
     }
 }));
 // Disconnect OAuth provider
-router.post('/auth/:provider/disconnect', authenticate, asyncHandler(async (req, res) => {
+router.post('/auth/:provider/disconnect', auth_js_1.authenticate, (0, errorHandler_js_1.asyncHandler)(async (req, res) => {
     const { provider } = req.params;
     // Validate provider
     const validProviders = ['microsoft365', 'outlook', 'gmail'];
     if (!validProviders.includes(provider)) {
-        throw new ApiError('INVALID_PROVIDER', 'Invalid email provider', 400);
+        throw new errorHandler_js_1.ApiError('INVALID_PROVIDER', 'Invalid email provider', 400);
     }
     const tenantId = req.tenantId;
-    const tenant = await prisma.tenant.findUnique({
+    const tenant = await database_js_1.prisma.tenant.findUnique({
         where: { id: tenantId },
         select: { settings: true },
     });
     if (!tenant) {
-        throw new ApiError('TENANT_NOT_FOUND', 'Tenant not found', 404);
+        throw new errorHandler_js_1.ApiError('TENANT_NOT_FOUND', 'Tenant not found', 404);
     }
     const settings = JSON.parse(tenant.settings || '{}');
     if (settings.email?.provider === provider) {
         delete settings.email[provider === 'microsoft365' ? 'outlook' : provider];
         settings.email.provider = 'smtp'; // Fallback to SMTP
-        await prisma.tenant.update({
+        await database_js_1.prisma.tenant.update({
             where: { id: tenantId },
             data: { settings: JSON.stringify(settings) },
         });
@@ -491,4 +496,5 @@ router.post('/auth/:provider/disconnect', authenticate, asyncHandler(async (req,
         message: `${provider} disconnected successfully`,
     });
 }));
-export default router;
+exports.default = router;
+//# sourceMappingURL=email.js.map

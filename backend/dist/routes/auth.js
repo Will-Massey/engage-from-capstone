@@ -1,41 +1,45 @@
-import { Router } from 'express';
-import bcrypt from 'bcryptjs';
-import { z } from 'zod';
-import { prisma } from '../config/database.js';
-import { authenticate, authorize, generateToken, generateRefreshToken, generateCsrfToken } from '../middleware/auth.js';
-import { asyncHandler, ApiError } from '../middleware/errorHandler.js';
-import { twoFactorService } from '../services/twoFactorService.js';
-import { passwordResetService } from '../services/passwordResetService.js';
-import { gdprService } from '../services/gdprService.js';
-import { createEmailService } from '../services/emailService.js';
-const router = Router();
+"use strict";
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
+Object.defineProperty(exports, "__esModule", { value: true });
+const express_1 = require("express");
+const bcryptjs_1 = __importDefault(require("bcryptjs"));
+const zod_1 = require("zod");
+const database_js_1 = require("../config/database.js");
+const auth_js_1 = require("../middleware/auth.js");
+const errorHandler_js_1 = require("../middleware/errorHandler.js");
+// import { twoFactorService } from '../services/twoFactorService.js';
+// import { passwordResetService } from '../services/passwordResetService.js';
+const gdprService_js_1 = require("../services/gdprService.js");
+const router = (0, express_1.Router)();
 // Validation schemas
-const loginSchema = z.object({
-    email: z.string().email('Invalid email address'),
-    password: z.string().min(1, 'Password is required'),
-    tenantId: z.string().optional(), // Optional if using subdomain
+const loginSchema = zod_1.z.object({
+    email: zod_1.z.string().email('Invalid email address'),
+    password: zod_1.z.string().min(1, 'Password is required'),
+    tenantId: zod_1.z.string().optional(), // Optional if using subdomain
 });
-const registerSchema = z.object({
-    email: z.string().email('Invalid email address'),
-    password: z.string().min(8, 'Password must be at least 8 characters'),
-    firstName: z.string().min(1, 'First name is required'),
-    lastName: z.string().min(1, 'Last name is required'),
-    tenantId: z.string(),
+const registerSchema = zod_1.z.object({
+    email: zod_1.z.string().email('Invalid email address'),
+    password: zod_1.z.string().min(8, 'Password must be at least 8 characters'),
+    firstName: zod_1.z.string().min(1, 'First name is required'),
+    lastName: zod_1.z.string().min(1, 'Last name is required'),
+    tenantId: zod_1.z.string(),
 });
-const refreshTokenSchema = z.object({
-    refreshToken: z.string(),
+const refreshTokenSchema = zod_1.z.object({
+    refreshToken: zod_1.z.string(),
 });
 /**
  * POST /api/auth/login
  * Authenticate user and return tokens
  */
-router.post('/login', asyncHandler(async (req, res) => {
+router.post('/login', (0, errorHandler_js_1.asyncHandler)(async (req, res) => {
     const { email, password, tenantId } = loginSchema.parse(req.body);
     // Determine tenant ID from subdomain, body, or look up user by email
     let resolvedTenantId = tenantId || req.tenantId;
     // If no tenant provided, try to find user by email only
     if (!resolvedTenantId) {
-        const userByEmail = await prisma.user.findFirst({
+        const userByEmail = await database_js_1.prisma.user.findFirst({
             where: {
                 email: email.toLowerCase(),
                 isActive: true,
@@ -47,10 +51,10 @@ router.post('/login', asyncHandler(async (req, res) => {
         }
     }
     if (!resolvedTenantId) {
-        throw new ApiError('NO_TENANT', 'Tenant identifier is required', 400);
+        throw new errorHandler_js_1.ApiError('NO_TENANT', 'Tenant identifier is required', 400);
     }
     // Find user
-    const user = await prisma.user.findFirst({
+    const user = await database_js_1.prisma.user.findFirst({
         where: {
             email: email.toLowerCase(),
             tenantId: resolvedTenantId,
@@ -61,20 +65,20 @@ router.post('/login', asyncHandler(async (req, res) => {
         },
     });
     if (!user) {
-        throw new ApiError('INVALID_CREDENTIALS', 'Invalid email or password', 401);
+        throw new errorHandler_js_1.ApiError('INVALID_CREDENTIALS', 'Invalid email or password', 401);
     }
     // Verify password
-    const isValidPassword = await bcrypt.compare(password, user.passwordHash);
+    const isValidPassword = await bcryptjs_1.default.compare(password, user.passwordHash);
     if (!isValidPassword) {
-        throw new ApiError('INVALID_CREDENTIALS', 'Invalid email or password', 401);
+        throw new errorHandler_js_1.ApiError('INVALID_CREDENTIALS', 'Invalid email or password', 401);
     }
     // Update last login
-    await prisma.user.update({
+    await database_js_1.prisma.user.update({
         where: { id: user.id },
         data: { lastLoginAt: new Date() },
     });
     // Generate tokens
-    const accessToken = generateToken({
+    const accessToken = (0, auth_js_1.generateToken)({
         id: user.id,
         email: user.email,
         firstName: user.firstName,
@@ -82,7 +86,7 @@ router.post('/login', asyncHandler(async (req, res) => {
         role: user.role,
         tenantId: user.tenantId,
     });
-    const refreshToken = await generateRefreshToken(user.id);
+    const refreshToken = await (0, auth_js_1.generateRefreshToken)(user.id);
     // Set HTTP-only cookies for security
     const isProduction = process.env.NODE_ENV === 'production';
     res.cookie('accessToken', accessToken, {
@@ -98,7 +102,7 @@ router.post('/login', asyncHandler(async (req, res) => {
         maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
     });
     // Set CSRF token cookie (required for state-changing requests)
-    const csrfToken = generateCsrfToken();
+    const csrfToken = (0, auth_js_1.generateCsrfToken)();
     res.cookie('csrfToken', csrfToken, {
         httpOnly: false, // Must be accessible by JavaScript
         secure: isProduction,
@@ -136,22 +140,22 @@ router.post('/login', asyncHandler(async (req, res) => {
  * POST /api/auth/register
  * Register a new user (requires partner/admin approval)
  */
-router.post('/register', asyncHandler(async (req, res) => {
+router.post('/register', (0, errorHandler_js_1.asyncHandler)(async (req, res) => {
     const { email, password, firstName, lastName, tenantId } = registerSchema.parse(req.body);
     // Check if user already exists
-    const existingUser = await prisma.user.findFirst({
+    const existingUser = await database_js_1.prisma.user.findFirst({
         where: {
             email: email.toLowerCase(),
             tenantId,
         },
     });
     if (existingUser) {
-        throw new ApiError('USER_EXISTS', 'User already exists in this tenant', 409);
+        throw new errorHandler_js_1.ApiError('USER_EXISTS', 'User already exists in this tenant', 409);
     }
     // Hash password
-    const passwordHash = await bcrypt.hash(password, 12);
+    const passwordHash = await bcryptjs_1.default.hash(password, 12);
     // Create user
-    const user = await prisma.user.create({
+    const user = await database_js_1.prisma.user.create({
         data: {
             email: email.toLowerCase(),
             passwordHash,
@@ -166,7 +170,7 @@ router.post('/register', asyncHandler(async (req, res) => {
         },
     });
     // Generate tokens
-    const accessToken = generateToken({
+    const accessToken = (0, auth_js_1.generateToken)({
         id: user.id,
         email: user.email,
         firstName: user.firstName,
@@ -174,7 +178,7 @@ router.post('/register', asyncHandler(async (req, res) => {
         role: user.role,
         tenantId: user.tenantId,
     });
-    const refreshToken = await generateRefreshToken(user.id);
+    const refreshToken = await (0, auth_js_1.generateRefreshToken)(user.id);
     res.status(201).json({
         success: true,
         data: {
@@ -202,10 +206,10 @@ router.post('/register', asyncHandler(async (req, res) => {
  * POST /api/auth/refresh
  * Refresh access token
  */
-router.post('/refresh', asyncHandler(async (req, res) => {
+router.post('/refresh', (0, errorHandler_js_1.asyncHandler)(async (req, res) => {
     const { refreshToken } = refreshTokenSchema.parse(req.body);
     // Find valid refresh token
-    const tokenRecord = await prisma.refreshToken.findFirst({
+    const tokenRecord = await database_js_1.prisma.refreshToken.findFirst({
         where: {
             token: refreshToken,
             expiresAt: { gt: new Date() },
@@ -219,11 +223,11 @@ router.post('/refresh', asyncHandler(async (req, res) => {
         },
     });
     if (!tokenRecord) {
-        throw new ApiError('INVALID_REFRESH_TOKEN', 'Invalid or expired refresh token', 401);
+        throw new errorHandler_js_1.ApiError('INVALID_REFRESH_TOKEN', 'Invalid or expired refresh token', 401);
     }
     const user = tokenRecord.user;
     // Generate new access token
-    const accessToken = generateToken({
+    const accessToken = (0, auth_js_1.generateToken)({
         id: user.id,
         email: user.email,
         firstName: user.firstName,
@@ -232,9 +236,9 @@ router.post('/refresh', asyncHandler(async (req, res) => {
         tenantId: user.tenantId,
     });
     // Generate new refresh token
-    const newRefreshToken = await generateRefreshToken(user.id);
+    const newRefreshToken = await (0, auth_js_1.generateRefreshToken)(user.id);
     // Delete old refresh token
-    await prisma.refreshToken.delete({
+    await database_js_1.prisma.refreshToken.delete({
         where: { id: tokenRecord.id },
     });
     res.json({
@@ -252,10 +256,10 @@ router.post('/refresh', asyncHandler(async (req, res) => {
  * POST /api/auth/logout
  * Logout user and invalidate tokens
  */
-router.post('/logout', authenticate, asyncHandler(async (req, res) => {
+router.post('/logout', auth_js_1.authenticate, (0, errorHandler_js_1.asyncHandler)(async (req, res) => {
     const { refreshToken } = req.body;
     if (refreshToken) {
-        await prisma.refreshToken.deleteMany({
+        await database_js_1.prisma.refreshToken.deleteMany({
             where: { token: refreshToken },
         });
     }
@@ -271,15 +275,15 @@ router.post('/logout', authenticate, asyncHandler(async (req, res) => {
  * GET /api/auth/me
  * Get current user info
  */
-router.get('/me', authenticate, asyncHandler(async (req, res) => {
-    const user = await prisma.user.findUnique({
+router.get('/me', auth_js_1.authenticate, (0, errorHandler_js_1.asyncHandler)(async (req, res) => {
+    const user = await database_js_1.prisma.user.findUnique({
         where: { id: req.user.id },
         include: {
             tenant: true,
         },
     });
     if (!user) {
-        throw new ApiError('USER_NOT_FOUND', 'User not found', 404);
+        throw new errorHandler_js_1.ApiError('USER_NOT_FOUND', 'User not found', 404);
     }
     res.json({
         success: true,
@@ -307,31 +311,31 @@ router.get('/me', authenticate, asyncHandler(async (req, res) => {
  * PUT /api/auth/change-password
  * Change user password
  */
-router.put('/change-password', authenticate, asyncHandler(async (req, res) => {
-    const { currentPassword, newPassword } = z.object({
-        currentPassword: z.string(),
-        newPassword: z.string().min(8, 'Password must be at least 8 characters'),
+router.put('/change-password', auth_js_1.authenticate, (0, errorHandler_js_1.asyncHandler)(async (req, res) => {
+    const { currentPassword, newPassword } = zod_1.z.object({
+        currentPassword: zod_1.z.string(),
+        newPassword: zod_1.z.string().min(8, 'Password must be at least 8 characters'),
     }).parse(req.body);
-    const user = await prisma.user.findUnique({
+    const user = await database_js_1.prisma.user.findUnique({
         where: { id: req.user.id },
     });
     if (!user) {
-        throw new ApiError('USER_NOT_FOUND', 'User not found', 404);
+        throw new errorHandler_js_1.ApiError('USER_NOT_FOUND', 'User not found', 404);
     }
     // Verify current password
-    const isValidPassword = await bcrypt.compare(currentPassword, user.passwordHash);
+    const isValidPassword = await bcryptjs_1.default.compare(currentPassword, user.passwordHash);
     if (!isValidPassword) {
-        throw new ApiError('INVALID_PASSWORD', 'Current password is incorrect', 400);
+        throw new errorHandler_js_1.ApiError('INVALID_PASSWORD', 'Current password is incorrect', 400);
     }
     // Hash new password
-    const newPasswordHash = await bcrypt.hash(newPassword, 12);
+    const newPasswordHash = await bcryptjs_1.default.hash(newPassword, 12);
     // Update password
-    await prisma.user.update({
+    await database_js_1.prisma.user.update({
         where: { id: user.id },
         data: { passwordHash: newPasswordHash },
     });
     // Invalidate all refresh tokens
-    await prisma.refreshToken.deleteMany({
+    await database_js_1.prisma.refreshToken.deleteMany({
         where: { userId: user.id },
     });
     res.json({
@@ -343,18 +347,18 @@ router.put('/change-password', authenticate, asyncHandler(async (req, res) => {
  * PUT /api/auth/me
  * Update current user profile
  */
-router.put('/me', authenticate, asyncHandler(async (req, res) => {
-    const updateSchema = z.object({
-        firstName: z.string().min(1, 'First name is required').optional(),
-        lastName: z.string().min(1, 'Last name is required').optional(),
-        email: z.string().email('Invalid email').optional(),
-        phone: z.string().optional(),
-        jobTitle: z.string().optional(),
+router.put('/me', auth_js_1.authenticate, (0, errorHandler_js_1.asyncHandler)(async (req, res) => {
+    const updateSchema = zod_1.z.object({
+        firstName: zod_1.z.string().min(1, 'First name is required').optional(),
+        lastName: zod_1.z.string().min(1, 'Last name is required').optional(),
+        email: zod_1.z.string().email('Invalid email').optional(),
+        phone: zod_1.z.string().optional(),
+        jobTitle: zod_1.z.string().optional(),
     });
     const data = updateSchema.parse(req.body);
     // Check if email is being changed and if it's already in use
     if (data.email && data.email !== req.user.email) {
-        const existingUser = await prisma.user.findFirst({
+        const existingUser = await database_js_1.prisma.user.findFirst({
             where: {
                 email: data.email.toLowerCase(),
                 tenantId: req.tenantId,
@@ -362,10 +366,10 @@ router.put('/me', authenticate, asyncHandler(async (req, res) => {
             },
         });
         if (existingUser) {
-            throw new ApiError('EMAIL_EXISTS', 'Email is already in use', 409);
+            throw new errorHandler_js_1.ApiError('EMAIL_EXISTS', 'Email is already in use', 409);
         }
     }
-    const user = await prisma.user.update({
+    const user = await database_js_1.prisma.user.update({
         where: { id: req.user.id },
         data: {
             ...data,
@@ -402,8 +406,8 @@ router.put('/me', authenticate, asyncHandler(async (req, res) => {
  * GET /api/auth/users
  * Get all users in tenant (admin/manager only)
  */
-router.get('/users', authenticate, authorize('ADMIN', 'PARTNER', 'MANAGER'), asyncHandler(async (req, res) => {
-    const users = await prisma.user.findMany({
+router.get('/users', auth_js_1.authenticate, (0, auth_js_1.authorize)('ADMIN', 'PARTNER', 'MANAGER'), (0, errorHandler_js_1.asyncHandler)(async (req, res) => {
+    const users = await database_js_1.prisma.user.findMany({
         where: {
             tenantId: req.tenantId,
             isActive: true,
@@ -429,28 +433,28 @@ router.get('/users', authenticate, authorize('ADMIN', 'PARTNER', 'MANAGER'), asy
  * POST /api/auth/users
  * Create new user (admin/manager only)
  */
-router.post('/users', authenticate, authorize('ADMIN', 'PARTNER', 'MANAGER'), asyncHandler(async (req, res) => {
-    const createUserSchema = z.object({
-        email: z.string().email('Invalid email'),
-        firstName: z.string().min(1, 'First name is required'),
-        lastName: z.string().min(1, 'Last name is required'),
-        role: z.enum(['PARTNER', 'MANAGER', 'SENIOR', 'JUNIOR']),
-        password: z.string().min(8, 'Password must be at least 8 characters'),
+router.post('/users', auth_js_1.authenticate, (0, auth_js_1.authorize)('ADMIN', 'PARTNER', 'MANAGER'), (0, errorHandler_js_1.asyncHandler)(async (req, res) => {
+    const createUserSchema = zod_1.z.object({
+        email: zod_1.z.string().email('Invalid email'),
+        firstName: zod_1.z.string().min(1, 'First name is required'),
+        lastName: zod_1.z.string().min(1, 'Last name is required'),
+        role: zod_1.z.enum(['PARTNER', 'MANAGER', 'SENIOR', 'JUNIOR']),
+        password: zod_1.z.string().min(8, 'Password must be at least 8 characters'),
     });
     const data = createUserSchema.parse(req.body);
     // Check if email already exists
-    const existingUser = await prisma.user.findFirst({
+    const existingUser = await database_js_1.prisma.user.findFirst({
         where: {
             email: data.email.toLowerCase(),
             tenantId: req.tenantId,
         },
     });
     if (existingUser) {
-        throw new ApiError('EMAIL_EXISTS', 'User with this email already exists', 409);
+        throw new errorHandler_js_1.ApiError('EMAIL_EXISTS', 'User with this email already exists', 409);
     }
     // Hash password
-    const passwordHash = await bcrypt.hash(data.password, 12);
-    const user = await prisma.user.create({
+    const passwordHash = await bcryptjs_1.default.hash(data.password, 12);
+    const user = await database_js_1.prisma.user.create({
         data: {
             email: data.email.toLowerCase(),
             firstName: data.firstName,
@@ -478,29 +482,29 @@ router.post('/users', authenticate, authorize('ADMIN', 'PARTNER', 'MANAGER'), as
  * PUT /api/auth/users/:id
  * Update user (admin/manager only)
  */
-router.put('/users/:id', authenticate, authorize('ADMIN', 'PARTNER', 'MANAGER'), asyncHandler(async (req, res) => {
+router.put('/users/:id', auth_js_1.authenticate, (0, auth_js_1.authorize)('ADMIN', 'PARTNER', 'MANAGER'), (0, errorHandler_js_1.asyncHandler)(async (req, res) => {
     const { id } = req.params;
-    const updateUserSchema = z.object({
-        firstName: z.string().min(1).optional(),
-        lastName: z.string().min(1).optional(),
-        email: z.string().email().optional(),
-        role: z.enum(['PARTNER', 'MANAGER', 'SENIOR', 'JUNIOR']).optional(),
-        isActive: z.boolean().optional(),
+    const updateUserSchema = zod_1.z.object({
+        firstName: zod_1.z.string().min(1).optional(),
+        lastName: zod_1.z.string().min(1).optional(),
+        email: zod_1.z.string().email().optional(),
+        role: zod_1.z.enum(['PARTNER', 'MANAGER', 'SENIOR', 'JUNIOR']).optional(),
+        isActive: zod_1.z.boolean().optional(),
     });
     const data = updateUserSchema.parse(req.body);
     // Check if user exists in this tenant
-    const existingUser = await prisma.user.findFirst({
+    const existingUser = await database_js_1.prisma.user.findFirst({
         where: {
             id,
             tenantId: req.tenantId,
         },
     });
     if (!existingUser) {
-        throw new ApiError('USER_NOT_FOUND', 'User not found', 404);
+        throw new errorHandler_js_1.ApiError('USER_NOT_FOUND', 'User not found', 404);
     }
     // Check email uniqueness if changing
     if (data.email && data.email !== existingUser.email) {
-        const emailExists = await prisma.user.findFirst({
+        const emailExists = await database_js_1.prisma.user.findFirst({
             where: {
                 email: data.email.toLowerCase(),
                 tenantId: req.tenantId,
@@ -508,10 +512,10 @@ router.put('/users/:id', authenticate, authorize('ADMIN', 'PARTNER', 'MANAGER'),
             },
         });
         if (emailExists) {
-            throw new ApiError('EMAIL_EXISTS', 'Email is already in use', 409);
+            throw new errorHandler_js_1.ApiError('EMAIL_EXISTS', 'Email is already in use', 409);
         }
     }
-    const user = await prisma.user.update({
+    const user = await database_js_1.prisma.user.update({
         where: { id },
         data: {
             ...data,
@@ -535,22 +539,22 @@ router.put('/users/:id', authenticate, authorize('ADMIN', 'PARTNER', 'MANAGER'),
  * DELETE /api/auth/users/:id
  * Deactivate user (admin/manager only)
  */
-router.delete('/users/:id', authenticate, authorize('ADMIN', 'PARTNER', 'MANAGER'), asyncHandler(async (req, res) => {
+router.delete('/users/:id', auth_js_1.authenticate, (0, auth_js_1.authorize)('ADMIN', 'PARTNER', 'MANAGER'), (0, errorHandler_js_1.asyncHandler)(async (req, res) => {
     const { id } = req.params;
     // Prevent self-deactivation
     if (id === req.user.id) {
-        throw new ApiError('CANNOT_DEACTIVATE_SELF', 'You cannot deactivate your own account', 400);
+        throw new errorHandler_js_1.ApiError('CANNOT_DEACTIVATE_SELF', 'You cannot deactivate your own account', 400);
     }
-    const existingUser = await prisma.user.findFirst({
+    const existingUser = await database_js_1.prisma.user.findFirst({
         where: {
             id,
             tenantId: req.tenantId,
         },
     });
     if (!existingUser) {
-        throw new ApiError('USER_NOT_FOUND', 'User not found', 404);
+        throw new errorHandler_js_1.ApiError('USER_NOT_FOUND', 'User not found', 404);
     }
-    await prisma.user.update({
+    await database_js_1.prisma.user.update({
         where: { id },
         data: { isActive: false },
     });
@@ -560,212 +564,59 @@ router.delete('/users/:id', authenticate, authorize('ADMIN', 'PARTNER', 'MANAGER
     });
 }));
 // ============================================================================
-// PASSWORD RESET
+// PASSWORD RESET - DISABLED (requires passwordReset model in schema)
 // ============================================================================
 /**
  * POST /api/auth/forgot-password
- * Request password reset email
+ * Request password reset email - DISABLED
  */
-router.post('/forgot-password', asyncHandler(async (req, res) => {
-    const { email } = z.object({
-        email: z.string().email('Invalid email address'),
-    }).parse(req.body);
-    // Find user (don't reveal if exists)
-    const user = await prisma.user.findFirst({
-        where: {
-            email: email.toLowerCase(),
-            isActive: true,
-        },
-    });
-    if (user) {
-        // Generate reset token
-        const { token, tokenHash, expiresAt } = passwordResetService.generateToken();
-        // Store token hash
-        await prisma.passwordReset.create({
-            data: {
-                tokenHash,
-                expiresAt,
-                userId: user.id,
-            },
-        });
-        // Send email with reset link
-        const resetUrl = `${process.env.FRONTEND_URL}/reset-password?token=${token}`;
-        const emailService = createEmailService();
-        if (emailService) {
-            await emailService.sendEmail({
-                to: user.email,
-                subject: 'Password Reset Request',
-                html: `
-            <h1>Password Reset</h1>
-            <p>Click the link below to reset your password:</p>
-            <a href="${resetUrl}">Reset Password</a>
-            <p>This link expires in 15 minutes.</p>
-          `,
-            });
-        }
-    }
-    // Return same message regardless of user existence (security)
-    res.json({
-        success: true,
-        data: { message: 'If an account exists, a reset email has been sent' },
+router.post('/forgot-password', (0, errorHandler_js_1.asyncHandler)(async (_req, res) => {
+    res.status(501).json({
+        success: false,
+        error: { code: 'NOT_IMPLEMENTED', message: 'Password reset not implemented' },
     });
 }));
 /**
  * POST /api/auth/reset-password
- * Reset password with token
+ * Reset password with token - DISABLED
  */
-router.post('/reset-password', asyncHandler(async (req, res) => {
-    const { token, newPassword } = z.object({
-        token: z.string(),
-        newPassword: z.string().min(12, 'Password must be at least 12 characters'),
-    }).parse(req.body);
-    // Validate password strength
-    const validation = passwordResetService.validatePasswordStrength(newPassword);
-    if (!validation.isValid) {
-        throw new ApiError('WEAK_PASSWORD', validation.errors.join(', '), 400);
-    }
-    // Hash token and look up
-    const tokenHash = passwordResetService.hashToken(token);
-    const resetRecord = await prisma.passwordReset.findFirst({
-        where: {
-            tokenHash,
-            expiresAt: { gt: new Date() },
-            usedAt: null,
-        },
-    });
-    if (!resetRecord) {
-        throw new ApiError('INVALID_TOKEN', 'Invalid or expired reset token', 400);
-    }
-    // Hash new password
-    const passwordHash = await bcrypt.hash(newPassword, 12);
-    // Update user password
-    await prisma.$transaction([
-        prisma.user.update({
-            where: { id: resetRecord.userId },
-            data: { passwordHash },
-        }),
-        prisma.passwordReset.update({
-            where: { id: resetRecord.id },
-            data: { usedAt: new Date() },
-        }),
-        // Invalidate all refresh tokens
-        prisma.refreshToken.deleteMany({
-            where: { userId: resetRecord.userId },
-        }),
-    ]);
-    res.json({
-        success: true,
-        data: { message: 'Password reset successfully' },
+router.post('/reset-password', (0, errorHandler_js_1.asyncHandler)(async (_req, res) => {
+    res.status(501).json({
+        success: false,
+        error: { code: 'NOT_IMPLEMENTED', message: 'Password reset not implemented' },
     });
 }));
 // ============================================================================
-// TWO-FACTOR AUTHENTICATION
+// TWO-FACTOR AUTHENTICATION - DISABLED (requires 2FA models in schema)
 // ============================================================================
 /**
  * POST /api/auth/2fa/setup
- * Setup 2FA for user
+ * Setup 2FA for user - DISABLED
  */
-router.post('/2fa/setup', authenticate, asyncHandler(async (req, res) => {
-    const user = await prisma.user.findUnique({
-        where: { id: req.user.id },
-    });
-    if (!user) {
-        throw new ApiError('USER_NOT_FOUND', 'User not found', 404);
-    }
-    // Generate 2FA secret
-    const setup = await twoFactorService.generateSecret(user.id, user.email);
-    // Store encrypted secret (not enabled yet - needs verification)
-    await prisma.user.update({
-        where: { id: user.id },
-        data: {
-            twoFactorSecret: setup.secret,
-            twoFactorEnabled: false,
-        },
-    });
-    // Store backup codes
-    await prisma.twoFactorBackupCode.createMany({
-        data: setup.backupCodes.map(code => ({
-            userId: user.id,
-            codeHash: code, // In production, hash these
-        })),
-    });
-    res.json({
-        success: true,
-        data: {
-            qrCodeUrl: setup.qrCodeUrl,
-            secret: setup.secret,
-            backupCodes: setup.backupCodes,
-        },
+router.post('/2fa/setup', auth_js_1.authenticate, (0, errorHandler_js_1.asyncHandler)(async (_req, res) => {
+    res.status(501).json({
+        success: false,
+        error: { code: 'NOT_IMPLEMENTED', message: '2FA not implemented' },
     });
 }));
 /**
  * POST /api/auth/2fa/verify
- * Verify 2FA token and enable 2FA
+ * Verify 2FA token and enable 2FA - DISABLED
  */
-router.post('/2fa/verify', authenticate, asyncHandler(async (req, res) => {
-    const { token } = z.object({
-        token: z.string().length(6, 'Token must be 6 digits'),
-    }).parse(req.body);
-    const user = await prisma.user.findUnique({
-        where: { id: req.user.id },
-    });
-    if (!user || !user.twoFactorSecret) {
-        throw new ApiError('2FA_NOT_SETUP', '2FA not set up', 400);
-    }
-    // Verify token
-    const isValid = twoFactorService.verifyToken(user.twoFactorSecret, token);
-    if (!isValid) {
-        throw new ApiError('INVALID_TOKEN', 'Invalid 2FA token', 400);
-    }
-    // Enable 2FA
-    await prisma.user.update({
-        where: { id: user.id },
-        data: {
-            twoFactorEnabled: true,
-            twoFactorVerified: true,
-        },
-    });
-    res.json({
-        success: true,
-        data: { message: '2FA enabled successfully' },
+router.post('/2fa/verify', auth_js_1.authenticate, (0, errorHandler_js_1.asyncHandler)(async (_req, res) => {
+    res.status(501).json({
+        success: false,
+        error: { code: 'NOT_IMPLEMENTED', message: '2FA not implemented' },
     });
 }));
 /**
  * POST /api/auth/2fa/disable
- * Disable 2FA
+ * Disable 2FA - DISABLED
  */
-router.post('/2fa/disable', authenticate, asyncHandler(async (req, res) => {
-    const { password } = z.object({
-        password: z.string(),
-    }).parse(req.body);
-    const user = await prisma.user.findUnique({
-        where: { id: req.user.id },
-    });
-    if (!user) {
-        throw new ApiError('USER_NOT_FOUND', 'User not found', 404);
-    }
-    // Verify password
-    const isValidPassword = await bcrypt.compare(password, user.passwordHash);
-    if (!isValidPassword) {
-        throw new ApiError('INVALID_PASSWORD', 'Invalid password', 400);
-    }
-    // Disable 2FA and clear secret
-    await prisma.$transaction([
-        prisma.user.update({
-            where: { id: user.id },
-            data: {
-                twoFactorSecret: null,
-                twoFactorEnabled: false,
-                twoFactorVerified: false,
-            },
-        }),
-        prisma.twoFactorBackupCode.deleteMany({
-            where: { userId: user.id },
-        }),
-    ]);
-    res.json({
-        success: true,
-        data: { message: '2FA disabled successfully' },
+router.post('/2fa/disable', auth_js_1.authenticate, (0, errorHandler_js_1.asyncHandler)(async (_req, res) => {
+    res.status(501).json({
+        success: false,
+        error: { code: 'NOT_IMPLEMENTED', message: '2FA not implemented' },
     });
 }));
 // ============================================================================
@@ -775,8 +626,8 @@ router.post('/2fa/disable', authenticate, asyncHandler(async (req, res) => {
  * GET /api/auth/me/export
  * Export user data (GDPR Article 20)
  */
-router.get('/me/export', authenticate, asyncHandler(async (req, res) => {
-    const exportData = await gdprService.exportUserData(req.user.id, prisma);
+router.get('/me/export', auth_js_1.authenticate, (0, errorHandler_js_1.asyncHandler)(async (req, res) => {
+    const exportData = await gdprService_js_1.gdprService.exportUserData(req.user.id, database_js_1.prisma);
     res.setHeader('Content-Type', 'application/json');
     res.setHeader('Content-Disposition', 'attachment; filename="my-data-export.json"');
     res.json({
@@ -788,24 +639,24 @@ router.get('/me/export', authenticate, asyncHandler(async (req, res) => {
  * DELETE /api/auth/me
  * Delete user account (GDPR Article 17)
  */
-router.delete('/me', authenticate, asyncHandler(async (req, res) => {
-    const { password, confirmDelete } = z.object({
-        password: z.string(),
-        confirmDelete: z.literal(true),
+router.delete('/me', auth_js_1.authenticate, (0, errorHandler_js_1.asyncHandler)(async (req, res) => {
+    const { password, confirmDelete } = zod_1.z.object({
+        password: zod_1.z.string(),
+        confirmDelete: zod_1.z.literal(true),
     }).parse(req.body);
-    const user = await prisma.user.findUnique({
+    const user = await database_js_1.prisma.user.findUnique({
         where: { id: req.user.id },
     });
     if (!user) {
-        throw new ApiError('USER_NOT_FOUND', 'User not found', 404);
+        throw new errorHandler_js_1.ApiError('USER_NOT_FOUND', 'User not found', 404);
     }
     // Verify password
-    const isValidPassword = await bcrypt.compare(password, user.passwordHash);
+    const isValidPassword = await bcryptjs_1.default.compare(password, user.passwordHash);
     if (!isValidPassword) {
-        throw new ApiError('INVALID_PASSWORD', 'Invalid password', 400);
+        throw new errorHandler_js_1.ApiError('INVALID_PASSWORD', 'Invalid password', 400);
     }
     // Anonymize user data
-    const result = await gdprService.deleteUserData(req.user.id, req.tenantId, prisma);
+    const result = await gdprService_js_1.gdprService.deleteUserData(req.user.id, req.tenantId, database_js_1.prisma);
     // Clear cookies
     res.clearCookie('accessToken');
     res.clearCookie('refreshToken');
@@ -817,4 +668,5 @@ router.delete('/me', authenticate, asyncHandler(async (req, res) => {
         },
     });
 }));
-export default router;
+exports.default = router;
+//# sourceMappingURL=auth.js.map

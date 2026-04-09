@@ -1,9 +1,13 @@
-import { PrismaClient } from '@prisma/client';
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.TenantPrismaClient = exports.prisma = void 0;
+exports.checkDatabaseHealth = checkDatabaseHealth;
+const client_1 = require("@prisma/client");
 // Extend PrismaClient for row-level security and multi-tenancy
 const globalForPrisma = global;
 // Configure Prisma Client with connection pooling for serverless/production
 const prismaClientSingleton = () => {
-    return new PrismaClient({
+    return new client_1.PrismaClient({
         log: process.env.NODE_ENV === 'development'
             ? ['query', 'error', 'warn']
             : ['error'],
@@ -14,15 +18,15 @@ const prismaClientSingleton = () => {
         },
     });
 };
-export const prisma = globalForPrisma.prisma ?? prismaClientSingleton();
+exports.prisma = globalForPrisma.prisma ?? prismaClientSingleton();
 if (process.env.NODE_ENV !== 'production')
-    globalForPrisma.prisma = prisma;
+    globalForPrisma.prisma = exports.prisma;
 // Handle graceful shutdown
 process.on('beforeExit', async () => {
-    await prisma.$disconnect();
+    await exports.prisma.$disconnect();
 });
 // Tenant-aware database operations
-export class TenantPrismaClient {
+class TenantPrismaClient {
     constructor(tenantId) {
         this.tenantId = tenantId;
     }
@@ -38,24 +42,24 @@ export class TenantPrismaClient {
     }
     // Client operations
     async findClients(args = {}) {
-        return prisma.client.findMany(this.withTenant(args));
+        return exports.prisma.client.findMany(this.withTenant(args));
     }
     async findClientById(id) {
-        return prisma.client.findFirst({
+        return exports.prisma.client.findFirst({
             where: { id, tenantId: this.tenantId },
         });
     }
     async createClient(data) {
-        return prisma.client.create({
+        return exports.prisma.client.create({
             data: { ...data, tenantId: this.tenantId },
         });
     }
     // Proposal operations
     async findProposals(args = {}) {
-        return prisma.proposal.findMany(this.withTenant(args));
+        return exports.prisma.proposal.findMany(this.withTenant(args));
     }
     async findProposalById(id) {
-        return prisma.proposal.findFirst({
+        return exports.prisma.proposal.findFirst({
             where: { id, tenantId: this.tenantId },
             include: {
                 client: true,
@@ -67,7 +71,7 @@ export class TenantPrismaClient {
         });
     }
     async createProposal(data) {
-        return prisma.proposal.create({
+        return exports.prisma.proposal.create({
             data: { ...data, tenantId: this.tenantId },
             include: {
                 client: true,
@@ -77,7 +81,7 @@ export class TenantPrismaClient {
     }
     // Service template operations
     async findServiceTemplates(args = {}) {
-        return prisma.serviceTemplate.findMany(this.withTenant({
+        return exports.prisma.serviceTemplate.findMany(this.withTenant({
             ...args,
             where: {
                 ...args.where,
@@ -87,7 +91,7 @@ export class TenantPrismaClient {
     }
     // User operations
     async findUsers(args = {}) {
-        return prisma.user.findMany(this.withTenant({
+        return exports.prisma.user.findMany(this.withTenant({
             ...args,
             select: {
                 id: true,
@@ -102,14 +106,16 @@ export class TenantPrismaClient {
         }));
     }
 }
+exports.TenantPrismaClient = TenantPrismaClient;
 // Health check function
-export async function checkDatabaseHealth() {
+async function checkDatabaseHealth() {
     try {
-        await prisma.$queryRaw `SELECT 1`;
+        await exports.prisma.$queryRaw `SELECT 1`;
         return { healthy: true };
     }
     catch (error) {
         return { healthy: false, error: error.message };
     }
 }
-export default prisma;
+exports.default = exports.prisma;
+//# sourceMappingURL=database.js.map

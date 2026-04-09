@@ -1,4 +1,13 @@
-import crypto from 'crypto';
+"use strict";
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.encrypt = encrypt;
+exports.decrypt = decrypt;
+exports.encryptObject = encryptObject;
+exports.decryptObject = decryptObject;
+const crypto_1 = __importDefault(require("crypto"));
 // Encryption key should be set in environment variables
 const ENCRYPTION_KEY = process.env.ENCRYPTION_KEY || process.env.JWT_SECRET;
 if (!ENCRYPTION_KEY) {
@@ -6,7 +15,7 @@ if (!ENCRYPTION_KEY) {
 }
 // Ensure key is 32 bytes (256 bits) for AES-256-GCM
 const deriveKey = (key) => {
-    return crypto.createHash('sha256').update(key).digest();
+    return crypto_1.default.createHash('sha256').update(key).digest();
 };
 const ALGORITHM = 'aes-256-gcm';
 const IV_LENGTH = 16;
@@ -14,13 +23,13 @@ const AUTH_TAG_LENGTH = 16;
 /**
  * Encrypt sensitive data (like OAuth credentials)
  */
-export function encrypt(text) {
+function encrypt(text) {
     if (!text)
         return '';
     try {
-        const iv = crypto.randomBytes(IV_LENGTH);
+        const iv = crypto_1.default.randomBytes(IV_LENGTH);
         const key = deriveKey(ENCRYPTION_KEY);
-        const cipher = crypto.createCipheriv(ALGORITHM, key, iv);
+        const cipher = crypto_1.default.createCipheriv(ALGORITHM, key, iv);
         let encrypted = cipher.update(text, 'utf8', 'hex');
         encrypted += cipher.final('hex');
         const authTag = cipher.getAuthTag();
@@ -35,7 +44,7 @@ export function encrypt(text) {
 /**
  * Decrypt sensitive data
  */
-export function decrypt(encryptedData) {
+function decrypt(encryptedData) {
     if (!encryptedData)
         return '';
     // Check if data is not encrypted (legacy plain text)
@@ -51,7 +60,7 @@ export function decrypt(encryptedData) {
         const authTag = Buffer.from(parts[1], 'hex');
         const encrypted = parts[2];
         const key = deriveKey(ENCRYPTION_KEY);
-        const decipher = crypto.createDecipheriv(ALGORITHM, key, iv);
+        const decipher = crypto_1.default.createDecipheriv(ALGORITHM, key, iv);
         decipher.setAuthTag(authTag);
         let decrypted = decipher.update(encrypted, 'hex', 'utf8');
         decrypted += decipher.final('utf8');
@@ -65,7 +74,7 @@ export function decrypt(encryptedData) {
 /**
  * Encrypt an object (like OAuth credentials)
  */
-export function encryptObject(obj) {
+function encryptObject(obj) {
     const encrypted = {};
     for (const [key, value] of Object.entries(obj)) {
         // Only encrypt sensitive fields
@@ -81,7 +90,7 @@ export function encryptObject(obj) {
 /**
  * Decrypt an object
  */
-export function decryptObject(obj) {
+function decryptObject(obj) {
     const decrypted = {};
     for (const [key, value] of Object.entries(obj)) {
         // Only decrypt sensitive fields
@@ -94,4 +103,5 @@ export function decryptObject(obj) {
     }
     return decrypted;
 }
-export default { encrypt, decrypt, encryptObject, decryptObject };
+exports.default = { encrypt, decrypt, encryptObject, decryptObject };
+//# sourceMappingURL=encryption.js.map

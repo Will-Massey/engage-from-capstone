@@ -1,5 +1,8 @@
-import { prisma } from '../config/database.js';
-import { ApiError } from '../middleware/errorHandler.js';
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.PricingEngine = void 0;
+const database_js_1 = require("../config/database.js");
+const errorHandler_js_1 = require("../middleware/errorHandler.js");
 // Geographic multipliers based on ONS regional cost data
 const GEOGRAPHIC_MULTIPLIERS = {
     'LONDON': 1.25,
@@ -15,7 +18,7 @@ const GEOGRAPHIC_MULTIPLIERS = {
     'SCOTLAND': 0.95,
     'NORTHERN_IRELAND': 0.85,
 };
-export class PricingEngine {
+class PricingEngine {
     constructor(tenantId) {
         this.tenantId = tenantId;
     }
@@ -24,7 +27,7 @@ export class PricingEngine {
      */
     async calculatePrice(serviceId, clientData, options = {}) {
         // Get service template
-        const service = await prisma.serviceTemplate.findFirst({
+        const service = await database_js_1.prisma.serviceTemplate.findFirst({
             where: {
                 id: serviceId,
                 tenantId: this.tenantId,
@@ -38,7 +41,7 @@ export class PricingEngine {
             },
         });
         if (!service) {
-            throw new ApiError('SERVICE_NOT_FOUND', 'Service template not found', 404);
+            throw new errorHandler_js_1.ApiError('SERVICE_NOT_FOUND', 'Service template not found', 404);
         }
         const { targetMargin = 30, quantity = 1, } = options;
         // Calculate complexity multiplier
@@ -233,4 +236,6 @@ export class PricingEngine {
         return Math.round(((revenue - costs) / revenue) * 100 * 100) / 100;
     }
 }
-export default PricingEngine;
+exports.PricingEngine = PricingEngine;
+exports.default = PricingEngine;
+//# sourceMappingURL=pricingEngine.js.map

@@ -1,12 +1,18 @@
-import jwt from 'jsonwebtoken';
-import { prisma } from '../config/database.js';
+"use strict";
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.setCsrfCookie = exports.csrfProtection = exports.generateCsrfToken = exports.optionalAuth = exports.authorize = exports.authenticate = exports.generateRefreshToken = exports.generateToken = void 0;
+const jsonwebtoken_1 = __importDefault(require("jsonwebtoken"));
+const database_js_1 = require("../config/database.js");
 const JWT_SECRET = process.env.JWT_SECRET;
 if (!JWT_SECRET) {
     throw new Error('JWT_SECRET environment variable is required');
 }
 // Generate JWT token
-export const generateToken = (user) => {
-    return jwt.sign({
+const generateToken = (user) => {
+    return jsonwebtoken_1.default.sign({
         userId: user.id,
         email: user.email,
         firstName: user.firstName,
@@ -15,15 +21,16 @@ export const generateToken = (user) => {
         tenantId: user.tenantId,
     }, JWT_SECRET, { expiresIn: (process.env.JWT_EXPIRES_IN || '24h') });
 };
+exports.generateToken = generateToken;
 // Generate refresh token
-export const generateRefreshToken = async (userId) => {
-    const refreshToken = jwt.sign({ userId }, JWT_SECRET, {
+const generateRefreshToken = async (userId) => {
+    const refreshToken = jsonwebtoken_1.default.sign({ userId }, JWT_SECRET, {
         expiresIn: (process.env.JWT_REFRESH_EXPIRES_IN || '7d'),
     });
     // Store refresh token in database
     const expiresAt = new Date();
     expiresAt.setDate(expiresAt.getDate() + 7);
-    await prisma.refreshToken.create({
+    await database_js_1.prisma.refreshToken.create({
         data: {
             token: refreshToken,
             userId,
@@ -32,8 +39,9 @@ export const generateRefreshToken = async (userId) => {
     });
     return refreshToken;
 };
+exports.generateRefreshToken = generateRefreshToken;
 // Verify JWT token middleware
-export const authenticate = async (req, res, next) => {
+const authenticate = async (req, res, next) => {
     try {
         const authHeader = req.headers.authorization;
         if (!authHeader || !authHeader.startsWith('Bearer ')) {
@@ -48,9 +56,9 @@ export const authenticate = async (req, res, next) => {
         }
         const token = authHeader.substring(7);
         // Verify token
-        const decoded = jwt.verify(token, JWT_SECRET);
+        const decoded = jsonwebtoken_1.default.verify(token, JWT_SECRET);
         // Check if user still exists and is active
-        const user = await prisma.user.findFirst({
+        const user = await database_js_1.prisma.user.findFirst({
             where: {
                 id: decoded.userId,
                 tenantId: decoded.tenantId,
@@ -80,7 +88,7 @@ export const authenticate = async (req, res, next) => {
         next();
     }
     catch (error) {
-        if (error instanceof jwt.TokenExpiredError) {
+        if (error instanceof jsonwebtoken_1.default.TokenExpiredError) {
             res.status(401).json({
                 success: false,
                 error: {
@@ -90,7 +98,7 @@ export const authenticate = async (req, res, next) => {
             });
             return;
         }
-        if (error instanceof jwt.JsonWebTokenError) {
+        if (error instanceof jsonwebtoken_1.default.JsonWebTokenError) {
             res.status(401).json({
                 success: false,
                 error: {
@@ -109,8 +117,9 @@ export const authenticate = async (req, res, next) => {
         });
     }
 };
+exports.authenticate = authenticate;
 // Role-based authorization middleware
-export const authorize = (...roles) => {
+const authorize = (...roles) => {
     return (req, res, next) => {
         if (!req.user) {
             res.status(401).json({
@@ -135,8 +144,9 @@ export const authorize = (...roles) => {
         next();
     };
 };
+exports.authorize = authorize;
 // Optional authentication (for public routes that can be enhanced with auth)
-export const optionalAuth = async (req, res, next) => {
+const optionalAuth = async (req, res, next) => {
     try {
         const authHeader = req.headers.authorization;
         if (!authHeader || !authHeader.startsWith('Bearer ')) {
@@ -144,8 +154,8 @@ export const optionalAuth = async (req, res, next) => {
             return;
         }
         const token = authHeader.substring(7);
-        const decoded = jwt.verify(token, JWT_SECRET);
-        const user = await prisma.user.findFirst({
+        const decoded = jsonwebtoken_1.default.verify(token, JWT_SECRET);
+        const user = await database_js_1.prisma.user.findFirst({
             where: {
                 id: decoded.userId,
                 tenantId: decoded.tenantId,
@@ -170,14 +180,16 @@ export const optionalAuth = async (req, res, next) => {
         next();
     }
 };
+exports.optionalAuth = optionalAuth;
 // CSRF Protection - Double Submit Cookie Pattern
-import crypto from 'crypto';
+const crypto_1 = __importDefault(require("crypto"));
 // Generate CSRF token
-export const generateCsrfToken = () => {
-    return crypto.randomBytes(32).toString('hex');
+const generateCsrfToken = () => {
+    return crypto_1.default.randomBytes(32).toString('hex');
 };
+exports.generateCsrfToken = generateCsrfToken;
 // CSRF protection middleware
-export const csrfProtection = (req, res, next) => {
+const csrfProtection = (req, res, next) => {
     // Skip CSRF for GET, HEAD, OPTIONS requests (they should be safe)
     if (['GET', 'HEAD', 'OPTIONS'].includes(req.method)) {
         next();
@@ -207,30 +219,32 @@ export const csrfProtection = (req, res, next) => {
     });
     const csrfToken = req.headers['x-csrf-token'];
     const csrfCookie = req.cookies?.csrfToken;
-    // Temporarily disable CSRF for testing
-    // if (!csrfToken || !csrfCookie || csrfToken !== csrfCookie) {
-    //     res.status(403).json({
-    //         success: false,
-    //         error: {
-    //             code: 'CSRF_INVALID',
-    //             message: 'CSRF token validation failed',
-    //         },
-    //     });
-    //     return;
-    // }
+    if (!csrfToken || !csrfCookie || csrfToken !== csrfCookie) {
+        res.status(403).json({
+            success: false,
+            error: {
+                code: 'CSRF_INVALID',
+                message: 'CSRF token validation failed',
+            },
+        });
+        return;
+    }
     next();
 };
+exports.csrfProtection = csrfProtection;
 // Set CSRF cookie middleware
-export const setCsrfCookie = (req, res, next) => {
+const setCsrfCookie = (req, res, next) => {
     if (!req.cookies?.csrfToken) {
-        const csrfToken = generateCsrfToken();
+        const csrfToken = (0, exports.generateCsrfToken)();
         res.cookie('csrfToken', csrfToken, {
             httpOnly: false, // Must be accessible by JavaScript
             secure: true,
-            sameSite: "none",
+            sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
             maxAge: 24 * 60 * 60 * 1000, // 24 hours
         });
     }
     next();
 };
-export default { authenticate, authorize, optionalAuth, generateToken, generateRefreshToken, csrfProtection, setCsrfCookie };
+exports.setCsrfCookie = setCsrfCookie;
+exports.default = { authenticate: exports.authenticate, authorize: exports.authorize, optionalAuth: exports.optionalAuth, generateToken: exports.generateToken, generateRefreshToken: exports.generateRefreshToken, csrfProtection: exports.csrfProtection, setCsrfCookie: exports.setCsrfCookie };
+//# sourceMappingURL=auth.js.map

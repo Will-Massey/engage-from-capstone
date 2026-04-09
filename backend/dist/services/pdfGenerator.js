@@ -1,12 +1,18 @@
-import PDFDocument from 'pdfkit';
-import { prisma } from '../config/database.js';
-export class PDFGenerator {
+"use strict";
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.PDFGenerator = void 0;
+const pdfkit_1 = __importDefault(require("pdfkit"));
+const database_js_1 = require("../config/database.js");
+class PDFGenerator {
     /**
      * Generate a professional proposal PDF
      */
     static async generateProposal(proposalId) {
         // Fetch proposal with all related data
-        const proposal = await prisma.proposal.findUnique({
+        const proposal = await database_js_1.prisma.proposal.findUnique({
             where: { id: proposalId },
             include: {
                 client: true,
@@ -28,7 +34,7 @@ export class PDFGenerator {
     static createPDF(proposal) {
         return new Promise((resolve, reject) => {
             try {
-                const doc = new PDFDocument({ margin: 50 });
+                const doc = new pdfkit_1.default({ margin: 50 });
                 const chunks = [];
                 doc.on('data', (chunk) => chunks.push(chunk));
                 doc.on('end', () => resolve(Buffer.concat(chunks)));
@@ -287,6 +293,14 @@ ${proposal.tenant.name}`;
             doc.text(service.quantity.toString(), colX.qty, y)
                 .text(this.formatCurrency(service.unitPrice), colX.price, y)
                 .text(this.formatCurrency(service.total), colX.total, y);
+            // Show frequency
+            if (service.frequency && service.frequency !== 'ONE_TIME') {
+                doc.fontSize(8)
+                    .fillColor('#888888')
+                    .text(`(${service.frequency.toLowerCase()})`, colX.price, y + 12);
+                doc.fontSize(10)
+                    .fillColor('#333333');
+            }
             y += service.description ? 50 : 30;
         });
         // Bottom line
@@ -326,8 +340,24 @@ ${proposal.tenant.name}`;
             .fillColor(primaryColor)
             .text('Total:', rightX, y)
             .text(this.formatCurrency(proposal.total), 490, y, { align: 'right' });
+        // Monthly payment display for monthly services
+        const monthlyServices = proposal.services.filter(s => s.frequency === 'MONTHLY');
+        if (monthlyServices.length > 0) {
+            const monthlyTotal = monthlyServices.reduce((sum, s) => sum + s.total, 0);
+            const monthlyVat = monthlyTotal * 0.2;
+            const monthlyWithVat = monthlyTotal + monthlyVat;
+            y += 35;
+            doc.fontSize(12)
+                .fillColor(primaryColor)
+                .text('Monthly Payment:', rightX, y)
+                .text(this.formatCurrency(monthlyWithVat), 490, y, { align: 'right' });
+            y += 18;
+            doc.fontSize(9)
+                .fillColor('#888888')
+                .text(`(${monthlyServices.length} monthly service${monthlyServices.length > 1 ? 's' : ''})`, rightX, y);
+        }
         // Payment terms
-        y += 40;
+        y += 30;
         doc.fontSize(10)
             .fillColor('#666666')
             .text(`Payment Terms: ${proposal.paymentTerms}`, rightX, y);
@@ -422,4 +452,6 @@ ${proposal.tenant.name}`;
         });
     }
 }
-export default PDFGenerator;
+exports.PDFGenerator = PDFGenerator;
+exports.default = PDFGenerator;
+//# sourceMappingURL=pdfGenerator.js.map

@@ -1,11 +1,18 @@
+"use strict";
 /**
  * Companies House API Integration
  * Provides company lookup and details retrieval
  * https://developer.company-information.service.gov.uk/
  */
-import logger from '../config/logger.js';
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.CompaniesHouseService = void 0;
+exports.createCompaniesHouseService = createCompaniesHouseService;
+const logger_js_1 = __importDefault(require("../config/logger.js"));
 const COMPANIES_HOUSE_API_URL = 'https://api.company-information.service.gov.uk';
-export class CompaniesHouseService {
+class CompaniesHouseService {
     constructor(config) {
         this.apiKey = config.apiKey;
     }
@@ -31,7 +38,7 @@ export class CompaniesHouseService {
             return data.items || [];
         }
         catch (error) {
-            logger.error('Companies House search error:', error);
+            logger_js_1.default.error('Companies House search error:', error);
             throw error;
         }
     }
@@ -62,7 +69,7 @@ export class CompaniesHouseService {
             return data;
         }
         catch (error) {
-            logger.error('Companies House get details error:', error);
+            logger_js_1.default.error('Companies House get details error:', error);
             throw error;
         }
     }
@@ -117,13 +124,15 @@ export class CompaniesHouseService {
         return typeMap[chType] || 'LIMITED_COMPANY';
     }
 }
+exports.CompaniesHouseService = CompaniesHouseService;
 // Factory function for creating service from environment
-export function createCompaniesHouseService() {
+function createCompaniesHouseService() {
     const apiKey = process.env.COMPANIES_HOUSE_API_KEY;
     if (!apiKey) {
-        logger.warn('Companies House API key not configured');
+        logger_js_1.default.warn('Companies House API key not configured');
         return null;
     }
     return new CompaniesHouseService({ apiKey });
 }
-export default CompaniesHouseService;
+exports.default = CompaniesHouseService;
+//# sourceMappingURL=companiesHouse.js.map

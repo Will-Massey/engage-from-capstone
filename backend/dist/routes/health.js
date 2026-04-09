@@ -1,18 +1,37 @@
+"use strict";
 /**
  * Health Check Routes
  */
-import { Router } from 'express';
-import { PrismaClient } from '@prisma/client';
-const router = Router();
-const prisma = new PrismaClient();
+Object.defineProperty(exports, "__esModule", { value: true });
+const express_1 = require("express");
+const client_1 = require("@prisma/client");
+const router = (0, express_1.Router)();
+const prisma = new client_1.PrismaClient();
 // Root health endpoint (for Render and load balancers)
 router.get('/', async (_req, res) => {
     try {
         await prisma.$queryRaw `SELECT 1`;
+        // Check tenant configuration
+        const tenant = await prisma.tenant.findFirst({
+            where: { subdomain: 'demo' },
+        });
+        if (!tenant) {
+            res.status(503).json({
+                status: 'unhealthy',
+                timestamp: new Date().toISOString(),
+                error: 'Tenant not configured',
+            });
+            return;
+        }
         res.status(200).json({
             status: 'healthy',
             timestamp: new Date().toISOString(),
             version: process.env.npm_package_version || 'unknown',
+            tenant: {
+                id: tenant.id,
+                name: tenant.name,
+                subdomain: tenant.subdomain,
+            },
         });
     }
     catch (error) {
@@ -59,4 +78,5 @@ router.get('/ready', async (_req, res) => {
 router.get('/live', (_req, res) => {
     res.status(200).json({ alive: true });
 });
-export default router;
+exports.default = router;
+//# sourceMappingURL=health.js.map

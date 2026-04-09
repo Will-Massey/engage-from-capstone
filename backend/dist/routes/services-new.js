@@ -1,39 +1,41 @@
+"use strict";
 /**
  * Enhanced Services Routes
  * Billing cycles, VAT rates, and pre-planned services
  */
-import { Router } from 'express';
-import { z } from 'zod';
-import { prisma } from '../config/database.js';
-import { asyncHandler, ApiError } from '../middleware/errorHandler.js';
-import { authenticate } from '../middleware/auth.js';
-import { billingCycles, vatRates, allServices, serviceCategories, } from '../data/ukAccountancyServices.js';
-const router = Router();
+Object.defineProperty(exports, "__esModule", { value: true });
+const express_1 = require("express");
+const zod_1 = require("zod");
+const database_js_1 = require("../config/database.js");
+const errorHandler_js_1 = require("../middleware/errorHandler.js");
+const auth_js_1 = require("../middleware/auth.js");
+const ukAccountancyServices_js_1 = require("../data/ukAccountancyServices.js");
+const router = (0, express_1.Router)();
 // Get billing cycle options
-router.get('/billing-cycles', asyncHandler(async (req, res) => {
+router.get('/billing-cycles', (0, errorHandler_js_1.asyncHandler)(async (req, res) => {
     res.json({
         success: true,
-        data: billingCycles,
+        data: ukAccountancyServices_js_1.billingCycles,
     });
 }));
 // Get VAT rate options
-router.get('/vat-rates', asyncHandler(async (req, res) => {
+router.get('/vat-rates', (0, errorHandler_js_1.asyncHandler)(async (req, res) => {
     res.json({
         success: true,
-        data: vatRates,
+        data: ukAccountancyServices_js_1.vatRates,
     });
 }));
 // Get pre-planned service categories
-router.get('/categories', asyncHandler(async (req, res) => {
+router.get('/categories', (0, errorHandler_js_1.asyncHandler)(async (req, res) => {
     res.json({
         success: true,
-        data: serviceCategories,
+        data: ukAccountancyServices_js_1.serviceCategories,
     });
 }));
 // Get pre-planned services catalog
-router.get('/catalog', authenticate, asyncHandler(async (req, res) => {
+router.get('/catalog', auth_js_1.authenticate, (0, errorHandler_js_1.asyncHandler)(async (req, res) => {
     const { category, entityType } = req.query;
-    let services = allServices;
+    let services = ukAccountancyServices_js_1.allServices;
     // Filter by category if provided
     if (category) {
         services = services.filter((s) => s.category === category);
@@ -52,30 +54,30 @@ router.get('/catalog', authenticate, asyncHandler(async (req, res) => {
     });
 }));
 // Import service from catalog to tenant
-router.post('/import-from-catalog', authenticate, asyncHandler(async (req, res) => {
-    const schema = z.object({
-        serviceName: z.string(),
-        customBasePrice: z.number().optional(),
+router.post('/import-from-catalog', auth_js_1.authenticate, (0, errorHandler_js_1.asyncHandler)(async (req, res) => {
+    const schema = zod_1.z.object({
+        serviceName: zod_1.z.string(),
+        customBasePrice: zod_1.z.number().optional(),
     });
     const { serviceName, customBasePrice } = schema.parse(req.body);
     const tenantId = req.tenantId;
     // Find service in catalog
-    const catalogService = allServices.find((s) => s.name === serviceName);
+    const catalogService = ukAccountancyServices_js_1.allServices.find((s) => s.name === serviceName);
     if (!catalogService) {
-        throw new ApiError('SERVICE_NOT_FOUND', 'Service not found in catalog', 404);
+        throw new errorHandler_js_1.ApiError('SERVICE_NOT_FOUND', 'Service not found in catalog', 404);
     }
     // Check if service already exists for tenant
-    const existing = await prisma.serviceTemplate.findFirst({
+    const existing = await database_js_1.prisma.serviceTemplate.findFirst({
         where: {
             tenantId,
             name: catalogService.name,
         },
     });
     if (existing) {
-        throw new ApiError('SERVICE_EXISTS', 'Service already exists in your practice', 409);
+        throw new errorHandler_js_1.ApiError('SERVICE_EXISTS', 'Service already exists in your practice', 409);
     }
     // Create service from catalog
-    const service = await prisma.serviceTemplate.create({
+    const service = await database_js_1.prisma.serviceTemplate.create({
         data: {
             tenantId,
             category: catalogService.category,
@@ -108,13 +110,13 @@ router.post('/import-from-catalog', authenticate, asyncHandler(async (req, res) 
     });
 }));
 // Bulk import services from catalog
-router.post('/bulk-import-catalog', authenticate, asyncHandler(async (req, res) => {
-    const schema = z.object({
-        category: z.string().optional(),
+router.post('/bulk-import-catalog', auth_js_1.authenticate, (0, errorHandler_js_1.asyncHandler)(async (req, res) => {
+    const schema = zod_1.z.object({
+        category: zod_1.z.string().optional(),
     });
     const { category } = schema.parse(req.body);
     const tenantId = req.tenantId;
-    let servicesToImport = allServices;
+    let servicesToImport = ukAccountancyServices_js_1.allServices;
     if (category) {
         servicesToImport = servicesToImport.filter((s) => s.category === category);
     }
@@ -126,7 +128,7 @@ router.post('/bulk-import-catalog', authenticate, asyncHandler(async (req, res) 
     for (const catalogService of servicesToImport) {
         try {
             // Check if exists
-            const existing = await prisma.serviceTemplate.findFirst({
+            const existing = await database_js_1.prisma.serviceTemplate.findFirst({
                 where: {
                     tenantId,
                     name: catalogService.name,
@@ -137,7 +139,7 @@ router.post('/bulk-import-catalog', authenticate, asyncHandler(async (req, res) 
                 continue;
             }
             // Create service
-            await prisma.serviceTemplate.create({
+            await database_js_1.prisma.serviceTemplate.create({
                 data: {
                     tenantId,
                     category: catalogService.category,
@@ -176,19 +178,19 @@ router.post('/bulk-import-catalog', authenticate, asyncHandler(async (req, res) 
     });
 }));
 // Update service billing and VAT settings
-router.put('/:id/billing-vat', authenticate, asyncHandler(async (req, res) => {
-    const schema = z.object({
-        billingCycle: z.enum(['FIXED_DATE', 'WEEKLY', 'MONTHLY', 'QUARTERLY', 'ANNUALLY']),
-        vatRate: z.enum(['ZERO', 'REDUCED_5', 'STANDARD_20', 'EXEMPT']),
-        isVatApplicable: z.boolean(),
-        fixedBillingDate: z.string().datetime().optional(),
-        billingDayOfMonth: z.number().min(1).max(31).optional(),
-        annualEquivalent: z.number().optional(),
+router.put('/:id/billing-vat', auth_js_1.authenticate, (0, errorHandler_js_1.asyncHandler)(async (req, res) => {
+    const schema = zod_1.z.object({
+        billingCycle: zod_1.z.enum(['FIXED_DATE', 'WEEKLY', 'MONTHLY', 'QUARTERLY', 'ANNUALLY']),
+        vatRate: zod_1.z.enum(['ZERO', 'REDUCED_5', 'STANDARD_20', 'EXEMPT']),
+        isVatApplicable: zod_1.z.boolean(),
+        fixedBillingDate: zod_1.z.string().datetime().optional(),
+        billingDayOfMonth: zod_1.z.number().min(1).max(31).optional(),
+        annualEquivalent: zod_1.z.number().optional(),
     });
     const data = schema.parse(req.body);
     const { id } = req.params;
     const tenantId = req.tenantId;
-    const service = await prisma.serviceTemplate.updateMany({
+    const service = await database_js_1.prisma.serviceTemplate.updateMany({
         where: {
             id,
             tenantId,
@@ -203,11 +205,12 @@ router.put('/:id/billing-vat', authenticate, asyncHandler(async (req, res) => {
         },
     });
     if (service.count === 0) {
-        throw new ApiError('SERVICE_NOT_FOUND', 'Service not found', 404);
+        throw new errorHandler_js_1.ApiError('SERVICE_NOT_FOUND', 'Service not found', 404);
     }
     res.json({
         success: true,
         message: 'Billing and VAT settings updated',
     });
 }));
-export default router;
+exports.default = router;
+//# sourceMappingURL=services-new.js.map

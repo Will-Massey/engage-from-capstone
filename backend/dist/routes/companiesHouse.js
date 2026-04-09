@@ -1,28 +1,35 @@
+"use strict";
 /**
  * Companies House API Routes
  * Provides company search and lookup endpoints
  */
-import { Router } from 'express';
-import { z } from 'zod';
-import { authenticate } from '../middleware/auth.js';
-import { asyncHandler, ApiError } from '../middleware/errorHandler.js';
-import { createCompaniesHouseService } from '../services/companiesHouse.js';
-import logger from '../config/logger.js';
-const router = Router();
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
+Object.defineProperty(exports, "__esModule", { value: true });
+const express_1 = require("express");
+const zod_1 = require("zod");
+const auth_js_1 = require("../middleware/auth.js");
+const errorHandler_js_1 = require("../middleware/errorHandler.js");
+const companiesHouse_js_1 = require("../services/companiesHouse.js");
+const logger_js_1 = __importDefault(require("../config/logger.js"));
+const router = (0, express_1.Router)();
 /**
  * GET /api/companies-house/search
  * Search for companies by name or number
  */
-router.get('/search', authenticate, asyncHandler(async (req, res) => {
-    const schema = z.object({
-        q: z.string().min(1).max(100),
-        limit: z.string().regex(/^\d+$/).transform(Number).default('10'),
+router.get('/search', auth_js_1.authenticate, (0, errorHandler_js_1.asyncHandler)(async (req, res) => {
+    const schema = zod_1.z.object({
+        q: zod_1.z.string().min(1).max(100),
+        limit: zod_1.z.string().regex(/^\d+$/).transform(Number).default('10'),
     });
     const { q, limit } = schema.parse(req.query);
+    logger_js_1.default.info(`Companies House search for: ${q}, tenant: ${req.tenantId}`);
     // Check if service is configured
-    const chService = createCompaniesHouseService();
+    const chService = (0, companiesHouse_js_1.createCompaniesHouseService)();
     if (!chService) {
-        throw new ApiError('NOT_CONFIGURED', 'Companies House API not configured. Please set COMPANIES_HOUSE_API_KEY environment variable.', 503);
+        logger_js_1.default.error('Companies House API key not configured');
+        throw new errorHandler_js_1.ApiError('NOT_CONFIGURED', 'Companies House API not configured. Please set COMPANIES_HOUSE_API_KEY environment variable.', 503);
     }
     try {
         const results = await chService.searchCompanies(q, limit);
@@ -40,23 +47,23 @@ router.get('/search', authenticate, asyncHandler(async (req, res) => {
         });
     }
     catch (error) {
-        logger.error('Companies House search error:', error);
-        throw new ApiError('SEARCH_FAILED', error.message || 'Failed to search Companies House', 500);
+        logger_js_1.default.error('Companies House search error:', error);
+        throw new errorHandler_js_1.ApiError('SEARCH_FAILED', error.message || 'Failed to search Companies House', 500);
     }
 }));
 /**
  * GET /api/companies-house/company/:number
  * Get detailed company information
  */
-router.get('/company/:number', authenticate, asyncHandler(async (req, res) => {
-    const schema = z.object({
-        number: z.string().regex(/^[A-Za-z0-9]{6,8}$/, 'Invalid company number format'),
+router.get('/company/:number', auth_js_1.authenticate, (0, errorHandler_js_1.asyncHandler)(async (req, res) => {
+    const schema = zod_1.z.object({
+        number: zod_1.z.string().regex(/^[A-Za-z0-9]{6,8}$/, 'Invalid company number format'),
     });
     const { number } = schema.parse(req.params);
     // Check if service is configured
-    const chService = createCompaniesHouseService();
+    const chService = (0, companiesHouse_js_1.createCompaniesHouseService)();
     if (!chService) {
-        throw new ApiError('NOT_CONFIGURED', 'Companies House API not configured', 503);
+        throw new errorHandler_js_1.ApiError('NOT_CONFIGURED', 'Companies House API not configured', 503);
     }
     try {
         const company = await chService.getCompanyDetails(number);
@@ -70,19 +77,19 @@ router.get('/company/:number', authenticate, asyncHandler(async (req, res) => {
         });
     }
     catch (error) {
-        logger.error('Companies House get details error:', error);
+        logger_js_1.default.error('Companies House get details error:', error);
         if (error.message === 'Company not found') {
-            throw new ApiError('COMPANY_NOT_FOUND', 'Company not found', 404);
+            throw new errorHandler_js_1.ApiError('COMPANY_NOT_FOUND', 'Company not found', 404);
         }
-        throw new ApiError('FETCH_FAILED', error.message || 'Failed to fetch company details', 500);
+        throw new errorHandler_js_1.ApiError('FETCH_FAILED', error.message || 'Failed to fetch company details', 500);
     }
 }));
 /**
  * GET /api/companies-house/status
  * Check if Companies House API is configured and working
  */
-router.get('/status', authenticate, asyncHandler(async (req, res) => {
-    const chService = createCompaniesHouseService();
+router.get('/status', auth_js_1.authenticate, (0, errorHandler_js_1.asyncHandler)(async (req, res) => {
+    const chService = (0, companiesHouse_js_1.createCompaniesHouseService)();
     if (!chService) {
         res.json({
             success: true,
@@ -116,4 +123,5 @@ router.get('/status', authenticate, asyncHandler(async (req, res) => {
         });
     }
 }));
-export default router;
+exports.default = router;
+//# sourceMappingURL=companiesHouse.js.map

@@ -1,55 +1,60 @@
-import { Router } from 'express';
-import { z } from 'zod';
-import bcrypt from 'bcryptjs';
-import { prisma } from '../config/database.js';
-import { asyncHandler, ApiError } from '../middleware/errorHandler.js';
-import { generateToken, authenticate } from '../middleware/auth.js';
-const router = Router();
+"use strict";
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
+Object.defineProperty(exports, "__esModule", { value: true });
+const express_1 = require("express");
+const zod_1 = require("zod");
+const bcryptjs_1 = __importDefault(require("bcryptjs"));
+const database_js_1 = require("../config/database.js");
+const errorHandler_js_1 = require("../middleware/errorHandler.js");
+const auth_js_1 = require("../middleware/auth.js");
+const router = (0, express_1.Router)();
 // Validation schemas
-const createTenantSchema = z.object({
-    subdomain: z.string()
+const createTenantSchema = zod_1.z.object({
+    subdomain: zod_1.z.string()
         .min(3, 'Subdomain must be at least 3 characters')
         .max(30, 'Subdomain must be at most 30 characters')
         .regex(/^[a-z0-9-]+$/, 'Subdomain can only contain lowercase letters, numbers, and hyphens'),
-    name: z.string().min(1, 'Company name is required'),
-    adminEmail: z.string().email('Invalid admin email'),
-    adminFirstName: z.string().min(1, 'Admin first name is required'),
-    adminLastName: z.string().min(1, 'Admin last name is required'),
-    adminPassword: z.string().min(8, 'Password must be at least 8 characters'),
-    primaryColor: z.string().regex(/^#[0-9A-Fa-f]{6}$/).optional(),
-    settings: z.object({
-        defaultCurrency: z.string().default('GBP'),
-        vatRegistered: z.boolean().default(true),
-        professionalBody: z.enum(['ACCA', 'ICAEW', 'AAT', 'CIMA', 'ICAS', 'CTA', 'CPAA']).optional(),
-        companyRegistration: z.string().optional(),
-        vatNumber: z.string().optional(),
-        address: z.object({
-            line1: z.string(),
-            line2: z.string().optional(),
-            city: z.string(),
-            postcode: z.string(),
-            country: z.string().default('United Kingdom'),
+    name: zod_1.z.string().min(1, 'Company name is required'),
+    adminEmail: zod_1.z.string().email('Invalid admin email'),
+    adminFirstName: zod_1.z.string().min(1, 'Admin first name is required'),
+    adminLastName: zod_1.z.string().min(1, 'Admin last name is required'),
+    adminPassword: zod_1.z.string().min(8, 'Password must be at least 8 characters'),
+    primaryColor: zod_1.z.string().regex(/^#[0-9A-Fa-f]{6}$/).optional(),
+    settings: zod_1.z.object({
+        defaultCurrency: zod_1.z.string().default('GBP'),
+        vatRegistered: zod_1.z.boolean().default(true),
+        professionalBody: zod_1.z.enum(['ACCA', 'ICAEW', 'AAT', 'CIMA', 'ICAS', 'CTA', 'CPAA']).optional(),
+        companyRegistration: zod_1.z.string().optional(),
+        vatNumber: zod_1.z.string().optional(),
+        address: zod_1.z.object({
+            line1: zod_1.z.string(),
+            line2: zod_1.z.string().optional(),
+            city: zod_1.z.string(),
+            postcode: zod_1.z.string(),
+            country: zod_1.z.string().default('United Kingdom'),
         }).optional(),
     }).optional(),
 });
-const updateTenantSchema = z.object({
-    name: z.string().min(1).optional(),
-    logo: z.string().optional(),
-    primaryColor: z.string().regex(/^#[0-9A-Fa-f]{6}$/).optional(),
-    secondaryColor: z.string().regex(/^#[0-9A-Fa-f]{6}$/).optional(),
-    settings: z.object({
-        defaultCurrency: z.string().optional(),
-        defaultPaymentTerms: z.number().optional(),
-        vatRegistered: z.boolean().optional(),
-        professionalBody: z.enum(['ACCA', 'ICAEW', 'AAT', 'CIMA', 'ICAS', 'CTA', 'CPAA']).optional(),
-        companyRegistration: z.string().optional(),
-        vatNumber: z.string().optional(),
-        address: z.object({
-            line1: z.string(),
-            line2: z.string().optional(),
-            city: z.string(),
-            postcode: z.string(),
-            country: z.string(),
+const updateTenantSchema = zod_1.z.object({
+    name: zod_1.z.string().min(1).optional(),
+    logo: zod_1.z.string().optional(),
+    primaryColor: zod_1.z.string().regex(/^#[0-9A-Fa-f]{6}$/).optional(),
+    secondaryColor: zod_1.z.string().regex(/^#[0-9A-Fa-f]{6}$/).optional(),
+    settings: zod_1.z.object({
+        defaultCurrency: zod_1.z.string().optional(),
+        defaultPaymentTerms: zod_1.z.number().optional(),
+        vatRegistered: zod_1.z.boolean().optional(),
+        professionalBody: zod_1.z.enum(['ACCA', 'ICAEW', 'AAT', 'CIMA', 'ICAS', 'CTA', 'CPAA']).optional(),
+        companyRegistration: zod_1.z.string().optional(),
+        vatNumber: zod_1.z.string().optional(),
+        address: zod_1.z.object({
+            line1: zod_1.z.string(),
+            line2: zod_1.z.string().optional(),
+            city: zod_1.z.string(),
+            postcode: zod_1.z.string(),
+            country: zod_1.z.string(),
         }).optional(),
     }).optional(),
 });
@@ -57,26 +62,26 @@ const updateTenantSchema = z.object({
  * POST /api/tenants
  * Create new tenant (public endpoint for onboarding)
  */
-router.post('/', asyncHandler(async (req, res) => {
+router.post('/', (0, errorHandler_js_1.asyncHandler)(async (req, res) => {
     const data = createTenantSchema.parse(req.body);
     // Check subdomain availability
-    const existingTenant = await prisma.tenant.findUnique({
+    const existingTenant = await database_js_1.prisma.tenant.findUnique({
         where: { subdomain: data.subdomain },
     });
     if (existingTenant) {
-        throw new ApiError('SUBDOMAIN_TAKEN', 'This subdomain is already in use', 409);
+        throw new errorHandler_js_1.ApiError('SUBDOMAIN_TAKEN', 'This subdomain is already in use', 409);
     }
     // Check if email already exists
-    const existingUser = await prisma.user.findFirst({
+    const existingUser = await database_js_1.prisma.user.findFirst({
         where: { email: data.adminEmail.toLowerCase() },
     });
     if (existingUser) {
-        throw new ApiError('EMAIL_EXISTS', 'An account with this email already exists', 409);
+        throw new errorHandler_js_1.ApiError('EMAIL_EXISTS', 'An account with this email already exists', 409);
     }
     // Hash password
-    const passwordHash = await bcrypt.hash(data.adminPassword, 12);
+    const passwordHash = await bcryptjs_1.default.hash(data.adminPassword, 12);
     // Create tenant and admin user in transaction
-    const result = await prisma.$transaction(async (tx) => {
+    const result = await database_js_1.prisma.$transaction(async (tx) => {
         // Create tenant
         const tenant = await tx.tenant.create({
             data: {
@@ -103,7 +108,7 @@ router.post('/', asyncHandler(async (req, res) => {
         return { tenant, user };
     });
     // Generate token
-    const token = generateToken({
+    const token = (0, auth_js_1.generateToken)({
         id: result.user.id,
         email: result.user.email,
         firstName: result.user.firstName,
@@ -136,7 +141,7 @@ router.post('/', asyncHandler(async (req, res) => {
  * GET /api/tenants/check-subdomain/:subdomain
  * Check if subdomain is available
  */
-router.get('/check-subdomain/:subdomain', asyncHandler(async (req, res) => {
+router.get('/check-subdomain/:subdomain', (0, errorHandler_js_1.asyncHandler)(async (req, res) => {
     const { subdomain } = req.params;
     // Validate subdomain format
     const subdomainRegex = /^[a-z0-9-]{3,30}$/;
@@ -150,7 +155,7 @@ router.get('/check-subdomain/:subdomain', asyncHandler(async (req, res) => {
         });
         return;
     }
-    const existing = await prisma.tenant.findUnique({
+    const existing = await database_js_1.prisma.tenant.findUnique({
         where: { subdomain },
     });
     res.json({
@@ -165,7 +170,7 @@ router.get('/check-subdomain/:subdomain', asyncHandler(async (req, res) => {
  * GET /api/tenants/onboarding-status
  * Get tenant onboarding checklist
  */
-router.get('/onboarding-status', asyncHandler(async (req, res) => {
+router.get('/onboarding-status', (0, errorHandler_js_1.asyncHandler)(async (req, res) => {
     // This would typically be authenticated, but for demo we return mock data
     res.json({
         success: true,
@@ -390,9 +395,9 @@ async function createDefaultServices(tx, tenantId) {
  * GET /api/tenants/settings
  * Get tenant settings (authenticated)
  */
-router.get('/settings', authenticate, asyncHandler(async (req, res) => {
+router.get('/settings', auth_js_1.authenticate, (0, errorHandler_js_1.asyncHandler)(async (req, res) => {
     const tenantId = req.tenantId;
-    const tenant = await prisma.tenant.findUnique({
+    const tenant = await database_js_1.prisma.tenant.findUnique({
         where: { id: tenantId },
         select: {
             id: true,
@@ -408,7 +413,7 @@ router.get('/settings', authenticate, asyncHandler(async (req, res) => {
         },
     });
     if (!tenant) {
-        throw new ApiError('TENANT_NOT_FOUND', 'Tenant not found', 404);
+        throw new errorHandler_js_1.ApiError('TENANT_NOT_FOUND', 'Tenant not found', 404);
     }
     const settings = JSON.parse(tenant.settings || '{}');
     res.json({
@@ -434,71 +439,71 @@ router.get('/settings', authenticate, asyncHandler(async (req, res) => {
  * PUT /api/tenants/settings
  * Update tenant settings (authenticated)
  */
-router.put('/settings', authenticate, asyncHandler(async (req, res) => {
+router.put('/settings', auth_js_1.authenticate, (0, errorHandler_js_1.asyncHandler)(async (req, res) => {
     const tenantId = req.tenantId;
-    const schema = z.object({
-        vat: z.object({
-            vatRegistered: z.boolean().optional(),
-            vatNumber: z.string().optional(),
-            defaultVatRate: z.enum(['ZERO', 'REDUCED_5', 'STANDARD_20', 'EXEMPT']).optional(),
-            autoApplyVat: z.boolean().optional(),
+    const schema = zod_1.z.object({
+        vat: zod_1.z.object({
+            vatRegistered: zod_1.z.boolean().optional(),
+            vatNumber: zod_1.z.string().optional(),
+            defaultVatRate: zod_1.z.enum(['ZERO', 'REDUCED_5', 'STANDARD_20', 'EXEMPT']).optional(),
+            autoApplyVat: zod_1.z.boolean().optional(),
         }).optional(),
-        branding: z.object({
-            name: z.string().optional(),
-            logo: z.string().optional(),
-            primaryColor: z.string().regex(/^#[0-9A-Fa-f]{6}$/).optional(),
-            secondaryColor: z.string().regex(/^#[0-9A-Fa-f]{6}$/).optional(),
+        branding: zod_1.z.object({
+            name: zod_1.z.string().optional(),
+            logo: zod_1.z.string().optional(),
+            primaryColor: zod_1.z.string().regex(/^#[0-9A-Fa-f]{6}$/).optional(),
+            secondaryColor: zod_1.z.string().regex(/^#[0-9A-Fa-f]{6}$/).optional(),
         }).optional(),
-        email: z.object({
-            provider: z.enum(['smtp', 'gmail', 'outlook', 'microsoft365']).optional(),
-            fromName: z.string().optional(),
-            fromEmail: z.string().email().optional(),
-            smtp: z.object({
-                host: z.string(),
-                port: z.number(),
-                secure: z.boolean(),
-                user: z.string(),
-                pass: z.string(),
+        email: zod_1.z.object({
+            provider: zod_1.z.enum(['smtp', 'gmail', 'outlook', 'microsoft365']).optional(),
+            fromName: zod_1.z.string().optional(),
+            fromEmail: zod_1.z.string().email().optional(),
+            smtp: zod_1.z.object({
+                host: zod_1.z.string(),
+                port: zod_1.z.number(),
+                secure: zod_1.z.boolean(),
+                user: zod_1.z.string(),
+                pass: zod_1.z.string(),
             }).optional(),
-            gmail: z.object({
-                clientId: z.string(),
-                clientSecret: z.string(),
-                refreshToken: z.string(),
-                user: z.string().email(),
+            gmail: zod_1.z.object({
+                clientId: zod_1.z.string(),
+                clientSecret: zod_1.z.string(),
+                refreshToken: zod_1.z.string(),
+                user: zod_1.z.string().email(),
             }).optional(),
-            outlook: z.object({
-                clientId: z.string(),
-                clientSecret: z.string(),
-                refreshToken: z.string(),
-                user: z.string().email(),
+            outlook: zod_1.z.object({
+                clientId: zod_1.z.string(),
+                clientSecret: zod_1.z.string(),
+                refreshToken: zod_1.z.string(),
+                user: zod_1.z.string().email(),
             }).optional(),
         }).optional(),
-        notifications: z.object({
-            proposalAccepted: z.boolean().optional(),
-            proposalViewed: z.boolean().optional(),
-            mtditsaDeadlines: z.boolean().optional(),
-            weeklySummary: z.boolean().optional(),
+        notifications: zod_1.z.object({
+            proposalAccepted: zod_1.z.boolean().optional(),
+            proposalViewed: zod_1.z.boolean().optional(),
+            mtditsaDeadlines: zod_1.z.boolean().optional(),
+            weeklySummary: zod_1.z.boolean().optional(),
         }).optional(),
-        professionalBody: z.enum(['ACCA', 'ICAEW', 'ICAS', 'CIMA', 'AAT', 'CPAA', 'OTHER']).optional(),
-        companyRegistration: z.string().optional(),
-        phone: z.string().optional(),
-        website: z.string().optional(),
-        address: z.object({
-            line1: z.string(),
-            line2: z.string().optional(),
-            city: z.string(),
-            postcode: z.string(),
-            country: z.string(),
+        professionalBody: zod_1.z.enum(['ACCA', 'ICAEW', 'ICAS', 'CIMA', 'AAT', 'CPAA', 'OTHER']).optional(),
+        companyRegistration: zod_1.z.string().optional(),
+        phone: zod_1.z.string().optional(),
+        website: zod_1.z.string().optional(),
+        address: zod_1.z.object({
+            line1: zod_1.z.string(),
+            line2: zod_1.z.string().optional(),
+            city: zod_1.z.string(),
+            postcode: zod_1.z.string(),
+            country: zod_1.z.string(),
         }).optional(),
-        insurerName: z.string().optional(),
-        governingLaw: z.enum(['England and Wales', 'Scotland', 'Northern Ireland']).optional(),
-        fcaAuthorised: z.boolean().optional(),
-        privacyPolicyUrl: z.string().optional(),
-        termsVersion: z.string().optional(),
+        insurerName: zod_1.z.string().optional(),
+        governingLaw: zod_1.z.enum(['England and Wales', 'Scotland', 'Northern Ireland']).optional(),
+        fcaAuthorised: zod_1.z.boolean().optional(),
+        privacyPolicyUrl: zod_1.z.string().optional(),
+        termsVersion: zod_1.z.string().optional(),
     });
     const data = schema.parse(req.body);
     // Get current settings
-    const tenant = await prisma.tenant.findUnique({
+    const tenant = await database_js_1.prisma.tenant.findUnique({
         where: { id: tenantId },
         select: { settings: true },
     });
@@ -547,7 +552,7 @@ router.put('/settings', authenticate, asyncHandler(async (req, res) => {
         if (data.branding.secondaryColor !== undefined)
             updateData.secondaryColor = data.branding.secondaryColor;
     }
-    const updatedTenant = await prisma.tenant.update({
+    const updatedTenant = await database_js_1.prisma.tenant.update({
         where: { id: tenantId },
         data: updateData,
     });
@@ -570,4 +575,5 @@ router.put('/settings', authenticate, asyncHandler(async (req, res) => {
         message: 'Settings saved successfully',
     });
 }));
-export default router;
+exports.default = router;
+//# sourceMappingURL=tenants.js.map

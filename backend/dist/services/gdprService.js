@@ -1,15 +1,21 @@
+"use strict";
 /**
  * GDPR Compliance Service
  * Handles data deletion, export, and anonymization for UK GDPR compliance
  */
-import crypto from 'crypto';
-export class GDPRService {
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.gdprService = exports.GDPRService = void 0;
+const crypto_1 = __importDefault(require("crypto"));
+class GDPRService {
     /**
      * Anonymize user data instead of hard deletion
      * This maintains referential integrity while protecting privacy
      */
     async deleteUserData(userId, tenantId, prisma) {
-        const anonymizedId = `deleted_${crypto.randomUUID()}`;
+        const anonymizedId = `deleted_${crypto_1.default.randomUUID()}`;
         const deletedAt = new Date();
         // Fields that must be retained for legal/accounting purposes
         const retainedFields = [
@@ -167,5 +173,7 @@ export class GDPRService {
         return !!user?.deletedAt;
     }
 }
-export const gdprService = new GDPRService();
-export default gdprService;
+exports.GDPRService = GDPRService;
+exports.gdprService = new GDPRService();
+exports.default = exports.gdprService;
+//# sourceMappingURL=gdprService.js.map

@@ -43,8 +43,8 @@ const previewSchema = z.object({
   monthlyTotal: z.string().default('£450.00'),
   senderName: z.string().default('John Smith'),
   senderPosition: z.string().default('Senior Accountant'),
-  proposalReference: z.string().optional(),
-  proposalTitle: z.string().optional(),
+  proposalReference: z.string().optional().default(undefined),
+  proposalTitle: z.string().optional().default(undefined),
 });
 
 /**
@@ -132,7 +132,7 @@ router.post(
   authenticate,
   authorize('ADMIN', 'PARTNER', 'MANAGER', 'SENIOR'),
   asyncHandler(async (req, res) => {
-    const data = createTemplateSchema.parse(req.body);
+    const data = createTemplateSchema.parse(req.body) as { name: string; tone: any; content: string; isDefault?: boolean };
 
     const template = await createTemplate(req.tenantId!, data, req.user!.id);
 
@@ -215,7 +215,7 @@ router.post(
   authenticate,
   asyncHandler(async (req, res) => {
     const { id } = req.params;
-    const previewData = previewSchema.parse(req.body);
+    const previewData = previewSchema.parse(req.body) as { clientName: string; tenantName: string; serviceCount: number; monthlyTotal: string; senderName: string; senderPosition?: string; proposalReference?: string; proposalTitle?: string };
 
     const template = await getTemplateById(id, req.tenantId!);
 
@@ -249,8 +249,9 @@ router.post(
     });
 
     const { content, previewData } = schema.parse(req.body);
+    const typedPreviewData = previewData as { clientName: string; tenantName: string; serviceCount: number; monthlyTotal: string; senderName: string; senderPosition?: string; proposalReference?: string; proposalTitle?: string };
 
-    const rendered = renderCoverLetter(content, previewData);
+    const rendered = renderCoverLetter(content, typedPreviewData);
 
     res.json({
       success: true,

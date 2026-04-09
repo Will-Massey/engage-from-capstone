@@ -1,27 +1,32 @@
-import { Router } from 'express';
-import express from 'express';
-import { z } from 'zod';
-import { stripe, SUBSCRIPTION_TIERS } from '../config/stripe.js';
-import { prisma } from '../config/database.js';
-import { authenticate, authorize } from '../middleware/auth.js';
-import { asyncHandler, ApiError } from '../middleware/errorHandler.js';
-const router = Router();
+"use strict";
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
+Object.defineProperty(exports, "__esModule", { value: true });
+const express_1 = require("express");
+const express_2 = __importDefault(require("express"));
+const zod_1 = require("zod");
+const stripe_js_1 = require("../config/stripe.js");
+const database_js_1 = require("../config/database.js");
+const auth_js_1 = require("../middleware/auth.js");
+const errorHandler_js_1 = require("../middleware/errorHandler.js");
+const router = (0, express_1.Router)();
 // Helper to check if Stripe is configured
 const checkStripe = () => {
-    if (!stripe) {
-        throw new ApiError('STRIPE_NOT_CONFIGURED', 'Payments are not configured. Please contact support.', 503);
+    if (!stripe_js_1.stripe) {
+        throw new errorHandler_js_1.ApiError('STRIPE_NOT_CONFIGURED', 'Payments are not configured. Please contact support.', 503);
     }
 };
 /**
  * GET /api/payments/config
  * Get Stripe publishable key
  */
-router.get('/config', authenticate, asyncHandler(async (req, res) => {
+router.get('/config', auth_js_1.authenticate, (0, errorHandler_js_1.asyncHandler)(async (req, res) => {
     res.json({
         success: true,
         data: {
             publishableKey: process.env.STRIPE_PUBLISHABLE_KEY,
-            tiers: SUBSCRIPTION_TIERS,
+            tiers: stripe_js_1.SUBSCRIPTION_TIERS,
         },
     });
 }));
@@ -29,25 +34,25 @@ router.get('/config', authenticate, asyncHandler(async (req, res) => {
  * POST /api/payments/create-subscription
  * Create a subscription for the tenant
  */
-router.post('/create-subscription', authenticate, authorize('ADMIN', 'PARTNER'), asyncHandler(async (req, res) => {
+router.post('/create-subscription', auth_js_1.authenticate, (0, auth_js_1.authorize)('ADMIN', 'PARTNER'), (0, errorHandler_js_1.asyncHandler)(async (req, res) => {
     checkStripe();
-    const schema = z.object({
-        priceId: z.string(),
-        paymentMethodId: z.string(),
+    const schema = zod_1.z.object({
+        priceId: zod_1.z.string(),
+        paymentMethodId: zod_1.z.string(),
     });
     const { priceId, paymentMethodId } = schema.parse(req.body);
     const tenantId = req.tenantId;
     // Get tenant
-    const tenant = await prisma.tenant.findUnique({
+    const tenant = await database_js_1.prisma.tenant.findUnique({
         where: { id: tenantId },
     });
     if (!tenant) {
-        throw new ApiError('TENANT_NOT_FOUND', 'Tenant not found', 404);
+        throw new errorHandler_js_1.ApiError('TENANT_NOT_FOUND', 'Tenant not found', 404);
     }
     // Create or get Stripe customer
     let customerId = tenant.stripeCustomerId;
     if (!customerId) {
-        const customer = await stripe.customers.create({
+        const customer = await stripe_js_1.stripe.customers.create({
             name: tenant.name,
             metadata: {
                 tenantId: tenant.id,
@@ -55,23 +60,23 @@ router.post('/create-subscription', authenticate, authorize('ADMIN', 'PARTNER'),
         });
         customerId = customer.id;
         // Update tenant with Stripe customer ID
-        await prisma.tenant.update({
+        await database_js_1.prisma.tenant.update({
             where: { id: tenantId },
             data: { stripeCustomerId: customerId },
         });
     }
     // Attach payment method to customer
-    await stripe.paymentMethods.attach(paymentMethodId, {
+    await stripe_js_1.stripe.paymentMethods.attach(paymentMethodId, {
         customer: customerId,
     });
     // Set as default payment method
-    await stripe.customers.update(customerId, {
+    await stripe_js_1.stripe.customers.update(customerId, {
         invoice_settings: {
             default_payment_method: paymentMethodId,
         },
     });
     // Create subscription
-    const subscription = await stripe.subscriptions.create({
+    const subscription = await stripe_js_1.stripe.subscriptions.create({
         customer: customerId,
         items: [{ price: priceId }],
         payment_settings: {
@@ -86,7 +91,7 @@ router.post('/create-subscription', authenticate, authorize('ADMIN', 'PARTNER'),
         expand: ['latest_invoice.payment_intent'],
     });
     // Update tenant with subscription info
-    await prisma.tenant.update({
+    await database_js_1.prisma.tenant.update({
         where: { id: tenantId },
         data: {
             stripeSubscriptionId: subscription.id,
@@ -107,10 +112,10 @@ router.post('/create-subscription', authenticate, authorize('ADMIN', 'PARTNER'),
  * GET /api/payments/subscription
  * Get current subscription status
  */
-router.get('/subscription', authenticate, asyncHandler(async (req, res) => {
+router.get('/subscription', auth_js_1.authenticate, (0, errorHandler_js_1.asyncHandler)(async (req, res) => {
     checkStripe();
     const tenantId = req.tenantId;
-    const tenant = await prisma.tenant.findUnique({
+    const tenant = await database_js_1.prisma.tenant.findUnique({
         where: { id: tenantId },
         select: {
             stripeSubscriptionId: true,
@@ -130,7 +135,7 @@ router.get('/subscription', authenticate, asyncHandler(async (req, res) => {
         });
     }
     // Get subscription details from Stripe
-    const subscription = await stripe.subscriptions.retrieve(tenant.stripeSubscriptionId);
+    const subscription = await stripe_js_1.stripe.subscriptions.retrieve(tenant.stripeSubscriptionId);
     res.json({
         success: true,
         data: {
@@ -146,20 +151,20 @@ router.get('/subscription', authenticate, asyncHandler(async (req, res) => {
  * POST /api/payments/cancel-subscription
  * Cancel subscription at period end
  */
-router.post('/cancel-subscription', authenticate, authorize('ADMIN', 'PARTNER'), asyncHandler(async (req, res) => {
+router.post('/cancel-subscription', auth_js_1.authenticate, (0, auth_js_1.authorize)('ADMIN', 'PARTNER'), (0, errorHandler_js_1.asyncHandler)(async (req, res) => {
     checkStripe();
     const tenantId = req.tenantId;
-    const tenant = await prisma.tenant.findUnique({
+    const tenant = await database_js_1.prisma.tenant.findUnique({
         where: { id: tenantId },
         select: { stripeSubscriptionId: true },
     });
     if (!tenant?.stripeSubscriptionId) {
-        throw new ApiError('NO_SUBSCRIPTION', 'No active subscription found', 400);
+        throw new errorHandler_js_1.ApiError('NO_SUBSCRIPTION', 'No active subscription found', 400);
     }
     // Cancel at period end
-    const subscription = await stripe.subscriptions.update(tenant.stripeSubscriptionId, { cancel_at_period_end: true });
+    const subscription = await stripe_js_1.stripe.subscriptions.update(tenant.stripeSubscriptionId, { cancel_at_period_end: true });
     // Update tenant
-    await prisma.tenant.update({
+    await database_js_1.prisma.tenant.update({
         where: { id: tenantId },
         data: { subscriptionStatus: subscription.status },
     });
@@ -176,20 +181,20 @@ router.post('/cancel-subscription', authenticate, authorize('ADMIN', 'PARTNER'),
  * POST /api/payments/reactivate-subscription
  * Reactivate a cancelled subscription
  */
-router.post('/reactivate-subscription', authenticate, authorize('ADMIN', 'PARTNER'), asyncHandler(async (req, res) => {
+router.post('/reactivate-subscription', auth_js_1.authenticate, (0, auth_js_1.authorize)('ADMIN', 'PARTNER'), (0, errorHandler_js_1.asyncHandler)(async (req, res) => {
     checkStripe();
     const tenantId = req.tenantId;
-    const tenant = await prisma.tenant.findUnique({
+    const tenant = await database_js_1.prisma.tenant.findUnique({
         where: { id: tenantId },
         select: { stripeSubscriptionId: true },
     });
     if (!tenant?.stripeSubscriptionId) {
-        throw new ApiError('NO_SUBSCRIPTION', 'No subscription found', 400);
+        throw new errorHandler_js_1.ApiError('NO_SUBSCRIPTION', 'No subscription found', 400);
     }
     // Reactivate
-    const subscription = await stripe.subscriptions.update(tenant.stripeSubscriptionId, { cancel_at_period_end: false });
+    const subscription = await stripe_js_1.stripe.subscriptions.update(tenant.stripeSubscriptionId, { cancel_at_period_end: false });
     // Update tenant
-    await prisma.tenant.update({
+    await database_js_1.prisma.tenant.update({
         where: { id: tenantId },
         data: { subscriptionStatus: subscription.status },
     });
@@ -205,17 +210,17 @@ router.post('/reactivate-subscription', authenticate, authorize('ADMIN', 'PARTNE
  * POST /api/payments/create-setup-intent
  * Create setup intent for adding payment method
  */
-router.post('/create-setup-intent', authenticate, authorize('ADMIN', 'PARTNER'), asyncHandler(async (req, res) => {
+router.post('/create-setup-intent', auth_js_1.authenticate, (0, auth_js_1.authorize)('ADMIN', 'PARTNER'), (0, errorHandler_js_1.asyncHandler)(async (req, res) => {
     checkStripe();
     const tenantId = req.tenantId;
-    const tenant = await prisma.tenant.findUnique({
+    const tenant = await database_js_1.prisma.tenant.findUnique({
         where: { id: tenantId },
         select: { stripeCustomerId: true },
     });
     if (!tenant?.stripeCustomerId) {
-        throw new ApiError('NO_CUSTOMER', 'No Stripe customer found', 400);
+        throw new errorHandler_js_1.ApiError('NO_CUSTOMER', 'No Stripe customer found', 400);
     }
-    const setupIntent = await stripe.setupIntents.create({
+    const setupIntent = await stripe_js_1.stripe.setupIntents.create({
         customer: tenant.stripeCustomerId,
         payment_method_types: ['card'],
     });
@@ -230,20 +235,20 @@ router.post('/create-setup-intent', authenticate, authorize('ADMIN', 'PARTNER'),
  * POST /api/payments/webhook
  * Handle Stripe webhooks
  */
-router.post('/webhook', express.raw({ type: 'application/json' }), asyncHandler(async (req, res) => {
+router.post('/webhook', express_2.default.raw({ type: 'application/json' }), (0, errorHandler_js_1.asyncHandler)(async (req, res) => {
     checkStripe();
     const sig = req.headers['stripe-signature'];
     const endpointSecret = process.env.STRIPE_WEBHOOK_SECRET;
     if (!sig || !endpointSecret) {
-        throw new ApiError('INVALID_WEBHOOK', 'Invalid webhook configuration', 400);
+        throw new errorHandler_js_1.ApiError('INVALID_WEBHOOK', 'Invalid webhook configuration', 400);
     }
     let event;
     try {
-        event = stripe.webhooks.constructEvent(req.body, sig, endpointSecret);
+        event = stripe_js_1.stripe.webhooks.constructEvent(req.body, sig, endpointSecret);
     }
     catch (err) {
         console.error(`Webhook signature verification failed: ${err.message}`);
-        throw new ApiError('INVALID_SIGNATURE', 'Invalid signature', 400);
+        throw new errorHandler_js_1.ApiError('INVALID_SIGNATURE', 'Invalid signature', 400);
     }
     // Handle events
     switch (event.type) {
@@ -275,7 +280,7 @@ function getTierFromPriceId(priceId) {
 async function handlePaymentSucceeded(invoice) {
     const customerId = invoice.customer;
     // Update tenant payment status
-    await prisma.tenant.updateMany({
+    await database_js_1.prisma.tenant.updateMany({
         where: { stripeCustomerId: customerId },
         data: {
             lastPaymentStatus: 'succeeded',
@@ -285,7 +290,7 @@ async function handlePaymentSucceeded(invoice) {
 }
 async function handlePaymentFailed(invoice) {
     const customerId = invoice.customer;
-    await prisma.tenant.updateMany({
+    await database_js_1.prisma.tenant.updateMany({
         where: { stripeCustomerId: customerId },
         data: {
             lastPaymentStatus: 'failed',
@@ -295,7 +300,7 @@ async function handlePaymentFailed(invoice) {
 }
 async function handleSubscriptionDeleted(subscription) {
     const customerId = subscription.customer;
-    await prisma.tenant.updateMany({
+    await database_js_1.prisma.tenant.updateMany({
         where: { stripeCustomerId: customerId },
         data: {
             subscriptionStatus: 'cancelled',
@@ -306,11 +311,12 @@ async function handleSubscriptionDeleted(subscription) {
 }
 async function handleSubscriptionUpdated(subscription) {
     const customerId = subscription.customer;
-    await prisma.tenant.updateMany({
+    await database_js_1.prisma.tenant.updateMany({
         where: { stripeCustomerId: customerId },
         data: {
             subscriptionStatus: subscription.status,
         },
     });
 }
-export default router;
+exports.default = router;
+//# sourceMappingURL=payments.js.map

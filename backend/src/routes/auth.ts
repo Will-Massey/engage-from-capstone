@@ -4,8 +4,8 @@ import { z } from 'zod';
 import { prisma } from '../config/database.js';
 import { authenticate, authorize, generateToken, generateRefreshToken, generateCsrfToken } from '../middleware/auth.js';
 import { asyncHandler, ApiError } from '../middleware/errorHandler.js';
-import { twoFactorService } from '../services/twoFactorService.js';
-import { passwordResetService } from '../services/passwordResetService.js';
+// import { twoFactorService } from '../services/twoFactorService.js';
+// import { passwordResetService } from '../services/passwordResetService.js';
 import { gdprService } from '../services/gdprService.js';
 import { createEmailService } from '../services/emailService.js';
 
@@ -687,264 +687,82 @@ router.delete(
 );
 
 // ============================================================================
-// PASSWORD RESET
+// PASSWORD RESET - DISABLED (requires passwordReset model in schema)
 // ============================================================================
 
 /**
  * POST /api/auth/forgot-password
- * Request password reset email
+ * Request password reset email - DISABLED
  */
 router.post(
   '/forgot-password',
-  asyncHandler(async (req, res) => {
-    const { email } = z.object({
-      email: z.string().email('Invalid email address'),
-    }).parse(req.body);
-
-    // Find user (don't reveal if exists)
-    const user = await prisma.user.findFirst({
-      where: {
-        email: email.toLowerCase(),
-        isActive: true,
-      },
-    });
-
-    if (user) {
-      // Generate reset token
-      const { token, tokenHash, expiresAt } = passwordResetService.generateToken();
-
-      // Store token hash
-      await prisma.passwordReset.create({
-        data: {
-          tokenHash,
-          expiresAt,
-          userId: user.id,
-        },
-      });
-
-      // Send email with reset link
-      const resetUrl = `${process.env.FRONTEND_URL}/reset-password?token=${token}`;
-      
-      const emailService = createEmailService();
-      if (emailService) {
-        await emailService.sendEmail({
-          to: user.email,
-          subject: 'Password Reset Request',
-          html: `
-            <h1>Password Reset</h1>
-            <p>Click the link below to reset your password:</p>
-            <a href="${resetUrl}">Reset Password</a>
-            <p>This link expires in 15 minutes.</p>
-          `,
-        });
-      }
-    }
-
-    // Return same message regardless of user existence (security)
-    res.json({
-      success: true,
-      data: { message: 'If an account exists, a reset email has been sent' },
+  asyncHandler(async (_req, res) => {
+    res.status(501).json({
+      success: false,
+      error: { code: 'NOT_IMPLEMENTED', message: 'Password reset not implemented' },
     });
   })
 );
 
 /**
  * POST /api/auth/reset-password
- * Reset password with token
+ * Reset password with token - DISABLED
  */
 router.post(
   '/reset-password',
-  asyncHandler(async (req, res) => {
-    const { token, newPassword } = z.object({
-      token: z.string(),
-      newPassword: z.string().min(12, 'Password must be at least 12 characters'),
-    }).parse(req.body);
-
-    // Validate password strength
-    const validation = passwordResetService.validatePasswordStrength(newPassword);
-    if (!validation.isValid) {
-      throw new ApiError('WEAK_PASSWORD', validation.errors.join(', '), 400);
-    }
-
-    // Hash token and look up
-    const tokenHash = passwordResetService.hashToken(token);
-    
-    const resetRecord = await prisma.passwordReset.findFirst({
-      where: {
-        tokenHash,
-        expiresAt: { gt: new Date() },
-        usedAt: null,
-      },
-    });
-
-    if (!resetRecord) {
-      throw new ApiError('INVALID_TOKEN', 'Invalid or expired reset token', 400);
-    }
-
-    // Hash new password
-    const passwordHash = await bcrypt.hash(newPassword, 12);
-
-    // Update user password
-    await prisma.$transaction([
-      prisma.user.update({
-        where: { id: resetRecord.userId },
-        data: { passwordHash },
-      }),
-      prisma.passwordReset.update({
-        where: { id: resetRecord.id },
-        data: { usedAt: new Date() },
-      }),
-      // Invalidate all refresh tokens
-      prisma.refreshToken.deleteMany({
-        where: { userId: resetRecord.userId },
-      }),
-    ]);
-
-    res.json({
-      success: true,
-      data: { message: 'Password reset successfully' },
+  asyncHandler(async (_req, res) => {
+    res.status(501).json({
+      success: false,
+      error: { code: 'NOT_IMPLEMENTED', message: 'Password reset not implemented' },
     });
   })
 );
 
 // ============================================================================
-// TWO-FACTOR AUTHENTICATION
+// TWO-FACTOR AUTHENTICATION - DISABLED (requires 2FA models in schema)
 // ============================================================================
 
 /**
  * POST /api/auth/2fa/setup
- * Setup 2FA for user
+ * Setup 2FA for user - DISABLED
  */
 router.post(
   '/2fa/setup',
   authenticate,
-  asyncHandler(async (req, res) => {
-    const user = await prisma.user.findUnique({
-      where: { id: req.user!.id },
-    });
-
-    if (!user) {
-      throw new ApiError('USER_NOT_FOUND', 'User not found', 404);
-    }
-
-    // Generate 2FA secret
-    const setup = await twoFactorService.generateSecret(user.id, user.email);
-
-    // Store encrypted secret (not enabled yet - needs verification)
-    await prisma.user.update({
-      where: { id: user.id },
-      data: {
-        twoFactorSecret: setup.secret,
-        twoFactorEnabled: false,
-      },
-    });
-
-    // Store backup codes
-    await prisma.twoFactorBackupCode.createMany({
-      data: setup.backupCodes.map(code => ({
-        userId: user.id,
-        codeHash: code, // In production, hash these
-      })),
-    });
-
-    res.json({
-      success: true,
-      data: {
-        qrCodeUrl: setup.qrCodeUrl,
-        secret: setup.secret,
-        backupCodes: setup.backupCodes,
-      },
+  asyncHandler(async (_req, res) => {
+    res.status(501).json({
+      success: false,
+      error: { code: 'NOT_IMPLEMENTED', message: '2FA not implemented' },
     });
   })
 );
 
 /**
  * POST /api/auth/2fa/verify
- * Verify 2FA token and enable 2FA
+ * Verify 2FA token and enable 2FA - DISABLED
  */
 router.post(
   '/2fa/verify',
   authenticate,
-  asyncHandler(async (req, res) => {
-    const { token } = z.object({
-      token: z.string().length(6, 'Token must be 6 digits'),
-    }).parse(req.body);
-
-    const user = await prisma.user.findUnique({
-      where: { id: req.user!.id },
-    });
-
-    if (!user || !user.twoFactorSecret) {
-      throw new ApiError('2FA_NOT_SETUP', '2FA not set up', 400);
-    }
-
-    // Verify token
-    const isValid = twoFactorService.verifyToken(user.twoFactorSecret, token);
-
-    if (!isValid) {
-      throw new ApiError('INVALID_TOKEN', 'Invalid 2FA token', 400);
-    }
-
-    // Enable 2FA
-    await prisma.user.update({
-      where: { id: user.id },
-      data: {
-        twoFactorEnabled: true,
-        twoFactorVerified: true,
-      },
-    });
-
-    res.json({
-      success: true,
-      data: { message: '2FA enabled successfully' },
+  asyncHandler(async (_req, res) => {
+    res.status(501).json({
+      success: false,
+      error: { code: 'NOT_IMPLEMENTED', message: '2FA not implemented' },
     });
   })
 );
 
 /**
  * POST /api/auth/2fa/disable
- * Disable 2FA
+ * Disable 2FA - DISABLED
  */
 router.post(
   '/2fa/disable',
   authenticate,
-  asyncHandler(async (req, res) => {
-    const { password } = z.object({
-      password: z.string(),
-    }).parse(req.body);
-
-    const user = await prisma.user.findUnique({
-      where: { id: req.user!.id },
-    });
-
-    if (!user) {
-      throw new ApiError('USER_NOT_FOUND', 'User not found', 404);
-    }
-
-    // Verify password
-    const isValidPassword = await bcrypt.compare(password, user.passwordHash);
-    if (!isValidPassword) {
-      throw new ApiError('INVALID_PASSWORD', 'Invalid password', 400);
-    }
-
-    // Disable 2FA and clear secret
-    await prisma.$transaction([
-      prisma.user.update({
-        where: { id: user.id },
-        data: {
-          twoFactorSecret: null,
-          twoFactorEnabled: false,
-          twoFactorVerified: false,
-        },
-      }),
-      prisma.twoFactorBackupCode.deleteMany({
-        where: { userId: user.id },
-      }),
-    ]);
-
-    res.json({
-      success: true,
-      data: { message: '2FA disabled successfully' },
+  asyncHandler(async (_req, res) => {
+    res.status(501).json({
+      success: false,
+      error: { code: 'NOT_IMPLEMENTED', message: '2FA not implemented' },
     });
   })
 );

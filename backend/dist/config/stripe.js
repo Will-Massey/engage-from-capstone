@@ -1,25 +1,31 @@
-import Stripe from 'stripe';
+"use strict";
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.SUBSCRIPTION_TIERS = exports.STRIPE_PRICE_IDS = exports.stripe = void 0;
+const stripe_1 = __importDefault(require("stripe"));
 const STRIPE_SECRET_KEY = process.env.STRIPE_SECRET_KEY;
 // Make Stripe optional - app can start without payments configured
-export const stripe = STRIPE_SECRET_KEY
-    ? new Stripe(STRIPE_SECRET_KEY, {
+exports.stripe = STRIPE_SECRET_KEY
+    ? new stripe_1.default(STRIPE_SECRET_KEY, {
         apiVersion: '2025-02-24.acacia',
         typescript: true,
     })
     : null;
 // Price IDs for different plans
-export const STRIPE_PRICE_IDS = {
+exports.STRIPE_PRICE_IDS = {
     STARTER: process.env.STRIPE_STARTER_PRICE_ID || 'price_starter',
     PROFESSIONAL: process.env.STRIPE_PROFESSIONAL_PRICE_ID || 'price_professional',
     ENTERPRISE: process.env.STRIPE_ENTERPRISE_PRICE_ID || 'price_enterprise',
 };
 // Subscription tiers configuration with prices
-export const SUBSCRIPTION_TIERS = {
+exports.SUBSCRIPTION_TIERS = {
     STARTER: {
         name: 'Starter',
         description: 'Perfect for small practices',
         price: 49,
-        priceId: STRIPE_PRICE_IDS.STARTER,
+        priceId: exports.STRIPE_PRICE_IDS.STARTER,
         maxUsers: 3,
         maxClients: 50,
         maxProposals: 100,
@@ -29,7 +35,7 @@ export const SUBSCRIPTION_TIERS = {
         name: 'Professional',
         description: 'For growing practices',
         price: 99,
-        priceId: STRIPE_PRICE_IDS.PROFESSIONAL,
+        priceId: exports.STRIPE_PRICE_IDS.PROFESSIONAL,
         maxUsers: 10,
         maxClients: 500,
         maxProposals: 'Unlimited',
@@ -39,11 +45,12 @@ export const SUBSCRIPTION_TIERS = {
         name: 'Enterprise',
         description: 'For large firms',
         price: 249,
-        priceId: STRIPE_PRICE_IDS.ENTERPRISE,
+        priceId: exports.STRIPE_PRICE_IDS.ENTERPRISE,
         maxUsers: 'Unlimited',
         maxClients: 'Unlimited',
         maxProposals: 'Unlimited',
         features: ['Everything in Professional', 'White-label options', 'Dedicated support', 'Custom integrations', 'SLA guarantee'],
     },
 };
-export default stripe;
+exports.default = exports.stripe;
+//# sourceMappingURL=stripe.js.map

@@ -1,17 +1,23 @@
+"use strict";
 /**
  * Password Reset Service
  * Secure token-based password reset functionality
  */
-import crypto from 'crypto';
-export class PasswordResetService {
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.passwordResetService = exports.PasswordResetService = void 0;
+const crypto_1 = __importDefault(require("crypto"));
+class PasswordResetService {
     /**
      * Generate a secure password reset token
      */
     generateToken() {
         // Generate 32 bytes of random data
-        const token = crypto.randomBytes(32).toString('hex');
+        const token = crypto_1.default.randomBytes(32).toString('hex');
         // Create hash for storage
-        const tokenHash = crypto
+        const tokenHash = crypto_1.default
             .createHash('sha256')
             .update(token)
             .digest('hex');
@@ -27,7 +33,7 @@ export class PasswordResetService {
      * Hash a token for comparison
      */
     hashToken(token) {
-        return crypto
+        return crypto_1.default
             .createHash('sha256')
             .update(token)
             .digest('hex');
@@ -37,7 +43,7 @@ export class PasswordResetService {
      */
     generateSecurePassword(length = 16) {
         const charset = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*';
-        const bytes = crypto.randomBytes(length);
+        const bytes = crypto_1.default.randomBytes(length);
         let password = '';
         for (let i = 0; i < length; i++) {
             password += charset[bytes[i] % charset.length];
@@ -70,5 +76,7 @@ export class PasswordResetService {
         };
     }
 }
-export const passwordResetService = new PasswordResetService();
-export default passwordResetService;
+exports.PasswordResetService = PasswordResetService;
+exports.passwordResetService = new PasswordResetService();
+exports.default = exports.passwordResetService;
+//# sourceMappingURL=passwordResetService.js.map

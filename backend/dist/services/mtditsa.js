@@ -1,4 +1,7 @@
-import { MTDITSAStatus } from '@prisma/client';
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.MTDITSAService = void 0;
+const client_1 = require("@prisma/client");
 // Thresholds by tax year
 const THRESHOLDS = {
     2026: 50000,
@@ -14,7 +17,7 @@ const EXEMPT_CATEGORIES = [
     'Charities',
     'Members of Lloyd\'s of London',
 ];
-export class MTDITSAService {
+class MTDITSAService {
     /**
      * Calculate MTD ITSA status based on income and sources
      */
@@ -25,7 +28,7 @@ export class MTDITSAService {
         const exemption = this.checkExemptions(options, incomeSources);
         if (exemption.exempt) {
             return {
-                status: MTDITSAStatus.EXEMPT,
+                status: client_1.MTDITSAStatus.EXEMPT,
                 isRequired: false,
                 effectiveDate: null,
                 incomeThreshold: 0,
@@ -39,7 +42,7 @@ export class MTDITSAService {
         if (annualIncome >= THRESHOLDS[2026]) {
             triggeredBy.push(`Income of £${annualIncome.toLocaleString()} exceeds £50,000 threshold`);
             return {
-                status: MTDITSAStatus.REQUIRED_2026,
+                status: client_1.MTDITSAStatus.REQUIRED_2026,
                 isRequired: true,
                 effectiveDate: new Date('2026-04-06'),
                 incomeThreshold: THRESHOLDS[2026],
@@ -56,7 +59,7 @@ export class MTDITSAService {
         if (annualIncome >= THRESHOLDS[2027]) {
             triggeredBy.push(`Income of £${annualIncome.toLocaleString()} exceeds £30,000 threshold`);
             return {
-                status: MTDITSAStatus.REQUIRED_2027,
+                status: client_1.MTDITSAStatus.REQUIRED_2027,
                 isRequired: true,
                 effectiveDate: new Date('2027-04-06'),
                 incomeThreshold: THRESHOLDS[2027],
@@ -72,7 +75,7 @@ export class MTDITSAService {
         if (annualIncome >= THRESHOLDS[2028]) {
             triggeredBy.push(`Income of £${annualIncome.toLocaleString()} exceeds £20,000 threshold`);
             return {
-                status: MTDITSAStatus.REQUIRED_2028,
+                status: client_1.MTDITSAStatus.REQUIRED_2028,
                 isRequired: true,
                 effectiveDate: new Date('2028-04-06'),
                 incomeThreshold: THRESHOLDS[2028],
@@ -88,7 +91,7 @@ export class MTDITSAService {
         recommendations.push('No immediate MTD ITSA requirements');
         recommendations.push('Monitor income for threshold changes');
         return {
-            status: MTDITSAStatus.NOT_REQUIRED,
+            status: client_1.MTDITSAStatus.NOT_REQUIRED,
             isRequired: false,
             effectiveDate: null,
             incomeThreshold: 0,
@@ -159,24 +162,24 @@ export class MTDITSAService {
      */
     static getObligationExplanation(status) {
         const explanations = {
-            [MTDITSAStatus.NOT_REQUIRED]: 'Making Tax Digital for Income Tax Self Assessment (MTD ITSA) is not currently required. ' +
+            [client_1.MTDITSAStatus.NOT_REQUIRED]: 'Making Tax Digital for Income Tax Self Assessment (MTD ITSA) is not currently required. ' +
                 'You should continue submitting your Self Assessment tax return annually.',
-            [MTDITSAStatus.ELIGIBLE]: 'You are eligible for MTD ITSA but not yet required to join. ' +
+            [client_1.MTDITSAStatus.ELIGIBLE]: 'You are eligible for MTD ITSA but not yet required to join. ' +
                 'You may opt in voluntarily to get used to the new system.',
-            [MTDITSAStatus.MANDATORY]: 'You must comply with MTD ITSA requirements. ' +
+            [client_1.MTDITSAStatus.MANDATORY]: 'You must comply with MTD ITSA requirements. ' +
                 'This means submitting quarterly updates digitally using compatible software.',
-            [MTDITSAStatus.OPTED_IN]: 'You have voluntarily opted into MTD ITSA. ' +
+            [client_1.MTDITSAStatus.OPTED_IN]: 'You have voluntarily opted into MTD ITSA. ' +
                 'You are now required to submit quarterly updates digitally.',
-            [MTDITSAStatus.REQUIRED_2026]: 'You must comply with MTD ITSA from April 2026. This means submitting quarterly updates ' +
+            [client_1.MTDITSAStatus.REQUIRED_2026]: 'You must comply with MTD ITSA from April 2026. This means submitting quarterly updates ' +
                 'of your income and expenses digitally using compatible software.',
-            [MTDITSAStatus.REQUIRED_2027]: 'You must comply with MTD ITSA from April 2027. This means submitting quarterly updates ' +
+            [client_1.MTDITSAStatus.REQUIRED_2027]: 'You must comply with MTD ITSA from April 2027. This means submitting quarterly updates ' +
                 'of your income and expenses digitally using compatible software.',
-            [MTDITSAStatus.REQUIRED_2028]: 'You must comply with MTD ITSA from April 2028. This means submitting quarterly updates ' +
+            [client_1.MTDITSAStatus.REQUIRED_2028]: 'You must comply with MTD ITSA from April 2028. This means submitting quarterly updates ' +
                 'of your income and expenses digitally using compatible software.',
-            [MTDITSAStatus.EXEMPT]: 'You are exempt from MTD ITSA requirements based on your circumstances. ' +
+            [client_1.MTDITSAStatus.EXEMPT]: 'You are exempt from MTD ITSA requirements based on your circumstances. ' +
                 'Continue with your current filing arrangements.',
         };
-        return explanations[status] || explanations[MTDITSAStatus.NOT_REQUIRED];
+        return explanations[status] || explanations[client_1.MTDITSAStatus.NOT_REQUIRED];
     }
     /**
      * Get compatible software recommendations
@@ -214,22 +217,24 @@ export class MTDITSAService {
      */
     static generateServiceRecommendations(assessment) {
         const services = [];
-        if (assessment.status === MTDITSAStatus.REQUIRED_2026) {
+        if (assessment.status === client_1.MTDITSAStatus.REQUIRED_2026) {
             services.push('MTD ITSA Transition Support - Urgent');
             services.push('Quarterly Bookkeeping & Reporting');
             services.push('Digital Record Keeping Setup');
             services.push('Software Selection & Training');
         }
-        else if (assessment.status === MTDITSAStatus.REQUIRED_2027) {
+        else if (assessment.status === client_1.MTDITSAStatus.REQUIRED_2027) {
             services.push('MTD ITSA Transition Planning');
             services.push('Quarterly Bookkeeping');
             services.push('Software Evaluation');
         }
-        else if (assessment.status === MTDITSAStatus.REQUIRED_2028) {
+        else if (assessment.status === client_1.MTDITSAStatus.REQUIRED_2028) {
             services.push('MTD ITSA Readiness Review');
             services.push('Digital Records Preparation');
         }
         return services;
     }
 }
-export default MTDITSAService;
+exports.MTDITSAService = MTDITSAService;
+exports.default = MTDITSAService;
+//# sourceMappingURL=mtditsa.js.map

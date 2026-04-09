@@ -5,6 +5,7 @@ import { prisma } from '../config/database.js';
 import { authenticate, authorize } from '../middleware/auth.js';
 import { asyncHandler, ApiError } from '../middleware/errorHandler.js';
 import { MTDITSAService } from '../services/mtditsa.js';
+import logger from '../config/logger.js';
 // Validation helper functions
 const validateUKPostcode = (postcode: string): boolean => {
   const postcodeRegex = /^[A-Z]{1,2}[0-9][A-Z0-9]?\s?[0-9][A-Z]{2}$/i;

@@ -1,11 +1,51 @@
+"use strict";
 /**
  * Email Service with Outlook, Gmail, and SMTP Support
  * Handles proposal emails, notifications, and email tracking
  */
-import nodemailer from 'nodemailer';
-import { google } from 'googleapis';
-import logger from '../config/logger.js';
-export class EmailService {
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    var desc = Object.getOwnPropertyDescriptor(m, k);
+    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
+      desc = { enumerable: true, get: function() { return m[k]; } };
+    }
+    Object.defineProperty(o, k2, desc);
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
+    Object.defineProperty(o, "default", { enumerable: true, value: v });
+}) : function(o, v) {
+    o["default"] = v;
+});
+var __importStar = (this && this.__importStar) || (function () {
+    var ownKeys = function(o) {
+        ownKeys = Object.getOwnPropertyNames || function (o) {
+            var ar = [];
+            for (var k in o) if (Object.prototype.hasOwnProperty.call(o, k)) ar[ar.length] = k;
+            return ar;
+        };
+        return ownKeys(o);
+    };
+    return function (mod) {
+        if (mod && mod.__esModule) return mod;
+        var result = {};
+        if (mod != null) for (var k = ownKeys(mod), i = 0; i < k.length; i++) if (k[i] !== "default") __createBinding(result, mod, k[i]);
+        __setModuleDefault(result, mod);
+        return result;
+    };
+})();
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.EmailService = void 0;
+exports.createEmailService = createEmailService;
+const nodemailer_1 = __importDefault(require("nodemailer"));
+const googleapis_1 = require("googleapis");
+const logger_js_1 = __importDefault(require("../config/logger.js"));
+class EmailService {
     constructor(config) {
         this.transporter = null;
         this.oauth2Client = null;
@@ -28,10 +68,10 @@ export class EmailService {
                 default:
                     throw new Error(`Unsupported email provider: ${this.config.provider}`);
             }
-            logger.info(`Email service initialized: ${this.config.provider}`);
+            logger_js_1.default.info(`Email service initialized: ${this.config.provider}`);
         }
         catch (error) {
-            logger.error('Failed to initialize email transporter:', error);
+            logger_js_1.default.error('Failed to initialize email transporter:', error);
             throw error;
         }
     }
@@ -39,7 +79,7 @@ export class EmailService {
         if (!this.config.smtp) {
             throw new Error('SMTP configuration required');
         }
-        this.transporter = nodemailer.createTransport({
+        this.transporter = nodemailer_1.default.createTransport({
             host: this.config.smtp.host,
             port: this.config.smtp.port,
             secure: this.config.smtp.secure,
@@ -58,14 +98,14 @@ export class EmailService {
         if (!this.config.gmail) {
             throw new Error('Gmail configuration required');
         }
-        const oauth2Client = new google.auth.OAuth2(this.config.gmail.clientId, this.config.gmail.clientSecret, 'https://developers.google.com/oauthplayground');
+        const oauth2Client = new googleapis_1.google.auth.OAuth2(this.config.gmail.clientId, this.config.gmail.clientSecret, 'https://developers.google.com/oauthplayground');
         oauth2Client.setCredentials({
             refresh_token: this.config.gmail.refreshToken,
         });
         this.oauth2Client = oauth2Client;
         // Get access token
         const accessToken = await this.getGmailAccessToken();
-        this.transporter = nodemailer.createTransport({
+        this.transporter = nodemailer_1.default.createTransport({
             service: 'gmail',
             auth: {
                 type: 'OAuth2',
@@ -83,7 +123,7 @@ export class EmailService {
             return token || '';
         }
         catch (error) {
-            logger.error('Failed to get Gmail access token:', error);
+            logger_js_1.default.error('Failed to get Gmail access token:', error);
             throw error;
         }
     }
@@ -92,14 +132,14 @@ export class EmailService {
             throw new Error('Outlook configuration required');
         }
         // Microsoft Graph OAuth2 configuration
-        const oauth2Client = new google.auth.OAuth2(this.config.outlook.clientId, this.config.outlook.clientSecret, 'https://login.microsoftonline.com/common/oauth2/nativeclient');
+        const oauth2Client = new googleapis_1.google.auth.OAuth2(this.config.outlook.clientId, this.config.outlook.clientSecret, 'https://login.microsoftonline.com/common/oauth2/nativeclient');
         oauth2Client.setCredentials({
             refresh_token: this.config.outlook.refreshToken,
         });
         this.oauth2Client = oauth2Client;
         // For Outlook/Microsoft 365, we use SMTP with OAuth2
         const accessToken = await this.getOutlookAccessToken();
-        this.transporter = nodemailer.createTransport({
+        this.transporter = nodemailer_1.default.createTransport({
             host: 'smtp.office365.com',
             port: 587,
             secure: false,
@@ -133,7 +173,7 @@ export class EmailService {
             return data.access_token;
         }
         catch (error) {
-            logger.error('Failed to get Outlook access token:', error);
+            logger_js_1.default.error('Failed to get Outlook access token:', error);
             throw error;
         }
     }
@@ -156,14 +196,14 @@ export class EmailService {
                 html: message.html,
                 attachments: message.attachments,
             });
-            logger.info(`Email sent successfully: ${info.messageId}`);
+            logger_js_1.default.info(`Email sent successfully: ${info.messageId}`);
             return {
                 success: true,
                 messageId: info.messageId,
             };
         }
         catch (error) {
-            logger.error('Failed to send email:', error);
+            logger_js_1.default.error('Failed to send email:', error);
             return {
                 success: false,
                 error: error.message || 'Unknown error',
@@ -188,12 +228,12 @@ export class EmailService {
             }
         }
         catch (error) {
-            logger.error('Failed to refresh access token:', error);
+            logger_js_1.default.error('Failed to refresh access token:', error);
             throw error;
         }
     }
     async sendProposalEmail(params) {
-        const { generateProposalEmailTemplate } = await import('../templates/proposalEmail.js');
+        const { generateProposalEmailTemplate } = await Promise.resolve().then(() => __importStar(require('../templates/proposalEmail.js')));
         const emailTemplate = generateProposalEmailTemplate({
             clientName: params.clientName,
             tenantName: params.tenantName || this.config.fromName,
@@ -223,6 +263,39 @@ export class EmailService {
             attachments,
         });
     }
+    async sendAcceptanceNotification(params) {
+        const { generateAcceptanceNotification } = await Promise.resolve().then(() => __importStar(require('../templates/acceptanceNotification.js')));
+        const { html, text, subject } = generateAcceptanceNotification({
+            clientName: params.clientName,
+            proposalTitle: params.proposalTitle,
+            proposalReference: params.proposalReference,
+            acceptedAt: params.acceptedAt,
+            totalAmount: params.totalAmount,
+            signedBy: params.signedBy,
+            signedByRole: params.signedByRole,
+        });
+        const attachments = [
+            {
+                filename: `Proposal_${params.proposalReference}_Signed.pdf`,
+                content: params.proposalPdf,
+                contentType: 'application/pdf',
+            },
+        ];
+        if (params.signaturePng) {
+            attachments.push({
+                filename: `Signature_${params.proposalReference}.png`,
+                content: params.signaturePng,
+                contentType: 'image/png',
+            });
+        }
+        return this.sendEmail({
+            to: params.to,
+            subject,
+            html,
+            text,
+            attachments,
+        });
+    }
     async verifyConnection() {
         try {
             if (!this.transporter) {
@@ -237,7 +310,7 @@ export class EmailService {
     }
     // Generate Gmail OAuth2 URL for setup
     static generateGmailAuthUrl(clientId, clientSecret, redirectUri) {
-        const oauth2Client = new google.auth.OAuth2(clientId, clientSecret, redirectUri);
+        const oauth2Client = new googleapis_1.google.auth.OAuth2(clientId, clientSecret, redirectUri);
         return oauth2Client.generateAuthUrl({
             access_type: 'offline',
             scope: [
@@ -249,7 +322,7 @@ export class EmailService {
     }
     // Exchange Gmail code for tokens
     static async exchangeGmailCode(clientId, clientSecret, redirectUri, code) {
-        const oauth2Client = new google.auth.OAuth2(clientId, clientSecret, redirectUri);
+        const oauth2Client = new googleapis_1.google.auth.OAuth2(clientId, clientSecret, redirectUri);
         const { tokens } = await oauth2Client.getToken(code);
         if (!tokens.refresh_token) {
             throw new Error('No refresh token received. User may need to re-authorize with prompt=consent');
@@ -302,11 +375,12 @@ export class EmailService {
         };
     }
 }
+exports.EmailService = EmailService;
 // Create email service instance from environment
-export function createEmailService() {
+function createEmailService() {
     const provider = process.env.EMAIL_PROVIDER;
     if (!provider) {
-        logger.warn('EMAIL_PROVIDER not set, email service disabled');
+        logger_js_1.default.warn('EMAIL_PROVIDER not set, email service disabled');
         return null;
     }
     const config = {
@@ -346,8 +420,9 @@ export function createEmailService() {
         return new EmailService(config);
     }
     catch (error) {
-        logger.error('Failed to create email service:', error);
+        logger_js_1.default.error('Failed to create email service:', error);
         return null;
     }
 }
-export default EmailService;
+exports.default = EmailService;
+//# sourceMappingURL=emailService.js.map
