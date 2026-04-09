@@ -33,6 +33,18 @@ try {
   console.warn('⚠️  Seed check warning:', error.message);
 }
 
+// Fix billingCycle for existing services
+console.log('🔧 Checking billingCycle field...');
+try {
+  execSync('node ./scripts/fix-billing-cycle.js', {
+    stdio: 'inherit',
+    timeout: 30000,
+  });
+  console.log('✅ Billing cycle fix complete');
+} catch (error) {
+  console.warn('⚠️  Billing cycle fix warning:', error.message);
+}
+
 console.log('🚀 Loading server...');
 
 // Import and start the server (ESM)
