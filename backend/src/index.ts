@@ -21,6 +21,7 @@ import enhancedServiceRoutes from './routes/services-new.js';
 import tenantRoutes from './routes/tenants.js';
 import emailRoutes from './routes/email.js';
 import paymentRoutes from './routes/payments.js';
+import adfinRoutes from './routes/adfin.js';
 import coverLetterTemplateRoutes from './routes/coverLetterTemplates.js';
 import { asyncHandler, ApiError } from './middleware/errorHandler.js';
 import { EmailService } from './services/emailService.js';
@@ -371,6 +372,7 @@ app.use('/api/services/v2', extractTenant, enhancedServiceRoutes);
 app.use('/api/tenants', tenantRoutes);
 app.use('/api/email', extractTenant, emailRoutes);
 app.use('/api/payments', extractTenant, paymentRoutes);
+app.use('/api/payments/adfin', extractTenant, adfinRoutes);
 app.use('/api/companies-house', extractTenant, companiesHouseRoutes);
 app.use('/api/cover-letter-templates', extractTenant, coverLetterTemplateRoutes);
 

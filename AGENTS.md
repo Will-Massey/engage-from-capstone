@@ -22,13 +22,15 @@
 
 | Layer | Tech |
 |-------|------|
-| **Monorepo tooling** | npm workspaces + Turbo (`turbo.json`) + pnpm-workspace.yaml |
-| **Backend** | Node.js 18+, Express.js, TypeScript, Prisma 5.22, PostgreSQL 14+ |
+| **Monorepo tooling** | npm workspaces + pnpm (`pnpm-workspace.yaml`) + Turbo (`turbo.json`) |
+| **Backend** | Node.js 20+, Express.js, TypeScript, Prisma 5.22, PostgreSQL 14+ |
 | **Frontend** | React 18, TypeScript, Vite 5, Tailwind CSS 3, Zustand 4 |
 | **Shared code** | Plain TypeScript package (`shared/`) exposing enums, interfaces, and utilities |
 | **Testing** | Jest (backend), Vitest (frontend) |
 | **Caching** | Redis (via `ioredis` / `redis`) — optional but configured |
-| **Package manager** | npm (root `package-lock.json` exists) |
+| **Package manager** | npm + pnpm (hybrid setup; `pnpm-lock.yaml` used for CI) |
+| **CI/CD** | GitHub Actions (`.github/workflows/ci-cd.yml`) |
+| **Containerization** | Docker + Docker Compose |
 
 ---
 
@@ -49,7 +51,7 @@ engage/
 │   │   ├── types/         # backend-specific TS types
 │   │   └── utils/         # cache, encryption, logger helpers
 │   ├── prisma/
-│   │   ├── schema.prisma  # full Prisma schema (558 lines)
+│   │   ├── schema.prisma  # full Prisma schema (593 lines)
 │   │   ├── seed-enhanced.ts
 │   │   └── migrations/    # Prisma migration files
 │   └── dist/              # Compiled JavaScript output
@@ -69,6 +71,7 @@ engage/
 │   └── package.json
 ├── landing/               # Landing page assets
 ├── scripts/               # Deployment and utility scripts
+├── .github/workflows/     # GitHub Actions CI/CD
 ├── docker-compose.yml     # Local development with PostgreSQL + Redis
 ├── render.yaml            # Render Blueprint for deployment
 ├── railway.toml           # Railway deployment config
@@ -94,6 +97,8 @@ engage/
 | `frontend/vite.config.ts` | Dev proxy to `localhost:3001`, PWA plugin, manual chunks |
 | `frontend/tailwind.config.js` | Custom colour palette (`primary`, `capstone`, `slate`, `success`, `warning`, `danger`), dark mode via `class` |
 | `shared/tsconfig.json` | `strict: true`. Outputs CommonJS to `dist/` with declarations. |
+| `.github/workflows/ci-cd.yml` | Lint, test, build, and deploy pipeline |
+| `docker-compose.yml` | Local development stack: PostgreSQL, Redis, backend, frontend, Adminer, Redis Commander |
 
 ---
 
@@ -102,6 +107,8 @@ engage/
 ### Install dependencies
 ```bash
 npm install
+# or
+pnpm install
 ```
 
 ### Development (two terminals)
@@ -143,6 +150,12 @@ cd backend && npm run lint   # eslint src --ext .ts
 cd frontend && npm run lint  # eslint . --ext ts,tsx
 ```
 
+### Docker (local development)
+```bash
+docker-compose up --build
+```
+Services: PostgreSQL (`:5432`), Redis (`:6379`), backend (`:3001`), frontend (`:80`), Adminer (`:8080`), Redis Commander (`:8081`).
+
 ---
 
 ## 6. Runtime Architecture
@@ -159,16 +172,19 @@ cd frontend && npm run lint  # eslint . --ext ts,tsx
   6. Static files served from `public/`
   7. SPA fallback (`index.html`) for non-API routes
 - **CORS origins:** explicitly whitelists localhost, Render subdomains, Vercel preview URLs, and `https://engage.capstonesoftware.co.uk`
+- **Health check:** `GET /ping` returns `{ "status": "ok" }`
 
 ### Frontend
 - **Dev server:** `localhost:5173`
 - **Build output:** `frontend/dist`
 - **API client:** `frontend/src/utils/api.ts` — axios instance pointing at `VITE_API_URL` (defaults to `http://localhost:3001/api`)
 - **Auth state:** `useAuthStore` (Zustand + persist). **Important:** the JWT token is **not** persisted to `localStorage`; it is kept in memory only. An `httpOnly` cookie flow is intended.
+- **PWA:** Configured via `vite-plugin-pwa` with service worker, manifest, and offline support
 
 ### Shared package
 - Built to `shared/dist/` as CommonJS with `.d.ts` declarations.
 - Imported in other packages via the `@shared/*` path alias.
+- Contains: enums, interfaces, validation functions, pricing engine, MTD ITSA calculator
 
 ---
 
@@ -178,6 +194,7 @@ cd frontend && npm run lint  # eslint . --ext ts,tsx
 - **Strict mode is intentionally disabled** in both `backend/tsconfig.json` and `frontend/tsconfig.json`. Do not flip it on without a dedicated migration — it will break the build.
 - Backend compiled output goes to `backend/dist/`. Imports in backend source use **`.js` extensions** (e.g. `import foo from './bar.js'`) because the compiler emits CommonJS and the runtime resolves `.js` files.
 - Frontend uses standard ES modules (`"type": "module"` in `frontend/package.json`).
+- The `shared` package has `strict: true` for type safety at the shared boundary.
 
 ### Path aliases
 - `@/*` → `src/*`
@@ -217,6 +234,11 @@ When adding tests:
 - Place backend tests next to the code under `backend/tests/` or co-located (`*.test.ts`).
 - Place frontend tests co-located (`*.test.tsx`) or in `frontend/src/__tests__/`. Tests should use `*.test.ts` or `*.spec.ts` naming.
 
+### CI/CD Testing
+- GitHub Actions runs lint, typecheck, and test jobs
+- Tests run against PostgreSQL 15 and Redis 7 services
+- Coverage is uploaded to Codecov
+
 ---
 
 ## 9. Security Considerations
@@ -227,10 +249,24 @@ When adding tests:
 - **Password hashing:** `bcryptjs` with `BCRYPT_ROUNDS` (default 12).
 - **File uploads:** `multer` with a 10 MB JSON body limit.
 - **Helmet:** CSP configured for production; HSTS enabled.
+- **Security headers:** Configured via Helmet middleware with content security policy
 
 ---
 
 ## 10. Deployment
+
+### CI/CD Pipeline (GitHub Actions)
+The `.github/workflows/ci-cd.yml` defines a complete pipeline:
+
+1. **Lint & Type Check** — Runs on PRs and pushes to `main`/`develop`
+2. **Test** — Runs Jest/Vitest with PostgreSQL and Redis services
+3. **Build & Push** — Builds Docker images and pushes to GHCR
+4. **Deploy** — Automatic deploys to Railway (backend) and Vercel (frontend)
+
+Environments:
+- `develop` branch → Development environment
+- `main` branch → Staging environment
+- Manual trigger → Production environment (with approval)
 
 ### Docker (local / self-hosted)
 ```bash
@@ -246,6 +282,7 @@ Services: PostgreSQL, Redis, backend (`:3001`), frontend (`:80`), Adminer (`:808
 ### Railway
 - `railway.toml` points to the root `Dockerfile`.
 - Health check path: `/ping`.
+- Deploys automatically from GitHub Actions or git pushes.
 
 ### Environment variables (required for production)
 | Variable | Description |
@@ -276,11 +313,13 @@ The Prisma schema defines the following main models:
 | `ProposalService` | Line items for proposals linked to service templates |
 | `ServiceTemplate` | Reusable service definitions with pricing models |
 | `ProposalTemplate` | Pre-configured proposal templates |
+| `CoverLetterTemplate` | Customizable cover letter templates with merge fields |
 | `PricingRule` | Dynamic pricing adjustments based on conditions |
 | `ActivityLog` | Audit trail for tenant activities |
 | `RefreshToken` | JWT refresh token storage |
 | `ProposalView` | Proposal view tracking for analytics |
 | `ProposalSignature` | Electronic signature records (UK compliant) |
+| `ProposalDocument` | Attached documents to proposals |
 
 ### Key Enums
 - `UserRole`: ADMIN, PARTNER, MANAGER, SENIOR, JUNIOR
@@ -288,6 +327,7 @@ The Prisma schema defines the following main models:
 - `ProposalStatus`: DRAFT, SENT, VIEWED, ACCEPTED, DECLINED, EXPIRED
 - `MTDITSAStatus`: NOT_REQUIRED, ELIGIBLE, MANDATORY, OPTED_IN, EXEMPT, REQUIRED_2026, REQUIRED_2027, REQUIRED_2028
 - `ServiceCategory`: COMPLIANCE, ADVISORY, TAX, PAYROLL, BOOKKEEPING, AUDIT, CONSULTING, TECHNICAL, SPECIALIZED
+- `PricingModel`: FIXED, HOURLY, TIERED, CUSTOM, PER_EMPLOYEE, PER_TRANSACTION
 
 ---
 
@@ -304,6 +344,8 @@ The Prisma schema defines the following main models:
 5. **CORS whitelisting:** Render and Vercel preview URLs are regex-matched. If deploying to a new domain, add it to `allowedOrigins` in `backend/src/index.ts`.
 
 6. **TypeScript strict mode:** Both backend and frontend have `strict: false`. Do not enable without extensive testing as the codebase relies on loose type checking.
+
+7. **Package manager consistency:** The project uses npm for day-to-day but pnpm in CI. Prefer `npm install` locally to avoid lockfile conflicts.
 
 ---
 
@@ -327,6 +369,10 @@ The Prisma schema defines the following main models:
 | Proposal sharing | `backend/src/services/proposalSharingService.ts` |
 | Companies House | `backend/src/services/companiesHouse.ts`, `backend/src/routes/companiesHouse.ts` |
 | Tenant middleware | `backend/src/middleware/tenant-simple.ts` |
+| Redis config | `backend/src/config/redis.ts` |
+| Stripe config | `backend/src/config/stripe.ts` |
+| Environment validation | `backend/src/config/env.ts` |
+| Logger | `backend/src/config/logger.ts` |
 
 ---
 
@@ -339,6 +385,7 @@ The Prisma schema defines the following main models:
 | **SMTP (Nodemailer)** | Email delivery | `backend/src/services/emailService.ts` |
 | **Redis** | Caching, session storage | `backend/src/config/redis.ts` |
 | **PDFKit** | PDF generation | `backend/src/services/pdfGenerator.ts` |
+| **Google APIs** | OAuth, Gmail integration | `backend/src/services/emailService.ts` |
 
 ---
 
@@ -357,6 +404,11 @@ The Prisma schema defines the following main models:
 1. Run `npm run build` to ensure everything compiles
 2. Check for TypeScript errors (despite `strict: false`)
 3. Test critical paths (auth, proposal creation, PDF generation)
+
+### Emergency rollback
+- Production deploys create database backups automatically via CI
+- Rollback to previous Docker image tag in Railway dashboard
+- Database migrations are forward-only; plan accordingly
 
 ---
 

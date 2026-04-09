@@ -302,6 +302,14 @@ model Proposal {
   lastEmailedAt  DateTime?
   emailHistory   String @default("[]")
 
+  // Payment tracking (Adfin integration)
+  paymentId            String?
+  paymentStatus        String?   // PENDING, COMPLETED, FAILED, CANCELLED
+  paymentUrl           String?
+  paymentMethod        String?   // card, open_banking, direct_debit
+  paidAt               DateTime?
+  paymentFailureReason String?
+
   // Metadata
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -327,6 +335,7 @@ model Proposal {
   @@index([status])
   @@index([reference])
   @@index([shareToken])
+  @@index([paymentId])
   @@index([createdAt])
 }
 
