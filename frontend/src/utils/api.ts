@@ -23,11 +23,18 @@ const getCsrfToken = (): string | null => {
   return match ? match[1] : null;
 };
 
+// In-memory storage for CSRF token (cross-domain cookies don't work)
+let csrfTokenInMemory: string | null = null;
+
 // Fetch CSRF token from backend
 let csrfTokenPromise: Promise<string> | null = null;
 const fetchCsrfToken = async (): Promise<string> => {
-  const existingToken = getCsrfToken();
-  if (existingToken) return existingToken;
+  // Check memory first (for cross-domain where cookies don't work)
+  if (csrfTokenInMemory) return csrfTokenInMemory;
+  
+  // Then check cookie (for same-domain)
+  const cookieToken = getCsrfToken();
+  if (cookieToken) return cookieToken;
   
   // Deduplicate concurrent requests
   if (csrfTokenPromise) return csrfTokenPromise;
@@ -36,10 +43,15 @@ const fetchCsrfToken = async (): Promise<string> => {
     withCredentials: true,
   }).then((res: any) => {
     csrfTokenPromise = null;
-    // Token is set in cookie by the response, read it back
-    const tokenFromCookie = getCsrfToken();
-    console.log('[CSRF] Fetched token, cookie set:', !!tokenFromCookie);
-    return tokenFromCookie || '';
+    // Store in memory since cross-domain cookies don't work
+    const token = res.data?.data?.csrfToken;
+    if (token) {
+      csrfTokenInMemory = token;
+      console.log('[CSRF] Token fetched and stored in memory');
+      return token;
+    }
+    console.warn('[CSRF] No token in response');
+    return '';
   }).catch((err) => {
     csrfTokenPromise = null;
     console.error('[CSRF] Failed to fetch token:', err.message);
