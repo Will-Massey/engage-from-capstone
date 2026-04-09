@@ -33,6 +33,7 @@ interface Service {
   basePrice: number;
   category: string;
   billingCycle: string;
+  defaultFrequency?: string;
 }
 
 interface SelectedService extends Service {
@@ -40,6 +41,10 @@ interface SelectedService extends Service {
   unitPrice: number;
   discountPercent: number;
   total: number;
+  vatRate: number;
+  vatAmount: number;
+  grossTotal: number;
+  frequency: string;
 }
 
 interface ProposalSummary {
@@ -153,21 +158,22 @@ const ProposalBuilder = () => {
     return filtered;
   }, [services, selectedCategory, serviceSearch]);
   
-  // Calculate totals
+  // Calculate totals using line-level VAT
   const summary: ProposalSummary = useMemo(() => {
     const subtotal = selectedServices.reduce((sum, s) => sum + s.total, 0);
     const discountAmount = selectedServices.reduce((sum, s) => {
       const discount = s.quantity * s.unitPrice * (s.discountPercent / 100);
       return sum + discount;
     }, 0);
-    const taxableAmount = subtotal - discountAmount;
-    const vatAmount = includeVat ? taxableAmount * (vatRate / 100) : 0;
-    const total = taxableAmount + vatAmount;
+    const vatAmount = includeVat 
+      ? selectedServices.reduce((sum, s) => sum + s.vatAmount, 0)
+      : 0;
+    const total = subtotal + vatAmount;
     
     return { subtotal, discountAmount, vatAmount, total };
-  }, [selectedServices, vatRate, includeVat]);
+  }, [selectedServices, includeVat]);
   
-  // Add service
+  // Add service with proper pricing based on frequency
   const addService = (service: Service) => {
     const existing = selectedServices.find(s => s.id === service.id);
     if (existing) {
@@ -175,12 +181,34 @@ const ProposalBuilder = () => {
       return;
     }
     
+    // Determine the service frequency (defaultFrequency is more accurate than billingCycle)
+    const serviceFrequency = service.defaultFrequency || service.billingCycle || 'MONTHLY';
+    
+    // Calculate unit price - if the service is priced annually but we want to show monthly equivalent
+    let unitPrice = service.basePrice;
+    if (serviceFrequency === 'ANNUALLY') {
+      // Annual price - store as monthly equivalent for consistent calculations
+      unitPrice = service.basePrice / 12;
+    } else if (serviceFrequency === 'QUARTERLY') {
+      // Quarterly price - convert to monthly
+      unitPrice = service.basePrice / 3;
+    }
+    // For MONTHLY or ONE_TIME, use basePrice as-is
+    
+    const netTotal = unitPrice;
+    const vatRate = 20; // Default VAT rate
+    const vatAmount = netTotal * (vatRate / 100);
+    
     const newService: SelectedService = {
       ...service,
       quantity: 1,
-      unitPrice: service.basePrice,
+      unitPrice: unitPrice,
       discountPercent: 0,
-      total: service.basePrice,
+      total: netTotal,
+      vatRate: vatRate,
+      vatAmount: vatAmount,
+      grossTotal: netTotal + vatAmount,
+      frequency: serviceFrequency,
     };
     setSelectedServices([...selectedServices, newService]);
     toast.success(`${service.name} added`);
@@ -191,10 +219,15 @@ const ProposalBuilder = () => {
     setSelectedServices(prev => prev.map(s => {
       if (s.id !== id) return s;
       const updated = { ...s, ...updates };
-      // Recalculate total
+      // Recalculate totals
       const baseTotal = updated.quantity * updated.unitPrice;
       const discount = baseTotal * (updated.discountPercent / 100);
-      updated.total = baseTotal - discount;
+      const netTotal = baseTotal - discount;
+      const vatRate = updated.vatRate || 20;
+      const vatAmount = netTotal * (vatRate / 100);
+      updated.total = netTotal;
+      updated.vatAmount = vatAmount;
+      updated.grossTotal = netTotal + vatAmount;
       return updated;
     }));
   };
@@ -239,6 +272,8 @@ const ProposalBuilder = () => {
           quantity: s.quantity,
           unitPrice: s.unitPrice,
           discountPercent: s.discountPercent,
+          frequency: s.frequency,
+          vatRate: includeVat ? s.vatRate : 0,
         })),
         validUntil: new Date(validUntil).toISOString(),
         vatRate: includeVat ? vatRate : 0,
@@ -458,7 +493,11 @@ const ProposalBuilder = () => {
                         )}
                       </div>
                       <span className="font-semibold text-gray-900 dark:text-white">
-                        £{service.basePrice.toLocaleString()}
+                        £{service.defaultFrequency === 'ANNUALLY' 
+                          ? Math.round(service.basePrice / 12).toLocaleString() + '/mo'
+                          : service.defaultFrequency === 'QUARTERLY'
+                          ? Math.round(service.basePrice / 3).toLocaleString() + '/mo'
+                          : service.basePrice.toLocaleString()}
                       </span>
                     </div>
                     <div className="mt-2 flex items-center gap-2">
@@ -466,7 +505,9 @@ const ProposalBuilder = () => {
                         {service.category}
                       </span>
                       <span className="text-xs text-gray-400 dark:text-gray-500">
-                        {service.billingCycle}
+                        {service.defaultFrequency === 'ANNUALLY' 
+                          ? '£' + service.basePrice.toLocaleString() + '/year'
+                          : service.billingCycle}
                       </span>
                     </div>
                   </button>
@@ -521,7 +562,7 @@ const ProposalBuilder = () => {
                       </div>
                       
                       {/* Inline Edit Controls */}
-                      <div className="grid grid-cols-3 gap-2 text-sm">
+                      <div className="grid grid-cols-5 gap-2 text-sm">
                         <div>
                           <label className="text-xs text-gray-500 dark:text-gray-400">Qty</label>
                           <input
@@ -544,6 +585,48 @@ const ProposalBuilder = () => {
                           />
                         </div>
                         <div>
+                          <label className="text-xs text-gray-500 dark:text-gray-400">VAT %</label>
+                          <select
+                            value={service.vatRate || 20}
+                            onChange={(e) => updateService(service.id, { vatRate: parseFloat(e.target.value) })}
+                            className="w-full px-2 py-1 rounded border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm"
+                          >
+                            <option value={0}>0%</option>
+                            <option value={5}>5%</option>
+                            <option value={20}>20%</option>
+                          </select>
+                        </div>
+                        <div>
+                          <label className="text-xs text-gray-500 dark:text-gray-400">Billing</label>
+                          <select
+                            value={service.frequency || 'MONTHLY'}
+                            onChange={(e) => {
+                              const newFreq = e.target.value;
+                              let newUnitPrice = service.unitPrice;
+                              // Convert price based on frequency change
+                              if (service.frequency === 'MONTHLY' && newFreq === 'ANNUALLY') {
+                                newUnitPrice = service.unitPrice * 12;
+                              } else if (service.frequency === 'ANNUALLY' && newFreq === 'MONTHLY') {
+                                newUnitPrice = service.unitPrice / 12;
+                              } else if (service.frequency === 'MONTHLY' && newFreq === 'QUARTERLY') {
+                                newUnitPrice = service.unitPrice * 3;
+                              } else if (service.frequency === 'QUARTERLY' && newFreq === 'MONTHLY') {
+                                newUnitPrice = service.unitPrice / 3;
+                              }
+                              updateService(service.id, { 
+                                frequency: newFreq,
+                                unitPrice: newUnitPrice
+                              });
+                            }}
+                            className="w-full px-2 py-1 rounded border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm"
+                          >
+                            <option value="MONTHLY">Monthly</option>
+                            <option value="QUARTERLY">Quarterly</option>
+                            <option value="ANNUALLY">Annually</option>
+                            <option value="ONE_TIME">One-time</option>
+                          </select>
+                        </div>
+                        <div>
                           <label className="text-xs text-gray-500 dark:text-gray-400">Discount %</label>
                           <input
                             type="number"
@@ -558,12 +641,21 @@ const ProposalBuilder = () => {
                       
                       <div className="mt-3 pt-3 border-t border-gray-100 dark:border-gray-700 flex justify-between items-center">
                         <span className="text-xs text-gray-500 dark:text-gray-400">
-                          {service.quantity} × £{service.unitPrice}
+                          {service.quantity} × £{service.unitPrice.toFixed(2)}
                           {service.discountPercent > 0 && ` (-${service.discountPercent}%)`}
+                          {service.vatRate !== 20 && ` • VAT ${service.vatRate}%`}
+                          <span className="ml-1 text-xs text-gray-400">({service.frequency?.toLowerCase()})</span>
                         </span>
-                        <span className="font-semibold text-gray-900 dark:text-white">
-                          £{service.total.toLocaleString('en-GB', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                        </span>
+                        <div className="text-right">
+                          <span className="font-semibold text-gray-900 dark:text-white">
+                            £{service.total.toLocaleString('en-GB', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                          </span>
+                          {includeVat && (
+                            <span className="block text-xs text-gray-500">
+                              +£{service.vatAmount.toFixed(2)} VAT
+                            </span>
+                          )}
+                        </div>
                       </div>
                     </div>
                   ))
@@ -722,7 +814,7 @@ const ProposalBuilder = () => {
                     
                     {includeVat && (
                       <div className="flex justify-between text-gray-600 dark:text-gray-400">
-                        <span>VAT ({vatRate}%)</span>
+                        <span>VAT ({new Set(selectedServices.map(s => s.vatRate)).size > 1 ? 'Mixed' : vatRate + '%'})</span>
                         <span>£{summary.vatAmount.toLocaleString('en-GB', { minimumFractionDigits: 2 })}</span>
                       </div>
                     )}

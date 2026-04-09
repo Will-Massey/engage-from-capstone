@@ -55,7 +55,6 @@ engage/
 │   │   ├── scripts/          # one-off scripts (seedServices, startup)
 │   │   ├── services/         # business logic (pdf, email, pricing, MTD ITSA)
 │   │   ├── templates/        # email and document templates
-│   │   ├── types/            # backend-specific TS types
 │   │   └── utils/            # cache, encryption, logger helpers
 │   ├── prisma/
 │   │   ├── schema.prisma     # Full Prisma schema (600+ lines)

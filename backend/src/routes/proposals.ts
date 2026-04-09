@@ -27,6 +27,7 @@ const createProposalSchema = z.object({
     unitPrice: z.number().min(0).optional(), // Allow custom unit price
     discountPercent: z.number().min(0).max(100).optional(),
     frequency: z.nativeEnum(PricingFrequency).optional(), // Billing frequency per service
+    vatRate: z.number().min(0).max(100).optional(), // Per-line VAT rate
   })).min(1, 'At least one service is required'),
   validUntil: z.string().datetime().optional(),
   contractStartDate: z.string().datetime().optional(), // When the contract begins
@@ -239,7 +240,7 @@ router.post(
       const discountPercent = svc.discountPercent || 0;
       const baseTotal = finalUnitPrice * quantity;
       const discountAmount = baseTotal * (discountPercent / 100);
-      const finalTotal = baseTotal - discountAmount;
+      const netTotal = baseTotal - discountAmount;
       
       // Validate frequency - must be a valid PricingFrequency enum value
       let frequency = svc.frequency || template?.defaultFrequency || 'MONTHLY';
@@ -248,21 +249,29 @@ router.post(
         frequency = 'MONTHLY';
       }
       
+      // Calculate VAT for this line (default 20% if not specified)
+      const vatRate = svc.vatRate !== undefined ? svc.vatRate : 20;
+      const vatAmount = Math.round(netTotal * (vatRate / 100) * 100) / 100;
+      const grossTotal = netTotal + vatAmount;
+      
       return {
         name: template?.name || 'Service',
         description: template?.description,
         quantity: quantity,
         unitPrice: finalUnitPrice,
         discountPercent: discountPercent,
-        total: finalTotal,
+        total: netTotal,
         frequency: frequency,
         serviceTemplateId: svc.serviceId,
+        vatRate: vatRate,
+        vatAmount: vatAmount,
+        grossTotal: grossTotal,
       };
     });
 
-    // Calculate proposal totals
+    // Calculate proposal totals using line-level VAT
     const customSubtotal = servicesWithCustomPricing.reduce((sum: number, svc: any) => sum + svc.total, 0);
-    const customVatAmount = Math.round(customSubtotal * 0.2 * 100) / 100; // 20% VAT
+    const customVatAmount = servicesWithCustomPricing.reduce((sum: number, svc: any) => sum + svc.vatAmount, 0);
     const customTotal = Math.round((customSubtotal + customVatAmount) * 100) / 100;
 
     // Generate reference

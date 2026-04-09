@@ -34,6 +34,7 @@ interface Service {
   basePrice: number;
   category: string;
   billingCycle: string;
+  defaultFrequency?: string;
 }
 
 interface SelectedService extends Service {
@@ -235,22 +236,27 @@ const CreateProposal = () => {
       return;
     }
     
-    // Determine default frequency from service or default to monthly
-    const defaultFrequency = service.billingCycle || 'MONTHLY';
-    const freqConfig = BILLING_FREQUENCIES.find(f => f.id === defaultFrequency) || BILLING_FREQUENCIES[0];
+    // Determine default frequency from service (prioritize defaultFrequency, fall back to billingCycle)
+    const serviceFrequency = service.defaultFrequency || service.billingCycle || 'MONTHLY';
+    const freqConfig = BILLING_FREQUENCIES.find(f => f.id === serviceFrequency) || BILLING_FREQUENCIES[0];
     
     // Calculate display price based on frequency
-    // If service is stored as annual but we want to show monthly, divide by 12
+    // Services are stored with basePrice according to their defaultFrequency
     let displayPrice = service.basePrice;
     let unitPrice = service.basePrice;
     
-    // If the service basePrice is annual but we're displaying monthly
-    if (service.billingCycle === 'ANNUALLY' && defaultFrequency === 'MONTHLY') {
+    // If the service basePrice is annual, convert to monthly for consistent proposal pricing
+    if (serviceFrequency === 'ANNUALLY') {
       displayPrice = service.basePrice / 12;
       unitPrice = service.basePrice / 12;
     }
-    // If the service basePrice is monthly but we want annual display
-    else if (service.billingCycle === 'MONTHLY' && defaultFrequency === 'ANNUALLY') {
+    // If the service basePrice is quarterly, convert to monthly
+    else if (serviceFrequency === 'QUARTERLY') {
+      displayPrice = service.basePrice / 3;
+      unitPrice = service.basePrice / 3;
+    }
+    // If the service basePrice is monthly but we want annual display (unlikely but handle it)
+    else if (serviceFrequency === 'MONTHLY' && service.billingCycle === 'ANNUALLY') {
       displayPrice = service.basePrice * 12;
       unitPrice = service.basePrice * 12;
     }
@@ -265,7 +271,7 @@ const CreateProposal = () => {
       vatAmount: unitPrice * 0.2, // VAT amount
       grossTotal: unitPrice * 1.2, // Gross total
       serviceTemplateId: service.id, // Store original service ID
-      frequency: defaultFrequency,
+      frequency: serviceFrequency,
       displayPrice: displayPrice,
       billingLabel: freqConfig.shortLabel,
     };
@@ -689,20 +695,26 @@ Let's build your financial foundation.
                       {service.name}
                     </span>
                     
-                    {/* Price */}
+                    {/* Price - show monthly equivalent for annual services */}
                     <span className="font-semibold text-sm text-slate-900">
-                      £{service.basePrice.toLocaleString()}
+                      £{(service.defaultFrequency === 'ANNUALLY' 
+                        ? Math.round(service.basePrice / 12)
+                        : service.defaultFrequency === 'QUARTERLY'
+                        ? Math.round(service.basePrice / 3)
+                        : service.basePrice
+                      ).toLocaleString()}
                     </span>
                     
                     {/* Frequency Badge */}
                     <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
-                      service.billingCycle === 'MONTHLY' ? 'bg-green-100 text-green-700' : 
-                      service.billingCycle === 'ANNUALLY' ? 'bg-blue-100 text-blue-700' : 
+                      (service.defaultFrequency || service.billingCycle) === 'MONTHLY' ? 'bg-green-100 text-green-700' : 
+                      (service.defaultFrequency || service.billingCycle) === 'ANNUALLY' ? 'bg-blue-100 text-blue-700' : 
+                      (service.defaultFrequency || service.billingCycle) === 'QUARTERLY' ? 'bg-amber-100 text-amber-700' :
                       'bg-slate-100 text-slate-600'
                     }`}>
-                      {service.billingCycle === 'MONTHLY' ? '/mo' : 
-                       service.billingCycle === 'ANNUALLY' ? '/yr' : 
-                       service.billingCycle === 'QUARTERLY' ? '/qtr' : ''}
+                      {(service.defaultFrequency || service.billingCycle) === 'MONTHLY' ? '/mo' : 
+                       (service.defaultFrequency || service.billingCycle) === 'ANNUALLY' ? '/yr' : 
+                       (service.defaultFrequency || service.billingCycle) === 'QUARTERLY' ? '/qtr' : ''}
                     </span>
                   </button>
                 ))}

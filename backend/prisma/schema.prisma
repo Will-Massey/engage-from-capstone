@@ -351,6 +351,11 @@ model ProposalService {
   discountPercent Float @default(0)
   total           Float
 
+  // VAT (per line)
+  vatRate   Float @default(20)
+  vatAmount Float @default(0)
+  grossTotal Float @default(0)
+
   // Billing
   frequency  PricingFrequency @default(MONTHLY)
   isOptional Boolean @default(false)

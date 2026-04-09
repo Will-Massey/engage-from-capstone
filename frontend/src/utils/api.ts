@@ -99,13 +99,46 @@ api.interceptors.response.use(
   (response) => {
     return response.data;
   },
-  (error: AxiosError) => {
+  async (error: AxiosError) => {
     const response = error.response;
     
     if (response) {
       const data = response.data as any;
       const errorMessage = data?.error?.message || 'An error occurred';
       const errorCode = data?.error?.code;
+
+      // Handle CSRF errors with automatic retry
+      if (errorCode === 'CSRF_MISSING' || errorCode === 'CSRF_INVALID') {
+        console.log('[CSRF] Token invalid, fetching new token and retrying...');
+        
+        // Clear the cached token to force a refresh
+        csrfTokenInMemory = null;
+        
+        // Get the original request config
+        const originalRequest = error.config;
+        if (originalRequest) {
+          try {
+            // Fetch a new CSRF token
+            const newToken = await fetchCsrfToken();
+            if (newToken) {
+              // Update the request with the new token
+              originalRequest.headers['X-CSRF-Token'] = newToken;
+              console.log('[CSRF] Retrying request with new token');
+              // Retry the request
+              return api(originalRequest);
+            }
+          } catch (retryError) {
+            console.error('[CSRF] Failed to retry request:', retryError);
+          }
+        }
+        
+        toast.error('Security token expired. Please try again.');
+        return Promise.reject({
+          code: errorCode,
+          message: 'Security token expired. Please try again.',
+          status: response.status,
+        });
+      }
 
       // Handle specific error codes
       switch (errorCode) {
