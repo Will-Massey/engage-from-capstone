@@ -28,29 +28,29 @@ const Header = ({ onMenuClick }: HeaderProps) => {
   };
 
   return (
-    <header className="sticky top-0 z-30 bg-white border-b border-slate-200 shadow-soft">
-      <div className="flex items-center justify-between h-16 px-4 sm:px-6 lg:px-8">
+    <div className="px-4 sm:px-6 lg:px-8">
+      <div className="flex items-center justify-between h-16">
         {/* Left side */}
         <div className="flex items-center">
           <button
             onClick={onMenuClick}
-            className="p-2 -ml-2 text-slate-500 rounded-lg hover:text-slate-700 hover:bg-slate-100 lg:hidden"
+            className="p-2 -ml-2 text-slate-500 dark:text-slate-400 rounded-xl hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-100/80 dark:hover:bg-slate-800/80 lg:hidden transition-colors"
           >
             <Bars3Icon className="w-6 h-6" />
           </button>
 
-          {/* Quick actions */}
-          <div className="hidden md:flex items-center ml-4 space-x-3">
+          {/* Quick actions - hidden on very small screens */}
+          <div className="hidden sm:flex items-center ml-4 space-x-3">
             <Link
               to="/proposals/new"
-              className="inline-flex items-center px-4 py-2 text-sm font-semibold text-white rounded-lg transition-all bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-700 hover:to-blue-600 shadow-lg shadow-blue-500/25"
+              className="btn-primary"
             >
               <PlusIcon className="w-4 h-4 mr-1.5" />
               New Proposal
             </Link>
             <Link
               to="/clients/new"
-              className="inline-flex items-center px-4 py-2 text-sm font-semibold text-slate-700 bg-white border-2 border-slate-200 rounded-lg hover:bg-slate-50 hover:border-slate-300 transition-all"
+              className="btn-secondary"
             >
               <PlusIcon className="w-4 h-4 mr-1.5" />
               New Client
@@ -59,7 +59,7 @@ const Header = ({ onMenuClick }: HeaderProps) => {
         </div>
 
         {/* Right side */}
-        <div className="flex items-center space-x-4">
+        <div className="flex items-center space-x-2 sm:space-x-4">
           {/* Search - hidden on mobile */}
           <div className="hidden md:flex items-center">
             <div className="relative">
@@ -69,7 +69,7 @@ const Header = ({ onMenuClick }: HeaderProps) => {
               <input
                 type="text"
                 placeholder="Search..."
-                className="w-64 pl-10 pr-4 py-2 text-sm bg-slate-50 border border-slate-200 text-slate-800 placeholder-slate-400 rounded-lg focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500"
+                className="search-input w-64"
               />
             </div>
           </div>
@@ -78,69 +78,81 @@ const Header = ({ onMenuClick }: HeaderProps) => {
           <ThemeToggle />
 
           {/* Notifications */}
-          <button className="p-2 text-slate-500 rounded-lg hover:text-slate-700 hover:bg-slate-100 relative">
+          <button className="p-2 text-slate-500 dark:text-slate-400 rounded-xl hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-100/80 dark:hover:bg-slate-800/80 relative transition-colors">
             <BellIcon className="w-6 h-6" />
-            <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-blue-500 rounded-full"></span>
+            <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-primary-500 rounded-full"
+              style={{ boxShadow: '0 0 8px rgba(99, 102, 241, 0.6)' }}>
+            </span>
           </button>
 
           {/* User menu */}
           <div className="relative">
             <button
               onClick={() => setShowUserMenu(!showUserMenu)}
-              className="flex items-center space-x-2 p-2 rounded-lg hover:bg-slate-100"
+              className="flex items-center space-x-2 p-2 rounded-xl hover:bg-slate-100/80 dark:hover:bg-slate-800/80 transition-colors"
             >
-              <div className="w-8 h-8 rounded-full bg-gradient-to-br from-blue-500 to-blue-700 flex items-center justify-center text-white text-sm font-medium">
+              <div className="w-8 h-8 rounded-full flex items-center justify-center text-white text-sm font-medium"
+                style={{ background: 'linear-gradient(135deg, #6366F1 0%, #8B5CF6 100%)' }}>
                 {user?.firstName?.charAt(0)}
               </div>
-              <span className="hidden sm:block text-sm font-medium text-slate-700">
+              <span className="hidden sm:block text-sm font-medium text-slate-700 dark:text-slate-300">
                 {user?.firstName}
               </span>
             </button>
 
             {/* Dropdown */}
             {showUserMenu && (
-              <div className="absolute right-0 mt-2 w-48 bg-white rounded-xl shadow-lg border border-slate-200 py-1 animate-fade-in">
-                <Link
-                  to="/settings"
-                  onClick={() => setShowUserMenu(false)}
-                  className="flex items-center px-4 py-2 text-sm text-slate-700 hover:bg-slate-50"
-                >
-                  <UserCircleIcon className="w-4 h-4 mr-2" />
-                  Profile
-                </Link>
-                <button
-                  onClick={handleLogout}
-                  className="flex items-center w-full px-4 py-2 text-sm text-red-600 hover:bg-red-50"
-                >
-                  <ArrowRightOnRectangleIcon className="w-4 h-4 mr-2" />
-                  Logout
-                </button>
+              <div className="absolute right-0 mt-2 w-48 rounded-xl overflow-hidden animate-scale-in z-50"
+                style={{
+                  background: 'linear-gradient(135deg, rgba(255, 255, 255, 0.95) 0%, rgba(255, 255, 255, 0.9) 100%)',
+                  backdropFilter: 'blur(20px)',
+                  WebkitBackdropFilter: 'blur(20px)',
+                  border: '1px solid rgba(255, 255, 255, 0.5)',
+                  boxShadow: '0 10px 40px rgba(0, 0, 0, 0.1)'
+                }}>
+                <div className="dark:hidden">
+                  <Link
+                    to="/settings"
+                    onClick={() => setShowUserMenu(false)}
+                    className="flex items-center px-4 py-3 text-sm text-slate-700 hover:bg-slate-50 transition-colors"
+                  >
+                    <UserCircleIcon className="w-4 h-4 mr-3" />
+                    Profile
+                  </Link>
+                  <button
+                    onClick={handleLogout}
+                    className="flex items-center w-full px-4 py-3 text-sm text-red-600 hover:bg-red-50 transition-colors"
+                  >
+                    <ArrowRightOnRectangleIcon className="w-4 h-4 mr-3" />
+                    Logout
+                  </button>
+                </div>
+                <div className="hidden dark:block" style={{
+                  background: 'linear-gradient(135deg, rgba(30, 41, 59, 0.95) 0%, rgba(15, 23, 42, 0.9) 100%)',
+                  border: '1px solid rgba(255, 255, 255, 0.1)'
+                }}>
+                  <Link
+                    to="/settings"
+                    onClick={() => setShowUserMenu(false)}
+                    className="flex items-center px-4 py-3 text-sm text-slate-300 hover:bg-slate-800 transition-colors"
+                  >
+                    <UserCircleIcon className="w-4 h-4 mr-3" />
+                    Profile
+                  </Link>
+                  <button
+                    onClick={handleLogout}
+                    className="flex items-center w-full px-4 py-3 text-sm text-red-400 hover:bg-red-900/20 transition-colors"
+                  >
+                    <ArrowRightOnRectangleIcon className="w-4 h-4 mr-3" />
+                    Logout
+                  </button>
+                </div>
               </div>
             )}
           </div>
         </div>
       </div>
-
-      {/* Mobile quick actions */}
-      <div className="md:hidden px-4 pb-3 border-t border-slate-200">
-        <div className="flex space-x-2 mt-3">
-          <Link
-            to="/proposals/new"
-            className="flex-1 inline-flex items-center justify-center px-3 py-2 text-sm font-semibold text-white rounded-lg bg-gradient-to-r from-blue-600 to-blue-500"
-          >
-            <PlusIcon className="w-4 h-4 mr-1.5" />
-            New Proposal
-          </Link>
-          <Link
-            to="/clients/new"
-            className="flex-1 inline-flex items-center justify-center px-3 py-2 text-sm font-semibold text-slate-700 bg-white border-2 border-slate-200 rounded-lg hover:bg-slate-50"
-          >
-            <PlusIcon className="w-4 h-4 mr-1.5" />
-            New Client
-          </Link>
-        </div>
-      </div>
-    </header>
+    </div>
   );
 };
 
