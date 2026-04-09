@@ -1,5 +1,5 @@
 import { Routes, Route, Navigate } from 'react-router-dom';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useAuthStore } from './stores/authStore';
 import { apiClient } from './utils/api';
 
@@ -24,6 +24,11 @@ import Settings from './pages/Settings';
 import Subscription from './pages/Subscription';
 import NotFound from './pages/NotFound';
 import PublicProposalView from './pages/public/ProposalView';
+
+// World-class features
+import CommandPalette from './components/command-palette/CommandPalette';
+import KeyboardShortcuts from './components/keyboard/KeyboardShortcuts';
+import useCommandPalette from './hooks/useCommandPalette';
 
 // Protected route wrapper
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
@@ -57,6 +62,8 @@ const PublicRoute = ({ children }: { children: React.ReactNode }) => {
 
 function App() {
   const { isAuthenticated, token, setAuth, clearAuth } = useAuthStore();
+  const { isOpen: isCommandPaletteOpen, close: closeCommandPalette } = useCommandPalette();
+  const [isShortcutsOpen, setIsShortcutsOpen] = useState(false);
 
   // Validate token on app load
   useEffect(() => {
@@ -76,66 +83,101 @@ function App() {
     validateToken();
   }, []);
 
+  // Keyboard shortcuts listener
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // ? to open keyboard shortcuts (when not in input)
+      if (e.key === '?' && !e.metaKey && !e.ctrlKey) {
+        const target = e.target as HTMLElement;
+        const isInput = target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable;
+        
+        if (!isInput && isAuthenticated) {
+          e.preventDefault();
+          setIsShortcutsOpen(true);
+        }
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isAuthenticated]);
+
   return (
-    <Routes>
-      {/* Auth Routes */}
-      <Route
-        path="/login"
-        element={
-          <PublicRoute>
-            <AuthLayout>
-              <Login />
-            </AuthLayout>
-          </PublicRoute>
-        }
-      />
-      <Route
-        path="/register"
-        element={
-          <PublicRoute>
-            <AuthLayout>
-              <Onboarding />
-            </AuthLayout>
-          </PublicRoute>
-        }
-      />
+    <>
+      <Routes>
+        {/* Auth Routes */}
+        <Route
+          path="/login"
+          element={
+            <PublicRoute>
+              <AuthLayout>
+                <Login />
+              </AuthLayout>
+            </PublicRoute>
+          }
+        />
+        <Route
+          path="/register"
+          element={
+            <PublicRoute>
+              <AuthLayout>
+                <Onboarding />
+              </AuthLayout>
+            </PublicRoute>
+          }
+        />
 
-      {/* Protected Routes */}
-      <Route
-        path="/"
-        element={
-          <ProtectedRoute>
-            <DashboardLayout />
-          </ProtectedRoute>
-        }
-      >
-        <Route index element={<Dashboard />} />
-        
-        {/* Proposals */}
-        <Route path="proposals" element={<Proposals />} />
-        <Route path="proposals/new" element={<CreateProposal />} />
-        <Route path="proposals/:id" element={<ProposalDetail />} />
-        
-        {/* Clients */}
-        <Route path="clients" element={<Clients />} />
-        <Route path="clients/new" element={<CreateClient />} />
-        <Route path="clients/:id" element={<ClientDetail />} />
-        
-        {/* Services */}
-        <Route path="services" element={<Services />} />
-        <Route path="services/:id" element={<ServiceDetail />} />
-        
-        {/* Settings */}
-        <Route path="settings" element={<Settings />} />
-        <Route path="subscription" element={<Subscription />} />
-      </Route>
+        {/* Protected Routes */}
+        <Route
+          path="/"
+          element={
+            <ProtectedRoute>
+              <DashboardLayout />
+            </ProtectedRoute>
+          }
+        >
+          <Route index element={<Dashboard />} />
+          
+          {/* Proposals */}
+          <Route path="proposals" element={<Proposals />} />
+          <Route path="proposals/new" element={<CreateProposal />} />
+          <Route path="proposals/:id" element={<ProposalDetail />} />
+          
+          {/* Clients */}
+          <Route path="clients" element={<Clients />} />
+          <Route path="clients/new" element={<CreateClient />} />
+          <Route path="clients/:id" element={<ClientDetail />} />
+          
+          {/* Services */}
+          <Route path="services" element={<Services />} />
+          <Route path="services/:id" element={<ServiceDetail />} />
+          
+          {/* Settings */}
+          <Route path="settings" element={<Settings />} />
+          <Route path="subscription" element={<Subscription />} />
+        </Route>
 
-      {/* Public Proposal View (No authentication required) */}
-      <Route path="/proposals/view/:token" element={<PublicProposalView />} />
+        {/* Public Proposal View (No authentication required) */}
+        <Route path="/proposals/view/:token" element={<PublicProposalView />} />
 
-      {/* 404 */}
-      <Route path="*" element={<NotFound />} />
-    </Routes>
+        {/* 404 */}
+        <Route path="*" element={<NotFound />} />
+      </Routes>
+
+      {/* World-class features - only for authenticated users */}
+      {isAuthenticated && (
+        <>
+          <CommandPalette 
+            isOpen={isCommandPaletteOpen} 
+            onClose={closeCommandPalette} 
+          />
+          <KeyboardShortcuts
+            isOpen={isShortcutsOpen}
+            onClose={() => setIsShortcutsOpen(false)}
+          />
+        </>
+      )}
+    </>
   );
 }
 
