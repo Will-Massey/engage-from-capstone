@@ -13,10 +13,30 @@ const prisma = new PrismaClient();
 router.get('/', async (_req, res) => {
   try {
     await prisma.$queryRaw`SELECT 1`;
+    
+    // Check tenant configuration
+    const tenant = await prisma.tenant.findFirst({
+      where: { subdomain: 'demo' },
+    });
+    
+    if (!tenant) {
+      res.status(503).json({
+        status: 'unhealthy',
+        timestamp: new Date().toISOString(),
+        error: 'Tenant not configured',
+      });
+      return;
+    }
+    
     res.status(200).json({
       status: 'healthy',
       timestamp: new Date().toISOString(),
       version: process.env.npm_package_version || 'unknown',
+      tenant: {
+        id: tenant.id,
+        name: tenant.name,
+        subdomain: tenant.subdomain,
+      },
     });
   } catch (error) {
     res.status(503).json({

@@ -29,11 +29,17 @@ export const extractTenant = async (
       req.tenantId = tenant.id;
       (req as any).tenant = tenant;
       logger.debug(`Tenant extracted: ${tenant.subdomain} (${tenant.id}) for path: ${req.path}`);
+      next();
     } else {
-      logger.warn(`No tenant found for request: ${req.path}`);
+      logger.error(`No tenant found for request: ${req.path}`);
+      res.status(503).json({
+        success: false,
+        error: {
+          code: 'TENANT_NOT_CONFIGURED',
+          message: 'Application not properly configured. Please contact support.',
+        },
+      });
     }
-
-    next();
   } catch (error) {
     logger.error('Tenant extraction error:', error);
     // Continue without tenant
