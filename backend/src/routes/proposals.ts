@@ -224,6 +224,8 @@ router.post(
     });
 
     // Prepare services with custom pricing (bypass PricingEngine for custom prices)
+    const validFrequencies = ['ONE_TIME', 'WEEKLY', 'MONTHLY', 'QUARTERLY', 'ANNUALLY'];
+    
     const servicesWithCustomPricing = data.services.map((svc: any) => {
       const template = serviceTemplates.find((t) => t.id === svc.serviceId);
       
@@ -239,6 +241,13 @@ router.post(
       const discountAmount = baseTotal * (discountPercent / 100);
       const finalTotal = baseTotal - discountAmount;
       
+      // Validate frequency - must be a valid PricingFrequency enum value
+      let frequency = svc.frequency || template?.defaultFrequency || 'MONTHLY';
+      if (!validFrequencies.includes(frequency)) {
+        logger.warn(`Invalid frequency '${frequency}' for service ${svc.serviceId}, defaulting to MONTHLY`);
+        frequency = 'MONTHLY';
+      }
+      
       return {
         name: template?.name || 'Service',
         description: template?.description,
@@ -246,7 +255,7 @@ router.post(
         unitPrice: finalUnitPrice,
         discountPercent: discountPercent,
         total: finalTotal,
-        frequency: svc.frequency || template?.defaultFrequency || 'MONTHLY',
+        frequency: frequency,
         serviceTemplateId: svc.serviceId,
       };
     });
