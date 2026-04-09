@@ -62,8 +62,10 @@ const createProposalSchema = zod_1.z.object({
         quantity: zod_1.z.number().min(1).default(1),
         unitPrice: zod_1.z.number().min(0).optional(), // Allow custom unit price
         discountPercent: zod_1.z.number().min(0).max(100).optional(),
+        frequency: zod_1.z.nativeEnum(client_1.PricingFrequency).optional(), // Billing frequency per service
     })).min(1, 'At least one service is required'),
     validUntil: zod_1.z.string().datetime().optional(),
+    contractStartDate: zod_1.z.string().datetime().optional(), // When the contract begins
     paymentTerms: zod_1.z.string().optional(),
     paymentFrequency: zod_1.z.nativeEnum(client_1.PricingFrequency).optional(),
     coverLetter: zod_1.z.string().optional(),
@@ -246,7 +248,7 @@ router.post('/', auth_js_1.authenticate, (0, auth_js_1.authorize)('PARTNER', 'MA
             unitPrice: finalUnitPrice,
             discountPercent: discountPercent,
             total: finalTotal,
-            frequency: template?.defaultFrequency || 'MONTHLY',
+            frequency: svc.frequency || template?.defaultFrequency || 'MONTHLY',
             serviceTemplateId: svc.serviceId,
         };
     });
@@ -262,6 +264,10 @@ router.post('/', auth_js_1.authenticate, (0, auth_js_1.authorize)('PARTNER', 'MA
         : new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
     // Create proposal with services
     logger_js_1.default.info(`Creating proposal for tenant: ${req.tenantId}, user: ${req.user.id}, client: ${data.clientId}`);
+    // Parse contract start date if provided
+    const contractStartDate = data.contractStartDate
+        ? new Date(data.contractStartDate)
+        : new Date();
     const proposal = await database_js_1.prisma.proposal.create({
         data: {
             reference,
@@ -271,6 +277,7 @@ router.post('/', auth_js_1.authenticate, (0, auth_js_1.authorize)('PARTNER', 'MA
             createdById: req.user.id,
             status: 'DRAFT',
             validUntil,
+            contractStartDate,
             subtotal: customSubtotal,
             discountType: data.discountType,
             discountValue: data.discountValue,

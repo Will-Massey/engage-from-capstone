@@ -26,8 +26,10 @@ const createProposalSchema = z.object({
     quantity: z.number().min(1).default(1),
     unitPrice: z.number().min(0).optional(), // Allow custom unit price
     discountPercent: z.number().min(0).max(100).optional(),
+    frequency: z.nativeEnum(PricingFrequency).optional(), // Billing frequency per service
   })).min(1, 'At least one service is required'),
   validUntil: z.string().datetime().optional(),
+  contractStartDate: z.string().datetime().optional(), // When the contract begins
   paymentTerms: z.string().optional(),
   paymentFrequency: z.nativeEnum(PricingFrequency).optional(),
   coverLetter: z.string().optional(),
@@ -244,7 +246,7 @@ router.post(
         unitPrice: finalUnitPrice,
         discountPercent: discountPercent,
         total: finalTotal,
-        frequency: template?.defaultFrequency || 'MONTHLY',
+        frequency: svc.frequency || template?.defaultFrequency || 'MONTHLY',
         serviceTemplateId: svc.serviceId,
       };
     });
@@ -265,6 +267,11 @@ router.post(
     // Create proposal with services
     logger.info(`Creating proposal for tenant: ${req.tenantId}, user: ${req.user!.id}, client: ${data.clientId}`);
     
+    // Parse contract start date if provided
+    const contractStartDate = data.contractStartDate 
+      ? new Date(data.contractStartDate)
+      : new Date();
+
     const proposal = await prisma.proposal.create({
       data: {
         reference,
@@ -274,6 +281,7 @@ router.post(
         createdById: req.user!.id,
         status: 'DRAFT',
         validUntil,
+        contractStartDate,
         subtotal: customSubtotal,
         discountType: data.discountType,
         discountValue: data.discountValue,

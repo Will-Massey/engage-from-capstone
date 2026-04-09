@@ -46,6 +46,8 @@ interface SelectedService extends Service {
   grossTotal: number; // Total including VAT
   serviceTemplateId: string; // Original service ID for backend
   frequency: string; // MONTHLY, QUARTERLY, ANNUALLY, ONE_TIME
+  displayPrice: number; // Price shown to user (can be monthly or annual)
+  billingLabel: string; // e.g., "/month", "/year"
 }
 
 interface ProposalSummary {
@@ -55,6 +57,10 @@ interface ProposalSummary {
   total: number;
   monthlyTotal: number; // Total of monthly services only
   monthlyServiceCount: number;
+  annualTotal: number; // Total of annual services
+  annualServiceCount: number;
+  oneTimeTotal: number; // One-time fees
+  quarterlyTotal: number;
 }
 
 const STEPS = [
@@ -76,6 +82,13 @@ const COVER_TEMPLATES = [
   { id: 'professional', name: 'Professional', description: 'Clean and corporate' },
   { id: 'friendly', name: 'Friendly', description: 'Warm and approachable' },
   { id: 'modern', name: 'Modern', description: 'Bold and contemporary' },
+];
+
+const BILLING_FREQUENCIES = [
+  { id: 'MONTHLY', label: 'Monthly', shortLabel: '/month', multiplier: 1 },
+  { id: 'QUARTERLY', label: 'Quarterly', shortLabel: '/quarter', multiplier: 3 },
+  { id: 'ANNUALLY', label: 'Annually', shortLabel: '/year', multiplier: 12 },
+  { id: 'ONE_TIME', label: 'One-time', shortLabel: 'one-off', multiplier: 1 },
 ];
 
 const CreateProposal = () => {
@@ -107,6 +120,10 @@ const CreateProposal = () => {
   const [validUntil, setValidUntil] = useState(() => {
     const date = new Date();
     date.setDate(date.getDate() + 30);
+    return date.toISOString().split('T')[0];
+  });
+  const [contractStartDate, setContractStartDate] = useState(() => {
+    const date = new Date();
     return date.toISOString().split('T')[0];
   });
   const [sending, setSending] = useState(false);
@@ -171,7 +188,7 @@ const CreateProposal = () => {
     return filtered;
   }, [services, selectedCategory, serviceSearch]);
   
-  // Calculate totals - using line-level VAT
+  // Calculate totals - using line-level VAT with split by frequency
   const summary: ProposalSummary = useMemo(() => {
     const subtotal = selectedServices.reduce((sum, s) => sum + s.total, 0);
     const discountAmount = selectedServices.reduce((sum, s) => {
@@ -183,16 +200,34 @@ const CreateProposal = () => {
       : 0;
     const total = subtotal + vatAmount;
     
-    // Calculate monthly total (only for monthly services)
-    const monthlyServices = selectedServices.filter(s => 
-      s.frequency === 'MONTHLY' || s.billingCycle === 'MONTHLY'
-    );
+    // Calculate totals by frequency
+    const monthlyServices = selectedServices.filter(s => s.frequency === 'MONTHLY');
     const monthlyTotal = monthlyServices.reduce((sum, s) => sum + s.grossTotal, 0);
     
-    return { subtotal, discountAmount, vatAmount, total, monthlyTotal, monthlyServiceCount: monthlyServices.length };
+    const annualServices = selectedServices.filter(s => s.frequency === 'ANNUALLY');
+    const annualTotal = annualServices.reduce((sum, s) => sum + s.grossTotal, 0);
+    
+    const quarterlyServices = selectedServices.filter(s => s.frequency === 'QUARTERLY');
+    const quarterlyTotal = quarterlyServices.reduce((sum, s) => sum + s.grossTotal, 0);
+    
+    const oneTimeServices = selectedServices.filter(s => s.frequency === 'ONE_TIME');
+    const oneTimeTotal = oneTimeServices.reduce((sum, s) => sum + s.grossTotal, 0);
+    
+    return { 
+      subtotal, 
+      discountAmount, 
+      vatAmount, 
+      total, 
+      monthlyTotal, 
+      monthlyServiceCount: monthlyServices.length,
+      annualTotal,
+      annualServiceCount: annualServices.length,
+      quarterlyTotal,
+      oneTimeTotal
+    };
   }, [selectedServices, includeVat]);
   
-  // Add service
+  // Add service with billing frequency
   const addService = (service: Service) => {
     const existing = selectedServices.find(s => s.id === service.id);
     if (existing) {
@@ -200,17 +235,39 @@ const CreateProposal = () => {
       return;
     }
     
+    // Determine default frequency from service or default to monthly
+    const defaultFrequency = service.billingCycle || 'MONTHLY';
+    const freqConfig = BILLING_FREQUENCIES.find(f => f.id === defaultFrequency) || BILLING_FREQUENCIES[0];
+    
+    // Calculate display price based on frequency
+    // If service is stored as annual but we want to show monthly, divide by 12
+    let displayPrice = service.basePrice;
+    let unitPrice = service.basePrice;
+    
+    // If the service basePrice is annual but we're displaying monthly
+    if (service.billingCycle === 'ANNUALLY' && defaultFrequency === 'MONTHLY') {
+      displayPrice = service.basePrice / 12;
+      unitPrice = service.basePrice / 12;
+    }
+    // If the service basePrice is monthly but we want annual display
+    else if (service.billingCycle === 'MONTHLY' && defaultFrequency === 'ANNUALLY') {
+      displayPrice = service.basePrice * 12;
+      unitPrice = service.basePrice * 12;
+    }
+    
     const newService: SelectedService = {
       ...service,
       quantity: 1,
-      unitPrice: service.basePrice,
+      unitPrice: unitPrice,
       discountPercent: 0,
       vatRate: 20, // Default VAT rate
-      total: service.basePrice, // Net total
-      vatAmount: service.basePrice * 0.2, // VAT amount
-      grossTotal: service.basePrice * 1.2, // Gross total
+      total: unitPrice, // Net total
+      vatAmount: unitPrice * 0.2, // VAT amount
+      grossTotal: unitPrice * 1.2, // Gross total
       serviceTemplateId: service.id, // Store original service ID
-      frequency: service.billingCycle || 'MONTHLY', // Default to monthly
+      frequency: defaultFrequency,
+      displayPrice: displayPrice,
+      billingLabel: freqConfig.shortLabel,
     };
     setSelectedServices([...selectedServices, newService]);
     toast.success(`${service.name} added`);
@@ -284,6 +341,7 @@ const CreateProposal = () => {
         title: proposalTitle,
         services: servicesData,
         validUntil: new Date(validUntil).toISOString(),
+        contractStartDate: new Date(contractStartDate).toISOString(),
         coverLetter: coverLetterContent || generateCoverLetter(selectedClient.name, coverTemplate),
       };
       
@@ -740,10 +798,42 @@ Let's build your financial foundation.
                             <option value={20}>20%</option>
                           </select>
                         </div>
+                        <div className="flex items-center gap-1">
+                          <span className="text-xs text-slate-500">Bill</span>
+                          <select
+                            value={service.frequency}
+                            onChange={(e) => {
+                              const newFreq = e.target.value;
+                              const freqConfig = BILLING_FREQUENCIES.find(f => f.id === newFreq);
+                              // Recalculate price based on new frequency
+                              let newUnitPrice = service.unitPrice;
+                              if (service.frequency === 'MONTHLY' && newFreq === 'ANNUALLY') {
+                                newUnitPrice = service.unitPrice * 12;
+                              } else if (service.frequency === 'ANNUALLY' && newFreq === 'MONTHLY') {
+                                newUnitPrice = service.unitPrice / 12;
+                              } else if (service.frequency === 'MONTHLY' && newFreq === 'QUARTERLY') {
+                                newUnitPrice = service.unitPrice * 3;
+                              } else if (service.frequency === 'QUARTERLY' && newFreq === 'MONTHLY') {
+                                newUnitPrice = service.unitPrice / 3;
+                              }
+                              updateService(service.id, { 
+                                frequency: newFreq,
+                                unitPrice: newUnitPrice,
+                                billingLabel: freqConfig?.shortLabel || '/month'
+                              });
+                            }}
+                            className="w-20 px-1 py-0.5 text-sm rounded border border-slate-200 bg-white"
+                          >
+                            {BILLING_FREQUENCIES.map(freq => (
+                              <option key={freq.id} value={freq.id}>{freq.label}</option>
+                            ))}
+                          </select>
+                        </div>
                         <div className="ml-auto text-right">
                           <span className="text-xs font-semibold text-blue-600">
                             £{service.grossTotal.toLocaleString('en-GB', { minimumFractionDigits: 0 })}
                           </span>
+                          <span className="text-xs text-slate-500 ml-1">{service.billingLabel}</span>
                         </div>
                       </div>
                     </div>
@@ -840,17 +930,30 @@ Let's build your financial foundation.
                   )}
                 </div>
                 
-                {/* Valid Until */}
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 text-slate-600 mb-2">
-                    Valid Until
-                  </label>
-                  <input
-                    type="date"
-                    value={validUntil}
-                    onChange={(e) => setValidUntil(e.target.value)}
-                    className="px-4 py-2 rounded-lg border border-slate-200 bg-white text-slate-900"
-                  />
+                {/* Contract Dates */}
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700 mb-2">
+                      Contract Start Date
+                    </label>
+                    <input
+                      type="date"
+                      value={contractStartDate}
+                      onChange={(e) => setContractStartDate(e.target.value)}
+                      className="w-full px-4 py-2 rounded-lg border border-slate-200 bg-white text-slate-900"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700 mb-2">
+                      Valid Until (Expiry)
+                    </label>
+                    <input
+                      type="date"
+                      value={validUntil}
+                      onChange={(e) => setValidUntil(e.target.value)}
+                      className="w-full px-4 py-2 rounded-lg border border-slate-200 bg-white text-slate-900"
+                    />
+                  </div>
                 </div>
                 
                 {/* Services Summary - Editable in Step 3 */}
@@ -981,31 +1084,50 @@ Let's build your financial foundation.
                       </div>
                     )}
                     
-                    <div className="pt-3 border-t border-slate-200 ">
+                    <div className="pt-3 border-t border-slate-200">
                       <div className="flex justify-between items-center">
-                        <span className="font-semibold text-slate-900">Total</span>
+                        <span className="font-semibold text-slate-900">Total First Year</span>
                         <span className="text-2xl font-bold text-blue-600">
                           £{summary.total.toLocaleString('en-GB', { minimumFractionDigits: 2 })}
                         </span>
                       </div>
                     </div>
                     
-                    {/* Monthly Payment Display */}
-                    {summary.monthlyTotal > 0 && (
-                      <div className="pt-3 mt-3 border-t border-slate-100">
-                        <div className="flex justify-between items-center">
-                          <div>
-                            <span className="font-semibold text-slate-900">Monthly Payment</span>
-                            <p className="text-xs text-slate-500">
-                              {summary.monthlyServiceCount} monthly service{summary.monthlyServiceCount > 1 ? 's' : ''}
-                            </p>
-                          </div>
-                          <span className="text-xl font-bold text-emerald-600">
-                            £{summary.monthlyTotal.toLocaleString('en-GB', { minimumFractionDigits: 2 })}
+                    {/* Split by billing frequency */}
+                    <div className="pt-3 mt-3 border-t border-slate-100 space-y-2">
+                      {summary.monthlyTotal > 0 && (
+                        <div className="flex justify-between items-center text-sm">
+                          <span className="text-slate-600">Monthly ({summary.monthlyServiceCount} service{summary.monthlyServiceCount > 1 ? 's' : ''})</span>
+                          <span className="font-semibold text-emerald-600">
+                            £{summary.monthlyTotal.toLocaleString('en-GB', { minimumFractionDigits: 2 })}/month
                           </span>
                         </div>
-                      </div>
-                    )}
+                      )}
+                      {summary.quarterlyTotal > 0 && (
+                        <div className="flex justify-between items-center text-sm">
+                          <span className="text-slate-600">Quarterly</span>
+                          <span className="font-semibold text-amber-600">
+                            £{summary.quarterlyTotal.toLocaleString('en-GB', { minimumFractionDigits: 2 })}/quarter
+                          </span>
+                        </div>
+                      )}
+                      {summary.annualTotal > 0 && (
+                        <div className="flex justify-between items-center text-sm">
+                          <span className="text-slate-600">Annual ({summary.annualServiceCount} service{summary.annualServiceCount > 1 ? 's' : ''})</span>
+                          <span className="font-semibold text-blue-600">
+                            £{summary.annualTotal.toLocaleString('en-GB', { minimumFractionDigits: 2 })}/year
+                          </span>
+                        </div>
+                      )}
+                      {summary.oneTimeTotal > 0 && (
+                        <div className="flex justify-between items-center text-sm">
+                          <span className="text-slate-600">One-time fees</span>
+                          <span className="font-semibold text-purple-600">
+                            £{summary.oneTimeTotal.toLocaleString('en-GB', { minimumFractionDigits: 2 })}
+                          </span>
+                        </div>
+                      )}
+                    </div>
                   </div>
                 </div>
                 

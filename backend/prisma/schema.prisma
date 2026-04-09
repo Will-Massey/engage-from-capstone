@@ -246,12 +246,13 @@ model Proposal {
   status          ProposalStatus @default(DRAFT)
 
   // Dates
-  validUntil   DateTime
-  sentAt       DateTime?
-  viewedAt     DateTime?
-  acceptedAt   DateTime?
-  declinedAt   DateTime?
-  expiredAt    DateTime?
+  validUntil        DateTime  // Proposal expiry date
+  contractStartDate DateTime? // When the contract/service begins
+  sentAt            DateTime?
+  viewedAt          DateTime?
+  acceptedAt        DateTime?
+  declinedAt        DateTime?
+  expiredAt         DateTime?
   
   // Renewal tracking
   renewalDate          DateTime?
