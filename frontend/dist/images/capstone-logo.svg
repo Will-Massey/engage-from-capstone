@@ -1,0 +1,28 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 400">
+  <defs>
+    <linearGradient id="capstoneGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#1E88E5"/>
+      <stop offset="50%" style="stop-color:#0D47A1"/>
+      <stop offset="100%" style="stop-color:#01579B"/>
+    </linearGradient>
+    <linearGradient id="capstoneLight" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#42A5F5"/>
+      <stop offset="100%" style="stop-color:#1E88E5"/>
+    </linearGradient>
+  </defs>
+  
+  <!-- Background circle -->
+  <circle cx="200" cy="180" r="120" fill="url(#capstoneGradient)"/>
+  
+  <!-- Diamond/C shape -->
+  <path d="M200 80 L280 140 L280 220 L200 280 L120 220 L120 140 Z" 
+        fill="none" stroke="white" stroke-width="8"/>
+  
+  <!-- Inner C shape -->
+  <path d="M200 110 L250 150 L250 210 L200 250 L150 210 L150 150 L180 170 L180 190 L200 205 L220 190 L220 170 Z" 
+        fill="white"/>
+  
+  <!-- CAPSTONE text -->
+  <text x="200" y="340" font-family="Arial, sans-serif" font-size="48" font-weight="bold" 
+        text-anchor="middle" fill="#0D47A1">CAPSTONE</text>
+</svg>

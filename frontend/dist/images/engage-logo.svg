@@ -1,0 +1,24 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 500 200">
+  <defs>
+    <linearGradient id="engageGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#1E88E5"/>
+      <stop offset="100%" style="stop-color:#0D47A1"/>
+    </linearGradient>
+  </defs>
+  
+  <!-- Diamond icon -->
+  <g transform="translate(30, 40)">
+    <path d="M60 10 L110 50 L110 90 L60 130 L10 90 L10 50 Z" 
+          fill="url(#engageGradient)"/>
+    <path d="M60 30 L90 52 L90 78 L60 100 L30 78 L30 52 L48 64 L48 76 L60 84 L72 76 L72 64 Z" 
+          fill="white"/>
+  </g>
+  
+  <!-- ENGAGE text -->
+  <text x="160" y="110" font-family="Arial, sans-serif" font-size="72" font-weight="bold" 
+        fill="#0D47A1">ENGAGE</text>
+  
+  <!-- Subtitle -->
+  <text x="160" y="135" font-family="Arial, sans-serif" font-size="16" 
+        fill="#546E7A">by Capstone</text>
+</svg>
