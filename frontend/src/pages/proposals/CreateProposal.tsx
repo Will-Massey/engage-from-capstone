@@ -102,12 +102,22 @@ const CreateProposal = () => {
   const [vatRate, setVatRate] = useState(20);
   const [includeVat, setIncludeVat] = useState(true);
   const [coverTemplate, setCoverTemplate] = useState('professional');
+  const [coverLetterContent, setCoverLetterContent] = useState('');
+  const [isEditingCoverLetter, setIsEditingCoverLetter] = useState(false);
   const [validUntil, setValidUntil] = useState(() => {
     const date = new Date();
     date.setDate(date.getDate() + 30);
     return date.toISOString().split('T')[0];
   });
   const [sending, setSending] = useState(false);
+  
+  // Update cover letter when template or client changes
+  useEffect(() => {
+    if (selectedClient) {
+      const newContent = generateCoverLetter(selectedClient.name, coverTemplate);
+      setCoverLetterContent(newContent);
+    }
+  }, [selectedClient, coverTemplate]);
   
   // Load initial data
   useEffect(() => {
@@ -274,7 +284,7 @@ const CreateProposal = () => {
         title: proposalTitle,
         services: servicesData,
         validUntil: new Date(validUntil).toISOString(),
-        coverLetter: generateCoverLetter(selectedClient.name, coverTemplate),
+        coverLetter: coverLetterContent || generateCoverLetter(selectedClient.name, coverTemplate),
       };
       
       const response = await apiClient.createProposal(proposalData) as any;
@@ -780,27 +790,54 @@ Let's build your financial foundation.
                   />
                 </div>
                 
-                {/* Cover Template */}
+                {/* Cover Template & Editable Cover Letter */}
                 <div>
-                  <label className="block text-sm font-medium text-slate-700 text-slate-600 mb-2">
-                    Cover Letter Style
-                  </label>
-                  <div className="grid grid-cols-3 gap-3">
+                  <div className="flex items-center justify-between mb-2">
+                    <label className="block text-sm font-medium text-slate-700">
+                      Cover Letter
+                    </label>
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={() => setIsEditingCoverLetter(!isEditingCoverLetter)}
+                        className="text-xs text-blue-600 hover:text-blue-800 font-medium"
+                      >
+                        {isEditingCoverLetter ? 'Preview' : 'Edit'}
+                      </button>
+                    </div>
+                  </div>
+                  
+                  {/* Template Selection */}
+                  <div className="grid grid-cols-3 gap-3 mb-3">
                     {COVER_TEMPLATES.map((template) => (
                       <button
                         key={template.id}
                         onClick={() => setCoverTemplate(template.id)}
-                        className={`p-4 rounded-xl border-2 text-left transition-all
+                        className={`p-3 rounded-lg border-2 text-left transition-all
                           ${coverTemplate === template.id
-                            ? 'border-blue-500 bg-blue-100 bg-blue-50'
-                            : 'border-slate-200  hover:border-slate-300 hover:border-slate-300'
+                            ? 'border-blue-500 bg-blue-50'
+                            : 'border-slate-200 hover:border-slate-300'
                           }`}
                       >
-                        <h4 className="font-medium text-slate-900">{template.name}</h4>
+                        <h4 className="font-medium text-sm text-slate-900">{template.name}</h4>
                         <p className="text-xs text-slate-500 mt-1">{template.description}</p>
                       </button>
                     ))}
                   </div>
+                  
+                  {/* Editable Cover Letter */}
+                  {isEditingCoverLetter ? (
+                    <textarea
+                      value={coverLetterContent}
+                      onChange={(e) => setCoverLetterContent(e.target.value)}
+                      rows={12}
+                      className="w-full px-4 py-3 rounded-xl border border-slate-200 bg-white text-slate-900 text-sm font-mono leading-relaxed focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      placeholder="Enter your cover letter content..."
+                    />
+                  ) : (
+                    <div className="w-full px-4 py-3 rounded-xl border border-slate-200 bg-slate-50 text-slate-700 text-sm leading-relaxed whitespace-pre-wrap max-h-64 overflow-y-auto">
+                      {coverLetterContent || 'Select a template to generate a cover letter...'}
+                    </div>
+                  )}
                 </div>
                 
                 {/* Valid Until */}

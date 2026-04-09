@@ -82,7 +82,9 @@ const Proposals = () => {
 
   const downloadPDF = async (id: string, reference: string) => {
     try {
+      toast.loading('Generating PDF...');
       const blob = await apiClient.downloadProposalPDF(id) as Blob;
+      toast.dismiss();
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
@@ -91,8 +93,10 @@ const Proposals = () => {
       a.click();
       document.body.removeChild(a);
       window.URL.revokeObjectURL(url);
+      toast.success('PDF downloaded');
     } catch (error) {
-      // Error handled by UI
+      toast.dismiss();
+      toast.error('Failed to download PDF');
     }
   };
 
@@ -107,9 +111,23 @@ const Proposals = () => {
   };
 
   const copyProposalLink = (shareToken: string) => {
-    const link = `${window.location.origin}/view/${shareToken}`;
+    const link = `${window.location.origin}/proposals/view/${shareToken}`;
     navigator.clipboard.writeText(link);
     toast.success('Proposal link copied to clipboard');
+  };
+  
+  const generateShareLink = async (proposal: any) => {
+    try {
+      const response = await apiClient.post(`/proposals/${proposal.id}/share`, { expiryDays: 30 }) as any;
+      if (response.success) {
+        const shareUrl = response.data.shareUrl;
+        navigator.clipboard.writeText(shareUrl);
+        toast.success('Shareable link copied!');
+        loadProposals();
+      }
+    } catch (error) {
+      toast.error('Failed to generate share link');
+    }
   };
 
   const duplicateProposal = async (proposal: any) => {
@@ -346,11 +364,18 @@ const Proposals = () => {
                         </div>
                       </td>
                       <td className="px-3 py-4 whitespace-nowrap text-center">
-                        <div className="flex items-center justify-center space-x-1">
-                          <EyeIcon className="h-4 w-4 text-slate-400" />
-                          <span className="text-sm text-slate-700">
-                            {formatViewCount(proposal._count?.views || 0)}
-                          </span>
+                        <div className="flex flex-col items-center">
+                          <div className="flex items-center space-x-1">
+                            <EyeIcon className={`h-4 w-4 ${proposal._count?.views > 0 ? 'text-blue-500' : 'text-slate-400'}`} />
+                            <span className={`text-sm ${proposal._count?.views > 0 ? 'text-blue-700 font-medium' : 'text-slate-700'}`}>
+                              {formatViewCount(proposal._count?.views || 0)}
+                            </span>
+                          </div>
+                          {proposal.viewedAt && (
+                            <span className="text-xs text-slate-500">
+                              Last: {format(new Date(proposal.viewedAt), 'dd MMM HH:mm')}
+                            </span>
+                          )}
                         </div>
                       </td>
                       <td className="px-4 py-4 whitespace-nowrap text-right">
@@ -380,8 +405,8 @@ const Proposals = () => {
                             <EyeIcon className="h-5 w-5" />
                           </Link>
                           
-                          {/* Edit - if draft or expired */}
-                          {(proposal.status === 'DRAFT' || isExpired) && (
+                          {/* Edit - if draft, sent, viewed, or expired */}
+                          {(proposal.status === 'DRAFT' || proposal.status === 'SENT' || proposal.status === 'VIEWED' || isExpired) && (
                             <Link
                               to={`/proposals/${proposal.id}/edit`}
                               className="p-1 text-slate-500 hover:text-slate-700"
@@ -402,12 +427,12 @@ const Proposals = () => {
                             </button>
                           )}
                           
-                          {/* Copy Link */}
-                          {proposal.shareToken && (
+                          {/* Generate/Copy Link */}
+                          {proposal.status !== 'ACCEPTED' && proposal.status !== 'DECLINED' && !isExpired && (
                             <button
-                              onClick={() => copyProposalLink(proposal.shareToken)}
-                              className="p-1 text-slate-500 hover:text-green-600"
-                              title="Copy Link"
+                              onClick={() => proposal.shareToken ? copyProposalLink(proposal.shareToken) : generateShareLink(proposal)}
+                              className={`p-1 ${proposal.shareToken ? 'text-green-600 hover:text-green-700' : 'text-slate-500 hover:text-green-600'}`}
+                              title={proposal.shareToken ? 'Copy Link' : 'Generate Share Link'}
                             >
                               <LinkIcon className="h-5 w-5" />
                             </button>
