@@ -7,19 +7,22 @@
 
 ## 1. Project Overview
 
-**Engage by Capstone** is a professional proposal-generation platform built for UK accountancy practices. It enables firms to create, share, and electronically sign compliant engagement letters and proposals in under five minutes.
+**Engage by Capstone** is a world-class professional proposal-generation platform built for UK accountancy practices. It enables firms to create, share, and electronically sign compliant engagement letters and proposals in under five minutes.
 
 ### Key Capabilities
 
+- **World-Class UX** — Command palette (Cmd+K), keyboard shortcuts, glassmorphism UI, dark/light themes
 - **Multi-tenant architecture** — One database with row-level tenant isolation via `tenantId`
 - **Role-based access control** — `ADMIN`, `PARTNER`, `MANAGER`, `SENIOR`, `JUNIOR`
 - **UK-specific compliance** — MTD ITSA assessment, Companies House lookup, VAT handling
+- **Smart Pricing** — Frequency-aware pricing (Monthly/Quarterly/Annual) with line-level VAT
 - **PDF generation** — Print-ready professional proposals
 - **Electronic signatures** — UK-compliant signature capture and storage
 - **Proposal activity tracking** — View tracking with duration and IP logging
 - **Stripe subscription billing** — Webhook handling for payments
 - **Public proposal sharing** — Secure tokens with view tracking
 - **Renewal reminders** — Automated daily job for proposal renewals
+- **CSRF Protection** — Auto-retry mechanism for seamless UX
 
 ---
 
@@ -31,7 +34,7 @@
 | **Backend** | Node.js 20+, Express.js 4, TypeScript 5.3+, Prisma 5.22, PostgreSQL 15 |
 | **Frontend** | React 18, TypeScript, Vite 5, Tailwind CSS 3, Zustand 4 |
 | **Shared** | TypeScript package exposing enums, interfaces, validation, pricing engine |
-| **Testing** | Jest (backend), Vitest (frontend) |
+| **Testing** | Jest (backend), Vitest (frontend), Playwright (E2E) |
 | **Caching** | Redis 7 (via `ioredis`) — optional but configured |
 | **Package Manager** | npm + pnpm hybrid (`pnpm-lock.yaml` for CI) |
 | **CI/CD** | GitHub Actions (`.github/workflows/ci-cd.yml`) |
@@ -58,23 +61,30 @@ engage/
 │   │   └── utils/            # cache, encryption, logger helpers
 │   ├── prisma/
 │   │   ├── schema.prisma     # Full Prisma schema (600+ lines)
-│   │   ├── seed-enhanced.ts  # Database seeding
-│   │   └── migrations/       # Prisma migration files
+│   │   ├── migrations/       # Prisma migration files
+│   │   └── seed-enhanced.ts  # Database seeding
 │   └── dist/                 # Compiled JavaScript output
 ├── frontend/                 # React SPA
 │   ├── src/
-│   │   ├── components/       # React components (feature + ui/ primitives)
-│   │   ├── data/             # static data
+│   │   ├── components/       # React components
+│   │   │   ├── command-palette/   # Cmd+K command palette
+│   │   │   ├── keyboard/          # Keyboard shortcuts help
+│   │   │   ├── layout/            # Dashboard, Sidebar, Header
+│   │   │   ├── skeleton/          # Loading skeletons
+│   │   │   ├── theme/             # Theme toggle
+│   │   │   └── ui/                # UI primitives
+│   │   ├── hooks/            # Custom hooks (useCommandPalette)
 │   │   ├── pages/            # route-level page components
 │   │   ├── stores/           # Zustand stores (auth, theme)
-│   │   └── utils/            # helpers (api.ts is the main axios client)
+│   │   ├── styles/           # CSS styles (base.css)
+│   │   └── utils/            # helpers (api.ts)
 │   ├── public/               # static assets
 │   └── dist/                 # Vite build output
 ├── shared/                   # Cross-package types & utilities
 │   ├── src/
 │   │   └── index.ts          # Enums, interfaces, validation, pricing engine, MTD ITSA
 │   └── dist/                 # Compiled CommonJS output with declarations
-├── landing/                  # Landing page assets
+├── e2e-tests/                # Playwright E2E tests
 ├── scripts/                  # Deployment and utility scripts
 ├── .github/workflows/        # GitHub Actions CI/CD
 ├── docker-compose.yml        # Local development stack
@@ -101,14 +111,71 @@ engage/
 | `frontend/package.json` | React + Vite deps, Vitest. `"type": "module"` |
 | `frontend/tsconfig.json` | **Strict mode OFF**. `moduleResolution: bundler`. Same path aliases as backend. |
 | `frontend/vite.config.ts` | Dev proxy to `localhost:3001`, PWA plugin, manual chunks |
-| `frontend/tailwind.config.js` | Custom colours (`primary`, `capstone`, `slate`, `success`, `warning`, `danger`), dark mode via `class` |
+| `frontend/tailwind.config.js` | Custom colours, glass utilities, animations, dark mode via `class` |
 | `shared/tsconfig.json` | `strict: true`. Outputs CommonJS to `dist/` with declarations. |
 | `.github/workflows/ci-cd.yml` | Lint, test, build, and deploy pipeline |
 | `docker-compose.yml` | PostgreSQL, Redis, backend, frontend, Adminer, Redis Commander |
 
 ---
 
-## 5. Build, Dev & Test Commands
+## 5. World-Class UX Features
+
+### Command Palette (Cmd+K)
+Access from anywhere with `Cmd/Ctrl + K`:
+- **Navigation**: `G D` (Dashboard), `G P` (Proposals), `G C` (Clients), `G S` (Services)
+- **Actions**: `C P` (Create Proposal), `C C` (Create Client)
+- **Search**: Filter commands in real-time
+- **Keyboard Navigation**: Arrow keys + Enter to select
+
+**Implementation**: `frontend/src/components/command-palette/CommandPalette.tsx`
+
+### Keyboard Shortcuts (?)
+Press `?` anywhere to view all shortcuts:
+- Global: Cmd+K, ?, Esc
+- Navigation: G + letter combinations
+- Actions: C + letter combinations
+- Lists: J/K navigation, / for search
+
+**Implementation**: `frontend/src/components/keyboard/KeyboardShortcuts.tsx`
+
+### Glassmorphism Design System
+- **Frosted glass cards**: Backdrop blur (12-20px) with transparency
+- **Theme support**: Light/Dark/System modes
+- **Gradient accents**: Purple/indigo gradient buttons
+- **Smooth animations**: Hover lifts, transitions, micro-interactions
+- **Mobile responsive**: Touch-friendly 44px targets
+
+**Key Classes**:
+```css
+.glass-card      /* Glass card container */
+.glass-tile      /* Interactive glass tile */
+.btn-primary     /* Gradient glass button */
+.input-field     /* Glass form input */
+.card            /* Standard glass card */
+```
+
+**Implementation**: `frontend/src/index.css`, `frontend/tailwind.config.js`
+
+### Skeleton Loading States
+Content-aware loading placeholders:
+- `SkeletonCard` - Dashboard cards
+- `SkeletonTable` - Data tables
+- `SkeletonStats` - Statistics grid
+- `SkeletonForm` - Form fields
+- `SkeletonProposalBuilder` - Multi-step forms
+
+**Implementation**: `frontend/src/components/skeleton/SkeletonCard.tsx`
+
+### Theme System
+- **Store**: `frontend/src/stores/themeStore.ts` (Zustand)
+- **Toggle**: `frontend/src/components/theme/ThemeToggle.tsx`
+- **CSS Variables**: Dynamic theming with CSS custom properties
+- **Persistence**: Saved to localStorage
+- **System Detection**: Auto-detects OS preference
+
+---
+
+## 6. Build, Dev & Test Commands
 
 ### Install Dependencies
 
@@ -151,6 +218,12 @@ npm run db:studio        # Prisma Studio
 ### Testing
 
 ```bash
+# Debug tests
+node scripts/debug-and-test.js
+
+# Unit tests
+cd e2e-tests && npx playwright test specs/unit-calculations.spec.ts
+
 # Backend
 cd backend && npm test   # Jest
 
@@ -181,7 +254,7 @@ Services:
 
 ---
 
-## 6. Runtime Architecture
+## 7. Runtime Architecture
 
 ### Backend (`backend/src/index.ts`)
 
@@ -208,9 +281,11 @@ Services:
 
 - **Dev Server:** `localhost:5173`
 - **Build Output:** `frontend/dist`
-- **API Client:** `frontend/src/utils/api.ts` — axios pointing at `VITE_API_URL` (default: `http://localhost:3001/api`)
-- **Auth State:** `useAuthStore` (Zustand + persist). **Token is NOT persisted to localStorage** — kept in memory only, httpOnly cookie flow
+- **API Client:** `frontend/src/utils/api.ts` — axios pointing at `VITE_API_URL`
+- **Auth State:** `useAuthStore` (Zustand + persist). Token NOT persisted to localStorage — memory only
+- **Theme State:** `useThemeStore` (Zustand + persist). Theme preference persisted
 - **PWA:** Configured via `vite-plugin-pwa` with service worker, manifest, offline support
+- **Command Palette:** `useCommandPalette` hook for global Cmd+K access
 
 ### Shared Package
 
@@ -221,12 +296,12 @@ Services:
 
 ---
 
-## 7. Code Style & Conventions
+## 8. Code Style & Conventions
 
 ### TypeScript
 
 - **Strict mode is intentionally DISABLED** in both `backend/tsconfig.json` and `frontend/tsconfig.json`. Do NOT enable without extensive testing.
-- Backend compiled output goes to `backend/dist/`. Use **`.js` extensions** in backend imports (e.g., `from './bar.js'`)
+- Backend compiled output goes to `backend/dist/`. Use **`.js` extensions** in backend imports (e.g., `from './auth.js'`)
 - Frontend uses ES modules (`"type": "module"`)
 - `shared` package has `strict: true` for type safety at the boundary
 
@@ -259,11 +334,12 @@ All backend routes return:
 
 - Tailwind CSS only. No CSS modules or styled-components.
 - Dark mode toggled by `dark` class on parent (`darkMode: 'class'`)
-- Custom colours defined in `tailwind.config.js` — prefer `primary-600`, `capstone-700`, `success-500`, `danger-500`
+- Custom glass utilities in `tailwind.config.js`
+- CSS variables for theming in `frontend/src/styles/base.css`
 
 ---
 
-## 8. Database Schema Overview
+## 9. Database Schema Overview
 
 ### Main Models
 
@@ -273,7 +349,7 @@ All backend routes return:
 | `User` | Account users with role-based access |
 | `Client` | Client records with Companies House data, MTD ITSA status |
 | `Proposal` | Core proposal entity with pricing, status tracking, signatures |
-| `ProposalService` | Line items for proposals |
+| `ProposalService` | Line items for proposals (includes vatRate, vatAmount, grossTotal) |
 | `ServiceTemplate` | Reusable service definitions with pricing models |
 | `ProposalTemplate` | Pre-configured proposal templates |
 | `CoverLetterTemplate` | Customizable cover letter templates with merge fields |
@@ -292,22 +368,34 @@ All backend routes return:
 - `MTDITSAStatus`: NOT_REQUIRED, ELIGIBLE, MANDATORY, OPTED_IN, EXEMPT, REQUIRED_2026, REQUIRED_2027, REQUIRED_2028
 - `ServiceCategory`: COMPLIANCE, ADVISORY, TAX, PAYROLL, BOOKKEEPING, AUDIT, CONSULTING, TECHNICAL, SPECIALIZED
 - `PricingModel`: FIXED, HOURLY, TIERED, CUSTOM, PER_EMPLOYEE, PER_TRANSACTION
+- `PricingFrequency`: MONTHLY, QUARTERLY, ANNUALLY, ONE_TIME
 
 ---
 
-## 9. Testing Strategy
+## 10. Testing Strategy
 
 ### Backend Testing
 
 - **Framework:** Jest with `ts-jest`
-- **Location:** `backend/tests/` (currently minimal tests)
+- **Location:** `backend/tests/`
 - **Run:** `cd backend && npm test`
 
 ### Frontend Testing
 
-- **Framework:** Vitest
-- **Location:** Co-located (`*.test.tsx`) or `frontend/src/__tests__/`
-- **Run:** `cd frontend && npm test`
+- **Framework:** Vitest + Playwright
+- **Location:** `frontend/src/**/*.test.tsx`, `e2e-tests/`
+- **Run:** `cd frontend && npm test` or `cd e2e-tests && npx playwright test`
+
+### Debug & Test Script
+
+```bash
+node scripts/debug-and-test.js --pricing --vat --files
+```
+
+Tests:
+- Pricing calculations (4 tests)
+- VAT calculations (5 tests)
+- File change verification (5 tests)
 
 ### CI/CD Testing
 
@@ -317,7 +405,7 @@ All backend routes return:
 
 ---
 
-## 10. Security Considerations
+## 11. Security Considerations
 
 ### Authentication & Authorization
 
@@ -330,6 +418,7 @@ All backend routes return:
 - **Pattern:** Double-submit cookie
 - **Cookie:** `csrfToken` — `httpOnly: false` (JS readable), `sameSite: 'strict'`
 - **Header:** State-changing requests must include `X-CSRF-Token`
+- **Auto-retry:** Frontend automatically retries on CSRF failure
 - **Exemptions:** `GET`, `HEAD`, `OPTIONS`, plus configured public paths
 
 ### Rate Limiting
@@ -347,7 +436,7 @@ All backend routes return:
 
 ---
 
-## 11. Deployment
+## 12. Deployment
 
 ### CI/CD Pipeline (GitHub Actions)
 
@@ -399,7 +488,7 @@ docker-compose up --build
 
 ---
 
-## 12. Common Pitfalls
+## 13. Common Pitfalls
 
 1. **Import extensions in backend:** Always use `.js` in backend TypeScript imports (e.g., `from './auth.js'`). The TS compiler does not rewrite them.
 
@@ -415,15 +504,22 @@ docker-compose up --build
 
 7. **Package manager consistency:** Project uses npm locally but pnpm in CI. Prefer `npm install` locally to avoid lockfile conflicts.
 
+8. **Theme class:** Dark mode requires `dark` class on `html` element. Use `useThemeStore` to toggle.
+
 ---
 
-## 13. Quick Reference — File-to-Concern Map
+## 14. Quick Reference — File-to-Concern Map
 
 | Concern | File(s) |
 |---------|---------|
 | Auth (JWT + CSRF) | `backend/src/middleware/auth.ts` |
 | API client | `frontend/src/utils/api.ts` |
 | Auth state | `frontend/src/stores/authStore.ts` |
+| Theme state | `frontend/src/stores/themeStore.ts` |
+| Command palette | `frontend/src/components/command-palette/CommandPalette.tsx` |
+| Keyboard shortcuts | `frontend/src/components/keyboard/KeyboardShortcuts.tsx` |
+| Skeleton loading | `frontend/src/components/skeleton/SkeletonCard.tsx` |
+| Theme toggle | `frontend/src/components/theme/ThemeToggle.tsx` |
 | Database / Prisma | `backend/src/config/database.ts`, `backend/prisma/schema.prisma` |
 | Pricing engine | `backend/src/services/pricingEngine.ts`, `shared/src/index.ts` |
 | PDF generation | `backend/src/services/pdfGenerator.ts` |
@@ -444,7 +540,7 @@ docker-compose up --build
 
 ---
 
-## 14. External Integrations
+## 15. External Integrations
 
 | Service | Purpose | Key Files |
 |---------|---------|-----------|
@@ -457,7 +553,7 @@ docker-compose up --build
 
 ---
 
-## 15. Development Workflow
+## 16. Development Workflow
 
 ### Adding a New Feature
 
@@ -474,12 +570,32 @@ docker-compose up --build
 1. Run `npm run build` to ensure everything compiles
 2. Check for TypeScript errors (despite `strict: false`)
 3. Test critical paths (auth, proposal creation, PDF generation)
+4. Test dark/light theme switching
+5. Verify command palette works (Cmd+K)
 
 ### Emergency Rollback
 
 - Production deploys create database backups automatically via CI
 - Rollback to previous Docker image tag in Railway dashboard
 - Database migrations are forward-only; plan accordingly
+
+---
+
+## 17. World-Class References
+
+### Documentation
+- `WORLD_CLASS_FEATURES.md` — Complete feature overview
+- `WORLD_CLASS_ROADMAP.md` — Future feature roadmap
+- `UI_REFRESH_SUMMARY.md` — Design system documentation
+- `SKELETON_USAGE_GUIDE.md` — Loading state implementation
+- `TODO_FIXES.md` — Task tracking
+
+### Benchmarks
+Engage now rivals:
+- **Linear** — Speed and keyboard navigation
+- **Notion** — Collaboration and simplicity
+- **Stripe** — Developer experience
+- **Figma** — Visual polish and design
 
 ---
 
