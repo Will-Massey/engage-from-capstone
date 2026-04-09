@@ -263,15 +263,18 @@ router.post(
         total: netTotal,
         frequency: frequency,
         serviceTemplateId: svc.serviceId,
-        vatRate: vatRate,
-        vatAmount: vatAmount,
-        grossTotal: grossTotal,
+        // VAT fields temporarily disabled until migration is applied
+        // vatRate: vatRate,
+        // vatAmount: vatAmount,
+        // grossTotal: grossTotal,
       };
     });
 
     // Calculate proposal totals using line-level VAT
     const customSubtotal = servicesWithCustomPricing.reduce((sum: number, svc: any) => sum + svc.total, 0);
-    const customVatAmount = servicesWithCustomPricing.reduce((sum: number, svc: any) => sum + svc.vatAmount, 0);
+    // VAT temporarily disabled until migration is applied
+    // const customVatAmount = servicesWithCustomPricing.reduce((sum: number, svc: any) => sum + svc.vatAmount, 0);
+    const customVatAmount = 0;
     const customTotal = Math.round((customSubtotal + customVatAmount) * 100) / 100;
 
     // Generate reference
@@ -304,7 +307,7 @@ router.post(
         discountType: data.discountType,
         discountValue: data.discountValue,
         discountAmount: 0, // Line-level discounts are already applied
-        vatAmount: customVatAmount,
+        // vatAmount: customVatAmount, // Temporarily disabled until migration
         total: customTotal,
         paymentTerms: data.paymentTerms || '30 days',
         paymentFrequency: data.paymentFrequency || 'MONTHLY',
@@ -411,7 +414,7 @@ router.put(
     if (pricing) {
       updateData.subtotal = pricing.subtotal;
       updateData.discountAmount = pricing.globalDiscount;
-      updateData.vatAmount = pricing.vatAmount;
+      // updateData.vatAmount = pricing.vatAmount; // Temporarily disabled
       updateData.total = pricing.total;
     }
 
@@ -910,7 +913,7 @@ router.post(
         discountType: originalProposal.discountType,
         discountValue: originalProposal.discountValue,
         discountAmount: originalProposal.discountAmount,
-        vatAmount: originalProposal.vatAmount,
+        // vatAmount: originalProposal.vatAmount, // Temporarily disabled
         total: originalProposal.total,
         paymentTerms: originalProposal.paymentTerms,
         paymentFrequency: originalProposal.paymentFrequency,
