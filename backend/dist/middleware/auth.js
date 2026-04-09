@@ -219,7 +219,20 @@ const csrfProtection = (req, res, next) => {
     });
     const csrfToken = req.headers['x-csrf-token'];
     const csrfCookie = req.cookies?.csrfToken;
-    if (!csrfToken || !csrfCookie || csrfToken !== csrfCookie) {
+    // Cross-domain: accept header token if no cookie (cookie blocked by browser)
+    // Same-domain: verify header matches cookie
+    if (!csrfToken) {
+        res.status(403).json({
+            success: false,
+            error: {
+                code: 'CSRF_MISSING',
+                message: 'CSRF token missing from request header',
+            },
+        });
+        return;
+    }
+    // If cookie exists (same-domain), verify they match
+    if (csrfCookie && csrfToken !== csrfCookie) {
         res.status(403).json({
             success: false,
             error: {
