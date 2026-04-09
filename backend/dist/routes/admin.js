@@ -224,6 +224,7 @@ async function seedServicesForTenant(tenantId) {
         pricingModel: s.pricingModel,
         frequencyOptions: s.frequencyOptions,
         defaultFrequency: s.defaultFrequency,
+        billingCycle: s.defaultFrequency, // Set billingCycle for frontend compatibility
         applicableEntityTypes: s.applicableEntityTypes,
         tags: s.tags,
         isActive: true,

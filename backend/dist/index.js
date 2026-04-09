@@ -64,6 +64,7 @@ const coverLetterTemplates_js_1 = __importDefault(require("./routes/coverLetterT
 const tenant_simple_js_1 = require("./middleware/tenant-simple.js");
 const errorHandler_js_1 = require("./middleware/errorHandler.js");
 const logger_js_1 = __importStar(require("./utils/logger.js"));
+const database_js_1 = require("./config/database.js");
 const cache_js_1 = require("./utils/cache.js");
 const health_js_1 = __importDefault(require("./routes/health.js"));
 const setup_js_1 = __importDefault(require("./routes/setup.js"));
@@ -207,7 +208,7 @@ app.use('/api/auth', tenant_simple_js_1.extractTenant, auth_js_1.default);
 // Setup endpoint - no auth required, one-time database initialization
 app.use('/api/setup', setup_js_1.default);
 // Public one-click seed endpoint (no auth/CSRF required — protected by secret key)
-const database_js_1 = require("./config/database.js");
+const database_js_2 = require("./config/database.js");
 app.get('/api/seed-services-public', async (req, res) => {
     const secret = req.query.key;
     if (secret !== 'capstone-uk-2026') {
@@ -215,17 +216,22 @@ app.get('/api/seed-services-public', async (req, res) => {
         return;
     }
     try {
-        let tenant = await database_js_1.prisma.tenant.findFirst({ where: { subdomain: 'demo-practice' } });
+        let tenant = await database_js_2.prisma.tenant.findFirst({ where: { subdomain: 'demo-practice' } });
         if (!tenant)
-            tenant = await database_js_1.prisma.tenant.findFirst({ where: { subdomain: 'demo' } });
+            tenant = await database_js_2.prisma.tenant.findFirst({ where: { subdomain: 'demo' } });
         if (!tenant) {
             res.status(404).json({ success: false, error: { code: 'NO_TENANT', message: 'No demo tenant found' } });
             return;
         }
-        await database_js_1.prisma.proposalService.deleteMany({ where: { proposal: { tenantId: tenant.id } } });
-        await database_js_1.prisma.proposal.deleteMany({ where: { tenantId: tenant.id } });
-        await database_js_1.prisma.pricingRule.deleteMany({ where: { tenantId: tenant.id } });
-        await database_js_1.prisma.serviceTemplate.deleteMany({ where: { tenantId: tenant.id } });
+        // Check if services already exist - don't delete proposals if they do
+        const existingCount = await database_js_2.prisma.serviceTemplate.count({ where: { tenantId: tenant.id } });
+        if (existingCount > 0) {
+            res.json({ success: true, data: { message: `Tenant already has ${existingCount} services. No changes made.`, servicesCount: existingCount } });
+            return;
+        }
+        // Only clean up service templates, NOT proposals
+        await database_js_2.prisma.pricingRule.deleteMany({ where: { tenantId: tenant.id } });
+        await database_js_2.prisma.serviceTemplate.deleteMany({ where: { tenantId: tenant.id } });
         const servicesData = [
             { category: 'COMPLIANCE', name: 'Annual Accounts Preparation & Filing', description: 'Monthly service covering preparation and filing of statutory annual accounts with Companies House.', longDescription: "We prepare your company's statutory annual accounts from your bookkeeping records, ensuring full compliance with UK GAAP, FRS 102, or FRS 105 as applicable. Our service includes: trial balance review, statutory format accounts (Statement of Financial Position, Statement of Comprehensive Income, Directors' Report, Notes to the Accounts), iXBRL tagging where required, and electronic submission to Companies House before the statutory deadline. We also advise on late filing penalties, audit exemptions, and dormant company considerations.", basePrice: 75, baseHours: 6, pricingModel: 'FIXED', frequencyOptions: 'MONTHLY', defaultFrequency: 'MONTHLY', applicableEntityTypes: 'LIMITED_COMPANY,LLP', tags: 'annual-accounts,companies-house,uk-gaap,frs-102,compliance', isPopular: true, regulatoryNotes: 'Filing deadline: 9 months after accounting reference date (private companies). Late filing penalties from £150 to £1,500.' },
             { category: 'COMPLIANCE', name: 'Corporation Tax Return (CT600)', description: 'Monthly service for preparation and submission of Corporation Tax Returns to HMRC.', longDescription: "We calculate your company's corporation tax liability and prepare the CT600 return for electronic submission to HMRC. This includes: review of profits chargeable to corporation tax, capital allowances computations (AIA, FYA, WDA), loss relief claims, group relief considerations, R&D tax relief screening, and iXBRL tagging of computations and accounts. We ensure payment deadlines are met (9 months and 1 day after the end of the accounting period) and advise on quarterly instalment payments (QIPs) for large companies.", basePrice: 55, baseHours: 4, pricingModel: 'FIXED', frequencyOptions: 'MONTHLY', defaultFrequency: 'MONTHLY', applicableEntityTypes: 'LIMITED_COMPANY', tags: 'corporation-tax,ct600,hmrc,tax-computation', isPopular: true, regulatoryNotes: 'Filing deadline: 12 months after the end of the accounting period. Penalties for late filing and interest on late payment apply.' },
@@ -249,19 +255,19 @@ app.get('/api/seed-services-public', async (req, res) => {
             { category: 'SPECIALIZED', name: 'Registered Office Address Service', description: 'Monthly service for professional registered office address with Companies House and HMRC correspondence handling.', longDescription: 'Use our prestigious UK registered office address for your company, ensuring your personal address remains private and your statutory mail is handled professionally. Our service includes: registered office address for Companies House and HMRC, same-day scanning and email forwarding of statutory mail, secure storage of original documents, reminder service for filing deadlines, and assistance with official correspondence from Companies House and HMRC. This is an ideal solution for home-based business owners, non-UK directors, and anyone who values privacy and professionalism.', basePrice: 15, baseHours: 0.1, pricingModel: 'FIXED', frequencyOptions: 'MONTHLY', defaultFrequency: 'MONTHLY', applicableEntityTypes: 'LIMITED_COMPANY,LLP', tags: 'registered-office,address,companies-house,mail-forwarding', isPopular: true, regulatoryNotes: 'A UK company must maintain a registered office address in the same jurisdiction where it is incorporated (England & Wales, Scotland, or Northern Ireland).' },
         ];
         // Ensure PostgreSQL enums have all required values for the UK catalog
-        await database_js_1.prisma.$executeRawUnsafe(`DO $$
+        await database_js_2.prisma.$executeRawUnsafe(`DO $$
     BEGIN
       IF NOT EXISTS (SELECT 1 FROM pg_enum e JOIN pg_type t ON e.enumtypid = t.oid WHERE t.typname = 'ServiceCategory' AND e.enumlabel = 'TECHNICAL') THEN
         ALTER TYPE "ServiceCategory" ADD VALUE 'TECHNICAL';
       END IF;
     END $$;`);
-        await database_js_1.prisma.$executeRawUnsafe(`DO $$
+        await database_js_2.prisma.$executeRawUnsafe(`DO $$
     BEGIN
       IF NOT EXISTS (SELECT 1 FROM pg_enum e JOIN pg_type t ON e.enumtypid = t.oid WHERE t.typname = 'ServiceCategory' AND e.enumlabel = 'SPECIALIZED') THEN
         ALTER TYPE "ServiceCategory" ADD VALUE 'SPECIALIZED';
       END IF;
     END $$;`);
-        await database_js_1.prisma.$executeRawUnsafe(`DO $$
+        await database_js_2.prisma.$executeRawUnsafe(`DO $$
     BEGIN
       IF NOT EXISTS (SELECT 1 FROM pg_enum e JOIN pg_type t ON e.enumtypid = t.oid WHERE t.typname = 'PricingModel' AND e.enumlabel = 'PER_EMPLOYEE') THEN
         ALTER TYPE "PricingModel" ADD VALUE 'PER_EMPLOYEE';
@@ -278,6 +284,7 @@ app.get('/api/seed-services-public', async (req, res) => {
             pricingModel: s.pricingModel,
             frequencyOptions: s.frequencyOptions,
             defaultFrequency: s.defaultFrequency,
+            billingCycle: s.defaultFrequency, // Set billingCycle for frontend compatibility
             applicableEntityTypes: s.applicableEntityTypes,
             tags: s.tags,
             isActive: true,
@@ -287,7 +294,7 @@ app.get('/api/seed-services-public', async (req, res) => {
             requirements: JSON.stringify([]),
             deliverables: JSON.stringify([]),
         }));
-        const result = await database_js_1.prisma.serviceTemplate.createMany({ data });
+        const result = await database_js_2.prisma.serviceTemplate.createMany({ data });
         res.json({ success: true, data: { created: result.count, totalExpected: servicesData.length }, message: `Seeded ${result.count} UK accountancy services` });
     }
     catch (error) {
@@ -377,8 +384,14 @@ app.get('/api/status', (req, res) => {
 // Static files for uploads
 app.use('/uploads', express_1.default.static(path_1.default.join(__dirname, '../uploads')));
 // Health check routes (must be BEFORE static files and SPA handler)
-app.use('/ping', (_req, res) => {
-    res.status(200).json({ status: 'ok', timestamp: new Date().toISOString(), build: 'seed-fix-7a515bfa' });
+app.use('/ping', async (_req, res) => {
+    const dbHealth = await (0, database_js_1.checkDatabaseHealth)();
+    if (dbHealth.healthy) {
+        res.status(200).json({ status: 'ok', timestamp: new Date().toISOString() });
+    }
+    else {
+        res.status(503).json({ status: 'error', message: 'Database unavailable', timestamp: new Date().toISOString() });
+    }
 });
 app.use('/health', health_js_1.default);
 // Serve static frontend files

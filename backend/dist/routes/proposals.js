@@ -63,6 +63,7 @@ const createProposalSchema = zod_1.z.object({
         unitPrice: zod_1.z.number().min(0).optional(), // Allow custom unit price
         discountPercent: zod_1.z.number().min(0).max(100).optional(),
         frequency: zod_1.z.nativeEnum(client_1.PricingFrequency).optional(), // Billing frequency per service
+        vatRate: zod_1.z.number().min(0).max(100).optional(), // Per-line VAT rate
     })).min(1, 'At least one service is required'),
     validUntil: zod_1.z.string().datetime().optional(),
     contractStartDate: zod_1.z.string().datetime().optional(), // When the contract begins
@@ -229,6 +230,7 @@ router.post('/', auth_js_1.authenticate, (0, auth_js_1.authorize)('PARTNER', 'MA
         },
     });
     // Prepare services with custom pricing (bypass PricingEngine for custom prices)
+    const validFrequencies = ['ONE_TIME', 'WEEKLY', 'MONTHLY', 'QUARTERLY', 'ANNUALLY'];
     const servicesWithCustomPricing = data.services.map((svc) => {
         const template = serviceTemplates.find((t) => t.id === svc.serviceId);
         // Use custom unit price if provided, otherwise use template base price
@@ -240,21 +242,34 @@ router.post('/', auth_js_1.authenticate, (0, auth_js_1.authorize)('PARTNER', 'MA
         const discountPercent = svc.discountPercent || 0;
         const baseTotal = finalUnitPrice * quantity;
         const discountAmount = baseTotal * (discountPercent / 100);
-        const finalTotal = baseTotal - discountAmount;
+        const netTotal = baseTotal - discountAmount;
+        // Validate frequency - must be a valid PricingFrequency enum value
+        let frequency = svc.frequency || template?.defaultFrequency || 'MONTHLY';
+        if (!validFrequencies.includes(frequency)) {
+            logger_js_1.default.warn(`Invalid frequency '${frequency}' for service ${svc.serviceId}, defaulting to MONTHLY`);
+            frequency = 'MONTHLY';
+        }
+        // Calculate VAT for this line (default 20% if not specified)
+        const vatRate = svc.vatRate !== undefined ? svc.vatRate : 20;
+        const vatAmount = Math.round(netTotal * (vatRate / 100) * 100) / 100;
+        const grossTotal = netTotal + vatAmount;
         return {
             name: template?.name || 'Service',
             description: template?.description,
             quantity: quantity,
             unitPrice: finalUnitPrice,
             discountPercent: discountPercent,
-            total: finalTotal,
-            frequency: svc.frequency || template?.defaultFrequency || 'MONTHLY',
+            total: netTotal,
+            frequency: frequency,
             serviceTemplateId: svc.serviceId,
+            vatRate: vatRate,
+            vatAmount: vatAmount,
+            grossTotal: grossTotal,
         };
     });
-    // Calculate proposal totals
+    // Calculate proposal totals using line-level VAT
     const customSubtotal = servicesWithCustomPricing.reduce((sum, svc) => sum + svc.total, 0);
-    const customVatAmount = Math.round(customSubtotal * 0.2 * 100) / 100; // 20% VAT
+    const customVatAmount = servicesWithCustomPricing.reduce((sum, svc) => sum + svc.vatAmount, 0);
     const customTotal = Math.round((customSubtotal + customVatAmount) * 100) / 100;
     // Generate reference
     const reference = generateReference('PROP');

@@ -42,24 +42,21 @@ export default defineConfig({
       name: 'webkit',
       use: { ...devices['Desktop Safari'] },
     },
-    {
-      name: 'Mobile Chrome',
-      use: { ...devices['Pixel 5'] },
-    },
   ],
 
-  webServer: [
-    {
-      command: 'cd ../backend && npm run dev',
-      url: 'http://localhost:3001/ping',
-      reuseExistingServer: !process.env.CI,
-      timeout: 120000,
-    },
-    {
-      command: 'cd ../frontend && npm run dev',
-      url: 'http://localhost:5173',
-      reuseExistingServer: !process.env.CI,
-      timeout: 120000,
-    }
-  ],
+  // Web servers auto-start disabled - run them manually or in CI
+  // webServer: [
+  //   {
+  //     command: 'cd ../backend && npm run dev',
+  //     url: 'http://localhost:3001/ping',
+  //     reuseExistingServer: !process.env.CI,
+  //     timeout: 120000,
+  //   },
+  //   {
+  //     command: 'cd ../frontend && npm run dev',
+  //     url: 'http://localhost:5173',
+  //     reuseExistingServer: !process.env.CI,
+  //     timeout: 120000,
+  //   }
+  // ],
 });
