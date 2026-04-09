@@ -596,35 +596,45 @@ Let's build your financial foundation.
                 ))}
               </div>
               
-              {/* Services List */}
-              <div className="flex-1 overflow-y-auto p-4 space-y-2">
+              {/* Services List - Compact Single Line */}
+              <div className="flex-1 overflow-y-auto">
                 {filteredServices.map((service) => (
                   <button
                     key={service.id}
                     onClick={() => addService(service)}
-                    className="w-full p-3 rounded-lg border border-slate-200  hover:border-blue-300 hover:border-blue-300 hover:bg-blue-100 hover:bg-blue-50 transition-all text-left group"
+                    className="w-full px-4 py-2.5 border-b border-slate-100 hover:bg-blue-50 transition-colors text-left group flex items-center gap-3"
+                    title={service.description || service.name}
                   >
-                    <div className="flex justify-between items-start">
-                      <div>
-                        <h4 className="font-medium text-slate-900 group-hover:text-blue-600">
-                          {service.name}
-                        </h4>
-                        {service.description && (
-                          <p className="text-sm text-slate-500 line-clamp-1">{service.description}</p>
-                        )}
-                      </div>
-                      <span className="font-semibold text-slate-900">
-                        £{service.basePrice.toLocaleString()}
-                      </span>
-                    </div>
-                    <div className="mt-2 flex items-center gap-2">
-                      <span className="text-xs px-2 py-0.5 bg-slate-100 text-slate-600 rounded">
-                        {service.category}
-                      </span>
-                      <span className={`text-xs px-2 py-0.5 rounded ${service.billingCycle === 'MONTHLY' ? 'bg-green-100 text-green-700' : service.billingCycle === 'ANNUALLY' ? 'bg-blue-100 text-blue-700' : 'bg-slate-100 text-slate-600'}`}>
-                        {service.billingCycle === 'MONTHLY' ? '£' + service.basePrice.toLocaleString() + '/month' : service.billingCycle === 'ANNUALLY' ? '£' + service.basePrice.toLocaleString() + '/year' : service.billingCycle === 'QUARTERLY' ? '£' + service.basePrice.toLocaleString() + '/quarter' : '£' + service.basePrice.toLocaleString()}
-                      </span>
-                    </div>
+                    {/* Category Icon */}
+                    <span className={`w-2 h-2 rounded-full flex-shrink-0 ${
+                      service.category === 'COMPLIANCE' ? 'bg-blue-500' :
+                      service.category === 'TAX' ? 'bg-green-500' :
+                      service.category === 'PAYROLL' ? 'bg-pink-500' :
+                      service.category === 'BOOKKEEPING' ? 'bg-purple-500' :
+                      service.category === 'ADVISORY' ? 'bg-amber-500' :
+                      'bg-slate-400'
+                    }`} />
+                    
+                    {/* Service Name */}
+                    <span className="flex-1 font-medium text-sm text-slate-700 group-hover:text-blue-700 truncate">
+                      {service.name}
+                    </span>
+                    
+                    {/* Price */}
+                    <span className="font-semibold text-sm text-slate-900">
+                      £{service.basePrice.toLocaleString()}
+                    </span>
+                    
+                    {/* Frequency Badge */}
+                    <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
+                      service.billingCycle === 'MONTHLY' ? 'bg-green-100 text-green-700' : 
+                      service.billingCycle === 'ANNUALLY' ? 'bg-blue-100 text-blue-700' : 
+                      'bg-slate-100 text-slate-600'
+                    }`}>
+                      {service.billingCycle === 'MONTHLY' ? '/mo' : 
+                       service.billingCycle === 'ANNUALLY' ? '/yr' : 
+                       service.billingCycle === 'QUARTERLY' ? '/qtr' : ''}
+                    </span>
                   </button>
                 ))}
               </div>
@@ -638,105 +648,91 @@ Let's build your financial foundation.
                 </h3>
               </div>
               
-              <div className="flex-1 overflow-y-auto p-4 space-y-3">
+              <div className="flex-1 overflow-y-auto">
                 {selectedServices.length === 0 ? (
-                  <div className="text-center py-12 text-slate-400 text-slate-400">
+                  <div className="text-center py-12 text-slate-400">
                     <p>Click services on the left to add them</p>
                   </div>
                 ) : (
                   selectedServices.map((service, index) => (
                     <div
                       key={service.id}
-                      className="bg-white rounded-lg border border-slate-200 p-4 shadow-sm"
+                      className="bg-white border-b border-slate-100 p-3"
                     >
-                      <div className="flex justify-between items-start mb-3">
-                        <div>
-                          <h4 className="font-medium text-slate-900">{service.name}</h4>
-                          <p className="text-xs text-slate-500">{service.category}</p>
+                      {/* Header Row */}
+                      <div className="flex justify-between items-center mb-2">
+                        <div className="flex items-center gap-2 min-w-0">
+                          <span className="text-xs font-medium text-slate-500">{index + 1}.</span>
+                          <h4 className="font-medium text-sm text-slate-900 truncate">{service.name}</h4>
                         </div>
                         <div className="flex items-center gap-1">
                           <button
-                            onClick={() => setEditingService(editingService === service.id ? null : service.id)}
-                            className="p-1 text-slate-400 hover:text-blue-600 hover:text-blue-600"
-                          >
-                            <PencilIcon className="w-4 h-4" />
-                          </button>
-                          <button
                             onClick={() => duplicateService(service)}
-                            className="p-1 text-slate-400 hover:text-blue-600 hover:text-blue-600"
+                            className="p-1 text-slate-400 hover:text-blue-600"
+                            title="Duplicate"
                           >
-                            <DocumentDuplicateIcon className="w-4 h-4" />
+                            <DocumentDuplicateIcon className="w-3.5 h-3.5" />
                           </button>
                           <button
                             onClick={() => removeService(service.id)}
-                            className="p-1 text-slate-400 hover:text-red-600 hover:text-red-600"
+                            className="p-1 text-slate-400 hover:text-red-600"
+                            title="Remove"
                           >
-                            <TrashIcon className="w-4 h-4" />
+                            <TrashIcon className="w-3.5 h-3.5" />
                           </button>
                         </div>
                       </div>
                       
-                      {/* Inline Edit Controls */}
-                      <div className="grid grid-cols-4 gap-2 text-sm">
-                        <div>
-                          <label className="text-xs text-slate-500">Qty</label>
+                      {/* Compact Edit Controls */}
+                      <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-1">
+                          <span className="text-xs text-slate-500">Qty</span>
                           <input
                             type="number"
                             min="1"
                             value={service.quantity}
                             onChange={(e) => updateService(service.id, { quantity: parseInt(e.target.value) || 1 })}
-                            className="w-full px-2 py-1 rounded border border-slate-200 bg-white text-slate-900 text-sm"
+                            className="w-14 px-1.5 py-0.5 text-sm rounded border border-slate-200"
                           />
                         </div>
-                        <div>
-                          <label className="text-xs text-slate-500">Unit £</label>
+                        <div className="flex items-center gap-1">
+                          <span className="text-xs text-slate-500">£</span>
                           <input
                             type="number"
                             min="0"
                             step="0.01"
                             value={service.unitPrice}
                             onChange={(e) => updateService(service.id, { unitPrice: parseFloat(e.target.value) || 0 })}
-                            className="w-full px-2 py-1 rounded border border-slate-200 bg-white text-slate-900 text-sm"
+                            className="w-16 px-1.5 py-0.5 text-sm rounded border border-slate-200"
                           />
                         </div>
-                        <div>
-                          <label className="text-xs text-slate-500">Discount %</label>
+                        <div className="flex items-center gap-1">
+                          <span className="text-xs text-slate-500">Disc</span>
                           <input
                             type="number"
                             min="0"
                             max="100"
                             value={service.discountPercent}
                             onChange={(e) => updateService(service.id, { discountPercent: parseFloat(e.target.value) || 0 })}
-                            className="w-full px-2 py-1 rounded border border-slate-200 bg-white text-slate-900 text-sm"
+                            className="w-12 px-1.5 py-0.5 text-sm rounded border border-slate-200"
                           />
+                          <span className="text-xs text-slate-500">%</span>
                         </div>
-                        <div>
-                          <label className="text-xs text-slate-500">VAT %</label>
+                        <div className="flex items-center gap-1">
+                          <span className="text-xs text-slate-500">VAT</span>
                           <select
                             value={service.vatRate}
                             onChange={(e) => updateService(service.id, { vatRate: parseFloat(e.target.value) || 0 })}
-                            className="w-full px-2 py-1 rounded border border-slate-200 bg-white text-slate-900 text-sm"
+                            className="w-14 px-1 py-0.5 text-sm rounded border border-slate-200 bg-white"
                           >
                             <option value={0}>0%</option>
                             <option value={5}>5%</option>
                             <option value={20}>20%</option>
                           </select>
                         </div>
-                      </div>
-                      
-                      {/* Line Totals */}
-                      <div className="mt-3 pt-3 border-t border-slate-100 ">
-                        <div className="flex justify-between text-xs text-slate-500 mb-1">
-                          <span>Net: £{service.total.toFixed(2)}</span>
-                          <span>VAT ({service.vatRate}%): £{service.vatAmount.toFixed(2)}</span>
-                        </div>
-                        <div className="flex justify-between items-center">
-                          <span className="text-xs text-slate-500">
-                            {service.quantity} × £{service.unitPrice}
-                            {service.discountPercent > 0 && ` (-${service.discountPercent}%)`}
-                          </span>
-                          <span className="font-semibold text-blue-600">
-                            £{service.grossTotal.toLocaleString('en-GB', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                        <div className="ml-auto text-right">
+                          <span className="text-xs font-semibold text-blue-600">
+                            £{service.grossTotal.toLocaleString('en-GB', { minimumFractionDigits: 0 })}
                           </span>
                         </div>
                       </div>
