@@ -1,0 +1,15 @@
+{
+  "mcpServers": {
+    "playwright": {
+      "command": "npx",
+      "args": ["@anthropic-ai/playwright-mcp@latest"],
+      "env": {
+        "DISPLAY": ":1"
+      }
+    },
+    "engage-testing": {
+      "command": "node",
+      "args": ["scripts/mcp-test-server.js"]
+    }
+  }
+}
