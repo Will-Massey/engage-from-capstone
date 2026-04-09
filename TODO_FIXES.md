@@ -50,24 +50,52 @@
 ---
 
 ### 4. CSRF Token Auto-Retry (COMPLETED)
-**Issue**: CSRF failures occurred when creating new proposals after token expiry.
+**Issue**: CSRF token failures occurred when creating new proposals after token expiry.
 
 **Files Modified**:
 - `frontend/src/utils/api.ts`
 
 **Changes**:
 - Added automatic CSRF token refresh on CSRF_MISSING/CSRF_INVALID errors
-- Failed requests are automatically retried with new token
-- Users see "Security token expired" message only if retry fails
+- Failed requests automatically retry with new token
+- Only shows error to user if retry fails
+
+---
+
+### 5. Modern Glassmorphism UI (COMPLETED) ✅ NEW
+**Issue**: Site needed modern, visually impressive design with glass-like tiles and theme support.
+
+**Files Modified**:
+- `frontend/tailwind.config.js` - Added glass utilities, animations, extended colors
+- `frontend/src/index.css` - Complete redesign with glass component classes
+- `frontend/src/styles/base.css` - New CSS variables for theming
+- `frontend/src/stores/themeStore.ts` - New theme management store
+- `frontend/src/components/theme/ThemeToggle.tsx` - Theme toggle component
+- `frontend/src/components/layout/DashboardLayout.tsx` - Glass layout with gradient backgrounds
+- `frontend/src/components/layout/Sidebar.tsx` - Glass sidebar with tiles
+- `frontend/src/components/layout/Header.tsx` - Glass header with theme toggle
+
+**Features Implemented**:
+- ✅ Frosted glass effect on cards, tiles, modals, and navigation
+- ✅ Light/Dark theme toggle with system preference detection
+- ✅ Persistent theme selection across sessions
+- ✅ Gradient backgrounds with subtle animations
+- ✅ Modern color palette with purple/indigo accents
+- ✅ Glass morphism on buttons, inputs, and interactive elements
+- ✅ Mobile-responsive design with touch-friendly targets
+- ✅ Smooth transitions and hover effects
+- ✅ Reduced motion support for accessibility
 
 ---
 
 ## ⏳ Pending Tasks
 
-### 5. Database Migration
-**Status**: Schema updated, migration needed
+### 6. Database Migration
+**Status**: Schema updated, migration SQL created
 
-**Command to run**:
+**Migration File**: `backend/prisma/migrations/add_vat_fields_to_proposal_service/migration.sql`
+
+**Command to run when DB is available**:
 ```bash
 cd backend
 npx prisma migrate dev --name add_vat_fields_to_proposal_service
@@ -80,19 +108,6 @@ npx prisma migrate dev --name add_vat_fields_to_proposal_service
 
 ---
 
-### 6. Test Proposal Creation Flow
-**Status**: Pending
-
-**Test Cases**:
-- [ ] Create proposal with monthly service - verify correct pricing
-- [ ] Create proposal with annual service - verify monthly equivalent shown
-- [ ] Change billing frequency during creation - verify price recalculation
-- [ ] Set different VAT rates per line - verify "Mixed" shows in totals
-- [ ] Create proposal after session idle - verify CSRF auto-retry works
-- [ ] Verify proposal total matches sum of line items + VAT
-
----
-
 ### 7. Update Proposal Detail View
 **Status**: Pending
 
@@ -102,6 +117,7 @@ npx prisma migrate dev --name add_vat_fields_to_proposal_service
 - Display per-line VAT rate if different from default
 - Show billing frequency for each service line
 - Display gross total (inc VAT) per line
+- Apply glass card styling
 
 ---
 
@@ -117,7 +133,7 @@ npx prisma migrate dev --name add_vat_fields_to_proposal_service
 
 ---
 
-### 9. Backend Validation Updates
+### 9. Backend PUT Endpoint Updates
 **Status**: Pending
 
 **File**: `backend/src/routes/proposals.ts`
@@ -128,15 +144,15 @@ npx prisma migrate dev --name add_vat_fields_to_proposal_service
 
 ---
 
-### 10. Test Suite Updates
-**Status**: Pending
+### 10. Additional Page Styling
+**Status**: In Progress
 
-**Files**:
-- Any existing proposal creation tests
-
-**Changes Needed**:
-- Update tests to include frequency and vatRate in service payloads
-- Verify line-level VAT calculations
+**Pages to Update with Glass Design**:
+- `frontend/src/pages/Dashboard.tsx` - Dashboard cards and stats
+- `frontend/src/pages/proposals/Proposals.tsx` - Proposal list cards
+- `frontend/src/pages/clients/Clients.tsx` - Client list cards
+- `frontend/src/pages/services/Services.tsx` - Service catalog cards
+- `frontend/src/pages/Settings.tsx` - Settings panels
 
 ---
 
@@ -160,3 +176,21 @@ npx prisma migrate dev --name add_vat_fields_to_proposal_service
 - Token stored in memory for cross-domain support
 - Token refreshed automatically on CSRF errors
 - Failed requests retry once with new token
+
+### Theme System Summary
+- CSS variables for dynamic theming
+- Three modes: Light, Dark, System
+- System mode follows OS preference
+- Persisted in localStorage
+- Smooth transitions between themes
+- Glass effects adapt to both themes
+
+### Glassmorphism Classes Available
+- `.glass` - Basic glass effect
+- `.glass-card` - Glass card with border and shadow
+- `.glass-tile` - Interactive glass tile with hover
+- `.glass-panel` - Panel with glass effect
+- `.btn-primary` - Glass gradient button
+- `.btn-secondary` - Glass outline button
+- `.input-field` - Glass input styling
+- `.card` / `.card-hover` - Glass cards
