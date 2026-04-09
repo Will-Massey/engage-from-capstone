@@ -260,13 +260,13 @@ export const csrfProtection = (req: Request, res: Response, next: NextFunction):
     return;
   }
 
-  // Skip CSRF for public routes (webhooks, OAuth callbacks, public proposals)
+  // Skip CSRF for auth routes and public endpoints
   // Note: paths are relative to where CSRF middleware is mounted (/api)
   const publicPaths = [
+    '/auth', // All auth routes (login, register, csrf-token, etc.)
     '/payments/webhook',
     '/oauth/callback',
     '/proposals/view', // Public proposal viewing and signing
-    '/clients', // TEMPORARY: Skip CSRF for client creation during testing
     '/admin/seed-services', // One-click admin seed endpoint
   ];
   if (publicPaths.some(path => req.path.startsWith(path))) {

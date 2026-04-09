@@ -32,13 +32,17 @@ const fetchCsrfToken = async (): Promise<string> => {
   // Deduplicate concurrent requests
   if (csrfTokenPromise) return csrfTokenPromise;
   
-  csrfTokenPromise = axios.get(`${API_URL}/api/auth/csrf-token`, {
+  csrfTokenPromise = axios.get(`${API_URL.endsWith('/api') ? API_URL : `${API_URL}/api`}/auth/csrf-token`, {
     withCredentials: true,
   }).then((res: any) => {
     csrfTokenPromise = null;
-    return res.data?.data?.csrfToken || getCsrfToken();
-  }).catch(() => {
+    // Token is set in cookie by the response, read it back
+    const tokenFromCookie = getCsrfToken();
+    console.log('[CSRF] Fetched token, cookie set:', !!tokenFromCookie);
+    return tokenFromCookie || '';
+  }).catch((err) => {
     csrfTokenPromise = null;
+    console.error('[CSRF] Failed to fetch token:', err.message);
     return '';
   });
   
@@ -63,8 +67,11 @@ api.interceptors.request.use(
     // Add CSRF token for state-changing requests
     if (['POST', 'PUT', 'DELETE', 'PATCH'].includes(config.method?.toUpperCase() || '')) {
       const csrfToken = await fetchCsrfToken();
-      if (csrfToken) {
+      if (csrfToken && csrfToken !== 'undefined') {
         config.headers['X-CSRF-Token'] = csrfToken;
+        console.log('[CSRF] Token added to request');
+      } else {
+        console.warn('[CSRF] No token available for request');
       }
     }
 
