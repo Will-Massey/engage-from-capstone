@@ -191,22 +191,22 @@ const Proposals = () => {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900">Proposals</h1>
-          <p className="mt-1 text-sm text-slate-600">
+          <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100">Proposals</h1>
+          <p className="mt-1 text-sm text-slate-600 dark:text-slate-400">
             Manage your client proposals and track their status
           </p>
         </div>
         <Link
           to="/proposals/new"
-          className="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium transition-colors"
+          className="btn-primary"
         >
           <PlusIcon className="h-5 w-5 mr-2" />
           Create Proposal
         </Link>
       </div>
 
-      {/* Filters */}
-      <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-4">
+      {/* Filters - Glass Card */}
+      <div className="card p-4">
         <div className="flex flex-col sm:flex-row gap-4">
           <form onSubmit={handleSearch} className="flex-1">
             <div className="relative">
@@ -217,7 +217,7 @@ const Proposals = () => {
                 type="text"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full pl-10 pr-4 py-2 rounded-lg border border-slate-300 bg-white text-slate-900 placeholder-slate-400 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
+                className="search-input w-full"
                 placeholder="Search proposals, clients, or references..."
               />
             </div>
@@ -227,7 +227,7 @@ const Proposals = () => {
             <select
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value)}
-              className="w-44 px-3 py-2 rounded-lg border border-slate-300 bg-white text-slate-900 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
+              className="input-field w-44"
             >
               <option value="">All Status</option>
               <option value="DRAFT">Draft</option>
@@ -240,31 +240,31 @@ const Proposals = () => {
 
             <button
               onClick={loadProposals}
-              className="px-4 py-2 bg-white text-slate-700 border border-slate-300 rounded-lg hover:bg-slate-50 hover:border-slate-400 flex items-center text-sm font-medium"
+              className="btn-secondary"
             >
-              <FunnelIcon className="h-4 w-4 mr-1" />
+              <FunnelIcon className="h-4 w-4 mr-1.5" />
               Filter
             </button>
           </div>
         </div>
       </div>
 
-      {/* Proposals table */}
-      <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+      {/* Proposals table - Glass Card */}
+      <div className="card overflow-hidden">
         {isLoading ? (
           <div className="flex items-center justify-center h-64">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600"></div>
           </div>
         ) : proposals.length === 0 ? (
           <div className="text-center py-16">
-            <DocumentTextIcon className="mx-auto h-12 w-12 text-slate-300" />
-            <h3 className="mt-4 text-lg font-medium text-slate-900">No proposals found</h3>
-            <p className="mt-2 text-sm text-slate-600">
+            <DocumentTextIcon className="mx-auto h-12 w-12 text-slate-300 dark:text-slate-600" />
+            <h3 className="mt-4 text-lg font-medium text-slate-900 dark:text-slate-100">No proposals found</h3>
+            <p className="mt-2 text-sm text-slate-600 dark:text-slate-400">
               Get started by creating your first proposal
             </p>
             <Link
               to="/proposals/new"
-              className="mt-6 inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium transition-colors"
+              className="mt-6 btn-primary inline-flex"
             >
               <PlusIcon className="h-5 w-5 mr-2" />
               Create Proposal
@@ -272,33 +272,33 @@ const Proposals = () => {
           </div>
         ) : (
           <div className="overflow-x-auto">
-            <table className="min-w-[1100px] w-full divide-y divide-slate-200">
-              <thead className="bg-slate-50">
+            <table className="min-w-[1100px] w-full divide-y divide-slate-200 dark:divide-slate-700">
+              <thead className="bg-slate-50/80 dark:bg-slate-800/80 backdrop-blur-sm">
                 <tr>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-slate-600 uppercase tracking-wider w-[22%]">
+                  <th className="px-4 py-3 text-left text-xs font-medium text-slate-600 dark:text-slate-400 uppercase tracking-wider w-[22%]">
                     Proposal
                   </th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-slate-600 uppercase tracking-wider w-[22%]">
+                  <th className="px-4 py-3 text-left text-xs font-medium text-slate-600 dark:text-slate-400 uppercase tracking-wider w-[22%]">
                     Client
                   </th>
-                  <th className="px-3 py-3 text-left text-xs font-medium text-slate-600 uppercase tracking-wider w-[10%]">
+                  <th className="px-3 py-3 text-left text-xs font-medium text-slate-600 dark:text-slate-400 uppercase tracking-wider w-[10%]">
                     Status
                   </th>
-                  <th className="px-3 py-3 text-center text-xs font-medium text-slate-600 uppercase tracking-wider w-[8%]">
+                  <th className="px-3 py-3 text-center text-xs font-medium text-slate-600 dark:text-slate-400 uppercase tracking-wider w-[8%]">
                     Views
                   </th>
-                  <th className="px-4 py-3 text-right text-xs font-medium text-slate-600 uppercase tracking-wider w-[12%]">
+                  <th className="px-4 py-3 text-right text-xs font-medium text-slate-600 dark:text-slate-400 uppercase tracking-wider w-[12%]">
                     Amount
                   </th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-slate-600 uppercase tracking-wider w-[14%] whitespace-nowrap">
+                  <th className="px-4 py-3 text-left text-xs font-medium text-slate-600 dark:text-slate-400 uppercase tracking-wider w-[14%] whitespace-nowrap">
                     Valid Until
                   </th>
-                  <th className="px-3 py-3 text-right text-xs font-medium text-slate-600 uppercase tracking-wider w-[12%]">
+                  <th className="px-3 py-3 text-right text-xs font-medium text-slate-600 dark:text-slate-400 uppercase tracking-wider w-[12%]">
                     Actions
                   </th>
                 </tr>
               </thead>
-              <tbody className="bg-white divide-y divide-slate-200">
+              <tbody className="divide-y divide-slate-200 dark:divide-slate-700">
                 {proposals.map((proposal) => {
                   const isExpired = checkExpired(proposal.validUntil);
                   const displayStatus = isExpired && proposal.status !== 'ACCEPTED' && proposal.status !== 'DECLINED' 
@@ -306,21 +306,21 @@ const Proposals = () => {
                     : proposal.status;
                   
                   return (
-                    <tr key={proposal.id} className="hover:bg-slate-50">
+                    <tr key={proposal.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/50 transition-colors">
                       <td className="px-4 py-4 whitespace-nowrap">
                         <div>
                           <Link
                             to={`/proposals/${proposal.id}`}
-                            className="text-sm font-medium text-slate-900 hover:text-blue-600 truncate max-w-[200px] block"
+                            className="text-sm font-medium text-slate-900 dark:text-slate-100 hover:text-primary-600 dark:hover:text-primary-400 truncate max-w-[200px] block"
                           >
                             {proposal.title}
                           </Link>
-                          <p className="text-xs text-slate-600">{proposal.reference}</p>
+                          <p className="text-xs text-slate-500 dark:text-slate-400">{proposal.reference}</p>
                         </div>
                       </td>
                       <td className="px-4 py-4 whitespace-nowrap">
-                        <div className="text-sm text-slate-900 truncate max-w-[180px]">{proposal.client?.name}</div>
-                        <div className="text-xs text-slate-600">
+                        <div className="text-sm text-slate-900 dark:text-slate-100 truncate max-w-[180px]">{proposal.client?.name}</div>
+                        <div className="text-xs text-slate-500 dark:text-slate-400">
                           {proposal.client?.companyType?.replace(/_/g, ' ')}
                         </div>
                       </td>
@@ -366,28 +366,28 @@ const Proposals = () => {
                       <td className="px-3 py-4 whitespace-nowrap text-center">
                         <div className="flex flex-col items-center">
                           <div className="flex items-center space-x-1">
-                            <EyeIcon className={`h-4 w-4 ${proposal._count?.views > 0 ? 'text-blue-500' : 'text-slate-400'}`} />
-                            <span className={`text-sm ${proposal._count?.views > 0 ? 'text-blue-700 font-medium' : 'text-slate-700'}`}>
+                            <EyeIcon className={`h-4 w-4 ${proposal._count?.views > 0 ? 'text-primary-500' : 'text-slate-400 dark:text-slate-500'}`} />
+                            <span className={`text-sm ${proposal._count?.views > 0 ? 'text-primary-700 dark:text-primary-300 font-medium' : 'text-slate-700 dark:text-slate-300'}`}>
                               {formatViewCount(proposal._count?.views || 0)}
                             </span>
                           </div>
                           {proposal.viewedAt && (
-                            <span className="text-xs text-slate-500">
+                            <span className="text-xs text-slate-500 dark:text-slate-400">
                               Last: {format(new Date(proposal.viewedAt), 'dd MMM HH:mm')}
                             </span>
                           )}
                         </div>
                       </td>
                       <td className="px-4 py-4 whitespace-nowrap text-right">
-                        <div className="text-sm font-medium text-slate-900">
+                        <div className="text-sm font-medium text-slate-900 dark:text-slate-100">
                           £{proposal.total?.toLocaleString()}
                         </div>
-                        <div className="text-xs text-slate-600">
+                        <div className="text-xs text-slate-500 dark:text-slate-400">
                           {proposal.paymentFrequency?.toLowerCase()}
                         </div>
                       </td>
                       <td className="px-4 py-4 whitespace-nowrap">
-                        <div className={`text-sm ${isExpired ? 'text-red-600 font-medium' : 'text-slate-600'}`}>
+                        <div className={`text-sm ${isExpired ? 'text-red-600 dark:text-red-400 font-medium' : 'text-slate-600 dark:text-slate-400'}`}>
                           {proposal.validUntil && format(new Date(proposal.validUntil), 'dd MMM yyyy')}
                           {isExpired && proposal.status !== 'ACCEPTED' && proposal.status !== 'DECLINED' && (
                             <span className="ml-1 text-xs">(Expired)</span>
@@ -478,22 +478,22 @@ const Proposals = () => {
 
         {/* Pagination */}
         {meta.totalPages > 1 && (
-          <div className="px-6 py-4 border-t border-slate-200 flex items-center justify-between">
-            <div className="text-sm text-slate-600">
+          <div className="px-6 py-4 border-t border-slate-200 dark:border-slate-700 flex items-center justify-between">
+            <div className="text-sm text-slate-600 dark:text-slate-400">
               Showing page {meta.page} of {meta.totalPages}
             </div>
             <div className="flex space-x-2">
               <button
                 onClick={() => setMeta({ ...meta, page: meta.page - 1 })}
                 disabled={meta.page === 1}
-                className="px-3 py-1.5 bg-white text-slate-700 border border-slate-300 rounded-lg hover:bg-slate-50 text-sm font-medium disabled:opacity-50"
+                className="btn-secondary py-1.5 text-sm disabled:opacity-50"
               >
                 Previous
               </button>
               <button
                 onClick={() => setMeta({ ...meta, page: meta.page + 1 })}
                 disabled={meta.page === meta.totalPages}
-                className="px-3 py-1.5 bg-white text-slate-700 border border-slate-300 rounded-lg hover:bg-slate-50 text-sm font-medium disabled:opacity-50"
+                className="btn-secondary py-1.5 text-sm disabled:opacity-50"
               >
                 Next
               </button>
