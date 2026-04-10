@@ -78,5 +78,59 @@ router.get('/ready', async (_req, res) => {
 router.get('/live', (_req, res) => {
     res.status(200).json({ alive: true });
 });
+// Data migration endpoint (temporary - for v2 pricing migration)
+router.post('/migrate-data', async (req, res) => {
+    const secret = req.headers['x-migration-key'];
+    if (secret !== 'engage-migrate-2024') {
+        return res.status(403).json({ success: false, error: 'Invalid key' });
+    }
+    try {
+        // Get services that need updating
+        const services = await prisma.serviceTemplate.findMany({
+            where: {
+                OR: [
+                    { priceAmount: 0 },
+                    { priceAmount: null },
+                ],
+                basePrice: { gt: 0 },
+            },
+        });
+        let updated = 0;
+        for (const service of services) {
+            try {
+                let billingCycle = service.defaultFrequency || 'MONTHLY';
+                if (billingCycle === 'ONE_TIME')
+                    billingCycle = 'MONTHLY';
+                let priceDisplayMode = 'PER_MONTH';
+                if (billingCycle === 'ANNUALLY')
+                    priceDisplayMode = 'PER_YEAR';
+                else if (billingCycle === 'QUARTERLY')
+                    priceDisplayMode = 'PER_QUARTER';
+                await prisma.serviceTemplate.update({
+                    where: { id: service.id },
+                    data: {
+                        priceAmount: service.basePrice,
+                        billingCycle: billingCycle,
+                        priceDisplayMode: priceDisplayMode,
+                    },
+                });
+                updated++;
+            }
+            catch (e) {
+                console.error(`Failed to update ${service.name}:`, e);
+            }
+        }
+        res.json({
+            success: true,
+            message: `Migration complete: ${updated}/${services.length} services updated`,
+        });
+    }
+    catch (error) {
+        res.status(500).json({
+            success: false,
+            error: error.message,
+        });
+    }
+});
 exports.default = router;
 //# sourceMappingURL=health.js.map
