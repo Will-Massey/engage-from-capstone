@@ -3,10 +3,54 @@
  */
 
 import { execSync } from 'child_process';
+import { PrismaClient } from '@prisma/client';
 
 console.log('========================================');
 console.log('🚀 Engage Backend Starting...');
 console.log('========================================');
+
+// First, ensure database columns exist before running migrations
+console.log('🔧 Checking database schema...');
+const prisma = new PrismaClient();
+
+try {
+  // Check if billingCycle column exists
+  const result = await prisma.$queryRaw`
+    SELECT column_name 
+    FROM information_schema.columns 
+    WHERE table_name = 'ServiceTemplate' 
+    AND column_name = 'billingCycle'
+  `;
+  
+  if (result.length === 0) {
+    console.log('⚠️  billingCycle column missing. Adding...');
+    await prisma.$executeRaw`ALTER TABLE "ServiceTemplate" ADD COLUMN "billingCycle" TEXT DEFAULT 'MONTHLY'`;
+    console.log('✅ Added billingCycle column');
+  } else {
+    console.log('✅ billingCycle column exists');
+  }
+
+  // Check if priceDisplayMode column exists
+  const result2 = await prisma.$queryRaw`
+    SELECT column_name 
+    FROM information_schema.columns 
+    WHERE table_name = 'ServiceTemplate' 
+    AND column_name = 'priceDisplayMode'
+  `;
+  
+  if (result2.length === 0) {
+    console.log('⚠️  priceDisplayMode column missing. Adding...');
+    await prisma.$executeRaw`ALTER TABLE "ServiceTemplate" ADD COLUMN "priceDisplayMode" TEXT DEFAULT 'PER_MONTH'`;
+    console.log('✅ Added priceDisplayMode column');
+  } else {
+    console.log('✅ priceDisplayMode column exists');
+  }
+  
+  await prisma.$disconnect();
+} catch (e) {
+  console.error('❌ Schema fix error:', e.message);
+  await prisma.$disconnect();
+}
 
 // Run migrations with shorter timeout to fail fast
 console.log('🗄️  Running database migrations...');
@@ -17,8 +61,7 @@ try {
   });
   console.log('✅ Migrations complete');
 } catch (error) {
-  console.warn('⚠️  Migration failed (DB may be down):', error.message);
-  console.log('🚀 Starting server anyway - will retry on requests...');
+  console.warn('⚠️  Migration issue (may be already resolved):', error.message);
 }
 
 // Seed UK accountancy services (non-blocking)
@@ -36,31 +79,6 @@ try {
 // Fix billingCycle for existing services (skip if column doesn't exist yet)
 console.log('🔧 Checking billingCycle field...');
 try {
-  // First check if the column exists in the database
-  const { PrismaClient } = await import('@prisma/client');
-  const prisma = new PrismaClient();
-  
-  try {
-    const result = await prisma.$queryRaw`
-      SELECT column_name 
-      FROM information_schema.columns 
-      WHERE table_name = 'ServiceTemplate' 
-      AND column_name = 'billingCycle'
-    `;
-    
-    if (result.length === 0) {
-      console.log('⚠️  billingCycle column not found. Running migrations first...');
-      // Try to add the column directly
-      await prisma.$executeRaw`ALTER TABLE "ServiceTemplate" ADD COLUMN IF NOT EXISTS "billingCycle" TEXT DEFAULT 'MONTHLY'`;
-      console.log('✅ Added billingCycle column');
-    }
-    await prisma.$disconnect();
-  } catch (e) {
-    console.warn('⚠️  Could not check/add billingCycle column:', e.message);
-    await prisma.$disconnect();
-  }
-  
-  // Now run the fix script
   execSync('node ./scripts/fix-billing-cycle.js', {
     stdio: 'inherit',
     timeout: 30000,

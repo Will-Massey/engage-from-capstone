@@ -39,7 +39,12 @@ import { cache } from './utils/cache.js';
 import healthRouter from './routes/health.js';
 import setupRouter from './routes/setup.js';
 import adminRouter from './routes/admin.js';
-import autoMigrateOnStartup from './scripts/autoMigrateOnStartup.js';
+
+// Dynamic import for auto-migration to handle cases where module might not be built
+let autoMigrateOnStartup: any = null;
+import('./scripts/autoMigrateOnStartup.js')
+  .then(mod => { autoMigrateOnStartup = mod.default; })
+  .catch(() => { logger.warn('Auto-migration module not available'); });
 
 // Initialize Express app
 const app = express();

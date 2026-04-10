@@ -69,7 +69,10 @@ const cache_js_1 = require("./utils/cache.js");
 const health_js_1 = __importDefault(require("./routes/health.js"));
 const setup_js_1 = __importDefault(require("./routes/setup.js"));
 const admin_js_1 = __importDefault(require("./routes/admin.js"));
-const autoMigrateOnStartup_js_1 = __importDefault(require("./scripts/autoMigrateOnStartup.js"));
+// Dynamic import for auto-migration to handle cases where module might not be built
+let autoMigrateOnStartup = null;
+Promise.resolve().then(() => __importStar(require('./scripts/autoMigrateOnStartup.js'))).then(mod => { autoMigrateOnStartup = mod.default; })
+    .catch(() => { logger_js_1.default.warn('Auto-migration module not available'); });
 // Initialize Express app
 const app = (0, express_1.default)();
 const PORT = process.env.PORT || 3001;
@@ -454,9 +457,9 @@ app.listen(PORT, () => {
     // Schedule background jobs
     scheduleRenewalReminders();
     // Run auto-migration in background after server starts
-    if (autoMigrateOnStartup_js_1.default) {
+    if (autoMigrateOnStartup) {
         setTimeout(() => {
-            (0, autoMigrateOnStartup_js_1.default)().catch((err) => {
+            autoMigrateOnStartup().catch((err) => {
                 logger_js_1.default.error('Auto-migration failed:', err);
             });
         }, 5000);

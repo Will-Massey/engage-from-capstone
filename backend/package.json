@@ -7,6 +7,7 @@
     "dev": "tsx watch src/index.ts",
     "prebuild": "npx prisma generate",
     "build": "npx tsc --project tsconfig.json",
+    "postbuild": "cp -r src/scripts dist/scripts 2>/dev/null || echo 'No scripts to copy'",
     "start": "node start-prod.mjs",
     "test": "jest",
     "test:watch": "jest --watch",
