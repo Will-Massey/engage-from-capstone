@@ -11,7 +11,7 @@ services:
     buildCommand: |
       npm install &&
       cd backend && npx prisma generate
-    startCommand: cd backend && npx prisma migrate deploy && npx tsx src/scripts/migrateServicePricing.ts || true && npm start
+    startCommand: cd backend && npx prisma migrate deploy && node dist/scripts/migrateServicePricing.js 2>/dev/null || true && npm start
     healthCheckPath: /ping
     envVars:
       - key: NODE_ENV
