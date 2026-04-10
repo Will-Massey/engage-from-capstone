@@ -10,6 +10,25 @@ const prisma = new PrismaClient();
 async function main() {
   console.log('🔧 Fixing billingCycle for existing services...');
   
+  // First check if billingCycle column exists
+  try {
+    const tableInfo = await prisma.$queryRaw`
+      SELECT column_name 
+      FROM information_schema.columns 
+      WHERE table_name = 'ServiceTemplate' 
+      AND column_name = 'billingCycle'
+    `;
+    
+    if (tableInfo.length === 0) {
+      console.log('⚠️  billingCycle column not found in database.');
+      console.log('Please run: npx prisma migrate deploy');
+      return;
+    }
+  } catch (e) {
+    console.error('❌ Error checking for billingCycle column:', e);
+    return;
+  }
+  
   // Find all services where billingCycle doesn't match defaultFrequency
   const services = await prisma.serviceTemplate.findMany({
     where: {

@@ -11,6 +11,19 @@ async function autoMigrateOnStartup() {
   console.log('[AutoMigrate] Checking if data migration is needed...');
   
   try {
+    // First check if billingCycle column exists (schema may not match database)
+    const tableInfo = await prisma.$queryRaw`
+      SELECT column_name 
+      FROM information_schema.columns 
+      WHERE table_name = 'ServiceTemplate' 
+      AND column_name = 'billingCycle'
+    `;
+    
+    if ((tableInfo as any[]).length === 0) {
+      console.log('[AutoMigrate] billingCycle column not found in database. Skipping migration - run prisma migrate deploy first.');
+      return;
+    }
+    
     // Check if any services need migration
     const servicesNeedingMigration = await prisma.serviceTemplate.count({
       where: {
