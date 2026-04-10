@@ -278,7 +278,7 @@ router.post(
         // New clear pricing fields
         displayPrice,
         billingFrequency,
-        priceDisplayMode,
+        priceDisplayMode: priceDisplayMode as any,
         annualEquivalent,
         // Calculations
         quantity,
@@ -355,7 +355,7 @@ router.post(
         terms: data.terms,
         notes: data.notes,
         services: {
-          create: servicesWithClearPricing,
+          create: servicesWithClearPricing as any,
         },
       },
       include: {
@@ -970,11 +970,14 @@ router.post(
             quantity: svc.quantity,
             unitPrice: svc.unitPrice,
             discountPercent: svc.discountPercent,
-            total: svc.total,
+            displayPrice: svc.displayPrice,
+            lineTotal: svc.lineTotal,
+            billingFrequency: svc.billingFrequency,
+            priceDisplayMode: svc.priceDisplayMode,
             frequency: svc.frequency,
             isOptional: svc.isOptional,
             serviceTemplateId: svc.serviceTemplateId,
-          })),
+          })) as any,
         },
       },
       include: {

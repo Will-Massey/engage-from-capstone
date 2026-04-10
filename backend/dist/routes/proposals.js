@@ -229,48 +229,101 @@ router.post('/', auth_js_1.authenticate, (0, auth_js_1.authorize)('PARTNER', 'MA
             id: { in: data.services.map((s) => s.serviceId) },
         },
     });
-    // Prepare services with custom pricing (bypass PricingEngine for custom prices)
+    // Prepare services with clear pricing (v2)
     const validFrequencies = ['ONE_TIME', 'WEEKLY', 'MONTHLY', 'QUARTERLY', 'ANNUALLY'];
-    const servicesWithCustomPricing = data.services.map((svc) => {
+    const servicesWithClearPricing = data.services.map((svc) => {
         const template = serviceTemplates.find((t) => t.id === svc.serviceId);
-        // Use custom unit price if provided, otherwise use template base price
-        const finalUnitPrice = svc.unitPrice !== undefined && svc.unitPrice > 0
-            ? svc.unitPrice
-            : (template?.basePrice || 0);
-        // Recalculate total with custom unit price
+        // Get the display price - this is what the client sees
+        const displayPrice = svc.displayPrice !== undefined && svc.displayPrice > 0
+            ? svc.displayPrice
+            : (template?.priceAmount || template?.basePrice || 0);
+        // Get billing frequency
+        let billingFrequency = svc.billingFrequency || template?.billingCycle || 'MONTHLY';
+        if (!validFrequencies.includes(billingFrequency)) {
+            logger_js_1.default.warn(`Invalid frequency '${billingFrequency}' for service ${svc.serviceId}, defaulting to MONTHLY`);
+            billingFrequency = 'MONTHLY';
+        }
+        // Determine price display mode
+        let priceDisplayMode = 'PER_MONTH';
+        switch (billingFrequency) {
+            case 'MONTHLY':
+                priceDisplayMode = 'PER_MONTH';
+                break;
+            case 'QUARTERLY':
+                priceDisplayMode = 'PER_QUARTER';
+                break;
+            case 'ANNUALLY':
+                priceDisplayMode = 'PER_YEAR';
+                break;
+            case 'ONE_TIME':
+                priceDisplayMode = 'ONE_TIME';
+                break;
+        }
+        // Calculate annual equivalent for comparison
+        let annualEquivalent = 0;
+        switch (billingFrequency) {
+            case 'MONTHLY':
+                annualEquivalent = displayPrice * 12;
+                break;
+            case 'QUARTERLY':
+                annualEquivalent = displayPrice * 4;
+                break;
+            case 'ANNUALLY':
+                annualEquivalent = displayPrice;
+                break;
+            case 'ONE_TIME':
+                annualEquivalent = 0;
+                break;
+        }
+        // Calculate totals
         const quantity = svc.quantity || 1;
         const discountPercent = svc.discountPercent || 0;
-        const baseTotal = finalUnitPrice * quantity;
-        const discountAmount = baseTotal * (discountPercent / 100);
-        const netTotal = baseTotal - discountAmount;
-        // Validate frequency - must be a valid PricingFrequency enum value
-        let frequency = svc.frequency || template?.defaultFrequency || 'MONTHLY';
-        if (!validFrequencies.includes(frequency)) {
-            logger_js_1.default.warn(`Invalid frequency '${frequency}' for service ${svc.serviceId}, defaulting to MONTHLY`);
-            frequency = 'MONTHLY';
-        }
-        // Calculate VAT for this line (default 20% if not specified)
+        const lineTotal = displayPrice * quantity;
+        const discountAmount = lineTotal * (discountPercent / 100);
+        const netTotal = lineTotal - discountAmount;
+        // Calculate VAT
         const vatRate = svc.vatRate !== undefined ? svc.vatRate : 20;
         const vatAmount = Math.round(netTotal * (vatRate / 100) * 100) / 100;
         const grossTotal = netTotal + vatAmount;
         return {
             name: template?.name || 'Service',
             description: template?.description,
-            quantity: quantity,
-            unitPrice: finalUnitPrice,
-            discountPercent: discountPercent,
+            // New clear pricing fields
+            displayPrice,
+            billingFrequency,
+            priceDisplayMode: priceDisplayMode,
+            annualEquivalent,
+            // Calculations
+            quantity,
+            lineTotal,
+            unitPrice: displayPrice, // Legacy compatibility
+            discountPercent,
             total: netTotal,
-            frequency: frequency,
+            frequency: billingFrequency, // Legacy compatibility
+            // VAT
+            vatRate,
+            vatAmount,
+            grossTotal,
+            // Relations
             serviceTemplateId: svc.serviceId,
-            vatRate: vatRate,
-            vatAmount: vatAmount,
-            grossTotal: grossTotal,
         };
     });
-    // Calculate proposal totals using line-level VAT
-    const customSubtotal = servicesWithCustomPricing.reduce((sum, svc) => sum + svc.total, 0);
-    const customVatAmount = servicesWithCustomPricing.reduce((sum, svc) => sum + svc.vatAmount, 0);
-    const customTotal = Math.round((customSubtotal + customVatAmount) * 100) / 100;
+    // Calculate proposal totals grouped by billing frequency
+    const calculateGroup = (items) => ({
+        subtotal: items.reduce((sum, svc) => sum + svc.lineTotal, 0),
+        vatAmount: items.reduce((sum, svc) => sum + svc.vatAmount, 0),
+        total: items.reduce((sum, svc) => sum + svc.grossTotal, 0),
+    });
+    const monthlyItems = servicesWithClearPricing.filter((s) => s.billingFrequency === 'MONTHLY');
+    const quarterlyItems = servicesWithClearPricing.filter((s) => s.billingFrequency === 'QUARTERLY');
+    const annualItems = servicesWithClearPricing.filter((s) => s.billingFrequency === 'ANNUALLY');
+    const oneTimeItems = servicesWithClearPricing.filter((s) => s.billingFrequency === 'ONE_TIME');
+    const monthly = calculateGroup(monthlyItems);
+    const quarterly = calculateGroup(quarterlyItems);
+    const annually = calculateGroup(annualItems);
+    const oneTime = calculateGroup(oneTimeItems);
+    const grandTotal = monthly.total + quarterly.total + annually.total + oneTime.total;
+    const totalVat = monthly.vatAmount + quarterly.vatAmount + annually.vatAmount + oneTime.vatAmount;
     // Generate reference
     const reference = generateReference('PROP');
     // Set valid until (default 30 days)
@@ -293,19 +346,20 @@ router.post('/', auth_js_1.authenticate, (0, auth_js_1.authorize)('PARTNER', 'MA
             status: 'DRAFT',
             validUntil,
             contractStartDate,
-            subtotal: customSubtotal,
+            subtotal: monthly.subtotal + quarterly.subtotal + annually.subtotal + oneTime.subtotal,
             discountType: data.discountType,
             discountValue: data.discountValue,
             discountAmount: 0, // Line-level discounts are already applied
-            vatAmount: customVatAmount,
-            total: customTotal,
+            vatRate: 20, // Default VAT rate
+            vatAmount: totalVat,
+            total: grandTotal,
             paymentTerms: data.paymentTerms || '30 days',
             paymentFrequency: data.paymentFrequency || 'MONTHLY',
             coverLetter: data.coverLetter,
             terms: data.terms,
             notes: data.notes,
             services: {
-                create: servicesWithCustomPricing,
+                create: servicesWithClearPricing,
             },
         },
         include: {
@@ -386,7 +440,7 @@ router.put('/:id', auth_js_1.authenticate, (0, auth_js_1.authorize)('ADMIN', 'PA
     if (pricing) {
         updateData.subtotal = pricing.subtotal;
         updateData.discountAmount = pricing.globalDiscount;
-        updateData.vatAmount = pricing.vatAmount;
+        // updateData.vatAmount = pricing.vatAmount; // Temporarily disabled
         updateData.total = pricing.total;
     }
     // Remove undefined values
@@ -797,7 +851,7 @@ router.post('/:id/create-renewal', auth_js_1.authenticate, (0, auth_js_1.authori
             discountType: originalProposal.discountType,
             discountValue: originalProposal.discountValue,
             discountAmount: originalProposal.discountAmount,
-            vatAmount: originalProposal.vatAmount,
+            // vatAmount: originalProposal.vatAmount, // Temporarily disabled
             total: originalProposal.total,
             paymentTerms: originalProposal.paymentTerms,
             paymentFrequency: originalProposal.paymentFrequency,
@@ -814,7 +868,10 @@ router.post('/:id/create-renewal', auth_js_1.authenticate, (0, auth_js_1.authori
                     quantity: svc.quantity,
                     unitPrice: svc.unitPrice,
                     discountPercent: svc.discountPercent,
-                    total: svc.total,
+                    displayPrice: svc.displayPrice,
+                    lineTotal: svc.lineTotal,
+                    billingFrequency: svc.billingFrequency,
+                    priceDisplayMode: svc.priceDisplayMode,
                     frequency: svc.frequency,
                     isOptional: svc.isOptional,
                     serviceTemplateId: svc.serviceTemplateId,

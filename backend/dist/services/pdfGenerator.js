@@ -6,6 +6,14 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.PDFGenerator = void 0;
 const pdfkit_1 = __importDefault(require("pdfkit"));
 const database_js_1 = require("../config/database.js");
+// Billing frequency labels for display
+const BILLING_LABELS = {
+    'MONTHLY': 'month',
+    'QUARTERLY': 'quarter',
+    'ANNUALLY': 'year',
+    'ONE_TIME': 'one-time',
+    'WEEKLY': 'week',
+};
 class PDFGenerator {
     /**
      * Generate a professional proposal PDF
@@ -246,116 +254,179 @@ ${proposal.tenant.name}`;
             .text('Please turn over for full Terms and Conditions of Engagement →', { align: 'center' });
     }
     /**
-     * Draw services section
+     * Draw services section with clear pricing
      */
     static drawServices(doc, proposal, primaryColor) {
         doc.fontSize(16)
             .fillColor('#333333')
             .text('Services', { align: 'center' });
         doc.moveDown(1);
-        // Table header
-        const tableTop = doc.y;
-        const colWidths = { name: 250, qty: 60, price: 100, total: 100 };
-        const colX = { name: 50, qty: 310, price: 380, total: 490 };
-        doc.fontSize(10)
-            .fillColor(primaryColor);
-        doc.text('Service', colX.name, tableTop)
-            .text('Qty', colX.qty, tableTop)
-            .text('Price', colX.price, tableTop)
-            .text('Total', colX.total, tableTop);
-        // Header line
-        doc.moveTo(50, tableTop + 15)
-            .lineTo(550, tableTop + 15)
-            .strokeColor('#CCCCCC')
-            .lineWidth(0.5)
-            .stroke();
-        // Services rows
-        doc.fontSize(10)
-            .fillColor('#333333');
-        let y = tableTop + 25;
-        proposal.services.forEach((service) => {
-            // Check if we need a new page
-            if (y > 700) {
-                doc.addPage();
-                y = 50;
-            }
-            doc.text(service.name, colX.name, y, { width: colWidths.name });
-            // Description if present
-            if (service.description) {
-                doc.fontSize(9)
-                    .fillColor('#666666')
-                    .text(service.description, colX.name, y + 15, {
-                    width: colWidths.name,
-                });
-                doc.fontSize(10)
-                    .fillColor('#333333');
-            }
-            doc.text(service.quantity.toString(), colX.qty, y)
-                .text(this.formatCurrency(service.unitPrice), colX.price, y)
-                .text(this.formatCurrency(service.total), colX.total, y);
-            // Show frequency
-            if (service.frequency && service.frequency !== 'ONE_TIME') {
-                doc.fontSize(8)
-                    .fillColor('#888888')
-                    .text(`(${service.frequency.toLowerCase()})`, colX.price, y + 12);
-                doc.fontSize(10)
-                    .fillColor('#333333');
-            }
-            y += service.description ? 50 : 30;
-        });
-        // Bottom line
-        doc.moveTo(50, y)
-            .lineTo(550, y)
-            .strokeColor('#CCCCCC')
-            .lineWidth(0.5)
-            .stroke();
+        // Group services by billing frequency
+        const grouped = {
+            monthly: proposal.services.filter(s => (s.billingFrequency || s.frequency) === 'MONTHLY'),
+            quarterly: proposal.services.filter(s => (s.billingFrequency || s.frequency) === 'QUARTERLY'),
+            annually: proposal.services.filter(s => (s.billingFrequency || s.frequency) === 'ANNUALLY'),
+            oneTime: proposal.services.filter(s => (s.billingFrequency || s.frequency) === 'ONE_TIME'),
+        };
+        const drawServiceGroup = (title, services, frequency) => {
+            if (services.length === 0)
+                return;
+            // Section header
+            doc.fontSize(12)
+                .fillColor(primaryColor)
+                .text(title, 50, doc.y);
+            doc.moveDown(0.5);
+            // Table header
+            const tableTop = doc.y;
+            const colX = { name: 50, qty: 310, price: 380, total: 490 };
+            doc.fontSize(9)
+                .fillColor('#888888');
+            doc.text('Service', colX.name, tableTop)
+                .text('Qty', colX.qty, tableTop)
+                .text('Price', colX.price, tableTop)
+                .text('Total', colX.total, tableTop);
+            // Header line
+            doc.moveTo(50, tableTop + 15)
+                .lineTo(550, tableTop + 15)
+                .strokeColor('#CCCCCC')
+                .lineWidth(0.5)
+                .stroke();
+            // Services rows
+            doc.fontSize(10)
+                .fillColor('#333333');
+            let y = tableTop + 25;
+            services.forEach((service) => {
+                // Check if we need a new page
+                if (y > 700) {
+                    doc.addPage();
+                    y = 50;
+                }
+                const displayPrice = service.displayPrice || service.unitPrice;
+                const billingFreq = service.billingFrequency || service.frequency;
+                const priceLabel = this.formatPriceWithFrequency(displayPrice, billingFreq);
+                const lineTotal = (service.displayPrice || service.unitPrice) * service.quantity;
+                doc.text(service.name, colX.name, y, { width: 250 });
+                // Description if present
+                if (service.description) {
+                    doc.fontSize(8)
+                        .fillColor('#666666')
+                        .text(service.description, colX.name, y + 15, { width: 250 });
+                    doc.fontSize(10)
+                        .fillColor('#333333');
+                }
+                doc.text(service.quantity.toString(), colX.qty, y)
+                    .text(priceLabel, colX.price, y)
+                    .text(this.formatCurrency(lineTotal), colX.total, y);
+                y += service.description ? 45 : 25;
+            });
+            // Group subtotal
+            const subtotal = services.reduce((sum, s) => sum + ((s.displayPrice || s.unitPrice) * s.quantity), 0);
+            y += 5;
+            doc.fontSize(10)
+                .fillColor(primaryColor)
+                .text(`${title} Subtotal:`, colX.price, y)
+                .text(this.formatCurrency(subtotal), colX.total, y);
+            doc.moveDown(2);
+        };
+        // Draw each group
+        drawServiceGroup('Monthly Services', grouped.monthly, 'MONTHLY');
+        drawServiceGroup('Quarterly Services', grouped.quarterly, 'QUARTERLY');
+        drawServiceGroup('Annual Services', grouped.annually, 'ANNUALLY');
+        drawServiceGroup('One-Time Services', grouped.oneTime, 'ONE_TIME');
     }
     /**
-     * Draw pricing summary
+     * Draw pricing summary with clear grouped totals
      */
     static drawPricing(doc, proposal, primaryColor) {
         doc.moveDown(2);
+        // Group services by billing frequency
+        const grouped = {
+            monthly: proposal.services.filter(s => (s.billingFrequency || s.frequency) === 'MONTHLY'),
+            quarterly: proposal.services.filter(s => (s.billingFrequency || s.frequency) === 'QUARTERLY'),
+            annually: proposal.services.filter(s => (s.billingFrequency || s.frequency) === 'ANNUALLY'),
+            oneTime: proposal.services.filter(s => (s.billingFrequency || s.frequency) === 'ONE_TIME'),
+        };
         const rightX = 350;
         let y = doc.y;
+        doc.fontSize(14)
+            .fillColor('#333333')
+            .text('Investment Summary', rightX, y);
+        y += 30;
         doc.fontSize(10)
             .fillColor('#666666');
-        doc.text('Subtotal:', rightX, y)
-            .text(this.formatCurrency(proposal.subtotal), 490, y, { align: 'right' });
-        if (proposal.discountAmount > 0) {
+        // Show totals by frequency
+        if (grouped.monthly.length > 0) {
+            const monthlyTotal = grouped.monthly.reduce((sum, s) => {
+                const price = s.displayPrice || s.unitPrice;
+                return sum + (price * s.quantity);
+            }, 0);
+            const monthlyVat = monthlyTotal * 0.2;
+            const monthlyWithVat = monthlyTotal + monthlyVat;
+            doc.text('Monthly Total:', rightX, y)
+                .text(this.formatCurrency(monthlyWithVat) + '/month', 490, y, { align: 'right' });
             y += 20;
-            doc.text('Discount:', rightX, y)
-                .text(`-${this.formatCurrency(proposal.discountAmount)}`, 490, y, { align: 'right' });
         }
-        y += 20;
-        doc.text('VAT (20%):', rightX, y)
-            .text(this.formatCurrency(proposal.vatAmount), 490, y, { align: 'right' });
-        // Total line
-        y += 30;
-        doc.moveTo(rightX, y - 10)
-            .lineTo(550, y - 10)
+        if (grouped.quarterly.length > 0) {
+            const quarterlyTotal = grouped.quarterly.reduce((sum, s) => {
+                const price = s.displayPrice || s.unitPrice;
+                return sum + (price * s.quantity);
+            }, 0);
+            const quarterlyVat = quarterlyTotal * 0.2;
+            const quarterlyWithVat = quarterlyTotal + quarterlyVat;
+            doc.text('Quarterly Total:', rightX, y)
+                .text(this.formatCurrency(quarterlyWithVat) + '/quarter', 490, y, { align: 'right' });
+            y += 20;
+        }
+        if (grouped.annually.length > 0) {
+            const annualTotal = grouped.annually.reduce((sum, s) => {
+                const price = s.displayPrice || s.unitPrice;
+                return sum + (price * s.quantity);
+            }, 0);
+            const annualVat = annualTotal * 0.2;
+            const annualWithVat = annualTotal + annualVat;
+            doc.text('Annual Total:', rightX, y)
+                .text(this.formatCurrency(annualWithVat) + '/year', 490, y, { align: 'right' });
+            y += 20;
+        }
+        if (grouped.oneTime.length > 0) {
+            const oneTimeTotal = grouped.oneTime.reduce((sum, s) => {
+                const price = s.displayPrice || s.unitPrice;
+                return sum + (price * s.quantity);
+            }, 0);
+            const oneTimeVat = oneTimeTotal * 0.2;
+            const oneTimeWithVat = oneTimeTotal + oneTimeVat;
+            doc.text('One-Time Fees:', rightX, y)
+                .text(this.formatCurrency(oneTimeWithVat), 490, y, { align: 'right' });
+            y += 20;
+        }
+        // Divider
+        y += 10;
+        doc.moveTo(rightX, y)
+            .lineTo(550, y)
             .strokeColor(primaryColor)
             .lineWidth(1)
             .stroke();
-        doc.fontSize(14)
+        // Grand Total
+        y += 15;
+        doc.fontSize(16)
             .fillColor(primaryColor)
-            .text('Total:', rightX, y)
+            .text('Total Investment:', rightX, y)
             .text(this.formatCurrency(proposal.total), 490, y, { align: 'right' });
-        // Monthly payment display for monthly services
-        const monthlyServices = proposal.services.filter(s => s.frequency === 'MONTHLY');
-        if (monthlyServices.length > 0) {
-            const monthlyTotal = monthlyServices.reduce((sum, s) => sum + s.total, 0);
-            const monthlyVat = monthlyTotal * 0.2;
-            const monthlyWithVat = monthlyTotal + monthlyVat;
-            y += 35;
-            doc.fontSize(12)
-                .fillColor(primaryColor)
-                .text('Monthly Payment:', rightX, y)
-                .text(this.formatCurrency(monthlyWithVat), 490, y, { align: 'right' });
-            y += 18;
+        // Annual equivalent note
+        const annualEquivalent = grouped.monthly.reduce((sum, s) => sum + ((s.displayPrice || s.unitPrice) * s.quantity * 12), 0) +
+            grouped.quarterly.reduce((sum, s) => sum + ((s.displayPrice || s.unitPrice) * s.quantity * 4), 0) +
+            grouped.annually.reduce((sum, s) => sum + ((s.displayPrice || s.unitPrice) * s.quantity), 0);
+        if (annualEquivalent > 0) {
+            y += 25;
             doc.fontSize(9)
                 .fillColor('#888888')
-                .text(`(${monthlyServices.length} monthly service${monthlyServices.length > 1 ? 's' : ''})`, rightX, y);
+                .text(`Annual equivalent: ${this.formatCurrency(annualEquivalent)}/year`, rightX, y);
         }
+        // VAT breakdown
+        y += 20;
+        doc.fontSize(9)
+            .fillColor('#666666')
+            .text(`Includes VAT (20%): ${this.formatCurrency(proposal.vatAmount)}`, rightX, y);
         // Payment terms
         y += 30;
         doc.fontSize(10)
@@ -423,13 +494,10 @@ ${proposal.tenant.name}`;
         doc.fontSize(11)
             .fillColor(primaryColor)
             .text('Or accept online at:', { align: 'center' });
+        const acceptanceUrl = `https://engage-frontend-0g6u.onrender.com/proposals/view/${proposal.id}`;
         doc.fontSize(10)
             .fillColor('#666666')
-            .text(`https://proposal-platform.co.uk/p/${proposal.reference}`, { align: 'center', underline: true });
-        // Footer
-        doc.fontSize(8)
-            .fillColor('#999999')
-            .text(`This proposal was generated on ${this.formatDate(proposal.createdAt)} and is valid until ${this.formatDate(proposal.validUntil)}.`, 50, 750, { align: 'center', width: 500 });
+            .text(acceptanceUrl, { align: 'center', link: acceptanceUrl });
     }
     /**
      * Format currency
@@ -438,17 +506,29 @@ ${proposal.tenant.name}`;
         return new Intl.NumberFormat('en-GB', {
             style: 'currency',
             currency: 'GBP',
+            minimumFractionDigits: 0,
+            maximumFractionDigits: 2
         }).format(amount);
+    }
+    /**
+     * Format price with frequency label
+     */
+    static formatPriceWithFrequency(price, frequency) {
+        const formatted = this.formatCurrency(price);
+        const label = BILLING_LABELS[frequency] || '';
+        if (frequency === 'ONE_TIME') {
+            return `${formatted}`;
+        }
+        return `${formatted}/${label}`;
     }
     /**
      * Format date
      */
     static formatDate(date) {
-        const d = typeof date === 'string' ? new Date(date) : date;
-        return d.toLocaleDateString('en-GB', {
-            day: '2-digit',
-            month: 'short',
-            year: 'numeric',
+        return new Date(date).toLocaleDateString('en-GB', {
+            day: 'numeric',
+            month: 'long',
+            year: 'numeric'
         });
     }
 }
