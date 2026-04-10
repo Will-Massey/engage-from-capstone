@@ -72,6 +72,7 @@ const Sidebar = ({ isOpen, onClose }: SidebarProps) => {
                 key={item.name}
                 to={item.href}
                 onClick={onClose}
+                data-tour={item.name.toLowerCase()}
                 className={({ isActive }) =>
                   `group flex items-center px-4 py-3 text-sm font-medium rounded-xl transition-all duration-200 ${
                     isActive

@@ -81,6 +81,10 @@ const updateProposalSchema = zod_1.z.object({
         serviceId: zod_1.z.string(),
         quantity: zod_1.z.number().min(1),
         discountPercent: zod_1.z.number().min(0).max(100).optional(),
+        // v2 pricing fields
+        vatRate: zod_1.z.number().min(0).max(100).optional(),
+        billingFrequency: zod_1.z.enum(['ONE_TIME', 'WEEKLY', 'MONTHLY', 'QUARTERLY', 'ANNUALLY']).optional(),
+        displayPrice: zod_1.z.number().min(0).optional(),
     })).optional(),
     validUntil: zod_1.z.string().datetime().optional(),
     paymentTerms: zod_1.z.string().optional(),
@@ -464,24 +468,112 @@ router.put('/:id', auth_js_1.authenticate, (0, auth_js_1.authorize)('ADMIN', 'PA
         },
     });
     // Update services if provided
-    if (data.services && pricing) {
+    if (data.services) {
         // Delete existing services
         await database_js_1.prisma.proposalService.deleteMany({
             where: { proposalId: id },
         });
-        // Create new services
-        await database_js_1.prisma.proposalService.createMany({
-            data: pricing.services.map((svc) => ({
+        // Fetch service templates for the new services
+        const serviceTemplateIds = data.services.map((s) => s.serviceId);
+        const serviceTemplates = await database_js_1.prisma.serviceTemplate.findMany({
+            where: {
+                id: { in: serviceTemplateIds },
+                tenantId: req.tenantId,
+            },
+        });
+        // Create new services with v2 pricing
+        const validFrequencies = ['ONE_TIME', 'WEEKLY', 'MONTHLY', 'QUARTERLY', 'ANNUALLY'];
+        const servicesToCreate = data.services.map((svc) => {
+            const template = serviceTemplates.find((t) => t.id === svc.serviceId);
+            // Get display price from input or template
+            const displayPrice = svc.displayPrice !== undefined && svc.displayPrice > 0
+                ? svc.displayPrice
+                : (template?.priceAmount || template?.basePrice || 0);
+            // Get billing frequency from input or template
+            let billingFrequency = svc.billingFrequency || template?.billingCycle || 'MONTHLY';
+            if (!validFrequencies.includes(billingFrequency)) {
+                billingFrequency = 'MONTHLY';
+            }
+            // Determine price display mode
+            let priceDisplayMode = 'PER_MONTH';
+            switch (billingFrequency) {
+                case 'MONTHLY':
+                    priceDisplayMode = 'PER_MONTH';
+                    break;
+                case 'QUARTERLY':
+                    priceDisplayMode = 'PER_QUARTER';
+                    break;
+                case 'ANNUALLY':
+                    priceDisplayMode = 'PER_YEAR';
+                    break;
+                case 'ONE_TIME':
+                    priceDisplayMode = 'ONE_TIME';
+                    break;
+            }
+            // Calculate annual equivalent
+            let annualEquivalent = 0;
+            switch (billingFrequency) {
+                case 'MONTHLY':
+                    annualEquivalent = displayPrice * 12;
+                    break;
+                case 'QUARTERLY':
+                    annualEquivalent = displayPrice * 4;
+                    break;
+                case 'ANNUALLY':
+                    annualEquivalent = displayPrice;
+                    break;
+                case 'ONE_TIME':
+                    annualEquivalent = 0;
+                    break;
+            }
+            // Calculate line totals
+            const quantity = svc.quantity || 1;
+            const discountPercent = svc.discountPercent || 0;
+            const lineTotal = displayPrice * quantity;
+            const discountAmount = lineTotal * (discountPercent / 100);
+            const netTotal = lineTotal - discountAmount;
+            // Calculate VAT
+            const vatRate = svc.vatRate !== undefined ? svc.vatRate : 20;
+            const vatAmount = Math.round(netTotal * (vatRate / 100) * 100) / 100;
+            const grossTotal = netTotal + vatAmount;
+            return {
                 proposalId: id,
-                name: svc.serviceTemplate?.name || 'Service',
-                description: svc.serviceTemplate?.description,
-                quantity: svc.quantity,
-                unitPrice: svc.basePrice,
-                discountPercent: data.services.find(s => s.serviceId === svc.serviceId)?.discountPercent || 0,
-                total: svc.finalPrice,
-                frequency: svc.serviceTemplate?.defaultFrequency || 'MONTHLY',
+                name: template?.name || 'Service',
+                description: template?.description,
+                // v2 Clear Pricing fields
+                displayPrice,
+                billingFrequency,
+                priceDisplayMode,
+                annualEquivalent,
+                // Calculations
+                quantity,
+                lineTotal: netTotal,
+                unitPrice: displayPrice,
+                discountPercent,
+                total: netTotal,
+                frequency: billingFrequency,
+                // VAT
+                vatRate,
+                vatAmount,
+                grossTotal,
+                // Relations
                 serviceTemplateId: svc.serviceId,
-            })),
+            };
+        });
+        await database_js_1.prisma.proposalService.createMany({
+            data: servicesToCreate,
+        });
+        // Recalculate proposal totals
+        const totalVat = servicesToCreate.reduce((sum, s) => sum + s.vatAmount, 0);
+        const grandTotal = servicesToCreate.reduce((sum, s) => sum + s.grossTotal, 0);
+        const subtotal = servicesToCreate.reduce((sum, s) => sum + s.lineTotal, 0);
+        await database_js_1.prisma.proposal.update({
+            where: { id },
+            data: {
+                subtotal,
+                vatAmount: totalVat,
+                total: grandTotal,
+            },
         });
     }
     // Log activity

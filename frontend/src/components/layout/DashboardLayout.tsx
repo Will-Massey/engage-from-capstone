@@ -3,10 +3,12 @@ import { Outlet } from 'react-router-dom';
 import Sidebar from './Sidebar';
 import Header from './Header';
 import { initializeTheme } from '../../stores/themeStore';
+import OnboardingTour, { useOnboarding } from '../onboarding/OnboardingTour';
 
 const DashboardLayout = () => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
+  const { showOnboarding, setShowOnboarding } = useOnboarding();
 
   useEffect(() => {
     initializeTheme();
@@ -70,6 +72,12 @@ const DashboardLayout = () => {
           </div>
         </main>
       </div>
+      
+      {/* Onboarding Tour */}
+      <OnboardingTour 
+        isOpen={showOnboarding} 
+        onClose={() => setShowOnboarding(false)} 
+      />
     </div>
   );
 };

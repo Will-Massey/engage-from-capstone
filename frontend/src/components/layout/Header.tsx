@@ -7,10 +7,12 @@ import {
   BellIcon,
   UserCircleIcon,
   ArrowRightOnRectangleIcon,
+  CommandLineIcon,
 } from '@heroicons/react/24/outline';
 import { useAuthStore } from '../../stores/authStore';
 import ThemeToggle from '../theme/ThemeToggle';
 import toast from 'react-hot-toast';
+import useCommandPalette from '../../hooks/useCommandPalette';
 
 interface HeaderProps {
   onMenuClick: () => void;
@@ -20,6 +22,7 @@ const Header = ({ onMenuClick }: HeaderProps) => {
   const { user, clearAuth } = useAuthStore();
   const navigate = useNavigate();
   const [showUserMenu, setShowUserMenu] = useState(false);
+  const { open: openCommandPalette } = useCommandPalette();
 
   const handleLogout = () => {
     clearAuth();
@@ -44,6 +47,7 @@ const Header = ({ onMenuClick }: HeaderProps) => {
             <Link
               to="/proposals/new"
               className="btn-primary"
+              data-tour="create-proposal"
             >
               <PlusIcon className="w-4 h-4 mr-1.5" />
               New Proposal
@@ -73,6 +77,16 @@ const Header = ({ onMenuClick }: HeaderProps) => {
               />
             </div>
           </div>
+
+          {/* Command Palette Button */}
+          <button
+            onClick={openCommandPalette}
+            className="hidden sm:flex items-center px-3 py-1.5 text-sm text-slate-500 dark:text-slate-400 bg-slate-100/50 dark:bg-slate-800/50 rounded-lg hover:bg-slate-200/50 dark:hover:bg-slate-700/50 transition-colors"
+            data-tour="command-palette"
+          >
+            <CommandLineIcon className="w-4 h-4 mr-2" />
+            <span className="hidden lg:inline">Cmd+K</span>
+          </button>
 
           {/* Theme Toggle */}
           <ThemeToggle />
