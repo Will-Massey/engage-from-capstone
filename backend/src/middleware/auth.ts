@@ -268,6 +268,7 @@ export const csrfProtection = (req: Request, res: Response, next: NextFunction):
     '/oauth/callback',
     '/proposals/view', // Public proposal viewing and signing
     '/admin/seed-services', // One-click admin seed endpoint
+    '/automation/migrate-service-pricing', // Data migration endpoint (protected by secret key)
   ];
   if (publicPaths.some(path => req.path.startsWith(path))) {
     next();
