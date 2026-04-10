@@ -25,6 +25,7 @@ import adfinRoutes from './routes/adfin.js';
 import coverLetterTemplateRoutes from './routes/coverLetterTemplates.js';
 import analyticsRoutes from './routes/analytics.js';
 import automationRoutes from './routes/automation.js';
+import diagnosticsRoutes from './routes/diagnostics.js';
 import { asyncHandler, ApiError } from './middleware/errorHandler.js';
 import { EmailService } from './services/emailService.js';
 
