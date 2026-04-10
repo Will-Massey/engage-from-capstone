@@ -247,14 +247,14 @@ export default function ProposalBuilderV2() {
       const discount = updated.discountPercent || 0;
       
       // Recalculate
-      const lineTotal = updated.displayPrice * quantity;
-      const discountAmount = lineTotal * (discount / 100);
-      const netTotal = lineTotal - discountAmount;
-      const vatAmount = includeVat ? Math.round(netTotal * 0.2 * 100) / 100 : 0;
+      const grossLineTotal = updated.displayPrice * quantity;
+      const discountAmount = grossLineTotal * (discount / 100);
+      const lineTotal = grossLineTotal - discountAmount;
+      const vatAmount = includeVat ? Math.round(lineTotal * 0.2 * 100) / 100 : 0;
       
       updated.lineTotal = lineTotal;
       updated.vatAmount = vatAmount;
-      updated.grossTotal = netTotal + vatAmount;
+      updated.grossTotal = lineTotal + vatAmount;
       updated.annualEquivalent = calculateAnnualEquivalent(updated.displayPrice, updated.billingCycle);
       
       return updated;
@@ -451,9 +451,16 @@ export default function ProposalBuilderV2() {
                   </p>
                 </div>
                 <div className="flex items-center gap-2">
-                  <span className="font-semibold text-slate-900">
-                    {formatCurrency(service.grossTotal)}
-                  </span>
+                  <div className="text-right">
+                    <span className="font-semibold text-slate-900 block">
+                      {formatPriceWithFrequency(service.lineTotal, service.billingCycle)}
+                    </span>
+                    {includeVat && service.vatAmount > 0 && (
+                      <span className="text-xs text-slate-400">
+                        + VAT {formatCurrency(service.vatAmount)}
+                      </span>
+                    )}
+                  </div>
                   <button
                     onClick={() => removeService(service.id)}
                     className="p-2 text-red-500 hover:bg-red-50 rounded-lg"
