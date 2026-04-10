@@ -68,6 +68,7 @@ const database_js_1 = require("./config/database.js");
 const cache_js_1 = require("./utils/cache.js");
 const health_js_1 = __importDefault(require("./routes/health.js"));
 const setup_js_1 = __importDefault(require("./routes/setup.js"));
+const autoMigrateOnStartup_js_1 = __importDefault(require("./scripts/autoMigrateOnStartup.js"));
 // Initialize Express app
 const app = (0, express_1.default)();
 const PORT = process.env.PORT || 3001;
@@ -441,6 +442,10 @@ function scheduleRenewalReminders() {
     }, RENEWAL_CHECK_INTERVAL);
     logger_js_1.default.info('✅ Renewal reminder job scheduled (every 24 hours)');
 }
+// Run auto-migration on startup (non-blocking)
+(0, autoMigrateOnStartup_js_1.default)().catch(err => {
+    logger_js_1.default.error('Auto-migration failed:', err);
+});
 // Start server
 app.listen(PORT, () => {
     logger_js_1.default.info(`🚀 Engage by Capstone API running on port ${PORT}`);
@@ -461,4 +466,5 @@ process.on('SIGINT', async () => {
     process.exit(0);
 });
 exports.default = app;
+// Deploy trigger: Fri Apr 10 15:47:18 BST 2026
 //# sourceMappingURL=index.js.map

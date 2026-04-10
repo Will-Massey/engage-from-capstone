@@ -38,6 +38,7 @@ import { checkDatabaseHealth } from './config/database.js';
 import { cache } from './utils/cache.js';
 import healthRouter from './routes/health.js';
 import setupRouter from './routes/setup.js';
+import autoMigrateOnStartup from './scripts/autoMigrateOnStartup.js';
 
 // Initialize Express app
 const app = express();
@@ -473,6 +474,11 @@ function scheduleRenewalReminders() {
   
   logger.info('✅ Renewal reminder job scheduled (every 24 hours)');
 }
+
+// Run auto-migration on startup (non-blocking)
+autoMigrateOnStartup().catch(err => {
+  logger.error('Auto-migration failed:', err);
+});
 
 // Start server
 app.listen(PORT, () => {
