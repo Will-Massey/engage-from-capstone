@@ -480,14 +480,57 @@ autoMigrateOnStartup().catch(err => {
   logger.error('Auto-migration failed:', err);
 });
 
-// Start server
-app.listen(PORT, () => {
-  logger.info(`🚀 Engage by Capstone API running on port ${PORT}`);
-  logger.info(`📊 Environment: ${process.env.NODE_ENV || 'development'}`);
-  logger.info(`🔗 API URL: http://localhost:${PORT}`);
-  
-  // Schedule background jobs
-  scheduleRenewalReminders();
+// Try to fix database schema issues on startup
+async function fixDatabaseSchema() {
+  try {
+    const { prisma } = await import('./config/database.js');
+    
+    // Check if billingCycle column exists
+    const tableInfo = await prisma.$queryRaw`
+      SELECT column_name 
+      FROM information_schema.columns 
+      WHERE table_name = 'ServiceTemplate' 
+      AND column_name = 'billingCycle'
+    `;
+    
+    if ((tableInfo as any[]).length === 0) {
+      logger.warn('Database schema mismatch: billingCycle column missing. Attempting to add...');
+      
+      try {
+        // Try to add the column directly
+        await prisma.$executeRaw`ALTER TABLE "ServiceTemplate" ADD COLUMN IF NOT EXISTS "billingCycle" TEXT DEFAULT 'MONTHLY'`;
+        logger.info('✅ Added billingCycle column to ServiceTemplate');
+        
+        // Create index
+        await prisma.$executeRaw`CREATE INDEX IF NOT EXISTS "ServiceTemplate_billingCycle_idx" ON "ServiceTemplate"("billingCycle")`;
+        logger.info('✅ Created billingCycle index');
+      } catch (alterError: any) {
+        logger.error('Failed to add billingCycle column:', alterError.message);
+      }
+    }
+  } catch (error: any) {
+    logger.error('Database schema fix failed:', error.message);
+  }
+}
+
+// Run schema fix before starting server
+fixDatabaseSchema().then(() => {
+  // Start server
+  app.listen(PORT, () => {
+    logger.info(`🚀 Engage by Capstone API running on port ${PORT}`);
+    logger.info(`📊 Environment: ${process.env.NODE_ENV || 'development'}`);
+    logger.info(`🔗 API URL: http://localhost:${PORT}`);
+    
+    // Schedule background jobs
+    scheduleRenewalReminders();
+  });
+}).catch(err => {
+  logger.error('Failed to fix database schema, starting server anyway:', err);
+  // Start server even if schema fix failed
+  app.listen(PORT, () => {
+    logger.info(`🚀 Engage by Capstone API running on port ${PORT}`);
+    logger.info(`⚠️  Database schema issues detected - some features may not work`);
+  });
 });
 
 // Handle graceful shutdown
