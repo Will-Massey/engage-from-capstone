@@ -11,6 +11,7 @@ import {
 } from '@heroicons/react/24/outline';
 import { apiClient } from '../../utils/api';
 import { useAuthStore } from '../../stores/authStore';
+import { SkeletonCard } from '../../components/skeleton/SkeletonCard';
 
 const Clients = () => {
   const { tenant } = useAuthStore();
@@ -117,9 +118,7 @@ const Clients = () => {
 
       {/* Clients grid */}
       {isLoading ? (
-        <div className="flex items-center justify-center h-64">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
-        </div>
+        <SkeletonCard count={6} />
       ) : clients.length === 0 ? (
         <div className="text-center py-16 card">
           <UsersIcon className="mx-auto h-12 w-12 text-slate-300" />

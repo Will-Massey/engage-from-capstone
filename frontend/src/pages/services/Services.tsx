@@ -13,6 +13,7 @@ import {
 import { apiClient } from '../../utils/api';
 import { useAuthStore } from '../../stores/authStore';
 import toast from 'react-hot-toast';
+import { SkeletonCard } from '../../components/skeleton/SkeletonCard';
 
 interface Service {
   id: string;
@@ -385,8 +386,26 @@ const Services = () => {
 
   if (isLoading && services.length === 0) {
     return (
-      <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600"></div>
+      <div className="space-y-6 animate-fade-in">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          <div>
+            <h1 className="text-2xl font-bold text-slate-900">Services</h1>
+            <p className="mt-1 text-sm text-slate-600">
+              Manage your service catalog and pricing
+            </p>
+          </div>
+          <button className="btn-primary inline-flex opacity-50 cursor-not-allowed">
+            <PlusIcon className="h-5 w-5 mr-2" />
+            Add Service
+          </button>
+        </div>
+        <div className="card p-4">
+          <div className="flex flex-col sm:flex-row gap-4">
+            <div className="flex-1 h-10 bg-slate-200 rounded animate-pulse" />
+            <div className="w-48 h-10 bg-slate-200 rounded animate-pulse" />
+          </div>
+        </div>
+        <SkeletonCard count={6} />
       </div>
     );
   }
