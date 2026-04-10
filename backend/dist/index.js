@@ -68,6 +68,7 @@ const database_js_1 = require("./config/database.js");
 const cache_js_1 = require("./utils/cache.js");
 const health_js_1 = __importDefault(require("./routes/health.js"));
 const setup_js_1 = __importDefault(require("./routes/setup.js"));
+const admin_js_1 = __importDefault(require("./routes/admin.js"));
 const autoMigrateOnStartup_js_1 = __importDefault(require("./scripts/autoMigrateOnStartup.js"));
 // Initialize Express app
 const app = (0, express_1.default)();
@@ -208,6 +209,8 @@ app.use(express_1.default.urlencoded({ extended: true, limit: '10mb' }));
 app.use('/api/auth', tenant_simple_js_1.extractTenant, auth_js_1.default);
 // Setup endpoint - no auth required, one-time database initialization
 app.use('/api/setup', setup_js_1.default);
+// Admin routes - protected by secret key, no auth required
+app.use('/api/admin', admin_js_1.default);
 // Public one-click seed endpoint (no auth/CSRF required — protected by secret key)
 const database_js_2 = require("./config/database.js");
 app.get('/api/seed-services-public', async (req, res) => {
@@ -442,17 +445,22 @@ function scheduleRenewalReminders() {
     }, RENEWAL_CHECK_INTERVAL);
     logger_js_1.default.info('✅ Renewal reminder job scheduled (every 24 hours)');
 }
-// Run auto-migration on startup (non-blocking)
-(0, autoMigrateOnStartup_js_1.default)().catch(err => {
-    logger_js_1.default.error('Auto-migration failed:', err);
-});
-// Start server
+// Start server immediately - don't block on migrations
 app.listen(PORT, () => {
     logger_js_1.default.info(`🚀 Engage by Capstone API running on port ${PORT}`);
     logger_js_1.default.info(`📊 Environment: ${process.env.NODE_ENV || 'development'}`);
     logger_js_1.default.info(`🔗 API URL: http://localhost:${PORT}`);
+    logger_js_1.default.info(`🔧 Use POST /api/admin/fix-schema?key=capstone-admin-2026 to fix schema issues`);
     // Schedule background jobs
     scheduleRenewalReminders();
+    // Run auto-migration in background after server starts
+    if (autoMigrateOnStartup_js_1.default) {
+        setTimeout(() => {
+            (0, autoMigrateOnStartup_js_1.default)().catch((err) => {
+                logger_js_1.default.error('Auto-migration failed:', err);
+            });
+        }, 5000);
+    }
 });
 // Handle graceful shutdown
 process.on('SIGTERM', async () => {

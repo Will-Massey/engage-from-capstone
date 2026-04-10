@@ -23,15 +23,57 @@ class ApiError extends Error {
 }
 exports.ApiError = ApiError;
 const errorHandler = (err, req, res, _next) => {
+    // Handle ApiError - return proper status code and message
+    if (err instanceof ApiError) {
+        logger_1.default.warn('API error', {
+            code: err.code,
+            message: err.message,
+            statusCode: err.statusCode,
+            path: req.path,
+            method: req.method,
+        });
+        res.status(err.statusCode).json({
+            success: false,
+            error: {
+                code: err.code,
+                message: err.message,
+            },
+        });
+        return;
+    }
+    // Handle Zod validation errors
+    if (err.name === 'ZodError') {
+        logger_1.default.warn('Validation error', {
+            message: err.message,
+            path: req.path,
+            method: req.method,
+        });
+        res.status(400).json({
+            success: false,
+            error: {
+                code: 'VALIDATION_ERROR',
+                message: 'Invalid request data',
+                details: err.message,
+            },
+        });
+        return;
+    }
+    // Log unhandled errors
     logger_1.default.error('Unhandled error', {
         error: err.message,
         stack: err.stack,
         path: req.path,
         method: req.method,
     });
+    // Return generic error in production, detailed in development
+    const isDevelopment = process.env.NODE_ENV !== 'production';
     res.status(500).json({
-        error: 'Internal server error',
-        requestId: req.headers['x-request-id'],
+        success: false,
+        error: {
+            code: 'INTERNAL_ERROR',
+            message: 'Internal server error',
+            ...(isDevelopment && { details: err.message }),
+        },
     });
 };
 exports.errorHandler = errorHandler;
