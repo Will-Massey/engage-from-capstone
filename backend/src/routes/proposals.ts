@@ -263,10 +263,9 @@ router.post(
         total: netTotal,
         frequency: frequency,
         serviceTemplateId: svc.serviceId,
-        // VAT fields temporarily disabled until migration is applied
-        // vatRate: vatRate,
-        // vatAmount: vatAmount,
-        // grossTotal: grossTotal,
+        vatRate: vatRate,
+        vatAmount: vatAmount,
+        grossTotal: grossTotal,
       };
     });
 
@@ -307,7 +306,7 @@ router.post(
         discountType: data.discountType,
         discountValue: data.discountValue,
         discountAmount: 0, // Line-level discounts are already applied
-        // vatAmount: customVatAmount, // Temporarily disabled until migration
+        vatAmount: customVatAmount,
         total: customTotal,
         paymentTerms: data.paymentTerms || '30 days',
         paymentFrequency: data.paymentFrequency || 'MONTHLY',

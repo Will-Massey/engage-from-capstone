@@ -269,8 +269,8 @@ model Proposal {
   discountType   String?
   discountValue  Float   @default(0)
   discountAmount Float   @default(0)
-  // vatRate        Float   @default(20) // Temporarily disabled
-  // vatAmount      Float   @default(0) // Temporarily disabled
+  vatRate        Float   @default(20)
+  vatAmount      Float   @default(0)
   total          Float   @default(0)
 
   // Payment terms
@@ -351,10 +351,10 @@ model ProposalService {
   discountPercent Float @default(0)
   total           Float
 
-  // VAT (per line) - TEMPORARILY DISABLED until migration is applied
-  // vatRate   Float @default(20)
-  // vatAmount Float @default(0)
-  // grossTotal Float @default(0)
+  // VAT (per line)
+  vatRate   Float @default(20)
+  vatAmount Float @default(0)
+  grossTotal Float @default(0)
 
   // Billing
   frequency  PricingFrequency @default(MONTHLY)
