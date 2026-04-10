@@ -21,9 +21,13 @@ interface Service {
   description: string;
   longDescription?: string;
   category: string;
+  // v2 pricing fields
+  priceAmount?: number;
+  billingCycle?: string;
+  priceDisplayMode?: string;
+  // legacy fields
   basePrice: number;
   baseHours?: number;
-  billingCycle?: string;
   defaultFrequency?: string;
   pricingModel?: string;
   isVatApplicable: boolean;
@@ -484,10 +488,10 @@ const Services = () => {
               <div className="flex items-center justify-between pt-4 border-t border-slate-100">
                 <div>
                   <span className="text-2xl font-bold text-slate-900">
-                    £{service.basePrice.toLocaleString()}
+                    £{(service.priceAmount || service.basePrice || 0).toLocaleString()}
                   </span>
                   <span className="text-xs text-slate-600 ml-1">
-                    /{frequencyLabels[service.defaultFrequency || service.billingCycle || 'MONTHLY']?.toLowerCase() || 'monthly'}
+                    /{frequencyLabels[service.billingCycle || service.defaultFrequency || 'MONTHLY']?.toLowerCase() || 'monthly'}
                   </span>
                 </div>
                 <div className="flex items-center space-x-1">
