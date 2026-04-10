@@ -1,5 +1,6 @@
-import { Routes, Route, Navigate } from 'react-router-dom';
+import { Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { useEffect, useState } from 'react';
+import { AnimatePresence, motion } from 'framer-motion';
 import { useAuthStore } from './stores/authStore';
 import { apiClient } from './utils/api';
 
@@ -30,6 +31,42 @@ import CommandPalette from './components/command-palette/CommandPalette';
 import KeyboardShortcuts from './components/keyboard/KeyboardShortcuts';
 import useCommandPalette from './hooks/useCommandPalette';
 
+// Page transition variants
+const pageVariants = {
+  initial: {
+    opacity: 0,
+    y: 10,
+  },
+  animate: {
+    opacity: 1,
+    y: 0,
+    transition: {
+      duration: 0.3,
+      ease: [0.25, 0.1, 0.25, 1],
+    },
+  },
+  exit: {
+    opacity: 0,
+    y: -10,
+    transition: {
+      duration: 0.2,
+    },
+  },
+};
+
+// Animated page wrapper
+const AnimatedPage = ({ children }: { children: React.ReactNode }) => (
+  <motion.div
+    initial="initial"
+    animate="animate"
+    exit="exit"
+    variants={pageVariants}
+    className="h-full"
+  >
+    {children}
+  </motion.div>
+);
+
 // Protected route wrapper
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
   const { isAuthenticated, isLoading } = useAuthStore();
@@ -58,6 +95,131 @@ const PublicRoute = ({ children }: { children: React.ReactNode }) => {
   }
 
   return <>{children}</>;
+};
+
+// Animated routes component
+const AnimatedRoutes = () => {
+  const location = useLocation();
+
+  return (
+    <AnimatePresence mode="wait">
+      <Routes location={location} key={location.pathname}>
+        {/* Auth Routes */}
+        <Route
+          path="/login"
+          element={
+            <PublicRoute>
+              <AuthLayout>
+                <AnimatedPage>
+                  <Login />
+                </AnimatedPage>
+              </AuthLayout>
+            </PublicRoute>
+          }
+        />
+        <Route
+          path="/register"
+          element={
+            <PublicRoute>
+              <AuthLayout>
+                <AnimatedPage>
+                  <Onboarding />
+                </AnimatedPage>
+              </AuthLayout>
+            </PublicRoute>
+          }
+        />
+
+        {/* Protected Routes */}
+        <Route
+          path="/"
+          element={
+            <ProtectedRoute>
+              <DashboardLayout />
+            </ProtectedRoute>
+          }
+        >
+          <Route index element={
+            <AnimatedPage>
+              <Dashboard />
+            </AnimatedPage>
+          } />
+          
+          {/* Proposals */}
+          <Route path="proposals" element={
+            <AnimatedPage>
+              <Proposals />
+            </AnimatedPage>
+          } />
+          <Route path="proposals/new" element={
+            <AnimatedPage>
+              <CreateProposal />
+            </AnimatedPage>
+          } />
+          <Route path="proposals/:id" element={
+            <AnimatedPage>
+              <ProposalDetail />
+            </AnimatedPage>
+          } />
+          
+          {/* Clients */}
+          <Route path="clients" element={
+            <AnimatedPage>
+              <Clients />
+            </AnimatedPage>
+          } />
+          <Route path="clients/new" element={
+            <AnimatedPage>
+              <CreateClient />
+            </AnimatedPage>
+          } />
+          <Route path="clients/:id" element={
+            <AnimatedPage>
+              <ClientDetail />
+            </AnimatedPage>
+          } />
+          
+          {/* Services */}
+          <Route path="services" element={
+            <AnimatedPage>
+              <Services />
+            </AnimatedPage>
+          } />
+          <Route path="services/:id" element={
+            <AnimatedPage>
+              <ServiceDetail />
+            </AnimatedPage>
+          } />
+          
+          {/* Settings */}
+          <Route path="settings" element={
+            <AnimatedPage>
+              <Settings />
+            </AnimatedPage>
+          } />
+          <Route path="subscription" element={
+            <AnimatedPage>
+              <Subscription />
+            </AnimatedPage>
+          } />
+        </Route>
+
+        {/* Public Proposal View (No authentication required) */}
+        <Route path="/proposals/view/:token" element={
+          <AnimatedPage>
+            <PublicProposalView />
+          </AnimatedPage>
+        } />
+
+        {/* 404 */}
+        <Route path="*" element={
+          <AnimatedPage>
+            <NotFound />
+          </AnimatedPage>
+        } />
+      </Routes>
+    </AnimatePresence>
+  );
 };
 
 function App() {
@@ -104,65 +266,7 @@ function App() {
 
   return (
     <>
-      <Routes>
-        {/* Auth Routes */}
-        <Route
-          path="/login"
-          element={
-            <PublicRoute>
-              <AuthLayout>
-                <Login />
-              </AuthLayout>
-            </PublicRoute>
-          }
-        />
-        <Route
-          path="/register"
-          element={
-            <PublicRoute>
-              <AuthLayout>
-                <Onboarding />
-              </AuthLayout>
-            </PublicRoute>
-          }
-        />
-
-        {/* Protected Routes */}
-        <Route
-          path="/"
-          element={
-            <ProtectedRoute>
-              <DashboardLayout />
-            </ProtectedRoute>
-          }
-        >
-          <Route index element={<Dashboard />} />
-          
-          {/* Proposals */}
-          <Route path="proposals" element={<Proposals />} />
-          <Route path="proposals/new" element={<CreateProposal />} />
-          <Route path="proposals/:id" element={<ProposalDetail />} />
-          
-          {/* Clients */}
-          <Route path="clients" element={<Clients />} />
-          <Route path="clients/new" element={<CreateClient />} />
-          <Route path="clients/:id" element={<ClientDetail />} />
-          
-          {/* Services */}
-          <Route path="services" element={<Services />} />
-          <Route path="services/:id" element={<ServiceDetail />} />
-          
-          {/* Settings */}
-          <Route path="settings" element={<Settings />} />
-          <Route path="subscription" element={<Subscription />} />
-        </Route>
-
-        {/* Public Proposal View (No authentication required) */}
-        <Route path="/proposals/view/:token" element={<PublicProposalView />} />
-
-        {/* 404 */}
-        <Route path="*" element={<NotFound />} />
-      </Routes>
+      <AnimatedRoutes />
 
       {/* World-class features - only for authenticated users */}
       {isAuthenticated && (
