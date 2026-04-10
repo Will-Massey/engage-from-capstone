@@ -204,6 +204,7 @@ const csrfProtection = (req, res, next) => {
         '/proposals/view', // Public proposal viewing and signing
         '/admin/seed-services', // One-click admin seed endpoint
         '/automation/migrate-service-pricing', // Data migration endpoint (protected by secret key)
+        '/setup/migrate-pricing', // v2 pricing data migration
     ];
     if (publicPaths.some(path => req.path.startsWith(path))) {
         next();
