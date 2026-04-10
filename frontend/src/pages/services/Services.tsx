@@ -223,9 +223,9 @@ const Services = () => {
   });
 
   const ServiceModal = ({ isEdit }: { isEdit: boolean }) => (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-lg w-full max-w-2xl max-h-[90vh] overflow-y-auto">
-        <div className="p-6 border-b border-slate-200 flex items-center justify-between">
+    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+      <div className="glass-tile rounded-lg w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+        <div className="p-6 border-b border-white/10 flex items-center justify-between">
           <h3 className="text-lg font-semibold text-slate-900">
             {isEdit ? 'Edit Service' : 'Add New Service'}
           </h3>
@@ -361,7 +361,7 @@ const Services = () => {
           </div>
         </div>
 
-        <div className="p-6 border-t border-slate-200 flex justify-end space-x-3">
+        <div className="p-6 border-t border-white/10 flex justify-end space-x-3">
           <button
             onClick={() => {
               isEdit ? setShowEditModal(false) : setShowAddModal(false);
@@ -409,7 +409,7 @@ const Services = () => {
         </button>
       </div>
 
-      <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-4">
+      <div className="card p-4">
         <div className="flex flex-col sm:flex-row gap-4">
           <div className="flex-1 relative">
             <MagnifyingGlassIcon className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-400" />
@@ -439,7 +439,7 @@ const Services = () => {
       </div>
 
       {filteredServices.length === 0 ? (
-        <div className="text-center py-16 bg-white rounded-xl border border-slate-200 shadow-sm">
+        <div className="text-center py-16 card">
           <BuildingOfficeIcon className="mx-auto h-12 w-12 text-gray-300" />
           <h3 className="mt-4 text-lg font-medium text-slate-900">No services found</h3>
           <p className="mt-1 text-slate-600">Try adjusting your search or filter</p>
@@ -447,7 +447,7 @@ const Services = () => {
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {filteredServices.map((service) => (
-            <div key={service.id} className="bg-white rounded-xl border border-slate-200 shadow-sm p-5 hover:shadow-md transition-shadow">
+            <div key={service.id} className="glass-tile p-5 hover:border-white/20 transition-all">
               <div className="flex items-start justify-between mb-3">
                 <span className={`px-2 py-1 text-xs font-medium rounded-full ${categoryColors[service.category] || 'bg-slate-100 text-slate-800'}`}>
                   {service.category}

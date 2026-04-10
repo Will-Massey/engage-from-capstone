@@ -397,7 +397,7 @@ Yours sincerely,
       <div className="flex flex-col lg:flex-row gap-8">
         {/* Sidebar - Modern card style */}
         <div className="lg:w-72 flex-shrink-0">
-          <nav className="space-y-2 bg-white rounded-xl shadow-sm border border-slate-200 p-2">
+          <nav className="space-y-2 glass-tile p-2">
             {tabs.map((tab) => (
               <button
                 key={tab.id}
@@ -438,8 +438,8 @@ Yours sincerely,
         <div className="flex-1 space-y-6">
           {/* PROFILE TAB */}
           {activeTab === 'profile' && (
-            <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
-              <div className="px-6 py-4 border-b border-slate-200 bg-slate-50">
+            <div className="glass-tile overflow-hidden">
+              <div className="px-6 py-4 border-b border-white/10 bg-white/5">
                 <h2 className="text-lg font-semibold text-slate-900">My Profile</h2>
                 <p className="text-sm text-slate-600">Update your personal information</p>
               </div>
@@ -495,7 +495,7 @@ Yours sincerely,
                     />
                   </div>
                 </div>
-                <div className="pt-4 border-t border-slate-200">
+                <div className="pt-4 border-t border-white/10">
                   <button 
                     onClick={handleSaveProfile}
                     disabled={isSaving === 'profile'}
@@ -512,8 +512,8 @@ Yours sincerely,
           {activeTab === 'practice' && (
             <div className="space-y-6">
               {/* Company Details */}
-              <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
-                <div className="px-6 py-4 border-b border-slate-200 bg-slate-50">
+              <div className="glass-tile overflow-hidden">
+                <div className="px-6 py-4 border-b border-white/10 bg-white/5">
                   <h2 className="text-lg font-semibold text-slate-900">Practice Details</h2>
                   <p className="text-sm text-slate-600">Your company information</p>
                 </div>
@@ -590,8 +590,8 @@ Yours sincerely,
               </div>
 
               {/* Legal & Compliance */}
-              <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
-                <div className="px-6 py-4 border-b border-slate-200 bg-slate-50">
+              <div className="glass-tile overflow-hidden">
+                <div className="px-6 py-4 border-b border-white/10 bg-white/5">
                   <h2 className="text-lg font-semibold text-slate-900">Legal & Compliance</h2>
                   <p className="text-sm text-slate-600">Professional indemnity and regulatory information</p>
                 </div>
@@ -642,7 +642,7 @@ Yours sincerely,
                       placeholder="https://yourwebsite.com/privacy"
                     />
                   </div>
-                  <div className="pt-4 border-t border-slate-200">
+                  <div className="pt-4 border-t border-white/10">
                     <button 
                       onClick={handleSavePractice}
                       disabled={isSaving === 'practice'}
@@ -658,8 +658,8 @@ Yours sincerely,
 
           {/* BRANDING TAB */}
           {activeTab === 'branding' && (
-            <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
-              <div className="px-6 py-4 border-b border-slate-200 bg-slate-50">
+            <div className="glass-tile overflow-hidden">
+              <div className="px-6 py-4 border-b border-white/10 bg-white/5">
                 <h2 className="text-lg font-semibold text-slate-900">Branding</h2>
                 <p className="text-sm text-slate-600">Customize your proposal appearance</p>
               </div>
@@ -737,7 +737,7 @@ Yours sincerely,
                   </div>
                 </div>
 
-                <div className="pt-4 border-t border-slate-200">
+                <div className="pt-4 border-t border-white/10">
                   <button 
                     onClick={handleSaveBranding}
                     disabled={isSaving === 'branding'}
@@ -754,8 +754,8 @@ Yours sincerely,
           {activeTab === 'communications' && (
             <div className="space-y-6">
               {/* Email Settings */}
-              <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
-                <div className="px-6 py-4 border-b border-slate-200 bg-slate-50">
+              <div className="glass-tile overflow-hidden">
+                <div className="px-6 py-4 border-b border-white/10 bg-white/5">
                   <h2 className="text-lg font-semibold text-slate-900">Email Configuration</h2>
                   <p className="text-sm text-slate-600">Configure how emails are sent from the platform</p>
                 </div>
@@ -765,8 +765,8 @@ Yours sincerely,
               </div>
 
               {/* Cover Letter Template */}
-              <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
-                <div className="px-6 py-4 border-b border-slate-200 bg-slate-50">
+              <div className="glass-tile overflow-hidden">
+                <div className="px-6 py-4 border-b border-white/10 bg-white/5">
                   <h2 className="text-lg font-semibold text-slate-900">Default Cover Letter Template</h2>
                   <p className="text-sm text-slate-600">Template used at the start of proposals before Terms & Conditions</p>
                 </div>
@@ -782,7 +782,7 @@ Yours sincerely,
                     rows={12}
                     className="input-field w-full font-mono text-sm"
                   />
-                  <div className="pt-4 border-t border-slate-200">
+                  <div className="pt-4 border-t border-white/10">
                     <button 
                       onClick={() => toast.success('Template saved')}
                       disabled={isSaving === 'communications'}
@@ -795,8 +795,8 @@ Yours sincerely,
               </div>
 
               {/* Notifications */}
-              <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
-                <div className="px-6 py-4 border-b border-slate-200 bg-slate-50">
+              <div className="glass-tile overflow-hidden">
+                <div className="px-6 py-4 border-b border-white/10 bg-white/5">
                   <h2 className="text-lg font-semibold text-slate-900">Notification Preferences</h2>
                   <p className="text-sm text-slate-600">Choose when you receive email notifications</p>
                 </div>
@@ -833,8 +833,8 @@ Yours sincerely,
 
           {/* BILLING TAB */}
           {activeTab === 'billing' && (
-            <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
-              <div className="px-6 py-4 border-b border-slate-200 bg-slate-50">
+            <div className="glass-tile overflow-hidden">
+              <div className="px-6 py-4 border-b border-white/10 bg-white/5">
                 <h2 className="text-lg font-semibold text-slate-900">VAT & Billing Settings</h2>
                 <p className="text-sm text-slate-600">Configure tax and billing preferences</p>
               </div>
@@ -860,8 +860,8 @@ Yours sincerely,
 
           {/* TEAM TAB */}
           {activeTab === 'team' && (
-            <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
-              <div className="px-6 py-4 border-b border-slate-200 bg-slate-50 flex items-center justify-between">
+            <div className="glass-tile overflow-hidden">
+              <div className="px-6 py-4 border-b border-white/10 bg-white/5 flex items-center justify-between">
                 <div>
                   <h2 className="text-lg font-semibold text-slate-900">Team Members</h2>
                   <p className="text-sm text-slate-600">Manage users and their permissions</p>
@@ -1012,8 +1012,8 @@ Yours sincerely,
 
           {/* SECURITY TAB */}
           {activeTab === 'security' && (
-            <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
-              <div className="px-6 py-4 border-b border-slate-200 bg-slate-50">
+            <div className="glass-tile overflow-hidden">
+              <div className="px-6 py-4 border-b border-white/10 bg-white/5">
                 <h2 className="text-lg font-semibold text-slate-900">Security</h2>
                 <p className="text-sm text-slate-600">Manage your password and account security</p>
               </div>
@@ -1076,7 +1076,7 @@ Yours sincerely,
                   </div>
                 </div>
 
-                <div className="pt-6 border-t border-slate-200">
+                <div className="pt-6 border-t border-white/10">
                   <h3 className="text-sm font-medium text-slate-900 mb-2">Two-Factor Authentication</h3>
                   <p className="text-sm text-slate-600 mb-4">Add an extra layer of security to your account</p>
                   <button

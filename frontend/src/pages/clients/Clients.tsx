@@ -100,7 +100,7 @@ const Clients = () => {
       </div>
 
       {/* Search */}
-      <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
+      <div className="card p-4">
         <form onSubmit={handleSearch} className="relative">
           <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
             <MagnifyingGlassIcon className="h-5 w-5 text-slate-400" />
@@ -109,7 +109,7 @@ const Clients = () => {
             type="text"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full pl-10 pr-4 py-2 rounded-lg border border-slate-300 bg-white text-slate-900 placeholder-slate-400 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
+            className="input-field w-full pl-10"
             placeholder="Search clients by name, email, company number..."
           />
         </form>
@@ -121,7 +121,7 @@ const Clients = () => {
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
         </div>
       ) : clients.length === 0 ? (
-        <div className="text-center py-16 bg-white rounded-xl border border-slate-200 shadow-sm">
+        <div className="text-center py-16 card">
           <UsersIcon className="mx-auto h-12 w-12 text-slate-300" />
           <h3 className="mt-4 text-lg font-medium text-slate-900">No clients yet</h3>
           <p className="mt-2 text-sm text-slate-500">
@@ -141,7 +141,7 @@ const Clients = () => {
             <Link
               key={client.id}
               to={`/clients/${client.id}`}
-              className="bg-white p-5 rounded-xl border border-slate-200 shadow-sm hover:shadow-md hover:border-blue-300 transition-all"
+              className="glass-tile p-5 hover:border-white/20 transition-all"
             >
               <div className="flex items-start justify-between">
                 <div className="flex items-center">
