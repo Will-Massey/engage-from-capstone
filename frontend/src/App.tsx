@@ -23,6 +23,7 @@ import Services from './pages/services/Services';
 import ServiceDetail from './pages/services/ServiceDetail';
 import Settings from './pages/Settings';
 import Subscription from './pages/Subscription';
+import Analytics from './pages/Analytics';
 import NotFound from './pages/NotFound';
 import PublicProposalView from './pages/public/ProposalView';
 
@@ -200,6 +201,11 @@ const AnimatedRoutes = () => {
           <Route path="subscription" element={
             <AnimatedPage>
               <Subscription />
+            </AnimatedPage>
+          } />
+          <Route path="analytics" element={
+            <AnimatedPage>
+              <Analytics />
             </AnimatedPage>
           } />
         </Route>

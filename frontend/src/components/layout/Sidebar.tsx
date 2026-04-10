@@ -8,6 +8,7 @@ import {
   XMarkIcon,
   ArrowRightOnRectangleIcon,
   CreditCardIcon,
+  ChartPieIcon,
 } from '@heroicons/react/24/outline';
 import { useAuthStore } from '../../stores/authStore';
 
@@ -21,6 +22,7 @@ const navigation = [
   { name: 'Proposals', href: '/proposals', icon: DocumentTextIcon },
   { name: 'Clients', href: '/clients', icon: UsersIcon },
   { name: 'Services', href: '/services', icon: WrenchScrewdriverIcon },
+  { name: 'Analytics', href: '/analytics', icon: ChartPieIcon },
   { name: 'Billing', href: '/subscription', icon: CreditCardIcon },
   { name: 'Settings', href: '/settings', icon: CogIcon },
 ];
