@@ -4,6 +4,7 @@ import { authenticate } from '../middleware/auth.js';
 import { authorize } from '../middleware/auth.js';
 import { ApiError, asyncHandler } from '../middleware/errorHandler.js';
 import { runEmailAutomation, testEmailAutomation } from '../jobs/emailAutomation.js';
+import migrateServicePricing from '../scripts/migrateServicePricing.js';
 import logger from '../config/logger.js';
 
 const router = Router();
@@ -97,6 +98,57 @@ router.get(
         },
       },
     });
+  })
+);
+
+/**
+ * POST /api/automation/migrate-service-pricing
+ * Run the service pricing migration (v1 -> v2)
+ * Admin only - copies basePrice -> priceAmount and defaultFrequency -> billingCycle
+ */
+router.post(
+  '/migrate-service-pricing',
+  authenticate,
+  authorize('ADMIN', 'PARTNER'),
+  asyncHandler(async (req, res) => {
+    logger.info('Service pricing migration triggered by user:', req.user!.id);
+
+    // Capture console output
+    const logs: string[] = [];
+    const originalLog = console.log;
+    const originalError = console.error;
+    
+    console.log = (...args: any[]) => {
+      logs.push(args.join(' '));
+      originalLog(...args);
+    };
+    console.error = (...args: any[]) => {
+      logs.push('ERROR: ' + args.join(' '));
+      originalError(...args);
+    };
+
+    try {
+      await migrateServicePricing();
+      
+      res.json({
+        success: true,
+        message: 'Service pricing migration completed',
+        logs: logs.filter(l => l.trim()),
+      });
+    } catch (error: any) {
+      res.status(500).json({
+        success: false,
+        error: {
+          code: 'MIGRATION_FAILED',
+          message: error.message,
+        },
+        logs: logs.filter(l => l.trim()),
+      });
+    } finally {
+      // Restore console
+      console.log = originalLog;
+      console.error = originalError;
+    }
   })
 );
 
