@@ -70,6 +70,16 @@ enum PricingFrequency {
   ANNUALLY
 }
 
+// New: How to display prices clearly
+enum PriceDisplayMode {
+  PER_MONTH      // £71/month
+  PER_QUARTER    // £213/quarter
+  PER_YEAR       // £850/year
+  ONE_TIME       // £500 one-time
+  PER_HOUR       // £75/hour
+  PER_UNIT       // £10/unit
+}
+
 enum ServiceCategory {
   COMPLIANCE
   ADVISORY
@@ -345,18 +355,26 @@ model ProposalService {
   name        String
   description String?
 
-  // Pricing
+  // Clear Pricing - What the client sees
+  displayPrice    Float           // Price as shown (e.g., 71 or 850)
+  billingFrequency BillingCycle   @default(MONTHLY)  // How often billed
+  priceDisplayMode PriceDisplayMode @default(PER_MONTH)  // How to show it
+  
+  // Annual equivalent for comparison
+  annualEquivalent Float @default(0)
+  
+  // Quantity and calculations
   quantity        Float @default(1)
-  unitPrice       Float
+  unitPrice       Float           // Legacy: per-unit price
   discountPercent Float @default(0)
-  total           Float
+  lineTotal       Float           // displayPrice × quantity - discount
 
   // VAT (per line)
   vatRate   Float @default(20)
   vatAmount Float @default(0)
   grossTotal Float @default(0)
 
-  // Billing
+  // Legacy (kept for compatibility)
   frequency  PricingFrequency @default(MONTHLY)
   isOptional Boolean @default(false)
 
@@ -371,6 +389,7 @@ model ProposalService {
   serviceTemplate   ServiceTemplate? @relation(fields: [serviceTemplateId], references: [id])
 
   @@index([proposalId])
+  @@index([billingFrequency])
 }
 
 model ProposalDocument {
@@ -432,21 +451,21 @@ model ServiceTemplate {
   description     String
   longDescription String?
 
-  // Pricing
-  basePrice    Float @default(0)
-  baseHours    Float @default(1)
-  pricingModel PricingModel @default(FIXED)
-
-  // Billing Cycle Configuration
-  billingCycle      BillingCycle @default(MONTHLY)
-  vatRate           VATRate      @default(STANDARD_20)
-  isVatApplicable   Boolean      @default(true)
-  fixedBillingDate  DateTime?
-  billingDayOfMonth Int?         // 1-31 for monthly billing
-  annualEquivalent  Float?       // Annual cost for monthly calculation
-
-  // Legacy Configuration (kept for compatibility)
-  frequencyOptions String @default("MONTHLY,QUARTERLY,ANNUALLY")
+  // Pricing - New Clear System
+  priceAmount     Float           @default(0)  // The actual price (e.g., 71 or 850)
+  priceDisplayMode PriceDisplayMode @default(PER_MONTH)  // How to show it (PER_MONTH, PER_YEAR, etc)
+  billingCycle    BillingCycle    @default(MONTHLY)  // How often to bill
+  
+  // Legacy fields (kept for compatibility)
+  basePrice       Float           @default(0)
+  baseHours       Float           @default(1)
+  pricingModel    PricingModel    @default(FIXED)
+  vatRate         VATRate         @default(STANDARD_20)
+  isVatApplicable Boolean         @default(true)
+  fixedBillingDate DateTime?
+  billingDayOfMonth Int?          // 1-31 for monthly billing
+  annualEquivalent Float?         // Annual cost for monthly calculation
+  frequencyOptions String         @default("MONTHLY,QUARTERLY,ANNUALLY")
   defaultFrequency PricingFrequency @default(MONTHLY)
 
   // Complexity stored as JSON string

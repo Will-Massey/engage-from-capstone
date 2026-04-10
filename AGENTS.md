@@ -1,7 +1,7 @@
 # Engage by Capstone — Agent Guide
 
 > **Purpose:** This document exists for AI coding agents. It summarises the project architecture, conventions, and workflows so you can be productive immediately.  
-> **Last updated:** 2026-04-09
+> **Last updated:** 2026-04-10
 
 ---
 
@@ -36,7 +36,7 @@
 | **Shared** | TypeScript package exposing enums, interfaces, validation, pricing engine |
 | **Testing** | Jest (backend), Vitest (frontend), Playwright (E2E) |
 | **Caching** | Redis 7 (via `ioredis`) — optional but configured |
-| **Package Manager** | npm + pnpm hybrid (`pnpm-lock.yaml` for CI) |
+| **Package Manager** | npm + pnpm hybrid (npm for local, pnpm in CI) |
 | **CI/CD** | GitHub Actions (`.github/workflows/ci-cd.yml`) |
 | **Containerization** | Docker + Docker Compose |
 | **Deployment** | Railway (backend), Vercel (frontend), Render (alternative) |
@@ -218,17 +218,14 @@ npm run db:studio        # Prisma Studio
 ### Testing
 
 ```bash
-# Debug tests
-node scripts/debug-and-test.js
-
-# Unit tests
-cd e2e-tests && npx playwright test specs/unit-calculations.spec.ts
-
 # Backend
 cd backend && npm test   # Jest
 
 # Frontend
 cd frontend && npm test  # Vitest
+
+# E2E Tests
+cd e2e-tests && npx playwright test
 ```
 
 ### Linting
@@ -262,7 +259,7 @@ Services:
 - **Security Stack:** Helmet (CSP + HSTS), CORS, rate-limiting, cookie-parser, CSRF double-submit cookies
 
 **Request Flow:**
-1. `dotenv.config()` loads env vars **first**
+1. `dotenv.config()` loads env vars **first**, before any other imports
 2. Auth routes mounted **before** CSRF protection
 3. CSRF cookie set globally; CSRF validation applied to `/api/*`
 4. Tenant extraction middleware (`extractTenant` from `tenant-simple.ts`) on API routes
@@ -386,16 +383,12 @@ All backend routes return:
 - **Location:** `frontend/src/**/*.test.tsx`, `e2e-tests/`
 - **Run:** `cd frontend && npm test` or `cd e2e-tests && npx playwright test`
 
-### Debug & Test Script
+### E2E Testing (Playwright)
 
-```bash
-node scripts/debug-and-test.js --pricing --vat --files
-```
-
-Tests:
-- Pricing calculations (4 tests)
-- VAT calculations (5 tests)
-- File change verification (5 tests)
+- **Config:** `e2e-tests/playwright.config.ts`
+- **Specs:** `e2e-tests/specs/`
+- **Browsers:** Chromium, Firefox, WebKit
+- **Features:** Auto-retry on failure, screenshots on failure, video recording
 
 ### CI/CD Testing
 
@@ -581,21 +574,29 @@ docker-compose up --build
 
 ---
 
-## 17. World-Class References
+## 17. Environment Setup
 
-### Documentation
-- `WORLD_CLASS_FEATURES.md` — Complete feature overview
-- `WORLD_CLASS_ROADMAP.md` — Future feature roadmap
-- `UI_REFRESH_SUMMARY.md` — Design system documentation
-- `SKELETON_USAGE_GUIDE.md` — Loading state implementation
-- `TODO_FIXES.md` — Task tracking
+### Required Files
 
-### Benchmarks
-Engage now rivals:
-- **Linear** — Speed and keyboard navigation
-- **Notion** — Collaboration and simplicity
-- **Stripe** — Developer experience
-- **Figma** — Visual polish and design
+Copy `.env.example` to `.env` and fill in values:
+
+```bash
+cp .env.example .env
+```
+
+Key environment variables:
+- `DATABASE_URL` — PostgreSQL connection string
+- `JWT_SECRET` — Minimum 32 characters
+- `VITE_API_URL` — Backend URL for frontend
+- `FRONTEND_URL` — Frontend URL for CORS
+
+### Local Development
+
+1. Start Docker services: `docker-compose up -d postgres redis`
+2. Run migrations: `npm run db:migrate`
+3. Seed database: `npm run db:seed`
+4. Start backend: `npm run dev:backend`
+5. Start frontend: `npm run dev:frontend`
 
 ---
 

@@ -1,0 +1,95 @@
+- generic [ref=e3]:
+  - generic [ref=e5]:
+    - img "Demo Practice" [ref=e7]
+    - navigation [ref=e8]:
+      - link "Dashboard" [ref=e9] [cursor=pointer]:
+        - /url: /
+        - img [ref=e10]
+        - text: Dashboard
+      - link "Proposals" [ref=e12] [cursor=pointer]:
+        - /url: /proposals
+        - img [ref=e13]
+        - text: Proposals
+      - link "Clients" [ref=e15] [cursor=pointer]:
+        - /url: /clients
+        - img [ref=e16]
+        - text: Clients
+      - link "Services" [ref=e18] [cursor=pointer]:
+        - /url: /services
+        - img [ref=e19]
+        - text: Services
+      - link "Billing" [ref=e21] [cursor=pointer]:
+        - /url: /subscription
+        - img [ref=e22]
+        - text: Billing
+      - link "Settings" [ref=e24] [cursor=pointer]:
+        - /url: /settings
+        - img [ref=e25]
+        - text: Settings
+    - generic [ref=e28]:
+      - generic [ref=e29]:
+        - generic [ref=e30]: AU
+        - generic [ref=e31]:
+          - paragraph [ref=e32]: Admin User
+          - paragraph [ref=e33]: partner
+      - button "Logout" [ref=e34] [cursor=pointer]:
+        - img [ref=e35]
+        - text: Logout
+  - generic [ref=e37]:
+    - generic [ref=e41]:
+      - generic [ref=e43]:
+        - link "New Proposal" [ref=e44] [cursor=pointer]:
+          - /url: /proposals/new
+          - img [ref=e45]
+          - text: New Proposal
+        - link "New Client" [ref=e47] [cursor=pointer]:
+          - /url: /clients/new
+          - img [ref=e48]
+          - text: New Client
+      - generic [ref=e50]:
+        - generic [ref=e52]:
+          - generic:
+            - img
+          - textbox "Search..." [ref=e53]
+        - button "Toggle theme" [ref=e55] [cursor=pointer]:
+          - img [ref=e56]
+        - button [ref=e58] [cursor=pointer]:
+          - img [ref=e59]
+        - button "A Admin" [ref=e63] [cursor=pointer]:
+          - generic [ref=e64]: A
+          - generic [ref=e65]: Admin
+    - main [ref=e66]:
+      - generic [ref=e68]:
+        - generic [ref=e69]:
+          - generic [ref=e70]:
+            - heading "Proposals" [level=1] [ref=e71]
+            - paragraph [ref=e72]: Manage your client proposals and track their status
+          - link "Create Proposal" [ref=e73] [cursor=pointer]:
+            - /url: /proposals/new
+            - img [ref=e74]
+            - text: Create Proposal
+        - generic [ref=e77]:
+          - generic [ref=e79]:
+            - generic:
+              - img
+            - textbox "Search proposals, clients, or references..." [ref=e80]
+          - generic [ref=e81]:
+            - combobox [ref=e82]:
+              - option "All Status" [selected]
+              - option "Draft"
+              - option "Sent"
+              - option "Accepted"
+              - option "Declined"
+              - option "Expired"
+              - option "Renewals Due (30 days)"
+            - button "Filter" [ref=e83] [cursor=pointer]:
+              - img [ref=e84]
+              - text: Filter
+        - generic [ref=e87]:
+          - img [ref=e88]
+          - heading "No proposals found" [level=3] [ref=e90]
+          - paragraph [ref=e91]: Get started by creating your first proposal
+          - link "Create Proposal" [ref=e92] [cursor=pointer]:
+            - /url: /proposals/new
+            - img [ref=e93]
+            - text: Create Proposal
