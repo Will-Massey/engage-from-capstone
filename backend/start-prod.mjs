@@ -33,9 +33,34 @@ try {
   console.warn('⚠️  Seed check warning:', error.message);
 }
 
-// Fix billingCycle for existing services
+// Fix billingCycle for existing services (skip if column doesn't exist yet)
 console.log('🔧 Checking billingCycle field...');
 try {
+  // First check if the column exists in the database
+  const { PrismaClient } = await import('@prisma/client');
+  const prisma = new PrismaClient();
+  
+  try {
+    const result = await prisma.$queryRaw`
+      SELECT column_name 
+      FROM information_schema.columns 
+      WHERE table_name = 'ServiceTemplate' 
+      AND column_name = 'billingCycle'
+    `;
+    
+    if (result.length === 0) {
+      console.log('⚠️  billingCycle column not found. Running migrations first...');
+      // Try to add the column directly
+      await prisma.$executeRaw`ALTER TABLE "ServiceTemplate" ADD COLUMN IF NOT EXISTS "billingCycle" TEXT DEFAULT 'MONTHLY'`;
+      console.log('✅ Added billingCycle column');
+    }
+    await prisma.$disconnect();
+  } catch (e) {
+    console.warn('⚠️  Could not check/add billingCycle column:', e.message);
+    await prisma.$disconnect();
+  }
+  
+  // Now run the fix script
   execSync('node ./scripts/fix-billing-cycle.js', {
     stdio: 'inherit',
     timeout: 30000,
