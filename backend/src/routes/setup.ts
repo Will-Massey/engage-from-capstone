@@ -69,4 +69,58 @@ router.get(
   })
 );
 
+/**
+ * POST /api/setup/migrate-pricing
+ * Run v2 pricing data migration
+ */
+router.post(
+  '/migrate-pricing',
+  asyncHandler(async (req, res) => {
+    const secret = req.headers['x-migration-key'];
+    if (secret !== 'engage-migrate-2024') {
+      return res.status(403).json({ success: false, error: 'Invalid key' });
+    }
+    
+    try {
+      const services = await prisma.serviceTemplate.findMany({
+        where: {
+          OR: [{ priceAmount: 0 }, { priceAmount: null }],
+          basePrice: { gt: 0 },
+        },
+      });
+      
+      let updated = 0;
+      for (const service of services) {
+        try {
+          let billingCycle: any = service.defaultFrequency || 'MONTHLY';
+          if (billingCycle === 'ONE_TIME') billingCycle = 'MONTHLY';
+          
+          let priceDisplayMode: any = 'PER_MONTH';
+          if (billingCycle === 'ANNUALLY') priceDisplayMode = 'PER_YEAR';
+          else if (billingCycle === 'QUARTERLY') priceDisplayMode = 'PER_QUARTER';
+          
+          await prisma.serviceTemplate.update({
+            where: { id: service.id },
+            data: {
+              priceAmount: service.basePrice,
+              billingCycle: billingCycle,
+              priceDisplayMode: priceDisplayMode,
+            },
+          });
+          updated++;
+        } catch (e) {
+          console.error(`Failed to update ${service.name}:`, e);
+        }
+      }
+      
+      res.json({
+        success: true,
+        message: `Migration complete: ${updated}/${services.length} services updated`,
+      });
+    } catch (error: any) {
+      res.status(500).json({ success: false, error: error.message });
+    }
+  })
+);
+
 export default router;
