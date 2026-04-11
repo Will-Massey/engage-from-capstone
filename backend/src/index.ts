@@ -395,6 +395,7 @@ app.use('/api/payments', extractTenant, paymentRoutes);
 app.use('/api/payments/adfin', extractTenant, adfinRoutes);
 app.use('/api/companies-house', extractTenant, companiesHouseRoutes);
 app.use('/api/cover-letter-templates', extractTenant, coverLetterTemplateRoutes);
+app.use('/api/analytics', extractTenant, analyticsRoutes);
 
 // API status endpoint
 app.get('/api/status', (req, res) => {

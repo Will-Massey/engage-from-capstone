@@ -59,6 +59,7 @@ const email_js_1 = __importDefault(require("./routes/email.js"));
 const payments_js_1 = __importDefault(require("./routes/payments.js"));
 const adfin_js_1 = __importDefault(require("./routes/adfin.js"));
 const coverLetterTemplates_js_1 = __importDefault(require("./routes/coverLetterTemplates.js"));
+const analytics_js_1 = __importDefault(require("./routes/analytics.js"));
 // Import middleware
 // Use simple tenant extraction for Render deployment
 const tenant_simple_js_1 = require("./middleware/tenant-simple.js");
@@ -372,6 +373,7 @@ app.use('/api/payments', tenant_simple_js_1.extractTenant, payments_js_1.default
 app.use('/api/payments/adfin', tenant_simple_js_1.extractTenant, adfin_js_1.default);
 app.use('/api/companies-house', tenant_simple_js_1.extractTenant, companiesHouse_js_1.default);
 app.use('/api/cover-letter-templates', tenant_simple_js_1.extractTenant, coverLetterTemplates_js_1.default);
+app.use('/api/analytics', tenant_simple_js_1.extractTenant, analytics_js_1.default);
 // API status endpoint
 app.get('/api/status', (req, res) => {
     res.json({

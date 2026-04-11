@@ -19,13 +19,15 @@ const checkStripe = () => {
 };
 /**
  * GET /api/payments/config
- * Get Stripe publishable key
+ * Get Stripe publishable key and configuration
  */
 router.get('/config', auth_js_1.authenticate, (0, errorHandler_js_1.asyncHandler)(async (req, res) => {
+    const isEnabled = !!stripe_js_1.stripe && !!process.env.STRIPE_PUBLISHABLE_KEY;
     res.json({
         success: true,
         data: {
-            publishableKey: process.env.STRIPE_PUBLISHABLE_KEY,
+            isEnabled,
+            publishableKey: process.env.STRIPE_PUBLISHABLE_KEY || null,
             tiers: stripe_js_1.SUBSCRIPTION_TIERS,
         },
     });
