@@ -52,13 +52,13 @@ const Login = () => {
 
   return (
     <div>
-      <h2 className="text-2xl font-bold text-slate-900 mb-2">Welcome back</h2>
-      <p className="text-slate-600 mb-6">Sign in to your Engage account</p>
+      <h2 className="text-2xl font-bold text-slate-900 dark:text-white mb-2">Welcome back</h2>
+      <p className="text-slate-600 dark:text-slate-300 mb-6">Sign in to your Engage account</p>
 
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
         {/* Email */}
         <div>
-          <label htmlFor="email" className="block text-sm font-medium text-slate-800">
+          <label htmlFor="email" className="block text-sm font-medium text-slate-800 dark:text-slate-200">
             Email address
           </label>
           <div className="mt-1">
@@ -77,7 +77,7 @@ const Login = () => {
 
         {/* Password */}
         <div>
-          <label htmlFor="password" className="block text-sm font-medium text-slate-800">
+          <label htmlFor="password" className="block text-sm font-medium text-slate-800 dark:text-slate-200">
             Password
           </label>
           <div className="mt-1 relative">
@@ -113,7 +113,7 @@ const Login = () => {
               type="checkbox"
               className="h-4 w-4 text-primary-600 focus:ring-primary-500 border-slate-300 rounded"
             />
-            <label htmlFor="remember-me" className="ml-2 block text-sm text-slate-700">
+            <label htmlFor="remember-me" className="ml-2 block text-sm text-slate-700 dark:text-slate-300">
               Remember me
             </label>
           </div>
@@ -158,7 +158,7 @@ const Login = () => {
       )}
 
       {/* Sign up link */}
-      <p className="mt-6 text-center text-sm text-slate-700">
+      <p className="mt-6 text-center text-sm text-slate-700 dark:text-slate-300">
         Don't have an account?{' '}
         <Link to="/register" className="font-medium text-primary-600 hover:text-primary-500">
           Start your free trial

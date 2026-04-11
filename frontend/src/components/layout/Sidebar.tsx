@@ -31,7 +31,7 @@ const Sidebar = ({ isOpen, onClose }: SidebarProps) => {
   const { user, tenant, clearAuth } = useAuthStore();
   const location = useLocation();
   
-  const logoUrl = tenant?.logo || '/images/capstone-logo.svg';
+  const logoUrl = tenant?.logo || '/capstone-logo.jpg';
 
   const handleLogout = () => {
     clearAuth();
