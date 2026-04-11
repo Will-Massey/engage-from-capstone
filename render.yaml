@@ -71,7 +71,7 @@ services:
     name: engage-frontend
     runtime: static
     rootDir: frontend
-    buildCommand: rm -rf dist node_modules/.vite && npm install --include=dev && npm run build && ls -la dist/
+    buildCommand: rm -rf dist node_modules/.vite node_modules/.cache && npm install --include=dev && npm run build 2>&1 && echo "Build complete" && ls -la dist/
     staticPublishPath: ./dist
     envVars:
       - key: VITE_API_URL

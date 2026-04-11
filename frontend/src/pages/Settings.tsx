@@ -661,7 +661,7 @@ Yours sincerely,
             <div className="glass-tile overflow-hidden">
               <div className="px-6 py-4 border-b border-white/10 bg-white/5">
                 <h2 className="text-lg font-semibold text-slate-900">Branding</h2>
-                <p className="text-sm text-slate-600">Customize your proposal appearance</p>
+                <p className="text-sm text-slate-600">Customise your proposal appearance</p>
               </div>
               <div className="p-6 space-y-8">
                 {/* Logo Upload */}
