@@ -52,12 +52,26 @@ try {
   await prisma.$disconnect();
 }
 
-// Run migrations with shorter timeout to fail fast
-console.log('🗄️  Running database migrations...');
+// Check and resolve any failed migrations first
+console.log('🗄️  Checking for failed migrations...');
 try {
+  // Try to mark the known failed migration as rolled back
+  try {
+    execSync('npx prisma migrate resolve --rolled-back "20260410_data_migration_v2_pricing"', {
+      stdio: 'inherit',
+      timeout: 30000
+    });
+    console.log('✅ Marked failed migration as rolled back');
+  } catch (resolveError) {
+    // Migration might already be resolved or not exist - continue
+    console.log('ℹ️  Migration resolve status:', resolveError.message);
+  }
+  
+  // Now run the actual migration deploy
+  console.log('🗄️  Running database migrations...');
   execSync('npx prisma migrate deploy', { 
     stdio: 'inherit',
-    timeout: 60000 // 60 seconds - fail fast if DB is down
+    timeout: 60000
   });
   console.log('✅ Migrations complete');
 } catch (error) {
