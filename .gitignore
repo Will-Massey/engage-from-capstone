@@ -5,11 +5,14 @@ node_modules/
 .pnp.js
 
 # Production builds
-# Note: frontend/dist is intentionally NOT ignored - we commit it for Render deployments
+# Note: dist folders are intentionally NOT ignored - we commit them for Render deployments
 # This prevents Render's build cache issues
-dist/
-build/
+# Root dist folder only (not subfolder dists which we need)
+/dist
+/build/
+# But we need these for Render:
 !frontend/dist/
+!backend/dist/
 *.tsbuildinfo
 
 # Environment variables
