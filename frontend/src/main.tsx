@@ -9,7 +9,11 @@ import ErrorBoundary from './components/ErrorBoundary';
 import './index.css';
 
 // Initialize theme before rendering
-initializeTheme();
+try {
+  initializeTheme();
+} catch (e) {
+  console.error('Theme initialization failed:', e);
+}
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
