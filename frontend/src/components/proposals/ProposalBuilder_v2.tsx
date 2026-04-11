@@ -1,11 +1,10 @@
 /**
- * Proposal Builder v2 - Clear and Intuitive Pricing
+ * Proposal Builder v2 - Compact & Editable
  * 
  * Key Features:
- * 1. Prices shown as they are (£850/year shows as £850/year)
- * 2. No confusing conversions
- * 3. Grouped totals by billing frequency
- * 4. Clear annual equivalent for comparison
+ * 1. Compact service selection - more services visible at once
+ * 2. Inline editing of price, quantity, discount, and VAT
+ * 3. Clear pricing display with edit capability
  */
 
 import { useState, useEffect, useMemo } from 'react';
@@ -19,10 +18,10 @@ import {
   PlusIcon,
   TrashIcon,
   PencilIcon,
-  DocumentDuplicateIcon,
-  CalculatorIcon,
   CheckIcon,
   XMarkIcon,
+  MagnifyingGlassIcon,
+  CalculatorIcon,
 } from '@heroicons/react/24/outline';
 
 // Types
@@ -65,7 +64,7 @@ interface PricingSummary {
 
 const STEPS = [
   { id: 1, name: 'Select Client', description: 'Choose who this proposal is for' },
-  { id: 2, name: 'Add Services', description: 'Select and customize services' },
+  { id: 2, name: 'Add Services', description: 'Select and customise services' },
   { id: 3, name: 'Review & Send', description: 'Review and send proposal' },
 ];
 
@@ -76,10 +75,10 @@ const BILLING_FREQUENCY_LABELS: Record<string, string> = {
   'ONE_TIME': 'one-time',
 };
 
+const VAT_RATES = [0, 5, 20];
+
 // Format price with frequency label
-// Prices in DB are annual - divide by 12 for monthly display, round to nearest £25
 const formatPriceWithFrequency = (price: number, frequency: string): string => {
-  // Convert annual price to monthly and round to nearest £25
   const monthlyPrice = Math.round((price / 12) / 25) * 25;
   
   const formatted = new Intl.NumberFormat('en-GB', {
@@ -135,6 +134,15 @@ export default function ProposalBuilderV2() {
   const [selectedServices, setSelectedServices] = useState<SelectedService[]>([]);
   const [editingService, setEditingService] = useState<string | null>(null);
   
+  // Edit form state
+  const [editForm, setEditForm] = useState<{
+    displayPrice: number;
+    quantity: number;
+    discountPercent: number;
+    vatRate: number;
+    billingCycle: string;
+  }>({ displayPrice: 0, quantity: 1, discountPercent: 0, vatRate: 20, billingCycle: 'MONTHLY' });
+  
   // Step 3: Review
   const [proposalTitle, setProposalTitle] = useState('');
   const [coverLetter, setCoverLetter] = useState('');
@@ -158,7 +166,6 @@ export default function ProposalBuilderV2() {
   const loadServices = async () => {
     try {
       const response = await apiClient.getServices({ limit: 100 }) as any;
-      // Map legacy fields to new clear pricing fields
       const mappedServices = (response.data || []).map((s: any) => ({
         ...s,
         priceAmount: s.priceAmount || s.basePrice || 0,
@@ -169,6 +176,12 @@ export default function ProposalBuilderV2() {
       toast.error('Failed to load services');
     }
   };
+  
+  // Get unique categories
+  const categories = useMemo(() => {
+    const cats = new Set(services.map(s => s.category).filter(Boolean));
+    return ['ALL', ...Array.from(cats)];
+  }, [services]);
   
   // Filter services
   const filteredServices = useMemo(() => {
@@ -242,28 +255,54 @@ export default function ProposalBuilderV2() {
     toast.success(`${service.name} added`);
   };
   
-  // Update service
-  const updateService = (id: string, updates: Partial<SelectedService>) => {
+  // Start editing service
+  const startEdit = (service: SelectedService) => {
+    setEditingService(service.id);
+    setEditForm({
+      displayPrice: service.displayPrice,
+      quantity: service.quantity,
+      discountPercent: service.discountPercent,
+      vatRate: service.vatRate,
+      billingCycle: service.billingCycle,
+    });
+  };
+  
+  // Save edit
+  const saveEdit = (id: string) => {
     setSelectedServices(prev => prev.map(s => {
       if (s.id !== id) return s;
       
-      const updated = { ...s, ...updates };
-      const quantity = updated.quantity || 1;
-      const discount = updated.discountPercent || 0;
+      const quantity = editForm.quantity || 1;
+      const discount = editForm.discountPercent || 0;
+      const price = editForm.displayPrice || 0;
+      const vatRate = editForm.vatRate || 0;
       
       // Recalculate
-      const grossLineTotal = updated.displayPrice * quantity;
+      const grossLineTotal = price * quantity;
       const discountAmount = grossLineTotal * (discount / 100);
       const lineTotal = grossLineTotal - discountAmount;
-      const vatAmount = includeVat ? Math.round(lineTotal * 0.2 * 100) / 100 : 0;
+      const vatAmount = includeVat ? Math.round(lineTotal * (vatRate / 100) * 100) / 100 : 0;
       
-      updated.lineTotal = lineTotal;
-      updated.vatAmount = vatAmount;
-      updated.grossTotal = lineTotal + vatAmount;
-      updated.annualEquivalent = calculateAnnualEquivalent(updated.displayPrice, updated.billingCycle);
-      
-      return updated;
+      return {
+        ...s,
+        displayPrice: price,
+        quantity,
+        discountPercent: discount,
+        vatRate,
+        billingCycle: editForm.billingCycle,
+        lineTotal,
+        vatAmount,
+        grossTotal: lineTotal + vatAmount,
+        annualEquivalent: calculateAnnualEquivalent(price, editForm.billingCycle),
+      };
     }));
+    setEditingService(null);
+    toast.success('Service updated');
+  };
+  
+  // Cancel edit
+  const cancelEdit = () => {
+    setEditingService(null);
   };
   
   // Remove service
@@ -294,7 +333,7 @@ export default function ProposalBuilderV2() {
         billingFrequency: s.billingCycle,
         quantity: s.quantity,
         discountPercent: s.discountPercent,
-        vatRate: includeVat ? 20 : 0,
+        vatRate: includeVat ? s.vatRate : 0,
       }));
       
       const proposalData = {
@@ -360,7 +399,7 @@ export default function ProposalBuilderV2() {
           onChange={(e) => setClientSearch(e.target.value)}
           className="w-full pl-10 pr-4 py-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
         />
-        <PlusIcon className="absolute left-3 top-3.5 w-5 h-5 text-slate-400 dark:text-slate-500" />
+        <MagnifyingGlassIcon className="absolute left-3 top-3.5 w-5 h-5 text-slate-400" />
       </div>
       
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -377,7 +416,7 @@ export default function ProposalBuilderV2() {
             }`}
           >
             <h3 className="font-semibold text-slate-900 dark:text-white">{client.name}</h3>
-            <p className="text-sm text-slate-500 dark:text-slate-400 dark:text-slate-500">{client.companyType}</p>
+            <p className="text-sm text-slate-500 dark:text-slate-400">{client.companyType}</p>
             <p className="text-sm text-slate-400 dark:text-slate-500">{client.contactEmail}</p>
           </div>
         ))}
@@ -397,111 +436,271 @@ export default function ProposalBuilderV2() {
     </div>
   );
   
+  // Render compact service row
+  const renderServiceRow = (service: Service) => {
+    const isSelected = selectedServices.find(s => s.id === service.id);
+    
+    return (
+      <div
+        key={service.id}
+        onClick={() => !isSelected && addService(service)}
+        className={`flex items-center justify-between p-3 rounded-lg border transition-all cursor-pointer ${
+          isSelected 
+            ? 'bg-green-50 border-green-300 dark:bg-green-900/20 dark:border-green-700' 
+            : 'bg-white border-slate-200 hover:border-primary-300 hover:bg-slate-50 dark:bg-slate-800 dark:border-slate-700 dark:hover:border-primary-600'
+        }`}
+      >
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2">
+            <h3 className="font-medium text-slate-900 dark:text-white truncate">{service.name}</h3>
+            {isSelected && <CheckIcon className="w-4 h-4 text-green-600 flex-shrink-0" />}
+          </div>
+          <p className="text-xs text-slate-500 dark:text-slate-400 truncate">{service.category}</p>
+        </div>
+        <div className="text-right flex-shrink-0 ml-4">
+          <span className="font-semibold text-primary-600 text-sm">
+            {formatPriceWithFrequency(service.priceAmount, service.billingCycle)}
+          </span>
+        </div>
+      </div>
+    );
+  };
+  
+  // Render editable selected service row
+  const renderSelectedServiceRow = (service: SelectedService) => {
+    const isEditing = editingService === service.id;
+    
+    if (isEditing) {
+      return (
+        <div key={service.id} className="p-4 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg space-y-3">
+          <div className="flex items-center justify-between">
+            <h4 className="font-medium text-slate-900 dark:text-white">{service.name}</h4>
+            <div className="flex gap-1">
+              <button onClick={() => saveEdit(service.id)} className="p-1.5 text-green-600 hover:bg-green-100 rounded">
+                <CheckIcon className="w-4 h-4" />
+              </button>
+              <button onClick={cancelEdit} className="p-1.5 text-red-600 hover:bg-red-100 rounded">
+                <XMarkIcon className="w-4 h-4" />
+              </button>
+            </div>
+          </div>
+          
+          <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+            {/* Price */}
+            <div>
+              <label className="block text-xs text-slate-500 mb-1">Price (£)</label>
+              <input
+                type="number"
+                value={editForm.displayPrice}
+                onChange={(e) => setEditForm({ ...editForm, displayPrice: Number(e.target.value) })}
+                className="w-full px-2 py-1.5 text-sm border rounded dark:bg-slate-800 dark:border-slate-600"
+              />
+            </div>
+            
+            {/* Quantity */}
+            <div>
+              <label className="block text-xs text-slate-500 mb-1">Qty</label>
+              <input
+                type="number"
+                min={1}
+                value={editForm.quantity}
+                onChange={(e) => setEditForm({ ...editForm, quantity: Number(e.target.value) })}
+                className="w-full px-2 py-1.5 text-sm border rounded dark:bg-slate-800 dark:border-slate-600"
+              />
+            </div>
+            
+            {/* Discount */}
+            <div>
+              <label className="block text-xs text-slate-500 mb-1">Discount %</label>
+              <input
+                type="number"
+                min={0}
+                max={100}
+                value={editForm.discountPercent}
+                onChange={(e) => setEditForm({ ...editForm, discountPercent: Number(e.target.value) })}
+                className="w-full px-2 py-1.5 text-sm border rounded dark:bg-slate-800 dark:border-slate-600"
+              />
+            </div>
+            
+            {/* VAT Rate */}
+            <div>
+              <label className="block text-xs text-slate-500 mb-1">VAT %</label>
+              <select
+                value={editForm.vatRate}
+                onChange={(e) => setEditForm({ ...editForm, vatRate: Number(e.target.value) })}
+                className="w-full px-2 py-1.5 text-sm border rounded dark:bg-slate-800 dark:border-slate-600"
+              >
+                {VAT_RATES.map(rate => (
+                  <option key={rate} value={rate}>{rate}%</option>
+                ))}
+              </select>
+            </div>
+            
+            {/* Frequency */}
+            <div>
+              <label className="block text-xs text-slate-500 mb-1">Frequency</label>
+              <select
+                value={editForm.billingCycle}
+                onChange={(e) => setEditForm({ ...editForm, billingCycle: e.target.value })}
+                className="w-full px-2 py-1.5 text-sm border rounded dark:bg-slate-800 dark:border-slate-600"
+              >
+                <option value="MONTHLY">Monthly</option>
+                <option value="QUARTERLY">Quarterly</option>
+                <option value="ANNUALLY">Annually</option>
+                <option value="ONE_TIME">One-time</option>
+              </select>
+            </div>
+          </div>
+          
+          {/* Live preview */}
+          <div className="flex justify-between items-center pt-2 border-t border-amber-200 dark:border-amber-800">
+            <span className="text-xs text-slate-500">Preview:</span>
+            <span className="font-semibold text-primary-600">
+              {formatCurrency((editForm.displayPrice * editForm.quantity * (1 - editForm.discountPercent / 100)) * (1 + (includeVat ? editForm.vatRate : 0) / 100))}
+              <span className="text-xs text-slate-500 font-normal ml-1">/{BILLING_FREQUENCY_LABELS[editForm.billingCycle] || 'month'}</span>
+            </span>
+          </div>
+        </div>
+      );
+    }
+    
+    // Compact view mode
+    return (
+      <div className="flex items-center justify-between p-3 bg-slate-50 dark:bg-slate-800/50 rounded-lg group hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
+        <div className="flex-1 min-w-0">
+          <h4 className="font-medium text-slate-900 dark:text-white text-sm truncate">{service.name}</h4>
+          <p className="text-xs text-slate-500 dark:text-slate-400">
+            {formatCurrency(service.displayPrice)} × {service.quantity}
+            {service.discountPercent > 0 && <span className="text-amber-600 ml-1">(-{service.discountPercent}%)</span>}
+            {service.vatRate !== 20 && <span className="text-blue-600 ml-1">({service.vatRate}% VAT)</span>}
+          </p>
+        </div>
+        
+        <div className="flex items-center gap-3 flex-shrink-0 ml-4">
+          <div className="text-right">
+            <span className="font-semibold text-slate-900 dark:text-white text-sm block">
+              {formatCurrency(service.grossTotal)}
+            </span>
+            <span className="text-xs text-slate-400 dark:text-slate-500">
+              {BILLING_FREQUENCY_LABELS[service.billingCycle] || 'month'}
+            </span>
+          </div>
+          
+          <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+            <button
+              onClick={() => startEdit(service)}
+              className="p-1.5 text-blue-600 hover:bg-blue-100 dark:hover:bg-blue-900/30 rounded"
+              title="Edit"
+            >
+              <PencilIcon className="w-4 h-4" />
+            </button>
+            <button
+              onClick={() => removeService(service.id)}
+              className="p-1.5 text-red-600 hover:bg-red-100 dark:hover:bg-red-900/30 rounded"
+              title="Remove"
+            >
+              <TrashIcon className="w-4 h-4" />
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  };
+  
   // Render Step 2: Services
   const renderServicesStep = () => (
     <div className="space-y-6">
+      {/* Header with search */}
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <h2 className="text-xl font-semibold text-slate-900 dark:text-white">Add Services</h2>
-        <input
-          type="text"
-          placeholder="Search services..."
-          value={serviceSearch}
-          onChange={(e) => setServiceSearch(e.target.value)}
-          className="input-field w-full md:w-64"
-        />
+        <div className="relative">
+          <input
+            type="text"
+            placeholder="Search services..."
+            value={serviceSearch}
+            onChange={(e) => setServiceSearch(e.target.value)}
+            className="input-field w-full md:w-64 pl-10"
+          />
+          <MagnifyingGlassIcon className="absolute left-3 top-2.5 w-5 h-5 text-slate-400" />
+        </div>
       </div>
       
-      {/* Available Services */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        {filteredServices.map(service => (
-          <div
-            key={service.id}
-            onClick={() => addService(service)}
-            className="glass-tile cursor-pointer hover:border-primary-300 group"
+      {/* Category filters */}
+      <div className="flex flex-wrap gap-2">
+        {categories.map(cat => (
+          <button
+            key={cat}
+            onClick={() => setSelectedCategory(cat)}
+            className={`px-3 py-1.5 text-sm rounded-full transition-colors ${
+              selectedCategory === cat
+                ? 'bg-primary-600 text-white'
+                : 'bg-slate-100 text-slate-600 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-300'
+            }`}
           >
-            <div className="flex justify-between items-start mb-2">
-              <h3 className="font-semibold text-slate-900 dark:text-white group-hover:text-primary-600 transition-colors">
-                {service.name}
-              </h3>
-              <PlusIcon className="w-5 h-5 text-slate-400 dark:text-slate-300 group-hover:text-primary-500" />
-            </div>
-            <p className="text-sm text-slate-500 dark:text-slate-300 mb-3 line-clamp-2">{service.description}</p>
-            <div className="flex items-center justify-between">
-              <span className="text-lg font-bold text-primary-600">
-                {formatPriceWithFrequency(service.priceAmount, service.billingCycle)}
-              </span>
-              <span className="text-xs text-slate-500 dark:text-slate-300 bg-slate-100 dark:bg-slate-700 px-2 py-1 rounded-full">
-                {service.category}
-              </span>
-            </div>
-          </div>
+            {cat === 'ALL' ? 'All Categories' : cat}
+          </button>
         ))}
       </div>
       
-      {/* Selected Services */}
-      {selectedServices.length > 0 && (
-        <div className="card p-6 mt-8">
-          <h3 className="text-lg font-semibold text-slate-900 mb-4">Selected Services</h3>
-          <div className="space-y-3">
-            {selectedServices.map(service => (
-              <div key={service.id} className="flex items-center justify-between p-3 bg-slate-50 rounded-lg">
-                <div className="flex-1">
-                  <h4 className="font-medium text-slate-900 dark:text-white">{service.name}</h4>
-                  <p className="text-sm text-slate-500 dark:text-slate-400 dark:text-slate-500">
-                    {formatPriceWithFrequency(service.displayPrice, service.billingCycle)}
-                    {service.quantity > 1 && ` × ${service.quantity}`}
-                    {service.discountPercent > 0 && ` (-${service.discountPercent}%)`}
-                  </p>
-                </div>
-                <div className="flex items-center gap-2">
-                  <div className="text-right">
-                    <span className="font-semibold text-slate-900 block">
-                      {formatPriceWithFrequency(service.lineTotal, service.billingCycle)}
-                    </span>
-                    {includeVat && service.vatAmount > 0 && (
-                      <span className="text-xs text-slate-400 dark:text-slate-500">
-                        + VAT {formatCurrency(service.vatAmount)}
-                      </span>
-                    )}
-                  </div>
-                  <button
-                    onClick={() => removeService(service.id)}
-                    className="p-2 text-red-500 hover:bg-red-50 rounded-lg"
-                  >
-                    <TrashIcon className="w-4 h-4" />
-                  </button>
-                </div>
-              </div>
-            ))}
-          </div>
-          
-          {/* Running Total */}
-          <div className="mt-4 pt-4 border-t border-slate-200">
-            <div className="flex justify-between items-center">
-              <span className="text-slate-600 dark:text-slate-300">Subtotal</span>
-              <span className="font-semibold text-slate-900 dark:text-white">
-                {formatCurrency(summary.monthly.subtotal + summary.quarterly.subtotal + summary.annually.subtotal + summary.oneTime.subtotal)}
-              </span>
-            </div>
-            {includeVat && (
-              <div className="flex justify-between items-center mt-1">
-                <span className="text-slate-600 dark:text-slate-300">VAT (20%)</span>
-                <span className="font-semibold text-slate-900 dark:text-white">
-                  {formatCurrency(summary.monthly.vat + summary.quarterly.vat + summary.annually.vat + summary.oneTime.vat)}
-                </span>
-              </div>
-            )}
-            <div className="flex justify-between items-center mt-2 pt-2 border-t border-slate-200">
-              <span className="text-lg font-semibold text-slate-900 dark:text-white">Total</span>
-              <span className="text-xl font-bold text-primary-600">
-                {formatCurrency(summary.grandTotal)}
-              </span>
-            </div>
+      {/* Two-column layout: Available Services | Selected Services */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Available Services - Compact List */}
+        <div className="space-y-3">
+          <h3 className="text-sm font-medium text-slate-500 uppercase tracking-wide">
+            Available ({filteredServices.length})
+          </h3>
+          <div className="max-h-[500px] overflow-y-auto space-y-1 pr-1">
+            {filteredServices.map(renderServiceRow)}
           </div>
         </div>
-      )}
+        
+        {/* Selected Services */}
+        <div className="space-y-3">
+          <h3 className="text-sm font-medium text-slate-500 uppercase tracking-wide">
+            Selected ({selectedServices.length})
+          </h3>
+          
+          {selectedServices.length === 0 ? (
+            <div className="p-8 text-center text-slate-400 border-2 border-dashed border-slate-200 rounded-lg">
+              <CalculatorIcon className="w-8 h-8 mx-auto mb-2 opacity-50" />
+              <p>Click services from the left to add them</p>
+            </div>
+          ) : (
+            <>
+              <div className="max-h-[400px] overflow-y-auto space-y-2 pr-1">
+                {selectedServices.map(renderSelectedServiceRow)}
+              </div>
+              
+              {/* Running Total */}
+              <div className="p-4 bg-primary-50 dark:bg-primary-900/20 rounded-lg border border-primary-100 dark:border-primary-800">
+                <div className="flex justify-between items-center text-sm">
+                  <span className="text-slate-600 dark:text-slate-300">Subtotal</span>
+                  <span className="font-medium text-slate-900 dark:text-white">
+                    {formatCurrency(summary.monthly.subtotal + summary.quarterly.subtotal + summary.annually.subtotal + summary.oneTime.subtotal)}
+                  </span>
+                </div>
+                {includeVat && (
+                  <div className="flex justify-between items-center text-sm mt-1">
+                    <span className="text-slate-600 dark:text-slate-300">VAT</span>
+                    <span className="font-medium text-slate-900 dark:text-white">
+                      {formatCurrency(summary.monthly.vat + summary.quarterly.vat + summary.annually.vat + summary.oneTime.vat)}
+                    </span>
+                  </div>
+                )}
+                <div className="flex justify-between items-center mt-2 pt-2 border-t border-primary-200 dark:border-primary-800">
+                  <span className="font-semibold text-slate-900 dark:text-white">Total</span>
+                  <span className="text-lg font-bold text-primary-600">
+                    {formatCurrency(summary.grandTotal)}
+                  </span>
+                </div>
+              </div>
+            </>
+          )}
+        </div>
+      </div>
       
-      <div className="flex justify-between">
+      {/* Navigation */}
+      <div className="flex justify-between pt-4 border-t border-slate-200 dark:border-slate-700">
         <button onClick={() => setCurrentStep(1)} className="btn-secondary">
           <ArrowLeftIcon className="w-5 h-5 mr-2" />
           Back
@@ -521,7 +720,7 @@ export default function ProposalBuilderV2() {
     <div className="space-y-6">
       <h2 className="text-xl font-semibold text-slate-900 dark:text-white">Review & Send</h2>
       
-      {/* Proposal Title - Made more prominent */}
+      {/* Proposal Title */}
       <div className="card p-4 border-2 border-primary-200 dark:border-primary-800 bg-primary-50/30 dark:bg-primary-900/10">
         <label className="block text-sm font-medium text-slate-700 dark:text-slate-200 mb-2">Proposal Title *</label>
         <input
@@ -531,95 +730,50 @@ export default function ProposalBuilderV2() {
           placeholder="e.g., Accounting Services 2026"
           className="input-field w-full text-lg font-medium"
         />
-        <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">This will appear as the subject line in the email to your client</p>
       </div>
       
       {/* Client Summary */}
       <div className="card p-4">
         <h3 className="font-semibold text-slate-900 dark:text-white mb-2">Client</h3>
         <p className="text-slate-700 dark:text-slate-200">{selectedClient?.name}</p>
-        <p className="text-sm text-slate-500 dark:text-slate-400 dark:text-slate-500">{selectedClient?.contactEmail}</p>
+        <p className="text-sm text-slate-500 dark:text-slate-400">{selectedClient?.contactEmail}</p>
       </div>
       
-      {/* Services Summary with Clear Grouping */}
+      {/* Services Summary */}
       <div className="card p-6">
         <h3 className="font-semibold text-slate-900 dark:text-white mb-4">Services</h3>
         
-        {/* Monthly Services */}
-        {summary.monthly.count > 0 && (
-          <div className="mb-4">
-            <h4 className="text-sm font-medium text-primary-600 mb-2">Monthly</h4>
-            {selectedServices.filter(s => s.billingCycle === 'MONTHLY').map(s => (
-              <div key={s.id} className="flex justify-between py-1 text-sm">
-                <span className="text-slate-700 dark:text-slate-200">{s.name} {s.quantity > 1 && `× ${s.quantity}`}</span>
-                <span className="text-slate-900 dark:text-white">{formatPriceWithFrequency(s.displayPrice * s.quantity, 'MONTHLY')}</span>
+        {['MONTHLY', 'QUARTERLY', 'ANNUALLY', 'ONE_TIME'].map((freq) => {
+          const items = selectedServices.filter(s => s.billingCycle === freq);
+          if (items.length === 0) return null;
+          
+          const totals = items.reduce((acc, s) => ({
+            subtotal: acc.subtotal + s.lineTotal,
+            vat: acc.vat + s.vatAmount,
+            total: acc.total + s.grossTotal,
+          }), { subtotal: 0, vat: 0, total: 0 });
+          
+          return (
+            <div key={freq} className="mb-4">
+              <h4 className="text-sm font-medium text-primary-600 mb-2 capitalize">{freq.replace('_', ' ').toLowerCase()}</h4>
+              {items.map(s => (
+                <div key={s.id} className="flex justify-between py-1 text-sm">
+                  <span className="text-slate-700 dark:text-slate-200">{s.name} {s.quantity > 1 && `× ${s.quantity}`}</span>
+                  <span className="text-slate-900 dark:text-white">{formatCurrency(s.grossTotal)}</span>
+                </div>
+              ))}
+              <div className="flex justify-between pt-2 border-t border-slate-100 mt-2">
+                <span className="text-slate-600 dark:text-slate-300 capitalize">{BILLING_FREQUENCY_LABELS[freq]} Total</span>
+                <span className="font-semibold text-slate-900 dark:text-white">{formatCurrency(totals.total)}</span>
               </div>
-            ))}
-            <div className="flex justify-between pt-2 border-t border-slate-100 mt-2">
-              <span className="text-slate-600 dark:text-slate-300">Monthly Total</span>
-              <span className="font-semibold text-slate-900 dark:text-white">{formatCurrency(summary.monthly.total)}/month</span>
             </div>
-          </div>
-        )}
-        
-        {/* Quarterly Services */}
-        {summary.quarterly.count > 0 && (
-          <div className="mb-4">
-            <h4 className="text-sm font-medium text-primary-600 mb-2">Quarterly</h4>
-            {selectedServices.filter(s => s.billingCycle === 'QUARTERLY').map(s => (
-              <div key={s.id} className="flex justify-between py-1 text-sm">
-                <span className="text-slate-700 dark:text-slate-200">{s.name} {s.quantity > 1 && `× ${s.quantity}`}</span>
-                <span className="text-slate-900 dark:text-white">{formatPriceWithFrequency(s.displayPrice * s.quantity, 'QUARTERLY')}</span>
-              </div>
-            ))}
-            <div className="flex justify-between pt-2 border-t border-slate-100 mt-2">
-              <span className="text-slate-600 dark:text-slate-300">Quarterly Total</span>
-              <span className="font-semibold text-slate-900 dark:text-white">{formatCurrency(summary.quarterly.total)}/quarter</span>
-            </div>
-          </div>
-        )}
-        
-        {/* Annual Services */}
-        {summary.annually.count > 0 && (
-          <div className="mb-4">
-            <h4 className="text-sm font-medium text-primary-600 mb-2">Annual</h4>
-            {selectedServices.filter(s => s.billingCycle === 'ANNUALLY').map(s => (
-              <div key={s.id} className="flex justify-between py-1 text-sm">
-                <span className="text-slate-700 dark:text-slate-200">{s.name} {s.quantity > 1 && `× ${s.quantity}`}</span>
-                <span className="text-slate-900 dark:text-white">{formatPriceWithFrequency(s.displayPrice * s.quantity, 'ANNUALLY')}</span>
-              </div>
-            ))}
-            <div className="flex justify-between pt-2 border-t border-slate-100 mt-2">
-              <span className="text-slate-600 dark:text-slate-300">Annual Total</span>
-              <span className="font-semibold text-slate-900 dark:text-white">{formatCurrency(summary.annually.total)}/year</span>
-            </div>
-          </div>
-        )}
-        
-        {/* One-Time Services */}
-        {summary.oneTime.count > 0 && (
-          <div className="mb-4">
-            <h4 className="text-sm font-medium text-primary-600 mb-2">One-Time</h4>
-            {selectedServices.filter(s => s.billingCycle === 'ONE_TIME').map(s => (
-              <div key={s.id} className="flex justify-between py-1 text-sm">
-                <span className="text-slate-700 dark:text-slate-200">{s.name} {s.quantity > 1 && `× ${s.quantity}`}</span>
-                <span className="text-slate-900 dark:text-white">{formatCurrency(s.grossTotal)}</span>
-              </div>
-            ))}
-          </div>
-        )}
+          );
+        })}
         
         {/* Grand Total */}
         <div className="mt-6 pt-4 border-t-2 border-slate-200">
           <div className="flex justify-between items-center">
-            <div>
-              <span className="text-lg font-semibold text-slate-900 dark:text-white">Total Investment</span>
-              {summary.totalAnnualEquivalent > 0 && (
-                <p className="text-sm text-slate-500 dark:text-slate-400 dark:text-slate-500">
-                  {formatCurrency(summary.totalAnnualEquivalent)}/year when annualized
-                </p>
-              )}
-            </div>
+            <span className="text-lg font-semibold text-slate-900 dark:text-white">Total Investment</span>
             <span className="text-2xl font-bold text-primary-600">
               {formatCurrency(summary.grandTotal)}
             </span>
@@ -646,7 +800,7 @@ export default function ProposalBuilderV2() {
   );
   
   return (
-    <div className="max-w-5xl mx-auto">
+    <div className="max-w-6xl mx-auto">
       {renderStepIndicator()}
       
       <div className="animate-fade-in">
