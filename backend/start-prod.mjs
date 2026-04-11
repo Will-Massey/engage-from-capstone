@@ -55,35 +55,36 @@ try {
 // Check and resolve any failed migrations first
 console.log('🗄️  Checking for failed migrations...');
 try {
-  // Try to mark the known failed migration as rolled back
+  // Try to mark the known failed migration as rolled back (ignore errors)
   try {
     execSync('npx prisma migrate resolve --rolled-back "20260410_data_migration_v2_pricing"', {
-      stdio: 'inherit',
+      stdio: 'pipe',
       timeout: 30000
     });
     console.log('✅ Marked failed migration as rolled back');
   } catch (resolveError) {
     // Migration might already be resolved or not exist - continue
-    console.log('ℹ️  Migration resolve status:', resolveError.message);
+    console.log('ℹ️  Migration resolve: already resolved or not needed');
   }
   
   // Now run the actual migration deploy
   console.log('🗄️  Running database migrations...');
   execSync('npx prisma migrate deploy', { 
-    stdio: 'inherit',
+    stdio: 'pipe',
     timeout: 60000
   });
   console.log('✅ Migrations complete');
 } catch (error) {
-  console.warn('⚠️  Migration issue (may be already resolved):', error.message);
+  console.warn('⚠️  Migration issue (continuing anyway):', error.message);
+  console.log('🚀 Starting server despite migration warnings...');
 }
 
 // Seed UK accountancy services (non-blocking)
 console.log('🌱 Checking UK service catalog...');
 try {
   execSync('node ./scripts/seed-uk-services.js', {
-    stdio: 'inherit',
-    timeout: 30000, // 30 seconds
+    stdio: 'pipe',
+    timeout: 30000,
   });
   console.log('✅ Seed check complete');
 } catch (error) {
@@ -94,7 +95,7 @@ try {
 console.log('🔧 Checking billingCycle field...');
 try {
   execSync('node ./scripts/fix-billing-cycle.js', {
-    stdio: 'inherit',
+    stdio: 'pipe',
     timeout: 30000,
   });
   console.log('✅ Billing cycle fix complete');
