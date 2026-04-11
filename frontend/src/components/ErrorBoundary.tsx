@@ -26,6 +26,11 @@ class ErrorBoundary extends Component<Props, State> {
     console.error('ErrorBoundary caught an error:', error, errorInfo);
     this.setState({ error, errorInfo });
     
+    // Log to console for debugging
+    console.log('Error name:', error.name);
+    console.log('Error message:', error.message);
+    console.log('Error stack:', error.stack);
+    
     // Here you could also log to an error reporting service like Sentry
     // logErrorToService(error, errorInfo);
   }
@@ -56,12 +61,17 @@ class ErrorBoundary extends Component<Props, State> {
             </p>
 
             {this.state.error && (
-              <div className="text-left mb-6 p-4 bg-slate-100 rounded-lg overflow-auto max-h-48">
-                <p className="text-sm font-mono text-red-600">
-                  {this.state.error.toString()}
+              <div className="text-left mb-6 p-4 bg-slate-100 rounded-lg overflow-auto max-h-60">
+                <p className="text-sm font-mono text-red-600 font-bold">
+                  {this.state.error.name}: {this.state.error.message}
                 </p>
+                {this.state.error.stack && (
+                  <pre className="text-xs text-slate-600 mt-2 whitespace-pre-wrap">
+                    {this.state.error.stack.split('\n').slice(0, 5).join('\n')}
+                  </pre>
+                )}
                 {this.state.errorInfo && (
-                  <pre className="text-xs text-slate-600 mt-2">
+                  <pre className="text-xs text-slate-500 mt-2">
                     {this.state.errorInfo.componentStack}
                   </pre>
                 )}

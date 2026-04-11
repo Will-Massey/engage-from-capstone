@@ -11,8 +11,13 @@ import './index.css';
 // Initialize theme before rendering
 try {
   initializeTheme();
-} catch (e) {
+} catch (e: any) {
   console.error('Theme initialization failed:', e);
+  // Show error on page if theme init fails
+  const root = document.getElementById('root');
+  if (root) {
+    root.innerHTML = `<div style="padding: 20px; color: red;">Theme init error: ${e.message}</div>`;
+  }
 }
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
