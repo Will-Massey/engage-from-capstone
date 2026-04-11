@@ -1,10 +1,7 @@
 import { useEffect, useState, useCallback } from 'react';
-import * as JoyrideLibrary from 'react-joyride';
+import { Joyride, STATUS } from 'react-joyride';
+import type { Step, Styles } from 'react-joyride';
 import { useAuthStore } from '../../stores/authStore';
-
-// Extract components from the library
-const Joyride = (JoyrideLibrary as any).default || JoyrideLibrary;
-const { STATUS } = JoyrideLibrary as any;
 
 // Type definitions
 interface CallBackProps {
@@ -13,9 +10,6 @@ interface CallBackProps {
   status: string;
   type: string;
 }
-
-type Step = any;
-type Styles = any;
 
 interface OnboardingTourProps {
   isOpen: boolean;
