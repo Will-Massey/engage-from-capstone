@@ -127,6 +127,7 @@ export default function ProposalBuilderV2() {
   // Step 2: Services
   const [services, setServices] = useState<Service[]>([]);
   const [selectedCategory, setSelectedCategory] = useState('ALL');
+  const [serviceSearch, setServiceSearch] = useState('');
   const [selectedServices, setSelectedServices] = useState<SelectedService[]>([]);
   const [editingService, setEditingService] = useState<string | null>(null);
   
@@ -313,8 +314,6 @@ export default function ProposalBuilderV2() {
       setIsLoading(false);
     }
   };
-  
-  const [serviceSearch, setServiceSearch] = useState('');
   
   // Render step indicator
   const renderStepIndicator = () => (
