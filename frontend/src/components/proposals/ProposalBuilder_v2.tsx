@@ -117,6 +117,7 @@ const calculateAnnualEquivalent = (price: number, frequency: string): number => 
 };
 
 export default function ProposalBuilderV2() {
+  // UNIQUE_MARKER_12345
   const navigate = useNavigate();
   const { tenant } = useAuthStore();
   const [currentStep, setCurrentStep] = useState(1);
@@ -812,3 +813,5 @@ export default function ProposalBuilderV2() {
   );
 }
 // TEST COMMENT FOR BUILD
+// FORCE REBUILD Sat Apr 11 10:26:46 BST 2026
+export const BUILD_TIMESTAMP = 'Sat Apr 11 10:32:40 BST 2026';

@@ -5,7 +5,7 @@ import { Toaster } from 'react-hot-toast';
 import App from './App';
 import { initializeTheme } from './stores/themeStore';
 import ErrorBoundary from './components/ErrorBoundary';
-// Build v4 - 2026-04-07T18:45:00Z - No Stripe
+// Build v5 - FORCE REBUILD - 2026-04-07T18:45:00Z - No Stripe
 import './index.css';
 
 // Initialize theme before rendering
@@ -76,3 +76,4 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
 );
 // Deploy Tue Apr  7 15:19:47 BST 2026
 // Cache bust: Thu Apr  9 23:21:01 BST 2026
+// Sat Apr 11 10:36:05 BST 2026
