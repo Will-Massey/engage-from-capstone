@@ -77,13 +77,17 @@ const BILLING_FREQUENCY_LABELS: Record<string, string> = {
 };
 
 // Format price with frequency label
+// Prices in DB are annual - divide by 12 for monthly display, round to nearest £25
 const formatPriceWithFrequency = (price: number, frequency: string): string => {
+  // Convert annual price to monthly and round to nearest £25
+  const monthlyPrice = Math.round((price / 12) / 25) * 25;
+  
   const formatted = new Intl.NumberFormat('en-GB', {
     style: 'currency',
     currency: 'GBP',
     minimumFractionDigits: 0,
-    maximumFractionDigits: 2
-  }).format(price);
+    maximumFractionDigits: 0
+  }).format(monthlyPrice);
   
   const label = BILLING_FREQUENCY_LABELS[frequency] || '';
   if (frequency === 'ONE_TIME') {
@@ -346,7 +350,7 @@ export default function ProposalBuilderV2() {
   // Render Step 1: Client Selection
   const renderClientStep = () => (
     <div className="space-y-6">
-      <h2 className="text-xl font-semibold text-slate-900">Select a Client</h2>
+      <h2 className="text-xl font-semibold text-slate-900 dark:text-white">Select a Client</h2>
       
       <div className="relative">
         <input
@@ -356,7 +360,7 @@ export default function ProposalBuilderV2() {
           onChange={(e) => setClientSearch(e.target.value)}
           className="w-full pl-10 pr-4 py-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
         />
-        <PlusIcon className="absolute left-3 top-3.5 w-5 h-5 text-slate-400" />
+        <PlusIcon className="absolute left-3 top-3.5 w-5 h-5 text-slate-400 dark:text-slate-500" />
       </div>
       
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -372,9 +376,9 @@ export default function ProposalBuilderV2() {
                 : 'border-slate-200 hover:border-primary-300 hover:bg-slate-50'
             }`}
           >
-            <h3 className="font-semibold text-slate-900">{client.name}</h3>
-            <p className="text-sm text-slate-500">{client.companyType}</p>
-            <p className="text-sm text-slate-400">{client.contactEmail}</p>
+            <h3 className="font-semibold text-slate-900 dark:text-white">{client.name}</h3>
+            <p className="text-sm text-slate-500 dark:text-slate-400 dark:text-slate-500">{client.companyType}</p>
+            <p className="text-sm text-slate-400 dark:text-slate-500">{client.contactEmail}</p>
           </div>
         ))}
       </div>
@@ -397,7 +401,7 @@ export default function ProposalBuilderV2() {
   const renderServicesStep = () => (
     <div className="space-y-6">
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-        <h2 className="text-xl font-semibold text-slate-900">Add Services</h2>
+        <h2 className="text-xl font-semibold text-slate-900 dark:text-white">Add Services</h2>
         <input
           type="text"
           placeholder="Search services..."
@@ -416,17 +420,17 @@ export default function ProposalBuilderV2() {
             className="glass-tile cursor-pointer hover:border-primary-300 group"
           >
             <div className="flex justify-between items-start mb-2">
-              <h3 className="font-semibold text-slate-900 group-hover:text-primary-600 transition-colors">
+              <h3 className="font-semibold text-slate-900 dark:text-white group-hover:text-primary-600 transition-colors">
                 {service.name}
               </h3>
-              <PlusIcon className="w-5 h-5 text-slate-400 group-hover:text-primary-500" />
+              <PlusIcon className="w-5 h-5 text-slate-400 dark:text-slate-300 group-hover:text-primary-500" />
             </div>
-            <p className="text-sm text-slate-500 mb-3 line-clamp-2">{service.description}</p>
+            <p className="text-sm text-slate-500 dark:text-slate-300 mb-3 line-clamp-2">{service.description}</p>
             <div className="flex items-center justify-between">
               <span className="text-lg font-bold text-primary-600">
                 {formatPriceWithFrequency(service.priceAmount, service.billingCycle)}
               </span>
-              <span className="text-xs text-slate-400 bg-slate-100 px-2 py-1 rounded-full">
+              <span className="text-xs text-slate-500 dark:text-slate-300 bg-slate-100 dark:bg-slate-700 px-2 py-1 rounded-full">
                 {service.category}
               </span>
             </div>
@@ -442,8 +446,8 @@ export default function ProposalBuilderV2() {
             {selectedServices.map(service => (
               <div key={service.id} className="flex items-center justify-between p-3 bg-slate-50 rounded-lg">
                 <div className="flex-1">
-                  <h4 className="font-medium text-slate-900">{service.name}</h4>
-                  <p className="text-sm text-slate-500">
+                  <h4 className="font-medium text-slate-900 dark:text-white">{service.name}</h4>
+                  <p className="text-sm text-slate-500 dark:text-slate-400 dark:text-slate-500">
                     {formatPriceWithFrequency(service.displayPrice, service.billingCycle)}
                     {service.quantity > 1 && ` × ${service.quantity}`}
                     {service.discountPercent > 0 && ` (-${service.discountPercent}%)`}
@@ -455,7 +459,7 @@ export default function ProposalBuilderV2() {
                       {formatPriceWithFrequency(service.lineTotal, service.billingCycle)}
                     </span>
                     {includeVat && service.vatAmount > 0 && (
-                      <span className="text-xs text-slate-400">
+                      <span className="text-xs text-slate-400 dark:text-slate-500">
                         + VAT {formatCurrency(service.vatAmount)}
                       </span>
                     )}
@@ -474,21 +478,21 @@ export default function ProposalBuilderV2() {
           {/* Running Total */}
           <div className="mt-4 pt-4 border-t border-slate-200">
             <div className="flex justify-between items-center">
-              <span className="text-slate-600">Subtotal</span>
-              <span className="font-semibold text-slate-900">
+              <span className="text-slate-600 dark:text-slate-300">Subtotal</span>
+              <span className="font-semibold text-slate-900 dark:text-white">
                 {formatCurrency(summary.monthly.subtotal + summary.quarterly.subtotal + summary.annually.subtotal + summary.oneTime.subtotal)}
               </span>
             </div>
             {includeVat && (
               <div className="flex justify-between items-center mt-1">
-                <span className="text-slate-600">VAT (20%)</span>
-                <span className="font-semibold text-slate-900">
+                <span className="text-slate-600 dark:text-slate-300">VAT (20%)</span>
+                <span className="font-semibold text-slate-900 dark:text-white">
                   {formatCurrency(summary.monthly.vat + summary.quarterly.vat + summary.annually.vat + summary.oneTime.vat)}
                 </span>
               </div>
             )}
             <div className="flex justify-between items-center mt-2 pt-2 border-t border-slate-200">
-              <span className="text-lg font-semibold text-slate-900">Total</span>
+              <span className="text-lg font-semibold text-slate-900 dark:text-white">Total</span>
               <span className="text-xl font-bold text-primary-600">
                 {formatCurrency(summary.grandTotal)}
               </span>
@@ -515,30 +519,31 @@ export default function ProposalBuilderV2() {
   // Render Step 3: Review
   const renderReviewStep = () => (
     <div className="space-y-6">
-      <h2 className="text-xl font-semibold text-slate-900">Review & Send</h2>
+      <h2 className="text-xl font-semibold text-slate-900 dark:text-white">Review & Send</h2>
       
-      {/* Proposal Title */}
-      <div>
-        <label className="block text-sm font-medium text-slate-700 mb-2">Proposal Title</label>
+      {/* Proposal Title - Made more prominent */}
+      <div className="card p-4 border-2 border-primary-200 dark:border-primary-800 bg-primary-50/30 dark:bg-primary-900/10">
+        <label className="block text-sm font-medium text-slate-700 dark:text-slate-200 mb-2">Proposal Title *</label>
         <input
           type="text"
           value={proposalTitle}
           onChange={(e) => setProposalTitle(e.target.value)}
           placeholder="e.g., Accounting Services 2026"
-          className="input-field w-full"
+          className="input-field w-full text-lg font-medium"
         />
+        <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">This will appear as the subject line in the email to your client</p>
       </div>
       
       {/* Client Summary */}
       <div className="card p-4">
-        <h3 className="font-semibold text-slate-900 mb-2">Client</h3>
-        <p className="text-slate-700">{selectedClient?.name}</p>
-        <p className="text-sm text-slate-500">{selectedClient?.contactEmail}</p>
+        <h3 className="font-semibold text-slate-900 dark:text-white mb-2">Client</h3>
+        <p className="text-slate-700 dark:text-slate-200">{selectedClient?.name}</p>
+        <p className="text-sm text-slate-500 dark:text-slate-400 dark:text-slate-500">{selectedClient?.contactEmail}</p>
       </div>
       
       {/* Services Summary with Clear Grouping */}
       <div className="card p-6">
-        <h3 className="font-semibold text-slate-900 mb-4">Services</h3>
+        <h3 className="font-semibold text-slate-900 dark:text-white mb-4">Services</h3>
         
         {/* Monthly Services */}
         {summary.monthly.count > 0 && (
@@ -546,13 +551,13 @@ export default function ProposalBuilderV2() {
             <h4 className="text-sm font-medium text-primary-600 mb-2">Monthly</h4>
             {selectedServices.filter(s => s.billingCycle === 'MONTHLY').map(s => (
               <div key={s.id} className="flex justify-between py-1 text-sm">
-                <span className="text-slate-700">{s.name} {s.quantity > 1 && `× ${s.quantity}`}</span>
-                <span className="text-slate-900">{formatPriceWithFrequency(s.displayPrice * s.quantity, 'MONTHLY')}</span>
+                <span className="text-slate-700 dark:text-slate-200">{s.name} {s.quantity > 1 && `× ${s.quantity}`}</span>
+                <span className="text-slate-900 dark:text-white">{formatPriceWithFrequency(s.displayPrice * s.quantity, 'MONTHLY')}</span>
               </div>
             ))}
             <div className="flex justify-between pt-2 border-t border-slate-100 mt-2">
-              <span className="text-slate-600">Monthly Total</span>
-              <span className="font-semibold text-slate-900">{formatCurrency(summary.monthly.total)}/month</span>
+              <span className="text-slate-600 dark:text-slate-300">Monthly Total</span>
+              <span className="font-semibold text-slate-900 dark:text-white">{formatCurrency(summary.monthly.total)}/month</span>
             </div>
           </div>
         )}
@@ -563,13 +568,13 @@ export default function ProposalBuilderV2() {
             <h4 className="text-sm font-medium text-primary-600 mb-2">Quarterly</h4>
             {selectedServices.filter(s => s.billingCycle === 'QUARTERLY').map(s => (
               <div key={s.id} className="flex justify-between py-1 text-sm">
-                <span className="text-slate-700">{s.name} {s.quantity > 1 && `× ${s.quantity}`}</span>
-                <span className="text-slate-900">{formatPriceWithFrequency(s.displayPrice * s.quantity, 'QUARTERLY')}</span>
+                <span className="text-slate-700 dark:text-slate-200">{s.name} {s.quantity > 1 && `× ${s.quantity}`}</span>
+                <span className="text-slate-900 dark:text-white">{formatPriceWithFrequency(s.displayPrice * s.quantity, 'QUARTERLY')}</span>
               </div>
             ))}
             <div className="flex justify-between pt-2 border-t border-slate-100 mt-2">
-              <span className="text-slate-600">Quarterly Total</span>
-              <span className="font-semibold text-slate-900">{formatCurrency(summary.quarterly.total)}/quarter</span>
+              <span className="text-slate-600 dark:text-slate-300">Quarterly Total</span>
+              <span className="font-semibold text-slate-900 dark:text-white">{formatCurrency(summary.quarterly.total)}/quarter</span>
             </div>
           </div>
         )}
@@ -580,13 +585,13 @@ export default function ProposalBuilderV2() {
             <h4 className="text-sm font-medium text-primary-600 mb-2">Annual</h4>
             {selectedServices.filter(s => s.billingCycle === 'ANNUALLY').map(s => (
               <div key={s.id} className="flex justify-between py-1 text-sm">
-                <span className="text-slate-700">{s.name} {s.quantity > 1 && `× ${s.quantity}`}</span>
-                <span className="text-slate-900">{formatPriceWithFrequency(s.displayPrice * s.quantity, 'ANNUALLY')}</span>
+                <span className="text-slate-700 dark:text-slate-200">{s.name} {s.quantity > 1 && `× ${s.quantity}`}</span>
+                <span className="text-slate-900 dark:text-white">{formatPriceWithFrequency(s.displayPrice * s.quantity, 'ANNUALLY')}</span>
               </div>
             ))}
             <div className="flex justify-between pt-2 border-t border-slate-100 mt-2">
-              <span className="text-slate-600">Annual Total</span>
-              <span className="font-semibold text-slate-900">{formatCurrency(summary.annually.total)}/year</span>
+              <span className="text-slate-600 dark:text-slate-300">Annual Total</span>
+              <span className="font-semibold text-slate-900 dark:text-white">{formatCurrency(summary.annually.total)}/year</span>
             </div>
           </div>
         )}
@@ -597,8 +602,8 @@ export default function ProposalBuilderV2() {
             <h4 className="text-sm font-medium text-primary-600 mb-2">One-Time</h4>
             {selectedServices.filter(s => s.billingCycle === 'ONE_TIME').map(s => (
               <div key={s.id} className="flex justify-between py-1 text-sm">
-                <span className="text-slate-700">{s.name} {s.quantity > 1 && `× ${s.quantity}`}</span>
-                <span className="text-slate-900">{formatCurrency(s.grossTotal)}</span>
+                <span className="text-slate-700 dark:text-slate-200">{s.name} {s.quantity > 1 && `× ${s.quantity}`}</span>
+                <span className="text-slate-900 dark:text-white">{formatCurrency(s.grossTotal)}</span>
               </div>
             ))}
           </div>
@@ -608,9 +613,9 @@ export default function ProposalBuilderV2() {
         <div className="mt-6 pt-4 border-t-2 border-slate-200">
           <div className="flex justify-between items-center">
             <div>
-              <span className="text-lg font-semibold text-slate-900">Total Investment</span>
+              <span className="text-lg font-semibold text-slate-900 dark:text-white">Total Investment</span>
               {summary.totalAnnualEquivalent > 0 && (
-                <p className="text-sm text-slate-500">
+                <p className="text-sm text-slate-500 dark:text-slate-400 dark:text-slate-500">
                   {formatCurrency(summary.totalAnnualEquivalent)}/year when annualized
                 </p>
               )}
