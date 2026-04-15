@@ -25,10 +25,7 @@ async function getTemplates(tenantId) {
     try {
         const templates = await database_js_1.prisma.coverLetterTemplate.findMany({
             where: { tenantId },
-            orderBy: [
-                { isDefault: 'desc' },
-                { name: 'asc' },
-            ],
+            orderBy: [{ isDefault: 'desc' }, { name: 'asc' }],
         });
         return templates;
     }

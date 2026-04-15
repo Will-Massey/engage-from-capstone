@@ -112,25 +112,25 @@ router.post(
     // Check auth via token OR secret key
     const authHeader = req.headers.authorization;
     const secretKey = req.headers['x-migration-key'];
-    
+
     const validSecret = process.env.MIGRATION_SECRET_KEY || 'engage-migrate-2024';
-    
+
     if (secretKey !== validSecret) {
       // Fall back to regular auth check
       if (!authHeader || !authHeader.startsWith('Bearer ')) {
         return res.status(401).json({
           success: false,
-          error: { code: 'UNAUTHORIZED', message: 'Valid token or secret key required' }
+          error: { code: 'UNAUTHORIZED', message: 'Valid token or secret key required' },
         });
       }
       // Note: In production, you'd verify the JWT here
     }
-    
+
     logger.info('Service pricing migration triggered');
 
     try {
       await migrateServicePricing();
-      
+
       res.json({
         success: true,
         message: 'Service pricing migration completed successfully',

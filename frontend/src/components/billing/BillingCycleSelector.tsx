@@ -68,7 +68,7 @@ const BillingCycleSelector = ({ value, onChange, disabled }: BillingCycleSelecto
 
   const handleCycleChange = (cycle: BillingCycle) => {
     setSelectedCycle(cycle);
-    
+
     const details: BillingCycleDetails = {
       billingCycle: cycle,
     };
@@ -119,7 +119,7 @@ const BillingCycleSelector = ({ value, onChange, disabled }: BillingCycleSelecto
   return (
     <div className="space-y-4">
       <label className="block text-sm font-medium text-gray-700">Billing Cycle</label>
-      
+
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
         {billingCycleOptions.map((option) => (
           <button
@@ -133,19 +133,27 @@ const BillingCycleSelector = ({ value, onChange, disabled }: BillingCycleSelecto
                 : 'border-gray-200 hover:border-primary-300'
             } ${disabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
           >
-            <div className={`p-2 rounded-lg ${
-              selectedCycle === option.value ? 'bg-primary-100 text-primary-600' : 'bg-gray-100 text-gray-500'
-            }`}>
+            <div
+              className={`p-2 rounded-lg ${
+                selectedCycle === option.value
+                  ? 'bg-primary-100 text-primary-600'
+                  : 'bg-gray-100 text-gray-500'
+              }`}
+            >
               {option.icon}
             </div>
             <span className="mt-2 font-medium text-gray-900">{option.label}</span>
             <span className="text-xs text-gray-500">{option.description}</span>
-            
+
             {selectedCycle === option.value && (
               <div className="absolute top-2 right-2">
                 <div className="h-5 w-5 rounded-full bg-primary-600 flex items-center justify-center">
                   <svg className="h-3 w-3 text-white" fill="currentColor" viewBox="0 0 20 20">
-                    <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                    <path
+                      fillRule="evenodd"
+                      d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
+                      clipRule="evenodd"
+                    />
                   </svg>
                 </div>
               </div>
@@ -157,9 +165,7 @@ const BillingCycleSelector = ({ value, onChange, disabled }: BillingCycleSelecto
       {/* Additional options based on selected cycle */}
       {selectedCycle === 'MONTHLY' && (
         <div className="mt-4 p-4 bg-gray-50 rounded-lg">
-          <label className="block text-sm font-medium text-gray-700">
-            Billing Day of Month
-          </label>
+          <label className="block text-sm font-medium text-gray-700">Billing Day of Month</label>
           <select
             value={billingDay}
             onChange={(e) => {
@@ -187,9 +193,7 @@ const BillingCycleSelector = ({ value, onChange, disabled }: BillingCycleSelecto
 
       {selectedCycle === 'FIXED_DATE' && (
         <div className="mt-4 p-4 bg-gray-50 rounded-lg">
-          <label className="block text-sm font-medium text-gray-700">
-            Fixed Billing Date
-          </label>
+          <label className="block text-sm font-medium text-gray-700">Fixed Billing Date</label>
           <input
             type="date"
             value={fixedDate}
@@ -214,13 +218,13 @@ const BillingCycleSelector = ({ value, onChange, disabled }: BillingCycleSelecto
         <h4 className="text-sm font-medium text-blue-900">Payment Schedule</h4>
         <div className="mt-2 space-y-1 text-sm text-blue-700">
           <p>
-            <span className="font-medium">Frequency:</span>{' '}
-            {getPaymentFrequency(selectedCycle)} payment(s) per year
+            <span className="font-medium">Frequency:</span> {getPaymentFrequency(selectedCycle)}{' '}
+            payment(s) per year
           </p>
           {annualCost > 0 && (
             <p>
-              <span className="font-medium">Monthly Equivalent:</span>{' '}
-              £{calculateMonthlyEquivalent(annualCost, selectedCycle).toFixed(2)}
+              <span className="font-medium">Monthly Equivalent:</span> £
+              {calculateMonthlyEquivalent(annualCost, selectedCycle).toFixed(2)}
             </p>
           )}
         </div>

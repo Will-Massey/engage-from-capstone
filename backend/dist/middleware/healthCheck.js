@@ -128,8 +128,8 @@ exports.healthRouter.get('/health/detailed', async (_req, res) => {
         memory: memoryCheck,
     };
     // Determine overall status
-    const failedChecks = Object.values(checks).filter(c => c.status === 'fail').length;
-    const warningChecks = Object.values(checks).filter(c => c.status === 'warn').length;
+    const failedChecks = Object.values(checks).filter((c) => c.status === 'fail').length;
+    const warningChecks = Object.values(checks).filter((c) => c.status === 'warn').length;
     let overallStatus = 'healthy';
     if (failedChecks > 0) {
         overallStatus = 'unhealthy';

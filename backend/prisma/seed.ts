@@ -8,7 +8,7 @@ async function main() {
 
   // Create demo tenant
   let tenant = await prisma.tenant.findFirst({
-    where: { subdomain: 'demo' }
+    where: { subdomain: 'demo' },
   });
 
   if (!tenant) {
@@ -17,7 +17,7 @@ async function main() {
         name: 'Demo Accounting Practice',
         subdomain: 'demo',
         primaryColor: '#0ea5e9',
-      }
+      },
     });
     console.log('✅ Created tenant:', tenant.id);
   } else {
@@ -26,7 +26,7 @@ async function main() {
 
   // Create demo admin user
   const existingUser = await prisma.user.findFirst({
-    where: { email: 'admin@demo.practice' }
+    where: { email: 'admin@demo.practice' },
   });
 
   if (!existingUser) {
@@ -39,7 +39,7 @@ async function main() {
         role: 'ADMIN',
         tenantId: tenant.id,
         isActive: true,
-      }
+      },
     });
     console.log('✅ Created demo user:', user.email);
   } else {

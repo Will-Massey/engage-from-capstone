@@ -25,12 +25,12 @@ class ErrorBoundary extends Component<Props, State> {
   componentDidCatch(error: Error, errorInfo: ErrorInfo) {
     console.error('ErrorBoundary caught an error:', error, errorInfo);
     this.setState({ error, errorInfo });
-    
+
     // Log to console for debugging
     console.log('Error name:', error.name);
     console.log('Error message:', error.message);
     console.log('Error stack:', error.stack);
-    
+
     // Here you could also log to an error reporting service like Sentry
     // logErrorToService(error, errorInfo);
   }
@@ -52,10 +52,8 @@ class ErrorBoundary extends Component<Props, State> {
             <div className="mx-auto w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mb-4">
               <ExclamationTriangleIcon className="h-8 w-8 text-red-600" />
             </div>
-            
-            <h2 className="text-xl font-semibold text-slate-900 mb-2">
-              Something went wrong
-            </h2>
+
+            <h2 className="text-xl font-semibold text-slate-900 mb-2">Something went wrong</h2>
             <p className="text-slate-600 mb-6">
               We apologize for the inconvenience. Please try refreshing the page.
             </p>
@@ -78,10 +76,7 @@ class ErrorBoundary extends Component<Props, State> {
               </div>
             )}
 
-            <button
-              onClick={this.handleReset}
-              className="btn-primary inline-flex items-center"
-            >
+            <button onClick={this.handleReset} className="btn-primary inline-flex items-center">
               <ArrowPathIcon className="h-4 w-4 mr-2" />
               Refresh Page
             </button>

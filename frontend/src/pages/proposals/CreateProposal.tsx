@@ -1,10 +1,7 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import ProposalBuilderV2 from '../../components/proposals/ProposalBuilder_v2';
-import {
-  ArrowLeftIcon,
-  DocumentTextIcon,
-} from '@heroicons/react/24/outline';
+import { ArrowLeftIcon, DocumentTextIcon } from '@heroicons/react/24/outline';
 
 export default function CreateProposal() {
   return (

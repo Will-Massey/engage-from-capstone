@@ -9,13 +9,13 @@ import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
 import { apiClient } from '../../utils/api';
 import toast from 'react-hot-toast';
-import { 
-  LockClosedIcon, 
-  EyeIcon, 
-  EyeSlashIcon, 
+import {
+  LockClosedIcon,
+  EyeIcon,
+  EyeSlashIcon,
   CheckCircleIcon,
   XCircleIcon,
-  ArrowLeftIcon
+  ArrowLeftIcon,
 } from '@heroicons/react/24/outline';
 
 interface PasswordStrength {
@@ -97,7 +97,7 @@ export const ResetPassword: React.FC = () => {
       });
       setIsSuccess(true);
       toast.success('Password reset successfully!');
-      
+
       // Redirect to login after 3 seconds
       setTimeout(() => {
         navigate('/login');
@@ -118,7 +118,7 @@ export const ResetPassword: React.FC = () => {
               <XCircleIcon className="w-8 h-8 text-red-600" />
             </div>
           </div>
-          
+
           <div>
             <h2 className="text-2xl font-bold text-slate-900">Invalid Reset Link</h2>
             <p className="mt-2 text-slate-600">
@@ -145,7 +145,7 @@ export const ResetPassword: React.FC = () => {
               <CheckCircleIcon className="w-8 h-8 text-green-600" />
             </div>
           </div>
-          
+
           <div>
             <h2 className="text-2xl font-bold text-slate-900">Password Reset!</h2>
             <p className="mt-2 text-slate-600">
@@ -174,9 +174,7 @@ export const ResetPassword: React.FC = () => {
             </div>
           </div>
           <h2 className="text-2xl font-bold text-slate-900">Reset Your Password</h2>
-          <p className="mt-2 text-slate-600">
-            Create a new secure password for your account.
-          </p>
+          <p className="mt-2 text-slate-600">Create a new secure password for your account.</p>
         </div>
 
         {/* Form */}
@@ -195,7 +193,7 @@ export const ResetPassword: React.FC = () => {
               onRightIconClick={() => setShowPassword(!showPassword)}
               autoComplete="new-password"
             />
-            
+
             {/* Password Strength Indicator */}
             <div className="space-y-2">
               <div className="flex gap-1">
@@ -207,14 +205,14 @@ export const ResetPassword: React.FC = () => {
                         ? strength.score >= 4
                           ? 'bg-green-500'
                           : strength.score >= 3
-                          ? 'bg-yellow-500'
-                          : 'bg-red-500'
+                            ? 'bg-yellow-500'
+                            : 'bg-red-500'
                         : 'bg-slate-200'
                     }`}
                   />
                 ))}
               </div>
-              
+
               <ul className="text-xs space-y-1">
                 {[
                   { key: 'minLength', label: 'At least 12 characters' },
@@ -252,7 +250,9 @@ export const ResetPassword: React.FC = () => {
             placeholder="Confirm new password"
             required
             leftIcon={LockClosedIcon}
-            error={confirmPassword && password !== confirmPassword ? 'Passwords do not match' : undefined}
+            error={
+              confirmPassword && password !== confirmPassword ? 'Passwords do not match' : undefined
+            }
             autoComplete="new-password"
           />
 

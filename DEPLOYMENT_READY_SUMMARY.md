@@ -3,6 +3,7 @@
 ## ✅ COMPLETED TASKS
 
 ### 1. Database Migration
+
 **Status:** ✅ Ready (SQL created, pending execution)
 
 **Migration File:** `backend/prisma/migrations/add_vat_fields_to_proposal_service/migration.sql`
@@ -15,6 +16,7 @@ ALTER TABLE "ProposalService" ADD COLUMN "grossTotal" DOUBLE PRECISION DEFAULT 0
 ```
 
 **Apply when database is available:**
+
 ```bash
 cd backend
 npx prisma migrate dev --name add_vat_fields_to_proposal_service
@@ -25,36 +27,45 @@ psql $DATABASE_URL -f prisma/migrations/add_vat_fields_to_proposal_service/migra
 ---
 
 ### 2. Build Verification
+
 **Status:** ✅ PASSED
 
-| Component | Result | Output |
-|-----------|--------|--------|
-| Backend | ✅ SUCCESS | TypeScript compiled without errors |
-| Frontend | ✅ SUCCESS | Production build completed (2.98s) |
+| Component | Result     | Output                             |
+| --------- | ---------- | ---------------------------------- |
+| Backend   | ✅ SUCCESS | TypeScript compiled without errors |
+| Frontend  | ✅ SUCCESS | Production build completed (2.98s) |
 
 **Build outputs:**
+
 - Backend: `backend/dist/` updated
 - Frontend: `frontend/dist/` updated with new chunks
 
 ---
 
 ### 3. Automated Testing
+
 **Status:** ✅ ALL TESTS PASSING
 
 #### Debug & Test Script
+
 ```bash
 node scripts/debug-and-test.js --pricing --vat --files
 ```
+
 **Results:** 14/14 tests passing (100%)
+
 - ✅ Pricing calculations: 4/4
-- ✅ VAT calculations: 5/5  
+- ✅ VAT calculations: 5/5
 - ✅ File changes verified: 5/5
 
 #### Playwright E2E Tests
+
 ```bash
 cd e2e-tests && npx playwright test specs/unit-calculations.spec.ts
 ```
+
 **Results:** 17/17 tests passing (433ms)
+
 - ✅ Pricing Calculations: 6 tests
 - ✅ VAT Calculations: 5 tests
 - ✅ Discount Calculations: 3 tests
@@ -64,11 +75,11 @@ cd e2e-tests && npx playwright test specs/unit-calculations.spec.ts
 
 ## 📊 Git Commit History
 
-| Commit | Message | Changes |
-|--------|---------|---------|
-| `695f76f2` | chore: Complete testing setup and verification | +1,186/-624 |
+| Commit     | Message                                            | Changes      |
+| ---------- | -------------------------------------------------- | ------------ |
+| `695f76f2` | chore: Complete testing setup and verification     | +1,186/-624  |
 | `6760a4da` | test: Add MCP testing infrastructure and E2E tests | +1,579 lines |
-| `5406796a` | WIP: Proposal pricing fixes - frequency, VAT, CSRF | +352/-40 |
+| `5406796a` | WIP: Proposal pricing fixes - frequency, VAT, CSRF | +352/-40     |
 
 **Total Changes:** 38 files, +3,117/-664 lines
 
@@ -77,22 +88,26 @@ cd e2e-tests && npx playwright test specs/unit-calculations.spec.ts
 ## 🎯 FEATURES IMPLEMENTED
 
 ### ✅ 1. Pricing Frequency Fix
+
 - Annual services display as monthly equivalents (£850/yr → £71/mo)
 - Quarterly services converted correctly (£180/qtr → £60/mo)
 - Default frequency (`defaultFrequency`) field now used
 
 ### ✅ 2. Billing Period Editing
+
 - Dropdown to change frequency per service line
 - Price auto-recalculates on frequency change
 - Supports: Monthly, Quarterly, Annual, One-time
 
 ### ✅ 3. Line-Level VAT Configuration
+
 - Per-service VAT rate (0%, 5%, 20%)
 - Line-level VAT calculation
 - "Mixed" displayed when different rates used
 - Global VAT toggle still available
 
 ### ✅ 4. CSRF Auto-Retry
+
 - Automatic token refresh on CSRF errors
 - Failed requests retry with new token
 - No user interruption required
@@ -102,26 +117,29 @@ cd e2e-tests && npx playwright test specs/unit-calculations.spec.ts
 ## 📁 NEW FILES CREATED
 
 ### Testing Infrastructure
-| File | Purpose |
-|------|---------|
-| `.claude/mcp.json` | MCP server configuration |
-| `scripts/mcp-test-server.js` | MCP testing tools |
-| `scripts/debug-and-test.js` | Debug test runner |
-| `e2e-tests/playwright.config.ts` | E2E test config |
-| `e2e-tests/specs/proposal-pricing.spec.ts` | E2E test specs |
-| `e2e-tests/specs/unit-calculations.spec.ts` | Unit calculation tests |
-| `e2e-tests/fixtures/helpers.ts` | Test utilities |
+
+| File                                        | Purpose                  |
+| ------------------------------------------- | ------------------------ |
+| `.claude/mcp.json`                          | MCP server configuration |
+| `scripts/mcp-test-server.js`                | MCP testing tools        |
+| `scripts/debug-and-test.js`                 | Debug test runner        |
+| `e2e-tests/playwright.config.ts`            | E2E test config          |
+| `e2e-tests/specs/proposal-pricing.spec.ts`  | E2E test specs           |
+| `e2e-tests/specs/unit-calculations.spec.ts` | Unit calculation tests   |
+| `e2e-tests/fixtures/helpers.ts`             | Test utilities           |
 
 ### Documentation
-| File | Purpose |
-|------|---------|
-| `TODO_FIXES.md` | Original TODO list |
+
+| File                            | Purpose             |
+| ------------------------------- | ------------------- |
+| `TODO_FIXES.md`                 | Original TODO list  |
 | `BACKUP_AND_TESTING_SUMMARY.md` | Testing setup guide |
-| `DEPLOYMENT_READY_SUMMARY.md` | This file |
+| `DEPLOYMENT_READY_SUMMARY.md`   | This file           |
 
 ### Database
-| File | Purpose |
-|------|---------|
+
+| File                                                                         | Purpose              |
+| ---------------------------------------------------------------------------- | -------------------- |
 | `backend/prisma/migrations/add_vat_fields_to_proposal_service/migration.sql` | VAT fields migration |
 
 ---
@@ -129,6 +147,7 @@ cd e2e-tests && npx playwright test specs/unit-calculations.spec.ts
 ## 🚀 DEPLOYMENT CHECKLIST
 
 ### Pre-Deploy (Required)
+
 - [x] Code changes complete
 - [x] Backend builds successfully
 - [x] Frontend builds successfully
@@ -138,6 +157,7 @@ cd e2e-tests && npx playwright test specs/unit-calculations.spec.ts
 - [ ] E2E tests with running server
 
 ### Deploy Steps
+
 ```bash
 # 1. Apply database migration
 cd backend && npx prisma migrate deploy
@@ -153,6 +173,7 @@ curl https://your-api.com/ping
 ```
 
 ### Post-Deploy Verification
+
 - [ ] Create test proposal with annual service
 - [ ] Verify monthly price display correct
 - [ ] Change billing frequency and verify recalculation
@@ -164,25 +185,27 @@ curl https://your-api.com/ping
 
 ## 📈 TEST COVERAGE
 
-| Test Suite | Tests | Passed | Status |
-|------------|-------|--------|--------|
-| Pricing Frequency | 6 | 6 | ✅ 100% |
-| VAT Calculation | 5 | 5 | ✅ 100% |
-| Discount Logic | 3 | 3 | ✅ 100% |
-| Edge Cases | 3 | 3 | ✅ 100% |
-| File Verification | 5 | 5 | ✅ 100% |
-| **TOTAL** | **22** | **22** | **✅ 100%** |
+| Test Suite        | Tests  | Passed | Status      |
+| ----------------- | ------ | ------ | ----------- |
+| Pricing Frequency | 6      | 6      | ✅ 100%     |
+| VAT Calculation   | 5      | 5      | ✅ 100%     |
+| Discount Logic    | 3      | 3      | ✅ 100%     |
+| Edge Cases        | 3      | 3      | ✅ 100%     |
+| File Verification | 5      | 5      | ✅ 100%     |
+| **TOTAL**         | **22** | **22** | **✅ 100%** |
 
 ---
 
 ## 🛠️ MCP TOOLS AVAILABLE
 
 Start MCP server for IDE integration:
+
 ```bash
 node scripts/mcp-test-server.js
 ```
 
 **Available Tools:**
+
 - `test_proposal_pricing` - Validate pricing calculations
 - `test_vat_calculation` - Validate VAT math
 - `test_csrf_handling` - Test CSRF retry mechanism

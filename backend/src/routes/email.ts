@@ -210,11 +210,7 @@ router.post(
     const emailConfig = settings.email;
 
     if (!emailConfig || !emailConfig.provider) {
-      throw new ApiError(
-        'EMAIL_NOT_CONFIGURED',
-        'Email not configured for this practice',
-        400
-      );
+      throw new ApiError('EMAIL_NOT_CONFIGURED', 'Email not configured for this practice', 400);
     }
 
     // Create email service
@@ -242,11 +238,7 @@ router.post(
     });
 
     if (!result.success) {
-      throw new ApiError(
-        'EMAIL_FAILED',
-        result.error || 'Failed to send test email',
-        500
-      );
+      throw new ApiError('EMAIL_FAILED', result.error || 'Failed to send test email', 500);
     }
 
     res.json({
@@ -297,12 +289,7 @@ router.post(
 
     const { clientId, clientSecret, redirectUri, code } = schema.parse(req.body);
 
-    const tokens = await EmailService.exchangeGmailCode(
-      clientId,
-      clientSecret,
-      redirectUri,
-      code
-    );
+    const tokens = await EmailService.exchangeGmailCode(clientId, clientSecret, redirectUri, code);
 
     res.json({
       success: true,
@@ -413,13 +400,13 @@ router.get(
   authenticate,
   asyncHandler(async (req, res) => {
     const { provider } = req.params;
-    
+
     // Validate provider
     const validProviders = ['microsoft365', 'outlook', 'gmail'];
     if (!validProviders.includes(provider)) {
       throw new ApiError('INVALID_PROVIDER', 'Invalid email provider', 400);
     }
-    
+
     const tenantId = req.tenantId!;
 
     const tenant = await prisma.tenant.findUnique({
@@ -434,15 +421,17 @@ router.get(
     const settings = JSON.parse(tenant.settings || '{}');
     const emailConfig = settings.email;
 
-    const isConnected = emailConfig?.provider === provider && 
-      (emailConfig[provider]?.refreshToken || emailConfig[provider === 'microsoft365' ? 'outlook' : provider]?.refreshToken);
+    const isConnected =
+      emailConfig?.provider === provider &&
+      (emailConfig[provider]?.refreshToken ||
+        emailConfig[provider === 'microsoft365' ? 'outlook' : provider]?.refreshToken);
 
     res.json({
       success: true,
       data: {
         isConnected: !!isConnected,
         provider,
-        user: isConnected ? (emailConfig[provider]?.user || emailConfig.outlook?.user) : undefined,
+        user: isConnected ? emailConfig[provider]?.user || emailConfig.outlook?.user : undefined,
       },
     });
   })
@@ -454,13 +443,13 @@ router.get(
   authenticate,
   asyncHandler(async (req, res) => {
     const { provider } = req.params;
-    
+
     // Validate provider
     const validProviders = ['microsoft365', 'outlook', 'gmail'];
     if (!validProviders.includes(provider)) {
       throw new ApiError('INVALID_PROVIDER', 'Invalid email provider', 400);
     }
-    
+
     const state = generateState();
 
     const redirectUri = `${process.env.API_URL || 'https://engage-by-capstone-production.up.railway.app'}/api/oauth/callback/${provider}`;
@@ -522,7 +511,9 @@ router.get(
     // Store the code temporarily (in production, use Redis or similar)
     // For now, redirect back to frontend with success
     const frontendUrl = process.env.FRONTEND_URL || 'https://engagebycapstone.co.uk';
-    res.redirect(`${frontendUrl}/settings?oauth=success&provider=${provider}&code=${code}&state=${state}`);
+    res.redirect(
+      `${frontendUrl}/settings?oauth=success&provider=${provider}&code=${code}&state=${state}`
+    );
   })
 );
 
@@ -532,13 +523,13 @@ router.post(
   authenticate,
   asyncHandler(async (req, res) => {
     const { provider } = req.params;
-    
+
     // Validate provider
     const validProviders = ['microsoft365', 'outlook', 'gmail'];
     if (!validProviders.includes(provider)) {
       throw new ApiError('INVALID_PROVIDER', 'Invalid email provider', 400);
     }
-    
+
     const { code } = req.body;
     const tenantId = req.tenantId!;
 
@@ -560,7 +551,13 @@ router.post(
         const clientId = process.env.MICROSOFT_CLIENT_ID!;
         const clientSecret = process.env.MICROSOFT_CLIENT_SECRET!;
         // Use 'common' for multi-tenant apps
-        tokens = await EmailService.exchangeMicrosoftCode(clientId, clientSecret, redirectUri, code, 'common');
+        tokens = await EmailService.exchangeMicrosoftCode(
+          clientId,
+          clientSecret,
+          redirectUri,
+          code,
+          'common'
+        );
       }
 
       // Save to tenant settings
@@ -574,16 +571,21 @@ router.post(
       }
 
       const settings = JSON.parse(tenant.settings || '{}');
-      
+
       if (!settings.email) {
         settings.email = {};
       }
 
       settings.email.provider = provider;
       settings.email[provider === 'microsoft365' ? 'outlook' : provider] = {
-        clientId: provider === 'gmail' ? process.env.GMAIL_CLIENT_ID : process.env.MICROSOFT_CLIENT_ID,
+        clientId:
+          provider === 'gmail' ? process.env.GMAIL_CLIENT_ID : process.env.MICROSOFT_CLIENT_ID,
         // Store clientSecret encrypted for security
-        clientSecret: encrypt(provider === 'gmail' ? process.env.GMAIL_CLIENT_SECRET || '' : process.env.MICROSOFT_CLIENT_SECRET || ''),
+        clientSecret: encrypt(
+          provider === 'gmail'
+            ? process.env.GMAIL_CLIENT_SECRET || ''
+            : process.env.MICROSOFT_CLIENT_SECRET || ''
+        ),
         // Store refresh token encrypted - this is the most sensitive credential
         refreshToken: encrypt(tokens.refreshToken),
         user: tokens.user || req.user?.email,
@@ -603,7 +605,11 @@ router.post(
       });
     } catch (error: any) {
       logger.error('OAuth exchange failed:', error);
-      throw new ApiError('OAUTH_FAILED', error.message || 'Failed to exchange authorization code', 500);
+      throw new ApiError(
+        'OAUTH_FAILED',
+        error.message || 'Failed to exchange authorization code',
+        500
+      );
     }
   })
 );
@@ -614,13 +620,13 @@ router.post(
   authenticate,
   asyncHandler(async (req, res) => {
     const { provider } = req.params;
-    
+
     // Validate provider
     const validProviders = ['microsoft365', 'outlook', 'gmail'];
     if (!validProviders.includes(provider)) {
       throw new ApiError('INVALID_PROVIDER', 'Invalid email provider', 400);
     }
-    
+
     const tenantId = req.tenantId!;
 
     const tenant = await prisma.tenant.findUnique({

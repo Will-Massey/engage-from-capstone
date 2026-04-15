@@ -89,28 +89,27 @@ const ServiceDetail = () => {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
   useEffect(() => {
-    if (id) {
-      loadService();
-    }
-  }, [id]);
-
-  const loadService = async () => {
-    try {
-      setIsLoading(true);
-      const response = await apiClient.getService(id!) as any;
-      if (response.success) {
-        setService(response.data);
-      } else {
-        toast.error('Service not found');
+    const loadService = async () => {
+      if (!id) return;
+      try {
+        setIsLoading(true);
+        const response = (await apiClient.getService(id)) as any;
+        if (response.success) {
+          setService(response.data);
+        } else {
+          toast.error('Service not found');
+          navigate('/services');
+        }
+      } catch (error) {
+        toast.error('Failed to load service');
         navigate('/services');
+      } finally {
+        setIsLoading(false);
       }
-    } catch (error) {
-      toast.error('Failed to load service');
-      navigate('/services');
-    } finally {
-      setIsLoading(false);
-    }
-  };
+    };
+
+    loadService();
+  }, [id, navigate]);
 
   const handleDelete = async () => {
     try {
@@ -129,7 +128,7 @@ const ServiceDetail = () => {
   const handleDuplicate = async () => {
     try {
       setIsLoading(true);
-      const response = await apiClient.duplicateService(id!) as any;
+      const response = (await apiClient.duplicateService(id!)) as any;
       if (response.success) {
         toast.success('Service duplicated');
         navigate(`/services/${response.data.id}`);
@@ -182,30 +181,20 @@ const ServiceDetail = () => {
                 Popular
               </span>
             )}
-            {!service.isActive && (
-              <span className="badge badge-gray">Inactive</span>
-            )}
+            {!service.isActive && <span className="badge badge-gray">Inactive</span>}
           </div>
           <p className="mt-1 text-sm text-slate-600">
-            {categoryLabels[service.category] || service.category} • 
-            Created {service.createdAt ? new Date(service.createdAt).toLocaleDateString('en-GB') : 'N/A'}
+            {categoryLabels[service.category] || service.category} • Created{' '}
+            {service.createdAt ? new Date(service.createdAt).toLocaleDateString('en-GB') : 'N/A'}
           </p>
         </div>
 
         <div className="flex space-x-2">
-          <button
-            onClick={handleDuplicate}
-            className="btn-secondary"
-            title="Duplicate Service"
-          >
+          <button onClick={handleDuplicate} className="btn-secondary" title="Duplicate Service">
             <DocumentDuplicateIcon className="h-4 w-4 mr-2" />
             Duplicate
           </button>
-          <Link
-            to="/services"
-            className="btn-secondary"
-            title="Back to Services"
-          >
+          <Link to="/services" className="btn-secondary" title="Back to Services">
             <ArrowLeftIcon className="h-4 w-4 mr-2" />
             All Services
           </Link>
@@ -253,9 +242,7 @@ const ServiceDetail = () => {
                   <ClockIcon className="h-4 w-4 mr-2" />
                   <span className="text-sm">Base Hours</span>
                 </div>
-                <p className="text-2xl font-bold text-slate-900">
-                  {service.baseHours || 1}h
-                </p>
+                <p className="text-2xl font-bold text-slate-900">{service.baseHours || 1}h</p>
               </div>
             </div>
             <div className="mt-4 grid grid-cols-2 gap-4 text-sm">
@@ -317,7 +304,9 @@ const ServiceDetail = () => {
             <div className="space-y-4">
               <div className="flex items-center justify-between">
                 <span className="text-slate-600">Category</span>
-                <span className={`badge ${categoryColors[service.category] || 'bg-slate-100 text-slate-800'}`}>
+                <span
+                  className={`badge ${categoryColors[service.category] || 'bg-slate-100 text-slate-800'}`}
+                >
                   {categoryLabels[service.category] || service.category}
                 </span>
               </div>
@@ -329,9 +318,7 @@ const ServiceDetail = () => {
               </div>
               <div className="flex items-center justify-between">
                 <span className="text-slate-600">VAT Applicable</span>
-                <span className="text-slate-900">
-                  {service.isVatApplicable ? 'Yes' : 'No'}
-                </span>
+                <span className="text-slate-900">{service.isVatApplicable ? 'Yes' : 'No'}</span>
               </div>
             </div>
           </div>
@@ -382,16 +369,10 @@ const ServiceDetail = () => {
               )}
             </p>
             <div className="flex space-x-3">
-              <button
-                onClick={() => setShowDeleteConfirm(false)}
-                className="btn-secondary flex-1"
-              >
+              <button onClick={() => setShowDeleteConfirm(false)} className="btn-secondary flex-1">
                 Cancel
               </button>
-              <button
-                onClick={handleDelete}
-                className="btn-danger flex-1"
-              >
+              <button onClick={handleDelete} className="btn-danger flex-1">
                 Delete
               </button>
             </div>

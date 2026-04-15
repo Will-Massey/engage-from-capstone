@@ -69,11 +69,11 @@ test.describe('VAT Calculations', () => {
     const unitPrice = 100;
     const quantity = 2;
     const vatRate = 20;
-    
+
     const lineTotal = unitPrice * quantity;
     const vatAmount = lineTotal * (vatRate / 100);
     const grossTotal = lineTotal + vatAmount;
-    
+
     expect(lineTotal).toBe(200);
     expect(vatAmount).toBe(40);
     expect(grossTotal).toBe(240);
@@ -82,15 +82,15 @@ test.describe('VAT Calculations', () => {
   test('mixed VAT rates calculation', async () => {
     const services = [
       { price: 100, vatRate: 20 }, // £20 VAT
-      { price: 200, vatRate: 5 },  // £10 VAT
-      { price: 150, vatRate: 0 }   // £0 VAT
+      { price: 200, vatRate: 5 }, // £10 VAT
+      { price: 150, vatRate: 0 }, // £0 VAT
     ];
-    
+
     let totalVAT = 0;
-    services.forEach(s => {
+    services.forEach((s) => {
       totalVAT += s.price * (s.vatRate / 100);
     });
-    
+
     expect(totalVAT).toBe(30);
   });
 });
@@ -101,7 +101,7 @@ test.describe('Discount Calculations', () => {
     const discountPercent = 10;
     const discountAmount = basePrice * (discountPercent / 100);
     const finalPrice = basePrice - discountAmount;
-    
+
     expect(discountAmount).toBe(10);
     expect(finalPrice).toBe(90);
   });
@@ -110,11 +110,11 @@ test.describe('Discount Calculations', () => {
     const unitPrice = 100;
     const quantity = 3;
     const discountPercent = 20;
-    
+
     const baseTotal = unitPrice * quantity;
     const discountAmount = baseTotal * (discountPercent / 100);
     const finalPrice = baseTotal - discountAmount;
-    
+
     expect(baseTotal).toBe(300);
     expect(discountAmount).toBe(60);
     expect(finalPrice).toBe(240);
@@ -125,13 +125,13 @@ test.describe('Discount Calculations', () => {
     const quantity = 1;
     const discountPercent = 10;
     const vatRate = 20;
-    
+
     const baseTotal = unitPrice * quantity;
     const discountAmount = baseTotal * (discountPercent / 100);
     const netTotal = baseTotal - discountAmount;
     const vatAmount = netTotal * (vatRate / 100);
     const grossTotal = netTotal + vatAmount;
-    
+
     expect(netTotal).toBe(90);
     expect(vatAmount).toBe(18);
     expect(grossTotal).toBe(108);

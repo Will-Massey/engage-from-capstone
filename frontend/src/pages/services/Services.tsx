@@ -39,14 +39,14 @@ interface Service {
 }
 
 const categoryColors: Record<string, string> = {
-  COMPLIANCE: 'bg-blue-100 text-blue-800',
-  ADVISORY: 'bg-purple-100 text-purple-800',
-  TAX: 'bg-green-100 text-green-800',
-  BOOKKEEPING: 'bg-yellow-100 text-yellow-800',
-  CONSULTING: 'bg-pink-100 text-pink-800',
-  TECHNICAL: 'bg-indigo-100 text-indigo-800',
-  SPECIALIZED: 'bg-orange-100 text-orange-800',
-  PAYROLL: 'bg-cyan-100 text-cyan-800',
+  COMPLIANCE: 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-200',
+  ADVISORY: 'bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-200',
+  TAX: 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-200',
+  BOOKKEEPING: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-200',
+  CONSULTING: 'bg-pink-100 text-pink-800 dark:bg-pink-900/30 dark:text-pink-200',
+  TECHNICAL: 'bg-indigo-100 text-indigo-800 dark:bg-indigo-900/30 dark:text-indigo-200',
+  SPECIALIZED: 'bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-200',
+  PAYROLL: 'bg-cyan-100 text-cyan-800 dark:bg-cyan-900/30 dark:text-cyan-200',
 };
 
 const frequencyLabels: Record<string, string> = {
@@ -63,12 +63,12 @@ const Services = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('');
-  
+
   // Modal states
   const [showAddModal, setShowAddModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const [editingService, setEditingService] = useState<Service | null>(null);
-  
+
   // Form states
   const [formData, setFormData] = useState({
     name: '',
@@ -92,7 +92,7 @@ const Services = () => {
   const loadServices = async () => {
     try {
       setIsLoading(true);
-      const response = await apiClient.getServices() as any;
+      const response = (await apiClient.getServices()) as any;
       setServices(response.data || []);
     } catch (error) {
       toast.error('Failed to load services');
@@ -104,12 +104,12 @@ const Services = () => {
   const handleCreateService = async () => {
     try {
       setIsLoading(true);
-      const response = await apiClient.createService({
+      const response = (await apiClient.createService({
         ...formData,
         basePrice: Number(formData.basePrice),
         baseHours: Number(formData.baseHours),
-      }) as any;
-      
+      })) as any;
+
       if (response.success) {
         toast.success('Service created successfully');
         setShowAddModal(false);
@@ -125,15 +125,15 @@ const Services = () => {
 
   const handleUpdateService = async () => {
     if (!editingService) return;
-    
+
     try {
       setIsLoading(true);
-      const response = await apiClient.updateService(editingService.id, {
+      const response = (await apiClient.updateService(editingService.id, {
         ...formData,
         basePrice: Number(formData.basePrice),
         baseHours: Number(formData.baseHours),
-      }) as any;
-      
+      })) as any;
+
       if (response.success) {
         toast.success('Service updated successfully');
         setShowEditModal(false);
@@ -150,7 +150,7 @@ const Services = () => {
 
   const handleDeleteService = async (id: string) => {
     if (!confirm('Are you sure you want to delete this service?')) return;
-    
+
     try {
       setIsLoading(true);
       await apiClient.deleteService(id);
@@ -166,7 +166,7 @@ const Services = () => {
   const handleDuplicateService = async (service: Service) => {
     try {
       setIsLoading(true);
-      const response = await apiClient.duplicateService(service.id) as any;
+      const response = (await apiClient.duplicateService(service.id)) as any;
       if (response.success) {
         toast.success('Service duplicated');
         loadServices();
@@ -219,8 +219,9 @@ const Services = () => {
     });
   };
 
-  const filteredServices = services.filter(service => {
-    const matchesSearch = !searchQuery || 
+  const filteredServices = services.filter((service) => {
+    const matchesSearch =
+      !searchQuery ||
       service.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
       service.description.toLowerCase().includes(searchQuery.toLowerCase());
     const matchesCategory = !categoryFilter || service.category === categoryFilter;
@@ -231,7 +232,7 @@ const Services = () => {
     <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
       <div className="glass-tile rounded-lg w-full max-w-2xl max-h-[90vh] overflow-y-auto">
         <div className="p-6 border-b border-white/10 flex items-center justify-between">
-          <h3 className="text-lg font-semibold text-slate-900">
+          <h3 className="text-lg font-semibold text-slate-900 dark:text-white">
             {isEdit ? 'Edit Service' : 'Add New Service'}
           </h3>
           <button
@@ -239,16 +240,16 @@ const Services = () => {
               isEdit ? setShowEditModal(false) : setShowAddModal(false);
               setEditingService(null);
             }}
-            className="text-slate-400 hover:text-slate-700"
+            className="text-slate-400 hover:text-slate-700 dark:hover:text-slate-300"
           >
             <XMarkIcon className="h-6 w-6" />
           </button>
         </div>
-        
+
         <div className="p-6 space-y-4">
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium text-slate-800">Service Name</label>
+              <label className="block text-sm font-medium text-slate-800 dark:text-slate-200">Service Name</label>
               <input
                 type="text"
                 value={formData.name}
@@ -258,7 +259,7 @@ const Services = () => {
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-slate-800">Category</label>
+              <label className="block text-sm font-medium text-slate-800 dark:text-slate-200">Category</label>
               <select
                 value={formData.category}
                 onChange={(e) => setFormData({ ...formData, category: e.target.value })}
@@ -276,7 +277,7 @@ const Services = () => {
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-slate-800">Short Description</label>
+            <label className="block text-sm font-medium text-slate-800 dark:text-slate-200">Short Description</label>
             <input
               type="text"
               value={formData.description}
@@ -287,7 +288,7 @@ const Services = () => {
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-slate-800">Long Description</label>
+            <label className="block text-sm font-medium text-slate-800 dark:text-slate-200">Long Description</label>
             <textarea
               rows={3}
               value={formData.longDescription}
@@ -299,7 +300,7 @@ const Services = () => {
 
           <div className="grid grid-cols-3 gap-4">
             <div>
-              <label className="block text-sm font-medium text-slate-800">Base Price (£)</label>
+              <label className="block text-sm font-medium text-slate-800 dark:text-slate-200">Base Price (£)</label>
               <input
                 type="number"
                 value={formData.basePrice}
@@ -310,7 +311,7 @@ const Services = () => {
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-slate-800">Base Hours</label>
+              <label className="block text-sm font-medium text-slate-800 dark:text-slate-200">Base Hours</label>
               <input
                 type="number"
                 value={formData.baseHours}
@@ -321,7 +322,7 @@ const Services = () => {
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-slate-800">Frequency</label>
+              <label className="block text-sm font-medium text-slate-800 dark:text-slate-200">Frequency</label>
               <select
                 value={formData.defaultFrequency}
                 onChange={(e) => setFormData({ ...formData, defaultFrequency: e.target.value })}
@@ -338,7 +339,7 @@ const Services = () => {
 
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium text-slate-800">Pricing Model</label>
+              <label className="block text-sm font-medium text-slate-800 dark:text-slate-200">Pricing Model</label>
               <select
                 value={formData.pricingModel}
                 onChange={(e) => setFormData({ ...formData, pricingModel: e.target.value })}
@@ -359,7 +360,7 @@ const Services = () => {
                 onChange={(e) => setFormData({ ...formData, isPopular: e.target.checked })}
                 className="h-4 w-4 text-primary-600 border-gray-300 rounded"
               />
-              <label htmlFor="isPopular" className="ml-2 text-sm text-slate-800">
+              <label htmlFor="isPopular" className="ml-2 text-sm text-slate-800 dark:text-slate-200">
                 Mark as Popular Service
               </label>
             </div>
@@ -381,7 +382,7 @@ const Services = () => {
             disabled={isLoading || !formData.name || !formData.description}
             className="btn-primary"
           >
-            {isLoading ? 'Saving...' : (isEdit ? 'Update Service' : 'Create Service')}
+            {isLoading ? 'Saving...' : isEdit ? 'Update Service' : 'Create Service'}
           </button>
         </div>
       </div>
@@ -393,10 +394,8 @@ const Services = () => {
       <div className="space-y-6 animate-fade-in">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>
-            <h1 className="text-2xl font-bold text-slate-900">Services</h1>
-            <p className="mt-1 text-sm text-slate-600">
-              Manage your service catalog and pricing
-            </p>
+            <h1 className="text-2xl font-bold text-slate-900 dark:text-white">Services</h1>
+            <p className="mt-1 text-sm text-slate-600 dark:text-slate-300">Manage your service catalog and pricing</p>
           </div>
           <button className="btn-primary inline-flex opacity-50 cursor-not-allowed">
             <PlusIcon className="h-5 w-5 mr-2" />
@@ -418,15 +417,10 @@ const Services = () => {
     <div className="space-y-6 animate-fade-in">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900">Services</h1>
-          <p className="mt-1 text-sm text-slate-600">
-            Manage your service catalog and pricing
-          </p>
+          <h1 className="text-2xl font-bold text-slate-900 dark:text-white">Services</h1>
+          <p className="mt-1 text-sm text-slate-600 dark:text-slate-300">Manage your service catalog and pricing</p>
         </div>
-        <button
-          onClick={openAddModal}
-          className="btn-primary inline-flex"
-        >
+        <button onClick={openAddModal} className="btn-primary inline-flex">
           <PlusIcon className="h-5 w-5 mr-2" />
           Add Service
         </button>
@@ -464,54 +458,57 @@ const Services = () => {
       {filteredServices.length === 0 ? (
         <div className="text-center py-16 card">
           <BuildingOfficeIcon className="mx-auto h-12 w-12 text-gray-300" />
-          <h3 className="mt-4 text-lg font-medium text-slate-900">No services found</h3>
-          <p className="mt-1 text-slate-600">Try adjusting your search or filter</p>
+          <h3 className="mt-4 text-lg font-medium text-slate-900 dark:text-white">No services found</h3>
+          <p className="mt-1 text-slate-600 dark:text-slate-300">Try adjusting your search or filter</p>
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {filteredServices.map((service) => (
             <div key={service.id} className="glass-tile p-5 hover:border-white/20 transition-all">
               <div className="flex items-start justify-between mb-3">
-                <span className={`px-2 py-1 text-xs font-medium rounded-full ${categoryColors[service.category] || 'bg-slate-100 text-slate-800'}`}>
+                <span
+                  className={`px-2 py-1 text-xs font-medium rounded-full ${categoryColors[service.category] || 'bg-slate-100 text-slate-800'}`}
+                >
                   {service.category}
                 </span>
                 <div className="flex items-center space-x-1">
                   {service.isPopular && <StarIcon className="h-4 w-4 text-yellow-400" />}
                 </div>
               </div>
-              
-              <h3 className="font-semibold text-slate-900 mb-2">{service.name}</h3>
-              <p className="text-sm text-slate-600 line-clamp-2 mb-4">
-                {service.description}
-              </p>
-              
-              <div className="flex items-center justify-between pt-4 border-t border-slate-100">
+
+              <h3 className="font-semibold text-slate-900 dark:text-white mb-2">{service.name}</h3>
+              <p className="text-sm text-slate-600 dark:text-slate-300 line-clamp-2 mb-4">{service.description}</p>
+
+              <div className="flex items-center justify-between pt-4 border-t border-slate-100 dark:border-slate-700">
                 <div>
-                  <span className="text-2xl font-bold text-slate-900">
+                  <span className="text-2xl font-bold text-slate-900 dark:text-white">
                     £{(service.priceAmount || service.basePrice || 0).toLocaleString()}
                   </span>
-                  <span className="text-xs text-slate-600 ml-1">
-                    /{frequencyLabels[service.billingCycle || service.defaultFrequency || 'MONTHLY']?.toLowerCase() || 'monthly'}
+                  <span className="text-xs text-slate-600 dark:text-slate-300 ml-1">
+                    /
+                    {frequencyLabels[
+                      service.billingCycle || service.defaultFrequency || 'MONTHLY'
+                    ]?.toLowerCase() || 'monthly'}
                   </span>
                 </div>
                 <div className="flex items-center space-x-1">
-                  <button 
+                  <button
                     onClick={() => handleDuplicateService(service)}
-                    className="p-1 text-slate-400 hover:text-blue-600"
+                    className="p-1 text-slate-400 hover:text-blue-600 dark:hover:text-blue-400"
                     title="Duplicate"
                   >
                     <DocumentDuplicateIcon className="h-5 w-5" />
                   </button>
-                  <button 
+                  <button
                     onClick={() => openEditModal(service)}
-                    className="p-1 text-slate-400 hover:text-primary-600"
+                    className="p-1 text-slate-400 hover:text-primary-600 dark:hover:text-primary-400"
                     title="Edit"
                   >
                     <PencilIcon className="h-5 w-5" />
                   </button>
-                  <button 
+                  <button
                     onClick={() => handleDeleteService(service.id)}
-                    className="p-1 text-slate-400 hover:text-red-600"
+                    className="p-1 text-slate-400 hover:text-red-600 dark:hover:text-red-400"
                     title="Delete"
                   >
                     <TrashIcon className="h-5 w-5" />
@@ -525,7 +522,7 @@ const Services = () => {
 
       {/* Add Modal */}
       {showAddModal && <ServiceModal isEdit={false} />}
-      
+
       {/* Edit Modal */}
       {showEditModal && editingService && <ServiceModal isEdit={true} />}
     </div>

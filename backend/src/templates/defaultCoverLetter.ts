@@ -1,6 +1,6 @@
 /**
  * UK-Compliant Default Cover Letter with Subtle NLP Techniques
- * 
+ *
  * NLP Techniques Used:
  * - Presuppositions (assumes the deal is happening)
  * - Embedded commands (hidden directives)
@@ -18,7 +18,7 @@ export const generateDefaultCoverLetter = (params: {
   proposalDate: string;
 }): string => {
   const { clientName, businessName, accountingYear, proposalDate } = params;
-  
+
   return `Dear ${clientName},
 
 Thank you for taking the time to review this proposal for your accounting and taxation services for the ${accountingYear} financial year.

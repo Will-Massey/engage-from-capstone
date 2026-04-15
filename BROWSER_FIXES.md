@@ -5,6 +5,7 @@
 ### 1. Content Security Policy (CSP) Errors ✅
 
 **Problem:** CSP was blocking:
+
 - Google Fonts (fonts.googleapis.com)
 - API calls to backend
 - Some JavaScript functionality
@@ -12,18 +13,24 @@
 **Solution:** Updated `backend/src/index.ts` CSP configuration:
 
 ```typescript
-app.use(helmet({
-  contentSecurityPolicy: {
-    directives: {
-      defaultSrc: ["'self'"],
-      styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
-      fontSrc: ["'self'", "https://fonts.gstatic.com"],
-      scriptSrc: ["'self'", "'unsafe-eval'"],
-      imgSrc: ["'self'", "data:", "https:", "blob:"],
-      connectSrc: ["'self'", "https://engage-by-capstone-production.up.railway.app", "https://*.up.railway.app"],
+app.use(
+  helmet({
+    contentSecurityPolicy: {
+      directives: {
+        defaultSrc: ["'self'"],
+        styleSrc: ["'self'", "'unsafe-inline'", 'https://fonts.googleapis.com'],
+        fontSrc: ["'self'", 'https://fonts.gstatic.com'],
+        scriptSrc: ["'self'", "'unsafe-eval'"],
+        imgSrc: ["'self'", 'data:', 'https:', 'blob:'],
+        connectSrc: [
+          "'self'",
+          'https://engage-by-capstone-production.up.railway.app',
+          'https://*.up.railway.app',
+        ],
+      },
     },
-  },
-}));
+  })
+);
 ```
 
 ### 2. Wrong API URL ✅
@@ -36,7 +43,7 @@ app.use(helmet({
 # Before
 VITE_API_URL=https://your-railway-app.up.railway.app
 
-# After  
+# After
 VITE_API_URL=https://engage-by-capstone-production.up.railway.app
 ```
 
@@ -47,6 +54,7 @@ VITE_API_URL=https://engage-by-capstone-production.up.railway.app
 **Status:** Non-critical - app works without them
 
 **Solution:** Either:
+
 - Convert SVG to PNG (icon-192x192.png, icon-512x512.png)
 - Or update vite.config.ts to use SVG icons
 
@@ -54,12 +62,12 @@ VITE_API_URL=https://engage-by-capstone-production.up.railway.app
 
 ## Verification
 
-| Check | Status |
-|-------|--------|
-| Google Fonts loading | ✅ Fixed |
-| API calls working | ✅ Fixed |
-| CSP errors resolved | ✅ Fixed |
-| App loads correctly | ✅ Working |
+| Check                | Status     |
+| -------------------- | ---------- |
+| Google Fonts loading | ✅ Fixed   |
+| API calls working    | ✅ Fixed   |
+| CSP errors resolved  | ✅ Fixed   |
+| App loads correctly  | ✅ Working |
 
 ---
 

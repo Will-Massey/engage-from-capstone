@@ -35,7 +35,7 @@ router.get('/search', auth_js_1.authenticate, (0, errorHandler_js_1.asyncHandler
         const results = await chService.searchCompanies(q, limit);
         res.json({
             success: true,
-            data: results.map(company => ({
+            data: results.map((company) => ({
                 companyNumber: company.company_number,
                 companyName: company.title || company.company_name, // Search returns 'title', details returns 'company_name'
                 companyStatus: company.company_status,

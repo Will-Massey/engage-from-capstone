@@ -1,9 +1,5 @@
 import { useState, useEffect } from 'react';
-import {
-  XMarkIcon,
-  CommandLineIcon,
-  MagnifyingGlassIcon,
-} from '@heroicons/react/24/outline';
+import { XMarkIcon, CommandLineIcon, MagnifyingGlassIcon } from '@heroicons/react/24/outline';
 
 interface KeyboardShortcutsProps {
   isOpen: boolean;
@@ -73,21 +69,21 @@ const KeyboardShortcuts = ({ isOpen, onClose }: KeyboardShortcutsProps) => {
 
   if (!isOpen) return null;
 
-  const filteredGroups = shortcutGroups.map(group => ({
-    ...group,
-    shortcuts: group.shortcuts.filter(s => 
-      s.description.toLowerCase().includes(search.toLowerCase()) ||
-      s.keys.join(' ').toLowerCase().includes(search.toLowerCase())
-    ),
-  })).filter(group => group.shortcuts.length > 0);
+  const filteredGroups = shortcutGroups
+    .map((group) => ({
+      ...group,
+      shortcuts: group.shortcuts.filter(
+        (s) =>
+          s.description.toLowerCase().includes(search.toLowerCase()) ||
+          s.keys.join(' ').toLowerCase().includes(search.toLowerCase())
+      ),
+    }))
+    .filter((group) => group.shortcuts.length > 0);
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 animate-fade-in">
-      <div 
-        className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm"
-        onClick={onClose}
-      />
-      
+      <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" onClick={onClose} />
+
       <div className="relative w-full max-w-2xl max-h-[80vh] modal-content overflow-hidden animate-scale-in">
         <div className="flex items-center justify-between px-6 py-4 border-b border-slate-200/80 dark:border-slate-700/80">
           <div className="flex items-center">
@@ -160,7 +156,11 @@ const KeyboardShortcuts = ({ isOpen, onClose }: KeyboardShortcutsProps) => {
 
         <div className="px-6 py-3 bg-slate-50/50 dark:bg-slate-800/50 border-t border-slate-200/80 dark:border-slate-700/80">
           <p className="text-xs text-slate-500 dark:text-slate-400 text-center">
-            Press <kbd className="px-1.5 py-0.5 bg-white dark:bg-slate-700 rounded border border-slate-200 dark:border-slate-600">?</kbd> anytime to show this help
+            Press{' '}
+            <kbd className="px-1.5 py-0.5 bg-white dark:bg-slate-700 rounded border border-slate-200 dark:border-slate-600">
+              ?
+            </kbd>{' '}
+            anytime to show this help
           </p>
         </div>
       </div>

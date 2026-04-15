@@ -1,4 +1,5 @@
 # Engage by Capstone - Production Deployment Guide
+
 **Date:** 06 March 2026
 
 ---
@@ -6,12 +7,14 @@
 ## Phase 1: Neon PostgreSQL Database Setup
 
 ### Step 1: Create Neon Account
+
 1. Go to https://neon.tech
 2. Sign up with GitHub or email
 3. Create a new project called "engage-production"
 4. Select region: **Europe (Frankfurt)** - closest to UK
 
 ### Step 2: Get Connection String
+
 1. In Neon Dashboard, click "Connection Details"
 2. Copy the **Prisma** connection string (looks like):
    ```
@@ -19,6 +22,7 @@
    ```
 
 ### Step 3: Save for Later
+
 - You'll need this for Railway environment variables
 
 ---
@@ -26,31 +30,38 @@
 ## Phase 2: Railway Backend Deployment
 
 ### Step 1: Install Railway CLI
+
 ```bash
 npm install -g @railway/cli
 ```
 
 ### Step 2: Login to Railway
+
 ```bash
 railway login
 ```
 
 ### Step 3: Create Project
+
 ```bash
 cd engage/backend
 railway init --name engage-backend
 ```
 
 ### Step 4: Add PostgreSQL Plugin (OR use Neon)
+
 **Option A: Railway PostgreSQL (Easier)**
+
 ```bash
 railway add --plugin postgresql
 ```
 
 **Option B: Neon (Recommended for production)**
+
 - Skip this, we'll use Neon connection string
 
 ### Step 5: Configure Environment Variables
+
 Add these variables in Railway Dashboard or CLI:
 
 ```bash
@@ -94,11 +105,13 @@ ENCRYPTION_KEY="same-as-jwt-secret-or-generate-new-32-char"
 ```
 
 ### Step 6: Deploy
+
 ```bash
 railway up
 ```
 
 ### Step 7: Run Migrations
+
 ```bash
 railway run npx prisma migrate deploy
 ```
@@ -108,22 +121,26 @@ railway run npx prisma migrate deploy
 ## Phase 3: Vercel Frontend Deployment
 
 ### Step 1: Install Vercel CLI
+
 ```bash
 npm install -g vercel
 ```
 
 ### Step 2: Login
+
 ```bash
 vercel login
 ```
 
 ### Step 3: Deploy
+
 ```bash
 cd engage/frontend
 vercel --prod
 ```
 
 ### Step 4: Configure Environment Variables
+
 In Vercel Dashboard, add:
 
 ```bash
@@ -136,6 +153,7 @@ VITE_STRIPE_PUBLIC_KEY="pk_live_..."
 ## Phase 4: Domain Configuration
 
 ### Step 1: DNS Records
+
 Add these records to your domain registrar:
 
 ```
@@ -150,10 +168,12 @@ CNAME api   your-railway-domain.up.railway.app
 ```
 
 ### Step 2: SSL Certificates
+
 - Vercel: Automatic SSL
 - Railway: Automatic SSL
 
 ### Step 3: Update CORS
+
 Update `backend/src/index.ts` allowed origins:
 
 ```typescript
@@ -169,11 +189,13 @@ const allowedOrigins = [
 ## Phase 5: Post-Deployment Checklist
 
 ### Database
+
 - [ ] Migrations ran successfully
 - [ ] Seed data created (services, default templates)
 - [ ] Connection pooling configured (if needed)
 
 ### Backend
+
 - [ ] Health check endpoint responds: `/health`
 - [ ] API responds: `/api/status`
 - [ ] Database connected
@@ -181,18 +203,21 @@ const allowedOrigins = [
 - [ ] Stripe webhooks configured
 
 ### Frontend
+
 - [ ] Loads without errors
 - [ ] Login works
 - [ ] API calls succeed (check Network tab)
 - [ ] Stripe payment form loads
 
 ### Security
+
 - [ ] HTTPS enforced (HSTS headers)
 - [ ] JWT tokens working
 - [ ] CSRF protection active
 - [ ] Rate limiting active
 
 ### Monitoring
+
 - [ ] Railway dashboard showing metrics
 - [ ] Vercel analytics enabled
 - [ ] Error tracking (Sentry) configured
@@ -202,16 +227,19 @@ const allowedOrigins = [
 ## Rollback Plan
 
 ### Railway
+
 ```bash
 railway rollback
 ```
 
 ### Vercel
+
 ```bash
 vercel --rollback
 ```
 
 ### Database
+
 - Neon has automatic backups
 - Can restore to any point in time
 
@@ -220,19 +248,22 @@ vercel --rollback
 ## Troubleshooting
 
 ### Database Connection Issues
+
 1. Check DATABASE_URL format
 2. Ensure SSL mode is enabled
 3. Verify IP allowlist (Neon settings)
 
 ### CORS Errors
+
 1. Update allowedOrigins in backend
 2. Verify FRONTEND_URL matches actual domain
 
 ### Build Failures
+
 1. Check TypeScript errors: `npx tsc --noEmit`
 2. Verify all env vars are set
 3. Check build logs in Railway/Vercel dashboard
 
 ---
 
-*Deployment guide created: 06 March 2026*
+_Deployment guide created: 06 March 2026_

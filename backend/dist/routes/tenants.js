@@ -12,7 +12,8 @@ const auth_js_1 = require("../middleware/auth.js");
 const router = (0, express_1.Router)();
 // Validation schemas
 const createTenantSchema = zod_1.z.object({
-    subdomain: zod_1.z.string()
+    subdomain: zod_1.z
+        .string()
         .min(3, 'Subdomain must be at least 3 characters')
         .max(30, 'Subdomain must be at most 30 characters')
         .regex(/^[a-z0-9-]+$/, 'Subdomain can only contain lowercase letters, numbers, and hyphens'),
@@ -21,42 +22,59 @@ const createTenantSchema = zod_1.z.object({
     adminFirstName: zod_1.z.string().min(1, 'Admin first name is required'),
     adminLastName: zod_1.z.string().min(1, 'Admin last name is required'),
     adminPassword: zod_1.z.string().min(8, 'Password must be at least 8 characters'),
-    primaryColor: zod_1.z.string().regex(/^#[0-9A-Fa-f]{6}$/).optional(),
-    settings: zod_1.z.object({
+    primaryColor: zod_1.z
+        .string()
+        .regex(/^#[0-9A-Fa-f]{6}$/)
+        .optional(),
+    settings: zod_1.z
+        .object({
         defaultCurrency: zod_1.z.string().default('GBP'),
         vatRegistered: zod_1.z.boolean().default(true),
         professionalBody: zod_1.z.enum(['ACCA', 'ICAEW', 'AAT', 'CIMA', 'ICAS', 'CTA', 'CPAA']).optional(),
         companyRegistration: zod_1.z.string().optional(),
         vatNumber: zod_1.z.string().optional(),
-        address: zod_1.z.object({
+        address: zod_1.z
+            .object({
             line1: zod_1.z.string(),
             line2: zod_1.z.string().optional(),
             city: zod_1.z.string(),
             postcode: zod_1.z.string(),
             country: zod_1.z.string().default('United Kingdom'),
-        }).optional(),
-    }).optional(),
+        })
+            .optional(),
+    })
+        .optional(),
 });
 const updateTenantSchema = zod_1.z.object({
     name: zod_1.z.string().min(1).optional(),
     logo: zod_1.z.string().optional(),
-    primaryColor: zod_1.z.string().regex(/^#[0-9A-Fa-f]{6}$/).optional(),
-    secondaryColor: zod_1.z.string().regex(/^#[0-9A-Fa-f]{6}$/).optional(),
-    settings: zod_1.z.object({
+    primaryColor: zod_1.z
+        .string()
+        .regex(/^#[0-9A-Fa-f]{6}$/)
+        .optional(),
+    secondaryColor: zod_1.z
+        .string()
+        .regex(/^#[0-9A-Fa-f]{6}$/)
+        .optional(),
+    settings: zod_1.z
+        .object({
         defaultCurrency: zod_1.z.string().optional(),
         defaultPaymentTerms: zod_1.z.number().optional(),
         vatRegistered: zod_1.z.boolean().optional(),
         professionalBody: zod_1.z.enum(['ACCA', 'ICAEW', 'AAT', 'CIMA', 'ICAS', 'CTA', 'CPAA']).optional(),
         companyRegistration: zod_1.z.string().optional(),
         vatNumber: zod_1.z.string().optional(),
-        address: zod_1.z.object({
+        address: zod_1.z
+            .object({
             line1: zod_1.z.string(),
             line2: zod_1.z.string().optional(),
             city: zod_1.z.string(),
             postcode: zod_1.z.string(),
             country: zod_1.z.string(),
-        }).optional(),
-    }).optional(),
+        })
+            .optional(),
+    })
+        .optional(),
 });
 /**
  * POST /api/tenants
@@ -206,7 +224,11 @@ async function createDefaultServices(tx, tenantId) {
                 { name: 'transaction_volume', description: 'High transaction volume', multiplier: 1.3 },
                 { name: 'group_structure', description: 'Group/consolidation required', multiplier: 1.5 },
             ],
-            deliverables: ['Draft accounts for review', 'Final statutory accounts', 'Companies House filing confirmation'],
+            deliverables: [
+                'Draft accounts for review',
+                'Final statutory accounts',
+                'Companies House filing confirmation',
+            ],
             tags: ['accounts', 'compliance', 'companies-house'],
         },
         {
@@ -223,7 +245,12 @@ async function createDefaultServices(tx, tenantId) {
                 { name: 'rd_claim', description: 'R&D tax credit claim', multiplier: 1.4 },
                 { name: 'group_relief', description: 'Group relief considerations', multiplier: 1.3 },
             ],
-            deliverables: ['Tax computation', 'CT600 form', 'iXBRL accounts', 'HMRC submission confirmation'],
+            deliverables: [
+                'Tax computation',
+                'CT600 form',
+                'iXBRL accounts',
+                'HMRC submission confirmation',
+            ],
             tags: ['tax', 'ct600', 'hmrc', 'compliance'],
         },
         {
@@ -269,7 +296,11 @@ async function createDefaultServices(tx, tenantId) {
             defaultFrequency: 'QUARTERLY',
             applicableEntityTypes: ['LIMITED_COMPANY', 'SOLE_TRADER', 'PARTNERSHIP'],
             complexityFactors: [
-                { name: 'partial_exemption', description: 'Partial exemption calculations', multiplier: 1.5 },
+                {
+                    name: 'partial_exemption',
+                    description: 'Partial exemption calculations',
+                    multiplier: 1.5,
+                },
                 { name: 'eu_trade', description: 'EU/international trade', multiplier: 1.3 },
             ],
             deliverables: ['VAT reconciliation', 'VAT return filing', 'MTD submission confirmation'],
@@ -373,7 +404,12 @@ async function createDefaultServices(tx, tenantId) {
             complexityFactors: [
                 { name: 'large_project', description: 'Multiple projects', multiplier: 1.4 },
             ],
-            deliverables: ['Technical narrative', 'Cost breakdown', 'CT600 amendment', 'HMRC correspondence'],
+            deliverables: [
+                'Technical narrative',
+                'Cost breakdown',
+                'CT600 amendment',
+                'HMRC correspondence',
+            ],
             tags: ['rnd', 'tax-credits', 'innovation', 'hmrc'],
         },
     ];
@@ -442,59 +478,83 @@ router.get('/settings', auth_js_1.authenticate, (0, errorHandler_js_1.asyncHandl
 router.put('/settings', auth_js_1.authenticate, (0, errorHandler_js_1.asyncHandler)(async (req, res) => {
     const tenantId = req.tenantId;
     const schema = zod_1.z.object({
-        vat: zod_1.z.object({
+        vat: zod_1.z
+            .object({
             vatRegistered: zod_1.z.boolean().optional(),
             vatNumber: zod_1.z.string().optional(),
             defaultVatRate: zod_1.z.enum(['ZERO', 'REDUCED_5', 'STANDARD_20', 'EXEMPT']).optional(),
             autoApplyVat: zod_1.z.boolean().optional(),
-        }).optional(),
-        branding: zod_1.z.object({
+        })
+            .optional(),
+        branding: zod_1.z
+            .object({
             name: zod_1.z.string().optional(),
             logo: zod_1.z.string().optional(),
-            primaryColor: zod_1.z.string().regex(/^#[0-9A-Fa-f]{6}$/).optional(),
-            secondaryColor: zod_1.z.string().regex(/^#[0-9A-Fa-f]{6}$/).optional(),
-        }).optional(),
-        email: zod_1.z.object({
+            primaryColor: zod_1.z
+                .string()
+                .regex(/^#[0-9A-Fa-f]{6}$/)
+                .optional(),
+            secondaryColor: zod_1.z
+                .string()
+                .regex(/^#[0-9A-Fa-f]{6}$/)
+                .optional(),
+        })
+            .optional(),
+        email: zod_1.z
+            .object({
             provider: zod_1.z.enum(['smtp', 'gmail', 'outlook', 'microsoft365']).optional(),
             fromName: zod_1.z.string().optional(),
             fromEmail: zod_1.z.string().email().optional(),
-            smtp: zod_1.z.object({
+            smtp: zod_1.z
+                .object({
                 host: zod_1.z.string(),
                 port: zod_1.z.number(),
                 secure: zod_1.z.boolean(),
                 user: zod_1.z.string(),
                 pass: zod_1.z.string(),
-            }).optional(),
-            gmail: zod_1.z.object({
+            })
+                .optional(),
+            gmail: zod_1.z
+                .object({
                 clientId: zod_1.z.string(),
                 clientSecret: zod_1.z.string(),
                 refreshToken: zod_1.z.string(),
                 user: zod_1.z.string().email(),
-            }).optional(),
-            outlook: zod_1.z.object({
+            })
+                .optional(),
+            outlook: zod_1.z
+                .object({
                 clientId: zod_1.z.string(),
                 clientSecret: zod_1.z.string(),
                 refreshToken: zod_1.z.string(),
                 user: zod_1.z.string().email(),
-            }).optional(),
-        }).optional(),
-        notifications: zod_1.z.object({
+            })
+                .optional(),
+        })
+            .optional(),
+        notifications: zod_1.z
+            .object({
             proposalAccepted: zod_1.z.boolean().optional(),
             proposalViewed: zod_1.z.boolean().optional(),
             mtditsaDeadlines: zod_1.z.boolean().optional(),
             weeklySummary: zod_1.z.boolean().optional(),
-        }).optional(),
-        professionalBody: zod_1.z.enum(['ACCA', 'ICAEW', 'ICAS', 'CIMA', 'AAT', 'CPAA', 'OTHER']).optional(),
+        })
+            .optional(),
+        professionalBody: zod_1.z
+            .enum(['ACCA', 'ICAEW', 'ICAS', 'CIMA', 'AAT', 'CPAA', 'OTHER'])
+            .optional(),
         companyRegistration: zod_1.z.string().optional(),
         phone: zod_1.z.string().optional(),
         website: zod_1.z.string().optional(),
-        address: zod_1.z.object({
+        address: zod_1.z
+            .object({
             line1: zod_1.z.string(),
             line2: zod_1.z.string().optional(),
             city: zod_1.z.string(),
             postcode: zod_1.z.string(),
             country: zod_1.z.string(),
-        }).optional(),
+        })
+            .optional(),
         insurerName: zod_1.z.string().optional(),
         governingLaw: zod_1.z.enum(['England and Wales', 'Scotland', 'Northern Ireland']).optional(),
         fcaAuthorised: zod_1.z.boolean().optional(),

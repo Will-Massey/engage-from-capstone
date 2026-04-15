@@ -27,7 +27,7 @@ import {
 export const SecuritySettings: React.FC = () => {
   const navigate = useNavigate();
   const { user, logout } = useAuthStore();
-  
+
   // Password change state
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
@@ -133,34 +133,33 @@ export const SecuritySettings: React.FC = () => {
       <Card>
         <div className="flex items-start justify-between">
           <div className="flex items-start gap-4">
-            <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${
-              user?.twoFactorEnabled ? 'bg-green-100' : 'bg-slate-100'
-            }`}>
-              <ShieldCheckIcon className={`w-6 h-6 ${
-                user?.twoFactorEnabled ? 'text-green-600' : 'text-slate-500'
-              }`} />
+            <div
+              className={`w-12 h-12 rounded-xl flex items-center justify-center ${
+                user?.twoFactorEnabled ? 'bg-green-100' : 'bg-slate-100'
+              }`}
+            >
+              <ShieldCheckIcon
+                className={`w-6 h-6 ${
+                  user?.twoFactorEnabled ? 'text-green-600' : 'text-slate-500'
+                }`}
+              />
             </div>
             <div>
               <h3 className="font-semibold text-slate-900">Two-Factor Authentication</h3>
               <p className="text-sm text-slate-600 mt-1">
-                {user?.twoFactorEnabled 
-                  ? 'Your account is protected with 2FA.' 
+                {user?.twoFactorEnabled
+                  ? 'Your account is protected with 2FA.'
                   : 'Add an extra layer of security to your account.'}
               </p>
             </div>
           </div>
-          
+
           {user?.twoFactorEnabled ? (
-            <Button
-              variant="secondary"
-              onClick={() => setShowDisable2FAConfirm(true)}
-            >
+            <Button variant="secondary" onClick={() => setShowDisable2FAConfirm(true)}>
               Disable
             </Button>
           ) : (
-            <Button
-              onClick={() => navigate('/2fa-setup')}
-            >
+            <Button onClick={() => navigate('/2fa-setup')}>
               Enable
               <ArrowRightIcon className="w-4 h-4 ml-2" />
             </Button>
@@ -183,7 +182,9 @@ export const SecuritySettings: React.FC = () => {
           </div>
           <div>
             <h3 className="font-semibold text-slate-900">Change Password</h3>
-            <p className="text-sm text-slate-600">Update your password regularly for better security.</p>
+            <p className="text-sm text-slate-600">
+              Update your password regularly for better security.
+            </p>
           </div>
         </div>
 
@@ -197,7 +198,7 @@ export const SecuritySettings: React.FC = () => {
             rightIcon={showPasswords ? EyeIcon : EyeSlashIcon}
             onRightIconClick={() => setShowPasswords(!showPasswords)}
           />
-          
+
           <Input
             label="New Password"
             type={showPasswords ? 'text' : 'password'}
@@ -205,20 +206,29 @@ export const SecuritySettings: React.FC = () => {
             onChange={(e) => setNewPassword(e.target.value)}
             leftIcon={LockClosedIcon}
           />
-          
+
           <Input
             label="Confirm New Password"
             type={showPasswords ? 'text' : 'password'}
             value={confirmPassword}
             onChange={(e) => setConfirmPassword(e.target.value)}
             leftIcon={LockClosedIcon}
-            error={confirmPassword && newPassword !== confirmPassword ? 'Passwords do not match' : undefined}
+            error={
+              confirmPassword && newPassword !== confirmPassword
+                ? 'Passwords do not match'
+                : undefined
+            }
           />
 
           <Button
             onClick={handleChangePassword}
             isLoading={isChangingPassword}
-            disabled={!currentPassword || !newPassword || !confirmPassword || newPassword !== confirmPassword}
+            disabled={
+              !currentPassword ||
+              !newPassword ||
+              !confirmPassword ||
+              newPassword !== confirmPassword
+            }
           >
             Change Password
           </Button>
@@ -267,10 +277,7 @@ export const SecuritySettings: React.FC = () => {
             <p className="font-medium text-slate-900">Delete Account</p>
             <p className="text-sm text-slate-600">Permanently delete your account and all data.</p>
           </div>
-          <Button
-            variant="danger"
-            onClick={() => setShowDeleteConfirm(true)}
-          >
+          <Button variant="danger" onClick={() => setShowDeleteConfirm(true)}>
             <TrashIcon className="w-4 h-4 mr-2" />
             Delete Account
           </Button>
@@ -288,7 +295,8 @@ export const SecuritySettings: React.FC = () => {
               <h3 className="text-lg font-semibold">Disable Two-Factor Auth?</h3>
             </div>
             <p className="text-slate-600 mb-4">
-              This will remove the extra security layer from your account. We recommend keeping 2FA enabled.
+              This will remove the extra security layer from your account. We recommend keeping 2FA
+              enabled.
             </p>
             <Input
               label="Enter your password to confirm"
@@ -330,9 +338,10 @@ export const SecuritySettings: React.FC = () => {
               <h3 className="text-lg font-semibold text-red-900">Delete Account?</h3>
             </div>
             <p className="text-slate-600 mb-4">
-              This action cannot be undone. Your account will be permanently anonymized according to GDPR requirements.
+              This action cannot be undone. Your account will be permanently anonymized according to
+              GDPR requirements.
             </p>
-            
+
             <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-4">
               <label className="flex items-start gap-3">
                 <input
@@ -342,7 +351,8 @@ export const SecuritySettings: React.FC = () => {
                   className="mt-1"
                 />
                 <span className="text-sm text-red-800">
-                  I understand that this will permanently delete my account and I will lose access to all data.
+                  I understand that this will permanently delete my account and I will lose access
+                  to all data.
                 </span>
               </label>
             </div>

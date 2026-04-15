@@ -1,4 +1,5 @@
 # Engage by Capstone - Progress Update
+
 **Date:** 06 March 2026
 
 ---
@@ -6,7 +7,9 @@
 ## ✅ Just Completed
 
 ### 1. Dark/Light Mode Toggle ✅
+
 **Files Created/Modified:**
+
 - `frontend/tailwind.config.js` - Added `darkMode: 'class'`
 - `frontend/src/stores/themeStore.ts` - NEW: Theme state management
 - `frontend/src/components/theme/ThemeToggle.tsx` - NEW: Theme toggle button
@@ -15,12 +18,14 @@
 - `frontend/src/index.css` - Dark mode styles for all components
 
 **Features:**
+
 - Toggle between Light, Dark, and System preference
 - Persists user choice
 - Smooth transitions between themes
 - All components (inputs, buttons, cards) support dark mode
 
 **Screenshot:**
+
 ```
 ┌─────────────────────────────────────────────┐
 │  [☀️/🌙/💻] Theme Toggle (in header)        │
@@ -39,6 +44,7 @@
 **File:** `PRODUCT_ROADMAP.md`
 
 Complete 4-week roadmap covering:
+
 1. **Phase 1:** Foundation (Dark mode ✅, Design system)
 2. **Phase 2:** Proposal Creation Overhaul (NEW simplified workflow)
 3. **Phase 3:** Sending & Tracking (Views, notifications)
@@ -103,6 +109,7 @@ Based on your vision, here's the simplified workflow I'm building:
 ```
 
 ### Key Improvements:
+
 1. **3 steps instead of 5+**
 2. **Visual service catalog** - Categories with icons
 3. **Inline editing** - Adjust prices without leaving page
@@ -114,22 +121,26 @@ Based on your vision, here's the simplified workflow I'm building:
 ## 🛠️ What Should I Build Next?
 
 **Option A:** Continue with the new proposal builder (2-3 days work)
+
 - Service catalog component
 - Selection sidebar
 - Summary/adjustment screen
 - Send dialog
 
 **Option B:** Quick wins first (1 day)
+
 - Polish existing pages (Dashboard, Clients list)
 - Add animations/transitions
 - Improve mobile responsiveness
 
 **Option C:** Proposal viewing & tracking (1-2 days)
+
 - View counter display
 - Email notifications when viewed/signed
 - Success confirmations
 
 **Option D:** Something else?
+
 - PDF redesign
 - Client portal improvements
 - Other feature you have in mind
@@ -138,13 +149,13 @@ Based on your vision, here's the simplified workflow I'm building:
 
 ## 📊 Current Status
 
-| Feature | Status | Time Invested |
-|---------|--------|---------------|
-| Dark/Light Mode | ✅ Complete | 1 hour |
-| Product Roadmap | ✅ Complete | 30 min |
-| New Proposal Builder | 🔄 Next | - |
-| Page Polish | ⏳ Pending | - |
-| Email Notifications | ⏳ Pending | - |
+| Feature              | Status      | Time Invested |
+| -------------------- | ----------- | ------------- |
+| Dark/Light Mode      | ✅ Complete | 1 hour        |
+| Product Roadmap      | ✅ Complete | 30 min        |
+| New Proposal Builder | 🔄 Next     | -             |
+| Page Polish          | ⏳ Pending  | -             |
+| Email Notifications  | ⏳ Pending  | -             |
 
 ---
 

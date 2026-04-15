@@ -17,10 +17,7 @@ class PasswordResetService {
         // Generate 32 bytes of random data
         const token = crypto_1.default.randomBytes(32).toString('hex');
         // Create hash for storage
-        const tokenHash = crypto_1.default
-            .createHash('sha256')
-            .update(token)
-            .digest('hex');
+        const tokenHash = crypto_1.default.createHash('sha256').update(token).digest('hex');
         // Token expires in 15 minutes
         const expiresAt = new Date(Date.now() + 15 * 60 * 1000);
         return {
@@ -33,10 +30,7 @@ class PasswordResetService {
      * Hash a token for comparison
      */
     hashToken(token) {
-        return crypto_1.default
-            .createHash('sha256')
-            .update(token)
-            .digest('hex');
+        return crypto_1.default.createHash('sha256').update(token).digest('hex');
     }
     /**
      * Generate a cryptographically secure password

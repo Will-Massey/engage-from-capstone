@@ -79,7 +79,7 @@ class CacheClient {
   private openCircuit() {
     this.circuitOpen = true;
     logger.warn('Cache circuit breaker opened');
-    
+
     // Reset circuit after 30 seconds
     this.circuitResetTimeout = setTimeout(() => {
       this.closeCircuit();
@@ -134,11 +134,7 @@ class CacheClient {
     }
   }
 
-  async set<T>(
-    key: string,
-    value: T,
-    ttl: number = DEFAULT_TTL
-  ): Promise<void> {
+  async set<T>(key: string, value: T, ttl: number = DEFAULT_TTL): Promise<void> {
     if (!this.isAvailable()) return;
 
     try {
@@ -263,15 +259,8 @@ export const cache = new CacheClient();
 // =============================================================================
 // Cache Decorator
 // =============================================================================
-export function cached<T>(
-  keyGenerator: (...args: unknown[]) => string,
-  ttl: number = DEFAULT_TTL
-) {
-  return function (
-    target: unknown,
-    propertyKey: string,
-    descriptor: PropertyDescriptor
-  ) {
+export function cached<T>(keyGenerator: (...args: unknown[]) => string, ttl: number = DEFAULT_TTL) {
+  return function (target: unknown, propertyKey: string, descriptor: PropertyDescriptor) {
     const originalMethod = descriptor.value;
 
     descriptor.value = async function (...args: unknown[]): Promise<T> {

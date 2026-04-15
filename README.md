@@ -18,6 +18,7 @@ Engage is a revolutionary UK accounting proposal platform built for instant, com
 - **💰 Intelligent pricing engine** - Prevent margin losses
 
 ### MTD ITSA Ready (April 2026)
+
 - Automated income threshold assessment
 - Quarterly deadline tracking
 - Plain-language obligation explanation
@@ -26,7 +27,8 @@ Engage is a revolutionary UK accounting proposal platform built for instant, com
 ## 🚀 Quick Start
 
 ### Prerequisites
-- Node.js 18+ 
+
+- Node.js 18+
 - PostgreSQL 14+
 
 ### Installation
@@ -55,10 +57,12 @@ npm run dev:frontend # Terminal 2
 ```
 
 The application will be available at:
+
 - Frontend: http://localhost:5173
 - Backend API: http://localhost:3001
 
 ### Demo Credentials
+
 - Email: `admin@demo.practice`
 - Password: `DemoPass123!`
 
@@ -75,12 +79,14 @@ engage/
 ## 🛠️ Technology Stack
 
 ### Backend
+
 - **Runtime**: Node.js 18+ with TypeScript
 - **Framework**: Express.js
 - **Database**: PostgreSQL with Prisma ORM
 - **Authentication**: JWT with refresh tokens
 
 ### Frontend
+
 - **Framework**: React 18 with TypeScript
 - **Build Tool**: Vite
 - **Styling**: Tailwind CSS with Capstone blue theme
@@ -89,6 +95,7 @@ engage/
 ## 📊 API Documentation
 
 ### Authentication
+
 ```
 POST /api/auth/login          # Login with email/password
 POST /api/auth/register       # Register new user
@@ -96,6 +103,7 @@ GET  /api/auth/me             # Get current user
 ```
 
 ### Proposals
+
 ```
 GET    /api/proposals         # List proposals
 POST   /api/proposals         # Create proposal
@@ -103,6 +111,7 @@ GET    /api/proposals/:id     # Get proposal details
 ```
 
 ### Clients
+
 ```
 GET    /api/clients           # List clients
 POST   /api/clients           # Create client

@@ -60,7 +60,7 @@ class AdfinService {
             const response = await fetch(`${ADFIN_API_URL}/payments`, {
                 method: 'POST',
                 headers: {
-                    'Authorization': `Bearer ${this.apiKey}`,
+                    Authorization: `Bearer ${this.apiKey}`,
                     'Content-Type': 'application/json',
                 },
                 body: JSON.stringify(request),
@@ -69,7 +69,7 @@ class AdfinService {
                 const error = await response.text();
                 throw new Error(`Adfin API error: ${response.status} - ${error}`);
             }
-            const data = await response.json();
+            const data = (await response.json());
             logger_js_1.default.info(`Adfin payment created: ${data.id}, reference: ${data.reference}`);
             return data;
         }
@@ -85,13 +85,13 @@ class AdfinService {
         try {
             const response = await fetch(`${ADFIN_API_URL}/payments/${paymentId}`, {
                 headers: {
-                    'Authorization': `Bearer ${this.apiKey}`,
+                    Authorization: `Bearer ${this.apiKey}`,
                 },
             });
             if (!response.ok) {
                 throw new Error(`Adfin API error: ${response.status}`);
             }
-            return await response.json();
+            return (await response.json());
         }
         catch (error) {
             logger_js_1.default.error('Failed to get Adfin payment:', error);
@@ -106,7 +106,7 @@ class AdfinService {
             const response = await fetch(`${ADFIN_API_URL}/payments/${paymentId}/cancel`, {
                 method: 'POST',
                 headers: {
-                    'Authorization': `Bearer ${this.apiKey}`,
+                    Authorization: `Bearer ${this.apiKey}`,
                 },
             });
             if (!response.ok) {

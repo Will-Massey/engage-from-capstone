@@ -21,7 +21,10 @@ export interface ProposalEmailData {
 /**
  * Generate professional HTML email template for proposal
  */
-export function generateProposalEmailTemplate(data: ProposalEmailData): { html: string; text: string } {
+export function generateProposalEmailTemplate(data: ProposalEmailData): {
+  html: string;
+  text: string;
+} {
   const html = `<!DOCTYPE html>
 <html>
 <head>
@@ -132,7 +135,10 @@ https://engagebycapstone.co.uk
 /**
  * Generate reminder email for pending proposals
  */
-export function generateProposalReminderTemplate(data: ProposalEmailData): { html: string; text: string } {
+export function generateProposalReminderTemplate(data: ProposalEmailData): {
+  html: string;
+  text: string;
+} {
   const html = `<!DOCTYPE html>
 <html>
 <head>
@@ -218,7 +224,9 @@ Sent via Engage by Capstone
 /**
  * Generate acceptance confirmation email
  */
-export function generateProposalAcceptedTemplate(data: ProposalEmailData & { acceptedBy: string; acceptedAt: string }): { html: string; text: string } {
+export function generateProposalAcceptedTemplate(
+  data: ProposalEmailData & { acceptedBy: string; acceptedAt: string }
+): { html: string; text: string } {
   const html = `<!DOCTYPE html>
 <html>
 <head>

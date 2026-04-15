@@ -89,7 +89,7 @@ function calculateLineItem(input) {
         discountAmount,
         netTotal,
         vatAmount,
-        grossTotal
+        grossTotal,
     };
 }
 /**
@@ -98,17 +98,17 @@ function calculateLineItem(input) {
 function calculateProposalTotals(lineItems) {
     // Group items by billing frequency
     const grouped = {
-        monthly: lineItems.filter(item => item.billingFrequency === 'MONTHLY'),
-        quarterly: lineItems.filter(item => item.billingFrequency === 'QUARTERLY'),
-        annually: lineItems.filter(item => item.billingFrequency === 'ANNUALLY'),
-        oneTime: lineItems.filter(item => item.billingFrequency === 'ONE_TIME'),
+        monthly: lineItems.filter((item) => item.billingFrequency === 'MONTHLY'),
+        quarterly: lineItems.filter((item) => item.billingFrequency === 'QUARTERLY'),
+        annually: lineItems.filter((item) => item.billingFrequency === 'ANNUALLY'),
+        oneTime: lineItems.filter((item) => item.billingFrequency === 'ONE_TIME'),
     };
     // Calculate totals for each group
     const calculateGroup = (items) => ({
         subtotal: items.reduce((sum, item) => sum + item.lineTotal, 0),
         vatAmount: items.reduce((sum, item) => sum + item.vatAmount, 0),
         total: items.reduce((sum, item) => sum + item.grossTotal, 0),
-        items
+        items,
     });
     const monthly = calculateGroup(grouped.monthly);
     const quarterly = calculateGroup(grouped.quarterly);
@@ -126,8 +126,7 @@ function calculateProposalTotals(lineItems) {
         ANNUALLY: grouped.annually.length,
         ONE_TIME: grouped.oneTime.length,
     };
-    const primaryBillingFrequency = Object.entries(counts)
-        .sort((a, b) => b[1] - a[1])[0][0];
+    const primaryBillingFrequency = Object.entries(counts).sort((a, b) => b[1] - a[1])[0][0];
     return {
         monthly,
         quarterly,
@@ -135,7 +134,7 @@ function calculateProposalTotals(lineItems) {
         oneTime,
         grandTotal,
         totalAnnualEquivalent,
-        primaryBillingFrequency
+        primaryBillingFrequency,
     };
 }
 /**
@@ -146,7 +145,7 @@ function formatCurrency(amount, currency = 'GBP') {
         style: 'currency',
         currency,
         minimumFractionDigits: 0,
-        maximumFractionDigits: 2
+        maximumFractionDigits: 2,
     }).format(amount);
 }
 /**
@@ -192,6 +191,6 @@ exports.default = {
     calculateProposalTotals,
     formatCurrency,
     getBillingFrequencyLabel,
-    getBillingFrequencyShort
+    getBillingFrequencyShort,
 };
 //# sourceMappingURL=pricingEngine_v2.js.map

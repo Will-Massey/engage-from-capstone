@@ -33,18 +33,18 @@ interface PricingBreakdown {
 
 // Geographic multipliers based on ONS regional cost data
 const GEOGRAPHIC_MULTIPLIERS: Record<string, number> = {
-  'LONDON': 1.25,
-  'SOUTH_EAST': 1.15,
-  'SOUTH_WEST': 1.05,
-  'EAST': 1.1,
-  'WEST_MIDLANDS': 0.95,
-  'EAST_MIDLANDS': 0.9,
-  'YORKSHIRE': 0.9,
-  'NORTH_WEST': 0.95,
-  'NORTH_EAST': 0.85,
-  'WALES': 0.9,
-  'SCOTLAND': 0.95,
-  'NORTHERN_IRELAND': 0.85,
+  LONDON: 1.25,
+  SOUTH_EAST: 1.15,
+  SOUTH_WEST: 1.05,
+  EAST: 1.1,
+  WEST_MIDLANDS: 0.95,
+  EAST_MIDLANDS: 0.9,
+  YORKSHIRE: 0.9,
+  NORTH_WEST: 0.95,
+  NORTH_EAST: 0.85,
+  WALES: 0.9,
+  SCOTLAND: 0.95,
+  NORTHERN_IRELAND: 0.85,
 };
 
 // Complexity factor definitions
@@ -99,10 +99,7 @@ export class PricingEngine {
       throw new ApiError('SERVICE_NOT_FOUND', 'Service template not found', 404);
     }
 
-    const {
-      targetMargin = 30,
-      quantity = 1,
-    } = options;
+    const { targetMargin = 30, quantity = 1 } = options;
 
     // Calculate complexity multiplier
     const complexityMultiplier = this.calculateComplexityMultiplier(
@@ -125,7 +122,7 @@ export class PricingEngine {
 
     // Calculate costs and minimum price
     const costs = adjustedPrice * 0.6; // Assume 60% cost ratio
-    const minimumPrice = costs / (1 - (targetMargin / 100));
+    const minimumPrice = costs / (1 - targetMargin / 100);
 
     // Calculate final price
     const finalPrice = Math.max(
@@ -178,10 +175,10 @@ export class PricingEngine {
         const calculation = await this.calculatePrice(svc.serviceId, clientData, {
           quantity: svc.quantity,
         });
-        
+
         // Apply line item discount
-        const lineDiscount = calculation.finalPrice * (svc.discountPercent || 0) / 100;
-        
+        const lineDiscount = (calculation.finalPrice * (svc.discountPercent || 0)) / 100;
+
         return {
           ...calculation,
           serviceId: svc.serviceId,
@@ -193,13 +190,14 @@ export class PricingEngine {
     );
 
     const subtotal = serviceCalculations.reduce((sum, svc) => sum + svc.finalPrice, 0);
-    
+
     // Apply global discount
     let globalDiscountAmount = 0;
     if (globalDiscount) {
-      globalDiscountAmount = globalDiscount.type === 'PERCENTAGE'
-        ? subtotal * (globalDiscount.value / 100)
-        : globalDiscount.value;
+      globalDiscountAmount =
+        globalDiscount.type === 'PERCENTAGE'
+          ? subtotal * (globalDiscount.value / 100)
+          : globalDiscount.value;
     }
 
     const discountedSubtotal = subtotal - globalDiscountAmount;
@@ -218,10 +216,7 @@ export class PricingEngine {
   /**
    * Calculate complexity multiplier based on client data
    */
-  private calculateComplexityMultiplier(
-    factors: ComplexityFactor[],
-    clientData: any
-  ): number {
+  private calculateComplexityMultiplier(factors: ComplexityFactor[], clientData: any): number {
     let multiplier = 1;
 
     // Apply transaction volume factor
@@ -261,7 +256,7 @@ export class PricingEngine {
    */
   private calculateVolumeDiscount(quantity: number): number {
     if (quantity >= 20) return 0.85;
-    if (quantity >= 10) return 0.90;
+    if (quantity >= 10) return 0.9;
     if (quantity >= 5) return 0.95;
     return 1;
   }
@@ -279,9 +274,10 @@ export class PricingEngine {
 
     for (const rule of rules) {
       if (this.evaluateCondition(rule.condition, clientData)) {
-        const amount = rule.adjustmentType === 'PERCENTAGE'
-          ? adjustedPrice * (rule.adjustmentValue / 100)
-          : rule.adjustmentValue;
+        const amount =
+          rule.adjustmentType === 'PERCENTAGE'
+            ? adjustedPrice * (rule.adjustmentValue / 100)
+            : rule.adjustmentValue;
 
         adjustedPrice += amount;
 

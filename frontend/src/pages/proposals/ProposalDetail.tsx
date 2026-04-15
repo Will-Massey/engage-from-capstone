@@ -55,11 +55,12 @@ const ProposalDetail = () => {
       loadProposal();
       loadCompanySettings();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
 
   const loadCompanySettings = async () => {
     try {
-      const response = await apiClient.getTenantSettings() as any;
+      const response = (await apiClient.getTenantSettings()) as any;
       if (response.success) {
         setCompanySettings(response.data);
       }
@@ -87,11 +88,11 @@ const ProposalDetail = () => {
 
   const generateFullTerms = () => {
     if (!companySettings) return proposal?.terms || '';
-    
+
     const companyDetails = {
       name: companySettings.branding?.name || tenant?.name || '[Company Name]',
       companyNumber: companySettings.companyRegistration || '[Company Number]',
-      address: companySettings.address?.line1 
+      address: companySettings.address?.line1
         ? `${companySettings.address.line1}, ${companySettings.address.city}, ${companySettings.address.postcode}`
         : '[Registered Office Address]',
       professionalBody: companySettings.professionalBody || '[Professional Body]',
@@ -99,7 +100,7 @@ const ProposalDetail = () => {
       governingLaw: companySettings.governingLaw || 'England and Wales',
       fcaAuthorised: companySettings.fcaAuthorised || false,
     };
-    
+
     return generateTermsAndConditions(companyDetails);
   };
 
@@ -110,9 +111,9 @@ const ProposalDetail = () => {
   const loadProposal = async () => {
     try {
       setIsLoading(true);
-      const response = await apiClient.getProposal(id!) as any;
+      const response = (await apiClient.getProposal(id!)) as any;
       setProposal(response.data);
-      
+
       // Record view if proposal is loaded successfully and is in SENT status
       if (response.data && response.data.status === 'SENT') {
         await recordView();
@@ -154,7 +155,7 @@ const ProposalDetail = () => {
 
   const downloadPDF = async () => {
     try {
-      const blob = await apiClient.downloadProposalPDF(id!) as Blob;
+      const blob = await apiClient.downloadProposalPDF(id!);
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
@@ -171,7 +172,7 @@ const ProposalDetail = () => {
   // Group services by billing frequency
   const groupedServices = useMemo(() => {
     if (!proposal?.services) return {};
-    
+
     return proposal.services.reduce((acc: any, service: any) => {
       const freq = service.billingFrequency || service.frequency || 'MONTHLY';
       if (!acc[freq]) acc[freq] = [];
@@ -183,7 +184,7 @@ const ProposalDetail = () => {
   // Calculate totals per frequency group
   const groupTotals = useMemo(() => {
     if (!proposal?.services) return {};
-    
+
     return Object.entries(groupedServices).reduce((acc: any, [freq, services]: [string, any]) => {
       acc[freq] = {
         subtotal: services.reduce((sum: number, s: any) => sum + (s.lineTotal || s.total || 0), 0),
@@ -211,7 +212,9 @@ const ProposalDetail = () => {
         <div className="glass-tile p-12 text-center max-w-md">
           <DocumentTextIcon className="mx-auto h-16 w-16 text-slate-300 mb-4" />
           <h2 className="text-xl font-semibold text-slate-900 mb-2">Proposal not found</h2>
-          <p className="text-slate-600 mb-6">The proposal you're looking for doesn't exist or you don't have access.</p>
+          <p className="text-slate-600 mb-6">
+            The proposal you're looking for doesn't exist or you don't have access.
+          </p>
           <Link to="/proposals" className="btn-primary inline-flex">
             <ArrowLeftIcon className="h-4 w-4 mr-2" />
             Back to proposals
@@ -240,7 +243,9 @@ const ProposalDetail = () => {
         <div>
           <div className="flex items-center space-x-3">
             <h1 className="text-2xl font-bold text-slate-900">{proposal.title}</h1>
-            <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${status.bg} ${status.color}`}>
+            <span
+              className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${status.bg} ${status.color}`}
+            >
               <StatusIcon className="h-3 w-3 mr-1" />
               {status.label}
             </span>
@@ -251,11 +256,7 @@ const ProposalDetail = () => {
         </div>
 
         <div className="flex space-x-2">
-          <button
-            onClick={downloadPDF}
-            className="btn-secondary"
-            title="Download PDF"
-          >
+          <button onClick={downloadPDF} className="btn-secondary" title="Download PDF">
             <ArrowDownTrayIcon className="h-4 w-4 mr-2" />
             PDF
           </button>
@@ -272,10 +273,7 @@ const ProposalDetail = () => {
           )}
 
           {proposal.status === 'SENT' && (
-            <button
-              onClick={handleAccept}
-              className="btn-primary bg-green-600 hover:bg-green-700"
-            >
+            <button onClick={handleAccept} className="btn-primary bg-green-600 hover:bg-green-700">
               <CheckIcon className="h-4 w-4 mr-2" />
               Mark Accepted
             </button>
@@ -308,7 +306,7 @@ const ProposalDetail = () => {
           {/* Services - Grouped by billing frequency */}
           <div className="glass-tile p-6">
             <h2 className="text-lg font-semibold text-slate-900 mb-4">Services</h2>
-            
+
             {Object.entries(groupedServices).map(([frequency, services]: [string, any]) => (
               <div key={frequency} className="mb-6 last:mb-0">
                 <h3 className="text-sm font-medium text-slate-500 uppercase tracking-wide mb-3">
@@ -333,10 +331,13 @@ const ProposalDetail = () => {
                           <p className="text-sm text-slate-600 mt-1">{service.description}</p>
                         )}
                         <p className="text-sm text-slate-500 mt-1">
-                          Qty: {service.quantity} • 
-                          Price: £{(service.displayPrice || service.unitPrice)?.toLocaleString()}/{frequencyLabels[frequency]?.toLowerCase() || 'month'}
+                          Qty: {service.quantity} • Price: £
+                          {(service.displayPrice || service.unitPrice)?.toLocaleString()}/
+                          {frequencyLabels[frequency]?.toLowerCase() || 'month'}
                           {service.discountPercent > 0 && (
-                            <span className="text-green-600 ml-1">({service.discountPercent}% off)</span>
+                            <span className="text-green-600 ml-1">
+                              ({service.discountPercent}% off)
+                            </span>
                           )}
                         </p>
                       </div>
@@ -350,18 +351,19 @@ const ProposalDetail = () => {
                           </p>
                         )}
                         <p className="text-sm font-medium text-slate-700">
-                          £{(service.grossTotal || (service.total + (service.vatAmount || 0)))?.toLocaleString()}
+                          £
+                          {(
+                            service.grossTotal || service.total + (service.vatAmount || 0)
+                          )?.toLocaleString()}
                         </p>
                       </div>
                     </div>
                   ))}
                 </div>
-                
+
                 {/* Group subtotal */}
                 <div className="flex justify-between items-center mt-3 pt-3 border-t border-white/20 text-sm">
-                  <span className="text-slate-600">
-                    {frequencyLabels[frequency]} Subtotal
-                  </span>
+                  <span className="text-slate-600">{frequencyLabels[frequency]} Subtotal</span>
                   <div className="text-right">
                     <span className="font-medium text-slate-900">
                       £{groupTotals[frequency]?.total?.toLocaleString()}
@@ -391,10 +393,7 @@ const ProposalDetail = () => {
           <div className="glass-tile p-6 print:break-before-page">
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-lg font-semibold text-slate-900">Terms & Conditions</h2>
-              <button
-                onClick={handlePrint}
-                className="btn-secondary text-sm print:hidden"
-              >
+              <button onClick={handlePrint} className="btn-secondary text-sm print:hidden">
                 <PrinterIcon className="h-4 w-4 mr-2" />
                 Print T&Cs
               </button>
@@ -408,16 +407,19 @@ const ProposalDetail = () => {
           {(proposal.status === 'SENT' || proposal.status === 'VIEWED') && (
             <div className="glass-tile p-6 print:hidden">
               <h2 className="text-lg font-semibold text-slate-900 mb-4">Electronic Signature</h2>
-              
+
               {!showSignaturePad ? (
                 <div className="space-y-4">
                   <p className="text-sm text-slate-700">
-                    By signing below, you confirm acceptance of the Terms & Conditions and the services outlined in this proposal.
+                    By signing below, you confirm acceptance of the Terms & Conditions and the
+                    services outlined in this proposal.
                   </p>
-                  
+
                   <div className="grid grid-cols-2 gap-4">
                     <div>
-                      <label className="block text-sm font-medium text-slate-800">Signatory Name</label>
+                      <label className="block text-sm font-medium text-slate-800">
+                        Signatory Name
+                      </label>
                       <input
                         type="text"
                         value={signatoryName}
@@ -437,7 +439,7 @@ const ProposalDetail = () => {
                       />
                     </div>
                   </div>
-                  
+
                   <button
                     onClick={() => setShowSignaturePad(true)}
                     disabled={!signatoryName || !signatoryPosition}
@@ -446,7 +448,7 @@ const ProposalDetail = () => {
                     <DocumentTextIcon className="h-4 w-4 mr-2 inline" />
                     Sign Proposal Electronically
                   </button>
-                  
+
                   {(!signatoryName || !signatoryPosition) && (
                     <p className="text-xs text-slate-600">
                       Please enter your name and position to enable signing
@@ -477,9 +479,9 @@ const ProposalDetail = () => {
               <div className="space-y-2">
                 {proposal.signature && (
                   <div className="border border-white/20 rounded p-2 bg-white/40 inline-block">
-                    <img 
-                      src={proposal.signature} 
-                      alt="Electronic Signature" 
+                    <img
+                      src={proposal.signature}
+                      alt="Electronic Signature"
                       className="h-16 object-contain"
                     />
                   </div>
@@ -494,7 +496,8 @@ const ProposalDetail = () => {
                 )}
                 {proposal.acceptedAt && (
                   <p className="text-sm text-slate-800">
-                    <span className="font-medium">Date:</span> {format(new Date(proposal.acceptedAt), 'dd MMMM yyyy')}
+                    <span className="font-medium">Date:</span>{' '}
+                    {format(new Date(proposal.acceptedAt), 'dd MMMM yyyy')}
                   </p>
                 )}
               </div>
@@ -519,15 +522,13 @@ const ProposalDetail = () => {
               {/* Show totals by frequency */}
               {Object.entries(groupTotals).map(([freq, totals]: [string, any]) => (
                 <div key={freq} className="flex justify-between text-sm">
-                  <span className="text-slate-600">
-                    {frequencyLabels[freq]} Total
-                  </span>
+                  <span className="text-slate-600">{frequencyLabels[freq]} Total</span>
                   <span className="font-medium text-slate-900">
                     £{totals.total?.toLocaleString()}
                   </span>
                 </div>
               ))}
-              
+
               {/* Discount */}
               {proposal.discountAmount > 0 && (
                 <div className="flex justify-between text-sm">
@@ -537,7 +538,7 @@ const ProposalDetail = () => {
                   </span>
                 </div>
               )}
-              
+
               {/* VAT */}
               <div className="flex justify-between text-sm">
                 <span className="text-slate-600">
@@ -547,7 +548,7 @@ const ProposalDetail = () => {
                   £{proposal.vatAmount?.toLocaleString()}
                 </span>
               </div>
-              
+
               {/* Grand Total */}
               <div className="border-t border-white/20 pt-3">
                 <div className="flex justify-between items-center">
@@ -557,7 +558,7 @@ const ProposalDetail = () => {
                   </span>
                 </div>
               </div>
-              
+
               {/* Annual equivalent note */}
               {groupTotals.MONTHLY && (
                 <p className="text-xs text-slate-500 text-center">

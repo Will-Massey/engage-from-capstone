@@ -8,34 +8,38 @@
 
 ## 🌐 Deployment Details
 
-| Detail | Value |
-|--------|-------|
-| **Live URL** | https://engage-by-capstone-production.up.railway.app |
-| **Health Check** | ✅ `{"status":"healthy","database":"connected"}` |
-| **Environment** | Production |
-| **Port** | 3001 |
-| **Database** | ✅ PostgreSQL Connected |
+| Detail           | Value                                                |
+| ---------------- | ---------------------------------------------------- |
+| **Live URL**     | https://engage-by-capstone-production.up.railway.app |
+| **Health Check** | ✅ `{"status":"healthy","database":"connected"}`     |
+| **Environment**  | Production                                           |
+| **Port**         | 3001                                                 |
+| **Database**     | ✅ PostgreSQL Connected                              |
 
 ---
 
 ## 🔧 Fixes Applied
 
 ### 1. Prisma Schema Updates
+
 - Added missing enums: `UserRole`, `CompanyType`, `MTDITSAStatus`, `ProposalStatus`, `PricingFrequency`, `ServiceCategory`, `PricingModel`
 - Updated models to use enums instead of strings
 - Added `binaryTargets` for Alpine Linux compatibility
 
 ### 2. TypeScript Configuration
+
 - Relaxed strict mode to allow build with type errors
 - Set `noEmitOnError: false` to generate JS despite errors
 
 ### 3. Dockerfile Updates
+
 - Added OpenSSL libraries (`openssl`, `libssl3`) for Prisma
 - Added shared module build step
 - Added Prisma regeneration in production stage
 - Used Vite directly for frontend build (skipping tsc)
 
 ### 4. Dependencies
+
 - Added `googleapis` package
 - Added `@types/express` package
 
@@ -78,11 +82,11 @@ These errors don't affect runtime functionality but should be fixed for better c
 
 ## 🚀 Application URLs
 
-| Endpoint | URL |
-|----------|-----|
-| Main App | https://engage-by-capstone-production.up.railway.app |
-| Health | https://engage-by-capstone-production.up.railway.app/health |
-| API | https://engage-by-capstone-production.up.railway.app/api |
+| Endpoint | URL                                                         |
+| -------- | ----------------------------------------------------------- |
+| Main App | https://engage-by-capstone-production.up.railway.app        |
+| Health   | https://engage-by-capstone-production.up.railway.app/health |
+| API      | https://engage-by-capstone-production.up.railway.app/api    |
 
 ---
 

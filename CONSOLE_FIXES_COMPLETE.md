@@ -3,16 +3,21 @@
 ## Issues Resolved
 
 ### 1. ❌ CSP Blocking Resources
+
 **Problem:** Content Security Policy was blocking:
+
 - Google Fonts (fonts.googleapis.com)
 - API calls to backend
 - External stylesheets
 
 **Solution:** Temporarily disabled CSP in `backend/src/index.ts`:
+
 ```typescript
-app.use(helmet({
-  contentSecurityPolicy: false,
-}));
+app.use(
+  helmet({
+    contentSecurityPolicy: false,
+  })
+);
 ```
 
 **Status:** ✅ Fixed - CSP disabled, all resources now load
@@ -20,11 +25,13 @@ app.use(helmet({
 ---
 
 ### 2. ❌ Wrong API URL
+
 **Problem:** Frontend was calling `https://your-railway-app.up.railway.app` instead of the correct URL
 
 **Root Cause:** The `.env` file (not `.env.production`) was being used during build
 
 **Solution:** Updated `frontend/.env`:
+
 ```bash
 # Before
 VITE_API_URL=http://localhost:3001
@@ -38,6 +45,7 @@ VITE_API_URL=https://engage-by-capstone-production.up.railway.app
 ---
 
 ### 3. ⚠️ Missing Icons (Non-critical)
+
 **Problem:** PWA manifest references PNG icons that don't exist
 
 **Impact:** Minor - doesn't affect app functionality
@@ -48,12 +56,12 @@ VITE_API_URL=https://engage-by-capstone-production.up.railway.app
 
 ## Verification
 
-| Check | Status |
-|-------|--------|
-| CSP Header disabled | ✅ No CSP header present |
-| API URL correct | ✅ `engage-by-capstone-production` in bundle |
-| Google Fonts loading | ✅ Should work now |
-| API calls working | ✅ Should work now |
+| Check                | Status                                       |
+| -------------------- | -------------------------------------------- |
+| CSP Header disabled  | ✅ No CSP header present                     |
+| API URL correct      | ✅ `engage-by-capstone-production` in bundle |
+| Google Fonts loading | ✅ Should work now                           |
+| API calls working    | ✅ Should work now                           |
 
 ---
 

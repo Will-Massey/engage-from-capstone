@@ -48,35 +48,38 @@ const EmailSettings = () => {
   const [isSaving, setIsSaving] = useState(false);
   const [isTesting, setIsTesting] = useState(false);
   const [testEmail, setTestEmail] = useState('');
-  const [connectionStatus, setConnectionStatus] = useState<'untested' | 'success' | 'error'>('untested');
+  const [connectionStatus, setConnectionStatus] = useState<'untested' | 'success' | 'error'>(
+    'untested'
+  );
 
   useEffect(() => {
+    const loadConfig = async () => {
+      try {
+        const response = (await apiClient.get('/email/config')) as any;
+        if (response.success && response.data.isConfigured) {
+          setConfig((prev) => ({
+            ...prev,
+            provider: response.data.provider,
+            fromName: response.data.fromName,
+            fromEmail: response.data.fromEmail,
+            smtp: response.data.smtp || prev.smtp,
+          }));
+          setConnectionStatus('success');
+        }
+      } catch (error) {
+        // Config might not exist yet
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
     loadConfig();
   }, []);
-
-  const loadConfig = async () => {
-    try {
-      const response = await apiClient.get('/email/config') as any;
-      if (response.success && response.data.isConfigured) {
-        setConfig({
-          provider: response.data.provider,
-          fromName: response.data.fromName,
-          fromEmail: response.data.fromEmail,
-          smtp: response.data.smtp || config.smtp,
-        });
-        setConnectionStatus('success');
-      }
-    } catch (error) {
-      // Config might not exist yet
-    } finally {
-      setIsLoading(false);
-    }
-  };
 
   const handleSave = async () => {
     setIsSaving(true);
     try {
-      const response = await apiClient.put('/email/config', config) as any;
+      const response = (await apiClient.put('/email/config', config)) as any;
       if (response.success) {
         toast.success('Email settings saved');
         setConnectionStatus(response.data.connectionTest.success ? 'success' : 'error');
@@ -99,7 +102,7 @@ const EmailSettings = () => {
 
     setIsTesting(true);
     try {
-      const response = await apiClient.post('/email/test', { testEmail }) as any;
+      const response = (await apiClient.post('/email/test', { testEmail })) as any;
       if (response.success) {
         toast.success('Test email sent successfully');
       }
@@ -267,12 +270,16 @@ const EmailSettings = () => {
       )}
 
       {/* OAuth Providers */}
-      {(config.provider === 'gmail' || config.provider === 'outlook' || config.provider === 'microsoft365') && (
-        <OAuthConnect 
-          provider={config.provider} 
+      {(config.provider === 'gmail' ||
+        config.provider === 'outlook' ||
+        config.provider === 'microsoft365') && (
+        <OAuthConnect
+          provider={config.provider}
           onConnected={() => {
             setConnectionStatus('success');
-            toast.success(`${config.provider === 'gmail' ? 'Gmail' : 'Microsoft 365'} connected successfully`);
+            toast.success(
+              `${config.provider === 'gmail' ? 'Gmail' : 'Microsoft 365'} connected successfully`
+            );
           }}
         />
       )}
@@ -281,9 +288,7 @@ const EmailSettings = () => {
       {connectionStatus !== 'untested' && (
         <div
           className={`p-4 rounded-lg flex items-center ${
-            connectionStatus === 'success'
-              ? 'bg-green-50 text-green-700'
-              : 'bg-red-50 text-red-700'
+            connectionStatus === 'success' ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-700'
           }`}
         >
           {connectionStatus === 'success' ? (
@@ -314,11 +319,7 @@ const EmailSettings = () => {
               placeholder="test@capstonesoftware.co.uk"
               className="input-field w-48"
             />
-            <button
-              onClick={handleTest}
-              disabled={isTesting}
-              className="btn-secondary"
-            >
+            <button onClick={handleTest} disabled={isTesting} className="btn-secondary">
               {isTesting ? 'Sending...' : 'Send Test'}
             </button>
           </div>

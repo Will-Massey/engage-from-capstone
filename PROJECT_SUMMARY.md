@@ -14,6 +14,7 @@ Engage by Capstone is a professional proposal-generation platform for UK account
 ## Features Implemented
 
 ### Core Features ✅
+
 - [x] Multi-tenant architecture with row-level isolation
 - [x] Role-based access control (ADMIN, PARTNER, MANAGER, SENIOR, JUNIOR)
 - [x] Client management with Companies House lookup
@@ -26,12 +27,14 @@ Engage by Capstone is a professional proposal-generation platform for UK account
 - [x] Cover letter templates (Professional, Friendly, Modern)
 
 ### Payment Integration ✅
+
 - [x] Adfin integration for UK payment collection
 - [x] Support for Card, Open Banking, and Direct Debit
 - [x] Payment tracking and webhook handling
 - [x] Stripe integration (alternative option)
 
 ### Pricing & Billing ✅
+
 - [x] Custom unit price editing in proposals
 - [x] Monthly/Quarterly/Annual/One-time service frequencies
 - [x] Line-item discounts
@@ -39,6 +42,7 @@ Engage by Capstone is a professional proposal-generation platform for UK account
 - [x] Real-time price calculations
 
 ### Renewal System ✅
+
 - [x] Automatic renewal date calculation (12 months)
 - [x] 30-day reminder emails
 - [x] Background job for daily checks
@@ -49,22 +53,28 @@ Engage by Capstone is a professional proposal-generation platform for UK account
 ## Recent Changes (Last Session)
 
 ### 1. Custom Pricing Fix
+
 **Issue:** Custom unit prices were being reverted to template prices  
 **Fix:** Modified proposal creation to use frontend-provided unit prices directly
 
 ### 2. Frequency Display
+
 **Issue:** Services weren't clearly showing monthly vs annual pricing  
-**Fix:** 
+**Fix:**
+
 - Added frequency badges to service cards
 - Added frequency display in Step 3 review
 - Added frequency to PDF output
 
 ### 3. Tenant Validation
+
 **Issue:** Data was being saved without tenant ID (causing data loss)  
 **Fix:** Added strict tenant validation - API now fails if no tenant found
 
 ### 4. Adfin Integration
+
 **New Feature:** UK payment processing
+
 - Create payment requests
 - Handle webhooks
 - Track payment status
@@ -113,6 +123,7 @@ engage/
 ## Environment Variables Required
 
 ### Critical (Must Set)
+
 ```bash
 DATABASE_URL=postgresql://...
 JWT_SECRET=your-super-secret-32-char-min
@@ -120,6 +131,7 @@ FRONTEND_URL=https://your-domain.com
 ```
 
 ### For Full Functionality
+
 ```bash
 # Companies House (UK company lookup)
 COMPANIES_HOUSE_API_KEY=your-key
@@ -148,6 +160,7 @@ STRIPE_WEBHOOK_SECRET=whsec_...
 ## Database Schema
 
 ### Key Models
+
 - **Tenant** - Multi-tenant isolation
 - **User** - Practice staff with roles
 - **Client** - Client records
@@ -162,14 +175,17 @@ STRIPE_WEBHOOK_SECRET=whsec_...
 ## Known Issues & Workarounds
 
 ### 1. Companies House API
+
 - **Status:** Requires API key
 - **Action:** Get key from https://developer.company-information.service.gov.uk/
 
 ### 2. Email Configuration
+
 - **Status:** Requires SMTP credentials
 - **Action:** Set up Gmail/Outlook SMTP or use email service
 
 ### 3. File Storage (Signatures)
+
 - **Status:** Uses local filesystem
 - **Action:** For production, configure persistent storage path
 
@@ -178,6 +194,7 @@ STRIPE_WEBHOOK_SECRET=whsec_...
 ## Deployment Checklist
 
 ### Pre-Launch
+
 - [ ] Set all environment variables in Render
 - [ ] Run database migrations
 - [ ] Configure custom domain
@@ -186,12 +203,14 @@ STRIPE_WEBHOOK_SECRET=whsec_...
 - [ ] Test payment flow (if using Adfin/Stripe)
 
 ### Launch
+
 - [ ] Deploy backend to Render
 - [ ] Deploy frontend to Render/Vercel
 - [ ] Update DNS records
 - [ ] Test end-to-end proposal flow
 
 ### Post-Launch
+
 - [ ] Monitor error logs
 - [ ] Check database backups
 - [ ] Review payment processing
@@ -235,6 +254,7 @@ git push origin master
    ```
 
 The script will:
+
 - Check git repository
 - Install all dependencies
 - Generate Prisma client

@@ -11,6 +11,7 @@ if (!JWT_SECRET) {
 
 // Extended request type with user and tenant
 declare global {
+  // eslint-disable-next-line @typescript-eslint/no-namespace
   namespace Express {
     interface Request {
       user?: {
@@ -271,11 +272,11 @@ export const csrfProtection = (req: Request, res: Response, next: NextFunction):
     '/automation/migrate-service-pricing', // Data migration endpoint (protected by secret key)
     '/setup/migrate-pricing', // v2 pricing data migration
   ];
-  if (publicPaths.some(path => req.path.startsWith(path))) {
+  if (publicPaths.some((path) => req.path.startsWith(path))) {
     next();
     return;
   }
-  
+
   // Debug logging
   console.log('[CSRF Debug]', {
     originalUrl: req.originalUrl,
@@ -301,7 +302,7 @@ export const csrfProtection = (req: Request, res: Response, next: NextFunction):
     });
     return;
   }
-  
+
   // If cookie exists (same-domain), verify they match
   if (csrfCookie && csrfToken !== csrfCookie) {
     res.status(403).json({
@@ -331,4 +332,12 @@ export const setCsrfCookie = (req: Request, res: Response, next: NextFunction): 
   next();
 };
 
-export default { authenticate, authorize, optionalAuth, generateToken, generateRefreshToken, csrfProtection, setCsrfCookie };
+export default {
+  authenticate,
+  authorize,
+  optionalAuth,
+  generateToken,
+  generateRefreshToken,
+  csrfProtection,
+  setCsrfCookie,
+};

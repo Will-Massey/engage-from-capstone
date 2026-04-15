@@ -59,27 +59,26 @@ const PublicProposalView = () => {
   const [isAccepted, setIsAccepted] = useState(false);
 
   useEffect(() => {
-    if (token) {
-      loadProposal();
-    }
-  }, [token]);
-
-  const loadProposal = async () => {
-    try {
-      setIsLoading(true);
-      const response = await apiClient.get(`/proposals/view/${token}`) as any;
-      if (response.success) {
-        setProposal(response.data);
-        setIsAccepted(response.data.status === 'ACCEPTED');
-      } else {
-        setError('Proposal not found or link expired');
+    const loadProposal = async () => {
+      if (!token) return;
+      try {
+        setIsLoading(true);
+        const response = (await apiClient.get(`/proposals/view/${token}`)) as any;
+        if (response.success) {
+          setProposal(response.data);
+          setIsAccepted(response.data.status === 'ACCEPTED');
+        } else {
+          setError('Proposal not found or link expired');
+        }
+      } catch (error: any) {
+        setError(error.response?.data?.error?.message || 'Failed to load proposal');
+      } finally {
+        setIsLoading(false);
       }
-    } catch (error: any) {
-      setError(error.response?.data?.error?.message || 'Failed to load proposal');
-    } finally {
-      setIsLoading(false);
-    }
-  };
+    };
+
+    loadProposal();
+  }, [token]);
 
   const handleAccept = async () => {
     if (!termsAccepted) {
@@ -101,12 +100,12 @@ const PublicProposalView = () => {
 
     setIsSubmitting(true);
     try {
-      const response = await apiClient.post(`/proposals/view/${token}/sign`, {
+      const response = (await apiClient.post(`/proposals/view/${token}/sign`, {
         signedBy: signerName,
         signedByRole: signerRole,
         signatureData,
         agreementAccepted: termsAccepted,
-      }) as any;
+      })) as any;
 
       if (response.success) {
         toast.success('Proposal accepted successfully');
@@ -172,9 +171,7 @@ const PublicProposalView = () => {
               <p className="text-sm text-slate-600">Proposal from</p>
               <h1 className="text-2xl font-bold text-slate-900">{proposal.tenant.name}</h1>
             </div>
-            {proposal.tenant.logo && (
-              <img src={proposal.tenant.logo} alt="Logo" className="h-12" />
-            )}
+            {proposal.tenant.logo && <img src={proposal.tenant.logo} alt="Logo" className="h-12" />}
           </div>
         </div>
 
@@ -207,14 +204,14 @@ const PublicProposalView = () => {
           <div>
             <h2 className="text-xl font-semibold text-slate-900">{proposal.title}</h2>
             <p className="text-sm text-slate-600 mt-1">Reference: {proposal.reference}</p>
-            <p className="text-sm text-slate-600">
-              Valid until: {formatDate(proposal.validUntil)}
-            </p>
+            <p className="text-sm text-slate-600">Valid until: {formatDate(proposal.validUntil)}</p>
           </div>
 
           {/* Client */}
           <div className="border-t pt-6">
-            <h3 className="text-sm font-medium text-slate-600 uppercase tracking-wide">Prepared For</h3>
+            <h3 className="text-sm font-medium text-slate-600 uppercase tracking-wide">
+              Prepared For
+            </h3>
             <p className="mt-1 text-lg font-medium text-slate-900">{proposal.client.name}</p>
             <p className="text-sm text-slate-600 capitalize">
               {proposal.client.companyType.replace(/_/g, ' ')}
@@ -224,7 +221,9 @@ const PublicProposalView = () => {
           {/* Cover Letter */}
           {proposal.coverLetter && (
             <div className="border-t pt-6">
-              <h3 className="text-sm font-medium text-slate-600 uppercase tracking-wide">Cover Letter</h3>
+              <h3 className="text-sm font-medium text-slate-600 uppercase tracking-wide">
+                Cover Letter
+              </h3>
               <div className="mt-2 prose prose-sm max-w-none text-slate-800">
                 {proposal.coverLetter.split('\n').map((paragraph, i) => (
                   <p key={i}>{paragraph}</p>
@@ -283,9 +282,7 @@ const PublicProposalView = () => {
                 <span className="text-slate-900">{formatCurrency(proposal.total)}</span>
               </div>
             </div>
-            <p className="text-sm text-slate-600 mt-2">
-              Payment terms: {proposal.paymentTerms}
-            </p>
+            <p className="text-sm text-slate-600 mt-2">Payment terms: {proposal.paymentTerms}</p>
           </div>
 
           {/* Terms & Conditions */}

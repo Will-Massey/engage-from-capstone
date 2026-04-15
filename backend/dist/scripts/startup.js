@@ -23,7 +23,7 @@ async function main() {
         try {
             (0, child_process_1.execSync)('npx prisma migrate deploy', {
                 stdio: 'pipe',
-                timeout: 60000
+                timeout: 60000,
             });
             logger_1.default.info('✅ Migrations completed');
         }
@@ -43,7 +43,7 @@ async function main() {
             try {
                 (0, child_process_1.execSync)('npx prisma db seed', {
                     stdio: 'pipe',
-                    timeout: 60000
+                    timeout: 60000,
                 });
                 logger_1.default.info('✅ Database seeded');
             }

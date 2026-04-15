@@ -62,7 +62,7 @@ const incomeSourceSchema = zod_1.z.object({
  * List clients for tenant
  */
 router.get('/', auth_js_1.authenticate, (0, errorHandler_js_1.asyncHandler)(async (req, res) => {
-    const { search, companyType, mtditsaStatus, page = '1', limit = '20', sortBy = 'createdAt', sortOrder = 'desc' } = req.query;
+    const { search, companyType, mtditsaStatus, page = '1', limit = '20', sortBy = 'createdAt', sortOrder = 'desc', } = req.query;
     logger_js_1.default.info(`Fetching clients for tenant: ${req.tenantId}, user: ${req.user?.id}`);
     const skip = (parseInt(page) - 1) * parseInt(limit);
     const take = parseInt(limit);
@@ -168,8 +168,7 @@ router.post('/', auth_js_1.authenticate, (0, auth_js_1.authorize)('ADMIN', 'PART
     // Limited companies, LLPs, charities, and non-profits are NOT subject to MTD ITSA
     let mtditsaStatus = client_1.MTDITSAStatus.NOT_REQUIRED;
     let mtditsaEligible = false;
-    const isMtditsaApplicable = data.companyType === client_1.CompanyType.SOLE_TRADER ||
-        data.companyType === client_1.CompanyType.PARTNERSHIP;
+    const isMtditsaApplicable = data.companyType === client_1.CompanyType.SOLE_TRADER || data.companyType === client_1.CompanyType.PARTNERSHIP;
     if (data.mtditsaIncome && isMtditsaApplicable) {
         const assessment = mtditsa_js_1.MTDITSAService.calculateStatus(data.mtditsaIncome, [], {
             isCharity: data.companyType === client_1.CompanyType.CHARITY,
@@ -239,8 +238,7 @@ router.put('/:id', auth_js_1.authenticate, (0, auth_js_1.authorize)('ADMIN', 'PA
     // MTD ITSA only applies to sole traders and partnerships
     let mtditsaData = {};
     const companyType = data.companyType || existingClient.companyType;
-    const isMtditsaApplicable = companyType === client_1.CompanyType.SOLE_TRADER ||
-        companyType === client_1.CompanyType.PARTNERSHIP;
+    const isMtditsaApplicable = companyType === client_1.CompanyType.SOLE_TRADER || companyType === client_1.CompanyType.PARTNERSHIP;
     if (data.mtditsaIncome !== undefined && isMtditsaApplicable) {
         const assessment = mtditsa_js_1.MTDITSAService.calculateStatus(data.mtditsaIncome, [], {
             isCharity: false, // Already filtered for SOLE_TRADER/PARTNERSHIP
@@ -291,9 +289,11 @@ router.put('/:id', auth_js_1.authenticate, (0, auth_js_1.authorize)('ADMIN', 'PA
  */
 router.post('/:id/mtditsa-assessment', auth_js_1.authenticate, (0, errorHandler_js_1.asyncHandler)(async (req, res) => {
     const { id } = req.params;
-    const { incomeSources = [] } = zod_1.z.object({
+    const { incomeSources = [] } = zod_1.z
+        .object({
         incomeSources: zod_1.z.array(incomeSourceSchema).optional(),
-    }).parse(req.body);
+    })
+        .parse(req.body);
     const client = await database_js_1.prisma.client.findFirst({
         where: {
             id,
@@ -312,7 +312,7 @@ router.post('/:id/mtditsa-assessment', auth_js_1.authenticate, (0, errorHandler_
     const annualIncome = client.mtditsaIncome || client.turnover || 0;
     const assessment = mtditsa_js_1.MTDITSAService.calculateStatus(annualIncome, incomeSources, {
         isCharity: false, // Already validated as SOLE_TRADER or PARTNERSHIP
-        partnershipTurnover: incomeSources.find(s => s.type === 'PARTNERSHIP')?.amount,
+        partnershipTurnover: incomeSources.find((s) => s.type === 'PARTNERSHIP')?.amount,
     });
     // Update client with new status
     await database_js_1.prisma.client.update({

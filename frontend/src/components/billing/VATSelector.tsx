@@ -34,7 +34,7 @@ const vatOptions: VATOption[] = [
     value: 'ZERO',
     label: 'Zero Rated',
     rate: 0,
-    description: 'Food, books, children\'s clothing',
+    description: "Food, books, children's clothing",
   },
   {
     value: 'EXEMPT',
@@ -71,9 +71,7 @@ const VATSelector = ({ value, isVatApplicable, onChange, disabled }: VATSelector
       <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
         <div>
           <label className="text-sm font-medium text-gray-900">VAT Applicable</label>
-          <p className="text-sm text-gray-500">
-            Enable to charge VAT on this service
-          </p>
+          <p className="text-sm text-gray-500">Enable to charge VAT on this service</p>
         </div>
         <button
           type="button"
@@ -94,10 +92,8 @@ const VATSelector = ({ value, isVatApplicable, onChange, disabled }: VATSelector
       {/* VAT Rate Selection */}
       {isApplicable && (
         <div className="space-y-3">
-          <label className="block text-sm font-medium text-gray-700">
-            VAT Rate
-          </label>
-          
+          <label className="block text-sm font-medium text-gray-700">VAT Rate</label>
+
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             {vatOptions.map((option) => (
               <button
@@ -114,13 +110,11 @@ const VATSelector = ({ value, isVatApplicable, onChange, disabled }: VATSelector
                 <div className="flex-1">
                   <div className="flex items-center justify-between">
                     <span className="font-medium text-gray-900">{option.label}</span>
-                    <span className="text-lg font-bold text-primary-600">
-                      {option.rate}%
-                    </span>
+                    <span className="text-lg font-bold text-primary-600">{option.rate}%</span>
                   </div>
                   <p className="text-xs text-gray-500 mt-1">{option.description}</p>
                 </div>
-                
+
                 {selectedRate === option.value && (
                   <div className="ml-3">
                     <div className="h-5 w-5 rounded-full bg-primary-600 flex items-center justify-center">
@@ -140,13 +134,9 @@ const VATSelector = ({ value, isVatApplicable, onChange, disabled }: VATSelector
                   <span className="text-sm font-medium text-blue-900">
                     Selected: {selectedOption.label}
                   </span>
-                  <p className="text-xs text-blue-700 mt-1">
-                    {selectedOption.description}
-                  </p>
+                  <p className="text-xs text-blue-700 mt-1">{selectedOption.description}</p>
                 </div>
-                <span className="text-2xl font-bold text-blue-600">
-                  {selectedOption.rate}%
-                </span>
+                <span className="text-2xl font-bold text-blue-600">{selectedOption.rate}%</span>
               </div>
             </div>
           )}
@@ -165,9 +155,9 @@ const VATSelector = ({ value, isVatApplicable, onChange, disabled }: VATSelector
 };
 
 // Helper function to calculate VAT amount
-export const calculateVAT = (amount: number, vatRate: VATRate): number => {
+const calculateVAT = (amount: number, vatRate: VATRate): number => {
   const rates: Record<VATRate, number> = {
-    STANDARD_20: 0.20,
+    STANDARD_20: 0.2,
     REDUCED_5: 0.05,
     ZERO: 0,
     EXEMPT: 0,
@@ -176,7 +166,7 @@ export const calculateVAT = (amount: number, vatRate: VATRate): number => {
 };
 
 // Helper function to get VAT rate percentage
-export const getVATPercentage = (vatRate: VATRate): number => {
+const getVATPercentage = (vatRate: VATRate): number => {
   const rates: Record<VATRate, number> = {
     STANDARD_20: 20,
     REDUCED_5: 5,
@@ -187,7 +177,7 @@ export const getVATPercentage = (vatRate: VATRate): number => {
 };
 
 // Helper function to format VAT display
-export const formatVATDisplay = (vatRate: VATRate): string => {
+const formatVATDisplay = (vatRate: VATRate): string => {
   const percentages: Record<VATRate, string> = {
     STANDARD_20: '20%',
     REDUCED_5: '5%',

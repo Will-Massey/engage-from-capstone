@@ -1,7 +1,7 @@
 # Engage by Capstone — Agent Guide
 
 > **Purpose:** This document exists for AI coding agents. It summarises the project architecture, conventions, and workflows so you can be productive immediately.  
-> **Last updated:** 2026-04-10
+> **Last updated:** 2026-04-14
 
 ---
 
@@ -28,18 +28,18 @@
 
 ## 2. Technology Stack
 
-| Layer | Technology |
-|-------|------------|
-| **Monorepo** | npm workspaces + pnpm (`pnpm-workspace.yaml`) + Turbo (`turbo.json`) |
-| **Backend** | Node.js 20+, Express.js 4, TypeScript 5.3+, Prisma 5.22, PostgreSQL 15 |
-| **Frontend** | React 18, TypeScript, Vite 5, Tailwind CSS 3, Zustand 4 |
-| **Shared** | TypeScript package exposing enums, interfaces, validation, pricing engine |
-| **Testing** | Jest (backend), Vitest (frontend), Playwright (E2E) |
-| **Caching** | Redis 7 (via `ioredis`) — optional but configured |
-| **Package Manager** | npm + pnpm hybrid (npm for local, pnpm in CI) |
-| **CI/CD** | GitHub Actions (`.github/workflows/ci-cd.yml`) |
-| **Containerization** | Docker + Docker Compose |
-| **Deployment** | Railway (backend), Vercel (frontend), Render (alternative) |
+| Layer                | Technology                                                                                                                      |
+| -------------------- | ------------------------------------------------------------------------------------------------------------------------------- |
+| **Monorepo**         | npm workspaces + pnpm (`pnpm-workspace.yaml`) + Turbo (`turbo.json`)                                                            |
+| **Backend**          | Node.js 20+, Express.js 4, TypeScript 5.9+, Prisma 5.22, PostgreSQL 15                                                          |
+| **Frontend**         | React 18, TypeScript 5.2, Vite 5, Tailwind CSS 3.4, Zustand 4.4                                                                 |
+| **Shared**           | TypeScript package (`@uk-proposal-platform/shared`) exposing enums, interfaces, validation, pricing engine, MTD ITSA calculator |
+| **Testing**          | Playwright 1.51 (E2E, active). Jest 29 (backend, installed but no tests). Vitest 1.1 (frontend, installed but no tests)         |
+| **Caching**          | Redis 7 (via `ioredis`) — optional but configured                                                                               |
+| **Package Manager**  | npm locally + pnpm in CI (`--frozen-lockfile`)                                                                                  |
+| **CI/CD**            | GitHub Actions (`.github/workflows/ci-cd.yml` plus 4 supplementary workflows)                                                   |
+| **Containerization** | Docker + Docker Compose                                                                                                         |
+| **Deployment**       | Render (primary, free tier). Railway (backend) + Vercel (frontend) as secondary/staging-production path                         |
 
 ---
 
@@ -50,78 +50,103 @@ engage/
 ├── backend/                  # Express API
 │   ├── src/
 │   │   ├── config/           # database, env, logger, redis, stripe
-│   │   ├── data/             # seed data (UK accountancy services, cover letters)
-│   │   ├── errors/           # custom error classes
-│   │   ├── jobs/             # background jobs (renewal reminders)
+│   │   ├── data/             # seed data (ukAccountancyServices.ts, defaultCoverLetters.ts)
+│   │   ├── errors/           # custom error classes (ApiError, etc.)
+│   │   ├── jobs/             # background jobs (renewalReminders.ts, emailAutomation.ts)
 │   │   ├── middleware/       # auth, errorHandler, healthCheck, tenant extraction
-│   │   ├── routes/           # Express route modules
-│   │   ├── scripts/          # one-off scripts (seedServices, startup)
-│   │   ├── services/         # business logic (pdf, email, pricing, MTD ITSA)
+│   │   ├── routes/           # Express route modules (auth, proposals, clients, payments, etc.)
+│   │   ├── scripts/          # one-off scripts (seedServices.ts, startup.ts, autoMigrateOnStartup.ts)
+│   │   ├── services/         # business logic (pdfGenerator, emailService, pricingEngine, MTD ITSA)
 │   │   ├── templates/        # email and document templates
-│   │   └── utils/            # cache, encryption, logger helpers
+│   │   ├── utils/            # cache, encryption, logger helpers
+│   │   └── index.ts          # Main Express entry point
 │   ├── prisma/
-│   │   ├── schema.prisma     # Full Prisma schema (600+ lines)
+│   │   ├── schema.prisma     # Full Prisma schema
 │   │   ├── migrations/       # Prisma migration files
 │   │   └── seed-enhanced.ts  # Database seeding
-│   └── dist/                 # Compiled JavaScript output
+│   ├── dist/                 # Compiled JavaScript output
+│   ├── start-prod.mjs        # Production startup orchestrator
+│   └── Dockerfile / Dockerfile.backend.optimized
 ├── frontend/                 # React SPA
 │   ├── src/
 │   │   ├── components/       # React components
+│   │   │   ├── billing/           # BillingCycleSelector, VATSelector
 │   │   │   ├── command-palette/   # Cmd+K command palette
+│   │   │   ├── email/             # EmailSettings, OAuthConnect
 │   │   │   ├── keyboard/          # Keyboard shortcuts help
-│   │   │   ├── layout/            # Dashboard, Sidebar, Header
+│   │   │   ├── layout/            # DashboardLayout, Header, Sidebar
+│   │   │   ├── onboarding/        # OnboardingTour
+│   │   │   ├── payments/          # StripePaymentForm
+│   │   │   ├── proposals/         # ProposalBuilder, ShareProposalDialog
+│   │   │   ├── services/          # ServiceCatalog
+│   │   │   ├── signature/         # SignaturePad
 │   │   │   ├── skeleton/          # Loading skeletons
 │   │   │   ├── theme/             # Theme toggle
-│   │   │   └── ui/                # UI primitives
-│   │   ├── hooks/            # Custom hooks (useCommandPalette)
-│   │   ├── pages/            # route-level page components
+│   │   │   └── ui/                # UI primitives (Button, Card, Input)
+│   │   ├── pages/            # Route-level pages (Dashboard, Proposals, Clients, Settings, etc.)
 │   │   ├── stores/           # Zustand stores (auth, theme)
-│   │   ├── styles/           # CSS styles (base.css)
-│   │   └── utils/            # helpers (api.ts)
-│   ├── public/               # static assets
+│   │   ├── hooks/            # Custom hooks (useCommandPalette)
+│   │   ├── utils/            # helpers (api.ts)
+│   │   ├── styles/           # CSS variables (base.css)
+│   │   ├── index.css         # Tailwind directives + @layer components
+│   │   ├── main.tsx          # React entry point
+│   │   └── App.tsx           # Router and route guards
+│   ├── public/               # Static assets
 │   └── dist/                 # Vite build output
 ├── shared/                   # Cross-package types & utilities
 │   ├── src/
 │   │   └── index.ts          # Enums, interfaces, validation, pricing engine, MTD ITSA
 │   └── dist/                 # Compiled CommonJS output with declarations
-├── e2e-tests/                # Playwright E2E tests
+├── e2e-tests/                # Playwright E2E tests (only active test suite)
+│   ├── specs/                # proposal-pricing.spec.ts, unit-calculations.spec.ts
+│   ├── fixtures/             # Test helpers
+│   └── playwright.config.ts
 ├── scripts/                  # Deployment and utility scripts
+│   ├── deploy.sh             # Trigger Render deploys
+│   ├── deploy.ps1            # Windows equivalent
+│   ├── db-backup.sh
+│   ├── db-restore.sh
+│   ├── migrate.sh
+│   └── debug-and-test.js     # Standalone debug/validation runner
 ├── .github/workflows/        # GitHub Actions CI/CD
 ├── docker-compose.yml        # Local development stack
-├── render.yaml               # Render Blueprint for deployment
+├── render.yaml               # Render Blueprint (primary deployment)
 ├── railway.toml              # Railway deployment config
-├── Dockerfile                # Production Docker build (root)
+├── Dockerfile                # Root backend Dockerfile
 ├── Dockerfile.backend.optimized
 ├── Dockerfile.frontend.optimized
-└── nginx.conf                # Nginx configuration for frontend
+└── nginx.conf                # Nginx configuration for frontend SPA
 ```
 
 ---
 
 ## 4. Key Configuration Files
 
-| File | Purpose |
-|------|---------|
-| `package.json` (root) | Workspace scripts, shared devDeps |
-| `pnpm-workspace.yaml` | Workspace packages: `backend`, `frontend`, `shared` |
-| `turbo.json` | Turbo pipeline: `build`, `test`, `lint`, `typecheck`, `dev`, `clean` |
-| `backend/package.json` | Express deps, Prisma scripts, Jest |
-| `backend/tsconfig.json` | **Strict mode OFF** (`"strict": false`). Output to `dist/`. Path aliases: `@/*` → `src/*`, `@shared/*` → `../shared/src/*` |
+| File                           | Purpose                                                                                                                      |
+| ------------------------------ | ---------------------------------------------------------------------------------------------------------------------------- |
+| `package.json` (root)          | Workspace scripts, shared devDeps. No `test` script at root.                                                                 |
+| `pnpm-workspace.yaml`          | Workspace packages: `backend`, `frontend`, `shared`. `sharedWorkspaceLockfile: true`                                         |
+| `turbo.json`                   | Turbo pipeline: `build`, `test`, `lint`, `typecheck`, `dev`, `clean`                                                         |
+| `backend/package.json`         | Express deps, Prisma scripts, Jest script (no test files exist)                                                              |
+| `backend/tsconfig.json`        | **Strict mode OFF** (`"strict": false`). Output to `dist/`. Path aliases: `@/*` → `src/*`, `@shared/*` → `../shared/src/*`   |
 | `backend/prisma/schema.prisma` | PostgreSQL datasource. Models: `Tenant`, `User`, `Client`, `Proposal`, `ServiceTemplate`, `PricingRule`, `ActivityLog`, etc. |
-| `frontend/package.json` | React + Vite deps, Vitest. `"type": "module"` |
-| `frontend/tsconfig.json` | **Strict mode OFF**. `moduleResolution: bundler`. Same path aliases as backend. |
-| `frontend/vite.config.ts` | Dev proxy to `localhost:3001`, PWA plugin, manual chunks |
-| `frontend/tailwind.config.js` | Custom colours, glass utilities, animations, dark mode via `class` |
-| `shared/tsconfig.json` | `strict: true`. Outputs CommonJS to `dist/` with declarations. |
-| `.github/workflows/ci-cd.yml` | Lint, test, build, and deploy pipeline |
-| `docker-compose.yml` | PostgreSQL, Redis, backend, frontend, Adminer, Redis Commander |
+| `frontend/package.json`        | React + Vite deps. `"type": "module"`. Vitest script (no test files exist)                                                   |
+| `frontend/tsconfig.json`       | **Strict mode OFF**. `moduleResolution: bundler`. Same path aliases as backend.                                              |
+| `frontend/vite.config.ts`      | Dev proxy to `localhost:3001`, PWA plugin, manual chunks (vendor)                                                            |
+| `frontend/tailwind.config.js`  | Custom colours, glass utilities, animations, dark mode via `class`                                                           |
+| `shared/tsconfig.json`         | `strict: true`. Outputs CommonJS to `dist/` with declarations.                                                               |
+| `.github/workflows/ci-cd.yml`  | Main pipeline: lint, typecheck, test (against PG+Redis), build/push Docker images, deploy to dev/staging/prod                |
+| `docker-compose.yml`           | PostgreSQL, Redis, backend, frontend, Adminer, Redis Commander                                                               |
+| `render.yaml`                  | Render Infrastructure-as-Code (primary target)                                                                               |
 
 ---
 
 ## 5. World-Class UX Features
 
 ### Command Palette (Cmd+K)
+
 Access from anywhere with `Cmd/Ctrl + K`:
+
 - **Navigation**: `G D` (Dashboard), `G P` (Proposals), `G C` (Clients), `G S` (Services)
 - **Actions**: `C P` (Create Proposal), `C C` (Create Client)
 - **Search**: Filter commands in real-time
@@ -130,7 +155,9 @@ Access from anywhere with `Cmd/Ctrl + K`:
 **Implementation**: `frontend/src/components/command-palette/CommandPalette.tsx`
 
 ### Keyboard Shortcuts (?)
+
 Press `?` anywhere to view all shortcuts:
+
 - Global: Cmd+K, ?, Esc
 - Navigation: G + letter combinations
 - Actions: C + letter combinations
@@ -139,13 +166,15 @@ Press `?` anywhere to view all shortcuts:
 **Implementation**: `frontend/src/components/keyboard/KeyboardShortcuts.tsx`
 
 ### Glassmorphism Design System
+
 - **Frosted glass cards**: Backdrop blur (12-20px) with transparency
 - **Theme support**: Light/Dark/System modes
 - **Gradient accents**: Purple/indigo gradient buttons
-- **Smooth animations**: Hover lifts, transitions, micro-interactions
+- **Smooth animations**: Hover lifts, transitions, micro-interactions via Framer Motion
 - **Mobile responsive**: Touch-friendly 44px targets
 
 **Key Classes**:
+
 ```css
 .glass-card      /* Glass card container */
 .glass-tile      /* Interactive glass tile */
@@ -157,16 +186,19 @@ Press `?` anywhere to view all shortcuts:
 **Implementation**: `frontend/src/index.css`, `frontend/tailwind.config.js`
 
 ### Skeleton Loading States
+
 Content-aware loading placeholders:
+
 - `SkeletonCard` - Dashboard cards
 - `SkeletonTable` - Data tables
 - `SkeletonStats` - Statistics grid
 - `SkeletonForm` - Form fields
-- `SkeletonProposalBuilder` - Multi-step forms
+- `SkeletonProposalDetail` - Proposal detail page
 
 **Implementation**: `frontend/src/components/skeleton/SkeletonCard.tsx`
 
 ### Theme System
+
 - **Store**: `frontend/src/stores/themeStore.ts` (Zustand)
 - **Toggle**: `frontend/src/components/theme/ThemeToggle.tsx`
 - **CSS Variables**: Dynamic theming with CSS custom properties
@@ -191,7 +223,7 @@ pnpm install
 # Terminal 1 — backend
 cd backend && npm run dev      # tsx watch src/index.ts
 
-# Terminal 2 — frontend  
+# Terminal 2 — frontend
 cd frontend && npm run dev     # vite --host
 ```
 
@@ -217,22 +249,32 @@ npm run db:studio        # Prisma Studio
 
 ### Testing
 
+> **Important:** Only the E2E test suite contains actual test files. Backend Jest and frontend Vitest are installed but have **zero test files** at present.
+
 ```bash
-# Backend
-cd backend && npm test   # Jest
-
-# Frontend
-cd frontend && npm test  # Vitest
-
-# E2E Tests
+# E2E Tests (Playwright) — Active test suite
 cd e2e-tests && npx playwright test
+cd e2e-tests && npx playwright test --headed     # visible browser
+cd e2e-tests && npx playwright show-report       # view HTML report
+
+# Backend — Jest is configured but has no tests
+cd backend && npm test
+
+# Frontend — Vitest is installed but has no tests
+cd frontend && npm test
+
+# Standalone debug/validation script
+node scripts/debug-and-test.js          # run all checks
+node scripts/debug-and-test.js --pricing
+node scripts/debug-and-test.js --vat
+node scripts/debug-and-test.js --csrf
 ```
 
 ### Linting
 
 ```bash
 cd backend && npm run lint   # eslint src --ext .ts
-cd frontend && npm run lint  # eslint . --ext ts,tsx
+cd frontend && npm run lint  # eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0
 ```
 
 ### Docker (Local Development)
@@ -242,6 +284,7 @@ docker-compose up --build
 ```
 
 Services:
+
 - PostgreSQL: `:5432`
 - Redis: `:6379`
 - Backend API: `:3001`
@@ -259,30 +302,59 @@ Services:
 - **Security Stack:** Helmet (CSP + HSTS), CORS, rate-limiting, cookie-parser, CSRF double-submit cookies
 
 **Request Flow:**
+
 1. `dotenv.config()` loads env vars **first**, before any other imports
-2. Auth routes mounted **before** CSRF protection
-3. CSRF cookie set globally; CSRF validation applied to `/api/*`
-4. Tenant extraction middleware (`extractTenant` from `tenant-simple.ts`) on API routes
-5. API routes mounted
-6. Static files served from `public/`
-7. SPA fallback (`index.html`) for non-API routes
+2. Security middleware: `helmet` (strict CSP, HSTS 1 year), `cors` (whitelisted origins + regex for Vercel/Render), `cookie-parser`
+3. **Auth routes mounted BEFORE CSRF** (`/api/auth`)
+4. CSRF cookie set globally; CSRF validation applied to `/api/*`
+5. `extractTenant` middleware (`backend/src/middleware/tenant-simple.ts`) on API routes
+6. API routes mounted
+7. Static files served from `public/`; uploads from `/uploads`
+8. SPA fallback (`index.html`) for non-API routes
+
+**Background Jobs:**
+
+- **Renewal reminders** scheduled daily (`runRenewalReminders`) + immediate startup run after 60s
+- **Auto-migration** runs non-blocking 5s after server start
 
 **CORS Origins:**
+
 - Whitelisted: localhost, Render subdomains, Vercel preview URLs
 - Production: `https://engage.capstonesoftware.co.uk`
 - Regex patterns for Vercel previews and Render subdomains
 
+**Rate Limiting:**
+
+- Auth endpoints: 10 requests per 15 minutes
+- Public proposals (`/api/proposals/view`): 30 requests per 15 minutes
+- General API: 100 requests per 15 minutes (health checks skipped)
+
 **Health Check:** `GET /ping` returns `{ "status": "ok" }`
+
+**Production Startup (`backend/start-prod.mjs`):**
+
+1. Schema fix checks (adds missing columns if needed)
+2. Prisma migration resolve/deploy
+3. Seeds UK services via `seed-uk-services.js`
+4. Fixes billing cycle via `fix-billing-cycle.js`
+5. Imports `dist/index.js` to start server
+
+**Render Deployment Specifics:**
+
+- `tenant-simple.ts` hardcodes tenant resolution to `demo-practice` then `demo` for Render deployments
+- `RENDER_DEPLOYMENT = true` allows all `*.onrender.com` origins
+- Public seed endpoint: `/api/seed-services-public?key=capstone-uk-2026` seeds UK service catalog without auth (protected by hardcoded secret)
 
 ### Frontend
 
 - **Dev Server:** `localhost:5173`
 - **Build Output:** `frontend/dist`
 - **API Client:** `frontend/src/utils/api.ts` — axios pointing at `VITE_API_URL`
-- **Auth State:** `useAuthStore` (Zustand + persist). Token NOT persisted to localStorage — memory only
+- **Auth State:** `useAuthStore` (Zustand + persist). **Token is NOT persisted** to localStorage — memory only. `user`, `tenant`, and `isAuthenticated` are persisted.
 - **Theme State:** `useThemeStore` (Zustand + persist). Theme preference persisted
 - **PWA:** Configured via `vite-plugin-pwa` with service worker, manifest, offline support
 - **Command Palette:** `useCommandPalette` hook for global Cmd+K access
+- **CSRF Handling:** Sophisticated in-memory caching + automatic retry on `CSRF_MISSING` / `CSRF_INVALID` failures
 
 ### Shared Package
 
@@ -290,6 +362,7 @@ Services:
 - Imported via `@shared/*` path alias
 - Contains: enums, interfaces, validation functions, pricing engine, MTD ITSA calculator
 - **Important:** Must be built before backend/frontend builds
+- **Note on `UserRole` discrepancy:** The Prisma schema defines `ADMIN, PARTNER, MANAGER, SENIOR, JUNIOR`. The `shared` package defines `PARTNER, MANAGER, SENIOR, JUNIOR, CLIENT` (no `ADMIN`, adds `CLIENT`). Code referencing roles must use the correct source.
 
 ---
 
@@ -323,7 +396,7 @@ All backend routes return:
 ### Naming Conventions
 
 - React components: PascalCase files + PascalCase exports
-- Utility files: camelCase
+- Utility files / hooks: camelCase
 - Route modules: camelCase (e.g., `proposals.ts`, `auth.ts`)
 - Database models: PascalCase (Prisma convention)
 
@@ -340,61 +413,76 @@ All backend routes return:
 
 ### Main Models
 
-| Model | Purpose |
-|-------|---------|
-| `Tenant` | Multi-tenant isolation; subdomain, branding, VAT, Stripe IDs |
-| `User` | Account users with role-based access |
-| `Client` | Client records with Companies House data, MTD ITSA status |
-| `Proposal` | Core proposal entity with pricing, status tracking, signatures |
-| `ProposalService` | Line items for proposals (includes vatRate, vatAmount, grossTotal) |
-| `ServiceTemplate` | Reusable service definitions with pricing models |
-| `ProposalTemplate` | Pre-configured proposal templates |
-| `CoverLetterTemplate` | Customizable cover letter templates with merge fields |
-| `PricingRule` | Dynamic pricing adjustments |
-| `ActivityLog` | Audit trail for tenant activities |
-| `RefreshToken` | JWT refresh token storage |
-| `ProposalView` | Proposal view tracking for analytics |
-| `ProposalSignature` | Electronic signature records (UK compliant) |
-| `ProposalDocument` | Attached documents to proposals |
+| Model                 | Purpose                                                                                 |
+| --------------------- | --------------------------------------------------------------------------------------- |
+| `Tenant`              | Multi-tenant isolation; subdomain, branding, VAT settings, Stripe IDs                   |
+| `User`                | Firm users with `UserRole` (ADMIN→JUNIOR), tenant-scoped                                |
+| `RefreshToken`        | Stored JWT refresh tokens                                                               |
+| `Client`              | Client records with Companies House data, MTD ITSA status                               |
+| `Proposal`            | Core proposal with pricing, status tracking, signatures, share tokens, payment tracking |
+| `ProposalService`     | Line items with display pricing, billing frequency, per-line VAT                        |
+| `ProposalDocument`    | Attached files                                                                          |
+| `ProposalView`        | View tracking (IP, user agent, duration)                                                |
+| `ProposalSignature`   | UK-compliant e-signature records                                                        |
+| `ServiceTemplate`     | Reusable service catalog with pricing models                                            |
+| `ProposalTemplate`    | Pre-configured proposals                                                                |
+| `CoverLetterTemplate` | Merge-field cover letters with tone settings                                            |
+| `PricingRule`         | Dynamic conditional pricing adjustments                                                 |
+| `ActivityLog`         | Audit trail                                                                             |
 
 ### Key Enums
 
-- `UserRole`: ADMIN, PARTNER, MANAGER, SENIOR, JUNIOR
+- `UserRole` (Prisma): ADMIN, PARTNER, MANAGER, SENIOR, JUNIOR
+- `UserRole` (shared): PARTNER, MANAGER, SENIOR, JUNIOR, CLIENT
 - `CompanyType`: SOLE_TRADER, PARTNERSHIP, LIMITED_COMPANY, LLP, CHARITY, NON_PROFIT
 - `ProposalStatus`: DRAFT, SENT, VIEWED, ACCEPTED, DECLINED, EXPIRED
 - `MTDITSAStatus`: NOT_REQUIRED, ELIGIBLE, MANDATORY, OPTED_IN, EXEMPT, REQUIRED_2026, REQUIRED_2027, REQUIRED_2028
 - `ServiceCategory`: COMPLIANCE, ADVISORY, TAX, PAYROLL, BOOKKEEPING, AUDIT, CONSULTING, TECHNICAL, SPECIALIZED
 - `PricingModel`: FIXED, HOURLY, TIERED, CUSTOM, PER_EMPLOYEE, PER_TRANSACTION
-- `PricingFrequency`: MONTHLY, QUARTERLY, ANNUALLY, ONE_TIME
+- `BillingCycle` / `PricingFrequency`: ONE_TIME, WEEKLY, MONTHLY, QUARTERLY, ANNUALLY
+- `PriceDisplayMode`: PER_MONTH, PER_QUARTER, PER_YEAR, ONE_TIME, PER_HOUR, PER_UNIT
+- `CoverLetterTone`: PROFESSIONAL, FRIENDLY, MODERN
 
 ---
 
 ## 10. Testing Strategy
 
-### Backend Testing
-
-- **Framework:** Jest with `ts-jest`
-- **Location:** `backend/tests/`
-- **Run:** `cd backend && npm test`
-
-### Frontend Testing
-
-- **Framework:** Vitest + Playwright
-- **Location:** `frontend/src/**/*.test.tsx`, `e2e-tests/`
-- **Run:** `cd frontend && npm test` or `cd e2e-tests && npx playwright test`
-
-### E2E Testing (Playwright)
+### E2E Testing (Playwright) — Active
 
 - **Config:** `e2e-tests/playwright.config.ts`
 - **Specs:** `e2e-tests/specs/`
+  - `proposal-pricing.spec.ts` — Pricing frequency, VAT calculation, CSRF handling
+  - `unit-calculations.spec.ts` — Math tests for frequency conversions, VAT, discounts
+- **Fixtures:** `e2e-tests/fixtures/helpers.ts` — `loginAsPartner()`, `createTestClient()`, `createTestProposal()`, `calculateVAT()`, etc.
 - **Browsers:** Chromium, Firefox, WebKit
-- **Features:** Auto-retry on failure, screenshots on failure, video recording
+- **Features:** Auto-retry on failure (2 in CI, 1 local), screenshots on failure, video on failure, trace on first retry
+- **Run:** `cd e2e-tests && npx playwright test`
+
+### Backend Testing — Installed but empty
+
+- **Framework:** Jest 29 with `ts-jest`
+- **Scripts:** `cd backend && npm test` (jest), `npm run test:watch` (jest --watch)
+- **Status:** No `jest.config.js` and **no `.test.` / `.spec.` files** exist under `backend/`. Running the script finds nothing to execute.
+
+### Frontend Testing — Installed but empty
+
+- **Framework:** Vitest 1.1
+- **Script:** `cd frontend && npm test`
+- **Status:** No `vitest.config.ts` and **no `.test.` / `.spec.` files** exist under `frontend/src/`. Running the script starts Vitest in watch mode with no tests found.
+
+### Custom Debug Script
+
+- **`scripts/debug-and-test.js`** — Standalone Node.js runner that validates recent fixes:
+  - Pricing frequency calculations (`--pricing`)
+  - VAT calculations (`--vat`)
+  - Database schema validation (`--schema`)
+  - CSRF token handling (`--csrf`)
+  - Service template frequencies (`--templates`)
+  - File changes verification (`--files`)
 
 ### CI/CD Testing
 
-- GitHub Actions runs lint, typecheck, and test jobs
-- Tests run against PostgreSQL 15 and Redis 7 services
-- Coverage uploaded to Codecov
+The `.github/workflows/ci-cd.yml` test job spins up PostgreSQL 15 and Redis 7 services, runs `pnpm prisma migrate deploy`, then runs `pnpm test`. Because the root `package.json` has no `test` script and the workspace packages have no actual test files, this step is currently a no-op for unit tests. E2E tests are not run in CI.
 
 ---
 
@@ -409,10 +497,11 @@ All backend routes return:
 ### CSRF Protection
 
 - **Pattern:** Double-submit cookie
-- **Cookie:** `csrfToken` — `httpOnly: false` (JS readable), `sameSite: 'strict'`
+- **Cookie:** `csrfToken` — `httpOnly: false` (JS readable)
 - **Header:** State-changing requests must include `X-CSRF-Token`
 - **Auto-retry:** Frontend automatically retries on CSRF failure
-- **Exemptions:** `GET`, `HEAD`, `OPTIONS`, plus configured public paths
+- **Exemptions:** `GET`, `HEAD`, `OPTIONS`, plus public paths (`/auth`, `/payments/webhook`, `/oauth/callback`, `/proposals/view`, admin/automation setup paths)
+- **Production note:** CSRF cookie uses `sameSite: 'none'` in production for cross-domain deployments (e.g., Vercel frontend + Render/Railway backend)
 
 ### Rate Limiting
 
@@ -433,17 +522,51 @@ All backend routes return:
 
 ### CI/CD Pipeline (GitHub Actions)
 
-Defined in `.github/workflows/ci-cd.yml`:
+There are **5 workflows** in `.github/workflows/`:
 
-1. **Lint & Type Check** — Runs on PRs and pushes to `main`/`develop`
-2. **Test** — Jest/Vitest with PostgreSQL and Redis services
-3. **Build & Push** — Docker images to GHCR
-4. **Deploy** — Automatic deploys to Railway (backend) and Vercel (frontend)
+#### `ci-cd.yml` (Main Pipeline — 315 lines)
 
-**Environments:**
-- `develop` branch → Development environment
-- `main` branch → Staging environment
-- Manual trigger → Production (with approval)
+A unified pipeline using **pnpm** and **Docker Buildx**:
+
+1. **Lint & Type Check** — Caches pnpm store and Turbo; runs `pnpm lint`, `pnpm typecheck`, `pnpm format:check`
+2. **Test Suite** — Spins up PostgreSQL 15 and Redis 7; generates Prisma client, runs migrations; runs `pnpm test`
+3. **Build & Push Images** — Logs into GHCR; builds and pushes `backend` and `frontend` Docker images with Git SHA tags
+4. **Deploy Dev** (`develop` branch) — Backend to Railway (`engage-backend-dev`); frontend to Vercel (dev)
+5. **Deploy Staging** (`main` branch) — Backend to Railway (`engage-backend-staging`); runs migrations; frontend to Vercel (staging); health checks
+6. **Deploy Production** (manual `workflow_dispatch` only) — Backs up DB with `pg_dump`; deploys backend to Railway (`engage-backend-prod`); runs migrations; deploys frontend to Vercel with `--prod`; health checks; notifies Slack
+
+#### `deploy-render.yml`
+
+Triggered on push to `master`/`main`. Uses Render REST API to trigger backend deploy then frontend deploy (with cache clear).
+
+#### `deploy-to-render.yml` & `deploy.yml`
+
+Earlier/simpler Render deploy workflows.
+
+#### `security.yml` (Comprehensive Security Scanning)
+
+Runs on schedule (daily 2 AM), PRs, and pushes to `main`/`develop`:
+
+- Dependency scan (`pnpm audit`, Snyk)
+- CodeQL (JavaScript/TypeScript)
+- Container scan (Trivy on backend/frontend images)
+- Secret scan (GitLeaks)
+- Infrastructure scan (Checkov)
+- SSL check (SSL Labs grade A or A+)
+
+### Render (Primary — Free Tier)
+
+- **`render.yaml`:** Blueprint for Infrastructure-as-Code
+  - **Backend:** Node web service (`engage-backend`), free plan, auto-sleeps after 15 min. Build: `npm install && cd backend && npx prisma generate`. Start: `cd backend && npx prisma migrate deploy && node dist/scripts/migrateServicePricing.js 2>/dev/null || true && npm start`. Health check: `/ping`. Port: `10000`.
+  - **Frontend:** Static site (`engage-frontend`), rootDir `frontend/`. Build: cache-busting `rm -rf dist ... && npm install --include=dev && npm run build`. Publish: `./dist`. SPA fallback to `index.html`.
+  - **Database:** Render PostgreSQL free tier (`engage-db`)
+- **`scripts/deploy.sh`:** Manual bash script to trigger Render deploys via API
+- **`nginx.conf`:** Config for serving the frontend SPA with gzip, security headers, long-term asset caching, and API proxying
+
+### Railway + Vercel (Secondary / Staging-Production)
+
+- **`railway.toml`:** Points to root `Dockerfile`, healthcheck `/ping`, custom domain `engage.capstonesoftware.co.uk`
+- **`DEPLOYMENT_GUIDE.md`:** Documents the preferred production path with Neon PostgreSQL (Frankfurt), Railway backend, Vercel frontend
 
 ### Docker
 
@@ -451,33 +574,26 @@ Defined in `.github/workflows/ci-cd.yml`:
 docker-compose up --build
 ```
 
-### Railway
+Three Dockerfiles exist:
 
-- `railway.toml` points to root `Dockerfile`
-- Health check: `/ping`
-- Automatic deploys from GitHub Actions or git pushes
-
-### Render
-
-- `render.yaml` defines Blueprint with free tier
-- Backend: Node.js web service
-- Frontend: Static site
-- Database: PostgreSQL free tier
+1. **`Dockerfile` (root):** Multi-stage backend build (`node:20-alpine`)
+2. **`Dockerfile.backend.optimized`:** Used by `docker-compose.yml` and CI
+3. **`Dockerfile.frontend.optimized`:** Builds Vite frontend and serves via nginx
 
 ### Required Environment Variables
 
-| Variable | Description |
-|----------|-------------|
-| `DATABASE_URL` | PostgreSQL connection string |
-| `JWT_SECRET` | Min 32 characters |
-| `JWT_EXPIRES_IN` | e.g. `24h` |
-| `JWT_REFRESH_EXPIRES_IN` | e.g. `7d` |
-| `FRONTEND_URL` | CORS origin |
-| `REDIS_URL` | Optional but recommended |
-| `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS` | Email delivery |
-| `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET` | Payments |
-| `STRIPE_PUBLISHABLE_KEY` | Frontend Stripe integration |
-| `COMPANIES_HOUSE_API_KEY` | UK company lookup |
+| Variable                                           | Description                  |
+| -------------------------------------------------- | ---------------------------- |
+| `DATABASE_URL`                                     | PostgreSQL connection string |
+| `JWT_SECRET`                                       | Min 32 characters            |
+| `JWT_EXPIRES_IN`                                   | e.g. `24h`                   |
+| `JWT_REFRESH_EXPIRES_IN`                           | e.g. `7d`                    |
+| `FRONTEND_URL`                                     | CORS origin                  |
+| `REDIS_URL`                                        | Optional but recommended     |
+| `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS` | Email delivery               |
+| `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`       | Payments                     |
+| `STRIPE_PUBLISHABLE_KEY`                           | Frontend Stripe integration  |
+| `COMPANIES_HOUSE_API_KEY`                          | UK company lookup            |
 
 ---
 
@@ -495,54 +611,61 @@ docker-compose up --build
 
 6. **TypeScript strict mode:** Both backend and frontend have `strict: false`. Do not enable without extensive testing.
 
-7. **Package manager consistency:** Project uses npm locally but pnpm in CI. Prefer `npm install` locally to avoid lockfile conflicts.
+7. **Package manager consistency:** Project uses `npm` locally but `pnpm` in CI. Prefer `npm install` locally to avoid lockfile conflicts.
 
 8. **Theme class:** Dark mode requires `dark` class on `html` element. Use `useThemeStore` to toggle.
+
+9. **UserRole mismatch:** Prisma schema includes `ADMIN`; the `shared` package does not. Be careful which source you import `UserRole` from.
+
+10. **Render tenant hardcoding:** `tenant-simple.ts` resolves all Render traffic to the `demo-practice` / `demo` tenant. For true multi-tenancy on Render, this must be replaced.
 
 ---
 
 ## 14. Quick Reference — File-to-Concern Map
 
-| Concern | File(s) |
-|---------|---------|
-| Auth (JWT + CSRF) | `backend/src/middleware/auth.ts` |
-| API client | `frontend/src/utils/api.ts` |
-| Auth state | `frontend/src/stores/authStore.ts` |
-| Theme state | `frontend/src/stores/themeStore.ts` |
-| Command palette | `frontend/src/components/command-palette/CommandPalette.tsx` |
-| Keyboard shortcuts | `frontend/src/components/keyboard/KeyboardShortcuts.tsx` |
-| Skeleton loading | `frontend/src/components/skeleton/SkeletonCard.tsx` |
-| Theme toggle | `frontend/src/components/theme/ThemeToggle.tsx` |
-| Database / Prisma | `backend/src/config/database.ts`, `backend/prisma/schema.prisma` |
-| Pricing engine | `backend/src/services/pricingEngine.ts`, `shared/src/index.ts` |
-| PDF generation | `backend/src/services/pdfGenerator.ts` |
-| MTD ITSA logic | `backend/src/services/mtditsa.ts`, `shared/src/index.ts` |
-| Email service | `backend/src/services/emailService.ts` |
-| Error handling | `backend/src/middleware/errorHandler.ts` |
-| Route definitions (React) | `frontend/src/App.tsx` |
-| Tailwind theme | `frontend/tailwind.config.js` |
-| Vite config | `frontend/vite.config.ts` |
-| Shared types | `shared/src/index.ts` |
-| Proposal sharing | `backend/src/services/proposalSharingService.ts` |
-| Companies House | `backend/src/services/companiesHouse.ts`, `backend/src/routes/companiesHouse.ts` |
-| Tenant middleware | `backend/src/middleware/tenant-simple.ts` |
-| Redis config | `backend/src/config/redis.ts` |
-| Stripe config | `backend/src/config/stripe.ts` |
-| Environment validation | `backend/src/config/env.ts` |
-| Logger | `backend/src/utils/logger.ts` |
+| Concern                   | File(s)                                                                          |
+| ------------------------- | -------------------------------------------------------------------------------- |
+| Auth (JWT + CSRF)         | `backend/src/middleware/auth.ts`                                                 |
+| API client                | `frontend/src/utils/api.ts`                                                      |
+| Auth state                | `frontend/src/stores/authStore.ts`                                               |
+| Theme state               | `frontend/src/stores/themeStore.ts`                                              |
+| Command palette           | `frontend/src/components/command-palette/CommandPalette.tsx`                     |
+| Keyboard shortcuts        | `frontend/src/components/keyboard/KeyboardShortcuts.tsx`                         |
+| Skeleton loading          | `frontend/src/components/skeleton/SkeletonCard.tsx`                              |
+| Theme toggle              | `frontend/src/components/theme/ThemeToggle.tsx`                                  |
+| Database / Prisma         | `backend/src/config/database.ts`, `backend/prisma/schema.prisma`                 |
+| Pricing engine            | `backend/src/services/pricingEngine.ts`, `shared/src/index.ts`                   |
+| PDF generation            | `backend/src/services/pdfGenerator.ts`                                           |
+| MTD ITSA logic            | `backend/src/services/mtditsa.ts`, `shared/src/index.ts`                         |
+| Email service             | `backend/src/services/emailService.ts`                                           |
+| Error handling            | `backend/src/middleware/errorHandler.ts`                                         |
+| Route definitions (React) | `frontend/src/App.tsx`                                                           |
+| Tailwind theme            | `frontend/tailwind.config.js`                                                    |
+| Vite config               | `frontend/vite.config.ts`                                                        |
+| Shared types              | `shared/src/index.ts`                                                            |
+| Proposal sharing          | `backend/src/services/proposalSharingService.ts`                                 |
+| Companies House           | `backend/src/services/companiesHouse.ts`, `backend/src/routes/companiesHouse.ts` |
+| Tenant middleware         | `backend/src/middleware/tenant-simple.ts`                                        |
+| Redis config              | `backend/src/config/redis.ts`                                                    |
+| Stripe config             | `backend/src/config/stripe.ts`                                                   |
+| Environment validation    | `backend/src/config/env.ts`                                                      |
+| Logger                    | `backend/src/utils/logger.ts`                                                    |
+| Production startup        | `backend/start-prod.mjs`                                                         |
+| Debug/test runner         | `scripts/debug-and-test.js`                                                      |
 
 ---
 
 ## 15. External Integrations
 
-| Service | Purpose | Key Files |
-|---------|---------|-----------|
-| **Stripe** | Subscription billing, payments | `backend/src/routes/payments.ts`, `backend/src/config/stripe.ts` |
-| **Companies House** | UK company lookup | `backend/src/services/companiesHouse.ts` |
-| **SMTP (Nodemailer)** | Email delivery | `backend/src/services/emailService.ts` |
-| **Redis** | Caching, session storage | `backend/src/config/redis.ts` |
-| **PDFKit** | PDF generation | `backend/src/services/pdfGenerator.ts` |
-| **Google APIs** | OAuth, Gmail integration | `backend/src/services/emailService.ts` |
+| Service               | Purpose                        | Key Files                                                        |
+| --------------------- | ------------------------------ | ---------------------------------------------------------------- |
+| **Stripe**            | Subscription billing, payments | `backend/src/routes/payments.ts`, `backend/src/config/stripe.ts` |
+| **Adfin**             | Alternative payment provider   | `backend/src/routes/adfin.ts`, `backend/src/services/adfin.ts`   |
+| **Companies House**   | UK company lookup              | `backend/src/services/companiesHouse.ts`                         |
+| **SMTP (Nodemailer)** | Email delivery                 | `backend/src/services/emailService.ts`                           |
+| **Redis**             | Caching, session storage       | `backend/src/config/redis.ts`                                    |
+| **PDFKit**            | PDF generation                 | `backend/src/services/pdfGenerator.ts`                           |
+| **Google APIs**       | OAuth, Gmail integration       | `backend/src/services/emailService.ts`                           |
 
 ---
 
@@ -585,6 +708,7 @@ cp .env.example .env
 ```
 
 Key environment variables:
+
 - `DATABASE_URL` — PostgreSQL connection string
 - `JWT_SECRET` — Minimum 32 characters
 - `VITE_API_URL` — Backend URL for frontend
@@ -600,4 +724,4 @@ Key environment variables:
 
 ---
 
-*Built with ❤️ by Capstone*
+_Built with ❤️ by Capstone_

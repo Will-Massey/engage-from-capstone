@@ -50,7 +50,7 @@ const Subscription = () => {
 
   const loadStripeConfig = async () => {
     try {
-      const response = await apiClient.getStripeConfig() as any;
+      const response = (await apiClient.getStripeConfig()) as any;
       if (response.success) {
         setTiers(response.data.tiers);
         // Only load Stripe if properly configured
@@ -68,7 +68,7 @@ const Subscription = () => {
   const loadSubscription = async () => {
     try {
       setIsLoading(true);
-      const response = await apiClient.getSubscription() as any;
+      const response = (await apiClient.getSubscription()) as any;
       if (response.success) {
         setCurrentSubscription(response.data);
       }
@@ -85,9 +85,7 @@ const Subscription = () => {
       <h1 className="text-3xl font-bold text-gray-900 mb-8">Subscription</h1>
       {stripePromise && ElementsComponent ? (
         <ElementsComponent stripe={stripePromise}>
-          <Suspense fallback={<div>Loading...</div>}>
-            {/* Payment form content */}
-          </Suspense>
+          <Suspense fallback={<div>Loading...</div>}>{/* Payment form content */}</Suspense>
         </ElementsComponent>
       ) : (
         <div>Stripe not configured</div>

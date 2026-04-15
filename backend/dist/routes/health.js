@@ -88,10 +88,7 @@ router.post('/migrate-data', async (req, res) => {
         // Get services that need updating
         const services = await prisma.serviceTemplate.findMany({
             where: {
-                OR: [
-                    { priceAmount: 0 },
-                    { priceAmount: null },
-                ],
+                OR: [{ priceAmount: 0 }, { priceAmount: null }],
                 basePrice: { gt: 0 },
             },
         });

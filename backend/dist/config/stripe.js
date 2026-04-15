@@ -39,7 +39,13 @@ exports.SUBSCRIPTION_TIERS = {
         maxUsers: 10,
         maxClients: 500,
         maxProposals: 'Unlimited',
-        features: ['Everything in Starter', 'Custom branding', 'Advanced analytics', 'Priority support', 'API access'],
+        features: [
+            'Everything in Starter',
+            'Custom branding',
+            'Advanced analytics',
+            'Priority support',
+            'API access',
+        ],
     },
     ENTERPRISE: {
         name: 'Enterprise',
@@ -49,7 +55,13 @@ exports.SUBSCRIPTION_TIERS = {
         maxUsers: 'Unlimited',
         maxClients: 'Unlimited',
         maxProposals: 'Unlimited',
-        features: ['Everything in Professional', 'White-label options', 'Dedicated support', 'Custom integrations', 'SLA guarantee'],
+        features: [
+            'Everything in Professional',
+            'White-label options',
+            'Dedicated support',
+            'Custom integrations',
+            'SLA guarantee',
+        ],
     },
 };
 exports.default = exports.stripe;

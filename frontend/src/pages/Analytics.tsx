@@ -90,11 +90,12 @@ const StatCard = ({
                 changeType === 'positive'
                   ? 'text-green-600'
                   : changeType === 'negative'
-                  ? 'text-red-600'
-                  : 'text-slate-600'
+                    ? 'text-red-600'
+                    : 'text-slate-600'
               }`}
             >
-              {change > 0 ? '+' : ''}{change}%
+              {change > 0 ? '+' : ''}
+              {change}%
             </span>
             <span className="text-sm text-slate-500 ml-1">vs last month</span>
           </div>
@@ -112,9 +113,7 @@ const SimpleBarChart = ({ data }: { data: AnalyticsData['monthlyTrend'] }) => {
 
   return (
     <div className="glass-tile p-6">
-      <h3 className="text-lg font-semibold text-slate-900 mb-4">
-        Proposal Activity (6 Months)
-      </h3>
+      <h3 className="text-lg font-semibold text-slate-900 mb-4">Proposal Activity (6 Months)</h3>
       <div className="h-64 flex items-end justify-between gap-2">
         {data.map((item, index) => (
           <div key={index} className="flex-1 flex flex-col items-center">
@@ -175,9 +174,7 @@ const TopServicesTable = ({ services }: { services: AnalyticsData['topServices']
             <span className="font-medium text-slate-900">{service.name}</span>
           </div>
           <div className="text-right">
-            <p className="font-semibold text-slate-900">
-              £{service.revenue.toLocaleString()}
-            </p>
+            <p className="font-semibold text-slate-900">£{service.revenue.toLocaleString()}</p>
             <p className="text-xs text-slate-500">{service.count} proposals</p>
           </div>
         </motion.div>
@@ -194,19 +191,13 @@ const ConversionFunnel = ({ data }: { data: AnalyticsData['conversion'] }) => {
 
   return (
     <div className="glass-tile p-6">
-      <h3 className="text-lg font-semibold text-slate-900 mb-4">
-        Conversion Funnel
-      </h3>
+      <h3 className="text-lg font-semibold text-slate-900 mb-4">Conversion Funnel</h3>
       <div className="space-y-3">
         {stages.map((stage, index) => (
           <div key={stage.name}>
             <div className="flex items-center justify-between mb-1">
-              <span className="text-sm font-medium text-slate-700">
-                {stage.name}
-              </span>
-              <span className="text-sm font-semibold text-slate-900">
-                {stage.count}
-              </span>
+              <span className="text-sm font-medium text-slate-700">{stage.name}</span>
+              <span className="text-sm font-semibold text-slate-900">{stage.count}</span>
             </div>
             <div className="h-8 bg-white/30 rounded-lg overflow-hidden">
               <motion.div
@@ -259,9 +250,7 @@ const Analytics = () => {
       <div className="space-y-6 animate-fade-in">
         <div>
           <h1 className="text-2xl font-bold text-slate-900">Analytics</h1>
-          <p className="mt-1 text-sm text-slate-600">
-            Track your proposal performance and revenue
-          </p>
+          <p className="mt-1 text-sm text-slate-600">Track your proposal performance and revenue</p>
         </div>
         <SkeletonStats count={4} />
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -277,12 +266,8 @@ const Analytics = () => {
       <div className="flex flex-col items-center justify-center min-h-[60vh]">
         <div className="glass-tile p-12 text-center">
           <ChartPieIcon className="mx-auto h-16 w-16 text-slate-300 mb-4" />
-          <h2 className="text-xl font-semibold text-slate-900 mb-2">
-            No data available
-          </h2>
-          <p className="text-slate-600 mb-4">
-            Start creating proposals to see analytics
-          </p>
+          <h2 className="text-xl font-semibold text-slate-900 mb-2">No data available</h2>
+          <p className="text-slate-600 mb-4">Start creating proposals to see analytics</p>
           <button onClick={loadAnalytics} className="btn-secondary">
             Retry
           </button>
@@ -304,9 +289,7 @@ const Analytics = () => {
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold text-slate-900">Analytics</h1>
-          <p className="mt-1 text-sm text-slate-600">
-            Track your proposal performance and revenue
-          </p>
+          <p className="mt-1 text-sm text-slate-600">Track your proposal performance and revenue</p>
         </div>
         <button onClick={loadAnalytics} className="btn-secondary">
           Refresh Data
@@ -333,11 +316,7 @@ const Analytics = () => {
           suffix="%"
           icon={CheckCircleIcon}
         />
-        <StatCard
-          title="Active Clients"
-          value={data.clients.active}
-          icon={UsersIcon}
-        />
+        <StatCard title="Active Clients" value={data.clients.active} icon={UsersIcon} />
       </div>
 
       {/* Charts Row */}
@@ -349,41 +328,37 @@ const Analytics = () => {
       {/* Bottom Row */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <TopServicesTable services={data.topServices} />
-        
+
         {/* Status Breakdown */}
         <div className="glass-tile p-6">
-          <h3 className="text-lg font-semibold text-slate-900 mb-4">
-            Proposal Status Breakdown
-          </h3>
+          <h3 className="text-lg font-semibold text-slate-900 mb-4">Proposal Status Breakdown</h3>
           <div className="space-y-3">
-            {Object.entries(data.proposals.statusBreakdown).map(
-              ([status, count]) => (
-                <div
-                  key={status}
-                  className="flex items-center justify-between p-3 bg-white/40 rounded-lg"
-                >
-                  <div className="flex items-center">
-                    <span
-                      className={`w-3 h-3 rounded-full mr-3 ${
-                        status === 'ACCEPTED'
-                          ? 'bg-green-500'
-                          : status === 'SENT'
+            {Object.entries(data.proposals.statusBreakdown).map(([status, count]) => (
+              <div
+                key={status}
+                className="flex items-center justify-between p-3 bg-white/40 rounded-lg"
+              >
+                <div className="flex items-center">
+                  <span
+                    className={`w-3 h-3 rounded-full mr-3 ${
+                      status === 'ACCEPTED'
+                        ? 'bg-green-500'
+                        : status === 'SENT'
                           ? 'bg-blue-500'
                           : status === 'DRAFT'
-                          ? 'bg-slate-400'
-                          : status === 'DECLINED'
-                          ? 'bg-red-500'
-                          : 'bg-amber-500'
-                      }`}
-                    />
-                    <span className="font-medium text-slate-900">
-                      {status.charAt(0) + status.slice(1).toLowerCase()}
-                    </span>
-                  </div>
-                  <span className="font-semibold text-slate-900">{count}</span>
+                            ? 'bg-slate-400'
+                            : status === 'DECLINED'
+                              ? 'bg-red-500'
+                              : 'bg-amber-500'
+                    }`}
+                  />
+                  <span className="font-medium text-slate-900">
+                    {status.charAt(0) + status.slice(1).toLowerCase()}
+                  </span>
                 </div>
-              )
-            )}
+                <span className="font-semibold text-slate-900">{count}</span>
+              </div>
+            ))}
           </div>
         </div>
       </div>

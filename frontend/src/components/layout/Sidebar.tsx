@@ -30,7 +30,7 @@ const navigation = [
 const Sidebar = ({ isOpen, onClose }: SidebarProps) => {
   const { user, tenant, clearAuth } = useAuthStore();
   const location = useLocation();
-  
+
   const logoUrl = tenant?.logo || '/capstone-logo.jpg';
 
   const handleLogout = () => {
@@ -46,11 +46,12 @@ const Sidebar = ({ isOpen, onClose }: SidebarProps) => {
           isOpen ? 'translate-x-0' : '-translate-x-full'
         }`}
         style={{
-          background: 'linear-gradient(180deg, rgba(255, 255, 255, 0.98) 0%, rgba(255, 255, 255, 0.95) 100%)',
+          background:
+            'linear-gradient(180deg, rgba(255, 255, 255, 0.98) 0%, rgba(255, 255, 255, 0.95) 100%)',
           backdropFilter: 'blur(20px)',
           WebkitBackdropFilter: 'blur(20px)',
           borderRight: '1px solid rgba(226, 232, 240, 0.8)',
-          boxShadow: '4px 0 24px rgba(0, 0, 0, 0.08)'
+          boxShadow: '4px 0 24px rgba(0, 0, 0, 0.08)',
         }}
       >
         <div className="dark:hidden">
@@ -75,16 +76,14 @@ const Sidebar = ({ isOpen, onClose }: SidebarProps) => {
                 data-tour={item.name.toLowerCase()}
                 className={({ isActive }) =>
                   `group flex items-center px-4 py-3 text-sm font-medium rounded-xl transition-all duration-200 ${
-                    isActive
-                      ? 'text-primary-700'
-                      : 'text-slate-600 hover:text-slate-900'
+                    isActive ? 'text-primary-700' : 'text-slate-600 hover:text-slate-900'
                   }`
                 }
                 style={({ isActive }) => ({
-                  background: isActive 
+                  background: isActive
                     ? 'linear-gradient(135deg, rgba(99, 102, 241, 0.1) 0%, rgba(139, 92, 246, 0.1) 100%)'
                     : 'transparent',
-                  border: isActive ? '1px solid rgba(99, 102, 241, 0.2)' : '1px solid transparent'
+                  border: isActive ? '1px solid rgba(99, 102, 241, 0.2)' : '1px solid transparent',
                 })}
               >
                 <item.icon
@@ -103,8 +102,10 @@ const Sidebar = ({ isOpen, onClose }: SidebarProps) => {
           <div className="absolute bottom-0 left-0 right-0 p-4 border-t border-slate-200/80">
             <div className="glass-tile p-4">
               <div className="flex items-center">
-                <div className="w-10 h-10 rounded-full flex items-center justify-center text-white font-medium"
-                  style={{ background: 'linear-gradient(135deg, #6366F1 0%, #8B5CF6 100%)' }}>
+                <div
+                  className="w-10 h-10 rounded-full flex items-center justify-center text-white font-medium"
+                  style={{ background: 'linear-gradient(135deg, #6366F1 0%, #8B5CF6 100%)' }}
+                >
                   {user?.firstName?.charAt(0)}
                   {user?.lastName?.charAt(0)}
                 </div>
@@ -126,11 +127,14 @@ const Sidebar = ({ isOpen, onClose }: SidebarProps) => {
           </div>
         </div>
         {/* Dark mode version */}
-        <div className="hidden dark:block h-full"
+        <div
+          className="hidden dark:block h-full"
           style={{
-            background: 'linear-gradient(180deg, rgba(15, 23, 42, 0.98) 0%, rgba(15, 23, 42, 0.95) 100%)',
-            borderRight: '1px solid rgba(255, 255, 255, 0.1)'
-          }}>
+            background:
+              'linear-gradient(180deg, rgba(15, 23, 42, 0.98) 0%, rgba(15, 23, 42, 0.95) 100%)',
+            borderRight: '1px solid rgba(255, 255, 255, 0.1)',
+          }}
+        >
           <div className="flex items-center justify-between h-16 px-4 border-b border-slate-700/80">
             <div className="flex items-center">
               <img src={logoUrl} alt={tenant?.name || 'Engage'} className="h-8 w-auto" />
@@ -151,16 +155,14 @@ const Sidebar = ({ isOpen, onClose }: SidebarProps) => {
                 onClick={onClose}
                 className={({ isActive }) =>
                   `group flex items-center px-4 py-3 text-sm font-medium rounded-xl transition-all duration-200 ${
-                    isActive
-                      ? 'text-primary-300'
-                      : 'text-slate-400 hover:text-slate-100'
+                    isActive ? 'text-primary-300' : 'text-slate-400 hover:text-slate-100'
                   }`
                 }
                 style={({ isActive }) => ({
-                  background: isActive 
+                  background: isActive
                     ? 'linear-gradient(135deg, rgba(99, 102, 241, 0.2) 0%, rgba(139, 92, 246, 0.2) 100%)'
                     : 'transparent',
-                  border: isActive ? '1px solid rgba(99, 102, 241, 0.3)' : '1px solid transparent'
+                  border: isActive ? '1px solid rgba(99, 102, 241, 0.3)' : '1px solid transparent',
                 })}
               >
                 <item.icon
@@ -176,15 +178,20 @@ const Sidebar = ({ isOpen, onClose }: SidebarProps) => {
           </nav>
 
           <div className="absolute bottom-0 left-0 right-0 p-4 border-t border-slate-700/80">
-            <div className="p-4 rounded-xl"
+            <div
+              className="p-4 rounded-xl"
               style={{
-                background: 'linear-gradient(135deg, rgba(30, 41, 59, 0.8) 0%, rgba(15, 23, 42, 0.9) 100%)',
+                background:
+                  'linear-gradient(135deg, rgba(30, 41, 59, 0.8) 0%, rgba(15, 23, 42, 0.9) 100%)',
                 border: '1px solid rgba(255, 255, 255, 0.08)',
-                boxShadow: '0 4px 24px rgba(0, 0, 0, 0.3)'
-              }}>
+                boxShadow: '0 4px 24px rgba(0, 0, 0, 0.3)',
+              }}
+            >
               <div className="flex items-center">
-                <div className="w-10 h-10 rounded-full flex items-center justify-center text-white font-medium"
-                  style={{ background: 'linear-gradient(135deg, #6366F1 0%, #8B5CF6 100%)' }}>
+                <div
+                  className="w-10 h-10 rounded-full flex items-center justify-center text-white font-medium"
+                  style={{ background: 'linear-gradient(135deg, #6366F1 0%, #8B5CF6 100%)' }}
+                >
                   {user?.firstName?.charAt(0)}
                   {user?.lastName?.charAt(0)}
                 </div>
@@ -208,13 +215,16 @@ const Sidebar = ({ isOpen, onClose }: SidebarProps) => {
       </div>
 
       {/* Desktop sidebar */}
-      <div className="hidden lg:fixed lg:inset-y-0 lg:left-0 lg:z-40 lg:w-72 lg:flex lg:flex-col"
+      <div
+        className="hidden lg:fixed lg:inset-y-0 lg:left-0 lg:z-40 lg:w-72 lg:flex lg:flex-col"
         style={{
-          background: 'linear-gradient(180deg, rgba(255, 255, 255, 0.98) 0%, rgba(255, 255, 255, 0.95) 100%)',
+          background:
+            'linear-gradient(180deg, rgba(255, 255, 255, 0.98) 0%, rgba(255, 255, 255, 0.95) 100%)',
           backdropFilter: 'blur(20px)',
           WebkitBackdropFilter: 'blur(20px)',
-          borderRight: '1px solid rgba(226, 232, 240, 0.8)'
-        }}>
+          borderRight: '1px solid rgba(226, 232, 240, 0.8)',
+        }}
+      >
         <div className="dark:hidden flex flex-col h-full">
           <div className="flex items-center h-16 px-6 border-b border-slate-200/80">
             <img src={logoUrl} alt={tenant?.name || 'Engage by Capstone'} className="h-10 w-auto" />
@@ -227,16 +237,14 @@ const Sidebar = ({ isOpen, onClose }: SidebarProps) => {
                 to={item.href}
                 className={({ isActive }) =>
                   `group flex items-center px-4 py-3 text-sm font-medium rounded-xl transition-all duration-200 ${
-                    isActive
-                      ? 'text-primary-700'
-                      : 'text-slate-600 hover:text-slate-900'
+                    isActive ? 'text-primary-700' : 'text-slate-600 hover:text-slate-900'
                   }`
                 }
                 style={({ isActive }) => ({
-                  background: isActive 
+                  background: isActive
                     ? 'linear-gradient(135deg, rgba(99, 102, 241, 0.1) 0%, rgba(139, 92, 246, 0.1) 100%)'
                     : 'transparent',
-                  border: isActive ? '1px solid rgba(99, 102, 241, 0.2)' : '1px solid transparent'
+                  border: isActive ? '1px solid rgba(99, 102, 241, 0.2)' : '1px solid transparent',
                 })}
               >
                 <item.icon
@@ -255,8 +263,10 @@ const Sidebar = ({ isOpen, onClose }: SidebarProps) => {
           <div className="p-4 border-t border-slate-200/80">
             <div className="glass-tile p-4">
               <div className="flex items-center">
-                <div className="w-10 h-10 rounded-full flex items-center justify-center text-white font-medium"
-                  style={{ background: 'linear-gradient(135deg, #6366F1 0%, #8B5CF6 100%)' }}>
+                <div
+                  className="w-10 h-10 rounded-full flex items-center justify-center text-white font-medium"
+                  style={{ background: 'linear-gradient(135deg, #6366F1 0%, #8B5CF6 100%)' }}
+                >
                   {user?.firstName?.charAt(0)}
                   {user?.lastName?.charAt(0)}
                 </div>
@@ -278,11 +288,14 @@ const Sidebar = ({ isOpen, onClose }: SidebarProps) => {
           </div>
         </div>
         {/* Dark mode desktop sidebar */}
-        <div className="hidden dark:flex dark:flex-col h-full"
+        <div
+          className="hidden dark:flex dark:flex-col h-full"
           style={{
-            background: 'linear-gradient(180deg, rgba(15, 23, 42, 0.98) 0%, rgba(15, 23, 42, 0.95) 100%)',
-            borderRight: '1px solid rgba(255, 255, 255, 0.1)'
-          }}>
+            background:
+              'linear-gradient(180deg, rgba(15, 23, 42, 0.98) 0%, rgba(15, 23, 42, 0.95) 100%)',
+            borderRight: '1px solid rgba(255, 255, 255, 0.1)',
+          }}
+        >
           <div className="flex items-center h-16 px-6 border-b border-slate-700/80">
             <img src={logoUrl} alt={tenant?.name || 'Engage by Capstone'} className="h-10 w-auto" />
           </div>
@@ -294,16 +307,14 @@ const Sidebar = ({ isOpen, onClose }: SidebarProps) => {
                 to={item.href}
                 className={({ isActive }) =>
                   `group flex items-center px-4 py-3 text-sm font-medium rounded-xl transition-all duration-200 ${
-                    isActive
-                      ? 'text-primary-300'
-                      : 'text-slate-400 hover:text-slate-100'
+                    isActive ? 'text-primary-300' : 'text-slate-400 hover:text-slate-100'
                   }`
                 }
                 style={({ isActive }) => ({
-                  background: isActive 
+                  background: isActive
                     ? 'linear-gradient(135deg, rgba(99, 102, 241, 0.2) 0%, rgba(139, 92, 246, 0.2) 100%)'
                     : 'transparent',
-                  border: isActive ? '1px solid rgba(99, 102, 241, 0.3)' : '1px solid transparent'
+                  border: isActive ? '1px solid rgba(99, 102, 241, 0.3)' : '1px solid transparent',
                 })}
               >
                 <item.icon
@@ -319,15 +330,20 @@ const Sidebar = ({ isOpen, onClose }: SidebarProps) => {
           </nav>
 
           <div className="p-4 border-t border-slate-700/80">
-            <div className="p-4 rounded-xl"
+            <div
+              className="p-4 rounded-xl"
               style={{
-                background: 'linear-gradient(135deg, rgba(30, 41, 59, 0.8) 0%, rgba(15, 23, 42, 0.9) 100%)',
+                background:
+                  'linear-gradient(135deg, rgba(30, 41, 59, 0.8) 0%, rgba(15, 23, 42, 0.9) 100%)',
                 border: '1px solid rgba(255, 255, 255, 0.08)',
-                boxShadow: '0 4px 24px rgba(0, 0, 0, 0.3)'
-              }}>
+                boxShadow: '0 4px 24px rgba(0, 0, 0, 0.3)',
+              }}
+            >
               <div className="flex items-center">
-                <div className="w-10 h-10 rounded-full flex items-center justify-center text-white font-medium"
-                  style={{ background: 'linear-gradient(135deg, #6366F1 0%, #8B5CF6 100%)' }}>
+                <div
+                  className="w-10 h-10 rounded-full flex items-center justify-center text-white font-medium"
+                  style={{ background: 'linear-gradient(135deg, #6366F1 0%, #8B5CF6 100%)' }}
+                >
                   {user?.firstName?.charAt(0)}
                   {user?.lastName?.charAt(0)}
                 </div>

@@ -3,6 +3,7 @@
 ## Domain Setup
 
 ### 1. DNS Configuration
+
 Add to your DNS provider (for capstonesoftware.co.uk):
 
 ```
@@ -15,6 +16,7 @@ TTL:     3600
 ### 2. Railway Configuration
 
 #### railway.json
+
 ```json
 {
   "$schema": "https://railway.app/railway.schema.json",
@@ -33,6 +35,7 @@ TTL:     3600
 ```
 
 #### Environment Variables
+
 ```env
 # Required
 NODE_ENV=production
@@ -84,18 +87,23 @@ App:       https://engage.capstonesoftware.co.uk/
 ```
 
 #### Option A: Static Hosting on Main Site
+
 Upload the `/landing` folder contents to:
+
 ```
 /public_html/engage/
 ```
 
 #### Option B: Subdomain Redirect
+
 Set up redirect from `/engage` to landing page on Railway
 
 ### 5. Integration Points
 
 #### Main Website Navigation
+
 Update your main website header to include:
+
 ```html
 <nav>
   <a href="/">Home</a>
@@ -106,6 +114,7 @@ Update your main website header to include:
 ```
 
 #### Footer Links
+
 ```html
 <div class="footer-products">
   <h4>Products</h4>
@@ -115,14 +124,17 @@ Update your main website header to include:
 ```
 
 ### 6. SSL Certificate
+
 Railway automatically provisions SSL certificates for custom domains.
 
 Verify SSL:
+
 ```bash
 curl -I https://engage.capstonesoftware.co.uk
 ```
 
 Should return:
+
 ```
 HTTP/2 200
 server: railway
@@ -143,6 +155,7 @@ server: railway
 ### 8. Monitoring
 
 Set up monitoring in Railway:
+
 1. Enable Railway Observability
 2. Set up alerts for:
    - High CPU usage (>80%)
@@ -153,6 +166,7 @@ Set up monitoring in Railway:
 ### 9. Backup Strategy
 
 Railway PostgreSQL has automatic backups:
+
 - Daily backups retained for 7 days
 - Weekly backups retained for 4 weeks
 - Monthly backups retained for 12 months
@@ -160,6 +174,7 @@ Railway PostgreSQL has automatic backups:
 ### 10. Support & Escalation
 
 For issues:
+
 1. Check Railway status: https://railway.app/status
 2. Check application logs in Railway Dashboard
 3. Contact: engage@capstonesoftware.co.uk

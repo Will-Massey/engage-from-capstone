@@ -5,18 +5,18 @@ const database_js_1 = require("../config/database.js");
 const errorHandler_js_1 = require("../middleware/errorHandler.js");
 // Geographic multipliers based on ONS regional cost data
 const GEOGRAPHIC_MULTIPLIERS = {
-    'LONDON': 1.25,
-    'SOUTH_EAST': 1.15,
-    'SOUTH_WEST': 1.05,
-    'EAST': 1.1,
-    'WEST_MIDLANDS': 0.95,
-    'EAST_MIDLANDS': 0.9,
-    'YORKSHIRE': 0.9,
-    'NORTH_WEST': 0.95,
-    'NORTH_EAST': 0.85,
-    'WALES': 0.9,
-    'SCOTLAND': 0.95,
-    'NORTHERN_IRELAND': 0.85,
+    LONDON: 1.25,
+    SOUTH_EAST: 1.15,
+    SOUTH_WEST: 1.05,
+    EAST: 1.1,
+    WEST_MIDLANDS: 0.95,
+    EAST_MIDLANDS: 0.9,
+    YORKSHIRE: 0.9,
+    NORTH_WEST: 0.95,
+    NORTH_EAST: 0.85,
+    WALES: 0.9,
+    SCOTLAND: 0.95,
+    NORTHERN_IRELAND: 0.85,
 };
 class PricingEngine {
     constructor(tenantId) {
@@ -43,7 +43,7 @@ class PricingEngine {
         if (!service) {
             throw new errorHandler_js_1.ApiError('SERVICE_NOT_FOUND', 'Service template not found', 404);
         }
-        const { targetMargin = 30, quantity = 1, } = options;
+        const { targetMargin = 30, quantity = 1 } = options;
         // Calculate complexity multiplier
         const complexityMultiplier = this.calculateComplexityMultiplier(service.complexityFactors || [], clientData);
         // Calculate volume discount
@@ -54,7 +54,7 @@ class PricingEngine {
         const { adjustedPrice, adjustments } = await this.applyPricingRules(service.basePrice * complexityMultiplier, service.pricingRules, clientData);
         // Calculate costs and minimum price
         const costs = adjustedPrice * 0.6; // Assume 60% cost ratio
-        const minimumPrice = costs / (1 - (targetMargin / 100));
+        const minimumPrice = costs / (1 - targetMargin / 100);
         // Calculate final price
         const finalPrice = Math.max(minimumPrice, adjustedPrice * volumeDiscount * geographicAdjustment);
         // Calculate annual value based on frequency
@@ -86,7 +86,7 @@ class PricingEngine {
                 quantity: svc.quantity,
             });
             // Apply line item discount
-            const lineDiscount = calculation.finalPrice * (svc.discountPercent || 0) / 100;
+            const lineDiscount = (calculation.finalPrice * (svc.discountPercent || 0)) / 100;
             return {
                 ...calculation,
                 serviceId: svc.serviceId,
@@ -99,9 +99,10 @@ class PricingEngine {
         // Apply global discount
         let globalDiscountAmount = 0;
         if (globalDiscount) {
-            globalDiscountAmount = globalDiscount.type === 'PERCENTAGE'
-                ? subtotal * (globalDiscount.value / 100)
-                : globalDiscount.value;
+            globalDiscountAmount =
+                globalDiscount.type === 'PERCENTAGE'
+                    ? subtotal * (globalDiscount.value / 100)
+                    : globalDiscount.value;
         }
         const discountedSubtotal = subtotal - globalDiscountAmount;
         const vatAmount = Math.round(discountedSubtotal * 0.2 * 100) / 100; // 20% VAT
@@ -160,7 +161,7 @@ class PricingEngine {
         if (quantity >= 20)
             return 0.85;
         if (quantity >= 10)
-            return 0.90;
+            return 0.9;
         if (quantity >= 5)
             return 0.95;
         return 1;

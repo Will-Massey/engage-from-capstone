@@ -48,8 +48,8 @@ class GDPRService {
             prisma.proposalSignature.updateMany({
                 where: {
                     proposal: {
-                        createdById: userId
-                    }
+                        createdById: userId,
+                    },
                 },
                 data: {
                     signedBy: 'Deleted User',
@@ -67,7 +67,7 @@ class GDPRService {
                     metadata: JSON.stringify({
                         anonymizedId,
                         retainedFields,
-                        reason: 'GDPR Right to Erasure'
+                        reason: 'GDPR Right to Erasure',
                     }),
                     ipAddress: 'system',
                     createdAt: deletedAt,

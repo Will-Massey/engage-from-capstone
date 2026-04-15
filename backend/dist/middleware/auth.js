@@ -206,7 +206,7 @@ const csrfProtection = (req, res, next) => {
         '/automation/migrate-service-pricing', // Data migration endpoint (protected by secret key)
         '/setup/migrate-pricing', // v2 pricing data migration
     ];
-    if (publicPaths.some(path => req.path.startsWith(path))) {
+    if (publicPaths.some((path) => req.path.startsWith(path))) {
         next();
         return;
     }
@@ -261,5 +261,13 @@ const setCsrfCookie = (req, res, next) => {
     next();
 };
 exports.setCsrfCookie = setCsrfCookie;
-exports.default = { authenticate: exports.authenticate, authorize: exports.authorize, optionalAuth: exports.optionalAuth, generateToken: exports.generateToken, generateRefreshToken: exports.generateRefreshToken, csrfProtection: exports.csrfProtection, setCsrfCookie: exports.setCsrfCookie };
+exports.default = {
+    authenticate: exports.authenticate,
+    authorize: exports.authorize,
+    optionalAuth: exports.optionalAuth,
+    generateToken: exports.generateToken,
+    generateRefreshToken: exports.generateRefreshToken,
+    csrfProtection: exports.csrfProtection,
+    setCsrfCookie: exports.setCsrfCookie,
+};
 //# sourceMappingURL=auth.js.map

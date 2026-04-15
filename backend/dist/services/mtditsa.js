@@ -15,7 +15,7 @@ const EXEMPT_CATEGORIES = [
     'Partnerships with turnover below £10,000',
     'Estate administrators',
     'Charities',
-    'Members of Lloyd\'s of London',
+    "Members of Lloyd's of London",
 ];
 class MTDITSAService {
     /**
@@ -114,7 +114,7 @@ class MTDITSAService {
             return { exempt: true, reason: 'Charitable organization' };
         }
         // Check for small partnership
-        const partnershipIncome = incomeSources.find(s => s.type === 'PARTNERSHIP');
+        const partnershipIncome = incomeSources.find((s) => s.type === 'PARTNERSHIP');
         if (partnershipIncome && options.partnershipTurnover && options.partnershipTurnover < 10000) {
             return { exempt: true, reason: 'Partnership with turnover below £10,000' };
         }

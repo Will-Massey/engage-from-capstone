@@ -132,7 +132,12 @@ router.post(
   authenticate,
   authorize('ADMIN', 'PARTNER', 'MANAGER', 'SENIOR'),
   asyncHandler(async (req, res) => {
-    const data = createTemplateSchema.parse(req.body) as { name: string; tone: any; content: string; isDefault?: boolean };
+    const data = createTemplateSchema.parse(req.body) as {
+      name: string;
+      tone: any;
+      content: string;
+      isDefault?: boolean;
+    };
 
     const template = await createTemplate(req.tenantId!, data, req.user!.id);
 
@@ -215,7 +220,16 @@ router.post(
   authenticate,
   asyncHandler(async (req, res) => {
     const { id } = req.params;
-    const previewData = previewSchema.parse(req.body) as { clientName: string; tenantName: string; serviceCount: number; monthlyTotal: string; senderName: string; senderPosition?: string; proposalReference?: string; proposalTitle?: string };
+    const previewData = previewSchema.parse(req.body) as {
+      clientName: string;
+      tenantName: string;
+      serviceCount: number;
+      monthlyTotal: string;
+      senderName: string;
+      senderPosition?: string;
+      proposalReference?: string;
+      proposalTitle?: string;
+    };
 
     const template = await getTemplateById(id, req.tenantId!);
 
@@ -249,7 +263,16 @@ router.post(
     });
 
     const { content, previewData } = schema.parse(req.body);
-    const typedPreviewData = previewData as { clientName: string; tenantName: string; serviceCount: number; monthlyTotal: string; senderName: string; senderPosition?: string; proposalReference?: string; proposalTitle?: string };
+    const typedPreviewData = previewData as {
+      clientName: string;
+      tenantName: string;
+      serviceCount: number;
+      monthlyTotal: string;
+      senderName: string;
+      senderPosition?: string;
+      proposalReference?: string;
+      proposalTitle?: string;
+    };
 
     const rendered = renderCoverLetter(content, typedPreviewData);
 

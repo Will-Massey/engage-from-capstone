@@ -91,7 +91,7 @@ router.post('/migrate-service-pricing', (0, errorHandler_js_1.asyncHandler)(asyn
         if (!authHeader || !authHeader.startsWith('Bearer ')) {
             return res.status(401).json({
                 success: false,
-                error: { code: 'UNAUTHORIZED', message: 'Valid token or secret key required' }
+                error: { code: 'UNAUTHORIZED', message: 'Valid token or secret key required' },
             });
         }
         // Note: In production, you'd verify the JWT here

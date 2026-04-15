@@ -73,7 +73,7 @@ router.get('/dashboard', (0, errorHandler_js_1.asyncHandler)(async (req, res) =>
         ]),
     ]);
     // Get client stats
-    const [totalClients, newClientsThisMonth, activeClients,] = await Promise.all([
+    const [totalClients, newClientsThisMonth, activeClients] = await Promise.all([
         database_js_1.prisma.client.count({ where: { tenantId } }),
         database_js_1.prisma.client.count({
             where: {
@@ -114,9 +114,7 @@ router.get('/dashboard', (0, errorHandler_js_1.asyncHandler)(async (req, res) =>
         take: 5,
     });
     // Get service names for top services
-    const serviceIds = topServices
-        .map((s) => s.serviceTemplateId)
-        .filter(Boolean);
+    const serviceIds = topServices.map((s) => s.serviceTemplateId).filter(Boolean);
     const serviceNames = serviceIds.length
         ? await database_js_1.prisma.serviceTemplate.findMany({
             where: { id: { in: serviceIds } },
@@ -125,16 +123,14 @@ router.get('/dashboard', (0, errorHandler_js_1.asyncHandler)(async (req, res) =>
         : [];
     const topServicesWithNames = topServices.map((s) => ({
         ...s,
-        name: serviceNames.find((n) => n.id === s.serviceTemplateId)?.name ||
-            'Unknown Service',
+        name: serviceNames.find((n) => n.id === s.serviceTemplateId)?.name || 'Unknown Service',
     }));
     // Calculate conversion rate
     const [sentCount, acceptedCount] = conversionRate;
     const conversionRatePercent = sentCount > 0 ? Math.round((acceptedCount / sentCount) * 100) : 0;
     // Calculate growth percentages
     const proposalGrowth = proposalsLastMonth > 0
-        ? Math.round(((proposalsThisMonth - proposalsLastMonth) / proposalsLastMonth) *
-            100)
+        ? Math.round(((proposalsThisMonth - proposalsLastMonth) / proposalsLastMonth) * 100)
         : proposalsThisMonth > 0
             ? 100
             : 0;
@@ -282,7 +278,8 @@ router.get('/client-activity', (0, errorHandler_js_1.asyncHandler)(async (req, r
             clients: clientMetrics,
             summary: {
                 totalClients: clientsWithActivity.length,
-                avgProposalsPerClient: clientsWithActivity.reduce((sum, c) => sum + c._count.proposals, 0) / clientsWithActivity.length || 0,
+                avgProposalsPerClient: clientsWithActivity.reduce((sum, c) => sum + c._count.proposals, 0) /
+                    clientsWithActivity.length || 0,
             },
         },
     });

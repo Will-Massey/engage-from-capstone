@@ -39,21 +39,21 @@ Click this button to deploy using the Blueprint:
    - **Start Command**: `npm start`
 5. Click **Advanced** → Add Environment Variables:
 
-   | Key | Value | Notes |
-   |-----|-------|-------|
-   | `NODE_ENV` | `production` | |
-   | `PORT` | `10000` | Render default |
-   | `DATABASE_URL` | *from Step 1* | PostgreSQL connection string |
-   | `JWT_SECRET` | *generate* | Use `openssl rand -base64 32` |
-   | `FRONTEND_URL` | `https://engage-frontend.onrender.com` | Update after frontend deploy |
-   | `EMAIL_PROVIDER` | `smtp` | |
-   | `SMTP_HOST` | `smtp.123-reg.co.uk` | Your SMTP server |
-   | `SMTP_PORT` | `587` | |
-   | `SMTP_USER` | `william@capstonesoftware.co.uk` | Your email |
-   | `SMTP_PASS` | *secret* | Your SMTP password |
-   | `COMPANIES_HOUSE_API_KEY` | *secret* | From Companies House |
-   | `STRIPE_SECRET_KEY` | *secret* | From Stripe Dashboard |
-   | `STRIPE_PUBLISHABLE_KEY` | *secret* | From Stripe Dashboard |
+   | Key                       | Value                                  | Notes                         |
+   | ------------------------- | -------------------------------------- | ----------------------------- |
+   | `NODE_ENV`                | `production`                           |                               |
+   | `PORT`                    | `10000`                                | Render default                |
+   | `DATABASE_URL`            | _from Step 1_                          | PostgreSQL connection string  |
+   | `JWT_SECRET`              | _generate_                             | Use `openssl rand -base64 32` |
+   | `FRONTEND_URL`            | `https://engage-frontend.onrender.com` | Update after frontend deploy  |
+   | `EMAIL_PROVIDER`          | `smtp`                                 |                               |
+   | `SMTP_HOST`               | `smtp.123-reg.co.uk`                   | Your SMTP server              |
+   | `SMTP_PORT`               | `587`                                  |                               |
+   | `SMTP_USER`               | `william@capstonesoftware.co.uk`       | Your email                    |
+   | `SMTP_PASS`               | _secret_                               | Your SMTP password            |
+   | `COMPANIES_HOUSE_API_KEY` | _secret_                               | From Companies House          |
+   | `STRIPE_SECRET_KEY`       | _secret_                               | From Stripe Dashboard         |
+   | `STRIPE_PUBLISHABLE_KEY`  | _secret_                               | From Stripe Dashboard         |
 
 6. Click **Create Web Service**
 
@@ -117,6 +117,7 @@ curl https://engage-backend-xxxx.onrender.com/api/health
 ```
 
 Visit your frontend URL and test login with demo credentials:
+
 - Email: `admin@demo.practice`
 - Password: `DemoPass123!`
 
@@ -125,37 +126,41 @@ Visit your frontend URL and test login with demo credentials:
 ## Environment Variables Reference
 
 ### Required
-| Variable | Description | Example |
-|----------|-------------|---------|
-| `NODE_ENV` | Environment mode | `production` |
-| `PORT` | Server port | `10000` |
-| `DATABASE_URL` | PostgreSQL connection string | `postgresql://...` |
-| `JWT_SECRET` | JWT signing key (min 32 chars) | Random string |
-| `FRONTEND_URL` | Frontend domain | `https://...onrender.com` |
+
+| Variable       | Description                    | Example                   |
+| -------------- | ------------------------------ | ------------------------- |
+| `NODE_ENV`     | Environment mode               | `production`              |
+| `PORT`         | Server port                    | `10000`                   |
+| `DATABASE_URL` | PostgreSQL connection string   | `postgresql://...`        |
+| `JWT_SECRET`   | JWT signing key (min 32 chars) | Random string             |
+| `FRONTEND_URL` | Frontend domain                | `https://...onrender.com` |
 
 ### Email (SMTP)
-| Variable | Description | Example |
-|----------|-------------|---------|
-| `EMAIL_PROVIDER` | Email service type | `smtp` |
-| `SMTP_HOST` | SMTP server | `smtp.123-reg.co.uk` |
-| `SMTP_PORT` | SMTP port | `587` |
-| `SMTP_USER` | SMTP username | `william@capstonesoftware.co.uk` |
-| `SMTP_PASS` | SMTP password | *secret* |
+
+| Variable         | Description        | Example                          |
+| ---------------- | ------------------ | -------------------------------- |
+| `EMAIL_PROVIDER` | Email service type | `smtp`                           |
+| `SMTP_HOST`      | SMTP server        | `smtp.123-reg.co.uk`             |
+| `SMTP_PORT`      | SMTP port          | `587`                            |
+| `SMTP_USER`      | SMTP username      | `william@capstonesoftware.co.uk` |
+| `SMTP_PASS`      | SMTP password      | _secret_                         |
 
 ### Payments (Stripe)
-| Variable | Description | Example |
-|----------|-------------|---------|
-| `STRIPE_PUBLISHABLE_KEY` | Stripe public key | `pk_live_...` |
-| `STRIPE_SECRET_KEY` | Stripe secret key | `sk_live_...` |
-| `STRIPE_WEBHOOK_SECRET` | Webhook signing secret | `whsec_...` |
+
+| Variable                 | Description            | Example       |
+| ------------------------ | ---------------------- | ------------- |
+| `STRIPE_PUBLISHABLE_KEY` | Stripe public key      | `pk_live_...` |
+| `STRIPE_SECRET_KEY`      | Stripe secret key      | `sk_live_...` |
+| `STRIPE_WEBHOOK_SECRET`  | Webhook signing secret | `whsec_...`   |
 
 ### Integrations
-| Variable | Description |
-|----------|-------------|
+
+| Variable                  | Description         |
+| ------------------------- | ------------------- |
 | `COMPANIES_HOUSE_API_KEY` | Companies House API |
-| `MICROSOFT_CLIENT_ID` | Azure AD OAuth |
-| `MICROSOFT_CLIENT_SECRET` | Azure AD OAuth |
-| `MICROSOFT_TENANT_ID` | Azure AD Tenant |
+| `MICROSOFT_CLIENT_ID`     | Azure AD OAuth      |
+| `MICROSOFT_CLIENT_SECRET` | Azure AD OAuth      |
+| `MICROSOFT_TENANT_ID`     | Azure AD Tenant     |
 
 ---
 
@@ -172,6 +177,7 @@ Visit your frontend URL and test login with demo credentials:
 ## Troubleshooting
 
 ### Build Failures
+
 ```bash
 # Check build logs in Render Dashboard
 # Common issues:
@@ -181,16 +187,19 @@ Visit your frontend URL and test login with demo credentials:
 ```
 
 ### Database Connection Issues
+
 - Ensure `DATABASE_URL` includes `?sslmode=require`
 - Check that PostgreSQL service is running
 - Verify database user has correct permissions
 
 ### CORS Errors
+
 - Update `FRONTEND_URL` in backend to match actual frontend URL
 - Check browser console for blocked requests
 - Ensure URL includes `https://` prefix
 
 ### Email Not Sending
+
 - Verify SMTP credentials
 - Check spam folders
 - Test with a different email provider (Gmail, SendGrid)
@@ -199,12 +208,12 @@ Visit your frontend URL and test login with demo credentials:
 
 ## Costs
 
-| Service | Plan | Monthly Cost |
-|---------|------|--------------|
-| PostgreSQL | Starter | $7 |
-| Backend | Starter | $7 |
-| Frontend | Static | Free |
-| **Total** | | **$14/month** |
+| Service    | Plan    | Monthly Cost  |
+| ---------- | ------- | ------------- |
+| PostgreSQL | Starter | $7            |
+| Backend    | Starter | $7            |
+| Frontend   | Static  | Free          |
+| **Total**  |         | **$14/month** |
 
 ---
 

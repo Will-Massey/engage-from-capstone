@@ -18,7 +18,14 @@ import toast from 'react-hot-toast';
 
 const clientSchema = z.object({
   name: z.string().min(1, 'Client name is required'),
-  companyType: z.enum(['LIMITED_COMPANY', 'SOLE_TRADER', 'PARTNERSHIP', 'LLP', 'CHARITY', 'NON_PROFIT']),
+  companyType: z.enum([
+    'LIMITED_COMPANY',
+    'SOLE_TRADER',
+    'PARTNERSHIP',
+    'LLP',
+    'CHARITY',
+    'NON_PROFIT',
+  ]),
   contactEmail: z.string().min(1, 'Email is required').email('Please enter a valid email'),
   contactPhone: z.string().optional(),
   contactName: z.string().optional(),
@@ -28,15 +35,24 @@ const clientSchema = z.object({
   industry: z.string().optional(),
   // Handle empty number inputs (NaN from valueAsNumber)
   employeeCount: z.preprocess(
-    (val) => (val === '' || val === null || val === undefined || Number.isNaN(val)) ? undefined : Number(val),
+    (val) =>
+      val === '' || val === null || val === undefined || Number.isNaN(val)
+        ? undefined
+        : Number(val),
     z.number().min(0).optional()
   ),
   turnover: z.preprocess(
-    (val) => (val === '' || val === null || val === undefined || Number.isNaN(val)) ? undefined : Number(val),
+    (val) =>
+      val === '' || val === null || val === undefined || Number.isNaN(val)
+        ? undefined
+        : Number(val),
     z.number().min(0).optional()
   ),
   mtditsaIncome: z.preprocess(
-    (val) => (val === '' || val === null || val === undefined || Number.isNaN(val)) ? undefined : Number(val),
+    (val) =>
+      val === '' || val === null || val === undefined || Number.isNaN(val)
+        ? undefined
+        : Number(val),
     z.number().min(0).optional()
   ),
   notes: z.string().optional(),
@@ -91,12 +107,14 @@ const CreateClient = ({ onSuccess, onCancel }: CreateClientProps = {}) => {
 
   // Companies House search state
   const [chSearchQuery, setChSearchQuery] = useState('');
-  const [chSearchResults, setChSearchResults] = useState<Array<{
-    companyNumber: string;
-    companyName: string;
-    companyStatus: string;
-    companyType: string;
-  }>>([]);
+  const [chSearchResults, setChSearchResults] = useState<
+    Array<{
+      companyNumber: string;
+      companyName: string;
+      companyStatus: string;
+      companyType: string;
+    }>
+  >([]);
   const [chSearching, setChSearching] = useState(false);
   const [chShowResults, setChShowResults] = useState(false);
   const [chSelectedCompany, setChSelectedCompany] = useState<string | null>(null);
@@ -104,10 +122,12 @@ const CreateClient = ({ onSuccess, onCancel }: CreateClientProps = {}) => {
   // Search Companies House
   const searchCompaniesHouse = async () => {
     if (!chSearchQuery.trim() || chSearchQuery.length < 2) return;
-    
+
     setChSearching(true);
     try {
-      const response = await apiClient.get(`/companies-house/search?q=${encodeURIComponent(chSearchQuery)}&limit=5`) as any;
+      const response = (await apiClient.get(
+        `/companies-house/search?q=${encodeURIComponent(chSearchQuery)}&limit=5`
+      )) as any;
       if (response.success) {
         setChSearchResults(response.data || []);
         setChShowResults(true);
@@ -123,10 +143,10 @@ const CreateClient = ({ onSuccess, onCancel }: CreateClientProps = {}) => {
   const selectCompany = async (companyNumber: string) => {
     setChSelectedCompany(companyNumber);
     try {
-      const response = await apiClient.get(`/companies-house/company/${companyNumber}`) as any;
+      const response = (await apiClient.get(`/companies-house/company/${companyNumber}`)) as any;
       if (response.success) {
         const company = response.data.formatted; // Use formatted data from backend
-        
+
         // Auto-populate form fields
         setValue('name', company.name);
         setValue('companyNumber', company.companyNumber);
@@ -136,7 +156,7 @@ const CreateClient = ({ onSuccess, onCancel }: CreateClientProps = {}) => {
           setValue('city', company.address.city || '');
           setValue('postcode', company.address.postcode || '');
         }
-        
+
         toast.success('Company details loaded');
         setChShowResults(false);
       }
@@ -158,17 +178,19 @@ const CreateClient = ({ onSuccess, onCancel }: CreateClientProps = {}) => {
     setIsLoading(true);
     toast.loading('Creating client...');
     try {
-      
       // Build address only if any field is provided
-      const address = data.addressLine1 || data.city || data.postcode ? {
-        line1: data.addressLine1 || '',
-        line2: data.addressLine2 || '',
-        city: data.city || '',
-        postcode: data.postcode || '',
-        country: 'United Kingdom',
-      } : undefined;
-      
-      const response = await apiClient.createClient({
+      const address =
+        data.addressLine1 || data.city || data.postcode
+          ? {
+              line1: data.addressLine1 || '',
+              line2: data.addressLine2 || '',
+              city: data.city || '',
+              postcode: data.postcode || '',
+              country: 'United Kingdom',
+            }
+          : undefined;
+
+      const response = (await apiClient.createClient({
         name: data.name,
         companyType: data.companyType,
         contactEmail: data.contactEmail || undefined,
@@ -183,7 +205,7 @@ const CreateClient = ({ onSuccess, onCancel }: CreateClientProps = {}) => {
         mtditsaIncome: data.mtditsaIncome,
         notes: data.notes,
         address,
-      }) as any;
+      })) as any;
 
       toast.dismiss();
       if (response.success) {
@@ -206,7 +228,8 @@ const CreateClient = ({ onSuccess, onCancel }: CreateClientProps = {}) => {
   // MTD ITSA only applies to Sole Traders and Partnerships
   const mtditsaApplicableTypes = ['SOLE_TRADER', 'PARTNERSHIP'];
   const isMtditsaApplicable = mtditsaApplicableTypes.includes(watchCompanyType);
-  const needsMtditsaWarning = isMtditsaApplicable && Number.isFinite(watchMtditsaIncome) && watchMtditsaIncome >= 30000;
+  const needsMtditsaWarning =
+    isMtditsaApplicable && Number.isFinite(watchMtditsaIncome) && watchMtditsaIncome >= 30000;
 
   return (
     <div className="max-w-3xl mx-auto animate-fade-in">
@@ -236,15 +259,29 @@ const CreateClient = ({ onSuccess, onCancel }: CreateClientProps = {}) => {
       {/* Progress */}
       <div className="mb-8">
         <div className="flex items-center">
-          <div className={`flex-1 h-2 rounded-full ${step >= 1 ? 'bg-blue-500' : 'bg-slate-200'}`} />
-          <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium ${
-            step >= 1 ? 'bg-blue-600 text-white' : 'bg-slate-200 text-slate-600'
-          }`}>1</div>
-          <div className={`flex-1 h-2 rounded-full ${step >= 2 ? 'bg-blue-500' : 'bg-slate-200'}`} />
-          <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium ${
-            step >= 2 ? 'bg-blue-600 text-white' : 'bg-slate-200 text-slate-600'
-          }`}>2</div>
-          <div className={`flex-1 h-2 rounded-full ${step >= 3 ? 'bg-blue-500' : 'bg-slate-200'}`} />
+          <div
+            className={`flex-1 h-2 rounded-full ${step >= 1 ? 'bg-blue-500' : 'bg-slate-200'}`}
+          />
+          <div
+            className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium ${
+              step >= 1 ? 'bg-blue-600 text-white' : 'bg-slate-200 text-slate-600'
+            }`}
+          >
+            1
+          </div>
+          <div
+            className={`flex-1 h-2 rounded-full ${step >= 2 ? 'bg-blue-500' : 'bg-slate-200'}`}
+          />
+          <div
+            className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium ${
+              step >= 2 ? 'bg-blue-600 text-white' : 'bg-slate-200 text-slate-600'
+            }`}
+          >
+            2
+          </div>
+          <div
+            className={`flex-1 h-2 rounded-full ${step >= 3 ? 'bg-blue-500' : 'bg-slate-200'}`}
+          />
         </div>
         <div className="flex justify-between mt-2 text-sm text-slate-500">
           <span>Basic Info</span>
@@ -253,17 +290,18 @@ const CreateClient = ({ onSuccess, onCancel }: CreateClientProps = {}) => {
         </div>
       </div>
 
-      <form onSubmit={handleSubmit(onSubmit, (errors) => {
-        // Validation errors displayed in form
-        toast.error('Please fill in all required fields');
-      })} className="card p-6">
+      <form
+        onSubmit={handleSubmit(onSubmit, (errors) => {
+          // Validation errors displayed in form
+          toast.error('Please fill in all required fields');
+        })}
+        className="card p-6"
+      >
         {step === 1 && (
           <div className="space-y-6 animate-fade-in">
             {/* Company Type */}
             <div>
-              <label className="block text-sm font-medium text-slate-700 mb-3">
-                Company Type
-              </label>
+              <label className="block text-sm font-medium text-slate-700 mb-3">Company Type</label>
               <div className="grid grid-cols-2 gap-3">
                 {companyTypes.map((type) => (
                   <label
@@ -304,7 +342,9 @@ const CreateClient = ({ onSuccess, onCancel }: CreateClientProps = {}) => {
                       value={chSearchQuery}
                       onChange={(e) => setChSearchQuery(e.target.value)}
                       onClick={(e) => e.stopPropagation()}
-                      onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), searchCompaniesHouse())}
+                      onKeyDown={(e) =>
+                        e.key === 'Enter' && (e.preventDefault(), searchCompaniesHouse())
+                      }
                       className="flex-1 input-field text-sm"
                       placeholder="Enter company name..."
                     />
@@ -320,7 +360,7 @@ const CreateClient = ({ onSuccess, onCancel }: CreateClientProps = {}) => {
                       {chSearching ? 'Searching...' : 'Search'}
                     </button>
                   </div>
-                  
+
                   {/* Search Results Dropdown */}
                   {chShowResults && chSearchResults.length > 0 && (
                     <div className="absolute z-10 w-full mt-1 bg-white border border-slate-200 rounded-md shadow-lg max-h-60 overflow-auto">
@@ -349,7 +389,7 @@ const CreateClient = ({ onSuccess, onCancel }: CreateClientProps = {}) => {
                       ))}
                     </div>
                   )}
-                  
+
                   {chShowResults && chSearchResults.length === 0 && !chSearching && (
                     <div className="absolute z-10 w-full mt-1 bg-white border border-slate-200 rounded-md shadow-lg p-4 text-center text-slate-500">
                       No companies found
@@ -361,24 +401,18 @@ const CreateClient = ({ onSuccess, onCancel }: CreateClientProps = {}) => {
 
             {/* Name */}
             <div>
-              <label className="block text-sm font-medium text-slate-700">
-                Client Name
-              </label>
+              <label className="block text-sm font-medium text-slate-700">Client Name</label>
               <input
                 {...register('name')}
                 className="mt-1 input-field"
                 placeholder="e.g., ABC Ltd or John Smith"
               />
-              {errors.name && (
-                <p className="mt-1 text-sm text-red-600">{errors.name.message}</p>
-              )}
+              {errors.name && <p className="mt-1 text-sm text-red-600">{errors.name.message}</p>}
             </div>
 
             {/* Email */}
             <div>
-              <label className="block text-sm font-medium text-slate-700">
-                Email Address
-              </label>
+              <label className="block text-sm font-medium text-slate-700">Email Address</label>
               <input
                 {...register('contactEmail')}
                 type="email"
@@ -404,11 +438,7 @@ const CreateClient = ({ onSuccess, onCancel }: CreateClientProps = {}) => {
             </div>
 
             <div className="flex justify-end">
-              <button
-                type="button"
-                onClick={() => setStep(2)}
-                className="btn-primary"
-              >
+              <button type="button" onClick={() => setStep(2)} className="btn-primary">
                 Continue
               </button>
             </div>
@@ -420,9 +450,7 @@ const CreateClient = ({ onSuccess, onCancel }: CreateClientProps = {}) => {
             {/* Company Number */}
             {(watchCompanyType === 'LIMITED_COMPANY' || watchCompanyType === 'LLP') && (
               <div>
-                <label className="block text-sm font-medium text-slate-700">
-                  Company Number
-                </label>
+                <label className="block text-sm font-medium text-slate-700">Company Number</label>
                 <input
                   {...register('companyNumber')}
                   className="mt-1 input-field"
@@ -442,9 +470,7 @@ const CreateClient = ({ onSuccess, onCancel }: CreateClientProps = {}) => {
                 placeholder="1234567890"
                 maxLength={10}
               />
-              {errors.utr && (
-                <p className="mt-1 text-sm text-red-600">{errors.utr.message}</p>
-              )}
+              {errors.utr && <p className="mt-1 text-sm text-red-600">{errors.utr.message}</p>}
             </div>
 
             {/* Turnover */}
@@ -453,7 +479,9 @@ const CreateClient = ({ onSuccess, onCancel }: CreateClientProps = {}) => {
                 Estimated Annual Turnover/Income
               </label>
               <div className="mt-1 relative">
-                <span className="absolute inset-y-0 left-0 pl-3 flex items-center text-slate-500">£</span>
+                <span className="absolute inset-y-0 left-0 pl-3 flex items-center text-slate-500">
+                  £
+                </span>
                 <input
                   {...register('mtditsaIncome')}
                   type="text"
@@ -467,11 +495,16 @@ const CreateClient = ({ onSuccess, onCancel }: CreateClientProps = {}) => {
                   ⚠️ This sole trader may need to comply with MTD ITSA from April 2026
                 </p>
               )}
-              {!isMtditsaApplicable && Number.isFinite(watchMtditsaIncome) && watchMtditsaIncome > 0 && (
-                <p className="mt-2 text-sm text-blue-600 bg-blue-50 p-2 rounded">
-                  ℹ️ MTD ITSA does not apply to {companyTypes.find(t => t.id === watchCompanyType)?.label || 'this entity type'}. It only applies to Sole Traders and Partnerships.
-                </p>
-              )}
+              {!isMtditsaApplicable &&
+                Number.isFinite(watchMtditsaIncome) &&
+                watchMtditsaIncome > 0 && (
+                  <p className="mt-2 text-sm text-blue-600 bg-blue-50 p-2 rounded">
+                    ℹ️ MTD ITSA does not apply to{' '}
+                    {companyTypes.find((t) => t.id === watchCompanyType)?.label ||
+                      'this entity type'}
+                    . It only applies to Sole Traders and Partnerships.
+                  </p>
+                )}
             </div>
 
             {/* Employee Count */}
@@ -490,9 +523,7 @@ const CreateClient = ({ onSuccess, onCancel }: CreateClientProps = {}) => {
 
             {/* Address */}
             <div>
-              <label className="block text-sm font-medium text-slate-700 mb-2">
-                Address
-              </label>
+              <label className="block text-sm font-medium text-slate-700 mb-2">Address</label>
               <div className="space-y-3">
                 <input
                   {...register('addressLine1')}
@@ -505,11 +536,7 @@ const CreateClient = ({ onSuccess, onCancel }: CreateClientProps = {}) => {
                   placeholder="Address line 2 (optional)"
                 />
                 <div className="grid grid-cols-2 gap-3">
-                  <input
-                    {...register('city')}
-                    className="input-field"
-                    placeholder="City"
-                  />
+                  <input {...register('city')} className="input-field" placeholder="City" />
                   <input
                     {...register('postcode')}
                     className={errors.postcode ? 'input-field-error' : 'input-field'}
@@ -523,19 +550,10 @@ const CreateClient = ({ onSuccess, onCancel }: CreateClientProps = {}) => {
             </div>
 
             <div className="flex justify-between">
-              <button
-                type="button"
-                onClick={() => setStep(1)}
-                className="btn-secondary"
-              >
+              <button type="button" onClick={() => setStep(1)} className="btn-secondary">
                 Back
               </button>
-              <button
-                type="submit"
-                disabled={isLoading}
-                className="btn-primary"
-                onClick={() => {}}
-              >
+              <button type="submit" disabled={isLoading} className="btn-primary" onClick={() => {}}>
                 {isLoading ? 'Creating...' : 'Create Client'}
               </button>
             </div>

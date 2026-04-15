@@ -64,6 +64,7 @@ vercel env add VITE_API_URL
 ```
 
 Or use Vercel Dashboard:
+
 1. Go to https://vercel.com
 2. Import GitHub repository
 3. Set root directory to `frontend`
@@ -92,6 +93,7 @@ vercel --prod
 ## Environment Variables Checklist
 
 ### Backend (Railway)
+
 - [ ] `DATABASE_URL` - Neon PostgreSQL connection string
 - [ ] `JWT_SECRET` - Secure random string (min 32 chars)
 - [ ] `NODE_ENV` - `production`
@@ -99,16 +101,19 @@ vercel --prod
 - [ ] `PORT` - `3001` (Railway sets this automatically)
 
 ### Frontend (Vercel)
+
 - [ ] `VITE_API_URL` - Railway backend URL + `/api`
 
 ## Post-Deployment
 
 1. Run migrations on Railway:
+
    ```bash
    railway run npx prisma migrate deploy
    ```
 
 2. Seed the database:
+
    ```bash
    railway run npx prisma db seed
    ```
@@ -118,13 +123,16 @@ vercel --prod
 ## Troubleshooting
 
 ### Database Connection Issues
+
 - Make sure Neon allows connections from Railway IPs
 - Check that `sslmode=require` is in the DATABASE_URL
 
 ### CORS Errors
+
 - Update `FRONTEND_URL` in Railway to exactly match your Vercel domain
 - Include `https://` prefix
 
 ### Build Failures
+
 - Check Railway logs for specific errors
 - Make sure `npx prisma generate` runs before build

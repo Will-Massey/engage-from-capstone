@@ -25,11 +25,7 @@ export class GDPRService {
    * Anonymize user data instead of hard deletion
    * This maintains referential integrity while protecting privacy
    */
-  async deleteUserData(
-    userId: string, 
-    tenantId: string,
-    prisma: any
-  ): Promise<DataDeletionResult> {
+  async deleteUserData(userId: string, tenantId: string, prisma: any): Promise<DataDeletionResult> {
     const anonymizedId = `deleted_${crypto.randomUUID()}`;
     const deletedAt = new Date();
 
@@ -37,7 +33,7 @@ export class GDPRService {
     const retainedFields = [
       'proposal_signatures', // Legal requirement - audit trail
       'transaction_records', // HMRC requirement - 6 years
-      'vat_submissions',     // Legal requirement
+      'vat_submissions', // Legal requirement
     ];
 
     await prisma.$transaction([
@@ -65,12 +61,12 @@ export class GDPRService {
 
       // Anonymize signatures but keep for legal compliance
       prisma.proposalSignature.updateMany({
-        where: { 
-          proposal: { 
-            createdById: userId 
-          } 
+        where: {
+          proposal: {
+            createdById: userId,
+          },
         },
-        data: { 
+        data: {
           signedBy: 'Deleted User',
           signatureData: '[REDACTED - Legal Retention]',
         },
@@ -84,10 +80,10 @@ export class GDPRService {
           entityId: userId,
           tenantId,
           description: `User data anonymized under GDPR Article 17`,
-          metadata: JSON.stringify({ 
-            anonymizedId, 
+          metadata: JSON.stringify({
+            anonymizedId,
             retainedFields,
-            reason: 'GDPR Right to Erasure'
+            reason: 'GDPR Right to Erasure',
           }),
           ipAddress: 'system',
           createdAt: deletedAt,
@@ -106,10 +102,7 @@ export class GDPRService {
   /**
    * Export all user data for data portability (GDPR Article 20)
    */
-  async exportUserData(
-    userId: string,
-    prisma: any
-  ): Promise<UserDataExport> {
+  async exportUserData(userId: string, prisma: any): Promise<UserDataExport> {
     const user = await prisma.user.findUnique({
       where: { id: userId },
       include: {

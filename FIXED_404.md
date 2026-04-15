@@ -31,8 +31,8 @@ app.get('*', (req, res, next) => {
         error: {
           code: 'FRONTEND_NOT_BUILT',
           message: 'Frontend build not found.',
-          publicPath: publicPath
-        }
+          publicPath: publicPath,
+        },
       });
     }
   });
@@ -45,7 +45,7 @@ app.get('*', (req, res, next) => {
 
 ✅ Root URL now serves the React frontend  
 ✅ Health endpoint still works: `/health`  
-✅ API endpoints still work: `/api/*`  
+✅ API endpoints still work: `/api/*`
 
 ---
 

@@ -25,12 +25,16 @@ const createServiceSchema = z.object({
   basePrice: z.number().min(0, 'Base price must be positive'),
   baseHours: z.number().min(0.1, 'Base hours must be at least 0.1'),
   pricingModel: z.nativeEnum(PricingModel).default('FIXED'),
-  frequencyOptions: z.array(z.nativeEnum(PricingFrequency)).default(['MONTHLY', 'QUARTERLY', 'ANNUALLY']),
+  frequencyOptions: z
+    .array(z.nativeEnum(PricingFrequency))
+    .default(['MONTHLY', 'QUARTERLY', 'ANNUALLY']),
   defaultFrequency: z.nativeEnum(PricingFrequency).default('MONTHLY'),
   complexityFactors: z.array(complexityFactorSchema).default([]),
   requirements: z.array(z.string()).default([]),
   deliverables: z.array(z.string()).default([]),
-  applicableEntityTypes: z.array(z.nativeEnum(CompanyType)).default(['LIMITED_COMPANY', 'SOLE_TRADER']),
+  applicableEntityTypes: z
+    .array(z.nativeEnum(CompanyType))
+    .default(['LIMITED_COMPANY', 'SOLE_TRADER']),
   regulatoryNotes: z.string().optional(),
   tags: z.array(z.string()).default([]),
 });
@@ -92,11 +96,7 @@ router.get(
           orderBy: { priority: 'desc' },
         },
       },
-      orderBy: [
-        { category: 'asc' },
-        { isPopular: 'desc' },
-        { name: 'asc' },
-      ],
+      orderBy: [{ category: 'asc' }, { isPopular: 'desc' }, { name: 'asc' }],
     });
 
     res.json({
@@ -198,7 +198,7 @@ router.post(
 
     const service = await prisma.serviceTemplate.create({
       data: {
-        ...data as any,
+        ...(data as any),
         tenantId: req.tenantId,
         complexityFactors: JSON.stringify(data.complexityFactors),
         requirements: JSON.stringify(data.requirements),
@@ -252,8 +252,10 @@ router.put(
     const service = await prisma.serviceTemplate.update({
       where: { id },
       data: {
-        ...data as any,
-        complexityFactors: data.complexityFactors ? JSON.stringify(data.complexityFactors) : undefined,
+        ...(data as any),
+        complexityFactors: data.complexityFactors
+          ? JSON.stringify(data.complexityFactors)
+          : undefined,
         requirements: data.requirements ? JSON.stringify(data.requirements) : undefined,
         deliverables: data.deliverables ? JSON.stringify(data.deliverables) : undefined,
         tags: data.tags?.join(','),
@@ -365,7 +367,7 @@ router.post(
 
     const rule = await prisma.pricingRule.create({
       data: {
-        ...data as any,
+        ...(data as any),
         tenantId: req.tenantId,
         serviceId: id,
         conditionValue: data.conditionValue,
@@ -388,24 +390,26 @@ router.post(
   '/calculate-price',
   authenticate,
   asyncHandler(async (req, res) => {
-    const { serviceId, clientData, quantity = 1 } = z.object({
-      serviceId: z.string(),
-      clientData: z.object({
-        turnover: z.number().optional(),
-        employeeCount: z.number().optional(),
-        transactionVolume: z.number().optional(),
-        region: z.string().optional(),
-        recordQuality: z.enum(['GOOD', 'AVERAGE', 'POOR']).optional(),
-      }),
-      quantity: z.number().min(1).optional(),
-    }).parse(req.body);
-
-    const pricingEngine = new PricingEngine(req.tenantId);
-    const calculation = await pricingEngine.calculatePrice(
+    const {
       serviceId,
       clientData,
-      { quantity }
-    );
+      quantity = 1,
+    } = z
+      .object({
+        serviceId: z.string(),
+        clientData: z.object({
+          turnover: z.number().optional(),
+          employeeCount: z.number().optional(),
+          transactionVolume: z.number().optional(),
+          region: z.string().optional(),
+          recordQuality: z.enum(['GOOD', 'AVERAGE', 'POOR']).optional(),
+        }),
+        quantity: z.number().min(1).optional(),
+      })
+      .parse(req.body);
+
+    const pricingEngine = new PricingEngine(req.tenantId);
+    const calculation = await pricingEngine.calculatePrice(serviceId, clientData, { quantity });
 
     res.json({
       success: true,

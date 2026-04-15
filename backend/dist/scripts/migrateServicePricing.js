@@ -12,10 +12,7 @@ async function migrateServicePricing() {
         // Get all services that need updating
         const services = await prisma.serviceTemplate.findMany({
             where: {
-                OR: [
-                    { priceAmount: 0 },
-                    { priceAmount: null },
-                ],
+                OR: [{ priceAmount: 0 }, { priceAmount: null }],
             },
         });
         console.log(`Found ${services.length} services to migrate\n`);
@@ -42,9 +39,13 @@ async function migrateServicePricing() {
                         priceAmount: service.basePrice,
                         billingCycle: billingCycle,
                         // Map priceDisplayMode based on billingCycle
-                        priceDisplayMode: (billingCycle === 'ANNUALLY' ? 'PER_YEAR' :
-                            billingCycle === 'QUARTERLY' ? 'PER_QUARTER' :
-                                billingCycle === 'ONE_TIME' ? 'ONE_TIME' : 'PER_MONTH'),
+                        priceDisplayMode: (billingCycle === 'ANNUALLY'
+                            ? 'PER_YEAR'
+                            : billingCycle === 'QUARTERLY'
+                                ? 'PER_QUARTER'
+                                : billingCycle === 'ONE_TIME'
+                                    ? 'ONE_TIME'
+                                    : 'PER_MONTH'),
                     },
                 });
                 console.log(`✅ Updated ${service.name}: £${service.basePrice} ${billingCycle}`);

@@ -137,7 +137,7 @@ router.get('/subscription', auth_js_1.authenticate, (0, errorHandler_js_1.asyncH
         });
     }
     // Get subscription details from Stripe
-    const subscription = await stripe_js_1.stripe.subscriptions.retrieve(tenant.stripeSubscriptionId);
+    const subscription = (await stripe_js_1.stripe.subscriptions.retrieve(tenant.stripeSubscriptionId));
     res.json({
         success: true,
         data: {
@@ -164,7 +164,9 @@ router.post('/cancel-subscription', auth_js_1.authenticate, (0, auth_js_1.author
         throw new errorHandler_js_1.ApiError('NO_SUBSCRIPTION', 'No active subscription found', 400);
     }
     // Cancel at period end
-    const subscription = await stripe_js_1.stripe.subscriptions.update(tenant.stripeSubscriptionId, { cancel_at_period_end: true });
+    const subscription = (await stripe_js_1.stripe.subscriptions.update(tenant.stripeSubscriptionId, {
+        cancel_at_period_end: true,
+    }));
     // Update tenant
     await database_js_1.prisma.tenant.update({
         where: { id: tenantId },
@@ -194,7 +196,9 @@ router.post('/reactivate-subscription', auth_js_1.authenticate, (0, auth_js_1.au
         throw new errorHandler_js_1.ApiError('NO_SUBSCRIPTION', 'No subscription found', 400);
     }
     // Reactivate
-    const subscription = await stripe_js_1.stripe.subscriptions.update(tenant.stripeSubscriptionId, { cancel_at_period_end: false });
+    const subscription = await stripe_js_1.stripe.subscriptions.update(tenant.stripeSubscriptionId, {
+        cancel_at_period_end: false,
+    });
     // Update tenant
     await database_js_1.prisma.tenant.update({
         where: { id: tenantId },

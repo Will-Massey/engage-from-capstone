@@ -20,9 +20,9 @@ async function main() {
     // Run migrations
     logger.info('🗄️  Running database migrations...');
     try {
-      execSync('npx prisma migrate deploy', { 
+      execSync('npx prisma migrate deploy', {
         stdio: 'pipe',
-        timeout: 60000
+        timeout: 60000,
       });
       logger.info('✅ Migrations completed');
     } catch (error: any) {
@@ -39,9 +39,9 @@ async function main() {
     if (userCount === 0) {
       logger.info('🌱 No users found, seeding database...');
       try {
-        execSync('npx prisma db seed', { 
+        execSync('npx prisma db seed', {
           stdio: 'pipe',
-          timeout: 60000
+          timeout: 60000,
         });
         logger.info('✅ Database seeded');
       } catch (error: any) {

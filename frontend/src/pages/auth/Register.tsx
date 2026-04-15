@@ -10,7 +10,8 @@ import toast from 'react-hot-toast';
 
 const registerSchema = z.object({
   email: z.string().email('Please enter a valid email'),
-  password: z.string()
+  password: z
+    .string()
     .min(8, 'Password must be at least 8 characters')
     .regex(/[A-Z]/, 'Password must contain at least one uppercase letter')
     .regex(/[a-z]/, 'Password must contain at least one lowercase letter')
@@ -52,13 +53,13 @@ const Register = () => {
   const onSubmit = async (data: RegisterForm) => {
     setIsLoading(true);
     try {
-      const response = await apiClient.register({
+      const response = (await apiClient.register({
         email: data.email,
         password: data.password,
         firstName: data.firstName,
         lastName: data.lastName,
         tenantId: data.tenantId,
-      }) as any;
+      })) as any;
 
       if (response.success) {
         setAuth(response.data.user, response.data.user.tenant, response.data.tokens.accessToken);
@@ -80,22 +81,14 @@ const Register = () => {
         <div className="grid grid-cols-2 gap-4">
           <div>
             <label className="block text-sm font-medium text-slate-800">First Name</label>
-            <input
-              {...register('firstName')}
-              className="mt-1 input-field"
-              placeholder="John"
-            />
+            <input {...register('firstName')} className="mt-1 input-field" placeholder="John" />
             {errors.firstName && (
               <p className="mt-1 text-sm text-red-600">{errors.firstName.message}</p>
             )}
           </div>
           <div>
             <label className="block text-sm font-medium text-slate-800">Last Name</label>
-            <input
-              {...register('lastName')}
-              className="mt-1 input-field"
-              placeholder="Doe"
-            />
+            <input {...register('lastName')} className="mt-1 input-field" placeholder="Doe" />
             {errors.lastName && (
               <p className="mt-1 text-sm text-red-600">{errors.lastName.message}</p>
             )}
@@ -110,9 +103,7 @@ const Register = () => {
             className="mt-1 input-field"
             placeholder="you@company.com"
           />
-          {errors.email && (
-            <p className="mt-1 text-sm text-red-600">{errors.email.message}</p>
-          )}
+          {errors.email && <p className="mt-1 text-sm text-red-600">{errors.email.message}</p>}
         </div>
 
         <div>
@@ -129,7 +120,11 @@ const Register = () => {
               onClick={() => setShowPassword(!showPassword)}
               className="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-400 hover:text-slate-600"
             >
-              {showPassword ? <EyeSlashIcon className="h-5 w-5" /> : <EyeIcon className="h-5 w-5" />}
+              {showPassword ? (
+                <EyeSlashIcon className="h-5 w-5" />
+              ) : (
+                <EyeIcon className="h-5 w-5" />
+              )}
             </button>
           </div>
           {errors.password && (
@@ -165,11 +160,7 @@ const Register = () => {
           )}
         </div>
 
-        <button
-          type="submit"
-          disabled={isLoading}
-          className="w-full btn-primary py-2.5"
-        >
+        <button type="submit" disabled={isLoading} className="w-full btn-primary py-2.5">
           {isLoading ? 'Creating account...' : 'Create account'}
         </button>
       </form>

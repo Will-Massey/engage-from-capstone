@@ -57,14 +57,16 @@ const createProposalSchema = zod_1.z.object({
     clientId: zod_1.z.string(),
     title: zod_1.z.string().min(1, 'Title is required'),
     templateId: zod_1.z.string().optional(),
-    services: zod_1.z.array(zod_1.z.object({
+    services: zod_1.z
+        .array(zod_1.z.object({
         serviceId: zod_1.z.string(),
         quantity: zod_1.z.number().min(1).default(1),
         unitPrice: zod_1.z.number().min(0).optional(), // Allow custom unit price
         discountPercent: zod_1.z.number().min(0).max(100).optional(),
         frequency: zod_1.z.nativeEnum(client_1.PricingFrequency).optional(), // Billing frequency per service
         vatRate: zod_1.z.number().min(0).max(100).optional(), // Per-line VAT rate
-    })).min(1, 'At least one service is required'),
+    }))
+        .min(1, 'At least one service is required'),
     validUntil: zod_1.z.string().datetime().optional(),
     contractStartDate: zod_1.z.string().datetime().optional(), // When the contract begins
     paymentTerms: zod_1.z.string().optional(),
@@ -77,15 +79,19 @@ const createProposalSchema = zod_1.z.object({
 });
 const updateProposalSchema = zod_1.z.object({
     title: zod_1.z.string().min(1).optional(),
-    services: zod_1.z.array(zod_1.z.object({
+    services: zod_1.z
+        .array(zod_1.z.object({
         serviceId: zod_1.z.string(),
         quantity: zod_1.z.number().min(1),
         discountPercent: zod_1.z.number().min(0).max(100).optional(),
         // v2 pricing fields
         vatRate: zod_1.z.number().min(0).max(100).optional(),
-        billingFrequency: zod_1.z.enum(['ONE_TIME', 'WEEKLY', 'MONTHLY', 'QUARTERLY', 'ANNUALLY']).optional(),
+        billingFrequency: zod_1.z
+            .enum(['ONE_TIME', 'WEEKLY', 'MONTHLY', 'QUARTERLY', 'ANNUALLY'])
+            .optional(),
         displayPrice: zod_1.z.number().min(0).optional(),
-    })).optional(),
+    }))
+        .optional(),
     validUntil: zod_1.z.string().datetime().optional(),
     paymentTerms: zod_1.z.string().optional(),
     coverLetter: zod_1.z.string().optional(),
@@ -240,7 +246,7 @@ router.post('/', auth_js_1.authenticate, (0, auth_js_1.authorize)('PARTNER', 'MA
         // Get the display price - this is what the client sees
         const displayPrice = svc.displayPrice !== undefined && svc.displayPrice > 0
             ? svc.displayPrice
-            : (template?.priceAmount || template?.basePrice || 0);
+            : template?.priceAmount || template?.basePrice || 0;
         // Get billing frequency
         let billingFrequency = svc.billingFrequency || template?.billingCycle || 'MONTHLY';
         if (!validFrequencies.includes(billingFrequency)) {
@@ -488,7 +494,7 @@ router.put('/:id', auth_js_1.authenticate, (0, auth_js_1.authorize)('ADMIN', 'PA
             // Get display price from input or template
             const displayPrice = svc.displayPrice !== undefined && svc.displayPrice > 0
                 ? svc.displayPrice
-                : (template?.priceAmount || template?.basePrice || 0);
+                : template?.priceAmount || template?.basePrice || 0;
             // Get billing frequency from input or template
             let billingFrequency = svc.billingFrequency || template?.billingCycle || 'MONTHLY';
             if (!validFrequencies.includes(billingFrequency)) {
@@ -861,7 +867,10 @@ router.post('/:id/view', auth_js_1.authenticate, (0, errorHandler_js_1.asyncHand
     });
     res.json({
         success: true,
-        data: { message: 'View recorded', status: proposal.status === 'SENT' ? 'VIEWED' : proposal.status },
+        data: {
+            message: 'View recorded',
+            status: proposal.status === 'SENT' ? 'VIEWED' : proposal.status,
+        },
     });
 }));
 /**
@@ -1012,7 +1021,7 @@ router.get('/stats/dashboard', auth_js_1.authenticate, (0, errorHandler_js_1.asy
     const sixMonthsAgo = new Date(now.getFullYear(), now.getMonth() - 5, 1);
     const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
     // Get monthly revenue data (accepted proposals)
-    const monthlyRevenue = await database_js_1.prisma.$queryRaw `
+    const monthlyRevenue = (await database_js_1.prisma.$queryRaw `
       SELECT 
         DATE_TRUNC('month', "createdAt") as month,
         SUM(total) as revenue,
@@ -1023,9 +1032,22 @@ router.get('/stats/dashboard', auth_js_1.authenticate, (0, errorHandler_js_1.asy
         AND "createdAt" >= ${sixMonthsAgo}
       GROUP BY DATE_TRUNC('month', "createdAt")
       ORDER BY month ASC
-    `;
+    `);
     // Format revenue data
-    const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    const monthNames = [
+        'Jan',
+        'Feb',
+        'Mar',
+        'Apr',
+        'May',
+        'Jun',
+        'Jul',
+        'Aug',
+        'Sep',
+        'Oct',
+        'Nov',
+        'Dec',
+    ];
     const revenueData = monthlyRevenue.map((row) => ({
         name: monthNames[new Date(row.month).getMonth()],
         value: Number(row.revenue) || 0,
@@ -1050,7 +1072,7 @@ router.get('/stats/dashboard', auth_js_1.authenticate, (0, errorHandler_js_1.asy
         color: statusColors[s.status] || '#9CA3AF',
     }));
     // Get daily activity for last 7 days
-    const dailyActivity = await database_js_1.prisma.$queryRaw `
+    const dailyActivity = (await database_js_1.prisma.$queryRaw `
       SELECT 
         DATE("createdAt") as day,
         COUNT(*) FILTER (WHERE "entityType" = 'PROPOSAL') as proposals,
@@ -1060,7 +1082,7 @@ router.get('/stats/dashboard', auth_js_1.authenticate, (0, errorHandler_js_1.asy
         AND "createdAt" >= ${new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000)}
       GROUP BY DATE("createdAt")
       ORDER BY day ASC
-    `;
+    `);
     const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
     const weeklyActivity = dailyActivity.map((row) => ({
         day: dayNames[new Date(row.day).getDay()],
@@ -1090,7 +1112,7 @@ router.get('/stats/dashboard', auth_js_1.authenticate, (0, errorHandler_js_1.asy
         const mapped = activityTypeMap[activity.action] || {
             type: 'generic',
             message: activity.description || 'Activity recorded',
-            color: 'gray'
+            color: 'gray',
         };
         return {
             id: activity.id,

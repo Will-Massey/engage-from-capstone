@@ -9,7 +9,8 @@ import { useAuthStore } from '../../stores/authStore';
 import toast from 'react-hot-toast';
 
 const onboardingSchema = z.object({
-  subdomain: z.string()
+  subdomain: z
+    .string()
     .min(3, 'Subdomain must be at least 3 characters')
     .max(30, 'Subdomain must be at most 30 characters')
     .regex(/^[a-z0-9-]+$/, 'Only lowercase letters, numbers, and hyphens'),
@@ -50,9 +51,9 @@ const Onboarding = () => {
 
   const checkSubdomain = async () => {
     if (!watchSubdomain || watchSubdomain.length < 3) return;
-    
+
     try {
-      const response = await apiClient.checkSubdomain(watchSubdomain) as any;
+      const response = (await apiClient.checkSubdomain(watchSubdomain)) as any;
       setSubdomainAvailable(response.data.available);
     } catch (error) {
       setSubdomainAvailable(false);
@@ -62,14 +63,14 @@ const Onboarding = () => {
   const onSubmit = async (data: OnboardingForm) => {
     setIsLoading(true);
     try {
-      const response = await apiClient.createTenant({
+      const response = (await apiClient.createTenant({
         subdomain: data.subdomain,
         name: data.name,
         adminEmail: data.adminEmail,
         adminFirstName: data.adminFirstName,
         adminLastName: data.adminLastName,
         adminPassword: data.adminPassword,
-      }) as any;
+      })) as any;
 
       if (response.success) {
         setAuth(response.data.user, response.data.tenant, response.data.token);
@@ -85,7 +86,7 @@ const Onboarding = () => {
 
   const nextStep = async () => {
     let fieldsToValidate: (keyof OnboardingForm)[] = [];
-    
+
     if (currentStep === 1) {
       fieldsToValidate = ['subdomain', 'name'];
     } else if (currentStep === 2) {
@@ -117,15 +118,11 @@ const Onboarding = () => {
                   currentStep > step.id
                     ? 'bg-primary-600 text-white'
                     : currentStep === step.id
-                    ? 'bg-primary-100 text-primary-700 border-2 border-primary-600'
-                    : 'bg-slate-100 text-slate-600'
+                      ? 'bg-primary-100 text-primary-700 border-2 border-primary-600'
+                      : 'bg-slate-100 text-slate-600'
                 }`}
               >
-                {currentStep > step.id ? (
-                  <CheckIcon className="w-5 h-5" />
-                ) : (
-                  step.id
-                )}
+                {currentStep > step.id ? <CheckIcon className="w-5 h-5" /> : step.id}
               </div>
               <span
                 className={`ml-2 text-sm font-medium ${
@@ -134,9 +131,7 @@ const Onboarding = () => {
               >
                 {step.name}
               </span>
-              {index < steps.length - 1 && (
-                <div className="w-12 h-0.5 mx-4 bg-slate-200" />
-              )}
+              {index < steps.length - 1 && <div className="w-12 h-0.5 mx-4 bg-slate-200" />}
             </div>
           ))}
         </div>
@@ -147,23 +142,17 @@ const Onboarding = () => {
         {currentStep === 1 && (
           <div className="space-y-6 animate-fade-in">
             <div>
-              <label className="block text-sm font-medium text-slate-800">
-                Practice Name
-              </label>
+              <label className="block text-sm font-medium text-slate-800">Practice Name</label>
               <input
                 {...register('name')}
                 className="mt-1 input-field"
                 placeholder="e.g., Smith & Associates"
               />
-              {errors.name && (
-                <p className="mt-1 text-sm text-red-600">{errors.name.message}</p>
-              )}
+              {errors.name && <p className="mt-1 text-sm text-red-600">{errors.name.message}</p>}
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-slate-800">
-                Subdomain
-              </label>
+              <label className="block text-sm font-medium text-slate-800">Subdomain</label>
               <div className="mt-1 flex rounded-lg shadow-sm">
                 <input
                   {...register('subdomain')}
@@ -186,11 +175,7 @@ const Onboarding = () => {
               )}
             </div>
 
-            <button
-              type="button"
-              onClick={nextStep}
-              className="w-full btn-primary py-2.5"
-            >
+            <button type="button" onClick={nextStep} className="w-full btn-primary py-2.5">
               Continue
             </button>
           </div>
@@ -201,25 +186,15 @@ const Onboarding = () => {
           <div className="space-y-6 animate-fade-in">
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm font-medium text-slate-800">
-                  First Name
-                </label>
-                <input
-                  {...register('adminFirstName')}
-                  className="mt-1 input-field"
-                />
+                <label className="block text-sm font-medium text-slate-800">First Name</label>
+                <input {...register('adminFirstName')} className="mt-1 input-field" />
                 {errors.adminFirstName && (
                   <p className="mt-1 text-sm text-red-600">{errors.adminFirstName.message}</p>
                 )}
               </div>
               <div>
-                <label className="block text-sm font-medium text-slate-800">
-                  Last Name
-                </label>
-                <input
-                  {...register('adminLastName')}
-                  className="mt-1 input-field"
-                />
+                <label className="block text-sm font-medium text-slate-800">Last Name</label>
+                <input {...register('adminLastName')} className="mt-1 input-field" />
                 {errors.adminLastName && (
                   <p className="mt-1 text-sm text-red-600">{errors.adminLastName.message}</p>
                 )}
@@ -227,46 +202,26 @@ const Onboarding = () => {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-slate-800">
-                Email Address
-              </label>
-              <input
-                {...register('adminEmail')}
-                type="email"
-                className="mt-1 input-field"
-              />
+              <label className="block text-sm font-medium text-slate-800">Email Address</label>
+              <input {...register('adminEmail')} type="email" className="mt-1 input-field" />
               {errors.adminEmail && (
                 <p className="mt-1 text-sm text-red-600">{errors.adminEmail.message}</p>
               )}
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-slate-800">
-                Password
-              </label>
-              <input
-                {...register('adminPassword')}
-                type="password"
-                className="mt-1 input-field"
-              />
+              <label className="block text-sm font-medium text-slate-800">Password</label>
+              <input {...register('adminPassword')} type="password" className="mt-1 input-field" />
               {errors.adminPassword && (
                 <p className="mt-1 text-sm text-red-600">{errors.adminPassword.message}</p>
               )}
             </div>
 
             <div className="flex space-x-3">
-              <button
-                type="button"
-                onClick={prevStep}
-                className="flex-1 btn-secondary py-2.5"
-              >
+              <button type="button" onClick={prevStep} className="flex-1 btn-secondary py-2.5">
                 Back
               </button>
-              <button
-                type="button"
-                onClick={nextStep}
-                className="flex-1 btn-primary py-2.5"
-              >
+              <button type="button" onClick={nextStep} className="flex-1 btn-primary py-2.5">
                 Continue
               </button>
             </div>
@@ -301,25 +256,21 @@ const Onboarding = () => {
               />
               <label className="ml-2 text-sm text-slate-700">
                 I agree to the{' '}
-                <a href="#" className="text-primary-600 hover:text-primary-500">Terms of Service</a>
-                {' '}and{' '}
-                <a href="#" className="text-primary-600 hover:text-primary-500">Privacy Policy</a>
+                <a href="#" className="text-primary-600 hover:text-primary-500">
+                  Terms of Service
+                </a>{' '}
+                and{' '}
+                <a href="#" className="text-primary-600 hover:text-primary-500">
+                  Privacy Policy
+                </a>
               </label>
             </div>
 
             <div className="flex space-x-3">
-              <button
-                type="button"
-                onClick={prevStep}
-                className="flex-1 btn-secondary py-2.5"
-              >
+              <button type="button" onClick={prevStep} className="flex-1 btn-secondary py-2.5">
                 Back
               </button>
-              <button
-                type="submit"
-                disabled={isLoading}
-                className="flex-1 btn-primary py-2.5"
-              >
+              <button type="submit" disabled={isLoading} className="flex-1 btn-primary py-2.5">
                 {isLoading ? 'Creating Account...' : 'Create Account'}
               </button>
             </div>

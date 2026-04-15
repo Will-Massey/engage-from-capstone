@@ -1,6 +1,6 @@
 /**
  * Pricing Engine v2 - Clear and Intuitive Pricing
- * 
+ *
  * Key Principles:
  * 1. Show prices as they are - £850/year shows as £850/year
  * 2. Annual equivalent shown for comparison only
@@ -20,21 +20,21 @@ export interface ServicePricingInput {
 
 export interface LineItemResult {
   // What the client sees
-  displayPrice: number;        // e.g., 71 or 850
+  displayPrice: number; // e.g., 71 or 850
   billingFrequency: PricingFrequency;
   priceDisplayMode: 'PER_MONTH' | 'PER_QUARTER' | 'PER_YEAR' | 'ONE_TIME';
-  priceLabel: string;          // e.g., "£71/month" or "£850/year"
-  
+  priceLabel: string; // e.g., "£71/month" or "£850/year"
+
   // For comparison
-  annualEquivalent: number;    // What it costs per year
-  
+  annualEquivalent: number; // What it costs per year
+
   // Calculations
   quantity: number;
-  lineTotal: number;           // displayPrice × quantity
+  lineTotal: number; // displayPrice × quantity
   discountAmount: number;
-  netTotal: number;            // After discount
+  netTotal: number; // After discount
   vatAmount: number;
-  grossTotal: number;          // Total with VAT
+  grossTotal: number; // Total with VAT
 }
 
 export interface ProposalTotals {
@@ -63,11 +63,11 @@ export interface ProposalTotals {
     total: number;
     items: LineItemResult[];
   };
-  
+
   // Grand totals
   grandTotal: number;
-  totalAnnualEquivalent: number;  // What everything costs per year
-  
+  totalAnnualEquivalent: number; // What everything costs per year
+
   // For display
   primaryBillingFrequency: PricingFrequency;
 }
@@ -76,13 +76,7 @@ export interface ProposalTotals {
  * Calculate a single line item with clear pricing
  */
 export function calculateLineItem(input: ServicePricingInput): LineItemResult {
-  const {
-    basePrice,
-    billingFrequency,
-    quantity = 1,
-    discountPercent = 0,
-    vatRate = 20
-  } = input;
+  const { basePrice, billingFrequency, quantity = 1, discountPercent = 0, vatRate = 20 } = input;
 
   // Calculate totals
   const lineTotal = basePrice * quantity;
@@ -158,7 +152,7 @@ export function calculateLineItem(input: ServicePricingInput): LineItemResult {
     discountAmount,
     netTotal,
     vatAmount,
-    grossTotal
+    grossTotal,
   };
 }
 
@@ -168,10 +162,10 @@ export function calculateLineItem(input: ServicePricingInput): LineItemResult {
 export function calculateProposalTotals(lineItems: LineItemResult[]): ProposalTotals {
   // Group items by billing frequency
   const grouped = {
-    monthly: lineItems.filter(item => item.billingFrequency === 'MONTHLY'),
-    quarterly: lineItems.filter(item => item.billingFrequency === 'QUARTERLY'),
-    annually: lineItems.filter(item => item.billingFrequency === 'ANNUALLY'),
-    oneTime: lineItems.filter(item => item.billingFrequency === 'ONE_TIME'),
+    monthly: lineItems.filter((item) => item.billingFrequency === 'MONTHLY'),
+    quarterly: lineItems.filter((item) => item.billingFrequency === 'QUARTERLY'),
+    annually: lineItems.filter((item) => item.billingFrequency === 'ANNUALLY'),
+    oneTime: lineItems.filter((item) => item.billingFrequency === 'ONE_TIME'),
   };
 
   // Calculate totals for each group
@@ -179,7 +173,7 @@ export function calculateProposalTotals(lineItems: LineItemResult[]): ProposalTo
     subtotal: items.reduce((sum, item) => sum + item.lineTotal, 0),
     vatAmount: items.reduce((sum, item) => sum + item.vatAmount, 0),
     total: items.reduce((sum, item) => sum + item.grossTotal, 0),
-    items
+    items,
   });
 
   const monthly = calculateGroup(grouped.monthly);
@@ -189,7 +183,7 @@ export function calculateProposalTotals(lineItems: LineItemResult[]): ProposalTo
 
   // Calculate grand total and annual equivalent
   const grandTotal = monthly.total + quarterly.total + annually.total + oneTime.total;
-  const totalAnnualEquivalent = 
+  const totalAnnualEquivalent =
     monthly.items.reduce((sum, item) => sum + item.annualEquivalent * item.quantity, 0) +
     quarterly.items.reduce((sum, item) => sum + item.annualEquivalent * item.quantity, 0) +
     annually.items.reduce((sum, item) => sum + item.annualEquivalent * item.quantity, 0);
@@ -201,8 +195,9 @@ export function calculateProposalTotals(lineItems: LineItemResult[]): ProposalTo
     ANNUALLY: grouped.annually.length,
     ONE_TIME: grouped.oneTime.length,
   };
-  const primaryBillingFrequency = Object.entries(counts)
-    .sort((a, b) => b[1] - a[1])[0][0] as PricingFrequency;
+  const primaryBillingFrequency = Object.entries(counts).sort(
+    (a, b) => b[1] - a[1]
+  )[0][0] as PricingFrequency;
 
   return {
     monthly,
@@ -211,7 +206,7 @@ export function calculateProposalTotals(lineItems: LineItemResult[]): ProposalTo
     oneTime,
     grandTotal,
     totalAnnualEquivalent,
-    primaryBillingFrequency
+    primaryBillingFrequency,
   };
 }
 
@@ -223,7 +218,7 @@ export function formatCurrency(amount: number, currency: string = 'GBP'): string
     style: 'currency',
     currency,
     minimumFractionDigits: 0,
-    maximumFractionDigits: 2
+    maximumFractionDigits: 2,
   }).format(amount);
 }
 
@@ -272,5 +267,5 @@ export default {
   calculateProposalTotals,
   formatCurrency,
   getBillingFrequencyLabel,
-  getBillingFrequencyShort
+  getBillingFrequencyShort,
 };

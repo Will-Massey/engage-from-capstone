@@ -1,9 +1,5 @@
 import { useState } from 'react';
-import {
-  PaymentElement,
-  useStripe,
-  useElements,
-} from '@stripe/react-stripe-js';
+import { PaymentElement, useStripe, useElements } from '@stripe/react-stripe-js';
 import { apiClient } from '../../utils/api';
 import toast from 'react-hot-toast';
 
@@ -49,10 +45,10 @@ const StripePaymentForm = ({ priceId, onSuccess, onCancel }: StripePaymentFormPr
       }
 
       // Create subscription
-      const response = await apiClient.createSubscription({
+      const response = (await apiClient.createSubscription({
         priceId,
         paymentMethodId: paymentMethod.id,
-      }) as any;
+      })) as any;
 
       if (response.success) {
         // Confirm payment if required
@@ -93,11 +89,7 @@ const StripePaymentForm = ({ priceId, onSuccess, onCancel }: StripePaymentFormPr
         >
           Cancel
         </button>
-        <button
-          type="submit"
-          className="flex-1 btn-primary"
-          disabled={!stripe || isLoading}
-        >
+        <button type="submit" className="flex-1 btn-primary" disabled={!stripe || isLoading}>
           {isLoading ? (
             <span className="flex items-center justify-center">
               <svg className="animate-spin h-5 w-5 mr-2" viewBox="0 0 24 24">

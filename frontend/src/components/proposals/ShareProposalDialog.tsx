@@ -44,9 +44,9 @@ const ShareProposalDialog = ({
   const generateLink = async () => {
     setIsGenerating(true);
     try {
-      const response = await apiClient.post(`/proposals/${proposalId}/share`, {
+      const response = (await apiClient.post(`/proposals/${proposalId}/share`, {
         expiryDays: 30,
-      }) as any;
+      })) as any;
 
       if (response.success) {
         setShareData(response.data);
@@ -71,13 +71,13 @@ const ShareProposalDialog = ({
   const sendEmail = async () => {
     setIsSending(true);
     try {
-      const response = await apiClient.post(`/proposals/${proposalId}/email`, {
+      const response = (await apiClient.post(`/proposals/${proposalId}/email`, {
         to: emailData.to,
         cc: emailData.cc ? emailData.cc.split(',').map((e) => e.trim()) : undefined,
         subject: emailData.subject,
         message: emailData.message,
         includePdf: emailData.includePdf,
-      }) as any;
+      })) as any;
 
       if (response.success) {
         toast.success('Proposal sent successfully');
@@ -249,9 +249,7 @@ const ShareProposalDialog = ({
                     type="checkbox"
                     id="includePdf"
                     checked={emailData.includePdf}
-                    onChange={(e) =>
-                      setEmailData({ ...emailData, includePdf: e.target.checked })
-                    }
+                    onChange={(e) => setEmailData({ ...emailData, includePdf: e.target.checked })}
                     className="h-4 w-4 text-primary-600 rounded"
                   />
                   <label htmlFor="includePdf" className="ml-2 text-sm text-gray-700">

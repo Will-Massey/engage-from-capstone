@@ -3,6 +3,7 @@
 ## ✅ Git Backup Created
 
 **Commit:** `5406796a`
+
 ```
 WIP: Proposal pricing fixes - frequency, VAT, CSRF
 
@@ -14,6 +15,7 @@ WIP: Proposal pricing fixes - frequency, VAT, CSRF
 ```
 
 **Files Changed:**
+
 - `frontend/src/components/proposals/ProposalBuilder.tsx` (+128 lines)
 - `frontend/src/pages/proposals/CreateProposal.tsx` (+44 lines)
 - `frontend/src/utils/api.ts` (+35 lines)
@@ -26,13 +28,17 @@ WIP: Proposal pricing fixes - frequency, VAT, CSRF
 ## 🧪 Automated Testing Setup
 
 ### 1. MCP Server Configuration
+
 **File:** `.claude/mcp.json`
+
 - Playwright MCP server for browser automation
 - Custom engage-testing MCP server for API testing
 
 ### 2. MCP Test Server
+
 **File:** `scripts/mcp-test-server.js`
 Provides MCP tools:
+
 - `test_proposal_pricing` - Validate pricing calculations
 - `test_vat_calculation` - Validate VAT math
 - `test_csrf_handling` - Test CSRF retry mechanism
@@ -40,7 +46,9 @@ Provides MCP tools:
 - `run_api_health_check` - Verify API endpoints
 
 ### 3. Debug & Test Script
+
 **File:** `scripts/debug-and-test.js`
+
 ```bash
 # Run all tests
 node scripts/debug-and-test.js
@@ -54,7 +62,9 @@ node scripts/debug-and-test.js --files
 ```
 
 ### 4. Playwright E2E Tests
+
 **Directory:** `e2e-tests/`
+
 - `playwright.config.ts` - Test configuration
 - `specs/proposal-pricing.spec.ts` - E2E test specs
 - `fixtures/helpers.ts` - Test utilities
@@ -67,13 +77,16 @@ node scripts/debug-and-test.js --files
 ### High Priority (Before Deploy)
 
 1. **Database Migration** ⏳
+
    ```bash
    cd backend
    npx prisma migrate dev --name add_vat_fields_to_proposal_service
    ```
+
    - Adds `vatRate`, `vatAmount`, `grossTotal` to ProposalService
 
 2. **Backend Build Verification** ⏳
+
    ```bash
    cd backend
    npm run build
@@ -81,6 +94,7 @@ node scripts/debug-and-test.js --files
    ```
 
 3. **Frontend Build Verification** ⏳
+
    ```bash
    cd frontend
    npm run build
@@ -94,6 +108,7 @@ node scripts/debug-and-test.js --files
 ### Medium Priority (Before Production)
 
 5. **E2E Test Execution** ⏳
+
    ```bash
    cd e2e-tests
    npm install
@@ -175,15 +190,15 @@ npx prisma migrate resolve --rolled-back add_vat_fields_to_proposal_service
 
 ## 📊 Test Matrix
 
-| Feature | Unit Tests | E2E Tests | Status |
-|---------|-----------|-----------|--------|
-| Pricing Frequency | ✅ | ✅ | Ready |
-| Billing Period Edit | ✅ | ✅ | Ready |
-| VAT Calculation | ✅ | ✅ | Ready |
-| CSRF Auto-Retry | ✅ | ✅ | Ready |
-| Database Schema | ✅ | N/A | Ready |
-| PDF Generation | ❌ | ❌ | Pending |
-| Proposal Update | ❌ | ❌ | Pending |
+| Feature             | Unit Tests | E2E Tests | Status  |
+| ------------------- | ---------- | --------- | ------- |
+| Pricing Frequency   | ✅         | ✅        | Ready   |
+| Billing Period Edit | ✅         | ✅        | Ready   |
+| VAT Calculation     | ✅         | ✅        | Ready   |
+| CSRF Auto-Retry     | ✅         | ✅        | Ready   |
+| Database Schema     | ✅         | N/A       | Ready   |
+| PDF Generation      | ❌         | ❌        | Pending |
+| Proposal Update     | ❌         | ❌        | Pending |
 
 ---
 
@@ -195,6 +210,7 @@ npx prisma migrate resolve --rolled-back add_vat_fields_to_proposal_service
 **Status:** Ready for migration and testing
 
 **Next Actions:**
+
 1. Run database migration
 2. Execute E2E tests
 3. Deploy to staging

@@ -330,13 +330,14 @@ router.get('/auth/:provider/status', auth_js_1.authenticate, (0, errorHandler_js
     const settings = JSON.parse(tenant.settings || '{}');
     const emailConfig = settings.email;
     const isConnected = emailConfig?.provider === provider &&
-        (emailConfig[provider]?.refreshToken || emailConfig[provider === 'microsoft365' ? 'outlook' : provider]?.refreshToken);
+        (emailConfig[provider]?.refreshToken ||
+            emailConfig[provider === 'microsoft365' ? 'outlook' : provider]?.refreshToken);
     res.json({
         success: true,
         data: {
             isConnected: !!isConnected,
             provider,
-            user: isConnected ? (emailConfig[provider]?.user || emailConfig.outlook?.user) : undefined,
+            user: isConnected ? emailConfig[provider]?.user || emailConfig.outlook?.user : undefined,
         },
     });
 }));
@@ -444,7 +445,9 @@ router.post('/auth/:provider/callback', auth_js_1.authenticate, (0, errorHandler
         settings.email[provider === 'microsoft365' ? 'outlook' : provider] = {
             clientId: provider === 'gmail' ? process.env.GMAIL_CLIENT_ID : process.env.MICROSOFT_CLIENT_ID,
             // Store clientSecret encrypted for security
-            clientSecret: (0, encryption_js_1.encrypt)(provider === 'gmail' ? process.env.GMAIL_CLIENT_SECRET || '' : process.env.MICROSOFT_CLIENT_SECRET || ''),
+            clientSecret: (0, encryption_js_1.encrypt)(provider === 'gmail'
+                ? process.env.GMAIL_CLIENT_SECRET || ''
+                : process.env.MICROSOFT_CLIENT_SECRET || ''),
             // Store refresh token encrypted - this is the most sensitive credential
             refreshToken: (0, encryption_js_1.encrypt)(tokens.refreshToken),
             user: tokens.user || req.user?.email,

@@ -1,109 +1,88 @@
 /**
  * Production Startup Script (ESM)
+ * Optimized for Render free-tier deployment
  */
 
 import { execSync } from 'child_process';
-import { PrismaClient } from '@prisma/client';
+import { existsSync } from 'fs';
+import { fileURLToPath } from 'url';
+import { dirname, join } from 'path';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
+
+// Resolve prisma CLI path without npx overhead
+const prismaPath = [
+  join(__dirname, 'node_modules', '.bin', 'prisma'),
+  join(__dirname, '..', 'node_modules', '.bin', 'prisma'),
+  join(__dirname, 'node_modules', 'prisma', 'build', 'index.js'),
+  join(__dirname, '..', 'node_modules', 'prisma', 'build', 'index.js'),
+].find((p) => existsSync(p));
+
+const prismaCmd = prismaPath || 'npx prisma';
+
+function run(cmd, opts = {}) {
+  console.log(`$ ${cmd}`);
+  return execSync(cmd, {
+    stdio: 'inherit',
+    timeout: 30000,
+    killSignal: 'SIGTERM',
+    cwd: __dirname,
+    env: { ...process.env, PRISMA_GENERATE_SKIP_AUTOINSTALL: 'true' },
+    ...opts,
+  });
+}
 
 console.log('========================================');
 console.log('🚀 Engage Backend Starting...');
 console.log('========================================');
 
-// First, ensure database columns exist before running migrations
-console.log('🔧 Checking database schema...');
-const prisma = new PrismaClient();
-
-try {
-  // Check if billingCycle column exists
-  const result = await prisma.$queryRaw`
-    SELECT column_name 
-    FROM information_schema.columns 
-    WHERE table_name = 'ServiceTemplate' 
-    AND column_name = 'billingCycle'
-  `;
-  
-  if (result.length === 0) {
-    console.log('⚠️  billingCycle column missing. Adding...');
-    await prisma.$executeRaw`ALTER TABLE "ServiceTemplate" ADD COLUMN "billingCycle" TEXT DEFAULT 'MONTHLY'`;
-    console.log('✅ Added billingCycle column');
-  } else {
-    console.log('✅ billingCycle column exists');
-  }
-
-  // Check if priceDisplayMode column exists
-  const result2 = await prisma.$queryRaw`
-    SELECT column_name 
-    FROM information_schema.columns 
-    WHERE table_name = 'ServiceTemplate' 
-    AND column_name = 'priceDisplayMode'
-  `;
-  
-  if (result2.length === 0) {
-    console.log('⚠️  priceDisplayMode column missing. Adding...');
-    await prisma.$executeRaw`ALTER TABLE "ServiceTemplate" ADD COLUMN "priceDisplayMode" TEXT DEFAULT 'PER_MONTH'`;
-    console.log('✅ Added priceDisplayMode column');
-  } else {
-    console.log('✅ priceDisplayMode column exists');
-  }
-  
-  await prisma.$disconnect();
-} catch (e) {
-  console.error('❌ Schema fix error:', e.message);
-  await prisma.$disconnect();
-}
-
-// Check and resolve any failed migrations first
+// Resolve any failed migrations first (fast timeout)
 console.log('🗄️  Checking for failed migrations...');
 try {
-  // Try to mark the known failed migration as rolled back (ignore errors)
-  try {
-    execSync('npx prisma migrate resolve --rolled-back "20260410_data_migration_v2_pricing"', {
-      stdio: 'pipe',
-      timeout: 30000
-    });
-    console.log('✅ Marked failed migration as rolled back');
-  } catch (resolveError) {
-    // Migration might already be resolved or not exist - continue
-    console.log('ℹ️  Migration resolve: already resolved or not needed');
-  }
-  
-  // Now run the actual migration deploy
-  console.log('🗄️  Running database migrations...');
-  execSync('npx prisma migrate deploy', { 
+  run(`${prismaCmd} migrate resolve --rolled-back "20260410_data_migration_v2_pricing"`, {
+    timeout: 15000,
     stdio: 'pipe',
-    timeout: 60000
   });
+  console.log('✅ Marked failed migration as rolled back');
+} catch (resolveError) {
+  console.log('ℹ️  Migration resolve: already resolved or not needed');
+}
+
+// Run database migrations
+console.log('🗄️  Running database migrations...');
+try {
+  run(`${prismaCmd} migrate deploy`, { timeout: 60000 });
   console.log('✅ Migrations complete');
 } catch (error) {
   console.warn('⚠️  Migration issue (continuing anyway):', error.message);
   console.log('🚀 Starting server despite migration warnings...');
 }
 
-// Seed UK accountancy services (non-blocking)
+// Seed UK accountancy services (non-blocking, ignore failures)
 console.log('🌱 Checking UK service catalog...');
 try {
-  execSync('node ./scripts/seed-uk-services.js', {
-    stdio: 'pipe',
-    timeout: 30000,
-  });
+  run('node ./scripts/seed-uk-services.js', { timeout: 30000, stdio: 'pipe' });
   console.log('✅ Seed check complete');
 } catch (error) {
-  console.warn('⚠️  Seed check warning:', error.message);
+  console.warn('⚠️  Seed check warning:', error.message || error);
 }
 
-// Fix billingCycle for existing services (skip if column doesn't exist yet)
+// Fix billingCycle for existing services (ignore failures)
 console.log('🔧 Checking billingCycle field...');
 try {
-  execSync('node ./scripts/fix-billing-cycle.js', {
-    stdio: 'pipe',
-    timeout: 30000,
-  });
+  run('node ./scripts/fix-billing-cycle.js', { timeout: 30000, stdio: 'pipe' });
   console.log('✅ Billing cycle fix complete');
 } catch (error) {
-  console.warn('⚠️  Billing cycle fix warning:', error.message);
+  console.warn('⚠️  Billing cycle fix warning:', error.message || error);
 }
 
 console.log('🚀 Loading server...');
 
 // Import and start the server (ESM)
-await import('./dist/index.js');
+try {
+  await import('./dist/index.js');
+} catch (err) {
+  console.error('❌ Server failed to start:', err.message);
+  process.exit(1);
+}

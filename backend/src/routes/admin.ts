@@ -34,7 +34,7 @@ router.post(
       try {
         execSync('npx prisma migrate resolve --rolled-back "20260410_data_migration_v2_pricing"', {
           cwd: process.cwd(),
-          stdio: 'pipe'
+          stdio: 'pipe',
         });
       } catch (e: any) {
         // Migration might already be resolved or not exist
@@ -45,13 +45,13 @@ router.post(
       const output = execSync('npx prisma migrate deploy', {
         cwd: process.cwd(),
         stdio: 'pipe',
-        encoding: 'utf-8'
+        encoding: 'utf-8',
       });
 
       res.json({
         success: true,
         message: 'Migrations applied successfully',
-        output: output.toString()
+        output: output.toString(),
       });
     } catch (error: any) {
       res.status(500).json({
@@ -59,7 +59,7 @@ router.post(
         error: 'Migration failed',
         details: error.message,
         stdout: error.stdout?.toString(),
-        stderr: error.stderr?.toString()
+        stderr: error.stderr?.toString(),
       });
     }
   })
@@ -84,7 +84,7 @@ router.post(
           WHERE table_name = 'ServiceTemplate' 
           AND column_name = 'billingCycle'
         `;
-        
+
         if ((result as any[]).length === 0) {
           await prisma.$executeRaw`ALTER TABLE "ServiceTemplate" ADD COLUMN "billingCycle" TEXT DEFAULT 'MONTHLY'`;
           fixes.push('Added billingCycle column to ServiceTemplate');
@@ -95,7 +95,7 @@ router.post(
         fixes.push(`billingCycle check error: ${e.message}`);
       }
 
-      // Check and add priceDisplayMode column  
+      // Check and add priceDisplayMode column
       try {
         const result = await prisma.$queryRaw`
           SELECT column_name 
@@ -103,7 +103,7 @@ router.post(
           WHERE table_name = 'ServiceTemplate' 
           AND column_name = 'priceDisplayMode'
         `;
-        
+
         if ((result as any[]).length === 0) {
           await prisma.$executeRaw`ALTER TABLE "ServiceTemplate" ADD COLUMN "priceDisplayMode" TEXT DEFAULT 'PER_MONTH'`;
           fixes.push('Added priceDisplayMode column to ServiceTemplate');
@@ -117,13 +117,13 @@ router.post(
       res.json({
         success: true,
         message: 'Schema fixes applied',
-        fixes
+        fixes,
       });
     } catch (error: any) {
       res.status(500).json({
         success: false,
         error: 'Schema fix failed',
-        details: error.message
+        details: error.message,
       });
     }
   })
@@ -155,13 +155,13 @@ router.get(
 
       res.json({
         success: true,
-        serviceTemplateColumns: (columns as any[]).map(c => c.column_name),
-        recentMigrations: migrations
+        serviceTemplateColumns: (columns as any[]).map((c) => c.column_name),
+        recentMigrations: migrations,
       });
     } catch (error: any) {
       res.status(500).json({
         success: false,
-        error: error.message
+        error: error.message,
       });
     }
   })

@@ -24,12 +24,16 @@ const createServiceSchema = zod_1.z.object({
     basePrice: zod_1.z.number().min(0, 'Base price must be positive'),
     baseHours: zod_1.z.number().min(0.1, 'Base hours must be at least 0.1'),
     pricingModel: zod_1.z.nativeEnum(client_1.PricingModel).default('FIXED'),
-    frequencyOptions: zod_1.z.array(zod_1.z.nativeEnum(client_1.PricingFrequency)).default(['MONTHLY', 'QUARTERLY', 'ANNUALLY']),
+    frequencyOptions: zod_1.z
+        .array(zod_1.z.nativeEnum(client_1.PricingFrequency))
+        .default(['MONTHLY', 'QUARTERLY', 'ANNUALLY']),
     defaultFrequency: zod_1.z.nativeEnum(client_1.PricingFrequency).default('MONTHLY'),
     complexityFactors: zod_1.z.array(complexityFactorSchema).default([]),
     requirements: zod_1.z.array(zod_1.z.string()).default([]),
     deliverables: zod_1.z.array(zod_1.z.string()).default([]),
-    applicableEntityTypes: zod_1.z.array(zod_1.z.nativeEnum(client_1.CompanyType)).default(['LIMITED_COMPANY', 'SOLE_TRADER']),
+    applicableEntityTypes: zod_1.z
+        .array(zod_1.z.nativeEnum(client_1.CompanyType))
+        .default(['LIMITED_COMPANY', 'SOLE_TRADER']),
     regulatoryNotes: zod_1.z.string().optional(),
     tags: zod_1.z.array(zod_1.z.string()).default([]),
 });
@@ -79,11 +83,7 @@ router.get('/', auth_js_1.authenticate, (0, errorHandler_js_1.asyncHandler)(asyn
                 orderBy: { priority: 'desc' },
             },
         },
-        orderBy: [
-            { category: 'asc' },
-            { isPopular: 'desc' },
-            { name: 'asc' },
-        ],
+        orderBy: [{ category: 'asc' }, { isPopular: 'desc' }, { name: 'asc' }],
     });
     res.json({
         success: true,
@@ -207,7 +207,9 @@ router.put('/:id', auth_js_1.authenticate, (0, auth_js_1.authorize)('ADMIN', 'PA
         where: { id },
         data: {
             ...data,
-            complexityFactors: data.complexityFactors ? JSON.stringify(data.complexityFactors) : undefined,
+            complexityFactors: data.complexityFactors
+                ? JSON.stringify(data.complexityFactors)
+                : undefined,
             requirements: data.requirements ? JSON.stringify(data.requirements) : undefined,
             deliverables: data.deliverables ? JSON.stringify(data.deliverables) : undefined,
             tags: data.tags?.join(','),
@@ -309,7 +311,8 @@ router.post('/:id/pricing-rules', auth_js_1.authenticate, (0, auth_js_1.authoriz
  * Calculate price for a service
  */
 router.post('/calculate-price', auth_js_1.authenticate, (0, errorHandler_js_1.asyncHandler)(async (req, res) => {
-    const { serviceId, clientData, quantity = 1 } = zod_1.z.object({
+    const { serviceId, clientData, quantity = 1, } = zod_1.z
+        .object({
         serviceId: zod_1.z.string(),
         clientData: zod_1.z.object({
             turnover: zod_1.z.number().optional(),
@@ -319,7 +322,8 @@ router.post('/calculate-price', auth_js_1.authenticate, (0, errorHandler_js_1.as
             recordQuality: zod_1.z.enum(['GOOD', 'AVERAGE', 'POOR']).optional(),
         }),
         quantity: zod_1.z.number().min(1).optional(),
-    }).parse(req.body);
+    })
+        .parse(req.body);
     const pricingEngine = new pricingEngine_js_1.PricingEngine(req.tenantId);
     const calculation = await pricingEngine.calculatePrice(serviceId, clientData, { quantity });
     res.json({

@@ -9,7 +9,7 @@ export const generateTermsAndConditions = (companyDetails: any) => {
     fcaAuthorised = false,
   } = companyDetails;
 
-  const fcaText = fcaAuthorised 
+  const fcaText = fcaAuthorised
     ? 'We are authorised by the Financial Conduct Authority (FCA) to provide regulated investment advice.'
     : 'We are not authorised by the Financial Conduct Authority (FCA) to provide regulated investment advice. Any incidental investment or consumer credit services will be referred to an FCA-authorised third party.';
 

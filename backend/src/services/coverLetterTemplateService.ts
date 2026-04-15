@@ -29,10 +29,7 @@ export async function getTemplates(tenantId: string) {
   try {
     const templates = await prisma.coverLetterTemplate.findMany({
       where: { tenantId },
-      orderBy: [
-        { isDefault: 'desc' },
-        { name: 'asc' },
-      ],
+      orderBy: [{ isDefault: 'desc' }, { name: 'asc' }],
     });
     return templates;
   } catch (error) {

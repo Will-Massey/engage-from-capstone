@@ -12,6 +12,7 @@
 The Windows file permission error is blocking database setup. Try these solutions:
 
 **Option A: Close Everything and Retry**
+
 ```powershell
 # Close VS Code completely
 # Open new PowerShell as Administrator
@@ -21,6 +22,7 @@ npx prisma migrate dev --name add_security_tables
 ```
 
 **Option B: Manual File Deletion**
+
 ```powershell
 # Delete the temp file manually
 cd "C:\Users\willi\Cline Workspace\engage\backend\node_modules\.prisma\client"
@@ -29,6 +31,7 @@ npx prisma generate
 ```
 
 **Option C: Skip Prisma (Temporary)**
+
 ```powershell
 # Comment out Prisma-dependent code temporarily
 # Or use Docker which handles this in Linux
@@ -69,6 +72,7 @@ curl http://localhost:3001/health/detailed
 Create proper environment files:
 
 **backend/.env.development**
+
 ```env
 NODE_ENV=development
 PORT=3001
@@ -80,6 +84,7 @@ LOG_LEVEL=debug
 ```
 
 **frontend/.env.development**
+
 ```env
 VITE_API_URL=http://localhost:3001
 VITE_APP_ENV=development
@@ -104,6 +109,7 @@ npm install react-hot-toast
 Choose one:
 
 **Option A: SendGrid (Production)**
+
 ```bash
 # Sign up at sendgrid.com
 # Get API key
@@ -111,12 +117,14 @@ Choose one:
 ```
 
 **Option B: Mailgun**
+
 ```bash
 # Sign up at mailgun.com
 # Add to .env: MAILGUN_API_KEY=key-xxx
 ```
 
 **Option C: Ethereal (Development Only)**
+
 ```bash
 # Already implemented - emails logged to console
 ```
@@ -145,6 +153,7 @@ Create `TEST_PLAN.md`:
 ## Test Checklist
 
 ### Authentication
+
 - [ ] Register new account
 - [ ] Login with credentials
 - [ ] Forgot password flow
@@ -152,6 +161,7 @@ Create `TEST_PLAN.md`:
 - [ ] Login after password reset
 
 ### 2FA
+
 - [ ] Setup 2FA (scan QR code)
 - [ ] Save backup codes
 - [ ] Login with 2FA
@@ -159,12 +169,14 @@ Create `TEST_PLAN.md`:
 - [ ] Disable 2FA
 
 ### GDPR
+
 - [ ] Export user data
 - [ ] Verify JSON export contains all data
 - [ ] Delete account
 - [ ] Verify account is anonymized
 
 ### Security
+
 - [ ] Rate limiting on forgot password (3/15min)
 - [ ] CSRF token validation
 - [ ] Session expiration
@@ -215,6 +227,7 @@ artillery run load-test.yml
 ### 11. Prepare for Production 🌐
 
 **GitHub Secrets Setup:**
+
 ```bash
 # Go to GitHub → Settings → Secrets and variables → Actions
 # Add these secrets:
@@ -413,9 +426,9 @@ railway up
 
 /docs/user/
 ├── getting-started.md
-├── security-setup.md      # How to enable 2FA
-├── password-reset.md      # Forgot password guide
-├── gdpr-rights.md         # Data export/deletion
+├── security-setup.md # How to enable 2FA
+├── password-reset.md # Forgot password guide
+├── gdpr-rights.md # Data export/deletion
 ├── faq.md
 └── troubleshooting.md
 
@@ -442,6 +455,7 @@ npm install swagger-jsdoc swagger-ui-express
 ## 🎯 30-60-90 DAY PLAN
 
 ### Days 1-30: Stabilize & Launch 🚀
+
 - [ ] Fix any migration issues
 - [ ] Complete testing of all features
 - [ ] Deploy to production
@@ -449,6 +463,7 @@ npm install swagger-jsdoc swagger-ui-express
 - [ ] Fix critical bugs
 
 ### Days 31-60: Optimize & Monitor 📈
+
 - [ ] Performance optimization
 - [ ] Add monitoring dashboards
 - [ ] Security audit
@@ -456,6 +471,7 @@ npm install swagger-jsdoc swagger-ui-express
 - [ ] Bug fixes and polish
 
 ### Days 61-90: Enhance & Expand ✨
+
 - [ ] Advanced 2FA (WebAuthn)
 - [ ] AI email features
 - [ ] Mobile responsiveness improvements
@@ -487,6 +503,7 @@ npm install swagger-jsdoc swagger-ui-express
 5. **Commit everything** - `git add . && git commit -m "feat: Complete security implementation"`
 
 Then decide:
+
 - **Want to launch this week?** → Follow Production Deployment section
 - **Want to add more features?** → Check Enhancement Opportunities
 - **Want to test thoroughly?** → Follow Testing Phase
@@ -495,17 +512,17 @@ Then decide:
 
 ## 📞 Support & Resources
 
-| Resource | Link |
-|----------|------|
-| Prisma Docs | https://www.prisma.io/docs |
-| Railway Docs | https://docs.railway.app |
-| Docker Docs | https://docs.docker.com |
-| React Docs | https://react.dev |
+| Resource      | Link                         |
+| ------------- | ---------------------------- |
+| Prisma Docs   | https://www.prisma.io/docs   |
+| Railway Docs  | https://docs.railway.app     |
+| Docker Docs   | https://docs.docker.com      |
+| React Docs    | https://react.dev            |
 | Tailwind Docs | https://tailwindcss.com/docs |
 
 ---
 
-**What would you like to tackle first?** 
+**What would you like to tackle first?**
 
 1. 🔧 **Fix Prisma & run migrations**
 2. 🧪 **Test all features**

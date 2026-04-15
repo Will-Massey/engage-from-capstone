@@ -6,7 +6,7 @@ type Theme = 'light' | 'dark' | 'system';
 interface ThemeState {
   theme: Theme;
   isDark: boolean;
-  
+
   setTheme: (theme: Theme) => void;
   toggleTheme: () => void;
 }
@@ -18,11 +18,12 @@ export const useThemeStore = create<ThemeState>()(
       isDark: false,
 
       setTheme: (theme) => {
-        const isDark = theme === 'dark' || 
+        const isDark =
+          theme === 'dark' ||
           (theme === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches);
-        
+
         set({ theme, isDark });
-        
+
         // Apply theme to document
         if (isDark) {
           document.documentElement.classList.add('dark');
@@ -42,9 +43,10 @@ export const useThemeStore = create<ThemeState>()(
       onRehydrateStorage: () => (state) => {
         // Apply theme on store rehydration
         if (state) {
-          const isDark = state.theme === 'dark' || 
+          const isDark =
+            state.theme === 'dark' ||
             (state.theme === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches);
-          
+
           if (isDark) {
             document.documentElement.classList.add('dark');
           } else {

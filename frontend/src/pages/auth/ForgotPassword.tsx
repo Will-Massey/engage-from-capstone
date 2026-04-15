@@ -18,7 +18,7 @@ export const ForgotPassword: React.FC = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!email) {
       toast.error('Please enter your email address');
       return;
@@ -48,11 +48,12 @@ export const ForgotPassword: React.FC = () => {
               <CheckCircleIcon className="w-8 h-8 text-green-600" />
             </div>
           </div>
-          
+
           <div>
             <h2 className="text-2xl font-bold text-slate-900">Check Your Email</h2>
             <p className="mt-2 text-slate-600">
-              If an account exists for <strong>{email}</strong>, we've sent password reset instructions.
+              If an account exists for <strong>{email}</strong>, we've sent password reset
+              instructions.
             </p>
           </div>
 
@@ -60,15 +61,11 @@ export const ForgotPassword: React.FC = () => {
             <p className="text-sm text-slate-500">
               Didn't receive the email? Check your spam folder or try again.
             </p>
-            
-            <Button
-              variant="secondary"
-              onClick={() => setIsSuccess(false)}
-              className="w-full"
-            >
+
+            <Button variant="secondary" onClick={() => setIsSuccess(false)} className="w-full">
               Try Again
             </Button>
-            
+
             <Link
               to="/login"
               className="inline-flex items-center text-sm text-blue-600 hover:text-blue-700"

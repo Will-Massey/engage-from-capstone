@@ -35,29 +35,26 @@ const SignaturePad = ({
     }
   }, []);
 
-  const getCoordinates = useCallback(
-    (event: React.MouseEvent | React.TouchEvent) => {
-      const canvas = canvasRef.current;
-      if (!canvas) return { x: 0, y: 0 };
+  const getCoordinates = useCallback((event: React.MouseEvent | React.TouchEvent) => {
+    const canvas = canvasRef.current;
+    if (!canvas) return { x: 0, y: 0 };
 
-      const rect = canvas.getBoundingClientRect();
-      let clientX, clientY;
+    const rect = canvas.getBoundingClientRect();
+    let clientX, clientY;
 
-      if ('touches' in event) {
-        clientX = event.touches[0].clientX;
-        clientY = event.touches[0].clientY;
-      } else {
-        clientX = (event as React.MouseEvent).clientX;
-        clientY = (event as React.MouseEvent).clientY;
-      }
+    if ('touches' in event) {
+      clientX = event.touches[0].clientX;
+      clientY = event.touches[0].clientY;
+    } else {
+      clientX = (event as React.MouseEvent).clientX;
+      clientY = (event as React.MouseEvent).clientY;
+    }
 
-      return {
-        x: clientX - rect.left,
-        y: clientY - rect.top,
-      };
-    },
-    []
-  );
+    return {
+      x: clientX - rect.left,
+      y: clientY - rect.top,
+    };
+  }, []);
 
   const startDrawing = useCallback(
     (event: React.MouseEvent | React.TouchEvent) => {

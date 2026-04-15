@@ -11,7 +11,11 @@ const router = Router();
 // Helper to check if Stripe is configured
 const checkStripe = () => {
   if (!stripe) {
-    throw new ApiError('STRIPE_NOT_CONFIGURED', 'Payments are not configured. Please contact support.', 503);
+    throw new ApiError(
+      'STRIPE_NOT_CONFIGURED',
+      'Payments are not configured. Please contact support.',
+      503
+    );
   }
 };
 
@@ -24,7 +28,7 @@ router.get(
   authenticate,
   asyncHandler(async (req, res) => {
     const isEnabled = !!stripe && !!process.env.STRIPE_PUBLISHABLE_KEY;
-    
+
     res.json({
       success: true,
       data: {
@@ -65,7 +69,7 @@ router.post(
 
     // Create or get Stripe customer
     let customerId = tenant.stripeCustomerId;
-    
+
     if (!customerId) {
       const customer = await stripe.customers.create({
         name: tenant.name,
@@ -74,7 +78,7 @@ router.post(
         },
       });
       customerId = customer.id;
-      
+
       // Update tenant with Stripe customer ID
       await prisma.tenant.update({
         where: { id: tenantId },
@@ -164,9 +168,7 @@ router.get(
     }
 
     // Get subscription details from Stripe
-    const subscription = await stripe!.subscriptions.retrieve(
-      tenant.stripeSubscriptionId
-    ) as any;
+    const subscription = (await stripe!.subscriptions.retrieve(tenant.stripeSubscriptionId)) as any;
 
     res.json({
       success: true,
@@ -203,10 +205,9 @@ router.post(
     }
 
     // Cancel at period end
-    const subscription = await stripe!.subscriptions.update(
-      tenant.stripeSubscriptionId,
-      { cancel_at_period_end: true }
-    ) as any;
+    const subscription = (await stripe!.subscriptions.update(tenant.stripeSubscriptionId, {
+      cancel_at_period_end: true,
+    })) as any;
 
     // Update tenant
     await prisma.tenant.update({
@@ -247,10 +248,9 @@ router.post(
     }
 
     // Reactivate
-    const subscription = await stripe.subscriptions.update(
-      tenant.stripeSubscriptionId,
-      { cancel_at_period_end: false }
-    );
+    const subscription = await stripe.subscriptions.update(tenant.stripeSubscriptionId, {
+      cancel_at_period_end: false,
+    });
 
     // Update tenant
     await prisma.tenant.update({
@@ -361,11 +361,11 @@ function getTierFromPriceId(priceId: string): string {
 
 async function handlePaymentSucceeded(invoice: any) {
   const customerId = invoice.customer;
-  
+
   // Update tenant payment status
   await prisma.tenant.updateMany({
     where: { stripeCustomerId: customerId },
-    data: { 
+    data: {
       lastPaymentStatus: 'succeeded',
       lastPaymentDate: new Date(),
     },
@@ -374,10 +374,10 @@ async function handlePaymentSucceeded(invoice: any) {
 
 async function handlePaymentFailed(invoice: any) {
   const customerId = invoice.customer;
-  
+
   await prisma.tenant.updateMany({
     where: { stripeCustomerId: customerId },
-    data: { 
+    data: {
       lastPaymentStatus: 'failed',
       subscriptionStatus: 'past_due',
     },
@@ -386,10 +386,10 @@ async function handlePaymentFailed(invoice: any) {
 
 async function handleSubscriptionDeleted(subscription: any) {
   const customerId = subscription.customer;
-  
+
   await prisma.tenant.updateMany({
     where: { stripeCustomerId: customerId },
-    data: { 
+    data: {
       subscriptionStatus: 'cancelled',
       subscriptionTier: null,
       stripeSubscriptionId: null,
@@ -399,10 +399,10 @@ async function handleSubscriptionDeleted(subscription: any) {
 
 async function handleSubscriptionUpdated(subscription: any) {
   const customerId = subscription.customer;
-  
+
   await prisma.tenant.updateMany({
     where: { stripeCustomerId: customerId },
-    data: { 
+    data: {
       subscriptionStatus: subscription.status,
     },
   });

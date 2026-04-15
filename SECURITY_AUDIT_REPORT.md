@@ -2,7 +2,7 @@
 
 **Date:** March 4, 2026  
 **Auditor:** Security Analysis Agent  
-**Scope:** Backend (Node.js/Express/TypeScript) and Frontend (React/TypeScript)  
+**Scope:** Backend (Node.js/Express/TypeScript) and Frontend (React/TypeScript)
 
 ---
 
@@ -11,24 +11,27 @@
 This security audit identified **17 security issues** across the Engage by Capstone application, ranging from Critical to Low severity. The most significant issues include disabled CSP headers, weak JWT secret fallbacks, missing CSRF protection, and potential XSS vulnerabilities from unsanitized HTML content.
 
 | Severity | Count |
-|----------|-------|
-| Critical | 3 |
-| High | 5 |
-| Medium | 6 |
-| Low | 3 |
+| -------- | ----- |
+| Critical | 3     |
+| High     | 5     |
+| Medium   | 6     |
+| Low      | 3     |
 
 ---
 
 ## Critical Issues (Immediate Action Required)
 
 ### 1. DISABLED CONTENT SECURITY POLICY (CSP)
+
 **File:** `engage/backend/src/index.ts` (Lines 36-38)  
-**Severity:** Critical  
+**Severity:** Critical
 
 ```typescript
-app.use(helmet({
-  contentSecurityPolicy: false,  // DANGEROUS - CSP disabled
-}));
+app.use(
+  helmet({
+    contentSecurityPolicy: false, // DANGEROUS - CSP disabled
+  })
+);
 ```
 
 **Issue:** The Content Security Policy is completely disabled, leaving the application vulnerable to XSS attacks, clickjacking, and data injection attacks.
@@ -36,33 +39,37 @@ app.use(helmet({
 **Impact:** Attackers can inject and execute malicious scripts, load external resources, and perform clickjacking attacks.
 
 **Recommendation:**
+
 ```typescript
-app.use(helmet({
-  contentSecurityPolicy: {
-    directives: {
-      defaultSrc: ["'self'"],
-      styleSrc: ["'self'", "'unsafe-inline'"], // Required for some UI frameworks
-      scriptSrc: ["'self'"],
-      imgSrc: ["'self'", "data:", "https:"],
-      connectSrc: ["'self'", process.env.FRONTEND_URL],
-      fontSrc: ["'self'"],
-      objectSrc: ["'none'"],
-      mediaSrc: ["'self'"],
-      frameSrc: ["'none'"],
+app.use(
+  helmet({
+    contentSecurityPolicy: {
+      directives: {
+        defaultSrc: ["'self'"],
+        styleSrc: ["'self'", "'unsafe-inline'"], // Required for some UI frameworks
+        scriptSrc: ["'self'"],
+        imgSrc: ["'self'", 'data:', 'https:'],
+        connectSrc: ["'self'", process.env.FRONTEND_URL],
+        fontSrc: ["'self'"],
+        objectSrc: ["'none'"],
+        mediaSrc: ["'self'"],
+        frameSrc: ["'none'"],
+      },
     },
-  },
-  crossOriginEmbedderPolicy: false, // If needed for compatibility
-}));
+    crossOriginEmbedderPolicy: false, // If needed for compatibility
+  })
+);
 ```
 
 ---
 
 ### 2. WEAK JWT SECRET FALLBACK
+
 **File:** `engage/backend/src/middleware/auth.ts` (Line 6)  
-**Severity:** Critical  
+**Severity:** Critical
 
 ```typescript
-const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key';  // DANGEROUS
+const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key'; // DANGEROUS
 ```
 
 **Issue:** If `JWT_SECRET` environment variable is not set, the application falls back to a predictable, hardcoded secret. This allows attackers to forge JWT tokens and impersonate any user.
@@ -70,6 +77,7 @@ const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key';  // DANGEROUS
 **Impact:** Complete authentication bypass, unauthorized access to all user accounts and data.
 
 **Recommendation:**
+
 ```typescript
 const JWT_SECRET = process.env.JWT_SECRET;
 if (!JWT_SECRET) {
@@ -84,15 +92,20 @@ if (JWT_SECRET.length < 32) {
 ---
 
 ### 3. UNVALIDATED URL REDIRECT (Open Redirect)
+
 **File:** `engage/backend/src/index.ts` (Lines 162-185)  
-**Severity:** Critical  
+**Severity:** Critical
 
 ```typescript
 const handleOAuthCallback = (provider: string) => (req: any, res: any) => {
   // ...
-  return res.redirect(`${process.env.FRONTEND_URL || 'https://engagebycapstone.co.uk'}/settings?error=${encodeURIComponent(error as string)}`);
+  return res.redirect(
+    `${process.env.FRONTEND_URL || 'https://engagebycapstone.co.uk'}/settings?error=${encodeURIComponent(error as string)}`
+  );
   // ...
-  res.redirect(`${process.env.FRONTEND_URL || 'https://engagebycapstone.co.uk'}/settings?oauth=success&provider=${provider}&code=${code}&state=${state}`);
+  res.redirect(
+    `${process.env.FRONTEND_URL || 'https://engagebycapstone.co.uk'}/settings?oauth=success&provider=${provider}&code=${code}&state=${state}`
+  );
 };
 ```
 
@@ -101,20 +114,21 @@ const handleOAuthCallback = (provider: string) => (req: any, res: any) => {
 **Impact:** Potential open redirect vulnerabilities could be exploited for phishing attacks.
 
 **Recommendation:**
+
 ```typescript
 const ALLOWED_REDIRECT_ORIGINS = [
   process.env.FRONTEND_URL,
-  'https://engagebycapstone.co.uk'
+  'https://engagebycapstone.co.uk',
 ].filter(Boolean);
 
 const handleOAuthCallback = (provider: string) => (req: any, res: any) => {
   const frontendUrl = process.env.FRONTEND_URL || 'https://engagebycapstone.co.uk';
-  
+
   // Validate the frontend URL is in allowlist
   if (!ALLOWED_REDIRECT_ORIGINS.includes(frontendUrl)) {
     return res.status(400).json({ error: 'Invalid redirect configuration' });
   }
-  
+
   // Sanitize query parameters before redirect
   const sanitizedError = error ? encodeURIComponent(String(error).slice(0, 100)) : '';
   // ...
@@ -126,14 +140,16 @@ const handleOAuthCallback = (provider: string) => (req: any, res: any) => {
 ## High Severity Issues
 
 ### 4. MISSING CSRF PROTECTION
+
 **Files:** All route files  
-**Severity:** High  
+**Severity:** High
 
 **Issue:** The application lacks Cross-Site Request Forgery (CSRF) protection for state-changing operations. While the API uses JWT tokens, the public proposal sharing endpoints and OAuth callbacks don't have CSRF tokens.
 
 **Impact:** Attackers can trick users into performing unintended actions (accepting proposals, changing settings).
 
 **Recommendation:**
+
 ```typescript
 // Install csurf or implement Double Submit Cookie pattern
 import csrf from 'csurf';
@@ -149,8 +165,9 @@ For APIs, implement Double Submit Cookie pattern or use SameSite cookies strictl
 ---
 
 ### 5. UNSANITIZED HTML CONTENT IN PROPOSALS
+
 **File:** `engage/backend/src/routes/proposals.ts` (Lines 254-256)  
-**Severity:** High  
+**Severity:** High
 
 ```typescript
 coverLetter: data.coverLetter,
@@ -163,6 +180,7 @@ notes: data.notes,
 **Impact:** Stored XSS attacks against all users viewing proposals.
 
 **Recommendation:**
+
 ```typescript
 import DOMPurify from 'isomorphic-dompurify';
 
@@ -184,8 +202,9 @@ notes: sanitizeHtml(data.notes),
 ---
 
 ### 6. INSECURE SMTP TLS CONFIGURATION
+
 **File:** `engage/backend/src/services/emailService.ts` (Lines 115-118)  
-**Severity:** High  
+**Severity:** High
 
 ```typescript
 tls: {
@@ -198,6 +217,7 @@ tls: {
 **Impact:** Email credentials and content can be intercepted by attackers.
 
 **Recommendation:**
+
 ```typescript
 tls: {
   rejectUnauthorized: true,  // Always verify certificates
@@ -208,14 +228,16 @@ tls: {
 ---
 
 ### 7. INSUFFICIENT RATE LIMITING ON SENSITIVE ENDPOINTS
+
 **File:** `engage/backend/src/index.ts` (Lines 98-126)  
-**Severity:** High  
+**Severity:** High
 
 **Issue:** Rate limiting is applied broadly but may not be strict enough for sensitive operations like user creation, password changes, or tenant creation.
 
 **Impact:** Brute force attacks, resource exhaustion, enumeration attacks.
 
 **Recommendation:**
+
 ```typescript
 // Stricter limits for sensitive endpoints
 const strictLimiter = rateLimit({
@@ -234,8 +256,9 @@ app.use('/api/tenants', strictLimiter);
 ---
 
 ### 8. MISSING PASSWORD STRENGTH VALIDATION
+
 **File:** `engage/backend/src/routes/auth.ts` (Line 19)  
-**Severity:** High  
+**Severity:** High
 
 ```typescript
 password: z.string().min(8, 'Password must be at least 8 characters'),
@@ -246,8 +269,10 @@ password: z.string().min(8, 'Password must be at least 8 characters'),
 **Impact:** Users can create weak passwords vulnerable to brute force attacks.
 
 **Recommendation:**
+
 ```typescript
-const passwordSchema = z.string()
+const passwordSchema = z
+  .string()
   .min(12, 'Password must be at least 12 characters')
   .regex(/[A-Z]/, 'Password must contain at least one uppercase letter')
   .regex(/[a-z]/, 'Password must contain at least one lowercase letter')
@@ -260,8 +285,9 @@ const passwordSchema = z.string()
 ## Medium Severity Issues
 
 ### 9. HARDCODED DEMO CREDENTIALS IN FRONTEND
+
 **File:** `engage/frontend/src/pages/auth/Login.tsx` (Lines 148-156)  
-**Severity:** Medium  
+**Severity:** Medium
 
 ```tsx
 <div className="mt-6 p-4 bg-primary-50 rounded-lg border border-primary-100">
@@ -280,36 +306,41 @@ const passwordSchema = z.string()
 **Impact:** If demo accounts exist in production, they can be easily compromised.
 
 **Recommendation:**
+
 ```tsx
 // Only show in development
-{import.meta.env.DEV && (
-  <div className="mt-6 p-4 bg-primary-50 rounded-lg border border-primary-100">
-    <p className="text-sm text-primary-800">
-      <strong>Demo credentials:</strong>
-      <br />
-      Email: admin@demo.practice
-      <br />
-      Password: DemoPass123!
-    </p>
-  </div>
-)}
+{
+  import.meta.env.DEV && (
+    <div className="mt-6 p-4 bg-primary-50 rounded-lg border border-primary-100">
+      <p className="text-sm text-primary-800">
+        <strong>Demo credentials:</strong>
+        <br />
+        Email: admin@demo.practice
+        <br />
+        Password: DemoPass123!
+      </p>
+    </div>
+  );
+}
 ```
 
 ---
 
 ### 10. INFORMATION DISCLOSURE IN ERROR MESSAGES
+
 **File:** `engage/backend/src/middleware/errorHandler.ts`  
-**Severity:** Medium  
+**Severity:** Medium
 
 **Issue:** While production hides stack traces, error codes and messages can still reveal system internals.
 
 **Impact:** Information leakage aids attackers in reconnaissance.
 
 **Recommendation:** Map internal errors to generic user-friendly messages in production:
+
 ```typescript
 const errorMessageMap: Record<string, string> = {
-  'P2002': 'A record with this value already exists',
-  'P2025': 'Record not found',
+  P2002: 'A record with this value already exists',
+  P2025: 'Record not found',
   // Don't expose database error codes directly
 };
 ```
@@ -317,16 +348,18 @@ const errorMessageMap: Record<string, string> = {
 ---
 
 ### 11. CORS ALLOWS WILDCARD IN DEVELOPMENT
+
 **File:** `engage/backend/src/index.ts` (Lines 65-72)  
-**Severity:** Medium  
+**Severity:** Medium
 
 ```typescript
-if (isDevelopment && (
-  origin.startsWith('http://localhost:') || 
-  origin.startsWith('http://127.0.0.1:') ||
-  /^http:\/\/192\.168\.\d+\.\d+:\d+$/.test(origin) ||
-  /^http:\/\/100\.\d+\.\d+\.\d+:\d+$/.test(origin)
-)) {
+if (
+  isDevelopment &&
+  (origin.startsWith('http://localhost:') ||
+    origin.startsWith('http://127.0.0.1:') ||
+    /^http:\/\/192\.168\.\d+\.\d+:\d+$/.test(origin) ||
+    /^http:\/\/100\.\d+\.\d+\.\d+:\d+$/.test(origin))
+) {
   return callback(null, true);
 }
 ```
@@ -336,6 +369,7 @@ if (isDevelopment && (
 **Impact:** If development mode is accidentally enabled in production, or if attackers can make requests from local network, CORS protection is bypassed.
 
 **Recommendation:**
+
 ```typescript
 const allowedDevOrigins = [
   'http://localhost:5173',
@@ -347,8 +381,9 @@ const allowedDevOrigins = [
 ---
 
 ### 12. WEAK REQUEST ID GENERATION
+
 **File:** `engage/backend/src/index.ts` (Line 141)  
-**Severity:** Medium  
+**Severity:** Medium
 
 ```typescript
 (req as any).requestId = Math.random().toString(36).substring(2, 15);
@@ -357,6 +392,7 @@ const allowedDevOrigins = [
 **Issue:** Request IDs are generated using `Math.random()` which is not cryptographically secure and can have collisions.
 
 **Recommendation:**
+
 ```typescript
 import { randomUUID } from 'crypto';
 
@@ -366,8 +402,9 @@ import { randomUUID } from 'crypto';
 ---
 
 ### 13. SIGNATURE DATA VALIDATION INSUFFICIENT
+
 **File:** `engage/backend/src/services/proposalSharingService.ts` (Lines 182-185)  
-**Severity:** Medium  
+**Severity:** Medium
 
 ```typescript
 // Validate signature data
@@ -379,6 +416,7 @@ if (!data.signatureData || data.signatureData.length < 100) {
 **Issue:** Only checks length, not format. Could accept any base64-like string.
 
 **Recommendation:**
+
 ```typescript
 // Validate signature is valid base64 image
 const validSignaturePattern = /^data:image\/png;base64,[A-Za-z0-9+/=]+$/;
@@ -387,7 +425,8 @@ if (!validSignaturePattern.test(data.signatureData)) {
 }
 // Also validate size (prevent DoS)
 const base64Data = data.signatureData.split(',')[1];
-if (Buffer.from(base64Data, 'base64').length > 5 * 1024 * 1024) { // 5MB max
+if (Buffer.from(base64Data, 'base64').length > 5 * 1024 * 1024) {
+  // 5MB max
   return { success: false, error: 'Signature image too large' };
 }
 ```
@@ -395,14 +434,16 @@ if (Buffer.from(base64Data, 'base64').length > 5 * 1024 * 1024) { // 5MB max
 ---
 
 ### 14. EMAIL INJECTION VULNERABILITY
+
 **File:** `engage/backend/src/routes/proposals.ts` (Lines 478-507)  
-**Severity:** Medium  
+**Severity:** Medium
 
 **Issue:** Email headers are constructed using user-controlled data (`senderName`, `senderPosition`) without sanitization.
 
 **Impact:** Email header injection attacks (CC/BCC injection).
 
 **Recommendation:**
+
 ```typescript
 // Sanitize email-related fields
 const sanitizeEmailField = (field: string): string => {
@@ -418,8 +459,9 @@ const senderName = sanitizeEmailField(`${req.user!.firstName} ${req.user!.lastNa
 ## Low Severity Issues
 
 ### 15. CLIENT-SIDE TOKEN STORAGE
+
 **File:** `engage/frontend/src/stores/authStore.ts`  
-**Severity:** Low  
+**Severity:** Low
 
 **Issue:** JWT tokens are stored in localStorage (via zustand persist), making them vulnerable to XSS attacks.
 
@@ -430,36 +472,44 @@ const senderName = sanitizeEmailField(`${req.user!.firstName} ${req.user!.lastNa
 ---
 
 ### 16. MISSING SECURITY HEADERS
+
 **File:** `engage/backend/src/index.ts`  
-**Severity:** Low  
+**Severity:** Low
 
 **Issue:** Some security headers are not explicitly configured:
+
 - X-Content-Type-Options
 - X-Frame-Options
 - Referrer-Policy
 
 **Recommendation:**
+
 ```typescript
-app.use(helmet({
-  contentSecurityPolicy: { /* ... */ },
-  crossOriginEmbedderPolicy: false,
-  hsts: {
-    maxAge: 31536000,
-    includeSubDomains: true,
-    preload: true,
-  },
-}));
+app.use(
+  helmet({
+    contentSecurityPolicy: {
+      /* ... */
+    },
+    crossOriginEmbedderPolicy: false,
+    hsts: {
+      maxAge: 31536000,
+      includeSubDomains: true,
+      preload: true,
+    },
+  })
+);
 ```
 
 ---
 
 ### 17. VERBOSE LOGGING IN PRODUCTION
+
 **File:** `engage/backend/src/config/database.ts` (Lines 9-11)  
-**Severity:** Low  
+**Severity:** Low
 
 ```typescript
-log: process.env.NODE_ENV === 'development' 
-  ? ['query', 'error', 'warn'] 
+log: process.env.NODE_ENV === 'development'
+  ? ['query', 'error', 'warn']
   : ['error'],
 ```
 
@@ -491,19 +541,19 @@ log: process.env.NODE_ENV === 'development'
 
 ## Remediation Priority Matrix
 
-| Priority | Issue | Effort | Impact |
-|----------|-------|--------|--------|
-| P0 | Enable CSP Headers | Low | Critical |
-| P0 | Fix JWT Secret Fallback | Low | Critical |
-| P0 | Fix SMTP TLS | Low | Critical |
-| P1 | Implement CSRF Protection | Medium | High |
-| P1 | Sanitize HTML Content | Medium | High |
-| P1 | Strengthen Password Policy | Low | High |
-| P2 | Implement Strict Rate Limiting | Medium | High |
-| P2 | Remove Demo Credentials | Low | Medium |
-| P2 | Fix Request ID Generation | Low | Medium |
-| P3 | Improve Error Messages | Low | Medium |
-| P3 | Harden CORS Configuration | Low | Medium |
+| Priority | Issue                          | Effort | Impact   |
+| -------- | ------------------------------ | ------ | -------- |
+| P0       | Enable CSP Headers             | Low    | Critical |
+| P0       | Fix JWT Secret Fallback        | Low    | Critical |
+| P0       | Fix SMTP TLS                   | Low    | Critical |
+| P1       | Implement CSRF Protection      | Medium | High     |
+| P1       | Sanitize HTML Content          | Medium | High     |
+| P1       | Strengthen Password Policy     | Low    | High     |
+| P2       | Implement Strict Rate Limiting | Medium | High     |
+| P2       | Remove Demo Credentials        | Low    | Medium   |
+| P2       | Fix Request ID Generation      | Low    | Medium   |
+| P3       | Improve Error Messages         | Low    | Medium   |
+| P3       | Harden CORS Configuration      | Low    | Medium   |
 
 ---
 
@@ -530,16 +580,19 @@ log: process.env.NODE_ENV === 'development'
 ## Compliance Considerations
 
 ### UK GDPR
+
 - Ensure proposal data retention policies are implemented
 - Implement right to erasure (proper data deletion)
 - Encrypt sensitive data at rest
 
 ### eIDAS (Electronic Signatures)
+
 - Electronic signature implementation appears compliant
 - Audit trail is maintained
 - IP address and timestamp are captured
 
 ### Cyber Essentials
+
 - Boundary firewalls and internet gateways (partial - CSP disabled)
 - Secure configuration (needs hardening)
 - User access control (implemented)

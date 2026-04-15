@@ -43,7 +43,7 @@ const pageVariants = {
     y: 0,
     transition: {
       duration: 0.3,
-      ease: [0.25, 0.1, 0.25, 1],
+      ease: [0.25, 0.1, 0.25, 1] as const,
     },
   },
   exit: {
@@ -140,89 +140,131 @@ const AnimatedRoutes = () => {
             </ProtectedRoute>
           }
         >
-          <Route index element={
-            <AnimatedPage>
-              <Dashboard />
-            </AnimatedPage>
-          } />
-          
+          <Route
+            index
+            element={
+              <AnimatedPage>
+                <Dashboard />
+              </AnimatedPage>
+            }
+          />
+
           {/* Proposals */}
-          <Route path="proposals" element={
-            <AnimatedPage>
-              <Proposals />
-            </AnimatedPage>
-          } />
-          <Route path="proposals/new" element={
-            <AnimatedPage>
-              <CreateProposal />
-            </AnimatedPage>
-          } />
-          <Route path="proposals/:id" element={
-            <AnimatedPage>
-              <ProposalDetail />
-            </AnimatedPage>
-          } />
-          
+          <Route
+            path="proposals"
+            element={
+              <AnimatedPage>
+                <Proposals />
+              </AnimatedPage>
+            }
+          />
+          <Route
+            path="proposals/new"
+            element={
+              <AnimatedPage>
+                <CreateProposal />
+              </AnimatedPage>
+            }
+          />
+          <Route
+            path="proposals/:id"
+            element={
+              <AnimatedPage>
+                <ProposalDetail />
+              </AnimatedPage>
+            }
+          />
+
           {/* Clients */}
-          <Route path="clients" element={
-            <AnimatedPage>
-              <Clients />
-            </AnimatedPage>
-          } />
-          <Route path="clients/new" element={
-            <AnimatedPage>
-              <CreateClient />
-            </AnimatedPage>
-          } />
-          <Route path="clients/:id" element={
-            <AnimatedPage>
-              <ClientDetail />
-            </AnimatedPage>
-          } />
-          
+          <Route
+            path="clients"
+            element={
+              <AnimatedPage>
+                <Clients />
+              </AnimatedPage>
+            }
+          />
+          <Route
+            path="clients/new"
+            element={
+              <AnimatedPage>
+                <CreateClient />
+              </AnimatedPage>
+            }
+          />
+          <Route
+            path="clients/:id"
+            element={
+              <AnimatedPage>
+                <ClientDetail />
+              </AnimatedPage>
+            }
+          />
+
           {/* Services */}
-          <Route path="services" element={
-            <AnimatedPage>
-              <Services />
-            </AnimatedPage>
-          } />
-          <Route path="services/:id" element={
-            <AnimatedPage>
-              <ServiceDetail />
-            </AnimatedPage>
-          } />
-          
+          <Route
+            path="services"
+            element={
+              <AnimatedPage>
+                <Services />
+              </AnimatedPage>
+            }
+          />
+          <Route
+            path="services/:id"
+            element={
+              <AnimatedPage>
+                <ServiceDetail />
+              </AnimatedPage>
+            }
+          />
+
           {/* Settings */}
-          <Route path="settings" element={
-            <AnimatedPage>
-              <Settings />
-            </AnimatedPage>
-          } />
-          <Route path="subscription" element={
-            <AnimatedPage>
-              <Subscription />
-            </AnimatedPage>
-          } />
-          <Route path="analytics" element={
-            <AnimatedPage>
-              <Analytics />
-            </AnimatedPage>
-          } />
+          <Route
+            path="settings"
+            element={
+              <AnimatedPage>
+                <Settings />
+              </AnimatedPage>
+            }
+          />
+          <Route
+            path="subscription"
+            element={
+              <AnimatedPage>
+                <Subscription />
+              </AnimatedPage>
+            }
+          />
+          <Route
+            path="analytics"
+            element={
+              <AnimatedPage>
+                <Analytics />
+              </AnimatedPage>
+            }
+          />
         </Route>
 
         {/* Public Proposal View (No authentication required) */}
-        <Route path="/proposals/view/:token" element={
-          <AnimatedPage>
-            <PublicProposalView />
-          </AnimatedPage>
-        } />
+        <Route
+          path="/proposals/view/:token"
+          element={
+            <AnimatedPage>
+              <PublicProposalView />
+            </AnimatedPage>
+          }
+        />
 
         {/* 404 */}
-        <Route path="*" element={
-          <AnimatedPage>
-            <NotFound />
-          </AnimatedPage>
-        } />
+        <Route
+          path="*"
+          element={
+            <AnimatedPage>
+              <NotFound />
+            </AnimatedPage>
+          }
+        />
       </Routes>
     </AnimatePresence>
   );
@@ -239,7 +281,7 @@ function App() {
       if (!token) return;
 
       try {
-        const response = await apiClient.getMe() as any;
+        const response = (await apiClient.getMe()) as any;
         if (response.success) {
           setAuth(response.data.user, response.data.user.tenant, token);
         }
@@ -249,7 +291,7 @@ function App() {
     };
 
     validateToken();
-  }, []);
+  }, [token, setAuth, clearAuth]);
 
   // Keyboard shortcuts listener
   useEffect(() => {
@@ -257,8 +299,9 @@ function App() {
       // ? to open keyboard shortcuts (when not in input)
       if (e.key === '?' && !e.metaKey && !e.ctrlKey) {
         const target = e.target as HTMLElement;
-        const isInput = target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable;
-        
+        const isInput =
+          target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable;
+
         if (!isInput && isAuthenticated) {
           e.preventDefault();
           setIsShortcutsOpen(true);
@@ -277,14 +320,8 @@ function App() {
       {/* World-class features - only for authenticated users */}
       {isAuthenticated && (
         <>
-          <CommandPalette 
-            isOpen={isCommandPaletteOpen} 
-            onClose={closeCommandPalette} 
-          />
-          <KeyboardShortcuts
-            isOpen={isShortcutsOpen}
-            onClose={() => setIsShortcutsOpen(false)}
-          />
+          <CommandPalette isOpen={isCommandPaletteOpen} onClose={closeCommandPalette} />
+          <KeyboardShortcuts isOpen={isShortcutsOpen} onClose={() => setIsShortcutsOpen(false)} />
         </>
       )}
     </>

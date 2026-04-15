@@ -45,7 +45,7 @@ router.get(
 
       res.json({
         success: true,
-        data: results.map(company => ({
+        data: results.map((company) => ({
           companyNumber: company.company_number,
           companyName: company.title || company.company_name, // Search returns 'title', details returns 'company_name'
           companyStatus: company.company_status,
@@ -57,11 +57,7 @@ router.get(
       });
     } catch (error: any) {
       logger.error('Companies House search error:', error);
-      throw new ApiError(
-        'SEARCH_FAILED',
-        error.message || 'Failed to search Companies House',
-        500
-      );
+      throw new ApiError('SEARCH_FAILED', error.message || 'Failed to search Companies House', 500);
     }
   })
 );
@@ -83,11 +79,7 @@ router.get(
     // Check if service is configured
     const chService = createCompaniesHouseService();
     if (!chService) {
-      throw new ApiError(
-        'NOT_CONFIGURED',
-        'Companies House API not configured',
-        503
-      );
+      throw new ApiError('NOT_CONFIGURED', 'Companies House API not configured', 503);
     }
 
     try {
@@ -106,11 +98,7 @@ router.get(
       if (error.message === 'Company not found') {
         throw new ApiError('COMPANY_NOT_FOUND', 'Company not found', 404);
       }
-      throw new ApiError(
-        'FETCH_FAILED',
-        error.message || 'Failed to fetch company details',
-        500
-      );
+      throw new ApiError('FETCH_FAILED', error.message || 'Failed to fetch company details', 500);
     }
   })
 );
@@ -124,7 +112,7 @@ router.get(
   authenticate,
   asyncHandler(async (req, res) => {
     const chService = createCompaniesHouseService();
-    
+
     if (!chService) {
       res.json({
         success: true,

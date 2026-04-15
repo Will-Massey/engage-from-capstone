@@ -14,10 +14,7 @@ async function migrateServicePricing() {
     // Get all services that need updating
     const services = await prisma.serviceTemplate.findMany({
       where: {
-        OR: [
-          { priceAmount: 0 },
-          { priceAmount: null },
-        ],
+        OR: [{ priceAmount: 0 }, { priceAmount: null }],
       },
     });
 
@@ -37,12 +34,12 @@ async function migrateServicePricing() {
 
         // Map legacy frequency to billing cycle
         let billingCycle: any = service.defaultFrequency || 'MONTHLY';
-        
+
         // ONE_TIME is not a valid BillingCycle, map to MONTHLY
         if (billingCycle === 'ONE_TIME') {
           billingCycle = 'MONTHLY';
         }
-        
+
         // Update the service
         await prisma.serviceTemplate.update({
           where: { id: service.id },
@@ -50,9 +47,13 @@ async function migrateServicePricing() {
             priceAmount: service.basePrice,
             billingCycle: billingCycle,
             // Map priceDisplayMode based on billingCycle
-            priceDisplayMode: (billingCycle === 'ANNUALLY' ? 'PER_YEAR' : 
-                             billingCycle === 'QUARTERLY' ? 'PER_QUARTER' :
-                             billingCycle === 'ONE_TIME' ? 'ONE_TIME' : 'PER_MONTH') as any,
+            priceDisplayMode: (billingCycle === 'ANNUALLY'
+              ? 'PER_YEAR'
+              : billingCycle === 'QUARTERLY'
+                ? 'PER_QUARTER'
+                : billingCycle === 'ONE_TIME'
+                  ? 'ONE_TIME'
+                  : 'PER_MONTH') as any,
           },
         });
 
@@ -68,7 +69,6 @@ async function migrateServicePricing() {
     console.log(`   Updated: ${updated}`);
     console.log(`   Skipped: ${skipped}`);
     console.log(`   Total: ${services.length}`);
-
   } catch (error) {
     console.error('❌ Migration failed:', error);
     process.exit(1);

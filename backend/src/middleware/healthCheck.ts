@@ -64,7 +64,7 @@ const checkDatabase = async (): Promise<CheckResult> => {
 const checkRedis = async (): Promise<CheckResult> => {
   const start = Date.now();
   const redisUrl = process.env.REDIS_URL;
-  
+
   if (!redisUrl) {
     return {
       status: 'warn',
@@ -95,12 +95,12 @@ const checkMemory = (): CheckResult => {
   const start = Date.now();
   const used = process.memoryUsage();
   const maxHeap = 512 * 1024 * 1024; // 512MB threshold
-  
+
   const heapUsedPercent = (used.heapUsed / maxHeap) * 100;
-  
+
   let status: CheckResult['status'] = 'pass';
   let message: string | undefined;
-  
+
   if (heapUsedPercent > 90) {
     status = 'fail';
     message = `Memory usage critical: ${heapUsedPercent.toFixed(1)}%`;
@@ -136,10 +136,10 @@ healthRouter.get('/ping', (_req: Request, res: Response) => {
 // Basic health check
 healthRouter.get('/health', async (_req: Request, res: Response) => {
   const dbCheck = await checkDatabase();
-  
+
   const isHealthy = dbCheck.status === 'pass';
   const statusCode = isHealthy ? 200 : 503;
-  
+
   res.status(statusCode).json({
     status: isHealthy ? 'healthy' : 'unhealthy',
     timestamp: new Date().toISOString(),
@@ -165,9 +165,9 @@ healthRouter.get('/health/detailed', async (_req: Request, res: Response) => {
   };
 
   // Determine overall status
-  const failedChecks = Object.values(checks).filter(c => c.status === 'fail').length;
-  const warningChecks = Object.values(checks).filter(c => c.status === 'warn').length;
-  
+  const failedChecks = Object.values(checks).filter((c) => c.status === 'fail').length;
+  const warningChecks = Object.values(checks).filter((c) => c.status === 'warn').length;
+
   let overallStatus: HealthStatus['status'] = 'healthy';
   if (failedChecks > 0) {
     overallStatus = 'unhealthy';
@@ -191,7 +191,7 @@ healthRouter.get('/health/detailed', async (_req: Request, res: Response) => {
 // Readiness check (for Kubernetes)
 healthRouter.get('/ready', async (_req: Request, res: Response) => {
   const dbCheck = await checkDatabase();
-  
+
   if (dbCheck.status === 'pass') {
     res.status(200).json({ ready: true });
   } else {

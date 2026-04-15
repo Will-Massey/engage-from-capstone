@@ -15,7 +15,7 @@ router.get(
   asyncHandler(async (req, res) => {
     // Check if setup already completed
     const existingUser = await prisma.user.findFirst({
-      where: { email: 'admin@demo.practice' }
+      where: { email: 'admin@demo.practice' },
     });
 
     if (existingUser) {
@@ -24,15 +24,15 @@ router.get(
         message: 'Setup already completed',
         user: {
           email: existingUser.email,
-          role: existingUser.role
-        }
+          role: existingUser.role,
+        },
       });
       return;
     }
 
     // Create demo tenant
     let tenant = await prisma.tenant.findFirst({
-      where: { subdomain: 'demo' }
+      where: { subdomain: 'demo' },
     });
 
     if (!tenant) {
@@ -41,7 +41,7 @@ router.get(
           name: 'Demo Accounting Practice',
           subdomain: 'demo',
           primaryColor: '#0ea5e9',
-        }
+        },
       });
     }
 
@@ -55,7 +55,7 @@ router.get(
         role: 'ADMIN',
         tenantId: tenant.id,
         isActive: true,
-      }
+      },
     });
 
     res.json({
@@ -63,8 +63,8 @@ router.get(
       message: 'Setup completed successfully',
       credentials: {
         email: user.email,
-        password: 'DemoPass123!'
-      }
+        password: 'DemoPass123!',
+      },
     });
   })
 );
@@ -80,7 +80,7 @@ router.post(
     if (secret !== 'engage-migrate-2024') {
       return res.status(403).json({ success: false, error: 'Invalid key' });
     }
-    
+
     try {
       const services = await prisma.serviceTemplate.findMany({
         where: {
@@ -88,17 +88,17 @@ router.post(
           basePrice: { gt: 0 },
         },
       });
-      
+
       let updated = 0;
       for (const service of services) {
         try {
           let billingCycle: any = service.defaultFrequency || 'MONTHLY';
           if (billingCycle === 'ONE_TIME') billingCycle = 'MONTHLY';
-          
+
           let priceDisplayMode: any = 'PER_MONTH';
           if (billingCycle === 'ANNUALLY') priceDisplayMode = 'PER_YEAR';
           else if (billingCycle === 'QUARTERLY') priceDisplayMode = 'PER_QUARTER';
-          
+
           await prisma.serviceTemplate.update({
             where: { id: service.id },
             data: {
@@ -112,7 +112,7 @@ router.post(
           console.error(`Failed to update ${service.name}:`, e);
         }
       }
-      
+
       res.json({
         success: true,
         message: `Migration complete: ${updated}/${services.length} services updated`,

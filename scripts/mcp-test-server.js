@@ -6,7 +6,10 @@
 
 const { Server } = require('@modelcontextprotocol/sdk/server/index.js');
 const { StdioServerTransport } = require('@modelcontextprotocol/sdk/server/stdio.js');
-const { CallToolRequestSchema, ListToolsRequestSchema } = require('@modelcontextprotocol/sdk/types.js');
+const {
+  CallToolRequestSchema,
+  ListToolsRequestSchema,
+} = require('@modelcontextprotocol/sdk/types.js');
 const axios = require('axios');
 
 // API Configuration
@@ -21,27 +24,17 @@ const TEST_SCENARIOS = {
       'create-client',
       'create-proposal-monthly',
       'create-proposal-annual',
-      'verify-pricing-calculations'
-    ]
+      'verify-pricing-calculations',
+    ],
   },
   'vat-calculation': {
     name: 'VAT Calculation Validation',
-    steps: [
-      'login',
-      'create-proposal-mixed-vat',
-      'verify-vat-amounts',
-      'verify-total-calculation'
-    ]
+    steps: ['login', 'create-proposal-mixed-vat', 'verify-vat-amounts', 'verify-total-calculation'],
   },
   'csrf-handling': {
     name: 'CSRF Token Handling',
-    steps: [
-      'clear-csrf-token',
-      'attempt-proposal-creation',
-      'verify-auto-retry',
-      'verify-success'
-    ]
-  }
+    steps: ['clear-csrf-token', 'attempt-proposal-creation', 'verify-auto-retry', 'verify-success'],
+  },
 };
 
 class EngageTestServer {
@@ -59,7 +52,7 @@ class EngageTestServer {
     );
 
     this.setupToolHandlers();
-    
+
     // Error handling
     this.server.onerror = (error) => console.error('[MCP Error]', error);
     process.on('SIGINT', async () => {
@@ -81,19 +74,19 @@ class EngageTestServer {
                 testType: {
                   type: 'string',
                   enum: ['monthly', 'annual', 'quarterly', 'mixed'],
-                  description: 'Type of pricing test to run'
+                  description: 'Type of pricing test to run',
                 },
                 basePrice: {
                   type: 'number',
-                  description: 'Base price for the service'
+                  description: 'Base price for the service',
                 },
                 expectedMonthly: {
                   type: 'number',
-                  description: 'Expected monthly price'
-                }
+                  description: 'Expected monthly price',
+                },
               },
-              required: ['testType', 'basePrice', 'expectedMonthly']
-            }
+              required: ['testType', 'basePrice', 'expectedMonthly'],
+            },
           },
           {
             name: 'test_vat_calculation',
@@ -108,14 +101,14 @@ class EngageTestServer {
                     properties: {
                       price: { type: 'number' },
                       vatRate: { type: 'number' },
-                      quantity: { type: 'number' }
-                    }
-                  }
+                      quantity: { type: 'number' },
+                    },
+                  },
                 },
-                expectedTotalVAT: { type: 'number' }
+                expectedTotalVAT: { type: 'number' },
               },
-              required: ['services', 'expectedTotalVAT']
-            }
+              required: ['services', 'expectedTotalVAT'],
+            },
           },
           {
             name: 'test_csrf_handling',
@@ -125,10 +118,10 @@ class EngageTestServer {
               properties: {
                 endpoint: { type: 'string' },
                 method: { type: 'string', enum: ['POST', 'PUT', 'DELETE'] },
-                payload: { type: 'object' }
+                payload: { type: 'object' },
               },
-              required: ['endpoint', 'method']
-            }
+              required: ['endpoint', 'method'],
+            },
           },
           {
             name: 'validate_database_schema',
@@ -138,10 +131,10 @@ class EngageTestServer {
               properties: {
                 checkTables: {
                   type: 'array',
-                  items: { type: 'string' }
-                }
-              }
-            }
+                  items: { type: 'string' },
+                },
+              },
+            },
           },
           {
             name: 'run_api_health_check',
@@ -151,12 +144,12 @@ class EngageTestServer {
               properties: {
                 endpoints: {
                   type: 'array',
-                  items: { type: 'string' }
-                }
-              }
-            }
-          }
-        ]
+                  items: { type: 'string' },
+                },
+              },
+            },
+          },
+        ],
       };
     });
 
@@ -182,7 +175,7 @@ class EngageTestServer {
 
   async testProposalPricing(args) {
     const { testType, basePrice, expectedMonthly } = args;
-    
+
     // Calculate expected values
     let actualMonthly = basePrice;
     if (testType === 'annual') {
@@ -192,30 +185,36 @@ class EngageTestServer {
     }
 
     const passed = Math.abs(actualMonthly - expectedMonthly) < 0.01;
-    
+
     return {
-      content: [{
-        type: 'text',
-        text: JSON.stringify({
-          test: 'proposal-pricing',
-          type: testType,
-          basePrice,
-          expectedMonthly,
-          actualMonthly: Math.round(actualMonthly * 100) / 100,
-          passed,
-          message: passed 
-            ? `✅ Pricing calculation correct: £${basePrice} (${testType}) = £${actualMonthly.toFixed(2)}/month`
-            : `❌ Pricing mismatch: expected £${expectedMonthly}, got £${actualMonthly}`
-        }, null, 2)
-      }]
+      content: [
+        {
+          type: 'text',
+          text: JSON.stringify(
+            {
+              test: 'proposal-pricing',
+              type: testType,
+              basePrice,
+              expectedMonthly,
+              actualMonthly: Math.round(actualMonthly * 100) / 100,
+              passed,
+              message: passed
+                ? `✅ Pricing calculation correct: £${basePrice} (${testType}) = £${actualMonthly.toFixed(2)}/month`
+                : `❌ Pricing mismatch: expected £${expectedMonthly}, got £${actualMonthly}`,
+            },
+            null,
+            2
+          ),
+        },
+      ],
     };
   }
 
   async testVATCalculation(args) {
     const { services, expectedTotalVAT } = args;
-    
+
     let calculatedTotalVAT = 0;
-    const lineDetails = services.map(s => {
+    const lineDetails = services.map((s) => {
       const lineTotal = s.price * s.quantity;
       const lineVAT = lineTotal * (s.vatRate / 100);
       calculatedTotalVAT += lineVAT;
@@ -224,7 +223,7 @@ class EngageTestServer {
         quantity: s.quantity,
         vatRate: s.vatRate,
         lineTotal,
-        lineVAT: Math.round(lineVAT * 100) / 100
+        lineVAT: Math.round(lineVAT * 100) / 100,
       };
     });
 
@@ -232,54 +231,66 @@ class EngageTestServer {
     const passed = Math.abs(calculatedTotalVAT - expectedTotalVAT) < 0.01;
 
     return {
-      content: [{
-        type: 'text',
-        text: JSON.stringify({
-          test: 'vat-calculation',
-          lineDetails,
-          expectedTotalVAT,
-          calculatedTotalVAT,
-          passed,
-          message: passed
-            ? `✅ VAT calculation correct: £${calculatedTotalVAT} total VAT`
-            : `❌ VAT mismatch: expected £${expectedTotalVAT}, got £${calculatedTotalVAT}`
-        }, null, 2)
-      }]
+      content: [
+        {
+          type: 'text',
+          text: JSON.stringify(
+            {
+              test: 'vat-calculation',
+              lineDetails,
+              expectedTotalVAT,
+              calculatedTotalVAT,
+              passed,
+              message: passed
+                ? `✅ VAT calculation correct: £${calculatedTotalVAT} total VAT`
+                : `❌ VAT mismatch: expected £${expectedTotalVAT}, got £${calculatedTotalVAT}`,
+            },
+            null,
+            2
+          ),
+        },
+      ],
     };
   }
 
   async testCSRFHandling(args) {
     const { endpoint, method, payload = {} } = args;
-    
+
     // Simulate CSRF token scenarios
     const scenarios = [
       { scenario: 'valid-token', shouldSucceed: true },
       { scenario: 'missing-token', shouldSucceed: false },
-      { scenario: 'invalid-token', shouldSucceed: false, retry: true }
+      { scenario: 'invalid-token', shouldSucceed: false, retry: true },
     ];
 
-    const results = scenarios.map(s => ({
+    const results = scenarios.map((s) => ({
       ...s,
       result: s.shouldSucceed ? 'PASS' : s.retry ? 'RETRY-SUCCESS' : 'BLOCKED',
-      message: s.retry 
+      message: s.retry
         ? 'Token refreshed and request retried successfully'
-        : s.shouldSucceed 
+        : s.shouldSucceed
           ? 'Request processed with valid token'
-          : 'Request blocked - CSRF protection working'
+          : 'Request blocked - CSRF protection working',
     }));
 
     return {
-      content: [{
-        type: 'text',
-        text: JSON.stringify({
-          test: 'csrf-handling',
-          endpoint,
-          method,
-          scenarios: results,
-          allPassed: true,
-          message: '✅ CSRF handling working correctly - auto-retry mechanism functional'
-        }, null, 2)
-      }]
+      content: [
+        {
+          type: 'text',
+          text: JSON.stringify(
+            {
+              test: 'csrf-handling',
+              endpoint,
+              method,
+              scenarios: results,
+              allPassed: true,
+              message: '✅ CSRF handling working correctly - auto-retry mechanism functional',
+            },
+            null,
+            2
+          ),
+        },
+      ],
     };
   }
 
@@ -288,52 +299,60 @@ class EngageTestServer {
       'ProposalService',
       'Proposal',
       'ServiceTemplate',
-      'Client'
+      'Client',
     ];
 
     const expectedFields = {
-      ProposalService: ['vatRate', 'vatAmount', 'grossTotal', 'frequency']
+      ProposalService: ['vatRate', 'vatAmount', 'grossTotal', 'frequency'],
     };
 
     return {
-      content: [{
-        type: 'text',
-        text: JSON.stringify({
-          test: 'database-schema',
-          tablesChecked: requiredTables,
-          expectedFields,
-          passed: true,
-          message: '✅ Database schema validation passed - VAT fields present in ProposalService'
-        }, null, 2)
-      }]
+      content: [
+        {
+          type: 'text',
+          text: JSON.stringify(
+            {
+              test: 'database-schema',
+              tablesChecked: requiredTables,
+              expectedFields,
+              passed: true,
+              message:
+                '✅ Database schema validation passed - VAT fields present in ProposalService',
+            },
+            null,
+            2
+          ),
+        },
+      ],
     };
   }
 
   async runAPIHealthCheck(args) {
-    const endpoints = args.endpoints || [
-      '/auth/csrf-token',
-      '/services',
-      '/proposals',
-      '/clients'
-    ];
+    const endpoints = args.endpoints || ['/auth/csrf-token', '/services', '/proposals', '/clients'];
 
-    const results = endpoints.map(e => ({
+    const results = endpoints.map((e) => ({
       endpoint: e,
       status: 'healthy',
-      latency: Math.floor(Math.random() * 100) + 'ms'
+      latency: Math.floor(Math.random() * 100) + 'ms',
     }));
 
     return {
-      content: [{
-        type: 'text',
-        text: JSON.stringify({
-          test: 'api-health',
-          timestamp: new Date().toISOString(),
-          results,
-          allHealthy: true,
-          message: '✅ All API endpoints healthy'
-        }, null, 2)
-      }]
+      content: [
+        {
+          type: 'text',
+          text: JSON.stringify(
+            {
+              test: 'api-health',
+              timestamp: new Date().toISOString(),
+              results,
+              allHealthy: true,
+              message: '✅ All API endpoints healthy',
+            },
+            null,
+            2
+          ),
+        },
+      ],
     };
   }
 

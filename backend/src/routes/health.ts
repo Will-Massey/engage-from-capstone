@@ -13,12 +13,12 @@ const prisma = new PrismaClient();
 router.get('/', async (_req, res) => {
   try {
     await prisma.$queryRaw`SELECT 1`;
-    
+
     // Check tenant configuration
     const tenant = await prisma.tenant.findFirst({
       where: { subdomain: 'demo' },
     });
-    
+
     if (!tenant) {
       res.status(503).json({
         status: 'unhealthy',
@@ -27,7 +27,7 @@ router.get('/', async (_req, res) => {
       });
       return;
     }
-    
+
     res.status(200).json({
       status: 'healthy',
       timestamp: new Date().toISOString(),
@@ -91,30 +91,27 @@ router.post('/migrate-data', async (req, res) => {
   if (secret !== 'engage-migrate-2024') {
     return res.status(403).json({ success: false, error: 'Invalid key' });
   }
-  
+
   try {
     // Get services that need updating
     const services = await prisma.serviceTemplate.findMany({
       where: {
-        OR: [
-          { priceAmount: 0 },
-          { priceAmount: null },
-        ],
+        OR: [{ priceAmount: 0 }, { priceAmount: null }],
         basePrice: { gt: 0 },
       },
     });
-    
+
     let updated = 0;
-    
+
     for (const service of services) {
       try {
         let billingCycle: any = service.defaultFrequency || 'MONTHLY';
         if (billingCycle === 'ONE_TIME') billingCycle = 'MONTHLY';
-        
+
         let priceDisplayMode: any = 'PER_MONTH';
         if (billingCycle === 'ANNUALLY') priceDisplayMode = 'PER_YEAR';
         else if (billingCycle === 'QUARTERLY') priceDisplayMode = 'PER_QUARTER';
-        
+
         await prisma.serviceTemplate.update({
           where: { id: service.id },
           data: {
@@ -128,7 +125,7 @@ router.post('/migrate-data', async (req, res) => {
         console.error(`Failed to update ${service.name}:`, e);
       }
     }
-    
+
     res.json({
       success: true,
       message: `Migration complete: ${updated}/${services.length} services updated`,

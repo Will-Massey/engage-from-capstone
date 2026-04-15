@@ -8,7 +8,7 @@ async function main() {
 
   // Check if tenant exists
   let tenant = await prisma.tenant.findFirst({
-    where: { subdomain: 'demo-practice' }
+    where: { subdomain: 'demo-practice' },
   });
 
   if (!tenant) {
@@ -26,10 +26,10 @@ async function main() {
 
   // Check if user exists
   const existingUser = await prisma.user.findFirst({
-    where: { 
+    where: {
       email: 'admin@demo.practice',
-      tenantId: tenant.id
-    }
+      tenantId: tenant.id,
+    },
   });
 
   const hashedPassword = await bcrypt.hash('DemoPass123!', 12);
@@ -52,7 +52,7 @@ async function main() {
     // Update password
     await prisma.user.update({
       where: { id: existingUser.id },
-      data: { passwordHash: hashedPassword }
+      data: { passwordHash: hashedPassword },
     });
     console.log('✅ Updated user password:', existingUser.email);
   }

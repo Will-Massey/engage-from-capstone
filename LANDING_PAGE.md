@@ -1,17 +1,20 @@
 # Engage by Capstone - Landing Page Integration
 
 ## Overview
+
 Engage will be integrated into the Capstone Software website at `capstonesoftware.co.uk/engage`
 
 ## Landing Page Design
 
 ### Hero Section
+
 - **Headline**: "Engage - Professional Proposal Generation for UK Accountants"
 - **Subheadline**: "Create, send, and track client proposals in minutes. Built for UK accounting practices."
 - **CTA Button**: "Start Free Trial" → Links to app login/registration
 - **Visual**: App screenshot or animated demo
 
 ### Key Features Section
+
 1. **3-Step Proposal Builder**
    - Select Client
    - Build Services
@@ -35,12 +38,15 @@ Engage will be integrated into the Capstone Software website at `capstonesoftwar
 ### Integration Points
 
 #### 1. Navigation Menu
+
 Add to main website navigation:
+
 ```
 Products > Engage
 ```
 
 #### 2. Footer Links
+
 ```
 Products:
 - AccountFlow
@@ -49,6 +55,7 @@ Products:
 ```
 
 #### 3. Railway Deployment
+
 ```
 Domain: engage.capstonesoftware.co.uk
 Platform: Railway
@@ -58,12 +65,14 @@ SSL: Automatic (Let's Encrypt)
 ### Technical Integration
 
 #### DNS Configuration
+
 ```
 CNAME: engage.capstonesoftware.co.uk
 Points to: railway.app
 ```
 
 #### Environment Variables (Railway)
+
 ```env
 # Database
 DATABASE_URL=postgresql://...
@@ -85,17 +94,20 @@ STRIPE_SECRET_KEY=...
 ```
 
 ### Landing Page Files
+
 - `/landing/index.html` - Main landing page
 - `/landing/styles.css` - Brand-matched styles
 - `/landing/assets/` - Images and logos
 
 ### Brand Colors (Match main site)
+
 - Primary: #0ea5e9 (Sky blue)
 - Secondary: #1e3a8a (Dark blue)
 - Accent: #f59e0b (Amber)
 - Text: #1f2937 (Gray 800)
 
 ### CTAs
+
 1. **Primary**: "Start Free Trial" → `/register`
 2. **Secondary**: "View Demo" → Demo video or interactive tour
 3. **Tertiary**: "Sign In" → `/login`

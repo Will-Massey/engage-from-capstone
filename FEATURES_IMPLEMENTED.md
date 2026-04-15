@@ -3,9 +3,11 @@
 ## ✅ Implemented Features Summary
 
 ### 1. Billing Cycle Enhancement
+
 **Location:** Database schema + Service templates
 
 **Features:**
+
 - **Billing Cycle Options:**
   - `FIXED_DATE` - Bill on specific date(s)
   - `WEEKLY` - 52 payments per year
@@ -20,6 +22,7 @@
   - Annual equivalent calculation for pricing transparency
 
 **Database Fields Added:**
+
 - `billingCycle` (enum: BillingCycle)
 - `fixedBillingDate` (DateTime, optional)
 - `billingDayOfMonth` (Int, 1-31)
@@ -28,9 +31,11 @@
 ---
 
 ### 2. VAT Settings & Management
+
 **Location:** Tenant settings + Service templates
 
 **Features:**
+
 - **Practice-Level VAT Settings:**
   - VAT registration toggle
   - VAT number storage
@@ -49,17 +54,20 @@
   - Display VAT breakdown in proposals
 
 **Database Fields Added:**
+
 - Tenant: `vatRegistered`, `vatNumber`, `defaultVatRate`, `autoApplyVat`
 - ServiceTemplate: `vatRate`, `isVatApplicable`
 
 ---
 
 ### 3. Pre-Planned UK Accounting Services Catalog
+
 **Location:** `backend/src/data/ukAccountancyServices.ts`
 
 **Service Categories:**
 
 #### COMPLIANCE (9 services)
+
 - Statutory Annual Accounts
 - Sole Trader Annual Accounts
 - CT600 Corporation Tax Return
@@ -72,6 +80,7 @@
 - Confirmation Statement (CS01)
 
 #### ADVISORY (6 services)
+
 - Business Structure Review
 - Personal Tax Planning Review
 - R&D Tax Credit Claim
@@ -80,22 +89,26 @@
 - Funding Application Support
 
 #### MTD ITSA (2 services)
+
 - MTD ITSA Quarterly Return
 - MTD Digital Setup & Training
 
 #### SPECIALIST (4 services)
+
 - Statutory Audit
 - Forensic Accounting
 - International Tax Planning
 - Exit & Succession Planning
 
 #### BOOKKEEPING (2 services)
+
 - Full Bookkeeping Service
 - Digital Bookkeeping Setup
 
 **Total: 23 Pre-configured Services**
 
 Each service includes:
+
 - Base pricing and hours estimates
 - Complexity factors for automatic pricing adjustments
 - Applicable entity types
@@ -107,9 +120,11 @@ Each service includes:
 ---
 
 ### 4. UK Compliant Engagement Letter & T&Cs
+
 **Location:** `backend/src/templates/ukEngagementLetter.ts`
 
 **Features:**
+
 - **Full Engagement Letter** (ACCA/ICAEW compliant)
   - Scope of services
   - Client responsibilities
@@ -136,15 +151,18 @@ Each service includes:
 ---
 
 ### 5. Email Service Integration
+
 **Location:** `backend/src/services/emailService.ts`
 
 **Supported Providers:**
+
 - **SMTP** - Generic SMTP servers
 - **Gmail** - Google Workspace/Gmail with OAuth2
 - **Outlook** - Microsoft 365/Outlook with OAuth2
 - **Microsoft 365** - Enterprise Microsoft integration
 
 **Features:**
+
 - Automatic token refresh for OAuth providers
 - Connection verification
 - Proposal-specific email sending with PDF attachments
@@ -152,6 +170,7 @@ Each service includes:
 - Email tracking capabilities
 
 **Environment Variables:**
+
 ```env
 EMAIL_PROVIDER=smtp|gmail|outlook
 EMAIL_FROM_NAME="Your Practice Name"
@@ -180,9 +199,11 @@ OUTLOOK_USER=your-email@outlook.com
 ---
 
 ### 6. Proposal Sharing & Public Links
+
 **Location:** `backend/src/services/proposalSharingService.ts`
 
 **Features:**
+
 - **Shareable Links:**
   - Unique 32-character tokens
   - Configurable expiry (default 30 days)
@@ -196,6 +217,7 @@ OUTLOOK_USER=your-email@outlook.com
   - Full proposal content display
 
 **Database Fields:**
+
 - `shareToken` (unique)
 - `shareTokenExpiry` (DateTime)
 - `publicAccessEnabled` (Boolean)
@@ -203,9 +225,11 @@ OUTLOOK_USER=your-email@outlook.com
 ---
 
 ### 7. Proposal View Tracking
+
 **Location:** `backend/src/services/proposalSharingService.ts`
 
 **Features:**
+
 - **View Logging:**
   - Timestamp of each view
   - IP address tracking
@@ -228,9 +252,11 @@ OUTLOOK_USER=your-email@outlook.com
 ---
 
 ### 8. Electronic Signatures (UK Compliant)
+
 **Location:** `backend/src/services/proposalSharingService.ts`
 
 **Features:**
+
 - **e-Signature Capture:**
   - Canvas-based signature pad
   - Base64 image storage
@@ -252,6 +278,7 @@ OUTLOOK_USER=your-email@outlook.com
 **Database Table:** `ProposalSignature`
 
 **UK Compliance Features:**
+
 - eIDAS compliant signature capture
 - Tamper-evident audit trail
 - Clear intent to sign documentation
@@ -262,15 +289,18 @@ OUTLOOK_USER=your-email@outlook.com
 ## Database Schema Changes Summary
 
 ### New Enums
+
 - `BillingCycle`: FIXED_DATE, WEEKLY, MONTHLY, QUARTERLY, ANNUALLY
 - `VATRate`: ZERO, REDUCED_5, STANDARD_20, EXEMPT
 
 ### Modified Tables
+
 - **Tenant**: Added VAT settings (4 new fields)
 - **ServiceTemplate**: Added billing and VAT fields (6 new fields)
 - **Proposal**: Added sharing, email, and engagement fields (7 new fields)
 
 ### New Tables
+
 - **ProposalView**: Tracks all proposal views
 - **ProposalSignature**: Stores electronic signatures with compliance data
 
@@ -281,25 +311,30 @@ OUTLOOK_USER=your-email@outlook.com
 The following backend routes need to be created:
 
 ### Billing & VAT
+
 - `GET /api/services/billing-cycles` - List billing cycle options
 - `GET /api/services/vat-rates` - List VAT rate options
 
 ### Email
+
 - `POST /api/proposals/:id/email` - Send proposal via email
 - `GET /api/email/verify` - Verify email configuration
 
 ### Sharing
+
 - `POST /api/proposals/:id/share` - Create shareable link
 - `DELETE /api/proposals/:id/share` - Revoke shareable link
 - `GET /api/proposals/view/:token` - Public proposal view
 - `GET /api/proposals/view/:token/pdf` - Download proposal PDF
 
 ### Tracking
+
 - `POST /api/proposals/:id/track` - Record view (called by frontend)
 - `GET /api/proposals/:id/views` - Get view statistics
 - `GET /api/proposals/:id/audit-trail` - Get compliance audit trail
 
 ### e-Signature
+
 - `POST /api/proposals/:id/sign` - Submit electronic signature
 - `GET /api/proposals/:id/signatures` - List signatures
 - `GET /api/signatures/:id/image` - Get signature image
@@ -309,24 +344,28 @@ The following backend routes need to be created:
 ## Frontend Components Needed
 
 ### Settings Page
+
 - [ ] VAT registration toggle
 - [ ] VAT number input
 - [ ] Default VAT rate selector
 - [ ] Auto-apply VAT toggle
 
 ### Service Template Editor
+
 - [ ] Billing cycle selector
 - [ ] VAT applicability toggle
 - [ ] VAT rate override selector
 - [ ] Annual equivalent display
 
 ### Proposal Creation
+
 - [ ] Billing frequency per service line
 - [ ] VAT toggle per service
 - [ ] Engagement letter preview
 - [ ] T&Cs acceptance requirement toggle
 
 ### Proposal View (Public)
+
 - [ ] Branded proposal display
 - [ ] Service breakdown with billing cycles
 - [ ] VAT summary
@@ -335,6 +374,7 @@ The following backend routes need to be created:
 - [ ] Accept/Decline buttons
 
 ### Proposal Management
+
 - [ ] Share link generation button
 - [ ] Email send dialog
 - [ ] View statistics display
@@ -367,5 +407,5 @@ All features have been designed with UK regulatory compliance in mind:
 
 ---
 
-*Implementation Date: March 2026*
-*Version: 1.0*
+_Implementation Date: March 2026_
+_Version: 1.0_

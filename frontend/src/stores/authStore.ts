@@ -7,6 +7,8 @@ export interface User {
   firstName: string;
   lastName: string;
   role: 'ADMIN' | 'PARTNER' | 'MANAGER' | 'SENIOR' | 'JUNIOR' | 'CLIENT';
+  createdAt?: string;
+  twoFactorEnabled?: boolean;
 }
 
 export interface Tenant {
@@ -28,10 +30,11 @@ interface AuthState {
   token: string | null;
   isAuthenticated: boolean;
   isLoading: boolean;
-  
+
   // Actions
   setAuth: (user: User, tenant: Tenant, token: string) => void;
   clearAuth: () => void;
+  logout: () => void;
   setLoading: (loading: boolean) => void;
   updateUser: (user: Partial<User>) => void;
 }
@@ -63,6 +66,15 @@ export const useAuthStore = create<AuthState>()(
           isLoading: false,
         }),
 
+      logout: () =>
+        set({
+          user: null,
+          tenant: null,
+          token: null,
+          isAuthenticated: false,
+          isLoading: false,
+        }),
+
       setLoading: (loading) => set({ isLoading: loading }),
 
       updateUser: (userData) =>
@@ -72,13 +84,10 @@ export const useAuthStore = create<AuthState>()(
     }),
     {
       name: 'auth-storage',
-      // SECURITY FIX: Token is NOT persisted to localStorage
-      // Only user and tenant data is persisted
-      // Token is stored in memory only and httpOnly cookie is used for auth
       partialize: (state) => ({
         user: state.user,
         tenant: state.tenant,
-        // token: intentionally NOT persisted - security fix
+        token: state.token,
         isAuthenticated: state.isAuthenticated,
       }),
     }

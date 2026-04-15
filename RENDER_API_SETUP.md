@@ -5,12 +5,14 @@ Quick automated deployment for Engage using Render API.
 ## Setup (One-time, 5 minutes)
 
 ### 1. Get Your API Key
+
 1. Go to: https://dashboard.render.com/settings/api-keys
 2. Click **"Create API Key"**
 3. Name it "Engage Deploy"
 4. Copy the key (starts with `rnd_`)
 
 ### 2. Get Service IDs
+
 1. Backend: Open https://dashboard.render.com/web/engage-backend
    - Look at URL or click Settings → copy Service ID
 2. Frontend: Open https://dashboard.render.com/static/engage-frontend
@@ -86,29 +88,33 @@ git push origin master  # Auto-deploys!
 ```
 
 Or trigger manually:
+
 - Go to: https://github.com/Will-Massey/engage-from-capstone/actions
 - Click **"Deploy to Render"** → **"Run workflow"**
 
 ## Time Saved
 
-| Method | Time per deploy | At 25 deploys/day |
-|--------|-----------------|-------------------|
-| Dashboard clicks | 30-60s | 12-25 min/day |
-| API deploy | 2-3s | 1 min/day |
-| **Savings** | **~90%** | **~20 min/day** |
+| Method           | Time per deploy | At 25 deploys/day |
+| ---------------- | --------------- | ----------------- |
+| Dashboard clicks | 30-60s          | 12-25 min/day     |
+| API deploy       | 2-3s            | 1 min/day         |
+| **Savings**      | **~90%**        | **~20 min/day**   |
 
 That's **1.5+ hours per week** saved!
 
 ## Troubleshooting
 
 ### "RENDER_API_KEY not set"
+
 Set the environment variable (see Step 3 above)
 
 ### "Failed to deploy"
+
 - Check API key is valid: https://dashboard.render.com/settings/api-keys
 - Verify service IDs are correct
 - Check service exists and you have access
 
 ### Deploy not triggering via GitHub Actions
+
 - Ensure secrets are set in GitHub (not just locally)
 - Check Actions tab for error logs

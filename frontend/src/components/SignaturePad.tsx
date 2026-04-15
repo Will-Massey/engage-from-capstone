@@ -54,7 +54,7 @@ const SignaturePad = ({ onSignature, onClear, width = 600, height = 200 }: Signa
   const startDrawing = (e: React.MouseEvent | React.TouchEvent) => {
     e.preventDefault();
     setIsDrawing(true);
-    
+
     const canvas = canvasRef.current;
     if (!canvas) return;
 
@@ -79,7 +79,7 @@ const SignaturePad = ({ onSignature, onClear, width = 600, height = 200 }: Signa
     const { x, y } = getCoordinates(e);
     ctx.lineTo(x, y);
     ctx.stroke();
-    
+
     if (!hasSignature) {
       setHasSignature(true);
     }
@@ -88,7 +88,7 @@ const SignaturePad = ({ onSignature, onClear, width = 600, height = 200 }: Signa
   const stopDrawing = () => {
     if (!isDrawing) return;
     setIsDrawing(false);
-    
+
     const canvas = canvasRef.current;
     if (!canvas) return;
 
@@ -113,7 +113,7 @@ const SignaturePad = ({ onSignature, onClear, width = 600, height = 200 }: Signa
 
   const handleSave = () => {
     if (!hasSignature) return;
-    
+
     const canvas = canvasRef.current;
     if (!canvas) return;
 
@@ -139,13 +139,9 @@ const SignaturePad = ({ onSignature, onClear, width = 600, height = 200 }: Signa
           style={{ maxWidth: '100%', height: 'auto' }}
         />
       </div>
-      
+
       <div className="flex space-x-3">
-        <button
-          type="button"
-          onClick={handleClear}
-          className="btn-secondary text-sm"
-        >
+        <button type="button" onClick={handleClear} className="btn-secondary text-sm">
           Clear Signature
         </button>
         <button
@@ -157,7 +153,7 @@ const SignaturePad = ({ onSignature, onClear, width = 600, height = 200 }: Signa
           Confirm Signature
         </button>
       </div>
-      
+
       <p className="text-xs text-gray-500">
         Draw your signature above using your mouse or finger (on touch devices).
       </p>

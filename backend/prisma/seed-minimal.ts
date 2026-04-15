@@ -20,13 +20,13 @@ async function main() {
 
     // Create admin user with minimal fields
     const hashedPassword = await bcrypt.hash('DemoPass123!', 12);
-    
+
     const user = await prisma.user.upsert({
-      where: { 
+      where: {
         email_tenantId: {
           email: 'admin@demo.practice',
           tenantId: tenant.id,
-        }
+        },
       },
       update: { passwordHash: hashedPassword },
       create: {

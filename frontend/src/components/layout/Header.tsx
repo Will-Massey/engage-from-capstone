@@ -44,18 +44,11 @@ const Header = ({ onMenuClick }: HeaderProps) => {
 
           {/* Quick actions - hidden on very small screens */}
           <div className="hidden sm:flex items-center ml-4 space-x-3">
-            <Link
-              to="/proposals/new"
-              className="btn-primary"
-              data-tour="create-proposal"
-            >
+            <Link to="/proposals/new" className="btn-primary" data-tour="create-proposal">
               <PlusIcon className="w-4 h-4 mr-1.5" />
               New Proposal
             </Link>
-            <Link
-              to="/clients/new"
-              className="btn-secondary"
-            >
+            <Link to="/clients/new" className="btn-secondary">
               <PlusIcon className="w-4 h-4 mr-1.5" />
               New Client
             </Link>
@@ -70,11 +63,7 @@ const Header = ({ onMenuClick }: HeaderProps) => {
               <div className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
                 <MagnifyingGlassIcon className="w-4 h-4 text-slate-400" />
               </div>
-              <input
-                type="text"
-                placeholder="Search..."
-                className="search-input w-64"
-              />
+              <input type="text" placeholder="Search..." className="search-input w-64" />
             </div>
           </div>
 
@@ -94,9 +83,10 @@ const Header = ({ onMenuClick }: HeaderProps) => {
           {/* Notifications */}
           <button className="p-2 text-slate-500 dark:text-slate-400 rounded-xl hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-100/80 dark:hover:bg-slate-800/80 relative transition-colors">
             <BellIcon className="w-6 h-6" />
-            <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-primary-500 rounded-full"
-              style={{ boxShadow: '0 0 8px rgba(99, 102, 241, 0.6)' }}>
-            </span>
+            <span
+              className="absolute top-1.5 right-1.5 w-2 h-2 bg-primary-500 rounded-full"
+              style={{ boxShadow: '0 0 8px rgba(99, 102, 241, 0.6)' }}
+            ></span>
           </button>
 
           {/* User menu */}
@@ -105,8 +95,10 @@ const Header = ({ onMenuClick }: HeaderProps) => {
               onClick={() => setShowUserMenu(!showUserMenu)}
               className="flex items-center space-x-2 p-2 rounded-xl hover:bg-slate-100/80 dark:hover:bg-slate-800/80 transition-colors"
             >
-              <div className="w-8 h-8 rounded-full flex items-center justify-center text-white text-sm font-medium"
-                style={{ background: 'linear-gradient(135deg, #6366F1 0%, #8B5CF6 100%)' }}>
+              <div
+                className="w-8 h-8 rounded-full flex items-center justify-center text-white text-sm font-medium"
+                style={{ background: 'linear-gradient(135deg, #6366F1 0%, #8B5CF6 100%)' }}
+              >
                 {user?.firstName?.charAt(0)}
               </div>
               <span className="hidden sm:block text-sm font-medium text-slate-700 dark:text-slate-300">
@@ -116,14 +108,17 @@ const Header = ({ onMenuClick }: HeaderProps) => {
 
             {/* Dropdown */}
             {showUserMenu && (
-              <div className="absolute right-0 mt-2 w-48 rounded-xl overflow-hidden animate-scale-in z-50"
+              <div
+                className="absolute right-0 mt-2 w-48 rounded-xl overflow-hidden animate-scale-in z-50"
                 style={{
-                  background: 'linear-gradient(135deg, rgba(255, 255, 255, 0.95) 0%, rgba(255, 255, 255, 0.9) 100%)',
+                  background:
+                    'linear-gradient(135deg, rgba(255, 255, 255, 0.95) 0%, rgba(255, 255, 255, 0.9) 100%)',
                   backdropFilter: 'blur(20px)',
                   WebkitBackdropFilter: 'blur(20px)',
                   border: '1px solid rgba(255, 255, 255, 0.5)',
-                  boxShadow: '0 10px 40px rgba(0, 0, 0, 0.1)'
-                }}>
+                  boxShadow: '0 10px 40px rgba(0, 0, 0, 0.1)',
+                }}
+              >
                 <div className="dark:hidden">
                   <Link
                     to="/settings"
@@ -141,10 +136,14 @@ const Header = ({ onMenuClick }: HeaderProps) => {
                     Logout
                   </button>
                 </div>
-                <div className="hidden dark:block" style={{
-                  background: 'linear-gradient(135deg, rgba(30, 41, 59, 0.95) 0%, rgba(15, 23, 42, 0.9) 100%)',
-                  border: '1px solid rgba(255, 255, 255, 0.1)'
-                }}>
+                <div
+                  className="hidden dark:block"
+                  style={{
+                    background:
+                      'linear-gradient(135deg, rgba(30, 41, 59, 0.95) 0%, rgba(15, 23, 42, 0.9) 100%)',
+                    border: '1px solid rgba(255, 255, 255, 0.1)',
+                  }}
+                >
                   <Link
                     to="/settings"
                     onClick={() => setShowUserMenu(false)}

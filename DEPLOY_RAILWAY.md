@@ -111,6 +111,7 @@ VITE_API_URL=https://your-backend.railway.app
 ## Troubleshooting
 
 ### Database Connection Issues
+
 ```bash
 # Check database URL
 railway variables
@@ -120,6 +121,7 @@ railway connect postgres
 ```
 
 ### Build Failures
+
 ```bash
 # Check build logs
 railway logs --build
@@ -130,6 +132,7 @@ npm run build
 ```
 
 ### Migration Failures
+
 ```bash
 # Reset database (WARNING: deletes all data)
 railway run npx prisma migrate reset

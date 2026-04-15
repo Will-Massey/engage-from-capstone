@@ -146,13 +146,16 @@ const CommandPalette = ({ isOpen, onClose }: CommandPaletteProps) => {
   });
 
   // Group by category
-  const groupedCommands = filteredCommands.reduce((acc, cmd) => {
-    if (!acc[cmd.category]) {
-      acc[cmd.category] = [];
-    }
-    acc[cmd.category].push(cmd);
-    return acc;
-  }, {} as Record<string, Command[]>);
+  const groupedCommands = filteredCommands.reduce(
+    (acc, cmd) => {
+      if (!acc[cmd.category]) {
+        acc[cmd.category] = [];
+      }
+      acc[cmd.category].push(cmd);
+      return acc;
+    },
+    {} as Record<string, Command[]>
+  );
 
   // Handle keyboard navigation
   useEffect(() => {
@@ -162,9 +165,7 @@ const CommandPalette = ({ isOpen, onClose }: CommandPaletteProps) => {
       switch (e.key) {
         case 'ArrowDown':
           e.preventDefault();
-          setSelectedIndex((prev) => 
-            prev < filteredCommands.length - 1 ? prev + 1 : prev
-          );
+          setSelectedIndex((prev) => (prev < filteredCommands.length - 1 ? prev + 1 : prev));
           break;
         case 'ArrowUp':
           e.preventDefault();
@@ -214,11 +215,8 @@ const CommandPalette = ({ isOpen, onClose }: CommandPaletteProps) => {
   return (
     <div className="fixed inset-0 z-50 flex items-start justify-center pt-[20vh] animate-fade-in">
       {/* Backdrop */}
-      <div 
-        className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm"
-        onClick={onClose}
-      />
-      
+      <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" onClick={onClose} />
+
       {/* Modal */}
       <div className="relative w-full max-w-2xl mx-4 modal-content overflow-hidden animate-scale-in">
         {/* Search header */}
@@ -241,10 +239,7 @@ const CommandPalette = ({ isOpen, onClose }: CommandPaletteProps) => {
         </div>
 
         {/* Results */}
-        <div 
-          ref={containerRef}
-          className="max-h-[60vh] overflow-y-auto py-2 scrollbar-hide"
-        >
+        <div ref={containerRef} className="max-h-[60vh] overflow-y-auto py-2 scrollbar-hide">
           {filteredCommands.length === 0 ? (
             <div className="px-4 py-8 text-center">
               <p className="text-slate-500 dark:text-slate-400">No commands found</p>
@@ -278,19 +273,23 @@ const CommandPalette = ({ isOpen, onClose }: CommandPaletteProps) => {
                           : 'hover:bg-slate-50 dark:hover:bg-slate-800/50'
                       }`}
                     >
-                      <div className={`p-2 rounded-lg ${
-                        isSelected
-                          ? 'bg-primary-100 dark:bg-primary-800 text-primary-600 dark:text-primary-300'
-                          : 'bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400'
-                      }`}>
+                      <div
+                        className={`p-2 rounded-lg ${
+                          isSelected
+                            ? 'bg-primary-100 dark:bg-primary-800 text-primary-600 dark:text-primary-300'
+                            : 'bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400'
+                        }`}
+                      >
                         <Icon className="w-4 h-4" />
                       </div>
                       <div className="ml-3 flex-1">
-                        <p className={`text-sm font-medium ${
-                          isSelected
-                            ? 'text-primary-700 dark:text-primary-300'
-                            : 'text-slate-900 dark:text-slate-100'
-                        }`}>
+                        <p
+                          className={`text-sm font-medium ${
+                            isSelected
+                              ? 'text-primary-700 dark:text-primary-300'
+                              : 'text-slate-900 dark:text-slate-100'
+                          }`}
+                        >
                           {cmd.title}
                         </p>
                         {cmd.subtitle && (
@@ -309,9 +308,7 @@ const CommandPalette = ({ isOpen, onClose }: CommandPaletteProps) => {
                           ))}
                         </kbd>
                       )}
-                      {isSelected && (
-                        <ArrowRightIcon className="w-4 h-4 ml-2 text-primary-500" />
-                      )}
+                      {isSelected && <ArrowRightIcon className="w-4 h-4 ml-2 text-primary-500" />}
                     </button>
                   );
                 })}
@@ -324,12 +321,18 @@ const CommandPalette = ({ isOpen, onClose }: CommandPaletteProps) => {
         <div className="flex items-center justify-between px-4 py-2 text-xs text-slate-500 dark:text-slate-400 border-t border-slate-200/80 dark:border-slate-700/80 bg-slate-50/50 dark:bg-slate-800/50">
           <div className="flex items-center gap-4">
             <span className="flex items-center gap-1">
-              <kbd className="px-1.5 py-0.5 bg-white dark:bg-slate-700 rounded border border-slate-200 dark:border-slate-600">↑</kbd>
-              <kbd className="px-1.5 py-0.5 bg-white dark:bg-slate-700 rounded border border-slate-200 dark:border-slate-600">↓</kbd>
+              <kbd className="px-1.5 py-0.5 bg-white dark:bg-slate-700 rounded border border-slate-200 dark:border-slate-600">
+                ↑
+              </kbd>
+              <kbd className="px-1.5 py-0.5 bg-white dark:bg-slate-700 rounded border border-slate-200 dark:border-slate-600">
+                ↓
+              </kbd>
               <span className="ml-1">to navigate</span>
             </span>
             <span className="flex items-center gap-1">
-              <kbd className="px-1.5 py-0.5 bg-white dark:bg-slate-700 rounded border border-slate-200 dark:border-slate-600">↵</kbd>
+              <kbd className="px-1.5 py-0.5 bg-white dark:bg-slate-700 rounded border border-slate-200 dark:border-slate-600">
+                ↵
+              </kbd>
               <span className="ml-1">to select</span>
             </span>
           </div>

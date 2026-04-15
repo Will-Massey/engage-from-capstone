@@ -17,20 +17,21 @@ export const Card: React.FC<CardProps> = ({
   ...props
 }) => {
   const baseClasses = 'bg-white rounded-xl border border-slate-200 overflow-hidden';
-  
+
   const variantClasses = {
     default: 'shadow-sm',
-    interactive: 'shadow-sm cursor-pointer transition-all duration-200 hover:shadow-md hover:border-slate-300 hover:-translate-y-0.5',
+    interactive:
+      'shadow-sm cursor-pointer transition-all duration-200 hover:shadow-md hover:border-slate-300 hover:-translate-y-0.5',
     elevated: 'shadow-lg',
   };
-  
+
   const paddingClasses = {
     none: '',
     sm: 'p-4',
     md: 'p-6',
     lg: 'p-8',
   };
-  
+
   return (
     <div className={`${baseClasses} ${variantClasses[variant]} ${className}`} {...props}>
       <div className={paddingClasses[padding]}>{children}</div>
@@ -63,7 +64,7 @@ export const StatCard: React.FC<StatCardProps> = ({
     negative: 'text-red-600',
     neutral: 'text-slate-600',
   };
-  
+
   return (
     <Card variant="interactive">
       <div className="flex items-start justify-between">

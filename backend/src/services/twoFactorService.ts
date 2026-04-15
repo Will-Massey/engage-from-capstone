@@ -49,7 +49,7 @@ export class TwoFactorService {
     });
 
     // Generate backup codes
-    const backupCodes = Array.from({ length: 10 }, () => 
+    const backupCodes = Array.from({ length: 10 }, () =>
       crypto.randomBytes(4).toString('hex').toUpperCase()
     );
 
@@ -86,16 +86,14 @@ export class TwoFactorService {
    * Remove a used backup code
    */
   removeBackupCode(backupCodes: string[], code: string): string[] {
-    return backupCodes.filter(c => c !== code.toUpperCase());
+    return backupCodes.filter((c) => c !== code.toUpperCase());
   }
 
   /**
    * Generate a new set of backup codes
    */
   generateBackupCodes(): string[] {
-    return Array.from({ length: 10 }, () => 
-      crypto.randomBytes(4).toString('hex').toUpperCase()
-    );
+    return Array.from({ length: 10 }, () => crypto.randomBytes(4).toString('hex').toUpperCase());
   }
 }
 

@@ -41,7 +41,7 @@ const EXEMPT_CATEGORIES = [
   'Partnerships with turnover below £10,000',
   'Estate administrators',
   'Charities',
-  'Members of Lloyd\'s of London',
+  "Members of Lloyd's of London",
 ];
 
 export class MTDITSAService {
@@ -79,7 +79,7 @@ export class MTDITSAService {
     // Check income threshold
     if (annualIncome >= THRESHOLDS[2026]) {
       triggeredBy.push(`Income of £${annualIncome.toLocaleString()} exceeds £50,000 threshold`);
-      
+
       return {
         status: MTDITSAStatus.REQUIRED_2026,
         isRequired: true,
@@ -98,7 +98,7 @@ export class MTDITSAService {
 
     if (annualIncome >= THRESHOLDS[2027]) {
       triggeredBy.push(`Income of £${annualIncome.toLocaleString()} exceeds £30,000 threshold`);
-      
+
       return {
         status: MTDITSAStatus.REQUIRED_2027,
         isRequired: true,
@@ -116,7 +116,7 @@ export class MTDITSAService {
 
     if (annualIncome >= THRESHOLDS[2028]) {
       triggeredBy.push(`Income of £${annualIncome.toLocaleString()} exceeds £20,000 threshold`);
-      
+
       return {
         status: MTDITSAStatus.REQUIRED_2028,
         isRequired: true,
@@ -171,7 +171,7 @@ export class MTDITSAService {
     }
 
     // Check for small partnership
-    const partnershipIncome = incomeSources.find(s => s.type === 'PARTNERSHIP');
+    const partnershipIncome = incomeSources.find((s) => s.type === 'PARTNERSHIP');
     if (partnershipIncome && options.partnershipTurnover && options.partnershipTurnover < 10000) {
       return { exempt: true, reason: 'Partnership with turnover below £10,000' };
     }
@@ -185,7 +185,7 @@ export class MTDITSAService {
   static calculateQuarterlyDeadlines(taxYear: number): QuarterlyDeadline[] {
     // Tax year runs from April 6 to April 5
     const year = taxYear;
-    
+
     return [
       {
         quarter: 1,
@@ -223,34 +223,34 @@ export class MTDITSAService {
    */
   static getObligationExplanation(status: MTDITSAStatus): string {
     const explanations: Record<MTDITSAStatus, string> = {
-      [MTDITSAStatus.NOT_REQUIRED]: 
+      [MTDITSAStatus.NOT_REQUIRED]:
         'Making Tax Digital for Income Tax Self Assessment (MTD ITSA) is not currently required. ' +
         'You should continue submitting your Self Assessment tax return annually.',
-      
+
       [MTDITSAStatus.ELIGIBLE]:
         'You are eligible for MTD ITSA but not yet required to join. ' +
         'You may opt in voluntarily to get used to the new system.',
-      
+
       [MTDITSAStatus.MANDATORY]:
         'You must comply with MTD ITSA requirements. ' +
         'This means submitting quarterly updates digitally using compatible software.',
-      
+
       [MTDITSAStatus.OPTED_IN]:
         'You have voluntarily opted into MTD ITSA. ' +
         'You are now required to submit quarterly updates digitally.',
-      
+
       [MTDITSAStatus.REQUIRED_2026]:
         'You must comply with MTD ITSA from April 2026. This means submitting quarterly updates ' +
         'of your income and expenses digitally using compatible software.',
-      
+
       [MTDITSAStatus.REQUIRED_2027]:
         'You must comply with MTD ITSA from April 2027. This means submitting quarterly updates ' +
         'of your income and expenses digitally using compatible software.',
-      
+
       [MTDITSAStatus.REQUIRED_2028]:
         'You must comply with MTD ITSA from April 2028. This means submitting quarterly updates ' +
         'of your income and expenses digitally using compatible software.',
-      
+
       [MTDITSAStatus.EXEMPT]:
         'You are exempt from MTD ITSA requirements based on your circumstances. ' +
         'Continue with your current filing arrangements.',

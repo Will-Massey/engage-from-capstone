@@ -19,12 +19,12 @@ test.describe('Proposal Pricing Frequency', () => {
     // Create a test client
     const client = await createTestClient(page, {
       name: 'Test Annual Client',
-      email: 'test-annual@example.com'
+      email: 'test-annual@example.com',
     });
 
     // Navigate to proposal creation
     await page.goto('/proposals/create');
-    
+
     // Step 1: Select client
     await page.click(`text=${client.name}`);
     await page.click('button:has-text("Continue")');
@@ -44,31 +44,31 @@ test.describe('Proposal Pricing Frequency', () => {
 
   test('changing billing frequency recalculates price', async ({ page }) => {
     const client = await createTestClient(page);
-    
+
     await page.goto('/proposals/create');
     await page.click(`text=${client.name}`);
     await page.click('button:has-text("Continue")');
 
     // Add monthly service
     await page.click('text=Monthly Bookkeeping');
-    
+
     // Get initial price
     const initialPrice = await page.locator('[data-testid="line-total"]').first().textContent();
     expect(initialPrice).toContain('£');
 
     // Change to annual billing
     await page.selectOption('[data-testid="billing-frequency-select"]', 'ANNUALLY');
-    
+
     // Verify price multiplied by 12
     const annualPrice = await page.locator('[data-testid="line-total"]').first().textContent();
     const monthlyValue = parseFloat(initialPrice!.replace(/[^0-9.]/g, ''));
     const annualValue = parseFloat(annualPrice!.replace(/[^0-9.]/g, ''));
-    expect(Math.abs(annualValue - (monthlyValue * 12))).toBeLessThan(1);
+    expect(Math.abs(annualValue - monthlyValue * 12)).toBeLessThan(1);
   });
 
   test('proposal total includes all services correctly', async ({ page }) => {
     const client = await createTestClient(page);
-    
+
     await page.goto('/proposals/create');
     await page.click(`text=${client.name}`);
     await page.click('button:has-text("Continue")');
@@ -95,7 +95,7 @@ test.describe('VAT Calculation', () => {
 
   test('line-level VAT can be set per service', async ({ page }) => {
     const client = await createTestClient(page);
-    
+
     await page.goto('/proposals/create');
     await page.click(`text=${client.name}`);
     await page.click('button:has-text("Continue")');
@@ -113,7 +113,7 @@ test.describe('VAT Calculation', () => {
 
   test('mixed VAT rates show as "Mixed" in totals', async ({ page }) => {
     const client = await createTestClient(page);
-    
+
     await page.goto('/proposals/create');
     await page.click(`text=${client.name}`);
     await page.click('button:has-text("Continue")');
@@ -135,7 +135,7 @@ test.describe('VAT Calculation', () => {
 
   test('VAT calculation is correct for each line', async ({ page }) => {
     const client = await createTestClient(page);
-    
+
     await page.goto('/proposals/create');
     await page.click(`text=${client.name}`);
     await page.click('button:has-text("Continue")');
@@ -146,7 +146,7 @@ test.describe('VAT Calculation', () => {
 
     // Calculate expected VAT
     const lineTotal = 100;
-    const expectedVAT = lineTotal * 0.20; // £20
+    const expectedVAT = lineTotal * 0.2; // £20
 
     // Verify VAT displayed
     const vatDisplay = await page.locator('[data-testid="line-vat-amount"]').first().textContent();
@@ -161,7 +161,7 @@ test.describe('CSRF Handling', () => {
 
   test('proposal creation works with valid CSRF token', async ({ page }) => {
     const client = await createTestClient(page);
-    
+
     await page.goto('/proposals/create');
     await page.click(`text=${client.name}`);
     await page.click('button:has-text("Continue")');
@@ -170,7 +170,7 @@ test.describe('CSRF Handling', () => {
 
     // Fill proposal title
     await page.fill('[data-testid="proposal-title"]', 'Test CSRF Proposal');
-    
+
     // Submit should succeed
     await page.click('button:has-text("Create & Copy Link")');
 
@@ -183,7 +183,7 @@ test.describe('CSRF Handling', () => {
     await context.clearCookies({ name: 'csrfToken' });
 
     const client = await createTestClient(page);
-    
+
     await page.goto('/proposals/create');
     await page.click(`text=${client.name}`);
     await page.click('button:has-text("Continue")');
@@ -191,7 +191,7 @@ test.describe('CSRF Handling', () => {
     await page.click('button:has-text("Continue")');
 
     await page.fill('[data-testid="proposal-title"]', 'Test Auto-Retry');
-    
+
     // Should auto-retry and succeed
     await page.click('button:has-text("Create & Copy Link")');
 

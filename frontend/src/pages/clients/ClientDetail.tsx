@@ -24,7 +24,7 @@ const ClientDetail = () => {
   const [activeTab, setActiveTab] = useState('overview');
   const [showEditModal, setShowEditModal] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
-  
+
   // Edit form state
   const [editForm, setEditForm] = useState({
     name: '',
@@ -47,12 +47,13 @@ const ClientDetail = () => {
     if (id) {
       loadClient();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
 
   const loadClient = async () => {
     try {
       setIsLoading(true);
-      const response = await apiClient.getClient(id!) as any;
+      const response = (await apiClient.getClient(id!)) as any;
       setClient(response.data);
     } catch (error) {
       // Error handled by UI
@@ -63,7 +64,7 @@ const ClientDetail = () => {
 
   const openEditModal = () => {
     if (!client) return;
-    
+
     setEditForm({
       name: client.name || '',
       contactEmail: client.contactEmail || '',
@@ -169,10 +170,7 @@ const ClientDetail = () => {
             <DocumentTextIcon className="h-4 w-4 mr-2" />
             New Proposal
           </Link>
-          <button 
-            onClick={openEditModal}
-            className="btn-secondary"
-          >
+          <button onClick={openEditModal} className="btn-secondary">
             <PencilIcon className="h-4 w-4 mr-2" />
             Edit
           </button>
@@ -184,11 +182,9 @@ const ClientDetail = () => {
         <div className="bg-orange-50 border border-orange-200 rounded-lg p-4 flex items-start">
           <ClockIcon className="h-5 w-5 text-orange-500 mt-0.5 flex-shrink-0" />
           <div className="ml-3">
-            <h3 className="text-sm font-medium text-orange-800">
-              MTD ITSA Required by April 2026
-            </h3>
+            <h3 className="text-sm font-medium text-orange-800">MTD ITSA Required by April 2026</h3>
             <p className="mt-1 text-sm text-orange-700">
-              This client has an estimated income of £{client.mtditsaIncome?.toLocaleString()} 
+              This client has an estimated income of £{client.mtditsaIncome?.toLocaleString()}
               and must comply with Making Tax Digital for Income Tax Self Assessment.
             </p>
           </div>
@@ -289,9 +285,7 @@ const ClientDetail = () => {
             <h2 className="text-lg font-semibold text-slate-900 mb-4">Statistics</h2>
             <div className="grid grid-cols-2 gap-4">
               <div className="text-center p-4 bg-slate-50 rounded-lg">
-                <p className="text-2xl font-bold text-slate-900">
-                  {client.proposals?.length || 0}
-                </p>
+                <p className="text-2xl font-bold text-slate-900">{client.proposals?.length || 0}</p>
                 <p className="text-xs text-slate-600">Total Proposals</p>
               </div>
               <div className="text-center p-4 bg-slate-50 rounded-lg">
@@ -333,11 +327,15 @@ const ClientDetail = () => {
                     </p>
                   </div>
                   <div className="text-right">
-                    <span className={`badge ${
-                      proposal.status === 'ACCEPTED' ? 'badge-green' :
-                      proposal.status === 'SENT' ? 'badge-blue' :
-                      'badge-gray'
-                    }`}>
+                    <span
+                      className={`badge ${
+                        proposal.status === 'ACCEPTED'
+                          ? 'badge-green'
+                          : proposal.status === 'SENT'
+                            ? 'badge-blue'
+                            : 'badge-gray'
+                      }`}
+                    >
                       {proposal.status}
                     </span>
                     <p className="text-sm font-medium text-slate-900 mt-1">
@@ -356,7 +354,7 @@ const ClientDetail = () => {
           <h2 className="text-lg font-semibold text-slate-900 mb-4">
             Making Tax Digital for Income Tax Self Assessment
           </h2>
-          
+
           {client.mtditsaEligible ? (
             <div className="space-y-6">
               <div className="bg-orange-50 border border-orange-200 rounded-lg p-4">
@@ -369,7 +367,9 @@ const ClientDetail = () => {
               </div>
 
               <div>
-                <h3 className="text-sm font-medium text-slate-900 mb-3">Quarterly Deadlines (2026-27)</h3>
+                <h3 className="text-sm font-medium text-slate-900 mb-3">
+                  Quarterly Deadlines (2026-27)
+                </h3>
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                   {[
                     { q: 'Q1', period: 'Apr - Jul', filing: '5 Aug 2026' },
@@ -410,23 +410,24 @@ const ClientDetail = () => {
             </div>
           ) : (
             <div className="text-center py-8">
-              <p className="text-slate-600">
-                This client is not required to comply with MTD ITSA.
-              </p>
+              <p className="text-slate-600">This client is not required to comply with MTD ITSA.</p>
               {client.mtditsaIncome && (
                 <p className="text-sm text-slate-400 mt-2">
                   Estimated income: £{client.mtditsaIncome.toLocaleString()}
                 </p>
               )}
-              {client.companyType && !['SOLE_TRADER', 'PARTNERSHIP'].includes(client.companyType) && (
-                <p className="text-sm text-blue-600 mt-4 bg-blue-50 p-3 rounded-lg max-w-md mx-auto">
-                  ℹ️ MTD ITSA only applies to Sole Traders and Partnerships. 
-                  {client.companyType === 'LIMITED_COMPANY' && ' Limited companies file Corporation Tax returns instead.'}
-                  {client.companyType === 'LLP' && ' LLPs file Corporation Tax returns instead.'}
-                  {client.companyType === 'CHARITY' && ' Charities are exempt from MTD ITSA.'}
-                  {client.companyType === 'NON_PROFIT' && ' Non-profit organisations are exempt from MTD ITSA.'}
-                </p>
-              )}
+              {client.companyType &&
+                !['SOLE_TRADER', 'PARTNERSHIP'].includes(client.companyType) && (
+                  <p className="text-sm text-blue-600 mt-4 bg-blue-50 p-3 rounded-lg max-w-md mx-auto">
+                    ℹ️ MTD ITSA only applies to Sole Traders and Partnerships.
+                    {client.companyType === 'LIMITED_COMPANY' &&
+                      ' Limited companies file Corporation Tax returns instead.'}
+                    {client.companyType === 'LLP' && ' LLPs file Corporation Tax returns instead.'}
+                    {client.companyType === 'CHARITY' && ' Charities are exempt from MTD ITSA.'}
+                    {client.companyType === 'NON_PROFIT' &&
+                      ' Non-profit organisations are exempt from MTD ITSA.'}
+                  </p>
+                )}
             </div>
           )}
         </div>
@@ -445,7 +446,7 @@ const ClientDetail = () => {
                 <XMarkIcon className="h-6 w-6" />
               </button>
             </div>
-            
+
             <div className="p-6 space-y-4">
               <div className="grid grid-cols-2 gap-4">
                 <div>
@@ -543,7 +544,9 @@ const ClientDetail = () => {
                   <input
                     type="number"
                     value={editForm.employeeCount}
-                    onChange={(e) => setEditForm({ ...editForm, employeeCount: Number(e.target.value) })}
+                    onChange={(e) =>
+                      setEditForm({ ...editForm, employeeCount: Number(e.target.value) })
+                    }
                     className="mt-1 input-field w-full"
                   />
                 </div>
@@ -601,10 +604,7 @@ const ClientDetail = () => {
             </div>
 
             <div className="p-6 border-t border-slate-200 flex justify-end space-x-3">
-              <button
-                onClick={() => setShowEditModal(false)}
-                className="btn-secondary"
-              >
+              <button onClick={() => setShowEditModal(false)} className="btn-secondary">
                 Cancel
               </button>
               <button

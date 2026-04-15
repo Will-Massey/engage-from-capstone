@@ -69,7 +69,7 @@ export class AdfinService {
       const response = await fetch(`${ADFIN_API_URL}/payments`, {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${this.apiKey}`,
+          Authorization: `Bearer ${this.apiKey}`,
           'Content-Type': 'application/json',
         },
         body: JSON.stringify(request),
@@ -80,7 +80,7 @@ export class AdfinService {
         throw new Error(`Adfin API error: ${response.status} - ${error}`);
       }
 
-      const data = await response.json() as AdfinPaymentResponse;
+      const data = (await response.json()) as AdfinPaymentResponse;
       logger.info(`Adfin payment created: ${data.id}, reference: ${data.reference}`);
       return data;
     } catch (error) {
@@ -96,7 +96,7 @@ export class AdfinService {
     try {
       const response = await fetch(`${ADFIN_API_URL}/payments/${paymentId}`, {
         headers: {
-          'Authorization': `Bearer ${this.apiKey}`,
+          Authorization: `Bearer ${this.apiKey}`,
         },
       });
 
@@ -104,7 +104,7 @@ export class AdfinService {
         throw new Error(`Adfin API error: ${response.status}`);
       }
 
-      return await response.json() as AdfinPaymentResponse;
+      return (await response.json()) as AdfinPaymentResponse;
     } catch (error) {
       logger.error('Failed to get Adfin payment:', error);
       throw error;
@@ -119,7 +119,7 @@ export class AdfinService {
       const response = await fetch(`${ADFIN_API_URL}/payments/${paymentId}/cancel`, {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${this.apiKey}`,
+          Authorization: `Bearer ${this.apiKey}`,
         },
       });
 
@@ -173,7 +173,7 @@ export class AdfinService {
   private async handlePaymentCompleted(data: AdfinWebhookEvent['data']): Promise<void> {
     // Update proposal payment status in database
     const { prisma } = await import('../config/database.js');
-    
+
     await prisma.proposal.updateMany({
       where: { reference: data.reference },
       data: {
@@ -188,7 +188,7 @@ export class AdfinService {
 
   private async handlePaymentFailed(data: AdfinWebhookEvent['data']): Promise<void> {
     const { prisma } = await import('../config/database.js');
-    
+
     await prisma.proposal.updateMany({
       where: { reference: data.reference },
       data: {
@@ -202,7 +202,7 @@ export class AdfinService {
 
   private async handlePaymentCancelled(data: AdfinWebhookEvent['data']): Promise<void> {
     const { prisma } = await import('../config/database.js');
-    
+
     await prisma.proposal.updateMany({
       where: { reference: data.reference },
       data: {

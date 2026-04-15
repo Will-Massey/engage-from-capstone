@@ -28,7 +28,7 @@ router.post('/migrate', checkAdminKey, (0, errorHandler_js_1.asyncHandler)(async
         try {
             (0, child_process_1.execSync)('npx prisma migrate resolve --rolled-back "20260410_data_migration_v2_pricing"', {
                 cwd: process.cwd(),
-                stdio: 'pipe'
+                stdio: 'pipe',
             });
         }
         catch (e) {
@@ -39,12 +39,12 @@ router.post('/migrate', checkAdminKey, (0, errorHandler_js_1.asyncHandler)(async
         const output = (0, child_process_1.execSync)('npx prisma migrate deploy', {
             cwd: process.cwd(),
             stdio: 'pipe',
-            encoding: 'utf-8'
+            encoding: 'utf-8',
         });
         res.json({
             success: true,
             message: 'Migrations applied successfully',
-            output: output.toString()
+            output: output.toString(),
         });
     }
     catch (error) {
@@ -53,7 +53,7 @@ router.post('/migrate', checkAdminKey, (0, errorHandler_js_1.asyncHandler)(async
             error: 'Migration failed',
             details: error.message,
             stdout: error.stdout?.toString(),
-            stderr: error.stderr?.toString()
+            stderr: error.stderr?.toString(),
         });
     }
 }));
@@ -83,7 +83,7 @@ router.post('/fix-schema', checkAdminKey, (0, errorHandler_js_1.asyncHandler)(as
         catch (e) {
             fixes.push(`billingCycle check error: ${e.message}`);
         }
-        // Check and add priceDisplayMode column  
+        // Check and add priceDisplayMode column
         try {
             const result = await database_js_1.prisma.$queryRaw `
           SELECT column_name 
@@ -105,14 +105,14 @@ router.post('/fix-schema', checkAdminKey, (0, errorHandler_js_1.asyncHandler)(as
         res.json({
             success: true,
             message: 'Schema fixes applied',
-            fixes
+            fixes,
         });
     }
     catch (error) {
         res.status(500).json({
             success: false,
             error: 'Schema fix failed',
-            details: error.message
+            details: error.message,
         });
     }
 }));
@@ -137,14 +137,14 @@ router.get('/db-status', checkAdminKey, (0, errorHandler_js_1.asyncHandler)(asyn
       `;
         res.json({
             success: true,
-            serviceTemplateColumns: columns.map(c => c.column_name),
-            recentMigrations: migrations
+            serviceTemplateColumns: columns.map((c) => c.column_name),
+            recentMigrations: migrations,
         });
     }
     catch (error) {
         res.status(500).json({
             success: false,
-            error: error.message
+            error: error.message,
         });
     }
 }));

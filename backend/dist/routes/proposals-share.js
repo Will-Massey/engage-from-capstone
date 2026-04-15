@@ -180,8 +180,7 @@ router.post('/:id/email', auth_js_1.authenticate, (0, errorHandler_js_1.asyncHan
         shareUrl = result.shareUrl;
     }
     else {
-        const baseUrl = process.env.PUBLIC_PROPOSAL_URL ||
-            `https://${tenant.subdomain}.engage.capstone.co.uk`;
+        const baseUrl = process.env.PUBLIC_PROPOSAL_URL || `https://${tenant.subdomain}.engage.capstone.co.uk`;
         shareUrl = `${baseUrl}/proposals/view/${proposal.shareToken}`;
     }
     // Initialize email service
@@ -449,7 +448,9 @@ router.post('/view/:token/sign', (0, errorHandler_js_1.asyncHandler)(async (req,
                     signedBy,
                     signedByRole,
                     proposalPdf,
-                    signaturePng: signatureImage ? Buffer.from(signatureImage.split(',')[1], 'base64') : undefined,
+                    signaturePng: signatureImage
+                        ? Buffer.from(signatureImage.split(',')[1], 'base64')
+                        : undefined,
                 });
                 // Update acceptance notified timestamp
                 await database_js_1.prisma.proposal.update({

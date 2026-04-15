@@ -87,9 +87,11 @@ class EmailService {
                 user: this.config.smtp.user,
                 pass: this.config.smtp.pass,
             },
-            tls: process.env.NODE_ENV === 'production' ? {
-                rejectUnauthorized: true,
-            } : undefined,
+            tls: process.env.NODE_ENV === 'production'
+                ? {
+                    rejectUnauthorized: true,
+                }
+                : undefined,
         });
         // Verify connection
         await this.transporter.verify();
@@ -169,7 +171,7 @@ class EmailService {
             if (!response.ok) {
                 throw new Error(`Outlook token refresh failed: ${response.statusText}`);
             }
-            const data = await response.json();
+            const data = (await response.json());
             return data.access_token;
         }
         catch (error) {
@@ -313,10 +315,7 @@ class EmailService {
         const oauth2Client = new googleapis_1.google.auth.OAuth2(clientId, clientSecret, redirectUri);
         return oauth2Client.generateAuthUrl({
             access_type: 'offline',
-            scope: [
-                'https://mail.google.com/',
-                'https://www.googleapis.com/auth/gmail.send',
-            ],
+            scope: ['https://mail.google.com/', 'https://www.googleapis.com/auth/gmail.send'],
             prompt: 'consent',
         });
     }
@@ -334,19 +333,15 @@ class EmailService {
     }
     // Generate Microsoft OAuth2 URL for setup
     static generateMicrosoftAuthUrl(clientId, redirectUri, tenantId) {
-        const scopes = [
-            'offline_access',
-            'https://outlook.office365.com/SMTP.Send',
-            'User.Read',
-        ];
+        const scopes = ['offline_access', 'https://outlook.office365.com/SMTP.Send', 'User.Read'];
         // Use 'common' for multi-tenant apps, or specific tenant ID for single-tenant
         const tenant = tenantId || 'common';
-        return `https://login.microsoftonline.com/${tenant}/oauth2/v2.0/authorize?` +
+        return (`https://login.microsoftonline.com/${tenant}/oauth2/v2.0/authorize?` +
             `client_id=${encodeURIComponent(clientId)}` +
             `&response_type=code` +
             `&redirect_uri=${encodeURIComponent(redirectUri)}` +
             `&scope=${encodeURIComponent(scopes.join(' '))}` +
-            `&prompt=consent`;
+            `&prompt=consent`);
     }
     // Exchange Microsoft code for tokens
     static async exchangeMicrosoftCode(clientId, clientSecret, redirectUri, code, tenantId) {
@@ -367,11 +362,13 @@ class EmailService {
         if (!response.ok) {
             throw new Error(`Token exchange failed: ${response.statusText}`);
         }
-        const data = await response.json();
+        const data = (await response.json());
         return {
             refreshToken: data.refresh_token,
             accessToken: data.access_token,
-            user: data.id_token ? JSON.parse(Buffer.from(data.id_token.split('.')[1], 'base64').toString()).email : undefined,
+            user: data.id_token
+                ? JSON.parse(Buffer.from(data.id_token.split('.')[1], 'base64').toString()).email
+                : undefined,
         };
     }
 }

@@ -14,8 +14,8 @@ export interface CompaniesHouseConfig {
 
 export interface CompanySearchResult {
   company_number: string;
-  company_name?: string;  // Not present in search results, only in details
-  title?: string;         // Search results use 'title' instead of 'company_name'
+  company_name?: string; // Not present in search results, only in details
+  title?: string; // Search results use 'title' instead of 'company_name'
   company_status: string;
   company_type: string;
   date_of_creation: string;
@@ -73,10 +73,10 @@ export class CompaniesHouseService {
   async searchCompanies(query: string, itemsPerPage: number = 10): Promise<CompanySearchResult[]> {
     try {
       const url = `${COMPANIES_HOUSE_API_URL}/search/companies?q=${encodeURIComponent(query)}&items_per_page=${itemsPerPage}`;
-      
+
       const response = await fetch(url, {
         headers: {
-          'Authorization': `Basic ${Buffer.from(this.apiKey + ':').toString('base64')}`,
+          Authorization: `Basic ${Buffer.from(this.apiKey + ':').toString('base64')}`,
           'Content-Type': 'application/json',
         },
       });
@@ -88,7 +88,7 @@ export class CompaniesHouseService {
         throw new Error(`Companies House API error: ${response.status} ${response.statusText}`);
       }
 
-      const data = await response.json() as any;
+      const data = (await response.json()) as any;
       return data.items || [];
     } catch (error) {
       logger.error('Companies House search error:', error);
@@ -103,12 +103,12 @@ export class CompaniesHouseService {
     try {
       // Clean company number (remove spaces)
       const cleanNumber = companyNumber.replace(/\s/g, '').toUpperCase();
-      
+
       const url = `${COMPANIES_HOUSE_API_URL}/company/${cleanNumber}`;
-      
+
       const response = await fetch(url, {
         headers: {
-          'Authorization': `Basic ${Buffer.from(this.apiKey + ':').toString('base64')}`,
+          Authorization: `Basic ${Buffer.from(this.apiKey + ':').toString('base64')}`,
           'Content-Type': 'application/json',
         },
       });
@@ -136,7 +136,7 @@ export class CompaniesHouseService {
    */
   formatForClientCreation(company: CompanyDetails) {
     const address = company.registered_office_address || {};
-    
+
     return {
       name: company.company_name,
       companyNumber: company.company_number,
@@ -148,7 +148,7 @@ export class CompaniesHouseService {
         postcode: address.postal_code || '',
         country: address.country || 'United Kingdom',
       },
-      yearEnd: company.accounts?.accounting_reference_date 
+      yearEnd: company.accounts?.accounting_reference_date
         ? `${company.accounts.accounting_reference_date.month}-${company.accounts.accounting_reference_date.day}`
         : undefined,
       status: company.company_status,
@@ -161,10 +161,10 @@ export class CompaniesHouseService {
   private mapCompanyType(chType: string): string {
     const typeMap: Record<string, string> = {
       'private-unlimited': 'LIMITED_COMPANY',
-      'ltd': 'LIMITED_COMPANY',
-      'plc': 'LIMITED_COMPANY',
+      ltd: 'LIMITED_COMPANY',
+      plc: 'LIMITED_COMPANY',
       'limited-partnership': 'PARTNERSHIP',
-      'llp': 'LLP',
+      llp: 'LLP',
       'private-limited-guarant-nsc': 'LIMITED_COMPANY',
       'private-limited-guarant-nsc-limited-exemption': 'LIMITED_COMPANY',
       'private-limited-shares-section-30-exemption': 'LIMITED_COMPANY',
@@ -174,14 +174,14 @@ export class CompaniesHouseService {
       'royal-charter': 'CHARITY',
       'investment-company-with-variable-capital': 'LIMITED_COMPANY',
       'unregistered-company': 'SOLE_TRADER',
-      'other': 'SOLE_TRADER',
+      other: 'SOLE_TRADER',
       'european-public-limited-liability-company-se': 'LIMITED_COMPANY',
       'registered-society-non-jurisdictional': 'CHARITY',
       'scottish-partnership': 'PARTNERSHIP',
       'scottish-qualified-partnership': 'PARTNERSHIP',
       'registered-overseas-entity': 'LIMITED_COMPANY',
     };
-    
+
     return typeMap[chType] || 'LIMITED_COMPANY';
   }
 }
@@ -189,12 +189,12 @@ export class CompaniesHouseService {
 // Factory function for creating service from environment
 export function createCompaniesHouseService(): CompaniesHouseService | null {
   const apiKey = process.env.COMPANIES_HOUSE_API_KEY;
-  
+
   if (!apiKey) {
     logger.warn('Companies House API key not configured');
     return null;
   }
-  
+
   return new CompaniesHouseService({ apiKey });
 }
 

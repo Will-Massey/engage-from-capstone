@@ -1,6 +1,7 @@
 # Engage Render Deployment - Troubleshooting Guide
 
 ## Current Status
+
 - ✅ Database: `engage-db` - DEPLOYED
 - ❌ Backend: `engage-backend` - FAILED
 - ❌ Frontend: `engage-frontend` - FAILED
@@ -10,6 +11,7 @@
 ## How to Check Logs
 
 ### In Render Dashboard:
+
 1. Go to: https://dashboard.render.com
 2. Click on `engage-backend`
 3. Click **Logs** tab
@@ -34,6 +36,7 @@ buildCommand: |
 ```
 
 The paths might need adjustment. Try:
+
 ```yaml
 buildCommand: |
   npm ci && cd shared && npm ci && npm run build && cd ../backend && npx prisma generate && npm run build
@@ -67,6 +70,7 @@ services:
 **Symptom:** "Can't reach database" or Prisma errors
 
 **Fix:** Check DATABASE_URL is properly set:
+
 1. Go to `engage-backend` → Environment
 2. Verify `DATABASE_URL` exists
 3. Should be auto-set from `engage-db`
@@ -78,6 +82,7 @@ services:
 **Symptom:** "JWT_SECRET not set" or similar
 
 **Fix:** Add required env vars in Render Dashboard:
+
 - `JWT_SECRET` - Generate with: `openssl rand -base64 32`
 - `EMAIL_FROM_ADDRESS` - `sales@capstonesoftware.co.uk`
 
@@ -88,6 +93,7 @@ services:
 If Blueprint keeps failing, deploy manually:
 
 ### 1. Backend (Manual)
+
 1. Render Dashboard → New → Web Service
 2. Connect GitHub repo
 3. **Name:** `engage-backend`
@@ -100,6 +106,7 @@ If Blueprint keeps failing, deploy manually:
 7. **Add Environment Variables** manually
 
 ### 2. Frontend (Manual)
+
 1. Render Dashboard → New → Static Site
 2. Connect GitHub repo
 3. **Name:** `engage-frontend`

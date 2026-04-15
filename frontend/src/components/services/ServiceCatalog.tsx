@@ -58,46 +58,46 @@ const ServiceCatalog = ({ onImport }: ServiceCatalogProps) => {
   const [importedServices, setImportedServices] = useState<Set<string>>(new Set());
 
   useEffect(() => {
+    const loadCatalog = async () => {
+      try {
+        setIsLoading(true);
+        const response = (await apiClient.get('/services/v2/catalog')) as any;
+        if (response.success) {
+          setServices(response.data);
+        }
+      } catch (error) {
+        toast.error('Failed to load service catalog');
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
     loadCatalog();
   }, []);
 
   useEffect(() => {
+    const filterServices = () => {
+      let filtered = services;
+
+      if (selectedCategory !== 'ALL') {
+        filtered = filtered.filter((s) => s.category === selectedCategory);
+      }
+
+      if (searchQuery.trim()) {
+        const query = searchQuery.toLowerCase();
+        filtered = filtered.filter(
+          (s) =>
+            s.name.toLowerCase().includes(query) ||
+            s.description.toLowerCase().includes(query) ||
+            s.tags.some((t) => t.toLowerCase().includes(query))
+        );
+      }
+
+      setFilteredServices(filtered);
+    };
+
     filterServices();
   }, [services, selectedCategory, searchQuery]);
-
-  const loadCatalog = async () => {
-    try {
-      setIsLoading(true);
-      const response = await apiClient.get('/services/v2/catalog') as any;
-      if (response.success) {
-        setServices(response.data);
-      }
-    } catch (error) {
-      toast.error('Failed to load service catalog');
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const filterServices = () => {
-    let filtered = services;
-
-    if (selectedCategory !== 'ALL') {
-      filtered = filtered.filter((s) => s.category === selectedCategory);
-    }
-
-    if (searchQuery.trim()) {
-      const query = searchQuery.toLowerCase();
-      filtered = filtered.filter(
-        (s) =>
-          s.name.toLowerCase().includes(query) ||
-          s.description.toLowerCase().includes(query) ||
-          s.tags.some((t) => t.toLowerCase().includes(query))
-      );
-    }
-
-    setFilteredServices(filtered);
-  };
 
   const handleImport = async (service: ServiceCatalogItem) => {
     if (importingServices.has(service.name) || importedServices.has(service.name)) {
@@ -107,9 +107,9 @@ const ServiceCatalog = ({ onImport }: ServiceCatalogProps) => {
     setImportingServices((prev) => new Set(prev).add(service.name));
 
     try {
-      const response = await apiClient.post('/services/v2/import-from-catalog', {
+      const response = (await apiClient.post('/services/v2/import-from-catalog', {
         serviceName: service.name,
-      }) as any;
+      })) as any;
 
       if (response.success) {
         setImportedServices((prev) => new Set(prev).add(service.name));
@@ -144,16 +144,16 @@ const ServiceCatalog = ({ onImport }: ServiceCatalogProps) => {
     toast.loading(`Importing ${toImport.length} services...`);
 
     try {
-      const response = await apiClient.post('/services/v2/bulk-import-catalog', {
+      const response = (await apiClient.post('/services/v2/bulk-import-catalog', {
         category: category === 'ALL' ? undefined : category,
-      }) as any;
+      })) as any;
 
       if (response.success) {
         toast.dismiss();
         toast.success(
           `Imported ${response.data.imported} services, skipped ${response.data.skipped}`
         );
-        
+
         // Mark all as imported
         const imported = new Set(importedServices);
         toImport.forEach((s) => imported.add(s.name));
@@ -245,12 +245,14 @@ const ServiceCatalog = ({ onImport }: ServiceCatalogProps) => {
               <div className="flex items-start justify-between">
                 <div className="flex items-start space-x-3">
                   <div className="p-2 bg-primary-100 text-primary-600 rounded-lg">
-                    {categoryIcons[service.category] || <ClipboardDocumentCheckIcon className="h-5 w-5" />}
+                    {categoryIcons[service.category] || (
+                      <ClipboardDocumentCheckIcon className="h-5 w-5" />
+                    )}
                   </div>
                   <div>
                     <h4 className="font-medium text-gray-900">{service.name}</h4>
                     <p className="text-sm text-gray-500 mt-1">{service.description}</p>
-                    
+
                     {/* Tags */}
                     <div className="flex flex-wrap gap-1 mt-2">
                       {service.tags.slice(0, 3).map((tag) => (
@@ -274,9 +276,7 @@ const ServiceCatalog = ({ onImport }: ServiceCatalogProps) => {
                         From <strong>£{service.basePrice.toLocaleString()}</strong>
                       </span>
                       <span className="text-gray-400">|</span>
-                      <span className="text-gray-600">
-                        {service.baseHours} hours
-                      </span>
+                      <span className="text-gray-600">{service.baseHours} hours</span>
                       <span className="text-gray-400">|</span>
                       <span className="text-gray-600 capitalize">
                         {service.billingCycle.toLowerCase().replace('_', ' ')}

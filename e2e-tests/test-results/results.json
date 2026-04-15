@@ -22,9 +22,7 @@
         "name": "chromium",
         "testDir": "/Users/capstone/Desktop/engage/e2e-tests/specs",
         "testIgnore": [],
-        "testMatch": [
-          "**/*.@(spec|test).?(c|m)[jt]s?(x)"
-        ],
+        "testMatch": ["**/*.@(spec|test).?(c|m)[jt]s?(x)"],
         "timeout": 30000
       },
       {
@@ -36,9 +34,7 @@
         "name": "firefox",
         "testDir": "/Users/capstone/Desktop/engage/e2e-tests/specs",
         "testIgnore": [],
-        "testMatch": [
-          "**/*.@(spec|test).?(c|m)[jt]s?(x)"
-        ],
+        "testMatch": ["**/*.@(spec|test).?(c|m)[jt]s?(x)"],
         "timeout": 30000
       },
       {
@@ -50,9 +46,7 @@
         "name": "webkit",
         "testDir": "/Users/capstone/Desktop/engage/e2e-tests/specs",
         "testIgnore": [],
-        "testMatch": [
-          "**/*.@(spec|test).?(c|m)[jt]s?(x)"
-        ],
+        "testMatch": ["**/*.@(spec|test).?(c|m)[jt]s?(x)"],
         "timeout": 30000
       },
       {
@@ -64,9 +58,7 @@
         "name": "Mobile Chrome",
         "testDir": "/Users/capstone/Desktop/engage/e2e-tests/specs",
         "testIgnore": [],
-        "testMatch": [
-          "**/*.@(spec|test).?(c|m)[jt]s?(x)"
-        ],
+        "testMatch": ["**/*.@(spec|test).?(c|m)[jt]s?(x)"],
         "timeout": 30000
       }
     ],
@@ -78,10 +70,7 @@
           "open": "never"
         }
       ],
-      [
-        "list",
-        null
-      ],
+      ["list", null],
       [
         "json",
         {

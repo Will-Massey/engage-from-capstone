@@ -43,7 +43,7 @@ export const Input: React.FC<InputProps> = ({
             focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500
             disabled:bg-slate-50 disabled:text-slate-500
             ${LeftIcon ? 'pl-10' : ''}
-            ${rightIcon || error ? 'pr-10' : ''}
+            ${RightIcon || error ? 'pr-10' : ''}
             ${error ? 'border-red-300 focus:border-red-500 focus:ring-red-500/20' : 'border-slate-300'}
             ${className}
           `}
@@ -51,22 +51,18 @@ export const Input: React.FC<InputProps> = ({
         />
         {error ? (
           <div className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 text-red-500">!</div>
-        ) : rightIcon ? (
+        ) : RightIcon ? (
           <button
             type="button"
             onClick={onRightIconClick}
             className={`absolute right-3 top-1/2 -translate-y-1/2 ${onRightIconClick ? 'cursor-pointer hover:text-slate-600' : ''}`}
           >
-            <rightIcon className="w-5 h-5 text-slate-400" />
+            <RightIcon className="w-5 h-5 text-slate-400" />
           </button>
         ) : null}
       </div>
-      {helperText && !error && (
-        <p className="text-xs text-slate-500">{helperText}</p>
-      )}
-      {error && (
-        <p className="text-xs text-red-600">{error}</p>
-      )}
+      {helperText && !error && <p className="text-xs text-slate-500">{helperText}</p>}
+      {error && <p className="text-xs text-red-600">{error}</p>}
     </div>
   );
 };

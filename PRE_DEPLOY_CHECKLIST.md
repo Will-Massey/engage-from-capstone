@@ -15,6 +15,7 @@ Use this checklist before deploying to production.
 - [ ] Database credentials use environment variables
 
 **Verification:**
+
 ```bash
 grep -r "JWT_SECRET" backend/src/
 grep -r "contentSecurityPolicy: false" backend/src/
@@ -30,6 +31,7 @@ grep -r "contentSecurityPolicy: false" backend/src/
 - [ ] Seed data loaded (if needed)
 
 **Verification:**
+
 ```bash
 cd backend
 npx prisma migrate status
@@ -45,6 +47,7 @@ npx prisma db seed
 - [ ] Test email can be sent
 
 **Verification:**
+
 1. Go to Settings → Email
 2. Configure SMTP or OAuth
 3. Send test email
@@ -54,18 +57,21 @@ npx prisma db seed
 ## 🧪 Functionality Testing
 
 ### Authentication
+
 - [ ] Login works with demo credentials
 - [ ] Registration flow works
 - [ ] Password change works
 - [ ] Session expiry handled correctly
 
 ### Clients
+
 - [ ] Create client works
 - [ ] Edit client works
 - [ ] Companies House search works
 - [ ] MTD ITSA eligibility shows correctly
 
 ### Proposals
+
 - [ ] Create proposal works
 - [ ] View proposal displays cover letter
 - [ ] Send proposal works
@@ -73,12 +79,14 @@ npx prisma db seed
 - [ ] PDF generation works
 
 ### Services
+
 - [ ] Services page loads all services
 - [ ] Edit service works
 - [ ] Create service works
 - [ ] Delete service works
 
 ### Settings
+
 - [ ] Profile save works
 - [ ] Company settings save works
 - [ ] Team member management works
@@ -90,32 +98,38 @@ npx prisma db seed
 ## 🚀 Deployment Readiness
 
 ### Environment Variables
+
 - [ ] `.env.production` created from template
 - [ ] All required variables filled in
 - [ ] No `.env` files in git (check .gitignore)
 
 **Verification:**
+
 ```bash
 git status | grep ".env"
 ```
 
 ### Build Verification
+
 - [ ] Backend builds without errors
 - [ ] Frontend builds without errors
 - [ ] All TypeScript compiles
 - [ ] No console errors in browser
 
 **Verification:**
+
 ```bash
 ./build-production.sh
 ```
 
 ### Health Check
+
 - [ ] Backend responds on `/api/health`
 - [ ] Database connection successful
 - [ ] No errors in logs
 
 **Verification:**
+
 ```bash
 curl http://localhost:3001/api/health
 ```
@@ -185,6 +199,7 @@ echo "  - Settings save"
 If deployment fails:
 
 1. **Database:** Have backup before migrations
+
    ```bash
    pg_dump $DATABASE_URL > backup-$(date +%Y%m%d).sql
    ```
@@ -197,18 +212,18 @@ If deployment fails:
 
 ## ✅ Sign-off
 
-| Check | Status | Signed By |
-|-------|--------|-----------|
-| Security | ⬜ | |
-| Database | ⬜ | |
-| Functionality | ⬜ | |
-| Performance | ⬜ | |
-| Documentation | ⬜ | |
+| Check         | Status | Signed By |
+| ------------- | ------ | --------- |
+| Security      | ⬜     |           |
+| Database      | ⬜     |           |
+| Functionality | ⬜     |           |
+| Performance   | ⬜     |           |
+| Documentation | ⬜     |           |
 
-**Deployment Approved By:** _________________
+**Deployment Approved By:** **\*\*\*\***\_**\*\*\*\***
 
-**Date:** _________________
+**Date:** **\*\*\*\***\_**\*\*\*\***
 
 ---
 
-*Last updated: March 5, 2026*
+_Last updated: March 5, 2026_

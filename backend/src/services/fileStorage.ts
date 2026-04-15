@@ -39,9 +39,7 @@ export async function saveSignaturePng(
     await ensureDir(tenantDir);
 
     // Extract base64 data (remove data:image/png;base64, prefix if present)
-    const base64Content = base64Data.includes(',')
-      ? base64Data.split(',')[1]
-      : base64Data;
+    const base64Content = base64Data.includes(',') ? base64Data.split(',')[1] : base64Data;
 
     // Generate filename with timestamp
     const timestamp = Date.now();

@@ -31,12 +31,12 @@ const icons = {
   inbox: InboxIcon,
 };
 
-export const EmptyState = ({ 
-  title, 
-  description, 
-  action, 
+export const EmptyState = ({
+  title,
+  description,
+  action,
   icon = 'inbox',
-  secondaryAction 
+  secondaryAction,
 }: EmptyStateProps) => {
   const Icon = icons[icon];
 
@@ -49,14 +49,10 @@ export const EmptyState = ({
             <Icon className="h-16 w-16 text-slate-400" />
           </div>
         </div>
-        
-        <h3 className="text-xl font-semibold text-slate-900 mb-2">
-          {title}
-        </h3>
-        <p className="text-slate-600 mb-6">
-          {description}
-        </p>
-        
+
+        <h3 className="text-xl font-semibold text-slate-900 mb-2">{title}</h3>
+        <p className="text-slate-600 mb-6">{description}</p>
+
         <div className="flex flex-col sm:flex-row gap-3 justify-center">
           {action && (
             <Link
@@ -69,10 +65,7 @@ export const EmptyState = ({
             </Link>
           )}
           {secondaryAction && (
-            <button
-              onClick={secondaryAction.onClick}
-              className="btn-secondary"
-            >
+            <button onClick={secondaryAction.onClick} className="btn-secondary">
               {secondaryAction.label}
             </button>
           )}
@@ -120,11 +113,7 @@ export const EmptySearchResults = ({ onClear }: { onClear: () => void }) => (
 );
 
 export const EmptyInbox = () => (
-  <EmptyState
-    icon="inbox"
-    title="All caught up"
-    description="No new notifications or messages."
-  />
+  <EmptyState icon="inbox" title="All caught up" description="No new notifications or messages." />
 );
 
 export default EmptyState;

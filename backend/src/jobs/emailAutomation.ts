@@ -4,7 +4,7 @@ import logger from '../config/logger.js';
 
 /**
  * Email Automation Job
- * 
+ *
  * Sends automated follow-up emails for proposals based on their status and age.
  * Should be run daily via a cron job.
  */
@@ -61,7 +61,10 @@ async function shouldSendFollowUp(proposalId: string, daysAfterSend: number): Pr
 /**
  * Get email template based on follow-up type
  */
-function getEmailTemplate(template: string, proposal: any): {
+function getEmailTemplate(
+  template: string,
+  proposal: any
+): {
   subject: string;
   body: string;
 } {
@@ -71,10 +74,10 @@ function getEmailTemplate(template: string, proposal: any): {
   const senderName = `${proposal.createdBy.firstName} ${proposal.createdBy.lastName}`;
   const senderPosition = proposal.createdBy.role;
   const practiceName = proposal.tenant.name;
-  
+
   const frontendUrl = process.env.FRONTEND_URL || 'https://engagebycapstone.co.uk';
   const viewLink = `${frontendUrl}/proposals/view/${proposal.shareToken || proposal.id}`;
-  
+
   const totalAmount = new Intl.NumberFormat('en-GB', {
     style: 'currency',
     currency: 'GBP',
@@ -193,7 +196,9 @@ async function sendFollowUp(
         },
       });
 
-      logger.info(`Follow-up email sent for proposal ${proposal.id} (${config.daysAfterSend} days)`);
+      logger.info(
+        `Follow-up email sent for proposal ${proposal.id} (${config.daysAfterSend} days)`
+      );
       return true;
     } else {
       logger.error(`Failed to send follow-up for proposal ${proposal.id}: ${result.error}`);

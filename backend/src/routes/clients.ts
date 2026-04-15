@@ -68,14 +68,14 @@ router.get(
   '/',
   authenticate,
   asyncHandler(async (req, res) => {
-    const { 
-      search, 
-      companyType, 
-      mtditsaStatus, 
-      page = '1', 
+    const {
+      search,
+      companyType,
+      mtditsaStatus,
+      page = '1',
       limit = '20',
       sortBy = 'createdAt',
-      sortOrder = 'desc'
+      sortOrder = 'desc',
     } = req.query;
 
     logger.info(`Fetching clients for tenant: ${req.tenantId}, user: ${req.user?.id}`);
@@ -188,7 +188,9 @@ router.post(
   asyncHandler(async (req, res) => {
     const data = createClientSchema.parse(req.body);
 
-    logger.info(`Creating client for tenant: ${req.tenantId}, user: ${req.user?.id}, email: ${data.contactEmail}`);
+    logger.info(
+      `Creating client for tenant: ${req.tenantId}, user: ${req.user?.id}, email: ${data.contactEmail}`
+    );
 
     // Check for duplicate email
     const existingClient = await prisma.client.findFirst({
@@ -209,17 +211,13 @@ router.post(
     let mtditsaStatus: MTDITSAStatus = MTDITSAStatus.NOT_REQUIRED;
     let mtditsaEligible = false;
 
-    const isMtditsaApplicable = data.companyType === CompanyType.SOLE_TRADER || 
-                                 data.companyType === CompanyType.PARTNERSHIP;
-    
+    const isMtditsaApplicable =
+      data.companyType === CompanyType.SOLE_TRADER || data.companyType === CompanyType.PARTNERSHIP;
+
     if (data.mtditsaIncome && isMtditsaApplicable) {
-      const assessment = MTDITSAService.calculateStatus(
-        data.mtditsaIncome,
-        [],
-        {
-          isCharity: data.companyType === CompanyType.CHARITY,
-        }
-      );
+      const assessment = MTDITSAService.calculateStatus(data.mtditsaIncome, [], {
+        isCharity: data.companyType === CompanyType.CHARITY,
+      });
       mtditsaStatus = assessment.status;
       mtditsaEligible = assessment.isRequired;
     }
@@ -299,17 +297,13 @@ router.put(
     // MTD ITSA only applies to sole traders and partnerships
     let mtditsaData: { mtditsaStatus?: MTDITSAStatus; mtditsaEligible?: boolean } = {};
     const companyType = data.companyType || existingClient.companyType;
-    const isMtditsaApplicable = companyType === CompanyType.SOLE_TRADER || 
-                                 companyType === CompanyType.PARTNERSHIP;
-    
+    const isMtditsaApplicable =
+      companyType === CompanyType.SOLE_TRADER || companyType === CompanyType.PARTNERSHIP;
+
     if (data.mtditsaIncome !== undefined && isMtditsaApplicable) {
-      const assessment = MTDITSAService.calculateStatus(
-        data.mtditsaIncome,
-        [],
-        {
-          isCharity: false, // Already filtered for SOLE_TRADER/PARTNERSHIP
-        }
-      );
+      const assessment = MTDITSAService.calculateStatus(data.mtditsaIncome, [], {
+        isCharity: false, // Already filtered for SOLE_TRADER/PARTNERSHIP
+      });
       mtditsaData = {
         mtditsaStatus: assessment.status,
         mtditsaEligible: assessment.isRequired,
@@ -363,9 +357,11 @@ router.post(
   authenticate,
   asyncHandler(async (req, res) => {
     const { id } = req.params;
-    const { incomeSources = [] } = z.object({
-      incomeSources: z.array(incomeSourceSchema).optional(),
-    }).parse(req.body);
+    const { incomeSources = [] } = z
+      .object({
+        incomeSources: z.array(incomeSourceSchema).optional(),
+      })
+      .parse(req.body);
 
     const client = await prisma.client.findFirst({
       where: {
@@ -379,9 +375,10 @@ router.post(
     }
 
     // MTD ITSA only applies to sole traders and partnerships
-    const isMtditsaApplicable = client.companyType === CompanyType.SOLE_TRADER || 
-                                 client.companyType === CompanyType.PARTNERSHIP;
-    
+    const isMtditsaApplicable =
+      client.companyType === CompanyType.SOLE_TRADER ||
+      client.companyType === CompanyType.PARTNERSHIP;
+
     if (!isMtditsaApplicable) {
       throw new ApiError(
         'NOT_APPLICABLE',
@@ -394,10 +391,13 @@ router.post(
 
     const assessment = MTDITSAService.calculateStatus(
       annualIncome,
-      incomeSources as Array<{ type: 'SELF_EMPLOYMENT' | 'PROPERTY' | 'PARTNERSHIP' | 'OTHER'; amount: number }>,
+      incomeSources as Array<{
+        type: 'SELF_EMPLOYMENT' | 'PROPERTY' | 'PARTNERSHIP' | 'OTHER';
+        amount: number;
+      }>,
       {
         isCharity: false, // Already validated as SOLE_TRADER or PARTNERSHIP
-        partnershipTurnover: incomeSources.find(s => s.type === 'PARTNERSHIP')?.amount,
+        partnershipTurnover: incomeSources.find((s) => s.type === 'PARTNERSHIP')?.amount,
       }
     );
 

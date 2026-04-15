@@ -2,7 +2,13 @@ import { Router } from 'express';
 import bcrypt from 'bcryptjs';
 import { z } from 'zod';
 import { prisma } from '../config/database.js';
-import { authenticate, authorize, generateToken, generateRefreshToken, generateCsrfToken } from '../middleware/auth.js';
+import {
+  authenticate,
+  authorize,
+  generateToken,
+  generateRefreshToken,
+  generateCsrfToken,
+} from '../middleware/auth.js';
 import { asyncHandler, ApiError } from '../middleware/errorHandler.js';
 // import { twoFactorService } from '../services/twoFactorService.js';
 // import { passwordResetService } from '../services/passwordResetService.js';
@@ -41,7 +47,7 @@ router.post(
 
     // Determine tenant ID from subdomain, body, or look up user by email
     let resolvedTenantId = tenantId || req.tenantId;
-    
+
     // If no tenant provided, try to find user by email only
     if (!resolvedTenantId) {
       const userByEmail = await prisma.user.findFirst({
@@ -51,7 +57,7 @@ router.post(
         },
         include: { tenant: true },
       });
-      
+
       if (userByEmail) {
         resolvedTenantId = userByEmail.tenantId;
       }
@@ -116,7 +122,7 @@ router.post(
       sameSite: 'strict',
       maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
     });
-    
+
     // Set CSRF token cookie (required for state-changing requests)
     const csrfToken = generateCsrfToken();
     res.cookie('csrfToken', csrfToken, {
@@ -371,10 +377,12 @@ router.put(
   '/change-password',
   authenticate,
   asyncHandler(async (req, res) => {
-    const { currentPassword, newPassword } = z.object({
-      currentPassword: z.string(),
-      newPassword: z.string().min(8, 'Password must be at least 8 characters'),
-    }).parse(req.body);
+    const { currentPassword, newPassword } = z
+      .object({
+        currentPassword: z.string(),
+        newPassword: z.string().min(8, 'Password must be at least 8 characters'),
+      })
+      .parse(req.body);
 
     const user = await prisma.user.findUnique({
       where: { id: req.user!.id },
@@ -798,10 +806,12 @@ router.delete(
   '/me',
   authenticate,
   asyncHandler(async (req, res) => {
-    const { password, confirmDelete } = z.object({
-      password: z.string(),
-      confirmDelete: z.literal(true),
-    }).parse(req.body);
+    const { password, confirmDelete } = z
+      .object({
+        password: z.string(),
+        confirmDelete: z.literal(true),
+      })
+      .parse(req.body);
 
     const user = await prisma.user.findUnique({
       where: { id: req.user!.id },
@@ -818,11 +828,7 @@ router.delete(
     }
 
     // Anonymize user data
-    const result = await gdprService.deleteUserData(
-      req.user!.id,
-      req.tenantId!,
-      prisma
-    );
+    const result = await gdprService.deleteUserData(req.user!.id, req.tenantId!, prisma);
 
     // Clear cookies
     res.clearCookie('accessToken');

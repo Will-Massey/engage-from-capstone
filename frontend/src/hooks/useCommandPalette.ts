@@ -12,7 +12,7 @@ export const useCommandPalette = (): UseCommandPaletteReturn => {
 
   const open = useCallback(() => setIsOpen(true), []);
   const close = useCallback(() => setIsOpen(false), []);
-  const toggle = useCallback(() => setIsOpen(prev => !prev), []);
+  const toggle = useCallback(() => setIsOpen((prev) => !prev), []);
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {

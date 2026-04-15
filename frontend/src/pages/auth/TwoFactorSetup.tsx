@@ -29,7 +29,7 @@ interface TwoFactorSetupData {
 export const TwoFactorSetup: React.FC = () => {
   const navigate = useNavigate();
   const { user, updateUser } = useAuthStore();
-  
+
   const [step, setStep] = useState<'intro' | 'setup' | 'verify' | 'complete'>('intro');
   const [setupData, setSetupData] = useState<TwoFactorSetupData | null>(null);
   const [verificationCode, setVerificationCode] = useState('');
@@ -85,7 +85,7 @@ Generated: ${new Date().toLocaleString()}
 ${setupData.backupCodes.join('\n')}
 
 Keep these codes safe! Each code can only be used once.`;
-      
+
       const blob = new Blob([content], { type: 'text/plain' });
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
@@ -95,7 +95,7 @@ Keep these codes safe! Each code can only be used once.`;
       a.click();
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
-      
+
       toast.success('Backup codes downloaded');
     }
   };
@@ -111,9 +111,7 @@ Keep these codes safe! Each code can only be used once.`;
                 <ShieldCheckIcon className="w-8 h-8 text-blue-600" />
               </div>
             </div>
-            <h2 className="text-2xl font-bold text-slate-900">
-              Secure Your Account
-            </h2>
+            <h2 className="text-2xl font-bold text-slate-900">Secure Your Account</h2>
             <p className="mt-2 text-slate-600">
               Add an extra layer of security with two-factor authentication.
             </p>
@@ -138,21 +136,12 @@ Keep these codes safe! Each code can only be used once.`;
           </div>
 
           <div className="space-y-4">
-            <Button
-              onClick={handleStartSetup}
-              isLoading={isLoading}
-              size="lg"
-              className="w-full"
-            >
+            <Button onClick={handleStartSetup} isLoading={isLoading} size="lg" className="w-full">
               Enable Two-Factor Auth
               <ArrowRightIcon className="w-4 h-4 ml-2" />
             </Button>
-            
-            <Button
-              variant="ghost"
-              onClick={() => navigate('/settings')}
-              className="w-full"
-            >
+
+            <Button variant="ghost" onClick={() => navigate('/settings')} className="w-full">
               Skip for Now
             </Button>
           </div>
@@ -168,26 +157,18 @@ Keep these codes safe! Each code can only be used once.`;
         <div className="max-w-md w-full space-y-8">
           <div className="text-center">
             <h2 className="text-2xl font-bold text-slate-900">Scan QR Code</h2>
-            <p className="mt-2 text-slate-600">
-              Scan this code with your authenticator app
-            </p>
+            <p className="mt-2 text-slate-600">Scan this code with your authenticator app</p>
           </div>
 
           {/* QR Code */}
           <div className="bg-white rounded-xl border border-slate-200 p-8">
             <div className="flex justify-center mb-6">
-              <img
-                src={setupData.qrCodeUrl}
-                alt="2FA QR Code"
-                className="w-48 h-48"
-              />
+              <img src={setupData.qrCodeUrl} alt="2FA QR Code" className="w-48 h-48" />
             </div>
 
             {/* Manual Entry */}
             <div className="bg-slate-50 rounded-lg p-4">
-              <p className="text-sm text-slate-600 mb-2">
-                Can't scan? Enter this code manually:
-              </p>
+              <p className="text-sm text-slate-600 mb-2">Can't scan? Enter this code manually:</p>
               <div className="flex items-center gap-2">
                 <code className="flex-1 bg-white px-3 py-2 rounded border text-sm font-mono break-all">
                   {setupData.secret}
@@ -213,8 +194,8 @@ Keep these codes safe! Each code can only be used once.`;
               <div className="flex-1">
                 <h3 className="font-semibold text-amber-900">Save Your Backup Codes</h3>
                 <p className="text-sm text-amber-700 mt-1">
-                  These codes let you access your account if you lose your phone. 
-                  Each code can only be used once.
+                  These codes let you access your account if you lose your phone. Each code can only
+                  be used once.
                 </p>
 
                 <div className="grid grid-cols-2 gap-2 mt-4">
@@ -250,11 +231,7 @@ Keep these codes safe! Each code can only be used once.`;
             </div>
           </div>
 
-          <Button
-            onClick={() => setStep('verify')}
-            size="lg"
-            className="w-full"
-          >
+          <Button onClick={() => setStep('verify')} size="lg" className="w-full">
             I've Saved My Codes
             <ArrowRightIcon className="w-4 h-4 ml-2" />
           </Button>
@@ -274,9 +251,7 @@ Keep these codes safe! Each code can only be used once.`;
                 <KeyIcon className="w-8 h-8 text-blue-600" />
               </div>
             </div>
-            <h2 className="text-2xl font-bold text-slate-900">
-              Verify Setup
-            </h2>
+            <h2 className="text-2xl font-bold text-slate-900">Verify Setup</h2>
             <p className="mt-2 text-slate-600">
               Enter the 6-digit code from your authenticator app to confirm everything is working.
             </p>
@@ -305,11 +280,7 @@ Keep these codes safe! Each code can only be used once.`;
             </Button>
           </div>
 
-          <Button
-            variant="ghost"
-            onClick={() => setStep('setup')}
-            className="w-full"
-          >
+          <Button variant="ghost" onClick={() => setStep('setup')} className="w-full">
             Back to QR Code
           </Button>
         </div>
@@ -328,9 +299,7 @@ Keep these codes safe! Each code can only be used once.`;
         </div>
 
         <div>
-          <h2 className="text-2xl font-bold text-slate-900">
-            Two-Factor Auth Enabled!
-          </h2>
+          <h2 className="text-2xl font-bold text-slate-900">Two-Factor Auth Enabled!</h2>
           <p className="mt-2 text-slate-600">
             Your account is now protected with an additional layer of security.
           </p>
@@ -354,11 +323,7 @@ Keep these codes safe! Each code can only be used once.`;
           </ul>
         </div>
 
-        <Button
-          onClick={() => navigate('/settings')}
-          size="lg"
-          className="w-full"
-        >
+        <Button onClick={() => navigate('/settings')} size="lg" className="w-full">
           Go to Settings
         </Button>
       </div>

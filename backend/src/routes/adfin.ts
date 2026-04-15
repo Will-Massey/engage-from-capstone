@@ -36,7 +36,7 @@ router.get(
   authenticate,
   asyncHandler(async (req, res) => {
     const isConfigured = !!process.env.ADFIN_API_KEY;
-    
+
     res.json({
       success: true,
       data: {
@@ -61,7 +61,7 @@ router.post(
   authorize('ADMIN', 'PARTNER', 'MANAGER'),
   asyncHandler(async (req, res) => {
     const adfin = checkAdfin();
-    
+
     const schema = z.object({
       proposalId: z.string(),
       allowCard: z.boolean().default(true),
@@ -73,7 +73,7 @@ router.post(
 
     // Get proposal details
     const proposal = await prisma.proposal.findFirst({
-      where: { 
+      where: {
         id: proposalId,
         tenantId: req.tenantId,
       },
@@ -147,7 +147,7 @@ router.get(
     const { proposalId } = req.params;
 
     const proposal = await prisma.proposal.findFirst({
-      where: { 
+      where: {
         id: proposalId,
         tenantId: req.tenantId,
       },
@@ -169,7 +169,7 @@ router.get(
       try {
         const adfin = checkAdfin();
         const adfinStatus = await adfin.getPayment(proposal.paymentId);
-        
+
         res.json({
           success: true,
           data: {
@@ -208,7 +208,7 @@ router.post(
   authorize('ADMIN', 'PARTNER', 'MANAGER'),
   asyncHandler(async (req, res) => {
     const adfin = checkAdfin();
-    
+
     const schema = z.object({
       proposalId: z.string(),
     });
@@ -216,7 +216,7 @@ router.post(
     const { proposalId } = schema.parse(req.body);
 
     const proposal = await prisma.proposal.findFirst({
-      where: { 
+      where: {
         id: proposalId,
         tenantId: req.tenantId,
       },
@@ -255,7 +255,7 @@ router.post(
   express.raw({ type: 'application/json' }),
   asyncHandler(async (req, res) => {
     const signature = req.headers['x-adfin-signature'] as string;
-    
+
     if (!signature) {
       throw new ApiError('MISSING_SIGNATURE', 'Webhook signature missing', 400);
     }
@@ -269,7 +269,7 @@ router.post(
     }
 
     const event = JSON.parse(payload);
-    
+
     // Process webhook
     await adfin.processWebhook(event);
 

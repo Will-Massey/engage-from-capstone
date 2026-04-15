@@ -1,0 +1,11 @@
+node_modules
+dist
+*.lock
+package-lock.json
+pnpm-lock.yaml
+.prisma
+uploads
+coverage
+.playwright-mcp
+.github
+backend/public/assets

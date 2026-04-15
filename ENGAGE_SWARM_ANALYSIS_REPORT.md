@@ -11,15 +11,16 @@
 **Engage by Capstone** is a professional proposal generation platform built specifically for UK accountancy practices. It enables sub-5-minute proposal creation with built-in MTD ITSA automation, UK-compliant engagement letters, and electronic signature capture.
 
 ### Key Metrics
-| Metric | Value |
-|--------|-------|
-| Total Lines of Code | ~50,000+ |
-| Backend Endpoints | 75+ |
-| Frontend Components | 40+ |
-| Database Models | 15 |
-| Enums | 11 |
-| Security Issues Fixed | 17 |
-| Deployment Platforms | 3 (Railway, Render, Vercel) |
+
+| Metric                | Value                       |
+| --------------------- | --------------------------- |
+| Total Lines of Code   | ~50,000+                    |
+| Backend Endpoints     | 75+                         |
+| Frontend Components   | 40+                         |
+| Database Models       | 15                          |
+| Enums                 | 11                          |
+| Security Issues Fixed | 17                          |
+| Deployment Platforms  | 3 (Railway, Render, Vercel) |
 
 ---
 
@@ -61,34 +62,36 @@ engage/
 ## 3. TECHNOLOGY STACK
 
 ### Backend Stack
-| Layer | Technology |
-|-------|------------|
-| Runtime | Node.js 20+ |
-| Framework | Express.js 4.18 |
-| Language | TypeScript 5.9 |
-| Database | PostgreSQL 14+ |
-| ORM | Prisma 5.22 |
-| Auth | JWT (jsonwebtoken 9.0) |
-| Security | Helmet, CORS, express-rate-limit |
-| Email | Nodemailer + Gmail/Outlook OAuth |
-| PDF | PDFKit |
-| Payments | Stripe |
-| Logging | Winston + Morgan |
-| Validation | Zod |
+
+| Layer      | Technology                       |
+| ---------- | -------------------------------- |
+| Runtime    | Node.js 20+                      |
+| Framework  | Express.js 4.18                  |
+| Language   | TypeScript 5.9                   |
+| Database   | PostgreSQL 14+                   |
+| ORM        | Prisma 5.22                      |
+| Auth       | JWT (jsonwebtoken 9.0)           |
+| Security   | Helmet, CORS, express-rate-limit |
+| Email      | Nodemailer + Gmail/Outlook OAuth |
+| PDF        | PDFKit                           |
+| Payments   | Stripe                           |
+| Logging    | Winston + Morgan                 |
+| Validation | Zod                              |
 
 ### Frontend Stack
-| Layer | Technology |
-|-------|------------|
-| Framework | React 18 |
-| Language | TypeScript 5.2 |
-| Build Tool | Vite 5.0 |
-| Styling | Tailwind CSS 3.4 |
-| State | Zustand 4.4 |
-| Forms | React Hook Form + Zod |
-| Charts | Recharts |
-| Icons | Heroicons |
-| Notifications | React Hot Toast |
-| PWA | Vite Plugin PWA |
+
+| Layer         | Technology            |
+| ------------- | --------------------- |
+| Framework     | React 18              |
+| Language      | TypeScript 5.2        |
+| Build Tool    | Vite 5.0              |
+| Styling       | Tailwind CSS 3.4      |
+| State         | Zustand 4.4           |
+| Forms         | React Hook Form + Zod |
+| Charts        | Recharts              |
+| Icons         | Heroicons             |
+| Notifications | React Hot Toast       |
+| PWA           | Vite Plugin PWA       |
 
 ---
 
@@ -99,6 +102,7 @@ engage/
 #### 4.1 Core Models
 
 **Tenant** (Multi-tenancy root)
+
 ```prisma
 model Tenant {
   id             String   @id @default(uuid())
@@ -111,13 +115,13 @@ model Tenant {
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
   settings       String   @default("{}")
-  
+
   // VAT Settings
   vatRegistered Boolean @default(true)
   vatNumber     String?
   defaultVatRate VATRate @default(STANDARD_20)
   autoApplyVat   Boolean @default(true)
-  
+
   // Stripe/Subscription
   stripeCustomerId      String?
   stripeSubscriptionId  String?
@@ -129,6 +133,7 @@ model Tenant {
 ```
 
 **User** (Tenant-scoped users)
+
 ```prisma
 model User {
   id            String    @id @default(uuid())
@@ -146,12 +151,13 @@ model User {
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
   tenantId      String
-  
+
   @@unique([email, tenantId])
 }
 ```
 
 **Client** (Accountancy clients)
+
 ```prisma
 model Client {
   id              String       @id @default(uuid())
@@ -178,12 +184,13 @@ model Client {
   createdAt       DateTime     @default(now())
   updatedAt       DateTime     @updatedAt
   tenantId        String
-  
+
   @@unique([tenantId, contactEmail])
 }
 ```
 
 **Proposal** (Central entity)
+
 ```prisma
 model Proposal {
   id              String         @id @default(uuid())
@@ -196,7 +203,7 @@ model Proposal {
   acceptedAt      DateTime?
   declinedAt      DateTime?
   expiredAt       DateTime?
-  
+
   // Pricing
   subtotal       Float   @default(0)
   discountType   String?
@@ -205,10 +212,10 @@ model Proposal {
   vatRate        Float   @default(20)
   vatAmount      Float   @default(0)
   total          Float   @default(0)
-  
+
   paymentTerms     String           @default("30 days")
   paymentFrequency PricingFrequency @default(MONTHLY)
-  
+
   // Content
   coverLetter       String?
   terms             String?
@@ -217,25 +224,25 @@ model Proposal {
   engagementLetter  String?
   termsAccepted     Boolean          @default(false)
   termsAcceptedAt   DateTime?
-  
+
   // Acceptance
   acceptedBy        String?
   acceptedByIp      String?
   signatoryPosition String?
   signature         String?
-  
+
   // Sharing
   shareToken          String?   @unique
   shareTokenExpiry    DateTime?
   publicAccessEnabled Boolean   @default(false)
-  
+
   // Email Tracking
   lastEmailedAt  DateTime?
   emailHistory   String @default("[]")
-  
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
-  
+
   tenantId    String
   clientId    String
   createdById String
@@ -245,6 +252,7 @@ model Proposal {
 #### 4.2 Supporting Models
 
 **ProposalService** (Line items)
+
 ```prisma
 model ProposalService {
   id                String @id @default(uuid())
@@ -263,6 +271,7 @@ model ProposalService {
 ```
 
 **ServiceTemplate** (Reusable services)
+
 ```prisma
 model ServiceTemplate {
   id              String @id @default(uuid())
@@ -293,6 +302,7 @@ model ServiceTemplate {
 ```
 
 **ProposalView** (Audit tracking)
+
 ```prisma
 model ProposalView {
   id           String   @id @default(uuid())
@@ -306,6 +316,7 @@ model ProposalView {
 ```
 
 **ProposalSignature** (e-Signature compliance)
+
 ```prisma
 model ProposalSignature {
   id                String   @id @default(uuid())
@@ -410,114 +421,122 @@ enum PricingModel {
 ## 5. BACKEND API ENDPOINTS
 
 ### 5.1 Authentication (`/api/auth`)
-| Endpoint | Method | Auth | Description |
-|----------|--------|------|-------------|
-| `/auth/login` | POST | No | User login |
-| `/auth/register` | POST | No | User registration |
-| `/auth/refresh` | POST | No | Token refresh |
-| `/auth/logout` | POST | Yes | Logout |
-| `/auth/me` | GET | Yes | Get current user |
-| `/auth/me` | PUT | Yes | Update profile |
-| `/auth/change-password` | PUT | Yes | Change password |
-| `/auth/users` | GET | PARTNER+ | List users |
-| `/auth/users` | POST | PARTNER+ | Create user |
-| `/auth/users/:id` | PUT | PARTNER+ | Update user |
-| `/auth/users/:id` | DELETE | PARTNER+ | Delete user |
+
+| Endpoint                | Method | Auth     | Description       |
+| ----------------------- | ------ | -------- | ----------------- |
+| `/auth/login`           | POST   | No       | User login        |
+| `/auth/register`        | POST   | No       | User registration |
+| `/auth/refresh`         | POST   | No       | Token refresh     |
+| `/auth/logout`          | POST   | Yes      | Logout            |
+| `/auth/me`              | GET    | Yes      | Get current user  |
+| `/auth/me`              | PUT    | Yes      | Update profile    |
+| `/auth/change-password` | PUT    | Yes      | Change password   |
+| `/auth/users`           | GET    | PARTNER+ | List users        |
+| `/auth/users`           | POST   | PARTNER+ | Create user       |
+| `/auth/users/:id`       | PUT    | PARTNER+ | Update user       |
+| `/auth/users/:id`       | DELETE | PARTNER+ | Delete user       |
 
 ### 5.2 Clients (`/api/clients`)
-| Endpoint | Method | Auth | Description |
-|----------|--------|------|-------------|
-| `/clients` | GET | Yes | List clients |
-| `/clients/:id` | GET | Yes | Get client |
-| `/clients` | POST | SENIOR+ | Create client |
-| `/clients/:id` | PUT | SENIOR+ | Update client |
-| `/clients/:id` | DELETE | PARTNER+ | Delete client |
-| `/clients/:id/mtditsa-assessment` | POST | Yes | Assess MTD ITSA |
-| `/clients/:id/mtditsa-timeline` | GET | Yes | Get timeline |
+
+| Endpoint                          | Method | Auth     | Description     |
+| --------------------------------- | ------ | -------- | --------------- |
+| `/clients`                        | GET    | Yes      | List clients    |
+| `/clients/:id`                    | GET    | Yes      | Get client      |
+| `/clients`                        | POST   | SENIOR+  | Create client   |
+| `/clients/:id`                    | PUT    | SENIOR+  | Update client   |
+| `/clients/:id`                    | DELETE | PARTNER+ | Delete client   |
+| `/clients/:id/mtditsa-assessment` | POST   | Yes      | Assess MTD ITSA |
+| `/clients/:id/mtditsa-timeline`   | GET    | Yes      | Get timeline    |
 
 ### 5.3 Proposals (`/api/proposals`)
-| Endpoint | Method | Auth | Description |
-|----------|--------|------|-------------|
-| `/proposals` | GET | Yes | List proposals |
-| `/proposals/:id` | GET | Yes | Get proposal |
-| `/proposals` | POST | SENIOR+ | Create proposal |
-| `/proposals/:id` | PUT | SENIOR+ | Update proposal |
-| `/proposals/:id` | DELETE | PARTNER+ | Delete proposal |
-| `/proposals/:id/send` | POST | SENIOR+ | Send proposal |
-| `/proposals/:id/accept` | POST | Yes | Accept proposal |
-| `/proposals/:id/pdf` | GET | Yes | Download PDF |
-| `/proposals/:id/view` | POST | Yes | Record view |
-| `/proposals/:id/activity` | GET | Yes | Get activity |
+
+| Endpoint                  | Method | Auth     | Description     |
+| ------------------------- | ------ | -------- | --------------- |
+| `/proposals`              | GET    | Yes      | List proposals  |
+| `/proposals/:id`          | GET    | Yes      | Get proposal    |
+| `/proposals`              | POST   | SENIOR+  | Create proposal |
+| `/proposals/:id`          | PUT    | SENIOR+  | Update proposal |
+| `/proposals/:id`          | DELETE | PARTNER+ | Delete proposal |
+| `/proposals/:id/send`     | POST   | SENIOR+  | Send proposal   |
+| `/proposals/:id/accept`   | POST   | Yes      | Accept proposal |
+| `/proposals/:id/pdf`      | GET    | Yes      | Download PDF    |
+| `/proposals/:id/view`     | POST   | Yes      | Record view     |
+| `/proposals/:id/activity` | GET    | Yes      | Get activity    |
 
 ### 5.4 Proposal Sharing (Public)
-| Endpoint | Method | Auth | Description |
-|----------|--------|------|-------------|
-| `/proposals/:id/share` | POST | Yes | Create share link |
-| `/proposals/:id/share` | DELETE | Yes | Revoke share |
-| `/proposals/:id/email` | POST | Yes | Email proposal |
-| `/proposals/view/:token` | GET | No | Public view |
-| `/proposals/view/:token/sign` | POST | No | Submit signature |
-| `/proposals/view/:token/pdf` | GET | No | Download PDF |
+
+| Endpoint                      | Method | Auth | Description       |
+| ----------------------------- | ------ | ---- | ----------------- |
+| `/proposals/:id/share`        | POST   | Yes  | Create share link |
+| `/proposals/:id/share`        | DELETE | Yes  | Revoke share      |
+| `/proposals/:id/email`        | POST   | Yes  | Email proposal    |
+| `/proposals/view/:token`      | GET    | No   | Public view       |
+| `/proposals/view/:token/sign` | POST   | No   | Submit signature  |
+| `/proposals/view/:token/pdf`  | GET    | No   | Download PDF      |
 
 ### 5.5 Services (`/api/services`)
-| Endpoint | Method | Auth | Description |
-|----------|--------|------|-------------|
-| `/services` | GET | Yes | List services |
-| `/services/:id` | GET | Yes | Get service |
-| `/services` | POST | PARTNER+ | Create service |
-| `/services/:id` | PUT | PARTNER+ | Update service |
-| `/services/:id` | DELETE | PARTNER+ | Delete service |
-| `/services/:id/duplicate` | POST | SENIOR+ | Duplicate |
-| `/services/calculate-price` | POST | Yes | Calculate price |
-| `/services/v2/catalog` | GET | Yes | Catalog |
-| `/services/v2/import-from-catalog` | POST | Yes | Import |
+
+| Endpoint                           | Method | Auth     | Description     |
+| ---------------------------------- | ------ | -------- | --------------- |
+| `/services`                        | GET    | Yes      | List services   |
+| `/services/:id`                    | GET    | Yes      | Get service     |
+| `/services`                        | POST   | PARTNER+ | Create service  |
+| `/services/:id`                    | PUT    | PARTNER+ | Update service  |
+| `/services/:id`                    | DELETE | PARTNER+ | Delete service  |
+| `/services/:id/duplicate`          | POST   | SENIOR+  | Duplicate       |
+| `/services/calculate-price`        | POST   | Yes      | Calculate price |
+| `/services/v2/catalog`             | GET    | Yes      | Catalog         |
+| `/services/v2/import-from-catalog` | POST   | Yes      | Import          |
 
 ### 5.6 Tenants (`/api/tenants`)
-| Endpoint | Method | Auth | Description |
-|----------|--------|------|-------------|
-| `/tenants` | POST | No | Create tenant |
-| `/tenants/check-subdomain/:subdomain` | GET | No | Check availability |
-| `/tenants/settings` | GET | Yes | Get settings |
-| `/tenants/settings` | PUT | Yes | Update settings |
+
+| Endpoint                              | Method | Auth | Description        |
+| ------------------------------------- | ------ | ---- | ------------------ |
+| `/tenants`                            | POST   | No   | Create tenant      |
+| `/tenants/check-subdomain/:subdomain` | GET    | No   | Check availability |
+| `/tenants/settings`                   | GET    | Yes  | Get settings       |
+| `/tenants/settings`                   | PUT    | Yes  | Update settings    |
 
 ### 5.7 Email (`/api/email`)
-| Endpoint | Method | Auth | Description |
-|----------|--------|------|-------------|
-| `/email/config` | GET | Yes | Get config |
-| `/email/config` | PUT | Yes | Update config |
-| `/email/config` | DELETE | Yes | Delete config |
-| `/email/test` | POST | Yes | Test email |
-| `/email/auth/:provider/url` | GET | Yes | OAuth URL |
-| `/email/auth/:provider/callback` | POST | Yes | OAuth callback |
-| `/email/auth/:provider/disconnect` | POST | Yes | Disconnect |
+
+| Endpoint                           | Method | Auth | Description    |
+| ---------------------------------- | ------ | ---- | -------------- |
+| `/email/config`                    | GET    | Yes  | Get config     |
+| `/email/config`                    | PUT    | Yes  | Update config  |
+| `/email/config`                    | DELETE | Yes  | Delete config  |
+| `/email/test`                      | POST   | Yes  | Test email     |
+| `/email/auth/:provider/url`        | GET    | Yes  | OAuth URL      |
+| `/email/auth/:provider/callback`   | POST   | Yes  | OAuth callback |
+| `/email/auth/:provider/disconnect` | POST   | Yes  | Disconnect     |
 
 ### 5.8 Companies House (`/api/companies-house`)
-| Endpoint | Method | Auth | Description |
-|----------|--------|------|-------------|
-| `/companies-house/search` | GET | Yes | Search companies |
-| `/companies-house/company/:number` | GET | Yes | Get details |
+
+| Endpoint                           | Method | Auth | Description      |
+| ---------------------------------- | ------ | ---- | ---------------- |
+| `/companies-house/search`          | GET    | Yes  | Search companies |
+| `/companies-house/company/:number` | GET    | Yes  | Get details      |
 
 ---
 
 ## 6. FRONTEND ROUTES
 
-| Route | Component | Status |
-|-------|-----------|--------|
-| `/` | Dashboard | ✅ Working |
-| `/login` | Login | ✅ Working |
-| `/register` | Register | ✅ Working |
-| `/onboarding` | Onboarding | ✅ Working |
-| `/proposals` | Proposals List | ✅ Working |
-| `/proposals/create` | Create Proposal | ✅ Working |
-| `/proposals/:id` | Proposal Detail | ✅ Working |
-| `/proposals/view/:token` | Public View | ✅ Working |
-| `/clients` | Clients List | ✅ Working |
-| `/clients/create` | Create Client | ✅ Working |
-| `/clients/:id` | Client Detail | ✅ Working |
-| `/services` | Services List | ✅ Working |
-| `/services/:id` | Service Detail | ⚠️ Placeholder |
-| `/settings` | Settings | ✅ Working |
-| `/subscription` | Subscription | ✅ Working |
+| Route                    | Component       | Status         |
+| ------------------------ | --------------- | -------------- |
+| `/`                      | Dashboard       | ✅ Working     |
+| `/login`                 | Login           | ✅ Working     |
+| `/register`              | Register        | ✅ Working     |
+| `/onboarding`            | Onboarding      | ✅ Working     |
+| `/proposals`             | Proposals List  | ✅ Working     |
+| `/proposals/create`      | Create Proposal | ✅ Working     |
+| `/proposals/:id`         | Proposal Detail | ✅ Working     |
+| `/proposals/view/:token` | Public View     | ✅ Working     |
+| `/clients`               | Clients List    | ✅ Working     |
+| `/clients/create`        | Create Client   | ✅ Working     |
+| `/clients/:id`           | Client Detail   | ✅ Working     |
+| `/services`              | Services List   | ✅ Working     |
+| `/services/:id`          | Service Detail  | ⚠️ Placeholder |
+| `/settings`              | Settings        | ✅ Working     |
+| `/subscription`          | Subscription    | ✅ Working     |
 
 ---
 
@@ -525,17 +544,17 @@ enum PricingModel {
 
 ### 7.1 Security Issues Identified & Fixed
 
-| Severity | Issue | Status | File |
-|----------|-------|--------|------|
-| Critical | CSP Disabled | ✅ Fixed | `backend/src/index.ts` |
-| Critical | JWT Secret Fallback | ✅ Fixed | `backend/src/middleware/auth.ts` |
-| Critical | SMTP TLS Disabled | ✅ Fixed | `backend/src/services/emailService.ts` |
-| High | Missing CSRF Protection | ✅ Fixed | `backend/src/index.ts` |
-| High | Unsanitized HTML | ✅ Fixed | `backend/src/routes/proposals.ts` |
-| High | Weak Password Policy | ✅ Fixed | `backend/src/routes/auth.ts` |
-| High | Rate Limiting | ✅ Fixed | `backend/src/index.ts` |
-| Medium | Hardcoded Demo Creds | ⚠️ Partial | `frontend/src/pages/auth/Login.tsx` |
-| Medium | CORS Too Permissive | ✅ Fixed | `backend/src/index.ts` |
+| Severity | Issue                   | Status     | File                                   |
+| -------- | ----------------------- | ---------- | -------------------------------------- |
+| Critical | CSP Disabled            | ✅ Fixed   | `backend/src/index.ts`                 |
+| Critical | JWT Secret Fallback     | ✅ Fixed   | `backend/src/middleware/auth.ts`       |
+| Critical | SMTP TLS Disabled       | ✅ Fixed   | `backend/src/services/emailService.ts` |
+| High     | Missing CSRF Protection | ✅ Fixed   | `backend/src/index.ts`                 |
+| High     | Unsanitized HTML        | ✅ Fixed   | `backend/src/routes/proposals.ts`      |
+| High     | Weak Password Policy    | ✅ Fixed   | `backend/src/routes/auth.ts`           |
+| High     | Rate Limiting           | ✅ Fixed   | `backend/src/index.ts`                 |
+| Medium   | Hardcoded Demo Creds    | ⚠️ Partial | `frontend/src/pages/auth/Login.tsx`    |
+| Medium   | CORS Too Permissive     | ✅ Fixed   | `backend/src/index.ts`                 |
 
 ### 7.2 Security Features Implemented
 
@@ -575,47 +594,48 @@ REDIS_URL                     # Session caching
 
 ### 8.1 Core Features
 
-| Feature | Status | Notes |
-|---------|--------|-------|
-| Multi-tenancy | ✅ Complete | Subdomain-based isolation |
-| User management | ✅ Complete | RBAC with 5 roles |
+| Feature           | Status      | Notes                         |
+| ----------------- | ----------- | ----------------------------- |
+| Multi-tenancy     | ✅ Complete | Subdomain-based isolation     |
+| User management   | ✅ Complete | RBAC with 5 roles             |
 | Client management | ✅ Complete | + Companies House integration |
-| Proposal creation | ✅ Complete | 3-step wizard |
-| Service catalog | ✅ Complete | 23 pre-configured services |
-| PDF generation | ✅ Complete | With branding |
-| Email sending | ✅ Complete | SMTP + OAuth |
-| Proposal sharing | ✅ Complete | Token-based public links |
-| E-signatures | ✅ Complete | UK eIDAS compliant |
-| View tracking | ✅ Complete | IP, user agent, duration |
-| Audit trail | ✅ Complete | ProposalView/Signature tables |
+| Proposal creation | ✅ Complete | 3-step wizard                 |
+| Service catalog   | ✅ Complete | 23 pre-configured services    |
+| PDF generation    | ✅ Complete | With branding                 |
+| Email sending     | ✅ Complete | SMTP + OAuth                  |
+| Proposal sharing  | ✅ Complete | Token-based public links      |
+| E-signatures      | ✅ Complete | UK eIDAS compliant            |
+| View tracking     | ✅ Complete | IP, user agent, duration      |
+| Audit trail       | ✅ Complete | ProposalView/Signature tables |
 
 ### 8.2 UK-Specific Features
 
-| Feature | Status | Notes |
-|---------|--------|-------|
-| VAT handling | ✅ Complete | 4 rates (0%, 5%, 20%, exempt) |
-| MTD ITSA | ✅ Complete | Status tracking, timeline |
-| UK Company Types | ✅ Complete | 6 types |
-| Companies House | ✅ Complete | Search + auto-populate |
-| Engagement Letter | ✅ Complete | ACCA/ICAEW compliant |
-| UK Postcode Validation | ✅ Complete | Regex pattern |
-| UTR Validation | ✅ Complete | 10 digits |
+| Feature                | Status      | Notes                         |
+| ---------------------- | ----------- | ----------------------------- |
+| VAT handling           | ✅ Complete | 4 rates (0%, 5%, 20%, exempt) |
+| MTD ITSA               | ✅ Complete | Status tracking, timeline     |
+| UK Company Types       | ✅ Complete | 6 types                       |
+| Companies House        | ✅ Complete | Search + auto-populate        |
+| Engagement Letter      | ✅ Complete | ACCA/ICAEW compliant          |
+| UK Postcode Validation | ✅ Complete | Regex pattern                 |
+| UTR Validation         | ✅ Complete | 10 digits                     |
 
 ### 8.3 Billing & Pricing
 
-| Feature | Status | Notes |
-|---------|--------|-------|
-| Billing cycles | ✅ Complete | 5 options |
+| Feature        | Status      | Notes                    |
+| -------------- | ----------- | ------------------------ |
+| Billing cycles | ✅ Complete | 5 options                |
 | VAT management | ✅ Complete | Practice + service level |
-| Pricing engine | ✅ Complete | Complexity factors |
-| Pricing rules | ✅ Complete | Conditional adjustments |
-| Discounts | ✅ Complete | % and fixed amount |
+| Pricing engine | ✅ Complete | Complexity factors       |
+| Pricing rules  | ✅ Complete | Conditional adjustments  |
+| Discounts      | ✅ Complete | % and fixed amount       |
 
 ---
 
 ## 9. DEPLOYMENT CONFIGURATION
 
 ### 9.1 Railway (Primary)
+
 ```toml
 [build]
 builder = "DOCKERFILE"
@@ -627,16 +647,19 @@ domain = "engage.capstonesoftware.co.uk"
 ```
 
 ### 9.2 Render (Alternative)
+
 - Backend: Node.js service
 - Frontend: Static site
 - Database: PostgreSQL
 - Auto-deploy enabled
 
 ### 9.3 Vercel (Frontend only)
+
 - Build: `npm run build`
 - Output: `dist/`
 
 ### 9.4 Docker Configuration
+
 ```dockerfile
 # Multi-stage build
 FROM node:20-alpine AS builder
@@ -673,28 +696,31 @@ EXPOSE 3001
 
 ### 10.2 Bug Fixes
 
-| Issue | Fix Location | Date |
-|-------|--------------|------|
-| Services page not loading | schema.prisma + seed | Mar 5 |
-| Company settings save failing | tenants.ts | Mar 5 |
-| Cover letter not displaying | ProposalDetail.tsx | Mar 5 |
-| Missing toast import | Proposals.tsx | Mar 5 |
-| Dashboard mock data | Dashboard.tsx | Mar 4 |
+| Issue                         | Fix Location         | Date  |
+| ----------------------------- | -------------------- | ----- |
+| Services page not loading     | schema.prisma + seed | Mar 5 |
+| Company settings save failing | tenants.ts           | Mar 5 |
+| Cover letter not displaying   | ProposalDetail.tsx   | Mar 5 |
+| Missing toast import          | Proposals.tsx        | Mar 5 |
+| Dashboard mock data           | Dashboard.tsx        | Mar 4 |
 
 ---
 
 ## 11. KNOWN ISSUES & TODO
 
 ### 11.1 Critical Issues
+
 - ⚠️ **ServiceDetail page is placeholder** - Needs full implementation
 
 ### 11.2 Medium Priority
+
 - ⚠️ Dashboard charts use mock data
 - ⚠️ Header search is non-functional
 - ⚠️ Notification badge shows static value
 - ⚠️ Date range filter doesn't filter data
 
 ### 11.3 Missing Features
+
 - ❌ Proposal edit functionality
 - ❌ Document management
 - ❌ 2FA implementation
@@ -702,6 +728,7 @@ EXPOSE 3001
 - ❌ Forgot password flow
 
 ### 11.4 Technical Debt
+
 - ⚠️ `tags` stored as comma-separated strings (should be normalized)
 - ⚠️ Several JSON fields without validation schemas
 - ⚠️ Request ID uses Math.random() (should use crypto)
@@ -713,6 +740,7 @@ EXPOSE 3001
 ### 12.1 Frontend API Methods (43 implemented)
 
 **Complete:**
+
 - Authentication (login, register, logout, refresh)
 - User management (CRUD)
 - Clients (CRUD, MTD ITSA assessment)
@@ -721,6 +749,7 @@ EXPOSE 3001
 - Tenants (settings)
 
 **Missing (~15):**
+
 - Email configuration (OAuth, SMTP)
 - Companies House integration
 - Proposal sharing (link generation)
@@ -732,6 +761,7 @@ EXPOSE 3001
 ## 13. TESTING
 
 ### 13.1 Manual Test Checklist
+
 - [x] Login/Logout
 - [x] Create proposal
 - [x] Send proposal via email
@@ -745,6 +775,7 @@ EXPOSE 3001
 - [x] Email configuration
 
 ### 13.2 Automated Testing
+
 - ⚠️ Limited test coverage
 - Jest configured but minimal tests written
 
@@ -753,18 +784,21 @@ EXPOSE 3001
 ## 14. COMPLIANCE
 
 ### 14.1 UK GDPR
+
 - ✅ Data retention statement in T&Cs
 - ✅ 6-year HMRC retention
 - ✅ Client consent documented
 - ⚠️ Right to erasure needs implementation
 
 ### 14.2 eIDAS (Electronic Signatures)
+
 - ✅ IP address logging
 - ✅ Timestamp recording
 - ✅ Signer identification
 - ✅ Audit trail maintenance
 
 ### 14.3 HMRC
+
 - ✅ VAT rate handling
 - ✅ MTD ITSA tracking
 - ✅ Quarterly deadline calculations
@@ -774,11 +808,13 @@ EXPOSE 3001
 ## 15. PERFORMANCE CONSIDERATIONS
 
 ### 15.1 Current State
+
 - No Redis caching implemented (configured but not used)
 - No CDN for static assets
 - Database queries not optimized (some N+1 potential)
 
 ### 15.2 Recommendations
+
 1. Implement Redis for session storage
 2. Add CDN for logo uploads
 3. Optimize proposal list queries
@@ -789,6 +825,7 @@ EXPOSE 3001
 ## 16. AGENT SWARM ANALYSIS PROMPTS
 
 ### 16.1 For Security Agent
+
 ```
 Analyze the following security aspects:
 1. Review JWT implementation in middleware/auth.ts
@@ -799,6 +836,7 @@ Analyze the following security aspects:
 ```
 
 ### 16.2 For Database Agent
+
 ```
 Analyze the following database aspects:
 1. Review index usage in schema.prisma
@@ -809,6 +847,7 @@ Analyze the following database aspects:
 ```
 
 ### 16.3 For Frontend Agent
+
 ```
 Analyze the following frontend aspects:
 1. Review component structure and reusability
@@ -819,6 +858,7 @@ Analyze the following frontend aspects:
 ```
 
 ### 16.4 For API Agent
+
 ```
 Analyze the following API aspects:
 1. Review REST endpoint design
@@ -829,6 +869,7 @@ Analyze the following API aspects:
 ```
 
 ### 16.5 For DevOps Agent
+
 ```
 Analyze the following deployment aspects:
 1. Review Dockerfile efficiency
@@ -843,23 +884,25 @@ Analyze the following deployment aspects:
 ## 17. FILE REFERENCES
 
 ### 17.1 Critical Files
-| Purpose | Path |
-|---------|------|
-| Database Schema | `backend/prisma/schema.prisma` |
-| Main Server | `backend/src/index.ts` |
-| Auth Middleware | `backend/src/middleware/auth.ts` |
-| API Client | `frontend/src/utils/api.ts` |
-| Auth Store | `frontend/src/stores/authStore.ts` |
-| Shared Types | `shared/src/index.ts` |
+
+| Purpose         | Path                               |
+| --------------- | ---------------------------------- |
+| Database Schema | `backend/prisma/schema.prisma`     |
+| Main Server     | `backend/src/index.ts`             |
+| Auth Middleware | `backend/src/middleware/auth.ts`   |
+| API Client      | `frontend/src/utils/api.ts`        |
+| Auth Store      | `frontend/src/stores/authStore.ts` |
+| Shared Types    | `shared/src/index.ts`              |
 
 ### 17.2 Configuration Files
-| Purpose | Path |
-|---------|------|
-| Railway Config | `railway.toml` |
-| Render Config | `render.yaml` |
-| Docker Config | `Dockerfile` |
-| Root Package | `package.json` |
-| Backend Package | `backend/package.json` |
+
+| Purpose          | Path                    |
+| ---------------- | ----------------------- |
+| Railway Config   | `railway.toml`          |
+| Render Config    | `render.yaml`           |
+| Docker Config    | `Dockerfile`            |
+| Root Package     | `package.json`          |
+| Backend Package  | `backend/package.json`  |
 | Frontend Package | `frontend/package.json` |
 
 ---
@@ -915,4 +958,4 @@ Engage by Capstone is a production-ready proposal management platform with:
 
 ---
 
-*Report End - For Kimi Agent Swarm Analysis*
+_Report End - For Kimi Agent Swarm Analysis_

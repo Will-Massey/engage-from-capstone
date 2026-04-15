@@ -8,11 +8,11 @@ const pdfkit_1 = __importDefault(require("pdfkit"));
 const database_js_1 = require("../config/database.js");
 // Billing frequency labels for display
 const BILLING_LABELS = {
-    'MONTHLY': 'month',
-    'QUARTERLY': 'quarter',
-    'ANNUALLY': 'year',
-    'ONE_TIME': 'one-time',
-    'WEEKLY': 'week',
+    MONTHLY: 'month',
+    QUARTERLY: 'quarter',
+    ANNUALLY: 'year',
+    ONE_TIME: 'one-time',
+    WEEKLY: 'week',
 };
 class PDFGenerator {
     /**
@@ -20,7 +20,7 @@ class PDFGenerator {
      */
     static async generateProposal(proposalId) {
         // Fetch proposal with all related data
-        const proposal = await database_js_1.prisma.proposal.findUnique({
+        const proposal = (await database_js_1.prisma.proposal.findUnique({
             where: { id: proposalId },
             include: {
                 client: true,
@@ -30,7 +30,7 @@ class PDFGenerator {
                 services: true,
                 tenant: true,
             },
-        });
+        }));
         if (!proposal) {
             throw new Error('Proposal not found');
         }
@@ -97,37 +97,25 @@ class PDFGenerator {
             }
             catch (error) {
                 // Fall back to text if logo fails
-                doc.fontSize(24)
-                    .fillColor(primaryColor)
-                    .text(proposal.tenant.name, 50, 50);
+                doc.fontSize(24).fillColor(primaryColor).text(proposal.tenant.name, 50, 50);
             }
         }
         else {
             // No logo - use company name
-            doc.fontSize(24)
-                .fillColor(primaryColor)
-                .text(proposal.tenant.name, 50, 50);
+            doc.fontSize(24).fillColor(primaryColor).text(proposal.tenant.name, 50, 50);
         }
         // Proposal title
-        doc.fontSize(14)
-            .fillColor('#333333')
-            .text('PROPOSAL', 400, 55, { align: 'right' });
-        doc.fontSize(10)
+        doc.fontSize(14).fillColor('#333333').text('PROPOSAL', 400, 55, { align: 'right' });
+        doc
+            .fontSize(10)
             .fillColor('#666666')
             .text(`Ref: ${proposal.reference}`, { align: 'right' })
             .text(`Date: ${this.formatDate(proposal.createdAt)}`, { align: 'right' })
             .text(`Valid until: ${this.formatDate(proposal.validUntil)}`, { align: 'right' });
         // Divider line
-        doc.moveTo(50, 100)
-            .lineTo(550, 100)
-            .strokeColor(primaryColor)
-            .lineWidth(2)
-            .stroke();
+        doc.moveTo(50, 100).lineTo(550, 100).strokeColor(primaryColor).lineWidth(2).stroke();
         // Title
-        doc.moveDown(3)
-            .fontSize(20)
-            .fillColor('#333333')
-            .text(proposal.title, { align: 'center' });
+        doc.moveDown(3).fontSize(20).fillColor('#333333').text(proposal.title, { align: 'center' });
         doc.moveDown(1);
     }
     /**
@@ -136,11 +124,8 @@ class PDFGenerator {
     static drawClientInfo(doc, proposal) {
         const startY = doc.y + 20;
         // Prepared for
-        doc.fontSize(12)
-            .fillColor('#333333')
-            .text('Prepared for:', 50, startY);
-        doc.fontSize(11)
-            .fillColor('#666666');
+        doc.fontSize(12).fillColor('#333333').text('Prepared for:', 50, startY);
+        doc.fontSize(11).fillColor('#666666');
         let y = startY + 20;
         doc.text(proposal.client.name, 50, y);
         y += 15;
@@ -170,11 +155,8 @@ class PDFGenerator {
         }
         // Prepared by
         const rightX = 300;
-        doc.fontSize(12)
-            .fillColor('#333333')
-            .text('Prepared by:', rightX, startY);
-        doc.fontSize(11)
-            .fillColor('#666666');
+        doc.fontSize(12).fillColor('#333333').text('Prepared by:', rightX, startY);
+        doc.fontSize(11).fillColor('#666666');
         y = startY + 20;
         doc.text(`${proposal.createdBy.firstName} ${proposal.createdBy.lastName}`, rightX, y);
         y += 15;
@@ -185,19 +167,12 @@ class PDFGenerator {
      */
     static drawCoverLetter(doc, proposal) {
         // Introduction Header
-        doc.fontSize(18)
-            .fillColor('#333333')
-            .text('Introduction', { align: 'center' });
+        doc.fontSize(18).fillColor('#333333').text('Introduction', { align: 'center' });
         doc.moveDown(1);
         // Decorative line
-        doc.moveTo(200, doc.y)
-            .lineTo(400, doc.y)
-            .strokeColor('#cccccc')
-            .lineWidth(1)
-            .stroke();
+        doc.moveTo(200, doc.y).lineTo(400, doc.y).strokeColor('#cccccc').lineWidth(1).stroke();
         doc.moveDown(1);
-        doc.fontSize(11)
-            .fillColor('#444444');
+        doc.fontSize(11).fillColor('#444444');
         // Default introduction template if no custom cover letter
         if (!proposal.coverLetter || proposal.coverLetter.trim().length < 50) {
             // Use default template
@@ -249,7 +224,8 @@ ${proposal.tenant.name}`;
         }
         // Page break before T&Cs note
         doc.moveDown(2);
-        doc.fontSize(10)
+        doc
+            .fontSize(10)
             .fillColor('#666666')
             .text('Please turn over for full Terms and Conditions of Engagement →', { align: 'center' });
     }
@@ -257,43 +233,39 @@ ${proposal.tenant.name}`;
      * Draw services section with clear pricing
      */
     static drawServices(doc, proposal, primaryColor) {
-        doc.fontSize(16)
-            .fillColor('#333333')
-            .text('Services', { align: 'center' });
+        doc.fontSize(16).fillColor('#333333').text('Services', { align: 'center' });
         doc.moveDown(1);
         // Group services by billing frequency
         const grouped = {
-            monthly: proposal.services.filter(s => (s.billingFrequency || s.frequency) === 'MONTHLY'),
-            quarterly: proposal.services.filter(s => (s.billingFrequency || s.frequency) === 'QUARTERLY'),
-            annually: proposal.services.filter(s => (s.billingFrequency || s.frequency) === 'ANNUALLY'),
-            oneTime: proposal.services.filter(s => (s.billingFrequency || s.frequency) === 'ONE_TIME'),
+            monthly: proposal.services.filter((s) => (s.billingFrequency || s.frequency) === 'MONTHLY'),
+            quarterly: proposal.services.filter((s) => (s.billingFrequency || s.frequency) === 'QUARTERLY'),
+            annually: proposal.services.filter((s) => (s.billingFrequency || s.frequency) === 'ANNUALLY'),
+            oneTime: proposal.services.filter((s) => (s.billingFrequency || s.frequency) === 'ONE_TIME'),
         };
         const drawServiceGroup = (title, services, frequency) => {
             if (services.length === 0)
                 return;
             // Section header
-            doc.fontSize(12)
-                .fillColor(primaryColor)
-                .text(title, 50, doc.y);
+            doc.fontSize(12).fillColor(primaryColor).text(title, 50, doc.y);
             doc.moveDown(0.5);
             // Table header
             const tableTop = doc.y;
             const colX = { name: 50, qty: 310, price: 380, total: 490 };
-            doc.fontSize(9)
-                .fillColor('#888888');
-            doc.text('Service', colX.name, tableTop)
+            doc.fontSize(9).fillColor('#888888');
+            doc
+                .text('Service', colX.name, tableTop)
                 .text('Qty', colX.qty, tableTop)
                 .text('Price', colX.price, tableTop)
                 .text('Total', colX.total, tableTop);
             // Header line
-            doc.moveTo(50, tableTop + 15)
+            doc
+                .moveTo(50, tableTop + 15)
                 .lineTo(550, tableTop + 15)
                 .strokeColor('#CCCCCC')
                 .lineWidth(0.5)
                 .stroke();
             // Services rows
-            doc.fontSize(10)
-                .fillColor('#333333');
+            doc.fontSize(10).fillColor('#333333');
             let y = tableTop + 25;
             services.forEach((service) => {
                 // Check if we need a new page
@@ -308,21 +280,23 @@ ${proposal.tenant.name}`;
                 doc.text(service.name, colX.name, y, { width: 250 });
                 // Description if present
                 if (service.description) {
-                    doc.fontSize(8)
+                    doc
+                        .fontSize(8)
                         .fillColor('#666666')
                         .text(service.description, colX.name, y + 15, { width: 250 });
-                    doc.fontSize(10)
-                        .fillColor('#333333');
+                    doc.fontSize(10).fillColor('#333333');
                 }
-                doc.text(service.quantity.toString(), colX.qty, y)
+                doc
+                    .text(service.quantity.toString(), colX.qty, y)
                     .text(priceLabel, colX.price, y)
                     .text(this.formatCurrency(lineTotal), colX.total, y);
                 y += service.description ? 45 : 25;
             });
             // Group subtotal
-            const subtotal = services.reduce((sum, s) => sum + ((s.displayPrice || s.unitPrice) * s.quantity), 0);
+            const subtotal = services.reduce((sum, s) => sum + (s.displayPrice || s.unitPrice) * s.quantity, 0);
             y += 5;
-            doc.fontSize(10)
+            doc
+                .fontSize(10)
                 .fillColor(primaryColor)
                 .text(`${title} Subtotal:`, colX.price, y)
                 .text(this.formatCurrency(subtotal), colX.total, y);
@@ -341,95 +315,96 @@ ${proposal.tenant.name}`;
         doc.moveDown(2);
         // Group services by billing frequency
         const grouped = {
-            monthly: proposal.services.filter(s => (s.billingFrequency || s.frequency) === 'MONTHLY'),
-            quarterly: proposal.services.filter(s => (s.billingFrequency || s.frequency) === 'QUARTERLY'),
-            annually: proposal.services.filter(s => (s.billingFrequency || s.frequency) === 'ANNUALLY'),
-            oneTime: proposal.services.filter(s => (s.billingFrequency || s.frequency) === 'ONE_TIME'),
+            monthly: proposal.services.filter((s) => (s.billingFrequency || s.frequency) === 'MONTHLY'),
+            quarterly: proposal.services.filter((s) => (s.billingFrequency || s.frequency) === 'QUARTERLY'),
+            annually: proposal.services.filter((s) => (s.billingFrequency || s.frequency) === 'ANNUALLY'),
+            oneTime: proposal.services.filter((s) => (s.billingFrequency || s.frequency) === 'ONE_TIME'),
         };
         const rightX = 350;
         let y = doc.y;
-        doc.fontSize(14)
-            .fillColor('#333333')
-            .text('Investment Summary', rightX, y);
+        doc.fontSize(14).fillColor('#333333').text('Investment Summary', rightX, y);
         y += 30;
-        doc.fontSize(10)
-            .fillColor('#666666');
+        doc.fontSize(10).fillColor('#666666');
         // Show totals by frequency
         if (grouped.monthly.length > 0) {
             const monthlyTotal = grouped.monthly.reduce((sum, s) => {
                 const price = s.displayPrice || s.unitPrice;
-                return sum + (price * s.quantity);
+                return sum + price * s.quantity;
             }, 0);
             const monthlyVat = monthlyTotal * 0.2;
             const monthlyWithVat = monthlyTotal + monthlyVat;
-            doc.text('Monthly Total:', rightX, y)
+            doc
+                .text('Monthly Total:', rightX, y)
                 .text(this.formatCurrency(monthlyWithVat) + '/month', 490, y, { align: 'right' });
             y += 20;
         }
         if (grouped.quarterly.length > 0) {
             const quarterlyTotal = grouped.quarterly.reduce((sum, s) => {
                 const price = s.displayPrice || s.unitPrice;
-                return sum + (price * s.quantity);
+                return sum + price * s.quantity;
             }, 0);
             const quarterlyVat = quarterlyTotal * 0.2;
             const quarterlyWithVat = quarterlyTotal + quarterlyVat;
-            doc.text('Quarterly Total:', rightX, y)
+            doc
+                .text('Quarterly Total:', rightX, y)
                 .text(this.formatCurrency(quarterlyWithVat) + '/quarter', 490, y, { align: 'right' });
             y += 20;
         }
         if (grouped.annually.length > 0) {
             const annualTotal = grouped.annually.reduce((sum, s) => {
                 const price = s.displayPrice || s.unitPrice;
-                return sum + (price * s.quantity);
+                return sum + price * s.quantity;
             }, 0);
             const annualVat = annualTotal * 0.2;
             const annualWithVat = annualTotal + annualVat;
-            doc.text('Annual Total:', rightX, y)
+            doc
+                .text('Annual Total:', rightX, y)
                 .text(this.formatCurrency(annualWithVat) + '/year', 490, y, { align: 'right' });
             y += 20;
         }
         if (grouped.oneTime.length > 0) {
             const oneTimeTotal = grouped.oneTime.reduce((sum, s) => {
                 const price = s.displayPrice || s.unitPrice;
-                return sum + (price * s.quantity);
+                return sum + price * s.quantity;
             }, 0);
             const oneTimeVat = oneTimeTotal * 0.2;
             const oneTimeWithVat = oneTimeTotal + oneTimeVat;
-            doc.text('One-Time Fees:', rightX, y)
+            doc
+                .text('One-Time Fees:', rightX, y)
                 .text(this.formatCurrency(oneTimeWithVat), 490, y, { align: 'right' });
             y += 20;
         }
         // Divider
         y += 10;
-        doc.moveTo(rightX, y)
-            .lineTo(550, y)
-            .strokeColor(primaryColor)
-            .lineWidth(1)
-            .stroke();
+        doc.moveTo(rightX, y).lineTo(550, y).strokeColor(primaryColor).lineWidth(1).stroke();
         // Grand Total
         y += 15;
-        doc.fontSize(16)
+        doc
+            .fontSize(16)
             .fillColor(primaryColor)
             .text('Total Investment:', rightX, y)
             .text(this.formatCurrency(proposal.total), 490, y, { align: 'right' });
         // Annual equivalent note
-        const annualEquivalent = grouped.monthly.reduce((sum, s) => sum + ((s.displayPrice || s.unitPrice) * s.quantity * 12), 0) +
-            grouped.quarterly.reduce((sum, s) => sum + ((s.displayPrice || s.unitPrice) * s.quantity * 4), 0) +
-            grouped.annually.reduce((sum, s) => sum + ((s.displayPrice || s.unitPrice) * s.quantity), 0);
+        const annualEquivalent = grouped.monthly.reduce((sum, s) => sum + (s.displayPrice || s.unitPrice) * s.quantity * 12, 0) +
+            grouped.quarterly.reduce((sum, s) => sum + (s.displayPrice || s.unitPrice) * s.quantity * 4, 0) +
+            grouped.annually.reduce((sum, s) => sum + (s.displayPrice || s.unitPrice) * s.quantity, 0);
         if (annualEquivalent > 0) {
             y += 25;
-            doc.fontSize(9)
+            doc
+                .fontSize(9)
                 .fillColor('#888888')
                 .text(`Annual equivalent: ${this.formatCurrency(annualEquivalent)}/year`, rightX, y);
         }
         // VAT breakdown
         y += 20;
-        doc.fontSize(9)
+        doc
+            .fontSize(9)
             .fillColor('#666666')
             .text(`Includes VAT (20%): ${this.formatCurrency(proposal.vatAmount)}`, rightX, y);
         // Payment terms
         y += 30;
-        doc.fontSize(10)
+        doc
+            .fontSize(10)
             .fillColor('#666666')
             .text(`Payment Terms: ${proposal.paymentTerms}`, rightX, y);
     }
@@ -437,12 +412,9 @@ ${proposal.tenant.name}`;
      * Draw terms and conditions
      */
     static drawTerms(doc, proposal, primaryColor) {
-        doc.fontSize(16)
-            .fillColor('#333333')
-            .text('Terms & Conditions', { align: 'center' });
+        doc.fontSize(16).fillColor('#333333').text('Terms & Conditions', { align: 'center' });
         doc.moveDown(1);
-        doc.fontSize(10)
-            .fillColor('#444444');
+        doc.fontSize(10).fillColor('#444444');
         const paragraphs = (proposal.terms || '').split('\n\n');
         paragraphs.forEach((paragraph) => {
             if (paragraph.trim()) {
@@ -458,11 +430,10 @@ ${proposal.tenant.name}`;
      * Draw acceptance page
      */
     static drawAcceptance(doc, proposal, primaryColor) {
-        doc.fontSize(16)
-            .fillColor('#333333')
-            .text('Acceptance', { align: 'center' });
+        doc.fontSize(16).fillColor('#333333').text('Acceptance', { align: 'center' });
         doc.moveDown(2);
-        doc.fontSize(11)
+        doc
+            .fontSize(11)
             .fillColor('#444444')
             .text('By signing below, you agree to the terms and conditions outlined in this proposal and authorize the commencement of services.', {
             align: 'justify',
@@ -470,32 +441,31 @@ ${proposal.tenant.name}`;
         doc.moveDown(2);
         // Signature boxes
         const y = doc.y;
-        doc.fontSize(10)
-            .fillColor('#333333')
-            .text('Client Signature:', 50, y)
-            .text('Date:', 350, y);
+        doc.fontSize(10).fillColor('#333333').text('Client Signature:', 50, y).text('Date:', 350, y);
         // Signature lines
-        doc.moveTo(50, y + 40)
+        doc
+            .moveTo(50, y + 40)
             .lineTo(300, y + 40)
             .strokeColor('#999999')
             .lineWidth(0.5)
             .stroke();
-        doc.moveTo(350, y + 40)
+        doc
+            .moveTo(350, y + 40)
             .lineTo(550, y + 40)
             .strokeColor('#999999')
             .lineWidth(0.5)
             .stroke();
-        doc.fontSize(9)
+        doc
+            .fontSize(9)
             .fillColor('#666666')
             .text('Signature', 50, y + 45)
             .text('DD/MM/YYYY', 350, y + 45);
         // Online acceptance note
         doc.moveDown(4);
-        doc.fontSize(11)
-            .fillColor(primaryColor)
-            .text('Or accept online at:', { align: 'center' });
+        doc.fontSize(11).fillColor(primaryColor).text('Or accept online at:', { align: 'center' });
         const acceptanceUrl = `https://engage-frontend-0g6u.onrender.com/proposals/view/${proposal.id}`;
-        doc.fontSize(10)
+        doc
+            .fontSize(10)
             .fillColor('#666666')
             .text(acceptanceUrl, { align: 'center', link: acceptanceUrl });
     }
@@ -507,7 +477,7 @@ ${proposal.tenant.name}`;
             style: 'currency',
             currency: 'GBP',
             minimumFractionDigits: 0,
-            maximumFractionDigits: 2
+            maximumFractionDigits: 2,
         }).format(amount);
     }
     /**
@@ -528,7 +498,7 @@ ${proposal.tenant.name}`;
         return new Date(date).toLocaleDateString('en-GB', {
             day: 'numeric',
             month: 'long',
-            year: 'numeric'
+            year: 'numeric',
         });
     }
 }

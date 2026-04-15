@@ -13,7 +13,10 @@ const AuthLayout = ({ children }: AuthLayoutProps) => {
       {/* Animated background elements */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
         <div className="absolute -top-40 -right-40 w-96 h-96 bg-primary-500/10 rounded-full blur-3xl animate-pulse"></div>
-        <div className="absolute -bottom-40 -left-40 w-96 h-96 bg-capstone-500/10 rounded-full blur-3xl animate-pulse" style={{animationDelay: '1s'}}></div>
+        <div
+          className="absolute -bottom-40 -left-40 w-96 h-96 bg-capstone-500/10 rounded-full blur-3xl animate-pulse"
+          style={{ animationDelay: '1s' }}
+        ></div>
         <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] bg-gradient-radial from-primary-500/5 to-transparent rounded-full"></div>
       </div>
 
@@ -21,11 +24,7 @@ const AuthLayout = ({ children }: AuthLayoutProps) => {
         {/* Logo */}
         <div className="flex flex-col items-center">
           <div className="flex items-center space-x-3">
-            <img 
-              src={logoUrl}
-              alt={tenant?.name || 'Engage by Capstone'}
-              className="h-16 w-auto"
-            />
+            <img src={logoUrl} alt={tenant?.name || 'Engage by Capstone'} className="h-16 w-auto" />
           </div>
           <p className="mt-4 text-center text-sm text-slate-400">
             Professional proposal generation for UK accountants

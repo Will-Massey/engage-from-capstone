@@ -8,9 +8,7 @@ const globalForPrisma = global;
 // Configure Prisma Client with connection pooling for serverless/production
 const prismaClientSingleton = () => {
     return new client_1.PrismaClient({
-        log: process.env.NODE_ENV === 'development'
-            ? ['query', 'error', 'warn']
-            : ['error'],
+        log: process.env.NODE_ENV === 'development' ? ['query', 'error', 'warn'] : ['error'],
         datasources: {
             db: {
                 url: process.env.DATABASE_URL,

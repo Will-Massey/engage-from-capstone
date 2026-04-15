@@ -92,11 +92,20 @@ const Dashboard = () => {
   const loadDashboardData = async () => {
     try {
       setIsLoading(true);
-      
+
+      // Guard against hanging requests during backend cold-start
+      const timeout = (promise: Promise<any>, ms: number) =>
+        Promise.race([
+          promise,
+          new Promise((_, reject) =>
+            setTimeout(() => reject(new Error('Request timed out')), ms)
+          ),
+        ]);
+
       const [proposalsRes, clientsRes, dashboardRes] = await Promise.all([
-        apiClient.getProposals({ limit: 5 }) as Promise<any>,
-        apiClient.getClients({ limit: 5 }) as Promise<any>,
-        apiClient.getDashboardStats() as Promise<any>,
+        timeout(apiClient.getProposals({ limit: 5 }) as Promise<any>, 15000),
+        timeout(apiClient.getClients({ limit: 5 }) as Promise<any>, 15000),
+        timeout(apiClient.getDashboardStats() as Promise<any>, 15000),
       ]);
 
       const proposals = proposalsRes.data || [];
@@ -113,7 +122,8 @@ const Dashboard = () => {
         totalClients: clientsRes.meta?.total || 0,
         mtditsaClients: clients.filter((c: any) => c.mtditsaEligible).length,
         totalRevenue,
-        conversionRate: proposals.length > 0 ? Math.round((acceptedCount / proposals.length) * 100) : 0,
+        conversionRate:
+          proposals.length > 0 ? Math.round((acceptedCount / proposals.length) * 100) : 0,
         recentProposals: proposals.slice(0, 5),
         recentClients: clients.slice(0, 5),
       });
@@ -121,9 +131,18 @@ const Dashboard = () => {
       // Set chart data from API
       if (dashboardRes.success && dashboardRes.data) {
         setChartData({
-          revenueData: dashboardRes.data.revenueData?.length > 0 ? dashboardRes.data.revenueData : defaultRevenueData,
-          proposalStatusData: dashboardRes.data.proposalStatusData?.length > 0 ? dashboardRes.data.proposalStatusData : defaultProposalStatusData,
-          weeklyActivity: dashboardRes.data.weeklyActivity?.length > 0 ? dashboardRes.data.weeklyActivity : defaultWeeklyActivity,
+          revenueData:
+            dashboardRes.data.revenueData?.length > 0
+              ? dashboardRes.data.revenueData
+              : defaultRevenueData,
+          proposalStatusData:
+            dashboardRes.data.proposalStatusData?.length > 0
+              ? dashboardRes.data.proposalStatusData
+              : defaultProposalStatusData,
+          weeklyActivity:
+            dashboardRes.data.weeklyActivity?.length > 0
+              ? dashboardRes.data.weeklyActivity
+              : defaultWeeklyActivity,
           recentActivity: dashboardRes.data.recentActivity || [],
         });
       }
@@ -190,7 +209,13 @@ const Dashboard = () => {
             <img src="/images/capstone-icon.svg" alt="Capstone" className="h-10 w-10" />
             <div>
               <h1 className="text-2xl font-bold text-slate-900">
-                Good {new Date().getHours() < 12 ? 'morning' : new Date().getHours() < 17 ? 'afternoon' : 'evening'}, {user?.firstName}! 👋
+                Good{' '}
+                {new Date().getHours() < 12
+                  ? 'morning'
+                  : new Date().getHours() < 17
+                    ? 'afternoon'
+                    : 'evening'}
+                , {user?.firstName}! 👋
               </h1>
               <p className="mt-1 text-sm text-slate-600">
                 Here's what's happening with {tenant?.name || 'your practice'} today
@@ -228,22 +253,32 @@ const Dashboard = () => {
             style={{ animationDelay: `${index * 100}ms` }}
           >
             <div className="flex items-center justify-between">
-              <div className={`w-12 h-12 rounded-xl bg-gradient-to-br ${stat.color} text-white shadow-lg flex items-center justify-center group-hover:scale-110 transition-transform duration-300`}>
+              <div
+                className={`w-12 h-12 rounded-xl bg-gradient-to-br ${stat.color} text-white shadow-lg flex items-center justify-center group-hover:scale-110 transition-transform duration-300`}
+              >
                 <stat.icon className="h-6 w-6" />
               </div>
-              <div className={`flex items-center text-sm font-medium px-2.5 py-1 rounded-full backdrop-blur-sm ${
-                stat.trend === 'up' ? 'bg-emerald-100/80 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300' : 
-                stat.trend === 'down' ? 'bg-red-100/80 text-red-700 dark:bg-red-900/30 dark:text-red-300' : 
-                'bg-slate-100/80 text-slate-600 dark:bg-slate-800/80 dark:text-slate-400'
-              }`}>
+              <div
+                className={`flex items-center text-sm font-medium px-2.5 py-1 rounded-full backdrop-blur-sm ${
+                  stat.trend === 'up'
+                    ? 'bg-emerald-100/80 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300'
+                    : stat.trend === 'down'
+                      ? 'bg-red-100/80 text-red-700 dark:bg-red-900/30 dark:text-red-300'
+                      : 'bg-slate-100/80 text-slate-600 dark:bg-slate-800/80 dark:text-slate-400'
+                }`}
+              >
                 {stat.trend === 'up' && <ArrowUpIcon className="h-3.5 w-3.5 mr-1" />}
                 {stat.trend === 'down' && <ArrowDownIcon className="h-3.5 w-3.5 mr-1" />}
                 {stat.change}
               </div>
             </div>
             <div className="mt-4">
-              <p className="text-sm font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider">{stat.name}</p>
-              <p className="text-3xl font-bold mt-1 text-slate-900 dark:text-slate-100">{stat.value}</p>
+              <p className="text-sm font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+                {stat.name}
+              </p>
+              <p className="text-3xl font-bold mt-1 text-slate-900 dark:text-slate-100">
+                {stat.value}
+              </p>
             </div>
           </div>
         ))}
@@ -261,8 +296,8 @@ const Dashboard = () => {
             <div className="ml-4">
               <h3 className="text-lg font-semibold">MTD ITSA Deadline: April 2026</h3>
               <p className="mt-1 text-orange-100">
-                You have <strong>{stats.mtditsaClients} clients</strong> who need to be ready for Making Tax Digital 
-                by April 2026. Review your clients and ensure they're prepared.
+                You have <strong>{stats.mtditsaClients} clients</strong> who need to be ready for
+                Making Tax Digital by April 2026. Review your clients and ensure they're prepared.
               </p>
               <Link
                 to="/clients"
@@ -297,21 +332,26 @@ const Dashboard = () => {
               <AreaChart data={chartData.revenueData}>
                 <defs>
                   <linearGradient id="colorRevenue" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#6366F1" stopOpacity={0.3}/>
-                    <stop offset="95%" stopColor="#6366F1" stopOpacity={0}/>
+                    <stop offset="5%" stopColor="#6366F1" stopOpacity={0.3} />
+                    <stop offset="95%" stopColor="#6366F1" stopOpacity={0} />
                   </linearGradient>
                 </defs>
                 <CartesianGrid strokeDasharray="3 3" stroke="rgba(148, 163, 184, 0.2)" />
-                <XAxis dataKey="name" stroke="#94A3B8" fontSize={12} tick={{fill: '#94A3B8'}} />
-                <YAxis stroke="#94A3B8" fontSize={12} tick={{fill: '#94A3B8'}} tickFormatter={(value) => `£${value/1000}k`} />
+                <XAxis dataKey="name" stroke="#94A3B8" fontSize={12} tick={{ fill: '#94A3B8' }} />
+                <YAxis
+                  stroke="#94A3B8"
+                  fontSize={12}
+                  tick={{ fill: '#94A3B8' }}
+                  tickFormatter={(value) => `£${value / 1000}k`}
+                />
                 <Tooltip
                   formatter={(value: number) => [`£${value.toLocaleString()}`, 'Revenue']}
-                  contentStyle={{ 
-                    borderRadius: '12px', 
-                    border: 'none', 
+                  contentStyle={{
+                    borderRadius: '12px',
+                    border: 'none',
                     boxShadow: '0 8px 32px rgba(0, 0, 0, 0.1)',
                     background: 'rgba(255, 255, 255, 0.95)',
-                    backdropFilter: 'blur(12px)'
+                    backdropFilter: 'blur(12px)',
                   }}
                 />
                 <Area
@@ -347,13 +387,13 @@ const Dashboard = () => {
                     <Cell key={`cell-${index}`} fill={entry.color} />
                   ))}
                 </Pie>
-                <Tooltip 
-                  contentStyle={{ 
-                    borderRadius: '12px', 
-                    border: 'none', 
+                <Tooltip
+                  contentStyle={{
+                    borderRadius: '12px',
+                    border: 'none',
                     boxShadow: '0 8px 32px rgba(0, 0, 0, 0.1)',
                     background: 'rgba(255, 255, 255, 0.95)',
-                    backdropFilter: 'blur(12px)'
+                    backdropFilter: 'blur(12px)',
                   }}
                 />
               </PieChart>
@@ -361,9 +401,15 @@ const Dashboard = () => {
           </div>
           <div className="mt-4 space-y-2">
             {chartData.proposalStatusData.map((item) => (
-              <div key={item.name} className="flex items-center justify-between text-sm text-slate-700 dark:text-slate-300">
+              <div
+                key={item.name}
+                className="flex items-center justify-between text-sm text-slate-700 dark:text-slate-300"
+              >
                 <span className="flex items-center">
-                  <span className="w-3 h-3 rounded-full mr-2" style={{ backgroundColor: item.color }}></span>
+                  <span
+                    className="w-3 h-3 rounded-full mr-2"
+                    style={{ backgroundColor: item.color }}
+                  ></span>
                   {item.name}
                 </span>
                 <span className="font-medium text-slate-900 dark:text-slate-100">{item.value}</span>
@@ -383,15 +429,15 @@ const Dashboard = () => {
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={chartData.weeklyActivity}>
                 <CartesianGrid strokeDasharray="3 3" stroke="rgba(148, 163, 184, 0.2)" />
-                <XAxis dataKey="day" stroke="#94A3B8" fontSize={12} tick={{fill: '#94A3B8'}} />
-                <YAxis stroke="#94A3B8" fontSize={12} tick={{fill: '#94A3B8'}} />
+                <XAxis dataKey="day" stroke="#94A3B8" fontSize={12} tick={{ fill: '#94A3B8' }} />
+                <YAxis stroke="#94A3B8" fontSize={12} tick={{ fill: '#94A3B8' }} />
                 <Tooltip
-                  contentStyle={{ 
-                    borderRadius: '12px', 
-                    border: 'none', 
+                  contentStyle={{
+                    borderRadius: '12px',
+                    border: 'none',
                     boxShadow: '0 8px 32px rgba(0, 0, 0, 0.1)',
                     background: 'rgba(255, 255, 255, 0.95)',
-                    backdropFilter: 'blur(12px)'
+                    backdropFilter: 'blur(12px)',
                   }}
                 />
                 <Bar dataKey="proposals" fill="#6366F1" radius={[4, 4, 0, 0]} />
@@ -417,19 +463,30 @@ const Dashboard = () => {
               </div>
             ) : (
               chartData.recentActivity.map((activity: any) => (
-                <div key={activity.id} className="flex items-start space-x-3 p-2 rounded-lg hover:bg-slate-50/50 dark:hover:bg-slate-800/50 transition-colors">
-                  <div className={`w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 ${
-                    activity.color === 'blue' ? 'bg-blue-100/80 text-blue-600 dark:bg-blue-900/30 dark:text-blue-300' :
-                    activity.color === 'green' ? 'bg-emerald-100/80 text-emerald-600 dark:bg-emerald-900/30 dark:text-emerald-300' :
-                    activity.color === 'purple' ? 'bg-purple-100/80 text-purple-600 dark:bg-purple-900/30 dark:text-purple-300' :
-                    activity.color === 'orange' ? 'bg-amber-100/80 text-amber-600 dark:bg-amber-900/30 dark:text-amber-300' :
-                    'bg-slate-100/80 text-slate-600 dark:bg-slate-800/80 dark:text-slate-400'
-                  }`}>
+                <div
+                  key={activity.id}
+                  className="flex items-start space-x-3 p-2 rounded-lg hover:bg-slate-50/50 dark:hover:bg-slate-800/50 transition-colors"
+                >
+                  <div
+                    className={`w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 ${
+                      activity.color === 'blue'
+                        ? 'bg-blue-100/80 text-blue-600 dark:bg-blue-900/30 dark:text-blue-300'
+                        : activity.color === 'green'
+                          ? 'bg-emerald-100/80 text-emerald-600 dark:bg-emerald-900/30 dark:text-emerald-300'
+                          : activity.color === 'purple'
+                            ? 'bg-purple-100/80 text-purple-600 dark:bg-purple-900/30 dark:text-purple-300'
+                            : activity.color === 'orange'
+                              ? 'bg-amber-100/80 text-amber-600 dark:bg-amber-900/30 dark:text-amber-300'
+                              : 'bg-slate-100/80 text-slate-600 dark:bg-slate-800/80 dark:text-slate-400'
+                    }`}
+                  >
                     <DocumentTextIcon className="h-4 w-4" />
                   </div>
                   <div className="flex-1 min-w-0">
                     <p className="text-sm text-slate-900 dark:text-slate-100">{activity.message}</p>
-                    <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">{activity.time}</p>
+                    <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                      {activity.time}
+                    </p>
                   </div>
                 </div>
               ))
@@ -447,7 +504,10 @@ const Dashboard = () => {
               <h2 className="section-title">Recent Proposals</h2>
               <p className="text-sm text-slate-600 dark:text-slate-400">Latest proposal activity</p>
             </div>
-            <Link to="/proposals" className="text-sm text-primary-600 hover:text-primary-500 font-medium">
+            <Link
+              to="/proposals"
+              className="text-sm text-primary-600 hover:text-primary-500 font-medium"
+            >
               View all
             </Link>
           </div>
@@ -456,7 +516,10 @@ const Dashboard = () => {
               <div className="p-6 text-center">
                 <SparklesIcon className="mx-auto h-12 w-12 text-slate-300 dark:text-slate-600 mb-3" />
                 <p className="text-slate-600 dark:text-slate-400">No proposals yet.</p>
-                <Link to="/proposals/new" className="text-primary-600 font-medium hover:text-primary-700">
+                <Link
+                  to="/proposals/new"
+                  className="text-primary-600 font-medium hover:text-primary-700"
+                >
                   Create your first proposal
                 </Link>
               </div>
@@ -469,18 +532,25 @@ const Dashboard = () => {
                 >
                   <div className="flex items-center justify-between">
                     <div className="min-w-0">
-                      <p className="text-sm font-medium text-slate-900 dark:text-slate-100 truncate">{proposal.title}</p>
+                      <p className="text-sm font-medium text-slate-900 dark:text-slate-100 truncate">
+                        {proposal.title}
+                      </p>
                       <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
                         {proposal.client?.name} • {proposal.reference}
                       </p>
                     </div>
                     <div className="text-right ml-4">
-                      <span className={`badge ${
-                        proposal.status === 'ACCEPTED' ? 'badge-green' :
-                        proposal.status === 'SENT' ? 'badge-blue' :
-                        proposal.status === 'DRAFT' ? 'badge-gray' :
-                        'badge-amber'
-                      }`}>
+                      <span
+                        className={`badge ${
+                          proposal.status === 'ACCEPTED'
+                            ? 'badge-green'
+                            : proposal.status === 'SENT'
+                              ? 'badge-blue'
+                              : proposal.status === 'DRAFT'
+                                ? 'badge-gray'
+                                : 'badge-amber'
+                        }`}
+                      >
                         {proposal.status}
                       </span>
                       <p className="text-sm font-medium text-slate-900 dark:text-slate-100 mt-1">
@@ -501,7 +571,10 @@ const Dashboard = () => {
               <h2 className="section-title">Recent Clients</h2>
               <p className="text-sm text-slate-600 dark:text-slate-400">New and updated clients</p>
             </div>
-            <Link to="/clients" className="text-sm text-primary-600 hover:text-primary-500 font-medium">
+            <Link
+              to="/clients"
+              className="text-sm text-primary-600 hover:text-primary-500 font-medium"
+            >
               View all
             </Link>
           </div>
@@ -510,7 +583,10 @@ const Dashboard = () => {
               <div className="p-6 text-center">
                 <UsersIcon className="mx-auto h-12 w-12 text-slate-300 dark:text-slate-600 mb-3" />
                 <p className="text-slate-600 dark:text-slate-400">No clients yet.</p>
-                <Link to="/clients/new" className="text-primary-600 font-medium hover:text-primary-700">
+                <Link
+                  to="/clients/new"
+                  className="text-primary-600 font-medium hover:text-primary-700"
+                >
                   Add your first client
                 </Link>
               </div>
@@ -527,7 +603,9 @@ const Dashboard = () => {
                         {client.name?.charAt(0)}
                       </div>
                       <div className="ml-3 min-w-0">
-                        <p className="text-sm font-medium text-slate-900 dark:text-slate-100 truncate">{client.name}</p>
+                        <p className="text-sm font-medium text-slate-900 dark:text-slate-100 truncate">
+                          {client.name}
+                        </p>
                         <p className="text-xs text-slate-500 dark:text-slate-400">
                           {client.companyType?.replace(/_/g, ' ')} • {client.contactEmail}
                         </p>
@@ -553,19 +631,28 @@ const Dashboard = () => {
       <div className="card p-6">
         <h2 className="section-title mb-4">Quick Actions</h2>
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-          <Link to="/proposals/new" className="glass-tile group text-center hover:border-primary-300 dark:hover:border-primary-700">
+          <Link
+            to="/proposals/new"
+            className="glass-tile group text-center hover:border-primary-300 dark:hover:border-primary-700"
+          >
             <div className="w-14 h-14 mx-auto bg-gradient-to-br from-blue-500 to-blue-600 text-white rounded-xl shadow-lg mb-3 group-hover:scale-110 transition-transform flex items-center justify-center">
               <DocumentTextIcon className="h-7 w-7" />
             </div>
             <p className="text-sm font-medium text-slate-900 dark:text-slate-100">New Proposal</p>
           </Link>
-          <Link to="/clients/new" className="glass-tile group text-center hover:border-emerald-300 dark:hover:border-emerald-700">
+          <Link
+            to="/clients/new"
+            className="glass-tile group text-center hover:border-emerald-300 dark:hover:border-emerald-700"
+          >
             <div className="w-14 h-14 mx-auto bg-gradient-to-br from-emerald-500 to-emerald-600 text-white rounded-xl shadow-lg mb-3 group-hover:scale-110 transition-transform flex items-center justify-center">
               <UsersIcon className="h-7 w-7" />
             </div>
             <p className="text-sm font-medium text-slate-900 dark:text-slate-100">Add Client</p>
           </Link>
-          <Link to="/services" className="glass-tile group text-center hover:border-purple-300 dark:hover:border-purple-700">
+          <Link
+            to="/services"
+            className="glass-tile group text-center hover:border-purple-300 dark:hover:border-purple-700"
+          >
             <div className="w-14 h-14 mx-auto bg-gradient-to-br from-purple-500 to-purple-600 text-white rounded-xl shadow-lg mb-3 group-hover:scale-110 transition-transform flex items-center justify-center">
               <SparklesIcon className="h-7 w-7" />
             </div>

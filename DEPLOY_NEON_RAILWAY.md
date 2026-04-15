@@ -36,6 +36,7 @@ This guide walks you through deploying the Engage by Capstone application using 
 You have two options:
 
 **Option A: Run migrations locally against Neon**
+
 ```bash
 # Set the DATABASE_URL to your Neon database
 $env:DATABASE_URL="postgresql://username:password@host.neon.tech/database?sslmode=require"
@@ -67,21 +68,22 @@ In your Railway project dashboard:
 
 #### Required Variables
 
-| Variable | Value | Description |
-|----------|-------|-------------|
-| `DATABASE_URL` | Your Neon connection string | PostgreSQL database |
-| `JWT_SECRET` | Generate a strong secret | For token signing |
-| `NODE_ENV` | `production` | Environment mode |
-| `EMAIL_PROVIDER` | `smtp` | Email service type |
-| `SMTP_HOST` | Your SMTP host | e.g., `smtp.gmail.com` |
-| `SMTP_PORT` | `587` | SMTP port |
-| `SMTP_USER` | Your email | Sender email address |
-| `SMTP_PASS` | Your email password or app password | SMTP password |
-| `EMAIL_FROM_NAME` | `Your Practice Name` | Display name |
+| Variable          | Value                               | Description            |
+| ----------------- | ----------------------------------- | ---------------------- |
+| `DATABASE_URL`    | Your Neon connection string         | PostgreSQL database    |
+| `JWT_SECRET`      | Generate a strong secret            | For token signing      |
+| `NODE_ENV`        | `production`                        | Environment mode       |
+| `EMAIL_PROVIDER`  | `smtp`                              | Email service type     |
+| `SMTP_HOST`       | Your SMTP host                      | e.g., `smtp.gmail.com` |
+| `SMTP_PORT`       | `587`                               | SMTP port              |
+| `SMTP_USER`       | Your email                          | Sender email address   |
+| `SMTP_PASS`       | Your email password or app password | SMTP password          |
+| `EMAIL_FROM_NAME` | `Your Practice Name`                | Display name           |
 
 #### Generate JWT Secret
 
 Generate a secure JWT secret:
+
 ```bash
 node -e "console.log(require('crypto').randomBytes(64).toString('hex'))"
 ```
@@ -105,11 +107,13 @@ node -e "console.log(require('crypto').randomBytes(64).toString('hex'))"
 ### 3.1 Check Health Endpoint
 
 Once deployed, verify the API is running:
+
 ```bash
 curl https://your-app-name.railway.app/health
 ```
 
 Expected response:
+
 ```json
 {
   "success": true,
@@ -131,6 +135,7 @@ Expected response:
 ### 3.3 Create Initial Admin User
 
 Run this once to create your first admin user:
+
 ```bash
 # Connect to Railway shell
 railway connect
@@ -152,6 +157,7 @@ railway run node backend/dist/scripts/createAdmin.js
 ### 4.2 Update Environment Variables
 
 If using custom domain:
+
 1. Update `API_URL` and `FRONTEND_URL` to your custom domain
 2. Update `PUBLIC_PROPOSAL_URL` for proposal sharing links
 
@@ -169,6 +175,7 @@ If using custom domain:
 ### 5.2 Run Manual Migrations
 
 If needed:
+
 ```bash
 # Set Neon connection string
 $env:DATABASE_URL="postgresql://..."
@@ -184,6 +191,7 @@ npx prisma migrate dev --name migration_name
 ### 5.3 Database Backups
 
 Neon automatically provides:
+
 - Point-in-time recovery (up to 7 days on Free tier)
 - Automated backups
 - Branching for testing
@@ -193,16 +201,19 @@ Neon automatically provides:
 ## Environment Variables Reference
 
 ### Database
+
 ```
 DATABASE_URL=postgresql://username:password@host.neon.tech/database?sslmode=require
 ```
 
 ### Security
+
 ```
 JWT_SECRET=your-super-secret-jwt-key-min-32-characters
 ```
 
 ### Email (SMTP Example)
+
 ```
 EMAIL_PROVIDER=smtp
 SMTP_HOST=smtp.gmail.com
@@ -215,6 +226,7 @@ EMAIL_FROM_ADDRESS=your-email@gmail.com
 ```
 
 ### Application
+
 ```
 NODE_ENV=production
 PORT=3001
@@ -266,6 +278,7 @@ PUBLIC_PROPOSAL_URL=https://your-app.railway.app
 ### Automatic Deployments
 
 Railway automatically deploys when you push to GitHub:
+
 1. Push changes to your repository
 2. Railway detects the push
 3. Builds and deploys new version
@@ -285,12 +298,14 @@ railway up
 ## Monitoring & Logs
 
 ### Railway Dashboard
+
 - **Deployments**: View deployment history
 - **Logs**: Real-time application logs
 - **Metrics**: CPU, memory usage
 - **Variables**: Environment configuration
 
 ### Neon Dashboard
+
 - **Query Statistics**: Database performance
 - **Storage**: Disk usage
 - **Branches**: Database branching for testing
@@ -300,12 +315,14 @@ railway up
 ## Cost Optimization
 
 ### Neon Free Tier
+
 - 3 databases
 - 3 GiB storage
 - 190 compute hours/month
 - Automatic sleep after inactivity (wakes on request)
 
 ### Railway Free Tier
+
 - 512 MB RAM
 - 1 GB disk
 - $5/month credit
@@ -314,6 +331,7 @@ railway up
 ### Production Recommendations
 
 For production use:
+
 1. **Neon**: Upgrade to Pro for always-on compute
 2. **Railway**: Add Hobby plan ($5/month) for always-on
 3. Set up monitoring alerts

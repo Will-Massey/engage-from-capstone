@@ -31,33 +31,36 @@ let csrfTokenPromise: Promise<string> | null = null;
 const fetchCsrfToken = async (): Promise<string> => {
   // Check memory first (for cross-domain where cookies don't work)
   if (csrfTokenInMemory) return csrfTokenInMemory;
-  
+
   // Then check cookie (for same-domain)
   const cookieToken = getCsrfToken();
   if (cookieToken) return cookieToken;
-  
+
   // Deduplicate concurrent requests
   if (csrfTokenPromise) return csrfTokenPromise;
-  
-  csrfTokenPromise = axios.get(`${API_URL.endsWith('/api') ? API_URL : `${API_URL}/api`}/auth/csrf-token`, {
-    withCredentials: true,
-  }).then((res: any) => {
-    csrfTokenPromise = null;
-    // Store in memory since cross-domain cookies don't work
-    const token = res.data?.data?.csrfToken;
-    if (token) {
-      csrfTokenInMemory = token;
-      console.log('[CSRF] Token fetched and stored in memory');
-      return token;
-    }
-    console.warn('[CSRF] No token in response');
-    return '';
-  }).catch((err) => {
-    csrfTokenPromise = null;
-    console.error('[CSRF] Failed to fetch token:', err.message);
-    return '';
-  });
-  
+
+  csrfTokenPromise = axios
+    .get(`${API_URL.endsWith('/api') ? API_URL : `${API_URL}/api`}/auth/csrf-token`, {
+      withCredentials: true,
+    })
+    .then((res: any) => {
+      csrfTokenPromise = null;
+      // Store in memory since cross-domain cookies don't work
+      const token = res.data?.data?.csrfToken;
+      if (token) {
+        csrfTokenInMemory = token;
+        console.log('[CSRF] Token fetched and stored in memory');
+        return token;
+      }
+      console.warn('[CSRF] No token in response');
+      return '';
+    })
+    .catch((err) => {
+      csrfTokenPromise = null;
+      console.error('[CSRF] Failed to fetch token:', err.message);
+      return '';
+    });
+
   return csrfTokenPromise;
 };
 
@@ -101,7 +104,7 @@ api.interceptors.response.use(
   },
   async (error: AxiosError) => {
     const response = error.response;
-    
+
     if (response) {
       const data = response.data as any;
       const errorMessage = data?.error?.message || 'An error occurred';
@@ -110,10 +113,10 @@ api.interceptors.response.use(
       // Handle CSRF errors with automatic retry
       if (errorCode === 'CSRF_MISSING' || errorCode === 'CSRF_INVALID') {
         console.log('[CSRF] Token invalid, fetching new token and retrying...');
-        
+
         // Clear the cached token to force a refresh
         csrfTokenInMemory = null;
-        
+
         // Get the original request config
         const originalRequest = error.config;
         if (originalRequest) {
@@ -131,7 +134,7 @@ api.interceptors.response.use(
             console.error('[CSRF] Failed to retry request:', retryError);
           }
         }
-        
+
         toast.error('Security token expired. Please try again.');
         return Promise.reject({
           code: errorCode,
@@ -202,7 +205,7 @@ export const apiClient = {
   post: (url: string, data?: any, config?: any) => api.post(url, data, config),
   put: (url: string, data?: any, config?: any) => api.put(url, data, config),
   delete: (url: string, config?: any) => api.delete(url, config),
-  
+
   // Auth
   login: (email: string, password: string, tenantId?: string) =>
     api.post('/auth/login', { email, password, tenantId }),
@@ -219,40 +222,34 @@ export const apiClient = {
 
   getMe: () => api.get('/auth/me'),
 
-  refreshToken: (refreshToken: string) =>
-    api.post('/auth/refresh', { refreshToken }),
+  refreshToken: (refreshToken: string) => api.post('/auth/refresh', { refreshToken }),
 
   // Proposals
-  getProposals: (params?: Record<string, any>) =>
-    api.get('/proposals', { params }),
+  getProposals: (params?: Record<string, any>) => api.get('/proposals', { params }),
 
   getProposal: (id: string) => api.get(`/proposals/${id}`),
 
   createProposal: (data: any) => api.post('/proposals', data),
 
-  updateProposal: (id: string, data: any) =>
-    api.put(`/proposals/${id}`, data),
+  updateProposal: (id: string, data: any) => api.put(`/proposals/${id}`, data),
 
   deleteProposal: (id: string) => api.delete(`/proposals/${id}`),
 
   sendProposal: (id: string) => api.post(`/proposals/${id}/send`, {}),
 
-  acceptProposal: (id: string, data?: any) =>
-    api.post(`/proposals/${id}/accept`, data),
+  acceptProposal: (id: string, data?: any) => api.post(`/proposals/${id}/accept`, data),
 
   downloadProposalPDF: (id: string) =>
-    api.get(`/proposals/${id}/pdf`, { responseType: 'blob' }),
+    api.get(`/proposals/${id}/pdf`, { responseType: 'blob' }).then((r) => r.data as Blob),
 
   // Clients
-  getClients: (params?: Record<string, any>) =>
-    api.get('/clients', { params }),
+  getClients: (params?: Record<string, any>) => api.get('/clients', { params }),
 
   getClient: (id: string) => api.get(`/clients/${id}`),
 
   createClient: (data: any) => api.post('/clients', data),
 
-  updateClient: (id: string, data: any) =>
-    api.put(`/clients/${id}`, data),
+  updateClient: (id: string, data: any) => api.put(`/clients/${id}`, data),
 
   deleteClient: (id: string) => api.delete(`/clients/${id}`),
 
@@ -260,8 +257,7 @@ export const apiClient = {
     api.post(`/clients/${id}/mtditsa-assessment`, { incomeSources }),
 
   // Services
-  getServices: (params?: Record<string, any>) =>
-    api.get('/services', { params }),
+  getServices: (params?: Record<string, any>) => api.get('/services', { params }),
 
   getServiceCategories: () => api.get('/services/categories'),
 
@@ -269,22 +265,18 @@ export const apiClient = {
 
   createService: (data: any) => api.post('/services', data),
 
-  updateService: (id: string, data: any) =>
-    api.put(`/services/${id}`, data),
+  updateService: (id: string, data: any) => api.put(`/services/${id}`, data),
 
-  duplicateService: (id: string) =>
-    api.post(`/services/${id}/duplicate`, {}),
+  duplicateService: (id: string) => api.post(`/services/${id}/duplicate`, {}),
 
-  calculatePrice: (data: any) =>
-    api.post('/services/calculate-price', data),
+  calculatePrice: (data: any) => api.post('/services/calculate-price', data),
 
   deleteService: (id: string) => api.delete(`/services/${id}`),
 
   // Tenants
   createTenant: (data: any) => api.post('/tenants', data),
 
-  checkSubdomain: (subdomain: string) =>
-    api.get(`/tenants/check-subdomain/${subdomain}`),
+  checkSubdomain: (subdomain: string) => api.get(`/tenants/check-subdomain/${subdomain}`),
 
   getOnboardingStatus: () => api.get('/tenants/onboarding-status'),
 

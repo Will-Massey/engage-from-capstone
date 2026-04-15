@@ -1,7 +1,7 @@
 /**
  * AI Email Assistant Service
  * Generates context-aware email content using OpenAI
- * 
+ *
  * NOTE: This service is currently disabled as OpenAI integration is not configured.
  * To enable, install the openai package and configure OPENAI_API_KEY environment variable.
  */
@@ -41,7 +41,10 @@ export class AIEmailService {
   /**
    * Improve email content
    */
-  async improveEmail(_emailText: string, _goal: 'professional' | 'concise' | 'persuasive'): Promise<string> {
+  async improveEmail(
+    _emailText: string,
+    _goal: 'professional' | 'concise' | 'persuasive'
+  ): Promise<string> {
     this.throwNotImplemented();
   }
 }

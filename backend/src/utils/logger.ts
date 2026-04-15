@@ -24,9 +24,10 @@ const logger = winston.createLogger({
   },
   transports: [
     new winston.transports.Console({
-      format: logFormat === 'json'
-        ? combine(timestamp(), json(), errors({ stack: true }))
-        : combine(colorize(), timestamp(), devFormat),
+      format:
+        logFormat === 'json'
+          ? combine(timestamp(), json(), errors({ stack: true }))
+          : combine(colorize(), timestamp(), devFormat),
     }),
   ],
 });
@@ -34,7 +35,7 @@ const logger = winston.createLogger({
 // Request logging middleware
 export const requestLogger = (req: any, res: any, next: any) => {
   const start = Date.now();
-  
+
   res.on('finish', () => {
     const duration = Date.now() - start;
     logger.info('HTTP Request', {
@@ -46,7 +47,7 @@ export const requestLogger = (req: any, res: any, next: any) => {
       ip: req.ip,
     });
   });
-  
+
   next();
 };
 

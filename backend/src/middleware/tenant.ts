@@ -65,7 +65,7 @@ function extractSubdomain(hostname: string): string | null {
   }
 
   const parts = hostname.split('.');
-  
+
   // Handle custom domain with subdomain
   if (parts.length >= 3) {
     return parts[0].toLowerCase();
@@ -124,11 +124,7 @@ export const tenantHeader = async (
 };
 
 // Validate user belongs to tenant
-export const validateTenantMembership = (
-  req: Request,
-  res: Response,
-  next: NextFunction
-): void => {
+export const validateTenantMembership = (req: Request, res: Response, next: NextFunction): void => {
   if (!req.user) {
     res.status(401).json({
       success: false,

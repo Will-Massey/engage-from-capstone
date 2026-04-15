@@ -16,7 +16,7 @@ const prisma = new client_1.PrismaClient();
 router.get('/', (0, errorHandler_js_1.asyncHandler)(async (req, res) => {
     // Check if setup already completed
     const existingUser = await prisma.user.findFirst({
-        where: { email: 'admin@demo.practice' }
+        where: { email: 'admin@demo.practice' },
     });
     if (existingUser) {
         res.json({
@@ -24,14 +24,14 @@ router.get('/', (0, errorHandler_js_1.asyncHandler)(async (req, res) => {
             message: 'Setup already completed',
             user: {
                 email: existingUser.email,
-                role: existingUser.role
-            }
+                role: existingUser.role,
+            },
         });
         return;
     }
     // Create demo tenant
     let tenant = await prisma.tenant.findFirst({
-        where: { subdomain: 'demo' }
+        where: { subdomain: 'demo' },
     });
     if (!tenant) {
         tenant = await prisma.tenant.create({
@@ -39,7 +39,7 @@ router.get('/', (0, errorHandler_js_1.asyncHandler)(async (req, res) => {
                 name: 'Demo Accounting Practice',
                 subdomain: 'demo',
                 primaryColor: '#0ea5e9',
-            }
+            },
         });
     }
     // Create demo admin user
@@ -52,15 +52,15 @@ router.get('/', (0, errorHandler_js_1.asyncHandler)(async (req, res) => {
             role: 'ADMIN',
             tenantId: tenant.id,
             isActive: true,
-        }
+        },
     });
     res.json({
         success: true,
         message: 'Setup completed successfully',
         credentials: {
             email: user.email,
-            password: 'DemoPass123!'
-        }
+            password: 'DemoPass123!',
+        },
     });
 }));
 /**

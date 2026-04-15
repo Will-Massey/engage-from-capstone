@@ -3,7 +3,7 @@ import Stripe from 'stripe';
 const STRIPE_SECRET_KEY = process.env.STRIPE_SECRET_KEY;
 
 // Make Stripe optional - app can start without payments configured
-export const stripe = STRIPE_SECRET_KEY 
+export const stripe = STRIPE_SECRET_KEY
   ? new Stripe(STRIPE_SECRET_KEY, {
       apiVersion: '2025-02-24.acacia' as any,
       typescript: true,
@@ -37,7 +37,13 @@ export const SUBSCRIPTION_TIERS = {
     maxUsers: 10,
     maxClients: 500,
     maxProposals: 'Unlimited',
-    features: ['Everything in Starter', 'Custom branding', 'Advanced analytics', 'Priority support', 'API access'],
+    features: [
+      'Everything in Starter',
+      'Custom branding',
+      'Advanced analytics',
+      'Priority support',
+      'API access',
+    ],
   },
   ENTERPRISE: {
     name: 'Enterprise',
@@ -47,7 +53,13 @@ export const SUBSCRIPTION_TIERS = {
     maxUsers: 'Unlimited',
     maxClients: 'Unlimited',
     maxProposals: 'Unlimited',
-    features: ['Everything in Professional', 'White-label options', 'Dedicated support', 'Custom integrations', 'SLA guarantee'],
+    features: [
+      'Everything in Professional',
+      'White-label options',
+      'Dedicated support',
+      'Custom integrations',
+      'SLA guarantee',
+    ],
   },
 };
 

@@ -9,6 +9,7 @@ Engage now rivals the best SaaS platforms through exceptional attention to **App
 ## 🎨 APPEARANCE - Visual Excellence
 
 ### 1. Glassmorphism Design System
+
 - **Frosted glass cards** with backdrop blur (12-20px)
 - **Layered depth** with multiple transparency levels
 - **Soft shadows** that create visual hierarchy
@@ -16,12 +17,14 @@ Engage now rivals the best SaaS platforms through exceptional attention to **App
 - **Smooth animations** on all interactions
 
 ### 2. Theme System
+
 - **Light/Dark/System** modes with persistent preference
 - **CSS variable-based** theming for instant switching
 - **Automatic detection** of OS preference
 - **Glass effects adapted** to both themes
 
 ### 3. Micro-interactions
+
 - **Hover lift effects** on cards (-4px translateY)
 - **Button press states** with scale animation
 - **Focus rings** with primary color glow
@@ -29,6 +32,7 @@ Engage now rivals the best SaaS platforms through exceptional attention to **App
 - **Loading shimmer** effects
 
 ### 4. Typography & Spacing
+
 - **Inter font** for clean, modern readability
 - **8px grid system** for consistent spacing
 - **Optimal line length** (65ch) for readability
@@ -39,9 +43,11 @@ Engage now rivals the best SaaS platforms through exceptional attention to **App
 ## 🧠 SIMPLICITY - UX Excellence
 
 ### 1. Command Palette (Cmd+K)
+
 **Like Linear, Notion, or Raycast**
 
 Features:
+
 - **Global search** across all content
 - **Quick navigation** (G + D for Dashboard)
 - **Quick actions** (C + P for new Proposal)
@@ -52,6 +58,7 @@ Features:
 - **Keyboard navigation** (Arrow keys + Enter)
 
 Usage:
+
 ```
 Cmd/Ctrl + K        - Open command palette
 G D                 - Go to Dashboard
@@ -63,26 +70,31 @@ Esc                 - Close
 ```
 
 ### 2. Keyboard Shortcuts (? Key)
+
 **Full shortcut reference**
 
 Access: Press `?` anywhere (when not in input)
 
 Categories:
+
 - **Global**: Cmd+K, ?, Esc
 - **Navigation**: G + letter combinations
 - **Actions**: C + letter combinations
 - **Lists**: J/K navigation, / for search
 
 ### 3. Skeleton Loading States
+
 **Better than spinners**
 
 Instead of generic loading spinners:
+
 - **Content-aware placeholders** matching final layout
 - **Pulse animation** indicating activity
 - **Reduced layout shift** when content loads
 - **Per-component skeletons** (Card, Table, Stats, Form)
 
 Components:
+
 - `SkeletonCard` - Dashboard cards
 - `SkeletonTable` - Data tables
 - `SkeletonStats` - Statistics grid
@@ -90,9 +102,11 @@ Components:
 - `SkeletonForm` - Form fields
 
 ### 4. Toast Notifications
+
 **Glass-style notifications**
 
 Features:
+
 - **Glassmorphism styling** matching the theme
 - **Gradient borders** indicating type (success/error)
 - **Smooth animations** on enter/exit
@@ -104,6 +118,7 @@ Features:
 ## ⚡ FUNCTIONALITY - Enterprise Power
 
 ### 1. Proposal Pricing Engine
+
 - **Frequency handling**: Monthly/Quarterly/Annual/One-time
 - **Automatic conversion**: Annual → Monthly display
 - **Line-level editing**: Change frequency per service
@@ -111,6 +126,7 @@ Features:
 - **VAT calculation**: Per-line or global
 
 ### 2. VAT Management
+
 - **Line-level rates**: 0%, 5%, 20% per service
 - **Mixed rate support**: Shows "Mixed" in totals
 - **Automatic calculation**: Based on net total
@@ -118,12 +134,14 @@ Features:
 - **Persistent storage**: Saved with proposal
 
 ### 3. CSRF Protection
+
 - **Auto-retry mechanism**: Refreshes token on failure
 - **Seamless UX**: No user interruption
 - **Memory storage**: Secure token handling
 - **API integration**: Works across all endpoints
 
 ### 4. Theme Management
+
 - **Zustand store**: Persistent state management
 - **System preference**: Auto-detects OS theme
 - **Instant switching**: No page reload
@@ -134,6 +152,7 @@ Features:
 ## 📱 MOBILE EXCELLENCE
 
 ### Responsive Design
+
 - **Touch targets**: 44px minimum
 - **Sidebar**: Slide-in on mobile
 - **Grid layouts**: Adaptive columns
@@ -141,6 +160,7 @@ Features:
 - **Bottom sheets**: Mobile-optimized modals
 
 ### PWA Ready
+
 - **Service worker**: Offline functionality
 - **Manifest**: Installable app
 - **Icons**: All sizes generated
@@ -151,18 +171,21 @@ Features:
 ## 🎯 USER EXPERIENCE PATTERNS
 
 ### 1. Progressive Disclosure
+
 - **Command palette**: Power features hidden until needed
 - **Shortcuts**: Help available via ? key
 - **Tooltips**: Contextual help on hover
 - **Empty states**: Helpful messaging + CTAs
 
 ### 2. Feedback Loops
+
 - **Loading states**: Skeletons > spinners
 - **Success toasts**: Confirming actions
 - **Error handling**: Clear messages + retry
 - **Progress indicators**: Multi-step processes
 
 ### 3. Efficiency Features
+
 - **Keyboard-first**: All actions accessible via keyboard
 - **Global search**: Cmd+K from anywhere
 - **Quick actions**: Shortcuts for common tasks
@@ -173,12 +196,14 @@ Features:
 ## 🔧 TECHNICAL EXCELLENCE
 
 ### Performance
+
 - **Code splitting**: Lazy route loading
 - **Build optimization**: Tree shaking, minification
 - **CSS optimization**: Purged unused styles
 - **Image optimization**: WebP, responsive images
 
 ### Accessibility (WCAG 2.1)
+
 - **Keyboard navigation**: Full tab order
 - **Focus management**: Visible focus rings
 - **Screen reader**: ARIA labels throughout
@@ -186,6 +211,7 @@ Features:
 - **Reduced motion**: Respects user preference
 
 ### Type Safety
+
 - **TypeScript**: Full type coverage
 - **Strict mode**: Catch errors early
 - **Interface definitions**: Shared types
@@ -196,6 +222,7 @@ Features:
 ## 🏢 ENTERPRISE READINESS
 
 ### Security
+
 - **CSRF tokens**: Double-submit pattern
 - **JWT auth**: Secure token handling
 - **httpOnly cookies**: XSS protection
@@ -203,6 +230,7 @@ Features:
 - **SQL injection**: Prisma ORM protection
 
 ### Scalability
+
 - **Database**: PostgreSQL with indexing
 - **Caching**: Redis support
 - **Stateless**: Horizontal scaling ready
@@ -213,6 +241,7 @@ Features:
 ## 🎨 DESIGN TOKENS
 
 ### Colors
+
 ```css
 Primary:    #6366F1 (Indigo 500)
 Secondary:  #8B5CF6 (Violet 500)
@@ -222,6 +251,7 @@ Danger:     #EF4444 (Red 500)
 ```
 
 ### Glass Effects
+
 ```css
 Blur:       12-20px
 Opacity:    60-90%
@@ -230,6 +260,7 @@ Shadow:     0 8px 32px rgba(31, 38, 135, 0.1)
 ```
 
 ### Spacing
+
 ```css
 Base:       8px
 Scale:      4, 8, 12, 16, 24, 32, 48, 64
@@ -241,22 +272,25 @@ Border:     12-16px radius
 ## 🚀 QUICK REFERENCE
 
 ### Command Palette
-| Shortcut | Action |
-|----------|--------|
-| Cmd/Ctrl+K | Open palette |
-| G D | Dashboard |
-| G P | Proposals |
-| G C | Clients |
-| G S | Services |
-| C P | Create Proposal |
-| C C | Create Client |
+
+| Shortcut   | Action          |
+| ---------- | --------------- |
+| Cmd/Ctrl+K | Open palette    |
+| G D        | Dashboard       |
+| G P        | Proposals       |
+| G C        | Clients         |
+| G S        | Services        |
+| C P        | Create Proposal |
+| C C        | Create Client   |
 
 ### Theme Toggle
+
 - Light / Dark / System options
 - Located in header
 - Persists across sessions
 
 ### Mobile
+
 - Swipe sidebar from left
 - Touch-friendly buttons
 - Responsive grids
@@ -266,35 +300,38 @@ Border:     12-16px radius
 
 ## 📊 BENCHMARKS vs. COMPETITORS
 
-| Feature | Engage | Stripe | Notion | Linear |
-|---------|--------|--------|--------|--------|
-| Command Palette | ✅ | ✅ | ✅ | ✅ |
-| Glass UI | ✅ | ⚪ | ⚪ | ✅ |
-| Dark Mode | ✅ | ✅ | ✅ | ✅ |
-| Keyboard Shortcuts | ✅ | ⚪ | ✅ | ✅ |
-| Skeleton Loading | ✅ | ✅ | ⚪ | ✅ |
-| Real-time Collab | ⚪ | ⚪ | ✅ | ✅ |
-| PWA | ✅ | ⚪ | ⚪ | ⚪ |
-| VAT Handling | ✅ | ⚪ | ⚪ | ⚪ |
+| Feature            | Engage | Stripe | Notion | Linear |
+| ------------------ | ------ | ------ | ------ | ------ |
+| Command Palette    | ✅     | ✅     | ✅     | ✅     |
+| Glass UI           | ✅     | ⚪     | ⚪     | ✅     |
+| Dark Mode          | ✅     | ✅     | ✅     | ✅     |
+| Keyboard Shortcuts | ✅     | ⚪     | ✅     | ✅     |
+| Skeleton Loading   | ✅     | ✅     | ⚪     | ✅     |
+| Real-time Collab   | ⚪     | ⚪     | ✅     | ✅     |
+| PWA                | ✅     | ⚪     | ⚪     | ⚪     |
+| VAT Handling       | ✅     | ⚪     | ⚪     | ⚪     |
 
-*⚪ = Not applicable or not a feature*
+_⚪ = Not applicable or not a feature_
 
 ---
 
 ## ✨ WHAT USERS WILL NOTICE
 
 ### First Impression
+
 - "This looks incredibly polished"
 - "The glass effects are stunning"
 - "It feels like a premium product"
 
 ### Daily Use
+
 - "Cmd+K is so fast for navigation"
 - "I never have to use the mouse"
 - "The dark mode is beautiful"
 - "Loading states are so smooth"
 
 ### Power Users
+
 - "The keyboard shortcuts save me hours"
 - "VAT calculation per line is exactly what I needed"
 - "I can work offline and it syncs"
@@ -319,6 +356,7 @@ To reach true world-class status, consider:
 ## ✅ CURRENT STATUS
 
 **World-Class Features Implemented:**
+
 - ✅ Glassmorphism design system
 - ✅ Dark/Light theme toggle
 - ✅ Command palette (Cmd+K)

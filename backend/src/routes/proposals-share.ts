@@ -190,19 +190,14 @@ router.post(
       shareUrl = result.shareUrl;
     } else {
       const baseUrl =
-        process.env.PUBLIC_PROPOSAL_URL ||
-        `https://${tenant.subdomain}.engage.capstone.co.uk`;
+        process.env.PUBLIC_PROPOSAL_URL || `https://${tenant.subdomain}.engage.capstone.co.uk`;
       shareUrl = `${baseUrl}/proposals/view/${proposal.shareToken}`;
     }
 
     // Initialize email service
     const emailService = createEmailService();
     if (!emailService) {
-      throw new ApiError(
-        'EMAIL_NOT_CONFIGURED',
-        'Email service not configured',
-        500
-      );
+      throw new ApiError('EMAIL_NOT_CONFIGURED', 'Email service not configured', 500);
     }
 
     // Generate PDF if needed
@@ -382,19 +377,11 @@ router.get(
     const proposal = await getProposalByShareToken(token);
 
     if (!proposal) {
-      throw new ApiError(
-        'PROPOSAL_NOT_FOUND',
-        'Proposal not found or link expired',
-        404
-      );
+      throw new ApiError('PROPOSAL_NOT_FOUND', 'Proposal not found or link expired', 404);
     }
 
     // Track view
-    await trackProposalView(
-      proposal.id,
-      req.ip || null,
-      req.headers['user-agent'] || null
-    );
+    await trackProposalView(proposal.id, req.ip || null, req.headers['user-agent'] || null);
 
     // Return proposal data (without sensitive fields)
     res.json({
@@ -447,11 +434,7 @@ router.get(
     const proposal = await getProposalByShareToken(token);
 
     if (!proposal) {
-      throw new ApiError(
-        'PROPOSAL_NOT_FOUND',
-        'Proposal not found or link expired',
-        404
-      );
+      throw new ApiError('PROPOSAL_NOT_FOUND', 'Proposal not found or link expired', 404);
     }
 
     const terms = proposal.terms || generateProposalTerms();
@@ -477,19 +460,13 @@ router.post(
       agreementAccepted: z.boolean(),
     });
 
-    const { signedBy, signedByRole, signatureData, agreementAccepted } = schema.parse(
-      req.body
-    );
+    const { signedBy, signedByRole, signatureData, agreementAccepted } = schema.parse(req.body);
     const { token } = req.params;
 
     const proposal = await getProposalByShareToken(token);
 
     if (!proposal) {
-      throw new ApiError(
-        'PROPOSAL_NOT_FOUND',
-        'Proposal not found or link expired',
-        404
-      );
+      throw new ApiError('PROPOSAL_NOT_FOUND', 'Proposal not found or link expired', 404);
     }
 
     if (proposal.status === 'ACCEPTED') {
@@ -501,11 +478,7 @@ router.post(
     }
 
     if (!agreementAccepted) {
-      throw new ApiError(
-        'AGREEMENT_REQUIRED',
-        'You must accept the terms and conditions',
-        400
-      );
+      throw new ApiError('AGREEMENT_REQUIRED', 'You must accept the terms and conditions', 400);
     }
 
     const result = await recordElectronicSignature({
@@ -556,7 +529,9 @@ router.post(
             signedBy,
             signedByRole,
             proposalPdf,
-            signaturePng: signatureImage ? Buffer.from(signatureImage.split(',')[1], 'base64') : undefined,
+            signaturePng: signatureImage
+              ? Buffer.from(signatureImage.split(',')[1], 'base64')
+              : undefined,
           });
 
           // Update acceptance notified timestamp
@@ -616,11 +591,7 @@ router.get(
     const proposal = await getProposalByShareToken(token);
 
     if (!proposal) {
-      throw new ApiError(
-        'PROPOSAL_NOT_FOUND',
-        'Proposal not found or link expired',
-        404
-      );
+      throw new ApiError('PROPOSAL_NOT_FOUND', 'Proposal not found or link expired', 404);
     }
 
     // TODO: Generate and return PDF

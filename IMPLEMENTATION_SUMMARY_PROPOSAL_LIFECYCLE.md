@@ -1,6 +1,7 @@
 # Proposal Lifecycle Implementation Summary
 
 ## Overview
+
 Comprehensive proposal lifecycle features have been implemented for the Engage by Capstone platform, including UK-compliant cover letters with NLP language, logo upload for branding, service management, proposal expiry/renewal system, audit trail, and multi-channel delivery.
 
 ---
@@ -8,6 +9,7 @@ Comprehensive proposal lifecycle features have been implemented for the Engage b
 ## ✅ Implemented Features
 
 ### 1. UK-Compliant Cover Letter with NLP Language
+
 **Location:** `frontend/src/data/defaultCoverLetter.ts`
 
 - Professional UK accounting tone with subtle persuasion
@@ -17,6 +19,7 @@ Comprehensive proposal lifecycle features have been implemented for the Engage b
 - Personalized placeholders: `[Client Name]`, `[Practice Name]`, `[Accountant Name]`
 
 **Key NLP Elements:**
+
 - Empathy: "We understand that managing your finances can feel overwhelming"
 - Social proof: "Many of our clients tell us..."
 - Loss aversion: "You'll never have to feel that way again"
@@ -25,10 +28,12 @@ Comprehensive proposal lifecycle features have been implemented for the Engage b
 ---
 
 ### 2. Logo Upload for Tenant Branding
+
 **Frontend:** `frontend/src/pages/Settings.tsx` (Company tab)
 **Backend:** `backend/src/routes/tenant.ts`
 
 **Features:**
+
 - File upload via Multer middleware
 - Supported formats: PNG, JPG, SVG
 - Max file size: 2MB
@@ -36,6 +41,7 @@ Comprehensive proposal lifecycle features have been implemented for the Engage b
 - Stored as base64 or URL in `tenant.logo` field
 
 **API Endpoint:**
+
 ```
 PUT /api/tenant/logo
 Content-Type: multipart/form-data
@@ -45,9 +51,11 @@ Body: { logo: File }
 ---
 
 ### 3. Service Management (CRUD)
+
 **Location:** `frontend/src/pages/services/Services.tsx`
 
 **Features:**
+
 - List all 24 UK accounting services with category filters
 - Edit existing services (price, description, billing options)
 - Create new custom services
@@ -56,6 +64,7 @@ Body: { logo: File }
 - Sort by category and price
 
 **Service Categories:**
+
 - COMPLIANCE (10 services)
 - ADVISORY (6 services)
 - TAX (2 services)
@@ -63,6 +72,7 @@ Body: { logo: File }
 - CONSULTING (4 services)
 
 **API Endpoints:**
+
 ```
 GET    /api/services
 POST   /api/services
@@ -74,9 +84,11 @@ POST   /api/services/:id/duplicate
 ---
 
 ### 4. Proposal Expiry & Renewal System
+
 **Database Schema:** See `backend/prisma/schema.prisma`
 
 **Status Workflow:**
+
 ```
 DRAFT → SENT → VIEWED → ACCEPTED
                  ↓
@@ -84,6 +96,7 @@ DRAFT → SENT → VIEWED → ACCEPTED
 ```
 
 **Features:**
+
 - `validUntil` date for each proposal
 - Automatic expiry checking middleware
 - Yearly renewal reminders
@@ -91,6 +104,7 @@ DRAFT → SENT → VIEWED → ACCEPTED
 - Auto-draft generation for renewals
 
 **API Endpoints:**
+
 ```
 # Expiry Check
 GET /api/proposals/check-expiry
@@ -103,11 +117,14 @@ POST /api/proposals/:id/renew
 ---
 
 ### 5. Audit Trail for Views & Signatures
+
 **Database Tables:**
+
 - `ProposalView` - Tracks every proposal view
 - `ProposalSignature` - Stores e-signature compliance data
 
 **Tracked Data:**
+
 ```typescript
 // ProposalView
 {
@@ -130,6 +147,7 @@ POST /api/proposals/:id/renew
 ```
 
 **API Endpoints:**
+
 ```
 POST /api/proposals/:id/view       # Record a view
 POST /api/proposals/:id/signature  # Submit signature
@@ -139,21 +157,24 @@ GET  /api/proposals/:id/audit      # Get full audit trail
 ---
 
 ### 6. Multi-Channel Delivery System
+
 **Delivery Methods:**
 
-| Method | Description | Status |
-|--------|-------------|--------|
+| Method    | Description              | Status         |
+| --------- | ------------------------ | -------------- |
 | **Draft** | Save for internal review | ✅ Implemented |
 | **Email** | Send via configured SMTP | ✅ Implemented |
-| **Link** | Generate shareable URL | ✅ Implemented |
+| **Link**  | Generate shareable URL   | ✅ Implemented |
 
 **Email Configuration:**
+
 - SMTP settings in Settings > Email
 - Support for Gmail, Outlook, Custom SMTP
 - Template customization
 - Automatic reminder emails
 
 **API Endpoints:**
+
 ```
 POST /api/proposals/:id/send      # Send via email
 POST /api/proposals/:id/send-link # Generate share link
@@ -165,6 +186,7 @@ GET  /api/proposals/view/:token   # Public view (no auth)
 ## Navigation & Routes
 
 ### Sidebar Links
+
 - Dashboard
 - Proposals
 - Clients
@@ -172,6 +194,7 @@ GET  /api/proposals/view/:token   # Public view (no auth)
 - Settings
 
 ### Routes Configured
+
 ```
 /services          - Service management list
 /services/:id      - Service detail/edit
@@ -184,6 +207,7 @@ GET  /api/proposals/view/:token   # Public view (no auth)
 ## Database Schema Updates
 
 ### New Tables
+
 ```prisma
 model ProposalView {
   id           String   @id @default(uuid())
@@ -206,6 +230,7 @@ model ProposalSignature {
 ```
 
 ### Updated Tables
+
 ```prisma
 model Proposal {
   status          ProposalStatus @default(DRAFT)
@@ -225,17 +250,20 @@ model Proposal {
 ## Security & Compliance
 
 ### UK GDPR Compliance
+
 - ✅ Clear data processing statement in T&Cs
 - ✅ Record retention requirements (6 years HMRC)
 - ✅ Client consent for data processing
 
 ### E-Signature Compliance
+
 - ✅ IP address logging
 - ✅ Timestamp recording
 - ✅ Signer identification
 - ✅ Tamper-evident storage
 
 ### Access Control
+
 - ✅ Role-based permissions (PARTNER+ for management)
 - ✅ Tenant isolation
 - ✅ Secure file upload validation
@@ -260,6 +288,7 @@ model Proposal {
 ## API Quick Reference
 
 ### Proposals
+
 ```
 GET    /api/proposals
 POST   /api/proposals
@@ -274,6 +303,7 @@ GET    /api/proposals/check-expiry
 ```
 
 ### Services
+
 ```
 GET    /api/services
 POST   /api/services
@@ -284,6 +314,7 @@ POST   /api/services/:id/duplicate
 ```
 
 ### Tenant
+
 ```
 PUT    /api/tenant
 PUT    /api/tenant/logo
@@ -311,5 +342,5 @@ GET    /api/tenant/audit-settings
 
 ---
 
-*Implementation completed: March 4, 2026*
-*Version: 1.0.0*
+_Implementation completed: March 4, 2026_
+_Version: 1.0.0_

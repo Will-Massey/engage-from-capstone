@@ -25,7 +25,7 @@ function makeRequest(hostname, port, path, method = 'GET', data = null, token = 
 
     const req = http.request(options, (res) => {
       let body = '';
-      res.on('data', (chunk) => body += chunk);
+      res.on('data', (chunk) => (body += chunk));
       res.on('end', () => {
         try {
           const json = JSON.parse(body);
@@ -46,9 +46,9 @@ async function login() {
   console.log('🔑 Logging in...');
   const response = await makeRequest(API_URL, API_PORT, '/api/auth/login', 'POST', {
     email: 'admin@demo.practice',
-    password: 'DemoPass123!'
+    password: 'DemoPass123!',
   });
-  
+
   if (response.status === 200 && response.data.success) {
     return response.data.data.tokens.accessToken;
   }
@@ -77,15 +77,15 @@ async function testMtditsaFix() {
       email: `sole${Date.now()}@test.com`,
       income: 50000,
       expectMtditsa: true,
-      description: 'Sole Trader with £50k income should have MTD ITSA REQUIRED'
+      description: 'Sole Trader with £50k income should have MTD ITSA REQUIRED',
     },
     {
       type: 'PARTNERSHIP',
-      name: 'Test Partnership', 
+      name: 'Test Partnership',
       email: `partner${Date.now()}@test.com`,
       income: 50000,
       expectMtditsa: true,
-      description: 'Partnership with £50k income should have MTD ITSA REQUIRED'
+      description: 'Partnership with £50k income should have MTD ITSA REQUIRED',
     },
     {
       type: 'LIMITED_COMPANY',
@@ -93,7 +93,7 @@ async function testMtditsaFix() {
       email: `ltd${Date.now()}@test.com`,
       income: 50000,
       expectMtditsa: false,
-      description: 'Limited Company with £50k income should NOT have MTD ITSA'
+      description: 'Limited Company with £50k income should NOT have MTD ITSA',
     },
     {
       type: 'LLP',
@@ -101,7 +101,7 @@ async function testMtditsaFix() {
       email: `llp${Date.now()}@test.com`,
       income: 50000,
       expectMtditsa: false,
-      description: 'LLP with £50k income should NOT have MTD ITSA'
+      description: 'LLP with £50k income should NOT have MTD ITSA',
     },
     {
       type: 'CHARITY',
@@ -109,7 +109,7 @@ async function testMtditsaFix() {
       email: `charity${Date.now()}@test.com`,
       income: 50000,
       expectMtditsa: false,
-      description: 'Charity with £50k income should NOT have MTD ITSA'
+      description: 'Charity with £50k income should NOT have MTD ITSA',
     },
     {
       type: 'NON_PROFIT',
@@ -117,8 +117,8 @@ async function testMtditsaFix() {
       email: `nonprofit${Date.now()}@test.com`,
       income: 50000,
       expectMtditsa: false,
-      description: 'Non-Profit with £50k income should NOT have MTD ITSA'
-    }
+      description: 'Non-Profit with £50k income should NOT have MTD ITSA',
+    },
   ];
 
   let passed = 0;
@@ -127,12 +127,12 @@ async function testMtditsaFix() {
   for (const testCase of testCases) {
     console.log(`\n🧪 Testing: ${testCase.type}`);
     console.log(`   ${testCase.description}`);
-    
+
     try {
       // Create client
       const createResponse = await makeRequest(
-        API_URL, 
-        API_PORT, 
+        API_URL,
+        API_PORT,
         '/api/clients',
         'POST',
         {
@@ -145,7 +145,9 @@ async function testMtditsaFix() {
       );
 
       if (createResponse.status !== 201 && createResponse.status !== 200) {
-        console.log(`   ❌ Failed to create client: ${createResponse.data.error?.message || 'Unknown error'}`);
+        console.log(
+          `   ❌ Failed to create client: ${createResponse.data.error?.message || 'Unknown error'}`
+        );
         failed++;
         continue;
       }
@@ -158,13 +160,14 @@ async function testMtditsaFix() {
         console.log(`   ✅ PASS - mtditsaEligible: ${hasMtditsa}, status: ${status}`);
         passed++;
       } else {
-        console.log(`   ❌ FAIL - Expected mtditsaEligible: ${testCase.expectMtditsa}, got: ${hasMtditsa}, status: ${status}`);
+        console.log(
+          `   ❌ FAIL - Expected mtditsaEligible: ${testCase.expectMtditsa}, got: ${hasMtditsa}, status: ${status}`
+        );
         failed++;
       }
 
       // Clean up - delete the test client
       await makeRequest(API_URL, API_PORT, `/api/clients/${client.id}`, 'DELETE', null, token);
-
     } catch (err) {
       console.log(`   ❌ ERROR: ${err.message}`);
       failed++;
@@ -177,9 +180,11 @@ async function testMtditsaFix() {
   console.log(`\n   Total tests: ${testCases.length}`);
   console.log(`   ✅ Passed: ${passed}`);
   console.log(`   ❌ Failed: ${failed}`);
-  
+
   if (failed === 0) {
-    console.log('\n   🎉 All tests passed! MTD ITSA correctly applies only to Sole Traders and Partnerships.');
+    console.log(
+      '\n   🎉 All tests passed! MTD ITSA correctly applies only to Sole Traders and Partnerships.'
+    );
   } else {
     console.log('\n   ⚠️  Some tests failed. Please review the implementation.');
   }

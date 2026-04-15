@@ -33,7 +33,8 @@ export async function createShareableLink(
       },
     });
 
-    const baseUrl = process.env.PUBLIC_PROPOSAL_URL || `https://${tenantSubdomain}.engage.capstone.co.uk`;
+    const baseUrl =
+      process.env.PUBLIC_PROPOSAL_URL || `https://${tenantSubdomain}.engage.capstone.co.uk`;
     const shareUrl = `${baseUrl}/proposals/view/${token}`;
 
     logger.info(`Created shareable link for proposal ${proposalId}`);
@@ -426,7 +427,8 @@ export function isShareTokenValid(
 
 // Generate proposal PDF URL for sharing
 export function generateProposalPdfUrl(token: string, tenantSubdomain: string): string {
-  const baseUrl = process.env.PUBLIC_PROPOSAL_URL || `https://${tenantSubdomain}.engage.capstone.co.uk`;
+  const baseUrl =
+    process.env.PUBLIC_PROPOSAL_URL || `https://${tenantSubdomain}.engage.capstone.co.uk`;
   return `${baseUrl}/api/proposals/view/${token}/pdf`;
 }
 

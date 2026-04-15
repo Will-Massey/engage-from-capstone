@@ -5,6 +5,7 @@
 ### Environment Variables (Required)
 
 #### Database & Core
+
 - [ ] `DATABASE_URL` — PostgreSQL connection string
 - [ ] `JWT_SECRET` — Min 32 characters, secure random string
 - [ ] `JWT_EXPIRES_IN` — e.g., `24h`
@@ -12,26 +13,31 @@
 - [ ] `FRONTEND_URL` — e.g., `https://engage.capstonesoftware.co.uk`
 
 #### Email (Required for notifications)
+
 - [ ] `EMAIL_PROVIDER` — `smtp`, `gmail`, or `outlook`
 - [ ] `EMAIL_FROM_NAME` — e.g., `Capstone Software`
 - [ ] `EMAIL_FROM_ADDRESS` — e.g., `noreply@capstonesoftware.co.uk`
 - [ ] `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS` — If using SMTP
 
 #### Companies House (Required for UK company lookup)
+
 - [ ] `COMPANIES_HOUSE_API_KEY` — Get from https://developer.company-information.service.gov.uk/
 
 #### Payment Processing (Choose one or both)
 
 **Option 1: Adfin (Recommended for UK accountants)**
+
 - [ ] `ADFIN_API_KEY` — Get from https://adfin.io
 - [ ] `ADFIN_WEBHOOK_SECRET` — From Adfin dashboard
 
 **Option 2: Stripe (For subscription billing)**
-- [ ] `STRIPE_SECRET_KEY` — sk_live_...
-- [ ] `STRIPE_PUBLISHABLE_KEY` — pk_live_...
-- [ ] `STRIPE_WEBHOOK_SECRET` — whsec_...
+
+- [ ] `STRIPE_SECRET_KEY` — sk*live*...
+- [ ] `STRIPE_PUBLISHABLE_KEY` — pk*live*...
+- [ ] `STRIPE_WEBHOOK_SECRET` — whsec\_...
 
 #### Optional but Recommended
+
 - [ ] `REDIS_URL` — For caching and session storage
 - [ ] `UPLOADS_DIR` — Path for file uploads (signatures, etc.)
 
@@ -63,6 +69,7 @@
 ### Pre-Launch Testing
 
 #### Core Functionality
+
 - [ ] User registration and login works
 - [ ] Client creation and management works
 - [ ] Service catalog displays correctly
@@ -72,12 +79,14 @@
 - [ ] Companies House lookup works
 
 #### Payment Processing
+
 - [ ] Adfin payment creation works
 - [ ] Payment checkout URL generates correctly
 - [ ] Webhook handling works
 - [ ] Payment status updates correctly
 
 #### Security
+
 - [ ] CSRF protection active
 - [ ] Rate limiting active
 - [ ] JWT tokens expire correctly
@@ -86,12 +95,14 @@
 ### Post-Launch Monitoring
 
 #### Essential Monitoring
+
 - [ ] Set up Render analytics/dashboard
 - [ ] Configure error alerting (Sentry recommended)
 - [ ] Set up database backup notifications
 - [ ] Monitor email delivery rates
 
 #### Business Metrics to Track
+
 - [ ] Number of proposals created
 - [ ] Proposal acceptance rate
 - [ ] Average proposal value
@@ -119,11 +130,13 @@
 ## Support & Maintenance
 
 ### Regular Tasks
+
 - **Weekly**: Review error logs, check database backups
 - **Monthly**: Review payment processing fees, update dependencies
 - **Quarterly**: Security audit, performance review
 
 ### Emergency Contacts
+
 - Render Support: https://render.com/help
 - Adfin Support: support@adfin.io
 - Companies House API: https://forum.aws.chdev.org/

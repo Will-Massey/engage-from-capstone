@@ -93,11 +93,7 @@ router.get(
     ]);
 
     // Get client stats
-    const [
-      totalClients,
-      newClientsThisMonth,
-      activeClients,
-    ] = await Promise.all([
+    const [totalClients, newClientsThisMonth, activeClients] = await Promise.all([
       prisma.client.count({ where: { tenantId } }),
       prisma.client.count({
         where: {
@@ -141,9 +137,7 @@ router.get(
     });
 
     // Get service names for top services
-    const serviceIds = topServices
-      .map((s) => s.serviceTemplateId)
-      .filter(Boolean);
+    const serviceIds = topServices.map((s) => s.serviceTemplateId).filter(Boolean);
     const serviceNames = serviceIds.length
       ? await prisma.serviceTemplate.findMany({
           where: { id: { in: serviceIds as string[] } },
@@ -153,23 +147,17 @@ router.get(
 
     const topServicesWithNames = topServices.map((s) => ({
       ...s,
-      name:
-        serviceNames.find((n) => n.id === s.serviceTemplateId)?.name ||
-        'Unknown Service',
+      name: serviceNames.find((n) => n.id === s.serviceTemplateId)?.name || 'Unknown Service',
     }));
 
     // Calculate conversion rate
     const [sentCount, acceptedCount] = conversionRate;
-    const conversionRatePercent =
-      sentCount > 0 ? Math.round((acceptedCount / sentCount) * 100) : 0;
+    const conversionRatePercent = sentCount > 0 ? Math.round((acceptedCount / sentCount) * 100) : 0;
 
     // Calculate growth percentages
     const proposalGrowth =
       proposalsLastMonth > 0
-        ? Math.round(
-            ((proposalsThisMonth - proposalsLastMonth) / proposalsLastMonth) *
-              100
-          )
+        ? Math.round(((proposalsThisMonth - proposalsLastMonth) / proposalsLastMonth) * 100)
         : proposalsThisMonth > 0
           ? 100
           : 0;
@@ -333,8 +321,7 @@ router.get(
                 100
             )
           : 0,
-      lastActivity:
-        client.proposals.length > 0 ? client.proposals[0].createdAt : null,
+      lastActivity: client.proposals.length > 0 ? client.proposals[0].createdAt : null,
     }));
 
     res.json({
@@ -344,10 +331,8 @@ router.get(
         summary: {
           totalClients: clientsWithActivity.length,
           avgProposalsPerClient:
-            clientsWithActivity.reduce(
-              (sum, c) => sum + c._count.proposals,
-              0
-            ) / clientsWithActivity.length || 0,
+            clientsWithActivity.reduce((sum, c) => sum + c._count.proposals, 0) /
+              clientsWithActivity.length || 0,
         },
       },
     });

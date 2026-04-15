@@ -113,9 +113,12 @@ export class EmailService {
         user: this.config.smtp.user,
         pass: this.config.smtp.pass,
       },
-      tls: process.env.NODE_ENV === 'production' ? {
-        rejectUnauthorized: true,
-      } : undefined,
+      tls:
+        process.env.NODE_ENV === 'production'
+          ? {
+              rejectUnauthorized: true,
+            }
+          : undefined,
     });
 
     // Verify connection
@@ -219,7 +222,7 @@ export class EmailService {
         throw new Error(`Outlook token refresh failed: ${response.statusText}`);
       }
 
-      const data = await response.json() as any;
+      const data = (await response.json()) as any;
       return data.access_token;
     } catch (error) {
       logger.error('Failed to get Outlook access token:', error);
@@ -227,7 +230,9 @@ export class EmailService {
     }
   }
 
-  async sendEmail(message: EmailMessage): Promise<{ success: boolean; messageId?: string; error?: string }> {
+  async sendEmail(
+    message: EmailMessage
+  ): Promise<{ success: boolean; messageId?: string; error?: string }> {
     try {
       if (!this.transporter) {
         throw new Error('Email transporter not initialized');
@@ -347,7 +352,8 @@ export class EmailService {
     proposalPdf: Buffer;
     signaturePng?: Buffer;
   }): Promise<{ success: boolean; messageId?: string; error?: string }> {
-    const { generateAcceptanceNotification } = await import('../templates/acceptanceNotification.js');
+    const { generateAcceptanceNotification } =
+      await import('../templates/acceptanceNotification.js');
 
     const { html, text, subject } = generateAcceptanceNotification({
       clientName: params.clientName,
@@ -403,10 +409,7 @@ export class EmailService {
 
     return oauth2Client.generateAuthUrl({
       access_type: 'offline',
-      scope: [
-        'https://mail.google.com/',
-        'https://www.googleapis.com/auth/gmail.send',
-      ],
+      scope: ['https://mail.google.com/', 'https://www.googleapis.com/auth/gmail.send'],
       prompt: 'consent',
     });
   }
@@ -423,7 +426,9 @@ export class EmailService {
     const { tokens } = await oauth2Client.getToken(code);
 
     if (!tokens.refresh_token) {
-      throw new Error('No refresh token received. User may need to re-authorize with prompt=consent');
+      throw new Error(
+        'No refresh token received. User may need to re-authorize with prompt=consent'
+      );
     }
 
     return {
@@ -433,22 +438,24 @@ export class EmailService {
   }
 
   // Generate Microsoft OAuth2 URL for setup
-  static generateMicrosoftAuthUrl(clientId: string, redirectUri: string, tenantId?: string): string {
-    const scopes = [
-      'offline_access',
-      'https://outlook.office365.com/SMTP.Send',
-      'User.Read',
-    ];
+  static generateMicrosoftAuthUrl(
+    clientId: string,
+    redirectUri: string,
+    tenantId?: string
+  ): string {
+    const scopes = ['offline_access', 'https://outlook.office365.com/SMTP.Send', 'User.Read'];
 
     // Use 'common' for multi-tenant apps, or specific tenant ID for single-tenant
     const tenant = tenantId || 'common';
 
-    return `https://login.microsoftonline.com/${tenant}/oauth2/v2.0/authorize?` +
+    return (
+      `https://login.microsoftonline.com/${tenant}/oauth2/v2.0/authorize?` +
       `client_id=${encodeURIComponent(clientId)}` +
       `&response_type=code` +
       `&redirect_uri=${encodeURIComponent(redirectUri)}` +
       `&scope=${encodeURIComponent(scopes.join(' '))}` +
-      `&prompt=consent`;
+      `&prompt=consent`
+    );
   }
 
   // Exchange Microsoft code for tokens
@@ -478,12 +485,14 @@ export class EmailService {
       throw new Error(`Token exchange failed: ${response.statusText}`);
     }
 
-    const data = await response.json() as any;
+    const data = (await response.json()) as any;
 
     return {
       refreshToken: data.refresh_token,
       accessToken: data.access_token,
-      user: data.id_token ? JSON.parse(Buffer.from(data.id_token.split('.')[1], 'base64').toString()).email : undefined,
+      user: data.id_token
+        ? JSON.parse(Buffer.from(data.id_token.split('.')[1], 'base64').toString()).email
+        : undefined,
     };
   }
 }

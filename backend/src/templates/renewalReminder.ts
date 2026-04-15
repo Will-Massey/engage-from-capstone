@@ -32,7 +32,7 @@ export function generateRenewalReminder(data: RenewalReminderData): {
   });
 
   const subject = `⏰ Renewal Due in ${data.daysUntilRenewal} Days: ${data.clientName}`;
-  
+
   const frontendUrl = process.env.FRONTEND_URL || 'https://engage.capstone.co.uk';
 
   const html = `

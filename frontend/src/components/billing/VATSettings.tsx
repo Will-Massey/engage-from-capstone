@@ -32,7 +32,7 @@ const VATSettings = () => {
 
   const loadSettings = async () => {
     try {
-      const response = await apiClient.get('/tenants/settings') as any;
+      const response = (await apiClient.get('/tenants/settings')) as any;
       if (response.success) {
         const vatSettings = response.data.vat || {};
         setSettings({
@@ -52,10 +52,10 @@ const VATSettings = () => {
   const handleSave = async () => {
     setIsSaving(true);
     try {
-      const response = await apiClient.put('/tenants/settings', {
+      const response = (await apiClient.put('/tenants/settings', {
         vat: settings,
-      }) as any;
-      
+      })) as any;
+
       if (response.success) {
         toast.success('VAT settings saved successfully');
       }
@@ -165,11 +165,7 @@ const VATSettings = () => {
 
       {/* Save Button */}
       <div className="pt-4 border-t border-gray-200">
-        <button
-          onClick={handleSave}
-          disabled={isSaving}
-          className="btn-primary"
-        >
+        <button onClick={handleSave} disabled={isSaving} className="btn-primary">
           {isSaving ? 'Saving...' : 'Save VAT Settings'}
         </button>
       </div>

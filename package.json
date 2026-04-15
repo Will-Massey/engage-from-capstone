@@ -20,13 +20,18 @@
     "db:migrate": "cd backend && npx prisma migrate dev",
     "db:generate": "cd backend && npx prisma generate",
     "db:seed": "cd backend && npx prisma db seed",
-    "db:studio": "cd backend && npx prisma studio"
+    "db:studio": "cd backend && npx prisma studio",
+    "lint": "cd backend && npm run lint && cd ../frontend && npm run lint && cd ../shared && npm run lint",
+    "typecheck": "cd backend && npm run typecheck && cd ../frontend && npm run typecheck && cd ../shared && npm run typecheck",
+    "format:check": "prettier --check .",
+    "format": "prettier --write ."
   },
   "devDependencies": {
     "@types/node": "^20.10.0",
     "@typescript-eslint/eslint-plugin": "^6.15.0",
     "@typescript-eslint/parser": "^6.15.0",
     "eslint": "^8.56.0",
+    "prettier": "^3.8.2",
     "typescript": "^5.3.3"
   },
   "engines": {

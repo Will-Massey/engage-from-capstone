@@ -73,7 +73,7 @@ class TwoFactorService {
      * Remove a used backup code
      */
     removeBackupCode(backupCodes, code) {
-        return backupCodes.filter(c => c !== code.toUpperCase());
+        return backupCodes.filter((c) => c !== code.toUpperCase());
     }
     /**
      * Generate a new set of backup codes

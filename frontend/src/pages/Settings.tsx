@@ -18,10 +18,25 @@ import EmailSettings from '../components/email/EmailSettings';
 // Simplified tabs - combined related sections
 const tabs = [
   { id: 'profile', name: 'My Profile', icon: UserCircleIcon, description: 'Personal information' },
-  { id: 'practice', name: 'Practice', icon: BuildingOfficeIcon, description: 'Company & legal details' },
+  {
+    id: 'practice',
+    name: 'Practice',
+    icon: BuildingOfficeIcon,
+    description: 'Company & legal details',
+  },
   { id: 'branding', name: 'Branding', icon: PaintBrushIcon, description: 'Logo & colors' },
-  { id: 'communications', name: 'Communications', icon: EnvelopeIcon, description: 'Email & templates' },
-  { id: 'billing', name: 'Billing & VAT', icon: CalculatorIcon, description: 'Tax & payment settings' },
+  {
+    id: 'communications',
+    name: 'Communications',
+    icon: EnvelopeIcon,
+    description: 'Email & templates',
+  },
+  {
+    id: 'billing',
+    name: 'Billing & VAT',
+    icon: CalculatorIcon,
+    description: 'Tax & payment settings',
+  },
   { id: 'team', name: 'Team', icon: UsersIcon, description: 'Users & permissions' },
   { id: 'security', name: 'Security', icon: ShieldCheckIcon, description: 'Password & access' },
 ];
@@ -31,7 +46,7 @@ const Settings = () => {
   const [activeTab, setActiveTab] = useState('profile');
   const [isLoading, setIsLoading] = useState(false);
   const [isSaving, setIsSaving] = useState<string | null>(null);
-  
+
   // Profile form state
   const [profileForm, setProfileForm] = useState({
     firstName: user?.firstName || '',
@@ -107,16 +122,17 @@ const Settings = () => {
 
   const loadTenantSettings = async () => {
     try {
-      const response = await apiClient.getTenantSettings() as any;
+      const response = (await apiClient.getTenantSettings()) as any;
       if (response.success && response.data) {
         const data = response.data;
-        setPracticeForm(prev => ({
+        setPracticeForm((prev) => ({
           ...prev,
           name: data.branding?.name || prev.name,
           professionalBody: data.professionalBody || 'ACCA',
           companyRegistration: data.companyRegistration || '',
-          address: data.address?.line1 ? 
-            `${data.address.line1}\n${data.address.line2 || ''}\n${data.address.city}\n${data.address.postcode}` : '',
+          address: data.address?.line1
+            ? `${data.address.line1}\n${data.address.line2 || ''}\n${data.address.city}\n${data.address.postcode}`
+            : '',
           phone: data.phone || '',
           website: data.website || '',
           insurerName: data.insurerName || '',
@@ -124,13 +140,13 @@ const Settings = () => {
           fcaAuthorised: data.fcaAuthorised || false,
           privacyPolicyUrl: data.privacyPolicyUrl || '',
         }));
-        setBrandingForm(prev => ({
+        setBrandingForm((prev) => ({
           ...prev,
           primaryColor: data.branding?.primaryColor || prev.primaryColor,
           logo: data.branding?.logo || prev.logo,
         }));
         if (data.notifications) {
-          setCommunicationsForm(prev => ({
+          setCommunicationsForm((prev) => ({
             ...prev,
             notifications: { ...prev.notifications, ...data.notifications },
           }));
@@ -144,7 +160,7 @@ const Settings = () => {
   const loadUsers = async () => {
     try {
       setIsLoading(true);
-      const response = await apiClient.getUsers() as any;
+      const response = (await apiClient.getUsers()) as any;
       if (response.success) {
         setUsers(response.data || []);
       }
@@ -158,13 +174,13 @@ const Settings = () => {
   const handleSaveProfile = async () => {
     setIsSaving('profile');
     try {
-      const response = await apiClient.updateMe({
+      const response = (await apiClient.updateMe({
         firstName: profileForm.firstName,
         lastName: profileForm.lastName,
         email: profileForm.email,
         phone: profileForm.phone,
         jobTitle: profileForm.jobTitle,
-      }) as any;
+      })) as any;
 
       if (response.success) {
         setAuth(response.data.user, tenant, token);
@@ -182,7 +198,7 @@ const Settings = () => {
   const handleSavePractice = async () => {
     setIsSaving('practice');
     try {
-      const response = await apiClient.updateTenantSettings({
+      const response = (await apiClient.updateTenantSettings({
         branding: {
           name: practiceForm.name,
           primaryColor: brandingForm.primaryColor,
@@ -203,7 +219,7 @@ const Settings = () => {
         governingLaw: practiceForm.governingLaw,
         fcaAuthorised: practiceForm.fcaAuthorised,
         privacyPolicyUrl: practiceForm.privacyPolicyUrl,
-      }) as any;
+      })) as any;
 
       if (response.success) {
         toast.success('Practice settings saved successfully');
@@ -220,12 +236,12 @@ const Settings = () => {
   const handleSaveBranding = async () => {
     setIsSaving('branding');
     try {
-      const response = await apiClient.updateTenantSettings({
+      const response = (await apiClient.updateTenantSettings({
         branding: {
           primaryColor: brandingForm.primaryColor,
           logo: brandingForm.logo,
         },
-      }) as any;
+      })) as any;
 
       if (response.success) {
         toast.success('Branding saved successfully');
@@ -249,7 +265,7 @@ const Settings = () => {
     const reader = new FileReader();
     reader.onload = async (event) => {
       const base64 = event.target?.result as string;
-      setBrandingForm(prev => ({ ...prev, logo: base64 }));
+      setBrandingForm((prev) => ({ ...prev, logo: base64 }));
       toast.success('Logo loaded. Click Save to apply.');
     };
     reader.readAsDataURL(file);
@@ -260,7 +276,7 @@ const Settings = () => {
       toast.error('New passwords do not match');
       return;
     }
-    
+
     // Password complexity validation
     const pwd = passwordForm.newPassword;
     if (pwd.length < 8) {
@@ -286,10 +302,10 @@ const Settings = () => {
 
     setIsSaving('security');
     try {
-      const response = await apiClient.changePassword({
+      const response = (await apiClient.changePassword({
         currentPassword: passwordForm.currentPassword,
         newPassword: passwordForm.newPassword,
-      }) as any;
+      })) as any;
 
       if (response.success) {
         toast.success('Password changed successfully');
@@ -330,7 +346,7 @@ const Settings = () => {
 
     setIsSaving('team');
     try {
-      const response = await apiClient.createUser(newUserForm) as any;
+      const response = (await apiClient.createUser(newUserForm)) as any;
       if (response.success) {
         toast.success('User created successfully');
         setShowAddUserModal(false);
@@ -350,7 +366,7 @@ const Settings = () => {
     if (!confirm('Are you sure you want to remove this user?')) return;
 
     try {
-      const response = await apiClient.deleteUser(userId) as any;
+      const response = (await apiClient.deleteUser(userId)) as any;
       if (response.success) {
         toast.success('User removed successfully');
         loadUsers();
@@ -414,10 +430,14 @@ Yours sincerely,
                   }`}
                 />
                 <div className="ml-3">
-                  <p className={`text-sm font-medium ${activeTab === tab.id ? 'text-primary-900' : 'text-slate-900'}`}>
+                  <p
+                    className={`text-sm font-medium ${activeTab === tab.id ? 'text-primary-900' : 'text-slate-900'}`}
+                  >
                     {tab.name}
                   </p>
-                  <p className={`text-xs ${activeTab === tab.id ? 'text-primary-600' : 'text-slate-600'}`}>
+                  <p
+                    className={`text-xs ${activeTab === tab.id ? 'text-primary-600' : 'text-slate-600'}`}
+                  >
                     {tab.description}
                   </p>
                 </div>
@@ -450,7 +470,9 @@ Yours sincerely,
                     <input
                       type="text"
                       value={profileForm.firstName}
-                      onChange={(e) => setProfileForm({ ...profileForm, firstName: e.target.value })}
+                      onChange={(e) =>
+                        setProfileForm({ ...profileForm, firstName: e.target.value })
+                      }
                       className="mt-1 input-field w-full"
                     />
                   </div>
@@ -496,7 +518,7 @@ Yours sincerely,
                   </div>
                 </div>
                 <div className="pt-4 border-t border-white/10">
-                  <button 
+                  <button
                     onClick={handleSaveProfile}
                     disabled={isSaving === 'profile'}
                     className="btn-primary"
@@ -519,7 +541,9 @@ Yours sincerely,
                 </div>
                 <div className="p-6 space-y-6">
                   <div>
-                    <label className="block text-sm font-medium text-slate-800">Practice Name</label>
+                    <label className="block text-sm font-medium text-slate-800">
+                      Practice Name
+                    </label>
                     <input
                       type="text"
                       value={practiceForm.name}
@@ -529,20 +553,28 @@ Yours sincerely,
                   </div>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div>
-                      <label className="block text-sm font-medium text-slate-800">Company Registration Number</label>
+                      <label className="block text-sm font-medium text-slate-800">
+                        Company Registration Number
+                      </label>
                       <input
                         type="text"
                         value={practiceForm.companyRegistration}
-                        onChange={(e) => setPracticeForm({ ...practiceForm, companyRegistration: e.target.value })}
+                        onChange={(e) =>
+                          setPracticeForm({ ...practiceForm, companyRegistration: e.target.value })
+                        }
                         className="mt-1 input-field w-full"
                         placeholder="e.g., 12345678"
                       />
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-slate-800">Professional Body</label>
+                      <label className="block text-sm font-medium text-slate-800">
+                        Professional Body
+                      </label>
                       <select
                         value={practiceForm.professionalBody}
-                        onChange={(e) => setPracticeForm({ ...practiceForm, professionalBody: e.target.value })}
+                        onChange={(e) =>
+                          setPracticeForm({ ...practiceForm, professionalBody: e.target.value })
+                        }
                         className="mt-1 input-field w-full"
                       >
                         <option value="ACCA">ACCA</option>
@@ -556,10 +588,14 @@ Yours sincerely,
                     </div>
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-slate-800">Registered Address</label>
+                    <label className="block text-sm font-medium text-slate-800">
+                      Registered Address
+                    </label>
                     <textarea
                       value={practiceForm.address}
-                      onChange={(e) => setPracticeForm({ ...practiceForm, address: e.target.value })}
+                      onChange={(e) =>
+                        setPracticeForm({ ...practiceForm, address: e.target.value })
+                      }
                       rows={4}
                       className="mt-1 input-field w-full"
                       placeholder="Street address&#10;City&#10;Postcode"
@@ -567,11 +603,15 @@ Yours sincerely,
                   </div>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div>
-                      <label className="block text-sm font-medium text-slate-800">Practice Phone</label>
+                      <label className="block text-sm font-medium text-slate-800">
+                        Practice Phone
+                      </label>
                       <input
                         type="tel"
                         value={practiceForm.phone}
-                        onChange={(e) => setPracticeForm({ ...practiceForm, phone: e.target.value })}
+                        onChange={(e) =>
+                          setPracticeForm({ ...practiceForm, phone: e.target.value })
+                        }
                         className="mt-1 input-field w-full"
                       />
                     </div>
@@ -580,7 +620,9 @@ Yours sincerely,
                       <input
                         type="url"
                         value={practiceForm.website}
-                        onChange={(e) => setPracticeForm({ ...practiceForm, website: e.target.value })}
+                        onChange={(e) =>
+                          setPracticeForm({ ...practiceForm, website: e.target.value })
+                        }
                         className="mt-1 input-field w-full"
                         placeholder="https://"
                       />
@@ -593,25 +635,35 @@ Yours sincerely,
               <div className="glass-tile overflow-hidden">
                 <div className="px-6 py-4 border-b border-white/10 bg-white/5">
                   <h2 className="text-lg font-semibold text-slate-900">Legal & Compliance</h2>
-                  <p className="text-sm text-slate-600">Professional indemnity and regulatory information</p>
+                  <p className="text-sm text-slate-600">
+                    Professional indemnity and regulatory information
+                  </p>
                 </div>
                 <div className="p-6 space-y-6">
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div>
-                      <label className="block text-sm font-medium text-slate-800">Professional Indemnity Insurer</label>
+                      <label className="block text-sm font-medium text-slate-800">
+                        Professional Indemnity Insurer
+                      </label>
                       <input
                         type="text"
                         value={practiceForm.insurerName}
-                        onChange={(e) => setPracticeForm({ ...practiceForm, insurerName: e.target.value })}
+                        onChange={(e) =>
+                          setPracticeForm({ ...practiceForm, insurerName: e.target.value })
+                        }
                         className="mt-1 input-field w-full"
                         placeholder="e.g., Hiscox, AIG"
                       />
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-slate-800">Governing Law</label>
+                      <label className="block text-sm font-medium text-slate-800">
+                        Governing Law
+                      </label>
                       <select
                         value={practiceForm.governingLaw}
-                        onChange={(e) => setPracticeForm({ ...practiceForm, governingLaw: e.target.value })}
+                        onChange={(e) =>
+                          setPracticeForm({ ...practiceForm, governingLaw: e.target.value })
+                        }
                         className="mt-1 input-field w-full"
                       >
                         <option value="England and Wales">England and Wales</option>
@@ -625,7 +677,9 @@ Yours sincerely,
                       type="checkbox"
                       id="fcaAuthorised"
                       checked={practiceForm.fcaAuthorised}
-                      onChange={(e) => setPracticeForm({ ...practiceForm, fcaAuthorised: e.target.checked })}
+                      onChange={(e) =>
+                        setPracticeForm({ ...practiceForm, fcaAuthorised: e.target.checked })
+                      }
                       className="h-4 w-4 text-primary-600 rounded border-slate-300"
                     />
                     <label htmlFor="fcaAuthorised" className="ml-2 text-sm text-slate-800">
@@ -633,17 +687,21 @@ Yours sincerely,
                     </label>
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-slate-800">Privacy Policy URL</label>
+                    <label className="block text-sm font-medium text-slate-800">
+                      Privacy Policy URL
+                    </label>
                     <input
                       type="url"
                       value={practiceForm.privacyPolicyUrl}
-                      onChange={(e) => setPracticeForm({ ...practiceForm, privacyPolicyUrl: e.target.value })}
+                      onChange={(e) =>
+                        setPracticeForm({ ...practiceForm, privacyPolicyUrl: e.target.value })
+                      }
                       className="mt-1 input-field w-full"
                       placeholder="https://yourwebsite.com/privacy"
                     />
                   </div>
                   <div className="pt-4 border-t border-white/10">
-                    <button 
+                    <button
                       onClick={handleSavePractice}
                       disabled={isSaving === 'practice'}
                       className="btn-primary"
@@ -666,11 +724,17 @@ Yours sincerely,
               <div className="p-6 space-y-8">
                 {/* Logo Upload */}
                 <div>
-                  <label className="block text-sm font-medium text-slate-800 mb-3">Practice Logo</label>
+                  <label className="block text-sm font-medium text-slate-800 mb-3">
+                    Practice Logo
+                  </label>
                   <div className="flex items-start space-x-6">
                     <div className="w-32 h-32 border-2 border-dashed border-slate-300 rounded-lg flex items-center justify-center bg-slate-50 overflow-hidden">
                       {brandingForm.logo ? (
-                        <img src={brandingForm.logo} alt="Logo" className="w-full h-full object-contain" />
+                        <img
+                          src={brandingForm.logo}
+                          alt="Logo"
+                          className="w-full h-full object-contain"
+                        />
                       ) : (
                         <BuildingOfficeIcon className="h-12 w-12 text-slate-400" />
                       )}
@@ -691,29 +755,39 @@ Yours sincerely,
 
                 {/* Primary Color */}
                 <div>
-                  <label className="block text-sm font-medium text-slate-800 mb-3">Primary Brand Color</label>
+                  <label className="block text-sm font-medium text-slate-800 mb-3">
+                    Primary Brand Color
+                  </label>
                   <div className="flex items-center space-x-4">
                     <input
                       type="color"
                       value={brandingForm.primaryColor}
-                      onChange={(e) => setBrandingForm({ ...brandingForm, primaryColor: e.target.value })}
+                      onChange={(e) =>
+                        setBrandingForm({ ...brandingForm, primaryColor: e.target.value })
+                      }
                       className="h-12 w-12 rounded-lg border border-slate-300 cursor-pointer"
                     />
                     <input
                       type="text"
                       value={brandingForm.primaryColor}
-                      onChange={(e) => setBrandingForm({ ...brandingForm, primaryColor: e.target.value })}
+                      onChange={(e) =>
+                        setBrandingForm({ ...brandingForm, primaryColor: e.target.value })
+                      }
                       className="input-field w-32"
                     />
                     <div className="flex space-x-2">
-                      {['#0ea5e9', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899'].map((color) => (
-                        <button
-                          key={color}
-                          onClick={() => setBrandingForm({ ...brandingForm, primaryColor: color })}
-                          className="w-8 h-8 rounded-full border-2 border-white shadow-sm hover:scale-110 transition-transform"
-                          style={{ backgroundColor: color }}
-                        />
-                      ))}
+                      {['#0ea5e9', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899'].map(
+                        (color) => (
+                          <button
+                            key={color}
+                            onClick={() =>
+                              setBrandingForm({ ...brandingForm, primaryColor: color })
+                            }
+                            className="w-8 h-8 rounded-full border-2 border-white shadow-sm hover:scale-110 transition-transform"
+                            style={{ backgroundColor: color }}
+                          />
+                        )
+                      )}
                     </div>
                   </div>
                 </div>
@@ -721,24 +795,33 @@ Yours sincerely,
                 {/* Preview */}
                 <div>
                   <label className="block text-sm font-medium text-slate-800 mb-3">Preview</label>
-                  <div className="border rounded-lg p-6" style={{ borderColor: brandingForm.primaryColor }}>
+                  <div
+                    className="border rounded-lg p-6"
+                    style={{ borderColor: brandingForm.primaryColor }}
+                  >
                     <div className="flex items-center justify-between">
                       <div className="flex items-center space-x-3">
                         {brandingForm.logo && (
                           <img src={brandingForm.logo} alt="Logo" className="h-10" />
                         )}
-                        <span className="font-semibold text-lg" style={{ color: brandingForm.primaryColor }}>
+                        <span
+                          className="font-semibold text-lg"
+                          style={{ color: brandingForm.primaryColor }}
+                        >
                           {practiceForm.name || 'Your Practice Name'}
                         </span>
                       </div>
                       <span className="text-sm text-slate-600">PROPOSAL</span>
                     </div>
-                    <div className="mt-4 h-1 rounded" style={{ backgroundColor: brandingForm.primaryColor }} />
+                    <div
+                      className="mt-4 h-1 rounded"
+                      style={{ backgroundColor: brandingForm.primaryColor }}
+                    />
                   </div>
                 </div>
 
                 <div className="pt-4 border-t border-white/10">
-                  <button 
+                  <button
                     onClick={handleSaveBranding}
                     disabled={isSaving === 'branding'}
                     className="btn-primary"
@@ -757,7 +840,9 @@ Yours sincerely,
               <div className="glass-tile overflow-hidden">
                 <div className="px-6 py-4 border-b border-white/10 bg-white/5">
                   <h2 className="text-lg font-semibold text-slate-900">Email Configuration</h2>
-                  <p className="text-sm text-slate-600">Configure how emails are sent from the platform</p>
+                  <p className="text-sm text-slate-600">
+                    Configure how emails are sent from the platform
+                  </p>
                 </div>
                 <div className="p-6">
                   <EmailSettings />
@@ -767,23 +852,33 @@ Yours sincerely,
               {/* Cover Letter Template */}
               <div className="glass-tile overflow-hidden">
                 <div className="px-6 py-4 border-b border-white/10 bg-white/5">
-                  <h2 className="text-lg font-semibold text-slate-900">Default Cover Letter Template</h2>
-                  <p className="text-sm text-slate-600">Template used at the start of proposals before Terms & Conditions</p>
+                  <h2 className="text-lg font-semibold text-slate-900">
+                    Default Cover Letter Template
+                  </h2>
+                  <p className="text-sm text-slate-600">
+                    Template used at the start of proposals before Terms & Conditions
+                  </p>
                 </div>
                 <div className="p-6 space-y-4">
                   <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
                     <p className="text-sm text-blue-800">
-                      <strong>Available variables:</strong> {'{{client.name}}'}, {'{{tenant.name}}'}, {'{{user.firstName}}'}, {'{{user.lastName}}'}
+                      <strong>Available variables:</strong> {'{{client.name}}'}, {'{{tenant.name}}'}
+                      , {'{{user.firstName}}'}, {'{{user.lastName}}'}
                     </p>
                   </div>
                   <textarea
                     value={communicationsForm.defaultCoverTemplate || defaultCoverTemplate}
-                    onChange={(e) => setCommunicationsForm({ ...communicationsForm, defaultCoverTemplate: e.target.value })}
+                    onChange={(e) =>
+                      setCommunicationsForm({
+                        ...communicationsForm,
+                        defaultCoverTemplate: e.target.value,
+                      })
+                    }
                     rows={12}
                     className="input-field w-full font-mono text-sm"
                   />
                   <div className="pt-4 border-t border-white/10">
-                    <button 
+                    <button
                       onClick={() => toast.success('Template saved')}
                       disabled={isSaving === 'communications'}
                       className="btn-primary"
@@ -798,24 +893,51 @@ Yours sincerely,
               <div className="glass-tile overflow-hidden">
                 <div className="px-6 py-4 border-b border-white/10 bg-white/5">
                   <h2 className="text-lg font-semibold text-slate-900">Notification Preferences</h2>
-                  <p className="text-sm text-slate-600">Choose when you receive email notifications</p>
+                  <p className="text-sm text-slate-600">
+                    Choose when you receive email notifications
+                  </p>
                 </div>
                 <div className="p-6 space-y-4">
                   {[
-                    { key: 'proposalAccepted', label: 'Proposal Accepted', description: 'When a client accepts a proposal' },
-                    { key: 'proposalViewed', label: 'Proposal Viewed', description: 'When a client views a shared proposal' },
-                    { key: 'mtditsaDeadlines', label: 'MTD ITSA Deadlines', description: 'Upcoming compliance deadlines' },
-                    { key: 'weeklySummary', label: 'Weekly Summary', description: 'Weekly activity digest every Monday' },
+                    {
+                      key: 'proposalAccepted',
+                      label: 'Proposal Accepted',
+                      description: 'When a client accepts a proposal',
+                    },
+                    {
+                      key: 'proposalViewed',
+                      label: 'Proposal Viewed',
+                      description: 'When a client views a shared proposal',
+                    },
+                    {
+                      key: 'mtditsaDeadlines',
+                      label: 'MTD ITSA Deadlines',
+                      description: 'Upcoming compliance deadlines',
+                    },
+                    {
+                      key: 'weeklySummary',
+                      label: 'Weekly Summary',
+                      description: 'Weekly activity digest every Monday',
+                    },
                   ].map((item) => (
                     <div key={item.key} className="flex items-start">
                       <input
                         type="checkbox"
                         id={item.key}
-                        checked={communicationsForm.notifications[item.key as keyof typeof communicationsForm.notifications]}
-                        onChange={(e) => setCommunicationsForm({
-                          ...communicationsForm,
-                          notifications: { ...communicationsForm.notifications, [item.key]: e.target.checked }
-                        })}
+                        checked={
+                          communicationsForm.notifications[
+                            item.key as keyof typeof communicationsForm.notifications
+                          ]
+                        }
+                        onChange={(e) =>
+                          setCommunicationsForm({
+                            ...communicationsForm,
+                            notifications: {
+                              ...communicationsForm.notifications,
+                              [item.key]: e.target.checked,
+                            },
+                          })
+                        }
                         className="h-4 w-4 mt-1 text-primary-600 rounded border-slate-300"
                       />
                       <div className="ml-3">
@@ -847,7 +969,7 @@ Yours sincerely,
                   </p>
                   <div className="mt-6">
                     <button
-                      onClick={() => toast.info('VAT settings coming soon')}
+                      onClick={() => toast('VAT settings coming soon')}
                       className="btn-secondary"
                     >
                       Configure VAT
@@ -866,10 +988,7 @@ Yours sincerely,
                   <h2 className="text-lg font-semibold text-slate-900">Team Members</h2>
                   <p className="text-sm text-slate-600">Manage users and their permissions</p>
                 </div>
-                <button
-                  onClick={() => setShowAddUserModal(true)}
-                  className="btn-primary text-sm"
-                >
+                <button onClick={() => setShowAddUserModal(true)} className="btn-primary text-sm">
                   Add User
                 </button>
               </div>
@@ -880,11 +999,15 @@ Yours sincerely,
                   <div className="p-8 text-center text-slate-600">No users found</div>
                 ) : (
                   users.map((u) => (
-                    <div key={u.id} className="p-6 flex items-center justify-between hover:bg-slate-50 transition-colors">
+                    <div
+                      key={u.id}
+                      className="p-6 flex items-center justify-between hover:bg-slate-50 transition-colors"
+                    >
                       <div className="flex items-center">
                         <div className="h-10 w-10 rounded-full bg-primary-100 flex items-center justify-center">
                           <span className="text-primary-700 font-medium">
-                            {u.firstName?.[0]}{u.lastName?.[0]}
+                            {u.firstName?.[0]}
+                            {u.lastName?.[0]}
                           </span>
                         </div>
                         <div className="ml-4">
@@ -921,20 +1044,28 @@ Yours sincerely,
                     <div className="space-y-4">
                       <div className="grid grid-cols-2 gap-4">
                         <div>
-                          <label className="block text-sm font-medium text-slate-800">First Name</label>
+                          <label className="block text-sm font-medium text-slate-800">
+                            First Name
+                          </label>
                           <input
                             type="text"
                             value={newUserForm.firstName}
-                            onChange={(e) => setNewUserForm({ ...newUserForm, firstName: e.target.value })}
+                            onChange={(e) =>
+                              setNewUserForm({ ...newUserForm, firstName: e.target.value })
+                            }
                             className="mt-1 input-field w-full"
                           />
                         </div>
                         <div>
-                          <label className="block text-sm font-medium text-slate-800">Last Name</label>
+                          <label className="block text-sm font-medium text-slate-800">
+                            Last Name
+                          </label>
                           <input
                             type="text"
                             value={newUserForm.lastName}
-                            onChange={(e) => setNewUserForm({ ...newUserForm, lastName: e.target.value })}
+                            onChange={(e) =>
+                              setNewUserForm({ ...newUserForm, lastName: e.target.value })
+                            }
                             className="mt-1 input-field w-full"
                           />
                         </div>
@@ -944,7 +1075,9 @@ Yours sincerely,
                         <input
                           type="email"
                           value={newUserForm.email}
-                          onChange={(e) => setNewUserForm({ ...newUserForm, email: e.target.value })}
+                          onChange={(e) =>
+                            setNewUserForm({ ...newUserForm, email: e.target.value })
+                          }
                           className="mt-1 input-field w-full"
                         />
                       </div>
@@ -962,11 +1095,15 @@ Yours sincerely,
                         </select>
                       </div>
                       <div>
-                        <label className="block text-sm font-medium text-slate-800">Temporary Password</label>
+                        <label className="block text-sm font-medium text-slate-800">
+                          Temporary Password
+                        </label>
                         <input
                           type="password"
                           value={newUserForm.password}
-                          onChange={(e) => setNewUserForm({ ...newUserForm, password: e.target.value })}
+                          onChange={(e) =>
+                            setNewUserForm({ ...newUserForm, password: e.target.value })
+                          }
                           className="mt-1 input-field w-full"
                           placeholder="Min 8 characters with complexity"
                         />
@@ -977,13 +1114,20 @@ Yours sincerely,
                             { test: /[A-Z]/.test(newUserForm.password), label: 'Uppercase' },
                             { test: /[a-z]/.test(newUserForm.password), label: 'Lowercase' },
                             { test: /[0-9]/.test(newUserForm.password), label: 'Number' },
-                            { test: /[^A-Za-z0-9]/.test(newUserForm.password), label: 'Special char' },
+                            {
+                              test: /[^A-Za-z0-9]/.test(newUserForm.password),
+                              label: 'Special char',
+                            },
                           ].map((req, i) => (
                             <div key={i} className="flex items-center text-xs">
-                              <span className={`mr-2 ${req.test ? 'text-green-500' : 'text-slate-400'}`}>
+                              <span
+                                className={`mr-2 ${req.test ? 'text-green-500' : 'text-slate-400'}`}
+                              >
                                 {req.test ? '✓' : '○'}
                               </span>
-                              <span className={req.test ? 'text-green-700' : 'text-slate-600'}>{req.label}</span>
+                              <span className={req.test ? 'text-green-700' : 'text-slate-600'}>
+                                {req.label}
+                              </span>
                             </div>
                           ))}
                         </div>
@@ -1022,47 +1166,75 @@ Yours sincerely,
                   <h3 className="text-sm font-medium text-slate-900 mb-4">Change Password</h3>
                   <div className="space-y-4 max-w-md">
                     <div>
-                      <label className="block text-sm font-medium text-slate-800">Current Password</label>
+                      <label className="block text-sm font-medium text-slate-800">
+                        Current Password
+                      </label>
                       <input
                         type="password"
                         value={passwordForm.currentPassword}
-                        onChange={(e) => setPasswordForm({ ...passwordForm, currentPassword: e.target.value })}
+                        onChange={(e) =>
+                          setPasswordForm({ ...passwordForm, currentPassword: e.target.value })
+                        }
                         className="mt-1 input-field w-full"
                       />
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-slate-800">New Password</label>
+                      <label className="block text-sm font-medium text-slate-800">
+                        New Password
+                      </label>
                       <input
                         type="password"
                         value={passwordForm.newPassword}
-                        onChange={(e) => setPasswordForm({ ...passwordForm, newPassword: e.target.value })}
+                        onChange={(e) =>
+                          setPasswordForm({ ...passwordForm, newPassword: e.target.value })
+                        }
                         className="mt-1 input-field w-full"
                       />
                       {/* Password Requirements */}
                       <div className="mt-2 space-y-1">
                         <p className="text-xs text-slate-600 font-medium">Password requirements:</p>
                         {[
-                          { test: passwordForm.newPassword.length >= 8, label: 'At least 8 characters' },
-                          { test: /[A-Z]/.test(passwordForm.newPassword), label: 'One uppercase letter' },
-                          { test: /[a-z]/.test(passwordForm.newPassword), label: 'One lowercase letter' },
+                          {
+                            test: passwordForm.newPassword.length >= 8,
+                            label: 'At least 8 characters',
+                          },
+                          {
+                            test: /[A-Z]/.test(passwordForm.newPassword),
+                            label: 'One uppercase letter',
+                          },
+                          {
+                            test: /[a-z]/.test(passwordForm.newPassword),
+                            label: 'One lowercase letter',
+                          },
                           { test: /[0-9]/.test(passwordForm.newPassword), label: 'One number' },
-                          { test: /[^A-Za-z0-9]/.test(passwordForm.newPassword), label: 'One special character' },
+                          {
+                            test: /[^A-Za-z0-9]/.test(passwordForm.newPassword),
+                            label: 'One special character',
+                          },
                         ].map((req, i) => (
                           <div key={i} className="flex items-center text-xs">
-                            <span className={`mr-2 ${req.test ? 'text-green-500' : 'text-slate-400'}`}>
+                            <span
+                              className={`mr-2 ${req.test ? 'text-green-500' : 'text-slate-400'}`}
+                            >
                               {req.test ? '✓' : '○'}
                             </span>
-                            <span className={req.test ? 'text-green-700' : 'text-slate-600'}>{req.label}</span>
+                            <span className={req.test ? 'text-green-700' : 'text-slate-600'}>
+                              {req.label}
+                            </span>
                           </div>
                         ))}
                       </div>
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-slate-800">Confirm New Password</label>
+                      <label className="block text-sm font-medium text-slate-800">
+                        Confirm New Password
+                      </label>
                       <input
                         type="password"
                         value={passwordForm.confirmPassword}
-                        onChange={(e) => setPasswordForm({ ...passwordForm, confirmPassword: e.target.value })}
+                        onChange={(e) =>
+                          setPasswordForm({ ...passwordForm, confirmPassword: e.target.value })
+                        }
                         className="mt-1 input-field w-full"
                       />
                     </div>
@@ -1077,10 +1249,14 @@ Yours sincerely,
                 </div>
 
                 <div className="pt-6 border-t border-white/10">
-                  <h3 className="text-sm font-medium text-slate-900 mb-2">Two-Factor Authentication</h3>
-                  <p className="text-sm text-slate-600 mb-4">Add an extra layer of security to your account</p>
+                  <h3 className="text-sm font-medium text-slate-900 mb-2">
+                    Two-Factor Authentication
+                  </h3>
+                  <p className="text-sm text-slate-600 mb-4">
+                    Add an extra layer of security to your account
+                  </p>
                   <button
-                    onClick={() => toast.info('2FA coming soon')}
+                    onClick={() => toast('2FA coming soon')}
                     className="btn-secondary"
                     disabled
                   >

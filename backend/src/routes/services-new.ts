@@ -66,9 +66,7 @@ router.get(
 
     // Filter by applicable entity type if provided
     if (entityType) {
-      services = services.filter((s) =>
-        s.applicableEntityTypes.includes(entityType as string)
-      );
+      services = services.filter((s) => s.applicableEntityTypes.includes(entityType as string));
     }
 
     res.json({
@@ -110,11 +108,7 @@ router.post(
     });
 
     if (existing) {
-      throw new ApiError(
-        'SERVICE_EXISTS',
-        'Service already exists in your practice',
-        409
-      );
+      throw new ApiError('SERVICE_EXISTS', 'Service already exists in your practice', 409);
     }
 
     // Create service from catalog

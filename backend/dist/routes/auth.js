@@ -312,10 +312,12 @@ router.get('/me', auth_js_1.authenticate, (0, errorHandler_js_1.asyncHandler)(as
  * Change user password
  */
 router.put('/change-password', auth_js_1.authenticate, (0, errorHandler_js_1.asyncHandler)(async (req, res) => {
-    const { currentPassword, newPassword } = zod_1.z.object({
+    const { currentPassword, newPassword } = zod_1.z
+        .object({
         currentPassword: zod_1.z.string(),
         newPassword: zod_1.z.string().min(8, 'Password must be at least 8 characters'),
-    }).parse(req.body);
+    })
+        .parse(req.body);
     const user = await database_js_1.prisma.user.findUnique({
         where: { id: req.user.id },
     });
@@ -640,10 +642,12 @@ router.get('/me/export', auth_js_1.authenticate, (0, errorHandler_js_1.asyncHand
  * Delete user account (GDPR Article 17)
  */
 router.delete('/me', auth_js_1.authenticate, (0, errorHandler_js_1.asyncHandler)(async (req, res) => {
-    const { password, confirmDelete } = zod_1.z.object({
+    const { password, confirmDelete } = zod_1.z
+        .object({
         password: zod_1.z.string(),
         confirmDelete: zod_1.z.literal(true),
-    }).parse(req.body);
+    })
+        .parse(req.body);
     const user = await database_js_1.prisma.user.findUnique({
         where: { id: req.user.id },
     });

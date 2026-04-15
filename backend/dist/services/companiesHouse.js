@@ -24,7 +24,7 @@ class CompaniesHouseService {
             const url = `${COMPANIES_HOUSE_API_URL}/search/companies?q=${encodeURIComponent(query)}&items_per_page=${itemsPerPage}`;
             const response = await fetch(url, {
                 headers: {
-                    'Authorization': `Basic ${Buffer.from(this.apiKey + ':').toString('base64')}`,
+                    Authorization: `Basic ${Buffer.from(this.apiKey + ':').toString('base64')}`,
                     'Content-Type': 'application/json',
                 },
             });
@@ -34,7 +34,7 @@ class CompaniesHouseService {
                 }
                 throw new Error(`Companies House API error: ${response.status} ${response.statusText}`);
             }
-            const data = await response.json();
+            const data = (await response.json());
             return data.items || [];
         }
         catch (error) {
@@ -52,7 +52,7 @@ class CompaniesHouseService {
             const url = `${COMPANIES_HOUSE_API_URL}/company/${cleanNumber}`;
             const response = await fetch(url, {
                 headers: {
-                    'Authorization': `Basic ${Buffer.from(this.apiKey + ':').toString('base64')}`,
+                    Authorization: `Basic ${Buffer.from(this.apiKey + ':').toString('base64')}`,
                     'Content-Type': 'application/json',
                 },
             });
@@ -101,10 +101,10 @@ class CompaniesHouseService {
     mapCompanyType(chType) {
         const typeMap = {
             'private-unlimited': 'LIMITED_COMPANY',
-            'ltd': 'LIMITED_COMPANY',
-            'plc': 'LIMITED_COMPANY',
+            ltd: 'LIMITED_COMPANY',
+            plc: 'LIMITED_COMPANY',
             'limited-partnership': 'PARTNERSHIP',
-            'llp': 'LLP',
+            llp: 'LLP',
             'private-limited-guarant-nsc': 'LIMITED_COMPANY',
             'private-limited-guarant-nsc-limited-exemption': 'LIMITED_COMPANY',
             'private-limited-shares-section-30-exemption': 'LIMITED_COMPANY',
@@ -114,7 +114,7 @@ class CompaniesHouseService {
             'royal-charter': 'CHARITY',
             'investment-company-with-variable-capital': 'LIMITED_COMPANY',
             'unregistered-company': 'SOLE_TRADER',
-            'other': 'SOLE_TRADER',
+            other: 'SOLE_TRADER',
             'european-public-limited-liability-company-se': 'LIMITED_COMPANY',
             'registered-society-non-jurisdictional': 'CHARITY',
             'scottish-partnership': 'PARTNERSHIP',

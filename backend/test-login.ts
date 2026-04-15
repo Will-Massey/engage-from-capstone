@@ -7,11 +7,11 @@ async function testLogin() {
   const email = 'admin@demo.practice';
   const password = 'DemoPass123!';
   const tenantId = '5f0fe3cb-ab5d-4ecd-ad4a-2dd6fc75e3de';
-  
+
   console.log('Testing login with:');
   console.log('  Email:', email);
   console.log('  TenantId:', tenantId);
-  
+
   const user = await prisma.user.findFirst({
     where: {
       email: email.toLowerCase(),
@@ -19,9 +19,9 @@ async function testLogin() {
       isActive: true,
     },
   });
-  
+
   console.log('User found:', !!user);
-  
+
   if (user) {
     const isValid = await bcrypt.compare(password, user.passwordHash);
     console.log('Password valid:', isValid);
@@ -37,7 +37,7 @@ async function testLogin() {
       console.log('  Match:', userNoTenant.tenantId === tenantId);
     }
   }
-  
+
   await prisma.$disconnect();
 }
 

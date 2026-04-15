@@ -57,7 +57,11 @@ export class TenantCache {
   }
 
   // Session management
-  async createSession(sessionId: string, userId: string, ttlSeconds: number = 86400): Promise<void> {
+  async createSession(
+    sessionId: string,
+    userId: string,
+    ttlSeconds: number = 86400
+  ): Promise<void> {
     await this.set(`session:${sessionId}`, userId, ttlSeconds);
   }
 

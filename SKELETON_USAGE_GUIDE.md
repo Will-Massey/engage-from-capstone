@@ -3,63 +3,60 @@
 ## Quick Implementation
 
 ### 1. Import Skeleton Components
+
 ```tsx
-import { 
-  SkeletonCard, 
-  SkeletonTable, 
+import {
+  SkeletonCard,
+  SkeletonTable,
   SkeletonStats,
-  SkeletonForm 
+  SkeletonForm,
 } from '../components/skeleton/SkeletonCard';
 ```
 
 ### 2. Use in Components
 
 #### Dashboard Stats
+
 ```tsx
-{isLoading ? (
-  <SkeletonStats />
-) : (
-  <div className="grid grid-cols-4">
-    {/* Your stats */}
-  </div>
-)}
+{
+  isLoading ? <SkeletonStats /> : <div className="grid grid-cols-4">{/* Your stats */}</div>;
+}
 ```
 
 #### Proposal List (Table)
+
 ```tsx
-{isLoading ? (
-  <SkeletonTable rows={5} />
-) : (
-  <table>
-    {/* Your table */}
-  </table>
-)}
+{
+  isLoading ? <SkeletonTable rows={5} /> : <table>{/* Your table */}</table>;
+}
 ```
 
 #### Cards Grid
+
 ```tsx
-{isLoading ? (
-  <div className="grid grid-cols-3 gap-4">
-    <SkeletonCard />
-    <SkeletonCard />
-    <SkeletonCard />
-  </div>
-) : (
-  <div className="grid grid-cols-3 gap-4">
-    {proposals.map(p => <ProposalCard key={p.id} {...p} />)}
-  </div>
-)}
+{
+  isLoading ? (
+    <div className="grid grid-cols-3 gap-4">
+      <SkeletonCard />
+      <SkeletonCard />
+      <SkeletonCard />
+    </div>
+  ) : (
+    <div className="grid grid-cols-3 gap-4">
+      {proposals.map((p) => (
+        <ProposalCard key={p.id} {...p} />
+      ))}
+    </div>
+  );
+}
 ```
 
 #### Forms
+
 ```tsx
-{isLoading ? (
-  <SkeletonForm fields={4} />
-) : (
-  <form>
-    {/* Your form */}
-  </form>
-)}
+{
+  isLoading ? <SkeletonForm fields={4} /> : <form>{/* Your form */}</form>;
+}
 ```
 
 ### 3. Custom Skeleton Patterns
@@ -76,7 +73,7 @@ export const ProposalBuilderSkeleton = () => (
       <div className="w-16 h-0.5 bg-slate-200 self-center" />
       <div className="w-10 h-10 rounded-full bg-slate-200" />
     </div>
-    
+
     {/* Content */}
     <div className="card p-6 space-y-4">
       <div className="h-6 w-48 bg-slate-200 rounded" />
@@ -108,20 +105,12 @@ const Dashboard = () => {
   return (
     <div className="space-y-6">
       <h1 className="text-2xl font-bold">Dashboard</h1>
-      
-      {isLoading ? (
-        <SkeletonStats />
-      ) : (
-        <StatsGrid data={data.stats} />
-      )}
-      
+
+      {isLoading ? <SkeletonStats /> : <StatsGrid data={data.stats} />}
+
       <h2 className="text-xl font-semibold">Recent Proposals</h2>
-      
-      {isLoading ? (
-        <SkeletonTable rows={5} />
-      ) : (
-        <ProposalsTable proposals={data.proposals} />
-      )}
+
+      {isLoading ? <SkeletonTable rows={5} /> : <ProposalsTable proposals={data.proposals} />}
     </div>
   );
 };

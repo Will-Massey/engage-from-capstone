@@ -22,16 +22,17 @@ const Clients = () => {
 
   useEffect(() => {
     loadClients();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [meta.page]);
 
   const loadClients = async () => {
     try {
       setIsLoading(true);
-      const response = await apiClient.getClients({
+      const response = (await apiClient.getClients({
         page: meta.page,
         limit: 20,
         search: searchQuery || undefined,
-      }) as any;
+      })) as any;
 
       setClients(response.data || []);
       setMeta(response.meta || { page: 1, totalPages: 1, total: 0 });
@@ -71,8 +72,8 @@ const Clients = () => {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900">Clients</h1>
-          <p className="mt-1 text-sm text-slate-600">
+          <h1 className="text-2xl font-bold text-slate-900 dark:text-white">Clients</h1>
+          <p className="mt-1 text-sm text-slate-600 dark:text-slate-300">
             Manage your client relationships and MTD ITSA status
           </p>
         </div>
@@ -93,8 +94,8 @@ const Clients = () => {
           <div className="ml-3">
             <h3 className="text-lg font-semibold">MTD ITSA Deadline: April 2026</h3>
             <p className="mt-1 text-orange-100">
-              Sole traders and partnerships with income over £50,000 must be ready for Making Tax Digital.
-              Limited companies, LLPs, and charities are not affected.
+              Sole traders and partnerships with income over £50,000 must be ready for Making Tax
+              Digital. Limited companies, LLPs, and charities are not affected.
             </p>
           </div>
         </div>
@@ -122,14 +123,9 @@ const Clients = () => {
       ) : clients.length === 0 ? (
         <div className="text-center py-16 card">
           <UsersIcon className="mx-auto h-12 w-12 text-slate-300" />
-          <h3 className="mt-4 text-lg font-medium text-slate-900">No clients yet</h3>
-          <p className="mt-2 text-sm text-slate-500">
-            Get started by adding your first client
-          </p>
-          <Link
-            to="/clients/new"
-            className="mt-6 btn-primary inline-flex"
-          >
+          <h3 className="mt-4 text-lg font-medium text-slate-900 dark:text-white">No clients yet</h3>
+          <p className="mt-2 text-sm text-slate-500">Get started by adding your first client</p>
+          <Link to="/clients/new" className="mt-6 btn-primary inline-flex">
             <PlusIcon className="h-5 w-5 mr-2" />
             Add Client
           </Link>
@@ -148,7 +144,7 @@ const Clients = () => {
                     {getCompanyTypeIcon(client.companyType)}
                   </div>
                   <div className="ml-3">
-                    <h3 className="text-sm font-semibold text-slate-900">{client.name}</h3>
+                    <h3 className="text-sm font-semibold text-slate-900 dark:text-white">{client.name}</h3>
                     <p className="text-xs text-slate-500">
                       {client.companyType?.replace(/_/g, ' ')}
                     </p>
@@ -169,11 +165,9 @@ const Clients = () => {
               </div>
 
               <div className="mt-4 pt-4 border-t border-slate-100 flex items-center justify-between text-sm">
-                <span className="text-slate-500">
-                  {client._count?.proposals || 0} proposals
-                </span>
+                <span className="text-slate-500">{client._count?.proposals || 0} proposals</span>
                 {client.turnover && (
-                  <span className="text-slate-900 font-semibold">
+                  <span className="text-slate-900 dark:text-white font-semibold">
                     £{(client.turnover / 1000).toFixed(0)}k turnover
                   </span>
                 )}
@@ -210,7 +204,5 @@ const Clients = () => {
     </div>
   );
 };
-
-
 
 export default Clients;

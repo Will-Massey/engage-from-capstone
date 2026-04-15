@@ -27,12 +27,12 @@ const _iconRefs = [DocumentTextIcon, CheckCircleIcon, ClockIcon];
 // Icons loaded successfully
 
 const statusColors: Record<string, string> = {
-  DRAFT: 'bg-slate-100 text-slate-700',
-  SENT: 'bg-blue-100 text-blue-700',
-  VIEWED: 'bg-purple-100 text-purple-700',
-  ACCEPTED: 'bg-green-100 text-green-700',
-  DECLINED: 'bg-red-100 text-red-700',
-  EXPIRED: 'bg-orange-100 text-orange-700',
+  DRAFT: 'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300',
+  SENT: 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-200',
+  VIEWED: 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-200',
+  ACCEPTED: 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-200',
+  DECLINED: 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-200',
+  EXPIRED: 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-200',
 };
 
 const statusLabels: Record<string, string> = {
@@ -54,17 +54,18 @@ const Proposals = () => {
 
   useEffect(() => {
     loadProposals();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [meta.page, statusFilter]);
 
   const loadProposals = async () => {
     try {
       setIsLoading(true);
-      const response = await apiClient.getProposals({
+      const response = (await apiClient.getProposals({
         page: meta.page,
         limit: 20,
         status: statusFilter || undefined,
         search: searchQuery || undefined,
-      }) as any;
+      })) as any;
 
       setProposals(response.data || []);
       setMeta(response.meta || { page: 1, totalPages: 1, total: 0 });
@@ -84,7 +85,7 @@ const Proposals = () => {
   const downloadPDF = async (id: string, reference: string) => {
     try {
       toast.loading('Generating PDF...');
-      const blob = await apiClient.downloadProposalPDF(id) as Blob;
+      const blob = await apiClient.downloadProposalPDF(id);
       toast.dismiss();
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
@@ -116,10 +117,12 @@ const Proposals = () => {
     navigator.clipboard.writeText(link);
     toast.success('Proposal link copied to clipboard');
   };
-  
+
   const generateShareLink = async (proposal: any) => {
     try {
-      const response = await apiClient.post(`/proposals/${proposal.id}/share`, { expiryDays: 30 }) as any;
+      const response = (await apiClient.post(`/proposals/${proposal.id}/share`, {
+        expiryDays: 30,
+      })) as any;
       if (response.success) {
         const shareUrl = response.data.shareUrl;
         navigator.clipboard.writeText(shareUrl);
@@ -133,7 +136,7 @@ const Proposals = () => {
 
   const duplicateProposal = async (proposal: any) => {
     try {
-      const response = await apiClient.createProposal({
+      const response = (await apiClient.createProposal({
         clientId: proposal.clientId,
         title: `${proposal.title} (Copy)`,
         coverLetter: proposal.coverLetter,
@@ -146,8 +149,8 @@ const Proposals = () => {
           discountPercent: s.discountPercent,
           description: s.description,
         })),
-      }) as any;
-      
+      })) as any;
+
       if (response.success) {
         toast.success('Proposal duplicated');
         loadProposals();
@@ -170,14 +173,16 @@ const Proposals = () => {
   // Calculate days until renewal
   const getDaysUntilRenewal = (renewalDate: string) => {
     if (!renewalDate) return null;
-    const days = Math.ceil((new Date(renewalDate).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24));
+    const days = Math.ceil(
+      (new Date(renewalDate).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24)
+    );
     return days;
   };
 
   // Create renewal proposal
   const createRenewal = async (proposalId: string) => {
     try {
-      const response = await apiClient.post(`/proposals/${proposalId}/create-renewal`, {}) as any;
+      const response = (await apiClient.post(`/proposals/${proposalId}/create-renewal`, {})) as any;
       if (response.success) {
         toast.success('Renewal proposal created');
         loadProposals();
@@ -197,10 +202,7 @@ const Proposals = () => {
             Manage your client proposals and track their status
           </p>
         </div>
-        <Link
-          to="/proposals/new"
-          className="btn-primary"
-        >
+        <Link to="/proposals/new" className="btn-primary">
           <PlusIcon className="h-5 w-5 mr-2" />
           Create Proposal
         </Link>
@@ -239,10 +241,7 @@ const Proposals = () => {
               <option value="RENEWALS_DUE">Renewals Due (30 days)</option>
             </select>
 
-            <button
-              onClick={loadProposals}
-              className="btn-secondary"
-            >
+            <button onClick={loadProposals} className="btn-secondary">
               <FunnelIcon className="h-4 w-4 mr-1.5" />
               Filter
             </button>
@@ -257,14 +256,13 @@ const Proposals = () => {
         ) : proposals.length === 0 ? (
           <div className="text-center py-16">
             <DocumentTextIcon className="mx-auto h-12 w-12 text-slate-300 dark:text-slate-600" />
-            <h3 className="mt-4 text-lg font-medium text-slate-900 dark:text-slate-100">No proposals found</h3>
+            <h3 className="mt-4 text-lg font-medium text-slate-900 dark:text-slate-100">
+              No proposals found
+            </h3>
             <p className="mt-2 text-sm text-slate-600 dark:text-slate-400">
               Get started by creating your first proposal
             </p>
-            <Link
-              to="/proposals/new"
-              className="mt-6 btn-primary inline-flex"
-            >
+            <Link to="/proposals/new" className="mt-6 btn-primary inline-flex">
               <PlusIcon className="h-5 w-5 mr-2" />
               Create Proposal
             </Link>
@@ -300,12 +298,16 @@ const Proposals = () => {
               <tbody className="divide-y divide-slate-200 dark:divide-slate-700">
                 {proposals.map((proposal) => {
                   const isExpired = checkExpired(proposal.validUntil);
-                  const displayStatus = isExpired && proposal.status !== 'ACCEPTED' && proposal.status !== 'DECLINED' 
-                    ? 'EXPIRED' 
-                    : proposal.status;
-                  
+                  const displayStatus =
+                    isExpired && proposal.status !== 'ACCEPTED' && proposal.status !== 'DECLINED'
+                      ? 'EXPIRED'
+                      : proposal.status;
+
                   return (
-                    <tr key={proposal.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/50 transition-colors">
+                    <tr
+                      key={proposal.id}
+                      className="hover:bg-slate-50/50 dark:hover:bg-slate-800/50 transition-colors"
+                    >
                       <td className="px-4 py-4 whitespace-nowrap">
                         <div>
                           <Link
@@ -314,11 +316,15 @@ const Proposals = () => {
                           >
                             {proposal.title}
                           </Link>
-                          <p className="text-xs text-slate-500 dark:text-slate-400">{proposal.reference}</p>
+                          <p className="text-xs text-slate-500 dark:text-slate-400">
+                            {proposal.reference}
+                          </p>
                         </div>
                       </td>
                       <td className="px-4 py-4 whitespace-nowrap">
-                        <div className="text-sm text-slate-900 dark:text-slate-100 truncate max-w-[180px]">{proposal.client?.name}</div>
+                        <div className="text-sm text-slate-900 dark:text-slate-100 truncate max-w-[180px]">
+                          {proposal.client?.name}
+                        </div>
                         <div className="text-xs text-slate-500 dark:text-slate-400">
                           {proposal.client?.companyType?.replace(/_/g, ' ')}
                         </div>
@@ -326,7 +332,9 @@ const Proposals = () => {
                       <td className="px-3 py-4 whitespace-nowrap">
                         <div className="flex flex-col gap-1">
                           <div className="flex items-center space-x-1">
-                            <span className={`inline-flex px-2.5 py-0.5 rounded-full text-xs font-medium ${statusColors[displayStatus] || 'bg-slate-100 text-slate-700'}`}>
+                            <span
+                              className={`inline-flex px-2.5 py-0.5 rounded-full text-xs font-medium ${statusColors[displayStatus] || 'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300'}`}
+                            >
                               {statusLabels[displayStatus] || displayStatus}
                             </span>
                             {proposal.signatures?.length > 0 && (
@@ -334,27 +342,29 @@ const Proposals = () => {
                             )}
                           </div>
                           {/* Renewal Badge */}
-                          {proposal.status === 'ACCEPTED' && proposal.renewalDate && (
+                          {proposal.status === 'ACCEPTED' &&
+                            proposal.renewalDate &&
                             (() => {
                               const daysUntil = getDaysUntilRenewal(proposal.renewalDate);
                               if (daysUntil === null) return null;
-                              if (daysUntil <= 0) return (
-                                <span className="inline-flex px-2 py-0.5 rounded text-xs font-medium bg-red-100 text-red-700">
-                                  Renewal overdue
-                                </span>
-                              );
-                              if (daysUntil <= 30) return (
-                                <span className="inline-flex px-2 py-0.5 rounded text-xs font-medium bg-amber-100 text-amber-700">
-                                  Renews in {daysUntil} days
-                                </span>
-                              );
+                              if (daysUntil <= 0)
+                                return (
+                                  <span className="inline-flex px-2 py-0.5 rounded text-xs font-medium bg-red-100 text-red-700">
+                                    Renewal overdue
+                                  </span>
+                                );
+                              if (daysUntil <= 30)
+                                return (
+                                  <span className="inline-flex px-2 py-0.5 rounded text-xs font-medium bg-amber-100 text-amber-700">
+                                    Renews in {daysUntil} days
+                                  </span>
+                                );
                               return (
                                 <span className="inline-flex px-2 py-0.5 rounded text-xs font-medium bg-emerald-100 text-emerald-700">
                                   Renews in {daysUntil} days
                                 </span>
                               );
-                            })()
-                          )}
+                            })()}
                           {proposal.isRenewal && (
                             <span className="inline-flex px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-700">
                               Renewal
@@ -365,8 +375,12 @@ const Proposals = () => {
                       <td className="px-3 py-4 whitespace-nowrap text-center">
                         <div className="flex flex-col items-center">
                           <div className="flex items-center space-x-1">
-                            <EyeIcon className={`h-4 w-4 ${proposal._count?.views > 0 ? 'text-primary-500' : 'text-slate-400 dark:text-slate-500'}`} />
-                            <span className={`text-sm ${proposal._count?.views > 0 ? 'text-primary-700 dark:text-primary-300 font-medium' : 'text-slate-700 dark:text-slate-300'}`}>
+                            <EyeIcon
+                              className={`h-4 w-4 ${proposal._count?.views > 0 ? 'text-primary-500' : 'text-slate-400 dark:text-slate-500'}`}
+                            />
+                            <span
+                              className={`text-sm ${proposal._count?.views > 0 ? 'text-primary-700 dark:text-primary-300 font-medium' : 'text-slate-700 dark:text-slate-300'}`}
+                            >
                               {formatViewCount(proposal._count?.views || 0)}
                             </span>
                           </div>
@@ -386,11 +400,16 @@ const Proposals = () => {
                         </div>
                       </td>
                       <td className="px-4 py-4 whitespace-nowrap">
-                        <div className={`text-sm ${isExpired ? 'text-red-600 dark:text-red-400 font-medium' : 'text-slate-600 dark:text-slate-400'}`}>
-                          {proposal.validUntil && format(new Date(proposal.validUntil), 'dd MMM yyyy')}
-                          {isExpired && proposal.status !== 'ACCEPTED' && proposal.status !== 'DECLINED' && (
-                            <span className="ml-1 text-xs">(Expired)</span>
-                          )}
+                        <div
+                          className={`text-sm ${isExpired ? 'text-red-600 dark:text-red-400 font-medium' : 'text-slate-600 dark:text-slate-400'}`}
+                        >
+                          {proposal.validUntil &&
+                            format(new Date(proposal.validUntil), 'dd MMM yyyy')}
+                          {isExpired &&
+                            proposal.status !== 'ACCEPTED' &&
+                            proposal.status !== 'DECLINED' && (
+                              <span className="ml-1 text-xs">(Expired)</span>
+                            )}
                         </div>
                       </td>
                       <td className="px-3 py-4 whitespace-nowrap text-right text-sm font-medium">
@@ -403,49 +422,60 @@ const Proposals = () => {
                           >
                             <EyeIcon className="h-5 w-5" />
                           </Link>
-                          
+
                           {/* Edit - if draft, sent, viewed, or expired */}
-                          {(proposal.status === 'DRAFT' || proposal.status === 'SENT' || proposal.status === 'VIEWED' || isExpired) && (
+                          {(proposal.status === 'DRAFT' ||
+                            proposal.status === 'SENT' ||
+                            proposal.status === 'VIEWED' ||
+                            isExpired) && (
                             <Link
                               to={`/proposals/${proposal.id}/edit`}
-                              className="p-1 text-slate-500 hover:text-slate-700"
+                              className="p-1 text-slate-500 hover:text-slate-700 dark:hover:text-slate-300"
                               title="Edit"
                             >
                               <PencilIcon className="h-5 w-5" />
                             </Link>
                           )}
-                          
+
                           {/* Send Email */}
-                          {proposal.status !== 'ACCEPTED' && proposal.status !== 'DECLINED' && !isExpired && (
-                            <button
-                              onClick={() => sendProposalEmail(proposal.id)}
-                              className="p-1 text-slate-500 hover:text-blue-600"
-                              title="Send Email"
-                            >
-                              <EnvelopeIcon className="h-5 w-5" />
-                            </button>
-                          )}
-                          
+                          {proposal.status !== 'ACCEPTED' &&
+                            proposal.status !== 'DECLINED' &&
+                            !isExpired && (
+                              <button
+                                onClick={() => sendProposalEmail(proposal.id)}
+                                className="p-1 text-slate-500 hover:text-blue-600"
+                                title="Send Email"
+                              >
+                                <EnvelopeIcon className="h-5 w-5" />
+                              </button>
+                            )}
+
                           {/* Generate/Copy Link */}
-                          {proposal.status !== 'ACCEPTED' && proposal.status !== 'DECLINED' && !isExpired && (
-                            <button
-                              onClick={() => proposal.shareToken ? copyProposalLink(proposal.shareToken) : generateShareLink(proposal)}
-                              className={`p-1 ${proposal.shareToken ? 'text-green-600 hover:text-green-700' : 'text-slate-500 hover:text-green-600'}`}
-                              title={proposal.shareToken ? 'Copy Link' : 'Generate Share Link'}
-                            >
-                              <LinkIcon className="h-5 w-5" />
-                            </button>
-                          )}
-                          
+                          {proposal.status !== 'ACCEPTED' &&
+                            proposal.status !== 'DECLINED' &&
+                            !isExpired && (
+                              <button
+                                onClick={() =>
+                                  proposal.shareToken
+                                    ? copyProposalLink(proposal.shareToken)
+                                    : generateShareLink(proposal)
+                                }
+                                className={`p-1 ${proposal.shareToken ? 'text-green-600 hover:text-green-700' : 'text-slate-500 hover:text-green-600'}`}
+                                title={proposal.shareToken ? 'Copy Link' : 'Generate Share Link'}
+                              >
+                                <LinkIcon className="h-5 w-5" />
+                              </button>
+                            )}
+
                           {/* Duplicate/Resubmit */}
                           <button
                             onClick={() => duplicateProposal(proposal)}
                             className="p-1 text-slate-500 hover:text-purple-600"
-                            title={isExpired ? "Resubmit" : "Duplicate"}
+                            title={isExpired ? 'Resubmit' : 'Duplicate'}
                           >
                             <DocumentDuplicateIcon className="h-5 w-5" />
                           </button>
-                          
+
                           {/* Create Renewal - for accepted proposals */}
                           {proposal.status === 'ACCEPTED' && !proposal.isRenewal && (
                             <button
@@ -456,7 +486,7 @@ const Proposals = () => {
                               <CheckCircleIcon className="h-5 w-5" />
                             </button>
                           )}
-                          
+
                           {/* Download PDF */}
                           <button
                             onClick={() => downloadPDF(proposal.id, proposal.reference)}

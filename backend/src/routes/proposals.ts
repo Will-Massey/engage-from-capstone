@@ -21,14 +21,18 @@ const createProposalSchema = z.object({
   clientId: z.string(),
   title: z.string().min(1, 'Title is required'),
   templateId: z.string().optional(),
-  services: z.array(z.object({
-    serviceId: z.string(),
-    quantity: z.number().min(1).default(1),
-    unitPrice: z.number().min(0).optional(), // Allow custom unit price
-    discountPercent: z.number().min(0).max(100).optional(),
-    frequency: z.nativeEnum(PricingFrequency).optional(), // Billing frequency per service
-    vatRate: z.number().min(0).max(100).optional(), // Per-line VAT rate
-  })).min(1, 'At least one service is required'),
+  services: z
+    .array(
+      z.object({
+        serviceId: z.string(),
+        quantity: z.number().min(1).default(1),
+        unitPrice: z.number().min(0).optional(), // Allow custom unit price
+        discountPercent: z.number().min(0).max(100).optional(),
+        frequency: z.nativeEnum(PricingFrequency).optional(), // Billing frequency per service
+        vatRate: z.number().min(0).max(100).optional(), // Per-line VAT rate
+      })
+    )
+    .min(1, 'At least one service is required'),
   validUntil: z.string().datetime().optional(),
   contractStartDate: z.string().datetime().optional(), // When the contract begins
   paymentTerms: z.string().optional(),
@@ -42,15 +46,21 @@ const createProposalSchema = z.object({
 
 const updateProposalSchema = z.object({
   title: z.string().min(1).optional(),
-  services: z.array(z.object({
-    serviceId: z.string(),
-    quantity: z.number().min(1),
-    discountPercent: z.number().min(0).max(100).optional(),
-    // v2 pricing fields
-    vatRate: z.number().min(0).max(100).optional(),
-    billingFrequency: z.enum(['ONE_TIME', 'WEEKLY', 'MONTHLY', 'QUARTERLY', 'ANNUALLY']).optional(),
-    displayPrice: z.number().min(0).optional(),
-  })).optional(),
+  services: z
+    .array(
+      z.object({
+        serviceId: z.string(),
+        quantity: z.number().min(1),
+        discountPercent: z.number().min(0).max(100).optional(),
+        // v2 pricing fields
+        vatRate: z.number().min(0).max(100).optional(),
+        billingFrequency: z
+          .enum(['ONE_TIME', 'WEEKLY', 'MONTHLY', 'QUARTERLY', 'ANNUALLY'])
+          .optional(),
+        displayPrice: z.number().min(0).optional(),
+      })
+    )
+    .optional(),
   validUntil: z.string().datetime().optional(),
   paymentTerms: z.string().optional(),
   coverLetter: z.string().optional(),
@@ -230,52 +240,71 @@ router.post(
 
     // Prepare services with clear pricing (v2)
     const validFrequencies = ['ONE_TIME', 'WEEKLY', 'MONTHLY', 'QUARTERLY', 'ANNUALLY'];
-    
+
     const servicesWithClearPricing = data.services.map((svc: any) => {
       const template = serviceTemplates.find((t) => t.id === svc.serviceId);
-      
+
       // Get the display price - this is what the client sees
-      const displayPrice = svc.displayPrice !== undefined && svc.displayPrice > 0
-        ? svc.displayPrice
-        : (template?.priceAmount || template?.basePrice || 0);
-      
+      const displayPrice =
+        svc.displayPrice !== undefined && svc.displayPrice > 0
+          ? svc.displayPrice
+          : template?.priceAmount || template?.basePrice || 0;
+
       // Get billing frequency
       let billingFrequency = svc.billingFrequency || template?.billingCycle || 'MONTHLY';
       if (!validFrequencies.includes(billingFrequency)) {
-        logger.warn(`Invalid frequency '${billingFrequency}' for service ${svc.serviceId}, defaulting to MONTHLY`);
+        logger.warn(
+          `Invalid frequency '${billingFrequency}' for service ${svc.serviceId}, defaulting to MONTHLY`
+        );
         billingFrequency = 'MONTHLY';
       }
-      
+
       // Determine price display mode
       let priceDisplayMode = 'PER_MONTH';
       switch (billingFrequency) {
-        case 'MONTHLY': priceDisplayMode = 'PER_MONTH'; break;
-        case 'QUARTERLY': priceDisplayMode = 'PER_QUARTER'; break;
-        case 'ANNUALLY': priceDisplayMode = 'PER_YEAR'; break;
-        case 'ONE_TIME': priceDisplayMode = 'ONE_TIME'; break;
+        case 'MONTHLY':
+          priceDisplayMode = 'PER_MONTH';
+          break;
+        case 'QUARTERLY':
+          priceDisplayMode = 'PER_QUARTER';
+          break;
+        case 'ANNUALLY':
+          priceDisplayMode = 'PER_YEAR';
+          break;
+        case 'ONE_TIME':
+          priceDisplayMode = 'ONE_TIME';
+          break;
       }
-      
+
       // Calculate annual equivalent for comparison
       let annualEquivalent = 0;
       switch (billingFrequency) {
-        case 'MONTHLY': annualEquivalent = displayPrice * 12; break;
-        case 'QUARTERLY': annualEquivalent = displayPrice * 4; break;
-        case 'ANNUALLY': annualEquivalent = displayPrice; break;
-        case 'ONE_TIME': annualEquivalent = 0; break;
+        case 'MONTHLY':
+          annualEquivalent = displayPrice * 12;
+          break;
+        case 'QUARTERLY':
+          annualEquivalent = displayPrice * 4;
+          break;
+        case 'ANNUALLY':
+          annualEquivalent = displayPrice;
+          break;
+        case 'ONE_TIME':
+          annualEquivalent = 0;
+          break;
       }
-      
+
       // Calculate totals
       const quantity = svc.quantity || 1;
       const discountPercent = svc.discountPercent || 0;
       const lineTotal = displayPrice * quantity;
       const discountAmount = lineTotal * (discountPercent / 100);
       const netTotal = lineTotal - discountAmount;
-      
+
       // Calculate VAT
       const vatRate = svc.vatRate !== undefined ? svc.vatRate : 20;
       const vatAmount = Math.round(netTotal * (vatRate / 100) * 100) / 100;
       const grossTotal = netTotal + vatAmount;
-      
+
       return {
         name: template?.name || 'Service',
         description: template?.description,
@@ -307,10 +336,18 @@ router.post(
       total: items.reduce((sum: number, svc: any) => sum + svc.grossTotal, 0),
     });
 
-    const monthlyItems = servicesWithClearPricing.filter((s: any) => s.billingFrequency === 'MONTHLY');
-    const quarterlyItems = servicesWithClearPricing.filter((s: any) => s.billingFrequency === 'QUARTERLY');
-    const annualItems = servicesWithClearPricing.filter((s: any) => s.billingFrequency === 'ANNUALLY');
-    const oneTimeItems = servicesWithClearPricing.filter((s: any) => s.billingFrequency === 'ONE_TIME');
+    const monthlyItems = servicesWithClearPricing.filter(
+      (s: any) => s.billingFrequency === 'MONTHLY'
+    );
+    const quarterlyItems = servicesWithClearPricing.filter(
+      (s: any) => s.billingFrequency === 'QUARTERLY'
+    );
+    const annualItems = servicesWithClearPricing.filter(
+      (s: any) => s.billingFrequency === 'ANNUALLY'
+    );
+    const oneTimeItems = servicesWithClearPricing.filter(
+      (s: any) => s.billingFrequency === 'ONE_TIME'
+    );
 
     const monthly = calculateGroup(monthlyItems);
     const quarterly = calculateGroup(quarterlyItems);
@@ -318,7 +355,8 @@ router.post(
     const oneTime = calculateGroup(oneTimeItems);
 
     const grandTotal = monthly.total + quarterly.total + annually.total + oneTime.total;
-    const totalVat = monthly.vatAmount + quarterly.vatAmount + annually.vatAmount + oneTime.vatAmount;
+    const totalVat =
+      monthly.vatAmount + quarterly.vatAmount + annually.vatAmount + oneTime.vatAmount;
 
     // Generate reference
     const reference = generateReference('PROP');
@@ -329,10 +367,12 @@ router.post(
       : new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
 
     // Create proposal with services
-    logger.info(`Creating proposal for tenant: ${req.tenantId}, user: ${req.user!.id}, client: ${data.clientId}`);
-    
+    logger.info(
+      `Creating proposal for tenant: ${req.tenantId}, user: ${req.user!.id}, client: ${data.clientId}`
+    );
+
     // Parse contract start date if provided
-    const contractStartDate = data.contractStartDate 
+    const contractStartDate = data.contractStartDate
       ? new Date(data.contractStartDate)
       : new Date();
 
@@ -430,7 +470,7 @@ router.put(
     if (data.services) {
       const pricingEngine = new PricingEngine(req.tenantId);
       pricing = await pricingEngine.calculateProposalPricing(
-        data.services as { serviceId: string; quantity: number; discountPercent?: number; }[],
+        data.services as { serviceId: string; quantity: number; discountPercent?: number }[],
         {
           turnover: existingProposal.client.turnover,
           employeeCount: existingProposal.client.employeeCount,
@@ -502,51 +542,68 @@ router.put(
 
       // Create new services with v2 pricing
       const validFrequencies = ['ONE_TIME', 'WEEKLY', 'MONTHLY', 'QUARTERLY', 'ANNUALLY'];
-      
+
       const servicesToCreate = data.services.map((svc) => {
         const template = serviceTemplates.find((t) => t.id === svc.serviceId);
-        
+
         // Get display price from input or template
-        const displayPrice = svc.displayPrice !== undefined && svc.displayPrice > 0
-          ? svc.displayPrice
-          : (template?.priceAmount || template?.basePrice || 0);
-        
+        const displayPrice =
+          svc.displayPrice !== undefined && svc.displayPrice > 0
+            ? svc.displayPrice
+            : template?.priceAmount || template?.basePrice || 0;
+
         // Get billing frequency from input or template
         let billingFrequency = svc.billingFrequency || template?.billingCycle || 'MONTHLY';
         if (!validFrequencies.includes(billingFrequency)) {
           billingFrequency = 'MONTHLY';
         }
-        
+
         // Determine price display mode
         let priceDisplayMode: any = 'PER_MONTH';
         switch (billingFrequency) {
-          case 'MONTHLY': priceDisplayMode = 'PER_MONTH'; break;
-          case 'QUARTERLY': priceDisplayMode = 'PER_QUARTER'; break;
-          case 'ANNUALLY': priceDisplayMode = 'PER_YEAR'; break;
-          case 'ONE_TIME': priceDisplayMode = 'ONE_TIME'; break;
+          case 'MONTHLY':
+            priceDisplayMode = 'PER_MONTH';
+            break;
+          case 'QUARTERLY':
+            priceDisplayMode = 'PER_QUARTER';
+            break;
+          case 'ANNUALLY':
+            priceDisplayMode = 'PER_YEAR';
+            break;
+          case 'ONE_TIME':
+            priceDisplayMode = 'ONE_TIME';
+            break;
         }
-        
+
         // Calculate annual equivalent
         let annualEquivalent = 0;
         switch (billingFrequency) {
-          case 'MONTHLY': annualEquivalent = displayPrice * 12; break;
-          case 'QUARTERLY': annualEquivalent = displayPrice * 4; break;
-          case 'ANNUALLY': annualEquivalent = displayPrice; break;
-          case 'ONE_TIME': annualEquivalent = 0; break;
+          case 'MONTHLY':
+            annualEquivalent = displayPrice * 12;
+            break;
+          case 'QUARTERLY':
+            annualEquivalent = displayPrice * 4;
+            break;
+          case 'ANNUALLY':
+            annualEquivalent = displayPrice;
+            break;
+          case 'ONE_TIME':
+            annualEquivalent = 0;
+            break;
         }
-        
+
         // Calculate line totals
         const quantity = svc.quantity || 1;
         const discountPercent = svc.discountPercent || 0;
         const lineTotal = displayPrice * quantity;
         const discountAmount = lineTotal * (discountPercent / 100);
         const netTotal = lineTotal - discountAmount;
-        
+
         // Calculate VAT
         const vatRate = svc.vatRate !== undefined ? svc.vatRate : 20;
         const vatAmount = Math.round(netTotal * (vatRate / 100) * 100) / 100;
         const grossTotal = netTotal + vatAmount;
-        
+
         return {
           proposalId: id,
           name: template?.name || 'Service',
@@ -575,12 +632,12 @@ router.put(
       await prisma.proposalService.createMany({
         data: servicesToCreate as any,
       });
-      
+
       // Recalculate proposal totals
       const totalVat = servicesToCreate.reduce((sum, s) => sum + s.vatAmount, 0);
       const grandTotal = servicesToCreate.reduce((sum, s) => sum + s.grossTotal, 0);
       const subtotal = servicesToCreate.reduce((sum, s) => sum + s.lineTotal, 0);
-      
+
       await prisma.proposal.update({
         where: { id },
         data: {
@@ -655,7 +712,7 @@ router.post(
 
     // Initialize email service with environment variables for now
     // In production, this should come from tenant email settings
-    const emailProvider = process.env.EMAIL_PROVIDER as any || 'smtp';
+    const emailProvider = (process.env.EMAIL_PROVIDER as any) || 'smtp';
     const emailConfig: any = {
       provider: emailProvider,
       fromName: proposal.tenant.name,
@@ -841,7 +898,10 @@ router.get(
 
     // Set headers
     res.setHeader('Content-Type', 'application/pdf');
-    res.setHeader('Content-Disposition', `attachment; filename="proposal-${proposal.reference}.pdf"`);
+    res.setHeader(
+      'Content-Disposition',
+      `attachment; filename="proposal-${proposal.reference}.pdf"`
+    );
     res.send(pdfBuffer);
   })
 );
@@ -938,7 +998,10 @@ router.post(
 
     res.json({
       success: true,
-      data: { message: 'View recorded', status: proposal.status === 'SENT' ? 'VIEWED' : proposal.status },
+      data: {
+        message: 'View recorded',
+        status: proposal.status === 'SENT' ? 'VIEWED' : proposal.status,
+      },
     });
   })
 );
@@ -1116,9 +1179,9 @@ router.get(
     const now = new Date();
     const sixMonthsAgo = new Date(now.getFullYear(), now.getMonth() - 5, 1);
     const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
-    
+
     // Get monthly revenue data (accepted proposals)
-    const monthlyRevenue = await prisma.$queryRaw`
+    const monthlyRevenue = (await prisma.$queryRaw`
       SELECT 
         DATE_TRUNC('month', "createdAt") as month,
         SUM(total) as revenue,
@@ -1129,22 +1192,35 @@ router.get(
         AND "createdAt" >= ${sixMonthsAgo}
       GROUP BY DATE_TRUNC('month', "createdAt")
       ORDER BY month ASC
-    ` as any[];
-    
+    `) as any[];
+
     // Format revenue data
-    const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    const monthNames = [
+      'Jan',
+      'Feb',
+      'Mar',
+      'Apr',
+      'May',
+      'Jun',
+      'Jul',
+      'Aug',
+      'Sep',
+      'Oct',
+      'Nov',
+      'Dec',
+    ];
     const revenueData = monthlyRevenue.map((row: any) => ({
       name: monthNames[new Date(row.month).getMonth()],
       value: Number(row.revenue) || 0,
     }));
-    
+
     // Get proposal status counts
     const statusCounts = await prisma.proposal.groupBy({
       by: ['status'],
       where: { tenantId },
       _count: { status: true },
     });
-    
+
     const statusColors: Record<string, string> = {
       DRAFT: '#9CA3AF',
       SENT: '#3B82F6',
@@ -1153,15 +1229,15 @@ router.get(
       DECLINED: '#EF4444',
       EXPIRED: '#6B7280',
     };
-    
+
     const proposalStatusData = statusCounts.map((s: any) => ({
       name: s.status.charAt(0) + s.status.slice(1).toLowerCase(),
       value: s._count.status,
       color: statusColors[s.status] || '#9CA3AF',
     }));
-    
+
     // Get daily activity for last 7 days
-    const dailyActivity = await prisma.$queryRaw`
+    const dailyActivity = (await prisma.$queryRaw`
       SELECT 
         DATE("createdAt") as day,
         COUNT(*) FILTER (WHERE "entityType" = 'PROPOSAL') as proposals,
@@ -1171,15 +1247,15 @@ router.get(
         AND "createdAt" >= ${new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000)}
       GROUP BY DATE("createdAt")
       ORDER BY day ASC
-    ` as any[];
-    
+    `) as any[];
+
     const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
     const weeklyActivity = dailyActivity.map((row: any) => ({
       day: dayNames[new Date(row.day).getDay()],
       proposals: Number(row.proposals) || 0,
       views: Number(row.views) || 0,
     }));
-    
+
     // Get recent activity
     const recentActivities = await prisma.activityLog.findMany({
       where: { tenantId },
@@ -1191,7 +1267,7 @@ router.get(
       orderBy: { createdAt: 'desc' },
       take: 10,
     });
-    
+
     // Map activities to frontend format
     const activityTypeMap: Record<string, { type: string; message: string; color: string }> = {
       CREATED: { type: 'proposal_created', message: 'New proposal created', color: 'blue' },
@@ -1200,20 +1276,20 @@ router.get(
       ACCEPTED: { type: 'proposal_accepted', message: 'Proposal accepted', color: 'green' },
       DECLINED: { type: 'proposal_declined', message: 'Proposal declined', color: 'red' },
     };
-    
+
     const recentActivity = recentActivities.map((activity: any, index: number) => {
-      const mapped = activityTypeMap[activity.action] || { 
-        type: 'generic', 
-        message: activity.description || 'Activity recorded', 
-        color: 'gray' 
+      const mapped = activityTypeMap[activity.action] || {
+        type: 'generic',
+        message: activity.description || 'Activity recorded',
+        color: 'gray',
       };
-      
+
       return {
         id: activity.id,
         type: mapped.type,
         message: mapped.message + (activity.entityId ? ` (${activity.entityId.slice(0, 8)})` : ''),
-        time: new Date(activity.createdAt).toLocaleDateString('en-GB', { 
-          day: 'numeric', 
+        time: new Date(activity.createdAt).toLocaleDateString('en-GB', {
+          day: 'numeric',
           month: 'short',
           hour: '2-digit',
           minute: '2-digit',
@@ -1221,7 +1297,7 @@ router.get(
         color: mapped.color,
       };
     });
-    
+
     res.json({
       success: true,
       data: {

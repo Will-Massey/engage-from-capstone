@@ -14,7 +14,7 @@ const FRONTEND_PORT = 5173;
 const results = {
   backend: { status: 'pending', details: [] },
   frontend: { status: 'pending', details: [] },
-  apis: { status: 'pending', details: [] }
+  apis: { status: 'pending', details: [] },
 };
 
 function makeRequest(hostname, port, path, method = 'GET', data = null) {
@@ -31,7 +31,7 @@ function makeRequest(hostname, port, path, method = 'GET', data = null) {
 
     const req = http.request(options, (res) => {
       let body = '';
-      res.on('data', (chunk) => body += chunk);
+      res.on('data', (chunk) => (body += chunk));
       res.on('end', () => {
         try {
           const json = JSON.parse(body);
@@ -99,7 +99,9 @@ async function runTests() {
     try {
       const response = await makeRequest(API_URL, API_PORT, endpoint.path);
       if (response.status === 200 || response.status === 401) {
-        results.apis.details.push(`✅ ${endpoint.name}: ${response.status === 401 ? 'Protected (auth required)' : 'OK'}`);
+        results.apis.details.push(
+          `✅ ${endpoint.name}: ${response.status === 401 ? 'Protected (auth required)' : 'OK'}`
+        );
       } else {
         results.apis.details.push(`⚠️  ${endpoint.name}: Status ${response.status}`);
       }
@@ -120,9 +122,13 @@ async function runTests() {
     try {
       const response = await makeRequest(API_URL, API_PORT, endpoint.path, endpoint.method);
       if (response.status === 200 || response.status === 401) {
-        results.apis.details.push(`✅ ${endpoint.name}: ${response.status === 401 ? 'Protected' : 'OK'}`);
+        results.apis.details.push(
+          `✅ ${endpoint.name}: ${response.status === 401 ? 'Protected' : 'OK'}`
+        );
       } else if (response.status === 404 && endpoint.path.includes('view/')) {
-        results.apis.details.push(`✅ ${endpoint.name}: Route exists (404 for invalid token is expected)`);
+        results.apis.details.push(
+          `✅ ${endpoint.name}: Route exists (404 for invalid token is expected)`
+        );
       } else {
         results.apis.details.push(`⚠️  ${endpoint.name}: Status ${response.status}`);
       }
@@ -137,13 +143,13 @@ async function runTests() {
   console.log('╚════════════════════════════════════════════════════════════╝\n');
 
   console.log(`Backend Server:  ${results.backend.status}`);
-  results.backend.details.forEach(d => console.log(`  ${d}`));
-  
+  results.backend.details.forEach((d) => console.log(`  ${d}`));
+
   console.log(`\nFrontend Server: ${results.frontend.status}`);
-  results.frontend.details.forEach(d => console.log(`  ${d}`));
-  
+  results.frontend.details.forEach((d) => console.log(`  ${d}`));
+
   console.log(`\nAPI Endpoints:   ${results.apis.status}`);
-  results.apis.details.forEach(d => console.log(`  ${d}`));
+  results.apis.details.forEach((d) => console.log(`  ${d}`));
 
   console.log('\n╔════════════════════════════════════════════════════════════╗');
   console.log('║              MANUAL TESTING CHECKLIST                     ║');

@@ -2,7 +2,9 @@ import { Request, Response, NextFunction } from 'express';
 import logger from '../utils/logger';
 
 // Async handler wrapper to catch errors in async routes
-export const asyncHandler = (fn: Function) => {
+export const asyncHandler = (
+  fn: (req: Request, res: Response, next: NextFunction) => Promise<any>
+) => {
   return (req: Request, res: Response, next: NextFunction) => {
     Promise.resolve(fn(req, res, next)).catch(next);
   };
@@ -12,7 +14,7 @@ export const asyncHandler = (fn: Function) => {
 export class ApiError extends Error {
   statusCode: number;
   code: string;
-  
+
   constructor(code: string, message: string, statusCode: number) {
     super(message);
     this.statusCode = statusCode;
@@ -21,12 +23,7 @@ export class ApiError extends Error {
   }
 }
 
-export const errorHandler = (
-  err: Error,
-  req: Request,
-  res: Response,
-  _next: NextFunction
-) => {
+export const errorHandler = (err: Error, req: Request, res: Response, _next: NextFunction) => {
   // Handle ApiError - return proper status code and message
   if (err instanceof ApiError) {
     logger.warn('API error', {

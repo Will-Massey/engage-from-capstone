@@ -13,7 +13,7 @@ async function seedServices() {
 
   // Get the first tenant (demo tenant)
   const tenant = await prisma.tenant.findFirst();
-  
+
   if (!tenant) {
     console.error('❌ No tenant found. Please run tenant creation first.');
     process.exit(1);

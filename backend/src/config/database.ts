@@ -6,9 +6,7 @@ const globalForPrisma = global as unknown as { prisma: PrismaClient };
 // Configure Prisma Client with connection pooling for serverless/production
 const prismaClientSingleton = () => {
   return new PrismaClient({
-    log: process.env.NODE_ENV === 'development' 
-      ? ['query', 'error', 'warn'] 
-      : ['error'],
+    log: process.env.NODE_ENV === 'development' ? ['query', 'error', 'warn'] : ['error'],
     datasources: {
       db: {
         url: process.env.DATABASE_URL,
@@ -92,30 +90,34 @@ export class TenantPrismaClient {
 
   // Service template operations
   async findServiceTemplates(args: any = {}) {
-    return prisma.serviceTemplate.findMany(this.withTenant({
-      ...args,
-      where: {
-        ...(args as any).where,
-        isActive: true,
-      },
-    }));
+    return prisma.serviceTemplate.findMany(
+      this.withTenant({
+        ...args,
+        where: {
+          ...(args as any).where,
+          isActive: true,
+        },
+      })
+    );
   }
 
   // User operations
   async findUsers(args: any = {}) {
-    return prisma.user.findMany(this.withTenant({
-      ...args,
-      select: {
-        id: true,
-        email: true,
-        firstName: true,
-        lastName: true,
-        role: true,
-        isActive: true,
-        lastLoginAt: true,
-        createdAt: true,
-      },
-    }));
+    return prisma.user.findMany(
+      this.withTenant({
+        ...args,
+        select: {
+          id: true,
+          email: true,
+          firstName: true,
+          lastName: true,
+          role: true,
+          isActive: true,
+          lastLoginAt: true,
+          createdAt: true,
+        },
+      })
+    );
   }
 }
 

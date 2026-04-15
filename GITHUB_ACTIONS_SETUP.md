@@ -5,6 +5,7 @@ This guide sets up automatic deployment to Render whenever you push to GitHub.
 ## 🚀 What This Does
 
 When you push to `master` or `main` branch:
+
 1. ✅ Backend automatically deploys to Render
 2. ✅ Frontend automatically deploys to Render (after backend)
 3. ✅ No manual intervention needed!
@@ -23,6 +24,7 @@ When you push to `master` or `main` branch:
 ### Step 2: Get Service IDs
 
 **Backend Service ID:**
+
 1. Go to https://dashboard.render.com
 2. Click on `engage-backend`
 3. Look at the URL or page - find the Service ID
@@ -30,6 +32,7 @@ When you push to `master` or `main` branch:
    - Or check: Settings → General → Service ID
 
 **Frontend Service ID:**
+
 1. Click on `engage-frontend`
 2. Find the Service ID (same format)
 
@@ -42,11 +45,11 @@ When you push to `master` or `main` branch:
 
 Add these 3 secrets:
 
-| Secret Name | Value | Description |
-|-------------|-------|-------------|
-| `RENDER_API_KEY` | Your API key from Step 1 | `rnd_xxxxxxxxxx` |
-| `RENDER_BACKEND_SERVICE_ID` | Backend service ID | `srv-xxxxxxxxxx` |
-| `RENDER_FRONTEND_SERVICE_ID` | Frontend service ID | `srv-xxxxxxxxxx` |
+| Secret Name                  | Value                    | Description      |
+| ---------------------------- | ------------------------ | ---------------- |
+| `RENDER_API_KEY`             | Your API key from Step 1 | `rnd_xxxxxxxxxx` |
+| `RENDER_BACKEND_SERVICE_ID`  | Backend service ID       | `srv-xxxxxxxxxx` |
+| `RENDER_FRONTEND_SERVICE_ID` | Frontend service ID      | `srv-xxxxxxxxxx` |
 
 ### Step 4: Test It!
 
@@ -63,31 +66,37 @@ Add these 3 secrets:
 ## 🔍 Monitoring Deployments
 
 **GitHub:**
+
 - Go to **Actions** tab in your repo
 - See deployment status in real-time
 
 **Render:**
+
 - Go to https://dashboard.render.com
 - Check deployment logs
 
 ## 🛠️ Troubleshooting
 
 ### "Secret not found" error
+
 - Make sure secrets are added to **Repository** secrets (not Environment secrets)
 - Check spelling: `RENDER_API_KEY` (all caps, underscores)
 
 ### Deployment fails
+
 - Check Render service logs
 - Verify service IDs are correct
 - Ensure API key has permission to deploy
 
 ### Only one service deploys
+
 - Check if `RENDER_BACKEND_SERVICE_ID` and `RENDER_FRONTEND_SERVICE_ID` are different
 - Frontend waits for backend to finish (this is intentional)
 
 ## ✅ Verification
 
 After setup, push any change and verify:
+
 1. GitHub Actions shows green checkmarks ✅
 2. Render dashboard shows new deployment
 3. Your app updates with the changes

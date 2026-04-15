@@ -23,7 +23,7 @@ router.get('/health', (0, errorHandler_js_1.asyncHandler)(async (req, res) => {
         checks.status = 'unhealthy';
         checks.checks.database = {
             status: 'error',
-            message: error.message
+            message: error.message,
         };
     }
     // Check if required fields exist
@@ -33,18 +33,17 @@ router.get('/health', (0, errorHandler_js_1.asyncHandler)(async (req, res) => {
         });
         checks.checks.migration = {
             status: 'ok',
-            message: 'v2 pricing fields exist'
+            message: 'v2 pricing fields exist',
         };
     }
     catch (error) {
         checks.status = 'degraded';
         checks.checks.migration = {
             status: 'error',
-            message: 'Migration needed: ' + error.message
+            message: 'Migration needed: ' + error.message,
         };
     }
-    const statusCode = checks.status === 'healthy' ? 200 :
-        checks.status === 'degraded' ? 200 : 503;
+    const statusCode = checks.status === 'healthy' ? 200 : checks.status === 'degraded' ? 200 : 503;
     res.status(statusCode).json(checks);
 }));
 /**
@@ -83,7 +82,7 @@ router.get('/db-status', (0, errorHandler_js_1.asyncHandler)(async (req, res) =>
           WHERE table_name = 'ProposalService'
           ORDER BY column_name
         `;
-            status.tables.proposalServiceColumns = columns.map(c => c.column_name);
+            status.tables.proposalServiceColumns = columns.map((c) => c.column_name);
             // Check for v2 fields
             const hasV2Fields = status.tables.proposalServiceColumns.includes('displayPrice');
             status.migrationStatus = hasV2Fields ? 'v2_complete' : 'v1_legacy';
