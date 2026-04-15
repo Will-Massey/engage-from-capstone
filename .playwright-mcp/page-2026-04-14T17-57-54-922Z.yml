@@ -1,0 +1,69 @@
+- generic [ref=e3]:
+  - generic [ref=e5]:
+    - generic [ref=e6]:
+      - img "Demo Accounting Practice"
+    - navigation [ref=e7]:
+      - link "Dashboard" [ref=e8] [cursor=pointer]:
+        - /url: /
+        - img [ref=e9]
+        - text: Dashboard
+      - link "Proposals" [ref=e11] [cursor=pointer]:
+        - /url: /proposals
+        - img [ref=e12]
+        - text: Proposals
+      - link "Clients" [ref=e14] [cursor=pointer]:
+        - /url: /clients
+        - img [ref=e15]
+        - text: Clients
+      - link "Services" [ref=e17] [cursor=pointer]:
+        - /url: /services
+        - img [ref=e18]
+        - text: Services
+      - link "Analytics" [ref=e20] [cursor=pointer]:
+        - /url: /analytics
+        - img [ref=e21]
+        - text: Analytics
+      - link "Billing" [ref=e24] [cursor=pointer]:
+        - /url: /subscription
+        - img [ref=e25]
+        - text: Billing
+      - link "Settings" [ref=e27] [cursor=pointer]:
+        - /url: /settings
+        - img [ref=e28]
+        - text: Settings
+    - generic [ref=e31]:
+      - generic [ref=e32]:
+        - generic [ref=e33]: AU
+        - generic [ref=e34]:
+          - paragraph [ref=e35]: Admin User
+          - paragraph [ref=e36]: admin
+      - button "Logout" [ref=e37] [cursor=pointer]:
+        - img [ref=e38]
+        - text: Logout
+  - generic [ref=e40]:
+    - generic [ref=e44]:
+      - generic [ref=e46]:
+        - link "New Proposal" [ref=e47] [cursor=pointer]:
+          - /url: /proposals/new
+          - img [ref=e48]
+          - text: New Proposal
+        - link "New Client" [ref=e50] [cursor=pointer]:
+          - /url: /clients/new
+          - img [ref=e51]
+          - text: New Client
+      - generic [ref=e53]:
+        - generic [ref=e55]:
+          - generic:
+            - img
+          - textbox "Search..." [ref=e56]
+        - button "Cmd+K" [ref=e57] [cursor=pointer]:
+          - img [ref=e58]
+          - generic [ref=e60]: Cmd+K
+        - button "Toggle theme" [ref=e62] [cursor=pointer]:
+          - img [ref=e63]
+        - button [ref=e65] [cursor=pointer]:
+          - img [ref=e66]
+        - button "A Admin" [ref=e70] [cursor=pointer]:
+          - generic [ref=e71]: A
+          - generic [ref=e72]: Admin
+    - main [ref=e73]

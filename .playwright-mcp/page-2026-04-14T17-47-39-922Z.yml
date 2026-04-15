@@ -1,0 +1,32 @@
+- generic [ref=e4]:
+  - generic [ref=e5]:
+    - generic:
+      - img "Engage by Capstone"
+    - paragraph [ref=e6]: Professional proposal generation for UK accountants
+  - generic [ref=e10]:
+    - heading "Welcome back" [level=2] [ref=e11]
+    - paragraph [ref=e12]: Sign in to your Engage account
+    - generic [ref=e13]:
+      - generic [ref=e14]:
+        - generic [ref=e15]: Email address
+        - textbox "you@company.com" [ref=e17]
+      - generic [ref=e18]:
+        - generic [ref=e19]: Password
+        - generic [ref=e20]:
+          - textbox "••••••••" [ref=e21]
+          - button [ref=e22] [cursor=pointer]:
+            - img [ref=e23]
+      - generic [ref=e26]:
+        - generic [ref=e27]:
+          - checkbox [ref=e28]
+          - generic [ref=e29]: Remember me
+        - link "Forgot password?" [ref=e31] [cursor=pointer]:
+          - /url: "#"
+      - button "Sign in" [ref=e32] [cursor=pointer]
+    - paragraph [ref=e33]:
+      - text: Don't have an account?
+      - link "Start your free trial" [ref=e34] [cursor=pointer]:
+        - /url: /register
+  - generic [ref=e35]:
+    - paragraph [ref=e36]: © 2026 Capstone. All rights reserved.
+    - paragraph [ref=e37]: MTD ITSA Ready • UK Compliant • Secure & Private

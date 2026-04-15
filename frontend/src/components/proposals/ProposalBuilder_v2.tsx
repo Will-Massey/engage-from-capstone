@@ -637,10 +637,15 @@ export default function ProposalBuilderV2() {
         <div className="flex items-center gap-3 flex-shrink-0 ml-4">
           <div className="text-right">
             <span className="font-semibold text-slate-900 dark:text-white text-sm block">
-              {formatCurrency(service.grossTotal)}
+              {formatCurrency(service.lineTotal)}
             </span>
             <span className="text-xs text-slate-400 dark:text-slate-500">
               {BILLING_FREQUENCY_LABELS[service.billingCycle] || 'month'}
+              {service.vatAmount > 0 && (
+                <span className="ml-1 text-primary-500 dark:text-primary-400">
+                  (inc VAT {formatCurrency(service.grossTotal)})
+                </span>
+              )}
             </span>
           </div>
 

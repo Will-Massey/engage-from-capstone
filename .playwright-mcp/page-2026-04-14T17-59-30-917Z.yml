@@ -1,0 +1,234 @@
+- generic [active] [ref=e1]:
+  - generic [ref=e40]:
+    - generic [ref=e42]:
+      - generic [ref=e43]:
+        - img "Demo Accounting Practice" [ref=e45]
+        - button [ref=e46] [cursor=pointer]:
+          - img [ref=e47]
+      - navigation [ref=e49]:
+        - link "Dashboard" [ref=e50] [cursor=pointer]:
+          - /url: /
+          - img [ref=e51]
+          - text: Dashboard
+        - link "Proposals" [ref=e53] [cursor=pointer]:
+          - /url: /proposals
+          - img [ref=e54]
+          - text: Proposals
+        - link "Clients" [ref=e56] [cursor=pointer]:
+          - /url: /clients
+          - img [ref=e57]
+          - text: Clients
+        - link "Services" [ref=e59] [cursor=pointer]:
+          - /url: /services
+          - img [ref=e60]
+          - text: Services
+        - link "Analytics" [ref=e62] [cursor=pointer]:
+          - /url: /analytics
+          - img [ref=e63]
+          - text: Analytics
+        - link "Billing" [ref=e66] [cursor=pointer]:
+          - /url: /subscription
+          - img [ref=e67]
+          - text: Billing
+        - link "Settings" [ref=e69] [cursor=pointer]:
+          - /url: /settings
+          - img [ref=e70]
+          - text: Settings
+      - generic [ref=e73]:
+        - generic [ref=e74]:
+          - generic [ref=e75]: AU
+          - generic [ref=e76]:
+            - paragraph [ref=e77]: Admin User
+            - paragraph [ref=e78]: admin
+        - button "Logout" [ref=e79] [cursor=pointer]:
+          - img [ref=e80]
+          - text: Logout
+    - generic [ref=e82]:
+      - generic [ref=e86]:
+        - generic [ref=e87]:
+          - button [ref=e88] [cursor=pointer]:
+            - img [ref=e89]
+          - generic [ref=e91]:
+            - link "New Proposal" [ref=e92] [cursor=pointer]:
+              - /url: /proposals/new
+              - img [ref=e93]
+              - text: New Proposal
+            - link "New Client" [ref=e95] [cursor=pointer]:
+              - /url: /clients/new
+              - img [ref=e96]
+              - text: New Client
+        - generic [ref=e98]:
+          - generic [ref=e100]:
+            - generic:
+              - img
+            - textbox "Search..." [ref=e101]
+          - button [ref=e102] [cursor=pointer]:
+            - img [ref=e103]
+          - button "Toggle theme" [ref=e106] [cursor=pointer]:
+            - img [ref=e107]
+          - button [ref=e109] [cursor=pointer]:
+            - img [ref=e110]
+          - button "A Admin" [ref=e114] [cursor=pointer]:
+            - generic [ref=e115]: A
+            - generic [ref=e116]: Admin
+      - main [ref=e117]:
+        - generic [ref=e120]:
+          - generic [ref=e121]:
+            - generic [ref=e123]:
+              - img "Capstone" [ref=e124]
+              - generic [ref=e125]:
+                - heading "Good evening, Admin! 👋" [level=1] [ref=e126]
+                - paragraph [ref=e127]: Here's what's happening with Demo Accounting Practice today
+            - generic [ref=e128]:
+              - combobox [ref=e129]:
+                - option "Last 7 days"
+                - option "Last 30 days" [selected]
+                - option "Last 90 days"
+                - option "This year"
+              - link "New Proposal" [ref=e130] [cursor=pointer]:
+                - /url: /proposals/new
+                - img [ref=e131]
+                - text: New Proposal
+          - generic [ref=e133]:
+            - generic [ref=e134] [cursor=pointer]:
+              - generic [ref=e135]:
+                - img [ref=e137]
+                - generic [ref=e139]:
+                  - img [ref=e140]
+                  - text: +12.5%
+              - generic [ref=e142]:
+                - paragraph [ref=e143]: Total Revenue
+                - paragraph [ref=e144]: £0
+            - generic [ref=e145] [cursor=pointer]:
+              - generic [ref=e146]:
+                - img [ref=e148]
+                - generic [ref=e150]:
+                  - img [ref=e151]
+                  - text: +3 this week
+              - generic [ref=e153]:
+                - paragraph [ref=e154]: Active Proposals
+                - paragraph [ref=e155]: "0"
+            - generic [ref=e156] [cursor=pointer]:
+              - generic [ref=e157]:
+                - img [ref=e159]
+                - generic [ref=e161]:
+                  - img [ref=e162]
+                  - text: +5.2%
+              - generic [ref=e164]:
+                - paragraph [ref=e165]: Conversion Rate
+                - paragraph [ref=e166]: 0%
+            - generic [ref=e167] [cursor=pointer]:
+              - generic [ref=e168]:
+                - img [ref=e170]
+                - generic [ref=e172]: +0 MTD ITSA
+              - generic [ref=e173]:
+                - paragraph [ref=e174]: Total Clients
+                - paragraph [ref=e175]: "0"
+          - generic [ref=e176]:
+            - generic [ref=e177]:
+              - generic [ref=e178]:
+                - generic [ref=e179]:
+                  - heading "Revenue Overview" [level=2] [ref=e180]
+                  - paragraph [ref=e181]: Monthly revenue from accepted proposals
+                - generic [ref=e183]: Revenue
+              - img [ref=e188]:
+                - generic [ref=e193]:
+                  - generic [ref=e195]: Jan
+                  - generic [ref=e197]: Feb
+                  - generic [ref=e199]: Mar
+                  - generic [ref=e201]: Apr
+                  - generic [ref=e203]: May
+                  - generic [ref=e205]: Jun
+                - generic [ref=e207]:
+                  - generic [ref=e209]: £0k
+                  - generic [ref=e211]: £0.001k
+                  - generic [ref=e213]: £0.002k
+                  - generic [ref=e215]: £0.003k
+                  - generic [ref=e217]: £0.004k
+            - generic [ref=e218]:
+              - heading "Proposal Status" [level=2] [ref=e219]
+              - paragraph [ref=e220]: Current proposal distribution
+              - img [ref=e224]
+              - generic [ref=e225]:
+                - generic [ref=e226]:
+                  - generic [ref=e227]: Draft
+                  - generic [ref=e229]: "0"
+                - generic [ref=e230]:
+                  - generic [ref=e231]: Sent
+                  - generic [ref=e233]: "0"
+                - generic [ref=e234]:
+                  - generic [ref=e235]: Accepted
+                  - generic [ref=e237]: "0"
+                - generic [ref=e238]:
+                  - generic [ref=e239]: Declined
+                  - generic [ref=e241]: "0"
+          - generic [ref=e242]:
+            - generic [ref=e243]:
+              - heading "Weekly Activity" [level=2] [ref=e244]
+              - paragraph [ref=e245]: Proposals created vs views this week
+              - img [ref=e249]:
+                - generic [ref=e254]:
+                  - generic [ref=e256]: Mon
+                  - generic [ref=e258]: Tue
+                  - generic [ref=e260]: Wed
+                  - generic [ref=e262]: Thu
+                  - generic [ref=e264]: Fri
+                  - generic [ref=e266]: Sat
+                  - generic [ref=e268]: Sun
+                - generic [ref=e270]:
+                  - generic [ref=e272]: "0"
+                  - generic [ref=e274]: "1"
+                  - generic [ref=e276]: "2"
+                  - generic [ref=e278]: "3"
+                  - generic [ref=e280]: "4"
+            - generic [ref=e281]:
+              - generic [ref=e282]:
+                - heading "Recent Activity" [level=2] [ref=e283]
+                - button "View all" [ref=e284] [cursor=pointer]
+              - generic [ref=e286]:
+                - img [ref=e287]
+                - paragraph [ref=e289]: No recent activity
+          - generic [ref=e290]:
+            - generic [ref=e291]:
+              - generic [ref=e292]:
+                - generic [ref=e293]:
+                  - heading "Recent Proposals" [level=2] [ref=e294]
+                  - paragraph [ref=e295]: Latest proposal activity
+                - link "View all" [ref=e296] [cursor=pointer]:
+                  - /url: /proposals
+              - generic [ref=e298]:
+                - img [ref=e299]
+                - paragraph [ref=e301]: No proposals yet.
+                - link "Create your first proposal" [ref=e302] [cursor=pointer]:
+                  - /url: /proposals/new
+            - generic [ref=e303]:
+              - generic [ref=e304]:
+                - generic [ref=e305]:
+                  - heading "Recent Clients" [level=2] [ref=e306]
+                  - paragraph [ref=e307]: New and updated clients
+                - link "View all" [ref=e308] [cursor=pointer]:
+                  - /url: /clients
+              - generic [ref=e310]:
+                - img [ref=e311]
+                - paragraph [ref=e313]: No clients yet.
+                - link "Add your first client" [ref=e314] [cursor=pointer]:
+                  - /url: /clients/new
+          - generic [ref=e315]:
+            - heading "Quick Actions" [level=2] [ref=e316]
+            - generic [ref=e317]:
+              - link "New Proposal" [ref=e318] [cursor=pointer]:
+                - /url: /proposals/new
+                - img [ref=e320]
+                - paragraph [ref=e322]: New Proposal
+              - link "Add Client" [ref=e323] [cursor=pointer]:
+                - /url: /clients/new
+                - img [ref=e325]
+                - paragraph [ref=e327]: Add Client
+              - link "Services" [ref=e328] [cursor=pointer]:
+                - /url: /services
+                - img [ref=e330]
+                - paragraph [ref=e332]: Services
+              - button "Reminders" [ref=e333] [cursor=pointer]:
+                - img [ref=e335]
+                - paragraph [ref=e337]: Reminders
+  - generic [ref=e350]: "0"
