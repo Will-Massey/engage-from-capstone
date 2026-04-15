@@ -81,14 +81,12 @@ const VAT_RATES = [0, 5, 20];
 
 // Format price with frequency label
 const formatPriceWithFrequency = (price: number, frequency: string): string => {
-  const monthlyPrice = Math.round(price / 12 / 25) * 25;
-
   const formatted = new Intl.NumberFormat('en-GB', {
     style: 'currency',
     currency: 'GBP',
     minimumFractionDigits: 0,
     maximumFractionDigits: 0,
-  }).format(monthlyPrice);
+  }).format(price);
 
   const label = BILLING_FREQUENCY_LABELS[frequency] || '';
   if (frequency === 'ONE_TIME') {
@@ -449,8 +447,8 @@ export default function ProposalBuilderV2() {
               onClick={() => setSelectedClient(client)}
               className={`p-4 rounded-xl border-2 cursor-pointer transition-all ${
                 selectedClient?.id === client.id
-                  ? 'border-primary-500 bg-primary-50'
-                  : 'border-slate-200 hover:border-primary-300 hover:bg-slate-50'
+                  ? 'border-primary-500 bg-primary-50 dark:bg-primary-900/20'
+                  : 'border-slate-200 dark:border-slate-700 hover:border-primary-300 dark:hover:border-primary-600 hover:bg-slate-50 dark:hover:bg-slate-800/50'
               }`}
             >
               <h3 className="font-semibold text-slate-900 dark:text-white">{client.name}</h3>
