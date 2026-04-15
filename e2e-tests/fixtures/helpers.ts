@@ -6,8 +6,8 @@ import { randomUUID } from 'crypto';
  */
 
 const TEST_USER = {
-  email: process.env.TEST_USER_EMAIL || 'partner@test.com',
-  password: process.env.TEST_USER_PASSWORD || 'test123',
+  email: process.env.TEST_USER_EMAIL || 'admin@demo.practice',
+  password: process.env.TEST_USER_PASSWORD || 'DemoPass123!',
 };
 
 const API_BASE = process.env.API_URL || 'http://localhost:3001/api';
@@ -21,8 +21,11 @@ export async function loginAsPartner(page: Page): Promise<void> {
   await page.fill('input[name="password"]', TEST_USER.password);
   await page.click('button[type="submit"]');
 
-  // Wait for dashboard
-  await expect(page).toHaveURL(/dashboard|proposals/);
+  // Wait for navigation to complete
+  await page.waitForLoadState('networkidle');
+
+  // Wait for dashboard (redirects to / or /dashboard)
+  await expect(page).toHaveURL(/\/$|\/dashboard|\/proposals/);
 }
 
 /**
@@ -41,7 +44,7 @@ export async function createTestClient(
 
   // Navigate to clients and create
   await page.goto('/clients');
-  await page.click('button:has-text("New Client")');
+  await page.click('button:has-text("Add Client")');
 
   await page.fill('input[name="name"]', clientData.name);
   await page.fill('input[name="contactEmail"]', clientData.email);
@@ -72,7 +75,7 @@ export async function createTestService(
   }
 ): Promise<void> {
   await page.goto('/services');
-  await page.click('button:has-text("New Service")');
+  await page.click('button:has-text("Add Service")');
 
   await page.fill('input[name="name"]', config.name);
   await page.fill('input[name="basePrice"]', config.basePrice.toString());

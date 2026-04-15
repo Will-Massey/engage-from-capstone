@@ -280,8 +280,8 @@ async function verifyFileChanges() {
       checks: ['defaultFrequency', 'vatRate', 'frequency'],
     },
     {
-      path: 'frontend/src/pages/proposals/CreateProposal.tsx',
-      checks: ['defaultFrequency', 'serviceFrequency', 'vatRate'],
+      path: 'frontend/src/components/proposals/ProposalBuilder_v2.tsx',
+      checks: ['billingCycle', 'vatRate', 'frequency'],
     },
     {
       path: 'frontend/src/utils/api.ts',

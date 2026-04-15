@@ -8,9 +8,9 @@ SET
     ELSE COALESCE("defaultFrequency"::text, 'MONTHLY')
   END::"BillingCycle",
   "priceDisplayMode" = CASE 
-    WHEN "defaultFrequency" = 'ANNUALLY' THEN 'PER_YEAR'::text
-    WHEN "defaultFrequency" = 'QUARTERLY' THEN 'PER_QUARTER'::text
-    WHEN "defaultFrequency" = 'ONE_TIME' THEN 'ONE_TIME'::text
-    ELSE 'PER_MONTH'::text
-  END::"PriceDisplayMode"
+    WHEN "defaultFrequency" = 'ANNUALLY' THEN 'PER_YEAR'
+    WHEN "defaultFrequency" = 'QUARTERLY' THEN 'PER_QUARTER'
+    WHEN "defaultFrequency" = 'ONE_TIME' THEN 'ONE_TIME'
+    ELSE 'PER_MONTH'
+  END
 WHERE "priceAmount" IS NULL OR "priceAmount" = 0;
