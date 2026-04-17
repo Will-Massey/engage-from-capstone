@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { apiClient } from '../../utils/api';
+import { formatCurrency, formatDate } from '../../utils/formatters';
 import toast from 'react-hot-toast';
 import SignaturePad from '../../components/signature/SignaturePad';
 import {
@@ -38,7 +39,8 @@ interface ProposalData {
     description?: string;
     quantity: number;
     unitPrice: number;
-    total: number;
+    lineTotal?: number;
+    total?: number;
     frequency: string;
     isOptional: boolean;
   }>;
@@ -119,20 +121,7 @@ const PublicProposalView = () => {
     }
   };
 
-  const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('en-GB', {
-      style: 'currency',
-      currency: 'GBP',
-    }).format(amount);
-  };
 
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('en-GB', {
-      day: 'numeric',
-      month: 'long',
-      year: 'numeric',
-    });
-  };
 
   if (isLoading) {
     return (
@@ -259,7 +248,7 @@ const PublicProposalView = () => {
                     </p>
                   </div>
                   <div className="text-right">
-                    <p className="font-medium text-slate-900">{formatCurrency(service.total)}</p>
+                    <p className="font-medium text-slate-900">{formatCurrency(service.lineTotal || service.total || 0)}</p>
                   </div>
                 </div>
               ))}
@@ -298,6 +287,7 @@ const PublicProposalView = () => {
               </div>
               <div className="mt-4 flex items-start">
                 <input
+                  data-testid="terms-checkbox"
                   type="checkbox"
                   id="terms"
                   checked={termsAccepted}
@@ -315,6 +305,7 @@ const PublicProposalView = () => {
           {!isAccepted && !isExpired && !showSignature && (
             <div className="border-t pt-6 flex space-x-4">
               <button
+                data-testid="accept-proposal-button"
                 onClick={handleAccept}
                 disabled={!termsAccepted}
                 className="flex-1 btn-primary py-3 disabled:opacity-50"
@@ -333,6 +324,7 @@ const PublicProposalView = () => {
                   <div>
                     <label className="block text-sm font-medium text-slate-800">Full Name</label>
                     <input
+                      data-testid="signer-name-input"
                       type="text"
                       value={signerName}
                       onChange={(e) => setSignerName(e.target.value)}
@@ -343,6 +335,7 @@ const PublicProposalView = () => {
                   <div>
                     <label className="block text-sm font-medium text-slate-800">Role/Title</label>
                     <input
+                      data-testid="signer-role-input"
                       type="text"
                       value={signerRole}
                       onChange={(e) => setSignerRole(e.target.value)}
@@ -361,6 +354,7 @@ const PublicProposalView = () => {
                       Cancel
                     </button>
                     <button
+                      data-testid="confirm-signature-button"
                       onClick={handleSubmitSignature}
                       disabled={isSubmitting}
                       className="flex-1 btn-primary"

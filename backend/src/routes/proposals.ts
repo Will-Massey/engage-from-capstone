@@ -29,6 +29,8 @@ const createProposalSchema = z.object({
         unitPrice: z.number().min(0).optional(), // Allow custom unit price
         discountPercent: z.number().min(0).max(100).optional(),
         frequency: z.nativeEnum(PricingFrequency).optional(), // Billing frequency per service
+        billingFrequency: z.nativeEnum(PricingFrequency).optional(), // Frontend sends this
+        displayPrice: z.number().min(0).optional(), // Custom price from frontend
         vatRate: z.number().min(0).max(100).optional(), // Per-line VAT rate
       })
     )
@@ -246,12 +248,12 @@ router.post(
 
       // Get the display price - this is what the client sees
       const displayPrice =
-        svc.displayPrice !== undefined && svc.displayPrice > 0
+        svc.displayPrice !== undefined && svc.displayPrice >= 0
           ? svc.displayPrice
           : template?.priceAmount || template?.basePrice || 0;
 
-      // Get billing frequency
-      let billingFrequency = svc.billingFrequency || template?.billingCycle || 'MONTHLY';
+      // Get billing frequency (frontend sends billingFrequency or frequency)
+      let billingFrequency = svc.billingFrequency || svc.frequency || template?.billingCycle || 'MONTHLY';
       if (!validFrequencies.includes(billingFrequency)) {
         logger.warn(
           `Invalid frequency '${billingFrequency}' for service ${svc.serviceId}, defaulting to MONTHLY`
@@ -318,7 +320,6 @@ router.post(
         lineTotal,
         unitPrice: displayPrice, // Legacy compatibility
         discountPercent,
-        total: netTotal,
         frequency: billingFrequency, // Legacy compatibility
         // VAT
         vatRate,
@@ -618,7 +619,6 @@ router.put(
           lineTotal: netTotal,
           unitPrice: displayPrice,
           discountPercent,
-          total: netTotal,
           frequency: billingFrequency,
           // VAT
           vatRate,

@@ -17,19 +17,25 @@ const API_BASE = process.env.API_URL || 'http://localhost:3001/api';
  */
 export async function loginAsPartner(page: Page): Promise<void> {
   await page.goto('/login');
-  await page.fill('input[name="email"]', TEST_USER.email);
-  await page.fill('input[name="password"]', TEST_USER.password);
-  await page.click('button[type="submit"]');
-
-  // Wait for navigation to complete
   await page.waitForLoadState('networkidle');
 
-  // Wait for dashboard (redirects to / or /dashboard)
-  await expect(page).toHaveURL(/\/$|\/dashboard|\/proposals/);
+  const emailInput = page.locator('input[name="email"]');
+  const passwordInput = page.locator('input[name="password"]');
+  const submitButton = page.locator('button[type="submit"]');
+
+  await emailInput.fill(TEST_USER.email);
+  await passwordInput.fill(TEST_USER.password);
+  await expect(submitButton).toBeEnabled();
+
+  // Click and wait for navigation to complete
+  await Promise.all([
+    page.waitForURL(/\/$|\/dashboard|\/proposals/, { timeout: 15000, waitUntil: 'networkidle' }),
+    submitButton.click(),
+  ]);
 }
 
 /**
- * Create a test client
+ * Create a test client using the new 2-step wizard
  */
 export async function createTestClient(
   page: Page,
@@ -42,18 +48,27 @@ export async function createTestClient(
     companyType: 'LIMITED_COMPANY',
   };
 
-  // Navigate to clients and create
-  await page.goto('/clients');
-  await page.click('button:has-text("Add Client")');
+  // Navigate to client creation
+  await page.goto('/clients/new');
 
+  // Step 1: Basic Info
+  await page.click('text=Limited Company');
   await page.fill('input[name="name"]', clientData.name);
   await page.fill('input[name="contactEmail"]', clientData.email);
-  await page.selectOption('select[name="companyType"]', clientData.companyType);
 
-  await page.click('button:has-text("Create")');
+  await page.click('button:has-text("Continue")');
 
-  // Wait for creation
-  await expect(page.locator('text=Client created')).toBeVisible();
+  // Step 2: Details
+  await page.fill('input[name="companyNumber"]', '12345678');
+  await page.fill('input[name="utr"]', '1234567890');
+  await page.fill('input[name="addressLine1"]', '1 Test Street');
+  await page.fill('input[name="city"]', 'London');
+  await page.fill('input[name="postcode"]', 'SW1A 1AA');
+
+  await page.click('button:has-text("Create Client")');
+
+  // Wait for creation — verify by URL redirect to clients list or client detail
+  await expect(page).toHaveURL(/\/clients/);
 
   return {
     id: `test-${testId}`,
@@ -75,7 +90,7 @@ export async function createTestService(
   }
 ): Promise<void> {
   await page.goto('/services');
-  await page.click('button:has-text("Add Service")');
+  await page.click('a:has-text("Add Service")');
 
   await page.fill('input[name="name"]', config.name);
   await page.fill('input[name="basePrice"]', config.basePrice.toString());
@@ -88,7 +103,7 @@ export async function createTestService(
 }
 
 /**
- * Create a proposal with services
+ * Create a proposal with services using ProposalBuilder_v2
  */
 export async function createTestProposal(
   page: Page,
@@ -98,30 +113,42 @@ export async function createTestProposal(
     title?: string;
   }
 ): Promise<{ id: string; reference: string }> {
-  await page.goto('/proposals/create');
+  await page.goto('/proposals/new');
 
-  // Select client
-  await page.click(`text=${config.clientName}`);
-  await page.click('button:has-text("Continue")');
+  // Step 1: Select client
+  await page.waitForSelector('[data-testid="client-card"]');
+  const clientCard = page.locator('[data-testid="client-card"]').filter({ hasText: config.clientName });
+  await expect(clientCard).toBeVisible();
+  await clientCard.click();
+  await page.locator('[data-testid="client-continue-button"]').click();
 
-  // Add services
+  // Step 2: Add services
+  await page.waitForSelector('[data-testid="available-service-row"]');
   for (const service of config.services) {
-    await page.click(`text=${service}`);
+    const serviceRow = page.locator('[data-testid="available-service-row"]').filter({ hasText: service });
+    await expect(serviceRow).toBeVisible();
+    await serviceRow.click();
   }
 
-  await page.click('button:has-text("Continue")');
+  await page.locator('[data-testid="services-continue-button"]').click();
 
-  // Fill details
+  // Step 3: Fill title and create
   const title = config.title || `Test Proposal ${randomUUID().slice(0, 8)}`;
-  await page.fill('[data-testid="proposal-title"]', title);
+  await page.fill('[data-testid="proposal-title-input"]', title);
 
-  // Create
-  await page.click('button:has-text("Create & Copy Link")');
+  await page.locator('[data-testid="create-proposal-button"]').click();
 
-  await expect(page.locator('text=Proposal created')).toBeVisible();
+  // Wait for navigation to proposal detail page as success indicator
+  // Must match /proposals/<uuid> but not /proposals/new or /proposals/new/edit
+  await expect(page).toHaveURL(/\/proposals\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/i);
+
+  // Extract proposal ID from URL
+  const url = page.url();
+  const idMatch = url.match(/\/proposals\/([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})/i);
+  const id = idMatch ? idMatch[1] : 'unknown';
 
   return {
-    id: 'test-proposal-id',
+    id,
     reference: 'PROP-TEST',
   };
 }

@@ -306,6 +306,8 @@ const Proposals = () => {
                   return (
                     <tr
                       key={proposal.id}
+                      data-testid="proposal-row"
+                      data-proposal-title={proposal.title}
                       className="hover:bg-slate-50/50 dark:hover:bg-slate-800/50 transition-colors"
                     >
                       <td className="px-4 py-4 whitespace-nowrap">
@@ -455,6 +457,7 @@ const Proposals = () => {
                             proposal.status !== 'DECLINED' &&
                             !isExpired && (
                               <button
+                                data-testid="share-proposal-button"
                                 onClick={() =>
                                   proposal.shareToken
                                     ? copyProposalLink(proposal.shareToken)

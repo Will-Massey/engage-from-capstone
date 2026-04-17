@@ -121,6 +121,37 @@ const calculateAnnualEquivalent = (price: number, frequency: string): number => 
   }
 };
 
+// Calculate monthly equivalent for display
+const calculateMonthlyEquivalent = (price: number, frequency: string): number => {
+  switch (frequency) {
+    case 'MONTHLY':
+      return price;
+    case 'QUARTERLY':
+      return price / 4;
+    case 'ANNUALLY':
+      return price / 12;
+    case 'ONE_TIME':
+      return price;
+    default:
+      return price;
+  }
+};
+
+// Format price for available services list (shows monthly equivalent)
+const formatPriceForDisplay = (price: number, frequency: string): string => {
+  if (frequency === 'ONE_TIME' || frequency === 'ANNUALLY') {
+    return formatPriceWithFrequency(price, frequency);
+  }
+  const monthlyEquivalent = calculateMonthlyEquivalent(price, frequency);
+  const formatted = new Intl.NumberFormat('en-GB', {
+    style: 'currency',
+    currency: 'GBP',
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0,
+  }).format(monthlyEquivalent);
+  return `${formatted}/month`;
+};
+
 export default function ProposalBuilderV2() {
   // UNIQUE_MARKER_12345
   const navigate = useNavigate();
@@ -206,24 +237,55 @@ export default function ProposalBuilderV2() {
     });
   }, [services, selectedCategory, serviceSearch]);
 
-  // Calculate summary
-  const summary: PricingSummary = useMemo(() => {
-    const monthly = selectedServices.filter((s) => s.billingCycle === 'MONTHLY');
-    const quarterly = selectedServices.filter((s) => s.billingCycle === 'QUARTERLY');
-    const annually = selectedServices.filter((s) => s.billingCycle === 'ANNUALLY');
-    const oneTime = selectedServices.filter((s) => s.billingCycle === 'ONE_TIME');
+  // Helper to compute live preview values for a service being edited
+  const getEditingPreview = (original: SelectedService): SelectedService => {
+    const quantity = editForm.quantity || 1;
+    const discount = editForm.discountPercent || 0;
+    const price = editForm.displayPrice || 0;
+    const vatRate = editForm.vatRate || 0;
 
-    const calcGroup = (items: SelectedService[]) => ({
-      subtotal: items.reduce((sum, s) => sum + s.lineTotal, 0),
-      vat: items.reduce((sum, s) => sum + s.vatAmount, 0),
-      total: items.reduce((sum, s) => sum + s.grossTotal, 0),
+    const grossLineTotal = price * quantity;
+    const discountAmount = grossLineTotal * (discount / 100);
+    const lineTotal = grossLineTotal - discountAmount;
+    const vatAmount = includeVat ? Math.round(lineTotal * (vatRate / 100) * 100) / 100 : 0;
+
+    return {
+      ...original,
+      displayPrice: price,
+      quantity,
+      discountPercent: discount,
+      vatRate,
+      billingCycle: editForm.billingCycle,
+      lineTotal,
+      vatAmount,
+      grossTotal: lineTotal + vatAmount,
+      annualEquivalent: calculateAnnualEquivalent(price, editForm.billingCycle),
+    };
+  };
+
+  // Calculate summary (includes live preview of editing service)
+  // All recurring totals are normalized to monthly equivalents for easy comparison
+  const summary: PricingSummary = useMemo(() => {
+    const servicesForSummary = editingService
+      ? selectedServices.map((s) => (s.id === editingService ? getEditingPreview(s) : s))
+      : selectedServices;
+
+    const monthly = servicesForSummary.filter((s) => s.billingCycle === 'MONTHLY');
+    const quarterly = servicesForSummary.filter((s) => s.billingCycle === 'QUARTERLY');
+    const annually = servicesForSummary.filter((s) => s.billingCycle === 'ANNUALLY');
+    const oneTime = servicesForSummary.filter((s) => s.billingCycle === 'ONE_TIME');
+
+    const calcGroupMonthly = (items: SelectedService[], divisor: number = 1) => ({
+      subtotal: items.reduce((sum, s) => sum + s.lineTotal / divisor, 0),
+      vat: items.reduce((sum, s) => sum + s.vatAmount / divisor, 0),
+      total: items.reduce((sum, s) => sum + s.grossTotal / divisor, 0),
       count: items.length,
     });
 
-    const monthlyGroup = calcGroup(monthly);
-    const quarterlyGroup = calcGroup(quarterly);
-    const annualGroup = calcGroup(annually);
-    const oneTimeGroup = calcGroup(oneTime);
+    const monthlyGroup = calcGroupMonthly(monthly, 1);
+    const quarterlyGroup = calcGroupMonthly(quarterly, 4);
+    const annualGroup = calcGroupMonthly(annually, 12);
+    const oneTimeGroup = calcGroupMonthly(oneTime, 1);
 
     const totalAnnualEquivalent =
       monthly.reduce((sum, s) => sum + s.annualEquivalent * s.quantity, 0) +
@@ -239,7 +301,7 @@ export default function ProposalBuilderV2() {
         monthlyGroup.total + quarterlyGroup.total + annualGroup.total + oneTimeGroup.total,
       totalAnnualEquivalent,
     };
-  }, [selectedServices]);
+  }, [selectedServices, editingService, editForm, includeVat]);
 
   // Add service
   const addService = (service: Service) => {
@@ -444,11 +506,13 @@ export default function ProposalBuilderV2() {
           .map((client) => (
             <div
               key={client.id}
+              data-testid="client-card"
+              data-client-name={client.name}
               onClick={() => setSelectedClient(client)}
               className={`p-4 rounded-xl border-2 cursor-pointer transition-all ${
                 selectedClient?.id === client.id
                   ? 'border-primary-500 bg-primary-50 dark:bg-primary-900/20'
-                  : 'border-slate-200 dark:border-slate-700 hover:border-primary-300 dark:hover:border-primary-600 hover:bg-slate-50 dark:hover:bg-slate-800/50'
+                  : 'border-slate-200 dark:border-slate-700 hover:border-primary-300 dark:hover:border-primary-600 hover:bg-slate-100 dark:hover:bg-slate-800'
               }`}
             >
               <h3 className="font-semibold text-slate-900 dark:text-white">{client.name}</h3>
@@ -460,7 +524,7 @@ export default function ProposalBuilderV2() {
 
       {selectedClient && (
         <div className="flex justify-end">
-          <button onClick={() => setCurrentStep(2)} className="btn-primary">
+          <button data-testid="client-continue-button" onClick={() => setCurrentStep(2)} className="btn-primary">
             Continue
             <ArrowRightIcon className="w-5 h-5 ml-2" />
           </button>
@@ -476,6 +540,8 @@ export default function ProposalBuilderV2() {
     return (
       <div
         key={service.id}
+        data-testid="available-service-row"
+        data-service-name={service.name}
         onClick={() => !isSelected && addService(service)}
         className={`flex items-center justify-between p-3 rounded-lg border transition-all cursor-pointer ${
           isSelected
@@ -492,7 +558,7 @@ export default function ProposalBuilderV2() {
         </div>
         <div className="text-right flex-shrink-0 ml-4">
           <span className="font-semibold text-primary-600 text-sm">
-            {formatPriceWithFrequency(service.priceAmount, service.billingCycle)}
+            {formatPriceForDisplay(service.priceAmount, service.billingCycle)}
           </span>
         </div>
       </div>
@@ -507,50 +573,52 @@ export default function ProposalBuilderV2() {
       return (
         <div
           key={service.id}
-          className="p-4 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg space-y-3"
+          className="p-3 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg space-y-2"
         >
           <div className="flex items-center justify-between">
-            <h4 className="font-medium text-slate-900 dark:text-white">{service.name}</h4>
+            <h4 className="font-medium text-slate-900 dark:text-white text-sm">{service.name}</h4>
             <div className="flex gap-1">
               <button
+                data-testid="save-edit-button"
                 onClick={() => saveEdit(service.id)}
-                className="p-1.5 text-green-600 hover:bg-green-100 rounded"
+                className="p-1 text-green-600 hover:bg-green-100 rounded"
               >
                 <CheckIcon className="w-4 h-4" />
               </button>
-              <button onClick={cancelEdit} className="p-1.5 text-red-600 hover:bg-red-100 rounded">
+              <button data-testid="cancel-edit-button" onClick={cancelEdit} className="p-1 text-red-600 hover:bg-red-100 rounded">
                 <XMarkIcon className="w-4 h-4" />
               </button>
             </div>
           </div>
 
-          <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+          <div className="grid grid-cols-3 md:grid-cols-5 gap-2">
             {/* Price */}
             <div>
-              <label className="block text-xs text-slate-500 mb-1">Price (£)</label>
+              <label className="block text-[10px] uppercase tracking-wide text-slate-500 mb-0.5">Price (£)</label>
               <input
+                data-testid="edit-price-input"
                 type="number"
                 value={editForm.displayPrice}
                 onChange={(e) => setEditForm({ ...editForm, displayPrice: Number(e.target.value) })}
-                className="w-full px-2 py-1.5 text-sm border rounded dark:bg-slate-800 dark:border-slate-600"
+                className="w-full px-2 py-1 text-sm border rounded dark:bg-slate-800 dark:border-slate-600"
               />
             </div>
 
             {/* Quantity */}
             <div>
-              <label className="block text-xs text-slate-500 mb-1">Qty</label>
+              <label className="block text-[10px] uppercase tracking-wide text-slate-500 mb-0.5">Qty</label>
               <input
                 type="number"
                 min={1}
                 value={editForm.quantity}
                 onChange={(e) => setEditForm({ ...editForm, quantity: Number(e.target.value) })}
-                className="w-full px-2 py-1.5 text-sm border rounded dark:bg-slate-800 dark:border-slate-600"
+                className="w-full px-2 py-1 text-sm border rounded dark:bg-slate-800 dark:border-slate-600"
               />
             </div>
 
             {/* Discount */}
             <div>
-              <label className="block text-xs text-slate-500 mb-1">Discount %</label>
+              <label className="block text-[10px] uppercase tracking-wide text-slate-500 mb-0.5">Disc %</label>
               <input
                 type="number"
                 min={0}
@@ -559,17 +627,18 @@ export default function ProposalBuilderV2() {
                 onChange={(e) =>
                   setEditForm({ ...editForm, discountPercent: Number(e.target.value) })
                 }
-                className="w-full px-2 py-1.5 text-sm border rounded dark:bg-slate-800 dark:border-slate-600"
+                className="w-full px-2 py-1 text-sm border rounded dark:bg-slate-800 dark:border-slate-600"
               />
             </div>
 
             {/* VAT Rate */}
             <div>
-              <label className="block text-xs text-slate-500 mb-1">VAT %</label>
+              <label className="block text-[10px] uppercase tracking-wide text-slate-500 mb-0.5">VAT %</label>
               <select
+                data-testid="edit-vat-select"
                 value={editForm.vatRate}
                 onChange={(e) => setEditForm({ ...editForm, vatRate: Number(e.target.value) })}
-                className="w-full px-2 py-1.5 text-sm border rounded dark:bg-slate-800 dark:border-slate-600"
+                className="w-full px-2 py-1 text-sm border rounded dark:bg-slate-800 dark:border-slate-600"
               >
                 {VAT_RATES.map((rate) => (
                   <option key={rate} value={rate}>
@@ -581,24 +650,25 @@ export default function ProposalBuilderV2() {
 
             {/* Frequency */}
             <div>
-              <label className="block text-xs text-slate-500 mb-1">Frequency</label>
+              <label className="block text-[10px] uppercase tracking-wide text-slate-500 mb-0.5">Freq</label>
               <select
+                data-testid="edit-frequency-select"
                 value={editForm.billingCycle}
                 onChange={(e) => setEditForm({ ...editForm, billingCycle: e.target.value })}
-                className="w-full px-2 py-1.5 text-sm border rounded dark:bg-slate-800 dark:border-slate-600"
+                className="w-full px-2 py-1 text-sm border rounded dark:bg-slate-800 dark:border-slate-600"
               >
-                <option value="MONTHLY">Monthly</option>
-                <option value="QUARTERLY">Quarterly</option>
-                <option value="ANNUALLY">Annually</option>
-                <option value="ONE_TIME">One-time</option>
+                <option value="MONTHLY">Mo</option>
+                <option value="QUARTERLY">Qtr</option>
+                <option value="ANNUALLY">Yr</option>
+                <option value="ONE_TIME">1x</option>
               </select>
             </div>
           </div>
 
           {/* Live preview */}
-          <div className="flex justify-between items-center pt-2 border-t border-amber-200 dark:border-amber-800">
+          <div className="flex justify-between items-center pt-1 border-t border-amber-200 dark:border-amber-800">
             <span className="text-xs text-slate-500">Preview:</span>
-            <span className="font-semibold text-primary-600">
+            <span className="font-semibold text-primary-600 text-sm">
               {formatCurrency(
                 editForm.displayPrice *
                   editForm.quantity *
@@ -616,13 +686,15 @@ export default function ProposalBuilderV2() {
 
     // Compact view mode
     return (
-      <div className="flex items-center justify-between p-3 bg-slate-50 dark:bg-slate-800/50 rounded-lg group hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
+      <div data-testid="selected-service-row" data-service-name={service.name} className="flex items-center justify-between p-3 bg-slate-50 dark:bg-slate-800/50 rounded-lg group hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
         <div className="flex-1 min-w-0">
           <h4 className="font-medium text-slate-900 dark:text-white text-sm truncate">
             {service.name}
           </h4>
           <p className="text-xs text-slate-500 dark:text-slate-400">
-            {formatCurrency(service.displayPrice)} × {service.quantity}
+            {service.billingCycle === 'ONE_TIME' || service.billingCycle === 'ANNUALLY'
+              ? `${formatCurrency(service.displayPrice)} × ${service.quantity}`
+              : `${formatCurrency(calculateMonthlyEquivalent(service.displayPrice, service.billingCycle))} × ${service.quantity}`}
             {service.discountPercent > 0 && (
               <span className="text-amber-600 ml-1">(-{service.discountPercent}%)</span>
             )}
@@ -635,10 +707,14 @@ export default function ProposalBuilderV2() {
         <div className="flex items-center gap-3 flex-shrink-0 ml-4">
           <div className="text-right">
             <span className="font-semibold text-slate-900 dark:text-white text-sm block">
-              {formatCurrency(service.lineTotal)}
+              {service.billingCycle === 'ONE_TIME' || service.billingCycle === 'ANNUALLY'
+                ? formatCurrency(service.lineTotal)
+                : formatCurrency(calculateMonthlyEquivalent(service.lineTotal, service.billingCycle))}
             </span>
             <span className="text-xs text-slate-400 dark:text-slate-500">
-              {BILLING_FREQUENCY_LABELS[service.billingCycle] || 'month'}
+              {service.billingCycle === 'ONE_TIME' || service.billingCycle === 'ANNUALLY'
+                ? BILLING_FREQUENCY_LABELS[service.billingCycle] || 'one-time'
+                : 'month'}
               {service.vatAmount > 0 && (
                 <span className="ml-1 text-primary-500 dark:text-primary-400">
                   (inc VAT {formatCurrency(service.grossTotal)})
@@ -647,8 +723,9 @@ export default function ProposalBuilderV2() {
             </span>
           </div>
 
-          <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+          <div className="flex gap-1">
             <button
+              data-testid="edit-service-button"
               onClick={() => startEdit(service)}
               className="p-1.5 text-blue-600 hover:bg-blue-100 dark:hover:bg-blue-900/30 rounded"
               title="Edit"
@@ -656,6 +733,7 @@ export default function ProposalBuilderV2() {
               <PencilIcon className="w-4 h-4" />
             </button>
             <button
+              data-testid="remove-service-button"
               onClick={() => removeService(service.id)}
               className="p-1.5 text-red-600 hover:bg-red-100 dark:hover:bg-red-900/30 rounded"
               title="Remove"
@@ -759,11 +837,22 @@ export default function ProposalBuilderV2() {
                   </div>
                 )}
                 <div className="flex justify-between items-center mt-2 pt-2 border-t border-primary-200 dark:border-primary-800">
-                  <span className="font-semibold text-slate-900 dark:text-white">Total</span>
+                  <span className="font-semibold text-slate-900 dark:text-white">Total monthly</span>
                   <span className="text-lg font-bold text-primary-600">
-                    {formatCurrency(summary.grandTotal)}
+                    {formatCurrency(
+                      summary.monthly.total + summary.quarterly.total + summary.annually.total
+                    )}
+                    <span className="text-xs font-normal text-slate-500 ml-1">/month</span>
                   </span>
                 </div>
+                {summary.oneTime.count > 0 && (
+                  <div className="flex justify-between items-center mt-1 text-sm">
+                    <span className="text-slate-600 dark:text-slate-300">One-time</span>
+                    <span className="font-medium text-slate-900 dark:text-white">
+                      {formatCurrency(summary.oneTime.total)}
+                    </span>
+                  </div>
+                )}
               </div>
             </>
           )}
@@ -772,12 +861,12 @@ export default function ProposalBuilderV2() {
 
       {/* Navigation */}
       <div className="flex justify-between pt-4 border-t border-slate-200 dark:border-slate-700">
-        <button onClick={() => setCurrentStep(1)} className="btn-secondary">
+        <button data-testid="services-back-button" onClick={() => setCurrentStep(1)} className="btn-secondary">
           <ArrowLeftIcon className="w-5 h-5 mr-2" />
           Back
         </button>
         {selectedServices.length > 0 && (
-          <button onClick={() => setCurrentStep(3)} className="btn-primary">
+          <button data-testid="services-continue-button" onClick={() => setCurrentStep(3)} className="btn-primary">
             Continue
             <ArrowRightIcon className="w-5 h-5 ml-2" />
           </button>
@@ -797,6 +886,7 @@ export default function ProposalBuilderV2() {
           Proposal Title *
         </label>
         <input
+          data-testid="proposal-title-input"
           type="text"
           value={proposalTitle}
           onChange={(e) => setProposalTitle(e.target.value)}
@@ -862,11 +952,11 @@ export default function ProposalBuilderV2() {
 
       {/* Actions */}
       <div className="flex justify-between">
-        <button onClick={() => setCurrentStep(2)} className="btn-secondary">
+        <button data-testid="review-back-button" onClick={() => setCurrentStep(2)} className="btn-secondary">
           <ArrowLeftIcon className="w-5 h-5 mr-2" />
           Back
         </button>
-        <button onClick={createProposal} disabled={isLoading} className="btn-primary">
+        <button data-testid="create-proposal-button" onClick={createProposal} disabled={isLoading} className="btn-primary">
           {isLoading ? 'Creating...' : 'Create Proposal'}
           <ArrowRightIcon className="w-5 h-5 ml-2" />
         </button>

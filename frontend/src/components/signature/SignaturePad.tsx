@@ -133,6 +133,7 @@ const SignaturePad = ({
       {/* Canvas Container */}
       <div className="relative">
         <canvas
+          data-testid="signature-canvas"
           ref={canvasRef}
           width={width}
           height={height}
