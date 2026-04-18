@@ -29,11 +29,9 @@ async function main() {
     return;
   }
 
-  // Find all services where billingCycle doesn't match defaultFrequency
+  // billingCycle is non-null in schema — do not query `billingCycle: null` (Prisma validation error)
   const services = await prisma.serviceTemplate.findMany({
-    where: {
-      OR: [{ billingCycle: null }, { billingCycle: 'MONTHLY' }],
-    },
+    where: { isActive: true },
   });
 
   console.log(`Found ${services.length} services to check`);
