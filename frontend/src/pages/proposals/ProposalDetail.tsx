@@ -22,6 +22,7 @@ import { useAuthStore } from '../../stores/authStore';
 import { format } from 'date-fns';
 import toast from 'react-hot-toast';
 import { generateTermsAndConditions } from '../../data/defaultTerms';
+import { generateDefaultCoverLetter } from '../../data/defaultCoverLetter';
 import SignaturePad from '../../components/SignaturePad';
 import SkeletonProposalDetail from '../../components/skeleton/SkeletonProposalDetail';
 
@@ -83,6 +84,9 @@ const ProposalDetail = () => {
   const [signatoryPosition, setSignatoryPosition] = useState('');
   const [companySettings, setCompanySettings] = useState<any>(null);
   const [copyingLink, setCopyingLink] = useState(false);
+  const [coverLetterDraft, setCoverLetterDraft] = useState('');
+  const [editingCoverLetter, setEditingCoverLetter] = useState(false);
+  const [savingCoverLetter, setSavingCoverLetter] = useState(false);
 
   useEffect(() => {
     if (id) {
@@ -91,6 +95,12 @@ const ProposalDetail = () => {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
+
+  useEffect(() => {
+    if (proposal && !editingCoverLetter) {
+      setCoverLetterDraft(proposal.coverLetter || '');
+    }
+  }, [proposal?.id, proposal?.coverLetter, editingCoverLetter]);
 
   const loadCompanySettings = async () => {
     try {
@@ -244,6 +254,35 @@ const ProposalDetail = () => {
     }
   };
 
+  const handleSaveCoverLetter = async () => {
+    if (!id) return;
+    try {
+      setSavingCoverLetter(true);
+      const res = (await apiClient.updateProposal(id, { coverLetter: coverLetterDraft })) as any;
+      if (res?.success === false) {
+        toast.error(res?.error?.message || 'Could not save cover letter');
+        return;
+      }
+      toast.success('Cover letter saved');
+      setEditingCoverLetter(false);
+      loadProposal();
+    } catch {
+      toast.error('Could not save cover letter');
+    } finally {
+      setSavingCoverLetter(false);
+    }
+  };
+
+  const handleInsertDefaultCoverLetter = () => {
+    if (!proposal) return;
+    setCoverLetterDraft(
+      generateDefaultCoverLetter({
+        clientName: proposal.client?.name || 'Client',
+        practiceName: tenant?.name || 'Our practice',
+      })
+    );
+  };
+
   // Group services by billing frequency
   const groupedServices = useMemo(() => {
     if (!proposal?.services) return {};
@@ -305,6 +344,8 @@ const ProposalDetail = () => {
   const StatusIcon = status.icon;
   const showClientLinkButton = !['DECLINED', 'EXPIRED'].includes(proposal.status);
   const clientOpenCount = typeof proposal.viewCount === 'number' ? proposal.viewCount : 0;
+  /** Backend rejects updates once the proposal is signed (ACCEPTED). */
+  const canEditCoverLetter = proposal.status !== 'ACCEPTED';
 
   return (
     <div className="space-y-6 animate-fade-in">
@@ -481,14 +522,71 @@ const ProposalDetail = () => {
           </div>
 
           {/* Cover Letter */}
-          {proposal.coverLetter && (
+          {(proposal.coverLetter || canEditCoverLetter) && (
             <div className="glass-tile p-6">
-              <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-100 mb-4">
-                Cover Letter
-              </h2>
-              <div className="prose prose-sm dark:prose-invert max-w-none text-slate-700 dark:text-slate-300 whitespace-pre-wrap">
-                {proposal.coverLetter}
+              <div className="flex flex-wrap items-center justify-between gap-2 mb-4">
+                <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-100">Cover letter</h2>
+                {canEditCoverLetter && !editingCoverLetter && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setCoverLetterDraft(proposal.coverLetter || '');
+                      setEditingCoverLetter(true);
+                    }}
+                    className="btn-secondary text-sm print:hidden"
+                  >
+                    <PencilIcon className="h-4 w-4 mr-1.5 inline" />
+                    Edit
+                  </button>
+                )}
               </div>
+              {editingCoverLetter ? (
+                <div className="space-y-3">
+                  <textarea
+                    value={coverLetterDraft}
+                    onChange={(e) => setCoverLetterDraft(e.target.value)}
+                    className="input-field w-full min-h-[220px] text-sm font-sans text-slate-900 dark:text-slate-100"
+                    placeholder="Write your cover letter to the client…"
+                    aria-label="Cover letter"
+                  />
+                  <div className="flex flex-wrap gap-2">
+                    <button
+                      type="button"
+                      onClick={handleSaveCoverLetter}
+                      disabled={savingCoverLetter}
+                      className="btn-primary text-sm"
+                    >
+                      {savingCoverLetter ? 'Saving…' : 'Save'}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setEditingCoverLetter(false);
+                        setCoverLetterDraft(proposal.coverLetter || '');
+                      }}
+                      className="btn-secondary text-sm"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleInsertDefaultCoverLetter}
+                      className="btn-secondary text-sm"
+                    >
+                      Use template
+                    </button>
+                  </div>
+                </div>
+              ) : proposal.coverLetter ? (
+                <div className="prose prose-sm dark:prose-invert max-w-none text-slate-700 dark:text-slate-300 whitespace-pre-wrap">
+                  {proposal.coverLetter}
+                </div>
+              ) : (
+                <p className="text-sm text-slate-600 dark:text-slate-400">
+                  No cover letter yet. Click <strong className="text-slate-800 dark:text-slate-200">Edit</strong>{' '}
+                  to add one, or open the proposal builder next time to start from the full default.
+                </p>
+              )}
             </div>
           )}
 
@@ -748,6 +846,10 @@ const ProposalDetail = () => {
                 .
               </p>
               <p className="text-xs text-slate-500 dark:text-slate-500 mt-3 leading-relaxed">
+                Counts and Viewed status update only when the client uses the public link; opening this screen in
+                the practice app does not add opens or change status.
+              </p>
+              <p className="text-xs text-slate-500 dark:text-slate-500 mt-2 leading-relaxed">
                 Sending marks the proposal <strong className="text-slate-700 dark:text-slate-300">Sent</strong>.
                 When the client opens the <strong className="text-slate-700 dark:text-slate-300">Copy client link</strong>{' '}
                 URL, it becomes <strong className="text-slate-700 dark:text-slate-300">Viewed</strong> and each open

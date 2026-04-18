@@ -5,12 +5,12 @@ name: CI/CD
 
 on:
   push:
-    branches: [main, develop]
+    branches: [main, master, develop]
     paths-ignore:
       - '**.md'
       - 'docs/**'
   pull_request:
-    branches: [main, develop]
+    branches: [main, master, develop]
   workflow_dispatch:
     inputs:
       environment:
@@ -96,6 +96,9 @@ jobs:
         env:
           DATABASE_URL: postgresql://test:test@localhost:5432/engage_test
           REDIS_URL: redis://localhost:6379
+
+      - name: Frontend unit tests
+        run: cd frontend && npx vitest run
       
       - name: Upload coverage
         uses: codecov/codecov-action@v4

@@ -16,7 +16,8 @@
     "db:seed": "tsx prisma/seed-enhanced.ts",
     "db:studio": "prisma studio",
     "lint": "eslint src --ext .ts",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "job:renewal-reminders": "npx tsx scripts/run-renewal-reminders.ts"
   },
   "dependencies": {
     "@prisma/client": "5.22.0",
