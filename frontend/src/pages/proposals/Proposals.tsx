@@ -39,7 +39,7 @@ const statusLabels: Record<string, string> = {
   DRAFT: 'Draft',
   SENT: 'Sent',
   VIEWED: 'Viewed',
-  ACCEPTED: 'Accepted',
+  ACCEPTED: 'Signed',
   DECLINED: 'Declined',
   EXPIRED: 'Expired',
 };

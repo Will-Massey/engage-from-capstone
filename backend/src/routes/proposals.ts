@@ -7,6 +7,7 @@ import { asyncHandler, ApiError } from '../middleware/errorHandler.js';
 import { PricingEngine } from '../services/pricingEngine.js';
 import { PDFGenerator } from '../services/pdfGenerator.js';
 import logger from '../config/logger.js';
+import { getProposalViewStats, createShareableLink } from '../services/proposalSharingService.js';
 // generateReference helper function
 const generateReference = (prefix: string = 'PROP'): string => {
   const timestamp = Date.now().toString(36).toUpperCase();
@@ -203,9 +204,15 @@ router.get(
       throw new ApiError('NOT_FOUND', 'Proposal not found', 404);
     }
 
+    const viewStats = await getProposalViewStats(id);
+
     res.json({
       success: true,
-      data: proposal,
+      data: {
+        ...proposal,
+        viewCount: viewStats?.totalViews ?? 0,
+        lastViewedAt: viewStats?.lastViewedAt ?? null,
+      },
     });
   })
 );
@@ -729,6 +736,8 @@ router.post(
       throw new ApiError('NO_CLIENT_EMAIL', 'Client does not have an email address', 400);
     }
 
+    const tenantSubdomain = proposal.tenant.subdomain;
+
     // Import services
     const { EmailService } = await import('../services/emailService.js');
     const { PDFGenerator } = await import('../services/pdfGenerator.js');
@@ -776,9 +785,23 @@ router.post(
     } else {
       const emailService = new EmailService(emailConfig);
 
-      // Build view link
-      const frontendUrl = process.env.FRONTEND_URL || 'https://engagebycapstone.co.uk';
-      const viewLink = `${frontendUrl}/proposals/share/${proposal.shareToken || id}`;
+      // Build client view link (public share page)
+      const frontendUrl = (process.env.FRONTEND_URL || 'https://engagebycapstone.co.uk').replace(
+        /\/$/,
+        ''
+      );
+      let viewToken = proposal.shareToken;
+      const tokenExpiry = proposal.shareTokenExpiry;
+      if (
+        !viewToken ||
+        !tokenExpiry ||
+        new Date(tokenExpiry).getTime() < Date.now() ||
+        !proposal.publicAccessEnabled
+      ) {
+        const link = await createShareableLink(id, 30, tenantSubdomain);
+        viewToken = link.token;
+      }
+      const viewLink = `${frontendUrl}/proposals/view/${viewToken}`;
 
       // Format total amount
       const totalAmount = new Intl.NumberFormat('en-GB', {
@@ -1002,31 +1025,13 @@ router.post(
       throw new ApiError('NOT_FOUND', 'Proposal not found', 404);
     }
 
-    // Update status to VIEWED if currently SENT
-    if (proposal.status === 'SENT') {
-      await prisma.proposal.update({
-        where: { id },
-        data: { status: 'VIEWED' },
-      });
-    }
-
-    // Record view in activity log
-    await prisma.activityLog.create({
-      data: {
-        tenantId: req.tenantId,
-        userId: req.user!.id,
-        action: 'PROPOSAL_VIEWED',
-        entityType: 'PROPOSAL',
-        entityId: proposal.id,
-        description: `Viewed proposal "${proposal.title}"`,
-      },
-    });
-
+    // Client opens are tracked via GET /api/proposals/view/:token (ProposalView rows).
+    // Staff opening this page must not change SENT → VIEWED or inflate client metrics.
     res.json({
       success: true,
       data: {
-        message: 'View recorded',
-        status: proposal.status === 'SENT' ? 'VIEWED' : proposal.status,
+        message: 'OK',
+        status: proposal.status,
       },
     });
   })

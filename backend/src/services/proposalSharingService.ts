@@ -33,8 +33,11 @@ export async function createShareableLink(
       },
     });
 
-    const baseUrl =
-      process.env.PUBLIC_PROPOSAL_URL || `https://${tenantSubdomain}.engage.capstone.co.uk`;
+    const baseUrl = (
+      process.env.FRONTEND_URL ||
+      process.env.PUBLIC_PROPOSAL_URL ||
+      `https://${tenantSubdomain}.engage.capstone.co.uk`
+    ).replace(/\/$/, '');
     const shareUrl = `${baseUrl}/proposals/view/${token}`;
 
     logger.info(`Created shareable link for proposal ${proposalId}`);

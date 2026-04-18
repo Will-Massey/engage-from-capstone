@@ -189,8 +189,11 @@ router.post(
       const result = await createShareableLink(id, 30, tenant.subdomain);
       shareUrl = result.shareUrl;
     } else {
-      const baseUrl =
-        process.env.PUBLIC_PROPOSAL_URL || `https://${tenant.subdomain}.engage.capstone.co.uk`;
+      const baseUrl = (
+        process.env.FRONTEND_URL ||
+        process.env.PUBLIC_PROPOSAL_URL ||
+        `https://${tenant.subdomain}.engage.capstone.co.uk`
+      ).replace(/\/$/, '');
       shareUrl = `${baseUrl}/proposals/view/${proposal.shareToken}`;
     }
 
