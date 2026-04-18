@@ -103,7 +103,7 @@ export async function createTestService(
 }
 
 /**
- * Create a proposal with services using ProposalBuilder_v2
+ * Create a proposal with services using the proposal builder (Create Proposal flow).
  */
 export async function createTestProposal(
   page: Page,

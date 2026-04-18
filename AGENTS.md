@@ -1,7 +1,7 @@
 # Engage by Capstone — Agent Guide
 
 > **Purpose:** This document exists for AI coding agents. It summarises the project architecture, conventions, and workflows so you can be productive immediately.  
-> **Last updated:** 2026-04-14
+> **Last updated:** 2026-04-15
 
 ---
 
@@ -30,14 +30,14 @@
 
 | Layer                | Technology                                                                                                                      |
 | -------------------- | ------------------------------------------------------------------------------------------------------------------------------- |
-| **Monorepo**         | npm workspaces + pnpm (`pnpm-workspace.yaml`) + Turbo (`turbo.json`)                                                            |
+| **Monorepo**         | npm workspaces (`package.json` `workspaces`). Optional: `pnpm-workspace.yaml` / `turbo.json` for tooling compatibility only      |
 | **Backend**          | Node.js 20+, Express.js 4, TypeScript 5.9+, Prisma 5.22, PostgreSQL 15                                                          |
 | **Frontend**         | React 18, TypeScript 5.2, Vite 5, Tailwind CSS 3.4, Zustand 4.4                                                                 |
 | **Shared**           | TypeScript package (`@uk-proposal-platform/shared`) exposing enums, interfaces, validation, pricing engine, MTD ITSA calculator |
-| **Testing**          | Playwright 1.51 (E2E, active). Jest 29 (backend, installed but no tests). Vitest 1.1 (frontend, installed but no tests)         |
+| **Testing**          | Playwright 1.51 (E2E, active). Jest 29 (backend, has tests). Vitest 1.1 (frontend, installed but no tests)         |
 | **Caching**          | Redis 7 (via `ioredis`) — optional but configured                                                                               |
-| **Package Manager**  | npm locally + pnpm in CI (`--frozen-lockfile`)                                                                                  |
-| **CI/CD**            | GitHub Actions (`.github/workflows/ci-cd.yml` plus 4 supplementary workflows)                                                   |
+| **Package Manager**  | **npm** (`package-lock.json`) — use `npm ci` in CI and on servers for reproducible installs                                     |
+| **CI/CD**            | GitHub Actions (`ci-cd.yml`, `e2e-scheduled.yml`, `security.yml`, deploy workflows)                                             |
 | **Containerization** | Docker + Docker Compose                                                                                                         |
 | **Deployment**       | Render (primary, free tier). Railway (backend) + Vercel (frontend) as secondary/staging-production path                         |
 
@@ -136,7 +136,8 @@ engage/
 | `frontend/tailwind.config.js`  | Custom colours, glass utilities, animations, dark mode via `class`                                                           |
 | `shared/tsconfig.json`         | `strict: true`. Outputs CommonJS to `dist/` with declarations.                                                               |
 | `.github/workflows/ci-cd.yml`  | Main pipeline: lint, typecheck, test (against PG+Redis), build/push Docker images, deploy to dev/staging/prod                |
-| `docker-compose.yml`           | PostgreSQL, Redis, backend, frontend, Adminer, Redis Commander                                                               |
+| `docker-compose.yml`           | **Local dev (hot reload)** — Node containers + Postgres + Redis + Adminer + Redis Commander                                    |
+| `docker-compose.prod.yml`      | **Production-like** stack — builds `Dockerfile.*.optimized` images                                                               |
 | `render.yaml`                  | Render Infrastructure-as-Code (primary target)                                                                               |
 
 ---
@@ -213,21 +214,23 @@ Content-aware loading placeholders:
 
 ```bash
 npm install
-# or
-pnpm install
+# reproducible (CI / clean machines)
+npm ci
 ```
 
-### Development (Two Terminals)
+### Development
 
 ```bash
-# Terminal 1 — backend
-cd backend && npm run dev      # tsx watch src/index.ts
-
-# Terminal 2 — frontend
-cd frontend && npm run dev     # vite --host
+# One terminal — backend + frontend
+npm run dev
 ```
 
-> On Windows: Use `start-dev.bat` which launches both.
+Or run packages separately:
+
+```bash
+cd backend && npm run dev      # tsx watch src/index.ts
+cd frontend && npm run dev     # vite --host
+```
 
 ### Build (Production)
 
@@ -256,9 +259,10 @@ npm run db:studio        # Prisma Studio
 cd e2e-tests && npx playwright test
 cd e2e-tests && npx playwright test --headed     # visible browser
 cd e2e-tests && npx playwright show-report       # view HTML report
+npm run test:e2e                                  # from root
 
-# Backend — Jest is configured but has no tests
-cd backend && npm test
+# Backend — Jest 29 with ts-jest
+cd backend && npm test                            # run pricing + mtditsa tests
 
 # Frontend — Vitest is installed but has no tests
 cd frontend && npm test
@@ -280,15 +284,20 @@ cd frontend && npm run lint  # eslint . --ext ts,tsx --report-unused-disable-dir
 ### Docker (Local Development)
 
 ```bash
-docker-compose up --build
+docker compose up
 ```
 
-Services:
+For a production-like image build locally:
+
+```bash
+docker compose -f docker-compose.prod.yml up --build
+```
+
+Services (dev compose):
 
 - PostgreSQL: `:5432`
 - Redis: `:6379`
-- Backend API: `:3001`
-- Frontend: `:80`
+- Backend API: `:3001` (Vite dev server on frontend: `:5173`)
 - Adminer: `:8080`
 - Redis Commander: `:8081`
 
@@ -307,7 +316,7 @@ Services:
 2. Security middleware: `helmet` (strict CSP, HSTS 1 year), `cors` (whitelisted origins + regex for Vercel/Render), `cookie-parser`
 3. **Auth routes mounted BEFORE CSRF** (`/api/auth`)
 4. CSRF cookie set globally; CSRF validation applied to `/api/*`
-5. `extractTenant` middleware (`backend/src/middleware/tenant-simple.ts`) on API routes
+5. `extractTenant` middleware (`backend/src/middleware/tenant.ts`) on API routes
 6. API routes mounted
 7. Static files served from `public/`; uploads from `/uploads`
 8. SPA fallback (`index.html`) for non-API routes
@@ -339,11 +348,11 @@ Services:
 4. Fixes billing cycle via `fix-billing-cycle.js`
 5. Imports `dist/index.js` to start server
 
-**Render Deployment Specifics:**
+**Render deployment specifics (current code):**
 
-- `tenant-simple.ts` hardcodes tenant resolution to `demo-practice` then `demo` for Render deployments
-- `RENDER_DEPLOYMENT = true` allows all `*.onrender.com` origins
-- Public seed endpoint: `/api/seed-services-public?key=capstone-uk-2026` seeds UK service catalog without auth (protected by hardcoded secret)
+- `tenant.ts` extracts tenant from subdomain for custom domains, and falls back to `demo` for localhost, Railway, and Render
+- **CORS:** permissive `*.onrender.com` behaviour is **opt-in** via `ALLOW_RENDER_WILDCARD_ORIGINS=true` (do not enable unless you need it)
+- **Public seed / admin keys:** use env vars (`PUBLIC_SEED_KEY`, `ADMIN_SECRET_KEY`, etc.); see `backend/.env.example` — no hardcoded keys in source
 
 ### Frontend
 
@@ -458,11 +467,13 @@ All backend routes return:
 - **Features:** Auto-retry on failure (2 in CI, 1 local), screenshots on failure, video on failure, trace on first retry
 - **Run:** `cd e2e-tests && npx playwright test`
 
-### Backend Testing — Installed but empty
+### Backend Testing — Active
 
 - **Framework:** Jest 29 with `ts-jest`
+- **Config:** `backend/jest.config.js`
 - **Scripts:** `cd backend && npm test` (jest), `npm run test:watch` (jest --watch)
-- **Status:** No `jest.config.js` and **no `.test.` / `.spec.` files** exist under `backend/`. Running the script finds nothing to execute.
+- **Test files:** `backend/src/services/__tests__/pricing.test.ts`, `backend/src/services/__tests__/mtditsa.test.ts`
+- **Status:** 20 tests passing. Tests import from `@shared/*` via `moduleNameMapper`.
 
 ### Frontend Testing — Installed but empty
 
@@ -482,7 +493,7 @@ All backend routes return:
 
 ### CI/CD Testing
 
-The `.github/workflows/ci-cd.yml` test job spins up PostgreSQL 15 and Redis 7 services, runs `pnpm prisma migrate deploy`, then runs `pnpm test`. Because the root `package.json` has no `test` script and the workspace packages have no actual test files, this step is currently a no-op for unit tests. E2E tests are not run in CI.
+The `.github/workflows/ci-cd.yml` **test** job spins up PostgreSQL 15 and Redis 7, runs `npm ci`, Prisma generate/migrate, then **`cd backend && npm test -- --coverage`**. The **E2E** job builds all packages, starts backend + frontend, and runs Playwright (Chromium).
 
 ---
 
@@ -520,24 +531,51 @@ The `.github/workflows/ci-cd.yml` test job spins up PostgreSQL 15 and Redis 7 se
 
 ## 12. Deployment
 
+### Git branches & what they trigger
+
+| Branch / action | Typical outcome |
+| ---------------- | ---------------- |
+| **`main`** | **Staging path** in `ci-cd.yml` (Railway backend staging + Vercel staging) when that workflow’s deploy jobs run; **`deploy-render.yml`** also runs on push to **`main` or `master`** and triggers **Render** backend then frontend deploy via the Render API |
+| **`develop`** | **Development** deploy job in `ci-cd.yml` (Railway dev + Vercel dev), when enabled |
+| **`workflow_dispatch`** | **Production** deploy in `ci-cd.yml` is **manual only** (includes DB backup, migrations, Slack) |
+
+**Render auto-deploy:** If each Render service is connected to the same GitHub repo, pushing the linked branch can start a deploy **without** the GitHub Action — check the service’s **Auto-Deploy** branch in the Render dashboard.
+
+**Manual Render API deploy:** `scripts/deploy.sh` / `scripts/deploy.ps1` (requires `RENDER_API_KEY` and service IDs). Same idea as `.github/workflows/deploy-render.yml`.
+
+### Cursor hooks (project)
+
+- **Config:** `engage/.cursor/hooks.json`
+- **Scripts:** `engage/.cursor/hooks/*` (tracked in git)
+- **Current behaviour:** `beforeShellExecution` on `git push` runs `git-push-guard.sh` — prompts (does not block by default) to run **`npm run verify`** and confirm Render secrets / `scripts/deploy.sh`. Set **`SKIP_DEPLOY_GUARD=1`** to skip the prompt.
+
+### npm: `Unknown env config "devdir"` warning
+
+npm 10+ rejects the legacy **`devdir`** key. If you see this when running `npm ci` locally, remove **`devdir=...`** from **`~/.npmrc`** (or from any parent `.npmrc` loaded before the project). This repository does not set `devdir`.
+
 ### CI/CD Pipeline (GitHub Actions)
 
-There are **5 workflows** in `.github/workflows/`:
+There are multiple workflows in `.github/workflows/` (including a **reusable** `playwright-e2e.yml`).
 
-#### `ci-cd.yml` (Main Pipeline — 315 lines)
+#### `ci-cd.yml` (Main Pipeline)
 
-A unified pipeline using **pnpm** and **Docker Buildx**:
+A unified pipeline using **npm** and **Docker Buildx**:
 
-1. **Lint & Type Check** — Caches pnpm store and Turbo; runs `pnpm lint`, `pnpm typecheck`, `pnpm format:check`
-2. **Test Suite** — Spins up PostgreSQL 15 and Redis 7; generates Prisma client, runs migrations; runs `pnpm test`
-3. **Build & Push Images** — Logs into GHCR; builds and pushes `backend` and `frontend` Docker images with Git SHA tags
-4. **Deploy Dev** (`develop` branch) — Backend to Railway (`engage-backend-dev`); frontend to Vercel (dev)
-5. **Deploy Staging** (`main` branch) — Backend to Railway (`engage-backend-staging`); runs migrations; frontend to Vercel (staging); health checks
-6. **Deploy Production** (manual `workflow_dispatch` only) — Backs up DB with `pg_dump`; deploys backend to Railway (`engage-backend-prod`); runs migrations; deploys frontend to Vercel with `--prod`; health checks; notifies Slack
+1. **Lint & Type Check** — `npm ci`; runs `npm run lint`, `npm run typecheck`, `npm run format:check`
+2. **Test Suite** — PostgreSQL 15 + Redis 7; Prisma generate/migrate; **`cd backend && npm test -- --coverage`**; coverage upload reads **`backend/coverage/lcov.info`**
+3. **E2E Tests** — Runs after lint + unit tests; calls **`playwright-e2e.yml`** (builds shared/backend/frontend, seeds UK services, starts backend + `vite preview`, Playwright Chromium)
+4. **Build & Push Images** — Runs only after **lint, test, and E2E** succeed on **push**; logs into GHCR and pushes `backend` / `frontend` images with Git SHA tags
+5. **Deploy Dev** (`develop` branch) — Backend to Railway (`engage-backend-dev`); frontend to Vercel (dev)
+6. **Deploy Staging** (`main` branch) — Backend to Railway (`engage-backend-staging`); runs migrations; frontend to Vercel (staging); health checks
+7. **Deploy Production** (manual `workflow_dispatch` only) — Backs up DB with `pg_dump`; deploys backend to Railway (`engage-backend-prod`); runs migrations; deploys frontend to Vercel with `--prod`; health checks; notifies Slack
+
+#### `e2e-scheduled.yml`
+
+Weekday **06:00 UTC** cron plus **workflow_dispatch**; calls the same **`playwright-e2e.yml`** reusable job so regressions are caught between merges (uses the workflow file from the **default branch**).
 
 #### `deploy-render.yml`
 
-Triggered on push to `master`/`main`. Uses Render REST API to trigger backend deploy then frontend deploy (with cache clear).
+Triggered on push to **`master`** or **`main`**. Uses the Render REST API to trigger a **backend** deploy, then a **frontend** deploy (frontend uses **`clearCache: true`**). Requires GitHub secrets: `RENDER_API_KEY`, `RENDER_BACKEND_SERVICE_ID`, `RENDER_FRONTEND_SERVICE_ID`.
 
 #### `deploy-to-render.yml` & `deploy.yml`
 
@@ -547,7 +585,7 @@ Earlier/simpler Render deploy workflows.
 
 Runs on schedule (daily 2 AM), PRs, and pushes to `main`/`develop`:
 
-- Dependency scan (`pnpm audit`, Snyk)
+- Dependency scan (`npm audit`, Snyk)
 - CodeQL (JavaScript/TypeScript)
 - Container scan (Trivy on backend/frontend images)
 - Secret scan (GitLeaks)
@@ -557,7 +595,7 @@ Runs on schedule (daily 2 AM), PRs, and pushes to `main`/`develop`:
 ### Render (Primary — Free Tier)
 
 - **`render.yaml`:** Blueprint for Infrastructure-as-Code
-  - **Backend:** Node web service (`engage-backend`), free plan, auto-sleeps after 15 min. Build: `npm install && cd backend && npx prisma generate`. Start: `cd backend && npx prisma migrate deploy && node dist/scripts/migrateServicePricing.js 2>/dev/null || true && npm start`. Health check: `/ping`. Port: `10000`.
+  - **Backend:** Node web service (`engage-backend`), free plan, auto-sleeps after 15 min. Build (blueprint): `npm ci && npm run build:shared && npm run build:backend` (compiles `dist/`; Prisma client runs in `backend` prebuild). Start: `cd backend && npm start` → `start-prod.mjs` (runs `prisma migrate deploy` on boot). Health check: `/ping`. Port: `10000`.
   - **Frontend:** Static site (`engage-frontend`), rootDir `frontend/`. Build: cache-busting `rm -rf dist ... && npm install --include=dev && npm run build`. Publish: `./dist`. SPA fallback to `index.html`.
   - **Database:** Render PostgreSQL free tier (`engage-db`)
 - **`scripts/deploy.sh`:** Manual bash script to trigger Render deploys via API
@@ -576,8 +614,8 @@ docker-compose up --build
 
 Three Dockerfiles exist:
 
-1. **`Dockerfile` (root):** Multi-stage backend build (`node:20-alpine`)
-2. **`Dockerfile.backend.optimized`:** Used by `docker-compose.yml` and CI
+1. **`Dockerfile` (root):** Multi-stage backend build (`node:20-alpine`). **Now uses `start-prod.mjs` as CMD** to ensure migrations run on container start.
+2. **`Dockerfile.backend.optimized`:** Used by `docker-compose.yml` and CI. **Now uses `start-prod.mjs` as CMD** for the same reason.
 3. **`Dockerfile.frontend.optimized`:** Builds Vite frontend and serves via nginx
 
 ### Required Environment Variables
@@ -611,13 +649,13 @@ Three Dockerfiles exist:
 
 6. **TypeScript strict mode:** Both backend and frontend have `strict: false`. Do not enable without extensive testing.
 
-7. **Package manager consistency:** Project uses `npm` locally but `pnpm` in CI. Prefer `npm install` locally to avoid lockfile conflicts.
+7. **Package manager consistency:** Use **npm** and commit **`package-lock.json`**. Prefer `npm ci` on CI and clean machines.
 
 8. **Theme class:** Dark mode requires `dark` class on `html` element. Use `useThemeStore` to toggle.
 
 9. **UserRole mismatch:** Prisma schema includes `ADMIN`; the `shared` package does not. Be careful which source you import `UserRole` from.
 
-10. **Render tenant hardcoding:** `tenant-simple.ts` resolves all Render traffic to the `demo-practice` / `demo` tenant. For true multi-tenancy on Render, this must be replaced.
+10. **Render tenant resolution:** `backend/src/middleware/tenant.ts` handles subdomain extraction for custom domains while still defaulting to `demo` for localhost, Railway, and Render.
 
 ---
 
@@ -645,7 +683,7 @@ Three Dockerfiles exist:
 | Shared types              | `shared/src/index.ts`                                                            |
 | Proposal sharing          | `backend/src/services/proposalSharingService.ts`                                 |
 | Companies House           | `backend/src/services/companiesHouse.ts`, `backend/src/routes/companiesHouse.ts` |
-| Tenant middleware         | `backend/src/middleware/tenant-simple.ts`                                        |
+| Tenant middleware         | `backend/src/middleware/tenant.ts`                                               |
 | Redis config              | `backend/src/config/redis.ts`                                                    |
 | Stripe config             | `backend/src/config/stripe.ts`                                                   |
 | Environment validation    | `backend/src/config/env.ts`                                                      |

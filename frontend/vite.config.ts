@@ -60,8 +60,28 @@ export default defineConfig({
     sourcemap: true,
     rollupOptions: {
       output: {
-        manualChunks: {
-          vendor: ['react', 'react-dom', 'react-router-dom'],
+        manualChunks(id) {
+          if (!id.includes('node_modules')) return;
+          // Core React stack — keep stable across route chunks (order matters: react-router contains "react")
+          if (
+            id.includes('node_modules/react-router') ||
+            id.includes('node_modules/react-dom') ||
+            id.includes('node_modules/react/') ||
+            id.includes('node_modules/scheduler/')
+          ) {
+            return 'vendor-react';
+          }
+          // Heavy optional UI / charts (split from app bundle)
+          if (id.includes('recharts')) return 'vendor-recharts';
+          if (id.includes('framer-motion')) return 'vendor-motion';
+          if (id.includes('react-joyride')) return 'vendor-joyride';
+          if (id.includes('@headlessui')) return 'vendor-headlessui';
+          if (id.includes('@heroicons')) return 'vendor-heroicons';
+          if (id.includes('@stripe')) return 'vendor-stripe';
+          if (id.includes('date-fns')) return 'vendor-date-fns';
+          if (id.includes('axios') || id.includes('/zod/') || id.includes('zustand')) {
+            return 'vendor-data';
+          }
         },
         entryFileNames: 'assets/[name]-[hash].js',
         chunkFileNames: 'assets/[name]-[hash].js',

@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { lazy, Suspense, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import {
   DocumentTextIcon,
@@ -15,25 +15,15 @@ import {
   EnvelopeIcon,
   BellIcon,
 } from '@heroicons/react/24/outline';
-import {
-  BarChart,
-  Bar,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  ResponsiveContainer,
-  LineChart,
-  Line,
-  AreaChart,
-  Area,
-  PieChart,
-  Pie,
-  Cell,
-} from 'recharts';
 import { apiClient } from '../utils/api';
 import { useAuthStore } from '../stores/authStore';
-import { format, subDays, startOfMonth, endOfMonth } from 'date-fns';
+
+const RevenueAndPieCharts = lazy(() =>
+  import('./DashboardRecharts').then((m) => ({ default: m.RevenueAndPieCharts }))
+);
+const WeeklyActivityChart = lazy(() =>
+  import('./DashboardRecharts').then((m) => ({ default: m.WeeklyActivityChart }))
+);
 
 // Default/loading data for charts (will be replaced with API data)
 const defaultRevenueData = [
@@ -63,6 +53,24 @@ const defaultWeeklyActivity = [
 ];
 
 const defaultRecentActivity: any[] = [];
+
+function ChartsRowSkeleton() {
+  return (
+    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 animate-pulse" aria-hidden>
+      <div className="card lg:col-span-2 p-6 h-80 rounded-xl bg-slate-100/80 dark:bg-slate-800/40" />
+      <div className="card p-6 h-80 rounded-xl bg-slate-100/80 dark:bg-slate-800/40" />
+    </div>
+  );
+}
+
+function WeeklyChartSkeleton() {
+  return (
+    <div
+      className="card p-6 lg:col-span-2 h-80 rounded-xl animate-pulse bg-slate-100/80 dark:bg-slate-800/40"
+      aria-hidden
+    />
+  );
+}
 
 const Dashboard = () => {
   const { tenant, user } = useAuthStore();
@@ -311,141 +319,19 @@ const Dashboard = () => {
         </div>
       )}
 
-      {/* Charts Row - Glass Cards */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Revenue Chart */}
-        <div className="card lg:col-span-2 p-6">
-          <div className="flex items-center justify-between mb-6">
-            <div>
-              <h2 className="section-title">Revenue Overview</h2>
-              <p className="section-subtitle">Monthly revenue from accepted proposals</p>
-            </div>
-            <div className="flex items-center space-x-2">
-              <span className="flex items-center text-sm text-slate-600 dark:text-slate-400">
-                <span className="w-3 h-3 rounded-full bg-primary-500 mr-2"></span>
-                Revenue
-              </span>
-            </div>
-          </div>
-          <div className="h-64">
-            <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={chartData.revenueData}>
-                <defs>
-                  <linearGradient id="colorRevenue" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#6366F1" stopOpacity={0.3} />
-                    <stop offset="95%" stopColor="#6366F1" stopOpacity={0} />
-                  </linearGradient>
-                </defs>
-                <CartesianGrid strokeDasharray="3 3" stroke="rgba(148, 163, 184, 0.2)" />
-                <XAxis dataKey="name" stroke="#94A3B8" fontSize={12} tick={{ fill: '#94A3B8' }} />
-                <YAxis
-                  stroke="#94A3B8"
-                  fontSize={12}
-                  tick={{ fill: '#94A3B8' }}
-                  tickFormatter={(value) => `£${value / 1000}k`}
-                />
-                <Tooltip
-                  formatter={(value: number) => [`£${value.toLocaleString()}`, 'Revenue']}
-                  contentStyle={{
-                    borderRadius: '12px',
-                    border: 'none',
-                    boxShadow: '0 8px 32px rgba(0, 0, 0, 0.1)',
-                    background: 'rgba(255, 255, 255, 0.95)',
-                    backdropFilter: 'blur(12px)',
-                  }}
-                />
-                <Area
-                  type="monotone"
-                  dataKey="value"
-                  stroke="#6366F1"
-                  strokeWidth={2}
-                  fillOpacity={1}
-                  fill="url(#colorRevenue)"
-                />
-              </AreaChart>
-            </ResponsiveContainer>
-          </div>
-        </div>
-
-        {/* Proposal Status */}
-        <div className="card p-6">
-          <h2 className="section-title mb-1">Proposal Status</h2>
-          <p className="section-subtitle mb-6">Current proposal distribution</p>
-          <div className="h-48">
-            <ResponsiveContainer width="100%" height="100%">
-              <PieChart>
-                <Pie
-                  data={chartData.proposalStatusData}
-                  cx="50%"
-                  cy="50%"
-                  innerRadius={50}
-                  outerRadius={80}
-                  paddingAngle={4}
-                  dataKey="value"
-                >
-                  {chartData.proposalStatusData.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={entry.color} />
-                  ))}
-                </Pie>
-                <Tooltip
-                  contentStyle={{
-                    borderRadius: '12px',
-                    border: 'none',
-                    boxShadow: '0 8px 32px rgba(0, 0, 0, 0.1)',
-                    background: 'rgba(255, 255, 255, 0.95)',
-                    backdropFilter: 'blur(12px)',
-                  }}
-                />
-              </PieChart>
-            </ResponsiveContainer>
-          </div>
-          <div className="mt-4 space-y-2">
-            {chartData.proposalStatusData.map((item) => (
-              <div
-                key={item.name}
-                className="flex items-center justify-between text-sm text-slate-700 dark:text-slate-300"
-              >
-                <span className="flex items-center">
-                  <span
-                    className="w-3 h-3 rounded-full mr-2"
-                    style={{ backgroundColor: item.color }}
-                  ></span>
-                  {item.name}
-                </span>
-                <span className="font-medium text-slate-900 dark:text-slate-100">{item.value}</span>
-              </div>
-            ))}
-          </div>
-        </div>
-      </div>
+      {/* Charts: Recharts loaded on demand (separate chunk) */}
+      <Suspense fallback={<ChartsRowSkeleton />}>
+        <RevenueAndPieCharts
+          revenueData={chartData.revenueData}
+          proposalStatusData={chartData.proposalStatusData}
+        />
+      </Suspense>
 
       {/* Activity & Recent Items - Glass Cards */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Weekly Activity Chart */}
-        <div className="card p-6 lg:col-span-2">
-          <h2 className="section-title mb-1">Weekly Activity</h2>
-          <p className="section-subtitle mb-6">Proposals created vs views this week</p>
-          <div className="h-64">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={chartData.weeklyActivity}>
-                <CartesianGrid strokeDasharray="3 3" stroke="rgba(148, 163, 184, 0.2)" />
-                <XAxis dataKey="day" stroke="#94A3B8" fontSize={12} tick={{ fill: '#94A3B8' }} />
-                <YAxis stroke="#94A3B8" fontSize={12} tick={{ fill: '#94A3B8' }} />
-                <Tooltip
-                  contentStyle={{
-                    borderRadius: '12px',
-                    border: 'none',
-                    boxShadow: '0 8px 32px rgba(0, 0, 0, 0.1)',
-                    background: 'rgba(255, 255, 255, 0.95)',
-                    backdropFilter: 'blur(12px)',
-                  }}
-                />
-                <Bar dataKey="proposals" fill="#6366F1" radius={[4, 4, 0, 0]} />
-                <Bar dataKey="views" fill="#8B5CF6" radius={[4, 4, 0, 0]} />
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
-        </div>
+        <Suspense fallback={<WeeklyChartSkeleton />}>
+          <WeeklyActivityChart weeklyActivity={chartData.weeklyActivity} />
+        </Suspense>
 
         {/* Recent Activity */}
         <div className="card p-6">

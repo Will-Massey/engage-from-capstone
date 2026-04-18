@@ -46,6 +46,7 @@ RUN npm ci --only=production
 # Copy built application from builder
 COPY --from=builder /app/backend/dist ./backend/dist
 COPY --from=builder /app/backend/prisma ./prisma
+COPY --from=builder /app/backend/start-prod.mjs ./backend/start-prod.mjs
 COPY --from=builder /app/node_modules/.prisma ./node_modules/.prisma
 COPY --from=builder /app/node_modules/@prisma ./node_modules/@prisma
 
@@ -56,5 +57,5 @@ EXPOSE 3001
 HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
   CMD node -e "require('http').get('http://localhost:3001/ping', (r) => r.statusCode === 200 ? process.exit(0) : process.exit(1))"
 
-# Start the application
-CMD ["node", "backend/dist/index.js"]
+# Start the application (runs migrations first)
+CMD ["node", "backend/start-prod.mjs"]

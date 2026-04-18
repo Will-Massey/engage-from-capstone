@@ -9,22 +9,18 @@
 FROM node:20-alpine AS deps
 WORKDIR /app
 
-RUN corepack enable && corepack prepare pnpm@9.0.0 --activate
-
-COPY pnpm-lock.yaml package.json pnpm-workspace.yaml ./
+COPY package-lock.json package.json ./
 COPY frontend/package.json ./frontend/
 COPY shared/package.json ./shared/
 
-RUN --mount=type=cache,target=/root/.local/share/pnpm/store \
-    pnpm install --frozen-lockfile --prefer-offline
+RUN --mount=type=cache,target=/root/.npm \
+    npm ci
 
 # ---------------------------------------------------------------------------
 # Stage 2: Builder
 # ---------------------------------------------------------------------------
 FROM node:20-alpine AS builder
 WORKDIR /app
-
-RUN corepack enable && corepack prepare pnpm@9.0.0 --activate
 
 COPY --from=deps /app/node_modules ./node_modules
 COPY --from=deps /app/frontend/node_modules ./frontend/node_modules
@@ -40,7 +36,7 @@ ENV VITE_API_URL=${VITE_API_URL}
 ENV VITE_SENTRY_DSN=${VITE_SENTRY_DSN}
 ENV VITE_APP_ENV=${VITE_APP_ENV}
 
-RUN pnpm turbo run build --filter=shared --filter=frontend
+RUN npm run build:shared && npm run build:frontend
 
 # ---------------------------------------------------------------------------
 # Stage 3: Production with Nginx

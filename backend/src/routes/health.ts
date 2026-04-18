@@ -87,8 +87,22 @@ router.get('/live', (_req, res) => {
 
 // Data migration endpoint (temporary - for v2 pricing migration)
 router.post('/migrate-data', async (req, res) => {
+  const enabled =
+    process.env.NODE_ENV !== 'production' || process.env.ENABLE_SETUP_ENDPOINT === 'true';
+  if (!enabled) {
+    return res.status(404).json({ success: false, error: 'Not found' });
+  }
+
+  const expected = process.env.MIGRATION_SECRET_KEY;
+  if (!expected) {
+    return res.status(503).json({
+      success: false,
+      error: 'Migration endpoint not configured (missing MIGRATION_SECRET_KEY)',
+    });
+  }
+
   const secret = req.headers['x-migration-key'];
-  if (secret !== 'engage-migrate-2024') {
+  if (secret !== expected) {
     return res.status(403).json({ success: false, error: 'Invalid key' });
   }
 

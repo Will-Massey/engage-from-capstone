@@ -6,6 +6,9 @@ import { asyncHandler } from '../middleware/errorHandler.js';
 const router = Router();
 const prisma = new PrismaClient();
 
+const setupEnabled =
+  process.env.NODE_ENV !== 'production' || process.env.ENABLE_SETUP_ENDPOINT === 'true';
+
 /**
  * GET /api/setup
  * One-time setup endpoint to create demo user
@@ -13,6 +16,10 @@ const prisma = new PrismaClient();
 router.get(
   '/',
   asyncHandler(async (req, res) => {
+    if (!setupEnabled) {
+      res.status(404).json({ success: false, error: 'Not found' });
+      return;
+    }
     // Check if setup already completed
     const existingUser = await prisma.user.findFirst({
       where: { email: 'admin@demo.practice' },
@@ -76,8 +83,22 @@ router.get(
 router.post(
   '/migrate-pricing',
   asyncHandler(async (req, res) => {
+    if (!setupEnabled) {
+      res.status(404).json({ success: false, error: 'Not found' });
+      return;
+    }
+
+    const expected = process.env.MIGRATION_SECRET_KEY;
+    if (!expected) {
+      res.status(503).json({
+        success: false,
+        error: 'Migration endpoint not configured (missing MIGRATION_SECRET_KEY)',
+      });
+      return;
+    }
+
     const secret = req.headers['x-migration-key'];
-    if (secret !== 'engage-migrate-2024') {
+    if (secret !== expected) {
       return res.status(403).json({ success: false, error: 'Invalid key' });
     }
 

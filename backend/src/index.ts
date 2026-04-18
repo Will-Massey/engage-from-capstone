@@ -30,8 +30,7 @@ import { asyncHandler, ApiError } from './middleware/errorHandler.js';
 import { EmailService } from './services/emailService.js';
 
 // Import middleware
-// Use simple tenant extraction for Render deployment
-import { extractTenant } from './middleware/tenant-simple.js';
+import { extractTenant } from './middleware/tenant.js';
 import { errorHandler, notFoundHandler } from './middleware/errorHandler.js';
 import logger, { requestLogger } from './utils/logger.js';
 import { checkDatabaseHealth } from './config/database.js';
@@ -111,8 +110,8 @@ const vercelProjectPattern =
 // Regex to match any Render.com subdomain
 const renderPattern = /^https:\/\/.*\.onrender\.com$/;
 
-// For Render deployment - temporarily allow all Render origins
-const RENDER_DEPLOYMENT = true;
+// Allow wildcard Render origins ONLY when explicitly enabled
+const ALLOW_RENDER_WILDCARD_ORIGINS = process.env.ALLOW_RENDER_WILDCARD_ORIGINS === 'true';
 
 // In development, allow all localhost origins
 const isDevelopment = process.env.NODE_ENV !== 'production';
@@ -125,8 +124,8 @@ const corsOptions = {
     // Allow requests with no origin (like mobile apps or curl requests)
     if (!origin) return callback(null, true);
 
-    // For Render deployment - allow all onrender.com origins
-    if (RENDER_DEPLOYMENT && origin.includes('onrender.com')) {
+    // Explicit opt-in: allow any onrender.com origin (use sparingly)
+    if (ALLOW_RENDER_WILDCARD_ORIGINS && origin.includes('onrender.com')) {
       return callback(null, true);
     }
 
@@ -151,8 +150,8 @@ const corsOptions = {
       return callback(null, true);
     }
 
-    // Check Render.com URL pattern
-    if (renderPattern.test(origin)) {
+    // Optional: allow any Render.com subdomain (less permissive than includes(), still opt-in)
+    if (ALLOW_RENDER_WILDCARD_ORIGINS && renderPattern.test(origin)) {
       return callback(null, true);
     }
 
@@ -228,11 +227,28 @@ app.use('/api/setup', setupRouter);
 // Admin routes - protected by secret key, no auth required
 app.use('/api/admin', adminRouter);
 
-// Public one-click seed endpoint (no auth/CSRF required — protected by secret key)
+// Public one-click seed endpoint (no auth/CSRF required — protected by env secret key)
 import { prisma } from './config/database.js';
 app.get('/api/seed-services-public', async (req, res) => {
+  const enabled =
+    process.env.NODE_ENV !== 'production' || process.env.ENABLE_PUBLIC_SEED === 'true';
+
+  if (!enabled) {
+    res.status(404).json({ success: false, error: { code: 'NOT_FOUND', message: 'Not found' } });
+    return;
+  }
+
+  const expected = process.env.PUBLIC_SEED_KEY;
+  if (!expected) {
+    res.status(503).json({
+      success: false,
+      error: { code: 'NOT_CONFIGURED', message: 'Missing PUBLIC_SEED_KEY' },
+    });
+    return;
+  }
+
   const secret = req.query.key;
-  if (secret !== 'capstone-uk-2026') {
+  if (secret !== expected) {
     res.status(403).json({ success: false, error: { code: 'FORBIDDEN', message: 'Invalid key' } });
     return;
   }
@@ -707,11 +723,11 @@ cache.connect().catch((err) => {
   logger.error('Failed to connect to Redis:', err);
 });
 
-// Rate limiting - skip for health checks
+// Rate limiting - skip for health checks and development
 const limiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
   max: 100, // Limit each IP to 100 requests per windowMs
-  skip: (req) => req.path === '/api/health', // Skip health checks
+  skip: (req) => req.path === '/api/health' || isDevelopment, // Skip health checks and dev
   message: {
     success: false,
     error: {
@@ -867,7 +883,7 @@ app.listen(PORT, () => {
   logger.info(`🚀 Engage by Capstone API running on port ${PORT}`);
   logger.info(`📊 Environment: ${process.env.NODE_ENV || 'development'}`);
   logger.info(`🔗 API URL: http://localhost:${PORT}`);
-  logger.info(`🔧 Use POST /api/admin/fix-schema?key=capstone-admin-2026 to fix schema issues`);
+  logger.info(`🔧 Admin endpoints available at /api/admin (requires ADMIN_SECRET_KEY)`);
 
   // Schedule background jobs
   scheduleRenewalReminders();

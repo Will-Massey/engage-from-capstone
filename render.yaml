@@ -9,8 +9,10 @@ services:
     runtime: node
     plan: free
     buildCommand: |
-      npm install &&
-      cd backend && npx prisma generate && npx prisma -v
+      npm ci &&
+      npm run build:shared &&
+      npm run build:backend
+    # npm start runs start-prod.mjs which handles prisma migrate deploy automatically
     startCommand: cd backend && npm start
     healthCheckPath: /ping
     envVars:

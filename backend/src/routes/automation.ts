@@ -113,7 +113,14 @@ router.post(
     const authHeader = req.headers.authorization;
     const secretKey = req.headers['x-migration-key'];
 
-    const validSecret = process.env.MIGRATION_SECRET_KEY || 'engage-migrate-2024';
+    const validSecret = process.env.MIGRATION_SECRET_KEY;
+
+    if (!validSecret) {
+      return res.status(503).json({
+        success: false,
+        error: { code: 'NOT_CONFIGURED', message: 'Missing MIGRATION_SECRET_KEY' },
+      });
+    }
 
     if (secretKey !== validSecret) {
       // Fall back to regular auth check

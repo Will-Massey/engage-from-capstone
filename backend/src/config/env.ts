@@ -1,5 +1,13 @@
 import { z } from 'zod';
 
+const boolFromString = z.preprocess((v) => {
+  if (typeof v !== 'string') return v;
+  const normalized = v.trim().toLowerCase();
+  if (normalized === 'true') return true;
+  if (normalized === 'false') return false;
+  return v;
+}, z.boolean());
+
 const envSchema = z.object({
   NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
   PORT: z.string().default('3001'),
@@ -15,6 +23,11 @@ const envSchema = z.object({
   SENDGRID_API_KEY: z.string().optional(),
   STRIPE_SECRET_KEY: z.string().optional(),
   SENTRY_DSN: z.string().optional(),
+  ADMIN_SECRET_KEY: z.string().optional(),
+  PUBLIC_SEED_KEY: z.string().optional(),
+  MIGRATION_SECRET_KEY: z.string().optional(),
+  ENABLE_PUBLIC_SEED: boolFromString.default(false),
+  ENABLE_SETUP_ENDPOINT: boolFromString.default(true),
 });
 
 const parsed = envSchema.safeParse(process.env);

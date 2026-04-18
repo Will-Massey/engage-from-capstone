@@ -52,14 +52,29 @@ npx prisma db seed
 
 # Start development servers
 cd ..
-npm run dev:backend  # Terminal 1
-npm run dev:frontend # Terminal 2
+npm run dev
 ```
 
 The application will be available at:
 
 - Frontend: http://localhost:5173
 - Backend API: http://localhost:3001
+
+### Docker (local dev)
+
+If you prefer Docker for local development (with hot reload):
+
+```bash
+docker compose up
+```
+
+### Docker (production-like)
+
+Build and run the production images locally:
+
+```bash
+docker compose -f docker-compose.prod.yml up --build
+```
 
 ### Demo Credentials
 

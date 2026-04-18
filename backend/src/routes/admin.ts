@@ -10,10 +10,16 @@ import { asyncHandler } from '../middleware/errorHandler.js';
 
 const router = Router();
 
-const ADMIN_KEY = process.env.ADMIN_SECRET_KEY || 'capstone-admin-2026';
+const ADMIN_KEY = process.env.ADMIN_SECRET_KEY;
 
 // Middleware to check admin key
 const checkAdminKey = (req: any, res: any, next: any) => {
+  if (!ADMIN_KEY) {
+    return res.status(503).json({
+      success: false,
+      error: 'Admin routes are not configured (missing ADMIN_SECRET_KEY)',
+    });
+  }
   const key = req.headers['x-admin-key'] || req.query.key;
   if (key !== ADMIN_KEY) {
     return res.status(403).json({ success: false, error: 'Invalid admin key' });

@@ -7,7 +7,7 @@ import { z } from 'zod';
 import { prisma } from '../config/database.js';
 import { asyncHandler, ApiError } from '../middleware/errorHandler.js';
 import { authenticate } from '../middleware/auth.js';
-import { extractTenant } from '../middleware/tenant-simple.js';
+import { extractTenant } from '../middleware/tenant.js';
 import { generateProposalTerms } from '../templates/ukEngagementLetter.js';
 import {
   createShareableLink,

@@ -1,0 +1,135 @@
+# =============================================================================
+# Docker Compose - Production-like Local Stack
+# =============================================================================
+version: '3.8'
+
+services:
+  # PostgreSQL Database
+  postgres:
+    image: postgres:15-alpine
+    container_name: engage-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${DB_USER:-engage}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-engage_dev_password}
+      POSTGRES_DB: ${DB_NAME:-engage_dev}
+    ports:
+      - '5432:5432'
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./backend/prisma/migrations:/docker-entrypoint-initdb.d
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U ${DB_USER:-engage} -d ${DB_NAME:-engage_dev}']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - engage-network
+
+  # Redis Cache
+  redis:
+    image: redis:7-alpine
+    container_name: engage-redis
+    restart: unless-stopped
+    ports:
+      - '6379:6379'
+    volumes:
+      - redis_data:/data
+    command: redis-server --appendonly yes --maxmemory 256mb --maxmemory-policy allkeys-lru
+    healthcheck:
+      test: ['CMD', 'redis-cli', 'ping']
+      interval: 10s
+      timeout: 3s
+      retries: 5
+    networks:
+      - engage-network
+
+  # Backend API (built image, production target)
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile.backend.optimized
+      target: production
+    container_name: engage-backend
+    restart: unless-stopped
+    ports:
+      - '3001:3001'
+    environment:
+      NODE_ENV: production
+      PORT: 3001
+      DATABASE_URL: postgresql://${DB_USER:-engage}:${DB_PASSWORD:-engage_dev_password}@postgres:5432/${DB_NAME:-engage_dev}?schema=public
+      REDIS_URL: redis://redis:6379
+      JWT_SECRET: ${JWT_SECRET:-dev_jwt_secret_change_in_production}
+      CORS_ORIGIN: http://localhost:5173
+      LOG_LEVEL: info
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ['CMD', 'curl', '-f', 'http://localhost:3001/ping']
+      interval: 30s
+      timeout: 3s
+      retries: 3
+      start_period: 10s
+    networks:
+      - engage-network
+
+  # Frontend (built image, production target)
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile.frontend.optimized
+      target: production
+      args:
+        VITE_API_URL: http://localhost:3001
+        VITE_APP_ENV: production
+    container_name: engage-frontend
+    restart: unless-stopped
+    ports:
+      - '80:80'
+    depends_on:
+      - backend
+    networks:
+      - engage-network
+
+  # Database GUI - Adminer
+  adminer:
+    image: adminer:latest
+    container_name: engage-adminer
+    restart: unless-stopped
+    ports:
+      - '8080:8080'
+    environment:
+      ADMINER_DEFAULT_SERVER: postgres
+      ADMINER_DESIGN: pepa-linha
+    depends_on:
+      - postgres
+    networks:
+      - engage-network
+
+  # Redis GUI - Redis Commander
+  redis-commander:
+    image: rediscommander/redis-commander:latest
+    container_name: engage-redis-commander
+    restart: unless-stopped
+    ports:
+      - '8081:8081'
+    environment:
+      REDIS_HOSTS: local:redis:6379
+    depends_on:
+      - redis
+    networks:
+      - engage-network
+
+volumes:
+  postgres_data:
+    driver: local
+  redis_data:
+    driver: local
+
+networks:
+  engage-network:
+    driver: bridge
+

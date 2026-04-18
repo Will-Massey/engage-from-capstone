@@ -1,0 +1,16 @@
+# Full-stack E2E on a cadence (main) without waiting for a push
+name: E2E Scheduled
+
+on:
+  schedule:
+    - cron: '0 6 * * 1-5'
+  workflow_dispatch:
+
+concurrency:
+  group: e2e-scheduled-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  e2e:
+    uses: ./.github/workflows/playwright-e2e.yml
+    secrets: inherit

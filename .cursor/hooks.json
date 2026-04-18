@@ -1,0 +1,12 @@
+{
+  "version": 1,
+  "hooks": {
+    "beforeShellExecution": [
+      {
+        "command": ".cursor/hooks/git-push-guard.sh",
+        "matcher": "^git\\s+push\\b",
+        "timeout": 8
+      }
+    ]
+  }
+}

@@ -237,7 +237,8 @@ const Services = () => {
           </h3>
           <button
             onClick={() => {
-              isEdit ? setShowEditModal(false) : setShowAddModal(false);
+              if (isEdit) setShowEditModal(false);
+              else setShowAddModal(false);
               setEditingService(null);
             }}
             className="text-slate-400 hover:text-slate-700 dark:hover:text-slate-300"
@@ -370,7 +371,8 @@ const Services = () => {
         <div className="p-6 border-t border-white/10 flex justify-end space-x-3">
           <button
             onClick={() => {
-              isEdit ? setShowEditModal(false) : setShowAddModal(false);
+              if (isEdit) setShowEditModal(false);
+              else setShowAddModal(false);
               setEditingService(null);
             }}
             className="btn-secondary"

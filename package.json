@@ -9,7 +9,7 @@
     "shared"
   ],
   "scripts": {
-    "dev": "echo 'Run start-dev.bat instead'",
+    "dev": "concurrently -k -n backend,frontend -c blue,green \"npm run dev:backend\" \"npm run dev:frontend\"",
     "dev:backend": "cd backend && npm run dev",
     "dev:frontend": "cd frontend && npm run dev",
     "build": "npm run build:shared && npm run build:backend && npm run build:frontend",
@@ -24,22 +24,30 @@
     "lint": "cd backend && npm run lint && cd ../frontend && npm run lint && cd ../shared && npm run lint",
     "typecheck": "cd backend && npm run typecheck && cd ../frontend && npm run typecheck && cd ../shared && npm run typecheck",
     "format:check": "prettier --check .",
-    "format": "prettier --write ."
+    "format": "prettier --write .",
+    "test": "cd backend && npm test",
+    "test:coverage": "cd backend && npm test -- --coverage",
+    "test:e2e": "cd e2e-tests && npm ci && npx playwright test",
+    "verify": "npm run lint && npm run typecheck && npm run test && npm run build"
   },
   "devDependencies": {
     "@types/node": "^20.10.0",
-    "@typescript-eslint/eslint-plugin": "^6.15.0",
-    "@typescript-eslint/parser": "^6.15.0",
+    "@typescript-eslint/eslint-plugin": "^8.58.2",
+    "@typescript-eslint/parser": "^8.58.2",
+    "concurrently": "^9.2.1",
     "eslint": "^8.56.0",
     "prettier": "^3.8.2",
     "typescript": "^5.3.3"
   },
   "engines": {
-    "node": ">=18.0.0"
+    "node": ">=20.0.0"
   },
   "author": "Capstone",
   "license": "MIT",
   "dependencies": {
     "googleapis": "^171.4.0"
+  },
+  "overrides": {
+    "serialize-javascript": "^7.0.5"
   }
 }

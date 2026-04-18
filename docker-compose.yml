@@ -1,10 +1,9 @@
 # =============================================================================
-# Docker Compose - Local Development
+# Docker Compose - Local Development (hot reload)
 # =============================================================================
 version: '3.8'
 
 services:
-  # PostgreSQL Database
   postgres:
     image: postgres:15-alpine
     container_name: engage-postgres
@@ -17,7 +16,6 @@ services:
       - '5432:5432'
     volumes:
       - postgres_data:/var/lib/postgresql/data
-      - ./backend/prisma/migrations:/docker-entrypoint-initdb.d
     healthcheck:
       test: ['CMD-SHELL', 'pg_isready -U ${DB_USER:-engage} -d ${DB_NAME:-engage_dev}']
       interval: 10s
@@ -26,7 +24,6 @@ services:
     networks:
       - engage-network
 
-  # Redis Cache
   redis:
     image: redis:7-alpine
     container_name: engage-redis
@@ -44,13 +41,10 @@ services:
     networks:
       - engage-network
 
-  # Backend API
   backend:
-    build:
-      context: .
-      dockerfile: Dockerfile.backend.optimized
-      target: production
-    container_name: engage-backend
+    image: node:20-alpine
+    container_name: engage-backend-dev
+    working_dir: /app
     restart: unless-stopped
     ports:
       - '3001:3001'
@@ -60,40 +54,44 @@ services:
       DATABASE_URL: postgresql://${DB_USER:-engage}:${DB_PASSWORD:-engage_dev_password}@postgres:5432/${DB_NAME:-engage_dev}?schema=public
       REDIS_URL: redis://redis:6379
       JWT_SECRET: ${JWT_SECRET:-dev_jwt_secret_change_in_production}
-      CORS_ORIGIN: http://localhost:5173
+      FRONTEND_URL: http://localhost:5173
       LOG_LEVEL: debug
     volumes:
-      - ./backend/src:/app/backend/src:ro
-      - ./shared/src:/app/shared/src:ro
+      - ./:/app
+      - engage_root_node_modules:/app/node_modules
+      - engage_backend_node_modules:/app/backend/node_modules
+      - engage_shared_node_modules:/app/shared/node_modules
     depends_on:
       postgres:
         condition: service_healthy
       redis:
         condition: service_healthy
-    healthcheck:
-      test: ['CMD', 'curl', '-f', 'http://localhost:3001/ping']
-      interval: 30s
-      timeout: 3s
-      retries: 3
-      start_period: 10s
+    command: >
+      sh -lc "npm ci &&
+              cd backend && npx prisma generate &&
+              cd .. && npm run dev:backend"
     networks:
       - engage-network
 
-  # Frontend
   frontend:
-    build:
-      context: .
-      dockerfile: Dockerfile.frontend.optimized
-      target: production
-      args:
-        VITE_API_URL: http://localhost:3001
-        VITE_APP_ENV: development
-    container_name: engage-frontend
+    image: node:20-alpine
+    container_name: engage-frontend-dev
+    working_dir: /app
     restart: unless-stopped
     ports:
-      - '80:80'
+      - '5173:5173'
+    environment:
+      VITE_API_URL: http://localhost:3001
+      VITE_APP_ENV: development
+    volumes:
+      - ./:/app
+      - engage_root_node_modules:/app/node_modules
+      - engage_frontend_node_modules:/app/frontend/node_modules
+      - engage_shared_node_modules:/app/shared/node_modules
     depends_on:
       - backend
+    command: >
+      sh -lc "npm ci && npm run dev:frontend"
     networks:
       - engage-network
 
@@ -130,6 +128,14 @@ volumes:
   postgres_data:
     driver: local
   redis_data:
+    driver: local
+  engage_root_node_modules:
+    driver: local
+  engage_backend_node_modules:
+    driver: local
+  engage_frontend_node_modules:
+    driver: local
+  engage_shared_node_modules:
     driver: local
 
 networks:

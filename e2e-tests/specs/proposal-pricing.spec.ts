@@ -3,7 +3,7 @@ import { loginAsPartner, createTestClient, cleanupTestData } from '../fixtures/h
 
 /**
  * Proposal Pricing E2E Tests
- * Validates pricing frequency handling and calculations with ProposalBuilder_v2
+ * Validates pricing frequency handling and calculations with the proposal builder (Create Proposal).
  */
 
 test.describe('Proposal Pricing Frequency', () => {

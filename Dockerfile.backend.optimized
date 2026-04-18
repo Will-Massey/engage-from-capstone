@@ -16,17 +16,14 @@ WORKDIR /app
 # Install only essential packages
 RUN apk add --no-cache libc6-compat
 
-# Enable pnpm
-RUN corepack enable && corepack prepare pnpm@9.0.0 --activate
-
 # Copy lockfiles first for optimal caching
-COPY pnpm-lock.yaml package.json pnpm-workspace.yaml ./
+COPY package-lock.json package.json ./
 COPY backend/package.json ./backend/
 COPY shared/package.json ./shared/
 
 # Install with mount cache - massive speedup on rebuilds
-RUN --mount=type=cache,target=/root/.local/share/pnpm/store \
-    pnpm install --frozen-lockfile --prefer-offline
+RUN --mount=type=cache,target=/root/.npm \
+    npm ci
 
 # ---------------------------------------------------------------------------
 # Stage 2: Builder with Prisma cache
@@ -35,7 +32,6 @@ FROM node:20-alpine AS builder
 WORKDIR /app
 
 RUN apk add --no-cache libc6-compat openssl
-RUN corepack enable && corepack prepare pnpm@9.0.0 --activate
 
 # Copy dependencies from deps stage
 COPY --from=deps /app/node_modules ./node_modules
@@ -47,10 +43,10 @@ COPY . .
 
 # Generate Prisma with cache mount
 RUN --mount=type=cache,target=/app/backend/node_modules/.prisma \
-    cd backend && pnpm prisma generate
+    cd backend && npx prisma generate
 
-# Build with Turbo for parallel execution
-RUN pnpm turbo run build --filter=shared --filter=backend
+# Build (uses existing root scripts)
+RUN npm run build:shared && npm run build:backend
 
 # ---------------------------------------------------------------------------
 # Stage 3: Production - Minimal image
@@ -79,6 +75,7 @@ COPY --from=deps --chown=engage:nodejs /app/shared/node_modules ./shared/node_mo
 COPY --from=builder --chown=engage:nodejs /app/backend/dist ./backend/dist
 COPY --from=builder --chown=engage:nodejs /app/shared/dist ./shared/dist
 COPY --from=builder --chown=engage:nodejs /app/backend/prisma ./backend/prisma
+COPY --from=builder --chown=engage:nodejs /app/backend/start-prod.mjs ./backend/start-prod.mjs
 COPY --from=builder --chown=engage:nodejs /app/backend/package.json ./backend/
 COPY --from=builder --chown=engage:nodejs /app/package.json ./
 
@@ -94,4 +91,5 @@ HEALTHCHECK --interval=30s --timeout=3s --start-period=10s --retries=3 \
     CMD curl -f http://localhost:3001/health || exit 1
 
 ENTRYPOINT ["dumb-init", "--"]
-CMD ["node", "backend/dist/index.js"]
+# Start the application (runs migrations first via start-prod.mjs)
+CMD ["node", "backend/start-prod.mjs"]
