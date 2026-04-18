@@ -16,6 +16,8 @@ import {
   LinkIcon,
 } from '@heroicons/react/24/outline';
 import { apiClient } from '../../utils/api';
+import { formatCurrency } from '../../utils/formatters';
+import { copyTextToClipboard } from '../../utils/clipboard';
 import { useAuthStore } from '../../stores/authStore';
 import { format } from 'date-fns';
 import toast from 'react-hot-toast';
@@ -175,6 +177,19 @@ const ProposalDetail = () => {
   const downloadPDF = async () => {
     try {
       const blob = await apiClient.downloadProposalPDF(id!);
+      if (!blob || blob.size === 0) {
+        toast.error('Could not download PDF (empty file). Please try again.');
+        return;
+      }
+      if (
+        blob.type &&
+        (blob.type.includes('json') ||
+          blob.type.startsWith('text/') ||
+          blob.type === 'application/problem+json')
+      ) {
+        toast.error('Could not download PDF. Please sign in again or try later.');
+        return;
+      }
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
@@ -183,8 +198,9 @@ const ProposalDetail = () => {
       a.click();
       document.body.removeChild(a);
       window.URL.revokeObjectURL(url);
-    } catch (error) {
-      // Error handled by UI
+      toast.success('PDF download started');
+    } catch {
+      toast.error('Could not download PDF.');
     }
   };
 
@@ -193,8 +209,14 @@ const ProposalDetail = () => {
     try {
       if (proposal.shareToken) {
         const link = `${window.location.origin}/proposals/view/${proposal.shareToken}`;
-        await navigator.clipboard.writeText(link);
-        toast.success('Client link copied to clipboard');
+        const ok = await copyTextToClipboard(link);
+        if (ok) {
+          toast.success('Client link copied to clipboard');
+        } else {
+          toast.error('Could not copy automatically. Copy this link manually: ' + link, {
+            duration: 8000,
+          });
+        }
         return;
       }
       setCopyingLink(true);
@@ -202,8 +224,15 @@ const ProposalDetail = () => {
         expiryDays: 30,
       })) as any;
       if (response.success && response.data?.shareUrl) {
-        await navigator.clipboard.writeText(response.data.shareUrl);
-        toast.success('Client link copied to clipboard');
+        const ok = await copyTextToClipboard(response.data.shareUrl);
+        if (ok) {
+          toast.success('Client link copied to clipboard');
+        } else {
+          toast.error(
+            'Link created but not copied. Copy manually: ' + response.data.shareUrl,
+            { duration: 10000 }
+          );
+        }
         loadProposal();
       } else {
         toast.error('Failed to generate share link');
@@ -395,9 +424,9 @@ const ProposalDetail = () => {
                             {service.description}
                           </p>
                         )}
-                        <p className="text-sm text-slate-500 dark:text-slate-500 mt-1">
-                          Qty: {service.quantity} • Price: £
-                          {(service.displayPrice || service.unitPrice)?.toLocaleString()}/
+                        <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
+                          Qty: {service.quantity} • Price:{' '}
+                          {formatCurrency(service.displayPrice || service.unitPrice || 0)}/
                           {frequencyLabels[frequency]?.toLowerCase() || 'month'}
                           {service.discountPercent > 0 && (
                             <span className="text-green-600 dark:text-green-400 ml-1">
@@ -407,19 +436,24 @@ const ProposalDetail = () => {
                         </p>
                       </div>
                       <div className="text-right ml-4">
-                        <p className="font-semibold text-slate-900 dark:text-slate-100">
-                          £{(service.lineTotal || service.total)?.toLocaleString()}
+                        <p className="font-semibold text-slate-900 dark:text-white">
+                          {formatCurrency(service.lineTotal || service.total || 0)}
+                          <span className="block text-xs font-normal text-slate-500 dark:text-slate-400">
+                            ex VAT
+                          </span>
                         </p>
                         {(service.vatAmount > 0 || hasMixedVatRates) && (
-                          <p className="text-xs text-slate-500 dark:text-slate-400">
-                            + £{service.vatAmount?.toLocaleString()} VAT
+                          <p className="text-xs text-slate-500 dark:text-slate-300">
+                            + {formatCurrency(service.vatAmount || 0)} VAT
                           </p>
                         )}
-                        <p className="text-sm font-medium text-slate-700 dark:text-slate-300">
-                          £
-                          {(
-                            service.grossTotal || service.total + (service.vatAmount || 0)
-                          )?.toLocaleString()}
+                        <p className="text-sm font-medium text-slate-900 dark:text-white">
+                          {formatCurrency(
+                            service.grossTotal ?? (service.total || 0) + (service.vatAmount || 0)
+                          )}
+                          <span className="block text-xs font-normal text-slate-500 dark:text-slate-400">
+                            inc VAT
+                          </span>
                         </p>
                       </div>
                     </div>
@@ -428,16 +462,16 @@ const ProposalDetail = () => {
 
                 {/* Group subtotal */}
                 <div className="flex justify-between items-center mt-3 pt-3 border-t border-white/20 dark:border-slate-600/50 text-sm">
-                  <span className="text-slate-600 dark:text-slate-400">
-                    {frequencyLabels[frequency]} Subtotal
+                  <span className="text-slate-600 dark:text-slate-300">
+                    {frequencyLabels[frequency]} total (inc. VAT)
                   </span>
                   <div className="text-right">
-                    <span className="font-medium text-slate-900 dark:text-slate-100">
-                      £{groupTotals[frequency]?.total?.toLocaleString()}
+                    <span className="font-semibold text-slate-900 dark:text-white tabular-nums">
+                      {formatCurrency(groupTotals[frequency]?.total || 0)}
                     </span>
                     {groupTotals[frequency]?.vatAmount > 0 && (
                       <p className="text-xs text-slate-500 dark:text-slate-400">
-                        (inc £{groupTotals[frequency]?.vatAmount?.toLocaleString()} VAT)
+                        includes {formatCurrency(groupTotals[frequency]?.vatAmount || 0)} VAT
                       </p>
                     )}
                   </div>
@@ -594,54 +628,63 @@ const ProposalDetail = () => {
         <div className="space-y-6">
           {/* Pricing - Grouped by billing frequency */}
           <div className="glass-tile p-6">
-            <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-100 mb-4">
+            <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-100 mb-2">
               Investment Summary
             </h2>
-            <div className="space-y-4">
-              {/* Show totals by frequency */}
+            <p className="text-xs text-slate-600 dark:text-slate-400 mb-4">
+              Per billing cycle figures include VAT. Subtotal below is ex VAT before the proposal total.
+            </p>
+            <div className="space-y-3">
+              {/* Show totals by frequency (each line gross) */}
               {Object.entries(groupTotals).map(([freq, totals]: [string, any]) => (
                 <div key={freq} className="flex justify-between text-sm">
-                  <span className="text-slate-600 dark:text-slate-400">{frequencyLabels[freq]} Total</span>
-                  <span className="font-medium text-slate-900 dark:text-slate-100">
-                    £{totals.total?.toLocaleString()}
+                  <span className="text-slate-600 dark:text-slate-300">{frequencyLabels[freq]} (inc. VAT)</span>
+                  <span className="font-medium text-slate-900 dark:text-white tabular-nums">
+                    {formatCurrency(totals.total || 0)}
                   </span>
                 </div>
               ))}
 
-              {/* Discount */}
-              {proposal.discountAmount > 0 && (
+              <div className="border-t border-white/20 dark:border-slate-600/50 pt-3 space-y-2">
                 <div className="flex justify-between text-sm">
-                  <span className="text-slate-600 dark:text-slate-400">Discount</span>
-                  <span className="font-medium text-red-600 dark:text-red-400">
-                    -£{proposal.discountAmount?.toLocaleString()}
+                  <span className="text-slate-600 dark:text-slate-300">Subtotal (ex VAT)</span>
+                  <span className="font-medium text-slate-900 dark:text-white tabular-nums">
+                    {formatCurrency(proposal.subtotal ?? 0)}
                   </span>
                 </div>
-              )}
 
-              {/* VAT */}
-              <div className="flex justify-between text-sm">
-                <span className="text-slate-600 dark:text-slate-400">
-                  VAT {hasMixedVatRates ? '(Mixed rates)' : `(${proposal.vatRate || 20}%)`}
-                </span>
-                <span className="font-medium text-slate-900 dark:text-slate-100">
-                  £{proposal.vatAmount?.toLocaleString()}
-                </span>
-              </div>
+                {/* Discount */}
+                {proposal.discountAmount > 0 && (
+                  <div className="flex justify-between text-sm">
+                    <span className="text-slate-600 dark:text-slate-300">Discount</span>
+                    <span className="font-medium text-red-600 dark:text-red-400 tabular-nums">
+                      -{formatCurrency(proposal.discountAmount)}
+                    </span>
+                  </div>
+                )}
 
-              {/* Grand Total */}
-              <div className="border-t border-white/20 dark:border-slate-600/50 pt-3">
-                <div className="flex justify-between items-center">
-                  <span className="font-semibold text-slate-900 dark:text-slate-100">Total Investment</span>
-                  <span className="font-bold text-2xl text-slate-900 dark:text-slate-100">
-                    £{proposal.total?.toLocaleString()}
+                <div className="flex justify-between text-sm">
+                  <span className="text-slate-600 dark:text-slate-300">
+                    VAT {hasMixedVatRates ? '(mixed rates)' : `(${proposal.vatRate || 20}%)`}
+                  </span>
+                  <span className="font-medium text-slate-900 dark:text-white tabular-nums">
+                    {formatCurrency(proposal.vatAmount ?? 0)}
+                  </span>
+                </div>
+
+                <div className="flex justify-between items-baseline pt-2">
+                  <span className="font-semibold text-slate-900 dark:text-white">Total investment</span>
+                  <span className="font-bold text-2xl text-slate-900 dark:text-white tabular-nums tracking-tight">
+                    {formatCurrency(proposal.total ?? 0)}
                   </span>
                 </div>
               </div>
 
               {/* Annual equivalent note */}
               {groupTotals.MONTHLY && (
-                <p className="text-xs text-slate-500 dark:text-slate-500 text-center">
-                  Equivalent to £{(groupTotals.MONTHLY.total * 12).toLocaleString()}/year
+                <p className="text-xs text-slate-500 dark:text-slate-400 text-center">
+                  Monthly lines equivalent to {formatCurrency((groupTotals.MONTHLY.total || 0) * 12)} per year
+                  (inc. VAT).
                 </p>
               )}
             </div>

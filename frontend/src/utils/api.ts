@@ -239,8 +239,9 @@ export const apiClient = {
 
   acceptProposal: (id: string, data?: any) => api.post(`/proposals/${id}/accept`, data),
 
+  // Response interceptor already returns `response.data`; for blobs that value IS the Blob.
   downloadProposalPDF: (id: string) =>
-    api.get(`/proposals/${id}/pdf`, { responseType: 'blob' }).then((r) => r.data as Blob),
+    api.get(`/proposals/${id}/pdf`, { responseType: 'blob' }) as Promise<Blob>,
 
   // Clients
   getClients: (params?: Record<string, any>) => api.get('/clients', { params }),

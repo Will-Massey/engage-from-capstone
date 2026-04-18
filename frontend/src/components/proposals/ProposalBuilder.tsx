@@ -11,6 +11,7 @@ import { useState, useEffect, useMemo, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { apiClient } from '../../utils/api';
 import { useAuthStore } from '../../stores/authStore';
+import { generateDefaultCoverLetter } from '../../data/defaultCoverLetter';
 import toast from 'react-hot-toast';
 import {
   ArrowRightIcon,
@@ -431,8 +432,11 @@ export default function ProposalBuilder() {
         title: proposalTitle,
         services: servicesData,
         coverLetter:
-          coverLetter ||
-          `Dear ${selectedClient.name},\n\nThank you for considering our services...`,
+          coverLetter.trim() ||
+          generateDefaultCoverLetter({
+            clientName: selectedClient.name,
+            practiceName: tenant?.name || 'Our practice',
+          }),
       };
 
       const response = (await apiClient.createProposal(proposalData)) as any;
