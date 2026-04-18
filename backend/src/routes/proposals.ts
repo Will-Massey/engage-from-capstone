@@ -276,6 +276,9 @@ router.post(
         case 'ONE_TIME':
           priceDisplayMode = 'ONE_TIME';
           break;
+        case 'WEEKLY':
+          priceDisplayMode = 'PER_MONTH';
+          break;
       }
 
       // Calculate annual equivalent for comparison
@@ -292,6 +295,9 @@ router.post(
           break;
         case 'ONE_TIME':
           annualEquivalent = 0;
+          break;
+        case 'WEEKLY':
+          annualEquivalent = displayPrice * 52;
           break;
       }
 
@@ -349,15 +355,24 @@ router.post(
     const oneTimeItems = servicesWithClearPricing.filter(
       (s: any) => s.billingFrequency === 'ONE_TIME'
     );
+    const weeklyItems = servicesWithClearPricing.filter(
+      (s: any) => s.billingFrequency === 'WEEKLY'
+    );
 
     const monthly = calculateGroup(monthlyItems);
     const quarterly = calculateGroup(quarterlyItems);
     const annually = calculateGroup(annualItems);
     const oneTime = calculateGroup(oneTimeItems);
+    const weekly = calculateGroup(weeklyItems);
 
-    const grandTotal = monthly.total + quarterly.total + annually.total + oneTime.total;
+    const grandTotal =
+      monthly.total + quarterly.total + annually.total + oneTime.total + weekly.total;
     const totalVat =
-      monthly.vatAmount + quarterly.vatAmount + annually.vatAmount + oneTime.vatAmount;
+      monthly.vatAmount +
+      quarterly.vatAmount +
+      annually.vatAmount +
+      oneTime.vatAmount +
+      weekly.vatAmount;
 
     // Generate reference
     const reference = generateReference('PROP');
@@ -387,7 +402,12 @@ router.post(
         status: 'DRAFT',
         validUntil,
         contractStartDate,
-        subtotal: monthly.subtotal + quarterly.subtotal + annually.subtotal + oneTime.subtotal,
+        subtotal:
+          monthly.subtotal +
+          quarterly.subtotal +
+          annually.subtotal +
+          oneTime.subtotal +
+          weekly.subtotal,
         discountType: data.discountType,
         discountValue: data.discountValue,
         discountAmount: 0, // Line-level discounts are already applied
@@ -574,6 +594,9 @@ router.put(
           case 'ONE_TIME':
             priceDisplayMode = 'ONE_TIME';
             break;
+          case 'WEEKLY':
+            priceDisplayMode = 'PER_MONTH';
+            break;
         }
 
         // Calculate annual equivalent
@@ -590,6 +613,9 @@ router.put(
             break;
           case 'ONE_TIME':
             annualEquivalent = 0;
+            break;
+          case 'WEEKLY':
+            annualEquivalent = displayPrice * 52;
             break;
         }
 

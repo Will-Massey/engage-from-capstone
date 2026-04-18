@@ -16,6 +16,7 @@ enum BillingCycle {
   MONTHLY
   QUARTERLY
   ANNUALLY
+  ONE_TIME
 }
 
 enum VATRate {
