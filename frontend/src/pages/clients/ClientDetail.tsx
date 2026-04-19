@@ -10,6 +10,7 @@ import {
   BuildingOfficeIcon,
   ClockIcon,
   XMarkIcon,
+  UserIcon,
 } from '@heroicons/react/24/outline';
 import { apiClient } from '../../utils/api';
 import { useAuthStore } from '../../stores/authStore';
@@ -29,6 +30,7 @@ const ClientDetail = () => {
   const [editForm, setEditForm] = useState({
     name: '',
     contactEmail: '',
+    contactName: '',
     contactPhone: '',
     companyType: '',
     industry: '',
@@ -68,6 +70,7 @@ const ClientDetail = () => {
     setEditForm({
       name: client.name || '',
       contactEmail: client.contactEmail || '',
+      contactName: client.contactName || '',
       contactPhone: client.contactPhone || '',
       companyType: client.companyType || '',
       industry: client.industry || '',
@@ -90,6 +93,7 @@ const ClientDetail = () => {
       const updateData = {
         name: editForm.name,
         contactEmail: editForm.contactEmail,
+        contactName: editForm.contactName?.trim() ? editForm.contactName.trim() : null,
         contactPhone: editForm.contactPhone,
         companyType: editForm.companyType,
         industry: editForm.industry,
@@ -217,6 +221,12 @@ const ClientDetail = () => {
           <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-6">
             <h2 className="text-lg font-semibold text-slate-900 mb-4">Contact Information</h2>
             <div className="space-y-3">
+              {client.contactName && (
+                <div className="flex items-center">
+                  <UserIcon className="h-5 w-5 text-slate-400 mr-3" />
+                  <span className="text-sm text-slate-900">{client.contactName}</span>
+                </div>
+              )}
               <div className="flex items-center">
                 <EnvelopeIcon className="h-5 w-5 text-slate-400 mr-3" />
                 <span className="text-sm text-slate-900">{client.contactEmail}</span>
@@ -494,6 +504,20 @@ const ClientDetail = () => {
                     className="mt-1 input-field w-full"
                   />
                 </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-slate-800">Main contact name</label>
+                <input
+                  type="text"
+                  value={editForm.contactName}
+                  onChange={(e) => setEditForm({ ...editForm, contactName: e.target.value })}
+                  className="mt-1 input-field w-full"
+                  placeholder="e.g. Jane Smith"
+                />
+                <p className="mt-1 text-xs text-slate-500">
+                  Used in proposal cover letters. Falls back to the client name if left blank.
+                </p>
               </div>
 
               <div className="grid grid-cols-2 gap-4">

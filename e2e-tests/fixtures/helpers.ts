@@ -55,6 +55,7 @@ export async function createTestClient(
   await page.click('text=Limited Company');
   await page.fill('input[name="name"]', clientData.name);
   await page.fill('input[name="contactEmail"]', clientData.email);
+  await page.fill('input[name="contactName"]', 'Test Contact');
 
   await page.click('button:has-text("Continue")');
 

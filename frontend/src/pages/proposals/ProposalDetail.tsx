@@ -277,8 +277,9 @@ const ProposalDetail = () => {
     if (!proposal) return;
     setCoverLetterDraft(
       generateDefaultCoverLetter({
-        clientName: proposal.client?.name || 'Client',
+        addresseeName: (proposal.client?.contactName?.trim() || proposal.client?.name || 'Client').trim(),
         practiceName: tenant?.name || 'Our practice',
+        clientBusinessName: proposal.client?.name || undefined,
       })
     );
   };

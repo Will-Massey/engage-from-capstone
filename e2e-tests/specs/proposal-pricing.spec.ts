@@ -36,23 +36,25 @@ test.describe('Proposal Pricing Frequency', () => {
     // Left column still hints at monthly equivalent; selected row shows full-period inc VAT
     const selectedRow = page.locator('[data-testid="selected-service-row"]').filter({ hasText: 'Annual Accounts Preparation & Filing' });
     await expect(selectedRow).toBeVisible();
-    await expect(selectedRow).toContainText('/year');
+    await expect(selectedRow).toContainText('Annual');
     await expect(selectedRow).toContainText(/£1,020/);
 
     // Go to review
     await page.locator('[data-testid="services-continue-button"]').click();
 
-    await expect(page.getByText('Combined proposal total')).toBeVisible();
+    await expect(page.getByText('Annual services')).toBeVisible();
+    await expect(page.getByText('Monthly cost')).toBeVisible();
     const totalElement = page
-      .getByText('Combined proposal total')
+      .getByText('Monthly cost')
       .locator('..')
       .locator('..')
-      .locator('span.text-2xl');
+      .locator('span.text-xl');
     await expect(totalElement).toBeVisible();
     const totalText = await totalElement.textContent();
     const totalValue = parseFloat(totalText!.replace(/[^0-9.]/g, ''));
-    expect(totalValue).toBeGreaterThan(1000);
-    expect(totalValue).toBeLessThan(1100);
+    // £1,020/year → ~£85/month average (inc VAT)
+    expect(totalValue).toBeGreaterThan(80);
+    expect(totalValue).toBeLessThan(95);
   });
 
   test('changing billing frequency recalculates price', async ({ page }) => {
@@ -79,7 +81,7 @@ test.describe('Proposal Pricing Frequency', () => {
 
     // Full annual charge inc VAT: £1020 × 1.2 = £1224
     const updatedRow = page.locator('[data-testid="selected-service-row"]').filter({ hasText: 'Comprehensive Bookkeeping' });
-    await expect(updatedRow).toContainText('/year');
+    await expect(updatedRow).toContainText('Annual');
     await expect(updatedRow).toContainText(/£1,224/);
   });
 
@@ -98,17 +100,17 @@ test.describe('Proposal Pricing Frequency', () => {
     // Go to review step
     await page.locator('[data-testid="services-continue-button"]').click();
 
-    // Combined total = sum of full-period gross lines (annual + monthly + quarterly)
+    // Monthly cost = average monthly equivalent: annual/12 + monthly + quarterly/3 (all inc VAT)
     const totalElement = page
-      .getByText('Combined proposal total')
+      .getByText('Monthly cost')
       .locator('..')
       .locator('..')
-      .locator('span.text-2xl');
+      .locator('span.text-xl');
     await expect(totalElement).toBeVisible();
     const totalText = await totalElement.textContent();
     const totalValue = parseFloat(totalText!.replace(/[^0-9.]/g, ''));
-    expect(totalValue).toBeGreaterThan(1200);
-    expect(totalValue).toBeLessThan(1320);
+    expect(totalValue).toBeGreaterThan(220);
+    expect(totalValue).toBeLessThan(250);
   });
 });
 

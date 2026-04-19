@@ -28,7 +28,7 @@ const clientSchema = z.object({
   ]),
   contactEmail: z.string().min(1, 'Email is required').email('Please enter a valid email'),
   contactPhone: z.string().optional(),
-  contactName: z.string().optional(),
+  contactName: z.string().min(1, 'Main contact name is required'),
   companyNumber: z.string().optional(),
   utr: z.string().optional(),
   vatRegistered: z.boolean().default(false),
@@ -96,6 +96,7 @@ const CreateClient = ({ onSuccess, onCancel }: CreateClientProps = {}) => {
     defaultValues: {
       companyType: 'LIMITED_COMPANY',
       vatRegistered: false,
+      contactName: '',
     },
     mode: 'onChange',
   });
@@ -422,6 +423,24 @@ const CreateClient = ({ onSuccess, onCancel }: CreateClientProps = {}) => {
               {errors.contactEmail && (
                 <p className="mt-1 text-sm text-red-600">{errors.contactEmail.message}</p>
               )}
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-slate-700">Main contact name</label>
+              <input
+                {...register('contactName')}
+                name="contactName"
+                type="text"
+                className="mt-1 input-field"
+                placeholder="e.g. Jane Smith"
+                autoComplete="name"
+              />
+              {errors.contactName && (
+                <p className="mt-1 text-sm text-red-600">{errors.contactName.message}</p>
+              )}
+              <p className="mt-1 text-xs text-slate-500">
+                Used in proposals and correspondence. Can differ from the legal client name above.
+              </p>
             </div>
 
             {/* Phone */}

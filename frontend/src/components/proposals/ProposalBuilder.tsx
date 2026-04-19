@@ -32,6 +32,7 @@ interface Client {
   name: string;
   companyType: string;
   contactEmail: string;
+  contactName?: string | null;
 }
 
 interface Service {
@@ -93,6 +94,54 @@ const BILLING_FREQUENCY_LABELS: Record<string, string> = {
   ANNUALLY: 'year',
   ONE_TIME: 'one-time',
 };
+
+/** Section headings when services are grouped by billing frequency */
+const SERVICE_GROUP_SECTION_TITLES: Record<string, string> = {
+  WEEKLY: 'Weekly services',
+  MONTHLY: 'Monthly services',
+  QUARTERLY: 'Quarterly services',
+  ANNUALLY: 'Annual services',
+  ONE_TIME: 'One-off services',
+};
+
+function periodLabelSentenceCase(freq: string): string {
+  switch (freq) {
+    case 'WEEKLY':
+      return 'Weekly';
+    case 'MONTHLY':
+      return 'Monthly';
+    case 'QUARTERLY':
+      return 'Quarterly';
+    case 'ANNUALLY':
+      return 'Annual';
+    case 'ONE_TIME':
+      return 'One-off';
+    default:
+      return 'Monthly';
+  }
+}
+
+/** Average monthly cash flow (inc VAT) for a recurring line; one-off → 0 */
+function recurringMonthlyEquivalentIncVat(s: SelectedService): number {
+  if (s.billingCycle === 'ONE_TIME') return 0;
+  switch (s.billingCycle) {
+    case 'WEEKLY':
+      return s.grossTotal * (52 / 12);
+    case 'MONTHLY':
+      return s.grossTotal;
+    case 'QUARTERLY':
+      return s.grossTotal / 3;
+    case 'ANNUALLY':
+      return s.grossTotal / 12;
+    default:
+      return s.grossTotal;
+  }
+}
+
+function coverLetterAddressee(client: Client): string {
+  const n = client.contactName?.trim();
+  return n || client.name;
+}
 
 const formatDueDateLabel = (isoDate?: string): string | null => {
   if (!isoDate) return null;
@@ -349,6 +398,26 @@ export default function ProposalBuilder() {
     };
   }, [selectedServices, editingService, getEditingPreview]);
 
+  /** Review step: average monthly equivalent of all recurring lines (inc VAT) */
+  const reviewMonthlyCostIncVat = useMemo(() => {
+    const servicesForSummary = editingService
+      ? selectedServices.map((s) => (s.id === editingService ? getEditingPreview(s) : s))
+      : selectedServices;
+    return servicesForSummary.reduce((sum, s) => sum + recurringMonthlyEquivalentIncVat(s), 0);
+  }, [selectedServices, editingService, getEditingPreview]);
+
+  const goToReviewStep = () => {
+    setCurrentStep(3);
+    setCoverLetter((prev) => {
+      if (prev.trim() || !selectedClient) return prev;
+      return generateDefaultCoverLetter({
+        addresseeName: coverLetterAddressee(selectedClient),
+        practiceName: tenant?.name || 'Our practice',
+        clientBusinessName: selectedClient.name,
+      });
+    });
+  };
+
   // Add service
   const addService = (service: Service) => {
     if (selectedServices.find((s) => s.templateId === service.id)) {
@@ -487,8 +556,9 @@ export default function ProposalBuilder() {
         coverLetter:
           coverLetter.trim() ||
           generateDefaultCoverLetter({
-            clientName: selectedClient.name,
+            addresseeName: coverLetterAddressee(selectedClient),
             practiceName: tenant?.name || 'Our practice',
+            clientBusinessName: selectedClient.name,
           }),
       };
 
@@ -575,6 +645,9 @@ export default function ProposalBuilder() {
               }`}
             >
               <h3 className="font-semibold text-slate-900 dark:text-white">{client.name}</h3>
+              {client.contactName?.trim() && (
+                <p className="text-sm text-slate-600 dark:text-slate-300">{client.contactName.trim()}</p>
+              )}
               <p className="text-sm text-slate-500 dark:text-slate-400">{client.companyType}</p>
               <p className="text-sm text-slate-400 dark:text-slate-500">{client.contactEmail}</p>
             </div>
@@ -726,7 +799,7 @@ export default function ProposalBuilder() {
                 <option value="WEEKLY">Wk</option>
                 <option value="MONTHLY">Mo</option>
                 <option value="QUARTERLY">Qtr</option>
-                <option value="ANNUALLY">Yr</option>
+                <option value="ANNUALLY">Annual</option>
                 <option value="ONE_TIME">1x</option>
               </select>
             </div>
@@ -778,16 +851,12 @@ export default function ProposalBuilder() {
             {service.name}
           </h4>
           <p className="text-xs text-slate-500 dark:text-slate-400">
-            {formatCurrency(service.displayPrice)} × {service.quantity}
-            {service.billingCycle !== 'ONE_TIME' && (
-              <span className="text-slate-400"> /{BILLING_FREQUENCY_LABELS[service.billingCycle] || 'month'}</span>
-            )}
+            {service.quantity} × {formatCurrency(service.displayPrice)}
+            <span className="text-slate-400"> · {periodLabelSentenceCase(service.billingCycle)}</span>
             {service.discountPercent > 0 && (
-              <span className="text-amber-600 ml-1">(-{service.discountPercent}%)</span>
+              <span className="text-amber-600"> · −{service.discountPercent}%</span>
             )}
-            {service.vatRate !== 20 && (
-              <span className="text-blue-600 ml-1">({service.vatRate}% VAT)</span>
-            )}
+            {service.vatRate !== 20 && <span className="text-blue-600"> · VAT {service.vatRate}%</span>}
           </p>
           {dueLabel && (
             <p className="text-xs text-primary-600 dark:text-primary-400 mt-0.5">Due {dueLabel}</p>
@@ -796,16 +865,10 @@ export default function ProposalBuilder() {
 
         <div className="flex items-center gap-3 flex-shrink-0 ml-4">
           <div className="text-right">
-            <span className="font-semibold text-slate-900 dark:text-white text-sm block">
+            <span className="font-semibold text-slate-900 dark:text-white text-sm block tabular-nums">
               {formatCurrency(service.grossTotal)}
             </span>
-            <span className="text-xs text-slate-400 dark:text-slate-500">
-              inc VAT
-              <span className="text-slate-500 dark:text-slate-400">
-                {' '}
-                · {formatCurrency(service.lineTotal)} ex VAT
-              </span>
-            </span>
+            <span className="text-xs text-slate-500 dark:text-slate-400">inc VAT</span>
           </div>
 
           <div className="flex gap-1">
@@ -980,7 +1043,7 @@ export default function ProposalBuilder() {
           Back
         </button>
         {selectedServices.length > 0 && (
-          <button data-testid="services-continue-button" onClick={() => setCurrentStep(3)} className="btn-primary">
+          <button data-testid="services-continue-button" onClick={goToReviewStep} className="btn-primary">
             Continue
             <ArrowRightIcon className="w-5 h-5 ml-2" />
           </button>
@@ -1013,87 +1076,76 @@ export default function ProposalBuilder() {
       <div className="card p-4">
         <h3 className="font-semibold text-slate-900 dark:text-white mb-2">Client</h3>
         <p className="text-slate-700 dark:text-slate-200">{selectedClient?.name}</p>
+        {selectedClient?.contactName?.trim() && (
+          <p className="text-sm text-slate-600 dark:text-slate-300 mt-1">{selectedClient.contactName.trim()}</p>
+        )}
         <p className="text-sm text-slate-500 dark:text-slate-400">{selectedClient?.contactEmail}</p>
       </div>
 
-      {/* Services Summary */}
+      {/* Services — editable rows, grouped for clarity */}
       <div className="card p-6">
-        <h3 className="font-semibold text-slate-900 dark:text-white mb-4">Services</h3>
+        <h3 className="font-semibold text-slate-900 dark:text-white mb-1">Services</h3>
+        <p className="text-xs text-slate-500 dark:text-slate-400 mb-4">
+          Use edit on each line to change price, billing, or VAT. Below is a simple view of ongoing monthly
+          cost vs one-off charges.
+        </p>
 
-        {['WEEKLY', 'MONTHLY', 'QUARTERLY', 'ANNUALLY', 'ONE_TIME'].map((freq) => {
-          const items = selectedServices.filter((s) => s.billingCycle === freq);
-          if (items.length === 0) return null;
-
-          const totals = items.reduce(
-            (acc, s) => ({
-              subtotal: acc.subtotal + s.lineTotal,
-              vat: acc.vat + s.vatAmount,
-              total: acc.total + s.grossTotal,
-            }),
-            { subtotal: 0, vat: 0, total: 0 }
-          );
-
-          const periodHint =
-            freq === 'MONTHLY'
-              ? '/month'
-              : freq === 'QUARTERLY'
-                ? '/quarter'
-                : freq === 'ANNUALLY'
-                  ? '/year'
-                  : freq === 'WEEKLY'
-                    ? '/week'
-                    : '';
-
-          return (
-            <div key={freq} className="mb-4">
-              <h4 className="text-sm font-medium text-primary-600 mb-2 capitalize">
-                {freq.replace('_', ' ').toLowerCase()}
-              </h4>
-              {items.map(renderSelectedServiceRow)}
-              <div className="flex justify-between pt-2 border-t border-slate-100 mt-2">
-                <span className="text-slate-600 dark:text-slate-300 capitalize">
-                  {BILLING_FREQUENCY_LABELS[freq]} total (inc VAT)
-                  {periodHint ? (
-                    <span className="text-slate-400 font-normal normal-case">{` ${periodHint}`}</span>
-                  ) : null}
-                </span>
-                <span className="font-semibold text-slate-900 dark:text-white">
-                  {formatCurrency(totals.total)}
-                </span>
+        <div className="space-y-5">
+          {(['WEEKLY', 'MONTHLY', 'QUARTERLY', 'ANNUALLY', 'ONE_TIME'] as const).map((freq) => {
+            const items = selectedServices.filter((s) => s.billingCycle === freq);
+            if (items.length === 0) return null;
+            return (
+              <div key={freq}>
+                <h4 className="text-xs font-semibold uppercase tracking-wide text-primary-600 dark:text-primary-400 mb-2">
+                  {SERVICE_GROUP_SECTION_TITLES[freq] || freq}
+                </h4>
+                <div className="space-y-2">{items.map(renderSelectedServiceRow)}</div>
               </div>
-            </div>
-          );
-        })}
+            );
+          })}
+        </div>
 
-        <div className="mt-6 pt-4 border-t-2 border-slate-200 space-y-3">
-          <div className="flex justify-between items-center text-sm">
-            <span className="text-slate-600 dark:text-slate-300">Subtotal (ex VAT)</span>
-            <span className="font-medium text-slate-900 dark:text-white">
-              {formatCurrency(summary.totalSubtotalExVat)}
+        <div className="mt-6 p-4 rounded-lg bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-600 space-y-3">
+          <div className="flex justify-between items-baseline">
+            <div>
+              <span className="text-sm font-medium text-slate-800 dark:text-slate-100">Monthly cost</span>
+              <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 max-w-md">
+                Average per month including VAT, from recurring fees (weekly, monthly, quarterly, and annual
+                lines spread across the year). One-off fees are separate.
+              </p>
+            </div>
+            <span className="text-xl font-bold text-primary-600 tabular-nums">
+              {formatCurrency(reviewMonthlyCostIncVat)}
             </span>
           </div>
-          {includeVat && (
-            <div className="flex justify-between items-center text-sm">
-              <span className="text-slate-600 dark:text-slate-300">VAT</span>
-              <span className="font-medium text-slate-900 dark:text-white">
-                {formatCurrency(summary.totalVat)}
+          {summary.oneTime.count > 0 && (
+            <div className="flex justify-between items-baseline pt-2 border-t border-slate-200 dark:border-slate-600">
+              <span className="text-sm font-medium text-slate-800 dark:text-slate-100">One-off</span>
+              <span className="text-lg font-semibold text-slate-900 dark:text-white tabular-nums">
+                {formatCurrency(summary.oneTime.total)}
               </span>
             </div>
           )}
-          <div className="flex justify-between items-baseline">
-            <div>
-              <span className="text-lg font-semibold text-slate-900 dark:text-white block">
-                Combined proposal total
-              </span>
-              <span className="text-xs text-slate-500 dark:text-slate-400">
-                Sum of all lines (weekly, monthly, quarterly, yearly, and one-off)
-              </span>
-            </div>
-            <span className="text-2xl font-bold text-primary-600 tabular-nums">
-              {formatCurrency(summary.contractTotalIncVat)}
-            </span>
-          </div>
         </div>
+      </div>
+
+      {/* Cover letter */}
+      <div className="card p-4">
+        <label className="block text-sm font-medium text-slate-700 dark:text-slate-200 mb-2">
+          Cover letter
+        </label>
+        <p className="text-xs text-slate-500 dark:text-slate-400 mb-2">
+          Opens with “Dear {selectedClient ? coverLetterAddressee(selectedClient) : '…'}”. Edit the text below
+          if you need a different tone.
+        </p>
+        <textarea
+          value={coverLetter}
+          onChange={(e) => setCoverLetter(e.target.value)}
+          rows={10}
+          className="input-field w-full text-sm font-sans min-h-[200px]"
+          placeholder="Cover letter to the client…"
+          aria-label="Cover letter"
+        />
       </div>
 
       {/* Actions */}
