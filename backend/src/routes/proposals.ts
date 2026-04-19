@@ -15,6 +15,16 @@ const generateReference = (prefix: string = 'PROP'): string => {
   return `${prefix}-${timestamp}-${random}`;
 };
 
+/** YYYY-MM-DD or ISO datetime; only stored for ONE_TIME lines */
+function parseOneOffDueDate(billingFrequency: string, raw: unknown): Date | null {
+  if (billingFrequency !== 'ONE_TIME') return null;
+  if (raw === undefined || raw === null) return null;
+  const s = String(raw).trim();
+  if (!s) return null;
+  const d = /^\d{4}-\d{2}-\d{2}$/.test(s) ? new Date(`${s}T12:00:00.000Z`) : new Date(s);
+  return Number.isNaN(d.getTime()) ? null : d;
+}
+
 const router = Router();
 
 // Validation schemas
@@ -33,6 +43,7 @@ const createProposalSchema = z.object({
         billingFrequency: z.nativeEnum(PricingFrequency).optional(), // Frontend sends this
         displayPrice: z.number().min(0).optional(), // Custom price from frontend
         vatRate: z.number().min(0).max(100).optional(), // Per-line VAT rate
+        oneOffDueDate: z.union([z.string(), z.null()]).optional(),
       })
     )
     .min(1, 'At least one service is required'),
@@ -61,6 +72,7 @@ const updateProposalSchema = z.object({
           .enum(['ONE_TIME', 'WEEKLY', 'MONTHLY', 'QUARTERLY', 'ANNUALLY'])
           .optional(),
         displayPrice: z.number().min(0).optional(),
+        oneOffDueDate: z.union([z.string(), z.null()]).optional(),
       })
     )
     .optional(),
@@ -338,6 +350,7 @@ router.post(
         vatRate,
         vatAmount,
         grossTotal,
+        oneOffDueDate: parseOneOffDueDate(billingFrequency, svc.oneOffDueDate),
         // Relations
         serviceTemplateId: svc.serviceId,
       };
@@ -657,6 +670,7 @@ router.put(
           vatRate,
           vatAmount,
           grossTotal,
+          oneOffDueDate: parseOneOffDueDate(billingFrequency, (svc as any).oneOffDueDate),
           // Relations
           serviceTemplateId: svc.serviceId,
         };

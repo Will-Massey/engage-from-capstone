@@ -42,6 +42,8 @@ interface ProposalData {
     lineTotal?: number;
     total?: number;
     frequency: string;
+    billingFrequency?: string;
+    oneOffDueDate?: string | null;
     isOptional: boolean;
   }>;
 }
@@ -244,8 +246,14 @@ const PublicProposalView = () => {
                     )}
                     <p className="text-sm text-slate-600 mt-1">
                       {service.quantity} x {formatCurrency(service.unitPrice)} /{' '}
-                      {service.frequency.toLowerCase()}
+                      {(service.billingFrequency || service.frequency).toLowerCase().replace(/_/g, ' ')}
                     </p>
+                    {(service.billingFrequency || service.frequency) === 'ONE_TIME' &&
+                      service.oneOffDueDate && (
+                        <p className="text-sm text-slate-700 mt-1">
+                          Due: {formatDate(service.oneOffDueDate)}
+                        </p>
+                      )}
                   </div>
                   <div className="text-right">
                     <p className="font-medium text-slate-900">{formatCurrency(service.lineTotal || service.total || 0)}</p>

@@ -13,6 +13,7 @@ import { apiClient } from '../../utils/api';
 import { useAuthStore } from '../../stores/authStore';
 import { generateDefaultCoverLetter } from '../../data/defaultCoverLetter';
 import toast from 'react-hot-toast';
+import { format, isValid, parseISO } from 'date-fns';
 import {
   ArrowRightIcon,
   ArrowLeftIcon,
@@ -56,15 +57,27 @@ interface SelectedService extends Service {
   vatRate: number;
   vatAmount: number;
   grossTotal: number;
+  /** YYYY-MM-DD when billing is ONE_TIME */
+  oneOffDueDate?: string;
+}
+
+interface BandTotals {
+  subtotal: number;
+  vat: number;
+  total: number;
+  count: number;
 }
 
 interface PricingSummary {
-  monthly: { subtotal: number; vat: number; total: number; count: number };
-  quarterly: { subtotal: number; vat: number; total: number; count: number };
-  annually: { subtotal: number; vat: number; total: number; count: number };
-  oneTime: { subtotal: number; vat: number; total: number; count: number };
-  grandTotal: number;
-  totalAnnualEquivalent: number;
+  weekly: BandTotals;
+  monthly: BandTotals;
+  quarterly: BandTotals;
+  annually: BandTotals;
+  oneTime: BandTotals;
+  /** Sum of all line gross totals (matches stored proposal total) */
+  contractTotalIncVat: number;
+  totalSubtotalExVat: number;
+  totalVat: number;
 }
 
 const STEPS = [
@@ -74,10 +87,20 @@ const STEPS = [
 ];
 
 const BILLING_FREQUENCY_LABELS: Record<string, string> = {
+  WEEKLY: 'week',
   MONTHLY: 'month',
   QUARTERLY: 'quarter',
   ANNUALLY: 'year',
   ONE_TIME: 'one-time',
+};
+
+const formatDueDateLabel = (isoDate?: string): string | null => {
+  if (!isoDate) return null;
+  const normalized =
+    isoDate.includes('T') || isoDate.length < 10 ? isoDate : `${isoDate.slice(0, 10)}T12:00:00`;
+  const d = parseISO(normalized);
+  if (!isValid(d)) return null;
+  return format(d, 'd MMM yyyy');
 };
 
 const VAT_RATES = [0, 5, 20];
@@ -119,12 +142,14 @@ const calculateAnnualEquivalent = (price: number, frequency: string): number => 
       return price;
     case 'ONE_TIME':
       return 0;
+    case 'WEEKLY':
+      return price * 52;
     default:
       return price * 12;
   }
 };
 
-// Calculate monthly equivalent for display
+// Approximate monthly cash flow (catalog list only — not mixed into proposal totals)
 const calculateMonthlyEquivalent = (price: number, frequency: string): number => {
   switch (frequency) {
     case 'MONTHLY':
@@ -135,12 +160,14 @@ const calculateMonthlyEquivalent = (price: number, frequency: string): number =>
       return price / 12;
     case 'ONE_TIME':
       return price;
+    case 'WEEKLY':
+      return (price * 52) / 12;
     default:
       return price;
   }
 };
 
-// Format price for available services list (shows monthly equivalent)
+// Format price for available services list (shows monthly equivalent for recurring)
 const formatPriceForDisplay = (price: number, frequency: string): string => {
   if (frequency === 'ONE_TIME' || frequency === 'ANNUALLY') {
     return formatPriceWithFrequency(price, frequency);
@@ -180,7 +207,15 @@ export default function ProposalBuilder() {
     discountPercent: number;
     vatRate: number;
     billingCycle: string;
-  }>({ displayPrice: 0, quantity: 1, discountPercent: 0, vatRate: 20, billingCycle: 'MONTHLY' });
+    oneOffDueDate: string;
+  }>({
+    displayPrice: 0,
+    quantity: 1,
+    discountPercent: 0,
+    vatRate: 20,
+    billingCycle: 'MONTHLY',
+    oneOffDueDate: '',
+  });
 
   // Step 3: Review
   const [proposalTitle, setProposalTitle] = useState('');
@@ -262,46 +297,55 @@ export default function ProposalBuilder() {
       vatAmount,
       grossTotal: lineTotal + vatAmount,
       annualEquivalent: calculateAnnualEquivalent(price, editForm.billingCycle),
+      oneOffDueDate:
+        editForm.billingCycle === 'ONE_TIME' && editForm.oneOffDueDate.trim()
+          ? editForm.oneOffDueDate.trim()
+          : undefined,
     };
   }, [editForm, includeVat]);
 
   // Calculate summary (includes live preview of editing service)
-  // All recurring totals are normalized to monthly equivalents for easy comparison
+  // Totals are per billing period (no blending annual into "monthly investment")
   const summary: PricingSummary = useMemo(() => {
     const servicesForSummary = editingService
       ? selectedServices.map((s) => (s.id === editingService ? getEditingPreview(s) : s))
       : selectedServices;
 
+    const calcGroup = (items: SelectedService[]) => ({
+      subtotal: items.reduce((sum, s) => sum + s.lineTotal, 0),
+      vat: items.reduce((sum, s) => sum + s.vatAmount, 0),
+      total: items.reduce((sum, s) => sum + s.grossTotal, 0),
+      count: items.length,
+    });
+
+    const weekly = servicesForSummary.filter((s) => s.billingCycle === 'WEEKLY');
     const monthly = servicesForSummary.filter((s) => s.billingCycle === 'MONTHLY');
     const quarterly = servicesForSummary.filter((s) => s.billingCycle === 'QUARTERLY');
     const annually = servicesForSummary.filter((s) => s.billingCycle === 'ANNUALLY');
     const oneTime = servicesForSummary.filter((s) => s.billingCycle === 'ONE_TIME');
 
-    const calcGroupMonthly = (items: SelectedService[], divisor: number = 1) => ({
-      subtotal: items.reduce((sum, s) => sum + s.lineTotal / divisor, 0),
-      vat: items.reduce((sum, s) => sum + s.vatAmount / divisor, 0),
-      total: items.reduce((sum, s) => sum + s.grossTotal / divisor, 0),
-      count: items.length,
-    });
+    const weeklyGroup = calcGroup(weekly);
+    const monthlyGroup = calcGroup(monthly);
+    const quarterlyGroup = calcGroup(quarterly);
+    const annualGroup = calcGroup(annually);
+    const oneTimeGroup = calcGroup(oneTime);
 
-    const monthlyGroup = calcGroupMonthly(monthly, 1);
-    const quarterlyGroup = calcGroupMonthly(quarterly, 4);
-    const annualGroup = calcGroupMonthly(annually, 12);
-    const oneTimeGroup = calcGroupMonthly(oneTime, 1);
-
-    const totalAnnualEquivalent =
-      monthly.reduce((sum, s) => sum + s.annualEquivalent * s.quantity, 0) +
-      quarterly.reduce((sum, s) => sum + s.annualEquivalent * s.quantity, 0) +
-      annually.reduce((sum, s) => sum + s.annualEquivalent * s.quantity, 0);
+    const contractTotalIncVat =
+      weeklyGroup.total + monthlyGroup.total + quarterlyGroup.total + annualGroup.total + oneTimeGroup.total;
+    const totalSubtotalExVat =
+      weeklyGroup.subtotal + monthlyGroup.subtotal + quarterlyGroup.subtotal + annualGroup.subtotal + oneTimeGroup.subtotal;
+    const totalVat =
+      weeklyGroup.vat + monthlyGroup.vat + quarterlyGroup.vat + annualGroup.vat + oneTimeGroup.vat;
 
     return {
+      weekly: weeklyGroup,
       monthly: monthlyGroup,
       quarterly: quarterlyGroup,
       annually: annualGroup,
       oneTime: oneTimeGroup,
-      grandTotal:
-        monthlyGroup.total + quarterlyGroup.total + annualGroup.total + oneTimeGroup.total,
-      totalAnnualEquivalent,
+      contractTotalIncVat,
+      totalSubtotalExVat,
+      totalVat,
     };
   }, [selectedServices, editingService, getEditingPreview]);
 
@@ -338,6 +382,7 @@ export default function ProposalBuilder() {
       vatRate: vatPercent,
       vatAmount,
       grossTotal: lineTotal + vatAmount,
+      oneOffDueDate: frequency === 'ONE_TIME' ? '' : undefined,
     };
 
     setSelectedServices([...selectedServices, newService]);
@@ -353,6 +398,7 @@ export default function ProposalBuilder() {
       discountPercent: service.discountPercent,
       vatRate: service.vatRate,
       billingCycle: service.billingCycle,
+      oneOffDueDate: service.oneOffDueDate || '',
     });
   };
 
@@ -384,6 +430,10 @@ export default function ProposalBuilder() {
           vatAmount,
           grossTotal: lineTotal + vatAmount,
           annualEquivalent: calculateAnnualEquivalent(price, editForm.billingCycle),
+          oneOffDueDate:
+            editForm.billingCycle === 'ONE_TIME' && editForm.oneOffDueDate.trim()
+              ? editForm.oneOffDueDate.trim()
+              : undefined,
         };
       })
     );
@@ -425,6 +475,9 @@ export default function ProposalBuilder() {
         quantity: s.quantity,
         discountPercent: s.discountPercent,
         vatRate: includeVat ? s.vatRate : 0,
+        ...(s.billingCycle === 'ONE_TIME' && s.oneOffDueDate?.trim()
+          ? { oneOffDueDate: s.oneOffDueDate.trim() }
+          : {}),
       }));
 
       const proposalData = {
@@ -660,9 +713,17 @@ export default function ProposalBuilder() {
               <select
                 data-testid="edit-frequency-select"
                 value={editForm.billingCycle}
-                onChange={(e) => setEditForm({ ...editForm, billingCycle: e.target.value })}
+                onChange={(e) => {
+                  const billingCycle = e.target.value;
+                  setEditForm({
+                    ...editForm,
+                    billingCycle,
+                    oneOffDueDate: billingCycle === 'ONE_TIME' ? editForm.oneOffDueDate : '',
+                  });
+                }}
                 className="w-full px-2 py-1 text-sm border rounded dark:bg-slate-800 dark:border-slate-600"
               >
+                <option value="WEEKLY">Wk</option>
                 <option value="MONTHLY">Mo</option>
                 <option value="QUARTERLY">Qtr</option>
                 <option value="ANNUALLY">Yr</option>
@@ -671,9 +732,24 @@ export default function ProposalBuilder() {
             </div>
           </div>
 
+          {editForm.billingCycle === 'ONE_TIME' && (
+            <div>
+              <label className="block text-[10px] uppercase tracking-wide text-slate-500 mb-0.5">
+                Due date (optional)
+              </label>
+              <input
+                data-testid="edit-one-off-due-date"
+                type="date"
+                value={editForm.oneOffDueDate}
+                onChange={(e) => setEditForm({ ...editForm, oneOffDueDate: e.target.value })}
+                className="w-full max-w-xs px-2 py-1 text-sm border rounded dark:bg-slate-800 dark:border-slate-600"
+              />
+            </div>
+          )}
+
           {/* Live preview */}
           <div className="flex justify-between items-center pt-1 border-t border-amber-200 dark:border-amber-800">
-            <span className="text-xs text-slate-500">Preview:</span>
+            <span className="text-xs text-slate-500">Preview (inc. VAT):</span>
             <span className="font-semibold text-primary-600 text-sm">
               {formatCurrency(
                 editForm.displayPrice *
@@ -682,7 +758,9 @@ export default function ProposalBuilder() {
                   (1 + (includeVat ? editForm.vatRate : 0) / 100)
               )}
               <span className="text-xs text-slate-500 font-normal ml-1">
-                /{BILLING_FREQUENCY_LABELS[editForm.billingCycle] || 'month'}
+                {editForm.billingCycle === 'ONE_TIME'
+                  ? ' one-time'
+                  : `/${BILLING_FREQUENCY_LABELS[editForm.billingCycle] || 'month'}`}
               </span>
             </span>
           </div>
@@ -691,6 +769,8 @@ export default function ProposalBuilder() {
     }
 
     // Compact view mode
+    const dueLabel = service.billingCycle === 'ONE_TIME' ? formatDueDateLabel(service.oneOffDueDate) : null;
+
     return (
       <div data-testid="selected-service-row" data-service-name={service.name} className="flex items-center justify-between p-3 bg-slate-50 dark:bg-slate-800/50 rounded-lg group hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
         <div className="flex-1 min-w-0">
@@ -698,9 +778,10 @@ export default function ProposalBuilder() {
             {service.name}
           </h4>
           <p className="text-xs text-slate-500 dark:text-slate-400">
-            {service.billingCycle === 'ONE_TIME' || service.billingCycle === 'ANNUALLY'
-              ? `${formatCurrency(service.displayPrice)} × ${service.quantity}`
-              : `${formatCurrency(calculateMonthlyEquivalent(service.displayPrice, service.billingCycle))} × ${service.quantity}`}
+            {formatCurrency(service.displayPrice)} × {service.quantity}
+            {service.billingCycle !== 'ONE_TIME' && (
+              <span className="text-slate-400"> /{BILLING_FREQUENCY_LABELS[service.billingCycle] || 'month'}</span>
+            )}
             {service.discountPercent > 0 && (
               <span className="text-amber-600 ml-1">(-{service.discountPercent}%)</span>
             )}
@@ -708,24 +789,22 @@ export default function ProposalBuilder() {
               <span className="text-blue-600 ml-1">({service.vatRate}% VAT)</span>
             )}
           </p>
+          {dueLabel && (
+            <p className="text-xs text-primary-600 dark:text-primary-400 mt-0.5">Due {dueLabel}</p>
+          )}
         </div>
 
         <div className="flex items-center gap-3 flex-shrink-0 ml-4">
           <div className="text-right">
             <span className="font-semibold text-slate-900 dark:text-white text-sm block">
-              {service.billingCycle === 'ONE_TIME' || service.billingCycle === 'ANNUALLY'
-                ? formatCurrency(service.lineTotal)
-                : formatCurrency(calculateMonthlyEquivalent(service.lineTotal, service.billingCycle))}
+              {formatCurrency(service.grossTotal)}
             </span>
             <span className="text-xs text-slate-400 dark:text-slate-500">
-              {service.billingCycle === 'ONE_TIME' || service.billingCycle === 'ANNUALLY'
-                ? BILLING_FREQUENCY_LABELS[service.billingCycle] || 'one-time'
-                : 'month'}
-              {service.vatAmount > 0 && (
-                <span className="ml-1 text-primary-500 dark:text-primary-400">
-                  (inc VAT {formatCurrency(service.grossTotal)})
-                </span>
-              )}
+              inc VAT
+              <span className="text-slate-500 dark:text-slate-400">
+                {' '}
+                · {formatCurrency(service.lineTotal)} ex VAT
+              </span>
             </span>
           </div>
 
@@ -816,49 +895,78 @@ export default function ProposalBuilder() {
                 {selectedServices.map(renderSelectedServiceRow)}
               </div>
 
-              {/* Running Total */}
-              <div className="p-4 bg-primary-50 dark:bg-primary-900/20 rounded-lg border border-primary-100 dark:border-primary-800">
-                <div className="flex justify-between items-center text-sm">
-                  <span className="text-slate-600 dark:text-slate-300">Subtotal</span>
-                  <span className="font-medium text-slate-900 dark:text-white">
-                    {formatCurrency(
-                      summary.monthly.subtotal +
-                        summary.quarterly.subtotal +
-                        summary.annually.subtotal +
-                        summary.oneTime.subtotal
-                    )}
-                  </span>
-                </div>
-                {includeVat && (
-                  <div className="flex justify-between items-center text-sm mt-1">
-                    <span className="text-slate-600 dark:text-slate-300">VAT</span>
-                    <span className="font-medium text-slate-900 dark:text-white">
-                      {formatCurrency(
-                        summary.monthly.vat +
-                          summary.quarterly.vat +
-                          summary.annually.vat +
-                          summary.oneTime.vat
-                      )}
+              {/* Running totals — per billing period (not blended) */}
+              <div className="p-4 bg-primary-50 dark:bg-primary-900/20 rounded-lg border border-primary-100 dark:border-primary-800 space-y-2 text-sm">
+                <p className="text-xs text-slate-600 dark:text-slate-400 leading-snug">
+                  Recurring amounts are per bill (week / month / quarter). Annual and one-off are shown separately.
+                </p>
+                {summary.weekly.count > 0 && (
+                  <div className="flex justify-between">
+                    <span className="text-slate-600 dark:text-slate-300">Weekly (inc VAT)</span>
+                    <span className="font-medium text-slate-900 dark:text-white tabular-nums">
+                      {formatCurrency(summary.weekly.total)}
+                      <span className="text-xs font-normal text-slate-500">/week</span>
                     </span>
                   </div>
                 )}
-                <div className="flex justify-between items-center mt-2 pt-2 border-t border-primary-200 dark:border-primary-800">
-                  <span className="font-semibold text-slate-900 dark:text-white">Total monthly</span>
-                  <span className="text-lg font-bold text-primary-600">
-                    {formatCurrency(
-                      summary.monthly.total + summary.quarterly.total + summary.annually.total
-                    )}
-                    <span className="text-xs font-normal text-slate-500 ml-1">/month</span>
-                  </span>
-                </div>
+                {summary.monthly.count > 0 && (
+                  <div className="flex justify-between">
+                    <span className="text-slate-600 dark:text-slate-300">Monthly (inc VAT)</span>
+                    <span className="font-medium text-slate-900 dark:text-white tabular-nums">
+                      {formatCurrency(summary.monthly.total)}
+                      <span className="text-xs font-normal text-slate-500">/month</span>
+                    </span>
+                  </div>
+                )}
+                {summary.quarterly.count > 0 && (
+                  <div className="flex justify-between">
+                    <span className="text-slate-600 dark:text-slate-300">Quarterly (inc VAT)</span>
+                    <span className="font-medium text-slate-900 dark:text-white tabular-nums">
+                      {formatCurrency(summary.quarterly.total)}
+                      <span className="text-xs font-normal text-slate-500">/quarter</span>
+                    </span>
+                  </div>
+                )}
+                {summary.annually.count > 0 && (
+                  <div className="flex justify-between">
+                    <span className="text-slate-600 dark:text-slate-300">Yearly (inc VAT)</span>
+                    <span className="font-medium text-slate-900 dark:text-white tabular-nums">
+                      {formatCurrency(summary.annually.total)}
+                      <span className="text-xs font-normal text-slate-500">/year</span>
+                    </span>
+                  </div>
+                )}
                 {summary.oneTime.count > 0 && (
-                  <div className="flex justify-between items-center mt-1 text-sm">
-                    <span className="text-slate-600 dark:text-slate-300">One-time</span>
-                    <span className="font-medium text-slate-900 dark:text-white">
+                  <div className="flex justify-between">
+                    <span className="text-slate-600 dark:text-slate-300">One-off (inc VAT)</span>
+                    <span className="font-medium text-slate-900 dark:text-white tabular-nums">
                       {formatCurrency(summary.oneTime.total)}
                     </span>
                   </div>
                 )}
+                <div className="flex justify-between items-center pt-2 border-t border-primary-200 dark:border-primary-800 text-sm">
+                  <span className="text-slate-600 dark:text-slate-300">Subtotal (ex VAT)</span>
+                  <span className="font-medium text-slate-900 dark:text-white tabular-nums">
+                    {formatCurrency(summary.totalSubtotalExVat)}
+                  </span>
+                </div>
+                {includeVat && (
+                  <div className="flex justify-between">
+                    <span className="text-slate-600 dark:text-slate-300">VAT</span>
+                    <span className="font-medium text-slate-900 dark:text-white tabular-nums">
+                      {formatCurrency(summary.totalVat)}
+                    </span>
+                  </div>
+                )}
+                <div className="flex justify-between items-baseline pt-1">
+                  <span className="font-semibold text-slate-900 dark:text-white">Combined total</span>
+                  <span className="text-lg font-bold text-primary-600 tabular-nums">
+                    {formatCurrency(summary.contractTotalIncVat)}
+                  </span>
+                </div>
+                <p className="text-[10px] text-slate-500 dark:text-slate-400">
+                  Combined total is the sum of every line (all billing periods). It is not a monthly fee.
+                </p>
               </div>
             </>
           )}
@@ -912,7 +1020,7 @@ export default function ProposalBuilder() {
       <div className="card p-6">
         <h3 className="font-semibold text-slate-900 dark:text-white mb-4">Services</h3>
 
-        {['MONTHLY', 'QUARTERLY', 'ANNUALLY', 'ONE_TIME'].map((freq) => {
+        {['WEEKLY', 'MONTHLY', 'QUARTERLY', 'ANNUALLY', 'ONE_TIME'].map((freq) => {
           const items = selectedServices.filter((s) => s.billingCycle === freq);
           if (items.length === 0) return null;
 
@@ -925,6 +1033,17 @@ export default function ProposalBuilder() {
             { subtotal: 0, vat: 0, total: 0 }
           );
 
+          const periodHint =
+            freq === 'MONTHLY'
+              ? '/month'
+              : freq === 'QUARTERLY'
+                ? '/quarter'
+                : freq === 'ANNUALLY'
+                  ? '/year'
+                  : freq === 'WEEKLY'
+                    ? '/week'
+                    : '';
+
           return (
             <div key={freq} className="mb-4">
               <h4 className="text-sm font-medium text-primary-600 mb-2 capitalize">
@@ -933,7 +1052,10 @@ export default function ProposalBuilder() {
               {items.map(renderSelectedServiceRow)}
               <div className="flex justify-between pt-2 border-t border-slate-100 mt-2">
                 <span className="text-slate-600 dark:text-slate-300 capitalize">
-                  {BILLING_FREQUENCY_LABELS[freq]} Total
+                  {BILLING_FREQUENCY_LABELS[freq]} total (inc VAT)
+                  {periodHint ? (
+                    <span className="text-slate-400 font-normal normal-case">{` ${periodHint}`}</span>
+                  ) : null}
                 </span>
                 <span className="font-semibold text-slate-900 dark:text-white">
                   {formatCurrency(totals.total)}
@@ -943,14 +1065,32 @@ export default function ProposalBuilder() {
           );
         })}
 
-        {/* Grand Total */}
-        <div className="mt-6 pt-4 border-t-2 border-slate-200">
-          <div className="flex justify-between items-center">
-            <span className="text-lg font-semibold text-slate-900 dark:text-white">
-              Total Investment
+        <div className="mt-6 pt-4 border-t-2 border-slate-200 space-y-3">
+          <div className="flex justify-between items-center text-sm">
+            <span className="text-slate-600 dark:text-slate-300">Subtotal (ex VAT)</span>
+            <span className="font-medium text-slate-900 dark:text-white">
+              {formatCurrency(summary.totalSubtotalExVat)}
             </span>
-            <span className="text-2xl font-bold text-primary-600">
-              {formatCurrency(summary.grandTotal)}
+          </div>
+          {includeVat && (
+            <div className="flex justify-between items-center text-sm">
+              <span className="text-slate-600 dark:text-slate-300">VAT</span>
+              <span className="font-medium text-slate-900 dark:text-white">
+                {formatCurrency(summary.totalVat)}
+              </span>
+            </div>
+          )}
+          <div className="flex justify-between items-baseline">
+            <div>
+              <span className="text-lg font-semibold text-slate-900 dark:text-white block">
+                Combined proposal total
+              </span>
+              <span className="text-xs text-slate-500 dark:text-slate-400">
+                Sum of all lines (weekly, monthly, quarterly, yearly, and one-off)
+              </span>
+            </div>
+            <span className="text-2xl font-bold text-primary-600 tabular-nums">
+              {formatCurrency(summary.contractTotalIncVat)}
             </span>
           </div>
         </div>

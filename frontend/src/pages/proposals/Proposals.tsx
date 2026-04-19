@@ -144,10 +144,18 @@ const Proposals = () => {
         services: proposal.services.map((s: any) => ({
           serviceId: s.serviceTemplateId,
           quantity: s.quantity,
-          unitPrice: s.unitPrice,
-          billingFrequency: s.frequency,
+          displayPrice: s.displayPrice ?? s.unitPrice,
+          billingFrequency: s.billingFrequency || s.frequency,
           discountPercent: s.discountPercent,
-          description: s.description,
+          vatRate: s.vatRate,
+          ...(s.oneOffDueDate
+            ? {
+                oneOffDueDate:
+                  typeof s.oneOffDueDate === 'string'
+                    ? s.oneOffDueDate.slice(0, 10)
+                    : new Date(s.oneOffDueDate).toISOString().slice(0, 10),
+              }
+            : {}),
         })),
       })) as any;
 

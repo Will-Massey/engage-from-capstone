@@ -50,6 +50,7 @@ interface ProposalData {
     vatAmount?: number;
     grossTotal?: number;
     frequency: string;
+    oneOffDueDate?: Date | string | null;
   }>;
   tenant: {
     name: string;
@@ -326,6 +327,7 @@ ${proposal.tenant.name}`;
 
     // Group services by billing frequency
     const grouped = {
+      weekly: proposal.services.filter((s) => (s.billingFrequency || s.frequency) === 'WEEKLY'),
       monthly: proposal.services.filter((s) => (s.billingFrequency || s.frequency) === 'MONTHLY'),
       quarterly: proposal.services.filter(
         (s) => (s.billingFrequency || s.frequency) === 'QUARTERLY'
@@ -337,7 +339,7 @@ ${proposal.tenant.name}`;
     const drawServiceGroup = (
       title: string,
       services: typeof proposal.services,
-      frequency: string
+      _frequency: string
     ) => {
       if (services.length === 0) return;
 
@@ -394,12 +396,28 @@ ${proposal.tenant.name}`;
           doc.fontSize(10).fillColor('#333333');
         }
 
+        let extraLines = 0;
+        if (billingFreq === 'ONE_TIME' && service.oneOffDueDate) {
+          const due = new Date(service.oneOffDueDate as any);
+          if (!Number.isNaN(due.getTime())) {
+            doc
+              .fontSize(8)
+              .fillColor('#666666')
+              .text(`Due: ${this.formatDate(due)}`, colX.name, y + (service.description ? 30 : 15), {
+                width: 250,
+              });
+            doc.fontSize(10).fillColor('#333333');
+            extraLines = 1;
+          }
+        }
+
         doc
           .text(service.quantity.toString(), colX.qty, y)
           .text(priceLabel, colX.price, y)
           .text(this.formatCurrency(lineTotal), colX.total, y);
 
-        y += service.description ? 45 : 25;
+        const baseStep = service.description ? 45 : 25;
+        y += baseStep + (extraLines ? 14 : 0);
       });
 
       // Group subtotal
@@ -418,6 +436,7 @@ ${proposal.tenant.name}`;
     };
 
     // Draw each group
+    drawServiceGroup('Weekly Services', grouped.weekly, 'WEEKLY');
     drawServiceGroup('Monthly Services', grouped.monthly, 'MONTHLY');
     drawServiceGroup('Quarterly Services', grouped.quarterly, 'QUARTERLY');
     drawServiceGroup('Annual Services', grouped.annually, 'ANNUALLY');
@@ -432,12 +451,20 @@ ${proposal.tenant.name}`;
 
     // Group services by billing frequency
     const grouped = {
+      weekly: proposal.services.filter((s) => (s.billingFrequency || s.frequency) === 'WEEKLY'),
       monthly: proposal.services.filter((s) => (s.billingFrequency || s.frequency) === 'MONTHLY'),
       quarterly: proposal.services.filter(
         (s) => (s.billingFrequency || s.frequency) === 'QUARTERLY'
       ),
       annually: proposal.services.filter((s) => (s.billingFrequency || s.frequency) === 'ANNUALLY'),
       oneTime: proposal.services.filter((s) => (s.billingFrequency || s.frequency) === 'ONE_TIME'),
+    };
+
+    const lineIncVat = (s: (typeof proposal.services)[0]) => {
+      if (typeof s.grossTotal === 'number') return s.grossTotal;
+      const net = (s.displayPrice || s.unitPrice || 0) * (s.quantity || 1);
+      const vatR = s.vatRate ?? 20;
+      return Math.round(net * (1 + vatR / 100) * 100) / 100;
     };
 
     const rightX = 350;
@@ -449,14 +476,16 @@ ${proposal.tenant.name}`;
     doc.fontSize(10).fillColor('#666666');
 
     // Show totals by frequency
-    if (grouped.monthly.length > 0) {
-      const monthlyTotal = grouped.monthly.reduce((sum, s) => {
-        const price = s.displayPrice || s.unitPrice;
-        return sum + price * s.quantity;
-      }, 0);
-      const monthlyVat = monthlyTotal * 0.2;
-      const monthlyWithVat = monthlyTotal + monthlyVat;
+    if (grouped.weekly.length > 0) {
+      const weeklyWithVat = grouped.weekly.reduce((sum, s) => sum + lineIncVat(s), 0);
+      doc
+        .text('Weekly Total:', rightX, y)
+        .text(this.formatCurrency(weeklyWithVat) + '/week', 490, y, { align: 'right' });
+      y += 20;
+    }
 
+    if (grouped.monthly.length > 0) {
+      const monthlyWithVat = grouped.monthly.reduce((sum, s) => sum + lineIncVat(s), 0);
       doc
         .text('Monthly Total:', rightX, y)
         .text(this.formatCurrency(monthlyWithVat) + '/month', 490, y, { align: 'right' });
@@ -464,13 +493,7 @@ ${proposal.tenant.name}`;
     }
 
     if (grouped.quarterly.length > 0) {
-      const quarterlyTotal = grouped.quarterly.reduce((sum, s) => {
-        const price = s.displayPrice || s.unitPrice;
-        return sum + price * s.quantity;
-      }, 0);
-      const quarterlyVat = quarterlyTotal * 0.2;
-      const quarterlyWithVat = quarterlyTotal + quarterlyVat;
-
+      const quarterlyWithVat = grouped.quarterly.reduce((sum, s) => sum + lineIncVat(s), 0);
       doc
         .text('Quarterly Total:', rightX, y)
         .text(this.formatCurrency(quarterlyWithVat) + '/quarter', 490, y, { align: 'right' });
@@ -478,13 +501,7 @@ ${proposal.tenant.name}`;
     }
 
     if (grouped.annually.length > 0) {
-      const annualTotal = grouped.annually.reduce((sum, s) => {
-        const price = s.displayPrice || s.unitPrice;
-        return sum + price * s.quantity;
-      }, 0);
-      const annualVat = annualTotal * 0.2;
-      const annualWithVat = annualTotal + annualVat;
-
+      const annualWithVat = grouped.annually.reduce((sum, s) => sum + lineIncVat(s), 0);
       doc
         .text('Annual Total:', rightX, y)
         .text(this.formatCurrency(annualWithVat) + '/year', 490, y, { align: 'right' });
@@ -492,13 +509,7 @@ ${proposal.tenant.name}`;
     }
 
     if (grouped.oneTime.length > 0) {
-      const oneTimeTotal = grouped.oneTime.reduce((sum, s) => {
-        const price = s.displayPrice || s.unitPrice;
-        return sum + price * s.quantity;
-      }, 0);
-      const oneTimeVat = oneTimeTotal * 0.2;
-      const oneTimeWithVat = oneTimeTotal + oneTimeVat;
-
+      const oneTimeWithVat = grouped.oneTime.reduce((sum, s) => sum + lineIncVat(s), 0);
       doc
         .text('One-Time Fees:', rightX, y)
         .text(this.formatCurrency(oneTimeWithVat), 490, y, { align: 'right' });
@@ -514,11 +525,15 @@ ${proposal.tenant.name}`;
     doc
       .fontSize(16)
       .fillColor(primaryColor)
-      .text('Total Investment:', rightX, y)
+      .text('Combined total:', rightX, y)
       .text(this.formatCurrency(proposal.total), 490, y, { align: 'right' });
 
     // Annual equivalent note
     const annualEquivalent =
+      grouped.weekly.reduce(
+        (sum, s) => sum + (s.displayPrice || s.unitPrice) * s.quantity * 52,
+        0
+      ) +
       grouped.monthly.reduce(
         (sum, s) => sum + (s.displayPrice || s.unitPrice) * s.quantity * 12,
         0

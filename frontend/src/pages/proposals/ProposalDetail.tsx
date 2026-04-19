@@ -475,6 +475,11 @@ const ProposalDetail = () => {
                             </span>
                           )}
                         </p>
+                        {frequency === 'ONE_TIME' && service.oneOffDueDate && (
+                          <p className="text-sm text-primary-600 dark:text-primary-400 mt-1">
+                            Due: {format(new Date(service.oneOffDueDate), 'd MMMM yyyy')}
+                          </p>
+                        )}
                       </div>
                       <div className="text-right ml-4">
                         <p className="font-semibold text-slate-900 dark:text-white">
@@ -771,20 +776,17 @@ const ProposalDetail = () => {
                 </div>
 
                 <div className="flex justify-between items-baseline pt-2">
-                  <span className="font-semibold text-slate-900 dark:text-white">Total investment</span>
+                  <span className="font-semibold text-slate-900 dark:text-white">Combined total</span>
                   <span className="font-bold text-2xl text-slate-900 dark:text-white tabular-nums tracking-tight">
                     {formatCurrency(proposal.total ?? 0)}
                   </span>
                 </div>
               </div>
 
-              {/* Annual equivalent note */}
-              {groupTotals.MONTHLY && (
-                <p className="text-xs text-slate-500 dark:text-slate-400 text-center">
-                  Monthly lines equivalent to {formatCurrency((groupTotals.MONTHLY.total || 0) * 12)} per year
-                  (inc. VAT).
-                </p>
-              )}
+              <p className="text-xs text-slate-500 dark:text-slate-400 text-center">
+                Combined total is the sum of every line. Recurring rows are per billing period; annual and
+                one-off are not converted to a monthly fee.
+              </p>
             </div>
           </div>
 

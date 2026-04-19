@@ -382,6 +382,9 @@ model ProposalService {
   // Metadata
   sortOrder Int @default(0)
 
+  /// When this one-off charge is due (only meaningful for ONE_TIME lines)
+  oneOffDueDate DateTime?
+
   // Relations
   proposalId String
   proposal   Proposal @relation(fields: [proposalId], references: [id], onDelete: Cascade)

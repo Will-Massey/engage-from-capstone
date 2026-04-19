@@ -15,7 +15,7 @@ test.describe('Proposal Pricing Frequency', () => {
     await cleanupTestData();
   });
 
-  test('annual service displays as monthly equivalent', async ({ page }) => {
+  test('annual service shows full-year amount in selection (not blended into monthly)', async ({ page }) => {
     const client = await createTestClient(page, {
       name: 'Test Annual Client',
       email: 'test-annual@example.com',
@@ -33,25 +33,26 @@ test.describe('Proposal Pricing Frequency', () => {
     const serviceRow = page.locator('[data-testid="available-service-row"]').filter({ hasText: 'Annual Accounts Preparation & Filing' });
     await serviceRow.click();
 
-    // Verify the service appears in selected services with monthly equivalent
+    // Left column still hints at monthly equivalent; selected row shows full-period inc VAT
     const selectedRow = page.locator('[data-testid="selected-service-row"]').filter({ hasText: 'Annual Accounts Preparation & Filing' });
     await expect(selectedRow).toBeVisible();
-    // £850/year = £70.83/month
-    await expect(selectedRow.filter({ hasText: /£70\.83|£70\.8|£70/ })).toBeVisible();
-    await expect(selectedRow.filter({ hasText: 'month' })).toBeVisible();
+    await expect(selectedRow).toContainText('/year');
+    await expect(selectedRow).toContainText(/£1,020/);
 
     // Go to review
     await page.locator('[data-testid="services-continue-button"]').click();
 
-    // Verify review page shows monthly equivalent total
-    await expect(page.locator('text=Total Investment')).toBeVisible();
-    // Total Investment should show monthly equivalent (~£85 inc VAT)
-    const totalElement = page.locator('text=Total Investment').locator('..').locator('span.text-2xl');
+    await expect(page.getByText('Combined proposal total')).toBeVisible();
+    const totalElement = page
+      .getByText('Combined proposal total')
+      .locator('..')
+      .locator('..')
+      .locator('span.text-2xl');
     await expect(totalElement).toBeVisible();
     const totalText = await totalElement.textContent();
     const totalValue = parseFloat(totalText!.replace(/[^0-9.]/g, ''));
-    expect(totalValue).toBeGreaterThan(70);
-    expect(totalValue).toBeLessThan(100);
+    expect(totalValue).toBeGreaterThan(1000);
+    expect(totalValue).toBeLessThan(1100);
   });
 
   test('changing billing frequency recalculates price', async ({ page }) => {
@@ -76,10 +77,10 @@ test.describe('Proposal Pricing Frequency', () => {
     // Save edit
     await page.locator('[data-testid="save-edit-button"]').click();
 
-    // Verify price updated in selected services list (shows monthly equivalent: 1020/12 = 85)
+    // Full annual charge inc VAT: £1020 × 1.2 = £1224
     const updatedRow = page.locator('[data-testid="selected-service-row"]').filter({ hasText: 'Comprehensive Bookkeeping' });
-    await expect(updatedRow.filter({ hasText: '£85' })).toBeVisible();
-    await expect(updatedRow.filter({ hasText: 'month' })).toBeVisible();
+    await expect(updatedRow).toContainText('/year');
+    await expect(updatedRow).toContainText(/£1,224/);
   });
 
   test('proposal total includes all services correctly', async ({ page }) => {
@@ -97,14 +98,17 @@ test.describe('Proposal Pricing Frequency', () => {
     // Go to review step
     await page.locator('[data-testid="services-continue-button"]').click();
 
-    // Verify grand total is shown as monthly equivalent
-    // Annual Accounts (£850/12=71) + Bookkeeping (£85) + MTD ITSA (£120/4=30) = ~186 + VAT = ~223
-    const totalElement = page.locator('text=Total Investment').locator('..').locator('span.text-2xl');
+    // Combined total = sum of full-period gross lines (annual + monthly + quarterly)
+    const totalElement = page
+      .getByText('Combined proposal total')
+      .locator('..')
+      .locator('..')
+      .locator('span.text-2xl');
     await expect(totalElement).toBeVisible();
     const totalText = await totalElement.textContent();
     const totalValue = parseFloat(totalText!.replace(/[^0-9.]/g, ''));
-    expect(totalValue).toBeGreaterThan(150);
-    expect(totalValue).toBeLessThan(300);
+    expect(totalValue).toBeGreaterThan(1200);
+    expect(totalValue).toBeLessThan(1320);
   });
 });
 
@@ -191,9 +195,9 @@ test.describe('VAT Calculation', () => {
     // Go to review
     await page.locator('[data-testid="services-continue-button"]').click();
 
-    // Verify total includes VAT: £85 + 20% = £102
-    // Look specifically in the monthly total section for the VAT-inclusive total
-    await expect(page.locator('text=month Total').locator('..').filter({ hasText: '£102' })).toBeVisible();
+    // Verify total includes VAT: £85 + 20% = £102 (shown on the line and in the monthly band footer)
+    const reviewRow = page.locator('[data-testid="selected-service-row"]').filter({ hasText: 'Comprehensive Bookkeeping' });
+    await expect(reviewRow).toContainText(/£102/);
   });
 });
 
