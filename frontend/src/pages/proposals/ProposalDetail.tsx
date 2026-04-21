@@ -437,94 +437,68 @@ const ProposalDetail = () => {
             </div>
           </div>
 
-          {/* Services - Grouped by billing frequency */}
+          {/* Services — flat list, user decides frequency per service */}
           <div className="glass-tile p-6">
             <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-100 mb-4">Services</h2>
 
-            {Object.entries(groupedServices).map(([frequency, services]: [string, any]) => (
-              <div key={frequency} className="mb-6 last:mb-0">
-                <h3 className="text-sm font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wide mb-3">
-                  {frequencyLabels[frequency] || frequency} Services
-                </h3>
-                <div className="space-y-3">
-                  {services.map((service: any) => (
-                    <div
-                      key={service.id}
-                      className="flex items-start justify-between p-4 bg-white/40 dark:bg-slate-800/70 rounded-lg border border-white/20 dark:border-slate-600/50"
-                    >
-                      <div className="flex-1">
-                        <div className="flex items-center gap-2">
-                          <p className="font-medium text-slate-900 dark:text-slate-100">{service.name}</p>
-                          {service.vatRate !== 20 && hasMixedVatRates && (
-                            <span className="text-xs px-1.5 py-0.5 bg-amber-100 dark:bg-amber-900/40 text-amber-800 dark:text-amber-200 rounded">
-                              VAT {service.vatRate}%
-                            </span>
-                          )}
-                        </div>
-                        {service.description && (
-                          <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">
-                            {service.description}
-                          </p>
-                        )}
-                        <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
-                          Qty: {service.quantity} • Price:{' '}
-                          {formatCurrency(service.displayPrice || service.unitPrice || 0)}/
-                          {frequencyLabels[frequency]?.toLowerCase() || 'month'}
-                          {service.discountPercent > 0 && (
-                            <span className="text-green-600 dark:text-green-400 ml-1">
-                              ({service.discountPercent}% off)
-                            </span>
-                          )}
-                        </p>
-                        {frequency === 'ONE_TIME' && service.oneOffDueDate && (
-                          <p className="text-sm text-primary-600 dark:text-primary-400 mt-1">
-                            Due: {format(new Date(service.oneOffDueDate), 'd MMMM yyyy')}
-                          </p>
+            <div className="space-y-3">
+              {proposal.services?.map((service: any) => {
+                const serviceFreq = service.billingFrequency || service.frequency || 'MONTHLY';
+                return (
+                  <div
+                    key={service.id}
+                    className="flex items-start justify-between p-4 bg-white/40 dark:bg-slate-800/70 rounded-lg border border-white/20 dark:border-slate-600/50"
+                  >
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2">
+                        <p className="font-medium text-slate-900 dark:text-slate-100">{service.name}</p>
+                        {service.vatRate !== 20 && hasMixedVatRates && (
+                          <span className="text-xs px-1.5 py-0.5 bg-amber-100 dark:bg-amber-900/40 text-amber-800 dark:text-amber-200 rounded">
+                            VAT {service.vatRate}%
+                          </span>
                         )}
                       </div>
-                      <div className="text-right ml-4">
-                        <p className="font-semibold text-slate-900 dark:text-white">
-                          {formatCurrency(service.lineTotal || service.total || 0)}
-                          <span className="block text-xs font-normal text-slate-500 dark:text-slate-400">
-                            ex VAT
-                          </span>
+                      {service.description && (
+                        <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">
+                          {service.description}
                         </p>
-                        {(service.vatAmount > 0 || hasMixedVatRates) && (
-                          <p className="text-xs text-slate-500 dark:text-slate-300">
-                            + {formatCurrency(service.vatAmount || 0)} VAT
-                          </p>
-                        )}
-                        <p className="text-sm font-medium text-slate-900 dark:text-white">
-                          {formatCurrency(
-                            service.grossTotal ?? (service.total || 0) + (service.vatAmount || 0)
-                          )}
-                          <span className="block text-xs font-normal text-slate-500 dark:text-slate-400">
-                            inc VAT
-                          </span>
+                      )}
+                      {service.discountPercent > 0 && (
+                        <p className="text-sm text-green-600 dark:text-green-400 mt-1">
+                          {service.discountPercent}% off
                         </p>
-                      </div>
+                      )}
+                      {serviceFreq === 'ONE_TIME' && service.oneOffDueDate && (
+                        <p className="text-sm text-primary-600 dark:text-primary-400 mt-1">
+                          Due: {format(new Date(service.oneOffDueDate), 'd MMMM yyyy')}
+                        </p>
+                      )}
                     </div>
-                  ))}
-                </div>
-
-                {/* Group subtotal */}
-                <div className="flex justify-between items-center mt-3 pt-3 border-t border-white/20 dark:border-slate-600/50 text-sm">
-                  <span className="text-slate-600 dark:text-slate-300">
-                    {frequencyLabels[frequency]} total (inc. VAT)
-                  </span>
-                  <div className="text-right">
-                    <span className="font-semibold text-slate-900 dark:text-white tabular-nums">
-                      {formatCurrency(groupTotals[frequency]?.total || 0)}
-                    </span>
-                    {groupTotals[frequency]?.vatAmount > 0 && (
-                      <p className="text-xs text-slate-500 dark:text-slate-400">
-                        includes {formatCurrency(groupTotals[frequency]?.vatAmount || 0)} VAT
+                    <div className="text-right ml-4">
+                      <p className="font-semibold text-slate-900 dark:text-white">
+                        {formatCurrency(service.lineTotal || service.total || 0)}
+                        <span className="block text-xs font-normal text-slate-500 dark:text-slate-400">
+                          ex VAT
+                        </span>
                       </p>
-                    )}
+                      {(service.vatAmount > 0 || hasMixedVatRates) && (
+                        <p className="text-xs text-slate-500 dark:text-slate-300">
+                          + {formatCurrency(service.vatAmount || 0)} VAT
+                        </p>
+                      )}
+                      <p className="text-sm font-medium text-slate-900 dark:text-white">
+                        {formatCurrency(
+                          service.grossTotal ?? (service.total || 0) + (service.vatAmount || 0)
+                        )}
+                        <span className="block text-xs font-normal text-slate-500 dark:text-slate-400">
+                          inc VAT
+                        </span>
+                      </p>
+                    </div>
                   </div>
-                </div>
-              </div>
-            ))}
+                );
+              })}
+            </div>
           </div>
 
           {/* Cover Letter */}

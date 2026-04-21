@@ -1,13 +1,13 @@
 # Engage by Capstone — Agent Guide
 
 > **Purpose:** This document exists for AI coding agents. It summarises the project architecture, conventions, and workflows so you can be productive immediately.  
-> **Last updated:** 2026-04-15
+> **Last updated:** 2026-04-19
 
 ---
 
 ## 1. Project Overview
 
-**Engage by Capstone** is a world-class professional proposal-generation platform built for UK accountancy practices. It enables firms to create, share, and electronically sign compliant engagement letters and proposals in under five minutes.
+**Engage by Capstone** is a professional proposal-generation platform built for UK accountancy practices. It enables firms to create, share, and electronically sign compliant engagement letters and proposals in under five minutes.
 
 ### Key Capabilities
 
@@ -16,13 +16,13 @@
 - **Role-based access control** — `ADMIN`, `PARTNER`, `MANAGER`, `SENIOR`, `JUNIOR`
 - **UK-specific compliance** — MTD ITSA assessment, Companies House lookup, VAT handling
 - **Smart Pricing** — Frequency-aware pricing (Monthly/Quarterly/Annual) with line-level VAT
-- **PDF generation** — Print-ready professional proposals
+- **PDF generation** — Print-ready professional proposals via PDFKit
 - **Electronic signatures** — UK-compliant signature capture and storage
 - **Proposal activity tracking** — View tracking with duration and IP logging
 - **Stripe subscription billing** — Webhook handling for payments
 - **Public proposal sharing** — Secure tokens with view tracking
 - **Renewal reminders** — Automated daily job for proposal renewals
-- **CSRF Protection** — Auto-retry mechanism for seamless UX
+- **CSRF Protection** — Double-submit cookie with auto-retry mechanism
 
 ---
 
@@ -31,11 +31,11 @@
 | Layer                | Technology                                                                                                                      |
 | -------------------- | ------------------------------------------------------------------------------------------------------------------------------- |
 | **Monorepo**         | npm workspaces (`package.json` `workspaces`). Optional: `pnpm-workspace.yaml` / `turbo.json` for tooling compatibility only      |
-| **Backend**          | Node.js 20+, Express.js 4, TypeScript 5.9+, Prisma 5.22, PostgreSQL 15                                                          |
-| **Frontend**         | React 18, TypeScript 5.2, Vite 5, Tailwind CSS 3.4, Zustand 4.4                                                                 |
+| **Backend**          | Node.js 20+, Express.js 4.18, TypeScript 5.9+, Prisma 5.22, PostgreSQL 15                                                       |
+| **Frontend**         | React 18, TypeScript 5.2, Vite 6.4, Tailwind CSS 3.4, Zustand 4.4                                                               |
 | **Shared**           | TypeScript package (`@uk-proposal-platform/shared`) exposing enums, interfaces, validation, pricing engine, MTD ITSA calculator |
-| **Testing**          | Playwright 1.51 (E2E, active). Jest 29 (backend, has tests). Vitest 1.1 (frontend, installed but no tests)         |
-| **Caching**          | Redis 7 (via `ioredis`) — optional but configured                                                                               |
+| **Testing**          | Playwright 1.51 (E2E, active). Jest 29 + ts-jest (backend, active). Vitest 3.2 (frontend, installed but no tests)               |
+| **Caching**          | Redis 7 (via `redis` v5.11.0 and `ioredis` v5.3.2) — optional but configured                                                    |
 | **Package Manager**  | **npm** (`package-lock.json`) — use `npm ci` in CI and on servers for reproducible installs                                     |
 | **CI/CD**            | GitHub Actions (`ci-cd.yml`, `e2e-scheduled.yml`, `security.yml`, deploy workflows)                                             |
 | **Containerization** | Docker + Docker Compose                                                                                                         |
@@ -49,23 +49,24 @@
 engage/
 ├── backend/                  # Express API
 │   ├── src/
-│   │   ├── config/           # database, env, logger, redis, stripe
+│   │   ├── config/           # database.ts, logger.ts, redis.ts, stripe.ts, env.ts
 │   │   ├── data/             # seed data (ukAccountancyServices.ts, defaultCoverLetters.ts)
 │   │   ├── errors/           # custom error classes (ApiError, etc.)
-│   │   ├── jobs/             # background jobs (renewalReminders.ts, emailAutomation.ts)
-│   │   ├── middleware/       # auth, errorHandler, healthCheck, tenant extraction
-│   │   ├── routes/           # Express route modules (auth, proposals, clients, payments, etc.)
-│   │   ├── scripts/          # one-off scripts (seedServices.ts, startup.ts, autoMigrateOnStartup.ts)
-│   │   ├── services/         # business logic (pdfGenerator, emailService, pricingEngine, MTD ITSA)
+│   │   ├── jobs/             # background jobs (renewalReminders.ts)
+│   │   ├── middleware/       # auth.ts, tenant.ts, errorHandler.ts, healthCheck.ts
+│   │   ├── routes/           # 19 route modules (auth, proposals, proposals-share, clients, payments, etc.)
+│   │   ├── scripts/          # one-off scripts (seedServices.ts, autoMigrateOnStartup.ts)
+│   │   ├── services/         # business logic (pdfGenerator.ts, emailService.ts, pricingEngine.ts, mtditsa.ts, companiesHouse.ts)
 │   │   ├── templates/        # email and document templates
-│   │   ├── utils/            # cache, encryption, logger helpers
+│   │   ├── utils/            # cache.ts, logger.ts, encryption.ts
 │   │   └── index.ts          # Main Express entry point
 │   ├── prisma/
-│   │   ├── schema.prisma     # Full Prisma schema
+│   │   ├── schema.prisma     # Full Prisma schema (631 lines)
 │   │   ├── migrations/       # Prisma migration files
 │   │   └── seed-enhanced.ts  # Database seeding
 │   ├── dist/                 # Compiled JavaScript output
 │   ├── start-prod.mjs        # Production startup orchestrator
+│   ├── jest.config.js        # Jest configuration
 │   └── Dockerfile / Dockerfile.backend.optimized
 ├── frontend/                 # React SPA
 │   ├── src/
@@ -84,8 +85,8 @@ engage/
 │   │   │   ├── theme/             # Theme toggle
 │   │   │   └── ui/                # UI primitives (Button, Card, Input)
 │   │   ├── pages/            # Route-level pages (Dashboard, Proposals, Clients, Settings, etc.)
-│   │   ├── stores/           # Zustand stores (auth, theme)
-│   │   ├── hooks/            # Custom hooks (useCommandPalette)
+│   │   ├── stores/           # Zustand stores (authStore.ts, themeStore.ts)
+│   │   ├── hooks/            # Custom hooks (useCommandPalette.ts)
 │   │   ├── utils/            # helpers (api.ts)
 │   │   ├── styles/           # CSS variables (base.css)
 │   │   ├── index.css         # Tailwind directives + @layer components
@@ -97,8 +98,8 @@ engage/
 │   ├── src/
 │   │   └── index.ts          # Enums, interfaces, validation, pricing engine, MTD ITSA
 │   └── dist/                 # Compiled CommonJS output with declarations
-├── e2e-tests/                # Playwright E2E tests (only active test suite)
-│   ├── specs/                # proposal-pricing.spec.ts, unit-calculations.spec.ts
+├── e2e-tests/                # Playwright E2E tests (active test suite)
+│   ├── specs/                # proposal-pricing.spec.ts, proposal-share.spec.ts, unit-calculations.spec.ts
 │   ├── fixtures/             # Test helpers
 │   └── playwright.config.ts
 ├── scripts/                  # Deployment and utility scripts
@@ -107,9 +108,11 @@ engage/
 │   ├── db-backup.sh
 │   ├── db-restore.sh
 │   ├── migrate.sh
+│   ├── check-production.mjs
 │   └── debug-and-test.js     # Standalone debug/validation runner
 ├── .github/workflows/        # GitHub Actions CI/CD
 ├── docker-compose.yml        # Local development stack
+├── docker-compose.prod.yml   # Production-like stack
 ├── render.yaml               # Render Blueprint (primary deployment)
 ├── railway.toml              # Railway deployment config
 ├── Dockerfile                # Root backend Dockerfile
@@ -124,10 +127,10 @@ engage/
 
 | File                           | Purpose                                                                                                                      |
 | ------------------------------ | ---------------------------------------------------------------------------------------------------------------------------- |
-| `package.json` (root)          | Workspace scripts, shared devDeps. No `test` script at root.                                                                 |
+| `package.json` (root)          | Workspace scripts, shared devDeps. `test` script runs backend Jest.                                                          |
 | `pnpm-workspace.yaml`          | Workspace packages: `backend`, `frontend`, `shared`. `sharedWorkspaceLockfile: true`                                         |
 | `turbo.json`                   | Turbo pipeline: `build`, `test`, `lint`, `typecheck`, `dev`, `clean`                                                         |
-| `backend/package.json`         | Express deps, Prisma scripts, Jest script (no test files exist)                                                              |
+| `backend/package.json`         | Express deps, Prisma scripts, Jest script. Prebuild runs `prisma generate`.                                                  |
 | `backend/tsconfig.json`        | **Strict mode OFF** (`"strict": false`). Output to `dist/`. Path aliases: `@/*` → `src/*`, `@shared/*` → `../shared/src/*`   |
 | `backend/prisma/schema.prisma` | PostgreSQL datasource. Models: `Tenant`, `User`, `Client`, `Proposal`, `ServiceTemplate`, `PricingRule`, `ActivityLog`, etc. |
 | `frontend/package.json`        | React + Vite deps. `"type": "module"`. Vitest script (no test files exist)                                                   |
@@ -252,7 +255,7 @@ npm run db:studio        # Prisma Studio
 
 ### Testing
 
-> **Important:** Only the E2E test suite contains actual test files. Backend Jest and frontend Vitest are installed but have **zero test files** at present.
+> **Important:** Only the E2E test suite and backend Jest suite contain actual test files. Frontend Vitest is installed but has **zero test files**.
 
 ```bash
 # E2E Tests (Playwright) — Active test suite
@@ -262,7 +265,7 @@ cd e2e-tests && npx playwright show-report       # view HTML report
 npm run test:e2e                                  # from root
 
 # Backend — Jest 29 with ts-jest
-cd backend && npm test                            # run pricing + mtditsa tests
+cd backend && npm test                            # run pricing + mtditsa tests (20 tests)
 
 # Frontend — Vitest is installed but has no tests
 cd frontend && npm test
@@ -331,6 +334,7 @@ Services (dev compose):
 - Whitelisted: localhost, Render subdomains, Vercel preview URLs
 - Production: `https://engage.capstonesoftware.co.uk`
 - Regex patterns for Vercel previews and Render subdomains
+- `ALLOW_RENDER_WILDCARD_ORIGINS=true` opt-in for Render wildcard
 
 **Rate Limiting:**
 
@@ -342,16 +346,15 @@ Services (dev compose):
 
 **Production Startup (`backend/start-prod.mjs`):**
 
-1. Schema fix checks (adds missing columns if needed)
-2. Prisma migration resolve/deploy
+1. Resolves failed migrations (`migrate resolve --rolled-back`)
+2. Runs `prisma migrate deploy`
 3. Seeds UK services via `seed-uk-services.js`
 4. Fixes billing cycle via `fix-billing-cycle.js`
 5. Imports `dist/index.js` to start server
 
-**Render deployment specifics (current code):**
+**Render deployment specifics:**
 
 - `tenant.ts` extracts tenant from subdomain for custom domains, and falls back to `demo` for localhost, Railway, and Render
-- **CORS:** permissive `*.onrender.com` behaviour is **opt-in** via `ALLOW_RENDER_WILDCARD_ORIGINS=true` (do not enable unless you need it)
 - **Public seed / admin keys:** use env vars (`PUBLIC_SEED_KEY`, `ADMIN_SECRET_KEY`, etc.); see `backend/.env.example` — no hardcoded keys in source
 
 ### Frontend
@@ -359,11 +362,11 @@ Services (dev compose):
 - **Dev Server:** `localhost:5173`
 - **Build Output:** `frontend/dist`
 - **API Client:** `frontend/src/utils/api.ts` — axios pointing at `VITE_API_URL`
-- **Auth State:** `useAuthStore` (Zustand + persist). **Token is NOT persisted** to localStorage — memory only. `user`, `tenant`, and `isAuthenticated` are persisted.
+- **Auth State:** `useAuthStore` (Zustand + persist). Token IS persisted to localStorage (despite comment saying "memory only"). `user`, `tenant`, and `isAuthenticated` are also persisted.
 - **Theme State:** `useThemeStore` (Zustand + persist). Theme preference persisted
 - **PWA:** Configured via `vite-plugin-pwa` with service worker, manifest, offline support
 - **Command Palette:** `useCommandPalette` hook for global Cmd+K access
-- **CSRF Handling:** Sophisticated in-memory caching + automatic retry on `CSRF_MISSING` / `CSRF_INVALID` failures
+- **CSRF Handling:** In-memory caching + automatic retry on `CSRF_MISSING` / `CSRF_INVALID` failures
 
 ### Shared Package
 
@@ -461,6 +464,7 @@ All backend routes return:
 - **Config:** `e2e-tests/playwright.config.ts`
 - **Specs:** `e2e-tests/specs/`
   - `proposal-pricing.spec.ts` — Pricing frequency, VAT calculation, CSRF handling
+  - `proposal-share.spec.ts` — Public proposal sharing, view tracking
   - `unit-calculations.spec.ts` — Math tests for frequency conversions, VAT, discounts
 - **Fixtures:** `e2e-tests/fixtures/helpers.ts` — `loginAsPartner()`, `createTestClient()`, `createTestProposal()`, `calculateVAT()`, etc.
 - **Browsers:** Chromium, Firefox, WebKit
@@ -477,7 +481,7 @@ All backend routes return:
 
 ### Frontend Testing — Installed but empty
 
-- **Framework:** Vitest 1.1
+- **Framework:** Vitest 3.2.4
 - **Script:** `cd frontend && npm test`
 - **Status:** No `vitest.config.ts` and **no `.test.` / `.spec.` files** exist under `frontend/src/`. Running the script starts Vitest in watch mode with no tests found.
 
@@ -526,6 +530,8 @@ The `.github/workflows/ci-cd.yml` **test** job spins up PostgreSQL 15 and Redis 
 - **File Uploads:** `multer` with 10 MB JSON body limit
 - **CORS:** Explicit origin whitelist, credentials enabled
 - **Input Validation:** `express-validator` and Zod schemas
+- **Admin endpoints:** Protected by `ADMIN_SECRET_KEY` header or query param
+- **Public seed endpoint:** Protected by `PUBLIC_SEED_KEY` query param
 
 ---
 
@@ -535,11 +541,11 @@ The `.github/workflows/ci-cd.yml` **test** job spins up PostgreSQL 15 and Redis 
 
 | Branch / action | Typical outcome |
 | ---------------- | ---------------- |
-| **`main`** | **Staging path** in `ci-cd.yml` (Railway backend staging + Vercel staging) when that workflow’s deploy jobs run; **`deploy-render.yml`** also runs on push to **`main` or `master`** and triggers **Render** backend then frontend deploy via the Render API |
+| **`main`** | **Staging path** in `ci-cd.yml` (Railway backend staging + Vercel staging) when that workflow's deploy jobs run; **`deploy-render.yml`** also runs on push to **`main` or `master`** and triggers **Render** backend then frontend deploy via the Render API |
 | **`develop`** | **Development** deploy job in `ci-cd.yml` (Railway dev + Vercel dev), when enabled |
 | **`workflow_dispatch`** | **Production** deploy in `ci-cd.yml` is **manual only** (includes DB backup, migrations, Slack) |
 
-**Render auto-deploy:** If each Render service is connected to the same GitHub repo, pushing the linked branch can start a deploy **without** the GitHub Action — check the service’s **Auto-Deploy** branch in the Render dashboard.
+**Render auto-deploy:** If each Render service is connected to the same GitHub repo, pushing the linked branch can start a deploy **without** the GitHub Action — check the service's **Auto-Deploy** branch in the Render dashboard.
 
 **Manual Render API deploy:** `scripts/deploy.sh` / `scripts/deploy.ps1` (requires `RENDER_API_KEY` and service IDs). Same idea as `.github/workflows/deploy-render.yml`.
 
@@ -562,7 +568,7 @@ There are multiple workflows in `.github/workflows/` (including a **reusable** `
 A unified pipeline using **npm** and **Docker Buildx**:
 
 1. **Lint & Type Check** — `npm ci`; runs `npm run lint`, `npm run typecheck`, `npm run format:check`
-2. **Test Suite** — PostgreSQL 15 + Redis 7; Prisma generate/migrate; **`cd backend && npm test -- --coverage`**; coverage upload reads **`backend/coverage/lcov.info`**
+2. **Test Suite** — PostgreSQL 15 + Redis 7; Prisma generate/migrate; **`cd backend && npm test -- --coverage`**; frontend vitest run; coverage upload reads **`backend/coverage/lcov.info`**
 3. **E2E Tests** — Runs after lint + unit tests; calls **`playwright-e2e.yml`** (builds shared/backend/frontend, seeds UK services, starts backend + `vite preview`, Playwright Chromium)
 4. **Build & Push Images** — Runs only after **lint, test, and E2E** succeed on **push**; logs into GHCR and pushes `backend` / `frontend` images with Git SHA tags
 5. **Deploy Dev** (`develop` branch) — Backend to Railway (`engage-backend-dev`); frontend to Vercel (dev)
@@ -614,8 +620,8 @@ docker-compose up --build
 
 Three Dockerfiles exist:
 
-1. **`Dockerfile` (root):** Multi-stage backend build (`node:20-alpine`). **Now uses `start-prod.mjs` as CMD** to ensure migrations run on container start.
-2. **`Dockerfile.backend.optimized`:** Used by `docker-compose.yml` and CI. **Now uses `start-prod.mjs` as CMD** for the same reason.
+1. **`Dockerfile` (root):** Multi-stage backend build (`node:20-alpine`). **Uses `start-prod.mjs` as CMD** to ensure migrations run on container start.
+2. **`Dockerfile.backend.optimized`:** Used by `docker-compose.yml` and CI. **Uses `start-prod.mjs` as CMD** for the same reason.
 3. **`Dockerfile.frontend.optimized`:** Builds Vite frontend and serves via nginx
 
 ### Required Environment Variables
@@ -656,6 +662,8 @@ Three Dockerfiles exist:
 9. **UserRole mismatch:** Prisma schema includes `ADMIN`; the `shared` package does not. Be careful which source you import `UserRole` from.
 
 10. **Render tenant resolution:** `backend/src/middleware/tenant.ts` handles subdomain extraction for custom domains while still defaulting to `demo` for localhost, Railway, and Render.
+
+11. **Token persistence:** `authStore.ts` comment says "Token kept in memory only, not persisted" but `partialize` includes `token`, so it IS persisted to localStorage. Do not rely on it being memory-only.
 
 ---
 

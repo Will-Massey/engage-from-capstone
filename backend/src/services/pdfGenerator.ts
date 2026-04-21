@@ -150,6 +150,8 @@ export class PDFGenerator {
    * Draw header section
    */
   private static drawHeader(doc: PDFDoc, proposal: ProposalData, primaryColor: string) {
+    let logoBottomY = 50;
+
     // Company Logo (if available)
     if (proposal.tenant.logo) {
       try {
@@ -159,15 +161,17 @@ export class PDFGenerator {
           const base64Data = logoData.split(',')[1];
           const imgBuffer = Buffer.from(base64Data, 'base64');
           doc.image(imgBuffer, 50, 40, { width: 120 });
-          doc.y = 130; // Move down past logo
+          logoBottomY = 160; // Logo drawn at y=40 with width 120, give plenty of clearance
         }
       } catch (error) {
         // Fall back to text if logo fails
         doc.fontSize(24).fillColor(primaryColor).text(proposal.tenant.name, 50, 50);
+        logoBottomY = 80;
       }
     } else {
       // No logo - use company name
       doc.fontSize(24).fillColor(primaryColor).text(proposal.tenant.name, 50, 50);
+      logoBottomY = 80;
     }
 
     // Proposal title
@@ -180,8 +184,9 @@ export class PDFGenerator {
       .text(`Date: ${this.formatDate(proposal.createdAt)}`, { align: 'right' })
       .text(`Valid until: ${this.formatDate(proposal.validUntil)}`, { align: 'right' });
 
-    // Divider line
-    doc.moveTo(50, 100).lineTo(550, 100).strokeColor(primaryColor).lineWidth(2).stroke();
+    // Divider line — drawn below the logo area so it never intersects
+    const dividerY = Math.max(logoBottomY, doc.y + 10);
+    doc.moveTo(50, dividerY).lineTo(550, dividerY).strokeColor(primaryColor).lineWidth(2).stroke();
 
     // Title
     doc.moveDown(3).fontSize(20).fillColor('#333333').text(proposal.title, { align: 'center' });
@@ -318,129 +323,88 @@ ${proposal.tenant.name}`;
   }
 
   /**
-   * Draw services section with clear pricing
+   * Draw services section as a flat list
    */
   private static drawServices(doc: PDFDoc, proposal: ProposalData, primaryColor: string) {
     doc.fontSize(16).fillColor('#333333').text('Services', { align: 'center' });
 
     doc.moveDown(1);
 
-    // Group services by billing frequency
-    const grouped = {
-      weekly: proposal.services.filter((s) => (s.billingFrequency || s.frequency) === 'WEEKLY'),
-      monthly: proposal.services.filter((s) => (s.billingFrequency || s.frequency) === 'MONTHLY'),
-      quarterly: proposal.services.filter(
-        (s) => (s.billingFrequency || s.frequency) === 'QUARTERLY'
-      ),
-      annually: proposal.services.filter((s) => (s.billingFrequency || s.frequency) === 'ANNUALLY'),
-      oneTime: proposal.services.filter((s) => (s.billingFrequency || s.frequency) === 'ONE_TIME'),
-    };
+    if (!proposal.services || proposal.services.length === 0) return;
 
-    const drawServiceGroup = (
-      title: string,
-      services: typeof proposal.services,
-      _frequency: string
-    ) => {
-      if (services.length === 0) return;
+    // Table header
+    const tableTop = doc.y;
+    const colX = { name: 50, qty: 310, price: 380, total: 490 };
 
-      // Section header
-      doc.fontSize(12).fillColor(primaryColor).text(title, 50, doc.y);
+    doc.fontSize(9).fillColor('#888888');
 
-      doc.moveDown(0.5);
+    doc
+      .text('Service', colX.name, tableTop)
+      .text('Qty', colX.qty, tableTop)
+      .text('Price', colX.price, tableTop)
+      .text('Total', colX.total, tableTop);
 
-      // Table header
-      const tableTop = doc.y;
-      const colX = { name: 50, qty: 310, price: 380, total: 490 };
+    // Header line
+    doc
+      .moveTo(50, tableTop + 15)
+      .lineTo(550, tableTop + 15)
+      .strokeColor('#CCCCCC')
+      .lineWidth(0.5)
+      .stroke();
 
-      doc.fontSize(9).fillColor('#888888');
+    // Services rows — flat list, no grouping
+    doc.fontSize(10).fillColor('#333333');
 
-      doc
-        .text('Service', colX.name, tableTop)
-        .text('Qty', colX.qty, tableTop)
-        .text('Price', colX.price, tableTop)
-        .text('Total', colX.total, tableTop);
+    let y = tableTop + 25;
 
-      // Header line
-      doc
-        .moveTo(50, tableTop + 15)
-        .lineTo(550, tableTop + 15)
-        .strokeColor('#CCCCCC')
-        .lineWidth(0.5)
-        .stroke();
+    proposal.services.forEach((service) => {
+      // Check if we need a new page
+      if (y > 700) {
+        doc.addPage();
+        y = 50;
+      }
 
-      // Services rows
-      doc.fontSize(10).fillColor('#333333');
+      const displayPrice = service.displayPrice || service.unitPrice;
+      const billingFreq = service.billingFrequency || service.frequency;
+      const priceLabel = this.formatPriceWithFrequency(displayPrice, billingFreq);
+      const lineTotal = (service.displayPrice || service.unitPrice) * service.quantity;
 
-      let y = tableTop + 25;
+      doc.text(service.name, colX.name, y, { width: 250 });
 
-      services.forEach((service) => {
-        // Check if we need a new page
-        if (y > 700) {
-          doc.addPage();
-          y = 50;
-        }
+      // Description if present
+      if (service.description) {
+        doc
+          .fontSize(8)
+          .fillColor('#666666')
+          .text(service.description, colX.name, y + 15, { width: 250 });
+        doc.fontSize(10).fillColor('#333333');
+      }
 
-        const displayPrice = service.displayPrice || service.unitPrice;
-        const billingFreq = service.billingFrequency || service.frequency;
-        const priceLabel = this.formatPriceWithFrequency(displayPrice, billingFreq);
-        const lineTotal = (service.displayPrice || service.unitPrice) * service.quantity;
-
-        doc.text(service.name, colX.name, y, { width: 250 });
-
-        // Description if present
-        if (service.description) {
+      let extraLines = 0;
+      if (billingFreq === 'ONE_TIME' && service.oneOffDueDate) {
+        const due = new Date(service.oneOffDueDate as any);
+        if (!Number.isNaN(due.getTime())) {
           doc
             .fontSize(8)
             .fillColor('#666666')
-            .text(service.description, colX.name, y + 15, { width: 250 });
+            .text(`Due: ${this.formatDate(due)}`, colX.name, y + (service.description ? 30 : 15), {
+              width: 250,
+            });
           doc.fontSize(10).fillColor('#333333');
+          extraLines = 1;
         }
+      }
 
-        let extraLines = 0;
-        if (billingFreq === 'ONE_TIME' && service.oneOffDueDate) {
-          const due = new Date(service.oneOffDueDate as any);
-          if (!Number.isNaN(due.getTime())) {
-            doc
-              .fontSize(8)
-              .fillColor('#666666')
-              .text(`Due: ${this.formatDate(due)}`, colX.name, y + (service.description ? 30 : 15), {
-                width: 250,
-              });
-            doc.fontSize(10).fillColor('#333333');
-            extraLines = 1;
-          }
-        }
-
-        doc
-          .text(service.quantity.toString(), colX.qty, y)
-          .text(priceLabel, colX.price, y)
-          .text(this.formatCurrency(lineTotal), colX.total, y);
-
-        const baseStep = service.description ? 45 : 25;
-        y += baseStep + (extraLines ? 14 : 0);
-      });
-
-      // Group subtotal
-      const subtotal = services.reduce(
-        (sum, s) => sum + (s.displayPrice || s.unitPrice) * s.quantity,
-        0
-      );
-      y += 5;
       doc
-        .fontSize(10)
-        .fillColor(primaryColor)
-        .text(`${title} Subtotal:`, colX.price, y)
-        .text(this.formatCurrency(subtotal), colX.total, y);
+        .text(service.quantity.toString(), colX.qty, y)
+        .text(priceLabel, colX.price, y)
+        .text(this.formatCurrency(lineTotal), colX.total, y);
 
-      doc.moveDown(2);
-    };
+      const baseStep = service.description ? 45 : 25;
+      y += baseStep + (extraLines ? 14 : 0);
+    });
 
-    // Draw each group
-    drawServiceGroup('Weekly Services', grouped.weekly, 'WEEKLY');
-    drawServiceGroup('Monthly Services', grouped.monthly, 'MONTHLY');
-    drawServiceGroup('Quarterly Services', grouped.quarterly, 'QUARTERLY');
-    drawServiceGroup('Annual Services', grouped.annually, 'ANNUALLY');
-    drawServiceGroup('One-Time Services', grouped.oneTime, 'ONE_TIME');
+    doc.moveDown(2);
   }
 
   /**
@@ -449,15 +413,46 @@ ${proposal.tenant.name}`;
   private static drawPricing(doc: PDFDoc, proposal: ProposalData, primaryColor: string) {
     doc.moveDown(2);
 
-    // Group services by billing frequency
+    // Determine effective frequency using name-based overrides for known services
+    const getEffectiveFrequency = (s: (typeof proposal.services)[0]): string => {
+      const name = s.name.toLowerCase();
+      // Annual services
+      if (
+        name.includes('annual accounts') ||
+        name.includes('ct600') ||
+        name.includes('corporation tax return') ||
+        name.includes('confirmation statement') ||
+        name.includes('dormant company accounts') ||
+        name.includes('dormant accounts') ||
+        name.includes('self assessment') ||
+        name.includes('self-assessment') ||
+        name.includes('p11d')
+      ) {
+        return 'ANNUALLY';
+      }
+      // One-off services
+      if (
+        name.includes('xero setup') ||
+        name.includes('prior year') ||
+        name.includes('prior accounts') ||
+        name.includes('company formation') ||
+        name.includes('aml check') ||
+        name.includes('anti-money laundering') ||
+        name.includes('dext setup') ||
+        name.includes('dext subscription')
+      ) {
+        return 'ONE_TIME';
+      }
+      return s.billingFrequency || s.frequency;
+    };
+
+    // Group services by effective billing frequency
     const grouped = {
-      weekly: proposal.services.filter((s) => (s.billingFrequency || s.frequency) === 'WEEKLY'),
-      monthly: proposal.services.filter((s) => (s.billingFrequency || s.frequency) === 'MONTHLY'),
-      quarterly: proposal.services.filter(
-        (s) => (s.billingFrequency || s.frequency) === 'QUARTERLY'
-      ),
-      annually: proposal.services.filter((s) => (s.billingFrequency || s.frequency) === 'ANNUALLY'),
-      oneTime: proposal.services.filter((s) => (s.billingFrequency || s.frequency) === 'ONE_TIME'),
+      weekly: proposal.services.filter((s) => getEffectiveFrequency(s) === 'WEEKLY'),
+      monthly: proposal.services.filter((s) => getEffectiveFrequency(s) === 'MONTHLY'),
+      quarterly: proposal.services.filter((s) => getEffectiveFrequency(s) === 'QUARTERLY'),
+      annually: proposal.services.filter((s) => getEffectiveFrequency(s) === 'ANNUALLY'),
+      oneTime: proposal.services.filter((s) => getEffectiveFrequency(s) === 'ONE_TIME'),
     };
 
     const lineIncVat = (s: (typeof proposal.services)[0]) => {

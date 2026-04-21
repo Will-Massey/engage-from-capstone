@@ -352,14 +352,14 @@ app.get('/api/seed-services-public', async (req, res) => {
         category: 'COMPLIANCE',
         name: 'Confirmation Statement (CS01)',
         description:
-          'Monthly service for annual Confirmation Statement filing with Companies House.',
+          'Annual Confirmation Statement filing with Companies House.',
         longDescription:
           "We prepare and file your annual Confirmation Statement (previously the Annual Return), confirming that your company's registered details are accurate and up to date. This includes verification of: registered office address, directors and secretary details, shareholders and share capital, SIC codes, and Persons with Significant Control (PSC) register. If changes are required, we will advise on the necessary filings (e.g., CH01 for director changes, SH01 for allotment of shares) and ensure the Confirmation Statement is submitted within the 14-day filing window.",
         basePrice: 8,
         baseHours: 0.5,
         pricingModel: 'FIXED',
-        frequencyOptions: 'MONTHLY',
-        defaultFrequency: 'MONTHLY',
+        frequencyOptions: 'ANNUALLY',
+        defaultFrequency: 'ANNUALLY',
         applicableEntityTypes: 'LIMITED_COMPANY,LLP',
         tags: 'confirmation-statement,cs01,companies-house',
         regulatoryNotes:
@@ -368,14 +368,14 @@ app.get('/api/seed-services-public', async (req, res) => {
       {
         category: 'COMPLIANCE',
         name: 'Dormant Company Accounts',
-        description: 'Monthly service for dormant company accounts filing.',
+        description: 'Annual dormant company accounts filing.',
         longDescription:
           'If your company has not traded and has no significant accounting transactions during the financial year, we can prepare and file dormant company accounts (DCA) with Companies House on your behalf. This service includes: preparation of the simplified DCA form, confirmation of dormant status under the Companies Act 2006, and electronic filing. We also advise on when a company ceases to be dormant, the requirement to file full accounts, and whether the company should remain active or be voluntarily struck off.',
         basePrice: 15,
         baseHours: 0.5,
         pricingModel: 'FIXED',
-        frequencyOptions: 'MONTHLY',
-        defaultFrequency: 'MONTHLY',
+        frequencyOptions: 'ANNUALLY',
+        defaultFrequency: 'ANNUALLY',
         applicableEntityTypes: 'LIMITED_COMPANY',
         tags: 'dormant-accounts,dca,non-trading',
         regulatoryNotes:
@@ -420,14 +420,14 @@ app.get('/api/seed-services-public', async (req, res) => {
         category: 'TAX',
         name: 'Self Assessment Tax Return',
         description:
-          'Monthly service covering preparation and submission of personal Self Assessment tax returns.',
+          'Annual preparation and submission of personal Self Assessment tax returns.',
         longDescription:
           'We prepare your Self Assessment tax return accurately and on time, ensuring you claim all allowable reliefs and expenses while remaining fully compliant with HMRC. Our service covers: employment income (P60, P11D, P45), self-employment income and expenses, property rental income and capital gains, dividends and investment income, pension contributions and tax relief, student loan repayments, and child benefit charge calculations. We file your return online before the 31 January deadline, calculate your tax liability, and advise on payment on account requirements and any tax planning opportunities.',
         basePrice: 25,
         baseHours: 2.5,
         pricingModel: 'FIXED',
-        frequencyOptions: 'MONTHLY',
-        defaultFrequency: 'MONTHLY',
+        frequencyOptions: 'ANNUALLY',
+        defaultFrequency: 'ANNUALLY',
         applicableEntityTypes: 'SOLE_TRADER,PARTNERSHIP,LIMITED_COMPANY',
         tags: 'self-assessment,sat,personal-tax,hmrc',
         isPopular: true,
@@ -491,14 +491,14 @@ app.get('/api/seed-services-public', async (req, res) => {
         category: 'TAX',
         name: 'P11D Benefits in Kind',
         description:
-          'Monthly service for P11D forms preparation and submission for directors and employees.',
+          'Annual P11D forms preparation and submission for directors and employees.',
         longDescription:
           'We prepare and submit P11D forms for each employee or director who has received taxable benefits or reimbursed expenses during the tax year. Our service covers: company cars and fuel benefit calculations, private medical insurance, interest-free and low-interest loans, accommodation benefits, asset transfers, and mileage payments above HMRC approved rates. We also prepare the P11D(b) return, calculate Class 1A National Insurance Contributions, and advise on payrolling of benefits as an alternative to P11D reporting.',
         basePrice: 5,
         baseHours: 0.5,
         pricingModel: 'FIXED',
-        frequencyOptions: 'MONTHLY',
-        defaultFrequency: 'MONTHLY',
+        frequencyOptions: 'ANNUALLY',
+        defaultFrequency: 'ANNUALLY',
         applicableEntityTypes: 'LIMITED_COMPANY',
         tags: 'p11d,benefits-in-kind,class-1a-nic,hmrc',
         regulatoryNotes:

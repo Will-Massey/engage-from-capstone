@@ -95,15 +95,6 @@ const BILLING_FREQUENCY_LABELS: Record<string, string> = {
   ONE_TIME: 'one-time',
 };
 
-/** Section headings when services are grouped by billing frequency */
-const SERVICE_GROUP_SECTION_TITLES: Record<string, string> = {
-  WEEKLY: 'Weekly services',
-  MONTHLY: 'Monthly services',
-  QUARTERLY: 'Quarterly services',
-  ANNUALLY: 'Annual services',
-  ONE_TIME: 'One-off services',
-};
-
 function periodLabelSentenceCase(freq: string): string {
   switch (freq) {
     case 'WEEKLY':
@@ -1090,19 +1081,8 @@ export default function ProposalBuilder() {
           cost vs one-off charges.
         </p>
 
-        <div className="space-y-5">
-          {(['WEEKLY', 'MONTHLY', 'QUARTERLY', 'ANNUALLY', 'ONE_TIME'] as const).map((freq) => {
-            const items = selectedServices.filter((s) => s.billingCycle === freq);
-            if (items.length === 0) return null;
-            return (
-              <div key={freq}>
-                <h4 className="text-xs font-semibold uppercase tracking-wide text-primary-600 dark:text-primary-400 mb-2">
-                  {SERVICE_GROUP_SECTION_TITLES[freq] || freq}
-                </h4>
-                <div className="space-y-2">{items.map(renderSelectedServiceRow)}</div>
-              </div>
-            );
-          })}
+        <div className="space-y-2">
+          {selectedServices.map(renderSelectedServiceRow)}
         </div>
 
         <div className="mt-6 p-4 rounded-lg bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-600 space-y-3">
