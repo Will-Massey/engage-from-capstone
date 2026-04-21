@@ -949,51 +949,23 @@ export default function ProposalBuilder() {
                 {selectedServices.map(renderSelectedServiceRow)}
               </div>
 
-              {/* Running totals — per billing period (not blended) */}
+              {/* Running totals — monthly cost focus */}
               <div className="p-4 bg-primary-50 dark:bg-primary-900/20 rounded-lg border border-primary-100 dark:border-primary-800 space-y-2 text-sm">
-                <p className="text-xs text-slate-600 dark:text-slate-400 leading-snug">
-                  Recurring amounts are per bill (week / month / quarter). Annual and one-off are shown separately.
-                </p>
-                {summary.weekly.count > 0 && (
-                  <div className="flex justify-between">
-                    <span className="text-slate-600 dark:text-slate-300">Weekly (inc VAT)</span>
-                    <span className="font-medium text-slate-900 dark:text-white tabular-nums">
-                      {formatCurrency(summary.weekly.total)}
-                      <span className="text-xs font-normal text-slate-500">/week</span>
-                    </span>
+                <div className="flex justify-between items-baseline">
+                  <div>
+                    <span className="text-sm font-medium text-slate-800 dark:text-slate-100">Monthly cost</span>
+                    <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                      Average per month including VAT.
+                    </p>
                   </div>
-                )}
-                {summary.monthly.count > 0 && (
-                  <div className="flex justify-between">
-                    <span className="text-slate-600 dark:text-slate-300">Monthly (inc VAT)</span>
-                    <span className="font-medium text-slate-900 dark:text-white tabular-nums">
-                      {formatCurrency(summary.monthly.total)}
-                      <span className="text-xs font-normal text-slate-500">/month</span>
-                    </span>
-                  </div>
-                )}
-                {summary.quarterly.count > 0 && (
-                  <div className="flex justify-between">
-                    <span className="text-slate-600 dark:text-slate-300">Quarterly (inc VAT)</span>
-                    <span className="font-medium text-slate-900 dark:text-white tabular-nums">
-                      {formatCurrency(summary.quarterly.total)}
-                      <span className="text-xs font-normal text-slate-500">/quarter</span>
-                    </span>
-                  </div>
-                )}
-                {summary.annually.count > 0 && (
-                  <div className="flex justify-between">
-                    <span className="text-slate-600 dark:text-slate-300">Yearly (inc VAT)</span>
-                    <span className="font-medium text-slate-900 dark:text-white tabular-nums">
-                      {formatCurrency(summary.annually.total)}
-                      <span className="text-xs font-normal text-slate-500">/year</span>
-                    </span>
-                  </div>
-                )}
+                  <span className="text-xl font-bold text-primary-600 tabular-nums">
+                    {formatCurrency(reviewMonthlyCostIncVat)}
+                  </span>
+                </div>
                 {summary.oneTime.count > 0 && (
-                  <div className="flex justify-between">
-                    <span className="text-slate-600 dark:text-slate-300">One-off (inc VAT)</span>
-                    <span className="font-medium text-slate-900 dark:text-white tabular-nums">
+                  <div className="flex justify-between items-baseline pt-2 border-t border-primary-200 dark:border-primary-800">
+                    <span className="text-sm font-medium text-slate-800 dark:text-slate-100">One-off</span>
+                    <span className="text-lg font-semibold text-slate-900 dark:text-white tabular-nums">
                       {formatCurrency(summary.oneTime.total)}
                     </span>
                   </div>
@@ -1018,9 +990,6 @@ export default function ProposalBuilder() {
                     {formatCurrency(summary.contractTotalIncVat)}
                   </span>
                 </div>
-                <p className="text-[10px] text-slate-500 dark:text-slate-400">
-                  Combined total is the sum of every line (all billing periods). It is not a monthly fee.
-                </p>
               </div>
             </>
           )}

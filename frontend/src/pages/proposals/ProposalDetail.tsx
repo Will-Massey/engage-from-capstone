@@ -704,24 +704,41 @@ const ProposalDetail = () => {
 
         {/* Sidebar */}
         <div className="space-y-6">
-          {/* Pricing - Grouped by billing frequency */}
+          {/* Pricing - Monthly cost focus */}
           <div className="glass-tile p-6">
             <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-100 mb-2">
-              Investment Summary
+              Monthly Cost
             </h2>
             <p className="text-xs text-slate-600 dark:text-slate-400 mb-4">
-              Per billing cycle figures include VAT. Subtotal below is ex VAT before the proposal total.
+              Recurring fees averaged per month. One-off fees shown separately.
             </p>
             <div className="space-y-3">
-              {/* Show totals by frequency (each line gross) */}
-              {Object.entries(groupTotals).map(([freq, totals]: [string, any]) => (
-                <div key={freq} className="flex justify-between text-sm">
-                  <span className="text-slate-600 dark:text-slate-300">{frequencyLabels[freq]} (inc. VAT)</span>
+              {/* Monthly equivalent */}
+              <div className="flex justify-between items-baseline">
+                <span className="text-slate-600 dark:text-slate-300">Monthly (inc. VAT)</span>
+                <span className="font-bold text-xl text-primary-600 tabular-nums">
+                  {formatCurrency(
+                    Object.entries(groupTotals).reduce((sum: number, [freq, totals]: [string, any]) => {
+                      const f = freq as string;
+                      const total = totals.total || 0;
+                      if (f === 'WEEKLY') return sum + total * (52 / 12);
+                      if (f === 'MONTHLY') return sum + total;
+                      if (f === 'QUARTERLY') return sum + total / 3;
+                      if (f === 'ANNUALLY') return sum + total / 12;
+                      return sum;
+                    }, 0)
+                  )}
+                </span>
+              </div>
+
+              {groupTotals.ONE_TIME?.total > 0 && (
+                <div className="flex justify-between text-sm">
+                  <span className="text-slate-600 dark:text-slate-300">One-off (inc. VAT)</span>
                   <span className="font-medium text-slate-900 dark:text-white tabular-nums">
-                    {formatCurrency(totals.total || 0)}
+                    {formatCurrency(groupTotals.ONE_TIME.total)}
                   </span>
                 </div>
-              ))}
+              )}
 
               <div className="border-t border-white/20 dark:border-slate-600/50 pt-3 space-y-2">
                 <div className="flex justify-between text-sm">
@@ -751,7 +768,7 @@ const ProposalDetail = () => {
                 </div>
 
                 <div className="flex justify-between items-baseline pt-2">
-                  <span className="font-semibold text-slate-900 dark:text-white">Combined total</span>
+                  <span className="font-semibold text-slate-900 dark:text-white">Monthly cost</span>
                   <span className="font-bold text-2xl text-slate-900 dark:text-white tabular-nums tracking-tight">
                     {formatCurrency(proposal.total ?? 0)}
                   </span>
@@ -759,8 +776,7 @@ const ProposalDetail = () => {
               </div>
 
               <p className="text-xs text-slate-500 dark:text-slate-400 text-center">
-                Combined total is the sum of every line. Recurring rows are per billing period; annual and
-                one-off are not converted to a monthly fee.
+                Monthly cost is the average per month across all billing periods.
               </p>
             </div>
           </div>
