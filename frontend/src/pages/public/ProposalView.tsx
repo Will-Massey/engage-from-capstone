@@ -153,7 +153,7 @@ const PublicProposalView = () => {
   const isExpired = new Date(proposal.validUntil) < new Date();
 
   return (
-    <div className="py-6">
+    <div className="min-h-screen bg-slate-50 dark:bg-slate-900 py-8 px-4 sm:px-6 lg:px-8">
       <div className="max-w-4xl mx-auto">
         {/* Header */}
         <div className="bg-white dark:bg-slate-800 rounded-t-xl shadow-sm p-6 border-b dark:border-slate-700">

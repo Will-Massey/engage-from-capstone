@@ -368,16 +368,14 @@ router.get(
 );
 
 // ============================================
-// AUTHENTICATED CLIENT ROUTES (Login required)
+// PUBLIC ROUTES (Link possession = access)
 // ============================================
 
-// View proposal by share token (authenticated — tracks views in-app)
+// View proposal by share token (public — possession of link is sufficient)
 router.get(
   '/view/:token',
-  authenticate,
   asyncHandler(async (req, res) => {
     const { token } = req.params;
-    const userId = req.user!.id;
 
     const proposal = await getProposalByShareToken(token);
 
@@ -385,12 +383,11 @@ router.get(
       throw new ApiError('PROPOSAL_NOT_FOUND', 'Proposal not found or link expired', 404);
     }
 
-    // Track view with user ID for authenticated in-app viewing
+    // Track view (anonymous — link possession is the access control)
     await trackProposalView(
       proposal.id,
       req.ip || null,
-      req.headers['user-agent'] || null,
-      userId
+      req.headers['user-agent'] || null
     );
 
     // Return proposal data (without sensitive fields)
@@ -459,10 +456,9 @@ router.get(
   })
 );
 
-// Submit electronic signature (authenticated)
+// Submit electronic signature (public — link possession = access)
 router.post(
   '/view/:token/sign',
-  authenticate,
   asyncHandler(async (req, res) => {
     const schema = z.object({
       signedBy: z.string().min(2),
