@@ -473,12 +473,15 @@ router.post(
       signedByRole: z.string().min(2),
       signatureData: z.string().min(100), // Base64 signature image
       agreementAccepted: z.boolean(),
-      deviceInfo: z.string().optional(), // Forensic device data from client
+      deviceInfo: z.string().optional(),
     });
 
-    const { signedBy, signedByRole, signatureData, agreementAccepted, deviceInfo } = schema.parse(
-      req.body
-    );
+    const parsed = schema.parse(req.body);
+    const signedBy = parsed.signedBy;
+    const signedByRole = parsed.signedByRole;
+    const signatureData = parsed.signatureData;
+    const agreementAccepted = parsed.agreementAccepted;
+    const deviceInfo = parsed.deviceInfo;
     const { token } = req.params;
 
     const proposal = await getProposalByShareToken(token);
