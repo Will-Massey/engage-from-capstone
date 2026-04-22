@@ -467,7 +467,9 @@ router.post(
       agreementAccepted: z.boolean(),
     });
 
-    const { signedBy, signedByRole, signatureData, agreementAccepted } = schema.parse(req.body);
+    const { signedBy, signedByRole, signatureData, agreementAccepted, deviceInfo } = schema.parse(
+      req.body
+    );
     const { token } = req.params;
 
     const proposal = await getProposalByShareToken(token);
@@ -494,6 +496,9 @@ router.post(
       signedByRole,
       signatureData,
       ipAddress: req.ip || null,
+      userAgent: req.headers['user-agent'] || null,
+      deviceInfo: deviceInfo || null,
+      geoLocation: null, // Can be enriched via IP geolocation service if needed
       agreementVersion: 'PRO-2024-001',
       tenantId: proposal.tenantId,
     });

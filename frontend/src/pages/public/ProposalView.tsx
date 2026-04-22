@@ -102,6 +102,17 @@ const PublicProposalView = () => {
       return;
     }
 
+    // Collect forensic device evidence for signature proof
+    const deviceInfo = JSON.stringify({
+      platform: navigator.platform,
+      screen: `${window.screen.width}x${window.screen.height}`,
+      colorDepth: window.screen.colorDepth,
+      timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+      language: navigator.language,
+      cores: navigator.hardwareConcurrency || 'unknown',
+      touch: 'ontouchstart' in window,
+    });
+
     setIsSubmitting(true);
     try {
       const response = (await apiClient.post(`/proposals/view/${token}/sign`, {
@@ -109,6 +120,7 @@ const PublicProposalView = () => {
         signedByRole: signerRole,
         signatureData,
         agreementAccepted: termsAccepted,
+        deviceInfo,
       })) as any;
 
       if (response.success) {

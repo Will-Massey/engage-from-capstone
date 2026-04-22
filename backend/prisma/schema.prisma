@@ -437,6 +437,9 @@ model ProposalSignature {
   signatureFilePath String? // Path to PNG file (new)
   signedAt  DateTime @default(now())
   ipAddress String?
+  userAgent String?   // Browser/device fingerprint
+  deviceInfo String?  // Device type, OS, screen size
+  geoLocation String? // Approximate location from IP
   agreementVersion String
   agreementAccepted Boolean
 

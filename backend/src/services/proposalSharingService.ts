@@ -193,6 +193,9 @@ export interface ElectronicSignatureData {
   signedByRole: string;
   signatureData: string; // Base64 encoded
   ipAddress: string | null;
+  userAgent: string | null;
+  deviceInfo: string | null;
+  geoLocation: string | null;
   agreementVersion: string;
   tenantId: string;
 }
@@ -214,7 +217,7 @@ export async function recordElectronicSignature(
       data.signatureData
     );
 
-    // Create signature record with file path
+    // Create signature record with file path and forensic metadata
     const signature = await prisma.proposalSignature.create({
       data: {
         proposalId: data.proposalId,
@@ -224,6 +227,9 @@ export async function recordElectronicSignature(
         signatureFilePath: signatureFilePath,
         signedAt: new Date(),
         ipAddress: data.ipAddress,
+        userAgent: data.userAgent,
+        deviceInfo: data.deviceInfo,
+        geoLocation: data.geoLocation,
         agreementVersion: data.agreementVersion,
         agreementAccepted: true,
       },
