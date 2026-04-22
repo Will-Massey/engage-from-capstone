@@ -310,6 +310,21 @@ const ProposalDetail = () => {
     }, {});
   }, [groupedServices, proposal]);
 
+  // Monthly equivalent of recurring fees (for display)
+  const monthlyEquivalent = useMemo(() => {
+    if (!proposal?.services) return 0;
+    return proposal.services.reduce((sum: number, s: any) => {
+      const freq = s.billingFrequency || s.frequency || 'MONTHLY';
+      const gross = s.grossTotal || s.total || 0;
+      if (freq === 'ONE_TIME') return sum;
+      if (freq === 'WEEKLY') return sum + gross * (52 / 12);
+      if (freq === 'MONTHLY') return sum + gross;
+      if (freq === 'QUARTERLY') return sum + gross / 3;
+      if (freq === 'ANNUALLY') return sum + gross / 12;
+      return sum + gross;
+    }, 0);
+  }, [proposal]);
+
   // Check if any service has different VAT rate than default
   const hasMixedVatRates = useMemo(() => {
     if (!proposal?.services) return false;
@@ -717,17 +732,7 @@ const ProposalDetail = () => {
               <div className="flex justify-between items-baseline">
                 <span className="text-slate-600 dark:text-slate-300">Monthly (inc. VAT)</span>
                 <span className="font-bold text-xl text-primary-600 tabular-nums">
-                  {formatCurrency(
-                    Object.entries(groupTotals).reduce((sum: number, [freq, totals]: [string, any]) => {
-                      const f = freq as string;
-                      const total = totals.total || 0;
-                      if (f === 'WEEKLY') return sum + total * (52 / 12);
-                      if (f === 'MONTHLY') return sum + total;
-                      if (f === 'QUARTERLY') return sum + total / 3;
-                      if (f === 'ANNUALLY') return sum + total / 12;
-                      return sum;
-                    }, 0)
-                  )}
+                  {formatCurrency(monthlyEquivalent)}
                 </span>
               </div>
 
@@ -770,7 +775,7 @@ const ProposalDetail = () => {
                 <div className="flex justify-between items-baseline pt-2">
                   <span className="font-semibold text-slate-900 dark:text-white">Monthly cost</span>
                   <span className="font-bold text-2xl text-slate-900 dark:text-white tabular-nums tracking-tight">
-                    {formatCurrency(proposal.total ?? 0)}
+                    {formatCurrency(monthlyEquivalent)}
                   </span>
                 </div>
               </div>
