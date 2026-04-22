@@ -390,6 +390,14 @@ router.get(
       req.headers['user-agent'] || null
     );
 
+    // Auto-mark as VIEWED if currently SENT
+    if (proposal.status === 'SENT') {
+      await prisma.proposal.update({
+        where: { id: proposal.id },
+        data: { status: 'VIEWED' },
+      });
+    }
+
     // Return proposal data (without sensitive fields)
     res.json({
       success: true,
@@ -465,6 +473,7 @@ router.post(
       signedByRole: z.string().min(2),
       signatureData: z.string().min(100), // Base64 signature image
       agreementAccepted: z.boolean(),
+      deviceInfo: z.string().optional(),
     });
 
     const { signedBy, signedByRole, signatureData, agreementAccepted, deviceInfo } = schema.parse(
