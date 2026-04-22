@@ -310,19 +310,38 @@ const ProposalDetail = () => {
     }, {});
   }, [groupedServices, proposal]);
 
-  // Monthly equivalent of recurring fees (for display)
-  const monthlyEquivalent = useMemo(() => {
-    if (!proposal?.services) return 0;
-    return proposal.services.reduce((sum: number, s: any) => {
-      const freq = s.billingFrequency || s.frequency || 'MONTHLY';
-      const gross = s.grossTotal || s.total || 0;
-      if (freq === 'ONE_TIME') return sum;
-      if (freq === 'WEEKLY') return sum + gross * (52 / 12);
-      if (freq === 'MONTHLY') return sum + gross;
-      if (freq === 'QUARTERLY') return sum + gross / 3;
-      if (freq === 'ANNUALLY') return sum + gross / 12;
-      return sum + gross;
-    }, 0);
+  // Calculate monthly equivalent and one-off totals cleanly
+  const pricingBreakdown = useMemo(() => {
+    if (!proposal?.services) {
+      return { monthlyExVat: 0, monthlyVat: 0, monthlyIncVat: 0, oneOffExVat: 0, oneOffVat: 0, oneOffIncVat: 0 };
+    }
+
+    return proposal.services.reduce(
+      (acc: any, s: any) => {
+        const freq = s.billingFrequency || s.frequency || 'MONTHLY';
+        const lineTotal = s.lineTotal || s.total || 0; // ex VAT
+        const vatAmt = s.vatAmount || 0;
+        const gross = s.grossTotal || lineTotal + vatAmt;
+
+        if (freq === 'ONE_TIME') {
+          acc.oneOffExVat += lineTotal;
+          acc.oneOffVat += vatAmt;
+          acc.oneOffIncVat += gross;
+        } else {
+          // Convert to monthly equivalent
+          let monthlyFactor = 1;
+          if (freq === 'WEEKLY') monthlyFactor = 52 / 12;
+          else if (freq === 'QUARTERLY') monthlyFactor = 1 / 3;
+          else if (freq === 'ANNUALLY') monthlyFactor = 1 / 12;
+
+          acc.monthlyExVat += lineTotal * monthlyFactor;
+          acc.monthlyVat += vatAmt * monthlyFactor;
+          acc.monthlyIncVat += gross * monthlyFactor;
+        }
+        return acc;
+      },
+      { monthlyExVat: 0, monthlyVat: 0, monthlyIncVat: 0, oneOffExVat: 0, oneOffVat: 0, oneOffIncVat: 0 }
+    );
   }, [proposal]);
 
   // Check if any service has different VAT rate than default
@@ -728,30 +747,58 @@ const ProposalDetail = () => {
               Recurring fees averaged per month. One-off fees shown separately.
             </p>
             <div className="space-y-3">
-              {/* Monthly equivalent */}
+              {/* Recurring monthly */}
               <div className="flex justify-between items-baseline">
                 <span className="text-slate-600 dark:text-slate-300">Monthly (inc. VAT)</span>
                 <span className="font-bold text-xl text-primary-600 tabular-nums">
-                  {formatCurrency(monthlyEquivalent)}
+                  {formatCurrency(pricingBreakdown.monthlyIncVat)}
                 </span>
               </div>
 
-              {groupTotals.ONE_TIME?.total > 0 && (
+              {/* One-off */}
+              {pricingBreakdown.oneOffIncVat > 0 && (
                 <div className="flex justify-between text-sm">
                   <span className="text-slate-600 dark:text-slate-300">One-off (inc. VAT)</span>
                   <span className="font-medium text-slate-900 dark:text-white tabular-nums">
-                    {formatCurrency(groupTotals.ONE_TIME.total)}
+                    {formatCurrency(pricingBreakdown.oneOffIncVat)}
                   </span>
                 </div>
               )}
 
               <div className="border-t border-white/20 dark:border-slate-600/50 pt-3 space-y-2">
+                {/* Monthly breakdown */}
                 <div className="flex justify-between text-sm">
-                  <span className="text-slate-600 dark:text-slate-300">Subtotal (ex VAT)</span>
+                  <span className="text-slate-600 dark:text-slate-300">Monthly subtotal (ex VAT)</span>
                   <span className="font-medium text-slate-900 dark:text-white tabular-nums">
-                    {formatCurrency(proposal.subtotal ?? 0)}
+                    {formatCurrency(pricingBreakdown.monthlyExVat)}
                   </span>
                 </div>
+                <div className="flex justify-between text-sm">
+                  <span className="text-slate-600 dark:text-slate-300">
+                    Monthly VAT {hasMixedVatRates ? '(mixed)' : `(${proposal.vatRate || 20}%)`}
+                  </span>
+                  <span className="font-medium text-slate-900 dark:text-white tabular-nums">
+                    {formatCurrency(pricingBreakdown.monthlyVat)}
+                  </span>
+                </div>
+
+                {/* One-off breakdown */}
+                {pricingBreakdown.oneOffIncVat > 0 && (
+                  <>
+                    <div className="flex justify-between text-sm pt-1 border-t border-dashed border-white/10 dark:border-slate-600/30">
+                      <span className="text-slate-600 dark:text-slate-300">One-off subtotal (ex VAT)</span>
+                      <span className="font-medium text-slate-900 dark:text-white tabular-nums">
+                        {formatCurrency(pricingBreakdown.oneOffExVat)}
+                      </span>
+                    </div>
+                    <div className="flex justify-between text-sm">
+                      <span className="text-slate-600 dark:text-slate-300">One-off VAT</span>
+                      <span className="font-medium text-slate-900 dark:text-white tabular-nums">
+                        {formatCurrency(pricingBreakdown.oneOffVat)}
+                      </span>
+                    </div>
+                  </>
+                )}
 
                 {/* Discount */}
                 {proposal.discountAmount > 0 && (
@@ -763,25 +810,17 @@ const ProposalDetail = () => {
                   </div>
                 )}
 
-                <div className="flex justify-between text-sm">
-                  <span className="text-slate-600 dark:text-slate-300">
-                    VAT {hasMixedVatRates ? '(mixed rates)' : `(${proposal.vatRate || 20}%)`}
-                  </span>
-                  <span className="font-medium text-slate-900 dark:text-white tabular-nums">
-                    {formatCurrency(proposal.vatAmount ?? 0)}
-                  </span>
-                </div>
-
-                <div className="flex justify-between items-baseline pt-2">
+                {/* Total */}
+                <div className="flex justify-between items-baseline pt-2 border-t border-white/20 dark:border-slate-600/50">
                   <span className="font-semibold text-slate-900 dark:text-white">Monthly cost</span>
                   <span className="font-bold text-2xl text-slate-900 dark:text-white tabular-nums tracking-tight">
-                    {formatCurrency(monthlyEquivalent)}
+                    {formatCurrency(pricingBreakdown.monthlyIncVat)}
                   </span>
                 </div>
               </div>
 
               <p className="text-xs text-slate-500 dark:text-slate-400 text-center">
-                Monthly cost is the average per month across all billing periods.
+                Monthly cost is the average per month across all billing periods. One-off fees are separate.
               </p>
             </div>
           </div>
