@@ -473,7 +473,7 @@ router.post(
       signedByRole: z.string().min(2),
       signatureData: z.string().min(100), // Base64 signature image
       agreementAccepted: z.boolean(),
-      deviceInfo: z.string().optional(),
+      deviceInfo: z.string().optional(), // Forensic device data from client
     });
 
     const { signedBy, signedByRole, signatureData, agreementAccepted, deviceInfo } = schema.parse(
