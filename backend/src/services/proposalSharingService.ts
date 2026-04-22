@@ -109,7 +109,8 @@ export async function getProposalByShareToken(token: string) {
 export async function trackProposalView(
   proposalId: string,
   ipAddress: string | null,
-  userAgent: string | null
+  userAgent: string | null,
+  userId?: string
 ): Promise<void> {
   try {
     await prisma.proposalView.create({
@@ -118,6 +119,7 @@ export async function trackProposalView(
         ipAddress,
         userAgent,
         viewedAt: new Date(),
+        ...(userId ? { viewerId: userId } : {}),
       },
     });
 

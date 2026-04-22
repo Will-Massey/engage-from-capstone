@@ -418,12 +418,14 @@ model ProposalView {
   userAgent String?
   viewDuration Int?  // Duration in seconds
   completed Boolean  @default(false)
+  viewerId  String? // User ID when viewed in-app (authenticated)
 
   proposalId String
   proposal   Proposal @relation(fields: [proposalId], references: [id], onDelete: Cascade)
 
   @@index([proposalId])
   @@index([viewedAt])
+  @@index([viewerId])
 }
 
 // Electronic Signature (UK Compliant)

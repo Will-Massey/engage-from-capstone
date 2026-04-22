@@ -368,14 +368,16 @@ router.get(
 );
 
 // ============================================
-// PUBLIC ROUTES (No authentication required)
+// AUTHENTICATED CLIENT ROUTES (Login required)
 // ============================================
 
-// View proposal by share token (public)
+// View proposal by share token (authenticated — tracks views in-app)
 router.get(
   '/view/:token',
+  authenticate,
   asyncHandler(async (req, res) => {
     const { token } = req.params;
+    const userId = req.user!.id;
 
     const proposal = await getProposalByShareToken(token);
 
@@ -383,8 +385,13 @@ router.get(
       throw new ApiError('PROPOSAL_NOT_FOUND', 'Proposal not found or link expired', 404);
     }
 
-    // Track view
-    await trackProposalView(proposal.id, req.ip || null, req.headers['user-agent'] || null);
+    // Track view with user ID for authenticated in-app viewing
+    await trackProposalView(
+      proposal.id,
+      req.ip || null,
+      req.headers['user-agent'] || null,
+      userId
+    );
 
     // Return proposal data (without sensitive fields)
     res.json({
@@ -452,9 +459,10 @@ router.get(
   })
 );
 
-// Submit electronic signature (public)
+// Submit electronic signature (authenticated)
 router.post(
   '/view/:token/sign',
+  authenticate,
   asyncHandler(async (req, res) => {
     const schema = z.object({
       signedBy: z.string().min(2),

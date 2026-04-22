@@ -246,13 +246,17 @@ const AnimatedRoutes = () => {
           />
         </Route>
 
-        {/* Public Proposal View (No authentication required) */}
+        {/* Client Proposal View (requires authentication) */}
         <Route
           path="/proposals/view/:token"
           element={
-            <AnimatedPage>
-              <PublicProposalView />
-            </AnimatedPage>
+            <ProtectedRoute>
+              <DashboardLayout>
+                <AnimatedPage>
+                  <PublicProposalView />
+                </AnimatedPage>
+              </DashboardLayout>
+            </ProtectedRoute>
           }
         />
 

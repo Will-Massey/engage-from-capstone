@@ -153,21 +153,21 @@ const PublicProposalView = () => {
   const isExpired = new Date(proposal.validUntil) < new Date();
 
   return (
-    <div className="min-h-screen bg-slate-50 py-8 px-4 sm:px-6 lg:px-8">
+    <div className="py-6">
       <div className="max-w-4xl mx-auto">
         {/* Header */}
-        <div className="bg-white rounded-t-xl shadow-sm p-6 border-b">
+        <div className="bg-white dark:bg-slate-800 rounded-t-xl shadow-sm p-6 border-b dark:border-slate-700">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm text-slate-600">Proposal from</p>
-              <h1 className="text-2xl font-bold text-slate-900">{proposal.tenant.name}</h1>
+              <p className="text-sm text-slate-600 dark:text-slate-400">Proposal from</p>
+              <h1 className="text-2xl font-bold text-slate-900 dark:text-white">{proposal.tenant.name}</h1>
             </div>
             {proposal.tenant.logo && <img src={proposal.tenant.logo} alt="Logo" className="h-12" />}
           </div>
         </div>
 
         {/* Proposal Content */}
-        <div className="bg-white shadow-sm p-6 space-y-8">
+        <div className="bg-white dark:bg-slate-800 shadow-sm p-6 space-y-8">
           {/* Status Banner */}
           {isAccepted ? (
             <div className="bg-green-50 border border-green-200 rounded-lg p-4 flex items-center">
@@ -376,10 +376,6 @@ const PublicProposalView = () => {
           )}
         </div>
 
-        {/* Footer */}
-        <div className="bg-slate-100 rounded-b-xl p-4 text-center text-sm text-slate-600">
-          Powered by Engage by Capstone • Professional Proposal Platform
-        </div>
       </div>
     </div>
   );
