@@ -339,4 +339,195 @@ router.get(
   })
 );
 
+// Get conversion funnel with full stages and drop-off rates
+router.get(
+  '/funnel',
+  asyncHandler(async (req, res) => {
+    const tenantId = req.tenantId!;
+
+    const [draftCount, sentCount, viewedCount, acceptedCount, declinedCount, expiredCount] =
+      await Promise.all([
+        prisma.proposal.count({ where: { tenantId, status: 'DRAFT' } }),
+        prisma.proposal.count({ where: { tenantId, status: 'SENT' } }),
+        prisma.proposal.count({ where: { tenantId, status: 'VIEWED' } }),
+        prisma.proposal.count({ where: { tenantId, status: 'ACCEPTED' } }),
+        prisma.proposal.count({ where: { tenantId, status: 'DECLINED' } }),
+        prisma.proposal.count({ where: { tenantId, status: 'EXPIRED' } }),
+      ]);
+
+    const actionable = sentCount + viewedCount + acceptedCount + declinedCount + expiredCount;
+
+    res.json({
+      success: true,
+      data: {
+        stages: [
+          { name: 'Draft', count: draftCount, color: 'bg-slate-400' },
+          { name: 'Sent', count: sentCount, color: 'bg-blue-500' },
+          { name: 'Viewed', count: viewedCount, color: 'bg-amber-500' },
+          { name: 'Accepted', count: acceptedCount, color: 'bg-green-500' },
+        ],
+        outcomes: [
+          { name: 'Accepted', count: acceptedCount, color: 'bg-green-500' },
+          { name: 'Declined', count: declinedCount, color: 'bg-red-500' },
+          { name: 'Expired', count: expiredCount, color: 'bg-slate-400' },
+        ],
+        conversionRates: {
+          sentToViewed: actionable > 0 ? Math.round(((viewedCount + acceptedCount + declinedCount + expiredCount) / actionable) * 100) : 0,
+          viewedToAccepted: (viewedCount + acceptedCount) > 0 ? Math.round((acceptedCount / (viewedCount + acceptedCount)) * 100) : 0,
+          sentToAccepted: actionable > 0 ? Math.round((acceptedCount / actionable) * 100) : 0,
+        },
+      },
+    });
+  })
+);
+
+// Get revenue pipeline (active proposals + forecast)
+router.get(
+  '/revenue-pipeline',
+  asyncHandler(async (req, res) => {
+    const tenantId = req.tenantId!;
+
+    const [pipelineProposals, acceptedRevenue, monthlyRecurring] = await Promise.all([
+      // Pipeline: SENT + VIEWED proposals
+      prisma.proposal.aggregate({
+        where: {
+          tenantId,
+          status: { in: ['SENT', 'VIEWED'] },
+        },
+        _sum: { total: true, subtotal: true },
+        _count: { id: true },
+      }),
+      // Accepted revenue
+      prisma.proposal.aggregate({
+        where: { tenantId, status: 'ACCEPTED' },
+        _sum: { total: true },
+      }),
+      // Monthly recurring revenue (from accepted proposals with recurring services)
+      prisma.$queryRaw`
+        SELECT 
+          SUM(CASE 
+            WHEN ps."billingFrequency" = 'WEEKLY' THEN ps."grossTotal" * 52 / 12
+            WHEN ps."billingFrequency" = 'MONTHLY' THEN ps."grossTotal"
+            WHEN ps."billingFrequency" = 'QUARTERLY' THEN ps."grossTotal" / 3
+            WHEN ps."billingFrequency" = 'ANNUALLY' THEN ps."grossTotal" / 12
+            ELSE 0
+          END) as monthly_recurring
+        FROM "ProposalService" ps
+        JOIN "Proposal" p ON p.id = ps."proposalId"
+        WHERE p."tenantId" = ${tenantId}
+          AND p.status = 'ACCEPTED'
+          AND ps."billingFrequency" != 'ONE_TIME'
+      `,
+    ]);
+
+    res.json({
+      success: true,
+      data: {
+        pipeline: {
+          value: pipelineProposals._sum.total || 0,
+          subtotal: pipelineProposals._sum.subtotal || 0,
+          count: pipelineProposals._count.id || 0,
+        },
+        accepted: {
+          value: acceptedRevenue._sum.total || 0,
+        },
+        monthlyRecurring: Number((monthlyRecurring as any[])[0]?.monthly_recurring) || 0,
+        forecast: {
+          // Pipeline value × conversion rate (assumed 30% if no data)
+          expectedValue: Math.round((pipelineProposals._sum.total || 0) * 0.3),
+        },
+      },
+    });
+  })
+);
+
+// Get time-to-decision metrics
+router.get(
+  '/time-to-decision',
+  asyncHandler(async (req, res) => {
+    const tenantId = req.tenantId!;
+
+    const acceptedProposals = await prisma.proposal.findMany({
+      where: {
+        tenantId,
+        status: 'ACCEPTED',
+        sentAt: { not: null },
+        acceptedAt: { not: null },
+      },
+      select: {
+        sentAt: true,
+        acceptedAt: true,
+        viewedAt: true,
+      },
+      take: 1000,
+    });
+
+    const declinedProposals = await prisma.proposal.findMany({
+      where: {
+        tenantId,
+        status: 'DECLINED',
+        sentAt: { not: null },
+        declinedAt: { not: null },
+      },
+      select: {
+        sentAt: true,
+        declinedAt: true,
+      },
+      take: 1000,
+    });
+
+    const avgDaysToAccept =
+      acceptedProposals.length > 0
+        ? Math.round(
+            acceptedProposals.reduce((sum, p) => {
+              const days =
+                (new Date(p.acceptedAt!).getTime() - new Date(p.sentAt!).getTime()) /
+                (1000 * 60 * 60 * 24);
+              return sum + days;
+            }, 0) / acceptedProposals.length
+          )
+        : 0;
+
+    const avgDaysToDecline =
+      declinedProposals.length > 0
+        ? Math.round(
+            declinedProposals.reduce((sum, p) => {
+              const days =
+                (new Date(p.declinedAt!).getTime() - new Date(p.sentAt!).getTime()) /
+                (1000 * 60 * 60 * 24);
+              return sum + days;
+            }, 0) / declinedProposals.length
+          )
+        : 0;
+
+    const avgDaysToView =
+      acceptedProposals.filter((p) => p.viewedAt).length > 0
+        ? Math.round(
+            acceptedProposals
+              .filter((p): p is typeof p & { viewedAt: Date; sentAt: Date } => !!p.viewedAt && !!p.sentAt)
+              .reduce((sum, p) => {
+                const days =
+                  (new Date(p.viewedAt).getTime() - new Date(p.sentAt).getTime()) /
+                  (1000 * 60 * 60 * 24);
+                return sum + days;
+              }, 0) /
+              acceptedProposals.filter((p) => p.viewedAt).length
+          )
+        : 0;
+
+    res.json({
+      success: true,
+      data: {
+        avgDaysToAccept,
+        avgDaysToDecline,
+        avgDaysToView,
+        sampleSize: {
+          accepted: acceptedProposals.length,
+          declined: declinedProposals.length,
+        },
+      },
+    });
+  })
+);
+
 export default router;
