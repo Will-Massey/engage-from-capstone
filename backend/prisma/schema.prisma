@@ -239,6 +239,11 @@ model Client {
   tenantId String
   tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
 
+  // Client portal
+  portalToken      String? @unique
+  portalTokenExpiry DateTime?
+  portalEnabled    Boolean @default(false)
+
   // Relations
   proposals Proposal[]
 

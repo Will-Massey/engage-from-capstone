@@ -21,6 +21,10 @@ import {
   generateComplianceAuditTrail,
   isShareTokenValid,
   generateProposalPdfUrl,
+  createClientPortalLink,
+  revokeClientPortalLink,
+  getClientByPortalToken,
+  getClientProposalsForPortal,
 } from '../services/proposalSharingService.js';
 import { createEmailService } from '../services/emailService.js';
 import logger from '../config/logger.js';
@@ -625,6 +629,116 @@ router.get(
       error: {
         code: 'PDF_GENERATION_PENDING',
         message: 'PDF generation is being implemented',
+      },
+    });
+  })
+);
+
+// ==================== CLIENT PORTAL ROUTES ====================
+
+// Create client portal link (authenticated)
+router.post(
+  '/portal/:clientId',
+  authenticate,
+  extractTenant,
+  asyncHandler(async (req, res) => {
+    const { clientId } = req.params;
+    const schema = z.object({
+      expiryDays: z.number().min(1).max(365).optional(),
+    });
+    const { expiryDays } = schema.parse(req.body);
+
+    // Verify client exists and belongs to tenant
+    const client = await prisma.client.findFirst({
+      where: { id: clientId, tenantId: req.tenantId },
+    });
+
+    if (!client) {
+      throw new ApiError('CLIENT_NOT_FOUND', 'Client not found', 404);
+    }
+
+    const result = await createClientPortalLink(clientId, expiryDays || 90);
+
+    res.json({
+      success: true,
+      data: result,
+    });
+  })
+);
+
+// Revoke client portal link (authenticated)
+router.delete(
+  '/portal/:clientId',
+  authenticate,
+  extractTenant,
+  asyncHandler(async (req, res) => {
+    const { clientId } = req.params;
+
+    const client = await prisma.client.findFirst({
+      where: { id: clientId, tenantId: req.tenantId },
+    });
+
+    if (!client) {
+      throw new ApiError('CLIENT_NOT_FOUND', 'Client not found', 404);
+    }
+
+    await revokeClientPortalLink(clientId);
+
+    res.json({
+      success: true,
+      data: { message: 'Portal link revoked' },
+    });
+  })
+);
+
+// Get client portal data (public — link possession = access)
+router.get(
+  '/portal/:token',
+  asyncHandler(async (req, res) => {
+    const { token } = req.params;
+
+    const client = await getClientByPortalToken(token);
+
+    if (!client) {
+      throw new ApiError('PORTAL_NOT_FOUND', 'Portal link not found or expired', 404);
+    }
+
+    const proposals = await getClientProposalsForPortal(client.id);
+
+    res.json({
+      success: true,
+      data: {
+        client: {
+          id: client.id,
+          name: client.name,
+          contactName: client.contactName,
+          contactEmail: client.contactEmail,
+        },
+        practice: {
+          name: client.tenant.name,
+          primaryColor: client.tenant.primaryColor,
+          logo: client.tenant.logo,
+        },
+        proposals: proposals.map((p) => ({
+          id: p.id,
+          reference: p.reference,
+          title: p.title,
+          status: p.status,
+          total: p.total,
+          subtotal: p.subtotal,
+          vatAmount: p.vatAmount,
+          discountAmount: p.discountAmount,
+          validUntil: p.validUntil,
+          sentAt: p.sentAt,
+          viewedAt: p.viewedAt,
+          acceptedAt: p.acceptedAt,
+          declinedAt: p.declinedAt,
+          createdAt: p.createdAt,
+          services: p.services,
+          shareToken: p.shareToken,
+          shareTokenExpiry: p.shareTokenExpiry,
+          publicAccessEnabled: p.publicAccessEnabled,
+        })),
       },
     });
   })

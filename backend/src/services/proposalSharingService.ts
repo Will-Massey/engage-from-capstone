@@ -457,3 +457,131 @@ export default {
   isShareTokenValid,
   generateProposalPdfUrl,
 };
+
+// ==================== CLIENT PORTAL ====================
+
+// Generate client portal token
+export function generatePortalToken(): string {
+  return uuidv4().replace(/-/g, '').substring(0, 32);
+}
+
+// Create or refresh client portal link
+export async function createClientPortalLink(
+  clientId: string,
+  expiryDays: number = 90
+): Promise<{ token: string; portalUrl: string; expiresAt: Date }> {
+  const token = generatePortalToken();
+  const expiresAt = new Date();
+  expiresAt.setDate(expiresAt.getDate() + expiryDays);
+
+  await prisma.client.update({
+    where: { id: clientId },
+    data: {
+      portalToken: token,
+      portalTokenExpiry: expiresAt,
+      portalEnabled: true,
+    },
+  });
+
+  const portalUrl = `${process.env.FRONTEND_URL || 'https://engage-frontend-0g6u.onrender.com'}/portal/${token}`;
+  return { token, portalUrl, expiresAt };
+}
+
+// Revoke client portal link
+export async function revokeClientPortalLink(clientId: string): Promise<void> {
+  await prisma.client.update({
+    where: { id: clientId },
+    data: {
+      portalToken: null,
+      portalTokenExpiry: null,
+      portalEnabled: false,
+    },
+  });
+}
+
+// Get client by portal token
+export async function getClientByPortalToken(token: string) {
+  try {
+    const client = await prisma.client.findFirst({
+      where: {
+        portalToken: token,
+        portalEnabled: true,
+        portalTokenExpiry: {
+          gt: new Date(),
+        },
+      },
+      include: {
+        tenant: {
+          select: {
+            id: true,
+            name: true,
+            primaryColor: true,
+            logo: true,
+            settings: true,
+          },
+        },
+      },
+    });
+
+    return client;
+  } catch (error) {
+    logger.error('Failed to get client by portal token:', error);
+    return null;
+  }
+}
+
+// Get all proposals for a client (portal view)
+export async function getClientProposalsForPortal(clientId: string) {
+  try {
+    const proposals = await prisma.proposal.findMany({
+      where: {
+        clientId,
+        status: {
+          in: ['SENT', 'VIEWED', 'ACCEPTED', 'DECLINED', 'EXPIRED'],
+        },
+      },
+      orderBy: {
+        createdAt: 'desc',
+      },
+      select: {
+        id: true,
+        reference: true,
+        title: true,
+        status: true,
+        total: true,
+        subtotal: true,
+        vatAmount: true,
+        discountAmount: true,
+        validUntil: true,
+        sentAt: true,
+        viewedAt: true,
+        acceptedAt: true,
+        declinedAt: true,
+        shareToken: true,
+        shareTokenExpiry: true,
+        publicAccessEnabled: true,
+        createdAt: true,
+        services: {
+          select: {
+            id: true,
+            name: true,
+            description: true,
+            quantity: true,
+            unitPrice: true,
+            lineTotal: true,
+            vatRate: true,
+            vatAmount: true,
+            grossTotal: true,
+            billingFrequency: true,
+            priceDisplayMode: true,
+          },
+        },
+      },
+    });
+
+    return proposals;
+  } catch (error) {
+    logger.error('Failed to get client proposals for portal:', error);
+    return [];
+  }
+}

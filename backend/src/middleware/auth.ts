@@ -268,6 +268,7 @@ export const csrfProtection = (req: Request, res: Response, next: NextFunction):
     '/payments/webhook',
     '/oauth/callback',
     '/proposals/view', // Public proposal viewing and signing
+    '/proposals/portal', // Client portal (public access)
     '/admin/seed-services', // One-click admin seed endpoint
     '/automation/migrate-service-pricing', // Data migration endpoint (protected by secret key)
     '/setup/migrate-pricing', // v2 pricing data migration

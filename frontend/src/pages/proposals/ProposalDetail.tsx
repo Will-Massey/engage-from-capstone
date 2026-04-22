@@ -84,6 +84,8 @@ const ProposalDetail = () => {
   const [signatoryPosition, setSignatoryPosition] = useState('');
   const [companySettings, setCompanySettings] = useState<any>(null);
   const [copyingLink, setCopyingLink] = useState(false);
+  const [portalLink, setPortalLink] = useState<string | null>(null);
+  const [copyingPortalLink, setCopyingPortalLink] = useState(false);
   const [coverLetterDraft, setCoverLetterDraft] = useState('');
   const [editingCoverLetter, setEditingCoverLetter] = useState(false);
   const [savingCoverLetter, setSavingCoverLetter] = useState(false);
@@ -251,6 +253,31 @@ const ProposalDetail = () => {
       toast.error('Failed to copy client link');
     } finally {
       setCopyingLink(false);
+    }
+  };
+
+  const handleCopyPortalLink = async () => {
+    if (!proposal?.clientId) return;
+    try {
+      setCopyingPortalLink(true);
+      const response = (await apiClient.post(`/proposals/portal/${proposal.clientId}`, {
+        expiryDays: 90,
+      })) as any;
+      if (response.success && response.data?.portalUrl) {
+        setPortalLink(response.data.portalUrl);
+        const ok = await copyTextToClipboard(response.data.portalUrl);
+        if (ok) {
+          toast.success('Client portal link copied (valid 90 days)');
+        } else {
+          toast.error('Copy manually: ' + response.data.portalUrl, { duration: 10000 });
+        }
+      } else {
+        toast.error('Failed to generate portal link');
+      }
+    } catch {
+      toast.error('Failed to generate portal link');
+    } finally {
+      setCopyingPortalLink(false);
     }
   };
 
@@ -426,6 +453,19 @@ const ProposalDetail = () => {
             >
               <LinkIcon className="h-4 w-4 mr-2" />
               {copyingLink ? 'Creating…' : 'Copy client link'}
+            </button>
+          )}
+
+          {proposal.clientId && (
+            <button
+              type="button"
+              onClick={handleCopyPortalLink}
+              disabled={copyingPortalLink}
+              className="btn-secondary"
+              title="Copy client portal link — shows all their proposals"
+            >
+              <BuildingOfficeIcon className="h-4 w-4 mr-2" />
+              {copyingPortalLink ? 'Creating…' : 'Copy portal link'}
             </button>
           )}
 

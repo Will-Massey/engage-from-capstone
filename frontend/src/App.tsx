@@ -26,6 +26,7 @@ import Subscription from './pages/Subscription';
 import Analytics from './pages/Analytics';
 import NotFound from './pages/NotFound';
 import PublicProposalView from './pages/public/ProposalView';
+import ClientPortal from './pages/public/ClientPortal';
 
 // World-class features
 import CommandPalette from './components/command-palette/CommandPalette';
@@ -252,6 +253,16 @@ const AnimatedRoutes = () => {
           element={
             <AnimatedPage>
               <PublicProposalView />
+            </AnimatedPage>
+          }
+        />
+
+        {/* Client Portal (link possession = access) */}
+        <Route
+          path="/portal/:token"
+          element={
+            <AnimatedPage>
+              <ClientPortal />
             </AnimatedPage>
           }
         />
