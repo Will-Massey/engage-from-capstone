@@ -88,14 +88,14 @@ const Clients = () => {
       </div>
 
       {/* MTD ITSA Alert */}
-      <div className="bg-gradient-to-r from-orange-500 to-red-500 rounded-lg p-4 text-white">
+      <div className="bg-gradient-to-r from-blue-500 to-indigo-500 rounded-lg p-4 text-white">
         <div className="flex items-start">
           <ClockIcon className="h-6 w-6 mt-0.5 flex-shrink-0" />
           <div className="ml-3">
-            <h3 className="text-lg font-semibold">MTD ITSA Deadline: April 2026</h3>
-            <p className="mt-1 text-orange-100">
-              Sole traders and partnerships with income over £50,000 must be ready for Making Tax
-              Digital. Limited companies, LLPs, and charities are not affected.
+            <h3 className="text-lg font-semibold">MTD ITSA Compliance</h3>
+            <p className="mt-1 text-blue-100">
+              Sole traders and partnerships with income over £50,000 must maintain Making Tax
+              Digital compliance. Limited companies, LLPs, and charities are not affected.
             </p>
           </div>
         </div>

@@ -183,11 +183,11 @@ const ClientDetail = () => {
 
       {/* MTD ITSA Alert */}
       {client.mtditsaEligible && (
-        <div className="bg-orange-50 border border-orange-200 rounded-lg p-4 flex items-start">
-          <ClockIcon className="h-5 w-5 text-orange-500 mt-0.5 flex-shrink-0" />
+        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 flex items-start">
+          <ClockIcon className="h-5 w-5 text-blue-500 mt-0.5 flex-shrink-0" />
           <div className="ml-3">
-            <h3 className="text-sm font-medium text-orange-800">MTD ITSA Required by April 2026</h3>
-            <p className="mt-1 text-sm text-orange-700">
+            <h3 className="text-sm font-medium text-blue-800">MTD ITSA Compliance Required</h3>
+            <p className="mt-1 text-sm text-blue-700">
               This client has an estimated income of £{client.mtditsaIncome?.toLocaleString()}
               and must comply with Making Tax Digital for Income Tax Self Assessment.
             </p>

@@ -23,7 +23,8 @@ const navigation = [
   { name: 'Clients', href: '/clients', icon: UsersIcon },
   { name: 'Services', href: '/services', icon: WrenchScrewdriverIcon },
   { name: 'Analytics', href: '/analytics', icon: ChartPieIcon },
-  { name: 'Billing', href: '/subscription', icon: CreditCardIcon },
+  // Billing hidden until subscription setup is complete
+  // { name: 'Billing', href: '/subscription', icon: CreditCardIcon },
   { name: 'Settings', href: '/settings', icon: CogIcon },
 ];
 

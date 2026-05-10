@@ -46,6 +46,7 @@
   "author": "Capstone",
   "license": "MIT",
   "dependencies": {
+    "@redis/client": "^5.12.1",
     "googleapis": "^171.4.0"
   },
   "overrides": {

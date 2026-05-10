@@ -209,9 +209,11 @@ const ProposalDetail = () => {
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
-      window.URL.revokeObjectURL(url);
+      // Delay revoke to give the browser time to start the download
+      setTimeout(() => window.URL.revokeObjectURL(url), 5000);
       toast.success('PDF download started');
-    } catch {
+    } catch (err: any) {
+      console.error('PDF download error:', err);
       toast.error('Could not download PDF.');
     }
   };

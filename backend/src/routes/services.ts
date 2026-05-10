@@ -23,12 +23,14 @@ const createServiceSchema = z.object({
   description: z.string().min(1, 'Description is required'),
   longDescription: z.string().optional(),
   basePrice: z.number().min(0, 'Base price must be positive'),
+  priceAmount: z.number().min(0).optional(),
   baseHours: z.number().min(0.1, 'Base hours must be at least 0.1'),
   pricingModel: z.nativeEnum(PricingModel).default('FIXED'),
   frequencyOptions: z
     .array(z.nativeEnum(PricingFrequency))
     .default(['MONTHLY', 'QUARTERLY', 'ANNUALLY']),
   defaultFrequency: z.nativeEnum(PricingFrequency).default('MONTHLY'),
+  billingCycle: z.nativeEnum(PricingFrequency).optional(),
   complexityFactors: z.array(complexityFactorSchema).default([]),
   requirements: z.array(z.string()).default([]),
   deliverables: z.array(z.string()).default([]),
@@ -236,6 +238,21 @@ router.put(
   authorize('ADMIN', 'PARTNER', 'MANAGER'),
   asyncHandler(async (req, res) => {
     const { id } = req.params;
+
+    // Pre-process JSON string fields that may come from the API as strings
+    if (typeof req.body.complexityFactors === 'string') {
+      try { req.body.complexityFactors = JSON.parse(req.body.complexityFactors); } catch { req.body.complexityFactors = []; }
+    }
+    if (typeof req.body.requirements === 'string') {
+      try { req.body.requirements = JSON.parse(req.body.requirements); } catch { req.body.requirements = []; }
+    }
+    if (typeof req.body.deliverables === 'string') {
+      try { req.body.deliverables = JSON.parse(req.body.deliverables); } catch { req.body.deliverables = []; }
+    }
+    if (typeof req.body.tags === 'string') {
+      req.body.tags = req.body.tags.split(',').filter(Boolean);
+    }
+
     const data = updateServiceSchema.parse(req.body);
 
     const existingService = await prisma.serviceTemplate.findFirst({
@@ -249,17 +266,27 @@ router.put(
       throw new ApiError('NOT_FOUND', 'Service not found', 404);
     }
 
+    const updateData: any = {
+      ...(data as any),
+      complexityFactors: data.complexityFactors
+        ? JSON.stringify(data.complexityFactors)
+        : undefined,
+      requirements: data.requirements ? JSON.stringify(data.requirements) : undefined,
+      deliverables: data.deliverables ? JSON.stringify(data.deliverables) : undefined,
+      tags: data.tags !== undefined ? data.tags.join(',') : undefined,
+    };
+
+    // Sync legacy pricing fields to v2 fields if v2 fields are not explicitly provided
+    if (data.basePrice !== undefined && data.priceAmount === undefined) {
+      updateData.priceAmount = data.basePrice;
+    }
+    if (data.defaultFrequency !== undefined && data.billingCycle === undefined) {
+      updateData.billingCycle = data.defaultFrequency;
+    }
+
     const service = await prisma.serviceTemplate.update({
       where: { id },
-      data: {
-        ...(data as any),
-        complexityFactors: data.complexityFactors
-          ? JSON.stringify(data.complexityFactors)
-          : undefined,
-        requirements: data.requirements ? JSON.stringify(data.requirements) : undefined,
-        deliverables: data.deliverables ? JSON.stringify(data.deliverables) : undefined,
-        tags: data.tags?.join(','),
-      },
+      data: updateData,
     });
 
     // Log activity

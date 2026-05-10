@@ -178,6 +178,14 @@ const Services = () => {
     }
   };
 
+  const parseJsonField = (value: any): any[] => {
+    if (Array.isArray(value)) return value;
+    if (typeof value === 'string') {
+      try { return JSON.parse(value); } catch { return []; }
+    }
+    return [];
+  };
+
   const openEditModal = (service: Service) => {
     setEditingService(service);
     setFormData({
@@ -185,14 +193,14 @@ const Services = () => {
       description: service.description,
       longDescription: service.longDescription || '',
       category: service.category,
-      basePrice: service.basePrice,
+      basePrice: service.priceAmount || service.basePrice || 0,
       baseHours: service.baseHours || 1,
-      defaultFrequency: service.defaultFrequency || 'MONTHLY',
+      defaultFrequency: service.billingCycle || service.defaultFrequency || 'MONTHLY',
       pricingModel: service.pricingModel || 'FIXED',
       isPopular: service.isPopular,
-      complexityFactors: service.complexityFactors || [],
-      requirements: service.requirements || [],
-      deliverables: service.deliverables || [],
+      complexityFactors: parseJsonField(service.complexityFactors),
+      requirements: parseJsonField(service.requirements),
+      deliverables: parseJsonField(service.deliverables),
     });
     setShowEditModal(true);
   };

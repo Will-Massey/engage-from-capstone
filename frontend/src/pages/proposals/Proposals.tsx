@@ -94,7 +94,8 @@ const Proposals = () => {
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
-      window.URL.revokeObjectURL(url);
+      // Delay revoke to give the browser time to start the download
+      setTimeout(() => window.URL.revokeObjectURL(url), 5000);
       toast.success('PDF downloaded');
     } catch (error) {
       toast.dismiss();

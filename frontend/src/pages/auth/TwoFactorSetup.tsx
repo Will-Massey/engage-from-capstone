@@ -94,7 +94,8 @@ Keep these codes safe! Each code can only be used once.`;
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
-      URL.revokeObjectURL(url);
+      // Delay revoke to give the browser time to start the download
+      setTimeout(() => URL.revokeObjectURL(url), 5000);
 
       toast.success('Backup codes downloaded');
     }

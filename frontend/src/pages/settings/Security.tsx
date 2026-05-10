@@ -113,8 +113,9 @@ export const SecuritySettings: React.FC = () => {
       a.download = `my-data-export-${new Date().toISOString().split('T')[0]}.json`;
       document.body.appendChild(a);
       a.click();
-      window.URL.revokeObjectURL(url);
       document.body.removeChild(a);
+      // Delay revoke to give the browser time to start the download
+      setTimeout(() => window.URL.revokeObjectURL(url), 5000);
       toast.success('Data export downloaded');
     } catch (error: any) {
       toast.error('Failed to export data');

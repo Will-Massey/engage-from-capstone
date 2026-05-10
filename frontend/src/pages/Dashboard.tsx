@@ -294,7 +294,7 @@ const Dashboard = () => {
 
       {/* MTD ITSA Alert */}
       {stats.mtditsaClients > 0 && (
-        <div className="relative overflow-hidden rounded-xl bg-gradient-to-r from-orange-500 to-red-500 p-6 text-white shadow-lg">
+        <div className="relative overflow-hidden rounded-xl bg-gradient-to-r from-blue-500 to-indigo-500 p-6 text-white shadow-lg">
           <div className="absolute top-0 right-0 -mt-4 -mr-4 w-24 h-24 bg-white/10 rounded-full blur-2xl"></div>
           <div className="absolute bottom-0 left-0 -mb-4 -ml-4 w-32 h-32 bg-white/10 rounded-full blur-2xl"></div>
           <div className="relative flex items-start">
@@ -302,14 +302,14 @@ const Dashboard = () => {
               <ClockIcon className="h-6 w-6" />
             </div>
             <div className="ml-4">
-              <h3 className="text-lg font-semibold">MTD ITSA Deadline: April 2026</h3>
-              <p className="mt-1 text-orange-100">
-                You have <strong>{stats.mtditsaClients} clients</strong> who need to be ready for
-                Making Tax Digital by April 2026. Review your clients and ensure they're prepared.
+              <h3 className="text-lg font-semibold">MTD ITSA Compliance</h3>
+              <p className="mt-1 text-blue-100">
+                You have <strong>{stats.mtditsaClients} clients</strong> who need to maintain
+                Making Tax Digital compliance. Review your clients and ensure they're up to date.
               </p>
               <Link
                 to="/clients"
-                className="mt-3 inline-flex items-center text-sm font-medium text-white hover:text-orange-100"
+                className="mt-3 inline-flex items-center text-sm font-medium text-white hover:text-blue-100"
               >
                 Review clients
                 <ArrowTrendingUpIcon className="ml-1 h-4 w-4" />

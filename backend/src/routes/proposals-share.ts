@@ -27,6 +27,7 @@ import {
   getClientProposalsForPortal,
 } from '../services/proposalSharingService.js';
 import { createEmailService } from '../services/emailService.js';
+import PDFGenerator from '../services/pdfGenerator.js';
 import logger from '../config/logger.js';
 
 const router = Router();
@@ -210,8 +211,7 @@ router.post(
     // Generate PDF if needed
     let pdfAttachment: Buffer | undefined;
     if (includePdf) {
-      // TODO: Generate PDF - for now we'll skip attachment
-      // pdfAttachment = await generateProposalPdf(proposal);
+      pdfAttachment = await PDFGenerator.generateProposal(id);
     }
 
     // Send email
@@ -622,15 +622,15 @@ router.get(
       throw new ApiError('PROPOSAL_NOT_FOUND', 'Proposal not found or link expired', 404);
     }
 
-    // TODO: Generate and return PDF
-    // For now, return a placeholder response
-    res.json({
-      success: false,
-      error: {
-        code: 'PDF_GENERATION_PENDING',
-        message: 'PDF generation is being implemented',
-      },
-    });
+    // Generate and return PDF
+    const pdfBuffer = await PDFGenerator.generateProposal(proposal.id);
+
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader(
+      'Content-Disposition',
+      `attachment; filename="proposal-${proposal.reference}.pdf"`
+    );
+    res.send(pdfBuffer);
   })
 );
 
