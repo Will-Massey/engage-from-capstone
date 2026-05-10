@@ -143,7 +143,6 @@ router.get(
   '/subscription',
   authenticate,
   asyncHandler(async (req, res) => {
-    checkStripe();
     const tenantId = req.tenantId!;
 
     const tenant = await prisma.tenant.findUnique({
@@ -167,8 +166,22 @@ router.get(
       });
     }
 
+    // If Stripe is not configured, return cached DB state
+    if (!stripe) {
+      return res.json({
+        success: true,
+        data: {
+          hasSubscription: true,
+          tier: tenant.subscriptionTier,
+          status: tenant.subscriptionStatus,
+          currentPeriodEnd: null,
+          cancelAtPeriodEnd: false,
+        },
+      });
+    }
+
     // Get subscription details from Stripe
-    const subscription = (await stripe!.subscriptions.retrieve(tenant.stripeSubscriptionId)) as any;
+    const subscription = (await stripe.subscriptions.retrieve(tenant.stripeSubscriptionId)) as any;
 
     res.json({
       success: true,
