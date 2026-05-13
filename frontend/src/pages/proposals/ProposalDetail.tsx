@@ -654,10 +654,13 @@ const ProposalDetail = () => {
                   {proposal.coverLetter}
                 </div>
               ) : (
-                <p className="text-sm text-slate-600 dark:text-slate-400">
-                  No cover letter yet. Click <strong className="text-slate-800 dark:text-slate-200">Edit</strong>{' '}
-                  to add one, or open the proposal builder next time to start from the full default.
-                </p>
+                <div className="prose prose-sm dark:prose-invert max-w-none text-slate-700 dark:text-slate-300 whitespace-pre-wrap">
+                  {generateDefaultCoverLetter({
+                    addresseeName: (proposal.client?.contactName?.trim() || proposal.client?.name || 'Client').trim(),
+                    practiceName: tenant?.name || 'Our practice',
+                    clientBusinessName: proposal.client?.name || undefined,
+                  })}
+                </div>
               )}
             </div>
           )}

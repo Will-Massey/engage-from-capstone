@@ -441,7 +441,9 @@ ${proposal.tenant.name}`;
         name.includes('self assessment') ||
         name.includes('self-assessment') ||
         name.includes('p11d') ||
-        name.includes('audit services')
+        name.includes('audit services') ||
+        name.includes('aml check') ||
+        name.includes('anti-money laundering')
       ) {
         return 'ANNUALLY';
       }
@@ -451,8 +453,6 @@ ${proposal.tenant.name}`;
         name.includes('prior year') ||
         name.includes('prior accounts') ||
         name.includes('company formation') ||
-        name.includes('aml check') ||
-        name.includes('anti-money laundering') ||
         name.includes('dext setup') ||
         name.includes('dext subscription') ||
         name.includes('company valuation') ||

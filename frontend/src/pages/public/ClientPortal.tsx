@@ -208,15 +208,15 @@ export default function ClientPortal() {
 
     const loadPortal = async () => {
       try {
-        const response = await apiClient.get(`/proposals/portal/${token}`);
-        if (response.data.success) {
-          setPortalData(response.data.data);
+        const response = (await apiClient.get(`/proposals/portal/${token}`)) as any;
+        if (response.success) {
+          setPortalData(response.data);
         } else {
           setError('Failed to load portal');
         }
       } catch (err: any) {
-        setError(err.response?.data?.error?.message || 'Portal link not found or expired');
-        toast.error('Portal link not found or expired');
+        setError(err.message || 'Portal link not found or expired');
+        toast.error(err.message || 'Portal link not found or expired');
       } finally {
         setIsLoading(false);
       }

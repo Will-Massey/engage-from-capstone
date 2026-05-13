@@ -35,7 +35,25 @@ async function main() {
   });
 
   if (existingCount > 0) {
-    console.log(`✅ Tenant already has ${existingCount} services. Skipping seed to preserve data.`);
+    console.log(`✅ Tenant already has ${existingCount} services. Updating prices & frequencies...`);
+
+    // Update existing services when prices/frequencies have changed
+    const updates = [
+      { name: 'Limited Company Formation', basePrice: 150, priceAmount: 150 },
+      { name: 'Anti-Money Laundering (AML) Check', basePrice: 75, priceAmount: 75, billingCycle: 'ANNUALLY', defaultFrequency: 'ANNUALLY', frequencyOptions: 'ANNUALLY' },
+      { name: 'Xero Setup & Integration', basePrice: 450, priceAmount: 450 },
+    ];
+
+    for (const u of updates) {
+      const existing = await prisma.serviceTemplate.findFirst({
+        where: { name: u.name, tenantId: tenant.id },
+      });
+      if (existing) {
+        const data = Object.fromEntries(Object.entries(u).filter(([k]) => k !== 'name'));
+        await prisma.serviceTemplate.update({ where: { id: existing.id }, data });
+        console.log(`✅ Updated ${u.name}:`, data);
+      }
+    }
     return;
   }
 
@@ -157,7 +175,7 @@ We also advise on when a company ceases to be dormant, the requirement to file f
 Our service includes: name availability check and reservation, preparation of the Memorandum and Articles of Association, completion of the IN01 form, appointment of directors and shareholders, issue of share certificates, registration for Corporation Tax with HMRC, and guidance on opening a business bank account. 
 
 We also provide advice on share structure, director responsibilities, and whether your company should be limited by shares or by guarantee.`,
-      basePrice: 125,
+      basePrice: 150,
       baseHours: 1,
       pricingModel: 'FIXED',
       frequencyOptions: 'ONE_TIME',
@@ -181,8 +199,8 @@ We provide you with a documented risk assessment and ongoing monitoring recommen
       basePrice: 75,
       baseHours: 0.5,
       pricingModel: 'FIXED',
-      frequencyOptions: 'ONE_TIME',
-      defaultFrequency: 'ONE_TIME',
+      frequencyOptions: 'ANNUALLY',
+      defaultFrequency: 'ANNUALLY',
       applicableEntityTypes: 'LIMITED_COMPANY,SOLE_TRADER,PARTNERSHIP,LLP',
       tags: 'aml,compliance,dued diligence,kyc,pep-check',
       regulatoryNotes:
@@ -399,7 +417,7 @@ We work with leading cloud accounting software including Xero, QuickBooks, Sage,
 Our service includes: company and user setup, bespoke chart of accounts configuration, bank feed connections and reconciliations, VAT scheme and MTD setup, invoice and quote branding, payroll and pension integration, apps and add-on integration (e.g., Dext, Stripe, GoCardless), and one-to-one staff training. 
 
 We ensure your Xero file is compliant with UK VAT and MTD requirements and provide ongoing support as your business grows.`,
-      basePrice: 650,
+      basePrice: 450,
       baseHours: 5,
       pricingModel: 'FIXED',
       frequencyOptions: 'ONE_TIME',
