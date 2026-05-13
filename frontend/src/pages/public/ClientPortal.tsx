@@ -12,6 +12,7 @@ import {
   ArrowRightIcon,
   BuildingOfficeIcon,
   EnvelopeIcon,
+  ExclamationCircleIcon,
 } from '@heroicons/react/24/outline';
 
 interface PortalProposal {

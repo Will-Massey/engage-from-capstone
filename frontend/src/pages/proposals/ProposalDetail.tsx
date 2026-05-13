@@ -262,22 +262,38 @@ const ProposalDetail = () => {
     if (!proposal?.clientId) return;
     try {
       setCopyingPortalLink(true);
-      const response = (await apiClient.post(`/proposals/portal/${proposal.clientId}`, {
-        expiryDays: 90,
-      })) as any;
-      if (response.success && response.data?.portalUrl) {
-        setPortalLink(response.data.portalUrl);
-        const ok = await copyTextToClipboard(response.data.portalUrl);
-        if (ok) {
-          toast.success('Client portal link copied (valid 90 days)');
-        } else {
-          toast.error('Copy manually: ' + response.data.portalUrl, { duration: 10000 });
-        }
+
+      // If client already has a valid portal token, use it directly (no API call needed)
+      const client = proposal.client as any;
+      const existingToken = client?.portalToken;
+      const expiry = client?.portalTokenExpiry ? new Date(client.portalTokenExpiry) : null;
+      const isTokenValid = existingToken && expiry && expiry.getTime() > Date.now();
+
+      let portalUrl: string;
+      if (isTokenValid) {
+        portalUrl = `${window.location.origin}/portal/${existingToken}`;
       } else {
-        toast.error('Failed to generate portal link');
+        const response = (await apiClient.post(`/proposals/portal/${proposal.clientId}`, {
+          expiryDays: 90,
+        })) as any;
+        if (response.success && response.data?.portalUrl) {
+          portalUrl = response.data.portalUrl;
+          setPortalLink(portalUrl);
+        } else {
+          toast.error('Failed to generate portal link');
+          return;
+        }
       }
-    } catch {
-      toast.error('Failed to generate portal link');
+
+      const ok = await copyTextToClipboard(portalUrl);
+      if (ok) {
+        toast.success('Client portal link copied (valid 90 days)');
+      } else {
+        toast.error('Copy manually: ' + portalUrl, { duration: 10000 });
+      }
+    } catch (err: any) {
+      console.error('[Portal Link] Error:', err);
+      toast.error(err?.message || 'Failed to generate portal link');
     } finally {
       setCopyingPortalLink(false);
     }
