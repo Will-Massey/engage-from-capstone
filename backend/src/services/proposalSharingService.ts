@@ -235,7 +235,7 @@ export async function recordElectronicSignature(
       },
     });
 
-    // Update proposal status
+    // Update proposal status and signature
     await prisma.proposal.update({
       where: { id: data.proposalId },
       data: {
@@ -243,6 +243,8 @@ export async function recordElectronicSignature(
         acceptedAt: new Date(),
         acceptedBy: data.signedBy,
         acceptedByIp: data.ipAddress,
+        signatoryPosition: data.signedByRole,
+        signature: data.signatureData,
         termsAccepted: true,
         termsAcceptedAt: new Date(),
       },
