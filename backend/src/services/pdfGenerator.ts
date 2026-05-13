@@ -29,6 +29,7 @@ interface ProposalData {
     companyType: string;
     contactEmail: string;
     contactPhone?: string;
+    contactName?: string;
     address?: any;
     companyNumber?: string;
     vatNumber?: string;
@@ -77,7 +78,18 @@ export class PDFGenerator {
     const proposal = (await prisma.proposal.findUnique({
       where: { id: proposalId },
       include: {
-        client: true,
+        client: {
+          select: {
+            name: true,
+            companyType: true,
+            contactEmail: true,
+            contactPhone: true,
+            contactName: true,
+            address: true,
+            companyNumber: true,
+            vatNumber: true,
+          },
+        },
         createdBy: {
           select: { firstName: true, lastName: true, email: true },
         },
@@ -117,10 +129,8 @@ export class PDFGenerator {
         this.drawClientInfo(doc, proposal);
 
         // ========== COVER LETTER ==========
-        if (proposal.coverLetter) {
-          doc.addPage();
-          this.drawCoverLetter(doc, proposal);
-        }
+        doc.addPage();
+        this.drawCoverLetter(doc, proposal);
 
         // ========== SERVICES ==========
         doc.addPage();
@@ -266,8 +276,12 @@ export class PDFGenerator {
 
     // Default introduction template if no custom cover letter
     if (!proposal.coverLetter || proposal.coverLetter.trim().length < 50) {
+      // Use director's first name if available, otherwise fall back to business name
+      const directorFirstName = proposal.client.contactName
+        ? proposal.client.contactName.split(' ')[0]
+        : proposal.client.name;
       // Use default template
-      const defaultIntro = `Dear ${proposal.client.name},
+      const defaultIntro = `Dear ${directorFirstName},
 
 Thank you for considering ${proposal.tenant.name} for your accounting and business advisory needs. We appreciate the opportunity to present this proposal outlining our services and how we can support your business.
 
@@ -416,7 +430,7 @@ ${proposal.tenant.name}`;
     // Determine effective frequency using name-based overrides for known services
     const getEffectiveFrequency = (s: (typeof proposal.services)[0]): string => {
       const name = s.name.toLowerCase();
-      // Annual services
+      // Annual services — year-end compliance and filings
       if (
         name.includes('annual accounts') ||
         name.includes('ct600') ||
@@ -426,11 +440,12 @@ ${proposal.tenant.name}`;
         name.includes('dormant accounts') ||
         name.includes('self assessment') ||
         name.includes('self-assessment') ||
-        name.includes('p11d')
+        name.includes('p11d') ||
+        name.includes('audit services')
       ) {
         return 'ANNUALLY';
       }
-      // One-off services
+      // One-off services — project-based or setup work
       if (
         name.includes('xero setup') ||
         name.includes('prior year') ||
@@ -439,7 +454,21 @@ ${proposal.tenant.name}`;
         name.includes('aml check') ||
         name.includes('anti-money laundering') ||
         name.includes('dext setup') ||
-        name.includes('dext subscription')
+        name.includes('dext subscription') ||
+        name.includes('company valuation') ||
+        name.includes('due diligence') ||
+        name.includes('forensic accounting') ||
+        name.includes('insolvency') ||
+        name.includes('international tax') ||
+        name.includes('mtd itsa transition') ||
+        name.includes('mtd itsa support') ||
+        name.includes('property tax advisory') ||
+        name.includes('r&d tax credit') ||
+        name.includes('share scheme') ||
+        name.includes('tax planning consultation') ||
+        name.includes('business structure review') ||
+        name.includes('capital allowances') ||
+        name.includes('cash flow forecasting')
       ) {
         return 'ONE_TIME';
       }
