@@ -1,50 +1,18 @@
-import { Request, Response, NextFunction } from 'express';
-import { prisma } from '../config/database.js';
-import logger from '../config/logger.js';
+/**
+ * @deprecated Use `./tenant.js` — re-exported for backward compatibility.
+ */
+export {
+  extractTenant,
+  tenantHeader,
+  validateTenantMembership,
+  parseSubdomainFromHost,
+  resolveTenantForRequest,
+} from './tenant.js';
 
-// Simple tenant extraction - always use 'demo' for Render
-export const extractTenant = async (
-  req: Request,
-  res: Response,
-  next: NextFunction
-): Promise<void> => {
-  try {
-    // For Render deployment, always use demo tenant
-    // Try demo-practice first (older seeds), then demo (newer seeds)
-    let tenant = await prisma.tenant.findFirst({
-      where: {
-        subdomain: 'demo-practice',
-      },
-    });
+import {
+  extractTenant,
+  tenantHeader,
+  validateTenantMembership,
+} from './tenant.js';
 
-    if (!tenant) {
-      tenant = await prisma.tenant.findFirst({
-        where: {
-          subdomain: 'demo',
-        },
-      });
-    }
-
-    if (tenant) {
-      req.tenantId = tenant.id;
-      (req as any).tenant = tenant;
-      logger.debug(`Tenant extracted: ${tenant.subdomain} (${tenant.id}) for path: ${req.path}`);
-      next();
-    } else {
-      logger.error(`No tenant found for request: ${req.path}`);
-      res.status(503).json({
-        success: false,
-        error: {
-          code: 'TENANT_NOT_CONFIGURED',
-          message: 'Application not properly configured. Please contact support.',
-        },
-      });
-    }
-  } catch (error) {
-    logger.error('Tenant extraction error:', error);
-    // Continue without tenant
-    next();
-  }
-};
-
-export default { extractTenant };
+export default { extractTenant, tenantHeader, validateTenantMembership };

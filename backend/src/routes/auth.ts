@@ -10,6 +10,7 @@ import {
   generateCsrfToken,
 } from '../middleware/auth.js';
 import { asyncHandler, ApiError } from '../middleware/errorHandler.js';
+import logger from '../config/logger.js';
 // import { twoFactorService } from '../services/twoFactorService.js';
 // import { passwordResetService } from '../services/passwordResetService.js';
 import { gdprService } from '../services/gdprService.js';
@@ -45,6 +46,8 @@ router.post(
   asyncHandler(async (req, res) => {
     const { email, password, tenantId } = loginSchema.parse(req.body);
 
+    logger.info(`Login attempt for: ${email}`, { tenantId, hasReqTenantId: !!req.tenantId });
+
     // Determine tenant ID from subdomain, body, or look up user by email
     let resolvedTenantId = tenantId || req.tenantId;
 
@@ -64,6 +67,7 @@ router.post(
     }
 
     if (!resolvedTenantId) {
+      logger.warn(`Login failed: No tenant ID for ${email}`);
       throw new ApiError('NO_TENANT', 'Tenant identifier is required', 400);
     }
 
@@ -80,6 +84,7 @@ router.post(
     });
 
     if (!user) {
+      logger.warn(`Login failed: User not found - ${email} in tenant ${resolvedTenantId}`);
       throw new ApiError('INVALID_CREDENTIALS', 'Invalid email or password', 401);
     }
 
@@ -87,8 +92,11 @@ router.post(
     const isValidPassword = await bcrypt.compare(password, user.passwordHash);
 
     if (!isValidPassword) {
+      logger.warn(`Login failed: Invalid password for ${email}`);
       throw new ApiError('INVALID_CREDENTIALS', 'Invalid email or password', 401);
     }
+
+    logger.info(`Login successful: ${email} (${user.id})`);
 
     // Update last login
     await prisma.user.update({

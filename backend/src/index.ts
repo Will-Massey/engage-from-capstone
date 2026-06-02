@@ -878,38 +878,40 @@ function scheduleRenewalReminders() {
   logger.info('✅ Renewal reminder job scheduled (every 24 hours)');
 }
 
-// Start server immediately - don't block on migrations
-app.listen(PORT, () => {
-  logger.info(`🚀 Engage by Capstone API running on port ${PORT}`);
-  logger.info(`📊 Environment: ${process.env.NODE_ENV || 'development'}`);
-  logger.info(`🔗 API URL: http://localhost:${PORT}`);
-  logger.info(`🔧 Admin endpoints available at /api/admin (requires ADMIN_SECRET_KEY)`);
+// Start server (skipped in Jest so supertest can import the app)
+const shouldStartServer =
+  process.env.NODE_ENV !== 'test' && !process.env.JEST_WORKER_ID;
 
-  // Schedule background jobs
-  scheduleRenewalReminders();
+if (shouldStartServer) {
+  app.listen(PORT, () => {
+    logger.info(`🚀 Engage by Capstone API running on port ${PORT}`);
+    logger.info(`📊 Environment: ${process.env.NODE_ENV || 'development'}`);
+    logger.info(`🔗 API URL: http://localhost:${PORT}`);
+    logger.info(`🔧 Admin endpoints available at /api/admin (requires ADMIN_SECRET_KEY)`);
 
-  // Run auto-migration in background after server starts
-  if (autoMigrateOnStartup) {
-    setTimeout(() => {
-      autoMigrateOnStartup().catch((err: any) => {
-        logger.error('Auto-migration failed:', err);
-      });
-    }, 5000);
-  }
-});
+    scheduleRenewalReminders();
 
-// Handle graceful shutdown
-process.on('SIGTERM', async () => {
-  logger.info('SIGTERM received, shutting down gracefully');
-  await cache.disconnect();
-  process.exit(0);
-});
+    if (autoMigrateOnStartup) {
+      setTimeout(() => {
+        autoMigrateOnStartup().catch((err: any) => {
+          logger.error('Auto-migration failed:', err);
+        });
+      }, 5000);
+    }
+  });
 
-process.on('SIGINT', async () => {
-  logger.info('SIGINT received, shutting down gracefully');
-  await cache.disconnect();
-  process.exit(0);
-});
+  process.on('SIGTERM', async () => {
+    logger.info('SIGTERM received, shutting down gracefully');
+    await cache.disconnect();
+    process.exit(0);
+  });
+
+  process.on('SIGINT', async () => {
+    logger.info('SIGINT received, shutting down gracefully');
+    await cache.disconnect();
+    process.exit(0);
+  });
+}
 
 export default app;
 // Deploy trigger: Fri Apr 10 15:47:18 BST 2026
