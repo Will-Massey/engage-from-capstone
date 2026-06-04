@@ -57,13 +57,29 @@ const Header = ({ onMenuClick }: HeaderProps) => {
 
         {/* Right side */}
         <div className="flex items-center space-x-2 sm:space-x-4">
-          {/* Search - hidden on mobile */}
+          <button
+            type="button"
+            onClick={openCommandPalette}
+            className="md:hidden p-2 text-slate-500 dark:text-slate-400 rounded-xl hover:bg-slate-100/80 dark:hover:bg-slate-800/80 transition-colors"
+            aria-label="Search and jump to"
+          >
+            <MagnifyingGlassIcon className="w-6 h-6" />
+          </button>
+
           <div className="hidden md:flex items-center">
             <div className="relative">
               <div className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
                 <MagnifyingGlassIcon className="w-4 h-4 text-slate-400" />
               </div>
-              <input type="text" placeholder="Search..." className="search-input w-64" />
+              <input
+                type="text"
+                placeholder="Search or jump to…"
+                className="search-input w-64 cursor-pointer"
+                readOnly
+                onFocus={openCommandPalette}
+                onClick={openCommandPalette}
+                aria-label="Open command palette"
+              />
             </div>
           </div>
 

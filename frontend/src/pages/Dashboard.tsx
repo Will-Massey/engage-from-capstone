@@ -17,6 +17,7 @@ import {
 } from '@heroicons/react/24/outline';
 import { apiClient } from '../utils/api';
 import { useAuthStore } from '../stores/authStore';
+import QuickStart from '../components/dashboard/QuickStart';
 
 const RevenueAndPieCharts = lazy(() =>
   import('./DashboardRecharts').then((m) => ({ default: m.RevenueAndPieCharts }))
@@ -251,6 +252,8 @@ const Dashboard = () => {
           </Link>
         </div>
       </div>
+
+      <QuickStart />
 
       {/* Quick Stats - Glassmorphism Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">

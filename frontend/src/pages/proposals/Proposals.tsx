@@ -203,14 +203,7 @@ const Proposals = () => {
 
   return (
     <div className="space-y-6 animate-fade-in">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100">Proposals</h1>
-          <p className="mt-1 text-sm text-slate-600 dark:text-slate-400">
-            Manage your client proposals and track their status
-          </p>
-        </div>
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-end gap-4 -mt-2">
         <Link to="/proposals/new" className="btn-primary">
           <PlusIcon className="h-5 w-5 mr-2" />
           Create Proposal
