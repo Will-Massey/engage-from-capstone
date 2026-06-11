@@ -52,6 +52,8 @@ services:
         value: '10485760'
       - key: UPLOAD_DIR
         value: uploads
+      - key: UPLOADS_DIR
+        value: /var/data/uploads
       - key: COMPANIES_HOUSE_API_KEY
         sync: false
       - key: STRIPE_PUBLISHABLE_KEY

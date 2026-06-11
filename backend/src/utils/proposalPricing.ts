@@ -1,0 +1,132 @@
+/**
+ * Shared proposal line-item pricing — single source of truth via pricingEngine_v2.
+ */
+import { PricingFrequency } from '@prisma/client';
+import { calculateLineItem } from '../services/pricingEngine_v2.js';
+
+export const VALID_BILLING_FREQUENCIES = [
+  'ONE_TIME',
+  'WEEKLY',
+  'MONTHLY',
+  'QUARTERLY',
+  'ANNUALLY',
+] as const;
+
+export type BillingFrequency = (typeof VALID_BILLING_FREQUENCIES)[number];
+
+export interface ProposalServiceInput {
+  serviceId: string;
+  quantity?: number;
+  discountPercent?: number;
+  displayPrice?: number;
+  billingFrequency?: string;
+  frequency?: string;
+  vatRate?: number;
+  oneOffDueDate?: string | null;
+}
+
+export interface ServiceTemplateInfo {
+  id: string;
+  name: string;
+  description?: string | null;
+  priceAmount?: number | null;
+  basePrice?: number | null;
+  billingCycle?: string | null;
+}
+
+export function resolveBillingFrequency(
+  svc: ProposalServiceInput,
+  template?: ServiceTemplateInfo
+): BillingFrequency {
+  let billingFrequency =
+    svc.billingFrequency || svc.frequency || template?.billingCycle || 'MONTHLY';
+  if (!VALID_BILLING_FREQUENCIES.includes(billingFrequency as BillingFrequency)) {
+    billingFrequency = 'MONTHLY';
+  }
+  return billingFrequency as BillingFrequency;
+}
+
+export function billingFrequencyToDisplayMode(billingFrequency: string): string {
+  switch (billingFrequency) {
+    case 'QUARTERLY':
+      return 'PER_QUARTER';
+    case 'ANNUALLY':
+      return 'PER_YEAR';
+    case 'ONE_TIME':
+      return 'ONE_TIME';
+    case 'WEEKLY':
+    case 'MONTHLY':
+    default:
+      return 'PER_MONTH';
+  }
+}
+
+export interface BuiltProposalService {
+  name: string;
+  description?: string | null;
+  displayPrice: number;
+  billingFrequency: string;
+  priceDisplayMode: string;
+  annualEquivalent: number;
+  quantity: number;
+  lineTotal: number;
+  unitPrice: number;
+  discountPercent: number;
+  frequency: string;
+  vatRate: number;
+  vatAmount: number;
+  grossTotal: number;
+  oneOffDueDate: Date | null;
+  serviceTemplateId: string;
+}
+
+export function buildProposalServiceRecord(
+  svc: ProposalServiceInput,
+  template: ServiceTemplateInfo | undefined,
+  parseOneOffDueDate: (billingFrequency: string, raw: unknown) => Date | null
+): BuiltProposalService {
+  const displayPrice =
+    svc.displayPrice !== undefined && svc.displayPrice >= 0
+      ? svc.displayPrice
+      : template?.priceAmount || template?.basePrice || 0;
+
+  const billingFrequency = resolveBillingFrequency(svc, template);
+  const quantity = svc.quantity || 1;
+  const discountPercent = svc.discountPercent || 0;
+  const vatRate = svc.vatRate !== undefined ? svc.vatRate : 20;
+
+  const line = calculateLineItem({
+    basePrice: displayPrice,
+    billingFrequency: billingFrequency as PricingFrequency,
+    quantity,
+    discountPercent,
+    vatRate,
+  });
+
+  return {
+    name: template?.name || 'Service',
+    description: template?.description,
+    displayPrice: line.displayPrice,
+    billingFrequency,
+    priceDisplayMode: billingFrequencyToDisplayMode(billingFrequency),
+    annualEquivalent: line.annualEquivalent,
+    quantity: line.quantity,
+    lineTotal: line.netTotal,
+    unitPrice: line.displayPrice,
+    discountPercent,
+    frequency: billingFrequency,
+    vatRate,
+    vatAmount: line.vatAmount,
+    grossTotal: line.grossTotal,
+    oneOffDueDate: parseOneOffDueDate(billingFrequency, svc.oneOffDueDate),
+    serviceTemplateId: svc.serviceId,
+  };
+}
+
+export function calculateHeaderTotals(services: BuiltProposalService[]) {
+  return {
+    subtotal: services.reduce((sum, s) => sum + s.lineTotal, 0),
+    vatAmount: services.reduce((sum, s) => sum + s.vatAmount, 0),
+    total: services.reduce((sum, s) => sum + s.grossTotal, 0),
+  };
+}

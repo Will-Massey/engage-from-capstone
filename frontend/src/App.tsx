@@ -16,6 +16,7 @@ import Dashboard from './pages/Dashboard';
 import Proposals from './pages/proposals/Proposals';
 import ProposalDetail from './pages/proposals/ProposalDetail';
 import CreateProposal from './pages/proposals/CreateProposal';
+import EditProposal from './pages/proposals/EditProposal';
 import Clients from './pages/clients/Clients';
 import ClientDetail from './pages/clients/ClientDetail';
 import CreateClient from './pages/clients/CreateClient';
@@ -164,6 +165,14 @@ const AnimatedRoutes = () => {
             element={
               <AnimatedPage>
                 <CreateProposal />
+              </AnimatedPage>
+            }
+          />
+          <Route
+            path="proposals/:id/edit"
+            element={
+              <AnimatedPage>
+                <EditProposal />
               </AnimatedPage>
             }
           />

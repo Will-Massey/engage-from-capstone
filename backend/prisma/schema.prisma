@@ -438,6 +438,7 @@ model ProposalSignature {
   id        String   @id @default(uuid())
   signedBy  String
   signedByRole String
+  signerEmail String?
   signatureData String? // Base64 encoded signature image (legacy)
   signatureFilePath String? // Path to PNG file (new)
   signedAt  DateTime @default(now())
@@ -445,6 +446,10 @@ model ProposalSignature {
   userAgent String?   // Browser/device fingerprint
   deviceInfo String?  // Device type, OS, screen size
   geoLocation String? // Approximate location from IP
+  documentHash String? // SHA-256 of proposal content at signing
+  termsHash String?    // SHA-256 of terms shown at signing
+  consentText String?  // Exact consent statement accepted
+  signatureType String @default("SIMPLE_ELECTRONIC")
   agreementVersion String
   agreementAccepted Boolean
 

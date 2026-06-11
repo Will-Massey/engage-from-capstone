@@ -4,10 +4,13 @@ import { ProposalStatus, PricingFrequency } from '@prisma/client';
 import { prisma } from '../config/database.js';
 import { authenticate, authorize } from '../middleware/auth.js';
 import { asyncHandler, ApiError } from '../middleware/errorHandler.js';
-import { PricingEngine } from '../services/pricingEngine.js';
 import { PDFGenerator } from '../services/pdfGenerator.js';
 import logger from '../config/logger.js';
 import { getProposalViewStats, createShareableLink } from '../services/proposalSharingService.js';
+import {
+  buildProposalServiceRecord,
+  calculateHeaderTotals,
+} from '../utils/proposalPricing.js';
 // generateReference helper function
 const generateReference = (prefix: string = 'PROP'): string => {
   const timestamp = Date.now().toString(36).toUpperCase();
@@ -197,6 +200,10 @@ router.get(
           },
         },
         documents: true,
+        signatures: {
+          orderBy: { signedAt: 'desc' },
+          take: 5,
+        },
         activityLogs: {
           include: {
             user: {
@@ -259,140 +266,13 @@ router.post(
       },
     });
 
-    // Prepare services with clear pricing (v2)
-    const validFrequencies = ['ONE_TIME', 'WEEKLY', 'MONTHLY', 'QUARTERLY', 'ANNUALLY'];
-
     const servicesWithClearPricing = data.services.map((svc: any) => {
       const template = serviceTemplates.find((t) => t.id === svc.serviceId);
-
-      // Get the display price - this is what the client sees
-      const displayPrice =
-        svc.displayPrice !== undefined && svc.displayPrice >= 0
-          ? svc.displayPrice
-          : template?.priceAmount || template?.basePrice || 0;
-
-      // Get billing frequency (frontend sends billingFrequency or frequency)
-      let billingFrequency = svc.billingFrequency || svc.frequency || template?.billingCycle || 'MONTHLY';
-      if (!validFrequencies.includes(billingFrequency)) {
-        logger.warn(
-          `Invalid frequency '${billingFrequency}' for service ${svc.serviceId}, defaulting to MONTHLY`
-        );
-        billingFrequency = 'MONTHLY';
-      }
-
-      // Determine price display mode
-      let priceDisplayMode = 'PER_MONTH';
-      switch (billingFrequency) {
-        case 'MONTHLY':
-          priceDisplayMode = 'PER_MONTH';
-          break;
-        case 'QUARTERLY':
-          priceDisplayMode = 'PER_QUARTER';
-          break;
-        case 'ANNUALLY':
-          priceDisplayMode = 'PER_YEAR';
-          break;
-        case 'ONE_TIME':
-          priceDisplayMode = 'ONE_TIME';
-          break;
-        case 'WEEKLY':
-          priceDisplayMode = 'PER_MONTH';
-          break;
-      }
-
-      // Calculate annual equivalent for comparison
-      let annualEquivalent = 0;
-      switch (billingFrequency) {
-        case 'MONTHLY':
-          annualEquivalent = displayPrice * 12;
-          break;
-        case 'QUARTERLY':
-          annualEquivalent = displayPrice * 4;
-          break;
-        case 'ANNUALLY':
-          annualEquivalent = displayPrice;
-          break;
-        case 'ONE_TIME':
-          annualEquivalent = 0;
-          break;
-        case 'WEEKLY':
-          annualEquivalent = displayPrice * 52;
-          break;
-      }
-
-      // Calculate totals
-      const quantity = svc.quantity || 1;
-      const discountPercent = svc.discountPercent || 0;
-      const lineTotal = displayPrice * quantity;
-      const discountAmount = lineTotal * (discountPercent / 100);
-      const netTotal = lineTotal - discountAmount;
-
-      // Calculate VAT
-      const vatRate = svc.vatRate !== undefined ? svc.vatRate : 20;
-      const vatAmount = Math.round(netTotal * (vatRate / 100) * 100) / 100;
-      const grossTotal = netTotal + vatAmount;
-
-      return {
-        name: template?.name || 'Service',
-        description: template?.description,
-        // New clear pricing fields
-        displayPrice,
-        billingFrequency,
-        priceDisplayMode: priceDisplayMode as any,
-        annualEquivalent,
-        // Calculations
-        quantity,
-        lineTotal,
-        unitPrice: displayPrice, // Legacy compatibility
-        discountPercent,
-        frequency: billingFrequency, // Legacy compatibility
-        // VAT
-        vatRate,
-        vatAmount,
-        grossTotal,
-        oneOffDueDate: parseOneOffDueDate(billingFrequency, svc.oneOffDueDate),
-        // Relations
-        serviceTemplateId: svc.serviceId,
-      };
+      return buildProposalServiceRecord(svc, template, parseOneOffDueDate);
     });
 
-    // Calculate proposal totals grouped by billing frequency
-    const calculateGroup = (items: any[]) => ({
-      subtotal: items.reduce((sum: number, svc: any) => sum + svc.lineTotal, 0),
-      vatAmount: items.reduce((sum: number, svc: any) => sum + svc.vatAmount, 0),
-      total: items.reduce((sum: number, svc: any) => sum + svc.grossTotal, 0),
-    });
-
-    const monthlyItems = servicesWithClearPricing.filter(
-      (s: any) => s.billingFrequency === 'MONTHLY'
-    );
-    const quarterlyItems = servicesWithClearPricing.filter(
-      (s: any) => s.billingFrequency === 'QUARTERLY'
-    );
-    const annualItems = servicesWithClearPricing.filter(
-      (s: any) => s.billingFrequency === 'ANNUALLY'
-    );
-    const oneTimeItems = servicesWithClearPricing.filter(
-      (s: any) => s.billingFrequency === 'ONE_TIME'
-    );
-    const weeklyItems = servicesWithClearPricing.filter(
-      (s: any) => s.billingFrequency === 'WEEKLY'
-    );
-
-    const monthly = calculateGroup(monthlyItems);
-    const quarterly = calculateGroup(quarterlyItems);
-    const annually = calculateGroup(annualItems);
-    const oneTime = calculateGroup(oneTimeItems);
-    const weekly = calculateGroup(weeklyItems);
-
-    const grandTotal =
-      monthly.total + quarterly.total + annually.total + oneTime.total + weekly.total;
-    const totalVat =
-      monthly.vatAmount +
-      quarterly.vatAmount +
-      annually.vatAmount +
-      oneTime.vatAmount +
-      weekly.vatAmount;
+    const { subtotal, vatAmount: totalVat, total: grandTotal } =
+      calculateHeaderTotals(servicesWithClearPricing);
 
     // Generate reference
     const reference = generateReference('PROP');
@@ -422,12 +302,7 @@ router.post(
         status: 'DRAFT',
         validUntil,
         contractStartDate,
-        subtotal:
-          monthly.subtotal +
-          quarterly.subtotal +
-          annually.subtotal +
-          oneTime.subtotal +
-          weekly.subtotal,
+        subtotal,
         discountType: data.discountType,
         discountValue: data.discountValue,
         discountAmount: 0, // Line-level discounts are already applied
@@ -506,23 +381,6 @@ router.put(
       throw new ApiError('INVALID_STATUS', 'Cannot modify an accepted proposal', 400);
     }
 
-    // Recalculate pricing if services changed
-    let pricing = null;
-    if (data.services) {
-      const pricingEngine = new PricingEngine(req.tenantId);
-      pricing = await pricingEngine.calculateProposalPricing(
-        data.services as { serviceId: string; quantity: number; discountPercent?: number }[],
-        {
-          turnover: existingProposal.client.turnover,
-          employeeCount: existingProposal.client.employeeCount,
-          region: (existingProposal.client.address as any)?.country,
-        },
-        data.discountType && data.discountValue
-          ? { type: data.discountType, value: data.discountValue }
-          : undefined
-      );
-    }
-
     // Update proposal
     const updateData: any = {
       title: data.title,
@@ -535,13 +393,6 @@ router.put(
       discountType: data.discountType,
       discountValue: data.discountValue,
     };
-
-    if (pricing) {
-      updateData.subtotal = pricing.subtotal;
-      updateData.discountAmount = pricing.globalDiscount;
-      // updateData.vatAmount = pricing.vatAmount; // Temporarily disabled
-      updateData.total = pricing.total;
-    }
 
     // Remove undefined values
     Object.keys(updateData).forEach((key) => {
@@ -581,116 +432,32 @@ router.put(
         },
       });
 
-      // Create new services with v2 pricing
-      const validFrequencies = ['ONE_TIME', 'WEEKLY', 'MONTHLY', 'QUARTERLY', 'ANNUALLY'];
-
-      const servicesToCreate = data.services.map((svc) => {
+      const built = data.services.map((svc) => {
         const template = serviceTemplates.find((t) => t.id === svc.serviceId);
-
-        // Get display price from input or template
-        const displayPrice =
-          svc.displayPrice !== undefined && svc.displayPrice > 0
-            ? svc.displayPrice
-            : template?.priceAmount || template?.basePrice || 0;
-
-        // Get billing frequency from input or template
-        let billingFrequency = svc.billingFrequency || template?.billingCycle || 'MONTHLY';
-        if (!validFrequencies.includes(billingFrequency)) {
-          billingFrequency = 'MONTHLY';
-        }
-
-        // Determine price display mode
-        let priceDisplayMode: any = 'PER_MONTH';
-        switch (billingFrequency) {
-          case 'MONTHLY':
-            priceDisplayMode = 'PER_MONTH';
-            break;
-          case 'QUARTERLY':
-            priceDisplayMode = 'PER_QUARTER';
-            break;
-          case 'ANNUALLY':
-            priceDisplayMode = 'PER_YEAR';
-            break;
-          case 'ONE_TIME':
-            priceDisplayMode = 'ONE_TIME';
-            break;
-          case 'WEEKLY':
-            priceDisplayMode = 'PER_MONTH';
-            break;
-        }
-
-        // Calculate annual equivalent
-        let annualEquivalent = 0;
-        switch (billingFrequency) {
-          case 'MONTHLY':
-            annualEquivalent = displayPrice * 12;
-            break;
-          case 'QUARTERLY':
-            annualEquivalent = displayPrice * 4;
-            break;
-          case 'ANNUALLY':
-            annualEquivalent = displayPrice;
-            break;
-          case 'ONE_TIME':
-            annualEquivalent = 0;
-            break;
-          case 'WEEKLY':
-            annualEquivalent = displayPrice * 52;
-            break;
-        }
-
-        // Calculate line totals
-        const quantity = svc.quantity || 1;
-        const discountPercent = svc.discountPercent || 0;
-        const lineTotal = displayPrice * quantity;
-        const discountAmount = lineTotal * (discountPercent / 100);
-        const netTotal = lineTotal - discountAmount;
-
-        // Calculate VAT
-        const vatRate = svc.vatRate !== undefined ? svc.vatRate : 20;
-        const vatAmount = Math.round(netTotal * (vatRate / 100) * 100) / 100;
-        const grossTotal = netTotal + vatAmount;
-
-        return {
-          proposalId: id,
-          name: template?.name || 'Service',
-          description: template?.description,
-          // v2 Clear Pricing fields
-          displayPrice,
-          billingFrequency,
-          priceDisplayMode,
-          annualEquivalent,
-          // Calculations
-          quantity,
-          lineTotal: netTotal,
-          unitPrice: displayPrice,
-          discountPercent,
-          frequency: billingFrequency,
-          // VAT
-          vatRate,
-          vatAmount,
-          grossTotal,
-          oneOffDueDate: parseOneOffDueDate(billingFrequency, (svc as any).oneOffDueDate),
-          // Relations
-          serviceTemplateId: svc.serviceId,
-        };
+        return buildProposalServiceRecord(
+          { ...svc, serviceId: svc.serviceId },
+          template,
+          parseOneOffDueDate
+        );
       });
+
+      const servicesToCreate = built.map((line) => ({
+        proposalId: id,
+        ...line,
+      }));
 
       await prisma.proposalService.createMany({
         data: servicesToCreate as any,
       });
 
-      // Recalculate proposal totals
-      const totalVat = servicesToCreate.reduce((sum, s) => sum + s.vatAmount, 0);
-      const grandTotal = servicesToCreate.reduce((sum, s) => sum + s.grossTotal, 0);
-      const subtotal = servicesToCreate.reduce((sum, s) => sum + s.lineTotal, 0);
+      const totals = calculateHeaderTotals(built);
 
       await prisma.proposal.update({
         where: { id },
         data: {
-          subtotal,
-          vatAmount: totalVat,
-          total: grandTotal,
+          subtotal: totals.subtotal,
+          vatAmount: totals.vatAmount,
+          total: totals.total,
         },
       });
     }
@@ -887,13 +654,11 @@ router.post(
   authenticate,
   asyncHandler(async (req, res) => {
     const { id } = req.params;
-    const { acceptedBy, signature, signatoryPosition } = req.body;
+    const { acceptedBy, signature, signatoryPosition, deviceInfo } = req.body;
 
     const proposal = await prisma.proposal.findFirst({
-      where: {
-        id,
-        tenantId: req.tenantId,
-      },
+      where: { id, tenantId: req.tenantId },
+      include: { services: true },
     });
 
     if (!proposal) {
@@ -904,28 +669,49 @@ router.post(
       throw new ApiError('INVALID_STATUS', 'Proposal must be sent before accepting', 400);
     }
 
-    // Update status
-    const updatedProposal = await prisma.proposal.update({
-      where: { id },
-      data: {
-        status: 'ACCEPTED',
-        acceptedAt: new Date(),
-        acceptedBy: acceptedBy || req.user?.firstName + ' ' + req.user?.lastName,
-        signature,
-        signatoryPosition,
-      },
+    const signerName =
+      acceptedBy || `${req.user?.firstName || ''} ${req.user?.lastName || ''}`.trim();
+
+    if (!signature || String(signature).length < 100) {
+      throw new ApiError('SIGNATURE_REQUIRED', 'Electronic signature is required', 400);
+    }
+
+    const { recordElectronicSignature } = await import('../services/proposalSharingService.js');
+    const {
+      AGREEMENT_VERSION,
+      DEFAULT_CONSENT_TEXT,
+      hashProposalDocument,
+      hashTerms,
+      lookupGeoFromIp,
+    } = await import('../utils/signatureAudit.js');
+
+    const ipAddress = req.ip || null;
+    const result = await recordElectronicSignature({
+      proposalId: proposal.id,
+      signedBy: signerName,
+      signedByRole: signatoryPosition || 'Authorised signatory',
+      signerEmail: req.user?.email || null,
+      signatureData: signature,
+      ipAddress,
+      userAgent: req.headers['user-agent'] || null,
+      deviceInfo: deviceInfo || null,
+      geoLocation: await lookupGeoFromIp(ipAddress),
+      documentHash: hashProposalDocument(proposal),
+      termsHash: hashTerms(proposal.terms),
+      consentText: DEFAULT_CONSENT_TEXT,
+      signatureType: 'SIMPLE_ELECTRONIC',
+      agreementVersion: AGREEMENT_VERSION,
+      tenantId: req.tenantId!,
+      userId: req.user!.id,
     });
 
-    // Log activity
-    await prisma.activityLog.create({
-      data: {
-        tenantId: req.tenantId,
-        userId: req.user!.id,
-        action: 'PROPOSAL_ACCEPTED',
-        entityType: 'PROPOSAL',
-        entityId: proposal.id,
-        description: `Proposal "${proposal.title}" was accepted`,
-      },
+    if (!result.success) {
+      throw new ApiError('SIGNATURE_FAILED', result.error || 'Failed to record signature', 500);
+    }
+
+    const updatedProposal = await prisma.proposal.findFirst({
+      where: { id, tenantId: req.tenantId },
+      include: { client: true, services: true },
     });
 
     res.json({

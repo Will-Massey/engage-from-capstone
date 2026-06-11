@@ -102,6 +102,7 @@ const ProposalDetail = () => {
     if (proposal && !editingCoverLetter) {
       setCoverLetterDraft(proposal.coverLetter || '');
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- sync draft when proposal id/cover letter changes
   }, [proposal?.id, proposal?.coverLetter, editingCoverLetter]);
 
   const loadCompanySettings = async () => {
@@ -117,11 +118,18 @@ const ProposalDetail = () => {
 
   const handleSignature = async (signature: string) => {
     setSignatureData(signature);
+    const deviceInfo = JSON.stringify({
+      platform: navigator.platform,
+      screen: `${window.screen.width}x${window.screen.height}`,
+      timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+      language: navigator.language,
+    });
     try {
       await apiClient.acceptProposal(id!, {
         signature,
         acceptedBy: signatoryName,
         signatoryPosition,
+        deviceInfo,
         acceptedAt: new Date().toISOString(),
       });
       toast.success('Proposal accepted with electronic signature');
@@ -263,27 +271,18 @@ const ProposalDetail = () => {
     try {
       setCopyingPortalLink(true);
 
-      // If client already has a valid portal token, use it directly (no API call needed)
-      const client = proposal.client as any;
-      const existingToken = client?.portalToken;
-      const expiry = client?.portalTokenExpiry ? new Date(client.portalTokenExpiry) : null;
-      const isTokenValid = existingToken && expiry && expiry.getTime() > Date.now();
+      const response = (await apiClient.post(`/proposals/portal/${proposal.clientId}`, {
+        expiryDays: 90,
+        frontendOrigin: window.location.origin,
+      })) as any;
 
-      let portalUrl: string;
-      if (isTokenValid) {
-        portalUrl = `${window.location.origin}/portal/${existingToken}`;
-      } else {
-        const response = (await apiClient.post(`/proposals/portal/${proposal.clientId}`, {
-          expiryDays: 90,
-        })) as any;
-        if (response.success && response.data?.portalUrl) {
-          portalUrl = response.data.portalUrl;
-          setPortalLink(portalUrl);
-        } else {
-          toast.error('Failed to generate portal link');
-          return;
-        }
+      if (!response.success || !response.data?.portalUrl) {
+        toast.error('Failed to generate portal link');
+        return;
       }
+
+      const portalUrl = response.data.portalUrl;
+      setPortalLink(portalUrl);
 
       const ok = await copyTextToClipboard(portalUrl);
       if (ok) {
@@ -781,10 +780,62 @@ const ProposalDetail = () => {
                 {proposal.acceptedAt && (
                   <p className="text-sm text-slate-800 dark:text-slate-200">
                     <span className="font-medium">Date:</span>{' '}
-                    {format(new Date(proposal.acceptedAt), 'dd MMMM yyyy')}
+                    {format(new Date(proposal.acceptedAt), 'dd MMMM yyyy HH:mm')}
                   </p>
                 )}
               </div>
+            </div>
+          )}
+
+          {proposal.signatures?.length > 0 && (
+            <div className="glass-tile p-6 print:break-inside-avoid">
+              <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-100 mb-4">
+                Signature audit
+              </h2>
+              {proposal.signatures.map((sig: any) => (
+                <dl key={sig.id} className="text-sm space-y-2 text-slate-800 dark:text-slate-200">
+                  <div className="flex justify-between gap-4">
+                    <dt className="text-slate-500 dark:text-slate-400">Type</dt>
+                    <dd>{sig.signatureType || 'SIMPLE_ELECTRONIC'}</dd>
+                  </div>
+                  {sig.signerEmail && (
+                    <div className="flex justify-between gap-4">
+                      <dt className="text-slate-500 dark:text-slate-400">Email</dt>
+                      <dd className="text-right break-all">{sig.signerEmail}</dd>
+                    </div>
+                  )}
+                  <div className="flex justify-between gap-4">
+                    <dt className="text-slate-500 dark:text-slate-400">Signed at (UTC)</dt>
+                    <dd>{format(new Date(sig.signedAt), 'dd MMM yyyy HH:mm:ss')}</dd>
+                  </div>
+                  {sig.ipAddress && (
+                    <div className="flex justify-between gap-4">
+                      <dt className="text-slate-500 dark:text-slate-400">IP address</dt>
+                      <dd className="font-mono text-xs">{sig.ipAddress}</dd>
+                    </div>
+                  )}
+                  {sig.geoLocation && (
+                    <div className="flex justify-between gap-4">
+                      <dt className="text-slate-500 dark:text-slate-400">Location</dt>
+                      <dd>{sig.geoLocation}</dd>
+                    </div>
+                  )}
+                  {sig.documentHash && (
+                    <div>
+                      <dt className="text-slate-500 dark:text-slate-400 mb-1">Document hash</dt>
+                      <dd className="font-mono text-xs break-all bg-slate-100 dark:bg-slate-900/50 p-2 rounded">
+                        {sig.documentHash}
+                      </dd>
+                    </div>
+                  )}
+                  {sig.consentText && (
+                    <div>
+                      <dt className="text-slate-500 dark:text-slate-400 mb-1">Consent</dt>
+                      <dd className="text-xs italic">{sig.consentText}</dd>
+                    </div>
+                  )}
+                </dl>
+              ))}
             </div>
           )}
 
@@ -936,6 +987,27 @@ const ProposalDetail = () => {
             </p>
             <p className="text-sm text-slate-600 dark:text-slate-400">{proposal.createdBy?.email}</p>
           </div>
+
+          {proposal.activityLogs?.length > 0 && (
+            <div className="glass-tile p-6">
+              <h2 className="text-sm font-semibold text-slate-900 dark:text-slate-100 mb-3">
+                Activity timeline
+              </h2>
+              <ul className="space-y-3 max-h-64 overflow-y-auto">
+                {proposal.activityLogs.map((log: any) => (
+                  <li key={log.id} className="text-sm border-l-2 border-primary-500/40 pl-3">
+                    <p className="text-slate-800 dark:text-slate-200">{log.description || log.action}</p>
+                    <p className="text-xs text-slate-500 dark:text-slate-400">
+                      {format(new Date(log.createdAt), 'dd MMM yyyy, HH:mm')}
+                      {log.user
+                        ? ` · ${log.user.firstName || ''} ${log.user.lastName || ''}`.trim()
+                        : ''}
+                    </p>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
 
           {/* Client opens (public link only) */}
           {proposal.status !== 'DRAFT' && (

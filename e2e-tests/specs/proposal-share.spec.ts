@@ -117,9 +117,14 @@ test.describe('Electronic Signature', () => {
     await publicPage.check('[data-testid="terms-checkbox"]');
     await publicPage.click('[data-testid="accept-proposal-button"]');
 
-    // Fill signature details
     await publicPage.fill('[data-testid="signer-name-input"]', 'John Smith');
     await publicPage.fill('[data-testid="signer-role-input"]', 'Director');
+    await publicPage.fill('[data-testid="signer-email-input"]', 'signature-test@example.com');
+    await publicPage.check('[data-testid="authorised-checkbox"]');
+
+    const signResponsePromise = publicPage.waitForResponse(
+      (resp: any) => resp.url().includes('/sign') && resp.request().method() === 'POST'
+    );
 
     // Draw signature on canvas
     const canvas = publicPage.locator('[data-testid="signature-canvas"]');
@@ -137,11 +142,20 @@ test.describe('Electronic Signature', () => {
     await publicPage.waitForTimeout(300);
     await publicPage.click('button:has-text("Confirm Signature")');
 
-    // Submit acceptance
     await publicPage.click('[data-testid="confirm-signature-button"]');
 
-    // Verify success
+    const signResponse = await signResponsePromise;
+    const signBody = await signResponse.json();
+    expect(signBody.success).toBe(true);
+    expect(signBody.data.signatureId).toBeTruthy();
+
     await expect(publicPage.locator('text=Proposal accepted successfully')).toBeVisible();
     await expect(publicPage.locator('text=Proposal Accepted').first()).toBeVisible();
+
+    await page.goto(`/proposals/${proposal.id}`);
+    await page.waitForLoadState('networkidle');
+    await expect(page.locator('text=Signature audit')).toBeVisible();
+    await expect(page.locator('text=SIMPLE_ELECTRONIC')).toBeVisible();
+    await expect(page.locator('text=signature-test@example.com')).toBeVisible();
   });
 });

@@ -2,7 +2,6 @@ import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { apiClient } from '../../utils/api';
 import { formatCurrency, formatDate } from '../../utils/formatters';
-import toast from 'react-hot-toast';
 import {
   DocumentTextIcon,
   CheckCircleIcon,
@@ -206,7 +205,7 @@ export default function ClientPortal() {
       return;
     }
 
-    const loadPortal = async () => {
+    const loadPortal = async (attempt = 0): Promise<void> => {
       try {
         const response = (await apiClient.get(`/proposals/portal/${token}`)) as any;
         if (response.success) {
@@ -214,10 +213,23 @@ export default function ClientPortal() {
         } else {
           setError('Failed to load portal');
         }
+        setIsLoading(false);
       } catch (err: any) {
-        setError(err.message || 'Portal link not found or expired');
-        toast.error(err.message || 'Portal link not found or expired');
-      } finally {
+        if (
+          attempt === 0 &&
+          (err?.code === 'NETWORK_ERROR' || err?.code === 'TIMEOUT')
+        ) {
+          await new Promise((r) => setTimeout(r, 2500));
+          return loadPortal(1);
+        }
+
+        if (err?.code === 'PORTAL_NOT_FOUND') {
+          setError(
+            'This portal link is invalid or has expired. Please ask your accountant to send a new portal link.'
+          );
+        } else {
+          setError(err?.message || 'Portal link not found or expired');
+        }
         setIsLoading(false);
       }
     };
