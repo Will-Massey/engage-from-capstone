@@ -11,10 +11,15 @@ import {
   ClockIcon,
   XMarkIcon,
   UserIcon,
+  CheckCircleIcon,
+  ArrowRightIcon,
+  SparklesIcon,
+  CalendarIcon,
 } from '@heroicons/react/24/outline';
 import { apiClient } from '../../utils/api';
 import { useAuthStore } from '../../stores/authStore';
-import { format } from 'date-fns';
+import { format, formatDistanceToNow } from 'date-fns';
+import { motion } from 'framer-motion';
 import toast from 'react-hot-toast';
 
 const ClientDetail = () => {
@@ -672,20 +677,30 @@ const STAGE_COLORS: Record<string, string> = {
 
 function LifecyclePanel({ client, onRefresh }: { client: any; onRefresh: () => void }) {
   const [busy, setBusy] = useState<string | null>(null);
+  const [upcoming, setUpcoming] = useState<any[]>([]);
   const stage = client.lifecycleStage || 'PROPOSAL_ACCEPTED';
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const res = await apiClient.getClientTouchpoints(client.id);
+        setUpcoming((res as any).data || []);
+      } catch {}
+    })();
+  }, [client.id]);
 
   const handleAction = async (action: string) => {
     setBusy(action);
     try {
       if (action === 'aml') {
         await apiClient.markAmlComplete(client.id);
-        toast.success('AML marked complete — touchpoints updated');
+        toast.success('AML complete — next touchpoints scheduled');
       } else if (action === 'info') {
         await apiClient.markInfoReceived(client.id);
-        toast.success('Information marked as received');
+        toast.success('Information received — workflow advancing');
       } else if (action === 'deadlines') {
         await apiClient.scheduleDeadlineReminders(client.id);
-        toast.success('Deadline reminders scheduled');
+        toast.success('Deadline reminders queued');
       }
       onRefresh();
     } catch (e) {
@@ -695,63 +710,123 @@ function LifecyclePanel({ client, onRefresh }: { client: any; onRefresh: () => v
     }
   };
 
+  // Beautiful grouped journey for intuitiveness (main phases)
+  const journeySteps = [
+    { key: 'PROPOSAL', label: 'Proposal', stages: ['PROPOSAL_ACCEPTED'] },
+    { key: 'AML', label: 'AML & ID', stages: ['AML_PENDING', 'AML_COMPLETE'] },
+    { key: 'ENGAGEMENT', label: 'Engagement', stages: ['ENGAGEMENT_LETTER_SENT', 'ENGAGEMENT_LETTER_SIGNED'] },
+    { key: 'INFO', label: 'Info Gathering', stages: ['INFO_REQUESTED', 'INFO_RECEIVED'] },
+    { key: 'ONBOARD', label: 'Onboard & Kickoff', stages: ['ONBOARDING_SETUP', 'KICKOFF_SENT'] },
+    { key: 'LIVE', label: 'Live & Review', stages: ['MILESTONE_CHECK_IN', 'ONGOING', 'SATISFACTION_CHECK', 'ANNUAL_REVIEW'] },
+  ];
+
+  const currentStepIndex = journeySteps.findIndex((s) => s.stages.some((st) => stage.includes(st.split('_')[0]) || stage === st));
+
+  const guidance: Record<string, string> = {
+    PROPOSAL_ACCEPTED: 'Welcome sent. Next: complete AML verification to unlock engagement letter.',
+    AML_PENDING: 'Ask the client for ID docs. Use the button below when verified.',
+    AML_COMPLETE: 'Great — engagement letter is being prepared.',
+    ENGAGEMENT_LETTER_SENT: 'Waiting for signature. You can approve the touchpoint in Settings → Automation if gated.',
+    ENGAGEMENT_LETTER_SIGNED: 'Contract signed. Request key information from the client.',
+    INFO_REQUESTED: 'Chase outstanding info. Escalate after 3 reminders automatically.',
+    INFO_RECEIVED: 'All set — move to onboarding setup and kick-off.',
+    KICKOFF_SENT: 'Client is live. Schedule milestone reminders from actual due dates.',
+    default: 'Automation is running in the background. Check Settings for templates.',
+  };
+
+  const currentGuidance = guidance[stage] || guidance.default;
+
   return (
     <div className="space-y-6">
-      {/* Current Stage + Quick Actions */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div>
-          <div className="text-xs uppercase tracking-wider text-slate-500 mb-1">Current Stage</div>
-          <span className={`inline-block px-3 py-1 rounded-full text-sm font-medium ${STAGE_COLORS[stage] || 'bg-slate-100'}`}>
-            {stage.replace(/_/g, ' ')}
-          </span>
+      {/* Journey header + visual progress */}
+      <div>
+        <div className="flex items-center justify-between mb-2">
+          <div>
+            <div className="text-xs uppercase tracking-[1px] text-slate-500">Client Journey</div>
+            <div className="text-xl font-semibold flex items-center gap-2">
+              {stage.replace(/_/g, ' ')}
+              <span className={`px-2.5 py-0.5 text-xs rounded-full ${STAGE_COLORS[stage] || 'bg-slate-100 text-slate-600'}`}>
+                Step {Math.max(1, currentStepIndex + 1)} of {journeySteps.length}
+              </span>
+            </div>
+          </div>
+          <div className="hidden sm:flex items-center text-xs text-slate-400">
+            <SparklesIcon className="h-4 w-4 mr-1" /> Automated touchpoints active
+          </div>
         </div>
 
-        <div className="flex flex-wrap gap-2">
+        {/* Visual Stepper - beautiful & intuitive */}
+        <div className="flex flex-wrap gap-1.5">
+          {journeySteps.map((step, idx) => {
+            const isActive = idx === currentStepIndex;
+            const isPast = idx < currentStepIndex;
+            return (
+              <motion.div
+                key={idx}
+                whileHover={{ scale: 1.02 }}
+                className={`flex-1 min-w-[92px] rounded-2xl border px-3 py-2 text-center text-xs transition-all cursor-default
+                  ${isActive 
+                    ? 'bg-primary-50 border-primary-300 text-primary-700 shadow-sm dark:bg-primary-950/40 dark:border-primary-800' 
+                    : isPast 
+                    ? 'bg-emerald-50 border-emerald-200 text-emerald-700 dark:bg-emerald-950/30 dark:border-emerald-900' 
+                    : 'bg-white/60 border-slate-200 text-slate-500 dark:bg-slate-800/60 dark:border-slate-700'}`}
+                animate={isActive ? { scale: [1, 1.03, 1] } : {}}
+                transition={{ duration: 0.4 }}
+              >
+                <div className="font-medium flex items-center justify-center gap-1">
+                  {isPast && <CheckCircleIcon className="h-3.5 w-3.5" />}
+                  {step.label}
+                  {isActive && <ArrowRightIcon className="h-3 w-3 ml-0.5" />}
+                </div>
+              </motion.div>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Guidance + Contextual primary actions */}
+      <div className="glass-tile p-5">
+        <div className="flex items-start gap-3">
+          <div className="mt-0.5 text-primary-500">
+            <SparklesIcon className="h-5 w-5" />
+          </div>
+          <div className="flex-1">
+            <div className="text-sm font-medium text-slate-700 dark:text-slate-200">What happens next</div>
+            <p className="text-sm text-slate-600 dark:text-slate-400 mt-0.5">{currentGuidance}</p>
+          </div>
+        </div>
+
+        <div className="mt-4 flex flex-wrap gap-2">
           {stage === 'AML_PENDING' && (
-            <button
-              onClick={() => handleAction('aml')}
-              disabled={!!busy}
-              className="btn-primary text-sm px-4 py-2 disabled:opacity-60"
-            >
-              {busy === 'aml' ? 'Marking...' : 'Mark AML Complete'}
+            <button onClick={() => handleAction('aml')} disabled={!!busy} className="btn-primary text-sm px-5 py-2.5">
+              {busy === 'aml' ? 'Marking AML complete…' : '✓ Mark AML / ID Complete'}
             </button>
           )}
-
           {stage === 'INFO_REQUESTED' && (
-            <button
-              onClick={() => handleAction('info')}
-              disabled={!!busy}
-              className="btn-primary text-sm px-4 py-2 disabled:opacity-60"
-            >
-              {busy === 'info' ? 'Updating...' : 'Mark Information Received'}
+            <button onClick={() => handleAction('info')} disabled={!!busy} className="btn-primary text-sm px-5 py-2.5">
+              {busy === 'info' ? 'Updating…' : '✓ Mark Information Received'}
             </button>
           )}
-
-          <button
-            onClick={() => handleAction('deadlines')}
-            disabled={!!busy}
-            className="btn-secondary text-sm px-4 py-2"
-          >
-            {busy === 'deadlines' ? 'Scheduling...' : 'Schedule Deadline Reminders'}
+          <button onClick={() => handleAction('deadlines')} disabled={!!busy} className="btn-secondary text-sm px-5 py-2.5">
+            {busy === 'deadlines' ? 'Scheduling…' : 'Schedule deadline reminders'}
           </button>
         </div>
       </div>
 
-      {/* Client Controls */}
+      {/* Client controls - pause + marketing */}
       <div className="flex flex-wrap gap-2">
         <button
           onClick={async () => {
             try {
               await apiClient.updateClient(client.id, { touchpointsPaused: !client.touchpointsPaused });
-              toast.success(client.touchpointsPaused ? 'Automation resumed' : 'Automation paused');
+              toast.success(client.touchpointsPaused ? 'Automation resumed' : 'Automation paused for this client');
               onRefresh();
-            } catch { toast.error('Failed'); }
+            } catch { toast.error('Update failed'); }
           }}
           className="btn-secondary text-sm"
         >
-          {client.touchpointsPaused ? '▶ Resume Automated Touchpoints' : '⏸ Pause All Automated Touchpoints'}
+          {client.touchpointsPaused ? '▶ Resume automated touchpoints' : '⏸ Pause all automated touchpoints'}
         </button>
-
         <button
           onClick={async () => {
             try {
@@ -762,14 +837,42 @@ function LifecyclePanel({ client, onRefresh }: { client: any; onRefresh: () => v
           }}
           className="btn-secondary text-sm"
         >
-          {client.marketingConsent ? 'Revoke Marketing Consent' : 'Grant Marketing Consent (for reviews etc)'}
+          {client.marketingConsent ? 'Revoke marketing consent' : 'Grant marketing consent (reviews & check-ins)'}
         </button>
       </div>
+
+      {/* Upcoming scheduled touchpoints - makes the automation transparent and actionable */}
+      {upcoming.filter((t: any) => t.status === 'PENDING').length > 0 && (
+        <div className="glass-tile p-5">
+          <div className="flex items-center gap-2 mb-3">
+            <CalendarIcon className="h-4 w-4 text-slate-500" />
+            <div className="font-semibold text-sm">Upcoming automated touchpoints</div>
+          </div>
+          <div className="space-y-2 text-sm">
+            {upcoming.filter((t: any) => t.status === 'PENDING').slice(0, 4).map((tp: any, i: number) => (
+              <motion.div 
+                key={i} 
+                initial={{ opacity: 0, x: -6 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ delay: i * 0.03 }}
+                className="flex justify-between items-center rounded-xl border border-slate-100 dark:border-slate-800 px-3 py-2 bg-white/50 dark:bg-slate-900/40"
+              >
+                <div>
+                  <span className="font-medium">{tp.stage?.replace(/_/g, ' ')}</span>
+                  {tp.template?.subject && <span className="text-xs text-slate-500 ml-2">“{tp.template.subject}”</span>}
+                </div>
+                <div className="text-xs text-slate-500">{new Date(tp.scheduledFor).toLocaleDateString('en-GB', { month: 'short', day: 'numeric' })}</div>
+              </motion.div>
+            ))}
+          </div>
+          <div className="mt-2 text-[10px] text-slate-500">These will send automatically unless paused or awaiting your approval.</div>
+        </div>
+      )}
 
       <ClientTimeline clientId={client.id} />
 
       <p className="text-xs text-slate-500">
-        Global templates &amp; toggles live in <span className="font-medium">Settings → Automation</span>.
+        Manage templates globally in <span className="font-medium">Settings → Automation</span>. Touchpoints respect marketing consent and human approval gates.
       </p>
     </div>
   );
@@ -805,11 +908,24 @@ function ClientTimeline({ clientId }: { clientId: string }) {
 
   if (!relevant.length) {
     return (
-      <div className="text-sm text-slate-500 border border-dashed rounded-xl p-6 text-center">
-        No touchpoint activity yet. Actions here will appear after the proposal is accepted.
+      <div className="rounded-2xl border border-dashed p-8 text-center bg-white/50 dark:bg-slate-900/30">
+        <div className="mx-auto mb-3 inline-flex h-12 w-12 items-center justify-center rounded-2xl bg-primary-100 dark:bg-primary-900/30">
+          <SparklesIcon className="h-6 w-6 text-primary-600" />
+        </div>
+        <div className="font-medium">Automation is ready</div>
+        <p className="mt-1 max-w-xs mx-auto text-sm text-slate-500">
+          When this client accepts a proposal, the welcome, AML, and follow-up sequence will start automatically. You’ll see every step here.
+        </p>
       </div>
     );
   }
+
+  const getActionIcon = (action: string) => {
+    if (action.includes('AML')) return <CheckCircleIcon className="h-4 w-4" />;
+    if (action.includes('TOUCHPOINT')) return <EnvelopeIcon className="h-4 w-4" />;
+    if (action.includes('INFO')) return <DocumentTextIcon className="h-4 w-4" />;
+    return <ClockIcon className="h-4 w-4" />;
+  };
 
   // Group by stage (best effort from action/description)
   const groups: Record<string, any[]> = {};
@@ -866,10 +982,15 @@ function ClientTimeline({ clientId }: { clientId: string }) {
 
                     <div className="flex-1 bg-white border border-slate-200 rounded-xl p-3 shadow-sm">
                       <div className="flex justify-between items-start">
-                        <div className="font-medium text-sm text-slate-900">{log.action}</div>
-                        <div className="text-[10px] text-slate-400 whitespace-nowrap ml-2">
-                          {new Date(log.createdAt).toLocaleDateString('en-GB', { month: 'short', day: 'numeric' })} ·{' '}
-                          {new Date(log.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                        <div className="flex items-center gap-2 font-medium text-sm text-slate-900">
+                          <span className="text-primary-500">{getActionIcon(log.action)}</span>
+                          {log.action}
+                        </div>
+                        <div className="text-[10px] text-slate-400 whitespace-nowrap ml-2 text-right">
+                          {formatDistanceToNow(new Date(log.createdAt), { addSuffix: true })}
+                          <div className="text-[9px] opacity-70">
+                            {new Date(log.createdAt).toLocaleDateString('en-GB', { month: 'short', day: 'numeric' })}
+                          </div>
                         </div>
                       </div>
 

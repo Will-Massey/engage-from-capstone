@@ -354,6 +354,9 @@ export const apiClient = {
   markInfoReceived: (clientId: string) => api.post(`/clients/${clientId}/info-received`, {}),
   scheduleDeadlineReminders: (clientId: string) => api.post(`/clients/${clientId}/schedule-deadline-reminders`, {}),
   getClientActivity: (clientId: string) => api.get(`/clients/${clientId}/activity`),
+
+  // Touchpoints per client (for Lifecycle panel upcoming + history)
+  getClientTouchpoints: (clientId: string) => api.get(`/touchpoints/client/${clientId}`),
 };
 
 export default api;

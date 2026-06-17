@@ -12,7 +12,9 @@ import {
   BuildingOfficeIcon,
   EnvelopeIcon,
   ExclamationCircleIcon,
+  SparklesIcon,
 } from '@heroicons/react/24/outline';
+import { motion } from 'framer-motion';
 
 interface PortalProposal {
   id: string;
@@ -320,7 +322,24 @@ export default function ClientPortal() {
           </div>
         </div>
 
-        {/* Proposals List */}
+        {/* Onboarding Journey teaser — ties the new automated touchpoint workflow into the client portal */}
+        <motion.div 
+          initial={{ opacity: 0, y: 6 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="glass-tile mb-8 p-5 border border-primary-100 dark:border-primary-900/50"
+        >
+          <div className="flex items-center gap-3">
+            <SparklesIcon className="h-5 w-5 text-primary-500" />
+            <div>
+              <span className="font-medium">Automated updates are enabled for your account.</span>
+              <span className="ml-2 text-xs text-primary-600 dark:text-primary-400">Welcome • AML • Engagement • Reviews</span>
+            </div>
+          </div>
+          <p className="mt-2 text-sm text-slate-600 dark:text-slate-400">
+            You’ll receive timely emails at each stage of working with {practice.name}. No need to chase — we’ll guide you.
+          </p>
+        </motion.div>
+
         <div className="space-y-4">
           <h2 className="text-lg font-semibold text-slate-900 dark:text-white">
             Your Proposals

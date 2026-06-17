@@ -91,6 +91,7 @@ const Dashboard = () => {
     weeklyActivity: defaultWeeklyActivity,
     recentActivity: defaultRecentActivity,
   });
+  const [attentionClients, setAttentionClients] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [dateRange, setDateRange] = useState('30days');
 
@@ -155,6 +156,14 @@ const Dashboard = () => {
           recentActivity: dashboardRes.data.recentActivity || [],
         });
       }
+
+      // Fetch clients needing attention (new automated lifecycle feature)
+      try {
+        const clientsRes = (await timeout(apiClient.getClients({ limit: 100 }) as Promise<any>, 10000)) as any;
+        const attentionStages = ['AML_PENDING', 'INFO_REQUESTED', 'ENGAGEMENT_LETTER_SENT'];
+        const needing = (clientsRes.data || []).filter((c: any) => attentionStages.includes(c.lifecycleStage));
+        setAttentionClients(needing.slice(0, 8));
+      } catch {}
     } catch (error) {
       // Error handled by UI - will use default empty data
     } finally {
@@ -294,6 +303,57 @@ const Dashboard = () => {
           </div>
         ))}
       </div>
+
+      {/* New: Client Lifecycle / Automation Attention (makes the touchpoint system visible and useful) */}
+      <div className="glass-tile p-5 border border-primary-100 dark:border-primary-900/60 bg-gradient-to-br from-white to-primary-50/40 dark:from-slate-900 dark:to-primary-950/20">
+        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+          <div className="flex items-start gap-3">
+            <div className="p-2.5 rounded-2xl bg-primary-100 dark:bg-primary-900/40 text-primary-600 dark:text-primary-300">
+              <SparklesIcon className="h-5 w-5" />
+            </div>
+            <div>
+              <div className="font-semibold">Automated client journeys are running</div>
+              <p className="text-sm text-slate-600 dark:text-slate-400 mt-0.5">
+                Proposals that get signed now trigger a beautiful sequence of emails and reminders. Visit any client’s <span className="font-medium">Lifecycle</span> tab to see progress and take action.
+              </p>
+            </div>
+          </div>
+          <div className="flex gap-2">
+            <Link to="/clients" className="btn-secondary text-sm">View clients</Link>
+            <Link to="/settings" className="btn-primary text-sm">Manage automation</Link>
+          </div>
+        </div>
+      </div>
+
+      {/* Clients Needing Attention - directly surfaces the touchpoint automation */}
+      {attentionClients.length > 0 && (
+        <div className="glass-tile p-6 border border-amber-200 dark:border-amber-900/50">
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-2">
+              <BellIcon className="h-5 w-5 text-amber-500" />
+              <h2 className="font-semibold text-lg">Clients needing attention</h2>
+              <span className="text-xs px-2 py-0.5 rounded-full bg-amber-100 text-amber-700 dark:bg-amber-900/40">{attentionClients.length}</span>
+            </div>
+            <Link to="/clients" className="text-sm text-primary-600 hover:underline">View all clients</Link>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+            {attentionClients.map((client: any) => (
+              <Link
+                key={client.id}
+                to={`/clients/${client.id}`}
+                className="group flex items-center justify-between rounded-2xl border border-slate-200 dark:border-slate-700 p-4 hover:border-amber-300 hover:bg-amber-50/40 dark:hover:bg-amber-950/10 transition-all"
+              >
+                <div>
+                  <div className="font-medium text-sm group-hover:text-primary-600">{client.name}</div>
+                  <div className="text-xs text-slate-500 mt-0.5">{client.lifecycleStage?.replace(/_/g, ' ')}</div>
+                </div>
+                <div className="text-amber-600 opacity-70 group-hover:opacity-100 transition">→</div>
+              </Link>
+            ))}
+          </div>
+          <p className="mt-3 text-xs text-slate-500">These clients are in stages that usually require action or have pending automated touchpoints.</p>
+        </div>
+      )}
 
       {/* MTD ITSA Alert */}
       {stats.mtditsaClients > 0 && (

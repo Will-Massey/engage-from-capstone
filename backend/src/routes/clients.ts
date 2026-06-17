@@ -78,6 +78,7 @@ router.get(
       search,
       companyType,
       mtditsaStatus,
+      lifecycleStage,
       page = '1',
       limit = '20',
       sortBy = 'createdAt',
@@ -101,6 +102,10 @@ router.get(
 
     if (mtditsaStatus) {
       where.mtditsaStatus = mtditsaStatus;
+    }
+
+    if (lifecycleStage) {
+      where.lifecycleStage = lifecycleStage;
     }
 
     if (search) {

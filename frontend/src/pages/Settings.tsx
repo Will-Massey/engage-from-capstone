@@ -12,6 +12,7 @@ import {
   PaintBrushIcon,
   DocumentTextIcon,
   BellIcon,
+  SparklesIcon,
 } from '@heroicons/react/24/outline';
 import EmailSettings from '../components/email/EmailSettings';
 
@@ -1356,42 +1357,81 @@ function AutomationTab() {
 
   return (
     <div className="space-y-6">
+      {/* Beautiful intro explaining the value */}
+      <div className="glass-tile p-6 bg-gradient-to-br from-primary-50/60 to-white dark:from-primary-950/30 dark:to-slate-900 border border-primary-100 dark:border-primary-900">
+        <div className="flex items-start gap-4">
+          <div className="mt-1 p-3 rounded-2xl bg-white/80 dark:bg-slate-800 shadow-sm">
+            <SparklesIcon className="h-6 w-6 text-primary-600" />
+          </div>
+          <div className="flex-1">
+            <h2 className="text-xl font-semibold">Automated Client Touchpoints</h2>
+            <p className="mt-1 text-sm text-slate-600 dark:text-slate-400 max-w-prose">
+              Once a proposal is accepted, Engage automatically sends warm, timely messages at every stage — welcome, AML chase, engagement letters, info requests, milestone reminders, and annual reviews.
+              You stay in control with per-stage templates, human approval gates, and the ability to pause any client.
+            </p>
+            <div className="mt-3">
+              <button onClick={runEngine} className="btn-primary text-sm px-4 py-1.5">Run engine now</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
       <div className="glass-tile p-6">
         <div className="flex items-center justify-between mb-4">
           <div>
-            <h2 className="text-lg font-semibold">Client Touchpoint Automation</h2>
-            <p className="text-sm text-slate-600">Automated onboarding workflow after proposal acceptance</p>
+            <h3 className="text-lg font-semibold">Stage Templates &amp; Controls</h3>
+            <p className="text-sm text-slate-600 dark:text-slate-400">Toggle stages on/off and customise the wording clients receive.</p>
           </div>
-          <button onClick={runEngine} className="btn-secondary">Run Engine Now</button>
+          <button onClick={runEngine} className="btn-secondary text-sm hidden sm:block">Run Engine Now</button>
         </div>
 
         {/* Templates / Global Toggles */}
         <div className="mt-4">
           <h3 className="font-medium mb-2">Stage Templates &amp; Toggles</h3>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
             {LIFECYCLE_STAGES.map((stage) => {
               const t = templates.find((x: any) => x.stage === stage);
+              const isOn = t ? t.isActive : true;
               return (
-                <div key={stage} className="border border-slate-200 rounded-xl p-3 flex items-center justify-between">
+                <div
+                  key={stage}
+                  className={`group rounded-2xl border p-4 transition-all hover:shadow-sm flex flex-col justify-between
+                    ${isOn 
+                      ? 'border-emerald-200 bg-white dark:bg-slate-900/60 dark:border-emerald-900' 
+                      : 'border-slate-200 bg-slate-50/60 dark:bg-slate-900/40 opacity-90'}`}
+                >
                   <div>
-                    <div className="font-medium text-sm">{stage.replace(/_/g, ' ')}</div>
-                    <div className="text-xs text-slate-500">{t ? (t.isActive ? 'Active' : 'Paused') : 'No template (defaults used)'}</div>
+                    <div className="flex items-start justify-between">
+                      <div className="font-semibold text-sm tracking-tight">{stage.replace(/_/g, ' ')}</div>
+                      <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${isOn ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40' : 'bg-slate-200 text-slate-600 dark:bg-slate-800'}`}>
+                        {isOn ? 'ON' : 'PAUSED'}
+                      </span>
+                    </div>
+                    <div className="mt-1 text-xs text-slate-500 line-clamp-2">
+                      {t?.subject ? t.subject : 'Using default template'}
+                    </div>
                   </div>
-                  <div className="flex items-center gap-2">
-                    <button onClick={() => openEditor(stage)} className="btn-secondary text-xs px-3 py-1">Edit</button>
-                    {t && (
-                      <label className="text-xs flex items-center gap-1">
-                        <input
-                          type="checkbox"
-                          checked={t.isActive}
-                          onChange={async () => {
-                            await apiClient.upsertTouchpointTemplate(stage, { ...t, isActive: !t.isActive });
-                            loadData();
-                          }}
-                        />
-                        On
-                      </label>
-                    )}
+
+                  <div className="mt-4 flex items-center gap-2">
+                    <button
+                      onClick={() => openEditor(stage)}
+                      className="flex-1 btn-secondary text-xs py-1.5 group-hover:border-primary-300"
+                    >
+                      Edit template
+                    </button>
+                    <label className="flex items-center gap-1.5 text-xs cursor-pointer select-none">
+                      <input
+                        type="checkbox"
+                        checked={isOn}
+                        onChange={async () => {
+                          const payload = t ? { ...t, isActive: !t.isActive } : { isActive: false };
+                          await apiClient.upsertTouchpointTemplate(stage, payload);
+                          loadData();
+                        }}
+                        className="accent-primary-600"
+                      />
+                      <span className="text-slate-600 dark:text-slate-400">Active</span>
+                    </label>
                   </div>
                 </div>
               );
@@ -1400,18 +1440,46 @@ function AutomationTab() {
         </div>
       </div>
 
-      {/* Approval Queue */}
+      {/* Approval Queue - more beautiful & actionable */}
       <div className="glass-tile p-6">
-        <h3 className="font-medium mb-3">Approval Queue (Human-gated touchpoints)</h3>
-        {approvals.length === 0 && <p className="text-sm text-slate-500">No items awaiting approval.</p>}
-        <div className="space-y-2">
+        <div className="flex items-center justify-between mb-3">
+          <div>
+            <h3 className="font-semibold">Human Approval Queue</h3>
+            <p className="text-xs text-slate-500">Touchpoints that require your sign-off before sending</p>
+          </div>
+          {approvals.length > 0 && (
+            <span className="text-xs px-2 py-0.5 rounded-full bg-amber-100 text-amber-700 dark:bg-amber-900/40">{approvals.length} pending</span>
+          )}
+        </div>
+
+        {approvals.length === 0 && (
+          <div className="text-center py-8 text-sm text-slate-500 border border-dashed rounded-2xl">
+            No touchpoints waiting for approval right now. Beautiful.
+          </div>
+        )}
+
+        <div className="space-y-3">
           {approvals.map((a: any) => (
-            <div key={a.id} className="flex items-center justify-between border rounded-lg p-3 text-sm">
-              <div>
-                <span className="font-medium">{a.stage}</span> — {a.client?.name}
-                <div className="text-xs text-slate-500">{a.template?.subject}</div>
+            <div key={a.id} className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-2xl border border-slate-200 dark:border-slate-700 p-4 hover:bg-slate-50/50 dark:hover:bg-slate-800/40 transition">
+              <div className="min-w-0">
+                <div className="flex items-center gap-2">
+                  <span className="font-medium text-sm">{a.stage?.replace(/_/g, ' ')}</span>
+                  <span className="text-xs text-slate-400">•</span>
+                  <span className="text-sm text-slate-700 dark:text-slate-200 truncate">{a.client?.name}</span>
+                </div>
+                {a.template?.subject && (
+                  <div className="text-xs text-slate-500 mt-0.5 truncate">“{a.template.subject}”</div>
+                )}
+                {a.scheduledFor && (
+                  <div className="text-[10px] text-slate-400 mt-1">Scheduled: {new Date(a.scheduledFor).toLocaleDateString('en-GB')}</div>
+                )}
               </div>
-              <button onClick={() => approve(a.id)} className="btn-primary text-xs">Approve &amp; Send</button>
+              <button
+                onClick={() => approve(a.id)}
+                className="btn-primary text-xs whitespace-nowrap self-start sm:self-auto"
+              >
+                Approve &amp; Send
+              </button>
             </div>
           ))}
         </div>
@@ -1455,16 +1523,31 @@ function AutomationTab() {
               <button onClick={() => setEditing(null)} className="btn-secondary">Cancel</button>
               <button onClick={saveTemplate} className="btn-primary">Save Template</button>
             </div>
-            <div className="mt-4 p-3 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-600">
-              <div className="font-medium mb-1 text-slate-700">Available merge tags</div>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-0.5">
-                <div><code className="font-mono">{'{{client_name}}'}</code> — company name</div>
-                <div><code className="font-mono">{'{{contact_name}}'}</code> — primary contact (or company)</div>
-                <div><code className="font-mono">{'{{practice_name}}'}</code> — your firm</div>
-                <div><code className="font-mono">{'{{next_step}}'}</code> — suggested next action</div>
-                <div><code className="font-mono">{'{{due_date}}'}</code> — formatted deadline (when known)</div>
+            {/* Live-ish preview + merge tags */}
+            <div className="mt-4 grid grid-cols-1 lg:grid-cols-5 gap-4">
+              <div className="lg:col-span-3">
+                <div className="text-xs font-medium text-slate-600 mb-1">Preview (example data)</div>
+                <div className="rounded-xl border border-slate-200 bg-white p-3 text-sm text-slate-700 dark:bg-slate-900 dark:text-slate-200">
+                  <div className="font-medium mb-1">{form.subject || 'Subject line will appear here'}</div>
+                  <div dangerouslySetInnerHTML={{ 
+                    __html: (form.body || 'Your message body...').replace(/\{\{client_name\}\}/g, 'Acme Ltd')
+                      .replace(/\{\{contact_name\}\}/g, 'Jane Smith')
+                      .replace(/\{\{practice_name\}\}/g, 'Your Practice')
+                      .replace(/\{\{next_step\}\}/g, 'Please upload your last 3 months of bank statements')
+                      .replace(/\{\{due_date\}\}/g, '28 June 2026') 
+                  }} />
+                </div>
               </div>
-              <div className="mt-2 text-[10px] opacity-70">Example: “Hi {'{{contact_name}}'}, your VAT return is due {'{{due_date}}'}. {'{{next_step}}'} — {'{{practice_name}}'}”</div>
+              <div className="lg:col-span-2">
+                <div className="text-xs font-medium text-slate-600 mb-1">Merge tags</div>
+                <div className="text-[11px] leading-relaxed text-slate-600 dark:text-slate-400 bg-slate-50 dark:bg-slate-800/60 border border-slate-200 rounded-xl p-3">
+                  <div><code>{'{{client_name}}'}</code> — company</div>
+                  <div><code>{'{{contact_name}}'}</code> — person</div>
+                  <div><code>{'{{practice_name}}'}</code> — your firm</div>
+                  <div><code>{'{{next_step}}'}</code> — recommended action</div>
+                  <div><code>{'{{due_date}}'}</code> — when relevant</div>
+                </div>
+              </div>
             </div>
           </div>
         </div>

@@ -148,4 +148,24 @@ router.post(
   })
 );
 
+// List touchpoints for a specific client (upcoming + history)
+router.get(
+  '/client/:clientId',
+  asyncHandler(async (req, res) => {
+    const tenantId = req.tenantId!;
+    const { clientId } = req.params;
+
+    const touchpoints = await prisma.touchpoint.findMany({
+      where: { clientId, tenantId },
+      include: {
+        template: { select: { subject: true, body: true, tone: true } },
+      },
+      orderBy: { scheduledFor: 'asc' },
+      take: 20,
+    });
+
+    res.json({ success: true, data: touchpoints });
+  })
+);
+
 export default router;

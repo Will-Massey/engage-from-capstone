@@ -9,7 +9,10 @@ import {
   CheckCircleIcon,
   ExclamationCircleIcon,
   ClockIcon,
+  SparklesIcon,
+  ArrowRightIcon,
 } from '@heroicons/react/24/outline';
+import { motion } from 'framer-motion';
 
 interface ProposalData {
   id: string;
@@ -198,17 +201,43 @@ const PublicProposalView = () => {
 
         {/* Proposal Content */}
         <div className="bg-white dark:bg-slate-800 shadow-sm p-6 space-y-8">
-          {/* Status Banner */}
+          {/* Status Banner - Enhanced with lifecycle journey tie-in */}
           {isAccepted ? (
-            <div className="bg-green-50 border border-green-200 rounded-lg p-4 flex items-center">
-              <CheckCircleIcon className="h-6 w-6 text-green-600 mr-3" />
-              <div>
-                <p className="font-medium text-green-900">Proposal Accepted</p>
-                <p className="text-sm text-green-700">
-                  This proposal has been accepted and is now binding.
-                </p>
+            <motion.div 
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="rounded-2xl border border-emerald-200 bg-gradient-to-br from-emerald-50 to-white p-6 dark:from-emerald-950/30 dark:to-slate-800"
+            >
+              <div className="flex items-start gap-4">
+                <div className="mt-1 rounded-full bg-emerald-100 p-2 dark:bg-emerald-900/40">
+                  <SparklesIcon className="h-6 w-6 text-emerald-600" />
+                </div>
+                <div className="flex-1">
+                  <p className="font-semibold text-emerald-900 dark:text-emerald-200 text-lg">Thank you — Proposal accepted!</p>
+                  <p className="mt-1 text-sm text-emerald-700 dark:text-emerald-300">
+                    Your automated client onboarding journey has started. Expect a warm welcome email shortly, followed by secure requests for ID/AML verification and next steps.
+                  </p>
+
+                  {/* Mini journey steps tied to touchpoint automation */}
+                  <div className="mt-4 grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs">
+                    {[
+                      { label: 'Welcome', desc: 'Email sent' },
+                      { label: 'AML / ID', desc: 'Verification' },
+                      { label: 'Engagement', desc: 'Letter & sign' },
+                      { label: 'Onboarding', desc: 'Setup & kickoff' },
+                    ].map((s, i) => (
+                      <div key={i} className="rounded-xl border border-emerald-100 bg-white/70 px-3 py-2 dark:border-emerald-900/50 dark:bg-emerald-950/20">
+                        <div className="font-medium text-emerald-800 dark:text-emerald-200">{s.label}</div>
+                        <div className="text-emerald-600/70 dark:text-emerald-400/70">{s.desc}</div>
+                      </div>
+                    ))}
+                  </div>
+                  <p className="mt-3 text-[11px] text-emerald-600/80 dark:text-emerald-400/70">
+                    All communications are automated and tailored. Your accountant can pause or customise them at any time.
+                  </p>
+                </div>
               </div>
-            </div>
+            </motion.div>
           ) : isExpired ? (
             <div className="bg-red-50 border border-red-200 rounded-lg p-4 flex items-center">
               <ClockIcon className="h-6 w-6 text-red-600 mr-3" />
