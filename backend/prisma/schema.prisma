@@ -108,6 +108,48 @@ enum CoverLetterTone {
   MODERN
 }
 
+// ==================== CLIENT TOUCHPOINT / LIFECYCLE ====================
+
+enum ClientLifecycleStage {
+  PROPOSAL_ACCEPTED
+  AML_PENDING
+  AML_COMPLETE
+  ENGAGEMENT_LETTER_SENT
+  ENGAGEMENT_LETTER_SIGNED
+  INFO_REQUESTED
+  INFO_RECEIVED
+  ONBOARDING_SETUP
+  KICKOFF_SENT
+  MILESTONE_CHECK_IN
+  SATISFACTION_CHECK
+  ONGOING
+  ANNUAL_REVIEW
+}
+
+enum TouchpointStatus {
+  PENDING
+  SENT
+  SKIPPED
+  PAUSED
+}
+
+enum TouchpointTriggerType {
+  EVENT
+  TIME_DELAY
+}
+
+enum TouchpointChannel {
+  EMAIL
+  SMS
+  IN_APP
+}
+
+enum TouchpointTone {
+  WARM
+  NEUTRAL
+  URGENT
+}
+
 // ==================== TENANT MODELS ====================
 
 model Tenant {
@@ -147,6 +189,8 @@ model Tenant {
   templates             ProposalTemplate[]
   coverLetterTemplates  CoverLetterTemplate[]
   activityLogs          ActivityLog[]
+  touchpointTemplates   TouchpointTemplate[]
+  touchpoints           Touchpoint[]
 
   @@index([subdomain])
   @@index([isActive])
@@ -244,13 +288,28 @@ model Client {
   portalTokenExpiry DateTime?
   portalEnabled    Boolean @default(false)
 
+  // Client Lifecycle & Touchpoints (automated onboarding workflow)
+  lifecycleStage     ClientLifecycleStage @default(PROPOSAL_ACCEPTED)
+  touchpointsPaused  Boolean              @default(false)
+  marketingConsent   Boolean              @default(false)
+
+  // Key compliance / deadline dates (used for deadline-driven touchpoints)
+  nextVatDueDate                 DateTime?
+  nextAccountsDueDate            DateTime?
+  nextConfirmationStatementDue DateTime?
+  amlCompletedAt                 DateTime?
+  engagementLetterSentAt         DateTime?
+  engagementLetterSignedAt       DateTime?
+
   // Relations
   proposals Proposal[]
+  touchpoints Touchpoint[]
 
   @@unique([tenantId, contactEmail])
   @@index([tenantId])
   @@index([companyType])
   @@index([mtditsaStatus])
+  @@index([lifecycleStage])
 }
 
 // ==================== PROPOSAL MODELS ====================
@@ -643,4 +702,64 @@ model ActivityLog {
   @@index([proposalId])
   @@index([entityType, entityId])
   @@index([createdAt])
+}
+
+// ==================== CLIENT TOUCHPOINT WORKFLOW ====================
+
+model TouchpointTemplate {
+  id        String   @id @default(uuid())
+  tenantId  String
+  tenant    Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  stage         ClientLifecycleStage
+  subject       String
+  body          String   // Supports merge tags: {{client_name}}, {{contact_name}}, {{practice_name}}, {{next_step}}, {{due_date}}
+  tone          TouchpointTone @default(WARM)
+  isMarketing   Boolean  @default(false) // If true, only send if client has marketingConsent
+  isActive      Boolean  @default(true)  // Global on/off for this stage template
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  touchpoints Touchpoint[]
+
+  @@unique([tenantId, stage])
+  @@index([tenantId])
+  @@index([stage])
+  @@index([isActive])
+}
+
+model Touchpoint {
+  id          String   @id @default(uuid())
+  clientId    String
+  client      Client   @relation(fields: [clientId], references: [id], onDelete: Cascade)
+
+  stage       ClientLifecycleStage
+  triggerType TouchpointTriggerType
+  scheduledFor DateTime
+
+  status      TouchpointStatus @default(PENDING)
+  channel     TouchpointChannel @default(EMAIL)
+
+  templateId  String?
+  template    TouchpointTemplate? @relation(fields: [templateId], references: [id], onDelete: SetNull)
+
+  sentAt      DateTime?
+
+  requiresHumanApproval Boolean @default(false)
+
+  // Audit / notes
+  notes       String?
+
+  tenantId    String
+  tenant      Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([clientId])
+  @@index([tenantId])
+  @@index([status])
+  @@index([scheduledFor])
+  @@index([requiresHumanApproval])
 }

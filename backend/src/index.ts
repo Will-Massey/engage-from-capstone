@@ -24,6 +24,7 @@ import paymentRoutes from './routes/payments.js';
 import adfinRoutes from './routes/adfin.js';
 import coverLetterTemplateRoutes from './routes/coverLetterTemplates.js';
 import analyticsRoutes from './routes/analytics.js';
+import touchpointRoutes from './routes/touchpoints.js';
 import automationRoutes from './routes/automation.js';
 import diagnosticsRoutes from './routes/diagnostics.js';
 import { asyncHandler, ApiError } from './middleware/errorHandler.js';
@@ -785,6 +786,7 @@ app.use('/api/payments/adfin', extractTenant, adfinRoutes);
 app.use('/api/companies-house', extractTenant, companiesHouseRoutes);
 app.use('/api/cover-letter-templates', extractTenant, coverLetterTemplateRoutes);
 app.use('/api/analytics', extractTenant, analyticsRoutes);
+app.use('/api/touchpoints', extractTenant, touchpointRoutes);
 
 // API status endpoint
 app.get('/api/status', (req, res) => {
@@ -856,6 +858,9 @@ app.use(errorHandler);
 // Schedule renewal reminder job (daily at 9 AM)
 import { runRenewalReminders } from './jobs/renewalReminders.js';
 
+// Client touchpoint / lifecycle automation engine
+import { runTouchpointEngine } from './jobs/touchpointEngine.js';
+
 // Run immediately on startup in production, or every 24 hours
 const RENEWAL_CHECK_INTERVAL = 24 * 60 * 60 * 1000; // 24 hours
 
@@ -879,6 +884,23 @@ function scheduleRenewalReminders() {
   logger.info('✅ Renewal reminder job scheduled (every 24 hours)');
 }
 
+function scheduleTouchpointEngine() {
+  logger.info('📅 Scheduling client touchpoint engine...');
+
+  const INTERVAL = 15 * 60 * 1000; // every 15 minutes
+
+  // Run once after startup
+  setTimeout(() => {
+    runTouchpointEngine().catch((err) => logger.error('Initial touchpoint engine run failed:', err));
+  }, 90_000);
+
+  setInterval(() => {
+    runTouchpointEngine().catch((err) => logger.error('Scheduled touchpoint engine run failed:', err));
+  }, INTERVAL);
+
+  logger.info('✅ Touchpoint engine scheduled (every 15 minutes)');
+}
+
 // Start server (skipped in Jest so supertest can import the app)
 const shouldStartServer =
   process.env.NODE_ENV !== 'test' && !process.env.JEST_WORKER_ID;
@@ -891,6 +913,7 @@ if (shouldStartServer) {
     logger.info(`🔧 Admin endpoints available at /api/admin (requires ADMIN_SECRET_KEY)`);
 
     scheduleRenewalReminders();
+    scheduleTouchpointEngine();
 
     if (autoMigrateOnStartup) {
       setTimeout(() => {

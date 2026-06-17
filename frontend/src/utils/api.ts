@@ -338,6 +338,22 @@ export const apiClient = {
   reactivateSubscription: () => api.post('/payments/reactivate-subscription', {}),
 
   createSetupIntent: () => api.post('/payments/create-setup-intent', {}),
+
+  // Client Touchpoints / Automated Lifecycle
+  getTouchpointTemplates: () => api.get('/touchpoints/templates'),
+  upsertTouchpointTemplate: (stage: string, data: any) =>
+    api.put(`/touchpoints/templates/${stage}`, data),
+  getTouchpointApprovals: () => api.get('/touchpoints/approvals'),
+  approveTouchpoint: (id: string) => api.post(`/touchpoints/${id}/approve`, {}),
+  updateClientTouchpointSettings: (clientId: string, data: any) =>
+    api.patch(`/touchpoints/clients/${clientId}`, data),
+  runTouchpointEngine: () => api.post('/touchpoints/run', {}),
+
+  // Lifecycle actions (wired to touchpoint engine)
+  markAmlComplete: (clientId: string) => api.post(`/clients/${clientId}/aml-complete`, {}),
+  markInfoReceived: (clientId: string) => api.post(`/clients/${clientId}/info-received`, {}),
+  scheduleDeadlineReminders: (clientId: string) => api.post(`/clients/${clientId}/schedule-deadline-reminders`, {}),
+  getClientActivity: (clientId: string) => api.get(`/clients/${clientId}/activity`),
 };
 
 export default api;

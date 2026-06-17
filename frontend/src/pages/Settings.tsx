@@ -39,6 +39,7 @@ const tabs = [
   },
   { id: 'team', name: 'Team', icon: UsersIcon, description: 'Users & permissions' },
   { id: 'security', name: 'Security', icon: ShieldCheckIcon, description: 'Password & access' },
+  { id: 'automation', name: 'Automation', icon: BellIcon, description: 'Client touchpoints & onboarding workflow' },
 ];
 
 const Settings = () => {
@@ -1266,10 +1267,210 @@ Yours sincerely,
               </div>
             </div>
           )}
+
+          {/* AUTOMATION / TOUCHPOINTS TAB */}
+          {activeTab === 'automation' && (
+            <AutomationTab />
+          )}
         </div>
       </div>
     </div>
   );
 };
+
+// --- Automation / Touchpoint Admin UI ---
+const LIFECYCLE_STAGES = [
+  'PROPOSAL_ACCEPTED', 'AML_PENDING', 'AML_COMPLETE', 'ENGAGEMENT_LETTER_SENT',
+  'ENGAGEMENT_LETTER_SIGNED', 'INFO_REQUESTED', 'INFO_RECEIVED', 'ONBOARDING_SETUP',
+  'KICKOFF_SENT', 'MILESTONE_CHECK_IN', 'SATISFACTION_CHECK', 'ONGOING', 'ANNUAL_REVIEW',
+] as const;
+
+function AutomationTab() {
+  const [templates, setTemplates] = useState<any[]>([]);
+  const [approvals, setApprovals] = useState<any[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [editing, setEditing] = useState<any>(null);
+  const [form, setForm] = useState({ subject: '', body: '', tone: 'WARM', isMarketing: false, isActive: true });
+
+  const loadData = async () => {
+    setLoading(true);
+    try {
+      const [tRes, aRes] = await Promise.all([
+        apiClient.getTouchpointTemplates(),
+        apiClient.getTouchpointApprovals(),
+      ]);
+      setTemplates((tRes as any).data || []);
+      setApprovals((aRes as any).data || []);
+    } catch (e) {
+      // handled by interceptor
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => { loadData(); }, []);
+
+  const openEditor = (stage: string) => {
+    const existing = templates.find((t: any) => t.stage === stage);
+    setEditing({ stage, ...existing });
+    setForm({
+      subject: existing?.subject || '',
+      body: existing?.body || '',
+      tone: existing?.tone || 'WARM',
+      isMarketing: !!existing?.isMarketing,
+      isActive: existing?.isActive !== false,
+    });
+  };
+
+  const saveTemplate = async () => {
+    if (!editing) return;
+    try {
+      await apiClient.upsertTouchpointTemplate(editing.stage, form);
+      toast.success('Template saved');
+      setEditing(null);
+      await loadData();
+    } catch (e) {
+      toast.error('Failed to save template');
+    }
+  };
+
+  const approve = async (id: string) => {
+    try {
+      await apiClient.approveTouchpoint(id);
+      toast.success('Approved and sent');
+      await loadData();
+    } catch (e) {
+      toast.error('Approval failed');
+    }
+  };
+
+  const runEngine = async () => {
+    try {
+      await apiClient.runTouchpointEngine();
+      toast.success('Engine run triggered');
+      await loadData();
+    } catch (e) {
+      toast.error('Failed to run engine');
+    }
+  };
+
+  return (
+    <div className="space-y-6">
+      <div className="glass-tile p-6">
+        <div className="flex items-center justify-between mb-4">
+          <div>
+            <h2 className="text-lg font-semibold">Client Touchpoint Automation</h2>
+            <p className="text-sm text-slate-600">Automated onboarding workflow after proposal acceptance</p>
+          </div>
+          <button onClick={runEngine} className="btn-secondary">Run Engine Now</button>
+        </div>
+
+        {/* Templates / Global Toggles */}
+        <div className="mt-4">
+          <h3 className="font-medium mb-2">Stage Templates &amp; Toggles</h3>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            {LIFECYCLE_STAGES.map((stage) => {
+              const t = templates.find((x: any) => x.stage === stage);
+              return (
+                <div key={stage} className="border border-slate-200 rounded-xl p-3 flex items-center justify-between">
+                  <div>
+                    <div className="font-medium text-sm">{stage.replace(/_/g, ' ')}</div>
+                    <div className="text-xs text-slate-500">{t ? (t.isActive ? 'Active' : 'Paused') : 'No template (defaults used)'}</div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <button onClick={() => openEditor(stage)} className="btn-secondary text-xs px-3 py-1">Edit</button>
+                    {t && (
+                      <label className="text-xs flex items-center gap-1">
+                        <input
+                          type="checkbox"
+                          checked={t.isActive}
+                          onChange={async () => {
+                            await apiClient.upsertTouchpointTemplate(stage, { ...t, isActive: !t.isActive });
+                            loadData();
+                          }}
+                        />
+                        On
+                      </label>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      </div>
+
+      {/* Approval Queue */}
+      <div className="glass-tile p-6">
+        <h3 className="font-medium mb-3">Approval Queue (Human-gated touchpoints)</h3>
+        {approvals.length === 0 && <p className="text-sm text-slate-500">No items awaiting approval.</p>}
+        <div className="space-y-2">
+          {approvals.map((a: any) => (
+            <div key={a.id} className="flex items-center justify-between border rounded-lg p-3 text-sm">
+              <div>
+                <span className="font-medium">{a.stage}</span> — {a.client?.name}
+                <div className="text-xs text-slate-500">{a.template?.subject}</div>
+              </div>
+              <button onClick={() => approve(a.id)} className="btn-primary text-xs">Approve &amp; Send</button>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Template Editor Modal */}
+      {editing && (
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
+          <div className="glass-tile w-full max-w-2xl p-6 rounded-2xl">
+            <h3 className="text-lg font-semibold mb-4">Edit Template — {editing.stage}</h3>
+
+            <div className="space-y-4">
+              <input
+                className="input-field w-full"
+                placeholder="Subject"
+                value={form.subject}
+                onChange={(e) => setForm({ ...form, subject: e.target.value })}
+              />
+              <textarea
+                className="input-field w-full h-48 font-mono text-sm"
+                placeholder="Body (HTML allowed). Example: Hi {{contact_name}}, thank you for choosing {{practice_name}}. Next: {{next_step}} by {{due_date}}."
+                value={form.body}
+                onChange={(e) => setForm({ ...form, body: e.target.value })}
+              />
+              <div className="flex gap-4">
+                <select className="input-field" value={form.tone} onChange={(e) => setForm({ ...form, tone: e.target.value })}>
+                  <option value="WARM">Warm</option>
+                  <option value="NEUTRAL">Neutral</option>
+                  <option value="URGENT">Urgent</option>
+                </select>
+                <label className="flex items-center gap-2 text-sm">
+                  <input type="checkbox" checked={form.isMarketing} onChange={(e) => setForm({ ...form, isMarketing: e.target.checked })} /> Marketing (requires consent)
+                </label>
+                <label className="flex items-center gap-2 text-sm">
+                  <input type="checkbox" checked={form.isActive} onChange={(e) => setForm({ ...form, isActive: e.target.checked })} /> Active
+                </label>
+              </div>
+            </div>
+
+            <div className="mt-6 flex justify-end gap-3">
+              <button onClick={() => setEditing(null)} className="btn-secondary">Cancel</button>
+              <button onClick={saveTemplate} className="btn-primary">Save Template</button>
+            </div>
+            <div className="mt-4 p-3 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-600">
+              <div className="font-medium mb-1 text-slate-700">Available merge tags</div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-0.5">
+                <div><code className="font-mono">{'{{client_name}}'}</code> — company name</div>
+                <div><code className="font-mono">{'{{contact_name}}'}</code> — primary contact (or company)</div>
+                <div><code className="font-mono">{'{{practice_name}}'}</code> — your firm</div>
+                <div><code className="font-mono">{'{{next_step}}'}</code> — suggested next action</div>
+                <div><code className="font-mono">{'{{due_date}}'}</code> — formatted deadline (when known)</div>
+              </div>
+              <div className="mt-2 text-[10px] opacity-70">Example: “Hi {'{{contact_name}}'}, your VAT return is due {'{{due_date}}'}. {'{{next_step}}'} — {'{{practice_name}}'}”</div>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
 
 export default Settings;

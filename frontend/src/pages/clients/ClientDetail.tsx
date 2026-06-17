@@ -198,7 +198,7 @@ const ClientDetail = () => {
       {/* Tabs */}
       <div className="border-b border-slate-200">
         <nav className="-mb-px flex space-x-8">
-          {['overview', 'proposals', 'mtditsa', 'documents'].map((tab) => (
+          {['overview', 'proposals', 'mtditsa', 'documents', 'lifecycle'].map((tab) => (
             <button
               key={tab}
               onClick={() => setActiveTab(tab)}
@@ -443,6 +443,13 @@ const ClientDetail = () => {
         </div>
       )}
 
+      {activeTab === 'lifecycle' && (
+        <div className="glass-tile p-6">
+          <h3 className="text-lg font-semibold mb-4">Client Lifecycle &amp; Touchpoints</h3>
+          <LifecyclePanel client={client} onRefresh={loadClient} />
+        </div>
+      )}
+
       {/* Edit Modal */}
       {showEditModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
@@ -645,5 +652,246 @@ const ClientDetail = () => {
     </div>
   );
 };
+
+// --- Lifecycle + Timeline Components ---
+const STAGE_COLORS: Record<string, string> = {
+  PROPOSAL_ACCEPTED: 'bg-emerald-100 text-emerald-700',
+  AML_PENDING: 'bg-amber-100 text-amber-700',
+  AML_COMPLETE: 'bg-emerald-100 text-emerald-700',
+  ENGAGEMENT_LETTER_SENT: 'bg-blue-100 text-blue-700',
+  ENGAGEMENT_LETTER_SIGNED: 'bg-blue-100 text-blue-700',
+  INFO_REQUESTED: 'bg-orange-100 text-orange-700',
+  INFO_RECEIVED: 'bg-emerald-100 text-emerald-700',
+  ONBOARDING_SETUP: 'bg-purple-100 text-purple-700',
+  KICKOFF_SENT: 'bg-emerald-100 text-emerald-700',
+  MILESTONE_CHECK_IN: 'bg-indigo-100 text-indigo-700',
+  SATISFACTION_CHECK: 'bg-pink-100 text-pink-700',
+  ONGOING: 'bg-slate-100 text-slate-700',
+  ANNUAL_REVIEW: 'bg-violet-100 text-violet-700',
+};
+
+function LifecyclePanel({ client, onRefresh }: { client: any; onRefresh: () => void }) {
+  const [busy, setBusy] = useState<string | null>(null);
+  const stage = client.lifecycleStage || 'PROPOSAL_ACCEPTED';
+
+  const handleAction = async (action: string) => {
+    setBusy(action);
+    try {
+      if (action === 'aml') {
+        await apiClient.markAmlComplete(client.id);
+        toast.success('AML marked complete — touchpoints updated');
+      } else if (action === 'info') {
+        await apiClient.markInfoReceived(client.id);
+        toast.success('Information marked as received');
+      } else if (action === 'deadlines') {
+        await apiClient.scheduleDeadlineReminders(client.id);
+        toast.success('Deadline reminders scheduled');
+      }
+      onRefresh();
+    } catch (e) {
+      toast.error('Action failed');
+    } finally {
+      setBusy(null);
+    }
+  };
+
+  return (
+    <div className="space-y-6">
+      {/* Current Stage + Quick Actions */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div>
+          <div className="text-xs uppercase tracking-wider text-slate-500 mb-1">Current Stage</div>
+          <span className={`inline-block px-3 py-1 rounded-full text-sm font-medium ${STAGE_COLORS[stage] || 'bg-slate-100'}`}>
+            {stage.replace(/_/g, ' ')}
+          </span>
+        </div>
+
+        <div className="flex flex-wrap gap-2">
+          {stage === 'AML_PENDING' && (
+            <button
+              onClick={() => handleAction('aml')}
+              disabled={!!busy}
+              className="btn-primary text-sm px-4 py-2 disabled:opacity-60"
+            >
+              {busy === 'aml' ? 'Marking...' : 'Mark AML Complete'}
+            </button>
+          )}
+
+          {stage === 'INFO_REQUESTED' && (
+            <button
+              onClick={() => handleAction('info')}
+              disabled={!!busy}
+              className="btn-primary text-sm px-4 py-2 disabled:opacity-60"
+            >
+              {busy === 'info' ? 'Updating...' : 'Mark Information Received'}
+            </button>
+          )}
+
+          <button
+            onClick={() => handleAction('deadlines')}
+            disabled={!!busy}
+            className="btn-secondary text-sm px-4 py-2"
+          >
+            {busy === 'deadlines' ? 'Scheduling...' : 'Schedule Deadline Reminders'}
+          </button>
+        </div>
+      </div>
+
+      {/* Client Controls */}
+      <div className="flex flex-wrap gap-2">
+        <button
+          onClick={async () => {
+            try {
+              await apiClient.updateClient(client.id, { touchpointsPaused: !client.touchpointsPaused });
+              toast.success(client.touchpointsPaused ? 'Automation resumed' : 'Automation paused');
+              onRefresh();
+            } catch { toast.error('Failed'); }
+          }}
+          className="btn-secondary text-sm"
+        >
+          {client.touchpointsPaused ? '▶ Resume Automated Touchpoints' : '⏸ Pause All Automated Touchpoints'}
+        </button>
+
+        <button
+          onClick={async () => {
+            try {
+              await apiClient.updateClient(client.id, { marketingConsent: !client.marketingConsent });
+              toast.success('Marketing consent updated');
+              onRefresh();
+            } catch { toast.error('Failed'); }
+          }}
+          className="btn-secondary text-sm"
+        >
+          {client.marketingConsent ? 'Revoke Marketing Consent' : 'Grant Marketing Consent (for reviews etc)'}
+        </button>
+      </div>
+
+      <ClientTimeline clientId={client.id} />
+
+      <p className="text-xs text-slate-500">
+        Global templates &amp; toggles live in <span className="font-medium">Settings → Automation</span>.
+      </p>
+    </div>
+  );
+}
+
+function ClientTimeline({ clientId }: { clientId: string }) {
+  const [logs, setLogs] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const act = await apiClient.getClientActivity(clientId);
+        setLogs((act as any).data || []);
+      } catch {
+        setLogs([]);
+      } finally {
+        setLoading(false);
+      }
+    })();
+  }, [clientId]);
+
+  if (loading) {
+    return <div className="text-sm text-slate-500 py-4">Loading client timeline…</div>;
+  }
+
+  const relevant = logs.filter((l: any) =>
+    l.action?.startsWith('TOUCHPOINT') ||
+    l.action?.includes('AML') ||
+    l.action?.includes('LIFECYCLE') ||
+    l.action?.includes('INFO')
+  );
+
+  if (!relevant.length) {
+    return (
+      <div className="text-sm text-slate-500 border border-dashed rounded-xl p-6 text-center">
+        No touchpoint activity yet. Actions here will appear after the proposal is accepted.
+      </div>
+    );
+  }
+
+  // Group by stage (best effort from action/description)
+  const groups: Record<string, any[]> = {};
+  relevant.forEach((log: any) => {
+    let key = 'GENERAL';
+    const tpMatch = log.action?.match(/TOUCHPOINT_([A-Z_]+)/);
+    if (tpMatch) {
+      key = tpMatch[1];
+    } else if (log.action?.startsWith('CLIENT_AML')) {
+      key = 'AML_COMPLETE';
+    } else if (log.action?.includes('AML')) {
+      key = 'AML';
+    } else if (log.action?.includes('INFO')) {
+      key = 'INFO';
+    } else if (log.action?.includes('LIFECYCLE')) {
+      key = 'LIFECYCLE';
+    } else {
+      const descMatch = log.description?.match(/([A-Z_]{5,})/);
+      key = descMatch ? descMatch[1] : (log.action || 'GENERAL');
+    }
+    if (!groups[key]) groups[key] = [];
+    groups[key].push(log);
+  });
+
+  const stageOrder = Object.keys(groups).sort();
+
+  return (
+    <div>
+      <h4 className="font-semibold text-slate-900 mb-3 flex items-center gap-2">
+        <ClockIcon className="h-4 w-4" /> Activity Timeline
+      </h4>
+
+      <div className="space-y-8">
+        {stageOrder.map((stageKey, groupIdx) => {
+          const items = groups[stageKey];
+          const color = STAGE_COLORS[stageKey] || 'bg-slate-100 text-slate-700';
+
+          return (
+            <div key={groupIdx} className="relative pl-6">
+              {/* Stage header */}
+              <div className={`inline-flex items-center gap-2 text-xs font-medium px-3 py-1 rounded-full mb-3 ${color}`}>
+                {stageKey.replace(/_/g, ' ')}
+                <span className="opacity-60">({items.length})</span>
+              </div>
+
+              {/* Vertical timeline line */}
+              <div className="absolute left-[13px] top-8 bottom-0 w-px bg-slate-200" />
+
+              <div className="space-y-4">
+                {items.map((log: any, idx: number) => (
+                  <div key={idx} className="relative flex gap-3">
+                    {/* Dot */}
+                    <div className="absolute left-0 mt-1.5 w-3 h-3 rounded-full border-2 border-white bg-primary-500 shadow-sm" />
+
+                    <div className="flex-1 bg-white border border-slate-200 rounded-xl p-3 shadow-sm">
+                      <div className="flex justify-between items-start">
+                        <div className="font-medium text-sm text-slate-900">{log.action}</div>
+                        <div className="text-[10px] text-slate-400 whitespace-nowrap ml-2">
+                          {new Date(log.createdAt).toLocaleDateString('en-GB', { month: 'short', day: 'numeric' })} ·{' '}
+                          {new Date(log.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                        </div>
+                      </div>
+
+                      {log.description && (
+                        <div className="mt-1 text-sm text-slate-600">{log.description}</div>
+                      )}
+
+                      {log.user && (
+                        <div className="mt-2 text-xs text-slate-500">
+                          by {log.user.firstName} {log.user.lastName}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
 
 export default ClientDetail;

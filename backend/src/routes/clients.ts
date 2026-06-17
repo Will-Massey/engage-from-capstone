@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { z } from 'zod';
-import { CompanyType, MTDITSAStatus } from '@prisma/client';
+import { CompanyType, MTDITSAStatus, ClientLifecycleStage } from '@prisma/client';
 import { prisma } from '../config/database.js';
 import { authenticate, authorize } from '../middleware/auth.js';
 import { asyncHandler, ApiError } from '../middleware/errorHandler.js';
@@ -53,7 +53,13 @@ const createClientSchema = z.object({
   tags: z.array(z.string()).optional(),
 });
 
-const updateClientSchema = createClientSchema.partial();
+const updateClientSchema = createClientSchema.partial().extend({
+  lifecycleStage: z.nativeEnum(ClientLifecycleStage).optional(),
+  touchpointsPaused: z.boolean().optional(),
+  marketingConsent: z.boolean().optional(),
+  nextVatDueDate: z.string().datetime().optional().or(z.null()),
+  nextAccountsDueDate: z.string().datetime().optional().or(z.null()),
+});
 
 const incomeSourceSchema = z.object({
   type: z.enum(['SELF_EMPLOYMENT', 'PROPERTY', 'PARTNERSHIP', 'OTHER']),
@@ -174,6 +180,148 @@ router.get(
       success: true,
       data: client,
     });
+  })
+);
+
+/**
+ * POST /api/clients/:id/aml-complete
+ * Mark AML as complete and trigger next touchpoints
+ */
+router.post(
+  '/:id/aml-complete',
+  authenticate,
+  authorize('ADMIN', 'PARTNER', 'MANAGER', 'SENIOR'),
+  asyncHandler(async (req, res) => {
+    const { id } = req.params;
+    const tenantId = req.tenantId!;
+
+    const client = await prisma.client.findFirst({ where: { id, tenantId } });
+    if (!client) throw new ApiError('NOT_FOUND', 'Client not found', 404);
+
+    await prisma.client.update({
+      where: { id },
+      data: {
+        lifecycleStage: 'AML_COMPLETE',
+        amlCompletedAt: new Date(),
+      },
+    });
+
+    const { triggerAmlComplete } = await import('../jobs/touchpointEngine.js');
+    await triggerAmlComplete(id, tenantId);
+
+    await prisma.activityLog.create({
+      data: {
+        tenantId,
+        action: 'CLIENT_AML_COMPLETE',
+        entityType: 'CLIENT',
+        entityId: id,
+        description: 'AML verification marked complete',
+      },
+    });
+
+    res.json({ success: true });
+  })
+);
+
+/**
+ * POST /api/clients/:id/info-received
+ * Mark requested info as received
+ */
+router.post(
+  '/:id/info-received',
+  authenticate,
+  authorize('ADMIN', 'PARTNER', 'MANAGER', 'SENIOR'),
+  asyncHandler(async (req, res) => {
+    const { id } = req.params;
+    const tenantId = req.tenantId!;
+
+    await prisma.client.update({
+      where: { id },
+      data: { lifecycleStage: 'INFO_RECEIVED' },
+    });
+
+    await prisma.activityLog.create({
+      data: {
+        tenantId,
+        action: 'CLIENT_INFO_RECEIVED',
+        entityType: 'CLIENT',
+        entityId: id,
+        description: 'Client information received',
+      },
+    });
+
+    res.json({ success: true });
+  })
+);
+
+/**
+ * POST /api/clients/:id/schedule-deadline-reminders
+ */
+router.post(
+  '/:id/schedule-deadline-reminders',
+  authenticate,
+  authorize('ADMIN', 'PARTNER', 'MANAGER'),
+  asyncHandler(async (req, res) => {
+    const { id } = req.params;
+    const tenantId = req.tenantId!;
+
+    const { scheduleDeadlineReminders } = await import('../jobs/touchpointEngine.js');
+    await scheduleDeadlineReminders(id, tenantId);
+
+    res.json({ success: true });
+  })
+);
+
+/**
+ * GET /api/clients/:id/activity
+ * Timeline of activity for this client (used for touchpoint history)
+ */
+router.get(
+  '/:id/activity',
+  authenticate,
+  asyncHandler(async (req, res) => {
+    const { id } = req.params;
+    const tenantId = req.tenantId!;
+
+    // Client entity logs
+    const clientLogs = await prisma.activityLog.findMany({
+      where: {
+        tenantId,
+        entityType: 'CLIENT',
+        entityId: id,
+      },
+      orderBy: { createdAt: 'desc' },
+      take: 60,
+      include: { user: { select: { firstName: true, lastName: true } } },
+    });
+
+    // Touchpoint logs for this client's touchpoints
+    const clientTouchpoints = await prisma.touchpoint.findMany({
+      where: { clientId: id, tenantId },
+      select: { id: true },
+    });
+    const tpIds = clientTouchpoints.map((t) => t.id);
+
+    let touchpointLogs: any[] = [];
+    if (tpIds.length > 0) {
+      touchpointLogs = await prisma.activityLog.findMany({
+        where: {
+          tenantId,
+          entityType: 'TOUCHPOINT',
+          entityId: { in: tpIds },
+        },
+        orderBy: { createdAt: 'desc' },
+        take: 60,
+        include: { user: { select: { firstName: true, lastName: true } } },
+      });
+    }
+
+    // Merge and sort
+    const all = [...clientLogs, ...touchpointLogs].sort(
+      (a: any, b: any) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+    );
+
+    res.json({ success: true, data: all });
   })
 );
 
@@ -317,7 +465,7 @@ router.put(
     }
 
     // Update client
-    const { tags: updateTags, address: updateAddress, ...updateData } = data;
+    const { tags: updateTags, address: updateAddress, ...updateData } = data as any;
     const client = await prisma.client.update({
       where: { id },
       data: {

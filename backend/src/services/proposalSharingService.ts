@@ -260,6 +260,20 @@ export async function recordElectronicSignature(
       },
     });
 
+    // Kick off client touchpoint workflow (welcome + AML in parallel)
+    try {
+      const proposalForTrigger = await prisma.proposal.findUnique({
+        where: { id: data.proposalId },
+        select: { clientId: true },
+      });
+      if (proposalForTrigger?.clientId) {
+        const { triggerProposalAccepted } = await import('../jobs/touchpointEngine.js');
+        await triggerProposalAccepted(proposalForTrigger.clientId, data.tenantId);
+      }
+    } catch (e) {
+      logger.warn('Failed to trigger touchpoint workflow on proposal acceptance', e);
+    }
+
     await prisma.activityLog.create({
       data: {
         tenantId: data.tenantId,
