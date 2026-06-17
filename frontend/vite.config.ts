@@ -1,45 +1,13 @@
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
-import { VitePWA } from 'vite-plugin-pwa';
 import path from 'path';
+
+// PWA disabled — client portal and public proposal links must not prompt "Install app".
+// Staff use Engage in the browser; a standalone PWA confuses clients receiving proposal links.
 
 // https://vitejs.dev/config/
 export default defineConfig({
-  plugins: [
-    react(),
-    VitePWA({
-      registerType: 'autoUpdate',
-      includeAssets: ['favicon.ico', 'apple-touch-icon.png', 'masked-icon.svg'],
-      workbox: {
-        // Don't cache API routes - let them go to the network
-        navigateFallbackDenylist: [/^\/api/, /^\/uploads/],
-        // Exclude API routes from precaching
-        globIgnores: ['**/api/**', '**/uploads/**'],
-      },
-      manifest: {
-        name: 'Engage by Capstone',
-        short_name: 'Proposals',
-        description: 'Revolutionary UK Accounting Proposal Platform',
-        theme_color: '#0284c7',
-        background_color: '#ffffff',
-        display: 'standalone',
-        scope: '/',
-        start_url: '/',
-        icons: [
-          {
-            src: '/images/capstone-icon.svg',
-            sizes: '192x192',
-            type: 'image/svg+xml',
-          },
-          {
-            src: '/images/capstone-icon.svg',
-            sizes: '512x512',
-            type: 'image/svg+xml',
-          },
-        ],
-      },
-    }),
-  ],
+  plugins: [react()],
   resolve: {
     alias: {
       '@': path.resolve(__dirname, './src'),

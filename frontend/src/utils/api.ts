@@ -5,6 +5,13 @@ import { useAuthStore } from '../stores/authStore';
 // API base URL
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
 
+/** Client-facing pages — no install prompts, no auth redirects, quieter errors */
+export function isPublicClientPage(): boolean {
+  if (typeof window === 'undefined') return false;
+  const path = window.location.pathname;
+  return path.startsWith('/portal/') || path.startsWith('/proposals/view/');
+}
+
 // API URL is configured from environment
 
 // Create axios instance
@@ -143,35 +150,40 @@ api.interceptors.response.use(
         });
       }
 
+      const publicPage = isPublicClientPage();
+
       // Handle specific error codes
       switch (errorCode) {
         case 'UNAUTHORIZED':
         case 'TOKEN_EXPIRED':
         case 'INVALID_TOKEN':
-          // Clear auth and redirect to login
-          useAuthStore.getState().clearAuth();
-          window.location.href = '/login';
-          toast.error('Your session has expired. Please log in again.');
+          if (!publicPage) {
+            useAuthStore.getState().clearAuth();
+            window.location.href = '/login';
+            toast.error('Your session has expired. Please log in again.');
+          }
           break;
 
         case 'FORBIDDEN':
-          toast.error('You do not have permission to perform this action');
+          if (!publicPage) toast.error('You do not have permission to perform this action');
           break;
 
         case 'VALIDATION_ERROR':
-          // Don't show toast for validation errors - handled by forms
           break;
 
         case 'RATE_LIMIT_EXCEEDED':
-          toast.error('Too many requests. Please try again later.');
+          if (!publicPage) toast.error('Too many requests. Please try again later.');
           break;
 
         case 'DUPLICATE_ERROR':
-          toast.error('This record already exists');
+          if (!publicPage) toast.error('This record already exists');
+          break;
+
+        case 'PORTAL_NOT_FOUND':
           break;
 
         default:
-          toast.error(errorMessage);
+          if (!publicPage) toast.error(errorMessage);
       }
 
       return Promise.reject({
@@ -182,12 +194,18 @@ api.interceptors.response.use(
       });
     }
 
-    // Network error
     if (error.request) {
-      toast.error('Network error. Please check your connection.');
+      const publicPage = isPublicClientPage();
+      const isTimeout = error.code === 'ECONNABORTED';
+      const message = isTimeout
+        ? 'The server is waking up — please wait a moment and refresh the page.'
+        : publicPage
+          ? 'Unable to reach the server. Please check your connection and try again.'
+          : 'Network error. Please check your connection.';
+      if (!publicPage) toast.error(message);
       return Promise.reject({
-        code: 'NETWORK_ERROR',
-        message: 'Network error. Please check your connection.',
+        code: isTimeout ? 'TIMEOUT' : 'NETWORK_ERROR',
+        message,
       });
     }
 

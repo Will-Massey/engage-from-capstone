@@ -63,6 +63,12 @@ export interface ProposalTotals {
     total: number;
     items: LineItemResult[];
   };
+  weekly: {
+    subtotal: number;
+    vatAmount: number;
+    total: number;
+    items: LineItemResult[];
+  };
 
   // Grand totals
   grandTotal: number;
@@ -98,7 +104,10 @@ export function calculateLineItem(input: ServicePricingInput): LineItemResult {
       annualEquivalent = basePrice;
       break;
     case 'ONE_TIME':
-      annualEquivalent = 0; // One-time doesn't have annual equivalent
+      annualEquivalent = 0;
+      break;
+    case 'WEEKLY':
+      annualEquivalent = basePrice * 52;
       break;
     default:
       annualEquivalent = basePrice * 12;
@@ -118,6 +127,9 @@ export function calculateLineItem(input: ServicePricingInput): LineItemResult {
       break;
     case 'ONE_TIME':
       priceDisplayMode = 'ONE_TIME';
+      break;
+    case 'WEEKLY':
+      priceDisplayMode = 'PER_MONTH';
       break;
     default:
       priceDisplayMode = 'PER_MONTH';
@@ -166,11 +178,11 @@ export function calculateProposalTotals(lineItems: LineItemResult[]): ProposalTo
     quarterly: lineItems.filter((item) => item.billingFrequency === 'QUARTERLY'),
     annually: lineItems.filter((item) => item.billingFrequency === 'ANNUALLY'),
     oneTime: lineItems.filter((item) => item.billingFrequency === 'ONE_TIME'),
+    weekly: lineItems.filter((item) => item.billingFrequency === 'WEEKLY'),
   };
 
-  // Calculate totals for each group
   const calculateGroup = (items: LineItemResult[]) => ({
-    subtotal: items.reduce((sum, item) => sum + item.lineTotal, 0),
+    subtotal: items.reduce((sum, item) => sum + item.netTotal, 0),
     vatAmount: items.reduce((sum, item) => sum + item.vatAmount, 0),
     total: items.reduce((sum, item) => sum + item.grossTotal, 0),
     items,
@@ -180,9 +192,10 @@ export function calculateProposalTotals(lineItems: LineItemResult[]): ProposalTo
   const quarterly = calculateGroup(grouped.quarterly);
   const annually = calculateGroup(grouped.annually);
   const oneTime = calculateGroup(grouped.oneTime);
+  const weekly = calculateGroup(grouped.weekly);
 
-  // Calculate grand total and annual equivalent
-  const grandTotal = monthly.total + quarterly.total + annually.total + oneTime.total;
+  const grandTotal =
+    monthly.total + quarterly.total + annually.total + oneTime.total + weekly.total;
   const totalAnnualEquivalent =
     monthly.items.reduce((sum, item) => sum + item.annualEquivalent * item.quantity, 0) +
     quarterly.items.reduce((sum, item) => sum + item.annualEquivalent * item.quantity, 0) +
@@ -194,6 +207,7 @@ export function calculateProposalTotals(lineItems: LineItemResult[]): ProposalTo
     QUARTERLY: grouped.quarterly.length,
     ANNUALLY: grouped.annually.length,
     ONE_TIME: grouped.oneTime.length,
+    WEEKLY: grouped.weekly.length,
   };
   const primaryBillingFrequency = Object.entries(counts).sort(
     (a, b) => b[1] - a[1]
@@ -204,6 +218,7 @@ export function calculateProposalTotals(lineItems: LineItemResult[]): ProposalTo
     quarterly,
     annually,
     oneTime,
+    weekly,
     grandTotal,
     totalAnnualEquivalent,
     primaryBillingFrequency,

@@ -191,13 +191,19 @@ export interface ElectronicSignatureData {
   proposalId: string;
   signedBy: string;
   signedByRole: string;
-  signatureData: string; // Base64 encoded
+  signerEmail?: string | null;
+  signatureData: string;
   ipAddress: string | null;
   userAgent: string | null;
   deviceInfo: string | null;
   geoLocation: string | null;
+  documentHash?: string | null;
+  termsHash?: string | null;
+  consentText?: string | null;
+  signatureType?: string;
   agreementVersion: string;
   tenantId: string;
+  userId?: string | null;
 }
 
 // Record electronic signature
@@ -223,19 +229,23 @@ export async function recordElectronicSignature(
         proposalId: data.proposalId,
         signedBy: data.signedBy,
         signedByRole: data.signedByRole,
-        signatureData: data.signatureData, // Keep base64 for backward compatibility
+        signerEmail: data.signerEmail || null,
+        signatureData: data.signatureData,
         signatureFilePath: signatureFilePath,
         signedAt: new Date(),
         ipAddress: data.ipAddress,
         userAgent: data.userAgent,
         deviceInfo: data.deviceInfo,
         geoLocation: data.geoLocation,
+        documentHash: data.documentHash || null,
+        termsHash: data.termsHash || null,
+        consentText: data.consentText || null,
+        signatureType: data.signatureType || 'SIMPLE_ELECTRONIC',
         agreementVersion: data.agreementVersion,
         agreementAccepted: true,
       },
     });
 
-    // Update proposal status and signature
     await prisma.proposal.update({
       where: { id: data.proposalId },
       data: {
@@ -247,6 +257,22 @@ export async function recordElectronicSignature(
         signature: data.signatureData,
         termsAccepted: true,
         termsAcceptedAt: new Date(),
+      },
+    });
+
+    await prisma.activityLog.create({
+      data: {
+        tenantId: data.tenantId,
+        userId: data.userId || undefined,
+        action: 'PROPOSAL_SIGNED',
+        entityType: 'PROPOSAL',
+        entityId: data.proposalId,
+        description: `Proposal signed electronically by ${data.signedBy}`,
+        metadata: JSON.stringify({
+          signatureId: signature.id,
+          documentHash: data.documentHash,
+          ipAddress: data.ipAddress,
+        }),
       },
     });
 
@@ -269,11 +295,18 @@ export async function getProposalSignatures(proposalId: string) {
         id: true,
         signedBy: true,
         signedByRole: true,
+        signerEmail: true,
         signedAt: true,
         ipAddress: true,
+        userAgent: true,
+        deviceInfo: true,
+        geoLocation: true,
+        documentHash: true,
+        termsHash: true,
+        consentText: true,
+        signatureType: true,
         agreementVersion: true,
         agreementAccepted: true,
-        // Exclude signatureData for list view (too large)
       },
     });
 
@@ -470,7 +503,8 @@ export function generatePortalToken(): string {
 // Create or refresh client portal link
 export async function createClientPortalLink(
   clientId: string,
-  expiryDays: number = 90
+  expiryDays: number = 90,
+  frontendOrigin?: string
 ): Promise<{ token: string; portalUrl: string; expiresAt: Date }> {
   const token = generatePortalToken();
   const expiresAt = new Date();
@@ -485,7 +519,11 @@ export async function createClientPortalLink(
     },
   });
 
-  const portalUrl = `${process.env.FRONTEND_URL || 'https://engage-frontend-0g6u.onrender.com'}/portal/${token}`;
+  const base =
+    frontendOrigin?.replace(/\/$/, '') ||
+    process.env.FRONTEND_URL?.replace(/\/$/, '') ||
+    'https://engage-frontend-0g6u.onrender.com';
+  const portalUrl = `${base}/portal/${token}`;
   return { token, portalUrl, expiresAt };
 }
 

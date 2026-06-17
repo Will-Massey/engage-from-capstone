@@ -17,6 +17,8 @@ import { format, isValid, parseISO } from 'date-fns';
 import {
   ArrowRightIcon,
   ArrowLeftIcon,
+  ArrowUpIcon,
+  ArrowDownIcon,
   PlusIcon,
   TrashIcon,
   PencilIcon,
@@ -222,9 +224,15 @@ const formatPriceForDisplay = (price: number, frequency: string): string => {
   return `${formatted}/month`;
 };
 
-export default function ProposalBuilder() {
+interface ProposalBuilderProps {
+  proposalId?: string;
+}
+
+export default function ProposalBuilder({ proposalId }: ProposalBuilderProps) {
   const navigate = useNavigate();
   const { tenant } = useAuthStore();
+  const isEditMode = Boolean(proposalId);
+  const draftKey = `engage-draft-${proposalId || 'new'}`;
   const [currentStep, setCurrentStep] = useState(1);
   const [isLoading, setIsLoading] = useState(false);
 
@@ -262,11 +270,45 @@ export default function ProposalBuilder() {
   const [coverLetter, setCoverLetter] = useState('');
   const [includeVat, setIncludeVat] = useState(true);
 
-  // Load data
   useEffect(() => {
     loadClients();
     loadServices();
-  }, []);
+    if (proposalId) {
+      loadExistingProposal(proposalId);
+    } else {
+      try {
+        const saved = localStorage.getItem(draftKey);
+        if (saved) {
+          const draft = JSON.parse(saved);
+          if (draft.selectedClient) setSelectedClient(draft.selectedClient);
+          if (draft.selectedServices?.length) setSelectedServices(draft.selectedServices);
+          if (draft.proposalTitle) setProposalTitle(draft.proposalTitle);
+          if (draft.coverLetter) setCoverLetter(draft.coverLetter);
+          if (draft.currentStep) setCurrentStep(draft.currentStep);
+        }
+      } catch {
+        // ignore corrupt draft
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [proposalId]);
+
+  useEffect(() => {
+    if (isEditMode) return;
+    const timer = setTimeout(() => {
+      localStorage.setItem(
+        draftKey,
+        JSON.stringify({
+          selectedClient,
+          selectedServices,
+          proposalTitle,
+          coverLetter,
+          currentStep,
+        })
+      );
+    }, 1500);
+    return () => clearTimeout(timer);
+  }, [selectedClient, selectedServices, proposalTitle, coverLetter, currentStep, draftKey, isEditMode]);
 
   const loadClients = async () => {
     try {
@@ -283,9 +325,7 @@ export default function ProposalBuilder() {
       const mappedServices = (response.data || []).map((s: any) => {
         const derivedBillingCycle =
           s.defaultFrequency && s.defaultFrequency !== 'MONTHLY'
-            ? s.defaultFrequency === 'ONE_TIME'
-              ? 'MONTHLY'
-              : s.defaultFrequency
+            ? s.defaultFrequency
             : s.billingCycle || 'MONTHLY';
         return {
           ...s,
@@ -506,13 +546,88 @@ export default function ProposalBuilder() {
     setEditingService(null);
   };
 
-  // Remove service
   const removeService = (id: string) => {
     setSelectedServices((prev) => prev.filter((s) => s.id !== id));
   };
 
-  // Create proposal
-  const createProposal = async () => {
+  const moveService = (id: string, direction: 'up' | 'down') => {
+    setSelectedServices((prev) => {
+      const idx = prev.findIndex((s) => s.id === id);
+      if (idx < 0) return prev;
+      const next = direction === 'up' ? idx - 1 : idx + 1;
+      if (next < 0 || next >= prev.length) return prev;
+      const copy = [...prev];
+      [copy[idx], copy[next]] = [copy[next], copy[idx]];
+      return copy;
+    });
+  };
+
+  const loadExistingProposal = async (id: string) => {
+    try {
+      setIsLoading(true);
+      const response = (await apiClient.getProposal(id)) as any;
+      if (!response.success) return;
+      const p = response.data;
+      setProposalTitle(p.title || '');
+      setCoverLetter(p.coverLetter || '');
+      if (p.client) {
+        setSelectedClient({
+          id: p.client.id,
+          name: p.client.name,
+          companyType: p.client.companyType,
+          contactEmail: p.client.contactEmail,
+          contactName: p.client.contactName,
+        });
+      }
+      const lines: SelectedService[] = (p.services || []).map((svc: any, i: number) => {
+        const freq = svc.billingFrequency || svc.frequency || 'MONTHLY';
+        const displayPrice = svc.displayPrice ?? svc.unitPrice ?? 0;
+        const qty = svc.quantity || 1;
+        const discount = svc.discountPercent || 0;
+        const grossLine = displayPrice * qty;
+        const net = grossLine - grossLine * (discount / 100);
+        const vatRate = svc.vatRate ?? 20;
+        const vatAmount = svc.vatAmount ?? Math.round(net * (vatRate / 100) * 100) / 100;
+        return {
+          id: svc.serviceTemplateId || svc.id || `line-${i}`,
+          templateId: svc.serviceTemplateId || svc.id,
+          name: svc.name,
+          description: svc.description,
+          priceAmount: displayPrice,
+          priceDisplayMode: svc.priceDisplayMode || 'PER_MONTH',
+          billingCycle: freq,
+          category: svc.serviceTemplate?.category || 'Custom',
+          quantity: qty,
+          discountPercent: discount,
+          displayPrice,
+          annualEquivalent: svc.annualEquivalent ?? calculateAnnualEquivalent(displayPrice, freq),
+          lineTotal: svc.lineTotal ?? net,
+          vatRate,
+          vatAmount,
+          grossTotal: svc.grossTotal ?? net + vatAmount,
+          oneOffDueDate: svc.oneOffDueDate
+            ? String(svc.oneOffDueDate).slice(0, 10)
+            : undefined,
+        };
+      });
+      setSelectedServices(lines);
+      setCurrentStep(lines.length > 0 ? 2 : 1);
+    } catch {
+      toast.error('Failed to load proposal for editing');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const parseApiError = (error: any): string => {
+    const details = error?.response?.data?.error?.details;
+    if (Array.isArray(details) && details.length > 0) {
+      return details.map((d: any) => d.message || d.path?.join('.')).join('; ');
+    }
+    return error?.response?.data?.error?.message || error.message || 'Request failed';
+  };
+
+  const saveProposal = async () => {
     if (!selectedClient) {
       toast.error('Please select a client');
       return;
@@ -553,16 +668,19 @@ export default function ProposalBuilder() {
           }),
       };
 
-      const response = (await apiClient.createProposal(proposalData)) as any;
+      const response = isEditMode
+        ? ((await apiClient.updateProposal(proposalId!, proposalData)) as any)
+        : ((await apiClient.createProposal(proposalData)) as any);
 
       if (response.success) {
-        toast.success('Proposal created successfully!');
-        navigate(`/proposals/${response.data.id}`);
+        localStorage.removeItem(draftKey);
+        toast.success(isEditMode ? 'Proposal updated successfully!' : 'Proposal created successfully!');
+        navigate(`/proposals/${isEditMode ? proposalId : response.data.id}`);
       } else {
-        toast.error(response.error?.message || 'Failed to create proposal');
+        toast.error(response.error?.message || 'Failed to save proposal');
       }
     } catch (error: any) {
-      toast.error(error.message || 'Failed to create proposal');
+      toast.error(parseApiError(error));
     } finally {
       setIsLoading(false);
     }
@@ -864,6 +982,22 @@ export default function ProposalBuilder() {
 
           <div className="flex gap-1">
             <button
+              type="button"
+              onClick={() => moveService(service.id, 'up')}
+              className="p-1.5 text-slate-500 hover:bg-slate-200 dark:hover:bg-slate-700 rounded"
+              title="Move up"
+            >
+              <ArrowUpIcon className="w-4 h-4" />
+            </button>
+            <button
+              type="button"
+              onClick={() => moveService(service.id, 'down')}
+              className="p-1.5 text-slate-500 hover:bg-slate-200 dark:hover:bg-slate-700 rounded"
+              title="Move down"
+            >
+              <ArrowDownIcon className="w-4 h-4" />
+            </button>
+            <button
               data-testid="edit-service-button"
               onClick={() => startEdit(service)}
               className="p-1.5 text-blue-600 hover:bg-blue-100 dark:hover:bg-blue-900/30 rounded"
@@ -1103,8 +1237,8 @@ export default function ProposalBuilder() {
           <ArrowLeftIcon className="w-5 h-5 mr-2" />
           Back
         </button>
-        <button data-testid="create-proposal-button" onClick={createProposal} disabled={isLoading} className="btn-primary">
-          {isLoading ? 'Creating...' : 'Create Proposal'}
+        <button data-testid="create-proposal-button" onClick={saveProposal} disabled={isLoading} className="btn-primary">
+          {isLoading ? 'Saving...' : isEditMode ? 'Save Changes' : 'Create Proposal'}
           <ArrowRightIcon className="w-5 h-5 ml-2" />
         </button>
       </div>

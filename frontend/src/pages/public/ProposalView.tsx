@@ -27,6 +27,7 @@ interface ProposalData {
   client: {
     name: string;
     companyType: string;
+    contactEmail?: string;
   };
   tenant: {
     name: string;
@@ -59,7 +60,12 @@ const PublicProposalView = () => {
   const [signatureData, setSignatureData] = useState<string>('');
   const [signerName, setSignerName] = useState('');
   const [signerRole, setSignerRole] = useState('');
+  const [signerEmail, setSignerEmail] = useState('');
+  const [authorisedToSign, setAuthorisedToSign] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isDeclining, setIsDeclining] = useState(false);
+  const [declineReason, setDeclineReason] = useState('');
+  const [showDecline, setShowDecline] = useState(false);
   const [isAccepted, setIsAccepted] = useState(false);
 
   useEffect(() => {
@@ -71,6 +77,9 @@ const PublicProposalView = () => {
         if (response.success) {
           setProposal(response.data);
           setIsAccepted(response.data.status === 'ACCEPTED');
+          if (response.data.client?.contactEmail) {
+            setSignerEmail(response.data.client.contactEmail);
+          }
         } else {
           setError('Proposal not found or link expired');
         }
@@ -97,8 +106,12 @@ const PublicProposalView = () => {
   };
 
   const handleSubmitSignature = async () => {
-    if (!signatureData || !signerName || !signerRole) {
-      toast.error('Please provide your name, role, and signature');
+    if (!signatureData || !signerName || !signerRole || !signerEmail) {
+      toast.error('Please provide your name, role, email, and signature');
+      return;
+    }
+    if (!authorisedToSign) {
+      toast.error('Please confirm you are authorised to sign on behalf of the client');
       return;
     }
 
@@ -115,12 +128,17 @@ const PublicProposalView = () => {
 
     setIsSubmitting(true);
     try {
+      const consentText = `I confirm I am authorised to sign on behalf of ${proposal?.client?.name || 'the client'} and agree to the terms of this proposal.`;
+
       const response = (await apiClient.post(`/proposals/view/${token}/sign`, {
         signedBy: signerName,
         signedByRole: signerRole,
+        signerEmail,
         signatureData,
         agreementAccepted: termsAccepted,
+        authorisedToSign,
         deviceInfo,
+        consentText,
       })) as any;
 
       if (response.success) {
@@ -322,8 +340,8 @@ const PublicProposalView = () => {
           )}
 
           {/* Actions */}
-          {!isAccepted && !isExpired && !showSignature && (
-            <div className="border-t pt-6 flex space-x-4">
+          {!isAccepted && !isExpired && !showSignature && !showDecline && (
+            <div className="border-t pt-6 flex flex-col sm:flex-row gap-3">
               <button
                 data-testid="accept-proposal-button"
                 onClick={handleAccept}
@@ -332,6 +350,56 @@ const PublicProposalView = () => {
               >
                 Accept Proposal
               </button>
+              <button
+                type="button"
+                data-testid="decline-proposal-button"
+                onClick={() => setShowDecline(true)}
+                className="flex-1 btn-secondary py-3"
+              >
+                Decline
+              </button>
+            </div>
+          )}
+
+          {showDecline && !isAccepted && (
+            <div className="border-t pt-6 space-y-3">
+              <h3 className="text-lg font-medium text-slate-900">Decline proposal</h3>
+              <textarea
+                data-testid="decline-reason-input"
+                value={declineReason}
+                onChange={(e) => setDeclineReason(e.target.value)}
+                rows={3}
+                className="input-field w-full"
+                placeholder="Please let us know why you are declining…"
+              />
+              <div className="flex gap-3">
+                <button type="button" className="btn-secondary flex-1" onClick={() => setShowDecline(false)}>
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  data-testid="confirm-decline-button"
+                  disabled={isDeclining || declineReason.trim().length < 3}
+                  className="btn-primary flex-1"
+                  onClick={async () => {
+                    setIsDeclining(true);
+                    try {
+                      await apiClient.post(`/proposals/view/${token}/decline`, {
+                        reason: declineReason.trim(),
+                        declinedBy: signerName || undefined,
+                      });
+                      toast.success('Proposal declined');
+                      setShowDecline(false);
+                    } catch (err: any) {
+                      toast.error(err?.response?.data?.error?.message || 'Failed to decline');
+                    } finally {
+                      setIsDeclining(false);
+                    }
+                  }}
+                >
+                  {isDeclining ? 'Submitting…' : 'Confirm decline'}
+                </button>
+              </div>
             </div>
           )}
 
@@ -340,7 +408,7 @@ const PublicProposalView = () => {
             <div className="border-t pt-6">
               <h3 className="text-lg font-medium text-slate-900 mb-4">Electronic Signature</h3>
               <div className="space-y-4">
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
                     <label className="block text-sm font-medium text-slate-800">Full Name</label>
                     <input
@@ -363,7 +431,31 @@ const PublicProposalView = () => {
                       className="mt-1 input-field"
                     />
                   </div>
+                  <div className="sm:col-span-2">
+                    <label className="block text-sm font-medium text-slate-800">Email address</label>
+                    <input
+                      data-testid="signer-email-input"
+                      type="email"
+                      value={signerEmail}
+                      onChange={(e) => setSignerEmail(e.target.value)}
+                      placeholder="director@company.co.uk"
+                      className="mt-1 input-field"
+                    />
+                  </div>
                 </div>
+                <label className="flex items-start gap-2 text-sm text-slate-800">
+                  <input
+                    data-testid="authorised-checkbox"
+                    type="checkbox"
+                    checked={authorisedToSign}
+                    onChange={(e) => setAuthorisedToSign(e.target.checked)}
+                    className="mt-1 h-4 w-4 rounded"
+                  />
+                  <span>
+                    I confirm I am authorised to sign on behalf of{' '}
+                    <strong>{proposal?.client?.name}</strong> (simple electronic signature).
+                  </span>
+                </label>
                 <SignaturePad onSave={handleSignatureSave} />
                 {signatureData && (
                   <div className="flex space-x-4">

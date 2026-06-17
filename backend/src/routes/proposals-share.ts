@@ -29,6 +29,13 @@ import {
 import { createEmailService } from '../services/emailService.js';
 import PDFGenerator from '../services/pdfGenerator.js';
 import logger from '../config/logger.js';
+import {
+  AGREEMENT_VERSION,
+  DEFAULT_CONSENT_TEXT,
+  hashProposalDocument,
+  hashTerms,
+  lookupGeoFromIp,
+} from '../utils/signatureAudit.js';
 
 const router = Router();
 
@@ -421,6 +428,7 @@ router.get(
         client: {
           name: proposal.client.name,
           companyType: proposal.client.companyType,
+          contactEmail: proposal.client.contactEmail,
         },
         tenant: {
           name: proposal.tenant.name,
@@ -475,17 +483,15 @@ router.post(
     const schema = z.object({
       signedBy: z.string().min(2),
       signedByRole: z.string().min(2),
-      signatureData: z.string().min(100), // Base64 signature image
+      signerEmail: z.string().email(),
+      signatureData: z.string().min(100),
       agreementAccepted: z.boolean(),
+      authorisedToSign: z.boolean(),
       deviceInfo: z.string().optional(),
+      consentText: z.string().optional(),
     });
 
     const parsed = schema.parse(req.body);
-    const signedBy = parsed.signedBy;
-    const signedByRole = parsed.signedByRole;
-    const signatureData = parsed.signatureData;
-    const agreementAccepted = parsed.agreementAccepted;
-    const deviceInfo = parsed.deviceInfo;
     const { token } = req.params;
 
     const proposal = await getProposalByShareToken(token);
@@ -502,20 +508,42 @@ router.post(
       );
     }
 
-    if (!agreementAccepted) {
+    if (!parsed.agreementAccepted) {
       throw new ApiError('AGREEMENT_REQUIRED', 'You must accept the terms and conditions', 400);
     }
 
+    if (!parsed.authorisedToSign) {
+      throw new ApiError(
+        'AUTHORISATION_REQUIRED',
+        'You must confirm you are authorised to sign on behalf of the client',
+        400
+      );
+    }
+
+    const fullForHash = await prisma.proposal.findUnique({
+      where: { id: proposal.id },
+      include: { services: true },
+    });
+
+    const ipAddress = req.ip || null;
+    const geoLocation = await lookupGeoFromIp(ipAddress);
+    const consentText = parsed.consentText || DEFAULT_CONSENT_TEXT;
+
     const result = await recordElectronicSignature({
       proposalId: proposal.id,
-      signedBy,
-      signedByRole,
-      signatureData,
-      ipAddress: req.ip || null,
+      signedBy: parsed.signedBy,
+      signedByRole: parsed.signedByRole,
+      signerEmail: parsed.signerEmail,
+      signatureData: parsed.signatureData,
+      ipAddress,
       userAgent: req.headers['user-agent'] || null,
-      deviceInfo: deviceInfo || null,
-      geoLocation: null, // Can be enriched via IP geolocation service if needed
-      agreementVersion: 'PRO-2024-001',
+      deviceInfo: parsed.deviceInfo || null,
+      geoLocation,
+      documentHash: fullForHash ? hashProposalDocument(fullForHash) : null,
+      termsHash: hashTerms(fullForHash?.terms),
+      consentText,
+      signatureType: 'SIMPLE_ELECTRONIC',
+      agreementVersion: AGREEMENT_VERSION,
       tenantId: proposal.tenantId,
     });
 
@@ -554,8 +582,8 @@ router.post(
             proposalReference: fullProposal.reference,
             acceptedAt: new Date(),
             totalAmount: `£${fullProposal.total.toFixed(2)}`,
-            signedBy,
-            signedByRole,
+            signedBy: parsed.signedBy,
+            signedByRole: parsed.signedByRole,
             proposalPdf,
             signaturePng: signatureImage
               ? Buffer.from(signatureImage.split(',')[1], 'base64')
@@ -581,9 +609,54 @@ router.post(
       message: 'Proposal accepted successfully',
       data: {
         acceptedAt: new Date(),
-        acceptedBy: signedBy,
+        acceptedBy: parsed.signedBy,
+        signatureId: result.signatureId,
       },
     });
+  })
+);
+
+// Decline proposal (public)
+router.post(
+  '/view/:token/decline',
+  asyncHandler(async (req, res) => {
+    const schema = z.object({
+      reason: z.string().min(3).max(2000),
+      declinedBy: z.string().min(2).optional(),
+    });
+    const { reason, declinedBy } = schema.parse(req.body);
+    const { token } = req.params;
+
+    const proposal = await getProposalByShareToken(token);
+    if (!proposal) {
+      throw new ApiError('PROPOSAL_NOT_FOUND', 'Proposal not found or link expired', 404);
+    }
+    if (proposal.status === 'ACCEPTED') {
+      throw new ApiError('INVALID_STATUS', 'Proposal already accepted', 400);
+    }
+
+    await prisma.proposal.update({
+      where: { id: proposal.id },
+      data: { status: 'DECLINED' },
+    });
+
+    await prisma.activityLog.create({
+      data: {
+        tenantId: proposal.tenantId,
+        action: 'PROPOSAL_DECLINED',
+        entityType: 'PROPOSAL',
+        entityId: proposal.id,
+        description: declinedBy
+          ? `Proposal declined by ${declinedBy}: ${reason}`
+          : `Proposal declined: ${reason}`,
+        metadata: JSON.stringify({ reason, declinedBy, ipAddress: req.ip }),
+        ipAddress: req.ip || null,
+        userAgent: req.headers['user-agent'] || null,
+        proposalId: proposal.id,
+      },
+    });
+
+    res.json({ success: true, message: 'Proposal declined' });
   })
 );
 
@@ -645,8 +718,9 @@ router.post(
     const { clientId } = req.params;
     const schema = z.object({
       expiryDays: z.number().min(1).max(365).optional(),
+      frontendOrigin: z.string().url().optional(),
     });
-    const { expiryDays } = schema.parse(req.body);
+    const { expiryDays, frontendOrigin } = schema.parse(req.body);
 
     // Verify client exists and belongs to tenant
     const client = await prisma.client.findFirst({
@@ -657,7 +731,11 @@ router.post(
       throw new ApiError('CLIENT_NOT_FOUND', 'Client not found', 404);
     }
 
-    const result = await createClientPortalLink(clientId, expiryDays || 90);
+    const origin =
+      frontendOrigin ||
+      (typeof req.headers.origin === 'string' ? req.headers.origin : undefined);
+
+    const result = await createClientPortalLink(clientId, expiryDays || 90, origin);
 
     res.json({
       success: true,

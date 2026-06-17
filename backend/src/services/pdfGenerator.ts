@@ -23,6 +23,7 @@ interface ProposalData {
   createdAt: Date;
   acceptedAt?: Date;
   acceptedBy?: string;
+  signatoryPosition?: string;
   signature?: string;
   client: {
     name: string;
@@ -95,8 +96,12 @@ export class PDFGenerator {
         },
         services: true,
         tenant: true,
+        signatures: {
+          orderBy: { signedAt: 'desc' as const },
+          take: 1,
+        },
       },
-    })) as unknown as ProposalData;
+    })) as unknown as ProposalData & { signatures?: any[] };
 
     if (!proposal) {
       throw new Error('Proposal not found');
@@ -147,7 +152,15 @@ export class PDFGenerator {
 
         // ========== ACCEPTANCE ==========
         doc.addPage();
-        this.drawAcceptance(doc, proposal, primaryColor);
+        if (proposal.status === 'ACCEPTED' && proposal.signature) {
+          this.drawSignedAcceptance(doc, proposal, primaryColor);
+          if ((proposal as any).signatures?.[0]) {
+            doc.addPage();
+            this.drawSignatureCertificate(doc, proposal, (proposal as any).signatures[0]);
+          }
+        } else {
+          this.drawAcceptance(doc, proposal, primaryColor);
+        }
 
         doc.end();
       } catch (error) {
@@ -611,6 +624,65 @@ ${proposal.tenant.name}`;
         doc.moveDown(1);
       }
     });
+  }
+
+  private static drawSignedAcceptance(doc: PDFDoc, proposal: ProposalData, primaryColor: string) {
+    doc.fontSize(16).fillColor('#333333').text('Electronic Acceptance', { align: 'center' });
+    doc.moveDown(2);
+    doc.fontSize(11).fillColor('#444444');
+    doc.text(`Signed by: ${proposal.acceptedBy || 'Client representative'}`);
+    if (proposal.signatoryPosition) {
+      doc.text(`Position: ${proposal.signatoryPosition}`);
+    }
+    if (proposal.acceptedAt) {
+      doc.text(`Date: ${this.formatDate(proposal.acceptedAt)}`);
+    }
+    doc.moveDown(1);
+    if (proposal.signature) {
+      try {
+        const base64 = proposal.signature.includes(',')
+          ? proposal.signature.split(',')[1]
+          : proposal.signature;
+        doc.image(Buffer.from(base64, 'base64'), { fit: [200, 80] });
+      } catch {
+        doc.text('[Signature on file]');
+      }
+    }
+    doc.moveDown(2);
+    doc.fontSize(9).fillColor('#666666').text(
+      'This document was accepted using a simple electronic signature under UK law.',
+      { align: 'center' }
+    );
+  }
+
+  private static drawSignatureCertificate(doc: PDFDoc, proposal: ProposalData, sig: any) {
+    doc.fontSize(16).fillColor('#333333').text('Signature Certificate', { align: 'center' });
+    doc.moveDown(1.5);
+    doc.fontSize(10).fillColor('#444444');
+    const rows: [string, string][] = [
+      ['Proposal reference', proposal.reference],
+      ['Signature ID', sig.id],
+      ['Signer', sig.signedBy],
+      ['Role', sig.signedByRole],
+      ['Email', sig.signerEmail || '—'],
+      ['Signed at (UTC)', new Date(sig.signedAt).toISOString()],
+      ['IP address', sig.ipAddress || '—'],
+      ['Location', sig.geoLocation || '—'],
+      ['Signature type', sig.signatureType || 'SIMPLE_ELECTRONIC'],
+      ['Agreement version', sig.agreementVersion || '—'],
+      ['Document hash', sig.documentHash || '—'],
+      ['Terms hash', sig.termsHash || '—'],
+    ];
+    rows.forEach(([label, value]) => {
+      doc.font('Helvetica-Bold').text(`${label}: `, { continued: true });
+      doc.font('Helvetica').text(String(value), { width: 480 });
+      doc.moveDown(0.3);
+    });
+    if (sig.consentText) {
+      doc.moveDown(0.5);
+      doc.font('Helvetica-Bold').text('Consent statement');
+      doc.font('Helvetica').text(sig.consentText, { width: 480 });
+    }
   }
 
   /**

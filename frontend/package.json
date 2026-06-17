@@ -47,7 +47,6 @@
     "tailwindcss": "^3.4.0",
     "typescript": "^5.2.2",
     "vite": "^6.4.2",
-    "vite-plugin-pwa": "^0.21.2",
     "vitest": "^3.2.4"
   },
   "optionalDependencies": {

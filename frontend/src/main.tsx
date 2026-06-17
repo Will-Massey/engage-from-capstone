@@ -8,6 +8,13 @@ import ErrorBoundary from './components/ErrorBoundary';
 // Build v5 - FORCE REBUILD - 2026-04-07T18:45:00Z - No Stripe
 import './index.css';
 
+// Retire legacy PWA service workers (client portal must not run as installed app)
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.getRegistrations().then((registrations) => {
+    registrations.forEach((registration) => registration.unregister());
+  });
+}
+
 // Initialize theme before rendering
 try {
   initializeTheme();
