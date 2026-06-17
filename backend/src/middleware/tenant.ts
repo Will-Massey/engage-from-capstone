@@ -1,6 +1,8 @@
 import { Request, Response, NextFunction } from 'express';
 import { prisma } from '../config/database.js';
-import type { Tenant } from '@prisma/client';
+import type { Prisma } from '@prisma/client';
+
+type Tenant = Prisma.TenantGetPayload<object>;
 
 const RESERVED_SUBDOMAINS = new Set([
   'www',
