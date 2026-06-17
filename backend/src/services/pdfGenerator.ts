@@ -293,24 +293,14 @@ export class PDFGenerator {
       const directorFirstName = proposal.client.contactName
         ? proposal.client.contactName.split(' ')[0]
         : proposal.client.name;
-      // Use default template
+      // Neutral professional fallback (the real tone is set via the 3 cover letter options in the builder)
       const defaultIntro = `Dear ${directorFirstName},
 
-Thank you for considering ${proposal.tenant.name} for your accounting and business advisory needs. We appreciate the opportunity to present this proposal outlining our services and how we can support your business.
+Thank you for the opportunity to present this proposal for the services outlined to ${proposal.client.name}. Following our discussion, we have set out the scope of work, fee structure, and terms.
 
-Following a thorough understanding of your requirements, we have prepared a tailored service package designed to provide you with comprehensive support while ensuring compliance with all relevant regulations.
+${proposal.tenant.name} is committed to delivering the approach described and the standards expected of a professional practice.
 
-This proposal details:
-• The specific services we recommend for your business
-• Transparent pricing with no hidden costs
-• Our terms of engagement and service standards
-• Next steps to get started
-
-We believe in building long-term partnerships with our clients based on trust, transparency, and exceptional service delivery.
-
-Please review this proposal at your convenience. Should you have any questions or require any clarification, please do not hesitate to contact us.
-
-We look forward to the possibility of working with you.
+We are happy to discuss any aspect of this proposal at your convenience.
 
 Yours sincerely,
 

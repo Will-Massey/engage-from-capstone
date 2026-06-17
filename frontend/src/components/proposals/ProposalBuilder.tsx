@@ -11,7 +11,13 @@ import { useState, useEffect, useMemo, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { apiClient } from '../../utils/api';
 import { useAuthStore } from '../../stores/authStore';
-import { generateDefaultCoverLetter } from '../../data/defaultCoverLetter';
+import {
+  generateDefaultCoverLetter,
+  generateCoverLetterForTone,
+  COVER_LETTER_STYLES,
+  type CoverLetterTone,
+  getStyleByTone,
+} from '../../data/defaultCoverLetter';
 import toast from 'react-hot-toast';
 import { format, isValid, parseISO } from 'date-fns';
 import {
@@ -230,7 +236,7 @@ interface ProposalBuilderProps {
 
 export default function ProposalBuilder({ proposalId }: ProposalBuilderProps) {
   const navigate = useNavigate();
-  const { tenant } = useAuthStore();
+  const { tenant, user } = useAuthStore();
   const isEditMode = Boolean(proposalId);
   const draftKey = `engage-draft-${proposalId || 'new'}`;
   const [currentStep, setCurrentStep] = useState(1);
@@ -268,6 +274,7 @@ export default function ProposalBuilder({ proposalId }: ProposalBuilderProps) {
   // Step 3: Review
   const [proposalTitle, setProposalTitle] = useState('');
   const [coverLetter, setCoverLetter] = useState('');
+  const [coverLetterTone, setCoverLetterTone] = useState<CoverLetterTone>('PROFESSIONAL');
   const [includeVat, setIncludeVat] = useState(true);
 
   useEffect(() => {
@@ -284,6 +291,7 @@ export default function ProposalBuilder({ proposalId }: ProposalBuilderProps) {
           if (draft.selectedServices?.length) setSelectedServices(draft.selectedServices);
           if (draft.proposalTitle) setProposalTitle(draft.proposalTitle);
           if (draft.coverLetter) setCoverLetter(draft.coverLetter);
+          if (draft.coverLetterTone) setCoverLetterTone(draft.coverLetterTone);
           if (draft.currentStep) setCurrentStep(draft.currentStep);
         }
       } catch {
@@ -303,12 +311,13 @@ export default function ProposalBuilder({ proposalId }: ProposalBuilderProps) {
           selectedServices,
           proposalTitle,
           coverLetter,
+          coverLetterTone,
           currentStep,
         })
       );
     }, 1500);
     return () => clearTimeout(timer);
-  }, [selectedClient, selectedServices, proposalTitle, coverLetter, currentStep, draftKey, isEditMode]);
+  }, [selectedClient, selectedServices, proposalTitle, coverLetter, coverLetterTone, currentStep, draftKey, isEditMode]);
 
   const loadClients = async () => {
     try {
@@ -441,12 +450,42 @@ export default function ProposalBuilder({ proposalId }: ProposalBuilderProps) {
     setCurrentStep(3);
     setCoverLetter((prev) => {
       if (prev.trim() || !selectedClient) return prev;
-      return generateDefaultCoverLetter({
+      // Autofill using the currently selected tone (defaults to PROFESSIONAL)
+      return generateCoverLetterForTone({
+        tone: coverLetterTone,
         addresseeName: coverLetterAddressee(selectedClient),
+        companyName: selectedClient.name,
         practiceName: tenant?.name || 'Our practice',
-        clientBusinessName: selectedClient.name,
+        senderName: `${user?.firstName || ''} ${user?.lastName || ''}`.trim() || undefined,
+        senderPosition: (user as any)?.jobTitle || undefined,
+        services: selectedServices,
       });
     });
+  };
+
+  /**
+   * Apply one of the three professional tones.
+   * Autofills names, company, services list, date, etc. so the user sees a ready-to-send letter.
+   * The T&Cs, services table and acceptance pages remain tone-neutral.
+   */
+  const applyCoverLetterStyle = (tone: CoverLetterTone) => {
+    if (!selectedClient) {
+      toast.error('Select a client first');
+      return;
+    }
+    const generated = generateCoverLetterForTone({
+      tone,
+      addresseeName: coverLetterAddressee(selectedClient),
+      companyName: selectedClient.name,
+      practiceName: tenant?.name || 'Our practice',
+      senderName: `${user?.firstName || ''} ${user?.lastName || ''}`.trim() || undefined,
+      senderPosition: (user as any)?.jobTitle || undefined,
+      services: selectedServices,
+    });
+    setCoverLetter(generated);
+    setCoverLetterTone(tone);
+    const style = getStyleByTone(tone);
+    toast.success(`Applied ${style?.name || tone} tone`);
   };
 
   // Add service
@@ -570,6 +609,9 @@ export default function ProposalBuilder({ proposalId }: ProposalBuilderProps) {
       const p = response.data;
       setProposalTitle(p.title || '');
       setCoverLetter(p.coverLetter || '');
+      // For existing proposals we don't store the originating tone server-side yet.
+      // Default to PROFESSIONAL; user can re-apply any of the three above.
+      setCoverLetterTone('PROFESSIONAL');
       if (p.client) {
         setSelectedClient({
           id: p.client.id,
@@ -661,10 +703,14 @@ export default function ProposalBuilder({ proposalId }: ProposalBuilderProps) {
         services: servicesData,
         coverLetter:
           coverLetter.trim() ||
-          generateDefaultCoverLetter({
+          generateCoverLetterForTone({
+            tone: coverLetterTone,
             addresseeName: coverLetterAddressee(selectedClient),
+            companyName: selectedClient.name,
             practiceName: tenant?.name || 'Our practice',
-            clientBusinessName: selectedClient.name,
+            senderName: `${user?.firstName || ''} ${user?.lastName || ''}`.trim() || undefined,
+            senderPosition: (user as any)?.jobTitle || undefined,
+            services: selectedServices,
           }),
       };
 
@@ -1212,23 +1258,70 @@ export default function ProposalBuilder({ proposalId }: ProposalBuilderProps) {
         </div>
       </div>
 
-      {/* Cover letter */}
+      {/* Cover letter — 3 professional tone options with autofill */}
       <div className="card p-4">
-        <label className="block text-sm font-medium text-slate-700 dark:text-slate-200 mb-2">
-          Cover letter
-        </label>
+        <div className="flex items-center justify-between mb-2">
+          <label className="block text-sm font-medium text-slate-700 dark:text-slate-200">
+            Cover letter
+          </label>
+          <span className="text-[10px] px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-500">
+            Tone affects only this letter — T&Cs and pricing stay neutral
+          </span>
+        </div>
+
+        {/* Style picker — beautiful, instantly autofills names/services */}
+        <div className="mb-3">
+          <div className="text-xs uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-1.5">
+            Choose tone (autofills client name, company, services, date)
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+            {COVER_LETTER_STYLES.map((style) => {
+              const active = coverLetterTone === style.tone;
+              return (
+                <button
+                  key={style.tone}
+                  type="button"
+                  onClick={() => applyCoverLetterStyle(style.tone)}
+                  className={`group text-left rounded-2xl border p-3 transition-all hover:shadow-sm focus:outline-none focus:ring-2 focus:ring-primary-500/40
+                    ${active
+                      ? 'border-primary-400 bg-primary-50/70 dark:bg-primary-950/30 shadow-sm'
+                      : 'border-slate-200 dark:border-slate-700 bg-white/60 dark:bg-slate-900/40 hover:border-slate-300 dark:hover:border-slate-600'
+                    }`}
+                >
+                  <div className="flex items-center gap-2">
+                    <div className={`text-sm font-semibold ${active ? 'text-primary-700 dark:text-primary-300' : 'text-slate-800 dark:text-slate-100'}`}>
+                      {style.name}
+                    </div>
+                    {active && <span className="text-[10px] px-1.5 py-px rounded bg-primary-200 dark:bg-primary-900/50 text-primary-700 dark:text-primary-300">Active</span>}
+                  </div>
+                  <div className="mt-1 text-xs text-slate-500 dark:text-slate-400 leading-snug">
+                    {style.description}
+                  </div>
+                  <div className="mt-2 text-[10px] text-slate-400 group-hover:text-slate-500 transition-colors">
+                    {style.preview}
+                  </div>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
         <p className="text-xs text-slate-500 dark:text-slate-400 mb-2">
-          Opens with “Dear {selectedClient ? coverLetterAddressee(selectedClient) : '…'}”. Edit the text below
-          if you need a different tone.
+          Personalised for {selectedClient ? coverLetterAddressee(selectedClient) : 'your client'}. You can edit the text freely after choosing a tone.
         </p>
+
         <textarea
           value={coverLetter}
           onChange={(e) => setCoverLetter(e.target.value)}
-          rows={10}
-          className="input-field w-full text-sm font-sans min-h-[200px]"
-          placeholder="Cover letter to the client…"
+          rows={11}
+          className="input-field w-full text-sm font-sans min-h-[220px] leading-relaxed"
+          placeholder="Choose a tone above or write your own cover letter…"
           aria-label="Cover letter"
         />
+
+        <div className="mt-2 text-[10px] text-slate-400">
+          Tip: The three styles above are production-ready. The rest of the proposal (services, pricing, terms, acceptance) is intentionally tone-neutral so the cover letter sets the voice without clashing.
+        </div>
       </div>
 
       {/* Actions */}

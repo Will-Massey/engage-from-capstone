@@ -15,10 +15,11 @@ import {
   PencilIcon,
   DocumentDuplicateIcon,
   ExclamationTriangleIcon,
+  PencilSquareIcon,
 } from '@heroicons/react/24/outline';
 import { apiClient } from '../../utils/api';
 import { useAuthStore } from '../../stores/authStore';
-import { format } from 'date-fns';
+import { format, formatDistanceToNow } from 'date-fns';
 import toast from 'react-hot-toast';
 import { SkeletonCard } from '../../components/skeleton/SkeletonCard';
 
@@ -323,6 +324,35 @@ const Proposals = () => {
                           <p className="text-xs text-slate-500 dark:text-slate-400">
                             {proposal.reference}
                           </p>
+                          {proposal.status !== 'DRAFT' && (
+                            <div className="flex flex-wrap gap-1 mt-1.5">
+                              {proposal.acceptedAt && (
+                                <span className="inline-flex items-center gap-0.5 rounded px-1.5 py-0.5 text-[10px] font-medium bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-200">
+                                  <PencilSquareIcon className="h-3 w-3" />
+                                  Signed {format(new Date(proposal.acceptedAt), 'dd MMM')}
+                                </span>
+                              )}
+                              {(proposal._count?.views || 0) > 0 && (
+                                <span className="inline-flex items-center gap-0.5 rounded px-1.5 py-0.5 text-[10px] font-medium bg-purple-100 text-purple-800 dark:bg-purple-900/40 dark:text-purple-200">
+                                  <EyeIcon className="h-3 w-3" />
+                                  {proposal._count.views} {proposal._count.views === 1 ? 'open' : 'opens'}
+                                </span>
+                              )}
+                              {proposal.status === 'SENT' && (proposal._count?.views || 0) === 0 && (
+                                <span className="inline-flex items-center rounded px-1.5 py-0.5 text-[10px] font-medium bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-200">
+                                  Awaiting client
+                                </span>
+                              )}
+                              {((proposal._count?.views || 0) > 0 || proposal.acceptedAt) && (
+                                <Link
+                                  to={`/proposals/${proposal.id}?tab=audit`}
+                                  className="inline-flex items-center rounded px-1.5 py-0.5 text-[10px] font-medium text-primary-700 hover:text-primary-900 dark:text-primary-300 dark:hover:text-primary-100 hover:underline"
+                                >
+                                  Audit trail
+                                </Link>
+                              )}
+                            </div>
+                          )}
                         </div>
                       </td>
                       <td className="px-4 py-4 whitespace-nowrap">
@@ -390,7 +420,12 @@ const Proposals = () => {
                           </div>
                           {proposal.viewedAt && (
                             <span className="text-xs text-slate-500 dark:text-slate-400">
-                              Last: {format(new Date(proposal.viewedAt), 'dd MMM HH:mm')}
+                              Last: {formatDistanceToNow(new Date(proposal.viewedAt), { addSuffix: true })}
+                            </span>
+                          )}
+                          {proposal.acceptedAt && (
+                            <span className="text-xs text-emerald-600 dark:text-emerald-400">
+                              Signed {format(new Date(proposal.acceptedAt), 'dd MMM HH:mm')}
                             </span>
                           )}
                         </div>

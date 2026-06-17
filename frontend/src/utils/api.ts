@@ -357,6 +357,22 @@ export const apiClient = {
 
   // Touchpoints per client (for Lifecycle panel upcoming + history)
   getClientTouchpoints: (clientId: string) => api.get(`/touchpoints/client/${clientId}`),
+
+  // Cover Letter Templates (tones: PROFESSIONAL | FRIENDLY | MODERN)
+  getCoverLetterTemplates: () => api.get('/cover-letter-templates'),
+  getDefaultCoverLetterTemplate: () => api.get('/cover-letter-templates/default'),
+  getCoverLetterMergeFields: () => api.get('/cover-letter-templates/merge-fields'),
+  previewCoverLetter: (id: string, previewData: any) =>
+    api.post(`/cover-letter-templates/${id}/preview`, previewData),
+  previewCoverLetterRaw: (content: string, previewData: any) =>
+    api.post('/cover-letter-templates/preview', { content, previewData }),
+  createCoverLetterTemplate: (data: any) => api.post('/cover-letter-templates', data),
+  updateCoverLetterTemplate: (id: string, data: any) => api.put(`/cover-letter-templates/${id}`, data),
+  deleteCoverLetterTemplate: (id: string) => api.delete(`/cover-letter-templates/${id}`),
+
+  // Proposal audit trail & compliance (views + signatures + key events)
+  getProposalAuditTrail: (id: string) => api.get(`/proposals/${id}/audit-trail`),
+  getProposalSignatures: (id: string) => api.get(`/proposals/${id}/signatures`),
 };
 
 export default api;

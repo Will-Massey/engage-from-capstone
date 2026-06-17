@@ -1,5 +1,5 @@
 import { useEffect, useState, useMemo } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useParams, Link, useSearchParams } from 'react-router-dom';
 import {
   ArrowLeftIcon,
   PencilIcon,
@@ -14,12 +14,16 @@ import {
   UserIcon,
   BuildingOfficeIcon,
   LinkIcon,
+  EyeIcon,
+  PencilSquareIcon,
+  ShieldCheckIcon,
+  ArrowPathIcon,
 } from '@heroicons/react/24/outline';
 import { apiClient } from '../../utils/api';
 import { formatCurrency } from '../../utils/formatters';
 import { copyTextToClipboard } from '../../utils/clipboard';
 import { useAuthStore } from '../../stores/authStore';
-import { format } from 'date-fns';
+import { format, formatDistanceToNow } from 'date-fns';
 import toast from 'react-hot-toast';
 import { generateTermsAndConditions } from '../../data/defaultTerms';
 import { generateDefaultCoverLetter } from '../../data/defaultCoverLetter';
@@ -73,8 +77,45 @@ const frequencyLabels: Record<string, string> = {
   ANNUALLY: 'Annually',
 };
 
+type ProposalDetailTab = 'overview' | 'audit';
+
+function downloadAuditTrailCsv(trail: any[], reference: string) {
+  const headers = ['timestamp_utc', 'action', 'actor', 'ip_address', 'details_json'];
+  const escape = (v: string) => `"${String(v).replace(/"/g, '""')}"`;
+  const rows = trail.map((e) =>
+    [
+      new Date(e.timestamp).toISOString(),
+      e.action || '',
+      e.actor || '',
+      e.ipAddress || '',
+      JSON.stringify(e.details || {}),
+    ]
+      .map(escape)
+      .join(',')
+  );
+  const csv = [headers.join(','), ...rows].join('\r\n');
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `proposal-audit-${reference}.csv`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
 const ProposalDetail = () => {
   const { id } = useParams<{ id: string }>();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const activeTab: ProposalDetailTab = searchParams.get('tab') === 'audit' ? 'audit' : 'overview';
+
+  const setActiveTab = (tab: ProposalDetailTab) => {
+    const next = new URLSearchParams(searchParams);
+    if (tab === 'audit') next.set('tab', 'audit');
+    else next.delete('tab');
+    setSearchParams(next, { replace: true });
+  };
   const { tenant } = useAuthStore();
   const [proposal, setProposal] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -90,10 +131,15 @@ const ProposalDetail = () => {
   const [editingCoverLetter, setEditingCoverLetter] = useState(false);
   const [savingCoverLetter, setSavingCoverLetter] = useState(false);
 
+  // Rich compliance history (views + signatures + sent events) from dedicated audit trail
+  const [auditTrail, setAuditTrail] = useState<any[]>([]);
+  const [loadingAudit, setLoadingAudit] = useState(false);
+
   useEffect(() => {
     if (id) {
       loadProposal();
       loadCompanySettings();
+      loadAuditTrail();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
@@ -167,10 +213,27 @@ const ProposalDetail = () => {
       setIsLoading(true);
       const response = (await apiClient.getProposal(id!)) as any;
       setProposal(response.data);
+      // Keep the rich access history in sync
+      loadAuditTrail();
     } catch (error) {
       // Error handled by UI
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const loadAuditTrail = async () => {
+    if (!id) return;
+    try {
+      setLoadingAudit(true);
+      const res = (await apiClient.getProposalAuditTrail(id)) as any;
+      if (res?.success) {
+        setAuditTrail(res.data || []);
+      }
+    } catch (e) {
+      // non-fatal; the inline signatures + client activity still work
+    } finally {
+      setLoadingAudit(false);
     }
   };
 
@@ -179,6 +242,7 @@ const ProposalDetail = () => {
       await apiClient.sendProposal(id!);
       toast.success('Proposal sent successfully');
       loadProposal();
+      loadAuditTrail();
     } catch (error) {
       // Error handled by API interceptor
     }
@@ -189,6 +253,7 @@ const ProposalDetail = () => {
       await apiClient.acceptProposal(id!);
       toast.success('Proposal marked as accepted');
       loadProposal();
+      loadAuditTrail();
     } catch (error) {
       // Error handled by API interceptor
     }
@@ -426,6 +491,24 @@ const ProposalDetail = () => {
   /** Backend rejects updates once the proposal is signed (ACCEPTED). */
   const canEditCoverLetter = proposal.status !== 'ACCEPTED';
 
+  const viewEvents = auditTrail.filter((e) => (e.action || '').toUpperCase().includes('VIEW'));
+  const firstViewedAt =
+    viewEvents.length > 0
+      ? new Date(viewEvents[0].timestamp)
+      : proposal.viewedAt
+        ? new Date(proposal.viewedAt)
+        : null;
+  const lastViewedAt =
+    viewEvents.length > 0
+      ? new Date(viewEvents[viewEvents.length - 1].timestamp)
+      : proposal.lastViewedAt
+        ? new Date(proposal.lastViewedAt)
+        : proposal.viewedAt
+          ? new Date(proposal.viewedAt)
+          : null;
+  const signedAt = proposal.acceptedAt ? new Date(proposal.acceptedAt) : null;
+  const auditEventCount = auditTrail.length;
+
   return (
     <div className="space-y-6 animate-fade-in">
       {/* Back button */}
@@ -506,9 +589,80 @@ const ProposalDetail = () => {
         </div>
       </div>
 
+      {/* Client engagement at a glance */}
+      {proposal.status !== 'DRAFT' && (
+        <div className="flex flex-wrap gap-2 print:hidden">
+          {clientOpenCount > 0 && (
+            <span className="inline-flex items-center gap-1.5 rounded-full border border-purple-200 bg-purple-50 px-3 py-1 text-xs font-medium text-purple-800 dark:border-purple-900/50 dark:bg-purple-950/30 dark:text-purple-200">
+              <EyeIcon className="h-3.5 w-3.5" />
+              Opened {clientOpenCount} {clientOpenCount === 1 ? 'time' : 'times'}
+            </span>
+          )}
+          {firstViewedAt && (
+            <span className="inline-flex items-center gap-1.5 rounded-full border border-slate-200 bg-white/70 px-3 py-1 text-xs text-slate-700 dark:border-slate-700 dark:bg-slate-900/50 dark:text-slate-300">
+              <ClockIcon className="h-3.5 w-3.5 text-slate-400" />
+              First opened {format(firstViewedAt, 'dd MMM yyyy, HH:mm')}
+            </span>
+          )}
+          {lastViewedAt && clientOpenCount !== 1 && (
+            <span className="inline-flex items-center gap-1.5 rounded-full border border-slate-200 bg-white/70 px-3 py-1 text-xs text-slate-700 dark:border-slate-700 dark:bg-slate-900/50 dark:text-slate-300">
+              <EyeIcon className="h-3.5 w-3.5 text-slate-400" />
+              Last opened {formatDistanceToNow(lastViewedAt, { addSuffix: true })}
+            </span>
+          )}
+          {signedAt && (
+            <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-xs font-medium text-emerald-800 dark:border-emerald-900/50 dark:bg-emerald-950/30 dark:text-emerald-200">
+              <PencilSquareIcon className="h-3.5 w-3.5" />
+              Signed {format(signedAt, 'dd MMM yyyy, HH:mm')}
+            </span>
+          )}
+          {proposal.status === 'SENT' && clientOpenCount === 0 && (
+            <span className="inline-flex items-center gap-1.5 rounded-full border border-amber-200 bg-amber-50 px-3 py-1 text-xs text-amber-800 dark:border-amber-900/50 dark:bg-amber-950/30 dark:text-amber-200">
+              Awaiting client to open the link
+            </span>
+          )}
+        </div>
+      )}
+
+      {/* Tabs */}
+      <div className="border-b border-slate-200 dark:border-slate-700 print:hidden">
+        <nav className="flex gap-1" aria-label="Proposal sections">
+          <button
+            type="button"
+            onClick={() => setActiveTab('overview')}
+            className={`px-4 py-2.5 text-sm font-medium border-b-2 transition-colors ${
+              activeTab === 'overview'
+                ? 'border-primary-500 text-primary-700 dark:text-primary-300'
+                : 'border-transparent text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200'
+            }`}
+          >
+            Proposal
+          </button>
+          <button
+            type="button"
+            onClick={() => setActiveTab('audit')}
+            className={`inline-flex items-center gap-2 px-4 py-2.5 text-sm font-medium border-b-2 transition-colors ${
+              activeTab === 'audit'
+                ? 'border-primary-500 text-primary-700 dark:text-primary-300'
+                : 'border-transparent text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200'
+            }`}
+          >
+            <ShieldCheckIcon className="h-4 w-4" />
+            Access &amp; Signature
+            {auditEventCount > 0 && (
+              <span className="rounded-full bg-primary-100 px-1.5 py-0.5 text-[10px] font-semibold text-primary-700 dark:bg-primary-900/50 dark:text-primary-300">
+                {auditEventCount}
+              </span>
+            )}
+          </button>
+        </nav>
+      </div>
+
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Main content */}
         <div className="lg:col-span-2 space-y-6">
+          {activeTab === 'overview' && (
+            <>
           {/* Client info */}
           <div className="glass-tile p-6">
             <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-100 mb-4">Client</h2>
@@ -753,6 +907,60 @@ const ProposalDetail = () => {
             </div>
           )}
 
+          {proposal.status === 'ACCEPTED' && activeTab === 'overview' && (
+            <div className="glass-tile p-4 border border-emerald-200 dark:border-emerald-900/50 bg-emerald-50/50 dark:bg-emerald-950/20">
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <div className="flex items-center gap-2 text-sm text-emerald-800 dark:text-emerald-200">
+                  <CheckIcon className="h-5 w-5" />
+                  <span>
+                    Signed by <strong>{proposal.acceptedBy}</strong>
+                    {signedAt && <> on {format(signedAt, 'dd MMM yyyy, HH:mm')}</>}
+                  </span>
+                </div>
+                <button type="button" onClick={() => setActiveTab('audit')} className="btn-secondary text-xs">
+                  View signature &amp; access history
+                </button>
+              </div>
+            </div>
+          )}
+
+          {proposal.notes && (
+            <div className="glass-tile p-6">
+              <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-100 mb-4">Notes</h2>
+              <p className="text-slate-700 dark:text-slate-300 whitespace-pre-wrap">{proposal.notes}</p>
+            </div>
+          )}
+            </>
+          )}
+
+          {activeTab === 'audit' && (
+            <>
+          {/* Summary stats */}
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            <div className="glass-tile p-4 text-center">
+              <p className="text-2xl font-bold text-purple-600 tabular-nums">{clientOpenCount}</p>
+              <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">Client opens</p>
+            </div>
+            <div className="glass-tile p-4 text-center">
+              <p className="text-sm font-semibold text-slate-800 dark:text-slate-200">
+                {firstViewedAt ? format(firstViewedAt, 'dd MMM HH:mm') : '—'}
+              </p>
+              <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">First opened</p>
+            </div>
+            <div className="glass-tile p-4 text-center">
+              <p className="text-sm font-semibold text-slate-800 dark:text-slate-200">
+                {lastViewedAt ? formatDistanceToNow(lastViewedAt, { addSuffix: true }) : '—'}
+              </p>
+              <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">Last activity</p>
+            </div>
+            <div className="glass-tile p-4 text-center">
+              <p className="text-sm font-semibold text-emerald-700 dark:text-emerald-300">
+                {signedAt ? format(signedAt, 'dd MMM HH:mm') : '—'}
+              </p>
+              <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">Signed</p>
+            </div>
+          </div>
+
           {/* Display Signature if accepted */}
           {(proposal.status === 'ACCEPTED' || proposal.signature) && (
             <div className="glass-tile p-6 print:break-inside-avoid">
@@ -839,12 +1047,157 @@ const ProposalDetail = () => {
             </div>
           )}
 
-          {/* Notes */}
-          {proposal.notes && (
-            <div className="glass-tile p-6">
-              <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-100 mb-4">Notes</h2>
-              <p className="text-slate-700 dark:text-slate-300 whitespace-pre-wrap">{proposal.notes}</p>
+          {/* Dedicated Access & Signature History — prominent compliance view */}
+          <div className="glass-tile p-6">
+            <div className="flex items-start justify-between gap-3 mb-3">
+              <div>
+                <div className="flex items-center gap-2">
+                  <ShieldCheckIcon className="h-5 w-5 text-primary-600" />
+                  <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-100">Access &amp; Signature History</h2>
+                </div>
+                <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                  Chronological record of client access via the secure link and electronic signing events. Use for compliance and audit.
+                </p>
+              </div>
+              <div className="flex items-center gap-1.5 print:hidden">
+                <button
+                  onClick={loadAuditTrail}
+                  disabled={loadingAudit}
+                  className="btn-secondary text-xs flex items-center gap-1.5"
+                  title="Refresh audit trail"
+                >
+                  <ArrowPathIcon className={`h-3.5 w-3.5 ${loadingAudit ? 'animate-spin' : ''}`} />
+                  Refresh
+                </button>
+                <button
+                  onClick={() => {
+                    if (auditTrail.length === 0) return;
+                    downloadAuditTrailCsv(auditTrail, proposal.reference);
+                    toast.success('Audit trail downloaded as CSV');
+                  }}
+                  disabled={auditTrail.length === 0}
+                  className="btn-secondary text-xs flex items-center gap-1.5"
+                  title="Download CSV for compliance records"
+                >
+                  <ArrowDownTrayIcon className="h-3.5 w-3.5" />
+                  CSV
+                </button>
+                <button
+                  onClick={async () => {
+                    if (auditTrail.length === 0) return;
+                    const text = auditTrail
+                      .map((e: any) => {
+                        const t = new Date(e.timestamp).toISOString();
+                        const d = e.details ? JSON.stringify(e.details) : '';
+                        return `${t} | ${e.action} | ${e.actor || ''} | IP:${e.ipAddress || ''} ${d}`;
+                      })
+                      .join('\n');
+                    const ok = await copyTextToClipboard(text);
+                    if (ok) toast.success('Audit trail copied to clipboard');
+                  }}
+                  disabled={auditTrail.length === 0}
+                  className="btn-secondary text-xs"
+                  title="Copy audit trail for compliance records"
+                >
+                  Copy
+                </button>
+              </div>
             </div>
+
+            {auditTrail.length === 0 && !loadingAudit ? (
+              <div className="rounded-2xl border border-dashed border-slate-200 dark:border-slate-700 p-6 text-center">
+                <EyeIcon className="h-8 w-8 mx-auto text-slate-300 dark:text-slate-600" />
+                <p className="mt-2 text-sm text-slate-600 dark:text-slate-300">No client access recorded yet.</p>
+                <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                  Send the proposal link. Views and signatures will appear here automatically.
+                </p>
+              </div>
+            ) : (
+              <div className="space-y-2 text-sm">
+                {auditTrail.map((entry: any, index: number) => {
+                  const ts = new Date(entry.timestamp);
+                  const action = (entry.action || '').toUpperCase();
+                  const isView = action.includes('VIEW');
+                  const isSigned = action.includes('ACCEPT') || action.includes('SIGN');
+                  const isSent = action.includes('SENT');
+
+                  let icon = <ClockIcon className="h-4 w-4 text-slate-400" />;
+                  let label = entry.action || 'Event';
+                  let highlight = '';
+
+                  if (isView) {
+                    icon = <EyeIcon className="h-4 w-4 text-purple-600" />;
+                    label = 'Client viewed the proposal';
+                    highlight = 'text-purple-700 dark:text-purple-300';
+                  } else if (isSigned) {
+                    icon = <PencilSquareIcon className="h-4 w-4 text-emerald-600" />;
+                    const who = entry.details?.signedByRole || entry.actor || entry.details?.signedBy || 'Client';
+                    label = `Electronically signed by ${who}`;
+                    highlight = 'text-emerald-700 dark:text-emerald-300';
+                  } else if (isSent) {
+                    icon = <EnvelopeIcon className="h-4 w-4 text-blue-600" />;
+                    label = 'Proposal sent to client';
+                    highlight = 'text-blue-700 dark:text-blue-300';
+                  }
+
+                  return (
+                    <div
+                      key={index}
+                      className="flex gap-3 rounded-xl border border-slate-100 dark:border-slate-800 bg-white/50 dark:bg-slate-900/40 px-3 py-2.5"
+                    >
+                      <div className="mt-0.5 shrink-0">{icon}</div>
+                      <div className="min-w-0 flex-1">
+                        <div className={`font-medium ${highlight}`}>{label}</div>
+
+                        <div className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 flex flex-wrap items-center gap-x-2">
+                          <span title={ts.toISOString()}>
+                            {formatDistanceToNow(ts, { addSuffix: true })}
+                          </span>
+                          <span className="text-slate-400">·</span>
+                          <span>{format(ts, 'dd MMM yyyy, HH:mm')}</span>
+
+                          {entry.ipAddress && (
+                            <>
+                              <span className="text-slate-400">·</span>
+                              <span className="font-mono text-[10px]">{entry.ipAddress}</span>
+                            </>
+                          )}
+                          {entry.details?.viewDuration != null && (
+                            <>
+                              <span className="text-slate-400">·</span>
+                              <span>{Math.round(entry.details.viewDuration / 1000 / 60)} min viewed</span>
+                            </>
+                          )}
+                        </div>
+
+                        {/* Extra forensic / useful details */}
+                        {isSigned && (
+                          <div className="mt-1 text-xs text-slate-600 dark:text-slate-300 space-y-0.5">
+                            {entry.details?.signedByRole && <div>Role: {entry.details.signedByRole}</div>}
+                            {entry.details?.agreementAccepted && <div>Terms accepted: Yes</div>}
+                            {entry.details?.documentHash && (
+                              <div className="font-mono text-[10px] break-all opacity-70">
+                                Doc hash: {String(entry.details.documentHash).slice(0, 20)}…
+                              </div>
+                            )}
+                          </div>
+                        )}
+
+                        {isView && entry.details?.completed && (
+                          <div className="text-[10px] text-emerald-600 mt-0.5">Marked complete by client</div>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+
+            <p className="mt-3 text-[10px] text-slate-400 leading-snug">
+              This trail is generated from secure link access logs and signature records. It is intended for your compliance files.
+            </p>
+          </div>
+            </>
           )}
         </div>
 
@@ -1009,7 +1362,7 @@ const ProposalDetail = () => {
             </div>
           )}
 
-          {/* Client opens (public link only) */}
+          {/* Client opens (public link only) — quick glance; full history below */}
           {proposal.status !== 'DRAFT' && (
             <div className="glass-tile p-6">
               <h2 className="text-sm font-semibold text-slate-900 dark:text-slate-100 mb-2">
@@ -1029,18 +1382,14 @@ const ProposalDetail = () => {
                 )}
                 .
               </p>
-              <p className="text-xs text-slate-500 dark:text-slate-500 mt-3 leading-relaxed">
-                Counts and Viewed status update only when the client uses the public link; opening this screen in
-                the practice app does not add opens or change status.
+              <p className="text-[10px] text-primary-600 dark:text-primary-400 mt-2">
+                <button type="button" onClick={() => setActiveTab('audit')} className="hover:underline">
+                  Open Access &amp; Signature History
+                </button>{' '}
+                for IP addresses, timestamps, and signature forensics.
               </p>
               <p className="text-xs text-slate-500 dark:text-slate-500 mt-2 leading-relaxed">
-                Sending marks the proposal <strong className="text-slate-700 dark:text-slate-300">Sent</strong>.
-                When the client opens the <strong className="text-slate-700 dark:text-slate-300">Copy client link</strong>{' '}
-                URL, it becomes <strong className="text-slate-700 dark:text-slate-300">Viewed</strong> and each open
-                is counted here. When they sign on that page, it shows as{' '}
-                <strong className="text-slate-700 dark:text-slate-300">Signed</strong> and the practice owner gets an
-                email (when email is configured). About one month before <strong>Valid until</strong>, recurring
-                proposals trigger a reminder to the owner; pure one-off proposals do not.
+                Counts update only via the public client link. Internal views do not count.
               </p>
             </div>
           )}

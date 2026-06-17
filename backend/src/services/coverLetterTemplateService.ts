@@ -142,30 +142,44 @@ export async function deleteTemplate(templateId: string, tenantId: string) {
 }
 
 /**
- * Render a template with merge field data
+ * Render a template with merge field data (rich set for the three professional tones)
  */
 export function renderCoverLetter(
   templateContent: string,
   data: {
-    clientName: string;
-    tenantName: string;
-    serviceCount: number;
-    monthlyTotal: string;
-    senderName: string;
+    clientName?: string;
+    companyName?: string;
+    servicesSummary?: string;
+    discussionDate?: string;
+    tenantName?: string;
+    firmExperience?: string;
+    sectorOrRegion?: string;
+    firmCredentials?: string;
+    keyOutcome?: string;
+    senderName?: string;
     senderPosition?: string;
+    monthlyTotal?: string;
+    serviceCount?: number | string;
     proposalReference?: string;
     proposalTitle?: string;
   }
 ): string {
-  const mergeData: Record<string, string> = {
+  const mergeData: Record<string, string | undefined> = {
     clientName: data.clientName,
+    companyName: data.companyName,
+    servicesSummary: data.servicesSummary,
+    discussionDate: data.discussionDate,
     tenantName: data.tenantName,
-    serviceCount: String(data.serviceCount),
-    monthlyTotal: data.monthlyTotal,
+    firmExperience: data.firmExperience || 'many years',
+    sectorOrRegion: data.sectorOrRegion || 'the UK',
+    firmCredentials: data.firmCredentials || 'professional',
+    keyOutcome: data.keyOutcome || 'clear financial visibility and full compliance',
     senderName: data.senderName,
-    senderPosition: data.senderPosition || '',
-    proposalReference: data.proposalReference || '',
-    proposalTitle: data.proposalTitle || '',
+    senderPosition: data.senderPosition,
+    monthlyTotal: data.monthlyTotal,
+    serviceCount: data.serviceCount != null ? String(data.serviceCount) : undefined,
+    proposalReference: data.proposalReference,
+    proposalTitle: data.proposalTitle,
   };
 
   return renderTemplate(templateContent, mergeData);

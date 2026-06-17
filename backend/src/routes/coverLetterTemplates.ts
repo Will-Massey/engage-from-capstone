@@ -37,14 +37,21 @@ const updateTemplateSchema = z.object({
 });
 
 const previewSchema = z.object({
-  clientName: z.string().default('ABC Ltd'),
-  tenantName: z.string().default('Your Practice'),
-  serviceCount: z.number().default(5),
-  monthlyTotal: z.string().default('£450.00'),
-  senderName: z.string().default('John Smith'),
-  senderPosition: z.string().default('Senior Accountant'),
-  proposalReference: z.string().optional().default(undefined),
-  proposalTitle: z.string().optional().default(undefined),
+  clientName: z.string().optional().default('Alex Rivera'),
+  companyName: z.string().optional().default('Rivera & Co Ltd'),
+  servicesSummary: z.string().optional().default('bookkeeping, VAT compliance and annual accounts'),
+  discussionDate: z.string().optional().default('our recent discussion'),
+  tenantName: z.string().optional().default('Your Practice'),
+  firmExperience: z.string().optional().default('over 20 years'),
+  sectorOrRegion: z.string().optional().default('the region'),
+  firmCredentials: z.string().optional().default('ICAEW-regulated'),
+  keyOutcome: z.string().optional().default('compliant accounts and clear management information'),
+  senderName: z.string().optional().default('Jordan Hale'),
+  senderPosition: z.string().optional().default('Partner'),
+  serviceCount: z.number().optional().default(4),
+  monthlyTotal: z.string().optional().default('£712'),
+  proposalReference: z.string().optional(),
+  proposalTitle: z.string().optional(),
 });
 
 /**
