@@ -283,7 +283,8 @@ const AnimatedRoutes = () => {
 
 function App() {
   const { isAuthenticated, token, setAuth, clearAuth } = useAuthStore();
-  const { isOpen: isCommandPaletteOpen, close: closeCommandPalette } = useCommandPalette();
+  const { isOpen: isCommandPaletteOpen, close: closeCommandPalette, toggle: toggleCommandPalette } =
+    useCommandPalette();
   const [isShortcutsOpen, setIsShortcutsOpen] = useState(false);
 
   // Validate token on app load
@@ -304,15 +305,21 @@ function App() {
     validateToken();
   }, [token, setAuth, clearAuth]);
 
-  // Keyboard shortcuts listener
+  // Global keyboard shortcuts
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
+      const target = e.target as HTMLElement;
+      const isInput =
+        target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable;
+
+      if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+        e.preventDefault();
+        if (isAuthenticated) toggleCommandPalette();
+        return;
+      }
+
       // ? to open keyboard shortcuts (when not in input)
       if (e.key === '?' && !e.metaKey && !e.ctrlKey) {
-        const target = e.target as HTMLElement;
-        const isInput =
-          target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable;
-
         if (!isInput && isAuthenticated) {
           e.preventDefault();
           setIsShortcutsOpen(true);
@@ -322,7 +329,7 @@ function App() {
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [isAuthenticated]);
+  }, [isAuthenticated, toggleCommandPalette]);
 
   return (
     <>

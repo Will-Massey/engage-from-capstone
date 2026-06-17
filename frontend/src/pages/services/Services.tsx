@@ -402,11 +402,7 @@ const Services = () => {
   if (isLoading && services.length === 0) {
     return (
       <div className="space-y-6 animate-fade-in">
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-          <div>
-            <h1 className="text-2xl font-bold text-slate-900 dark:text-white">Services</h1>
-            <p className="mt-1 text-sm text-slate-600 dark:text-slate-300">Manage your service catalog and pricing</p>
-          </div>
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-end gap-4">
           <button className="btn-primary inline-flex opacity-50 cursor-not-allowed">
             <PlusIcon className="h-5 w-5 mr-2" />
             Add Service
@@ -425,11 +421,7 @@ const Services = () => {
 
   return (
     <div className="space-y-6 animate-fade-in">
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-bold text-slate-900 dark:text-white">Services</h1>
-          <p className="mt-1 text-sm text-slate-600 dark:text-slate-300">Manage your service catalog and pricing</p>
-        </div>
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-end gap-4 -mt-2">
         <button onClick={openAddModal} className="btn-primary inline-flex">
           <PlusIcon className="h-5 w-5 mr-2" />
           Add Service

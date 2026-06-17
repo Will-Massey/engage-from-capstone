@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useCommandPaletteStore } from '../stores/commandPaletteStore';
 
 interface UseCommandPaletteReturn {
   isOpen: boolean;
@@ -7,25 +7,12 @@ interface UseCommandPaletteReturn {
   toggle: () => void;
 }
 
+/** Shared command palette state (Ctrl/Cmd+K is registered in App.tsx). */
 export const useCommandPalette = (): UseCommandPaletteReturn => {
-  const [isOpen, setIsOpen] = useState(false);
-
-  const open = useCallback(() => setIsOpen(true), []);
-  const close = useCallback(() => setIsOpen(false), []);
-  const toggle = useCallback(() => setIsOpen((prev) => !prev), []);
-
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      // Cmd/Ctrl + K to open
-      if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
-        e.preventDefault();
-        toggle();
-      }
-    };
-
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [toggle]);
+  const isOpen = useCommandPaletteStore((s) => s.isOpen);
+  const open = useCommandPaletteStore((s) => s.open);
+  const close = useCommandPaletteStore((s) => s.close);
+  const toggle = useCommandPaletteStore((s) => s.toggle);
 
   return { isOpen, open, close, toggle };
 };

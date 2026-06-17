@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { Outlet } from 'react-router-dom';
 import Sidebar from './Sidebar';
 import Header from './Header';
+import AppRouteHeader from './AppRouteHeader';
 import { initializeTheme } from '../../stores/themeStore';
 import OnboardingTour from '../onboarding/OnboardingTour';
 import { useOnboarding } from '../onboarding/useOnboarding';
@@ -69,7 +70,8 @@ const DashboardLayout = () => {
 
         {/* Main content area */}
         <main className="pt-20 pb-8 px-4 sm:px-6 lg:px-8">
-          <div className="max-w-7xl mx-auto">
+          <div className="max-w-7xl mx-auto space-y-6">
+            <AppRouteHeader />
             <Outlet />
           </div>
         </main>
