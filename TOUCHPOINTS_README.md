@@ -61,6 +61,8 @@ Manual trigger: POST /api/touchpoints/run (auth required)
 - POST /api/touchpoints/:id/approve
 - PATCH /api/touchpoints/clients/:clientId  (pause, consent)
 - POST /api/clients/:id/aml-complete
+- POST /api/clients/:id/engagement-letter-signed
 - POST /api/clients/:id/info-received
+- GET/POST /api/onboarding/aml/:portalToken (public AML form)
 - GET /api/clients/:id/activity
 - POST /api/clients/:id/schedule-deadline-reminders

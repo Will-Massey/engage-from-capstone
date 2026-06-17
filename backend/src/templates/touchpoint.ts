@@ -6,6 +6,8 @@
  *   {{practice_name}}
  *   {{next_step}}
  *   {{due_date}}
+ *   {{aml_portal_link}}
+ *   {{portal_link}}
  *
  * This is deliberately separate from the sending / scheduling logic so non-technical
  * users can edit wording in the admin UI (TouchpointTemplate table) without code changes.

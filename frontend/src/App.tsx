@@ -28,6 +28,7 @@ import Analytics from './pages/Analytics';
 import NotFound from './pages/NotFound';
 import PublicProposalView from './pages/public/ProposalView';
 import ClientPortal from './pages/public/ClientPortal';
+import AmlOnboarding from './pages/public/AmlOnboarding';
 
 // World-class features
 import CommandPalette from './components/command-palette/CommandPalette';
@@ -272,6 +273,16 @@ const AnimatedRoutes = () => {
           element={
             <AnimatedPage>
               <ClientPortal />
+            </AnimatedPage>
+          }
+        />
+
+        {/* AML self-service form (portal token) */}
+        <Route
+          path="/onboarding/aml/:token"
+          element={
+            <AnimatedPage>
+              <AmlOnboarding />
             </AnimatedPage>
           }
         />

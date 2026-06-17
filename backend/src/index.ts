@@ -25,6 +25,7 @@ import adfinRoutes from './routes/adfin.js';
 import coverLetterTemplateRoutes from './routes/coverLetterTemplates.js';
 import analyticsRoutes from './routes/analytics.js';
 import touchpointRoutes from './routes/touchpoints.js';
+import onboardingRoutes from './routes/onboarding.js';
 import automationRoutes from './routes/automation.js';
 import diagnosticsRoutes from './routes/diagnostics.js';
 import { asyncHandler, ApiError } from './middleware/errorHandler.js';
@@ -775,6 +776,7 @@ app.get('/api/oauth/callback/gmail', handleOAuthCallback('gmail'));
 // API routes (auth already mounted above)
 // Share/portal/public routes first (before authenticated /:id handlers)
 app.use('/api/proposals', proposalShareRoutes);
+app.use('/api/onboarding', onboardingRoutes);
 app.use('/api/proposals', extractTenant, proposalRoutes);
 app.use('/api/clients', extractTenant, clientRoutes);
 app.use('/api/services', extractTenant, serviceRoutes);

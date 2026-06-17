@@ -269,6 +269,7 @@ export const csrfProtection = (req: Request, res: Response, next: NextFunction):
     '/oauth/callback',
     '/proposals/view', // Public proposal viewing and signing
     '/proposals/portal', // Client portal (public access)
+    '/onboarding', // AML self-service form (public, portal token)
     '/admin/seed-services', // One-click admin seed endpoint
     '/automation/migrate-service-pricing', // Data migration endpoint (protected by secret key)
     '/setup/migrate-pricing', // v2 pricing data migration

@@ -9,7 +9,7 @@ const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
 export function isPublicClientPage(): boolean {
   if (typeof window === 'undefined') return false;
   const path = window.location.pathname;
-  return path.startsWith('/portal/') || path.startsWith('/proposals/view/');
+  return path.startsWith('/portal/') || path.startsWith('/proposals/view/') || path.startsWith('/onboarding/');
 }
 
 // API URL is configured from environment
@@ -351,6 +351,8 @@ export const apiClient = {
 
   // Lifecycle actions (wired to touchpoint engine)
   markAmlComplete: (clientId: string) => api.post(`/clients/${clientId}/aml-complete`, {}),
+  markEngagementLetterSigned: (clientId: string) =>
+    api.post(`/clients/${clientId}/engagement-letter-signed`, {}),
   markInfoReceived: (clientId: string) => api.post(`/clients/${clientId}/info-received`, {}),
   scheduleDeadlineReminders: (clientId: string) => api.post(`/clients/${clientId}/schedule-deadline-reminders`, {}),
   getClientActivity: (clientId: string) => api.get(`/clients/${clientId}/activity`),
@@ -373,6 +375,11 @@ export const apiClient = {
   // Proposal audit trail & compliance (views + signatures + key events)
   getProposalAuditTrail: (id: string) => api.get(`/proposals/${id}/audit-trail`),
   getProposalSignatures: (id: string) => api.get(`/proposals/${id}/signatures`),
+
+  // Public AML onboarding (portal token — no auth)
+  getAmlOnboarding: (token: string) => api.get(`/onboarding/aml/${token}`),
+  submitAmlOnboarding: (token: string, data: Record<string, unknown>) =>
+    api.post(`/onboarding/aml/${token}`, data),
 };
 
 export default api;

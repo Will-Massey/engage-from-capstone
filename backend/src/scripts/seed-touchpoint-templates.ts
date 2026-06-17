@@ -15,15 +15,22 @@ const defaults = [
   {
     stage: 'AML_PENDING',
     subject: 'ID & AML verification – {{client_name}}',
-    body: 'Hello {{contact_name}},<br/>To complete onboarding we need to verify your identity. Please upload the requested documents by {{due_date}}.<br/><br/>Regards,<br/>{{practice_name}}',
+    body: 'Hello {{contact_name}},<br/>To complete onboarding we need to verify your identity.<br/><br/><strong>Submit your details securely here:</strong><br/><a href="{{aml_portal_link}}">{{aml_portal_link}}</a><br/><br/>You will need photo ID, proof of address, and basic business information (about 5 minutes).<br/><br/>Regards,<br/>{{practice_name}}',
     tone: 'NEUTRAL',
     isMarketing: false,
   },
   {
     stage: 'ENGAGEMENT_LETTER_SENT',
     subject: 'Engagement letter from {{practice_name}}',
-    body: 'Hi {{contact_name}},<br/><br/>Attached is your engagement letter. Please review, sign and return it.<br/>Next step: {{next_step}}.<br/><br/>Kind regards,<br/>{{practice_name}}',
+    body: 'Hi {{contact_name}},<br/><br/>Your engagement letter is attached (PDF). You can also access your client portal here:<br/><a href="{{portal_link}}">{{portal_link}}</a><br/><br/>Next step: {{next_step}}<br/><br/>Kind regards,<br/>{{practice_name}}',
     tone: 'NEUTRAL',
+    isMarketing: false,
+  },
+  {
+    stage: 'ONBOARDING_SETUP',
+    subject: 'Setting up your account — {{client_name}}',
+    body: 'Hi {{contact_name}},<br/><br/>Thank you for providing your information. We are now setting up your records with {{practice_name}}.<br/>{{next_step}}<br/><br/>Best,<br/>{{practice_name}}',
+    tone: 'WARM',
     isMarketing: false,
   },
   {
@@ -70,6 +77,8 @@ const defaults = [
  *   {{practice_name}}    - Your firm's name
  *   {{next_step}}        - Suggested next action
  *   {{due_date}}         - Formatted date (when available)
+ *   {{aml_portal_link}}  - Secure AML self-service form URL
+ *   {{portal_link}}      - Client portal URL
  *
  * Example body:
  *   "Hi {{contact_name}}, your {{due_date}} deadline is approaching. {{next_step}}"

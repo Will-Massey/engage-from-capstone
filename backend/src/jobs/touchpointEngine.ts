@@ -16,6 +16,8 @@
 import { prisma } from '../config/database.js';
 import { createEmailService } from '../services/emailService.js';
 import logger from '../config/logger.js';
+import { PDFGenerator } from '../services/pdfGenerator.js';
+import { createClientPortalLink } from '../services/proposalSharingService.js';
 import {
   buildMergeContext,
   renderTouchpointSubject,
@@ -144,16 +146,23 @@ async function processDueTouchpoint(tp: Awaited<ReturnType<typeof findDueTouchpo
   // Send it
   const result = await sendTouchpoint(tp);
 
-  if (result.success) {
-    await prisma.touchpoint.update({
-      where: { id: tp.id },
-      data: {
-        status: 'SENT',
-        sentAt: new Date(),
-      },
-    });
+    if (result.success) {
+      await prisma.touchpoint.update({
+        where: { id: tp.id },
+        data: {
+          status: 'SENT',
+          sentAt: new Date(),
+        },
+      });
 
-    await logActivity({
+      if (tp.stage === 'ENGAGEMENT_LETTER_SENT') {
+        await prisma.client.update({
+          where: { id: client.id },
+          data: { engagementLetterSentAt: new Date() },
+        });
+      }
+
+      await logActivity({
       tenantId: tp.tenantId,
       action: `${TOUCHPOINT_ACTION_PREFIX}SENT`,
       entityType: 'TOUCHPOINT',
@@ -170,7 +179,7 @@ async function processDueTouchpoint(tp: Awaited<ReturnType<typeof findDueTouchpo
       await fireStageWebhook(tenant.id, client.id, tp.stage, newStage);
     }
 
-    // For info chase escalation: if this was INFO_REQUESTED, schedule next reminder
+    // For info chase escalation: flag human only after 3 sends
     if (tp.stage === 'INFO_REQUESTED') {
       await scheduleInfoChaseEscalation(client.id, tp);
     }
@@ -189,16 +198,21 @@ async function sendTouchpoint(tp: any): Promise<SendResult> {
     return { success: false, error: 'No template attached' };
   }
 
+  const mergeExtras = await buildTouchpointMergeExtras(tp.stage, client.id, tp.tenantId);
+
   const context = buildMergeContext({
     client,
     tenant,
     nextStep: inferNextStep(tp.stage),
     dueDate: tp.scheduledFor,
+    extra: mergeExtras,
   });
 
   const subject = renderTouchpointSubject(template.subject, context);
   const htmlBody = renderTouchpointTemplate(template.body, context);
   const textBody = htmlBody.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
+
+  const attachments = await buildTouchpointAttachments(tp.stage, client.id, tp.tenantId);
 
   if (channel === 'EMAIL') {
     const emailService = createEmailService();
@@ -211,6 +225,7 @@ async function sendTouchpoint(tp: any): Promise<SendResult> {
       subject,
       html: htmlBody,
       text: textBody,
+      attachments,
     });
 
     return res.success ? { success: true } : { success: false, error: res.error };
@@ -320,7 +335,7 @@ export async function triggerAmlComplete(clientId: string, tenantId: string): Pr
 /**
  * When client signs the engagement letter.
  */
-export async function triggerEngagementLetterSigned(clientId: string): Promise<void> {
+export async function triggerEngagementLetterSigned(clientId: string, tenantId: string): Promise<void> {
   await prisma.client.update({
     where: { id: clientId },
     data: {
@@ -329,8 +344,67 @@ export async function triggerEngagementLetterSigned(clientId: string): Promise<v
     },
   });
 
-  // Next: request info / documents
+  await logActivity({
+    tenantId,
+    action: `${TOUCHPOINT_ACTION_PREFIX}TRIGGERED`,
+    entityType: 'CLIENT',
+    entityId: clientId,
+    clientId,
+    description: 'Engagement letter signed — starting information request sequence',
+  });
+
   await createInfoRequestSequence(clientId);
+}
+
+/**
+ * Called when staff confirms client information has been received.
+ */
+export async function triggerInfoReceived(clientId: string, tenantId: string): Promise<void> {
+  await prisma.touchpoint.updateMany({
+    where: {
+      clientId,
+      stage: 'INFO_REQUESTED',
+      status: 'PENDING',
+    },
+    data: { status: 'SKIPPED' },
+  });
+
+  await prisma.client.update({
+    where: { id: clientId },
+    data: { lifecycleStage: 'INFO_RECEIVED' },
+  });
+
+  await createTouchpoint({
+    clientId,
+    tenantId,
+    stage: 'ONBOARDING_SETUP',
+    triggerType: 'EVENT',
+    scheduledFor: new Date(),
+    requiresHumanApproval: false,
+    channel: 'EMAIL',
+    tone: 'WARM',
+  });
+
+  await createTouchpoint({
+    clientId,
+    tenantId,
+    stage: 'KICKOFF_SENT',
+    triggerType: 'TIME_DELAY',
+    scheduledFor: new Date(Date.now() + 24 * 60 * 60 * 1000),
+    requiresHumanApproval: false,
+    channel: 'EMAIL',
+    tone: 'WARM',
+    notes: 'Kick-off email day after onboarding setup',
+  });
+
+  await logActivity({
+    tenantId,
+    action: 'CLIENT_INFO_RECEIVED',
+    entityType: 'CLIENT',
+    entityId: clientId,
+    clientId,
+    description: 'Information received — onboarding and kick-off touchpoints scheduled',
+  });
 }
 
 /* =====================
@@ -342,6 +416,11 @@ async function createInfoRequestSequence(clientId: string): Promise<void> {
   if (!client) return;
 
   const tenantId = client.tenantId;
+
+  await prisma.client.update({
+    where: { id: clientId },
+    data: { lifecycleStage: 'INFO_REQUESTED' },
+  });
 
   // First request
   await createTouchpoint({
@@ -376,29 +455,38 @@ async function createInfoRequestSequence(clientId: string): Promise<void> {
 }
 
 async function scheduleInfoChaseEscalation(clientId: string, previous: any) {
-  // After 3 total attempts, flag to human instead of creating more
-  const count = await prisma.touchpoint.count({
+  const sentCount = await prisma.touchpoint.count({
     where: {
       clientId,
       stage: 'INFO_REQUESTED',
+      status: 'SENT',
     },
   });
 
-  if (count >= 3) {
-    // Create a human review item
-    await createTouchpoint({
+  if (sentCount < 3) return;
+
+  const existingFlag = await prisma.touchpoint.findFirst({
+    where: {
       clientId,
-      tenantId: previous.tenantId,
       stage: 'INFO_REQUESTED',
-      triggerType: 'EVENT',
-      scheduledFor: new Date(),
       requiresHumanApproval: true,
-      channel: 'IN_APP',
-      tone: 'URGENT',
-      notes: 'Info still outstanding after 3 attempts — needs human follow-up',
-    });
-    return;
-  }
+      status: 'PENDING',
+    },
+  });
+
+  if (existingFlag) return;
+
+  await createTouchpoint({
+    clientId,
+    tenantId: previous.tenantId,
+    stage: 'INFO_REQUESTED',
+    triggerType: 'EVENT',
+    scheduledFor: new Date(),
+    requiresHumanApproval: true,
+    channel: 'IN_APP',
+    tone: 'URGENT',
+    notes: 'Info still outstanding after 3 attempts — needs human follow-up',
+  });
 }
 
 /* =====================
@@ -453,6 +541,80 @@ export async function scheduleDeadlineReminders(clientId: string, tenantId: stri
 }
 
 /* =====================
+   PORTAL LINKS & ATTACHMENTS
+   ===================== */
+
+function frontendBaseUrl(): string {
+  return (process.env.FRONTEND_URL || 'https://engage-frontend-0g6u.onrender.com').replace(/\/$/, '');
+}
+
+async function ensureClientPortalToken(clientId: string): Promise<string> {
+  const client = await prisma.client.findUnique({
+    where: { id: clientId },
+    select: { portalToken: true, portalEnabled: true, portalTokenExpiry: true },
+  });
+
+  if (
+    client?.portalToken &&
+    client.portalEnabled &&
+    client.portalTokenExpiry &&
+    client.portalTokenExpiry > new Date()
+  ) {
+    return client.portalToken;
+  }
+
+  const { token } = await createClientPortalLink(clientId, 90);
+  return token;
+}
+
+async function buildTouchpointMergeExtras(
+  stage: ClientLifecycleStage,
+  clientId: string,
+  _tenantId: string
+): Promise<Record<string, string>> {
+  const base = frontendBaseUrl();
+  const needsPortal = stage === 'AML_PENDING' || stage === 'ENGAGEMENT_LETTER_SENT';
+
+  if (!needsPortal) return {};
+
+  const token = await ensureClientPortalToken(clientId);
+  return {
+    aml_portal_link: `${base}/onboarding/aml/${token}`,
+    portal_link: `${base}/portal/${token}`,
+  };
+}
+
+async function buildTouchpointAttachments(
+  stage: ClientLifecycleStage,
+  clientId: string,
+  tenantId: string
+) {
+  if (stage !== 'ENGAGEMENT_LETTER_SENT') return undefined;
+
+  const proposal = await prisma.proposal.findFirst({
+    where: { clientId, tenantId, status: 'ACCEPTED' },
+    orderBy: { acceptedAt: 'desc' },
+    select: { id: true, reference: true },
+  });
+
+  if (!proposal) return undefined;
+
+  try {
+    const pdf = await PDFGenerator.generateProposal(proposal.id);
+    return [
+      {
+        filename: `engagement-letter-${proposal.reference}.pdf`,
+        content: pdf,
+        contentType: 'application/pdf',
+      },
+    ];
+  } catch (err) {
+    logger.warn(`Could not attach engagement PDF for client ${clientId}`, err);
+    return undefined;
+  }
+}
+
+/* =====================
    HELPERS
    ===================== */
 
@@ -501,17 +663,22 @@ async function ensureDefaultTemplate(tenantId: string, stage: ClientLifecycleSta
     },
     AML_PENDING: {
       subject: 'ID & AML verification for {{client_name}}',
-      body: 'Hello {{contact_name}},<br/>To proceed with onboarding we need to complete our AML checks. Please provide the requested documents by {{due_date}}.<br/><br/>Thank you,<br/>{{practice_name}}',
+      body: 'Hello {{contact_name}},<br/>To proceed with onboarding we need to complete our AML checks.<br/><br/><strong>Please submit your details securely using this link:</strong><br/><a href="{{aml_portal_link}}">{{aml_portal_link}}</a><br/><br/>You will need: photo ID, proof of address, and basic business information. This usually takes about 5 minutes.<br/><br/>If you have any questions, reply to this email.<br/><br/>Thank you,<br/>{{practice_name}}',
       tone: 'NEUTRAL',
     },
     ENGAGEMENT_LETTER_SENT: {
       subject: 'Your engagement letter from {{practice_name}}',
-      body: 'Hello {{contact_name}},<br/><br/>Please find attached your engagement letter. Kindly review, sign and return it.<br/>Next step: {{next_step}}.<br/><br/>Kind regards,<br/>{{practice_name}}',
+      body: 'Hello {{contact_name}},<br/><br/>Please find your engagement letter attached to this email (PDF). It reflects the services and fees you agreed when signing your proposal.<br/><br/>If you have already signed, no further action is needed — otherwise please review and sign via your client portal:<br/><a href="{{portal_link}}">{{portal_link}}</a><br/><br/>Next step: {{next_step}}<br/><br/>Kind regards,<br/>{{practice_name}}',
       tone: 'NEUTRAL',
     },
     INFO_REQUESTED: {
       subject: 'Information required for {{client_name}}',
       body: 'Hi {{contact_name}},<br/>We need a few more details to complete your onboarding. Please send the information by {{due_date}}.<br/><br/>Thank you,<br/>{{practice_name}}',
+      tone: 'WARM',
+    },
+    ONBOARDING_SETUP: {
+      subject: 'Setting up your account — {{client_name}}',
+      body: 'Hi {{contact_name}},<br/><br/>Thank you for providing your information. We are now setting up your records and systems with {{practice_name}}.<br/>{{next_step}}<br/><br/>We will be in touch shortly with your kick-off details.<br/><br/>Best,<br/>{{practice_name}}',
       tone: 'WARM',
     },
     SATISFACTION_CHECK: {
@@ -568,12 +735,12 @@ async function markSkipped(id: string, reason: string) {
 }
 
 async function maybeAdvanceLifecycle(clientId: string, stage: ClientLifecycleStage): Promise<ClientLifecycleStage | undefined> {
-  // Simple state machine — extend as needed
   const nextStageMap: Partial<Record<ClientLifecycleStage, ClientLifecycleStage>> = {
     PROPOSAL_ACCEPTED: 'AML_PENDING',
-    AML_COMPLETE: 'ENGAGEMENT_LETTER_SENT',
-    ENGAGEMENT_LETTER_SIGNED: 'INFO_REQUESTED',
-    INFO_RECEIVED: 'ONBOARDING_SETUP',
+    ENGAGEMENT_LETTER_SENT: 'ENGAGEMENT_LETTER_SENT',
+    INFO_REQUESTED: 'INFO_REQUESTED',
+    ONBOARDING_SETUP: 'ONBOARDING_SETUP',
+    KICKOFF_SENT: 'ONGOING',
   };
 
   const next = nextStageMap[stage];
@@ -614,6 +781,8 @@ function inferNextStep(stage: ClientLifecycleStage): string {
     AML_COMPLETE: 'Sign engagement letter',
     ENGAGEMENT_LETTER_SENT: 'Return signed letter',
     INFO_REQUESTED: 'Provide requested information',
+    ONBOARDING_SETUP: 'We are setting up your account',
+    KICKOFF_SENT: 'Your kick-off call or welcome pack',
   };
   return map[stage] || 'Next step in onboarding';
 }
@@ -634,6 +803,19 @@ export async function approveAndSendTouchpoint(touchpointId: string, userId?: st
       where: { id: touchpointId },
       data: { status: 'SENT', sentAt: new Date() },
     });
+
+    if (tp.stage === 'ENGAGEMENT_LETTER_SENT') {
+      await prisma.client.update({
+        where: { id: tp.clientId },
+        data: { engagementLetterSentAt: new Date() },
+      });
+    }
+
+    const newStage = await maybeAdvanceLifecycle(tp.clientId, tp.stage);
+    if (newStage) {
+      await fireStageWebhook(tp.tenantId, tp.clientId, tp.stage, newStage);
+    }
+
     await logActivity({
       tenantId: tp.tenantId,
       action: `${TOUCHPOINT_ACTION_PREFIX}APPROVED_AND_SENT`,
@@ -689,6 +871,7 @@ export default {
   triggerProposalAccepted,
   triggerAmlComplete,
   triggerEngagementLetterSigned,
+  triggerInfoReceived,
   scheduleDeadlineReminders,
   approveAndSendTouchpoint,
   fireStageWebhook,

@@ -298,6 +298,8 @@ model Client {
   nextAccountsDueDate            DateTime?
   nextConfirmationStatementDue DateTime?
   amlCompletedAt                 DateTime?
+  amlSubmittedAt                 DateTime?
+  amlSubmissionData              String?  // JSON: client AML self-service form
   engagementLetterSentAt         DateTime?
   engagementLetterSignedAt       DateTime?
 

@@ -203,14 +203,6 @@ router.post(
     const client = await prisma.client.findFirst({ where: { id, tenantId } });
     if (!client) throw new ApiError('NOT_FOUND', 'Client not found', 404);
 
-    await prisma.client.update({
-      where: { id },
-      data: {
-        lifecycleStage: 'AML_COMPLETE',
-        amlCompletedAt: new Date(),
-      },
-    });
-
     const { triggerAmlComplete } = await import('../jobs/touchpointEngine.js');
     await triggerAmlComplete(id, tenantId);
 
@@ -229,8 +221,30 @@ router.post(
 );
 
 /**
+ * POST /api/clients/:id/engagement-letter-signed
+ * Mark engagement letter as signed and start info request sequence
+ */
+router.post(
+  '/:id/engagement-letter-signed',
+  authenticate,
+  authorize('ADMIN', 'PARTNER', 'MANAGER', 'SENIOR'),
+  asyncHandler(async (req, res) => {
+    const { id } = req.params;
+    const tenantId = req.tenantId!;
+
+    const client = await prisma.client.findFirst({ where: { id, tenantId } });
+    if (!client) throw new ApiError('NOT_FOUND', 'Client not found', 404);
+
+    const { triggerEngagementLetterSigned } = await import('../jobs/touchpointEngine.js');
+    await triggerEngagementLetterSigned(id, tenantId);
+
+    res.json({ success: true });
+  })
+);
+
+/**
  * POST /api/clients/:id/info-received
- * Mark requested info as received
+ * Mark requested info as received and schedule onboarding + kickoff
  */
 router.post(
   '/:id/info-received',
@@ -240,20 +254,11 @@ router.post(
     const { id } = req.params;
     const tenantId = req.tenantId!;
 
-    await prisma.client.update({
-      where: { id },
-      data: { lifecycleStage: 'INFO_RECEIVED' },
-    });
+    const client = await prisma.client.findFirst({ where: { id, tenantId } });
+    if (!client) throw new ApiError('NOT_FOUND', 'Client not found', 404);
 
-    await prisma.activityLog.create({
-      data: {
-        tenantId,
-        action: 'CLIENT_INFO_RECEIVED',
-        entityType: 'CLIENT',
-        entityId: id,
-        description: 'Client information received',
-      },
-    });
+    const { triggerInfoReceived } = await import('../jobs/touchpointEngine.js');
+    await triggerInfoReceived(id, tenantId);
 
     res.json({ success: true });
   })

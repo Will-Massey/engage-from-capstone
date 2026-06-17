@@ -25,9 +25,9 @@ describe('Touchpoint decision logic', () => {
     expect(canSend).toBe(false);
   });
 
-  it('escalates info chase after 3 attempts', () => {
-    const attemptCount = 3;
-    const shouldFlagHuman = attemptCount >= 3;
+  it('escalates info chase after 3 sent attempts', () => {
+    const sentCount = 3;
+    const shouldFlagHuman = sentCount >= 3;
     expect(shouldFlagHuman).toBe(true);
   });
 });

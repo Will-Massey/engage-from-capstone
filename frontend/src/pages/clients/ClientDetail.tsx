@@ -694,7 +694,10 @@ function LifecyclePanel({ client, onRefresh }: { client: any; onRefresh: () => v
     try {
       if (action === 'aml') {
         await apiClient.markAmlComplete(client.id);
-        toast.success('AML complete — next touchpoints scheduled');
+        toast.success('AML complete — engagement letter queued for approval');
+      } else if (action === 'engagement') {
+        await apiClient.markEngagementLetterSigned(client.id);
+        toast.success('Engagement letter signed — information request sequence started');
       } else if (action === 'info') {
         await apiClient.markInfoReceived(client.id);
         toast.success('Information received — workflow advancing');
@@ -724,12 +727,15 @@ function LifecyclePanel({ client, onRefresh }: { client: any; onRefresh: () => v
 
   const guidance: Record<string, string> = {
     PROPOSAL_ACCEPTED: 'Welcome sent. Next: complete AML verification to unlock engagement letter.',
-    AML_PENDING: 'Ask the client for ID docs. Use the button below when verified.',
-    AML_COMPLETE: 'Great — engagement letter is being prepared.',
-    ENGAGEMENT_LETTER_SENT: 'Waiting for signature. You can approve the touchpoint in Settings → Automation if gated.',
-    ENGAGEMENT_LETTER_SIGNED: 'Contract signed. Request key information from the client.',
-    INFO_REQUESTED: 'Chase outstanding info. Escalate after 3 reminders automatically.',
-    INFO_RECEIVED: 'All set — move to onboarding setup and kick-off.',
+    AML_PENDING: client.amlSubmittedAt
+      ? 'Client submitted AML details — review in client record, then mark complete when verified.'
+      : 'AML email sent with secure form link. Chase if needed, then mark complete when verified.',
+    AML_COMPLETE: 'Engagement letter is queued — approve and send in Settings → Automation.',
+    ENGAGEMENT_LETTER_SENT: 'Engagement letter sent (PDF attached). Mark signed once the client has returned it.',
+    ENGAGEMENT_LETTER_SIGNED: 'Contract signed. Information requests and reminders will send automatically.',
+    INFO_REQUESTED: 'Chase outstanding info. After 3 automated reminders, you will get a human review flag.',
+    INFO_RECEIVED: 'Onboarding and kick-off emails are scheduled. Client moves to live care after kick-off.',
+    ONBOARDING_SETUP: 'Onboarding email sent or pending. Kick-off follows within 24 hours.',
     KICKOFF_SENT: 'Client is live. Schedule milestone reminders from actual due dates.',
     default: 'Automation is running in the background. Check Settings for templates.',
   };
@@ -802,6 +808,11 @@ function LifecyclePanel({ client, onRefresh }: { client: any; onRefresh: () => v
               {busy === 'aml' ? 'Marking AML complete…' : '✓ Mark AML / ID Complete'}
             </button>
           )}
+          {(stage === 'ENGAGEMENT_LETTER_SENT' || stage === 'AML_COMPLETE') && (
+            <button onClick={() => handleAction('engagement')} disabled={!!busy} className="btn-primary text-sm px-5 py-2.5">
+              {busy === 'engagement' ? 'Updating…' : '✓ Mark Engagement Letter Signed'}
+            </button>
+          )}
           {stage === 'INFO_REQUESTED' && (
             <button onClick={() => handleAction('info')} disabled={!!busy} className="btn-primary text-sm px-5 py-2.5">
               {busy === 'info' ? 'Updating…' : '✓ Mark Information Received'}
@@ -812,6 +823,20 @@ function LifecyclePanel({ client, onRefresh }: { client: any; onRefresh: () => v
           </button>
         </div>
       </div>
+
+      {client.amlSubmittedAt && !client.amlCompletedAt && (
+        <div className="glass-tile p-4 border border-emerald-200 dark:border-emerald-900/50 bg-emerald-50/40 dark:bg-emerald-950/20 text-sm text-emerald-800 dark:text-emerald-200">
+          Client submitted AML / ID details on{' '}
+          {new Date(client.amlSubmittedAt).toLocaleDateString('en-GB', {
+            day: 'numeric',
+            month: 'short',
+            year: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit',
+          })}
+          . Review before marking complete.
+        </div>
+      )}
 
       {/* Client controls - pause + marketing */}
       <div className="flex flex-wrap gap-2">
