@@ -2,6 +2,7 @@
  * LLM client — xAI (Grok) preferred for dev/testing, OpenAI as fallback.
  * Both use OpenAI-compatible chat/completions request/response shapes.
  */
+import { AI_COPILOT } from '../../config/aiCopilot.js';
 import logger from '../../config/logger.js';
 import { ApiError } from '../../middleware/errorHandler.js';
 
@@ -76,7 +77,7 @@ export async function chatCompletion(
   if (!provider) {
     throw new ApiError(
       'AI_NOT_CONFIGURED',
-      'AI features require XAI_API_KEY or OPENAI_API_KEY on the server',
+      `${AI_COPILOT.name} is not available on this server — contact your administrator`,
       503
     );
   }
@@ -105,7 +106,7 @@ export async function chatCompletion(
   if (!res.ok) {
     const errText = await res.text().catch(() => '');
     logger.error(`${label} API error`, { status: res.status, body: errText.slice(0, 500) });
-    throw new ApiError('AI_PROVIDER_ERROR', 'AI service temporarily unavailable', 502);
+    throw new ApiError('AI_PROVIDER_ERROR', `${AI_COPILOT.name} is temporarily unavailable`, 502);
   }
 
   const data = (await res.json()) as {
@@ -114,7 +115,7 @@ export async function chatCompletion(
 
   const content = data.choices?.[0]?.message?.content?.trim();
   if (!content) {
-    throw new ApiError('AI_EMPTY_RESPONSE', 'AI returned an empty response', 502);
+    throw new ApiError('AI_EMPTY_RESPONSE', `${AI_COPILOT.name} returned an empty response`, 502);
   }
 
   return content;
@@ -128,6 +129,6 @@ export function parseJsonResponse<T>(raw: string): T {
     if (match) {
       return JSON.parse(match[0]) as T;
     }
-    throw new ApiError('AI_PARSE_ERROR', 'Could not parse AI response as JSON', 502);
+    throw new ApiError('AI_PARSE_ERROR', `Could not parse ${AI_COPILOT.name}'s response`, 502);
   }
 }

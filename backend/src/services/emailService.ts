@@ -422,13 +422,19 @@ export class EmailService {
   }
 
   // Generate Gmail OAuth2 URL for setup
-  static generateGmailAuthUrl(clientId: string, clientSecret: string, redirectUri: string): string {
+  static generateGmailAuthUrl(
+    clientId: string,
+    clientSecret: string,
+    redirectUri: string,
+    state?: string
+  ): string {
     const oauth2Client = new google.auth.OAuth2(clientId, clientSecret, redirectUri);
 
     return oauth2Client.generateAuthUrl({
       access_type: 'offline',
       scope: ['https://mail.google.com/', 'https://www.googleapis.com/auth/gmail.send'],
       prompt: 'consent',
+      ...(state ? { state } : {}),
     });
   }
 
@@ -459,11 +465,11 @@ export class EmailService {
   static generateMicrosoftAuthUrl(
     clientId: string,
     redirectUri: string,
-    tenantId?: string
+    tenantId?: string,
+    state?: string
   ): string {
     const scopes = ['offline_access', 'https://outlook.office365.com/SMTP.Send', 'User.Read'];
 
-    // Use 'common' for multi-tenant apps, or specific tenant ID for single-tenant
     const tenant = tenantId || 'common';
 
     return (
@@ -472,7 +478,8 @@ export class EmailService {
       `&response_type=code` +
       `&redirect_uri=${encodeURIComponent(redirectUri)}` +
       `&scope=${encodeURIComponent(scopes.join(' '))}` +
-      `&prompt=consent`
+      `&prompt=consent` +
+      (state ? `&state=${encodeURIComponent(state)}` : '')
     );
   }
 

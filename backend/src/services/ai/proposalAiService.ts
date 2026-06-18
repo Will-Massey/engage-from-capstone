@@ -11,10 +11,11 @@ import {
 import { getProposalSettings, addDays } from '../../utils/tenantProposalSettings.js';
 import { chatCompletion, isAiConfigured, parseJsonResponse } from './aiClient.js';
 import { VALID_BILLING_FREQUENCIES } from '../../utils/proposalPricing.js';
+import { AI_COPILOT } from '../../config/aiCopilot.js';
 
 const UK_SYSTEM =
-  'You are an expert UK accountancy practice assistant for Engage by Capstone. ' +
-  'Use UK English spelling (organisation, specialised, favour). ' +
+  AI_COPILOT.systemPersona +
+  ' Use UK English spelling (organisation, specialised, favour). ' +
   'Be professional, concise, and accurate. Never invent statutory deadlines or fees. ' +
   'When unsure, say what information is missing.';
 

@@ -3,7 +3,9 @@ import { z } from 'zod';
 import bcrypt from 'bcryptjs';
 import { prisma } from '../config/database.js';
 import { asyncHandler, ApiError } from '../middleware/errorHandler.js';
-import { generateToken, authenticate } from '../middleware/auth.js';
+import { generateToken, authenticate, generateRefreshToken } from '../middleware/auth.js';
+import { allowPublicTenantSignup } from '../utils/securityFlags.js';
+import { setAuthCookies } from '../utils/authCookies.js';
 
 const router = Router();
 
@@ -82,6 +84,14 @@ const updateTenantSchema = z.object({
 router.post(
   '/',
   asyncHandler(async (req, res) => {
+    if (!allowPublicTenantSignup) {
+      throw new ApiError(
+        'SIGNUP_DISABLED',
+        'Public practice registration is disabled. Contact support to create an account.',
+        403
+      );
+    }
+
     const data = createTenantSchema.parse(req.body);
 
     // Check subdomain availability
@@ -145,6 +155,9 @@ router.post(
       role: result.user.role,
       tenantId: result.user.tenantId,
     });
+
+    const refreshToken = await generateRefreshToken(result.user.id);
+    setAuthCookies(res, token, refreshToken);
 
     res.status(201).json({
       success: true,

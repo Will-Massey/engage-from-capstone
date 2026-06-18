@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { apiClient } from '../../utils/api';
 import { AiPanel, showAiError } from './AiPanel';
+import { AI_COPILOT } from '../../config/aiCopilot';
 
 interface ProposalHealthCardProps {
   proposalId: string;
@@ -38,7 +39,7 @@ export default function ProposalHealthCard({ proposalId }: ProposalHealthCardPro
   return (
     <AiPanel
       title="Proposal health"
-      description="AI analysis of engagement progress and recommended next steps"
+      description={`${AI_COPILOT.name}'s analysis of engagement progress and recommended next steps`}
       configured={configured}
       loading={loading}
       onAction={load}

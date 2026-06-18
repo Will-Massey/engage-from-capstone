@@ -16,6 +16,7 @@ import {
   type TenantEmailSettings,
 } from '../services/tenantEmailSettings.js';
 import { encrypt, decrypt } from '../utils/encryption.js';
+import { createOAuthState } from '../utils/oauthState.js';
 import logger from '../config/logger.js';
 
 const router = Router();
@@ -457,14 +458,11 @@ router.delete(
 );
 
 // ============================================================================
-// NEW SIMPLIFIED OAUTH ROUTES (for frontend OAuthConnect component)
+// OAuth routes (server-side callback exchange via /api/oauth/callback/*)
 // ============================================================================
 
-// Generate cryptographically secure random state for OAuth
-import crypto from 'crypto';
-const generateState = () => {
-  return crypto.randomBytes(32).toString('hex');
-};
+const oauthRedirectUri = (provider: string) =>
+  `${process.env.API_URL || process.env.BACKEND_URL || `http://localhost:${process.env.PORT || 3001}`}/api/oauth/callback/${provider}`;
 
 // Get OAuth status for a provider
 router.get(
@@ -522,9 +520,11 @@ router.get(
       throw new ApiError('INVALID_PROVIDER', 'Invalid email provider', 400);
     }
 
-    const state = generateState();
+    const tenantId = req.tenantId!;
+    const userId = req.user!.id;
 
-    const redirectUri = `${process.env.API_URL || 'https://engage-by-capstone-production.up.railway.app'}/api/oauth/callback/${provider}`;
+    const state = createOAuthState({ tenantId, userId, provider });
+    const redirectUri = oauthRedirectUri(provider);
 
     let url: string;
 
@@ -534,15 +534,13 @@ router.get(
       if (!clientId || !clientSecret) {
         throw new ApiError('NOT_CONFIGURED', 'Gmail OAuth not configured on server', 500);
       }
-      url = EmailService.generateGmailAuthUrl(clientId, clientSecret, redirectUri);
+      url = EmailService.generateGmailAuthUrl(clientId, clientSecret, redirectUri, state);
     } else {
-      // Microsoft 365 or Outlook
       const clientId = process.env.MICROSOFT_CLIENT_ID;
       if (!clientId) {
         throw new ApiError('NOT_CONFIGURED', 'Microsoft OAuth not configured on server', 500);
       }
-      // Use 'common' for multi-tenant apps - allows any organization
-      url = EmailService.generateMicrosoftAuthUrl(clientId, redirectUri, 'common');
+      url = EmailService.generateMicrosoftAuthUrl(clientId, redirectUri, 'common', state);
     }
 
     res.json({
@@ -555,41 +553,19 @@ router.get(
   })
 );
 
-// OAuth callback handler - simplified without regex pattern
+// Legacy browser callback on email router — use /api/oauth/callback/:provider instead
 router.get(
   '/auth/:provider/callback',
-  asyncHandler(async (req, res) => {
-    const { provider } = req.params;
-    const { code, error, state } = req.query;
-
-    // Validate provider
-    const validProviders = ['microsoft365', 'outlook', 'gmail'];
-    if (!validProviders.includes(provider)) {
-      const frontendUrl = process.env.FRONTEND_URL || 'https://engagebycapstone.co.uk';
-      return res.redirect(`${frontendUrl}/settings?error=invalid_provider`);
-    }
-
-    if (error) {
-      // Redirect back to frontend with error
-      const frontendUrl = process.env.FRONTEND_URL || 'https://engagebycapstone.co.uk';
-      return res.redirect(`${frontendUrl}/settings?error=${encodeURIComponent(error as string)}`);
-    }
-
-    if (!code) {
-      const frontendUrl = process.env.FRONTEND_URL || 'https://engagebycapstone.co.uk';
-      return res.redirect(`${frontendUrl}/settings?error=no_code_received`);
-    }
-
-    // Store the code temporarily (in production, use Redis or similar)
-    // For now, redirect back to frontend with success
-    const frontendUrl = process.env.FRONTEND_URL || 'https://engagebycapstone.co.uk';
-    res.redirect(
-      `${frontendUrl}/settings?oauth=success&provider=${provider}&code=${code}&state=${state}`
+  asyncHandler(async (_req, res) => {
+    throw new ApiError(
+      'DEPRECATED',
+      'OAuth callback is handled at /api/oauth/callback/:provider',
+      410
     );
   })
 );
 
-// Exchange code for tokens (called by frontend)
+// Exchange code for tokens (legacy — prefer server-side callback)
 router.post(
   '/auth/:provider/callback',
   authenticate,
@@ -609,7 +585,7 @@ router.post(
       throw new ApiError('INVALID_CODE', 'Authorization code required', 400);
     }
 
-    const redirectUri = `${process.env.API_URL || 'https://engage-by-capstone-production.up.railway.app'}/api/oauth/callback/${provider}`;
+    const redirectUri = oauthRedirectUri(provider);
 
     let tokens: { refreshToken: string; accessToken: string; user?: string };
 

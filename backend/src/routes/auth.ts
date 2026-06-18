@@ -10,11 +10,13 @@ import {
   generateCsrfToken,
 } from '../middleware/auth.js';
 import { asyncHandler, ApiError } from '../middleware/errorHandler.js';
+import { allowPublicRegister } from '../utils/securityFlags.js';
 import logger from '../config/logger.js';
 // import { twoFactorService } from '../services/twoFactorService.js';
 // import { passwordResetService } from '../services/passwordResetService.js';
 import { gdprService } from '../services/gdprService.js';
 import { createEmailService } from '../services/emailService.js';
+import { setAuthCookies, clearAuthCookies } from '../utils/authCookies.js';
 
 const router = Router();
 
@@ -116,29 +118,7 @@ router.post(
 
     const refreshToken = await generateRefreshToken(user.id);
 
-    // Set HTTP-only cookies for security
-    const isProduction = process.env.NODE_ENV === 'production';
-    res.cookie('accessToken', accessToken, {
-      httpOnly: true,
-      secure: isProduction,
-      sameSite: 'strict',
-      maxAge: 24 * 60 * 60 * 1000, // 24 hours
-    });
-    res.cookie('refreshToken', refreshToken, {
-      httpOnly: true,
-      secure: isProduction,
-      sameSite: 'strict',
-      maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
-    });
-
-    // Set CSRF token cookie (required for state-changing requests)
-    const csrfToken = generateCsrfToken();
-    res.cookie('csrfToken', csrfToken, {
-      httpOnly: false, // Must be accessible by JavaScript
-      secure: isProduction,
-      sameSite: 'strict',
-      maxAge: 24 * 60 * 60 * 1000, // 24 hours
-    });
+    setAuthCookies(res, accessToken, refreshToken);
 
     res.json({
       success: true,
@@ -176,6 +156,14 @@ router.post(
 router.post(
   '/register',
   asyncHandler(async (req, res) => {
+    if (!allowPublicRegister) {
+      throw new ApiError(
+        'REGISTRATION_DISABLED',
+        'Public registration is disabled. Contact your practice administrator.',
+        403
+      );
+    }
+
     const { email, password, firstName, lastName, tenantId } = registerSchema.parse(req.body);
 
     // Check if user already exists
@@ -221,6 +209,8 @@ router.post(
 
     const refreshToken = await generateRefreshToken(user.id);
 
+    setAuthCookies(res, accessToken, refreshToken);
+
     res.status(201).json({
       success: true,
       data: {
@@ -253,9 +243,14 @@ router.post(
 router.post(
   '/refresh',
   asyncHandler(async (req, res) => {
-    const { refreshToken } = refreshTokenSchema.parse(req.body);
+    const refreshFromCookie = req.cookies?.refreshToken;
+    const refreshFromBody = req.body?.refreshToken;
+    const refreshToken = refreshFromBody || refreshFromCookie;
 
-    // Find valid refresh token
+    if (!refreshToken) {
+      throw new ApiError('INVALID_REFRESH_TOKEN', 'Refresh token is required', 401);
+    }
+
     const tokenRecord = await prisma.refreshToken.findFirst({
       where: {
         token: refreshToken,
@@ -294,6 +289,8 @@ router.post(
       where: { id: tokenRecord.id },
     });
 
+    setAuthCookies(res, accessToken, newRefreshToken);
+
     res.json({
       success: true,
       data: {
@@ -315,17 +312,21 @@ router.post(
   '/logout',
   authenticate,
   asyncHandler(async (req, res) => {
-    const { refreshToken } = req.body;
+    const refreshFromCookie = req.cookies?.refreshToken;
+    const { refreshToken: refreshFromBody } = req.body || {};
+    const refreshToken = refreshFromBody || refreshFromCookie;
 
     if (refreshToken) {
       await prisma.refreshToken.deleteMany({
         where: { token: refreshToken },
       });
+    } else if (req.user?.id) {
+      await prisma.refreshToken.deleteMany({
+        where: { userId: req.user.id },
+      });
     }
 
-    // Clear HTTP-only cookies
-    res.clearCookie('accessToken');
-    res.clearCookie('refreshToken');
+    clearAuthCookies(res);
 
     res.json({
       success: true,

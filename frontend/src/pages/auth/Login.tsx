@@ -18,7 +18,7 @@ type LoginForm = z.infer<typeof loginSchema>;
 
 const Login = () => {
   const navigate = useNavigate();
-  const { setAuth } = useAuthStore();
+  const { setSession } = useAuthStore();
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
 
@@ -39,7 +39,7 @@ const Login = () => {
       const response = (await apiClient.login(data.email, data.password)) as any;
 
       if (response.success) {
-        setAuth(response.data.user, response.data.user.tenant, response.data.tokens.accessToken);
+        setSession(response.data.user, response.data.user.tenant);
         toast.success('Welcome to Engage!');
         navigate('/');
       }

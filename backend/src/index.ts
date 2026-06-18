@@ -15,6 +15,9 @@ import helmet from 'helmet';
 import morgan from 'morgan';
 import rateLimit from 'express-rate-limit';
 import cookieParser from 'cookie-parser';
+import { rateLimitingEnabled } from './utils/securityFlags.js';
+import stripeWebhookRoutes from './routes/stripeWebhook.js';
+import { handleOAuthProviderCallback } from './handlers/oauthCallback.js';
 
 // Import routes
 import authRoutes from './routes/auth.js';
@@ -181,7 +184,7 @@ app.options('*', cors(corsOptions));
 const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   max: 10,
-  skip: () => isDevelopment,
+  skip: () => !rateLimitingEnabled,
   message: {
     success: false,
     error: {
@@ -194,10 +197,31 @@ const authLimiter = rateLimit({
 app.use('/api/auth/login', authLimiter);
 app.use('/api/auth/register', authLimiter);
 
+const tenantSignupLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000,
+  max: 5,
+  skip: () => !rateLimitingEnabled,
+  message: {
+    success: false,
+    error: {
+      code: 'SIGNUP_RATE_LIMIT',
+      message: 'Too many signup attempts, please try again later',
+    },
+  },
+});
+
+app.use('/api/tenants', (req, res, next) => {
+  if (req.method === 'POST' && req.path === '/') {
+    return tenantSignupLimiter(req, res, next);
+  }
+  next();
+});
+
 // Stricter rate limiting for public proposal endpoints (viewing/signing)
 const publicProposalLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 30, // Limit each IP to 30 requests per windowMs
+  windowMs: 15 * 60 * 1000,
+  max: 30,
+  skip: () => !rateLimitingEnabled,
   message: {
     success: false,
     error: {
@@ -222,6 +246,9 @@ app.use(
 
 // Cookie parsing (required for CSRF and auth cookies)
 app.use(cookieParser());
+
+// Stripe webhook must receive raw body — mount before express.json()
+app.use('/api/payments/webhook', stripeWebhookRoutes);
 
 // Body parsing — SendGrid webhook needs raw body for signature verification
 import sendgridWebhookRoutes from './routes/webhooks/sendgrid.js';
@@ -274,7 +301,17 @@ app.get('/api/seed-services-public', async (req, res) => {
     return;
   }
 
-  const secret = req.query.key;
+  const secret = req.headers['x-public-seed-key'];
+  if (req.query.key) {
+    res.status(400).json({
+      success: false,
+      error: {
+        code: 'INVALID_AUTH',
+        message: 'Pass PUBLIC_SEED_KEY via X-Public-Seed-Key header only',
+      },
+    });
+    return;
+  }
   if (secret !== expected) {
     res.status(403).json({ success: false, error: { code: 'FORBIDDEN', message: 'Invalid key' } });
     return;
@@ -750,11 +787,11 @@ cache.connect().catch((err) => {
   logger.error('Failed to connect to Redis:', err);
 });
 
-// Rate limiting - skip for health checks and development
+// Rate limiting - skip for health checks when disabled via env
 const limiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 100, // Limit each IP to 100 requests per windowMs
-  skip: (req) => req.path === '/api/health' || isDevelopment, // Skip health checks and dev
+  windowMs: 15 * 60 * 1000,
+  max: 100,
+  skip: (req) => req.path === '/api/health' || !rateLimitingEnabled,
   message: {
     success: false,
     error: {
@@ -766,37 +803,16 @@ const limiter = rateLimit({
 
 app.use('/api/', limiter);
 
-// OAuth callback routes - specific paths for each provider
-const handleOAuthCallback = (provider: string) => (req: any, res: any) => {
-  logger.info(`OAuth callback hit: provider=${provider}, query=${JSON.stringify(req.query)}`);
-
-  const { code, error, state } = req.query;
-
-  if (error) {
-    logger.warn(`OAuth error: ${error}`);
-    return res.redirect(
-      `${process.env.FRONTEND_URL || 'https://engagebycapstone.co.uk'}/settings?error=${encodeURIComponent(error as string)}`
-    );
-  }
-
-  if (!code) {
-    logger.warn('No code received');
-    return res.redirect(
-      `${process.env.FRONTEND_URL || 'https://engagebycapstone.co.uk'}/settings?error=no_code_received`
-    );
-  }
-
-  logger.info(`OAuth success for ${provider}, redirecting to frontend`);
-  // Redirect to frontend with code
-  res.redirect(
-    `${process.env.FRONTEND_URL || 'https://engagebycapstone.co.uk'}/settings?oauth=success&provider=${provider}&code=${code}&state=${state}`
-  );
-};
-
-// Specific OAuth callback routes
-app.get('/api/oauth/callback/outlook', handleOAuthCallback('outlook'));
-app.get('/api/oauth/callback/microsoft365', handleOAuthCallback('microsoft365'));
-app.get('/api/oauth/callback/gmail', handleOAuthCallback('gmail'));
+// OAuth callback — server-side code exchange (no auth code in frontend URL)
+app.get('/api/oauth/callback/outlook', (req, res) => {
+  void handleOAuthProviderCallback(req, res, 'outlook');
+});
+app.get('/api/oauth/callback/microsoft365', (req, res) => {
+  void handleOAuthProviderCallback(req, res, 'microsoft365');
+});
+app.get('/api/oauth/callback/gmail', (req, res) => {
+  void handleOAuthProviderCallback(req, res, 'gmail');
+});
 
 // API routes (auth already mounted above)
 // Share/portal/public routes first (before authenticated /:id handlers)

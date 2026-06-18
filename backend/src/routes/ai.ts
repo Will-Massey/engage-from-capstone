@@ -17,6 +17,7 @@ import {
   suggestProposalServices,
 } from '../services/ai/proposalAiService.js';
 import { getAiStatusMeta } from '../services/ai/aiClient.js';
+import { AI_COPILOT } from '../config/aiCopilot.js';
 
 const router = Router();
 
@@ -25,7 +26,7 @@ const aiLimiter = rateLimit({
   max: 40,
   message: {
     success: false,
-    error: { code: 'RATE_LIMIT', message: 'Too many AI requests. Please wait a few minutes.' },
+    error: { code: 'RATE_LIMIT', message: `Too many requests for ${AI_COPILOT.name}. Please wait a few minutes.` },
   },
   standardHeaders: true,
   legacyHeaders: false,
@@ -44,8 +45,11 @@ router.get(
       success: true,
       data: {
         configured: meta.configured,
-        provider: meta.provider,
-        model: meta.model,
+        assistant: {
+          name: AI_COPILOT.name,
+          tagline: AI_COPILOT.tagline,
+          status: meta.configured ? 'ready' : 'unavailable',
+        },
         features: [
           'suggest_services',
           'cover_letter',

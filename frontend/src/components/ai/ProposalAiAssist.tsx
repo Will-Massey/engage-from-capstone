@@ -4,6 +4,7 @@ import toast from 'react-hot-toast';
 import { apiClient } from '../../utils/api';
 import { AiPanel, AiDraftPreview, showAiError } from './AiPanel';
 import ProposalHealthCard from './ProposalHealthCard';
+import { AI_COPILOT } from '../../config/aiCopilot';
 
 interface ProposalAiAssistProps {
   proposal: {
@@ -184,7 +185,7 @@ export default function ProposalAiAssist({ proposal, onUpdated }: ProposalAiAssi
 
       <AiPanel
         title="Engagement letter"
-        description="Assembled from your approved clause library with an optional AI introduction"
+        description={`Assembled from your approved clause library with an optional introduction from ${AI_COPILOT.name}`}
         configured={configured}
         loading={engagementLoading}
         onAction={generateEngagementLetter}

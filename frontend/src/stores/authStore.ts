@@ -27,12 +27,13 @@ export interface Tenant {
 interface AuthState {
   user: User | null;
   tenant: Tenant | null;
+  /** In-memory only — never persisted (httpOnly cookies are primary auth) */
   token: string | null;
   isAuthenticated: boolean;
   isLoading: boolean;
 
-  // Actions
-  setAuth: (user: User, tenant: Tenant, token: string) => void;
+  setAuth: (user: User, tenant: Tenant, token?: string | null) => void;
+  setSession: (user: User, tenant: Tenant) => void;
   clearAuth: () => void;
   logout: () => void;
   setLoading: (loading: boolean) => void;
@@ -46,13 +47,22 @@ export const useAuthStore = create<AuthState>()(
       tenant: null,
       token: null,
       isAuthenticated: false,
-      isLoading: false,
+      isLoading: true,
 
-      setAuth: (user, tenant, token) =>
+      setAuth: (user, tenant, token = null) =>
         set({
           user,
           tenant,
-          token, // Token kept in memory only, not persisted
+          token,
+          isAuthenticated: true,
+          isLoading: false,
+        }),
+
+      setSession: (user, tenant) =>
+        set({
+          user,
+          tenant,
+          token: null,
           isAuthenticated: true,
           isLoading: false,
         }),
@@ -87,8 +97,6 @@ export const useAuthStore = create<AuthState>()(
       partialize: (state) => ({
         user: state.user,
         tenant: state.tenant,
-        token: state.token,
-        isAuthenticated: state.isAuthenticated,
       }),
     }
   )

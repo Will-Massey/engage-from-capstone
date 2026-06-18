@@ -69,66 +69,32 @@ const OAuthConnect = ({ provider, onConnected }: OAuthConnectProps) => {
     checkStatus();
   }, [provider, onConnected]);
 
-  // Check for OAuth callback
+  // Check for OAuth callback (server exchanges code — frontend only sees success flag)
   useEffect(() => {
     const urlParams = new URLSearchParams(window.location.search);
-    const code = urlParams.get('code');
-    const state = urlParams.get('state');
+    const oauth = urlParams.get('oauth');
+    const urlProvider = urlParams.get('provider');
     const error = urlParams.get('error');
 
     if (error) {
       toast.error(`OAuth failed: ${error}`);
-      // Clean up URL
       window.history.replaceState({}, document.title, window.location.pathname);
       return;
     }
 
-    if (code && state) {
-      // Verify state matches stored state
-      const storedState = localStorage.getItem('oauth_state');
-      const storedProvider = localStorage.getItem('oauth_provider');
-
-      if (state === storedState && storedProvider === provider) {
-        const exchangeCodeForToken = async (code: string) => {
-          setIsConnecting(true);
-          try {
-            const response = (await apiClient.post(`/email/auth/${provider}/callback`, {
-              code,
-            })) as any;
-            if (response.success) {
-              toast.success(`${providerConfig[provider].name} connected successfully!`);
-              setStatus({ isConnected: true, user: response.data.user, provider });
-            } else {
-              toast.error('Failed to complete OAuth connection');
-            }
-          } catch (error: any) {
-            toast.error(
-              error.response?.data?.error?.message || 'Failed to complete OAuth connection'
-            );
-          } finally {
-            setIsConnecting(false);
-          }
-        };
-        exchangeCodeForToken(code);
-        // Clean up URL
-        window.history.replaceState({}, document.title, window.location.pathname);
-        // Clean up storage
-        localStorage.removeItem('oauth_state');
-        localStorage.removeItem('oauth_provider');
-      }
+    if (oauth === 'success' && urlProvider === provider) {
+      toast.success(`${providerConfig[provider].name} connected successfully!`);
+      setStatus({ isConnected: true, provider });
+      onConnected();
+      window.history.replaceState({}, document.title, `${window.location.pathname}?tab=email`);
     }
-  }, [provider]);
+  }, [provider, onConnected]);
 
   const initiateOAuth = async () => {
     setIsConnecting(true);
     try {
       const response = (await apiClient.get(`/email/auth/${provider}/url`)) as any;
       if (response.success && response.data.url) {
-        // Store state for verification on callback
-        localStorage.setItem('oauth_state', response.data.state);
-        localStorage.setItem('oauth_provider', provider);
-
-        // Open OAuth window
         window.location.href = response.data.url;
       } else {
         toast.error('Failed to get OAuth URL');

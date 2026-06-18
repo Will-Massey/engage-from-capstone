@@ -20,7 +20,13 @@ const checkAdminKey = (req: any, res: any, next: any) => {
       error: 'Admin routes are not configured (missing ADMIN_SECRET_KEY)',
     });
   }
-  const key = req.headers['x-admin-key'] || req.query.key;
+  if (req.query.key) {
+    return res.status(400).json({
+      success: false,
+      error: 'Pass the admin key via X-Admin-Key header only',
+    });
+  }
+  const key = req.headers['x-admin-key'];
   if (key !== ADMIN_KEY) {
     return res.status(403).json({ success: false, error: 'Invalid admin key' });
   }

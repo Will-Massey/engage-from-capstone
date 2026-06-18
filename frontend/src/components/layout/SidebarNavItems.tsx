@@ -2,6 +2,7 @@ import { Link, NavLink } from 'react-router-dom';
 import { PlusIcon, SparklesIcon } from '@heroicons/react/24/outline';
 import { NAV_SECTIONS, PRIMARY_CREATE, isNavItemActive, type NavItem } from '../../config/navigation';
 import { useAiAssistantStore } from '../../stores/aiAssistantStore';
+import { AI_COPILOT } from '../../config/aiCopilot';
 
 interface SidebarNavItemsProps {
   pathname: string;
@@ -68,7 +69,7 @@ const SidebarNavItems = ({ pathname, onNavigate }: SidebarNavItemsProps) => {
         className="mx-1 flex items-center justify-center gap-2 w-[calc(100%-0.5rem)] py-2.5 rounded-xl text-sm font-semibold bg-gradient-to-r from-violet-600/15 to-indigo-600/15 hover:from-violet-600/25 hover:to-indigo-600/25 border border-violet-400/40 text-violet-700 dark:text-violet-200 transition-all"
       >
         <SparklesIcon className="h-5 w-5" />
-        AI Assistant
+        {AI_COPILOT.name}
         <span
           className={`ml-auto h-2 w-2 rounded-full ${aiConfigured ? 'bg-emerald-500' : 'bg-amber-500'}`}
         />

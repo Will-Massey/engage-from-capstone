@@ -26,7 +26,6 @@ import { formatCurrency } from '../../utils/formatters';
 import { copyTextToClipboard } from '../../utils/clipboard';
 import { useAuthStore } from '../../stores/authStore';
 import { format, formatDistanceToNow } from 'date-fns';
-import toast from 'react-hot-toast';
 import { generateTermsAndConditions } from '../../data/defaultTerms';
 import { generateDefaultCoverLetter } from '../../data/defaultCoverLetter';
 import SignaturePad from '../../components/SignaturePad';
@@ -1209,61 +1208,74 @@ const ProposalDetail = () => {
             <ProposalAiAssist proposal={proposal} onUpdated={loadProposal} />
           )}
 
-          {/* Pricing - Monthly cost focus */}
+          {/* Pricing — monthly, annual, and one-time */}
           <div className="glass-tile p-6">
             <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-100 mb-2">
-              Monthly Cost
+              Investment summary
             </h2>
             <p className="text-xs text-slate-600 dark:text-slate-400 mb-4">
-              Recurring fees averaged per month. One-off fees shown separately.
+              Fees grouped by how often they are billed. One-time project fees are separate from
+              recurring retainers.
             </p>
             <div className="space-y-3">
-              {/* Monthly recurring */}
-              <div className="flex justify-between items-baseline">
-                <span className="text-slate-600 dark:text-slate-300">Monthly recurring</span>
-                <span className="font-bold text-xl text-primary-600 tabular-nums">
-                  {formatCurrency(pricingBreakdown.monthlyIncVat)}
-                </span>
-              </div>
-
-              {/* One-off */}
-              {pricingBreakdown.oneOffIncVat > 0 && (
-                <div className="flex justify-between text-sm">
-                  <span className="text-slate-600 dark:text-slate-300">One-off fees</span>
-                  <span className="font-medium text-slate-900 dark:text-white tabular-nums">
-                    {formatCurrency(pricingBreakdown.oneOffIncVat)}
+              {groupTotals.MONTHLY?.total > 0 && (
+                <div className="flex justify-between items-baseline">
+                  <span className="text-slate-600 dark:text-slate-300">Monthly</span>
+                  <span className="font-bold text-xl text-primary-600 tabular-nums">
+                    {formatCurrency(groupTotals.MONTHLY.total)}
+                    <span className="text-xs font-normal text-slate-500 ml-1">/month</span>
+                  </span>
+                </div>
+              )}
+              {groupTotals.ANNUALLY?.total > 0 && (
+                <div className="flex justify-between items-baseline">
+                  <span className="text-slate-600 dark:text-slate-300">Annual</span>
+                  <span className="font-bold text-xl text-primary-600 tabular-nums">
+                    {formatCurrency(groupTotals.ANNUALLY.total)}
+                    <span className="text-xs font-normal text-slate-500 ml-1">/year</span>
+                  </span>
+                </div>
+              )}
+              {groupTotals.ONE_TIME?.total > 0 && (
+                <div className="flex justify-between items-baseline">
+                  <span className="text-slate-600 dark:text-slate-300">One-time</span>
+                  <span className="font-semibold text-slate-900 dark:text-white tabular-nums">
+                    {formatCurrency(groupTotals.ONE_TIME.total)}
                   </span>
                 </div>
               )}
 
+              {(pricingBreakdown.monthlyIncVat > 0 || pricingBreakdown.oneOffIncVat > 0) && (
               <div className="border-t border-white/20 dark:border-slate-600/50 pt-3 space-y-2">
-                {/* Monthly breakdown */}
-                <div className="flex justify-between text-sm">
-                  <span className="text-slate-600 dark:text-slate-300">Monthly subtotal (ex VAT)</span>
-                  <span className="font-medium text-slate-900 dark:text-white tabular-nums">
-                    {formatCurrency(pricingBreakdown.monthlyExVat)}
-                  </span>
-                </div>
-                <div className="flex justify-between text-sm">
-                  <span className="text-slate-600 dark:text-slate-300">
-                    Monthly VAT {hasMixedVatRates ? '(mixed)' : `(${proposal.vatRate || 20}%)`}
-                  </span>
-                  <span className="font-medium text-slate-900 dark:text-white tabular-nums">
-                    {formatCurrency(pricingBreakdown.monthlyVat)}
-                  </span>
-                </div>
+                {pricingBreakdown.monthlyIncVat > 0 && (
+                  <>
+                    <div className="flex justify-between text-sm">
+                      <span className="text-slate-600 dark:text-slate-300">Recurring subtotal (ex VAT)</span>
+                      <span className="font-medium text-slate-900 dark:text-white tabular-nums">
+                        {formatCurrency(pricingBreakdown.monthlyExVat)}
+                      </span>
+                    </div>
+                    <div className="flex justify-between text-sm">
+                      <span className="text-slate-600 dark:text-slate-300">
+                        Recurring VAT {hasMixedVatRates ? '(mixed)' : `(${proposal.vatRate || 20}%)`}
+                      </span>
+                      <span className="font-medium text-slate-900 dark:text-white tabular-nums">
+                        {formatCurrency(pricingBreakdown.monthlyVat)}
+                      </span>
+                    </div>
+                  </>
+                )}
 
-                {/* One-off breakdown */}
                 {pricingBreakdown.oneOffIncVat > 0 && (
                   <>
                     <div className="flex justify-between text-sm pt-1 border-t border-dashed border-white/10 dark:border-slate-600/30">
-                      <span className="text-slate-600 dark:text-slate-300">One-off subtotal (ex VAT)</span>
+                      <span className="text-slate-600 dark:text-slate-300">One-time subtotal (ex VAT)</span>
                       <span className="font-medium text-slate-900 dark:text-white tabular-nums">
                         {formatCurrency(pricingBreakdown.oneOffExVat)}
                       </span>
                     </div>
                     <div className="flex justify-between text-sm">
-                      <span className="text-slate-600 dark:text-slate-300">One-off VAT</span>
+                      <span className="text-slate-600 dark:text-slate-300">One-time VAT</span>
                       <span className="font-medium text-slate-900 dark:text-white tabular-nums">
                         {formatCurrency(pricingBreakdown.oneOffVat)}
                       </span>
@@ -1271,7 +1283,6 @@ const ProposalDetail = () => {
                   </>
                 )}
 
-                {/* Discount */}
                 {proposal.discountAmount > 0 && (
                   <div className="flex justify-between text-sm">
                     <span className="text-slate-600 dark:text-slate-300">Discount</span>
@@ -1281,8 +1292,7 @@ const ProposalDetail = () => {
                   </div>
                 )}
 
-                {/* Total first payment */}
-                {pricingBreakdown.oneOffIncVat > 0 && (
+                {pricingBreakdown.oneOffIncVat > 0 && pricingBreakdown.monthlyIncVat > 0 && (
                   <div className="flex justify-between items-baseline pt-2 border-t border-dashed border-white/30 dark:border-slate-500/50">
                     <span className="font-semibold text-slate-900 dark:text-white">First payment</span>
                     <span className="font-bold text-xl text-slate-900 dark:text-white tabular-nums tracking-tight">
@@ -1291,21 +1301,25 @@ const ProposalDetail = () => {
                   </div>
                 )}
 
-                {/* Monthly cost */}
-                <div className={`flex justify-between items-baseline pt-2 border-t ${pricingBreakdown.oneOffIncVat > 0 ? 'border-white/10 dark:border-slate-600/30' : 'border-white/20 dark:border-slate-600/50'}`}>
-                  <span className="font-semibold text-slate-900 dark:text-white">
-                    {pricingBreakdown.oneOffIncVat > 0 ? 'Monthly cost' : 'Total monthly cost'}
-                  </span>
-                  <span className="font-bold text-2xl text-slate-900 dark:text-white tabular-nums tracking-tight">
-                    {formatCurrency(pricingBreakdown.monthlyIncVat)}
-                  </span>
-                </div>
+                {pricingBreakdown.monthlyIncVat > 0 && (
+                  <div className="flex justify-between items-baseline pt-2 border-t border-white/10 dark:border-slate-600/30">
+                    <span className="font-semibold text-slate-900 dark:text-white">
+                      Typical monthly cash flow
+                    </span>
+                    <span className="font-bold text-2xl text-slate-900 dark:text-white tabular-nums tracking-tight">
+                      {formatCurrency(pricingBreakdown.monthlyIncVat)}
+                    </span>
+                  </div>
+                )}
               </div>
+              )}
 
               <p className="text-xs text-slate-500 dark:text-slate-400 text-center">
-                {pricingBreakdown.oneOffIncVat > 0
-                  ? 'First payment = monthly recurring + one-off fees. Then monthly recurring only.'
-                  : 'Monthly cost is the average per month across all billing periods.'}
+                {pricingBreakdown.oneOffIncVat > 0 && pricingBreakdown.monthlyIncVat > 0
+                  ? 'First payment includes one-time fees plus your first month of recurring services.'
+                  : pricingBreakdown.oneOffIncVat > 0
+                    ? 'One-time fees are payable as agreed in your engagement letter.'
+                    : 'Monthly figure averages recurring fees across the year where annual or quarterly lines apply.'}
               </p>
             </div>
           </div>

@@ -1,7 +1,9 @@
 import { Request, Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
+import crypto from 'crypto';
 import { prisma } from '../config/database.js';
 import { UserRole } from '@prisma/client';
+import { isCsrfTokenRegistered, registerCsrfToken } from '../utils/csrfStore.js';
 
 const JWT_SECRET = process.env.JWT_SECRET;
 
@@ -90,8 +92,15 @@ export const authenticate = async (
 ): Promise<void> => {
   try {
     const authHeader = req.headers.authorization;
+    let token: string | null = null;
 
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    if (authHeader?.startsWith('Bearer ')) {
+      token = authHeader.substring(7);
+    } else if (req.cookies?.accessToken) {
+      token = req.cookies.accessToken;
+    }
+
+    if (!token) {
       res.status(401).json({
         success: false,
         error: {
@@ -101,8 +110,6 @@ export const authenticate = async (
       });
       return;
     }
-
-    const token = authHeader.substring(7);
 
     // Verify token
     const decoded = jwt.verify(token, JWT_SECRET) as JWTPayload;
@@ -246,11 +253,12 @@ export const optionalAuth = async (
 };
 
 // CSRF Protection - Double Submit Cookie Pattern
-import crypto from 'crypto';
 
 // Generate CSRF token
 export const generateCsrfToken = (): string => {
-  return crypto.randomBytes(32).toString('hex');
+  const token = crypto.randomBytes(32).toString('hex');
+  registerCsrfToken(token);
+  return token;
 };
 
 // CSRF protection middleware
@@ -280,21 +288,9 @@ export const csrfProtection = (req: Request, res: Response, next: NextFunction):
     return;
   }
 
-  // Debug logging
-  console.log('[CSRF Debug]', {
-    originalUrl: req.originalUrl,
-    path: req.path,
-    method: req.method,
-    csrfHeader: req.headers['x-csrf-token']?.slice(0, 10) + '...',
-    hasCsrfCookie: !!req.cookies?.csrfToken,
-    allCookies: Object.keys(req.cookies || {}),
-  });
-
   const csrfToken = req.headers['x-csrf-token'] as string;
   const csrfCookie = req.cookies?.csrfToken;
 
-  // Cross-domain: accept header token if no cookie (cookie blocked by browser)
-  // Same-domain: verify header matches cookie
   if (!csrfToken) {
     res.status(403).json({
       success: false,
@@ -306,8 +302,20 @@ export const csrfProtection = (req: Request, res: Response, next: NextFunction):
     return;
   }
 
-  // If cookie exists (same-domain), verify they match
+  // Same-site: header must match cookie
   if (csrfCookie && csrfToken !== csrfCookie) {
+    res.status(403).json({
+      success: false,
+      error: {
+        code: 'CSRF_INVALID',
+        message: 'CSRF token validation failed',
+      },
+    });
+    return;
+  }
+
+  // Cross-domain: cookie may be absent — token must be server-registered at login/csrf-token
+  if (!csrfCookie && !isCsrfTokenRegistered(csrfToken)) {
     res.status(403).json({
       success: false,
       error: {
@@ -325,11 +333,12 @@ export const csrfProtection = (req: Request, res: Response, next: NextFunction):
 export const setCsrfCookie = (req: Request, res: Response, next: NextFunction): void => {
   if (!req.cookies?.csrfToken) {
     const csrfToken = generateCsrfToken();
+    registerCsrfToken(csrfToken);
     res.cookie('csrfToken', csrfToken, {
-      httpOnly: false, // Must be accessible by JavaScript
+      httpOnly: false,
       secure: true,
       sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
-      maxAge: 24 * 60 * 60 * 1000, // 24 hours
+      maxAge: 24 * 60 * 60 * 1000,
     });
   }
   next();

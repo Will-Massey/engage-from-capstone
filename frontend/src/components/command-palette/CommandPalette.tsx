@@ -16,6 +16,7 @@ import {
 import { useAuthStore } from '../../stores/authStore';
 import { apiClient } from '../../utils/api';
 import toast from 'react-hot-toast';
+import { AI_COPILOT, copilotUnavailableToast } from '../../config/aiCopilot';
 
 interface Command {
   id: string;
@@ -126,10 +127,10 @@ const CommandPalette = ({ isOpen, onClose }: CommandPaletteProps) => {
     if (user?.role === 'PARTNER' || user?.role === 'MANAGER' || user?.role === 'SENIOR' || user?.role === 'ADMIN') {
       commands.push({
         id: 'ai-new-proposal',
-        title: 'Ask AI to help with proposals',
-        subtitle: 'Type naturally, e.g. "draft follow up for latest proposal"',
+        title: `Ask ${AI_COPILOT.name}`,
+        subtitle: 'Your Engage proposal co-pilot — drafts, health checks, renewals',
         icon: SparklesIcon,
-        category: 'AI Features',
+        category: AI_COPILOT.name,
         action: () => {
           setSearch('ai ');
           inputRef.current?.focus();
@@ -177,9 +178,9 @@ const CommandPalette = ({ isOpen, onClose }: CommandPaletteProps) => {
     } catch (err: any) {
       const code = err?.code || err?.response?.data?.error?.code;
       if (code === 'AI_NOT_CONFIGURED') {
-        toast.error('AI is not configured (set XAI_API_KEY or OPENAI_API_KEY)');
+        toast.error(copilotUnavailableToast());
       } else {
-        toast.error(err?.message || err?.response?.data?.error?.message || 'AI command failed');
+        toast.error(err?.message || err?.response?.data?.error?.message || `${AI_COPILOT.name} couldn't complete that request`);
       }
     } finally {
       setAiLoading(false);
@@ -207,10 +208,10 @@ const CommandPalette = ({ isOpen, onClose }: CommandPaletteProps) => {
         ...filteredCommands,
         {
           id: 'ai-run',
-          title: aiLoading ? 'Asking AI…' : `Ask AI: "${aiQuery}"`,
+          title: aiLoading ? `Asking ${AI_COPILOT.name}…` : `Ask ${AI_COPILOT.name}: "${aiQuery}"`,
           subtitle: 'Natural language — review before sending anything',
           icon: SparklesIcon,
-          category: 'AI Features',
+          category: AI_COPILOT.name,
           action: runAiCommand,
         },
       ]
@@ -301,7 +302,7 @@ const CommandPalette = ({ isOpen, onClose }: CommandPaletteProps) => {
           <input
             ref={inputRef}
             type="text"
-            placeholder="Search commands or ask AI (prefix with ai )..."
+            placeholder={`Search commands or ask ${AI_COPILOT.name} (prefix with ai )...`}
             className="flex-1 ml-3 bg-transparent border-none outline-none text-slate-900 dark:text-slate-100 placeholder-slate-400 text-base"
             value={search}
             onChange={(e) => {

@@ -26,7 +26,7 @@ type RegisterForm = z.infer<typeof registerSchema>;
 
 const Register = () => {
   const navigate = useNavigate();
-  const { setAuth } = useAuthStore();
+  const { setSession } = useAuthStore();
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
 
@@ -62,7 +62,7 @@ const Register = () => {
       })) as any;
 
       if (response.success) {
-        setAuth(response.data.user, response.data.user.tenant, response.data.tokens.accessToken);
+        setSession(response.data.user, response.data.user.tenant);
         toast.success('Account created successfully!');
         navigate('/');
       }

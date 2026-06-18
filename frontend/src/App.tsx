@@ -92,7 +92,15 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
 
 // Public route wrapper (redirects to dashboard if authenticated)
 const PublicRoute = ({ children }: { children: React.ReactNode }) => {
-  const { isAuthenticated } = useAuthStore();
+  const { isAuthenticated, isLoading } = useAuthStore();
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600"></div>
+      </div>
+    );
+  }
 
   if (isAuthenticated) {
     return <Navigate to="/" replace />;
@@ -302,28 +310,31 @@ const AnimatedRoutes = () => {
 };
 
 function App() {
-  const { isAuthenticated, token, setAuth, clearAuth } = useAuthStore();
+  const { isAuthenticated, setSession, clearAuth, setLoading } = useAuthStore();
   const { isOpen: isCommandPaletteOpen, close: closeCommandPalette, toggle: toggleCommandPalette } =
     useCommandPalette();
   const [isShortcutsOpen, setIsShortcutsOpen] = useState(false);
 
-  // Validate token on app load
+  // Restore session from httpOnly cookies via /me (no JWT in localStorage)
   useEffect(() => {
-    const validateToken = async () => {
-      if (!token) return;
-
+    const bootstrapSession = async () => {
+      setLoading(true);
       try {
         const response = (await apiClient.getMe()) as any;
         if (response.success) {
-          setAuth(response.data.user, response.data.user.tenant, token);
+          setSession(response.data.user, response.data.user.tenant);
+        } else {
+          clearAuth();
         }
-      } catch (error) {
+      } catch {
         clearAuth();
+      } finally {
+        setLoading(false);
       }
     };
 
-    validateToken();
-  }, [token, setAuth, clearAuth]);
+    bootstrapSession();
+  }, [setSession, clearAuth, setLoading]);
 
   // Global keyboard shortcuts
   useEffect(() => {

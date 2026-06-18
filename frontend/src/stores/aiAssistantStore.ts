@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import { AI_COPILOT } from '../config/aiCopilot';
 
 export interface AiMessage {
   id: string;
@@ -11,10 +12,8 @@ export interface AiMessage {
 interface AiAssistantState {
   isOpen: boolean;
   configured: boolean;
-  provider: string | null;
-  model: string | null;
   messages: AiMessage[];
-  setConfigured: (configured: boolean, provider?: string | null, model?: string | null) => void;
+  setConfigured: (configured: boolean) => void;
   open: () => void;
   close: () => void;
   toggle: () => void;
@@ -22,21 +21,17 @@ interface AiAssistantState {
   clearMessages: () => void;
 }
 
+const welcomeMessage = (): AiMessage => ({
+  id: 'welcome',
+  role: 'assistant',
+  content: AI_COPILOT.welcomeMessage,
+});
+
 export const useAiAssistantStore = create<AiAssistantState>((set) => ({
   isOpen: false,
   configured: false,
-  provider: null,
-  model: null,
-  messages: [
-    {
-      id: 'welcome',
-      role: 'assistant',
-      content:
-        "I'm your Engage AI co-pilot. Use the quick actions below or ask a short question about proposals, clients, and renewals.",
-    },
-  ],
-  setConfigured: (configured, provider = null, model = null) =>
-    set({ configured, provider, model }),
+  messages: [welcomeMessage()],
+  setConfigured: (configured) => set({ configured }),
   open: () => set({ isOpen: true }),
   close: () => set({ isOpen: false }),
   toggle: () => set((s) => ({ isOpen: !s.isOpen })),
@@ -44,15 +39,5 @@ export const useAiAssistantStore = create<AiAssistantState>((set) => ({
     set((s) => ({
       messages: [...s.messages, { ...msg, id: `${Date.now()}-${Math.random().toString(36).slice(2, 7)}` }],
     })),
-  clearMessages: () =>
-    set({
-      messages: [
-        {
-          id: 'welcome',
-          role: 'assistant',
-          content:
-            "I'm your Engage AI co-pilot. Use the quick actions below or ask a short question about proposals, clients, and renewals.",
-        },
-      ],
-    }),
+  clearMessages: () => set({ messages: [welcomeMessage()] }),
 }));

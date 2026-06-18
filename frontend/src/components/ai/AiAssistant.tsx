@@ -15,6 +15,7 @@ import { useAiAssistantStore } from '../../stores/aiAssistantStore';
 import { apiClient } from '../../utils/api';
 import { matchLocalIntent } from '../../utils/aiQuickIntents';
 import { showAiError } from './AiPanel';
+import { AI_COPILOT } from '../../config/aiCopilot';
 
 type Chip = {
   id: string;
@@ -55,8 +56,6 @@ export default function AiAssistant() {
   const {
     isOpen,
     configured,
-    provider,
-    model,
     messages,
     open,
     close,
@@ -87,7 +86,7 @@ export default function AiAssistant() {
       .getAiStatus()
       .then((res: any) => {
         if (res.success) {
-          setConfigured(res.data?.configured ?? false, res.data?.provider, res.data?.model);
+          setConfigured(res.data?.configured ?? false);
         }
       })
       .catch(() => setConfigured(false));
@@ -135,7 +134,7 @@ export default function AiAssistant() {
     if (!configured) {
       addMessage({
         role: 'assistant',
-        content: 'AI is not configured on the server yet. Add XAI_API_KEY in Render environment variables.',
+        content: AI_COPILOT.unavailableMessage,
       });
       return;
     }
@@ -175,8 +174,7 @@ export default function AiAssistant() {
     if (!configured) {
       addMessage({
         role: 'assistant',
-        content:
-          'AI answers need XAI_API_KEY on the server. Quick navigation still works — try "new proposal" or use the chips above.',
+        content: `${AI_COPILOT.name} isn't available right now — try the quick actions above, or ask your administrator to enable the Engage assistant.`,
       });
       return;
     }
@@ -206,7 +204,7 @@ export default function AiAssistant() {
               exit={{ opacity: 0 }}
               className="hidden sm:block text-xs font-medium text-violet-700 dark:text-violet-300 bg-white/90 dark:bg-slate-900/90 backdrop-blur px-3 py-1.5 rounded-full border border-violet-200 dark:border-violet-800 shadow-lg"
             >
-              AI co-pilot
+              {AI_COPILOT.name}
             </motion.span>
           )}
         </AnimatePresence>
@@ -214,7 +212,7 @@ export default function AiAssistant() {
         <motion.button
           type="button"
           onClick={toggle}
-          aria-label="Open AI assistant"
+          aria-label={AI_COPILOT.panelAriaLabel}
           className="relative group"
           whileHover={{ scale: 1.05 }}
           whileTap={{ scale: 0.97 }}
@@ -227,7 +225,7 @@ export default function AiAssistant() {
             className={`absolute top-1 right-1 h-3 w-3 rounded-full border-2 border-white dark:border-slate-900 ${
               configured ? 'bg-emerald-400' : 'bg-amber-400'
             }`}
-            title={configured ? `AI online (${provider})` : 'AI not configured'}
+            title={configured ? AI_COPILOT.onlineSubtitle : AI_COPILOT.offlineSubtitle}
           />
         </motion.button>
       </div>
@@ -260,11 +258,10 @@ export default function AiAssistant() {
                       <SparklesIcon className="h-5 w-5 text-violet-300" />
                     </div>
                     <div>
-                      <h2 className="text-sm font-semibold tracking-tight">Engage AI</h2>
+                      <h2 className="text-sm font-semibold tracking-tight">{AI_COPILOT.name}</h2>
                       <p className="text-[10px] text-violet-300/80">
-                        {configured
-                          ? `${provider || 'AI'} · ${model || 'ready'}`
-                          : 'Offline — set XAI_API_KEY on server'}
+                        {configured ? AI_COPILOT.onlineSubtitle : AI_COPILOT.offlineSubtitle} ·{' '}
+                        {AI_COPILOT.tagline}
                       </p>
                     </div>
                   </div>
@@ -348,7 +345,7 @@ export default function AiAssistant() {
                     type="text"
                     value={input}
                     onChange={(e) => setInput(e.target.value)}
-                    placeholder='Try "new proposal" or ask a short question…'
+                    placeholder={AI_COPILOT.askPlaceholder}
                     className="flex-1 rounded-xl bg-white/10 border border-white/15 px-3 py-2.5 text-sm text-white placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-violet-500/50"
                     maxLength={400}
                     disabled={loading}
@@ -362,7 +359,7 @@ export default function AiAssistant() {
                   </button>
                 </form>
                 <p className="mt-2 text-[10px] text-center text-slate-500">
-                  Local shortcuts use no tokens · AI answers are kept brief
+                  Built into Engage · shortcuts are instant · answers stay brief
                 </p>
               </div>
             </motion.div>
@@ -383,7 +380,7 @@ export function AiAssistantTrigger({ className = '' }: { className?: string }) {
       className={`inline-flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-medium transition-all bg-gradient-to-r from-violet-600/15 to-indigo-600/15 hover:from-violet-600/25 hover:to-indigo-600/25 border border-violet-400/30 text-violet-700 dark:text-violet-200 ${className}`}
     >
       <SparklesIcon className="h-4 w-4" />
-      <span>AI Assistant</span>
+      <span>{AI_COPILOT.name}</span>
       <span
         className={`h-2 w-2 rounded-full ${configured ? 'bg-emerald-500' : 'bg-amber-500'}`}
       />

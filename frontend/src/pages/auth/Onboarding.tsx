@@ -31,7 +31,7 @@ const steps = [
 
 const Onboarding = () => {
   const navigate = useNavigate();
-  const { setAuth } = useAuthStore();
+  const { setSession } = useAuthStore();
   const [currentStep, setCurrentStep] = useState(1);
   const [isLoading, setIsLoading] = useState(false);
   const [subdomainAvailable, setSubdomainAvailable] = useState<boolean | null>(null);
@@ -73,7 +73,7 @@ const Onboarding = () => {
       })) as any;
 
       if (response.success) {
-        setAuth(response.data.user, response.data.tenant, response.data.token);
+        setSession(response.data.user, response.data.tenant);
         toast.success('Welcome to Engage!');
         navigate('/');
       }

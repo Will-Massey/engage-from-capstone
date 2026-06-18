@@ -657,25 +657,35 @@ router.post(
   })
 );
 
-// Get signature image (authenticated only)
+// Get signature image (authenticated only, tenant-scoped)
 router.get(
   '/signatures/:id/image',
   authenticate,
   asyncHandler(async (req, res) => {
     const { id } = req.params;
+    const tenantId = req.tenantId!;
 
-    const signatureData = await getSignatureImage(id);
+    const signature = await prisma.proposalSignature.findFirst({
+      where: {
+        id,
+        proposal: { tenantId },
+      },
+      select: { signatureData: true, signatureFilePath: true },
+    });
 
-    if (!signatureData) {
+    if (!signature) {
       throw new ApiError('SIGNATURE_NOT_FOUND', 'Signature not found', 404);
     }
 
-    // Return as base64 or redirect to data URL
+    let imageData: string | null = signature.signatureData;
+    if (signature.signatureFilePath) {
+      const { readSignature } = await import('../services/fileStorage.js');
+      imageData = await readSignature(signature.signatureFilePath);
+    }
+
     res.json({
       success: true,
-      data: {
-        imageData: signatureData,
-      },
+      data: { imageData },
     });
   })
 );

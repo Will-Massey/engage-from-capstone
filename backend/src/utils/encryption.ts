@@ -1,13 +1,19 @@
 import crypto from 'crypto';
 
-// Encryption key should be set in environment variables
-const ENCRYPTION_KEY = process.env.ENCRYPTION_KEY || process.env.JWT_SECRET;
+const ENCRYPTION_KEY = process.env.ENCRYPTION_KEY;
 
 if (!ENCRYPTION_KEY) {
-  throw new Error(
-    'ENCRYPTION_KEY or JWT_SECRET environment variable is required for credential encryption'
+  if (process.env.NODE_ENV === 'production') {
+    throw new Error('ENCRYPTION_KEY environment variable is required in production');
+  }
+  console.warn(
+    '[encryption] ENCRYPTION_KEY not set — using ephemeral dev key (not for production)'
   );
 }
+
+const effectiveKey =
+  ENCRYPTION_KEY ||
+  crypto.createHash('sha256').update('engage-dev-encryption-key').digest('hex');
 
 // Ensure key is 32 bytes (256 bits) for AES-256-GCM
 const deriveKey = (key: string): Buffer => {
@@ -16,7 +22,6 @@ const deriveKey = (key: string): Buffer => {
 
 const ALGORITHM = 'aes-256-gcm';
 const IV_LENGTH = 16;
-const AUTH_TAG_LENGTH = 16;
 
 /**
  * Encrypt sensitive data (like OAuth credentials)
@@ -26,7 +31,7 @@ export function encrypt(text: string): string {
 
   try {
     const iv = crypto.randomBytes(IV_LENGTH);
-    const key = deriveKey(ENCRYPTION_KEY!);
+    const key = deriveKey(effectiveKey);
     const cipher = crypto.createCipheriv(ALGORITHM, key, iv);
 
     let encrypted = cipher.update(text, 'utf8', 'hex');
@@ -34,7 +39,6 @@ export function encrypt(text: string): string {
 
     const authTag = cipher.getAuthTag();
 
-    // Return iv:authTag:encrypted format
     return `${iv.toString('hex')}:${authTag.toString('hex')}:${encrypted}`;
   } catch (error) {
     console.error('Encryption failed:', error);
@@ -48,7 +52,6 @@ export function encrypt(text: string): string {
 export function decrypt(encryptedData: string): string {
   if (!encryptedData) return '';
 
-  // Check if data is not encrypted (legacy plain text)
   if (!encryptedData.includes(':')) {
     return encryptedData;
   }
@@ -63,7 +66,7 @@ export function decrypt(encryptedData: string): string {
     const authTag = Buffer.from(parts[1], 'hex');
     const encrypted = parts[2];
 
-    const key = deriveKey(ENCRYPTION_KEY!);
+    const key = deriveKey(effectiveKey);
     const decipher = crypto.createDecipheriv(ALGORITHM, key, iv);
     decipher.setAuthTag(authTag);
 
@@ -84,7 +87,6 @@ export function encryptObject(obj: Record<string, string>): Record<string, strin
   const encrypted: Record<string, string> = {};
 
   for (const [key, value] of Object.entries(obj)) {
-    // Only encrypt sensitive fields
     if (['clientSecret', 'refreshToken', 'accessToken', 'pass', 'password'].includes(key)) {
       encrypted[key] = encrypt(value);
     } else {
@@ -102,7 +104,6 @@ export function decryptObject(obj: Record<string, string>): Record<string, strin
   const decrypted: Record<string, string> = {};
 
   for (const [key, value] of Object.entries(obj)) {
-    // Only decrypt sensitive fields
     if (['clientSecret', 'refreshToken', 'accessToken', 'pass', 'password'].includes(key)) {
       decrypted[key] = decrypt(value);
     } else {

@@ -1,5 +1,6 @@
 import { SparklesIcon, ArrowPathIcon, CheckIcon } from '@heroicons/react/24/outline';
 import toast from 'react-hot-toast';
+import { AI_COPILOT, copilotUnavailableToast } from '../../config/aiCopilot';
 
 interface AiPanelProps {
   title: string;
@@ -30,9 +31,7 @@ export function AiPanel({
           <div>
             <p className="text-sm font-medium text-slate-800 dark:text-slate-100">{title}</p>
             <p className="text-xs text-slate-600 dark:text-slate-400 mt-1">
-              Add <code className="text-violet-600">XAI_API_KEY</code> (or{' '}
-              <code className="text-violet-600">OPENAI_API_KEY</code>) to the server environment to
-              enable AI assistance.
+              {AI_COPILOT.unavailableMessage}
             </p>
           </div>
         </div>
@@ -110,8 +109,8 @@ export function AiDraftPreview({
 export function showAiError(error: any) {
   const code = error?.response?.data?.error?.code;
   if (code === 'AI_NOT_CONFIGURED') {
-    toast.error('AI is not configured on the server (set XAI_API_KEY or OPENAI_API_KEY)');
+    toast.error(copilotUnavailableToast());
   } else {
-    toast.error(error?.response?.data?.error?.message || 'AI request failed');
+    toast.error(error?.response?.data?.error?.message || `${AI_COPILOT.name} couldn't complete that request`);
   }
 }

@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import { z } from 'zod';
 import { prisma } from '../config/database.js';
-import { authenticate } from '../middleware/auth.js';
+import { authenticate, authorize } from '../middleware/auth.js';
 import { asyncHandler, ApiError } from '../middleware/errorHandler.js';
 import { approveAndSendTouchpoint } from '../jobs/touchpointEngine.js';
 import logger from '../config/logger.js';
@@ -141,6 +141,7 @@ router.patch(
 // Manually trigger engine (useful for testing)
 router.post(
   '/run',
+  authorize('ADMIN', 'PARTNER', 'MANAGER'),
   asyncHandler(async (_req, res) => {
     const { runTouchpointEngine } = await import('../jobs/touchpointEngine.js');
     const stats = await runTouchpointEngine();

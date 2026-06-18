@@ -42,6 +42,7 @@ import {
   SparklesIcon,
 } from '@heroicons/react/24/outline';
 import { AiPanel, AiDraftPreview, showAiError } from '../ai/AiPanel';
+import { AI_COPILOT } from '../../config/aiCopilot';
 
 // Types
 interface Client {
@@ -126,10 +127,62 @@ function periodLabelSentenceCase(freq: string): string {
     case 'ANNUALLY':
       return 'Annual';
     case 'ONE_TIME':
-      return 'One-off';
+      return 'One-time';
     default:
       return 'Monthly';
   }
+}
+
+/** Monthly / annual / one-time investment bands for proposal summaries */
+function InvestmentSummaryBands({ summary }: { summary: PricingSummary }) {
+  return (
+    <div className="space-y-2">
+      {summary.monthly.count > 0 && (
+        <div className="flex justify-between items-baseline">
+          <span className="text-sm font-medium text-slate-800 dark:text-slate-100">Monthly</span>
+          <span className="text-lg font-semibold text-slate-900 dark:text-white tabular-nums">
+            {formatCurrency(summary.monthly.total)}
+            <span className="text-xs font-normal text-slate-500 ml-1">/month</span>
+          </span>
+        </div>
+      )}
+      {summary.annually.count > 0 && (
+        <div className="flex justify-between items-baseline">
+          <span className="text-sm font-medium text-slate-800 dark:text-slate-100">Annual</span>
+          <span className="text-lg font-semibold text-slate-900 dark:text-white tabular-nums">
+            {formatCurrency(summary.annually.total)}
+            <span className="text-xs font-normal text-slate-500 ml-1">/year</span>
+          </span>
+        </div>
+      )}
+      {summary.quarterly.count > 0 && (
+        <div className="flex justify-between items-baseline">
+          <span className="text-sm font-medium text-slate-800 dark:text-slate-100">Quarterly</span>
+          <span className="text-lg font-semibold text-slate-900 dark:text-white tabular-nums">
+            {formatCurrency(summary.quarterly.total)}
+            <span className="text-xs font-normal text-slate-500 ml-1">/quarter</span>
+          </span>
+        </div>
+      )}
+      {summary.weekly.count > 0 && (
+        <div className="flex justify-between items-baseline">
+          <span className="text-sm font-medium text-slate-800 dark:text-slate-100">Weekly</span>
+          <span className="text-lg font-semibold text-slate-900 dark:text-white tabular-nums">
+            {formatCurrency(summary.weekly.total)}
+            <span className="text-xs font-normal text-slate-500 ml-1">/week</span>
+          </span>
+        </div>
+      )}
+      {summary.oneTime.count > 0 && (
+        <div className="flex justify-between items-baseline">
+          <span className="text-sm font-medium text-slate-800 dark:text-slate-100">One-time</span>
+          <span className="text-lg font-semibold text-slate-900 dark:text-white tabular-nums">
+            {formatCurrency(summary.oneTime.total)}
+          </span>
+        </div>
+      )}
+    </div>
+  );
 }
 
 /** Average monthly cash flow (inc VAT) for a recurring line; one-off → 0 */
@@ -623,7 +676,7 @@ export default function ProposalBuilder({ proposalId }: ProposalBuilderProps) {
     }
 
     const price = overridePrice ?? service.priceAmount ?? 0;
-    const frequency = billingFrequency || service.billingCycle || 'MONTHLY';
+    const frequency = billingFrequency || service.billingCycle || service.defaultFrequency || 'MONTHLY';
     const annualEquivalent = calculateAnnualEquivalent(price, frequency);
     const lineTotal = price;
 
@@ -1325,10 +1378,10 @@ export default function ProposalBuilder({ proposalId }: ProposalBuilderProps) {
         </div>
       </div>
 
-      {/* AI service suggestions */}
+      {/* Clara service suggestions */}
       {selectedClient && (
         <AiPanel
-          title="AI service suggestions"
+          title={`${AI_COPILOT.name} service suggestions`}
           description="Recommended bundle and billing cadence based on client profile and history"
           configured={aiConfigured}
           loading={aiSuggestLoading}
@@ -1407,24 +1460,24 @@ export default function ProposalBuilder({ proposalId }: ProposalBuilderProps) {
                 {selectedServices.map(renderSelectedServiceRow)}
               </div>
 
-              {/* Running totals — monthly cost focus */}
-              <div className="p-4 bg-primary-50 dark:bg-primary-900/20 rounded-lg border border-primary-100 dark:border-primary-800 space-y-2 text-sm">
-                <div className="flex justify-between items-baseline">
-                  <div>
-                    <span className="text-sm font-medium text-slate-800 dark:text-slate-100">Monthly cost</span>
-                    <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-                      Average per month including VAT.
-                    </p>
-                  </div>
-                  <span className="text-xl font-bold text-primary-600 tabular-nums">
-                    {formatCurrency(reviewMonthlyCostIncVat)}
-                  </span>
-                </div>
-                {summary.oneTime.count > 0 && (
+              {/* Investment by billing period */}
+              <div className="p-4 bg-primary-50 dark:bg-primary-900/20 rounded-lg border border-primary-100 dark:border-primary-800 space-y-3 text-sm">
+                <InvestmentSummaryBands summary={summary} />
+                {(summary.monthly.count > 0 ||
+                  summary.annually.count > 0 ||
+                  summary.quarterly.count > 0 ||
+                  summary.weekly.count > 0) && (
                   <div className="flex justify-between items-baseline pt-2 border-t border-primary-200 dark:border-primary-800">
-                    <span className="text-sm font-medium text-slate-800 dark:text-slate-100">One-off</span>
-                    <span className="text-lg font-semibold text-slate-900 dark:text-white tabular-nums">
-                      {formatCurrency(summary.oneTime.total)}
+                    <div>
+                      <span className="text-sm font-medium text-slate-800 dark:text-slate-100">
+                        Typical monthly cash flow
+                      </span>
+                      <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                        Recurring fees averaged per month (inc. VAT). One-time fees are separate.
+                      </p>
+                    </div>
+                    <span className="text-xl font-bold text-primary-600 tabular-nums">
+                      {formatCurrency(reviewMonthlyCostIncVat)}
                     </span>
                   </div>
                 )}
@@ -1553,23 +1606,23 @@ export default function ProposalBuilder({ proposalId }: ProposalBuilderProps) {
         </div>
 
         <div className="mt-6 p-4 rounded-lg bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-600 space-y-3">
-          <div className="flex justify-between items-baseline">
-            <div>
-              <span className="text-sm font-medium text-slate-800 dark:text-slate-100">Monthly cost</span>
-              <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 max-w-md">
-                Average per month including VAT, from recurring fees (weekly, monthly, quarterly, and annual
-                lines spread across the year). One-off fees are separate.
-              </p>
-            </div>
-            <span className="text-xl font-bold text-primary-600 tabular-nums">
-              {formatCurrency(reviewMonthlyCostIncVat)}
-            </span>
-          </div>
-          {summary.oneTime.count > 0 && (
+          <InvestmentSummaryBands summary={summary} />
+          {(summary.monthly.count > 0 ||
+            summary.annually.count > 0 ||
+            summary.quarterly.count > 0 ||
+            summary.weekly.count > 0) && (
             <div className="flex justify-between items-baseline pt-2 border-t border-slate-200 dark:border-slate-600">
-              <span className="text-sm font-medium text-slate-800 dark:text-slate-100">One-off</span>
-              <span className="text-lg font-semibold text-slate-900 dark:text-white tabular-nums">
-                {formatCurrency(summary.oneTime.total)}
+              <div>
+                <span className="text-sm font-medium text-slate-800 dark:text-slate-100">
+                  Typical monthly cash flow
+                </span>
+                <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 max-w-md">
+                  Recurring fees averaged per month (inc. VAT). One-time project fees are listed
+                  separately above.
+                </p>
+              </div>
+              <span className="text-xl font-bold text-primary-600 tabular-nums">
+                {formatCurrency(reviewMonthlyCostIncVat)}
               </span>
             </div>
           )}
@@ -1588,10 +1641,10 @@ export default function ProposalBuilder({ proposalId }: ProposalBuilderProps) {
               onClick={runAiCoverLetter}
               disabled={aiCoverLoading || !aiConfigured}
               className="text-xs inline-flex items-center gap-1 px-2 py-1 rounded-lg border border-violet-300 dark:border-violet-700 text-violet-700 dark:text-violet-300 hover:bg-violet-50 dark:hover:bg-violet-950/30 disabled:opacity-50"
-              title={aiConfigured ? 'Draft with AI' : 'Set XAI_API_KEY on server'}
+              title={aiConfigured ? AI_COPILOT.draftWithLabel : `${AI_COPILOT.name} unavailable`}
             >
               <SparklesIcon className={`h-3.5 w-3.5 ${aiCoverLoading ? 'animate-pulse' : ''}`} />
-              {aiCoverLoading ? 'Drafting…' : 'Draft with AI'}
+              {aiCoverLoading ? 'Drafting…' : AI_COPILOT.draftWithLabel}
             </button>
             <span className="text-[10px] px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-500">
               Tone affects only this letter
@@ -1605,7 +1658,7 @@ export default function ProposalBuilder({ proposalId }: ProposalBuilderProps) {
             onApply={() => {
               setCoverLetter(aiCoverDraft);
               setAiCoverDraft(null);
-              toast.success('AI cover letter applied — review before sending');
+              toast.success(`${AI_COPILOT.name}'s cover letter applied — review before sending`);
             }}
             onDiscard={() => setAiCoverDraft(null)}
           />

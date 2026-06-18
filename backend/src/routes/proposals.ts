@@ -271,12 +271,22 @@ router.post(
       throw new ApiError('CLIENT_NOT_FOUND', 'Client not found', 404);
     }
 
-    // Fetch service templates for frequency and name info
+    // Fetch service templates for frequency and name info (tenant-scoped)
+    const requestedIds = data.services.map((s: any) => s.serviceId);
     const serviceTemplates = await prisma.serviceTemplate.findMany({
       where: {
-        id: { in: data.services.map((s: any) => s.serviceId) },
+        id: { in: requestedIds },
+        tenantId: req.tenantId,
       },
     });
+
+    if (serviceTemplates.length !== requestedIds.length) {
+      throw new ApiError(
+        'INVALID_SERVICES',
+        'One or more services are invalid or belong to another practice',
+        400
+      );
+    }
 
     const servicesWithClearPricing = data.services.map((svc: any) => {
       const template = serviceTemplates.find((t) => t.id === svc.serviceId);

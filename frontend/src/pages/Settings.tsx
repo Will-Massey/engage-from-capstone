@@ -44,7 +44,7 @@ const tabs = [
 ];
 
 const Settings = () => {
-  const { user, tenant, setAuth, token } = useAuthStore();
+  const { user, tenant, setSession } = useAuthStore();
   const [activeTab, setActiveTab] = useState('profile');
   const [isLoading, setIsLoading] = useState(false);
   const [isSaving, setIsSaving] = useState<string | null>(null);
@@ -214,7 +214,7 @@ const Settings = () => {
       })) as any;
 
       if (response.success) {
-        setAuth(response.data.user, tenant, token);
+        setSession(response.data.user, tenant!);
         toast.success('Profile saved successfully');
       } else {
         toast.error(response.error?.message || 'Failed to save profile');

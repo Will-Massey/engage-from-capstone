@@ -432,26 +432,18 @@ ${proposal.tenant.name}`;
 
     // Determine effective frequency using name-based overrides for known services
     const getEffectiveFrequency = (s: (typeof proposal.services)[0]): string => {
+      const stored = s.billingFrequency || s.frequency;
+      if (stored) return stored;
+
       const name = s.name.toLowerCase();
-      // Annual services — year-end compliance billed annually (not monthly retainer)
+      // One-time / project services (legacy rows without billingFrequency)
       if (
-        name.includes('dormant company accounts') ||
-        name.includes('dormant accounts') ||
         name.includes('prior year') ||
         name.includes('prior accounts') ||
         name.includes('company formation') ||
-        name.includes('self assessment') ||
-        name.includes('self-assessment') ||
-        name.includes('p11d') ||
-        name.includes('audit services')
-      ) {
-        return 'ANNUALLY';
-      }
-      // One-off / project services
-      if (
         name.includes('xero setup') ||
         name.includes('dext setup') ||
-        name.includes('dext subscription') ||
+        name.includes('dext subscription & setup') ||
         name.includes('company valuation') ||
         name.includes('due diligence') ||
         name.includes('forensic accounting') ||
@@ -469,6 +461,17 @@ ${proposal.tenant.name}`;
       ) {
         return 'ONE_TIME';
       }
+      // Annual services — year-end compliance billed annually (not monthly retainer)
+      if (
+        name.includes('dormant company accounts') ||
+        name.includes('dormant accounts') ||
+        name.includes('self assessment') ||
+        name.includes('self-assessment') ||
+        name.includes('p11d') ||
+        name.includes('audit services')
+      ) {
+        return 'ANNUALLY';
+      }
       // Compliance retainers (annual accounts, CT600, CS01, AML) — monthly instalments
       if (
         name.includes('annual accounts') ||
@@ -480,7 +483,7 @@ ${proposal.tenant.name}`;
       ) {
         return 'MONTHLY';
       }
-      return s.billingFrequency || s.frequency;
+      return 'MONTHLY';
     };
 
     // Group services by effective billing frequency

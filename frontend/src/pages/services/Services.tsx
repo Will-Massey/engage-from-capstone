@@ -64,6 +64,7 @@ const Services = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('');
+  const [billingFilter, setBillingFilter] = useState('');
 
   // Modal states
   const [showAddModal, setShowAddModal] = useState(false);
@@ -234,7 +235,9 @@ const Services = () => {
       service.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
       service.description.toLowerCase().includes(searchQuery.toLowerCase());
     const matchesCategory = !categoryFilter || service.category === categoryFilter;
-    return matchesSearch && matchesCategory;
+    const billing = service.billingCycle || service.defaultFrequency || 'MONTHLY';
+    const matchesBilling = !billingFilter || billing === billingFilter;
+    return matchesSearch && matchesCategory && matchesBilling;
   });
 
   const ServiceModal = ({ isEdit }: { isEdit: boolean }) => (
@@ -439,6 +442,16 @@ const Services = () => {
               placeholder="Search services..."
             />
           </div>
+          <select
+            value={billingFilter}
+            onChange={(e) => setBillingFilter(e.target.value)}
+            className="input-field w-44"
+          >
+            <option value="">All billing types</option>
+            <option value="MONTHLY">Monthly</option>
+            <option value="ANNUALLY">Annual</option>
+            <option value="ONE_TIME">One-time</option>
+          </select>
           <select
             value={categoryFilter}
             onChange={(e) => setCategoryFilter(e.target.value)}

@@ -22,7 +22,7 @@ export const BILLING_CADENCE_OPTIONS: {
   { value: 'MONTHLY', label: 'Monthly', short: 'Mo' },
   { value: 'QUARTERLY', label: 'Quarterly', short: 'Qtr' },
   { value: 'ANNUALLY', label: 'Annual', short: 'Yr' },
-  { value: 'ONE_TIME', label: 'One-off', short: '1×' },
+  { value: 'ONE_TIME', label: 'One-time', short: '1×' },
 ];
 
 export function parseFrequencyOptions(raw?: string | string[] | null): BillingCadence[] {

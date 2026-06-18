@@ -152,17 +152,31 @@ api.interceptors.response.use(
 
       const publicPage = isPublicClientPage();
 
-      // Handle specific error codes
+      // Handle auth errors — try cookie refresh before forcing re-login
       switch (errorCode) {
         case 'UNAUTHORIZED':
         case 'TOKEN_EXPIRED':
-        case 'INVALID_TOKEN':
-          if (!publicPage) {
-            useAuthStore.getState().clearAuth();
-            window.location.href = '/login';
-            toast.error('Your session has expired. Please log in again.');
+        case 'INVALID_TOKEN': {
+          if (publicPage) break;
+
+          const originalRequest = error.config as typeof error.config & { _retry?: boolean };
+          if (originalRequest && !originalRequest._retry && originalRequest.url !== '/auth/refresh') {
+            originalRequest._retry = true;
+            try {
+              const refreshResponse = (await api.post('/auth/refresh', {})) as any;
+              if (refreshResponse?.success) {
+                return api(originalRequest);
+              }
+            } catch {
+              // fall through to logout
+            }
           }
+
+          useAuthStore.getState().clearAuth();
+          window.location.href = '/login';
+          toast.error('Your session has expired. Please log in again.');
           break;
+        }
 
         case 'FORBIDDEN':
           if (!publicPage) toast.error('You do not have permission to perform this action');
@@ -381,7 +395,7 @@ export const apiClient = {
   submitAmlOnboarding: (token: string, data: Record<string, unknown>) =>
     api.post(`/onboarding/aml/${token}`, data),
 
-  // AI assistance (requires XAI_API_KEY or OPENAI_API_KEY on server)
+  // Engage assistant (Clara) — configured on the server via environment variables
   getAiStatus: () => api.get('/ai/status'),
   aiSuggestServices: (clientId: string) => api.post('/ai/suggest-services', { clientId }),
   aiCoverLetter: (data: {

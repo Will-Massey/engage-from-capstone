@@ -37,6 +37,7 @@ const NAV_PATTERNS: Array<{ test: RegExp; path: string; message: string }> = [
   },
   {
     test: /^help|what can you do/i,
+    path: '/settings',
     message:
       'Quick actions: create proposals, check proposal health, draft follow-ups, suggest services, and renewals. Open a proposal or client page for context-aware shortcuts.',
   },

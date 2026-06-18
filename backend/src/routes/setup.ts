@@ -9,12 +9,29 @@ const prisma = new PrismaClient();
 const setupEnabled =
   process.env.NODE_ENV !== 'production' || process.env.ENABLE_SETUP_ENDPOINT === 'true';
 
+const SETUP_SECRET = process.env.SETUP_SECRET_KEY;
+
+function checkSetupKey(req: any, res: any, next: any) {
+  if (!SETUP_SECRET) {
+    if (process.env.NODE_ENV === 'production') {
+      return res.status(503).json({ success: false, error: 'Setup is not configured' });
+    }
+    return next();
+  }
+  const key = req.headers['x-setup-key'];
+  if (key !== SETUP_SECRET) {
+    return res.status(403).json({ success: false, error: 'Invalid setup key' });
+  }
+  next();
+}
+
 /**
  * GET /api/setup
  * One-time setup endpoint to create demo user
  */
 router.get(
   '/',
+  checkSetupKey,
   asyncHandler(async (req, res) => {
     if (!setupEnabled) {
       res.status(404).json({ success: false, error: 'Not found' });
@@ -68,9 +85,9 @@ router.get(
     res.json({
       success: true,
       message: 'Setup completed successfully',
-      credentials: {
+      user: {
         email: user.email,
-        password: 'DemoPass123!',
+        role: user.role,
       },
     });
   })

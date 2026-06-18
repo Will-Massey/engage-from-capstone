@@ -1,5 +1,4 @@
 import { Router } from 'express';
-import express from 'express';
 import { z } from 'zod';
 import { stripe, SUBSCRIPTION_TIERS } from '../config/stripe.js';
 import { prisma } from '../config/database.js';
@@ -316,109 +315,13 @@ router.post(
   })
 );
 
-/**
- * POST /api/payments/webhook
- * Handle Stripe webhooks
- */
-router.post(
-  '/webhook',
-  express.raw({ type: 'application/json' }),
-  asyncHandler(async (req, res) => {
-    checkStripe();
-    const sig = req.headers['stripe-signature'];
-    const endpointSecret = process.env.STRIPE_WEBHOOK_SECRET;
-
-    if (!sig || !endpointSecret) {
-      throw new ApiError('INVALID_WEBHOOK', 'Invalid webhook configuration', 400);
-    }
-
-    let event;
-
-    try {
-      event = stripe.webhooks.constructEvent(req.body, sig, endpointSecret);
-    } catch (err: any) {
-      console.error(`Webhook signature verification failed: ${err.message}`);
-      throw new ApiError('INVALID_SIGNATURE', 'Invalid signature', 400);
-    }
-
-    // Handle events
-    switch (event.type) {
-      case 'invoice.payment_succeeded':
-        await handlePaymentSucceeded(event.data.object);
-        break;
-      case 'invoice.payment_failed':
-        await handlePaymentFailed(event.data.object);
-        break;
-      case 'customer.subscription.deleted':
-        await handleSubscriptionDeleted(event.data.object);
-        break;
-      case 'customer.subscription.updated':
-        await handleSubscriptionUpdated(event.data.object);
-        break;
-    }
-
-    res.json({ received: true });
-  })
-);
-
-// Helper functions
 function getTierFromPriceId(priceId: string): string {
-  // Map price IDs to tier names
   const priceToTier: Record<string, string> = {
     [process.env.STRIPE_STARTER_PRICE_ID || '']: 'STARTER',
     [process.env.STRIPE_PROFESSIONAL_PRICE_ID || '']: 'PROFESSIONAL',
     [process.env.STRIPE_ENTERPRISE_PRICE_ID || '']: 'ENTERPRISE',
   };
   return priceToTier[priceId] || 'STARTER';
-}
-
-async function handlePaymentSucceeded(invoice: any) {
-  const customerId = invoice.customer;
-
-  // Update tenant payment status
-  await prisma.tenant.updateMany({
-    where: { stripeCustomerId: customerId },
-    data: {
-      lastPaymentStatus: 'succeeded',
-      lastPaymentDate: new Date(),
-    },
-  });
-}
-
-async function handlePaymentFailed(invoice: any) {
-  const customerId = invoice.customer;
-
-  await prisma.tenant.updateMany({
-    where: { stripeCustomerId: customerId },
-    data: {
-      lastPaymentStatus: 'failed',
-      subscriptionStatus: 'past_due',
-    },
-  });
-}
-
-async function handleSubscriptionDeleted(subscription: any) {
-  const customerId = subscription.customer;
-
-  await prisma.tenant.updateMany({
-    where: { stripeCustomerId: customerId },
-    data: {
-      subscriptionStatus: 'cancelled',
-      subscriptionTier: null,
-      stripeSubscriptionId: null,
-    },
-  });
-}
-
-async function handleSubscriptionUpdated(subscription: any) {
-  const customerId = subscription.customer;
-
-  await prisma.tenant.updateMany({
-    where: { stripeCustomerId: customerId },
-    data: {
-      subscriptionStatus: subscription.status,
-    },
-  });
 }
 
 export default router;

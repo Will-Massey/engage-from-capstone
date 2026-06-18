@@ -8,6 +8,7 @@ export const billingCycles = [
   { value: 'MONTHLY', label: 'Monthly', description: 'Split annual cost over 12 equal payments' },
   { value: 'QUARTERLY', label: 'Quarterly', description: '4 payments per year' },
   { value: 'ANNUALLY', label: 'Annually', description: 'Single annual payment' },
+  { value: 'ONE_TIME', label: 'One-time', description: 'Single project or setup fee' },
   { value: 'WEEKLY', label: 'Weekly', description: '52 weekly payments' },
   { value: 'FIXED_DATE', label: 'Fixed Date', description: 'Bill on specific date(s)' },
 ] as const;
@@ -28,7 +29,7 @@ export interface ServiceTemplate {
   basePrice: number;
   baseHours: number;
   pricingModel: 'FIXED' | 'HOURLY' | 'TIERED';
-  billingCycle: 'WEEKLY' | 'MONTHLY' | 'QUARTERLY' | 'ANNUALLY';
+  billingCycle: 'WEEKLY' | 'MONTHLY' | 'QUARTERLY' | 'ANNUALLY' | 'ONE_TIME';
   isVatApplicable: boolean;
   vatRate: 'STANDARD_20' | 'REDUCED_5' | 'ZERO' | 'EXEMPT';
   annualEquivalent?: number;
@@ -1081,11 +1082,11 @@ export const bookkeepingServices: ServiceTemplate[] = [
     basePrice: 650,
     baseHours: 5,
     pricingModel: 'FIXED',
-    billingCycle: 'ANNUALLY',
+    billingCycle: 'ONE_TIME',
     isVatApplicable: true,
     vatRate: 'STANDARD_20',
-    frequencyOptions: ['ANNUALLY'],
-    defaultFrequency: 'ANNUALLY',
+    frequencyOptions: ['ONE_TIME'],
+    defaultFrequency: 'ONE_TIME',
     applicableEntityTypes: ['LIMITED_COMPANY', 'SOLE_TRADER', 'PARTNERSHIP', 'LLP'],
     complexityFactors: [
       {
