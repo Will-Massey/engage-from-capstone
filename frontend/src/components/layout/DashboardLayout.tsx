@@ -6,6 +6,7 @@ import AppRouteHeader from './AppRouteHeader';
 import { initializeTheme } from '../../stores/themeStore';
 import OnboardingTour from '../onboarding/OnboardingTour';
 import { useOnboarding } from '../onboarding/useOnboarding';
+import AiAssistant from '../ai/AiAssistant';
 
 const DashboardLayout = () => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -79,6 +80,9 @@ const DashboardLayout = () => {
 
       {/* Onboarding Tour */}
       <OnboardingTour isOpen={showOnboarding} onClose={() => setShowOnboarding(false)} />
+
+      {/* Global AI co-pilot */}
+      <AiAssistant />
     </div>
   );
 };

@@ -1,6 +1,7 @@
 import { Link, NavLink } from 'react-router-dom';
-import { PlusIcon } from '@heroicons/react/24/outline';
+import { PlusIcon, SparklesIcon } from '@heroicons/react/24/outline';
 import { NAV_SECTIONS, PRIMARY_CREATE, isNavItemActive, type NavItem } from '../../config/navigation';
+import { useAiAssistantStore } from '../../stores/aiAssistantStore';
 
 interface SidebarNavItemsProps {
   pathname: string;
@@ -43,6 +44,9 @@ const NavItemLink = ({
 };
 
 const SidebarNavItems = ({ pathname, onNavigate }: SidebarNavItemsProps) => {
+  const openAi = useAiAssistantStore((s) => s.open);
+  const aiConfigured = useAiAssistantStore((s) => s.configured);
+
   return (
     <div className="space-y-5">
       <Link
@@ -54,6 +58,21 @@ const SidebarNavItems = ({ pathname, onNavigate }: SidebarNavItemsProps) => {
         <PlusIcon className="h-5 w-5" />
         {PRIMARY_CREATE.label}
       </Link>
+
+      <button
+        type="button"
+        onClick={() => {
+          openAi();
+          onNavigate?.();
+        }}
+        className="mx-1 flex items-center justify-center gap-2 w-[calc(100%-0.5rem)] py-2.5 rounded-xl text-sm font-semibold bg-gradient-to-r from-violet-600/15 to-indigo-600/15 hover:from-violet-600/25 hover:to-indigo-600/25 border border-violet-400/40 text-violet-700 dark:text-violet-200 transition-all"
+      >
+        <SparklesIcon className="h-5 w-5" />
+        AI Assistant
+        <span
+          className={`ml-auto h-2 w-2 rounded-full ${aiConfigured ? 'bg-emerald-500' : 'bg-amber-500'}`}
+        />
+      </button>
 
       {NAV_SECTIONS.map((section) => (
         <div key={section.id}>

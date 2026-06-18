@@ -399,6 +399,11 @@ export const apiClient = {
     api.post('/ai/renewal-draft', { proposalId, upliftPercent: upliftPercent ?? 0 }),
   aiCommand: (query: string, context?: { proposalId?: string; clientId?: string }) =>
     api.post('/ai/command', { query, context }),
+  aiQuick: (data: {
+    mode: 'ask' | 'health' | 'follow_up' | 'suggest_services';
+    query?: string;
+    context?: { proposalId?: string; clientId?: string; page?: string };
+  }) => api.post('/ai/quick', data),
   aiFeedback: (data: { feature: string; helpful: boolean; comment?: string; proposalId?: string }) =>
     api.post('/ai/feedback', data),
 };

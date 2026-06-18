@@ -2,7 +2,7 @@ import { Router } from 'express';
 import { z } from 'zod';
 import rateLimit from 'express-rate-limit';
 import { authenticate, authorize } from '../middleware/auth.js';
-import { asyncHandler } from '../middleware/errorHandler.js';
+import { asyncHandler, ApiError } from '../middleware/errorHandler.js';
 import {
   assembleAiEngagementLetter,
   executeAiCommand,
@@ -10,7 +10,10 @@ import {
   generateAiFollowUp,
   generateRenewalDraft,
   getProposalHealth,
+  isAiConfigured,
   logAiUsage,
+  quickAsk,
+  executeQuickAction,
   suggestProposalServices,
 } from '../services/ai/proposalAiService.js';
 import { getAiStatusMeta } from '../services/ai/aiClient.js';
@@ -154,6 +157,37 @@ router.post(
       proposalId,
       upliftPercent
     );
+    res.json({ success: true, data });
+  })
+);
+
+/** POST /api/ai/quick — low-token assistant (ask + contextual actions) */
+router.post(
+  '/quick',
+  asyncHandler(async (req, res) => {
+    const body = z
+      .object({
+        mode: z.enum(['ask', 'health', 'follow_up', 'suggest_services']),
+        query: z.string().max(400).optional(),
+        context: z
+          .object({
+            proposalId: z.string().uuid().optional(),
+            clientId: z.string().uuid().optional(),
+            page: z.string().max(120).optional(),
+          })
+          .optional(),
+      })
+      .parse(req.body);
+
+    if (body.mode === 'ask') {
+      if (!body.query?.trim()) {
+        throw new ApiError('VALIDATION', 'Query required for ask mode', 400);
+      }
+      const data = await quickAsk(req.tenantId!, req.user?.id, body.query.trim(), body.context);
+      return res.json({ success: true, data });
+    }
+
+    const data = await executeQuickAction(req.tenantId!, req.user?.id, body.mode, body.context || {});
     res.json({ success: true, data });
   })
 );

@@ -13,6 +13,7 @@ import {
 import { apiClient } from '../../utils/api';
 import { useAuthStore } from '../../stores/authStore';
 import toast from 'react-hot-toast';
+import { SkeletonCard } from '../../components/skeleton/SkeletonCard';
 import { formatServiceCategory, SERVICE_CATEGORY_OPTIONS } from '../../utils/serviceCategoryLabels';
 
 interface Service {

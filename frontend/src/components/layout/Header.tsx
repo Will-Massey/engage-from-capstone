@@ -11,6 +11,7 @@ import {
 } from '@heroicons/react/24/outline';
 import { useAuthStore } from '../../stores/authStore';
 import ThemeToggle from '../theme/ThemeToggle';
+import { AiAssistantTrigger } from '../ai/AiAssistant';
 import toast from 'react-hot-toast';
 import useCommandPalette from '../../hooks/useCommandPalette';
 
@@ -57,6 +58,9 @@ const Header = ({ onMenuClick }: HeaderProps) => {
 
         {/* Right side */}
         <div className="flex items-center space-x-2 sm:space-x-4">
+          <div className="hidden md:block">
+            <AiAssistantTrigger />
+          </div>
           <button
             type="button"
             onClick={openCommandPalette}

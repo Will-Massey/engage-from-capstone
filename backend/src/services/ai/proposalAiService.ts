@@ -513,7 +513,7 @@ Context: ${JSON.stringify(context || {})}
 User query: "${query}"`,
       },
     ],
-    { jsonMode: true, temperature: 0.2 }
+    { jsonMode: true, temperature: 0.2, maxTokens: 450 }
   );
 
   const result = parseJsonResponse<{
@@ -525,6 +525,91 @@ User query: "${query}"`,
   await logAiUsage(tenantId, userId, 'ai_command', { query, action: result.action });
 
   return result;
+}
+
+/** Lightweight assistant — short answers, minimal tokens */
+export async function quickAsk(
+  tenantId: string,
+  userId: string | undefined,
+  query: string,
+  context?: { proposalId?: string; clientId?: string; page?: string }
+) {
+  const raw = await chatCompletion(
+    [
+      {
+        role: 'system',
+        content:
+          UK_SYSTEM +
+          ' Reply in 2-4 short sentences maximum. Be actionable. If you need a specific proposal or client, say which page to open.',
+      },
+      {
+        role: 'user',
+        content: `Page: ${context?.page || 'app'}\nProposalId: ${context?.proposalId || 'none'}\nClientId: ${context?.clientId || 'none'}\nQuestion: ${query.slice(0, 400)}`,
+      },
+    ],
+    { temperature: 0.35, maxTokens: 180 }
+  );
+
+  await logAiUsage(tenantId, userId, 'quick_ask', { query: query.slice(0, 80) });
+  return { message: raw, action: 'answer' as const };
+}
+
+/** Contextual quick actions — reuse existing capabilities, no command interpreter */
+export async function executeQuickAction(
+  tenantId: string,
+  userId: string | undefined,
+  action: 'health' | 'follow_up' | 'suggest_services',
+  context: { proposalId?: string; clientId?: string }
+) {
+  if (action === 'health') {
+    if (!context.proposalId) {
+      return {
+        message: 'Open a proposal first — I can analyse its health from the proposal page.',
+        action: 'answer',
+      };
+    }
+    const health = await getProposalHealth(tenantId, userId, context.proposalId);
+    const tips = health.recommendedActions?.slice(0, 3).join(' · ') || '';
+    return {
+      message: `**${health.healthScore}/100** — ${health.summary}${tips ? `\n\nNext: ${tips}` : ''}`,
+      action: 'answer',
+      data: health,
+    };
+  }
+
+  if (action === 'follow_up') {
+    if (!context.proposalId) {
+      return { message: 'Open an unsigned proposal to draft a follow-up email.', action: 'answer' };
+    }
+    const draft = await generateAiFollowUp(tenantId, userId, context.proposalId, 'professional');
+    return {
+      message: `**Follow-up draft**\nSubject: ${draft.subject}\n\n${draft.body.slice(0, 500)}${draft.body.length > 500 ? '…' : ''}\n\n_Open the proposal to copy the full draft._`,
+      action: 'answer',
+      data: draft,
+    };
+  }
+
+  if (action === 'suggest_services') {
+    if (!context.clientId) {
+      return {
+        message: 'Open a client or start a new proposal with a client selected — then I can suggest services.',
+        action: 'answer',
+      };
+    }
+    const data = await suggestProposalServices(tenantId, userId, context.clientId);
+    const lines = data.suggestions
+      .slice(0, 5)
+      .map((s) => `• ${s.name} (${s.billingFrequency})`)
+      .join('\n');
+    return {
+      message: `${data.summary || 'Service suggestions:'}\n\n${lines}\n\n_Use **Suggest services** in the proposal builder to apply._`,
+      action: 'suggest_services',
+      params: { clientId: context.clientId },
+      data,
+    };
+  }
+
+  return { message: 'Unknown action.', action: 'answer' };
 }
 
 export { isAiConfigured };
