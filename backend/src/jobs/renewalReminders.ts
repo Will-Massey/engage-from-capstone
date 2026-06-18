@@ -4,10 +4,11 @@
  */
 
 import { prisma } from '../config/database.js';
-import { createEmailService } from '../services/emailService.js';
+import { tenantMailer } from '../services/tenantMailer.js';
 import logger from '../config/logger.js';
+import { getProposalSettings } from '../utils/tenantProposalSettings.js';
 
-const REMINDER_DAYS = 30;
+const DEFAULT_REMINDER_DAYS = 30;
 
 /** Logged once per proposal when the valid-until reminder is emailed */
 const VALID_UNTIL_REMINDER_ACTION = 'PROPOSAL_VALID_UNTIL_REMINDER';
@@ -29,39 +30,66 @@ export function proposalHasRecurringEngagement(proposal: {
   return proposal.services.some((s) => s.billingFrequency !== 'ONE_TIME');
 }
 
-async function findValidUntilRemindersDue() {
+function reminderWindow(reminderDays: number) {
   const now = new Date();
   const reminderDate = new Date();
-  reminderDate.setDate(now.getDate() + REMINDER_DAYS);
+  reminderDate.setDate(now.getDate() + reminderDays);
 
   const startOfDay = new Date(reminderDate);
   startOfDay.setHours(0, 0, 0, 0);
   const endOfDay = new Date(reminderDate);
   endOfDay.setHours(23, 59, 59, 999);
+  return { startOfDay, endOfDay, reminderDays };
+}
 
-  const proposals = await prisma.proposal.findMany({
-    where: {
-      status: { in: ['SENT', 'VIEWED'] },
-      validUntil: {
-        gte: startOfDay,
-        lte: endOfDay,
-      },
-    },
-    include: {
-      services: { select: { billingFrequency: true } },
-      client: { select: { name: true } },
-      createdBy: { select: { email: true } },
-      tenant: { select: { id: true, name: true } },
-      activityLogs: {
-        where: { action: VALID_UNTIL_REMINDER_ACTION },
-        take: 1,
-      },
-    },
-  });
+async function findValidUntilRemindersDue() {
+  const tenants = await prisma.tenant.findMany({ select: { id: true, settings: true } });
+  type ValidUntilRow = Awaited<
+    ReturnType<
+      typeof prisma.proposal.findMany<{
+        include: {
+          services: { select: { billingFrequency: true } };
+          client: { select: { name: true } };
+          createdBy: { select: { email: true } };
+          tenant: { select: { id: true; name: true } };
+          activityLogs: true;
+        };
+      }>
+    >
+  >[number];
 
-  return proposals.filter(
-    (p) => p.activityLogs.length === 0 && proposalHasRecurringEngagement(p)
-  );
+  const results: ValidUntilRow[] = [];
+
+  for (const tenant of tenants) {
+    const { renewalReminderDays } = getProposalSettings(tenant.settings);
+    const { startOfDay, endOfDay } = reminderWindow(renewalReminderDays);
+
+    const proposals = await prisma.proposal.findMany({
+      where: {
+        tenantId: tenant.id,
+        status: { in: ['SENT', 'VIEWED'] },
+        validUntil: { gte: startOfDay, lte: endOfDay },
+      },
+      include: {
+        services: { select: { billingFrequency: true } },
+        client: { select: { name: true } },
+        createdBy: { select: { email: true } },
+        tenant: { select: { id: true, name: true } },
+        activityLogs: {
+          where: { action: VALID_UNTIL_REMINDER_ACTION },
+          take: 1,
+        },
+      },
+    });
+
+    results.push(
+      ...proposals.filter(
+        (p) => p.activityLogs.length === 0 && proposalHasRecurringEngagement(p)
+      )
+    );
+  }
+
+  return results;
 }
 
 async function sendValidUntilReminder(
@@ -70,12 +98,6 @@ async function sendValidUntilReminder(
   try {
     if (!proposal.createdBy?.email) {
       logger.warn(`No email for proposal creator: ${proposal.id}`);
-      return false;
-    }
-
-    const emailService = createEmailService();
-    if (!emailService) {
-      logger.error('Email service not configured');
       return false;
     }
 
@@ -94,11 +116,16 @@ async function sendValidUntilReminder(
     `;
     const text = `Proposal ${proposal.reference} (${proposal.title}) for ${proposal.client.name} is valid until ${validDate}. Follow up if still pending.`;
 
-    const result = await emailService.sendEmail({
-      to: proposal.createdBy.email,
-      subject,
-      html,
-      text,
+    const result = await tenantMailer.send({
+      tenantId: proposal.tenantId,
+      messageType: 'RENEWAL',
+      message: {
+        to: proposal.createdBy.email,
+        subject,
+        html,
+        text,
+      },
+      relatedIds: { proposalId: proposal.id, clientId: proposal.clientId },
     });
 
     if (result.success) {
@@ -139,41 +166,36 @@ async function findRenewalsDue(): Promise<
     client: { name: string };
     createdBy: { email: string | null };
     tenant: { id: string; name: string };
+    reminderDays: number;
   }>
 > {
-  const now = new Date();
-  const reminderDate = new Date();
-  reminderDate.setDate(now.getDate() + REMINDER_DAYS);
+  const tenants = await prisma.tenant.findMany({ select: { id: true, settings: true } });
+  const all: Array<any> = [];
 
-  // Find start and end of the reminder day (to catch all proposals due that day)
-  const startOfDay = new Date(reminderDate);
-  startOfDay.setHours(0, 0, 0, 0);
-  const endOfDay = new Date(reminderDate);
-  endOfDay.setHours(23, 59, 59, 999);
+  for (const tenant of tenants) {
+    const { renewalReminderDays } = getProposalSettings(tenant.settings);
+    const { startOfDay, endOfDay } = reminderWindow(renewalReminderDays);
 
-  const proposals = await prisma.proposal.findMany({
-    where: {
-      status: 'ACCEPTED',
-      renewalDate: {
-        gte: startOfDay,
-        lte: endOfDay,
+    const proposals = await prisma.proposal.findMany({
+      where: {
+        tenantId: tenant.id,
+        status: 'ACCEPTED',
+        renewalDate: { gte: startOfDay, lte: endOfDay },
+        renewalReminderSent: false,
       },
-      renewalReminderSent: false,
-    },
-    include: {
-      client: {
-        select: { name: true },
+      include: {
+        client: { select: { name: true } },
+        createdBy: { select: { email: true } },
+        tenant: { select: { id: true, name: true } },
       },
-      createdBy: {
-        select: { email: true },
-      },
-      tenant: {
-        select: { id: true, name: true },
-      },
-    },
-  });
+    });
 
-  return proposals as any;
+    for (const p of proposals) {
+      all.push({ ...p, reminderDays: renewalReminderDays });
+    }
+  }
+
+  return all as any;
 }
 
 /**
@@ -231,12 +253,6 @@ async function sendRenewalReminder(
       return false;
     }
 
-    const emailService = createEmailService();
-    if (!emailService) {
-      logger.error('Email service not configured');
-      return false;
-    }
-
     const { generateRenewalReminder } = await import('../templates/renewalReminder.js');
     const { html, text, subject } = generateRenewalReminder({
       clientName: proposal.client.name,
@@ -245,15 +261,20 @@ async function sendRenewalReminder(
       renewalDate: proposal.renewalDate,
       originalAcceptedAt: proposal.acceptedAt,
       totalAmount: `£${proposal.total.toFixed(2)}`,
-      daysUntilRenewal: REMINDER_DAYS,
+      daysUntilRenewal: proposal.reminderDays ?? DEFAULT_REMINDER_DAYS,
       tenantName: proposal.tenant.name,
     });
 
-    const result = await emailService.sendEmail({
-      to: proposal.createdBy.email,
-      subject,
-      html,
-      text,
+    const result = await tenantMailer.send({
+      tenantId: proposal.tenant.id,
+      messageType: 'RENEWAL',
+      message: {
+        to: proposal.createdBy.email,
+        subject,
+        html,
+        text,
+      },
+      relatedIds: { proposalId: proposal.id },
     });
 
     if (result.success) {
@@ -308,7 +329,7 @@ export async function runRenewalReminders(): Promise<{
     const renewalsDue = await findRenewalsDue();
     stats.checked = renewalsDue.length;
 
-    logger.info(`Found ${renewalsDue.length} proposals with renewals due in ${REMINDER_DAYS} days`);
+    logger.info(`Found ${renewalsDue.length} proposals with renewals due (per-tenant reminder window)`);
 
     // Send reminders
     for (const proposal of renewalsDue) {
@@ -324,7 +345,7 @@ export async function runRenewalReminders(): Promise<{
     const expiryDue = await findValidUntilRemindersDue();
     stats.expiryChecked = expiryDue.length;
     logger.info(
-      `Found ${expiryDue.length} proposals with valid-until in ${REMINDER_DAYS} days (recurring only)`
+      `Found ${expiryDue.length} proposals with valid-until in reminder window (recurring only)`
     );
     for (const proposal of expiryDue) {
       const ok = await sendValidUntilReminder(proposal);

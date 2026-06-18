@@ -7,7 +7,14 @@ import { z } from 'zod';
 import { prisma } from '../config/database.js';
 import { asyncHandler, ApiError } from '../middleware/errorHandler.js';
 import { authenticate } from '../middleware/auth.js';
-import { createEmailService, EmailService } from '../services/emailService.js';
+import { EmailService } from '../services/emailService.js';
+import { tenantMailer, getEmailStatusForTenant } from '../services/tenantMailer.js';
+import {
+  encryptTenantEmailSettingsForSave,
+  decryptTenantEmailSettings,
+  tenantEmailToConfig,
+  type TenantEmailSettings,
+} from '../services/tenantEmailSettings.js';
 import { encrypt, decrypt } from '../utils/encryption.js';
 import logger from '../config/logger.js';
 
@@ -34,6 +41,7 @@ router.get(
 
     const settings = JSON.parse(tenant.settings || '{}');
     const emailConfig = settings.email || {};
+    const status = await getEmailStatusForTenant(tenantId);
 
     // Return config without sensitive data
     res.json({
@@ -42,30 +50,58 @@ router.get(
         provider: emailConfig.provider || null,
         fromName: emailConfig.fromName || '',
         fromEmail: emailConfig.fromEmail || '',
+        replyToEmail: emailConfig.replyToEmail || status.replyTo || '',
         smtp: emailConfig.smtp
           ? {
               host: emailConfig.smtp.host,
               port: emailConfig.smtp.port,
               secure: emailConfig.smtp.secure,
               user: emailConfig.smtp.user,
-              // Don't return password
             }
           : null,
         gmail: emailConfig.gmail
           ? {
               user: emailConfig.gmail.user,
-              // Don't return client secret or refresh token
             }
           : null,
         outlook: emailConfig.outlook
           ? {
               user: emailConfig.outlook.user,
-              // Don't return client secret or refresh token
             }
           : null,
         isConfigured: !!emailConfig.provider,
+        platform: status,
       },
     });
+  })
+);
+
+// Update Reply-To only (platform mode — no custom SMTP required)
+router.put(
+  '/reply-to',
+  authenticate,
+  asyncHandler(async (req, res) => {
+    const schema = z.object({ replyToEmail: z.string().email() });
+    const { replyToEmail } = schema.parse(req.body);
+    const tenantId = req.tenantId!;
+
+    const tenant = await prisma.tenant.findUnique({
+      where: { id: tenantId },
+      select: { settings: true },
+    });
+    if (!tenant) {
+      throw new ApiError('TENANT_NOT_FOUND', 'Tenant not found', 404);
+    }
+
+    const settings = JSON.parse(tenant.settings || '{}');
+    settings.email = { ...(settings.email || {}), replyToEmail };
+
+    await prisma.tenant.update({
+      where: { id: tenantId },
+      data: { settings: JSON.stringify(settings) },
+    });
+
+    res.json({ success: true, data: { replyToEmail }, message: 'Reply-To saved' });
   })
 );
 
@@ -78,6 +114,7 @@ router.put(
       provider: z.enum(['smtp', 'gmail', 'outlook', 'microsoft365']),
       fromName: z.string().min(1),
       fromEmail: z.string().email(),
+      replyToEmail: z.string().email().optional(),
       smtp: z
         .object({
           host: z.string(),
@@ -121,23 +158,20 @@ router.put(
     }
 
     const settings = JSON.parse(tenant.settings || '{}');
+    const existingEmail: TenantEmailSettings = settings.email || {};
 
-    // Update email config
-    settings.email = {
+    const incoming = {
       provider: config.provider,
       fromName: config.fromName,
       fromEmail: config.fromEmail,
-    };
+      replyToEmail: config.replyToEmail,
+      useCustomEmail: true,
+      ...(config.smtp ? { smtp: config.smtp } : {}),
+      ...(config.gmail ? { gmail: config.gmail } : {}),
+      ...(config.outlook ? { outlook: config.outlook } : {}),
+    } as TenantEmailSettings;
 
-    if (config.smtp) {
-      settings.email.smtp = config.smtp;
-    }
-    if (config.gmail) {
-      settings.email.gmail = config.gmail;
-    }
-    if (config.outlook) {
-      settings.email.outlook = config.outlook;
-    }
+    settings.email = encryptTenantEmailSettingsForSave(incoming, existingEmail);
 
     // Save settings
     await prisma.tenant.update({
@@ -147,20 +181,24 @@ router.put(
       },
     });
 
-    // Test connection
+    const decrypted = decryptTenantEmailSettings(settings.email);
+    const emailConfig = tenantEmailToConfig(decrypted, config.fromName);
+
     let testResult: { success: boolean; error?: string } = { success: false, error: 'Not tested' };
-    try {
-      const emailService = new EmailService({
-        provider: config.provider,
-        fromName: config.fromName,
-        fromEmail: config.fromEmail,
-        smtp: config.smtp,
-        gmail: config.gmail,
-        outlook: config.outlook,
-      });
-      testResult = await emailService.verifyConnection();
-    } catch (error: any) {
-      testResult = { success: false, error: error.message };
+    if (emailConfig) {
+      try {
+        const emailService = await EmailService.createReady(emailConfig);
+        testResult = await emailService.verifyConnection();
+        if (testResult.success) {
+          settings.email.verifiedAt = new Date().toISOString();
+          await prisma.tenant.update({
+            where: { id: tenantId },
+            data: { settings: JSON.stringify(settings) },
+          });
+        }
+      } catch (error: any) {
+        testResult = { success: false, error: error.message };
+      }
     }
 
     res.json({
@@ -193,48 +231,31 @@ router.post(
     const tenantId = req.tenantId!;
     const user = req.user!;
 
-    // Get tenant settings
     const tenant = await prisma.tenant.findUnique({
       where: { id: tenantId },
-      select: {
-        name: true,
-        settings: true,
-      },
+      select: { name: true },
     });
 
     if (!tenant) {
       throw new ApiError('TENANT_NOT_FOUND', 'Tenant not found', 404);
     }
 
-    const settings = JSON.parse(tenant.settings || '{}');
-    const emailConfig = settings.email;
-
-    if (!emailConfig || !emailConfig.provider) {
-      throw new ApiError('EMAIL_NOT_CONFIGURED', 'Email not configured for this practice', 400);
-    }
-
-    // Create email service
-    const emailService = new EmailService({
-      provider: emailConfig.provider,
-      fromName: emailConfig.fromName,
-      fromEmail: emailConfig.fromEmail,
-      smtp: emailConfig.smtp,
-      gmail: emailConfig.gmail,
-      outlook: emailConfig.outlook,
-    });
-
-    // Send test email
-    const result = await emailService.sendEmail({
-      to: testEmail,
-      subject: `Test Email from ${tenant.name}`,
-      html: `
+    const result = await tenantMailer.send({
+      tenantId,
+      messageType: 'TEST',
+      message: {
+        to: testEmail,
+        subject: `Test Email from ${tenant.name}`,
+        html: `
         <h2>Test Email</h2>
         <p>This is a test email from ${tenant.name} using Engage by Capstone.</p>
         <p>If you received this, your email configuration is working correctly!</p>
         <hr>
         <p><small>Sent by: ${user.firstName} ${user.lastName}</small></p>
       `,
-      text: `Test Email\n\nThis is a test email from ${tenant.name} using Engage by Capstone.\n\nIf you received this, your email configuration is working correctly!\n\nSent by: ${user.firstName} ${user.lastName}`,
+        text: `Test Email\n\nThis is a test email from ${tenant.name} using Engage by Capstone.\n\nIf you received this, your email configuration is working correctly!\n\nSent by: ${user.firstName} ${user.lastName}`,
+        replyTo: user.email,
+      },
     });
 
     if (!result.success) {
@@ -245,10 +266,61 @@ router.post(
       success: true,
       data: {
         messageId: result.messageId,
+        emailLogId: result.emailLogId,
+        provider: result.provider,
         sentTo: testEmail,
       },
       message: 'Test email sent successfully',
     });
+  })
+);
+
+// Platform email status
+router.get(
+  '/status',
+  authenticate,
+  asyncHandler(async (req, res) => {
+    const status = await getEmailStatusForTenant(req.tenantId!);
+    res.json({ success: true, data: status });
+  })
+);
+
+// Delivery log
+router.get(
+  '/logs',
+  authenticate,
+  asyncHandler(async (req, res) => {
+    const tenantId = req.tenantId!;
+    const limit = Math.min(parseInt(String(req.query.limit || '50'), 10) || 50, 100);
+    const proposalId = req.query.proposalId as string | undefined;
+    const clientId = req.query.clientId as string | undefined;
+
+    const logs = await prisma.emailLog.findMany({
+      where: {
+        tenantId,
+        ...(proposalId ? { proposalId } : {}),
+        ...(clientId ? { clientId } : {}),
+      },
+      orderBy: { createdAt: 'desc' },
+      take: limit,
+      select: {
+        id: true,
+        messageType: true,
+        provider: true,
+        status: true,
+        to: true,
+        from: true,
+        replyTo: true,
+        subject: true,
+        error: true,
+        sentAt: true,
+        createdAt: true,
+        proposalId: true,
+        clientId: true,
+      },
+    });
+
+    res.json({ success: true, data: logs });
   })
 );
 

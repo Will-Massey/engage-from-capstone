@@ -84,6 +84,10 @@ const Settings = () => {
   const [communicationsForm, setCommunicationsForm] = useState({
     defaultCoverTemplate: '',
     proposalFooter: '',
+    proposals: {
+      defaultExpiryDays: 30,
+      renewalReminderDays: 30,
+    },
     notifications: {
       proposalAccepted: true,
       proposalViewed: true,
@@ -153,6 +157,12 @@ const Settings = () => {
             notifications: { ...prev.notifications, ...data.notifications },
           }));
         }
+        if (data.proposals) {
+          setCommunicationsForm((prev) => ({
+            ...prev,
+            proposals: { ...prev.proposals, ...data.proposals },
+          }));
+        }
       }
     } catch (error) {
       // Error handled by UI
@@ -170,6 +180,25 @@ const Settings = () => {
       toast.error('Failed to load team members');
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const handleSaveCommunications = async () => {
+    setIsSaving('communications');
+    try {
+      const response = (await apiClient.updateTenantSettings({
+        notifications: communicationsForm.notifications,
+        proposals: communicationsForm.proposals,
+      })) as any;
+      if (response.success) {
+        toast.success('Communication settings saved');
+      } else {
+        toast.error(response.error?.message || 'Failed to save settings');
+      }
+    } catch (error: any) {
+      toast.error(error.message || 'Failed to save settings');
+    } finally {
+      setIsSaving(null);
     }
   };
 
@@ -891,6 +920,77 @@ Yours sincerely,
                 </div>
               </div>
 
+              {/* Proposal defaults */}
+              <div className="glass-tile overflow-hidden">
+                <div className="px-6 py-4 border-b border-white/10 bg-white/5">
+                  <h2 className="text-lg font-semibold text-slate-900">Proposal defaults</h2>
+                  <p className="text-sm text-slate-600">
+                    Default expiry and renewal reminder timing for new proposals
+                  </p>
+                </div>
+                <div className="p-6 space-y-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div>
+                      <label className="block text-sm font-medium text-slate-800">
+                        Default proposal validity (days)
+                      </label>
+                      <input
+                        type="number"
+                        min={1}
+                        max={365}
+                        value={communicationsForm.proposals.defaultExpiryDays}
+                        onChange={(e) =>
+                          setCommunicationsForm({
+                            ...communicationsForm,
+                            proposals: {
+                              ...communicationsForm.proposals,
+                              defaultExpiryDays: Number(e.target.value) || 30,
+                            },
+                          })
+                        }
+                        className="mt-1 input-field w-full"
+                      />
+                      <p className="mt-1 text-xs text-slate-500">
+                        Pre-fills the &quot;valid until&quot; date when creating a proposal
+                      </p>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-slate-800">
+                        Renewal / expiry reminder (days before)
+                      </label>
+                      <input
+                        type="number"
+                        min={1}
+                        max={90}
+                        value={communicationsForm.proposals.renewalReminderDays}
+                        onChange={(e) =>
+                          setCommunicationsForm({
+                            ...communicationsForm,
+                            proposals: {
+                              ...communicationsForm.proposals,
+                              renewalReminderDays: Number(e.target.value) || 30,
+                            },
+                          })
+                        }
+                        className="mt-1 input-field w-full"
+                      />
+                      <p className="mt-1 text-xs text-slate-500">
+                        Email reminders before proposal expiry or annual renewal
+                      </p>
+                    </div>
+                  </div>
+                  <div className="pt-4 border-t border-white/10 flex flex-wrap gap-3">
+                    <button
+                      onClick={handleSaveCommunications}
+                      disabled={isSaving === 'communications'}
+                      className="btn-primary"
+                    >
+                      {isSaving === 'communications' ? 'Saving...' : 'Save proposal defaults'}
+                    </button>
+                  </div>
+                </div>
+              </div>
+
               {/* Notifications */}
               <div className="glass-tile overflow-hidden">
                 <div className="px-6 py-4 border-b border-white/10 bg-white/5">
@@ -950,6 +1050,15 @@ Yours sincerely,
                       </div>
                     </div>
                   ))}
+                  <div className="pt-4 border-t border-white/10">
+                    <button
+                      onClick={handleSaveCommunications}
+                      disabled={isSaving === 'communications'}
+                      className="btn-primary"
+                    >
+                      {isSaving === 'communications' ? 'Saving...' : 'Save notifications'}
+                    </button>
+                  </div>
                 </div>
               </div>
             </div>

@@ -14,7 +14,7 @@
  */
 
 import { prisma } from '../config/database.js';
-import { createEmailService } from '../services/emailService.js';
+import { tenantMailer } from '../services/tenantMailer.js';
 import logger from '../config/logger.js';
 import { PDFGenerator } from '../services/pdfGenerator.js';
 import { createClientPortalLink } from '../services/proposalSharingService.js';
@@ -215,17 +215,20 @@ async function sendTouchpoint(tp: any): Promise<SendResult> {
   const attachments = await buildTouchpointAttachments(tp.stage, client.id, tp.tenantId);
 
   if (channel === 'EMAIL') {
-    const emailService = createEmailService();
-    if (!emailService) {
-      return { success: false, error: 'Email service not configured' };
-    }
-
-    const res = await emailService.sendEmail({
-      to: client.contactEmail,
-      subject,
-      html: htmlBody,
-      text: textBody,
-      attachments,
+    const res = await tenantMailer.send({
+      tenantId: tp.tenantId,
+      messageType: 'TOUCHPOINT',
+      message: {
+        to: client.contactEmail,
+        subject,
+        html: htmlBody,
+        text: textBody,
+        attachments,
+      },
+      relatedIds: {
+        clientId: client.id,
+        touchpointId: tp.id,
+      },
     });
 
     return res.success ? { success: true } : { success: false, error: res.error };

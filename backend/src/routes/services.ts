@@ -137,8 +137,8 @@ router.get(
       },
       {
         id: 'SPECIALIZED',
-        name: 'Specialized',
-        description: 'Niche and specialized services',
+        name: 'Specialised',
+        description: 'Registered office and niche practice services',
         icon: 'star',
       },
     ];

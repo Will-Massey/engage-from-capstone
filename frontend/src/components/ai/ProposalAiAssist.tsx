@@ -1,0 +1,246 @@
+import { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import toast from 'react-hot-toast';
+import { apiClient } from '../../utils/api';
+import { AiPanel, AiDraftPreview, showAiError } from './AiPanel';
+import ProposalHealthCard from './ProposalHealthCard';
+
+interface ProposalAiAssistProps {
+  proposal: {
+    id: string;
+    status: string;
+    clientId?: string;
+    engagementLetter?: string | null;
+  };
+  onUpdated?: () => void;
+}
+
+export default function ProposalAiAssist({ proposal, onUpdated }: ProposalAiAssistProps) {
+  const navigate = useNavigate();
+  const [configured, setConfigured] = useState(true);
+
+  const [followUpLoading, setFollowUpLoading] = useState(false);
+  const [followUpDraft, setFollowUpDraft] = useState<{ subject: string; body: string } | null>(null);
+  const [followUpTone, setFollowUpTone] = useState<'professional' | 'friendly' | 'urgent'>('professional');
+
+  const [engagementLoading, setEngagementLoading] = useState(false);
+  const [engagementDraft, setEngagementDraft] = useState<string | null>(null);
+
+  const [renewalLoading, setRenewalLoading] = useState(false);
+  const [renewalDraft, setRenewalDraft] = useState<any>(null);
+  const [upliftPercent, setUpliftPercent] = useState(0);
+
+  useEffect(() => {
+    apiClient
+      .getAiStatus()
+      .then((res: any) => setConfigured(res.data?.configured ?? false))
+      .catch(() => setConfigured(false));
+  }, []);
+
+  const generateFollowUp = async () => {
+    setFollowUpLoading(true);
+    try {
+      const res = (await apiClient.aiFollowUp(proposal.id, followUpTone)) as any;
+      if (res.success) {
+        setFollowUpDraft({ subject: res.data.subject, body: res.data.body });
+      }
+    } catch (e) {
+      showAiError(e);
+    } finally {
+      setFollowUpLoading(false);
+    }
+  };
+
+  const copyFollowUp = async () => {
+    if (!followUpDraft) return;
+    const text = `Subject: ${followUpDraft.subject}\n\n${followUpDraft.body}`;
+    try {
+      await navigator.clipboard.writeText(text);
+      toast.success('Follow-up copied — paste into your email client');
+    } catch {
+      toast.error('Could not copy to clipboard');
+    }
+  };
+
+  const generateEngagementLetter = async () => {
+    setEngagementLoading(true);
+    try {
+      const res = (await apiClient.aiEngagementLetter(proposal.id)) as any;
+      if (res.success) setEngagementDraft(res.data.content);
+    } catch (e) {
+      showAiError(e);
+    } finally {
+      setEngagementLoading(false);
+    }
+  };
+
+  const saveEngagementLetter = async () => {
+    if (!engagementDraft) return;
+    try {
+      const res = (await apiClient.updateProposal(proposal.id, {
+        engagementLetter: engagementDraft,
+      })) as any;
+      if (res.success === false) {
+        toast.error(res.error?.message || 'Could not save engagement letter');
+        return;
+      }
+      toast.success('Engagement letter saved to proposal');
+      setEngagementDraft(null);
+      onUpdated?.();
+    } catch (e: any) {
+      toast.error(e?.response?.data?.error?.message || 'Could not save engagement letter');
+    }
+  };
+
+  const generateRenewal = async () => {
+    if (proposal.status !== 'ACCEPTED') {
+      toast.error('Renewals can only be drafted from accepted proposals');
+      return;
+    }
+    setRenewalLoading(true);
+    try {
+      const res = (await apiClient.aiRenewalDraft(proposal.id, upliftPercent)) as any;
+      if (res.success) setRenewalDraft(res.data);
+    } catch (e) {
+      showAiError(e);
+    } finally {
+      setRenewalLoading(false);
+    }
+  };
+
+  const createRenewalProposal = async () => {
+    if (!renewalDraft) return;
+    setRenewalLoading(true);
+    try {
+      const res = (await apiClient.createProposal({
+        clientId: renewalDraft.clientId,
+        title: renewalDraft.title,
+        services: renewalDraft.services,
+        validUntil: renewalDraft.validUntil,
+        coverLetter: renewalDraft.coverLetter,
+      })) as any;
+      if (res.success && res.data?.id) {
+        toast.success('Renewal proposal created — review before sending');
+        setRenewalDraft(null);
+        navigate(`/proposals/${res.data.id}`);
+      } else {
+        toast.error(res.error?.message || 'Failed to create renewal proposal');
+      }
+    } catch (e: any) {
+      showAiError(e);
+    } finally {
+      setRenewalLoading(false);
+    }
+  };
+
+  const showFollowUp =
+    proposal.status === 'SENT' || proposal.status === 'VIEWED' || proposal.status === 'EXPIRED';
+  const showRenewal = proposal.status === 'ACCEPTED';
+
+  return (
+    <div className="space-y-4 print:hidden">
+      <ProposalHealthCard proposalId={proposal.id} />
+
+      {showFollowUp && (
+        <AiPanel
+          title="Follow-up email"
+          description="Draft a reminder for an unsigned proposal — you send it manually"
+          configured={configured}
+          loading={followUpLoading}
+          onAction={generateFollowUp}
+          actionLabel="Draft email"
+        >
+          <div className="flex gap-2 mb-2">
+            {(['professional', 'friendly', 'urgent'] as const).map((t) => (
+              <button
+                key={t}
+                type="button"
+                onClick={() => setFollowUpTone(t)}
+                className={`text-xs px-2 py-1 rounded-full capitalize ${
+                  followUpTone === t
+                    ? 'bg-violet-600 text-white'
+                    : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300'
+                }`}
+              >
+                {t}
+              </button>
+            ))}
+          </div>
+          {followUpDraft && (
+            <div className="mt-2 space-y-2">
+              <p className="text-xs font-medium text-slate-700 dark:text-slate-200">
+                Subject: {followUpDraft.subject}
+              </p>
+              <AiDraftPreview
+                content={followUpDraft.body}
+                onApply={copyFollowUp}
+                onDiscard={() => setFollowUpDraft(null)}
+                applyLabel="Copy to clipboard"
+              />
+            </div>
+          )}
+        </AiPanel>
+      )}
+
+      <AiPanel
+        title="Engagement letter"
+        description="Assembled from your approved clause library with an optional AI introduction"
+        configured={configured}
+        loading={engagementLoading}
+        onAction={generateEngagementLetter}
+        actionLabel={proposal.engagementLetter ? 'Regenerate' : 'Generate'}
+      >
+        {proposal.engagementLetter && !engagementDraft && (
+          <p className="text-xs text-slate-500 dark:text-slate-400">
+            A letter is already saved on this proposal.
+          </p>
+        )}
+        {engagementDraft && (
+          <AiDraftPreview
+            content={engagementDraft}
+            onApply={saveEngagementLetter}
+            onDiscard={() => setEngagementDraft(null)}
+            applyLabel="Save to proposal"
+          />
+        )}
+      </AiPanel>
+
+      {showRenewal && (
+        <AiPanel
+          title="Renewal draft"
+          description="Create next year's proposal with optional fee uplift"
+          configured={configured}
+          loading={renewalLoading}
+          onAction={generateRenewal}
+          actionLabel="Draft renewal"
+        >
+          <div className="flex items-center gap-2 mb-2">
+            <label className="text-xs text-slate-600 dark:text-slate-400">Fee uplift %</label>
+            <input
+              type="number"
+              min={0}
+              max={50}
+              value={upliftPercent}
+              onChange={(e) => setUpliftPercent(Number(e.target.value))}
+              className="w-16 px-2 py-1 text-sm border rounded dark:bg-slate-800 dark:border-slate-600"
+            />
+          </div>
+          {renewalDraft && (
+            <div className="mt-2 space-y-2">
+              {renewalDraft.renewalNarrative && (
+                <p className="text-xs text-violet-600 dark:text-violet-400">{renewalDraft.renewalNarrative}</p>
+              )}
+              <p className="text-sm font-medium text-slate-800 dark:text-slate-100">{renewalDraft.title}</p>
+              <AiDraftPreview
+                content={renewalDraft.coverLetter}
+                onApply={createRenewalProposal}
+                onDiscard={() => setRenewalDraft(null)}
+                applyLabel="Create renewal proposal"
+              />
+            </div>
+          )}
+        </AiPanel>
+      )}
+    </div>
+  );
+}

@@ -380,6 +380,27 @@ export const apiClient = {
   getAmlOnboarding: (token: string) => api.get(`/onboarding/aml/${token}`),
   submitAmlOnboarding: (token: string, data: Record<string, unknown>) =>
     api.post(`/onboarding/aml/${token}`, data),
+
+  // AI assistance (requires XAI_API_KEY or OPENAI_API_KEY on server)
+  getAiStatus: () => api.get('/ai/status'),
+  aiSuggestServices: (clientId: string) => api.post('/ai/suggest-services', { clientId }),
+  aiCoverLetter: (data: {
+    clientId: string;
+    tone: string;
+    practiceName: string;
+    senderName?: string;
+    services: Array<{ name: string; billingFrequency?: string; displayPrice?: number }>;
+  }) => api.post('/ai/cover-letter', data),
+  aiFollowUp: (proposalId: string, tone?: string) =>
+    api.post('/ai/follow-up', { proposalId, tone: tone || 'professional' }),
+  aiEngagementLetter: (proposalId: string) => api.post('/ai/engagement-letter', { proposalId }),
+  getProposalHealth: (proposalId: string) => api.get(`/ai/proposal-health/${proposalId}`),
+  aiRenewalDraft: (proposalId: string, upliftPercent?: number) =>
+    api.post('/ai/renewal-draft', { proposalId, upliftPercent: upliftPercent ?? 0 }),
+  aiCommand: (query: string, context?: { proposalId?: string; clientId?: string }) =>
+    api.post('/ai/command', { query, context }),
+  aiFeedback: (data: { feature: string; helpful: boolean; comment?: string; proposalId?: string }) =>
+    api.post('/ai/feedback', data),
 };
 
 export default api;

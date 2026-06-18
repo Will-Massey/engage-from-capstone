@@ -42,6 +42,7 @@ export interface EmailMessage {
   to: string | string[];
   cc?: string | string[];
   bcc?: string | string[];
+  replyTo?: string;
   subject: string;
   text?: string;
   html?: string;
@@ -71,10 +72,22 @@ export class EmailService {
   private config: EmailConfig;
   private transporter: nodemailer.Transporter | null = null;
   private oauth2Client: any = null;
+  private initPromise: Promise<void>;
 
   constructor(config: EmailConfig) {
     this.config = config;
-    this.initializeTransporter();
+    this.initPromise = this.initializeTransporter();
+  }
+
+  /** Create service and wait until transporter is ready */
+  static async createReady(config: EmailConfig): Promise<EmailService> {
+    const svc = new EmailService(config);
+    await svc.ensureReady();
+    return svc;
+  }
+
+  async ensureReady(): Promise<void> {
+    await this.initPromise;
   }
 
   private async initializeTransporter(): Promise<void> {
@@ -234,6 +247,8 @@ export class EmailService {
     message: EmailMessage
   ): Promise<{ success: boolean; messageId?: string; error?: string }> {
     try {
+      await this.ensureReady();
+
       if (!this.transporter) {
         throw new Error('Email transporter not initialized');
       }
@@ -248,6 +263,7 @@ export class EmailService {
         to: message.to,
         cc: message.cc,
         bcc: message.bcc,
+        replyTo: message.replyTo,
         subject: message.subject,
         text: message.text,
         html: message.html,
@@ -392,6 +408,8 @@ export class EmailService {
 
   async verifyConnection(): Promise<{ success: boolean; error?: string }> {
     try {
+      await this.ensureReady();
+
       if (!this.transporter) {
         return { success: false, error: 'Transporter not initialized' };
       }

@@ -20,6 +20,8 @@ import {
   ArrowPathIcon,
 } from '@heroicons/react/24/outline';
 import { apiClient } from '../../utils/api';
+import toast from 'react-hot-toast';
+import ProposalAiAssist from '../../components/ai/ProposalAiAssist';
 import { formatCurrency } from '../../utils/formatters';
 import { copyTextToClipboard } from '../../utils/clipboard';
 import { useAuthStore } from '../../stores/authStore';
@@ -1203,6 +1205,10 @@ const ProposalDetail = () => {
 
         {/* Sidebar */}
         <div className="space-y-6">
+          {activeTab === 'overview' && id && (
+            <ProposalAiAssist proposal={proposal} onUpdated={loadProposal} />
+          )}
+
           {/* Pricing - Monthly cost focus */}
           <div className="glass-tile p-6">
             <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-100 mb-2">

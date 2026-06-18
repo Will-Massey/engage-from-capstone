@@ -8,7 +8,7 @@
  */
 
 import { useState, useEffect, useMemo, useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { apiClient } from '../../utils/api';
 import { useAuthStore } from '../../stores/authStore';
 import {
@@ -19,7 +19,14 @@ import {
   getStyleByTone,
 } from '../../data/defaultCoverLetter';
 import toast from 'react-hot-toast';
-import { format, isValid, parseISO } from 'date-fns';
+import { formatServiceCategory } from '../../utils/serviceCategoryLabels';
+import BillingCadenceSelector from './BillingCadenceSelector';
+import {
+  convertPriceBetweenCadences,
+  parseFrequencyOptions,
+  type BillingCadence,
+} from '../../utils/billingCadence';
+import { format, isValid, parseISO, addDays } from 'date-fns';
 import {
   ArrowRightIcon,
   ArrowLeftIcon,
@@ -32,7 +39,9 @@ import {
   XMarkIcon,
   MagnifyingGlassIcon,
   CalculatorIcon,
+  SparklesIcon,
 } from '@heroicons/react/24/outline';
+import { AiPanel, AiDraftPreview, showAiError } from '../ai/AiPanel';
 
 // Types
 interface Client {
@@ -51,6 +60,7 @@ interface Service {
   priceDisplayMode: 'PER_MONTH' | 'PER_QUARTER' | 'PER_YEAR' | 'ONE_TIME';
   billingCycle: string;
   category: string;
+  frequencyOptions?: string;
   isVatApplicable?: boolean;
   vatRate?: string | number;
 }
@@ -66,6 +76,8 @@ interface SelectedService extends Service {
   vatRate: number;
   vatAmount: number;
   grossTotal: number;
+  /** Cadences allowed for this line (from catalog template) */
+  allowedCadences: BillingCadence[];
   /** YYYY-MM-DD when billing is ONE_TIME */
   oneOffDueDate?: string;
 }
@@ -236,6 +248,8 @@ interface ProposalBuilderProps {
 
 export default function ProposalBuilder({ proposalId }: ProposalBuilderProps) {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const preselectedClientId = searchParams.get('clientId');
   const { tenant, user } = useAuthStore();
   const isEditMode = Boolean(proposalId);
   const draftKey = `engage-draft-${proposalId || 'new'}`;
@@ -277,9 +291,28 @@ export default function ProposalBuilder({ proposalId }: ProposalBuilderProps) {
   const [coverLetterTone, setCoverLetterTone] = useState<CoverLetterTone>('PROFESSIONAL');
   const [includeVat, setIncludeVat] = useState(true);
 
+  // Contract & proposal validity
+  const [contractStartDate, setContractStartDate] = useState('');
+  const [validUntil, setValidUntil] = useState('');
+  const [defaultExpiryDays, setDefaultExpiryDays] = useState(30);
+
+  // AI assistance
+  const [aiConfigured, setAiConfigured] = useState(false);
+  const [aiSuggestLoading, setAiSuggestLoading] = useState(false);
+  const [aiSuggestions, setAiSuggestions] = useState<any>(null);
+  const [aiCoverLoading, setAiCoverLoading] = useState(false);
+  const [aiCoverDraft, setAiCoverDraft] = useState<string | null>(null);
+
+  const todayIso = format(new Date(), 'yyyy-MM-dd');
+
   useEffect(() => {
     loadClients();
     loadServices();
+    loadProposalDefaults();
+    apiClient
+      .getAiStatus()
+      .then((res: any) => setAiConfigured(res.data?.configured ?? false))
+      .catch(() => setAiConfigured(false));
     if (proposalId) {
       loadExistingProposal(proposalId);
     } else {
@@ -293,6 +326,8 @@ export default function ProposalBuilder({ proposalId }: ProposalBuilderProps) {
           if (draft.coverLetter) setCoverLetter(draft.coverLetter);
           if (draft.coverLetterTone) setCoverLetterTone(draft.coverLetterTone);
           if (draft.currentStep) setCurrentStep(draft.currentStep);
+          if (draft.contractStartDate) setContractStartDate(draft.contractStartDate);
+          if (draft.validUntil) setValidUntil(draft.validUntil);
         }
       } catch {
         // ignore corrupt draft
@@ -313,16 +348,55 @@ export default function ProposalBuilder({ proposalId }: ProposalBuilderProps) {
           coverLetter,
           coverLetterTone,
           currentStep,
+          contractStartDate,
+          validUntil,
         })
       );
     }, 1500);
     return () => clearTimeout(timer);
-  }, [selectedClient, selectedServices, proposalTitle, coverLetter, coverLetterTone, currentStep, draftKey, isEditMode]);
+  }, [
+    selectedClient,
+    selectedServices,
+    proposalTitle,
+    coverLetter,
+    coverLetterTone,
+    currentStep,
+    contractStartDate,
+    validUntil,
+    draftKey,
+    isEditMode,
+  ]);
+
+  const loadProposalDefaults = async () => {
+    try {
+      const response = (await apiClient.getTenantSettings()) as any;
+      if (response.success && response.data?.proposals?.defaultExpiryDays) {
+        const days = response.data.proposals.defaultExpiryDays as number;
+        setDefaultExpiryDays(days);
+        if (!proposalId) {
+          setValidUntil((prev) => {
+            if (prev) return prev;
+            return format(addDays(new Date(), days), 'yyyy-MM-dd');
+          });
+        }
+      }
+    } catch {
+      // defaults are fine
+    }
+  };
 
   const loadClients = async () => {
     try {
       const response = (await apiClient.getClients({ limit: 100 })) as any;
-      setClients(response.data || []);
+      const list = response.data || [];
+      setClients(list);
+      if (preselectedClientId && !proposalId) {
+        const match = list.find((c: Client) => c.id === preselectedClientId);
+        if (match) {
+          setSelectedClient(match);
+          setCurrentStep(2);
+        }
+      }
     } catch (error) {
       toast.error('Failed to load clients');
     }
@@ -340,6 +414,7 @@ export default function ProposalBuilder({ proposalId }: ProposalBuilderProps) {
           ...s,
           priceAmount: s.priceAmount || s.basePrice || 0,
           billingCycle: derivedBillingCycle,
+          frequencyOptions: s.frequencyOptions,
         };
       });
       setServices(mappedServices);
@@ -446,6 +521,55 @@ export default function ProposalBuilder({ proposalId }: ProposalBuilderProps) {
     return servicesForSummary.reduce((sum, s) => sum + recurringMonthlyEquivalentIncVat(s), 0);
   }, [selectedServices, editingService, getEditingPreview]);
 
+  const recalcLine = (
+    price: number,
+    quantity: number,
+    discountPercent: number,
+    vatRate: number,
+    billingCycle: string
+  ) => {
+    const grossLineTotal = price * quantity;
+    const discountAmount = grossLineTotal * (discountPercent / 100);
+    const lineTotal = grossLineTotal - discountAmount;
+    const vatAmount = includeVat ? Math.round(lineTotal * (vatRate / 100) * 100) / 100 : 0;
+    return {
+      lineTotal,
+      vatAmount,
+      grossTotal: lineTotal + vatAmount,
+      annualEquivalent: calculateAnnualEquivalent(price, billingCycle),
+    };
+  };
+
+  const changeServiceCadence = (id: string, newCadence: BillingCadence) => {
+    setSelectedServices((prev) =>
+      prev.map((s) => {
+        if (s.id !== id) return s;
+        const newPrice = convertPriceBetweenCadences(s.displayPrice, s.billingCycle, newCadence);
+        const totals = recalcLine(newPrice, s.quantity, s.discountPercent, s.vatRate, newCadence);
+        return {
+          ...s,
+          billingCycle: newCadence,
+          displayPrice: newPrice,
+          priceAmount: newPrice,
+          ...totals,
+          oneOffDueDate: newCadence === 'ONE_TIME' ? s.oneOffDueDate || '' : undefined,
+        };
+      })
+    );
+    if (editingService === id) {
+      const svc = selectedServices.find((s) => s.id === id);
+      if (svc) {
+        const newPrice = convertPriceBetweenCadences(svc.displayPrice, svc.billingCycle, newCadence);
+        setEditForm((f) => ({
+          ...f,
+          billingCycle: newCadence,
+          displayPrice: newPrice,
+          oneOffDueDate: newCadence === 'ONE_TIME' ? f.oneOffDueDate : '',
+        }));
+      }
+    }
+  };
+
   const goToReviewStep = () => {
     setCurrentStep(3);
     setCoverLetter((prev) => {
@@ -489,14 +613,17 @@ export default function ProposalBuilder({ proposalId }: ProposalBuilderProps) {
   };
 
   // Add service
-  const addService = (service: Service) => {
+  const addServiceWithCadence = (
+    service: Service,
+    billingFrequency?: string,
+    overridePrice?: number
+  ) => {
     if (selectedServices.find((s) => s.templateId === service.id)) {
-      toast.success('Service already added');
-      return;
+      return false;
     }
 
-    const price = service.priceAmount || 0;
-    const frequency = service.billingCycle || 'MONTHLY';
+    const price = overridePrice ?? service.priceAmount ?? 0;
+    const frequency = billingFrequency || service.billingCycle || 'MONTHLY';
     const annualEquivalent = calculateAnnualEquivalent(price, frequency);
     const lineTotal = price;
 
@@ -510,22 +637,98 @@ export default function ProposalBuilder({ proposalId }: ProposalBuilderProps) {
         : 0;
     const vatAmount = includeVat ? Math.round(lineTotal * (vatPercent / 100) * 100) / 100 : 0;
 
+    const allowedCadences = parseFrequencyOptions(service.frequencyOptions);
+
     const newService: SelectedService = {
       ...service,
       templateId: service.id,
       quantity: 1,
       discountPercent: 0,
       displayPrice: price,
+      billingCycle: frequency,
+      priceAmount: price,
       annualEquivalent,
       lineTotal,
       vatRate: vatPercent,
       vatAmount,
       grossTotal: lineTotal + vatAmount,
+      allowedCadences,
       oneOffDueDate: frequency === 'ONE_TIME' ? '' : undefined,
     };
 
-    setSelectedServices([...selectedServices, newService]);
-    toast.success(`${service.name} added`);
+    setSelectedServices((prev) => [...prev, newService]);
+    return true;
+  };
+
+  const addService = (service: Service) => {
+    if (selectedServices.find((s) => s.templateId === service.id)) {
+      toast.success('Service already added');
+      return;
+    }
+    if (addServiceWithCadence(service)) {
+      toast.success(`${service.name} added`);
+    }
+  };
+
+  const runAiSuggestServices = async () => {
+    if (!selectedClient) {
+      toast.error('Select a client first');
+      return;
+    }
+    setAiSuggestLoading(true);
+    try {
+      const res = (await apiClient.aiSuggestServices(selectedClient.id)) as any;
+      if (res.success) {
+        setAiSuggestions(res.data);
+        if (res.data.validUntilDays && !validUntil) {
+          setValidUntil(format(addDays(new Date(), res.data.validUntilDays), 'yyyy-MM-dd'));
+        }
+      }
+    } catch (e) {
+      showAiError(e);
+    } finally {
+      setAiSuggestLoading(false);
+    }
+  };
+
+  const applyAiSuggestions = () => {
+    if (!aiSuggestions?.suggestions?.length) return;
+    let added = 0;
+    for (const sug of aiSuggestions.suggestions) {
+      const catalogService = services.find((s) => s.id === sug.serviceId);
+      if (!catalogService) continue;
+      if (addServiceWithCadence(catalogService, sug.billingFrequency, sug.displayPrice)) {
+        added++;
+      }
+    }
+    toast.success(added ? `Added ${added} suggested service${added === 1 ? '' : 's'}` : 'Services already selected');
+    setAiSuggestions(null);
+  };
+
+  const runAiCoverLetter = async () => {
+    if (!selectedClient) {
+      toast.error('Select a client first');
+      return;
+    }
+    setAiCoverLoading(true);
+    try {
+      const res = (await apiClient.aiCoverLetter({
+        clientId: selectedClient.id,
+        tone: coverLetterTone,
+        practiceName: tenant?.name || 'Our practice',
+        senderName: `${user?.firstName || ''} ${user?.lastName || ''}`.trim() || undefined,
+        services: selectedServices.map((s) => ({
+          name: s.name,
+          billingFrequency: s.billingCycle,
+          displayPrice: s.displayPrice,
+        })),
+      })) as any;
+      if (res.success) setAiCoverDraft(res.data.content);
+    } catch (e) {
+      showAiError(e);
+    } finally {
+      setAiCoverLoading(false);
+    }
   };
 
   // Start editing service
@@ -609,6 +812,14 @@ export default function ProposalBuilder({ proposalId }: ProposalBuilderProps) {
       const p = response.data;
       setProposalTitle(p.title || '');
       setCoverLetter(p.coverLetter || '');
+      if (p.validUntil) {
+        setValidUntil(format(new Date(p.validUntil), 'yyyy-MM-dd'));
+      }
+      if (p.contractStartDate) {
+        setContractStartDate(format(new Date(p.contractStartDate), 'yyyy-MM-dd'));
+      } else {
+        setContractStartDate('');
+      }
       // For existing proposals we don't store the originating tone server-side yet.
       // Default to PROFESSIONAL; user can re-apply any of the three above.
       setCoverLetterTone('PROFESSIONAL');
@@ -647,6 +858,9 @@ export default function ProposalBuilder({ proposalId }: ProposalBuilderProps) {
           vatRate,
           vatAmount,
           grossTotal: svc.grossTotal ?? net + vatAmount,
+          allowedCadences: parseFrequencyOptions(
+            svc.serviceTemplate?.frequencyOptions || svc.frequencyOptions
+          ),
           oneOffDueDate: svc.oneOffDueDate
             ? String(svc.oneOffDueDate).slice(0, 10)
             : undefined,
@@ -682,6 +896,10 @@ export default function ProposalBuilder({ proposalId }: ProposalBuilderProps) {
       toast.error('Please enter a proposal title');
       return;
     }
+    if (!validUntil) {
+      toast.error('Please set a proposal expiry date');
+      return;
+    }
 
     setIsLoading(true);
     try {
@@ -701,6 +919,10 @@ export default function ProposalBuilder({ proposalId }: ProposalBuilderProps) {
         clientId: selectedClient.id,
         title: proposalTitle,
         services: servicesData,
+        ...(validUntil ? { validUntil: `${validUntil}T12:00:00.000Z` } : {}),
+        contractStartDate: contractStartDate.trim()
+          ? `${contractStartDate.trim()}T12:00:00.000Z`
+          : null,
         coverLetter:
           coverLetter.trim() ||
           generateCoverLetterForTone({
@@ -935,28 +1157,31 @@ export default function ProposalBuilder({ proposalId }: ProposalBuilderProps) {
               </select>
             </div>
 
-            {/* Frequency */}
-            <div>
-              <label className="block text-[10px] uppercase tracking-wide text-slate-500 mb-0.5">Freq</label>
-              <select
-                data-testid="edit-frequency-select"
+            {/* Billing cadence */}
+            <div className="col-span-3 md:col-span-5">
+              <label className="block text-[10px] uppercase tracking-wide text-slate-500 mb-1">
+                Billing period
+              </label>
+              <BillingCadenceSelector
+                size="sm"
                 value={editForm.billingCycle}
-                onChange={(e) => {
-                  const billingCycle = e.target.value;
+                allowedCadences={
+                  selectedServices.find((s) => s.id === service.id)?.allowedCadences
+                }
+                onChange={(cadence) => {
+                  const newPrice = convertPriceBetweenCadences(
+                    editForm.displayPrice,
+                    editForm.billingCycle,
+                    cadence
+                  );
                   setEditForm({
                     ...editForm,
-                    billingCycle,
-                    oneOffDueDate: billingCycle === 'ONE_TIME' ? editForm.oneOffDueDate : '',
+                    billingCycle: cadence,
+                    displayPrice: newPrice,
+                    oneOffDueDate: cadence === 'ONE_TIME' ? editForm.oneOffDueDate : '',
                   });
                 }}
-                className="w-full px-2 py-1 text-sm border rounded dark:bg-slate-800 dark:border-slate-600"
-              >
-                <option value="WEEKLY">Wk</option>
-                <option value="MONTHLY">Mo</option>
-                <option value="QUARTERLY">Qtr</option>
-                <option value="ANNUALLY">Annual</option>
-                <option value="ONE_TIME">1x</option>
-              </select>
+              />
             </div>
           </div>
 
@@ -1000,14 +1225,18 @@ export default function ProposalBuilder({ proposalId }: ProposalBuilderProps) {
     const dueLabel = service.billingCycle === 'ONE_TIME' ? formatDueDateLabel(service.oneOffDueDate) : null;
 
     return (
-      <div data-testid="selected-service-row" data-service-name={service.name} className="flex items-center justify-between p-3 bg-slate-50 dark:bg-slate-800/50 rounded-lg group hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
+      <div
+        data-testid="selected-service-row"
+        data-service-name={service.name}
+        className="p-3 bg-slate-50 dark:bg-slate-800/50 rounded-lg group hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors space-y-2"
+      >
+        <div className="flex items-center justify-between">
         <div className="flex-1 min-w-0">
           <h4 className="font-medium text-slate-900 dark:text-white text-sm truncate">
             {service.name}
           </h4>
           <p className="text-xs text-slate-500 dark:text-slate-400">
             {service.quantity} × {formatCurrency(service.displayPrice)}
-            <span className="text-slate-400"> · {periodLabelSentenceCase(service.billingCycle)}</span>
             {service.discountPercent > 0 && (
               <span className="text-amber-600"> · −{service.discountPercent}%</span>
             )}
@@ -1023,7 +1252,9 @@ export default function ProposalBuilder({ proposalId }: ProposalBuilderProps) {
             <span className="font-semibold text-slate-900 dark:text-white text-sm block tabular-nums">
               {formatCurrency(service.grossTotal)}
             </span>
-            <span className="text-xs text-slate-500 dark:text-slate-400">inc VAT</span>
+            <span className="text-xs text-slate-500 dark:text-slate-400">
+              {formatPriceWithFrequency(service.displayPrice, service.billingCycle)} inc VAT
+            </span>
           </div>
 
           <div className="flex gap-1">
@@ -1061,6 +1292,17 @@ export default function ProposalBuilder({ proposalId }: ProposalBuilderProps) {
             </button>
           </div>
         </div>
+        </div>
+
+        <div className="flex flex-wrap items-center gap-2 pt-1 border-t border-slate-200/80 dark:border-slate-700/80">
+          <span className="text-[10px] uppercase tracking-wide text-slate-400 shrink-0">Bill every</span>
+          <BillingCadenceSelector
+            size="sm"
+            value={service.billingCycle}
+            allowedCadences={service.allowedCadences}
+            onChange={(cadence) => changeServiceCadence(service.id, cadence)}
+          />
+        </div>
       </div>
     );
   };
@@ -1083,6 +1325,39 @@ export default function ProposalBuilder({ proposalId }: ProposalBuilderProps) {
         </div>
       </div>
 
+      {/* AI service suggestions */}
+      {selectedClient && (
+        <AiPanel
+          title="AI service suggestions"
+          description="Recommended bundle and billing cadence based on client profile and history"
+          configured={aiConfigured}
+          loading={aiSuggestLoading}
+          onAction={runAiSuggestServices}
+          actionLabel="Suggest services"
+        >
+          {aiSuggestions && (
+            <div className="space-y-2">
+              {aiSuggestions.summary && (
+                <p className="text-sm text-slate-700 dark:text-slate-200">{aiSuggestions.summary}</p>
+              )}
+              <ul className="text-xs space-y-1.5">
+                {aiSuggestions.suggestions?.map((s: any) => (
+                  <li key={s.serviceId} className="flex gap-2 text-slate-600 dark:text-slate-300">
+                    <span className="text-violet-500 shrink-0">•</span>
+                    <span>
+                      <strong>{s.name}</strong> ({periodLabelSentenceCase(s.billingFrequency)}) — {s.rationale}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+              <button type="button" onClick={applyAiSuggestions} className="btn-primary text-xs py-1.5 px-3 mt-2">
+                Apply suggestions
+              </button>
+            </div>
+          )}
+        </AiPanel>
+      )}
+
       {/* Category filters */}
       <div className="flex flex-wrap gap-2">
         {categories.map((cat) => (
@@ -1095,7 +1370,7 @@ export default function ProposalBuilder({ proposalId }: ProposalBuilderProps) {
                 : 'bg-slate-100 text-slate-600 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-300'
             }`}
           >
-            {cat === 'ALL' ? 'All Categories' : cat}
+            {cat === 'ALL' ? 'All categories' : formatServiceCategory(cat)}
           </button>
         ))}
       </div>
@@ -1117,6 +1392,9 @@ export default function ProposalBuilder({ proposalId }: ProposalBuilderProps) {
           <h3 className="text-sm font-medium text-slate-500 uppercase tracking-wide">
             Selected ({selectedServices.length})
           </h3>
+          <p className="text-xs text-slate-500 dark:text-slate-400">
+            Tap a billing period per service — the price converts to match the new cadence.
+          </p>
 
           {selectedServices.length === 0 ? (
             <div className="p-8 text-center text-slate-400 border-2 border-dashed border-slate-200 rounded-lg">
@@ -1197,6 +1475,46 @@ export default function ProposalBuilder({ proposalId }: ProposalBuilderProps) {
     <div className="space-y-6">
       <h2 className="text-xl font-semibold text-slate-900 dark:text-white">Review & Send</h2>
 
+      {/* Contract start & proposal validity */}
+      <div className="card p-4">
+        <h3 className="font-semibold text-slate-900 dark:text-white mb-1">Contract & validity</h3>
+        <p className="text-xs text-slate-500 dark:text-slate-400 mb-4">
+          Set when the engagement begins and how long this proposal stays open. Annual renewals are
+          calculated from the contract start date (or acceptance if left blank).
+        </p>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <label className="block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1">
+              Contract start date
+            </label>
+            <input
+              data-testid="contract-start-date"
+              type="date"
+              value={contractStartDate}
+              onChange={(e) => setContractStartDate(e.target.value)}
+              className="input-field w-full"
+            />
+            <p className="mt-1 text-xs text-slate-500">Optional — use for future-dated engagements</p>
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1">
+              Proposal valid until
+            </label>
+            <input
+              data-testid="proposal-valid-until"
+              type="date"
+              value={validUntil}
+              min={todayIso}
+              onChange={(e) => setValidUntil(e.target.value)}
+              className="input-field w-full"
+            />
+            <p className="mt-1 text-xs text-slate-500">
+              Practice default: {defaultExpiryDays} days (change in Settings → Communications)
+            </p>
+          </div>
+        </div>
+      </div>
+
       {/* Proposal Title */}
       <div className="card p-4 border-2 border-primary-200 dark:border-primary-800 bg-primary-50/30 dark:bg-primary-900/10">
         <label className="block text-sm font-medium text-slate-700 dark:text-slate-200 mb-2">
@@ -1226,8 +1544,8 @@ export default function ProposalBuilder({ proposalId }: ProposalBuilderProps) {
       <div className="card p-6">
         <h3 className="font-semibold text-slate-900 dark:text-white mb-1">Services</h3>
         <p className="text-xs text-slate-500 dark:text-slate-400 mb-4">
-          Use edit on each line to change price, billing, or VAT. Below is a simple view of ongoing monthly
-          cost vs one-off charges.
+          Choose each service&apos;s billing period below — prices adjust automatically when you
+          change cadence. Use edit for price, quantity, VAT, or one-off due dates.
         </p>
 
         <div className="space-y-2">
@@ -1264,10 +1582,34 @@ export default function ProposalBuilder({ proposalId }: ProposalBuilderProps) {
           <label className="block text-sm font-medium text-slate-700 dark:text-slate-200">
             Cover letter
           </label>
-          <span className="text-[10px] px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-500">
-            Tone affects only this letter — T&Cs and pricing stay neutral
-          </span>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={runAiCoverLetter}
+              disabled={aiCoverLoading || !aiConfigured}
+              className="text-xs inline-flex items-center gap-1 px-2 py-1 rounded-lg border border-violet-300 dark:border-violet-700 text-violet-700 dark:text-violet-300 hover:bg-violet-50 dark:hover:bg-violet-950/30 disabled:opacity-50"
+              title={aiConfigured ? 'Draft with AI' : 'Set XAI_API_KEY on server'}
+            >
+              <SparklesIcon className={`h-3.5 w-3.5 ${aiCoverLoading ? 'animate-pulse' : ''}`} />
+              {aiCoverLoading ? 'Drafting…' : 'Draft with AI'}
+            </button>
+            <span className="text-[10px] px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-500">
+              Tone affects only this letter
+            </span>
+          </div>
         </div>
+
+        {aiCoverDraft && (
+          <AiDraftPreview
+            content={aiCoverDraft}
+            onApply={() => {
+              setCoverLetter(aiCoverDraft);
+              setAiCoverDraft(null);
+              toast.success('AI cover letter applied — review before sending');
+            }}
+            onDiscard={() => setAiCoverDraft(null)}
+          />
+        )}
 
         {/* Style picker — beautiful, instantly autofills names/services */}
         <div className="mb-3">

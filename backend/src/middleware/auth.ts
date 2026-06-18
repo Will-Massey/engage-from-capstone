@@ -270,6 +270,7 @@ export const csrfProtection = (req: Request, res: Response, next: NextFunction):
     '/proposals/view', // Public proposal viewing and signing
     '/proposals/portal', // Client portal (public access)
     '/onboarding', // AML self-service form (public, portal token)
+    '/webhooks/sendgrid', // SendGrid delivery events
     '/admin/seed-services', // One-click admin seed endpoint
     '/automation/migrate-service-pricing', // Data migration endpoint (protected by secret key)
     '/setup/migrate-pricing', // v2 pricing data migration

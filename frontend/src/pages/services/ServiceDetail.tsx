@@ -16,6 +16,7 @@ import {
 } from '@heroicons/react/24/outline';
 import { apiClient } from '../../utils/api';
 import { useAuthStore } from '../../stores/authStore';
+import { formatServiceCategory } from '../../utils/serviceCategoryLabels';
 import toast from 'react-hot-toast';
 
 interface Service {
@@ -51,17 +52,6 @@ const categoryColors: Record<string, string> = {
   TECHNICAL: 'bg-indigo-100 text-indigo-800',
   SPECIALIZED: 'bg-orange-100 text-orange-800',
   PAYROLL: 'bg-cyan-100 text-cyan-800',
-};
-
-const categoryLabels: Record<string, string> = {
-  COMPLIANCE: 'Compliance',
-  ADVISORY: 'Advisory',
-  TAX: 'Tax',
-  BOOKKEEPING: 'Bookkeeping',
-  CONSULTING: 'Consulting',
-  TECHNICAL: 'Technical',
-  SPECIALIZED: 'Specialized',
-  PAYROLL: 'Payroll',
 };
 
 const frequencyLabels: Record<string, string> = {
@@ -184,7 +174,7 @@ const ServiceDetail = () => {
             {!service.isActive && <span className="badge badge-gray">Inactive</span>}
           </div>
           <p className="mt-1 text-sm text-slate-600">
-            {categoryLabels[service.category] || service.category} • Created{' '}
+            {formatServiceCategory(service.category)} • Created{' '}
             {service.createdAt ? new Date(service.createdAt).toLocaleDateString('en-GB') : 'N/A'}
           </p>
         </div>
@@ -307,7 +297,7 @@ const ServiceDetail = () => {
                 <span
                   className={`badge ${categoryColors[service.category] || 'bg-slate-100 text-slate-800'}`}
                 >
-                  {categoryLabels[service.category] || service.category}
+                  {formatServiceCategory(service.category)}
                 </span>
               </div>
               <div className="flex items-center justify-between">

@@ -14,6 +14,8 @@ import {
   SparklesIcon,
 } from '@heroicons/react/24/outline';
 import { useAuthStore } from '../../stores/authStore';
+import { apiClient } from '../../utils/api';
+import toast from 'react-hot-toast';
 
 interface Command {
   id: string;
@@ -35,6 +37,8 @@ const CommandPalette = ({ isOpen, onClose }: CommandPaletteProps) => {
   const { user } = useAuthStore();
   const [search, setSearch] = useState('');
   const [selectedIndex, setSelectedIndex] = useState(0);
+  const [aiLoading, setAiLoading] = useState(false);
+  const [aiReply, setAiReply] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -119,14 +123,17 @@ const CommandPalette = ({ isOpen, onClose }: CommandPaletteProps) => {
     ];
 
     // Add AI suggestions if applicable
-    if (user?.role === 'PARTNER' || user?.role === 'MANAGER') {
+    if (user?.role === 'PARTNER' || user?.role === 'MANAGER' || user?.role === 'SENIOR' || user?.role === 'ADMIN') {
       commands.push({
-        id: 'ai-analytics',
-        title: 'View AI Insights',
-        subtitle: 'AI-powered proposal recommendations',
+        id: 'ai-new-proposal',
+        title: 'Ask AI to help with proposals',
+        subtitle: 'Type naturally, e.g. "draft follow up for latest proposal"',
         icon: SparklesIcon,
         category: 'AI Features',
-        action: () => navigate('/'),
+        action: () => {
+          setSearch('ai ');
+          inputRef.current?.focus();
+        },
       });
     }
 
@@ -134,6 +141,50 @@ const CommandPalette = ({ isOpen, onClose }: CommandPaletteProps) => {
   }, [navigate, user]);
 
   const commands = getCommands();
+
+  const aiQuery = search.trim().replace(/^ai\s+/i, '').trim();
+
+  const runAiCommand = useCallback(async () => {
+    if (!aiQuery || aiLoading) return;
+    setAiLoading(true);
+    setAiReply(null);
+    try {
+      const res = (await apiClient.aiCommand(aiQuery)) as any;
+      if (!res.success) return;
+      const { action, message, params } = res.data || {};
+      setAiReply(message || 'Done.');
+      if (action === 'navigate' && params?.path) {
+        navigate(String(params.path));
+        onClose();
+      } else if (action === 'create_proposal') {
+        navigate('/proposals/new');
+        onClose();
+      } else if (action === 'proposal_health' && params?.proposalId) {
+        navigate(`/proposals/${params.proposalId}`);
+        onClose();
+      } else if (action === 'follow_up' && params?.proposalId) {
+        navigate(`/proposals/${params.proposalId}`);
+        onClose();
+      } else if (action === 'renewal_draft' && params?.proposalId) {
+        navigate(`/proposals/${params.proposalId}`);
+        onClose();
+      } else if (action === 'suggest_services' && params?.clientId) {
+        navigate(`/proposals/new?clientId=${params.clientId}`);
+        onClose();
+      } else if (message) {
+        toast.success(message, { duration: 5000 });
+      }
+    } catch (err: any) {
+      const code = err?.code || err?.response?.data?.error?.code;
+      if (code === 'AI_NOT_CONFIGURED') {
+        toast.error('AI is not configured (set XAI_API_KEY or OPENAI_API_KEY)');
+      } else {
+        toast.error(err?.message || err?.response?.data?.error?.message || 'AI command failed');
+      }
+    } finally {
+      setAiLoading(false);
+    }
+  }, [aiQuery, aiLoading, navigate, onClose]);
 
   // Filter commands based on search
   const filteredCommands = commands.filter((cmd) => {
@@ -145,8 +196,28 @@ const CommandPalette = ({ isOpen, onClose }: CommandPaletteProps) => {
     );
   });
 
+  const showAiFallback =
+    aiQuery.length >= 4 &&
+    (search.toLowerCase().startsWith('ai ') ||
+      filteredCommands.length === 0 ||
+      /^(draft|create|renew|follow|show|open|health|suggest)/i.test(aiQuery));
+
+  const displayItems = showAiFallback
+    ? [
+        ...filteredCommands,
+        {
+          id: 'ai-run',
+          title: aiLoading ? 'Asking AI…' : `Ask AI: "${aiQuery}"`,
+          subtitle: 'Natural language — review before sending anything',
+          icon: SparklesIcon,
+          category: 'AI Features',
+          action: runAiCommand,
+        },
+      ]
+    : filteredCommands;
+
   // Group by category
-  const groupedCommands = filteredCommands.reduce(
+  const groupedCommands = displayItems.reduce(
     (acc, cmd) => {
       if (!acc[cmd.category]) {
         acc[cmd.category] = [];
@@ -165,7 +236,7 @@ const CommandPalette = ({ isOpen, onClose }: CommandPaletteProps) => {
       switch (e.key) {
         case 'ArrowDown':
           e.preventDefault();
-          setSelectedIndex((prev) => (prev < filteredCommands.length - 1 ? prev + 1 : prev));
+          setSelectedIndex((prev) => (prev < displayItems.length - 1 ? prev + 1 : prev));
           break;
         case 'ArrowUp':
           e.preventDefault();
@@ -173,9 +244,13 @@ const CommandPalette = ({ isOpen, onClose }: CommandPaletteProps) => {
           break;
         case 'Enter':
           e.preventDefault();
-          if (filteredCommands[selectedIndex]) {
-            filteredCommands[selectedIndex].action();
-            onClose();
+          if (displayItems[selectedIndex]) {
+            displayItems[selectedIndex].action();
+            if (displayItems[selectedIndex].id !== 'ai-run') {
+              onClose();
+            }
+          } else if (showAiFallback) {
+            runAiCommand();
           }
           break;
         case 'Escape':
@@ -187,7 +262,7 @@ const CommandPalette = ({ isOpen, onClose }: CommandPaletteProps) => {
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [isOpen, filteredCommands, selectedIndex, onClose]);
+  }, [isOpen, displayItems, selectedIndex, onClose, showAiFallback, runAiCommand]);
 
   // Focus input when opened
   useEffect(() => {
@@ -201,6 +276,7 @@ const CommandPalette = ({ isOpen, onClose }: CommandPaletteProps) => {
     if (!isOpen) {
       setSearch('');
       setSelectedIndex(0);
+      setAiReply(null);
     }
   }, [isOpen]);
 
@@ -225,7 +301,7 @@ const CommandPalette = ({ isOpen, onClose }: CommandPaletteProps) => {
           <input
             ref={inputRef}
             type="text"
-            placeholder="Search commands, navigate, or create..."
+            placeholder="Search commands or ask AI (prefix with ai )..."
             className="flex-1 ml-3 bg-transparent border-none outline-none text-slate-900 dark:text-slate-100 placeholder-slate-400 text-base"
             value={search}
             onChange={(e) => {
@@ -240,11 +316,11 @@ const CommandPalette = ({ isOpen, onClose }: CommandPaletteProps) => {
 
         {/* Results */}
         <div ref={containerRef} className="max-h-[60vh] overflow-y-auto py-2 scrollbar-hide">
-          {filteredCommands.length === 0 ? (
+          {displayItems.length === 0 ? (
             <div className="px-4 py-8 text-center">
               <p className="text-slate-500 dark:text-slate-400">No commands found</p>
               <p className="text-sm text-slate-400 dark:text-slate-500 mt-1">
-                Try searching for "proposal", "client", or "settings"
+                Try &quot;ai draft follow up&quot; or search for proposal, client, settings
               </p>
             </div>
           ) : (
@@ -254,7 +330,7 @@ const CommandPalette = ({ isOpen, onClose }: CommandPaletteProps) => {
                   {category}
                 </div>
                 {cmds.map((cmd, idx) => {
-                  const globalIndex = filteredCommands.indexOf(cmd);
+                  const globalIndex = displayItems.indexOf(cmd);
                   const isSelected = globalIndex === selectedIndex;
                   const Icon = cmd.icon;
 
@@ -264,7 +340,7 @@ const CommandPalette = ({ isOpen, onClose }: CommandPaletteProps) => {
                       data-index={globalIndex}
                       onClick={() => {
                         cmd.action();
-                        onClose();
+                        if (cmd.id !== 'ai-run') onClose();
                       }}
                       onMouseEnter={() => setSelectedIndex(globalIndex)}
                       className={`w-full flex items-center px-4 py-3 text-left transition-colors ${
@@ -315,6 +391,11 @@ const CommandPalette = ({ isOpen, onClose }: CommandPaletteProps) => {
               </div>
             ))
           )}
+          {aiReply && (
+            <div className="mx-4 mb-2 p-3 rounded-lg bg-violet-50 dark:bg-violet-950/30 border border-violet-200 dark:border-violet-800 text-sm text-slate-700 dark:text-slate-200">
+              {aiReply}
+            </div>
+          )}
         </div>
 
         {/* Footer */}
@@ -336,7 +417,7 @@ const CommandPalette = ({ isOpen, onClose }: CommandPaletteProps) => {
               <span className="ml-1">to select</span>
             </span>
           </div>
-          <span>{filteredCommands.length} commands</span>
+          <span>{displayItems.length} commands</span>
         </div>
       </div>
     </div>

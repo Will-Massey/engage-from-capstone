@@ -39,8 +39,70 @@ async function main() {
 
     // Update existing services when prices/frequencies have changed
     const updates = [
-      { name: 'Limited Company Formation', basePrice: 150, priceAmount: 150 },
-      { name: 'Anti-Money Laundering (AML) Check', basePrice: 75, priceAmount: 75, billingCycle: 'ANNUALLY', defaultFrequency: 'ANNUALLY', frequencyOptions: 'ANNUALLY' },
+      {
+        name: 'Annual Accounts Preparation & Filing',
+        basePrice: 71,
+        priceAmount: 71,
+        billingCycle: 'MONTHLY',
+        defaultFrequency: 'MONTHLY',
+        frequencyOptions: 'MONTHLY',
+      },
+      {
+        name: 'Corporation Tax Return (CT600)',
+        basePrice: 54,
+        priceAmount: 54,
+        billingCycle: 'MONTHLY',
+        defaultFrequency: 'MONTHLY',
+        frequencyOptions: 'MONTHLY',
+      },
+      {
+        name: 'Prior Year Annual Accounts & CT600',
+        basePrice: 1200,
+        priceAmount: 1200,
+        billingCycle: 'ANNUALLY',
+        defaultFrequency: 'ANNUALLY',
+        frequencyOptions: 'ANNUALLY',
+      },
+      {
+        name: 'Confirmation Statement (CS01)',
+        basePrice: 8,
+        priceAmount: 8,
+        billingCycle: 'MONTHLY',
+        defaultFrequency: 'MONTHLY',
+        frequencyOptions: 'MONTHLY',
+      },
+      {
+        name: 'Dormant Company Accounts',
+        basePrice: 15,
+        priceAmount: 15,
+        billingCycle: 'ANNUALLY',
+        defaultFrequency: 'ANNUALLY',
+        frequencyOptions: 'ANNUALLY',
+      },
+      {
+        name: 'Limited Company Formation',
+        basePrice: 125,
+        priceAmount: 125,
+        billingCycle: 'ANNUALLY',
+        defaultFrequency: 'ANNUALLY',
+        frequencyOptions: 'ANNUALLY',
+      },
+      {
+        name: 'Anti-Money Laundering (AML) Check',
+        basePrice: 6,
+        priceAmount: 6,
+        billingCycle: 'MONTHLY',
+        defaultFrequency: 'MONTHLY',
+        frequencyOptions: 'MONTHLY',
+      },
+      {
+        name: 'Registered Office Address Service',
+        basePrice: 15,
+        priceAmount: 15,
+        billingCycle: 'MONTHLY',
+        defaultFrequency: 'MONTHLY',
+        frequencyOptions: 'MONTHLY',
+      },
       { name: 'Xero Setup & Integration', basePrice: 450, priceAmount: 450 },
     ];
 
@@ -73,11 +135,11 @@ async function main() {
 Our service includes: trial balance review, statutory format accounts (Statement of Financial Position, Statement of Comprehensive Income, Directors' Report, Notes to the Accounts), iXBRL tagging where required, and electronic submission to Companies House before the statutory deadline. 
 
 We also advise on late filing penalties, audit exemptions, and dormant company considerations.`,
-      basePrice: 850,
+      basePrice: 71,
       baseHours: 6,
       pricingModel: 'FIXED',
-      frequencyOptions: 'ANNUALLY',
-      defaultFrequency: 'ANNUALLY',
+      frequencyOptions: 'MONTHLY',
+      defaultFrequency: 'MONTHLY',
       applicableEntityTypes: 'LIMITED_COMPANY,LLP',
       tags: 'annual-accounts,companies-house,uk-gaap,frs-102,compliance',
       isPopular: true,
@@ -94,11 +156,11 @@ We also advise on late filing penalties, audit exemptions, and dormant company c
 This includes: review of profits chargeable to corporation tax, capital allowances computations (AIA, FYA, WDA), loss relief claims, group relief considerations, R&D tax relief screening, and iXBRL tagging of computations and accounts. 
 
 We ensure payment deadlines are met (9 months and 1 day after the end of the accounting period) and advise on quarterly instalment payments (QIPs) for large companies.`,
-      basePrice: 650,
+      basePrice: 54,
       baseHours: 4,
       pricingModel: 'FIXED',
-      frequencyOptions: 'ANNUALLY',
-      defaultFrequency: 'ANNUALLY',
+      frequencyOptions: 'MONTHLY',
+      defaultFrequency: 'MONTHLY',
       applicableEntityTypes: 'LIMITED_COMPANY',
       tags: 'corporation-tax,ct600,hmrc,tax-computation',
       isPopular: true,
@@ -118,8 +180,8 @@ We will also advise on steps to prevent future late filing and can set up a comp
       basePrice: 1200,
       baseHours: 8,
       pricingModel: 'FIXED',
-      frequencyOptions: 'ONE_TIME',
-      defaultFrequency: 'ONE_TIME',
+      frequencyOptions: 'ANNUALLY',
+      defaultFrequency: 'ANNUALLY',
       applicableEntityTypes: 'LIMITED_COMPANY,LLP',
       tags: 'catch-up,overdue,late-filing,penalty-negotiation',
       regulatoryNotes:
@@ -135,11 +197,11 @@ We will also advise on steps to prevent future late filing and can set up a comp
 This includes verification of: registered office address, directors and secretary details, shareholders and share capital, SIC codes, and Persons with Significant Control (PSC) register. 
 
 If changes are required, we will advise on the necessary filings (e.g., CH01 for director changes, SH01 for allotment of shares) and ensure the Confirmation Statement is submitted within the 14-day filing window.`,
-      basePrice: 95,
+      basePrice: 8,
       baseHours: 0.5,
       pricingModel: 'FIXED',
-      frequencyOptions: 'ANNUALLY',
-      defaultFrequency: 'ANNUALLY',
+      frequencyOptions: 'MONTHLY',
+      defaultFrequency: 'MONTHLY',
       applicableEntityTypes: 'LIMITED_COMPANY,LLP',
       tags: 'confirmation-statement,cs01,companies-house',
       regulatoryNotes:
@@ -155,7 +217,7 @@ If changes are required, we will advise on the necessary filings (e.g., CH01 for
 This service includes: preparation of the simplified DCA form, confirmation of dormant status under the Companies Act 2006, and electronic filing. 
 
 We also advise on when a company ceases to be dormant, the requirement to file full accounts, and whether the company should remain active or be voluntarily struck off.`,
-      basePrice: 150,
+      basePrice: 15,
       baseHours: 0.5,
       pricingModel: 'FIXED',
       frequencyOptions: 'ANNUALLY',
@@ -175,11 +237,11 @@ We also advise on when a company ceases to be dormant, the requirement to file f
 Our service includes: name availability check and reservation, preparation of the Memorandum and Articles of Association, completion of the IN01 form, appointment of directors and shareholders, issue of share certificates, registration for Corporation Tax with HMRC, and guidance on opening a business bank account. 
 
 We also provide advice on share structure, director responsibilities, and whether your company should be limited by shares or by guarantee.`,
-      basePrice: 150,
+      basePrice: 125,
       baseHours: 1,
       pricingModel: 'FIXED',
-      frequencyOptions: 'ONE_TIME',
-      defaultFrequency: 'ONE_TIME',
+      frequencyOptions: 'ANNUALLY',
+      defaultFrequency: 'ANNUALLY',
       applicableEntityTypes: 'LIMITED_COMPANY',
       tags: 'formation,incorporation,in01,companies-house',
       isPopular: true,
@@ -196,11 +258,11 @@ We also provide advice on share structure, director responsibilities, and whethe
 This includes: identity verification using government-issued documents, proof of address verification, Politically Exposed Persons (PEP) and sanctions screening, source of funds/source of wealth checks where required, and risk profiling (low, medium, high). 
 
 We provide you with a documented risk assessment and ongoing monitoring recommendations to ensure your firm remains compliant with the requirements of your supervisory body (e.g., ICAEW, ACCA, AAT, HMRC).`,
-      basePrice: 75,
+      basePrice: 6,
       baseHours: 0.5,
       pricingModel: 'FIXED',
-      frequencyOptions: 'ANNUALLY',
-      defaultFrequency: 'ANNUALLY',
+      frequencyOptions: 'MONTHLY',
+      defaultFrequency: 'MONTHLY',
       applicableEntityTypes: 'LIMITED_COMPANY,SOLE_TRADER,PARTNERSHIP,LLP',
       tags: 'aml,compliance,dued diligence,kyc,pep-check',
       regulatoryNotes:
@@ -480,11 +542,11 @@ We configure Dext to handle VAT splits, foreign currency invoices, and mileage c
 Our service includes: registered office address for Companies House and HMRC, same-day scanning and email forwarding of statutory mail, secure storage of original documents, reminder service for filing deadlines, and assistance with official correspondence from Companies House and HMRC. 
 
 This is an ideal solution for home-based business owners, non-UK directors, and anyone who values privacy and professionalism.`,
-      basePrice: 150,
+      basePrice: 15,
       baseHours: 0.1,
       pricingModel: 'FIXED',
-      frequencyOptions: 'ANNUALLY',
-      defaultFrequency: 'ANNUALLY',
+      frequencyOptions: 'MONTHLY',
+      defaultFrequency: 'MONTHLY',
       applicableEntityTypes: 'LIMITED_COMPANY,LLP',
       tags: 'registered-office,address,companies-house,mail-forwarding',
       isPopular: true,

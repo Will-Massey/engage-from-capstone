@@ -119,6 +119,34 @@ const CreateClient = ({ onSuccess, onCancel }: CreateClientProps = {}) => {
   const [chSearching, setChSearching] = useState(false);
   const [chShowResults, setChShowResults] = useState(false);
   const [chSelectedCompany, setChSelectedCompany] = useState<string | null>(null);
+  const [chConfigured, setChConfigured] = useState<boolean | null>(null);
+
+  useEffect(() => {
+    const checkStatus = async () => {
+      try {
+        const response = (await apiClient.get('/companies-house/status')) as any;
+        if (response.success) {
+          setChConfigured(!!response.data?.configured && !!response.data?.connected);
+        }
+      } catch {
+        setChConfigured(false);
+      }
+    };
+    if (watchCompanyType === 'LIMITED_COMPANY' || watchCompanyType === 'LLP') {
+      checkStatus();
+    }
+  }, [watchCompanyType]);
+
+  const chErrorMessage = (error: unknown): string => {
+    const err = error as { response?: { data?: { error?: { message?: string; code?: string } } }; message?: string };
+    const code = err.response?.data?.error?.code;
+    const message = err.response?.data?.error?.message;
+    if (code === 'NOT_CONFIGURED') {
+      return 'Companies House API key is not set on the server. Add COMPANIES_HOUSE_API_KEY to backend/.env.';
+    }
+    if (message) return message;
+    return 'Failed to search Companies House';
+  };
 
   // Search Companies House
   const searchCompaniesHouse = async () => {
@@ -132,9 +160,12 @@ const CreateClient = ({ onSuccess, onCancel }: CreateClientProps = {}) => {
       if (response.success) {
         setChSearchResults(response.data || []);
         setChShowResults(true);
+        if (!response.data?.length) {
+          toast('No companies found — try a different name or number');
+        }
       }
     } catch (error) {
-      toast.error('Failed to search Companies House');
+      toast.error(chErrorMessage(error));
     } finally {
       setChSearching(false);
     }
@@ -162,7 +193,7 @@ const CreateClient = ({ onSuccess, onCancel }: CreateClientProps = {}) => {
         setChShowResults(false);
       }
     } catch (error) {
-      toast.error('Failed to load company details');
+      toast.error(chErrorMessage(error) || 'Failed to load company details');
     }
   };
 
@@ -336,6 +367,22 @@ const CreateClient = ({ onSuccess, onCancel }: CreateClientProps = {}) => {
                 <p className="text-xs text-blue-700 mb-3">
                   Search for a company to auto-fill details
                 </p>
+                {chConfigured === false && (
+                  <p className="text-xs text-amber-800 bg-amber-50 border border-amber-200 rounded-md px-3 py-2 mb-3">
+                    Companies House lookup is not available — the server API key is missing or
+                    invalid. Set <code className="font-mono">COMPANIES_HOUSE_API_KEY</code> in{' '}
+                    <code className="font-mono">backend/.env</code> (free key from{' '}
+                    <a
+                      href="https://developer.company-information.service.gov.uk/"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="underline"
+                    >
+                      Companies House Developer Hub
+                    </a>
+                    ).
+                  </p>
+                )}
                 <div className="relative">
                   <div className="flex gap-2">
                     <input

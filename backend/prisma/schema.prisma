@@ -150,6 +150,33 @@ enum TouchpointTone {
   URGENT
 }
 
+enum EmailMessageType {
+  PROPOSAL
+  ACCEPTANCE
+  TOUCHPOINT
+  RENEWAL
+  FOLLOW_UP
+  TEST
+  OTHER
+}
+
+enum EmailProvider {
+  SENDGRID
+  SMTP
+  GMAIL
+  OUTLOOK
+  MICROSOFT365
+}
+
+enum EmailDeliveryStatus {
+  QUEUED
+  SENT
+  DELIVERED
+  BOUNCED
+  FAILED
+  SUPPRESSED
+}
+
 // ==================== TENANT MODELS ====================
 
 model Tenant {
@@ -191,6 +218,8 @@ model Tenant {
   activityLogs          ActivityLog[]
   touchpointTemplates   TouchpointTemplate[]
   touchpoints           Touchpoint[]
+  emailLogs             EmailLog[]
+  emailSuppressions     EmailSuppression[]
 
   @@index([subdomain])
   @@index([isActive])
@@ -306,6 +335,7 @@ model Client {
   // Relations
   proposals Proposal[]
   touchpoints Touchpoint[]
+  emailLogs   EmailLog[]
 
   @@unique([tenantId, contactEmail])
   @@index([tenantId])
@@ -407,6 +437,7 @@ model Proposal {
   documents    ProposalDocument[]
   views        ProposalView[]
   signatures   ProposalSignature[]
+  emailLogs    EmailLog[]
 
   @@index([tenantId])
   @@index([clientId])
@@ -759,9 +790,61 @@ model Touchpoint {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+  emailLogs EmailLog[]
+
   @@index([clientId])
   @@index([tenantId])
   @@index([status])
   @@index([scheduledFor])
   @@index([requiresHumanApproval])
+}
+
+// ==================== EMAIL DELIVERY ====================
+
+model EmailLog {
+  id           String              @id @default(uuid())
+  tenantId     String
+  tenant       Tenant              @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  clientId     String?
+  client       Client?             @relation(fields: [clientId], references: [id], onDelete: SetNull)
+  proposalId   String?
+  proposal     Proposal?           @relation(fields: [proposalId], references: [id], onDelete: SetNull)
+  touchpointId String?
+  touchpoint   Touchpoint?         @relation(fields: [touchpointId], references: [id], onDelete: SetNull)
+
+  messageType  EmailMessageType
+  provider     EmailProvider
+  status       EmailDeliveryStatus @default(QUEUED)
+
+  to           String
+  from         String
+  replyTo      String?
+  subject      String
+  externalId   String?
+  error        String?
+  metadata     String              @default("{}")
+
+  sentAt       DateTime?
+  createdAt    DateTime            @default(now())
+  updatedAt    DateTime            @updatedAt
+
+  @@index([tenantId])
+  @@index([clientId])
+  @@index([proposalId])
+  @@index([touchpointId])
+  @@index([status])
+  @@index([createdAt])
+  @@index([externalId])
+}
+
+model EmailSuppression {
+  id        String   @id @default(uuid())
+  tenantId  String
+  tenant    Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  email     String
+  reason    String
+  createdAt DateTime @default(now())
+
+  @@unique([tenantId, email])
+  @@index([tenantId])
 }

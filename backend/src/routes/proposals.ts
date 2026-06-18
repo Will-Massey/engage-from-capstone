@@ -11,6 +11,11 @@ import {
   buildProposalServiceRecord,
   calculateHeaderTotals,
 } from '../utils/proposalPricing.js';
+import {
+  addDays,
+  getProposalSettings,
+  parseProposalDateInput,
+} from '../utils/tenantProposalSettings.js';
 // generateReference helper function
 const generateReference = (prefix: string = 'PROP'): string => {
   const timestamp = Date.now().toString(36).toUpperCase();
@@ -50,11 +55,14 @@ const createProposalSchema = z.object({
       })
     )
     .min(1, 'At least one service is required'),
-  validUntil: z.string().datetime().optional(),
-  contractStartDate: z.string().datetime().optional(), // When the contract begins
+  validUntil: z.union([z.string().datetime(), z.string().regex(/^\d{4}-\d{2}-\d{2}$/)]).optional(),
+  contractStartDate: z
+    .union([z.string().datetime(), z.string().regex(/^\d{4}-\d{2}-\d{2}$/), z.null()])
+    .optional(),
   paymentTerms: z.string().optional(),
   paymentFrequency: z.nativeEnum(PricingFrequency).optional(),
   coverLetter: z.string().optional(),
+  engagementLetter: z.string().optional(),
   terms: z.string().optional(),
   notes: z.string().optional(),
   discountType: z.enum(['PERCENTAGE', 'FIXED']).optional(),
@@ -79,9 +87,13 @@ const updateProposalSchema = z.object({
       })
     )
     .optional(),
-  validUntil: z.string().datetime().optional(),
+  validUntil: z.union([z.string().datetime(), z.string().regex(/^\d{4}-\d{2}-\d{2}$/)]).optional(),
+  contractStartDate: z
+    .union([z.string().datetime(), z.string().regex(/^\d{4}-\d{2}-\d{2}$/), z.null()])
+    .optional(),
   paymentTerms: z.string().optional(),
   coverLetter: z.string().optional(),
+  engagementLetter: z.string().optional(),
   terms: z.string().optional(),
   notes: z.string().optional(),
   status: z.nativeEnum(ProposalStatus).optional(),
@@ -271,26 +283,32 @@ router.post(
       return buildProposalServiceRecord(svc, template, parseOneOffDueDate);
     });
 
+    const tenantRecord = await prisma.tenant.findUnique({
+      where: { id: req.tenantId },
+      select: { settings: true },
+    });
+    const proposalSettings = getProposalSettings(tenantRecord?.settings);
+
     const { subtotal, vatAmount: totalVat, total: grandTotal } =
       calculateHeaderTotals(servicesWithClearPricing);
 
     // Generate reference
     const reference = generateReference('PROP');
 
-    // Set valid until (default 30 days)
-    const validUntil = data.validUntil
-      ? new Date(data.validUntil)
-      : new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
+    const parsedValidUntil = parseProposalDateInput(data.validUntil);
+    const validUntil =
+      parsedValidUntil && parsedValidUntil !== null
+        ? parsedValidUntil
+        : addDays(new Date(), proposalSettings.defaultExpiryDays);
 
-    // Create proposal with services
+    const contractStartDate =
+      data.contractStartDate !== undefined
+        ? parseProposalDateInput(data.contractStartDate)
+        : null;
+
     logger.info(
       `Creating proposal for tenant: ${req.tenantId}, user: ${req.user!.id}, client: ${data.clientId}`
     );
-
-    // Parse contract start date if provided
-    const contractStartDate = data.contractStartDate
-      ? new Date(data.contractStartDate)
-      : new Date();
 
     const proposal = await prisma.proposal.create({
       data: {
@@ -312,6 +330,7 @@ router.post(
         paymentTerms: data.paymentTerms || '30 days',
         paymentFrequency: data.paymentFrequency || 'MONTHLY',
         coverLetter: data.coverLetter,
+        engagementLetter: data.engagementLetter,
         terms: data.terms,
         notes: data.notes,
         services: {
@@ -384,15 +403,24 @@ router.put(
     // Update proposal
     const updateData: any = {
       title: data.title,
-      validUntil: data.validUntil ? new Date(data.validUntil) : undefined,
       paymentTerms: data.paymentTerms,
       coverLetter: data.coverLetter,
+      engagementLetter: data.engagementLetter,
       terms: data.terms,
       notes: data.notes,
       status: data.status,
       discountType: data.discountType,
       discountValue: data.discountValue,
     };
+
+    if (data.validUntil !== undefined) {
+      const parsed = parseProposalDateInput(data.validUntil);
+      if (parsed) updateData.validUntil = parsed;
+    }
+
+    if (data.contractStartDate !== undefined) {
+      updateData.contractStartDate = parseProposalDateInput(data.contractStartDate);
+    }
 
     // Remove undefined values
     Object.keys(updateData).forEach((key) => {
@@ -519,79 +547,37 @@ router.post(
 
     const tenantSubdomain = proposal.tenant.subdomain;
 
-    // Import services
-    const { EmailService } = await import('../services/emailService.js');
     const { PDFGenerator } = await import('../services/pdfGenerator.js');
+    const { tenantMailer } = await import('../services/tenantMailer.js');
+    const { createShareableLink } = await import('../services/proposalSharingService.js');
 
-    // Generate PDF
     const pdfBuffer = await PDFGenerator.generateProposal(id);
 
-    // Initialize email service with environment variables for now
-    // In production, this should come from tenant email settings
-    const emailProvider = (process.env.EMAIL_PROVIDER as any) || 'smtp';
-    const emailConfig: any = {
-      provider: emailProvider,
-      fromName: proposal.tenant.name,
-      fromEmail: process.env.EMAIL_FROM || 'sales@capstonesoftware.co.uk',
-    };
-
-    if (emailProvider === 'smtp') {
-      emailConfig.smtp = {
-        host: process.env.SMTP_HOST || '',
-        port: parseInt(process.env.SMTP_PORT || '587'),
-        secure: process.env.SMTP_SECURE === 'true',
-        user: process.env.SMTP_USER || '',
-        pass: process.env.SMTP_PASS || '',
-      };
-    } else if (emailProvider === 'gmail') {
-      emailConfig.gmail = {
-        clientId: process.env.GMAIL_CLIENT_ID || '',
-        clientSecret: process.env.GMAIL_CLIENT_SECRET || '',
-        refreshToken: process.env.GMAIL_REFRESH_TOKEN || '',
-        user: process.env.GMAIL_USER || '',
-      };
-    } else if (emailProvider === 'microsoft365') {
-      emailConfig.outlook = {
-        clientId: process.env.MICROSOFT_CLIENT_ID || '',
-        clientSecret: process.env.MICROSOFT_CLIENT_SECRET || '',
-        refreshToken: process.env.MICROSOFT_REFRESH_TOKEN || '',
-        user: process.env.MICROSOFT_USER || '',
-      };
+    const frontendUrl = (process.env.FRONTEND_URL || 'https://engagebycapstone.co.uk').replace(
+      /\/$/,
+      ''
+    );
+    let viewToken = proposal.shareToken;
+    const tokenExpiry = proposal.shareTokenExpiry;
+    if (
+      !viewToken ||
+      !tokenExpiry ||
+      new Date(tokenExpiry).getTime() < Date.now() ||
+      !proposal.publicAccessEnabled
+    ) {
+      const link = await createShareableLink(id, 30, tenantSubdomain);
+      viewToken = link.token;
     }
+    const viewLink = `${frontendUrl}/proposals/view/${viewToken}`;
 
-    // Check if email is configured
-    if (!emailConfig.smtp?.host && !emailConfig.gmail?.clientId && !emailConfig.outlook?.clientId) {
-      // For demo/development, just mark as sent without email
-      logger.warn('Email not configured, marking proposal as sent without email');
-    } else {
-      const emailService = new EmailService(emailConfig);
+    const totalAmount = new Intl.NumberFormat('en-GB', {
+      style: 'currency',
+      currency: 'GBP',
+    }).format(proposal.total);
 
-      // Build client view link (public share page)
-      const frontendUrl = (process.env.FRONTEND_URL || 'https://engagebycapstone.co.uk').replace(
-        /\/$/,
-        ''
-      );
-      let viewToken = proposal.shareToken;
-      const tokenExpiry = proposal.shareTokenExpiry;
-      if (
-        !viewToken ||
-        !tokenExpiry ||
-        new Date(tokenExpiry).getTime() < Date.now() ||
-        !proposal.publicAccessEnabled
-      ) {
-        const link = await createShareableLink(id, 30, tenantSubdomain);
-        viewToken = link.token;
-      }
-      const viewLink = `${frontendUrl}/proposals/view/${viewToken}`;
-
-      // Format total amount
-      const totalAmount = new Intl.NumberFormat('en-GB', {
-        style: 'currency',
-        currency: 'GBP',
-      }).format(proposal.total);
-
-      // Send email
-      const emailResult = await emailService.sendProposalEmail({
+    const emailResult = await tenantMailer.sendProposalEmail(
+      req.tenantId!,
+      {
         to: proposal.client.contactEmail,
         clientName: proposal.client.name,
         proposalTitle: proposal.title,
@@ -609,11 +595,12 @@ router.post(
         totalAmount,
         serviceCount: proposal.services.length,
         attachment: pdfBuffer,
-      });
+      },
+      { proposalId: id, clientId: proposal.clientId }
+    );
 
-      if (!emailResult.success) {
-        throw new ApiError('EMAIL_SEND_FAILED', `Failed to send email: ${emailResult.error}`, 500);
-      }
+    if (!emailResult.success) {
+      throw new ApiError('EMAIL_SEND_FAILED', `Failed to send email: ${emailResult.error}`, 500);
     }
 
     // Update status

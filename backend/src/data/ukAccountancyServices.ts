@@ -54,6 +54,9 @@ export interface ComplexityFactor {
 
 // ==================== COMPLIANCE SERVICES ====================
 
+/** Spread an annual fee across 12 equal monthly instalments (rounded to nearest pound). */
+const monthlyFromAnnual = (annualPrice: number): number => Math.round(annualPrice / 12);
+
 export const complianceServices: ServiceTemplate[] = [
   // Annual Accounts
   {
@@ -63,14 +66,15 @@ export const complianceServices: ServiceTemplate[] = [
     description: 'Preparation and filing of statutory annual accounts with Companies House',
     longDescription:
       "Complete preparation of statutory annual accounts in accordance with Companies Act 2006 and FRS 102. Includes reconciliation, adjustments, director's report preparation, and electronic filing with Companies House.",
-    basePrice: 750,
+    basePrice: monthlyFromAnnual(750),
     baseHours: 5,
     pricingModel: 'FIXED',
-    billingCycle: 'ANNUALLY',
+    billingCycle: 'MONTHLY',
     isVatApplicable: true,
     vatRate: 'STANDARD_20',
-    frequencyOptions: ['ANNUALLY', 'MONTHLY'],
-    defaultFrequency: 'ANNUALLY',
+    annualEquivalent: 750,
+    frequencyOptions: ['MONTHLY', 'ANNUALLY'],
+    defaultFrequency: 'MONTHLY',
     applicableEntityTypes: ['LIMITED_COMPANY', 'LLP'],
     complexityFactors: [
       {
@@ -121,14 +125,15 @@ export const complianceServices: ServiceTemplate[] = [
     description: 'Preparation of annual accounts for self-assessment purposes',
     longDescription:
       'Preparation of annual accounts and income/expenditure statement for sole traders. Supports self-assessment tax return completion.',
-    basePrice: 450,
+    basePrice: monthlyFromAnnual(450),
     baseHours: 3,
     pricingModel: 'FIXED',
-    billingCycle: 'ANNUALLY',
+    billingCycle: 'MONTHLY',
     isVatApplicable: true,
     vatRate: 'STANDARD_20',
-    frequencyOptions: ['ANNUALLY', 'MONTHLY'],
-    defaultFrequency: 'ANNUALLY',
+    annualEquivalent: 450,
+    frequencyOptions: ['MONTHLY', 'ANNUALLY'],
+    defaultFrequency: 'MONTHLY',
     applicableEntityTypes: ['SOLE_TRADER'],
     complexityFactors: [
       {
@@ -162,14 +167,15 @@ export const complianceServices: ServiceTemplate[] = [
     description: 'Preparation and submission of Corporation Tax return to HMRC',
     longDescription:
       'Complete CT600 Corporation Tax return preparation including tax computations, capital allowances claims, and iXBRL tagging. Electronic filing with HMRC.',
-    basePrice: 600,
+    basePrice: monthlyFromAnnual(600),
     baseHours: 4,
     pricingModel: 'FIXED',
-    billingCycle: 'ANNUALLY',
+    billingCycle: 'MONTHLY',
     isVatApplicable: true,
     vatRate: 'STANDARD_20',
-    frequencyOptions: ['ANNUALLY', 'QUARTERLY', 'MONTHLY'],
-    defaultFrequency: 'ANNUALLY',
+    annualEquivalent: 600,
+    frequencyOptions: ['MONTHLY', 'ANNUALLY', 'QUARTERLY'],
+    defaultFrequency: 'MONTHLY',
     applicableEntityTypes: ['LIMITED_COMPANY'],
     complexityFactors: [
       {
@@ -216,14 +222,15 @@ export const complianceServices: ServiceTemplate[] = [
     description: 'Self-assessment tax return for individuals',
     longDescription:
       'Complete self-assessment tax return preparation including employment income, self-employment, property income, investments, and capital gains.',
-    basePrice: 350,
+    basePrice: monthlyFromAnnual(350),
     baseHours: 2.5,
     pricingModel: 'FIXED',
-    billingCycle: 'ANNUALLY',
+    billingCycle: 'MONTHLY',
     isVatApplicable: true,
     vatRate: 'STANDARD_20',
-    frequencyOptions: ['ANNUALLY'],
-    defaultFrequency: 'ANNUALLY',
+    annualEquivalent: 350,
+    frequencyOptions: ['MONTHLY', 'ANNUALLY'],
+    defaultFrequency: 'MONTHLY',
     applicableEntityTypes: ['SOLE_TRADER', 'LIMITED_COMPANY', 'PARTNERSHIP'],
     complexityFactors: [
       {
@@ -279,14 +286,15 @@ export const complianceServices: ServiceTemplate[] = [
     description: 'Quarterly VAT return preparation and submission',
     longDescription:
       'Complete VAT return preparation including reconciliations, partial exemption calculations, and Making Tax Digital (MTD) compliant submission.',
-    basePrice: 200,
+    basePrice: Math.round((200 * 4) / 12),
     baseHours: 1.5,
     pricingModel: 'FIXED',
-    billingCycle: 'QUARTERLY',
+    billingCycle: 'MONTHLY',
     isVatApplicable: true,
     vatRate: 'STANDARD_20',
-    frequencyOptions: ['QUARTERLY', 'MONTHLY', 'ANNUALLY'],
-    defaultFrequency: 'QUARTERLY',
+    annualEquivalent: 800,
+    frequencyOptions: ['MONTHLY', 'QUARTERLY', 'ANNUALLY'],
+    defaultFrequency: 'MONTHLY',
     applicableEntityTypes: ['LIMITED_COMPANY', 'SOLE_TRADER', 'PARTNERSHIP', 'LLP'],
     complexityFactors: [
       {
@@ -335,14 +343,15 @@ export const complianceServices: ServiceTemplate[] = [
     description: 'VAT registration with HMRC',
     longDescription:
       'Complete VAT registration service including eligibility assessment, scheme selection advice, and HMRC registration.',
-    basePrice: 250,
+    basePrice: monthlyFromAnnual(250),
     baseHours: 2,
     pricingModel: 'FIXED',
-    billingCycle: 'ANNUALLY',
+    billingCycle: 'MONTHLY',
     isVatApplicable: true,
     vatRate: 'STANDARD_20',
-    frequencyOptions: ['ANNUALLY'],
-    defaultFrequency: 'ANNUALLY',
+    annualEquivalent: 250,
+    frequencyOptions: ['MONTHLY', 'ANNUALLY'],
+    defaultFrequency: 'MONTHLY',
     applicableEntityTypes: ['LIMITED_COMPANY', 'SOLE_TRADER', 'PARTNERSHIP', 'LLP'],
     complexityFactors: [
       {
@@ -422,14 +431,15 @@ export const complianceServices: ServiceTemplate[] = [
     description: 'Annual P11D benefits in kind reporting',
     longDescription:
       'Preparation and submission of P11D forms for benefits in kind and P11D(b) for Class 1A NIC.',
-    basePrice: 350,
+    basePrice: monthlyFromAnnual(350),
     baseHours: 3,
     pricingModel: 'FIXED',
-    billingCycle: 'ANNUALLY',
+    billingCycle: 'MONTHLY',
     isVatApplicable: true,
     vatRate: 'STANDARD_20',
-    frequencyOptions: ['ANNUALLY'],
-    defaultFrequency: 'ANNUALLY',
+    annualEquivalent: 350,
+    frequencyOptions: ['MONTHLY', 'ANNUALLY'],
+    defaultFrequency: 'MONTHLY',
     applicableEntityTypes: ['LIMITED_COMPANY'],
     complexityFactors: [
       {
@@ -507,14 +517,15 @@ export const complianceServices: ServiceTemplate[] = [
     description: 'Annual confirmation statement filing with Companies House',
     longDescription:
       'Preparation and filing of annual confirmation statement including shareholder details, SIC codes, and registered office verification.',
-    basePrice: 150,
+    basePrice: monthlyFromAnnual(150),
     baseHours: 1,
     pricingModel: 'FIXED',
-    billingCycle: 'ANNUALLY',
+    billingCycle: 'MONTHLY',
     isVatApplicable: true,
     vatRate: 'STANDARD_20',
-    frequencyOptions: ['ANNUALLY'],
-    defaultFrequency: 'ANNUALLY',
+    annualEquivalent: 150,
+    frequencyOptions: ['MONTHLY', 'ANNUALLY'],
+    defaultFrequency: 'MONTHLY',
     applicableEntityTypes: ['LIMITED_COMPANY'],
     complexityFactors: [
       {

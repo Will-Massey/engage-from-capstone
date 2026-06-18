@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { apiClient } from '../../utils/api';
 import toast from 'react-hot-toast';
+import { formatServiceCategory } from '../../utils/serviceCategoryLabels';
 import {
   ClipboardDocumentCheckIcon,
   LightBulbIcon,
@@ -36,17 +37,12 @@ const categoryIcons: Record<string, React.ReactNode> = {
   COMPLIANCE: <ClipboardDocumentCheckIcon className="h-5 w-5" />,
   ADVISORY: <LightBulbIcon className="h-5 w-5" />,
   MTD_ITSA: <ComputerDesktopIcon className="h-5 w-5" />,
-  SPECIALIST: <AcademicCapIcon className="h-5 w-5" />,
+  SPECIALIZED: <AcademicCapIcon className="h-5 w-5" />,
   BOOKKEEPING: <BookOpenIcon className="h-5 w-5" />,
 };
 
-const categoryLabels: Record<string, string> = {
-  COMPLIANCE: 'Compliance',
-  ADVISORY: 'Advisory',
-  MTD_ITSA: 'MTD ITSA',
-  SPECIALIST: 'Specialist',
-  BOOKKEEPING: 'Bookkeeping',
-};
+const categoryLabel = (category: string) =>
+  category === 'ALL' ? 'All categories' : formatServiceCategory(category);
 
 const ServiceCatalog = ({ onImport }: ServiceCatalogProps) => {
   const [services, setServices] = useState<ServiceCatalogItem[]>([]);
@@ -209,7 +205,7 @@ const ServiceCatalog = ({ onImport }: ServiceCatalogProps) => {
                 : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
             }`}
           >
-            {category === 'ALL' ? 'All Categories' : categoryLabels[category] || category}
+            {categoryLabel(category)}
             {category !== 'ALL' && (
               <span className="ml-2 text-xs opacity-75">
                 ({services.filter((s) => s.category === category).length})
@@ -226,7 +222,7 @@ const ServiceCatalog = ({ onImport }: ServiceCatalogProps) => {
             onClick={() => handleBulkImport(selectedCategory)}
             className="btn-secondary text-sm"
           >
-            Import All {categoryLabels[selectedCategory]} Services
+            Import All {categoryLabel(selectedCategory)} Services
           </button>
         </div>
       )}

@@ -1,6 +1,13 @@
 import dotenv from 'dotenv';
+import path from 'path';
+
 // Load environment variables FIRST, before any other imports
-dotenv.config();
+// backend/.env wins over repo-root dev files (override on last load)
+const backendRoot = path.resolve(process.cwd());
+const repoRoot = path.resolve(backendRoot, '..');
+dotenv.config({ path: path.join(repoRoot, '.env.development') });
+dotenv.config({ path: path.join(repoRoot, '.env') });
+dotenv.config({ path: path.join(backendRoot, '.env'), override: true });
 
 import express from 'express';
 import cors from 'cors';
@@ -8,7 +15,6 @@ import helmet from 'helmet';
 import morgan from 'morgan';
 import rateLimit from 'express-rate-limit';
 import cookieParser from 'cookie-parser';
-import path from 'path';
 
 // Import routes
 import authRoutes from './routes/auth.js';
@@ -26,6 +32,7 @@ import coverLetterTemplateRoutes from './routes/coverLetterTemplates.js';
 import analyticsRoutes from './routes/analytics.js';
 import touchpointRoutes from './routes/touchpoints.js';
 import onboardingRoutes from './routes/onboarding.js';
+import aiRoutes from './routes/ai.js';
 import automationRoutes from './routes/automation.js';
 import diagnosticsRoutes from './routes/diagnostics.js';
 import { asyncHandler, ApiError } from './middleware/errorHandler.js';
@@ -216,7 +223,25 @@ app.use(
 // Cookie parsing (required for CSRF and auth cookies)
 app.use(cookieParser());
 
-// Body parsing
+// Body parsing — SendGrid webhook needs raw body for signature verification
+import sendgridWebhookRoutes from './routes/webhooks/sendgrid.js';
+
+app.use(
+  '/api/webhooks/sendgrid',
+  express.raw({ type: 'application/json' }),
+  (req, _res, next) => {
+    const buf = req.body as Buffer;
+    (req as express.Request & { rawBody?: Buffer }).rawBody = buf;
+    try {
+      req.body = JSON.parse(buf.toString('utf8'));
+    } catch {
+      req.body = [];
+    }
+    next();
+  },
+  sendgridWebhookRoutes
+);
+
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
@@ -304,11 +329,11 @@ app.get('/api/seed-services-public', async (req, res) => {
           'Preparation of statutory annual accounts in accordance with UK GAAP or FRS 102, including all disclosures, notes, and electronic filing with Companies House.',
         longDescription:
           "We prepare your company's statutory annual accounts from your bookkeeping records, ensuring full compliance with UK GAAP, FRS 102, or FRS 105 as applicable. Our service includes: trial balance review, statutory format accounts (Statement of Financial Position, Statement of Comprehensive Income, Directors' Report, Notes to the Accounts), iXBRL tagging where required, and electronic submission to Companies House before the statutory deadline. We also advise on late filing penalties, audit exemptions, and dormant company considerations.",
-        basePrice: 850,
+        basePrice: 71,
         baseHours: 6,
         pricingModel: 'FIXED',
-        frequencyOptions: 'ANNUALLY',
-        defaultFrequency: 'ANNUALLY',
+        frequencyOptions: 'MONTHLY',
+        defaultFrequency: 'MONTHLY',
         applicableEntityTypes: 'LIMITED_COMPANY,LLP',
         tags: 'annual-accounts,companies-house,uk-gaap,frs-102,compliance',
         isPopular: true,
@@ -322,11 +347,11 @@ app.get('/api/seed-services-public', async (req, res) => {
           'Preparation and electronic submission of your Corporation Tax Return (CT600) to HMRC, including tax computations and iXBRL tagging.',
         longDescription:
           "We calculate your company's corporation tax liability and prepare the CT600 return for electronic submission to HMRC. This includes: review of profits chargeable to corporation tax, capital allowances computations (AIA, FYA, WDA), loss relief claims, group relief considerations, R&D tax relief screening, and iXBRL tagging of computations and accounts. We ensure payment deadlines are met (9 months and 1 day after the end of the accounting period) and advise on quarterly instalment payments (QIPs) for large companies.",
-        basePrice: 650,
+        basePrice: 54,
         baseHours: 4,
         pricingModel: 'FIXED',
-        frequencyOptions: 'ANNUALLY',
-        defaultFrequency: 'ANNUALLY',
+        frequencyOptions: 'MONTHLY',
+        defaultFrequency: 'MONTHLY',
         applicableEntityTypes: 'LIMITED_COMPANY',
         tags: 'corporation-tax,ct600,hmrc,tax-computation',
         isPopular: true,
@@ -343,8 +368,8 @@ app.get('/api/seed-services-public', async (req, res) => {
         basePrice: 1200,
         baseHours: 8,
         pricingModel: 'FIXED',
-        frequencyOptions: 'ONE_TIME',
-        defaultFrequency: 'ONE_TIME',
+        frequencyOptions: 'ANNUALLY',
+        defaultFrequency: 'ANNUALLY',
         applicableEntityTypes: 'LIMITED_COMPANY,LLP',
         tags: 'catch-up,overdue,late-filing,penalty-negotiation',
         regulatoryNotes:
@@ -360,8 +385,8 @@ app.get('/api/seed-services-public', async (req, res) => {
         basePrice: 8,
         baseHours: 0.5,
         pricingModel: 'FIXED',
-        frequencyOptions: 'ANNUALLY',
-        defaultFrequency: 'ANNUALLY',
+        frequencyOptions: 'MONTHLY',
+        defaultFrequency: 'MONTHLY',
         applicableEntityTypes: 'LIMITED_COMPANY,LLP',
         tags: 'confirmation-statement,cs01,companies-house',
         regulatoryNotes:
@@ -393,8 +418,8 @@ app.get('/api/seed-services-public', async (req, res) => {
         basePrice: 125,
         baseHours: 1,
         pricingModel: 'FIXED',
-        frequencyOptions: 'ONE_TIME',
-        defaultFrequency: 'ONE_TIME',
+        frequencyOptions: 'ANNUALLY',
+        defaultFrequency: 'ANNUALLY',
         applicableEntityTypes: 'LIMITED_COMPANY',
         tags: 'formation,incorporation,in01,companies-house',
         isPopular: true,
@@ -408,11 +433,11 @@ app.get('/api/seed-services-public', async (req, res) => {
           'Client due diligence and AML compliance checks including ID verification, source of funds checks, and risk assessment.',
         longDescription:
           'We conduct comprehensive Anti-Money Laundering (AML) checks to satisfy your regulatory obligations under the Money Laundering, Terrorist Financing and Transfer of Funds (Information on the Payer) Regulations 2017 (as amended). This includes: identity verification using government-issued documents, proof of address verification, Politically Exposed Persons (PEP) and sanctions screening, source of funds/source of wealth checks where required, and risk profiling (low, medium, high). We provide you with a documented risk assessment and ongoing monitoring recommendations to ensure your firm remains compliant with the requirements of your supervisory body (e.g., ICAEW, ACCA, AAT, HMRC).',
-        basePrice: 75,
+        basePrice: 6,
         baseHours: 0.5,
         pricingModel: 'FIXED',
-        frequencyOptions: 'ONE_TIME',
-        defaultFrequency: 'ONE_TIME',
+        frequencyOptions: 'MONTHLY',
+        defaultFrequency: 'MONTHLY',
         applicableEntityTypes: 'LIMITED_COMPANY,SOLE_TRADER,PARTNERSHIP,LLP',
         tags: 'aml,compliance,dued diligence,kyc,pep-check',
         regulatoryNotes:
@@ -789,6 +814,7 @@ app.use('/api/companies-house', extractTenant, companiesHouseRoutes);
 app.use('/api/cover-letter-templates', extractTenant, coverLetterTemplateRoutes);
 app.use('/api/analytics', extractTenant, analyticsRoutes);
 app.use('/api/touchpoints', extractTenant, touchpointRoutes);
+app.use('/api/ai', extractTenant, aiRoutes);
 
 // API status endpoint
 app.get('/api/status', (req, res) => {

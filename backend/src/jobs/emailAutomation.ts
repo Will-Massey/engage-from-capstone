@@ -1,5 +1,5 @@
 import { prisma } from '../config/database.js';
-import { EmailService } from '../services/emailService.js';
+import { tenantMailer } from '../services/tenantMailer.js';
 import logger from '../config/logger.js';
 
 /**
@@ -170,17 +170,22 @@ P.S. If you've decided to go in a different direction, I'd appreciate any feedba
  */
 async function sendFollowUp(
   proposal: any,
-  config: FollowUpConfig,
-  emailService: EmailService
+  config: FollowUpConfig
 ): Promise<boolean> {
   try {
     const { subject, body } = getEmailTemplate(config.template, proposal);
 
-    const result = await emailService.sendEmail({
-      to: proposal.client.contactEmail,
-      subject,
-      text: body,
-      html: body.replace(/\n/g, '<br>'),
+    const result = await tenantMailer.send({
+      tenantId: proposal.tenantId,
+      messageType: 'FOLLOW_UP',
+      message: {
+        to: proposal.client.contactEmail,
+        subject,
+        text: body,
+        html: body.replace(/\n/g, '<br>'),
+        replyTo: proposal.createdBy?.email,
+      },
+      relatedIds: { proposalId: proposal.id, clientId: proposal.clientId },
     });
 
     if (result.success) {
@@ -229,44 +234,17 @@ export async function runEmailAutomation(): Promise<{
   };
 
   try {
-    // Initialize email service
-    const emailProvider = (process.env.EMAIL_PROVIDER as any) || 'smtp';
-    const emailConfig: any = {
-      provider: emailProvider,
-      fromName: process.env.EMAIL_FROM_NAME || 'Engage',
-      fromEmail: process.env.EMAIL_FROM || 'noreply@engagebycapstone.co.uk',
-    };
-
-    if (emailProvider === 'smtp') {
-      emailConfig.smtp = {
-        host: process.env.SMTP_HOST || '',
-        port: parseInt(process.env.SMTP_PORT || '587'),
-        secure: process.env.SMTP_SECURE === 'true',
-        user: process.env.SMTP_USER || '',
-        pass: process.env.SMTP_PASS || '',
-      };
-    }
-
-    // Skip if email not configured
-    if (!emailConfig.smtp?.host && !emailConfig.sendgrid?.apiKey) {
-      logger.warn('Email not configured, skipping automation');
-      return { success: false, ...stats };
-    }
-
-    const emailService = new EmailService(emailConfig);
-
-    // Get proposals that have been sent but not accepted/declined
     const now = new Date();
-    const maxAge = new Date(now.getTime() - 35 * 24 * 60 * 60 * 1000); // 35 days ago
+    const maxAge = new Date(now.getTime() - 35 * 24 * 60 * 60 * 1000);
 
     const proposals = await prisma.proposal.findMany({
       where: {
         status: { in: ['SENT', 'VIEWED'] },
         sentAt: {
-          gte: maxAge, // Not older than 35 days
+          gte: maxAge,
           lte: now,
         },
-        publicAccessEnabled: true, // Must have public access enabled
+        publicAccessEnabled: true,
       },
       include: {
         client: true,
@@ -277,6 +255,7 @@ export async function runEmailAutomation(): Promise<{
             firstName: true,
             lastName: true,
             role: true,
+            email: true,
           },
         },
       },
@@ -308,7 +287,7 @@ export async function runEmailAutomation(): Promise<{
       }
 
       // Send the follow-up email
-      const sent = await sendFollowUp(proposal, followUpConfig, emailService);
+      const sent = await sendFollowUp(proposal, followUpConfig);
 
       if (sent) {
         stats.sent++;
@@ -357,32 +336,13 @@ export async function testEmailAutomation(proposalId: string): Promise<boolean> 
       return false;
     }
 
-    const emailProvider = (process.env.EMAIL_PROVIDER as any) || 'smtp';
-    const emailConfig: any = {
-      provider: emailProvider,
-      fromName: process.env.EMAIL_FROM_NAME || 'Engage',
-      fromEmail: process.env.EMAIL_FROM || 'noreply@engagebycapstone.co.uk',
-    };
-
-    if (emailProvider === 'smtp') {
-      emailConfig.smtp = {
-        host: process.env.SMTP_HOST || '',
-        port: parseInt(process.env.SMTP_PORT || '587'),
-        secure: process.env.SMTP_SECURE === 'true',
-        user: process.env.SMTP_USER || '',
-        pass: process.env.SMTP_PASS || '',
-      };
-    }
-
-    const emailService = new EmailService(emailConfig);
-
     const config: FollowUpConfig = {
       daysAfterSend: 3,
       subject: 'Test follow-up',
       template: 'gentle',
     };
 
-    return await sendFollowUp(proposal, config, emailService);
+    return await sendFollowUp(proposal, config);
   } catch (error) {
     logger.error('Test email automation failed:', error);
     return false;

@@ -186,12 +186,33 @@ export class CompaniesHouseService {
   }
 }
 
+const PLACEHOLDER_KEYS = new Set([
+  '',
+  'your_api_key_here',
+  'changeme',
+  'xxx',
+  'test',
+  'null',
+  'undefined',
+]);
+
+function normalizeApiKey(raw: string | undefined): string | null {
+  if (!raw) return null;
+  const trimmed = raw.trim().replace(/^['"]|['"]$/g, '');
+  if (!trimmed || trimmed.length < 8) return null;
+  if (PLACEHOLDER_KEYS.has(trimmed.toLowerCase())) return null;
+  if (/your[_-]?api[_-]?key/i.test(trimmed)) return null;
+  return trimmed;
+}
+
 // Factory function for creating service from environment
 export function createCompaniesHouseService(): CompaniesHouseService | null {
-  const apiKey = process.env.COMPANIES_HOUSE_API_KEY;
+  const apiKey = normalizeApiKey(process.env.COMPANIES_HOUSE_API_KEY);
 
   if (!apiKey) {
-    logger.warn('Companies House API key not configured');
+    logger.warn(
+      'Companies House API key not configured — set COMPANIES_HOUSE_API_KEY in backend/.env (get a free key at https://developer.company-information.service.gov.uk/)'
+    );
     return null;
   }
 

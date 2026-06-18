@@ -592,6 +592,12 @@ router.put(
           weeklySummary: z.boolean().optional(),
         })
         .optional(),
+      proposals: z
+        .object({
+          defaultExpiryDays: z.number().int().min(1).max(365).optional(),
+          renewalReminderDays: z.number().int().min(1).max(90).optional(),
+        })
+        .optional(),
       professionalBody: z
         .enum(['ACCA', 'ICAEW', 'ICAS', 'CIMA', 'AAT', 'CPAA', 'OTHER'])
         .optional(),
@@ -630,7 +636,10 @@ router.put(
       vat: data.vat || currentSettings.vat,
       branding: data.branding || currentSettings.branding,
       email: data.email || currentSettings.email,
-      notifications: data.notifications || currentSettings.notifications,
+      notifications: data.notifications ?? currentSettings.notifications,
+      proposals: data.proposals
+        ? { ...(currentSettings.proposals || {}), ...data.proposals }
+        : currentSettings.proposals,
       professionalBody: data.professionalBody || currentSettings.professionalBody,
       companyRegistration: data.companyRegistration || currentSettings.companyRegistration,
       phone: data.phone || currentSettings.phone,

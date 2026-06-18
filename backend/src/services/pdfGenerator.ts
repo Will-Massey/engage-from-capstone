@@ -433,29 +433,23 @@ ${proposal.tenant.name}`;
     // Determine effective frequency using name-based overrides for known services
     const getEffectiveFrequency = (s: (typeof proposal.services)[0]): string => {
       const name = s.name.toLowerCase();
-      // Annual services — year-end compliance and filings
+      // Annual services — year-end compliance billed annually (not monthly retainer)
       if (
-        name.includes('annual accounts') ||
-        name.includes('ct600') ||
-        name.includes('corporation tax return') ||
-        name.includes('confirmation statement') ||
         name.includes('dormant company accounts') ||
         name.includes('dormant accounts') ||
-        name.includes('self assessment') ||
-        name.includes('self-assessment') ||
-        name.includes('p11d') ||
-        name.includes('audit services') ||
-        name.includes('aml check') ||
-        name.includes('anti-money laundering')
-      ) {
-        return 'ANNUALLY';
-      }
-      // One-off services — project-based or setup work
-      if (
-        name.includes('xero setup') ||
         name.includes('prior year') ||
         name.includes('prior accounts') ||
         name.includes('company formation') ||
+        name.includes('self assessment') ||
+        name.includes('self-assessment') ||
+        name.includes('p11d') ||
+        name.includes('audit services')
+      ) {
+        return 'ANNUALLY';
+      }
+      // One-off / project services
+      if (
+        name.includes('xero setup') ||
         name.includes('dext setup') ||
         name.includes('dext subscription') ||
         name.includes('company valuation') ||
@@ -474,6 +468,17 @@ ${proposal.tenant.name}`;
         name.includes('cash flow forecasting')
       ) {
         return 'ONE_TIME';
+      }
+      // Compliance retainers (annual accounts, CT600, CS01, AML) — monthly instalments
+      if (
+        name.includes('annual accounts') ||
+        name.includes('ct600') ||
+        name.includes('corporation tax return') ||
+        name.includes('confirmation statement') ||
+        name.includes('aml check') ||
+        name.includes('anti-money laundering')
+      ) {
+        return 'MONTHLY';
       }
       return s.billingFrequency || s.frequency;
     };

@@ -38,6 +38,16 @@ services:
         value: https://engage-backend-e1ue.onrender.com
       - key: EMAIL_PROVIDER
         value: smtp
+      - key: SENDGRID_API_KEY
+        sync: false
+      - key: SENDGRID_WEBHOOK_VERIFICATION_KEY
+        sync: false
+      - key: EMAIL_PLATFORM_FROM
+        value: notifications@engage.capstonesoftware.co.uk
+      - key: EMAIL_PLATFORM_FROM_NAME
+        value: Engage by Capstone
+      - key: EMAIL_DEFAULT_REPLY_TO_FALLBACK
+        value: support@capstonesoftware.co.uk
       - key: SMTP_HOST
         value: smtp.123-reg.co.uk
       - key: SMTP_PORT
@@ -58,6 +68,10 @@ services:
         value: /var/data/uploads
       - key: COMPANIES_HOUSE_API_KEY
         sync: false
+      - key: XAI_API_KEY
+        sync: false
+      - key: XAI_MODEL
+        value: grok-3-mini
       - key: STRIPE_PUBLISHABLE_KEY
         sync: false
       - key: STRIPE_SECRET_KEY

@@ -26,7 +26,7 @@ import {
   getClientByPortalToken,
   getClientProposalsForPortal,
 } from '../services/proposalSharingService.js';
-import { createEmailService } from '../services/emailService.js';
+import { tenantMailer } from '../services/tenantMailer.js';
 import PDFGenerator from '../services/pdfGenerator.js';
 import logger from '../config/logger.js';
 import {
@@ -209,33 +209,31 @@ router.post(
       shareUrl = `${baseUrl}/proposals/view/${proposal.shareToken}`;
     }
 
-    // Initialize email service
-    const emailService = createEmailService();
-    if (!emailService) {
-      throw new ApiError('EMAIL_NOT_CONFIGURED', 'Email service not configured', 500);
-    }
-
     // Generate PDF if needed
     let pdfAttachment: Buffer | undefined;
     if (includePdf) {
       pdfAttachment = await PDFGenerator.generateProposal(id);
     }
 
-    // Send email
+    // Send email via tenant mailer (platform SendGrid or custom SMTP/OAuth)
     const senderName = `${proposal.createdBy.firstName} ${proposal.createdBy.lastName}`;
-    const result = await emailService.sendProposalEmail({
-      to,
-      clientName: proposal.client.name,
-      proposalTitle: proposal.title,
-      proposalReference: proposal.reference,
-      viewLink: shareUrl,
-      senderName,
-      senderPosition: proposal.createdBy.role,
-      senderEmail: (proposal.createdBy as any).email,
-      tenantName: (proposal as any).tenant?.name || 'Unknown',
-      validUntil: new Date(proposal.validUntil).toLocaleDateString('en-GB'),
-      attachment: pdfAttachment,
-    });
+    const result = await tenantMailer.sendProposalEmail(
+      tenant.id,
+      {
+        to,
+        clientName: proposal.client.name,
+        proposalTitle: proposal.title,
+        proposalReference: proposal.reference,
+        viewLink: shareUrl,
+        senderName,
+        senderPosition: proposal.createdBy.role,
+        senderEmail: (proposal.createdBy as any).email,
+        tenantName: (proposal as any).tenant?.name || tenant.name,
+        validUntil: new Date(proposal.validUntil).toLocaleDateString('en-GB'),
+        attachment: pdfAttachment,
+      },
+      { proposalId: id, clientId: proposal.clientId }
+    );
 
     if (!result.success) {
       throw new ApiError('EMAIL_FAILED', result.error || 'Failed to send email', 500);
@@ -553,29 +551,24 @@ router.post(
 
     // Send acceptance notification to practice
     try {
-      const emailService = createEmailService();
-      if (emailService) {
-        // Get proposal creator details for notification
-        const fullProposal = await prisma.proposal.findUnique({
-          where: { id: proposal.id },
-          include: {
-            createdBy: {
-              select: { email: true, firstName: true, lastName: true },
-            },
-            client: true,
+      const fullProposal = await prisma.proposal.findUnique({
+        where: { id: proposal.id },
+        include: {
+          createdBy: {
+            select: { email: true, firstName: true, lastName: true },
           },
-        });
+          client: true,
+        },
+      });
 
-        if (fullProposal?.createdBy?.email) {
-          // Generate signed proposal PDF
-          const { PDFGenerator } = await import('../services/pdfGenerator.js');
-          const proposalPdf = await PDFGenerator.generateProposal(proposal.id);
+      if (fullProposal?.createdBy?.email) {
+        const { PDFGenerator } = await import('../services/pdfGenerator.js');
+        const proposalPdf = await PDFGenerator.generateProposal(proposal.id);
+        const signatureImage = await getSignatureImage(result.signatureId!);
 
-          // Get signature image
-          const signatureImage = await getSignatureImage(result.signatureId!);
-
-          // Send notification email
-          await emailService.sendAcceptanceNotification({
+        const notifyResult = await tenantMailer.sendAcceptanceNotification(
+          proposal.tenantId,
+          {
             to: fullProposal.createdBy.email,
             clientName: fullProposal.client.name,
             proposalTitle: fullProposal.title,
@@ -588,15 +581,19 @@ router.post(
             signaturePng: signatureImage
               ? Buffer.from(signatureImage.split(',')[1], 'base64')
               : undefined,
-          });
+            replyTo: parsed.signerEmail,
+          },
+          { proposalId: proposal.id, clientId: fullProposal.clientId }
+        );
 
-          // Update acceptance notified timestamp
+        if (notifyResult.success) {
           await prisma.proposal.update({
             where: { id: proposal.id },
             data: { acceptanceNotifiedAt: new Date() },
           });
-
           logger.info(`Acceptance notification sent for proposal ${proposal.id}`);
+        } else {
+          logger.error(`Acceptance notification failed: ${notifyResult.error}`);
         }
       }
     } catch (error) {

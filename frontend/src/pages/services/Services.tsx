@@ -13,7 +13,7 @@ import {
 import { apiClient } from '../../utils/api';
 import { useAuthStore } from '../../stores/authStore';
 import toast from 'react-hot-toast';
-import { SkeletonCard } from '../../components/skeleton/SkeletonCard';
+import { formatServiceCategory, SERVICE_CATEGORY_OPTIONS } from '../../utils/serviceCategoryLabels';
 
 interface Service {
   id: string;
@@ -274,13 +274,11 @@ const Services = () => {
                 onChange={(e) => setFormData({ ...formData, category: e.target.value })}
                 className="mt-1 input-field w-full"
               >
-                <option value="COMPLIANCE">Compliance</option>
-                <option value="ADVISORY">Advisory</option>
-                <option value="TAX">Tax</option>
-                <option value="BOOKKEEPING">Bookkeeping</option>
-                <option value="CONSULTING">Consulting</option>
-                <option value="TECHNICAL">Technical</option>
-                <option value="PAYROLL">Payroll</option>
+                {SERVICE_CATEGORY_OPTIONS.map(({ value, label }) => (
+                  <option key={value} value={value}>
+                    {label}
+                  </option>
+                ))}
               </select>
             </div>
           </div>
@@ -445,14 +443,12 @@ const Services = () => {
             onChange={(e) => setCategoryFilter(e.target.value)}
             className="input-field w-48"
           >
-            <option value="">All Categories</option>
-            <option value="COMPLIANCE">Compliance</option>
-            <option value="ADVISORY">Advisory</option>
-            <option value="TAX">Tax</option>
-            <option value="BOOKKEEPING">Bookkeeping</option>
-            <option value="CONSULTING">Consulting</option>
-            <option value="TECHNICAL">Technical</option>
-            <option value="PAYROLL">Payroll</option>
+            <option value="">All categories</option>
+            {SERVICE_CATEGORY_OPTIONS.map(({ value, label }) => (
+              <option key={value} value={value}>
+                {label}
+              </option>
+            ))}
           </select>
         </div>
       </div>
@@ -471,7 +467,7 @@ const Services = () => {
                 <span
                   className={`px-2 py-1 text-xs font-medium rounded-full ${categoryColors[service.category] || 'bg-slate-100 text-slate-800'}`}
                 >
-                  {service.category}
+                  {formatServiceCategory(service.category)}
                 </span>
                 <div className="flex items-center space-x-1">
                   {service.isPopular && <StarIcon className="h-4 w-4 text-yellow-400" />}

@@ -7,6 +7,7 @@ import { v4 as uuidv4 } from 'uuid';
 import { prisma } from '../config/database.js';
 import logger from '../config/logger.js';
 import { saveSignaturePng, readSignature } from './fileStorage.js';
+import { calculateRenewalDate } from '../jobs/renewalReminders.js';
 
 // Generate unique share token
 export function generateShareToken(): string {
@@ -223,6 +224,13 @@ export async function recordElectronicSignature(
       data.signatureData
     );
 
+    const proposalMeta = await prisma.proposal.findUnique({
+      where: { id: data.proposalId },
+      select: { contractStartDate: true, clientId: true },
+    });
+
+    const renewalAnchor = proposalMeta?.contractStartDate || new Date();
+
     // Create signature record with file path and forensic metadata
     const signature = await prisma.proposalSignature.create({
       data: {
@@ -257,18 +265,17 @@ export async function recordElectronicSignature(
         signature: data.signatureData,
         termsAccepted: true,
         termsAcceptedAt: new Date(),
+        renewalDate: calculateRenewalDate(renewalAnchor),
+        renewalReminderSent: false,
+        renewalReminderSentAt: null,
       },
     });
 
     // Kick off client touchpoint workflow (welcome + AML in parallel)
     try {
-      const proposalForTrigger = await prisma.proposal.findUnique({
-        where: { id: data.proposalId },
-        select: { clientId: true },
-      });
-      if (proposalForTrigger?.clientId) {
+      if (proposalMeta?.clientId) {
         const { triggerProposalAccepted } = await import('../jobs/touchpointEngine.js');
-        await triggerProposalAccepted(proposalForTrigger.clientId, data.tenantId);
+        await triggerProposalAccepted(proposalMeta.clientId, data.tenantId);
       }
     } catch (e) {
       logger.warn('Failed to trigger touchpoint workflow on proposal acceptance', e);
