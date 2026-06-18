@@ -160,8 +160,12 @@ const PublicProposalView = () => {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600"></div>
+      <div className="min-h-screen bg-slate-50 dark:bg-slate-900 py-8 px-4">
+        <div className="max-w-4xl mx-auto space-y-4 animate-pulse">
+          <div className="h-24 rounded-xl bg-white dark:bg-slate-800" />
+          <div className="h-64 rounded-xl bg-white dark:bg-slate-800" />
+          <div className="h-40 rounded-xl bg-white dark:bg-slate-800" />
+        </div>
       </div>
     );
   }
@@ -509,6 +513,19 @@ const PublicProposalView = () => {
           )}
         </div>
 
+        {/* Mobile sticky accept bar */}
+        {!isAccepted && !isExpired && !showSignature && (
+          <div className="fixed bottom-0 left-0 right-0 z-40 p-4 bg-white/95 dark:bg-slate-900/95 border-t border-slate-200 dark:border-slate-700 backdrop-blur-md sm:hidden">
+            <button
+              type="button"
+              onClick={handleAccept}
+              disabled={!termsAccepted}
+              className="btn-primary w-full py-3 text-base"
+            >
+              Review & sign proposal
+            </button>
+          </div>
+        )}
       </div>
     </div>
   );

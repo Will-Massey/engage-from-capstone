@@ -235,14 +235,15 @@ async function sendTouchpoint(tp: any): Promise<SendResult> {
   }
 
   if (channel === 'SMS') {
-    // Basic SMS support (stub). In production, integrate Twilio / similar here.
-    const smsEnabled = process.env.SMS_PROVIDER === 'twilio' && process.env.TWILIO_ACCOUNT_SID;
-    if (smsEnabled && client.contactPhone) {
-      // TODO: integrate real Twilio client
-      logger.info(`[SMS] (stub) Sending to ${client.contactPhone}: ${subject}`);
-    } else {
-      logger.info(`[SMS disabled or no phone] Would have sent: ${subject}`);
+    const { sendTwilioSms } = await import('../utils/twilioSms.js');
+    if (client.contactPhone) {
+      const sent = await sendTwilioSms(client.contactPhone, `${subject}\n\n${textBody}`.slice(0, 1600));
+      if (sent) {
+        logger.info(`[SMS] Sent touchpoint to ${client.contactPhone}`);
+        return { success: true };
+      }
     }
+    logger.info(`[SMS] Skipped — no phone or Twilio not configured: ${subject}`);
     return { success: true };
   }
 

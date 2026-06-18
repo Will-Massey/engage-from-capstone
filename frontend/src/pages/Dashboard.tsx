@@ -92,6 +92,7 @@ const Dashboard = () => {
     recentActivity: defaultRecentActivity,
   });
   const [attentionClients, setAttentionClients] = useState<any[]>([]);
+  const [renewalProposals, setRenewalProposals] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [dateRange, setDateRange] = useState('30days');
 
@@ -163,6 +164,28 @@ const Dashboard = () => {
         const attentionStages = ['AML_PENDING', 'INFO_REQUESTED', 'ENGAGEMENT_LETTER_SENT'];
         const needing = (clientsRes.data || []).filter((c: any) => attentionStages.includes(c.lifecycleStage));
         setAttentionClients(needing.slice(0, 8));
+      } catch {}
+
+      try {
+        const allProposals = (await timeout(
+          apiClient.getProposals({ limit: 50, status: 'SENT' }) as Promise<any>,
+          10000
+        )) as any;
+        const viewed = (await timeout(
+          apiClient.getProposals({ limit: 50, status: 'VIEWED' }) as Promise<any>,
+          10000
+        )) as any;
+        const combined = [...(allProposals.data || []), ...(viewed.data || [])];
+        const now = Date.now();
+        const in14Days = 14 * 24 * 60 * 60 * 1000;
+        const expiring = combined
+          .filter((p: any) => p.validUntil && new Date(p.validUntil).getTime() - now <= in14Days)
+          .sort(
+            (a: any, b: any) =>
+              new Date(a.validUntil).getTime() - new Date(b.validUntil).getTime()
+          )
+          .slice(0, 6);
+        setRenewalProposals(expiring);
       } catch {}
     } catch (error) {
       // Error handled by UI - will use default empty data
@@ -320,7 +343,7 @@ const Dashboard = () => {
           </div>
           <div className="flex gap-2">
             <Link to="/clients" className="btn-secondary text-sm">View clients</Link>
-            <Link to="/settings" className="btn-primary text-sm">Manage automation</Link>
+            <Link to="/settings?tab=automation" className="btn-primary text-sm">Manage automation</Link>
           </div>
         </div>
       </div>
@@ -352,6 +375,38 @@ const Dashboard = () => {
             ))}
           </div>
           <p className="mt-3 text-xs text-slate-500">These clients are in stages that usually require action or have pending automated touchpoints.</p>
+        </div>
+      )}
+
+      {/* Renewal pipeline — proposals expiring soon */}
+      {renewalProposals.length > 0 && (
+        <div className="glass-tile p-6 border border-blue-200 dark:border-blue-900/50">
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-2">
+              <CalendarIcon className="h-5 w-5 text-blue-500" />
+              <h2 className="font-semibold text-lg">Renewals & expiring proposals</h2>
+            </div>
+            <Link to="/proposals" className="text-sm text-primary-600 hover:underline">
+              View all proposals
+            </Link>
+          </div>
+          <div className="space-y-2">
+            {renewalProposals.map((p: any) => (
+              <Link
+                key={p.id}
+                to={`/proposals/${p.id}`}
+                className="flex items-center justify-between rounded-xl border border-slate-200 dark:border-slate-700 px-4 py-3 hover:border-blue-300 hover:bg-blue-50/40 dark:hover:bg-blue-950/20 transition"
+              >
+                <div>
+                  <div className="font-medium text-sm">{p.title || p.reference}</div>
+                  <div className="text-xs text-slate-500">{p.client?.name}</div>
+                </div>
+                <div className="text-xs text-blue-600 dark:text-blue-300 font-medium">
+                  Expires {new Date(p.validUntil).toLocaleDateString('en-GB')}
+                </div>
+              </Link>
+            ))}
+          </div>
         </div>
       )}
 

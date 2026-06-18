@@ -42,6 +42,7 @@ import {
   SparklesIcon,
 } from '@heroicons/react/24/outline';
 import { AiPanel, AiDraftPreview, showAiError } from '../ai/AiPanel';
+import ProposalHealthCard from '../ai/ProposalHealthCard';
 import { AI_COPILOT } from '../../config/aiCopilot';
 
 // Types
@@ -355,6 +356,8 @@ export default function ProposalBuilder({ proposalId }: ProposalBuilderProps) {
   const [aiSuggestions, setAiSuggestions] = useState<any>(null);
   const [aiCoverLoading, setAiCoverLoading] = useState(false);
   const [aiCoverDraft, setAiCoverDraft] = useState<string | null>(null);
+  const [showClientPreview, setShowClientPreview] = useState(false);
+  const [validationErrors, setValidationErrors] = useState<string[]>([]);
 
   const todayIso = format(new Date(), 'yyyy-MM-dd');
 
@@ -936,21 +939,24 @@ export default function ProposalBuilder({ proposalId }: ProposalBuilderProps) {
     return error?.response?.data?.error?.message || error.message || 'Request failed';
   };
 
+  const collectValidationErrors = (): string[] => {
+    const errors: string[] = [];
+    if (!selectedClient) errors.push('Select a client');
+    if (selectedServices.length === 0) errors.push('Add at least one service');
+    if (!proposalTitle.trim()) errors.push('Enter a proposal title');
+    if (!validUntil) errors.push('Set a proposal expiry date');
+    if (validUntil && validUntil < todayIso) errors.push('Expiry date must be today or in the future');
+    if (coverLetter.trim().length > 0 && coverLetter.trim().length < 40) {
+      errors.push('Cover letter is very short — consider expanding or using a tone preset');
+    }
+    return errors;
+  };
+
   const saveProposal = async () => {
-    if (!selectedClient) {
-      toast.error('Please select a client');
-      return;
-    }
-    if (selectedServices.length === 0) {
-      toast.error('Please add at least one service');
-      return;
-    }
-    if (!proposalTitle) {
-      toast.error('Please enter a proposal title');
-      return;
-    }
-    if (!validUntil) {
-      toast.error('Please set a proposal expiry date');
+    const errors = collectValidationErrors();
+    setValidationErrors(errors);
+    if (errors.length > 0) {
+      toast.error(errors[0]);
       return;
     }
 
@@ -969,7 +975,7 @@ export default function ProposalBuilder({ proposalId }: ProposalBuilderProps) {
       }));
 
       const proposalData = {
-        clientId: selectedClient.id,
+        clientId: selectedClient!.id,
         title: proposalTitle,
         services: servicesData,
         ...(validUntil ? { validUntil: `${validUntil}T12:00:00.000Z` } : {}),
@@ -980,8 +986,8 @@ export default function ProposalBuilder({ proposalId }: ProposalBuilderProps) {
           coverLetter.trim() ||
           generateCoverLetterForTone({
             tone: coverLetterTone,
-            addresseeName: coverLetterAddressee(selectedClient),
-            companyName: selectedClient.name,
+            addresseeName: coverLetterAddressee(selectedClient!),
+            companyName: selectedClient!.name,
             practiceName: tenant?.name || 'Our practice',
             senderName: `${user?.firstName || ''} ${user?.lastName || ''}`.trim() || undefined,
             senderPosition: (user as any)?.jobTitle || undefined,
@@ -1004,6 +1010,18 @@ export default function ProposalBuilder({ proposalId }: ProposalBuilderProps) {
       toast.error(parseApiError(error));
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const previewPdf = async () => {
+    if (!isEditMode || !proposalId) {
+      setShowClientPreview(true);
+      return;
+    }
+    try {
+      await apiClient.downloadProposalPdf(proposalId, proposalTitle || undefined);
+    } catch {
+      toast.error('Could not generate PDF preview');
     }
   };
 
@@ -1719,16 +1737,67 @@ export default function ProposalBuilder({ proposalId }: ProposalBuilderProps) {
         </div>
       </div>
 
+      {validationErrors.length > 0 && (
+        <div className="rounded-xl border border-amber-200 bg-amber-50/80 dark:bg-amber-950/20 dark:border-amber-800 p-4">
+          <p className="text-sm font-medium text-amber-900 dark:text-amber-200">Before you send</p>
+          <ul className="mt-2 text-sm text-amber-800 dark:text-amber-300 list-disc pl-5 space-y-1">
+            {validationErrors.map((e) => (
+              <li key={e}>{e}</li>
+            ))}
+          </ul>
+        </div>
+      )}
+
+      {isEditMode && proposalId && aiConfigured && (
+        <ProposalHealthCard proposalId={proposalId} />
+      )}
+
+      {!isEditMode && aiConfigured && (
+        <div className="glass-tile p-4 border border-violet-200 dark:border-violet-800/50">
+          <p className="text-sm text-slate-700 dark:text-slate-200">
+            <SparklesIcon className="inline h-4 w-4 text-violet-500 mr-1" />
+            {AI_COPILOT.name} tip: After creating the proposal, open it to get a health score and follow-up suggestions.
+          </p>
+        </div>
+      )}
+
+      {showClientPreview && (
+        <div className="card p-5 border-2 border-slate-200 dark:border-slate-600">
+          <div className="flex items-center justify-between mb-3">
+            <h3 className="font-semibold text-slate-900 dark:text-white">Client preview</h3>
+            <button type="button" onClick={() => setShowClientPreview(false)} className="text-sm text-slate-500 hover:text-slate-700">
+              Close
+            </button>
+          </div>
+          <p className="text-xs text-slate-500 mb-2">From {tenant?.name}</p>
+          <h4 className="text-lg font-bold">{proposalTitle || 'Proposal title'}</h4>
+          <p className="text-sm text-slate-600 mt-2 whitespace-pre-wrap">{coverLetter.slice(0, 600)}{coverLetter.length > 600 ? '…' : ''}</p>
+          <div className="mt-4 pt-4 border-t border-slate-200 dark:border-slate-600">
+            <InvestmentSummaryBands summary={summary} />
+          </div>
+        </div>
+      )}
+
       {/* Actions */}
-      <div className="flex justify-between">
+      <div className="flex flex-wrap justify-between gap-3">
         <button data-testid="review-back-button" onClick={() => setCurrentStep(2)} className="btn-secondary">
           <ArrowLeftIcon className="w-5 h-5 mr-2" />
           Back
         </button>
-        <button data-testid="create-proposal-button" onClick={saveProposal} disabled={isLoading} className="btn-primary">
-          {isLoading ? 'Saving...' : isEditMode ? 'Save Changes' : 'Create Proposal'}
-          <ArrowRightIcon className="w-5 h-5 ml-2" />
-        </button>
+        <div className="flex flex-wrap gap-2">
+          <button type="button" onClick={() => setShowClientPreview((v) => !v)} className="btn-secondary text-sm">
+            {showClientPreview ? 'Hide preview' : 'Preview for client'}
+          </button>
+          {isEditMode && (
+            <button type="button" onClick={previewPdf} className="btn-secondary text-sm">
+              Download PDF
+            </button>
+          )}
+          <button data-testid="create-proposal-button" onClick={saveProposal} disabled={isLoading} className="btn-primary">
+            {isLoading ? 'Saving...' : isEditMode ? 'Save Changes' : 'Create Proposal'}
+            <ArrowRightIcon className="w-5 h-5 ml-2" />
+          </button>
+        </div>
       </div>
     </div>
   );

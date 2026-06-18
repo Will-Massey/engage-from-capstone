@@ -21,7 +21,7 @@ import { apiClient } from '../../utils/api';
 import { useAuthStore } from '../../stores/authStore';
 import { format, formatDistanceToNow } from 'date-fns';
 import toast from 'react-hot-toast';
-import { SkeletonCard } from '../../components/skeleton/SkeletonCard';
+import EmptyState from '../../components/ui/EmptyState';
 
 // Prevent tree-shaking
 const _iconRefs = [DocumentTextIcon, CheckCircleIcon, ClockIcon];
@@ -202,9 +202,41 @@ const Proposals = () => {
     }
   };
 
+  const exportCsv = () => {
+    if (!proposals.length) return;
+    const headers = ['reference', 'title', 'client', 'status', 'total', 'validUntil'];
+    const rows = proposals.map((p) =>
+      [
+        p.reference,
+        p.title,
+        p.client?.name || '',
+        p.status,
+        p.total,
+        p.validUntil ? new Date(p.validUntil).toISOString().slice(0, 10) : '',
+      ]
+        .map((v) => `"${String(v ?? '').replace(/"/g, '""')}"`)
+        .join(',')
+    );
+    const csv = [headers.join(','), ...rows].join('\r\n');
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `proposals-${format(new Date(), 'yyyy-MM-dd')}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+    toast.success('Export downloaded');
+  };
+
   return (
     <div className="space-y-6 animate-fade-in">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-end gap-4 -mt-2">
+        {proposals.length > 0 && (
+          <button type="button" onClick={exportCsv} className="btn-secondary text-sm">
+            <ArrowDownTrayIcon className="h-4 w-4 mr-1.5" />
+            Export CSV
+          </button>
+        )}
         <Link to="/proposals/new" className="btn-primary">
           <PlusIcon className="h-5 w-5 mr-2" />
           Create Proposal
@@ -257,18 +289,16 @@ const Proposals = () => {
         {isLoading ? (
           <SkeletonCard count={6} />
         ) : proposals.length === 0 ? (
-          <div className="text-center py-16">
-            <DocumentTextIcon className="mx-auto h-12 w-12 text-slate-300 dark:text-slate-600" />
-            <h3 className="mt-4 text-lg font-medium text-slate-900 dark:text-slate-100">
-              No proposals found
-            </h3>
-            <p className="mt-2 text-sm text-slate-600 dark:text-slate-400">
-              Get started by creating your first proposal
-            </p>
-            <Link to="/proposals/new" className="mt-6 btn-primary inline-flex">
-              <PlusIcon className="h-5 w-5 mr-2" />
-              Create Proposal
-            </Link>
+          <div className="p-8">
+            <EmptyState
+              icon={<DocumentTextIcon className="h-7 w-7" />}
+              title="No proposals yet"
+              description="Create your first professional proposal in under five minutes — services, pricing, cover letter, and e-sign ready to send."
+              actionLabel="Create proposal"
+              actionTo="/proposals/new"
+              secondaryLabel="Browse clients"
+              secondaryTo="/clients"
+            />
           </div>
         ) : (
           <div className="overflow-x-auto">

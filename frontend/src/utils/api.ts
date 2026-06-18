@@ -390,6 +390,29 @@ export const apiClient = {
   getProposalAuditTrail: (id: string) => api.get(`/proposals/${id}/audit-trail`),
   getProposalSignatures: (id: string) => api.get(`/proposals/${id}/signatures`),
 
+  downloadProposalPdf: async (id: string, reference?: string) => {
+    const base = API_URL.endsWith('/api') ? API_URL : `${API_URL}/api`;
+    const token = useAuthStore.getState().token;
+    const tenant = useAuthStore.getState().tenant;
+    const res = await fetch(`${base}/proposals/${id}/pdf`, {
+      credentials: 'include',
+      headers: {
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        ...(tenant ? { 'X-Tenant-Id': tenant.id } : {}),
+      },
+    });
+    if (!res.ok) throw new Error('PDF download failed');
+    const blob = await res.blob();
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `proposal-${reference || id}.pdf`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 5000);
+  },
+
   // Public AML onboarding (portal token — no auth)
   getAmlOnboarding: (token: string) => api.get(`/onboarding/aml/${token}`),
   submitAmlOnboarding: (token: string, data: Record<string, unknown>) =>

@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { useAuthStore } from '../stores/authStore';
 import { apiClient } from '../utils/api';
 import toast from 'react-hot-toast';
@@ -15,6 +16,7 @@ import {
   SparklesIcon,
 } from '@heroicons/react/24/outline';
 import EmailSettings from '../components/email/EmailSettings';
+import CoverLetterTemplatesManager from '../components/settings/CoverLetterTemplatesManager';
 
 // Simplified tabs - combined related sections
 const tabs = [
@@ -43,9 +45,15 @@ const tabs = [
   { id: 'automation', name: 'Automation', icon: BellIcon, description: 'Client touchpoints & onboarding workflow' },
 ];
 
+const VALID_TABS = tabs.map((t) => t.id);
+
 const Settings = () => {
+  const [searchParams, setSearchParams] = useSearchParams();
+  const tabFromUrl = searchParams.get('tab');
   const { user, tenant, setSession } = useAuthStore();
-  const [activeTab, setActiveTab] = useState('profile');
+  const [activeTab, setActiveTab] = useState(() =>
+    tabFromUrl && VALID_TABS.includes(tabFromUrl) ? tabFromUrl : 'profile'
+  );
   const [isLoading, setIsLoading] = useState(false);
   const [isSaving, setIsSaving] = useState<string | null>(null);
 
@@ -114,7 +122,23 @@ const Settings = () => {
     password: '',
   });
 
-  // Load users when team tab is active
+  const [vatForm, setVatForm] = useState({
+    vatRegistered: true,
+    vatNumber: '',
+    defaultVatRate: 'STANDARD_20' as 'ZERO' | 'REDUCED_5' | 'STANDARD_20' | 'EXEMPT',
+    autoApplyVat: true,
+  });
+
+  useEffect(() => {
+    if (tabFromUrl && VALID_TABS.includes(tabFromUrl) && tabFromUrl !== activeTab) {
+      setActiveTab(tabFromUrl);
+    }
+  }, [tabFromUrl, activeTab]);
+
+  const selectTab = (id: string) => {
+    setActiveTab(id);
+    setSearchParams(id === 'profile' ? {} : { tab: id }, { replace: true });
+  };
   useEffect(() => {
     if (activeTab === 'team') {
       loadUsers();
@@ -161,6 +185,15 @@ const Settings = () => {
           setCommunicationsForm((prev) => ({
             ...prev,
             proposals: { ...prev.proposals, ...data.proposals },
+          }));
+        }
+        if (data.vat) {
+          setVatForm((prev) => ({
+            ...prev,
+            vatRegistered: data.vat.vatRegistered ?? prev.vatRegistered,
+            vatNumber: data.vat.vatNumber || '',
+            defaultVatRate: data.vat.defaultVatRate || prev.defaultVatRate,
+            autoApplyVat: data.vat.autoApplyVat ?? prev.autoApplyVat,
           }));
         }
       }
@@ -259,6 +292,29 @@ const Settings = () => {
       }
     } catch (error: any) {
       toast.error(error.message || 'Network error');
+    } finally {
+      setIsSaving(null);
+    }
+  };
+
+  const handleSaveVat = async () => {
+    setIsSaving('billing');
+    try {
+      const response = (await apiClient.updateTenantSettings({
+        vat: {
+          vatRegistered: vatForm.vatRegistered,
+          vatNumber: vatForm.vatNumber || undefined,
+          defaultVatRate: vatForm.defaultVatRate,
+          autoApplyVat: vatForm.autoApplyVat,
+        },
+      })) as any;
+      if (response.success) {
+        toast.success('VAT settings saved');
+      } else {
+        toast.error(response.error?.message || 'Failed to save VAT settings');
+      }
+    } catch (error: any) {
+      toast.error(error.message || 'Failed to save VAT settings');
     } finally {
       setIsSaving(null);
     }
@@ -407,30 +463,6 @@ const Settings = () => {
     }
   };
 
-  // Cover letter template
-  const defaultCoverTemplate = `Dear {{client.name}},
-
-Thank you for considering {{tenant.name}} for your accounting and business advisory needs. We appreciate the opportunity to present this proposal outlining our services and how we can support your business.
-
-Following a thorough understanding of your requirements, we have prepared a tailored service package designed to provide you with comprehensive support while ensuring compliance with all relevant regulations.
-
-This proposal details:
-• The specific services we recommend for your business
-• Transparent pricing with no hidden costs
-• Our terms of engagement and service standards
-• Next steps to get started
-
-We believe in building long-term partnerships with our clients based on trust, transparency, and exceptional service delivery.
-
-Please review this proposal at your convenience. Should you have any questions or require any clarification, please do not hesitate to contact us.
-
-We look forward to the possibility of working with you.
-
-Yours sincerely,
-
-{{user.firstName}} {{user.lastName}}
-{{tenant.name}}`;
-
   return (
     <div className="space-y-6 animate-fade-in max-w-7xl mx-auto">
       {/* Header */}
@@ -448,7 +480,7 @@ Yours sincerely,
             {tabs.map((tab) => (
               <button
                 key={tab.id}
-                onClick={() => setActiveTab(tab.id)}
+                onClick={() => selectTab(tab.id)}
                 className={`w-full flex items-start px-4 py-3 text-left rounded-lg transition-all ${
                   activeTab === tab.id
                     ? 'bg-primary-50 text-primary-700 shadow-sm'
@@ -880,43 +912,10 @@ Yours sincerely,
                 </div>
               </div>
 
-              {/* Cover Letter Template */}
+              {/* Cover letter templates */}
               <div className="glass-tile overflow-hidden">
-                <div className="px-6 py-4 border-b border-white/10 bg-white/5">
-                  <h2 className="text-lg font-semibold text-slate-900">
-                    Default Cover Letter Template
-                  </h2>
-                  <p className="text-sm text-slate-600">
-                    Template used at the start of proposals before Terms & Conditions
-                  </p>
-                </div>
-                <div className="p-6 space-y-4">
-                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                    <p className="text-sm text-blue-800">
-                      <strong>Available variables:</strong> {'{{client.name}}'}, {'{{tenant.name}}'}
-                      , {'{{user.firstName}}'}, {'{{user.lastName}}'}
-                    </p>
-                  </div>
-                  <textarea
-                    value={communicationsForm.defaultCoverTemplate || defaultCoverTemplate}
-                    onChange={(e) =>
-                      setCommunicationsForm({
-                        ...communicationsForm,
-                        defaultCoverTemplate: e.target.value,
-                      })
-                    }
-                    rows={12}
-                    className="input-field w-full font-mono text-sm"
-                  />
-                  <div className="pt-4 border-t border-white/10">
-                    <button
-                      onClick={() => toast.success('Template saved')}
-                      disabled={isSaving === 'communications'}
-                      className="btn-primary"
-                    >
-                      {isSaving === 'communications' ? 'Saving...' : 'Save Template'}
-                    </button>
-                  </div>
+                <div className="p-6">
+                  <CoverLetterTemplatesManager />
                 </div>
               </div>
 
@@ -1071,22 +1070,79 @@ Yours sincerely,
                 <h2 className="text-lg font-semibold text-slate-900">VAT & Billing Settings</h2>
                 <p className="text-sm text-slate-600">Configure tax and billing preferences</p>
               </div>
-              <div className="p-6">
-                <div className="text-center py-12">
-                  <CalculatorIcon className="mx-auto h-12 w-12 text-slate-400" />
-                  <h3 className="mt-2 text-sm font-medium text-slate-900">VAT Settings</h3>
-                  <p className="mt-1 text-sm text-slate-600">
-                    Configure your VAT registration and default rates
-                  </p>
-                  <div className="mt-6">
-                    <button
-                      onClick={() => toast('VAT settings coming soon')}
-                      className="btn-secondary"
-                    >
-                      Configure VAT
-                    </button>
+              <div className="p-6 space-y-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div>
+                    <label className="flex items-center gap-2 text-sm font-medium text-slate-800 dark:text-slate-200">
+                      <input
+                        type="checkbox"
+                        checked={vatForm.vatRegistered}
+                        onChange={(e) =>
+                          setVatForm({ ...vatForm, vatRegistered: e.target.checked })
+                        }
+                        className="rounded border-slate-300"
+                      />
+                      VAT registered
+                    </label>
+                    <p className="mt-1 text-xs text-slate-500">Show VAT on proposals and apply default rates</p>
+                  </div>
+                  <div>
+                    <label className="flex items-center gap-2 text-sm font-medium text-slate-800 dark:text-slate-200">
+                      <input
+                        type="checkbox"
+                        checked={vatForm.autoApplyVat}
+                        onChange={(e) =>
+                          setVatForm({ ...vatForm, autoApplyVat: e.target.checked })
+                        }
+                        className="rounded border-slate-300"
+                      />
+                      Auto-apply VAT to new services
+                    </label>
                   </div>
                 </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div>
+                    <label className="block text-sm font-medium text-slate-800 dark:text-slate-200">
+                      VAT registration number
+                    </label>
+                    <input
+                      type="text"
+                      value={vatForm.vatNumber}
+                      onChange={(e) => setVatForm({ ...vatForm, vatNumber: e.target.value })}
+                      placeholder="GB 123 4567 89"
+                      className="mt-1 input-field w-full"
+                      disabled={!vatForm.vatRegistered}
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-slate-800 dark:text-slate-200">
+                      Default VAT rate
+                    </label>
+                    <select
+                      value={vatForm.defaultVatRate}
+                      onChange={(e) =>
+                        setVatForm({
+                          ...vatForm,
+                          defaultVatRate: e.target.value as typeof vatForm.defaultVatRate,
+                        })
+                      }
+                      className="mt-1 input-field w-full"
+                      disabled={!vatForm.vatRegistered}
+                    >
+                      <option value="STANDARD_20">Standard 20%</option>
+                      <option value="REDUCED_5">Reduced 5%</option>
+                      <option value="ZERO">Zero rated</option>
+                      <option value="EXEMPT">Exempt</option>
+                    </select>
+                  </div>
+                </div>
+                <button
+                  onClick={handleSaveVat}
+                  disabled={isSaving === 'billing'}
+                  className="btn-primary"
+                >
+                  {isSaving === 'billing' ? 'Saving…' : 'Save VAT settings'}
+                </button>
               </div>
             </div>
           )}
@@ -1364,14 +1420,11 @@ Yours sincerely,
                     Two-Factor Authentication
                   </h3>
                   <p className="text-sm text-slate-600 mb-4">
-                    Add an extra layer of security to your account
+                    Two-factor authentication adds an extra layer of security. We&apos;re finishing
+                    TOTP support — password + session cookies are already hardened.
                   </p>
-                  <button
-                    onClick={() => toast('2FA coming soon')}
-                    className="btn-secondary"
-                    disabled
-                  >
-                    Enable 2FA (Coming Soon)
+                  <button className="btn-secondary opacity-60 cursor-not-allowed" disabled type="button">
+                    Enable 2FA (in development)
                   </button>
                 </div>
               </div>

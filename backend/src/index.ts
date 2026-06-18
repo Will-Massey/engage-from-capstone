@@ -830,6 +830,7 @@ app.use('/api/companies-house', extractTenant, companiesHouseRoutes);
 app.use('/api/cover-letter-templates', extractTenant, coverLetterTemplateRoutes);
 app.use('/api/analytics', extractTenant, analyticsRoutes);
 app.use('/api/touchpoints', extractTenant, touchpointRoutes);
+app.use('/api/automation', extractTenant, automationRoutes);
 app.use('/api/ai', extractTenant, aiRoutes);
 
 // API status endpoint

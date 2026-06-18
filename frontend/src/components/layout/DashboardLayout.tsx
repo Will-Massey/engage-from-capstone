@@ -26,6 +26,12 @@ const DashboardLayout = () => {
 
   return (
     <div className="min-h-screen bg-gradient-page">
+      <a
+        href="#main-content"
+        className="sr-only focus:not-sr-only focus:absolute focus:top-2 focus:left-2 focus:z-50 btn-primary text-sm"
+      >
+        Skip to content
+      </a>
       {/* Mobile sidebar overlay */}
       {sidebarOpen && (
         <div
@@ -70,7 +76,7 @@ const DashboardLayout = () => {
         </div>
 
         {/* Main content area */}
-        <main className="pt-20 pb-8 px-4 sm:px-6 lg:px-8">
+        <main id="main-content" className="pt-20 pb-8 px-4 sm:px-6 lg:px-8">
           <div className="max-w-7xl mx-auto space-y-6">
             <AppRouteHeader />
             <Outlet />
