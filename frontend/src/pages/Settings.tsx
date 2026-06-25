@@ -1451,6 +1451,7 @@ const LIFECYCLE_STAGES = [
 function AutomationTab() {
   const [templates, setTemplates] = useState<any[]>([]);
   const [approvals, setApprovals] = useState<any[]>([]);
+  const [automationSettings, setAutomationSettings] = useState<any>(null);
   const [loading, setLoading] = useState(false);
   const [editing, setEditing] = useState<any>(null);
   const [form, setForm] = useState({ subject: '', body: '', tone: 'WARM', isMarketing: false, isActive: true });
@@ -1458,12 +1459,14 @@ function AutomationTab() {
   const loadData = async () => {
     setLoading(true);
     try {
-      const [tRes, aRes] = await Promise.all([
+      const [tRes, aRes, sRes] = await Promise.all([
         apiClient.getTouchpointTemplates(),
         apiClient.getTouchpointApprovals(),
+        apiClient.getAutomationSettings(),
       ]);
       setTemplates((tRes as any).data || []);
       setApprovals((aRes as any).data || []);
+      setAutomationSettings((sRes as any).data || null);
     } catch (e) {
       // handled by interceptor
     } finally {
@@ -1531,9 +1534,17 @@ function AutomationTab() {
               Once a proposal is accepted, Engage automatically sends warm, timely messages at every stage — welcome, AML chase, engagement letters, info requests, milestone reminders, and annual reviews.
               You stay in control with per-stage templates, human approval gates, and the ability to pause any client.
             </p>
-            <div className="mt-3">
+            <div className="mt-3 flex flex-wrap gap-2">
               <button onClick={runEngine} className="btn-primary text-sm px-4 py-1.5">Run engine now</button>
             </div>
+            {automationSettings?.emailFollowUp && (
+              <p className="mt-3 text-xs text-slate-500 dark:text-slate-400">
+                Email follow-up: {automationSettings.emailFollowUp.enabled ? 'enabled' : 'disabled'}
+                {automationSettings.proposalExpiry?.defaultExpiryDays
+                  ? ` · Default proposal expiry ${automationSettings.proposalExpiry.defaultExpiryDays} days`
+                  : ''}
+              </p>
+            )}
           </div>
         </div>
       </div>

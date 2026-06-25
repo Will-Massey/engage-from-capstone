@@ -13,6 +13,7 @@ import {
 import { apiClient } from '../../utils/api';
 import { useAuthStore } from '../../stores/authStore';
 import { SkeletonCard } from '../../components/skeleton/SkeletonCard';
+import EmptyState from '../../components/ui/EmptyState';
 
 const Clients = () => {
   const { tenant } = useAuthStore();
@@ -185,15 +186,15 @@ const Clients = () => {
       {isLoading ? (
         <SkeletonCard count={6} />
       ) : clients.length === 0 ? (
-        <div className="text-center py-16 card">
-          <UsersIcon className="mx-auto h-12 w-12 text-slate-300" />
-          <h3 className="mt-4 text-lg font-medium text-slate-900 dark:text-white">No clients yet</h3>
-          <p className="mt-2 text-sm text-slate-500">Get started by adding your first client</p>
-          <Link to="/clients/new" className="mt-6 btn-primary inline-flex">
-            <PlusIcon className="h-5 w-5 mr-2" />
-            Add Client
-          </Link>
-        </div>
+        <EmptyState
+          icon={<UsersIcon className="h-7 w-7" />}
+          title="No clients yet"
+          description="Add your first client to start building proposals, tracking lifecycle stages, and automating touchpoints."
+          actionLabel="Add client"
+          actionTo="/clients/new"
+          secondaryLabel="Import from Companies House"
+          secondaryTo="/clients/new"
+        />
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {clients.map((client) => (

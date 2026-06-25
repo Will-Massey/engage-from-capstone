@@ -313,10 +313,13 @@ export async function runEmailAutomation(): Promise<{
 /**
  * Manual trigger for testing
  */
-export async function testEmailAutomation(proposalId: string): Promise<boolean> {
+export async function testEmailAutomation(
+  proposalId: string,
+  tenantId: string
+): Promise<boolean> {
   try {
-    const proposal = await prisma.proposal.findUnique({
-      where: { id: proposalId },
+    const proposal = await prisma.proposal.findFirst({
+      where: { id: proposalId, tenantId },
       include: {
         client: true,
         tenant: true,

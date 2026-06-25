@@ -123,8 +123,11 @@ export class PDFGenerator {
         doc.on('end', () => resolve(Buffer.concat(chunks)));
         doc.on('error', reject);
 
-        // Primary and secondary colors
-        const primaryColor = proposal.tenant.settings?.primaryColor || '#0ea5e9';
+        // Primary and secondary colors — tenant branding
+        const primaryColor =
+          (proposal.tenant as { primaryColor?: string }).primaryColor ||
+          proposal.tenant.settings?.primaryColor ||
+          '#0ea5e9';
         const secondaryColor = '#666666';
 
         // ========== HEADER ==========

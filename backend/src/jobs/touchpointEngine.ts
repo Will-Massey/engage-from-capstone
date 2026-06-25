@@ -244,7 +244,7 @@ async function sendTouchpoint(tp: any): Promise<SendResult> {
       }
     }
     logger.info(`[SMS] Skipped — no phone or Twilio not configured: ${subject}`);
-    return { success: true };
+    return { success: false, error: 'SMS delivery unavailable (missing phone or Twilio config)' };
   }
 
   if (channel === 'IN_APP') {
@@ -794,9 +794,13 @@ function inferNextStep(stage: ClientLifecycleStage): string {
 /**
  * Admin helper: approve and immediately send a human-gated touchpoint
  */
-export async function approveAndSendTouchpoint(touchpointId: string, userId?: string): Promise<boolean> {
-  const tp = await prisma.touchpoint.findUnique({
-    where: { id: touchpointId },
+export async function approveAndSendTouchpoint(
+  touchpointId: string,
+  tenantId: string,
+  userId?: string
+): Promise<boolean> {
+  const tp = await prisma.touchpoint.findFirst({
+    where: { id: touchpointId, tenantId },
     include: { client: true, tenant: true, template: true },
   });
   if (!tp || tp.status !== 'PENDING' || !tp.requiresHumanApproval) return false;

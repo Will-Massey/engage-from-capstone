@@ -9,6 +9,8 @@ on:
 jobs:
   build-and-test:
     runs-on: ubuntu-latest
+    env:
+      ACTIONS_ALLOW_USE_UNSECURE_NODE_VERSION: true
     
     steps:
     - uses: actions/checkout@v4
@@ -32,6 +34,8 @@ jobs:
       run: |
         cd backend
         npx prisma generate
+      env:
+        DATABASE_URL: postgresql://test:test@localhost:5432/test
     
     - name: Build backend
       run: |

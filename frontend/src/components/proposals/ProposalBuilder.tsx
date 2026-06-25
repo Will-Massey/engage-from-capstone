@@ -392,6 +392,41 @@ export default function ProposalBuilder({ proposalId }: ProposalBuilderProps) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [proposalId]);
 
+  // Load tenant default cover letter template when client is chosen (new proposals only)
+  useEffect(() => {
+    if (!selectedClient || isEditMode || proposalId || coverLetter.trim().length >= 40) return;
+
+    let cancelled = false;
+    (async () => {
+      try {
+        const tplRes = (await apiClient.getDefaultCoverLetterTemplate()) as any;
+        if (!tplRes?.success || !tplRes.data?.content || cancelled) return;
+
+        const tone = (tplRes.data.tone || 'PROFESSIONAL') as CoverLetterTone;
+        setCoverLetterTone(tone);
+
+        const previewRes = (await apiClient.previewCoverLetterRaw(tplRes.data.content, {
+          clientName: coverLetterAddressee(selectedClient),
+          companyName: selectedClient.name,
+          tenantName: tenant?.name || 'Our practice',
+          senderName: `${user?.firstName || ''} ${user?.lastName || ''}`.trim() || undefined,
+          serviceCount: selectedServices.length || undefined,
+        })) as any;
+
+        if (!cancelled && previewRes?.success && previewRes.data?.rendered) {
+          setCoverLetter(previewRes.data.rendered);
+        }
+      } catch {
+        // fall back to tone presets in UI
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedClient?.id, selectedServices.length]);
+
   useEffect(() => {
     if (isEditMode) return;
     const timer = setTimeout(() => {
@@ -463,9 +498,11 @@ export default function ProposalBuilder({ proposalId }: ProposalBuilderProps) {
       const response = (await apiClient.getServices({ limit: 100 })) as any;
       const mappedServices = (response.data || []).map((s: any) => {
         const derivedBillingCycle =
-          s.defaultFrequency && s.defaultFrequency !== 'MONTHLY'
-            ? s.defaultFrequency
-            : s.billingCycle || 'MONTHLY';
+          s.billingCycle === 'ONE_TIME' || s.defaultFrequency === 'ONE_TIME'
+            ? 'ONE_TIME'
+            : s.defaultFrequency && s.defaultFrequency !== 'MONTHLY'
+              ? s.defaultFrequency
+              : s.billingCycle || 'MONTHLY';
         return {
           ...s,
           priceAmount: s.priceAmount || s.basePrice || 0,
@@ -1788,9 +1825,13 @@ export default function ProposalBuilder({ proposalId }: ProposalBuilderProps) {
           <button type="button" onClick={() => setShowClientPreview((v) => !v)} className="btn-secondary text-sm">
             {showClientPreview ? 'Hide preview' : 'Preview for client'}
           </button>
-          {isEditMode && (
+          {isEditMode ? (
             <button type="button" onClick={previewPdf} className="btn-secondary text-sm">
               Download PDF
+            </button>
+          ) : (
+            <button type="button" onClick={previewPdf} className="btn-secondary text-sm">
+              Print preview
             </button>
           )}
           <button data-testid="create-proposal-button" onClick={saveProposal} disabled={isLoading} className="btn-primary">

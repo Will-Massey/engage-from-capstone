@@ -38,6 +38,7 @@ router.get(
 // Create or update a template for a stage
 router.put(
   '/templates/:stage',
+  authorize('ADMIN', 'PARTNER', 'MANAGER'),
   asyncHandler(async (req, res) => {
     const tenantId = req.tenantId!;
     const { stage } = req.params;
@@ -92,11 +93,13 @@ router.get(
 // Approve + send a gated touchpoint
 router.post(
   '/:id/approve',
+  authorize('ADMIN', 'PARTNER', 'MANAGER'),
   asyncHandler(async (req, res) => {
     const { id } = req.params;
-    const userId = (req as any).user?.id;
+    const tenantId = req.tenantId!;
+    const userId = req.user!.id;
 
-    const ok = await approveAndSendTouchpoint(id, userId);
+    const ok = await approveAndSendTouchpoint(id, tenantId, userId);
 
     if (!ok) {
       throw new ApiError('BAD_REQUEST', 'Could not approve touchpoint (not pending or not gated)', 400);

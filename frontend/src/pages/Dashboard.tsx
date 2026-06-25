@@ -175,16 +175,41 @@ const Dashboard = () => {
           apiClient.getProposals({ limit: 50, status: 'VIEWED' }) as Promise<any>,
           10000
         )) as any;
-        const combined = [...(allProposals.data || []), ...(viewed.data || [])];
+        const accepted = (await timeout(
+          apiClient.getProposals({ limit: 50, status: 'ACCEPTED' }) as Promise<any>,
+          10000
+        )) as any;
+        const combined = [
+          ...(allProposals.data || []),
+          ...(viewed.data || []),
+          ...(accepted.data || []),
+        ];
+        const seen = new Set<string>();
+        const unique = combined.filter((p: any) => {
+          if (seen.has(p.id)) return false;
+          seen.add(p.id);
+          return true;
+        });
         const now = Date.now();
         const in14Days = 14 * 24 * 60 * 60 * 1000;
-        const expiring = combined
-          .filter((p: any) => p.validUntil && new Date(p.validUntil).getTime() - now <= in14Days)
-          .sort(
-            (a: any, b: any) =>
-              new Date(a.validUntil).getTime() - new Date(b.validUntil).getTime()
-          )
-          .slice(0, 6);
+        const in30Days = 30 * 24 * 60 * 60 * 1000;
+        const expiring = unique
+          .filter((p: any) => {
+            if (p.renewalDate) {
+              const renewalMs = new Date(p.renewalDate).getTime();
+              return renewalMs >= now && renewalMs - now <= in30Days;
+            }
+            if (['SENT', 'VIEWED'].includes(p.status) && p.validUntil) {
+              return new Date(p.validUntil).getTime() - now <= in14Days;
+            }
+            return false;
+          })
+          .sort((a: any, b: any) => {
+            const aDate = a.renewalDate || a.validUntil;
+            const bDate = b.renewalDate || b.validUntil;
+            return new Date(aDate).getTime() - new Date(bDate).getTime();
+          })
+          .slice(0, 8);
         setRenewalProposals(expiring);
       } catch {}
     } catch (error) {
@@ -402,7 +427,9 @@ const Dashboard = () => {
                   <div className="text-xs text-slate-500">{p.client?.name}</div>
                 </div>
                 <div className="text-xs text-blue-600 dark:text-blue-300 font-medium">
-                  Expires {new Date(p.validUntil).toLocaleDateString('en-GB')}
+                  {p.renewalDate
+                    ? `Renewal ${new Date(p.renewalDate).toLocaleDateString('en-GB')}`
+                    : `Expires ${new Date(p.validUntil).toLocaleDateString('en-GB')}`}
                 </div>
               </Link>
             ))}

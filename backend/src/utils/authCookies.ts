@@ -1,5 +1,6 @@
 import { Response } from 'express';
 import { generateCsrfToken } from '../middleware/auth.js';
+import { registerCsrfToken } from './csrfStore.js';
 
 export function setAuthCookies(
   res: Response,
@@ -23,6 +24,7 @@ export function setAuthCookies(
   });
 
   const csrfToken = generateCsrfToken();
+  registerCsrfToken(csrfToken);
   res.cookie('csrfToken', csrfToken, {
     httpOnly: false,
     secure: isProduction,

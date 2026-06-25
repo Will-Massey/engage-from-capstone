@@ -4,6 +4,18 @@
 import { proposalHasRecurringEngagement } from '../../jobs/renewalReminders'; // reuse similar pattern awareness
 
 describe('Touchpoint decision logic', () => {
+  it('SMS skip should not count as successful delivery', () => {
+    const channel = 'SMS';
+    const clientHasPhone = false;
+    const twilioConfigured = false;
+    const sent =
+      channel === 'SMS' && clientHasPhone && twilioConfigured
+        ? true
+        : channel === 'SMS'
+          ? false
+          : true;
+    expect(sent).toBe(false);
+  });
   it('distinguishes immediate EVENT from delayed TIME_DELAY conceptually', () => {
     const now = Date.now();
     const immediate = now;

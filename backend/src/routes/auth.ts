@@ -9,9 +9,16 @@ import {
   generateRefreshToken,
   generateCsrfToken,
 } from '../middleware/auth.js';
+import { registerCsrfToken } from '../utils/csrfStore.js';
 import { asyncHandler, ApiError } from '../middleware/errorHandler.js';
 import { allowPublicRegister } from '../utils/securityFlags.js';
 import logger from '../config/logger.js';
+import {
+  isLoginLocked,
+  recordFailedLogin,
+  clearLoginAttempts,
+  LOGIN_LOCKOUT_MAX,
+} from '../utils/loginLockout.js';
 // import { twoFactorService } from '../services/twoFactorService.js';
 // import { passwordResetService } from '../services/passwordResetService.js';
 import { gdprService } from '../services/gdprService.js';
@@ -73,6 +80,14 @@ router.post(
       throw new ApiError('NO_TENANT', 'Tenant identifier is required', 400);
     }
 
+    if (await isLoginLocked(email, resolvedTenantId)) {
+      throw new ApiError(
+        'ACCOUNT_LOCKED',
+        'Too many failed login attempts. Please try again in 30 minutes.',
+        429
+      );
+    }
+
     // Find user
     const user = await prisma.user.findFirst({
       where: {
@@ -95,8 +110,18 @@ router.post(
 
     if (!isValidPassword) {
       logger.warn(`Login failed: Invalid password for ${email}`);
-      throw new ApiError('INVALID_CREDENTIALS', 'Invalid email or password', 401);
+      const attempts = await recordFailedLogin(email, resolvedTenantId);
+      const remaining = Math.max(0, LOGIN_LOCKOUT_MAX - attempts);
+      throw new ApiError(
+        'INVALID_CREDENTIALS',
+        remaining > 0
+          ? `Invalid email or password (${remaining} attempt${remaining === 1 ? '' : 's'} remaining)`
+          : 'Invalid email or password',
+        401
+      );
     }
+
+    await clearLoginAttempts(email, resolvedTenantId);
 
     logger.info(`Login successful: ${email} (${user.id})`);
 
@@ -136,13 +161,6 @@ router.post(
             primaryColor: user.tenant.primaryColor,
             settings: user.tenant.settings,
           },
-        },
-        // Tokens also returned for client-side storage fallback
-        // but httpOnly cookies are the primary authentication method
-        tokens: {
-          accessToken,
-          refreshToken,
-          expiresIn: 86400, // 24 hours
         },
       },
     });
@@ -226,11 +244,6 @@ router.post(
             subdomain: user.tenant.subdomain,
           },
         },
-        tokens: {
-          accessToken,
-          refreshToken,
-          expiresIn: 86400,
-        },
       },
     });
   })
@@ -294,11 +307,7 @@ router.post(
     res.json({
       success: true,
       data: {
-        tokens: {
-          accessToken,
-          refreshToken: newRefreshToken,
-          expiresIn: 86400,
-        },
+        message: 'Session refreshed',
       },
     });
   })
@@ -861,6 +870,7 @@ router.get(
   '/csrf-token',
   asyncHandler(async (req, res) => {
     const csrfToken = generateCsrfToken();
+    registerCsrfToken(csrfToken);
     res.cookie('csrfToken', csrfToken, {
       httpOnly: false,
       secure: true,

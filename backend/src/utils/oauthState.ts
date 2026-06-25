@@ -1,7 +1,15 @@
 import crypto from 'crypto';
 
-const OAUTH_STATE_SECRET =
-  process.env.OAUTH_STATE_SECRET || process.env.JWT_SECRET || 'oauth-state-dev-only';
+function resolveOAuthStateSecret(): string {
+  const secret = process.env.OAUTH_STATE_SECRET || process.env.JWT_SECRET;
+  if (secret) return secret;
+  if (process.env.NODE_ENV === 'production') {
+    throw new Error('OAUTH_STATE_SECRET environment variable is required in production');
+  }
+  return 'oauth-state-dev-only';
+}
+
+const OAUTH_STATE_SECRET = resolveOAuthStateSecret();
 
 export interface OAuthStatePayload {
   tenantId: string;

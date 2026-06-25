@@ -3,7 +3,7 @@ import jwt from 'jsonwebtoken';
 import crypto from 'crypto';
 import { prisma } from '../config/database.js';
 import { UserRole } from '@prisma/client';
-import { isCsrfTokenRegistered, registerCsrfToken } from '../utils/csrfStore.js';
+import { isCsrfTokenRegistered, isCsrfTokenRegisteredAsync, registerCsrfToken } from '../utils/csrfStore.js';
 
 const JWT_SECRET = process.env.JWT_SECRET;
 
@@ -262,7 +262,11 @@ export const generateCsrfToken = (): string => {
 };
 
 // CSRF protection middleware
-export const csrfProtection = (req: Request, res: Response, next: NextFunction): void => {
+export const csrfProtection = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+): Promise<void> => {
   // Skip CSRF for GET, HEAD, OPTIONS requests (they should be safe)
   if (['GET', 'HEAD', 'OPTIONS'].includes(req.method)) {
     next();
@@ -315,15 +319,19 @@ export const csrfProtection = (req: Request, res: Response, next: NextFunction):
   }
 
   // Cross-domain: cookie may be absent — token must be server-registered at login/csrf-token
-  if (!csrfCookie && !isCsrfTokenRegistered(csrfToken)) {
-    res.status(403).json({
-      success: false,
-      error: {
-        code: 'CSRF_INVALID',
-        message: 'CSRF token validation failed',
-      },
-    });
-    return;
+  if (!csrfCookie) {
+    const registered =
+      isCsrfTokenRegistered(csrfToken) || (await isCsrfTokenRegisteredAsync(csrfToken));
+    if (!registered) {
+      res.status(403).json({
+        success: false,
+        error: {
+          code: 'CSRF_INVALID',
+          message: 'CSRF token validation failed',
+        },
+      });
+      return;
+    }
   }
 
   next();

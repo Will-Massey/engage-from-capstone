@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import { z } from 'zod';
+import jwt from 'jsonwebtoken';
 import { authenticate } from '../middleware/auth.js';
 import { authorize } from '../middleware/auth.js';
 import { ApiError, asyncHandler } from '../middleware/errorHandler.js';
@@ -51,7 +52,8 @@ router.post(
 
     logger.info(`Test email follow-up triggered for proposal ${proposalId} by user:`, req.user!.id);
 
-    const success = await testEmailAutomation(proposalId);
+    const tenantId = req.tenantId!;
+    const success = await testEmailAutomation(proposalId, tenantId);
 
     if (!success) {
       throw new ApiError(
@@ -109,10 +111,7 @@ router.get(
 router.post(
   '/migrate-service-pricing',
   asyncHandler(async (req, res) => {
-    // Check auth via token OR secret key
-    const authHeader = req.headers.authorization;
     const secretKey = req.headers['x-migration-key'];
-
     const validSecret = process.env.MIGRATION_SECRET_KEY;
 
     if (!validSecret) {
@@ -122,15 +121,38 @@ router.post(
       });
     }
 
-    if (secretKey !== validSecret) {
-      // Fall back to regular auth check
-      if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    const secretOk = secretKey === validSecret;
+    if (!secretOk) {
+      const authHeader = req.headers.authorization;
+      const cookieToken = req.cookies?.accessToken;
+      let token: string | null = null;
+      if (authHeader?.startsWith('Bearer ')) {
+        token = authHeader.substring(7);
+      } else if (cookieToken) {
+        token = cookieToken;
+      }
+
+      if (!token || !process.env.JWT_SECRET) {
         return res.status(401).json({
           success: false,
-          error: { code: 'UNAUTHORIZED', message: 'Valid token or secret key required' },
+          error: { code: 'UNAUTHORIZED', message: 'Valid admin session or migration key required' },
         });
       }
-      // Note: In production, you'd verify the JWT here
+
+      try {
+        const decoded = jwt.verify(token, process.env.JWT_SECRET) as { role?: string };
+        if (!decoded.role || !['ADMIN', 'PARTNER'].includes(decoded.role)) {
+          return res.status(403).json({
+            success: false,
+            error: { code: 'FORBIDDEN', message: 'Admin or partner role required' },
+          });
+        }
+      } catch {
+        return res.status(401).json({
+          success: false,
+          error: { code: 'UNAUTHORIZED', message: 'Invalid or expired token' },
+        });
+      }
     }
 
     logger.info('Service pricing migration triggered');

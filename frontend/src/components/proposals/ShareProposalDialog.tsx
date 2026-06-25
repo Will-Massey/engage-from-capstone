@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { apiClient } from '../../utils/api';
 import toast from 'react-hot-toast';
 import {
@@ -30,6 +30,14 @@ const ShareProposalDialog = ({
     expiresAt: string;
   } | null>(null);
   const [copied, setCopied] = useState(false);
+  const [showPreview, setShowPreview] = useState(true);
+  const [proposalPreview, setProposalPreview] = useState<{
+    title: string;
+    reference: string;
+    clientName: string;
+    total: number;
+    status: string;
+  } | null>(null);
 
   // Email form state
   const [emailData, setEmailData] = useState({
@@ -40,6 +48,37 @@ const ShareProposalDialog = ({
     includePdf: true,
   });
   const [isSending, setIsSending] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = (await apiClient.getProposal(proposalId)) as any;
+        if (!cancelled && res?.success && res.data) {
+          setProposalPreview({
+            title: res.data.title || proposalReference,
+            reference: res.data.reference || proposalReference,
+            clientName: res.data.client?.name || 'Client',
+            total: res.data.total || 0,
+            status: res.data.status || 'DRAFT',
+          });
+        }
+      } catch {
+        if (!cancelled) {
+          setProposalPreview({
+            title: proposalReference,
+            reference: proposalReference,
+            clientName: clientEmail,
+            total: 0,
+            status: 'DRAFT',
+          });
+        }
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [proposalId, proposalReference, clientEmail]);
 
   const generateLink = async () => {
     setIsGenerating(true);
@@ -136,18 +175,30 @@ const ShareProposalDialog = ({
           <div className="p-6">
             {activeTab === 'link' ? (
               <div className="space-y-4">
+                {showPreview && proposalPreview && !shareData && (
+                  <div className="rounded-xl border border-slate-200 bg-slate-50 p-4 text-left">
+                    <p className="text-xs font-medium text-slate-500 uppercase tracking-wide">Preview before sharing</p>
+                    <h4 className="mt-2 font-semibold text-slate-900">{proposalPreview.title}</h4>
+                    <p className="text-sm text-slate-600">Ref: {proposalPreview.reference}</p>
+                    <p className="text-sm text-slate-600">Client: {proposalPreview.clientName}</p>
+                    <p className="text-sm text-slate-600 mt-1">
+                      Total: £{Number(proposalPreview.total).toLocaleString('en-GB', { minimumFractionDigits: 2 })}
+                    </p>
+                    <p className="text-xs text-slate-500 mt-2">Status: {proposalPreview.status}</p>
+                  </div>
+                )}
                 {!shareData ? (
-                  <div className="text-center py-8">
+                  <div className="text-center py-6">
                     <LinkIcon className="mx-auto h-12 w-12 text-gray-300" />
                     <p className="mt-2 text-gray-500">
-                      Generate a shareable link for your client to view this proposal
+                      Generate a secure link for your client to view and sign this proposal
                     </p>
                     <button
                       onClick={generateLink}
                       disabled={isGenerating}
                       className="mt-4 btn-primary"
                     >
-                      {isGenerating ? 'Generating...' : 'Generate Link'}
+                      {isGenerating ? 'Generating...' : 'Generate share link'}
                     </button>
                   </div>
                 ) : (

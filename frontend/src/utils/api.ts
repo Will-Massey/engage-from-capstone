@@ -363,6 +363,8 @@ export const apiClient = {
     api.patch(`/touchpoints/clients/${clientId}`, data),
   runTouchpointEngine: () => api.post('/touchpoints/run', {}),
 
+  getAutomationSettings: () => api.get('/automation/settings'),
+
   // Lifecycle actions (wired to touchpoint engine)
   markAmlComplete: (clientId: string) => api.post(`/clients/${clientId}/aml-complete`, {}),
   markEngagementLetterSigned: (clientId: string) =>
