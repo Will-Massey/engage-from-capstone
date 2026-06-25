@@ -37,6 +37,7 @@ import touchpointRoutes from './routes/touchpoints.js';
 import onboardingRoutes from './routes/onboarding.js';
 import aiRoutes from './routes/ai.js';
 import automationRoutes from './routes/automation.js';
+import uploadsRoutes from './routes/uploads.js';
 import diagnosticsRoutes from './routes/diagnostics.js';
 import { asyncHandler, ApiError } from './middleware/errorHandler.js';
 import { EmailService } from './services/emailService.js';
@@ -850,6 +851,7 @@ app.use('/api/cover-letter-templates', extractTenant, coverLetterTemplateRoutes)
 app.use('/api/analytics', extractTenant, analyticsRoutes);
 app.use('/api/touchpoints', extractTenant, touchpointRoutes);
 app.use('/api/automation', extractTenant, automationRoutes);
+app.use('/api/uploads', extractTenant, uploadsRoutes);
 app.use('/api/ai', extractTenant, aiRoutes);
 
 // API status endpoint
@@ -869,8 +871,7 @@ app.get('/api/status', (req, res) => {
   });
 });
 
-// Static files for uploads
-app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
+// Uploads are served via authenticated /api/uploads routes only (no public static dir)
 
 // Health check routes (must be BEFORE static files and SPA handler)
 app.use('/ping', async (_req, res) => {

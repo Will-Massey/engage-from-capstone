@@ -51,20 +51,9 @@ async function main() {
   }
   console.log('OK ping');
 
-  const csrfRes = await request('/auth/csrf-token', { method: 'GET' });
-  const csrfToken = csrfRes.body?.data?.csrfToken || jar.get('csrfToken');
-  if (!csrfToken) {
-    console.error('FAIL csrf token');
-    process.exit(1);
-  }
-  console.log('OK csrf');
-
   const login = await request('/auth/login', {
     method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'X-CSRF-Token': csrfToken,
-    },
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ email: EMAIL, password: PASSWORD }),
   });
 
@@ -76,6 +65,14 @@ async function main() {
     console.warn('WARN login still returns tokens in body');
   }
   console.log('OK login (cookie session)');
+
+  const csrfRes = await request('/auth/csrf-token', { method: 'GET' });
+  const csrfToken = csrfRes.body?.data?.csrfToken || jar.get('csrfToken');
+  if (!csrfToken) {
+    console.error('FAIL csrf token after login', csrfRes.status, csrfRes.body);
+    process.exit(1);
+  }
+  console.log('OK csrf');
 
   const proposals = await request('/proposals?limit=1', {
     headers: { 'X-CSRF-Token': csrfToken },

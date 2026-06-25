@@ -868,6 +868,7 @@ router.delete(
  */
 router.get(
   '/csrf-token',
+  authenticate,
   asyncHandler(async (req, res) => {
     const csrfToken = generateCsrfToken();
     registerCsrfToken(csrfToken);

@@ -198,4 +198,16 @@ export const validateTenantMembership = (
   next();
 };
 
+/** authenticate + ensure JWT tenant matches resolved tenant header/subdomain */
+export const authenticateTenantMember = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+): Promise<void> => {
+  const { authenticate } = await import('./auth.js');
+  await authenticate(req, res, () => {
+    validateTenantMembership(req, res, next);
+  });
+};
+
 export default { extractTenant, tenantHeader, validateTenantMembership, parseSubdomainFromHost, resolveTenantForRequest };

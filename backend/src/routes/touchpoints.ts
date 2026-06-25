@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { z } from 'zod';
 import { prisma } from '../config/database.js';
 import { authenticate, authorize } from '../middleware/auth.js';
+import { validateTenantMembership } from '../middleware/tenant.js';
 import { asyncHandler, ApiError } from '../middleware/errorHandler.js';
 import { approveAndSendTouchpoint } from '../jobs/touchpointEngine.js';
 import logger from '../config/logger.js';
@@ -9,6 +10,7 @@ import logger from '../config/logger.js';
 const router = Router();
 
 router.use(authenticate);
+router.use(validateTenantMembership);
 
 const StageEnum = z.enum([
   'PROPOSAL_ACCEPTED', 'AML_PENDING', 'AML_COMPLETE', 'ENGAGEMENT_LETTER_SENT',
