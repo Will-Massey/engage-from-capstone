@@ -9,7 +9,7 @@ import { decrypt } from '../utils/encryption.js';
 import logger from '../config/logger.js';
 
 // Email provider types
-export type EmailProvider = 'smtp' | 'gmail' | 'outlook' | 'microsoft365';
+export type EmailProvider = 'smtp' | 'gmail' | 'outlook' | 'microsoft365' | 'cloudflare';
 
 // Email configuration interface
 export interface EmailConfig {
@@ -80,6 +80,10 @@ export class EmailService {
   private async initializeTransporter(): Promise<void> {
     try {
       switch (this.config.provider) {
+        case 'cloudflare':
+          // Cloudflare Email uses REST API / Worker — no nodemailer transporter
+          logger.info('Email service initialized: cloudflare');
+          return;
         case 'smtp':
           await this.initializeSMTP();
           break;
@@ -97,6 +101,77 @@ export class EmailService {
     } catch (error) {
       logger.error('Failed to initialize email transporter:', error);
       throw error;
+    }
+  }
+
+  private async sendViaCloudflare(message: EmailMessage): Promise<{ success: boolean; messageId?: string; error?: string }> {
+    const workerUrl = process.env.EMAIL_WORKER_URL;
+    const workerSecret = process.env.EMAIL_WORKER_SECRET;
+    const accountId = process.env.CLOUDFLARE_ACCOUNT_ID;
+    const apiToken = process.env.CLOUDFLARE_EMAIL_API_TOKEN;
+    const replyTo = process.env.EMAIL_REPLY_TO || 'support@capstonesoftware.co.uk';
+
+    const payload = {
+      to: message.to,
+      subject: message.subject,
+      html: message.html,
+      text: message.text,
+      from: {
+        address: this.config.fromEmail,
+        name: this.config.fromName,
+      },
+      reply_to: replyTo,
+      cc: message.cc,
+      bcc: message.bcc,
+      attachments: message.attachments?.map((file) => ({
+        content: Buffer.isBuffer(file.content)
+          ? file.content.toString('base64')
+          : String(file.content),
+        filename: file.filename,
+        type: file.contentType || 'application/octet-stream',
+        disposition: 'attachment',
+      })),
+    };
+
+    try {
+      if (workerUrl && workerSecret) {
+        const res = await fetch(`${workerUrl.replace(/\/$/, '')}/send`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${workerSecret}`,
+          },
+          body: JSON.stringify(payload),
+        });
+        const data = (await res.json()) as any;
+        if (!res.ok) {
+          throw new Error(data.error || `Email worker returned ${res.status}`);
+        }
+        return { success: true, messageId: data.result?.messageId };
+      }
+
+      if (accountId && apiToken) {
+        const res = await fetch(
+          `https://api.cloudflare.com/client/v4/accounts/${accountId}/email/sending/send`,
+          {
+            method: 'POST',
+            headers: {
+              Authorization: `Bearer ${apiToken}`,
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(payload),
+          }
+        );
+        const data = (await res.json()) as any;
+        if (!res.ok || !data.success) {
+          throw new Error(data.errors?.[0]?.message || `Cloudflare email API returned ${res.status}`);
+        }
+        return { success: true };
+      }
+
+      throw new Error('Cloudflare email not configured');
+    } catch (error: any) {
+      return { success: false, error: error.message || 'Unknown error' };
     }
   }
 
@@ -234,6 +309,10 @@ export class EmailService {
     message: EmailMessage
   ): Promise<{ success: boolean; messageId?: string; error?: string }> {
     try {
+      if (this.config.provider === 'cloudflare') {
+        return this.sendViaCloudflare(message);
+      }
+
       if (!this.transporter) {
         throw new Error('Email transporter not initialized');
       }
@@ -392,6 +471,15 @@ export class EmailService {
 
   async verifyConnection(): Promise<{ success: boolean; error?: string }> {
     try {
+      if (this.config.provider === 'cloudflare') {
+        const configured =
+          (process.env.EMAIL_WORKER_URL && process.env.EMAIL_WORKER_SECRET) ||
+          (process.env.CLOUDFLARE_ACCOUNT_ID && process.env.CLOUDFLARE_EMAIL_API_TOKEN);
+        return configured
+          ? { success: true }
+          : { success: false, error: 'Cloudflare email not configured' };
+      }
+
       if (!this.transporter) {
         return { success: false, error: 'Transporter not initialized' };
       }
@@ -499,7 +587,13 @@ export class EmailService {
 
 // Create email service instance from environment
 export function createEmailService(): EmailService | null {
-  const provider = process.env.EMAIL_PROVIDER as EmailProvider;
+  const cloudflareConfigured =
+    (process.env.EMAIL_WORKER_URL && process.env.EMAIL_WORKER_SECRET) ||
+    (process.env.CLOUDFLARE_ACCOUNT_ID && process.env.CLOUDFLARE_EMAIL_API_TOKEN);
+
+  const provider = (cloudflareConfigured
+    ? 'cloudflare'
+    : process.env.EMAIL_PROVIDER) as EmailProvider;
 
   if (!provider) {
     logger.warn('EMAIL_PROVIDER not set, email service disabled');
@@ -508,11 +602,14 @@ export function createEmailService(): EmailService | null {
 
   const config: EmailConfig = {
     provider,
-    fromName: process.env.EMAIL_FROM_NAME || 'Engage by Capstone',
-    fromEmail: process.env.EMAIL_FROM_ADDRESS || 'sales@capstonesoftware.co.uk',
+    fromName: process.env.EMAIL_FROM_NAME || 'Capstone Engage',
+    fromEmail: process.env.EMAIL_FROM_ADDRESS || 'proposals@capstonesoftware.co.uk',
   };
 
   switch (provider) {
+    case 'cloudflare':
+      break;
+
     case 'smtp':
       config.smtp = {
         host: process.env.SMTP_HOST || '',

@@ -247,10 +247,18 @@ export async function runEmailAutomation(): Promise<{
       };
     }
 
-    // Skip if email not configured
-    if (!emailConfig.smtp?.host && !emailConfig.sendgrid?.apiKey) {
+    // Skip if email not configured (Cloudflare Email Service or SMTP)
+    const cloudflareConfigured =
+      (process.env.EMAIL_WORKER_URL && process.env.EMAIL_WORKER_SECRET) ||
+      (process.env.CLOUDFLARE_ACCOUNT_ID && process.env.CLOUDFLARE_EMAIL_API_TOKEN);
+
+    if (!emailConfig.smtp?.host && !cloudflareConfigured) {
       logger.warn('Email not configured, skipping automation');
       return { success: false, ...stats };
+    }
+
+    if (cloudflareConfigured) {
+      emailConfig.provider = 'cloudflare';
     }
 
     const emailService = new EmailService(emailConfig);
