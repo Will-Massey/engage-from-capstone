@@ -164,14 +164,15 @@ XAI_MODEL_DEEP=grok-3          # research / analysis tasks
 
 | Test | Result |
 |------|--------|
-| 15× `/ping` rapid fire | All 200 — stable under light load |
-| Invalid credentials | Rejected (NO_TENANT without context) |
+| 20× `/ping` concurrent | All 200 — stable under light load |
 | Invalid Bearer token | `INVALID_TOKEN` — correct |
-| Open tenant registration | `INTERNAL_ERROR` — needs fix (should be 400/429) |
-| capstone-engage health | `email: configured` |
-| Test proposal email | Sent to william@capstonesoftware.co.uk via Cloudflare ✅ |
+| Open tenant registration | `403 CSRF_MISSING` — blocked (signup also disabled in prod) |
+| Cookie auth + CSRF send flow | Login → CSRF cookie → `POST /send` works |
+| AI status (`/api/ai/status`) | `configured: true`, Clara + Grok ready |
+| Test proposal email | **PROP-MQYAHNG5-DHM** sent to william@capstonesoftware.co.uk ✅ |
+| Cross-tenant `X-Tenant-Id` header | **Fixed in `4dd15530`** — deploy pending verification |
 
-**Not yet tested:** concurrent proposal sends, cross-tenant IDOR fuzzing, CSRF bypass, signature URL enumeration, load at 50+ RPS.
+**Not yet tested:** concurrent proposal sends, cross-tenant IDOR fuzzing at scale, CSRF bypass, signature URL enumeration, load at 50+ RPS.
 
 ---
 
