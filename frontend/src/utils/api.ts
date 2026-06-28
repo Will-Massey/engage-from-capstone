@@ -56,7 +56,7 @@ const fetchCsrfToken = async (): Promise<string> => {
       const token = res.data?.data?.csrfToken;
       if (token) {
         csrfTokenInMemory = token;
-        console.log('[CSRF] Token fetched and stored in memory');
+        if (import.meta.env.DEV) console.log('[CSRF] Token fetched and stored in memory');
         return token;
       }
       console.warn('[CSRF] No token in response');
@@ -91,7 +91,7 @@ api.interceptors.request.use(
       const csrfToken = await fetchCsrfToken();
       if (csrfToken && csrfToken !== 'undefined') {
         config.headers['X-CSRF-Token'] = csrfToken;
-        console.log('[CSRF] Token added to request');
+        if (import.meta.env.DEV) console.log('[CSRF] Token added to request');
       } else {
         console.warn('[CSRF] No token available for request');
       }
@@ -119,7 +119,7 @@ api.interceptors.response.use(
 
       // Handle CSRF errors with automatic retry
       if (errorCode === 'CSRF_MISSING' || errorCode === 'CSRF_INVALID') {
-        console.log('[CSRF] Token invalid, fetching new token and retrying...');
+        if (import.meta.env.DEV) console.log('[CSRF] Token invalid, fetching new token and retrying...');
 
         // Clear the cached token to force a refresh
         csrfTokenInMemory = null;
@@ -133,7 +133,7 @@ api.interceptors.response.use(
             if (newToken) {
               // Update the request with the new token
               originalRequest.headers['X-CSRF-Token'] = newToken;
-              console.log('[CSRF] Retrying request with new token');
+              if (import.meta.env.DEV) console.log('[CSRF] Retrying request with new token');
               // Retry the request
               return api(originalRequest);
             }

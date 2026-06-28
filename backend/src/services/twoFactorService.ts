@@ -7,8 +7,17 @@ import speakeasy from 'speakeasy';
 import QRCode from 'qrcode';
 import crypto from 'crypto';
 
-// Encryption helpers for storing secrets
-const ENCRYPTION_KEY = process.env.TWO_FACTOR_ENCRYPTION_KEY || process.env.JWT_SECRET!;
+// Encryption helpers for storing secrets — never fall back to JWT_SECRET in production
+function resolveTwoFactorKey(): string {
+  const key = process.env.TWO_FACTOR_ENCRYPTION_KEY || process.env.ENCRYPTION_KEY;
+  if (key) return key;
+  if (process.env.NODE_ENV === 'production') {
+    throw new Error('TWO_FACTOR_ENCRYPTION_KEY or ENCRYPTION_KEY is required in production');
+  }
+  return process.env.JWT_SECRET || 'dev-only-2fa-key-not-for-production';
+}
+
+const ENCRYPTION_KEY = resolveTwoFactorKey();
 
 function encrypt(text: string): string {
   const iv = crypto.randomBytes(16);

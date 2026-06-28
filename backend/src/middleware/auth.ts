@@ -134,6 +134,23 @@ export const authenticate = async (
       return;
     }
 
+    // Reject cross-tenant header injection (X-Tenant-Id must match JWT tenant)
+    const headerTenantId = req.headers['x-tenant-id'];
+    if (
+      typeof headerTenantId === 'string' &&
+      headerTenantId.trim() &&
+      headerTenantId.trim() !== user.tenantId
+    ) {
+      res.status(403).json({
+        success: false,
+        error: {
+          code: 'TENANT_MISMATCH',
+          message: 'User does not belong to this tenant',
+        },
+      });
+      return;
+    }
+
     // Attach user and tenant to request
     req.user = {
       id: user.id,

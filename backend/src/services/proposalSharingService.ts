@@ -338,11 +338,17 @@ export async function getProposalSignatures(proposalId: string) {
   }
 }
 
-// Get signature image
-export async function getSignatureImage(signatureId: string): Promise<string | null> {
+// Get signature image (tenant-scoped — prevents cross-tenant IDOR)
+export async function getSignatureImage(
+  signatureId: string,
+  tenantId: string
+): Promise<string | null> {
   try {
-    const signature = await prisma.proposalSignature.findUnique({
-      where: { id: signatureId },
+    const signature = await prisma.proposalSignature.findFirst({
+      where: {
+        id: signatureId,
+        proposal: { tenantId },
+      },
       select: { signatureData: true, signatureFilePath: true },
     });
 

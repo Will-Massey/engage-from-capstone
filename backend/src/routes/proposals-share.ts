@@ -564,7 +564,7 @@ router.post(
       if (fullProposal?.createdBy?.email) {
         const { PDFGenerator } = await import('../services/pdfGenerator.js');
         const proposalPdf = await PDFGenerator.generateProposal(proposal.id);
-        const signatureImage = await getSignatureImage(result.signatureId!);
+        const signatureImage = await getSignatureImage(result.signatureId!, proposal.tenantId);
 
         const notifyResult = await tenantMailer.sendAcceptanceNotification(
           proposal.tenantId,
