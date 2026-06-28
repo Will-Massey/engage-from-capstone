@@ -40,11 +40,12 @@ async function main() {
   if (login.status !== 200) throw new Error('Login failed: ' + JSON.stringify(login.data));
 
   const clients = await api('/api/clients?limit=50', { cookies });
-  let client = clients.data?.data?.clients?.find(
+  const clientList = Array.isArray(clients.data?.data) ? clients.data.data : [];
+  let client = clientList.find(
     (c) => c.contactEmail?.toLowerCase() === TARGET_EMAIL.toLowerCase()
   );
   if (!client) {
-    client = clients.data?.data?.clients?.[0];
+    client = clientList[0];
     if (client) {
       await api(`/api/clients/${client.id}`, {
         method: 'PUT',
@@ -58,8 +59,8 @@ async function main() {
   if (!client) throw new Error('No clients found');
 
   const services = await api('/api/services?limit=5', { cookies });
-  const svcList = services.data?.data?.services || services.data?.data || [];
-  const svc = Array.isArray(svcList) ? svcList[0] : null;
+  const svcList = Array.isArray(services.data?.data) ? services.data.data : [];
+  const svc = svcList[0] || null;
   if (!svc) throw new Error('No services in catalog');
 
   const create = await api('/api/proposals', {
