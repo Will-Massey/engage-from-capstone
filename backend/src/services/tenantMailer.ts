@@ -1,5 +1,5 @@
 /**
- * Unified tenant-aware mailer — platform SendGrid default with optional custom SMTP/OAuth.
+ * Unified tenant-aware mailer — platform Cloudflare Email default with optional custom SMTP/OAuth.
  */
 
 import { prisma } from '../config/database.js';
@@ -49,7 +49,7 @@ export interface TenantMailSendOptions {
     proposalId?: string;
     touchpointId?: string;
   };
-  /** Force platform SendGrid even if custom is configured */
+  /** Force platform email even if custom is configured */
   forcePlatform?: boolean;
 }
 
@@ -213,7 +213,7 @@ export async function tenantMailerSend(options: TenantMailSendOptions): Promise<
   if (useCustom && customConfig) {
     result = await sendWithCustom(customConfig, message, replyTo);
     if (!result.success && isSendGridConfigured()) {
-      logger.warn(`Custom email failed for tenant ${tenantId}, falling back to SendGrid`);
+      logger.warn(`Custom email failed for tenant ${tenantId}, falling back to platform email`);
       result = await sendWithPlatform(ctx.tenantName, message, replyTo, {
         tenantId,
         emailLogId: log.id,
@@ -229,7 +229,7 @@ export async function tenantMailerSend(options: TenantMailSendOptions): Promise<
     });
     provider = 'SENDGRID';
   } else {
-    result = { success: false, error: 'No email transport configured (set SENDGRID_API_KEY or tenant SMTP)' };
+    result = { success: false, error: 'No email transport configured (set EMAIL_WORKER_URL or tenant SMTP)' };
   }
 
   await prisma.emailLog.update({

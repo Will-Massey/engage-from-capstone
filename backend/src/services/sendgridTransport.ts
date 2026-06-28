@@ -1,8 +1,8 @@
 /**
- * SendGrid platform transport for multi-tenant Engage mailer.
+ * Platform email transport — Cloudflare Email Service (replaces SendGrid).
+ * Export names kept for compatibility with tenantMailer.
  */
 
-import sgMail from '@sendgrid/mail';
 import logger from '../config/logger.js';
 
 export interface SendGridAttachment {
@@ -30,22 +30,11 @@ export interface SendGridSendResult {
   error?: string;
 }
 
-let apiKeyConfigured = false;
-
-function ensureApiKey(): boolean {
-  const apiKey = process.env.SENDGRID_API_KEY;
-  if (!apiKey) {
-    return false;
-  }
-  if (!apiKeyConfigured) {
-    sgMail.setApiKey(apiKey);
-    apiKeyConfigured = true;
-  }
-  return true;
-}
-
 export function isSendGridConfigured(): boolean {
-  return !!process.env.SENDGRID_API_KEY;
+  return Boolean(
+    (process.env.EMAIL_WORKER_URL && process.env.EMAIL_WORKER_SECRET) ||
+    (process.env.CLOUDFLARE_ACCOUNT_ID && process.env.CLOUDFLARE_EMAIL_API_TOKEN)
+  );
 }
 
 export function getPlatformFromAddress(): { email: string; name: string } {
@@ -53,47 +42,114 @@ export function getPlatformFromAddress(): { email: string; name: string } {
     email:
       process.env.EMAIL_PLATFORM_FROM ||
       process.env.EMAIL_FROM_ADDRESS ||
-      'notifications@engage.capstonesoftware.co.uk',
-    name: process.env.EMAIL_PLATFORM_FROM_NAME || process.env.EMAIL_FROM_NAME || 'Engage by Capstone',
+      'proposals@capstonesoftware.co.uk',
+    name:
+      process.env.EMAIL_PLATFORM_FROM_NAME ||
+      process.env.EMAIL_FROM_NAME ||
+      'Capstone Engage',
   };
 }
 
+async function sendViaWorker(payload: Record<string, unknown>): Promise<SendGridSendResult> {
+  const url = process.env.EMAIL_WORKER_URL;
+  const secret = process.env.EMAIL_WORKER_SECRET;
+  if (!url || !secret) {
+    return { success: false, error: 'EMAIL_WORKER_URL/SECRET not configured' };
+  }
+
+  const res = await fetch(`${url.replace(/\/$/, '')}/send`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${secret}`,
+    },
+    body: JSON.stringify(payload),
+  });
+
+  const data = (await res.json()) as { error?: string; result?: { messageId?: string } };
+  if (!res.ok) {
+    return { success: false, error: data.error || `Email worker returned ${res.status}` };
+  }
+
+  return { success: true, messageId: data.result?.messageId };
+}
+
+async function sendViaCloudflareApi(payload: Record<string, unknown>): Promise<SendGridSendResult> {
+  const token = process.env.CLOUDFLARE_EMAIL_API_TOKEN;
+  const accountId = process.env.CLOUDFLARE_ACCOUNT_ID;
+  if (!token || !accountId) {
+    return { success: false, error: 'CLOUDFLARE_ACCOUNT_ID/API_TOKEN not configured' };
+  }
+
+  const res = await fetch(
+    `https://api.cloudflare.com/client/v4/accounts/${accountId}/email/sending/send`,
+    {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(payload),
+    }
+  );
+
+  const data = (await res.json()) as {
+    success?: boolean;
+    errors?: Array<{ message?: string }>;
+    result?: { delivered?: string[] };
+  };
+
+  if (!res.ok || !data.success) {
+    return {
+      success: false,
+      error: data.errors?.[0]?.message || `Cloudflare email API returned ${res.status}`,
+    };
+  }
+
+  return { success: true, messageId: data.result?.delivered?.[0] };
+}
+
 export async function sendViaSendGrid(params: SendGridSendParams): Promise<SendGridSendResult> {
-  if (!ensureApiKey()) {
-    return { success: false, error: 'SENDGRID_API_KEY not configured' };
+  if (!isSendGridConfigured()) {
+    return {
+      success: false,
+      error: 'Platform email not configured (set EMAIL_WORKER_URL or CLOUDFLARE_EMAIL_API_TOKEN)',
+    };
   }
 
   try {
-    const attachments = (params.attachments || []).map((a) => ({
-      filename: a.filename,
-      type: a.contentType || 'application/octet-stream',
-      disposition: 'attachment' as const,
-      content:
-        typeof a.content === 'string' ? a.content : a.content.toString('base64'),
-    }));
-
-    const [response] = await sgMail.send({
+    const payload: Record<string, unknown> = {
       to: params.to,
       cc: params.cc,
-      from: {
-        email: params.from,
-        name: params.fromName,
-      },
-      replyTo: params.replyTo,
+      from: { address: params.from, name: params.fromName },
+      reply_to: params.replyTo || process.env.EMAIL_REPLY_TO || 'support@capstonesoftware.co.uk',
       subject: params.subject,
       html: params.html,
       text: params.text,
-      attachments: attachments.length > 0 ? attachments : undefined,
-      customArgs: params.customArgs,
-    });
+    };
 
-    const messageId = response.headers?.['x-message-id'] as string | undefined;
-    logger.info(`SendGrid email sent: ${messageId || 'ok'}`);
-    return { success: true, messageId };
+    if (params.attachments?.length) {
+      payload.attachments = params.attachments.map((a) => ({
+        content:
+          typeof a.content === 'string' ? a.content : a.content.toString('base64'),
+        filename: a.filename,
+        type: a.contentType || 'application/octet-stream',
+        disposition: 'attachment',
+      }));
+    }
+
+    const viaWorker = process.env.EMAIL_WORKER_URL && process.env.EMAIL_WORKER_SECRET;
+    const result = viaWorker
+      ? await sendViaWorker(payload)
+      : await sendViaCloudflareApi(payload);
+
+    if (result.success) {
+      logger.info(`Cloudflare platform email sent: ${result.messageId || 'ok'}`);
+    }
+    return result;
   } catch (error: any) {
-    const detail =
-      error?.response?.body?.errors?.[0]?.message || error?.message || 'SendGrid send failed';
-    logger.error('SendGrid send failed:', detail);
+    const detail = error?.message || 'Platform email send failed';
+    logger.error('Cloudflare platform email failed:', detail);
     return { success: false, error: detail };
   }
 }
