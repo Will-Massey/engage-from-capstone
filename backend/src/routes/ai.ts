@@ -31,12 +31,14 @@ import { getRegulatoryAlerts } from '../services/ai/regulatoryWatcherService.js'
 import { getBenchmarkPricing } from '../services/ai/benchmarkPricingService.js';
 import { draftProposalFromVoice } from '../services/ai/voiceProposalService.js';
 import { AI_COPILOT } from '../config/aiCopilot.js';
+import { isE2eTestRequest, rateLimitingEnabled } from '../utils/securityFlags.js';
 
 const router = Router();
 
 const aiLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  max: 40,
+  max: 80,
+  skip: (req) => !rateLimitingEnabled || isE2eTestRequest(req.headers),
   message: {
     success: false,
     error: { code: 'RATE_LIMIT', message: `Too many requests for ${AI_COPILOT.name}. Please wait a few minutes.` },

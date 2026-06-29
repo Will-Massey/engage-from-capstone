@@ -28,6 +28,7 @@
     "test": "cd backend && npm test",
     "test:coverage": "cd backend && npm test -- --coverage",
     "test:e2e": "cd e2e-tests && npm ci && npx playwright test",
+    "test:e2e:build": "cd e2e-tests && npm ci && npx playwright install chromium && npm run test:build",
     "verify": "npm run lint && npm run typecheck && npm run test && npm run build",
     "check:production": "node scripts/check-production.mjs"
   },

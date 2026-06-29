@@ -1,0 +1,43 @@
+import { defineConfig, devices } from '@playwright/test';
+import path from 'path';
+
+const authFile = path.join(__dirname, '.auth', 'user.json');
+
+/**
+ * Build verification — run against Render (or local) before manual QA continues.
+ * Single chromium worker + global login to avoid auth rate limits.
+ */
+export default defineConfig({
+  testDir: './specs',
+  testMatch: ['build-smoke.spec.ts', 'ai-native.spec.ts'],
+  fullyParallel: false,
+  forbidOnly: !!process.env.CI,
+  retries: process.env.CI ? 1 : 0,
+  workers: 1,
+  timeout: 150_000,
+  globalSetup: require.resolve('./global-setup'),
+
+  reporter: [
+    ['list'],
+    ['html', { open: 'never', outputFolder: 'playwright-report-build' }],
+    ['json', { outputFile: 'test-results/build-results.json' }],
+  ],
+
+  use: {
+    baseURL: process.env.FRONTEND_URL || 'https://engage-frontend-0g6u.onrender.com',
+    storageState: authFile,
+    trace: 'retain-on-failure',
+    screenshot: 'only-on-failure',
+    video: 'retain-on-failure',
+    actionTimeout: 20_000,
+    navigationTimeout: 45_000,
+    extraHTTPHeaders: { 'X-Test-Mode': 'e2e-build' },
+  },
+
+  projects: [
+    {
+      name: 'chromium',
+      use: { ...devices['Desktop Chrome'] },
+    },
+  ],
+});

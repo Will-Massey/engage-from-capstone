@@ -4,9 +4,12 @@
   "description": "E2E tests for Engage proposal management",
   "scripts": {
     "test": "playwright test",
+    "test:build": "playwright test --config=playwright.build.config.ts",
+    "test:build:headed": "playwright test --config=playwright.build.config.ts --headed",
     "test:ui": "playwright test --ui",
     "test:debug": "playwright test --debug",
     "test:report": "playwright show-report",
+    "test:report:build": "playwright show-report playwright-report-build",
     "test:headed": "playwright test --headed"
   },
   "devDependencies": {

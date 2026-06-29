@@ -15,7 +15,7 @@ import helmet from 'helmet';
 import morgan from 'morgan';
 import rateLimit from 'express-rate-limit';
 import cookieParser from 'cookie-parser';
-import { rateLimitingEnabled } from './utils/securityFlags.js';
+import { isE2eTestRequest, rateLimitingEnabled } from './utils/securityFlags.js';
 import stripeWebhookRoutes from './routes/stripeWebhook.js';
 import { handleOAuthProviderCallback } from './handlers/oauthCallback.js';
 
@@ -839,7 +839,7 @@ cache.connect().catch((err) => {
 const limiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   max: 100,
-  skip: (req) => req.path === '/api/health' || !rateLimitingEnabled,
+  skip: (req) => req.path === '/api/health' || !rateLimitingEnabled || isE2eTestRequest(req.headers),
   message: {
     success: false,
     error: {
