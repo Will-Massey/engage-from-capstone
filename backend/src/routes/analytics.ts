@@ -530,4 +530,124 @@ router.get(
   })
 );
 
+/** GET /api/analytics/attention-summary — proposals grouped by Clara priority */
+router.get(
+  '/attention-summary',
+  asyncHandler(async (req, res) => {
+    const tenantId = req.tenantId!;
+    const now = Date.now();
+
+    const proposals = await prisma.proposal.findMany({
+      where: {
+        tenantId,
+        status: { in: ['SENT', 'VIEWED'] },
+        sentAt: { not: null },
+      },
+      include: {
+        client: { select: { id: true, name: true } },
+        views: { select: { id: true, viewedAt: true } },
+      },
+      orderBy: { total: 'desc' },
+      take: 200,
+    });
+
+    type AttentionItem = {
+      id: string;
+      reference: string;
+      title: string;
+      clientName: string;
+      clientId: string;
+      status: string;
+      total: number;
+      sentAt: string;
+      validUntil: string;
+      daysSinceSent: number;
+      daysUntilExpiry: number;
+      viewCount: number;
+      priority: 'stuck' | 'no_views' | 'expiring';
+      healthScore: number;
+    };
+
+    const stuck: AttentionItem[] = [];
+    const noViews: AttentionItem[] = [];
+    const expiring: AttentionItem[] = [];
+
+    for (const p of proposals) {
+      const daysSinceSent = Math.floor(
+        (now - new Date(p.sentAt!).getTime()) / 86400000
+      );
+      const daysUntilExpiry = Math.floor(
+        (new Date(p.validUntil).getTime() - now) / 86400000
+      );
+      const viewCount = p.views.length;
+
+      const isStuck = daysSinceSent > 14 && p.status === 'SENT';
+      const isNoViews = viewCount === 0 && p.status === 'SENT' && daysSinceSent > 3;
+      const isExpiring =
+        daysUntilExpiry >= 0 && daysUntilExpiry <= 7 && p.status !== 'ACCEPTED';
+
+      if (!isStuck && !isNoViews && !isExpiring) continue;
+
+      let healthScore = 70;
+      if (isStuck) healthScore = 35;
+      else if (isNoViews && daysSinceSent > 7) healthScore = 45;
+      else if (isExpiring) healthScore = Math.min(healthScore, 50);
+
+      const base: Omit<AttentionItem, 'priority'> = {
+        id: p.id,
+        reference: p.reference,
+        title: p.title,
+        clientName: p.client.name,
+        clientId: p.client.id,
+        status: p.status,
+        total: p.total,
+        sentAt: p.sentAt!.toISOString(),
+        validUntil: p.validUntil.toISOString(),
+        daysSinceSent,
+        daysUntilExpiry,
+        viewCount,
+        healthScore,
+      };
+
+      if (isStuck) {
+        stuck.push({ ...base, priority: 'stuck' });
+      }
+      if (isNoViews) {
+        noViews.push({ ...base, priority: 'no_views' });
+      }
+      if (isExpiring) {
+        expiring.push({ ...base, priority: 'expiring' });
+      }
+    }
+
+    const sortByUrgency = (a: AttentionItem, b: AttentionItem) =>
+      a.healthScore - b.healthScore || b.total - a.total;
+
+    stuck.sort(sortByUrgency);
+    noViews.sort(sortByUrgency);
+    expiring.sort((a, b) => a.daysUntilExpiry - b.daysUntilExpiry || b.total - a.total);
+
+    res.json({
+      success: true,
+      data: {
+        summary: {
+          stuck: stuck.length,
+          noViews: noViews.length,
+          expiring: expiring.length,
+          total: stuck.length + noViews.length + expiring.length,
+        },
+        groups: {
+          stuck,
+          noViews,
+          expiring,
+        },
+        narrator:
+          stuck.length + noViews.length + expiring.length === 0
+            ? 'No proposals need urgent attention right now.'
+            : `${stuck.length} stuck, ${noViews.length} unopened, and ${expiring.length} expiring soon — review the highest-value items first.`,
+      },
+    });
+  })
+);
+
 export default router;

@@ -22,6 +22,7 @@ import {
 import { apiClient } from '../../utils/api';
 import toast from 'react-hot-toast';
 import ProposalAiAssist from '../../components/ai/ProposalAiAssist';
+import ProposalEmailPreviewDialog from '../../components/ai/ProposalEmailPreviewDialog';
 import { formatCurrency } from '../../utils/formatters';
 import { copyTextToClipboard } from '../../utils/clipboard';
 import { useAuthStore } from '../../stores/authStore';
@@ -131,6 +132,7 @@ const ProposalDetail = () => {
   const [coverLetterDraft, setCoverLetterDraft] = useState('');
   const [editingCoverLetter, setEditingCoverLetter] = useState(false);
   const [savingCoverLetter, setSavingCoverLetter] = useState(false);
+  const [showSendEmailPreview, setShowSendEmailPreview] = useState(false);
 
   // Rich compliance history (views + signatures + sent events) from dedicated audit trail
   const [auditTrail, setAuditTrail] = useState<any[]>([]);
@@ -238,15 +240,23 @@ const ProposalDetail = () => {
     }
   };
 
-  const handleSend = async () => {
+  const handleSend = async (approved?: {
+    subject: string;
+    textBody: string;
+    htmlBody?: string;
+  }) => {
     try {
-      await apiClient.sendProposal(id!);
+      await apiClient.sendProposal(id!, approved);
       toast.success('Proposal sent successfully');
       loadProposal();
       loadAuditTrail();
     } catch (error) {
       // Error handled by API interceptor
     }
+  };
+
+  const openSendFlow = () => {
+    setShowSendEmailPreview(true);
   };
 
   const handleAccept = async () => {
@@ -572,7 +582,7 @@ const ProposalDetail = () => {
 
           {proposal.status === 'DRAFT' && (
             <button
-              onClick={handleSend}
+              onClick={openSendFlow}
               className="btn-primary"
               style={{ backgroundColor: tenant?.primaryColor || '#0ea5e9' }}
             >
@@ -1415,6 +1425,13 @@ const ProposalDetail = () => {
           )}
         </div>
       </div>
+
+      <ProposalEmailPreviewDialog
+        open={showSendEmailPreview}
+        onClose={() => setShowSendEmailPreview(false)}
+        proposalId={id}
+        onSend={handleSend}
+      />
     </div>
   );
 };

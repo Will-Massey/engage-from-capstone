@@ -7,7 +7,7 @@
  * 3. Clear pricing display with edit capability (billing cycles)
  */
 
-import { useState, useEffect, useMemo, useCallback } from 'react';
+import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { apiClient } from '../../utils/api';
 import { useAuthStore } from '../../stores/authStore';
@@ -44,6 +44,9 @@ import {
 import { AiDraftPreview, showAiError } from '../ai/AiPanel';
 import ProposalHealthCard from '../ai/ProposalHealthCard';
 import ProposalBuilderClara from '../ai/ProposalBuilderClara';
+import ClientContextCard from '../ai/ClientContextCard';
+import AutoFitBanner, { type AutoFitResult } from '../ai/AutoFitBanner';
+import ProposalEmailPreviewDialog, { type ProposalEmailDraftInput } from '../ai/ProposalEmailPreviewDialog';
 import { AI_COPILOT } from '../../config/aiCopilot';
 
 // Types
@@ -359,6 +362,11 @@ export default function ProposalBuilder({ proposalId }: ProposalBuilderProps) {
   const [aiCoverDraft, setAiCoverDraft] = useState<string | null>(null);
   const [showClientPreview, setShowClientPreview] = useState(false);
   const [validationErrors, setValidationErrors] = useState<string[]>([]);
+  const [autoFitLoading, setAutoFitLoading] = useState(false);
+  const [autoFitResult, setAutoFitResult] = useState<AutoFitResult | null>(null);
+  const [autoFitDismissed, setAutoFitDismissed] = useState(false);
+  const [showEmailPreview, setShowEmailPreview] = useState(false);
+  const autoFitClientRef = useRef<string | null>(null);
 
   const todayIso = format(new Date(), 'yyyy-MM-dd');
 
@@ -427,6 +435,34 @@ export default function ProposalBuilder({ proposalId }: ProposalBuilderProps) {
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedClient?.id, selectedServices.length]);
+
+  // Debounced auto-fit when client is selected (new proposals only)
+  useEffect(() => {
+    if (!selectedClient || isEditMode || proposalId || !aiConfigured || autoFitDismissed) return;
+
+    const clientId = selectedClient.id;
+    autoFitClientRef.current = clientId;
+    const timer = setTimeout(async () => {
+      setAutoFitLoading(true);
+      try {
+        const res = (await apiClient.aiAutoFit(clientId)) as any;
+        if (autoFitClientRef.current === clientId && res.success) {
+          setAutoFitResult(res.data);
+        }
+      } catch (e) {
+        if (autoFitClientRef.current === clientId) showAiError(e);
+      } finally {
+        if (autoFitClientRef.current === clientId) setAutoFitLoading(false);
+      }
+    }, 800);
+
+    return () => clearTimeout(timer);
+  }, [selectedClient?.id, aiConfigured, isEditMode, proposalId, autoFitDismissed]);
+
+  useEffect(() => {
+    setAutoFitDismissed(false);
+    setAutoFitResult(null);
+  }, [selectedClient?.id]);
 
   useEffect(() => {
     if (isEditMode) return;
@@ -824,6 +860,74 @@ export default function ProposalBuilder({ proposalId }: ProposalBuilderProps) {
       setAiCoverLoading(false);
     }
   };
+
+  const applyAutoFitSection = (
+    section: 'title' | 'services' | 'coverLetter' | 'pricing' | 'validUntil'
+  ) => {
+    if (!autoFitResult) return;
+    switch (section) {
+      case 'title':
+        setProposalTitle(autoFitResult.suggestedTitle);
+        break;
+      case 'services':
+        if (autoFitResult.services?.length) {
+          let added = 0;
+          for (const sug of autoFitResult.services) {
+            const catalogService = services.find((s) => s.id === sug.serviceId);
+            if (!catalogService) continue;
+            if (addServiceWithCadence(catalogService, sug.billingFrequency, sug.displayPrice)) {
+              added++;
+            }
+          }
+          if (added) {
+            toast.success(`Applied ${added} suggested service${added === 1 ? '' : 's'}`);
+          }
+        }
+        break;
+      case 'coverLetter':
+        if (autoFitResult.coverLetterDraft) setCoverLetter(autoFitResult.coverLetterDraft);
+        if (autoFitResult.coverLetterTone) setCoverLetterTone(autoFitResult.coverLetterTone);
+        break;
+      case 'validUntil':
+        if (autoFitResult.validUntilDays) {
+          setValidUntil(format(addDays(new Date(), autoFitResult.validUntilDays), 'yyyy-MM-dd'));
+        }
+        break;
+      case 'pricing':
+        if (autoFitResult.pricingNotes) {
+          toast(autoFitResult.pricingNotes, { icon: '💡', duration: 5000 });
+        }
+        break;
+    }
+  };
+
+  const applyAllAutoFit = () => {
+    applyAutoFitSection('title');
+    applyAutoFitSection('services');
+    applyAutoFitSection('coverLetter');
+    applyAutoFitSection('validUntil');
+    applyAutoFitSection('pricing');
+    toast.success(`${AI_COPILOT.name}'s suggestions applied — review before sending`);
+    setAutoFitDismissed(true);
+    setAutoFitResult(null);
+  };
+
+  const emailDraftPayload: ProposalEmailDraftInput | undefined = useMemo(() => {
+    if (!selectedClient) return undefined;
+    return {
+      clientId: selectedClient.id,
+      title: proposalTitle,
+      coverLetter,
+      validUntil,
+      practiceName: tenant?.name,
+      senderName: `${user?.firstName || ''} ${user?.lastName || ''}`.trim() || undefined,
+      services: selectedServices.map((s) => ({
+        name: s.name,
+        billingFrequency: s.billingCycle,
+        displayPrice: s.displayPrice,
+      })),
+    };
+  }, [selectedClient, proposalTitle, coverLetter, validUntil, tenant?.name, user, selectedServices]);
 
   // Start editing service
   const startEdit = (service: SelectedService) => {
@@ -1793,6 +1897,16 @@ export default function ProposalBuilder({ proposalId }: ProposalBuilderProps) {
           <button type="button" onClick={() => setShowClientPreview((v) => !v)} className="btn-secondary text-sm">
             {showClientPreview ? 'Hide preview' : 'Preview for client'}
           </button>
+          {aiConfigured && selectedClient && (
+            <button
+              type="button"
+              onClick={() => setShowEmailPreview(true)}
+              className="btn-secondary text-sm inline-flex items-center gap-1.5 border-violet-200 dark:border-violet-700 text-violet-700 dark:text-violet-300"
+            >
+              <SparklesIcon className="h-4 w-4" />
+              Preview client email
+            </button>
+          )}
           {isEditMode ? (
             <button type="button" onClick={previewPdf} className="btn-secondary text-sm">
               Download PDF
@@ -1821,6 +1935,21 @@ export default function ProposalBuilder({ proposalId }: ProposalBuilderProps) {
     <div className="max-w-7xl mx-auto">
       {renderStepIndicator()}
 
+      {selectedClient && !autoFitDismissed && (autoFitLoading || autoFitResult) && (
+        <AutoFitBanner
+          clientName={selectedClient.name}
+          result={autoFitResult}
+          loading={autoFitLoading}
+          configured={aiConfigured}
+          onAcceptAll={applyAllAutoFit}
+          onAcceptSection={applyAutoFitSection}
+          onDismiss={() => {
+            setAutoFitDismissed(true);
+            setAutoFitResult(null);
+          }}
+        />
+      )}
+
       <div
         className={
           selectedClient && currentStep >= 2
@@ -1828,7 +1957,14 @@ export default function ProposalBuilder({ proposalId }: ProposalBuilderProps) {
             : ''
         }
       >
-        <div className="animate-fade-in min-w-0">
+        <div className="animate-fade-in min-w-0 space-y-4">
+          {selectedClient && currentStep >= 2 && currentStep <= 3 && (
+            <ClientContextCard
+              clientId={selectedClient.id}
+              clientName={selectedClient.name}
+              configured={aiConfigured}
+            />
+          )}
           {currentStep === 1 && renderClientStep()}
           {currentStep === 2 && renderServicesStep()}
           {currentStep === 3 && renderReviewStep()}
@@ -1854,6 +1990,13 @@ export default function ProposalBuilder({ proposalId }: ProposalBuilderProps) {
           />
         )}
       </div>
+
+      <ProposalEmailPreviewDialog
+        open={showEmailPreview}
+        onClose={() => setShowEmailPreview(false)}
+        draft={emailDraftPayload}
+        previewOnly
+      />
     </div>
   );
 }

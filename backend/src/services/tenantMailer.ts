@@ -269,23 +269,41 @@ export async function sendProposalEmailForTenant(
     totalAmount?: string;
     serviceCount?: number;
     attachment?: Buffer;
+    /** Clara-generated overrides — used instead of the default template when provided */
+    aiHtml?: string;
+    aiText?: string;
+    aiSubject?: string;
   },
   relatedIds?: { proposalId?: string; clientId?: string }
 ): Promise<TenantMailSendResult> {
-  const { generateProposalEmailTemplate } = await import('../templates/proposalEmail.js');
-  const emailTemplate = generateProposalEmailTemplate({
-    clientName: params.clientName,
-    tenantName: params.tenantName,
-    proposalReference: params.proposalReference,
-    proposalTitle: params.proposalTitle,
-    viewLink: params.viewLink,
-    senderName: params.senderName,
-    senderPosition: params.senderPosition,
-    senderEmail: params.senderEmail,
-    validUntil: params.validUntil,
-    totalAmount: params.totalAmount,
-    serviceCount: params.serviceCount,
-  });
+  let html: string;
+  let text: string;
+  let subject: string;
+
+  if (params.aiHtml || params.aiText || params.aiSubject) {
+    html = params.aiHtml || params.aiText || '';
+    text = params.aiText || '';
+    subject =
+      params.aiSubject || `Proposal: ${params.proposalTitle} - ${params.proposalReference}`;
+  } else {
+    const { generateProposalEmailTemplate } = await import('../templates/proposalEmail.js');
+    const emailTemplate = generateProposalEmailTemplate({
+      clientName: params.clientName,
+      tenantName: params.tenantName,
+      proposalReference: params.proposalReference,
+      proposalTitle: params.proposalTitle,
+      viewLink: params.viewLink,
+      senderName: params.senderName,
+      senderPosition: params.senderPosition,
+      senderEmail: params.senderEmail,
+      validUntil: params.validUntil,
+      totalAmount: params.totalAmount,
+      serviceCount: params.serviceCount,
+    });
+    html = emailTemplate.html;
+    text = emailTemplate.text;
+    subject = `Proposal: ${params.proposalTitle} - ${params.proposalReference}`;
+  }
 
   const attachments = params.attachment
     ? [
@@ -302,9 +320,9 @@ export async function sendProposalEmailForTenant(
     messageType: 'PROPOSAL',
     message: {
       to: params.to,
-      subject: `Proposal: ${params.proposalTitle} - ${params.proposalReference}`,
-      html: emailTemplate.html,
-      text: emailTemplate.text,
+      subject,
+      html,
+      text,
       attachments,
       replyTo: params.senderEmail,
     },

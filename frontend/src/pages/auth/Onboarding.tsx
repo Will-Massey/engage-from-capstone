@@ -4,9 +4,19 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { CheckIcon } from '@heroicons/react/24/solid';
+import { SparklesIcon } from '@heroicons/react/24/outline';
 import { apiClient } from '../../utils/api';
 import { useAuthStore } from '../../stores/authStore';
+import { AI_COPILOT } from '../../config/aiCopilot';
 import toast from 'react-hot-toast';
+
+const CLARA_ONBOARDING_KEY = 'engage-clara-onboarding';
+
+export type ClaraOnboardingProfile = {
+  practiceSize: string;
+  clientTypes: string[];
+  mtdStatus: string;
+};
 
 const onboardingSchema = z.object({
   subdomain: z
@@ -25,9 +35,39 @@ type OnboardingForm = z.infer<typeof onboardingSchema>;
 
 const steps = [
   { id: 1, name: 'Practice Details' },
-  { id: 2, name: 'Admin Account' },
-  { id: 3, name: 'Review' },
+  { id: 2, name: `Meet ${AI_COPILOT.name}` },
+  { id: 3, name: 'Admin Account' },
+  { id: 4, name: 'Review' },
 ];
+
+const PRACTICE_SIZES = [
+  { value: 'solo', label: 'Solo practitioner' },
+  { value: '2-5', label: '2–5 people' },
+  { value: '6-20', label: '6–20 people' },
+  { value: '20+', label: '20+ people' },
+];
+
+const CLIENT_TYPES = [
+  { value: 'limited', label: 'Limited companies' },
+  { value: 'sole_trader', label: 'Sole traders' },
+  { value: 'partnership', label: 'Partnerships' },
+  { value: 'mixed', label: 'Mixed client base' },
+];
+
+const MTD_OPTIONS = [
+  { value: 'compliant', label: 'Most clients are MTD-ready' },
+  { value: 'preparing', label: 'Preparing clients for MTD' },
+  { value: 'not_started', label: 'MTD planning not started yet' },
+];
+
+async function persistClaraProfile(profile: ClaraOnboardingProfile) {
+  localStorage.setItem(CLARA_ONBOARDING_KEY, JSON.stringify(profile));
+  try {
+    await apiClient.updateTenantSettings({ claraOnboarding: profile });
+  } catch {
+    // Tenant settings API may not accept claraOnboarding yet — localStorage is the fallback
+  }
+}
 
 const Onboarding = () => {
   const navigate = useNavigate();
@@ -35,6 +75,11 @@ const Onboarding = () => {
   const [currentStep, setCurrentStep] = useState(1);
   const [isLoading, setIsLoading] = useState(false);
   const [subdomainAvailable, setSubdomainAvailable] = useState<boolean | null>(null);
+  const [claraProfile, setClaraProfile] = useState<ClaraOnboardingProfile>({
+    practiceSize: '',
+    clientTypes: [],
+    mtdStatus: '',
+  });
 
   const {
     register,
@@ -60,6 +105,15 @@ const Onboarding = () => {
     }
   };
 
+  const toggleClientType = (value: string) => {
+    setClaraProfile((prev) => {
+      const next = prev.clientTypes.includes(value)
+        ? prev.clientTypes.filter((t) => t !== value)
+        : [...prev.clientTypes, value];
+      return { ...prev, clientTypes: next };
+    });
+  };
+
   const onSubmit = async (data: OnboardingForm) => {
     setIsLoading(true);
     try {
@@ -74,7 +128,10 @@ const Onboarding = () => {
 
       if (response.success) {
         setSession(response.data.user, response.data.tenant);
-        toast.success('Welcome to Engage!');
+        if (claraProfile.practiceSize && claraProfile.mtdStatus) {
+          await persistClaraProfile(claraProfile);
+        }
+        toast.success(`Welcome to Engage! ${AI_COPILOT.name} will tailor proposals to your practice.`);
         navigate('/');
       }
     } catch (error) {
@@ -90,6 +147,22 @@ const Onboarding = () => {
     if (currentStep === 1) {
       fieldsToValidate = ['subdomain', 'name'];
     } else if (currentStep === 2) {
+      if (!claraProfile.practiceSize) {
+        toast.error('Please tell us your practice size');
+        return;
+      }
+      if (!claraProfile.clientTypes.length) {
+        toast.error('Please select at least one client type');
+        return;
+      }
+      if (!claraProfile.mtdStatus) {
+        toast.error('Please tell us your MTD status');
+        return;
+      }
+      localStorage.setItem(CLARA_ONBOARDING_KEY, JSON.stringify(claraProfile));
+      setCurrentStep(currentStep + 1);
+      return;
+    } else if (currentStep === 3) {
       fieldsToValidate = ['adminEmail', 'adminFirstName', 'adminLastName', 'adminPassword'];
     }
 
@@ -109,8 +182,8 @@ const Onboarding = () => {
       <p className="text-slate-700 mb-6">Get started with your 14-day free trial</p>
 
       {/* Progress steps */}
-      <div className="mb-8">
-        <div className="flex items-center justify-between">
+      <div className="mb-8 overflow-x-auto">
+        <div className="flex items-center justify-between min-w-[520px]">
           {steps.map((step, index) => (
             <div key={step.id} className="flex items-center">
               <div
@@ -118,20 +191,22 @@ const Onboarding = () => {
                   currentStep > step.id
                     ? 'bg-primary-600 text-white'
                     : currentStep === step.id
-                      ? 'bg-primary-100 text-primary-700 border-2 border-primary-600'
+                      ? step.id === 2
+                        ? 'bg-violet-100 text-violet-700 border-2 border-violet-600'
+                        : 'bg-primary-100 text-primary-700 border-2 border-primary-600'
                       : 'bg-slate-100 text-slate-600'
                 }`}
               >
                 {currentStep > step.id ? <CheckIcon className="w-5 h-5" /> : step.id}
               </div>
               <span
-                className={`ml-2 text-sm font-medium ${
+                className={`ml-2 text-sm font-medium whitespace-nowrap ${
                   currentStep >= step.id ? 'text-slate-900' : 'text-slate-600'
                 }`}
               >
                 {step.name}
               </span>
-              {index < steps.length - 1 && <div className="w-12 h-0.5 mx-4 bg-slate-200" />}
+              {index < steps.length - 1 && <div className="w-8 h-0.5 mx-2 bg-slate-200" />}
             </div>
           ))}
         </div>
@@ -181,8 +256,99 @@ const Onboarding = () => {
           </div>
         )}
 
-        {/* Step 2: Admin Account */}
+        {/* Step 2: Clara onboarding questions */}
         {currentStep === 2 && (
+          <div className="space-y-6 animate-fade-in">
+            <div className="rounded-2xl border border-violet-200 bg-gradient-to-br from-violet-50 to-white p-5">
+              <div className="flex items-start gap-3 mb-4">
+                <div className="p-2 rounded-xl bg-violet-500/15 border border-violet-400/25">
+                  <SparklesIcon className="h-6 w-6 text-violet-600" />
+                </div>
+                <div>
+                  <h3 className="font-semibold text-slate-900">Hi, I&apos;m {AI_COPILOT.name}</h3>
+                  <p className="text-sm text-slate-600 mt-1">
+                    Three quick questions help me suggest the right services, tone, and MTD wording for your practice.
+                  </p>
+                </div>
+              </div>
+
+              <div className="space-y-5">
+                <div>
+                  <p className="text-sm font-medium text-slate-800 mb-2">How large is your practice?</p>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                    {PRACTICE_SIZES.map((opt) => (
+                      <button
+                        key={opt.value}
+                        type="button"
+                        onClick={() => setClaraProfile((p) => ({ ...p, practiceSize: opt.value }))}
+                        className={`text-left rounded-xl border p-3 text-sm transition-all ${
+                          claraProfile.practiceSize === opt.value
+                            ? 'border-violet-500 bg-violet-50 text-violet-900 ring-2 ring-violet-500/30'
+                            : 'border-slate-200 hover:border-violet-300 bg-white'
+                        }`}
+                      >
+                        {opt.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <div>
+                  <p className="text-sm font-medium text-slate-800 mb-2">Who are your typical clients?</p>
+                  <p className="text-xs text-slate-500 mb-2">Select all that apply</p>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                    {CLIENT_TYPES.map((opt) => (
+                      <button
+                        key={opt.value}
+                        type="button"
+                        onClick={() => toggleClientType(opt.value)}
+                        className={`text-left rounded-xl border p-3 text-sm transition-all ${
+                          claraProfile.clientTypes.includes(opt.value)
+                            ? 'border-violet-500 bg-violet-50 text-violet-900 ring-2 ring-violet-500/30'
+                            : 'border-slate-200 hover:border-violet-300 bg-white'
+                        }`}
+                      >
+                        {opt.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <div>
+                  <p className="text-sm font-medium text-slate-800 mb-2">Making Tax Digital (MTD) for ITSA</p>
+                  <div className="space-y-2">
+                    {MTD_OPTIONS.map((opt) => (
+                      <button
+                        key={opt.value}
+                        type="button"
+                        onClick={() => setClaraProfile((p) => ({ ...p, mtdStatus: opt.value }))}
+                        className={`w-full text-left rounded-xl border p-3 text-sm transition-all ${
+                          claraProfile.mtdStatus === opt.value
+                            ? 'border-violet-500 bg-violet-50 text-violet-900 ring-2 ring-violet-500/30'
+                            : 'border-slate-200 hover:border-violet-300 bg-white'
+                        }`}
+                      >
+                        {opt.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="flex space-x-3">
+              <button type="button" onClick={prevStep} className="flex-1 btn-secondary py-2.5">
+                Back
+              </button>
+              <button type="button" onClick={nextStep} className="flex-1 btn-primary py-2.5 bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-700 hover:to-indigo-700">
+                Continue with {AI_COPILOT.shortName}
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Step 3: Admin Account */}
+        {currentStep === 3 && (
           <div className="space-y-6 animate-fade-in">
             <div className="grid grid-cols-2 gap-4">
               <div>
@@ -228,8 +394,8 @@ const Onboarding = () => {
           </div>
         )}
 
-        {/* Step 3: Review */}
-        {currentStep === 3 && (
+        {/* Step 4: Review */}
+        {currentStep === 4 && (
           <div className="space-y-6 animate-fade-in">
             <div className="bg-gray-50 rounded-lg p-4 space-y-3">
               <div>
@@ -244,6 +410,17 @@ const Onboarding = () => {
                 <span className="text-sm text-slate-600">Admin:</span>
                 <p className="font-medium">
                   {watch('adminFirstName')} {watch('adminLastName')} ({watch('adminEmail')})
+                </p>
+              </div>
+              <div className="pt-2 border-t border-slate-200">
+                <span className="text-sm text-slate-600">{AI_COPILOT.name} profile:</span>
+                <p className="text-sm font-medium mt-1">
+                  {PRACTICE_SIZES.find((s) => s.value === claraProfile.practiceSize)?.label} ·{' '}
+                  {claraProfile.clientTypes
+                    .map((t) => CLIENT_TYPES.find((c) => c.value === t)?.label)
+                    .filter(Boolean)
+                    .join(', ')}{' '}
+                  · {MTD_OPTIONS.find((m) => m.value === claraProfile.mtdStatus)?.label}
                 </p>
               </div>
             </div>

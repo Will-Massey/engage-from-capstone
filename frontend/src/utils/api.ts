@@ -267,7 +267,19 @@ export const apiClient = {
 
   deleteProposal: (id: string) => api.delete(`/proposals/${id}`),
 
-  sendProposal: (id: string) => api.post(`/proposals/${id}/send`, {}),
+  sendProposal: (
+    id: string,
+    email?: { subject: string; textBody: string; htmlBody?: string }
+  ) =>
+    api.post(`/proposals/${id}/send`, {
+      ...(email
+        ? {
+            aiSubject: email.subject,
+            aiText: email.textBody,
+            aiHtml: email.htmlBody,
+          }
+        : {}),
+    }),
 
   acceptProposal: (id: string, data?: any) => api.post(`/proposals/${id}/accept`, data),
 
@@ -456,6 +468,26 @@ export const apiClient = {
   }) => api.post('/ai/quick', data),
   aiFeedback: (data: { feature: string; helpful: boolean; comment?: string; proposalId?: string }) =>
     api.post('/ai/feedback', data),
+
+  aiProposalEmailDraft: (data: {
+    proposalId?: string;
+    clientId?: string;
+    title?: string;
+    reference?: string;
+    coverLetter?: string;
+    validUntil?: string;
+    viewLink?: string;
+    practiceName?: string;
+    senderName?: string;
+    senderEmail?: string;
+    services?: Array<{ name: string; billingFrequency?: string; displayPrice?: number }>;
+  }) => api.post('/ai/proposal-email-draft', data),
+
+  aiClientBrief: (clientId: string) => api.post('/ai/client-brief', { clientId }),
+
+  aiAutoFit: (clientId: string) => api.post('/ai/auto-fit', { clientId }),
+
+  aiAttentionQueue: () => api.get('/ai/attention-queue'),
 };
 
 export default api;

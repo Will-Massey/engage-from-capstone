@@ -10,6 +10,7 @@ import {
   generateAiFollowUp,
   generateRenewalDraft,
   getProposalHealth,
+  getAiAttentionQueue,
   isAiConfigured,
   logAiUsage,
   quickAsk,
@@ -18,7 +19,17 @@ import {
   reviewProposalDraft,
   suggestProposalTitle,
 } from '../services/ai/proposalAiService.js';
-import { getAiStatusMeta } from '../services/ai/aiClient.js';
+import {
+  generateProposalSendEmail,
+  generateProposalSendEmailFromDraft,
+  type ProposalEmailDraftInput,
+} from '../services/ai/proposalAiEmailService.js';
+import { autoFitProposal, generateClientBrief } from '../services/ai/clientFitService.js';
+import { generateFollowUpEmail } from '../services/ai/lifecycleAiEmailService.js';
+import { checkAiTokenBudget, getAiStatusMeta } from '../services/ai/aiClient.js';
+import { getRegulatoryAlerts } from '../services/ai/regulatoryWatcherService.js';
+import { getBenchmarkPricing } from '../services/ai/benchmarkPricingService.js';
+import { draftProposalFromVoice } from '../services/ai/voiceProposalService.js';
 import { AI_COPILOT } from '../config/aiCopilot.js';
 
 const router = Router();
@@ -41,7 +52,7 @@ router.use(authorize('ADMIN', 'PARTNER', 'MANAGER', 'SENIOR'));
 /** GET /api/ai/status */
 router.get(
   '/status',
-  asyncHandler(async (_req, res) => {
+  asyncHandler(async (req, res) => {
     const meta = getAiStatusMeta();
     res.json({
       success: true,
@@ -58,11 +69,20 @@ router.get(
           'draft_review',
           'cover_letter',
           'follow_up',
+          'follow_up_send_preview',
           'engagement_letter',
           'proposal_health',
           'renewal_draft',
           'command',
+          'proposal_email_draft',
+          'client_brief',
+          'auto_fit',
+          'attention_queue',
+          'regulatory_watcher',
+          'benchmark_pricing',
+          'voice_proposal',
         ],
+        tokenBudget: await checkAiTokenBudget(req.tenantId!),
       },
     });
   })
@@ -129,6 +149,38 @@ router.post(
   })
 );
 
+/** POST /api/ai/follow-up-send-preview — draft only (what automation would send), no email sent */
+router.post(
+  '/follow-up-send-preview',
+  asyncHandler(async (req, res) => {
+    const { proposalId, tone } = z
+      .object({
+        proposalId: z.string().uuid(),
+        tone: z.enum(['professional', 'friendly', 'urgent']).default('professional'),
+      })
+      .parse(req.body);
+
+    if (!isAiConfigured()) {
+      throw new ApiError(
+        'AI_NOT_CONFIGURED',
+        `${AI_COPILOT.name} is not available — preview requires AI to be configured`,
+        503
+      );
+    }
+
+    const draft = await generateFollowUpEmail(req.tenantId!, proposalId, tone);
+    res.json({
+      success: true,
+      data: {
+        ...draft,
+        requiresApproval: true,
+        proposalId,
+        previewOnly: true,
+      },
+    });
+  })
+);
+
 /** POST /api/ai/engagement-letter */
 router.post(
   '/engagement-letter',
@@ -189,7 +241,17 @@ router.post(
       })
       .parse(req.body);
 
-    const data = await reviewProposalDraft(req.tenantId!, req.user?.id, body);
+    const data = await reviewProposalDraft(req.tenantId!, req.user?.id, {
+      clientId: body.clientId,
+      title: body.title,
+      coverLetter: body.coverLetter,
+      validUntil: body.validUntil,
+      services: body.services.map((s) => ({
+        name: s.name,
+        billingFrequency: s.billingFrequency,
+        displayPrice: s.displayPrice,
+      })),
+    });
     res.json({ success: true, data });
   })
 );
@@ -210,7 +272,12 @@ router.post(
       })
       .parse(req.body);
 
-    const data = await suggestProposalTitle(req.tenantId!, req.user?.id, clientId, services);
+    const data = await suggestProposalTitle(
+      req.tenantId!,
+      req.user?.id,
+      clientId,
+      services.map((s) => ({ name: s.name, billingFrequency: s.billingFrequency }))
+    );
     res.json({ success: true, data });
   })
 );
@@ -282,6 +349,110 @@ router.post(
 
     await logAiUsage(req.tenantId!, req.user?.id, 'AI_FEEDBACK', body);
     res.json({ success: true, data: { recorded: true } });
+  })
+);
+
+const proposalEmailDraftServiceSchema = z.object({
+  name: z.string(),
+  billingFrequency: z.string().optional(),
+  displayPrice: z.number().optional(),
+});
+
+const proposalEmailDraftInputSchema = z.object({
+  clientId: z.string().uuid(),
+  title: z.string().max(200).optional(),
+  reference: z.string().max(50).optional(),
+  coverLetter: z.string().max(12000).optional(),
+  validUntil: z.string().optional(),
+  viewLink: z.string().url().optional(),
+  services: z.array(proposalEmailDraftServiceSchema),
+  senderName: z.string().optional(),
+  senderEmail: z.string().email().optional(),
+  practiceName: z.string().optional(),
+});
+
+/** POST /api/ai/proposal-email-draft — Clara send email (saved proposal or unsaved draft) */
+router.post(
+  '/proposal-email-draft',
+  asyncHandler(async (req, res) => {
+    const proposalId = z.string().uuid().optional().parse(req.body.proposalId);
+
+    if (proposalId) {
+      const data = await generateProposalSendEmail(req.tenantId!, req.user?.id, proposalId);
+      return res.json({ success: true, data });
+    }
+
+    const draftPayload = req.body.draft ?? req.body;
+    const draft = proposalEmailDraftInputSchema.parse(draftPayload) as ProposalEmailDraftInput;
+    const data = await generateProposalSendEmailFromDraft(req.tenantId!, req.user?.id, draft);
+    res.json({ success: true, data });
+  })
+);
+
+/** POST /api/ai/client-brief/:clientId */
+router.post(
+  '/client-brief/:clientId',
+  asyncHandler(async (req, res) => {
+    const clientId = z.string().uuid().parse(req.params.clientId);
+    const data = await generateClientBrief(req.tenantId!, req.user?.id, clientId);
+    res.json({ success: true, data });
+  })
+);
+
+/** POST /api/ai/auto-fit */
+router.post(
+  '/auto-fit',
+  asyncHandler(async (req, res) => {
+    const { clientId } = z.object({ clientId: z.string().uuid() }).parse(req.body);
+    const data = await autoFitProposal(req.tenantId!, req.user?.id, clientId);
+    res.json({ success: true, data });
+  })
+);
+
+/** GET /api/ai/attention-queue — top 10 proposals needing action */
+router.get(
+  '/attention-queue',
+  asyncHandler(async (req, res) => {
+    const data = await getAiAttentionQueue(req.tenantId!, req.user?.id);
+    res.json({ success: true, data });
+  })
+);
+
+/** GET /api/ai/regulatory-alerts — Phase 5 regulatory watcher stub */
+router.get(
+  '/regulatory-alerts',
+  asyncHandler(async (req, res) => {
+    const data = await getRegulatoryAlerts(req.tenantId!, req.user?.id);
+    res.json({ success: true, data });
+  })
+);
+
+/** GET /api/ai/benchmark-pricing — Phase 5 anonymised fee bands (stub) */
+router.get(
+  '/benchmark-pricing',
+  asyncHandler(async (req, res) => {
+    const services = z
+      .string()
+      .optional()
+      .parse(req.query.services as string | undefined);
+    const serviceNames = services ? services.split(',').map((s) => s.trim()).filter(Boolean) : undefined;
+    const data = await getBenchmarkPricing(req.tenantId!, req.user?.id, serviceNames);
+    res.json({ success: true, data });
+  })
+);
+
+/** POST /api/ai/voice-proposal — Phase 5 voice transcript → structured draft */
+router.post(
+  '/voice-proposal',
+  asyncHandler(async (req, res) => {
+    const { clientId, transcript } = z
+      .object({
+        clientId: z.string().uuid(),
+        transcript: z.string().min(20).max(8000),
+      })
+      .parse(req.body);
+    const data = await draftProposalFromVoice(req.tenantId!, req.user?.id, { clientId, transcript });
+    res.json({ success: true, data });
   })
 );
 

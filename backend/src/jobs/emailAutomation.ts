@@ -1,6 +1,10 @@
 import { prisma } from '../config/database.js';
 import { tenantMailer } from '../services/tenantMailer.js';
 import logger from '../config/logger.js';
+import {
+  tryGenerateFollowUpEmail,
+  type LifecycleEmailTone,
+} from '../services/ai/lifecycleAiEmailService.js';
 
 /**
  * Email Automation Job
@@ -165,6 +169,19 @@ P.S. If you've decided to go in a different direction, I'd appreciate any feedba
   }
 }
 
+function toneForTemplate(template: FollowUpConfig['template']): LifecycleEmailTone {
+  switch (template) {
+    case 'gentle':
+      return 'friendly';
+    case 'urgent':
+      return 'urgent';
+    case 'final':
+      return 'urgent';
+    default:
+      return 'professional';
+  }
+}
+
 /**
  * Send follow-up email for a single proposal
  */
@@ -173,7 +190,25 @@ async function sendFollowUp(
   config: FollowUpConfig
 ): Promise<boolean> {
   try {
-    const { subject, body } = getEmailTemplate(config.template, proposal);
+    let subject: string;
+    let body: string;
+
+    const aiDraft = await tryGenerateFollowUpEmail(
+      proposal.tenantId,
+      proposal.id,
+      toneForTemplate(config.template),
+      proposal.tenant?.settings
+    );
+
+    if (aiDraft) {
+      subject = aiDraft.subject;
+      body = aiDraft.body;
+      logger.info(`Using Clara follow-up for proposal ${proposal.id} (${config.template})`);
+    } else {
+      const template = getEmailTemplate(config.template, proposal);
+      subject = template.subject;
+      body = template.body;
+    }
 
     const result = await tenantMailer.send({
       tenantId: proposal.tenantId,
@@ -248,7 +283,7 @@ export async function runEmailAutomation(): Promise<{
       },
       include: {
         client: true,
-        tenant: true,
+        tenant: { select: { id: true, name: true, settings: true } },
         services: true,
         createdBy: {
           select: {
@@ -322,7 +357,7 @@ export async function testEmailAutomation(
       where: { id: proposalId, tenantId },
       include: {
         client: true,
-        tenant: true,
+        tenant: { select: { id: true, name: true, settings: true } },
         services: true,
         createdBy: {
           select: {

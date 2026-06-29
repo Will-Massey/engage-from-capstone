@@ -3,6 +3,8 @@
  */
 
 import { Router } from 'express';
+import rateLimit from 'express-rate-limit';
+import crypto from 'crypto';
 import { z } from 'zod';
 import { prisma } from '../config/database.js';
 import { asyncHandler, ApiError } from '../middleware/errorHandler.js';
@@ -29,6 +31,11 @@ import {
 import { tenantMailer } from '../services/tenantMailer.js';
 import PDFGenerator from '../services/pdfGenerator.js';
 import logger from '../config/logger.js';
+import { rateLimitingEnabled } from '../utils/securityFlags.js';
+import {
+  askPublicProposalQuestion,
+  getPublicSigningSummary,
+} from '../services/ai/publicProposalAiService.js';
 import {
   AGREEMENT_VERSION,
   DEFAULT_CONSENT_TEXT,
@@ -380,6 +387,27 @@ router.get(
 // PUBLIC ROUTES (Link possession = access)
 // ============================================
 
+function hashShareToken(token: string): string {
+  return crypto.createHash('sha256').update(token).digest('hex').slice(0, 24);
+}
+
+/** 10 AI requests per hour per share token — no PII in rate-limit keys */
+const publicProposalAiLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000,
+  max: 10,
+  skip: () => !rateLimitingEnabled,
+  keyGenerator: (req) => `public-proposal-ai:${hashShareToken(req.params.token)}`,
+  message: {
+    success: false,
+    error: {
+      code: 'RATE_LIMIT_EXCEEDED',
+      message: 'Too many questions. Please try again in an hour.',
+    },
+  },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
 // View proposal by share token (public — possession of link is sufficient)
 router.get(
   '/view/:token',
@@ -445,6 +473,94 @@ router.get(
           frequency: s.frequency,
           isOptional: s.isOptional,
         })),
+      },
+    });
+  })
+);
+
+// Plain-English signing summary (public — proposal content only)
+router.get(
+  '/view/:token/signing-summary',
+  publicProposalAiLimiter,
+  asyncHandler(async (req, res) => {
+    const { token } = req.params;
+
+    const proposal = await getProposalByShareToken(token);
+
+    if (!proposal) {
+      throw new ApiError('PROPOSAL_NOT_FOUND', 'Proposal not found or link expired', 404);
+    }
+
+    if (proposal.status === 'ACCEPTED') {
+      throw new ApiError('PROPOSAL_ALREADY_ACCEPTED', 'This proposal has already been accepted', 400);
+    }
+
+    const result = await getPublicSigningSummary(proposal);
+
+    logger.info('Public signing summary generated', {
+      proposalRef: proposal.reference,
+      source: result.source,
+    });
+
+    res.json({
+      success: true,
+      data: {
+        summary: result.summary,
+        practiceName: proposal.tenant.name,
+        clientName: proposal.client.name,
+        reference: proposal.reference,
+      },
+    });
+  })
+);
+
+// Client Q&A on proposal (public — answers only from proposal JSON)
+router.post(
+  '/view/:token/ask',
+  publicProposalAiLimiter,
+  asyncHandler(async (req, res) => {
+    const schema = z.object({
+      question: z.string().min(3).max(500),
+      history: z
+        .array(
+          z.object({
+            role: z.enum(['user', 'assistant']),
+            content: z.string().max(800),
+          })
+        )
+        .max(6)
+        .optional(),
+    });
+
+    const { question, history } = schema.parse(req.body);
+    const { token } = req.params;
+
+    const proposal = await getProposalByShareToken(token);
+
+    if (!proposal) {
+      throw new ApiError('PROPOSAL_NOT_FOUND', 'Proposal not found or link expired', 404);
+    }
+
+    if (proposal.status === 'ACCEPTED') {
+      throw new ApiError('PROPOSAL_ALREADY_ACCEPTED', 'This proposal has already been accepted', 400);
+    }
+
+    const result = await askPublicProposalQuestion(
+      proposal,
+      question,
+      history as Array<{ role: 'user' | 'assistant'; content: string }> | undefined
+    );
+
+    logger.info('Public proposal question answered', {
+      proposalRef: proposal.reference,
+      source: result.source,
+    });
+
+    res.json({
+      success: true,
+      data: {
+        answer: result.answer,
+        assistantName: 'Clara',
       },
     });
   })

@@ -18,6 +18,7 @@ import {
 import { apiClient } from '../utils/api';
 import { useAuthStore } from '../stores/authStore';
 import QuickStart from '../components/dashboard/QuickStart';
+import ClaraAttentionQueue from '../components/dashboard/ClaraAttentionQueue';
 
 const RevenueAndPieCharts = lazy(() =>
   import('./DashboardRecharts').then((m) => ({ default: m.RevenueAndPieCharts }))
@@ -311,6 +312,8 @@ const Dashboard = () => {
       </div>
 
       <QuickStart />
+
+      <ClaraAttentionQueue />
 
       {/* Quick Stats - Glassmorphism Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">

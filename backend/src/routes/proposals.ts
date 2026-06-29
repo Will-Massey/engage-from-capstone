@@ -529,6 +529,13 @@ router.post(
   authorize('ADMIN', 'PARTNER', 'MANAGER', 'SENIOR'),
   asyncHandler(async (req, res) => {
     const { id } = req.params;
+    const sendBody = z
+      .object({
+        aiSubject: z.string().max(200).optional(),
+        aiText: z.string().max(50_000).optional(),
+        aiHtml: z.string().max(100_000).optional(),
+      })
+      .parse(req.body ?? {});
 
     // Get proposal with full details
     const proposal = await prisma.proposal.findFirst({
@@ -605,6 +612,9 @@ router.post(
         totalAmount,
         serviceCount: proposal.services.length,
         attachment: pdfBuffer,
+        aiSubject: sendBody.aiSubject,
+        aiText: sendBody.aiText,
+        aiHtml: sendBody.aiHtml,
       },
       { proposalId: id, clientId: proposal.clientId }
     );

@@ -744,4 +744,151 @@ export async function executeQuickAction(
   return { message: 'Unknown action.', action: 'answer' };
 }
 
+export interface AttentionQueueItem {
+  proposalId: string;
+  reference: string;
+  title: string;
+  clientName: string;
+  status: string;
+  priorityScore: number;
+  reason: string;
+  narrative: string;
+  recommendedAction: string;
+}
+
+/** Top proposals needing partner action with Clara narrative */
+export async function getAiAttentionQueue(
+  tenantId: string,
+  userId: string | undefined
+): Promise<{ items: AttentionQueueItem[]; generatedAt: string }> {
+  const now = Date.now();
+  const proposals = await prisma.proposal.findMany({
+    where: {
+      tenantId,
+      status: { in: ['DRAFT', 'SENT', 'VIEWED', 'EXPIRED'] },
+    },
+    include: {
+      client: { select: { name: true } },
+      views: { select: { viewedAt: true }, orderBy: { viewedAt: 'desc' }, take: 1 },
+    },
+    orderBy: { updatedAt: 'desc' },
+    take: 40,
+  });
+
+  type Scored = {
+    proposal: (typeof proposals)[number];
+    priorityScore: number;
+    reason: string;
+    recommendedAction: string;
+  };
+
+  const scored: Scored[] = [];
+
+  for (const p of proposals) {
+    const daysUntilExpiry = Math.floor((p.validUntil.getTime() - now) / 86400000);
+    const daysSinceSent = p.sentAt
+      ? Math.floor((now - p.sentAt.getTime()) / 86400000)
+      : null;
+    const viewCount = p.views.length;
+    const daysSinceUpdate = Math.floor((now - p.updatedAt.getTime()) / 86400000);
+
+    let priorityScore = 0;
+    let reason = '';
+    let recommendedAction = '';
+
+    if (p.status === 'EXPIRED' || daysUntilExpiry < 0) {
+      priorityScore = 95;
+      reason = 'Proposal has expired';
+      recommendedAction = 'Create a revised proposal or extend the valid until date.';
+    } else if (p.status === 'DRAFT' && daysSinceUpdate >= 7) {
+      priorityScore = 80;
+      reason = 'Draft proposal untouched for over a week';
+      recommendedAction = 'Complete and send, or archive if no longer needed.';
+    } else if (
+      (p.status === 'SENT' || p.status === 'VIEWED') &&
+      daysSinceSent !== null &&
+      daysSinceSent >= 14
+    ) {
+      priorityScore = 85;
+      reason = 'No signature after 14+ days';
+      recommendedAction = 'Send a follow-up email or call the client.';
+    } else if (
+      (p.status === 'SENT' || p.status === 'VIEWED') &&
+      viewCount === 0 &&
+      daysSinceSent !== null &&
+      daysSinceSent >= 7
+    ) {
+      priorityScore = 75;
+      reason = 'Client has not opened the proposal';
+      recommendedAction = 'Resend the proposal or follow up by phone.';
+    } else if (daysUntilExpiry >= 0 && daysUntilExpiry <= 7) {
+      priorityScore = 70;
+      reason = 'Valid until date within 7 days';
+      recommendedAction = 'Follow up before the proposal expires.';
+    } else if (p.status === 'VIEWED' && viewCount > 0 && daysSinceSent !== null && daysSinceSent >= 3) {
+      priorityScore = 60;
+      reason = 'Client viewed but has not signed';
+      recommendedAction = 'A gentle nudge may help — draft a follow-up.';
+    } else if (p.status === 'DRAFT') {
+      priorityScore = 45;
+      reason = 'Draft awaiting completion';
+      recommendedAction = 'Review pricing and cover letter before sending.';
+    } else {
+      continue;
+    }
+
+    scored.push({ proposal: p, priorityScore, reason, recommendedAction });
+  }
+
+  scored.sort((a, b) => b.priorityScore - a.priorityScore);
+  const top = scored.slice(0, 10);
+
+  let narratives: string[] = [];
+  if (isAiConfigured() && top.length) {
+    const raw = await chatCompletion(
+      [
+        { role: 'system', content: UK_SYSTEM },
+        {
+          role: 'user',
+          content: `Write a one-sentence Clara narrative for each proposal needing action. Return JSON:
+{ "narratives": ["sentence1", "sentence2", ...] }
+UK accountancy practice tone. Same order as input.
+
+Items:
+${JSON.stringify(
+  top.map((t) => ({
+    reference: t.proposal.reference,
+    client: t.proposal.client.name,
+    status: t.proposal.status,
+    reason: t.reason,
+    total: t.proposal.total,
+  }))
+)}`,
+        },
+      ],
+      { jsonMode: true, temperature: 0.35, maxTokens: 800 }
+    );
+    const parsed = parseJsonResponse<{ narratives: string[] }>(raw);
+    narratives = parsed.narratives || [];
+  }
+
+  const items: AttentionQueueItem[] = top.map((t, i) => ({
+    proposalId: t.proposal.id,
+    reference: t.proposal.reference,
+    title: t.proposal.title,
+    clientName: t.proposal.client.name,
+    status: t.proposal.status,
+    priorityScore: t.priorityScore,
+    reason: t.reason,
+    narrative:
+      narratives[i]?.trim() ||
+      `${t.proposal.client.name} — ${t.reason.toLowerCase()}. ${t.recommendedAction}`,
+    recommendedAction: t.recommendedAction,
+  }));
+
+  await logAiUsage(tenantId, userId, 'attention_queue', { count: items.length });
+
+  return { items, generatedAt: new Date().toISOString() };
+}
+
 export { isAiConfigured };

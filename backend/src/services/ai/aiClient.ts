@@ -2,6 +2,7 @@
  * LLM client — xAI (Grok) preferred for dev/testing, OpenAI as fallback.
  * Both use OpenAI-compatible chat/completions request/response shapes.
  */
+import { prisma } from '../../config/database.js';
 import { AI_COPILOT } from '../../config/aiCopilot.js';
 import logger from '../../config/logger.js';
 import { ApiError } from '../../middleware/errorHandler.js';
@@ -131,4 +132,59 @@ export function parseJsonResponse<T>(raw: string): T {
     }
     throw new ApiError('AI_PARSE_ERROR', `Could not parse ${AI_COPILOT.name}'s response`, 502);
   }
+}
+
+const DEFAULT_AI_TOKEN_BUDGET_MONTHLY = 500_000;
+/** Stub: estimated tokens per AI feature invocation for budget tracking */
+const ESTIMATED_TOKENS_PER_AI_CALL = 2_500;
+
+export interface AiTokenBudgetStatus {
+  budgetMonthly: number;
+  usedThisMonth: number;
+  remaining: number;
+  withinBudget: boolean;
+  aiCallsThisMonth: number;
+}
+
+function parseAiTokenBudget(settingsJson?: string | null): number {
+  try {
+    const parsed = JSON.parse(settingsJson || '{}');
+    const budget = parsed.aiTokenBudgetMonthly;
+    if (typeof budget === 'number' && budget > 0) return budget;
+  } catch {
+    /* use default */
+  }
+  return DEFAULT_AI_TOKEN_BUDGET_MONTHLY;
+}
+
+/** Check tenant AI token budget — usage stubbed from activity logs this month */
+export async function checkAiTokenBudget(tenantId: string): Promise<AiTokenBudgetStatus> {
+  const tenant = await prisma.tenant.findFirst({
+    where: { id: tenantId },
+    select: { settings: true },
+  });
+
+  const budgetMonthly = parseAiTokenBudget(tenant?.settings);
+  const monthStart = new Date();
+  monthStart.setDate(1);
+  monthStart.setHours(0, 0, 0, 0);
+
+  const aiCallsThisMonth = await prisma.activityLog.count({
+    where: {
+      tenantId,
+      action: 'AI_FEATURE_USED',
+      createdAt: { gte: monthStart },
+    },
+  });
+
+  const usedThisMonth = aiCallsThisMonth * ESTIMATED_TOKENS_PER_AI_CALL;
+  const remaining = Math.max(0, budgetMonthly - usedThisMonth);
+
+  return {
+    budgetMonthly,
+    usedThisMonth,
+    remaining,
+    withinBudget: usedThisMonth < budgetMonthly,
+    aiCallsThisMonth,
+  };
 }

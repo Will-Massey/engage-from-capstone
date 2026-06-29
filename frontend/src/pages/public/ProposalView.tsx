@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { apiClient } from '../../utils/api';
 import { formatCurrency, formatDate } from '../../utils/formatters';
@@ -6,13 +6,15 @@ import toast from 'react-hot-toast';
 import SignaturePad from '../../components/signature/SignaturePad';
 import {
   DocumentTextIcon,
-  CheckCircleIcon,
   ExclamationCircleIcon,
   ClockIcon,
   SparklesIcon,
-  ArrowRightIcon,
+  ChevronDownIcon,
+  ChevronUpIcon,
+  PaperAirplaneIcon,
 } from '@heroicons/react/24/outline';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
+import { AI_COPILOT } from '../../config/aiCopilot';
 
 interface ProposalData {
   id: string;
@@ -52,6 +54,23 @@ interface ProposalData {
   }>;
 }
 
+type QaMessage = { role: 'user' | 'assistant'; content: string };
+
+function QaTypingIndicator() {
+  return (
+    <div className="flex items-center gap-1 px-3 py-2">
+      {[0, 1, 2].map((i) => (
+        <motion.span
+          key={i}
+          className="w-1.5 h-1.5 rounded-full bg-violet-500"
+          animate={{ opacity: [0.3, 1, 0.3], y: [0, -2, 0] }}
+          transition={{ duration: 0.9, repeat: Infinity, delay: i * 0.15 }}
+        />
+      ))}
+    </div>
+  );
+}
+
 const PublicProposalView = () => {
   const { token } = useParams<{ token: string }>();
   const navigate = useNavigate();
@@ -70,6 +89,13 @@ const PublicProposalView = () => {
   const [declineReason, setDeclineReason] = useState('');
   const [showDecline, setShowDecline] = useState(false);
   const [isAccepted, setIsAccepted] = useState(false);
+  const [qaExpanded, setQaExpanded] = useState(false);
+  const [qaMessages, setQaMessages] = useState<QaMessage[]>([]);
+  const [qaInput, setQaInput] = useState('');
+  const [qaLoading, setQaLoading] = useState(false);
+  const [signingSummary, setSigningSummary] = useState<string | null>(null);
+  const [signingSummaryLoading, setSigningSummaryLoading] = useState(false);
+  const qaEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const loadProposal = async () => {
@@ -95,6 +121,65 @@ const PublicProposalView = () => {
 
     loadProposal();
   }, [token]);
+
+  useEffect(() => {
+    const loadSigningSummary = async () => {
+      if (!token || isAccepted || signingSummary) return;
+      try {
+        setSigningSummaryLoading(true);
+        const response = (await apiClient.get(`/proposals/view/${token}/signing-summary`)) as any;
+        if (response.success) {
+          setSigningSummary(response.data.summary);
+        }
+      } catch {
+        // Non-blocking — summary is helpful but not required to sign
+      } finally {
+        setSigningSummaryLoading(false);
+      }
+    };
+
+    const expired = proposal ? new Date(proposal.validUntil) < new Date() : false;
+    if (proposal && !isAccepted && !expired && (termsAccepted || showSignature)) {
+      loadSigningSummary();
+    }
+  }, [token, proposal, isAccepted, termsAccepted, showSignature, signingSummary]);
+
+  useEffect(() => {
+    if (qaExpanded) {
+      qaEndRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }
+  }, [qaMessages, qaLoading, qaExpanded]);
+
+  const handleAskQuestion = async () => {
+    const text = qaInput.trim();
+    if (!text || qaLoading || !token) return;
+
+    const userMessage: QaMessage = { role: 'user', content: text };
+    setQaMessages((prev) => [...prev, userMessage]);
+    setQaInput('');
+    setQaLoading(true);
+
+    try {
+      const response = (await apiClient.post(`/proposals/view/${token}/ask`, {
+        question: text,
+        history: qaMessages.slice(-4),
+      })) as any;
+
+      if (response.success) {
+        setQaMessages((prev) => [
+          ...prev,
+          { role: 'assistant', content: response.data.answer },
+        ]);
+      }
+    } catch (error: any) {
+      const message =
+        error.response?.data?.error?.message ||
+        `${AI_COPILOT.name} couldn't answer right now. Please contact ${proposal?.tenant.name || 'the practice'} directly.`;
+      setQaMessages((prev) => [...prev, { role: 'assistant', content: message }]);
+    } finally {
+      setQaLoading(false);
+    }
+  };
 
   const handleAccept = async () => {
     if (!termsAccepted) {
@@ -345,6 +430,117 @@ const PublicProposalView = () => {
             <p className="text-sm text-slate-600 mt-2">Payment terms: {proposal.paymentTerms}</p>
           </div>
 
+          {/* Questions about this proposal — Clara-style Q&A */}
+          {!isAccepted && !isExpired && (
+            <div className="border-t pt-6">
+              <button
+                type="button"
+                data-testid="qa-toggle"
+                onClick={() => setQaExpanded((v) => !v)}
+                className="w-full flex items-center justify-between gap-3 text-left group"
+              >
+                <div className="flex items-center gap-2">
+                  <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-violet-100 dark:bg-violet-900/40">
+                    <SparklesIcon className="h-4 w-4 text-violet-600 dark:text-violet-300" />
+                  </span>
+                  <div>
+                    <h3 className="text-sm font-medium text-slate-900 dark:text-white">
+                      Questions about this proposal?
+                    </h3>
+                    <p className="text-xs text-slate-600 dark:text-slate-400">
+                      Ask {AI_COPILOT.name} — answers come only from this proposal
+                    </p>
+                  </div>
+                </div>
+                {qaExpanded ? (
+                  <ChevronUpIcon className="h-5 w-5 text-slate-400 group-hover:text-slate-600" />
+                ) : (
+                  <ChevronDownIcon className="h-5 w-5 text-slate-400 group-hover:text-slate-600" />
+                )}
+              </button>
+
+              <AnimatePresence initial={false}>
+                {qaExpanded && (
+                  <motion.div
+                    initial={{ height: 0, opacity: 0 }}
+                    animate={{ height: 'auto', opacity: 1 }}
+                    exit={{ height: 0, opacity: 0 }}
+                    transition={{ duration: 0.2 }}
+                    className="overflow-hidden"
+                  >
+                    <div className="mt-4 rounded-xl border border-violet-200/80 dark:border-violet-800/60 bg-gradient-to-b from-violet-50/80 to-white dark:from-violet-950/20 dark:to-slate-800/50 p-4">
+                      {qaMessages.length === 0 && !qaLoading && (
+                        <p className="text-sm text-slate-600 dark:text-slate-300 mb-3">
+                          Not sure about fees, services, or terms? Ask a question and{' '}
+                          {AI_COPILOT.name} will explain using only the details in this proposal.
+                        </p>
+                      )}
+
+                      <div className="space-y-3 max-h-64 overflow-y-auto mb-3">
+                        {qaMessages.map((msg, i) => (
+                          <div
+                            key={i}
+                            className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
+                          >
+                            <div
+                              className={`max-w-[90%] rounded-2xl px-3 py-2 text-sm leading-relaxed whitespace-pre-wrap ${
+                                msg.role === 'user'
+                                  ? 'bg-violet-600 text-white rounded-br-md'
+                                  : 'bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 border border-violet-100 dark:border-violet-900/50 rounded-bl-md shadow-sm'
+                              }`}
+                            >
+                              {msg.role === 'assistant' && (
+                                <span className="block text-[10px] font-medium text-violet-600 dark:text-violet-300 mb-1">
+                                  {AI_COPILOT.name}
+                                </span>
+                              )}
+                              {msg.content}
+                            </div>
+                          </div>
+                        ))}
+                        {qaLoading && (
+                          <div className="flex justify-start">
+                            <div className="rounded-2xl rounded-bl-md bg-white dark:bg-slate-800 border border-violet-100 dark:border-violet-900/50 shadow-sm">
+                              <QaTypingIndicator />
+                            </div>
+                          </div>
+                        )}
+                        <div ref={qaEndRef} />
+                      </div>
+
+                      <form
+                        onSubmit={(e) => {
+                          e.preventDefault();
+                          handleAskQuestion();
+                        }}
+                        className="flex gap-2"
+                      >
+                        <input
+                          data-testid="qa-input"
+                          type="text"
+                          value={qaInput}
+                          onChange={(e) => setQaInput(e.target.value)}
+                          placeholder="e.g. What is included in the monthly fee?"
+                          maxLength={500}
+                          className="flex-1 rounded-lg border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-900 px-3 py-2 text-sm text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-violet-500/40"
+                        />
+                        <button
+                          type="submit"
+                          data-testid="qa-submit"
+                          disabled={qaLoading || qaInput.trim().length < 3}
+                          className="inline-flex items-center justify-center rounded-lg bg-violet-600 px-3 py-2 text-white hover:bg-violet-700 disabled:opacity-50 transition-colors"
+                          aria-label="Send question"
+                        >
+                          <PaperAirplaneIcon className="h-4 w-4" />
+                        </button>
+                      </form>
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
+          )}
+
           {/* Terms & Conditions */}
           {!isAccepted && !isExpired && (
             <div className="border-t pt-6">
@@ -368,6 +564,45 @@ const PublicProposalView = () => {
                 <label htmlFor="terms" className="ml-2 text-sm text-slate-800">
                   I have read and agree to the terms and conditions outlined above.
                 </label>
+              </div>
+            </div>
+          )}
+
+          {/* Signing summary — shown before accept / signature step */}
+          {!isAccepted && !isExpired && (termsAccepted || showSignature) && (
+            <div
+              data-testid="signing-summary-card"
+              className="border-t pt-6"
+            >
+              <div className="rounded-xl border border-emerald-200 dark:border-emerald-800/60 bg-emerald-50/60 dark:bg-emerald-950/20 p-5">
+                <div className="flex items-start gap-3">
+                  <DocumentTextIcon className="h-6 w-6 text-emerald-600 dark:text-emerald-400 shrink-0 mt-0.5" />
+                  <div className="flex-1 min-w-0">
+                    <h3 className="text-sm font-semibold text-emerald-900 dark:text-emerald-200">
+                      What you are agreeing to
+                    </h3>
+                    {signingSummaryLoading ? (
+                      <div className="mt-3 space-y-2 animate-pulse">
+                        <div className="h-3 bg-emerald-200/60 dark:bg-emerald-900/40 rounded w-full" />
+                        <div className="h-3 bg-emerald-200/60 dark:bg-emerald-900/40 rounded w-5/6" />
+                        <div className="h-3 bg-emerald-200/60 dark:bg-emerald-900/40 rounded w-4/6" />
+                      </div>
+                    ) : signingSummary ? (
+                      <p className="mt-2 text-sm text-emerald-800 dark:text-emerald-100/90 leading-relaxed">
+                        {signingSummary}
+                      </p>
+                    ) : (
+                      <p className="mt-2 text-sm text-emerald-800 dark:text-emerald-100/90 leading-relaxed">
+                        By signing, you confirm you are authorised to accept this proposal on behalf
+                        of {proposal.client.name}, agree to the services and fees shown above, and
+                        accept the terms and conditions.
+                      </p>
+                    )}
+                    <p className="mt-3 text-xs text-emerald-700/80 dark:text-emerald-400/70">
+                      Please read this summary carefully before adding your signature.
+                    </p>
+                  </div>
+                </div>
               </div>
             </div>
           )}

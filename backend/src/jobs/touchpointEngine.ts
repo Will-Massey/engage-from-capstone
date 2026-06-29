@@ -23,6 +23,7 @@ import {
   renderTouchpointSubject,
   renderTouchpointTemplate,
 } from '../templates/touchpoint.js';
+import { tryGenerateTouchpointEmail } from '../services/ai/lifecycleAiEmailService.js';
 
 import type {
   ClientLifecycleStage,
@@ -107,7 +108,7 @@ async function findDueTouchpoints() {
         },
       },
       template: true,
-      tenant: { select: { id: true, name: true } },
+      tenant: { select: { id: true, name: true, settings: true } },
     },
     orderBy: { scheduledFor: 'asc' },
     take: 200, // safety cap per run
@@ -208,9 +209,33 @@ async function sendTouchpoint(tp: any): Promise<SendResult> {
     extra: mergeExtras,
   });
 
-  const subject = renderTouchpointSubject(template.subject, context);
-  const htmlBody = renderTouchpointTemplate(template.body, context);
-  const textBody = htmlBody.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
+  let subject = renderTouchpointSubject(template.subject, context);
+  let htmlBody = renderTouchpointTemplate(template.body, context);
+  let textBody = htmlBody.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
+
+  if (channel === 'EMAIL') {
+    const aiDraft = await tryGenerateTouchpointEmail(
+      tp.tenantId,
+      client.id,
+      tp.stage,
+      {
+        next_step: context.next_step,
+        due_date: context.due_date,
+        aml_portal_link: context.aml_portal_link,
+        portal_link: context.portal_link,
+        notes: tp.notes || undefined,
+        tone: template.tone,
+      },
+      tenant?.settings
+    );
+
+    if (aiDraft) {
+      subject = aiDraft.subject;
+      htmlBody = aiDraft.html || aiDraft.body;
+      textBody = aiDraft.body;
+      logger.info(`Using Clara touchpoint email for client ${client.id} (${tp.stage})`);
+    }
+  }
 
   const attachments = await buildTouchpointAttachments(tp.stage, client.id, tp.tenantId);
 
