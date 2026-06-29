@@ -57,6 +57,39 @@ export async function apiPost(request: APIRequestContext, path: string, data?: o
   return { status: res.status(), body };
 }
 
+const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+
+function isTransientApiFailure(err: unknown, status?: number): boolean {
+  if (status !== undefined && status >= 500) return true;
+  const msg = err instanceof Error ? err.message : String(err);
+  return /socket hang up|ECONNRESET|ETIMEDOUT|timeout|502|503|504/i.test(msg);
+}
+
+/** Retry AI POSTs — Render can drop long-running inference requests. */
+export async function apiPostResilient(
+  request: APIRequestContext,
+  path: string,
+  data?: object,
+  attempts = 3
+): Promise<{ status: number; body: any }> {
+  let lastErr: unknown;
+  for (let i = 0; i < attempts; i++) {
+    try {
+      const result = await apiPost(request, path, data);
+      if (isTransientApiFailure(null, result.status) && i < attempts - 1) {
+        await sleep(3000 * (i + 1));
+        continue;
+      }
+      return result;
+    } catch (err) {
+      lastErr = err;
+      if (!isTransientApiFailure(err) || i === attempts - 1) throw err;
+      await sleep(3000 * (i + 1));
+    }
+  }
+  throw lastErr ?? new Error(`apiPostResilient failed for ${path}`);
+}
+
 export async function expectOkApi(
   label: string,
   result: { status: number; body: any },

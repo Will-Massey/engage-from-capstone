@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { apiGet, apiPost, expectNoErrorToasts } from '../fixtures/build-helpers';
+import { apiGet, apiPostResilient, expectNoErrorToasts } from '../fixtures/build-helpers';
 
 test.describe('AI-native UI surfaces', () => {
   test('dashboard attention queue renders', async ({ page }) => {
@@ -38,7 +38,7 @@ test.describe('AI-native API — proposal email draft', () => {
     const proposalId = drafts.body?.data?.[0]?.id;
     test.skip(!proposalId, 'No draft proposals');
 
-    const draft = await apiPost(request, '/ai/proposal-email-draft', { proposalId });
+    const draft = await apiPostResilient(request, '/ai/proposal-email-draft', { proposalId });
     expect(draft.status).toBe(200);
     expect(draft.body?.success).toBe(true);
     expect(draft.body?.data?.subject?.length).toBeGreaterThan(5);

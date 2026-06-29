@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { API_BASE, expectNoErrorToasts, apiGet, apiPost, expectOkApi } from '../fixtures/build-helpers';
+import { API_BASE, expectNoErrorToasts, apiGet, apiPostResilient, expectOkApi } from '../fixtures/build-helpers';
 
 test.describe('Build smoke — infrastructure', () => {
   test('backend ping responds', async ({ request }) => {
@@ -49,7 +49,7 @@ test.describe('Build smoke — API contracts', () => {
     const clientId = clients.body?.data?.[0]?.id;
     test.skip(!clientId, 'No clients in tenant');
 
-    const brief = await apiPost(request, `/ai/client-brief/${clientId}`, {});
+    const brief = await apiPostResilient(request, `/ai/client-brief/${clientId}`, {});
     expect(brief.status).toBe(200);
     expect(brief.body?.success).toBe(true);
     expect(brief.body?.data?.brief?.length).toBeGreaterThan(10);
