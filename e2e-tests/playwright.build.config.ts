@@ -12,7 +12,8 @@ export default defineConfig({
   testMatch: ['build-smoke.spec.ts', 'ai-native.spec.ts'],
   fullyParallel: false,
   forbidOnly: !!process.env.CI,
-  retries: process.env.CI ? 1 : 0,
+  // AI endpoints can transiently 502 on Render — one retry keeps the gate reliable
+  retries: 1,
   workers: 1,
   timeout: 150_000,
   globalSetup: require.resolve('./global-setup'),
