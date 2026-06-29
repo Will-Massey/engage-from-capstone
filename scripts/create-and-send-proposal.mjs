@@ -80,11 +80,23 @@ async function main() {
   const proposal = create.data?.data?.proposal || create.data?.data;
   console.log('Created', proposal.reference, proposal.id);
 
+  const emailDraft = await api('/api/ai/proposal-email-draft', {
+    method: 'POST',
+    cookies,
+    csrf,
+    body: { proposalId: proposal.id },
+  });
+  if (emailDraft.status !== 200 || !emailDraft.data?.data?.subject) {
+    throw new Error('AI email draft failed: ' + JSON.stringify(emailDraft.data));
+  }
+  const { subject, textBody, htmlBody } = emailDraft.data.data;
+  console.log('Clara email subject:', subject);
+
   const send = await api(`/api/proposals/${proposal.id}/send`, {
     method: 'POST',
     cookies,
     csrf,
-    body: {},
+    body: { aiSubject: subject, aiText: textBody, aiHtml: htmlBody },
   });
   console.log('Send', send.status, JSON.stringify(send.data));
 }

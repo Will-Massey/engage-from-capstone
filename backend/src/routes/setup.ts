@@ -1,7 +1,9 @@
 import { Router } from 'express';
 import { PrismaClient } from '@prisma/client';
 import bcrypt from 'bcryptjs';
+import { z } from 'zod';
 import { asyncHandler } from '../middleware/errorHandler.js';
+import { clearLoginAttempts } from '../utils/loginLockout.js';
 
 const router = Router();
 const prisma = new PrismaClient();
@@ -158,6 +160,50 @@ router.post(
     } catch (error: any) {
       res.status(500).json({ success: false, error: error.message });
     }
+  })
+);
+
+/**
+ * POST /api/setup/clear-login-lockout
+ * Clear failed-login counters for a user (ops / smoke-test recovery).
+ * Requires X-Setup-Key when SETUP_SECRET_KEY is configured.
+ */
+router.post(
+  '/clear-login-lockout',
+  checkSetupKey,
+  asyncHandler(async (req, res) => {
+    if (!setupEnabled) {
+      res.status(404).json({ success: false, error: 'Not found' });
+      return;
+    }
+
+    const { email, tenantId } = z
+      .object({
+        email: z.string().email(),
+        tenantId: z.string().uuid().optional(),
+      })
+      .parse(req.body);
+
+    let resolvedTenantId = tenantId;
+    if (!resolvedTenantId) {
+      const user = await prisma.user.findFirst({
+        where: { email: email.toLowerCase(), isActive: true },
+        select: { tenantId: true },
+      });
+      if (!user) {
+        res.status(404).json({ success: false, error: 'User not found' });
+        return;
+      }
+      resolvedTenantId = user.tenantId;
+    }
+
+    await clearLoginAttempts(email, resolvedTenantId);
+
+    res.json({
+      success: true,
+      message: `Login lockout cleared for ${email}`,
+      tenantId: resolvedTenantId,
+    });
   })
 );
 
