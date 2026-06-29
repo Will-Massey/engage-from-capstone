@@ -5,6 +5,7 @@ import { Toaster } from 'react-hot-toast';
 import App from './App';
 import { initializeTheme } from './stores/themeStore';
 import ErrorBoundary from './components/ErrorBoundary';
+import { initNativeShell } from './lib/native';
 // Build v5 - FORCE REBUILD - 2026-04-07T18:45:00Z - No Stripe
 import './index.css';
 
@@ -14,6 +15,9 @@ if ('serviceWorker' in navigator) {
     registrations.forEach((registration) => registration.unregister());
   });
 }
+
+// Capacitor iOS shell (status bar, splash, safe-area class)
+void initNativeShell();
 
 // Initialize theme before rendering
 try {

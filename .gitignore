@@ -49,6 +49,13 @@ uploads/
 .DS_Store
 Thumbs.db
 
+# Capacitor / Xcode local artefacts (commit ios/ project; ignore machine-specific output)
+frontend/ios/App/App/public/
+frontend/ios/App/Pods/
+frontend/ios/DerivedData/
+*.xcuserstate
+*.xcworkspace/xcuserdata/
+
 # Playwright MCP / local capture (do not commit)
 .playwright-mcp/
 

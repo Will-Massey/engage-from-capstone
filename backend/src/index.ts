@@ -137,6 +137,16 @@ const corsOptions = {
     // Allow requests with no origin (like mobile apps or curl requests)
     if (!origin) return callback(null, true);
 
+    // Capacitor iOS / Android WebView origins
+    if (
+      origin === 'capacitor://localhost' ||
+      origin === 'https://localhost' ||
+      origin === 'http://localhost' ||
+      origin === 'ionic://localhost'
+    ) {
+      return callback(null, true);
+    }
+
     // Explicit opt-in: allow any onrender.com origin (use sparingly)
     if (ALLOW_RENDER_WILDCARD_ORIGINS && origin.includes('onrender.com')) {
       return callback(null, true);
@@ -835,11 +845,15 @@ cache.connect().catch((err) => {
   logger.error('Failed to connect to Redis:', err);
 });
 
-// Rate limiting - skip for health checks when disabled via env
+// Rate limiting - skip health + CSRF (has its own limiter) when disabled via env
 const limiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  max: 100,
-  skip: (req) => req.path === '/api/health' || shouldSkipRateLimit(req.headers),
+  max: 500,
+  skip: (req) => {
+    if (shouldSkipRateLimit(req.headers)) return true;
+    const path = req.originalUrl || req.path;
+    return path.includes('/health') || path.includes('/auth/csrf-token');
+  },
   message: {
     success: false,
     error: {
