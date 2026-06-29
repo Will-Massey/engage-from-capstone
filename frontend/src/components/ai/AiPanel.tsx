@@ -107,10 +107,13 @@ export function AiDraftPreview({
 }
 
 export function showAiError(error: any) {
-  const code = error?.response?.data?.error?.code;
-  if (code === 'AI_NOT_CONFIGURED') {
+  const code = error?.code ?? error?.response?.data?.error?.code;
+  const message = error?.message ?? error?.response?.data?.error?.message;
+  if (code === 'AI_NOT_CONFIGURED' || code === 'AI_UNAVAILABLE') {
     toast.error(copilotUnavailableToast());
+  } else if (message) {
+    toast.error(message);
   } else {
-    toast.error(error?.response?.data?.error?.message || `${AI_COPILOT.name} couldn't complete that request`);
+    toast.error(`${AI_COPILOT.name} couldn't complete that request`);
   }
 }

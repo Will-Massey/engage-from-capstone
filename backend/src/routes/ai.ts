@@ -399,6 +399,16 @@ router.post(
   })
 );
 
+/** POST /api/ai/client-brief — body { clientId } (legacy frontend compat) */
+router.post(
+  '/client-brief',
+  asyncHandler(async (req, res) => {
+    const clientId = z.string().uuid().parse(req.body.clientId);
+    const data = await generateClientBrief(req.tenantId!, req.user?.id, clientId);
+    res.json({ success: true, data });
+  })
+);
+
 /** POST /api/ai/auto-fit */
 router.post(
   '/auto-fit',

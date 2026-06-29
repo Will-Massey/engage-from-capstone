@@ -236,6 +236,14 @@ api.interceptors.response.use(
         case 'PORTAL_NOT_FOUND':
           break;
 
+        case 'NOT_FOUND':
+          // Optional resources (e.g. cover letter default) — caller handles fallback
+          if (error.config?.url?.includes('/cover-letter-templates/default')) {
+            break;
+          }
+          if (!publicPage && !authPage) toast.error(errorMessage);
+          break;
+
         default:
           if (!publicPage && !authPage) toast.error(errorMessage);
           else if (authPage && errorCode === 'ACCOUNT_LOCKED') {
@@ -526,7 +534,7 @@ export const apiClient = {
     services?: Array<{ name: string; billingFrequency?: string; displayPrice?: number }>;
   }) => api.post('/ai/proposal-email-draft', data),
 
-  aiClientBrief: (clientId: string) => api.post('/ai/client-brief', { clientId }),
+  aiClientBrief: (clientId: string) => api.post(`/ai/client-brief/${clientId}`, {}),
 
   aiAutoFit: (clientId: string) => api.post('/ai/auto-fit', { clientId }),
 

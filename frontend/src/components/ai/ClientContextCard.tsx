@@ -32,8 +32,10 @@ export default function ClientContextCard({
     try {
       const res = (await apiClient.aiClientBrief(clientId)) as any;
       if (res.success) setBrief(res.data);
-    } catch (e) {
-      showAiError(e);
+    } catch (e: any) {
+      if (e?.code !== 'NOT_FOUND' && e?.status !== 404) {
+        showAiError(e);
+      }
     } finally {
       setLoading(false);
     }

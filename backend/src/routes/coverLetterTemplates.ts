@@ -16,6 +16,7 @@ import {
   deleteTemplate,
   renderCoverLetter,
   getDefaultTemplate,
+  seedDefaultTemplates,
 } from '../services/coverLetterTemplateService.js';
 import { coverLetterMergeFields } from '../data/defaultCoverLetters.js';
 
@@ -94,7 +95,12 @@ router.get(
   '/default',
   authenticate,
   asyncHandler(async (req, res) => {
-    const template = await getDefaultTemplate(req.tenantId!);
+    let template = await getDefaultTemplate(req.tenantId!);
+
+    if (!template) {
+      await seedDefaultTemplates(req.tenantId!);
+      template = await getDefaultTemplate(req.tenantId!);
+    }
 
     if (!template) {
       throw new ApiError('NOT_FOUND', 'No templates found', 404);

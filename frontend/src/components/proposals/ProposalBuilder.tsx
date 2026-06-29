@@ -449,8 +449,8 @@ export default function ProposalBuilder({ proposalId }: ProposalBuilderProps) {
         if (autoFitClientRef.current === clientId && res.success) {
           setAutoFitResult(res.data);
         }
-      } catch (e) {
-        if (autoFitClientRef.current === clientId) showAiError(e);
+      } catch {
+        // Background auto-fit is optional — avoid error popups on client select
       } finally {
         if (autoFitClientRef.current === clientId) setAutoFitLoading(false);
       }
