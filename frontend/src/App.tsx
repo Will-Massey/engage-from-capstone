@@ -315,9 +315,22 @@ function App() {
     useCommandPalette();
   const [isShortcutsOpen, setIsShortcutsOpen] = useState(false);
 
-  // Restore session from httpOnly cookies via /me (no JWT in localStorage)
+  // Restore session from httpOnly cookies via /me (skip on login/register to avoid refresh noise)
   useEffect(() => {
     const bootstrapSession = async () => {
+      const path = window.location.pathname;
+      const skipBootstrap =
+        path === '/login' ||
+        path === '/register' ||
+        path.startsWith('/forgot-password') ||
+        path.startsWith('/reset-password');
+
+      if (skipBootstrap) {
+        clearAuth();
+        setLoading(false);
+        return;
+      }
+
       setLoading(true);
       try {
         const response = (await apiClient.getMe()) as any;

@@ -12,6 +12,18 @@ export function isPublicClientPage(): boolean {
   return path.startsWith('/portal/') || path.startsWith('/proposals/view/') || path.startsWith('/onboarding/');
 }
 
+/** Login/register pages — skip session refresh and suppress noisy auth errors */
+export function isAuthPage(): boolean {
+  if (typeof window === 'undefined') return false;
+  const path = window.location.pathname;
+  return (
+    path === '/login' ||
+    path === '/register' ||
+    path.startsWith('/forgot-password') ||
+    path.startsWith('/reset-password')
+  );
+}
+
 // API URL is configured from environment
 
 // Create axios instance
@@ -32,6 +44,12 @@ const getCsrfToken = (): string | null => {
 
 // In-memory storage for CSRF token (cross-domain cookies don't work)
 let csrfTokenInMemory: string | null = null;
+
+/** Reset cached CSRF token (e.g. on login page after rate-limit or logout) */
+export function clearCsrfCache(): void {
+  csrfTokenInMemory = null;
+  csrfTokenPromise = null;
+}
 
 // Fetch CSRF token from backend
 let csrfTokenPromise: Promise<string> | null = null;
@@ -151,13 +169,35 @@ api.interceptors.response.use(
       }
 
       const publicPage = isPublicClientPage();
+      const authPage = isAuthPage();
 
       // Handle auth errors — try cookie refresh before forcing re-login
       switch (errorCode) {
+        case 'AUTH_RATE_LIMIT':
+          if (!publicPage) {
+            toast.error('Too many sign-in attempts. Please wait a few minutes and try again.');
+          }
+          break;
+
+        case 'INVALID_REFRESH_TOKEN':
+          if (authPage || publicPage) {
+            useAuthStore.getState().clearAuth();
+            break;
+          }
+          useAuthStore.getState().clearAuth();
+          if (!authPage) {
+            window.location.href = '/login';
+            toast.error('Your session has expired. Please log in again.');
+          }
+          break;
+
         case 'UNAUTHORIZED':
         case 'TOKEN_EXPIRED':
         case 'INVALID_TOKEN': {
-          if (publicPage) break;
+          if (publicPage || authPage) {
+            useAuthStore.getState().clearAuth();
+            break;
+          }
 
           const originalRequest = error.config as typeof error.config & { _retry?: boolean };
           if (originalRequest && !originalRequest._retry && originalRequest.url !== '/auth/refresh') {
@@ -197,7 +237,10 @@ api.interceptors.response.use(
           break;
 
         default:
-          if (!publicPage) toast.error(errorMessage);
+          if (!publicPage && !authPage) toast.error(errorMessage);
+          else if (authPage && errorCode === 'ACCOUNT_LOCKED') {
+            toast.error(errorMessage);
+          }
       }
 
       return Promise.reject({

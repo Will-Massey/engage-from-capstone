@@ -1,10 +1,10 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { EyeIcon, EyeSlashIcon } from '@heroicons/react/24/outline';
-import { apiClient } from '../../utils/api';
+import { apiClient, clearCsrfCache } from '../../utils/api';
 import { useAuthStore } from '../../stores/authStore';
 import toast from 'react-hot-toast';
 
@@ -18,9 +18,15 @@ type LoginForm = z.infer<typeof loginSchema>;
 
 const Login = () => {
   const navigate = useNavigate();
-  const { setSession } = useAuthStore();
+  const { setSession, clearAuth } = useAuthStore();
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+
+  // Clear stale persisted session so /me + refresh are not triggered on login
+  useEffect(() => {
+    clearAuth();
+    clearCsrfCache();
+  }, [clearAuth]);
 
   const {
     register,

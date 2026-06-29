@@ -181,10 +181,38 @@ app.use(cors(corsOptions));
 // Handle preflight requests explicitly
 app.options('*', cors(corsOptions));
 
-// Stricter rate limiting for auth endpoints
+// Login: only count failed attempts (successful logins do not consume quota)
+const loginLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 20,
+  skipSuccessfulRequests: true,
+  skip: () => !rateLimitingEnabled,
+  message: {
+    success: false,
+    error: {
+      code: 'AUTH_RATE_LIMIT',
+      message: 'Too many failed sign-in attempts. Please wait a few minutes and try again.',
+    },
+  },
+});
+
+// CSRF token fetch is high-volume during normal use — separate generous limit
+const csrfLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 200,
+  skip: () => !rateLimitingEnabled,
+  message: {
+    success: false,
+    error: {
+      code: 'AUTH_RATE_LIMIT',
+      message: 'Too many requests. Please try again shortly.',
+    },
+  },
+});
+
 const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  max: 30,
+  max: 40,
   skip: () => !rateLimitingEnabled,
   message: {
     success: false,
@@ -195,10 +223,10 @@ const authLimiter = rateLimit({
   },
 });
 
-app.use('/api/auth/login', authLimiter);
+app.use('/api/auth/login', loginLimiter);
+app.use('/api/auth/csrf-token', csrfLimiter);
 app.use('/api/auth/register', authLimiter);
 app.use('/api/auth/refresh', authLimiter);
-app.use('/api/auth/csrf-token', authLimiter);
 
 const privilegedLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
