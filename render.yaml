@@ -1,13 +1,17 @@
 # Render Blueprint for Engage by Capstone
 # Deploy: https://dashboard.render.com/select-repo?type=blueprint
-# FREE TIER - Sleeps after 15 min inactivity, wakes on request
+# Starter tier — no cold sleep, persistent disk for uploads/signatures
 
 services:
-  # Backend API Service (Free Tier - Auto-sleep to prevent costs)
+  # Backend API Service
   - type: web
     name: engage-backend
     runtime: node
-    plan: free
+    plan: starter
+    disk:
+      name: engage-uploads
+      mountPath: /var/data
+      sizeGB: 10
     buildCommand: |
       npm ci &&
       npm run build:shared &&
@@ -36,11 +40,17 @@ services:
         value: demo
       - key: API_URL
         value: https://engage-backend-e1ue.onrender.com
-      - key: EMAIL_PROVIDER
-        value: smtp
-      - key: SENDGRID_API_KEY
+      - key: EMAIL_WORKER_URL
         sync: false
-      - key: SENDGRID_WEBHOOK_VERIFICATION_KEY
+      - key: EMAIL_WORKER_SECRET
+        sync: false
+      - key: CLOUDFLARE_ACCOUNT_ID
+        sync: false
+      - key: CLOUDFLARE_EMAIL_API_TOKEN
+        sync: false
+      - key: ENCRYPTION_KEY
+        sync: false
+      - key: OAUTH_STATE_SECRET
         sync: false
       - key: EMAIL_PLATFORM_FROM
         value: notifications@engage.capstonesoftware.co.uk

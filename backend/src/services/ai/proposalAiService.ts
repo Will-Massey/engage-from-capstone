@@ -324,6 +324,137 @@ export async function assembleAiEngagementLetter(
   };
 }
 
+/** Pre-send draft review (no saved proposal required) */
+export async function reviewProposalDraft(
+  tenantId: string,
+  userId: string | undefined,
+  draft: {
+    clientId: string;
+    title?: string;
+    coverLetter?: string;
+    validUntil?: string;
+    services: Array<{ name: string; billingFrequency?: string; displayPrice?: number }>;
+  }
+) {
+  const client = await loadClientContext(tenantId, draft.clientId);
+  const ruleActions: string[] = [];
+  let healthScore = 100;
+
+  if (!draft.title?.trim()) {
+    ruleActions.push('Add a clear proposal title before sending.');
+    healthScore -= 15;
+  }
+  if (!draft.services?.length) {
+    ruleActions.push('Add at least one service to the proposal.');
+    healthScore -= 35;
+  }
+  const coverLen = draft.coverLetter?.trim().length ?? 0;
+  if (coverLen < 40) {
+    ruleActions.push('Cover letter is missing or very short — clients respond better with a personalised introduction.');
+    healthScore -= 12;
+  }
+  if (draft.validUntil) {
+    const expiry = new Date(draft.validUntil);
+    if (!Number.isNaN(expiry.getTime())) {
+      const days = Math.floor((expiry.getTime() - Date.now()) / 86400000);
+      if (days < 0) {
+        ruleActions.push('Valid until date is in the past.');
+        healthScore -= 25;
+      } else if (days <= 7) {
+        ruleActions.push('Valid until date is within 7 days — consider a longer window for new clients.');
+        healthScore -= 8;
+      }
+    }
+  }
+
+  const totalFees = draft.services.reduce((s, svc) => s + (svc.displayPrice ?? 0), 0);
+  if (totalFees <= 0 && draft.services.length > 0) {
+    ruleActions.push('One or more services have zero fees — confirm pricing before sending.');
+    healthScore -= 10;
+  }
+
+  healthScore = Math.max(0, Math.min(100, healthScore));
+
+  let summary = '';
+  let aiActions: string[] = [];
+
+  if (isAiConfigured()) {
+    const raw = await chatCompletion(
+      [
+        { role: 'system', content: UK_SYSTEM },
+        {
+          role: 'user',
+          content: `Review this UK accountancy proposal draft before it is sent. Return JSON only:
+{ "summary": "2 sentences", "recommendedActions": ["action1", "action2"], "suggestedTitle": "optional short title or empty string" }
+Client: ${client.name} (${client.companyType})
+Draft title: ${draft.title || '(none)'}
+Services: ${draft.services.map((s) => `${s.name} £${s.displayPrice ?? 0} ${s.billingFrequency || ''}`).join('; ') || '(none)'}
+Cover letter length: ${coverLen} chars
+Rule flags already found: ${JSON.stringify(ruleActions)}`,
+        },
+      ],
+      { jsonMode: true, temperature: 0.3, maxTokens: 500 }
+    );
+    const parsed = parseJsonResponse<{
+      summary: string;
+      recommendedActions: string[];
+      suggestedTitle?: string;
+    }>(raw);
+    summary = parsed.summary;
+    aiActions = parsed.recommendedActions || [];
+    if (parsed.suggestedTitle?.trim() && !draft.title?.trim()) {
+      aiActions.unshift(`Suggested title: "${parsed.suggestedTitle.trim()}"`);
+    }
+  } else {
+    summary = ruleActions.length
+      ? 'Review the checklist below before you create or send this proposal.'
+      : 'Draft looks ready — give it a final read before sending.';
+  }
+
+  await logAiUsage(tenantId, userId, 'draft_review', {
+    clientId: draft.clientId,
+    healthScore,
+    serviceCount: draft.services.length,
+  });
+
+  return {
+    healthScore,
+    summary,
+    recommendedActions: [...new Set([...ruleActions, ...aiActions])],
+    readyToSend: healthScore >= 70 && draft.services.length > 0 && coverLen >= 40,
+  };
+}
+
+/** Suggest a concise proposal title from client + services */
+export async function suggestProposalTitle(
+  tenantId: string,
+  userId: string | undefined,
+  clientId: string,
+  services: Array<{ name: string; billingFrequency?: string }>
+) {
+  const client = await loadClientContext(tenantId, clientId);
+  if (!isAiConfigured()) {
+    const names = services.map((s) => s.name).slice(0, 2).join(' & ');
+    return { title: names ? `${names} — ${client.name}` : `Proposal for ${client.name}` };
+  }
+
+  const raw = await chatCompletion(
+    [
+      { role: 'system', content: UK_SYSTEM },
+      {
+        role: 'user',
+        content: `Suggest a professional UK accountancy proposal title (max 8 words). Return JSON: { "title": "..." }
+Client: ${client.name}
+Services: ${services.map((s) => s.name).join(', ') || 'general engagement'}`,
+      },
+    ],
+    { jsonMode: true, temperature: 0.4, maxTokens: 120 }
+  );
+  const parsed = parseJsonResponse<{ title: string }>(raw);
+  await logAiUsage(tenantId, userId, 'suggest_title', { clientId });
+  return { title: parsed.title?.trim() || `Proposal for ${client.name}` };
+}
+
 /** Phase 4 — Proposal health (rules + AI narrative) */
 export async function getProposalHealth(
   tenantId: string,

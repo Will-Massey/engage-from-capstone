@@ -23,8 +23,8 @@
 ### Deploy & runtime
 - [x] Set `ENCRYPTION_KEY` + `OAUTH_STATE_SECRET` on Render (was causing `update_failed`)
 - [x] Cloudflare email env vars on engage-backend + capstone-engage
-- [ ] Move engage-backend to **Starter plan** (free tier sleeps, ephemeral disk, no SLA)
-- [ ] Add **persistent disk** for uploads/signatures (`/var/data/uploads` in render.yaml — verify mounted)
+- [ ] Move engage-backend to **Starter plan** — `render.yaml` updated; API returned 500 — [upgrade in dashboard](https://dashboard.render.com/web/srv-d6qkjlua2pns73a2r1fg/settings)
+- [ ] Add **persistent disk** at `/var/data` (10 GB in `render.yaml`; requires Starter first — run `scripts/upgrade-render-starter.ps1`)
 - [ ] Re-enable `tsc` in Render build once Prisma enums synced (or commit verified `dist/`)
 
 ### Security (critical)
@@ -182,8 +182,8 @@ XAI_MODEL_DEEP=grok-3          # research / analysis tasks
 2. ✅ Send test proposal to william@capstonesoftware.co.uk (Cloudflare + engage API)
 3. ✅ Remove public `/uploads` + fix signature IDOR
 4. ✅ Cross-tenant isolation in `authenticate` + tenant-scoped uploads
-5. ✅ xAI `proposalAiService` + `/api/ai/*` routes (wire UI copilot in ProposalBuilder)
-6. [ ] Upgrade Render plan + persistent disk
+5. ✅ xAI `proposalAiService` + `/api/ai/*` + **Clara sidebar in ProposalBuilder** (suggest services, title, cover letter, pre-send review)
+6. [ ] Upgrade Render plan + persistent disk (yaml ready — dashboard/API pending)
 7. [ ] Full E2E + tenant isolation test suite in CI
 
 ---

@@ -15,6 +15,8 @@ import {
   quickAsk,
   executeQuickAction,
   suggestProposalServices,
+  reviewProposalDraft,
+  suggestProposalTitle,
 } from '../services/ai/proposalAiService.js';
 import { getAiStatusMeta } from '../services/ai/aiClient.js';
 import { AI_COPILOT } from '../config/aiCopilot.js';
@@ -52,6 +54,8 @@ router.get(
         },
         features: [
           'suggest_services',
+          'suggest_title',
+          'draft_review',
           'cover_letter',
           'follow_up',
           'engagement_letter',
@@ -161,6 +165,52 @@ router.post(
       proposalId,
       upliftPercent
     );
+    res.json({ success: true, data });
+  })
+);
+
+/** POST /api/ai/draft-review — pre-send checklist for unsaved proposals */
+router.post(
+  '/draft-review',
+  asyncHandler(async (req, res) => {
+    const body = z
+      .object({
+        clientId: z.string().uuid(),
+        title: z.string().max(200).optional(),
+        coverLetter: z.string().max(12000).optional(),
+        validUntil: z.string().optional(),
+        services: z.array(
+          z.object({
+            name: z.string(),
+            billingFrequency: z.string().optional(),
+            displayPrice: z.number().optional(),
+          })
+        ),
+      })
+      .parse(req.body);
+
+    const data = await reviewProposalDraft(req.tenantId!, req.user?.id, body);
+    res.json({ success: true, data });
+  })
+);
+
+/** POST /api/ai/suggest-title */
+router.post(
+  '/suggest-title',
+  asyncHandler(async (req, res) => {
+    const { clientId, services } = z
+      .object({
+        clientId: z.string().uuid(),
+        services: z.array(
+          z.object({
+            name: z.string(),
+            billingFrequency: z.string().optional(),
+          })
+        ),
+      })
+      .parse(req.body);
+
+    const data = await suggestProposalTitle(req.tenantId!, req.user?.id, clientId, services);
     res.json({ success: true, data });
   })
 );

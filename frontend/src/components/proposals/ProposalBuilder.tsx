@@ -41,8 +41,9 @@ import {
   CalculatorIcon,
   SparklesIcon,
 } from '@heroicons/react/24/outline';
-import { AiPanel, AiDraftPreview, showAiError } from '../ai/AiPanel';
+import { AiDraftPreview, showAiError } from '../ai/AiPanel';
 import ProposalHealthCard from '../ai/ProposalHealthCard';
+import ProposalBuilderClara from '../ai/ProposalBuilderClara';
 import { AI_COPILOT } from '../../config/aiCopilot';
 
 // Types
@@ -1433,39 +1434,6 @@ export default function ProposalBuilder({ proposalId }: ProposalBuilderProps) {
         </div>
       </div>
 
-      {/* Clara service suggestions */}
-      {selectedClient && (
-        <AiPanel
-          title={`${AI_COPILOT.name} service suggestions`}
-          description="Recommended bundle and billing cadence based on client profile and history"
-          configured={aiConfigured}
-          loading={aiSuggestLoading}
-          onAction={runAiSuggestServices}
-          actionLabel="Suggest services"
-        >
-          {aiSuggestions && (
-            <div className="space-y-2">
-              {aiSuggestions.summary && (
-                <p className="text-sm text-slate-700 dark:text-slate-200">{aiSuggestions.summary}</p>
-              )}
-              <ul className="text-xs space-y-1.5">
-                {aiSuggestions.suggestions?.map((s: any) => (
-                  <li key={s.serviceId} className="flex gap-2 text-slate-600 dark:text-slate-300">
-                    <span className="text-violet-500 shrink-0">•</span>
-                    <span>
-                      <strong>{s.name}</strong> ({periodLabelSentenceCase(s.billingFrequency)}) — {s.rationale}
-                    </span>
-                  </li>
-                ))}
-              </ul>
-              <button type="button" onClick={applyAiSuggestions} className="btn-primary text-xs py-1.5 px-3 mt-2">
-                Apply suggestions
-              </button>
-            </div>
-          )}
-        </AiPanel>
-      )}
-
       {/* Category filters */}
       <div className="flex flex-wrap gap-2">
         {categories.map((cat) => (
@@ -1843,14 +1811,48 @@ export default function ProposalBuilder({ proposalId }: ProposalBuilderProps) {
     </div>
   );
 
+  const claraServiceLines = selectedServices.map((s) => ({
+    name: s.name,
+    billingFrequency: s.billingCycle,
+    displayPrice: s.displayPrice,
+  }));
+
   return (
-    <div className="max-w-6xl mx-auto">
+    <div className="max-w-7xl mx-auto">
       {renderStepIndicator()}
 
-      <div className="animate-fade-in">
-        {currentStep === 1 && renderClientStep()}
-        {currentStep === 2 && renderServicesStep()}
-        {currentStep === 3 && renderReviewStep()}
+      <div
+        className={
+          selectedClient && currentStep >= 2
+            ? 'grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_300px] gap-6 items-start'
+            : ''
+        }
+      >
+        <div className="animate-fade-in min-w-0">
+          {currentStep === 1 && renderClientStep()}
+          {currentStep === 2 && renderServicesStep()}
+          {currentStep === 3 && renderReviewStep()}
+        </div>
+
+        {selectedClient && currentStep >= 2 && (
+          <ProposalBuilderClara
+            step={currentStep}
+            clientId={selectedClient.id}
+            clientName={selectedClient.name}
+            proposalTitle={proposalTitle}
+            coverLetter={coverLetter}
+            validUntil={validUntil}
+            services={claraServiceLines}
+            configured={aiConfigured}
+            onApplyTitle={setProposalTitle}
+            onSuggestServices={runAiSuggestServices}
+            suggestLoading={aiSuggestLoading}
+            suggestions={aiSuggestions}
+            onApplySuggestions={applyAiSuggestions}
+            onDraftCoverLetter={runAiCoverLetter}
+            coverLoading={aiCoverLoading}
+          />
+        )}
       </div>
     </div>
   );

@@ -423,6 +423,17 @@ export const apiClient = {
   // Engage assistant (Clara) — configured on the server via environment variables
   getAiStatus: () => api.get('/ai/status'),
   aiSuggestServices: (clientId: string) => api.post('/ai/suggest-services', { clientId }),
+  aiDraftReview: (data: {
+    clientId: string;
+    title?: string;
+    coverLetter?: string;
+    validUntil?: string;
+    services: Array<{ name: string; billingFrequency?: string; displayPrice?: number }>;
+  }) => api.post('/ai/draft-review', data),
+  aiSuggestTitle: (
+    clientId: string,
+    services: Array<{ name: string; billingFrequency?: string }>
+  ) => api.post('/ai/suggest-title', { clientId, services }),
   aiCoverLetter: (data: {
     clientId: string;
     tone: string;
