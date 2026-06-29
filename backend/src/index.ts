@@ -15,7 +15,7 @@ import helmet from 'helmet';
 import morgan from 'morgan';
 import rateLimit from 'express-rate-limit';
 import cookieParser from 'cookie-parser';
-import { isE2eTestRequest, rateLimitingEnabled } from './utils/securityFlags.js';
+import { shouldSkipRateLimit } from './utils/securityFlags.js';
 import stripeWebhookRoutes from './routes/stripeWebhook.js';
 import { handleOAuthProviderCallback } from './handlers/oauthCallback.js';
 
@@ -186,7 +186,7 @@ const loginLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   max: 20,
   skipSuccessfulRequests: true,
-  skip: () => !rateLimitingEnabled,
+  skip: (req) => shouldSkipRateLimit(req.headers),
   message: {
     success: false,
     error: {
@@ -200,7 +200,7 @@ const loginLimiter = rateLimit({
 const csrfLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   max: 200,
-  skip: () => !rateLimitingEnabled,
+  skip: (req) => shouldSkipRateLimit(req.headers),
   message: {
     success: false,
     error: {
@@ -213,7 +213,7 @@ const csrfLimiter = rateLimit({
 const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   max: 40,
-  skip: () => !rateLimitingEnabled,
+  skip: (req) => shouldSkipRateLimit(req.headers),
   message: {
     success: false,
     error: {
@@ -231,7 +231,7 @@ app.use('/api/auth/refresh', authLimiter);
 const privilegedLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   max: 20,
-  skip: () => !rateLimitingEnabled,
+  skip: (req) => shouldSkipRateLimit(req.headers),
   message: {
     success: false,
     error: {
@@ -248,7 +248,7 @@ app.use('/api/setup', privilegedLimiter);
 const tenantSignupLimiter = rateLimit({
   windowMs: 60 * 60 * 1000,
   max: 5,
-  skip: () => !rateLimitingEnabled,
+  skip: (req) => shouldSkipRateLimit(req.headers),
   message: {
     success: false,
     error: {
@@ -269,7 +269,7 @@ app.use('/api/tenants', (req, res, next) => {
 const publicProposalLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   max: 30,
-  skip: () => !rateLimitingEnabled,
+  skip: (req) => shouldSkipRateLimit(req.headers),
   message: {
     success: false,
     error: {
@@ -839,7 +839,7 @@ cache.connect().catch((err) => {
 const limiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   max: 100,
-  skip: (req) => req.path === '/api/health' || !rateLimitingEnabled || isE2eTestRequest(req.headers),
+  skip: (req) => req.path === '/api/health' || shouldSkipRateLimit(req.headers),
   message: {
     success: false,
     error: {

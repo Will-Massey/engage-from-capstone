@@ -16,7 +16,10 @@ async function globalSetup(config: FullConfig): Promise<void> {
   fs.mkdirSync(AUTH_DIR, { recursive: true });
 
   const browser = await chromium.launch();
-  const context = await browser.newContext({ baseURL });
+  const context = await browser.newContext({
+    baseURL,
+    extraHTTPHeaders: { 'X-Test-Mode': 'e2e-build' },
+  });
   const page = await context.newPage();
 
   await page.goto('/login', { waitUntil: 'domcontentloaded' });

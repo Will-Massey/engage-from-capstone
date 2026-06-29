@@ -11,6 +11,12 @@ export const rateLimitingEnabled = process.env.RATE_LIMIT_ENABLED !== 'false';
 
 /** Playwright build verification — skip throttles when header present */
 export function isE2eTestRequest(headers: { [key: string]: string | string[] | undefined }): boolean {
-  const mode = headers['x-test-mode'];
+  const raw = headers['x-test-mode'];
+  const mode = Array.isArray(raw) ? raw[0] : raw;
   return mode === 'e2e-build' || mode === 'e2e';
+}
+
+/** Shared skip predicate for express-rate-limit */
+export function shouldSkipRateLimit(headers: { [key: string]: string | string[] | undefined }): boolean {
+  return !rateLimitingEnabled || isE2eTestRequest(headers);
 }

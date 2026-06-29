@@ -4,6 +4,8 @@ export const API_BASE =
   (process.env.API_URL || 'https://engage-backend-e1ue.onrender.com').replace(/\/$/, '') +
   (process.env.API_URL?.endsWith('/api') ? '' : '/api');
 
+const E2E_HEADERS = { 'X-Test-Mode': 'e2e-build' };
+
 const ERROR_TOAST_PATTERNS = [
   /couldn't complete that request/i,
   /route.*not found/i,
@@ -37,7 +39,10 @@ function apiTimeout(path: string): number {
 }
 
 export async function apiGet(request: APIRequestContext, path: string): Promise<any> {
-  const res = await request.get(`${API_BASE}${path}`, { timeout: apiTimeout(path) });
+  const res = await request.get(`${API_BASE}${path}`, {
+    headers: E2E_HEADERS,
+    timeout: apiTimeout(path),
+  });
   const body = await res.json().catch(() => ({}));
   return { status: res.status(), body };
 }
@@ -45,7 +50,7 @@ export async function apiGet(request: APIRequestContext, path: string): Promise<
 export async function apiPost(request: APIRequestContext, path: string, data?: object): Promise<any> {
   const res = await request.post(`${API_BASE}${path}`, {
     data: data ?? {},
-    headers: await csrfHeader(request),
+    headers: { ...E2E_HEADERS, ...(await csrfHeader(request)) },
     timeout: apiTimeout(path),
   });
   const body = await res.json().catch(() => ({}));
