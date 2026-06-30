@@ -4,6 +4,7 @@ import {
   DocumentTextIcon,
   UsersIcon,
   WrenchScrewdriverIcon,
+  RectangleStackIcon,
   ChartPieIcon,
   CogIcon,
 } from '@heroicons/react/24/outline';
@@ -60,6 +61,13 @@ export const NAV_SECTIONS: NavSection[] = [
         href: '/services',
         icon: WrenchScrewdriverIcon,
         description: 'Fees and service templates',
+        matchPrefix: true,
+      },
+      {
+        name: 'Templates',
+        href: '/templates',
+        icon: RectangleStackIcon,
+        description: 'Pre-made proposal bundles for faster drafting',
         matchPrefix: true,
       },
     ],
@@ -182,6 +190,14 @@ export function getPageMeta(pathname: string): {
         { label: 'Services', href: '/services' },
         { label: 'Details' },
       ],
+    };
+  }
+
+  if (pathname === '/templates') {
+    return {
+      title: 'Templates',
+      description: 'Pre-made proposal bundles — services, pricing, and cover letters',
+      breadcrumbs: [{ label: 'Dashboard', href: '/' }, { label: 'Templates' }],
     };
   }
 

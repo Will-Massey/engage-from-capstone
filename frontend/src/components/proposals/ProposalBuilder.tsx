@@ -8,7 +8,7 @@
  */
 
 import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { apiClient } from '../../utils/api';
 import { useAuthStore } from '../../stores/authStore';
 import {
@@ -342,6 +342,7 @@ export default function ProposalBuilder({ proposalId }: ProposalBuilderProps) {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const preselectedClientId = searchParams.get('clientId');
+  const preselectedTemplateId = searchParams.get('template');
   const guidedParam = searchParams.get('guided');
   const manualParam = searchParams.get('manual');
   const { tenant, user } = useAuthStore();
@@ -422,6 +423,7 @@ export default function ProposalBuilder({ proposalId }: ProposalBuilderProps) {
   const [editPriceText, setEditPriceText] = useState('');
   const [showEmailPreview, setShowEmailPreview] = useState(false);
   const autoFitClientRef = useRef<string | null>(null);
+  const preselectedTemplateAppliedRef = useRef(false);
 
   const todayIso = format(new Date(), 'yyyy-MM-dd');
 
@@ -456,6 +458,28 @@ export default function ProposalBuilder({ proposalId }: ProposalBuilderProps) {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [proposalId]);
+
+  // Deep-link from Templates page: ?template=<id>
+  useEffect(() => {
+    if (isEditMode || !preselectedTemplateId || preselectedTemplateAppliedRef.current) return;
+    setBuildMode('template');
+    setSelectedTemplateId(preselectedTemplateId);
+  }, [isEditMode, preselectedTemplateId]);
+
+  useEffect(() => {
+    if (
+      isEditMode ||
+      !preselectedTemplateId ||
+      !selectedClient ||
+      services.length === 0 ||
+      preselectedTemplateAppliedRef.current
+    ) {
+      return;
+    }
+    preselectedTemplateAppliedRef.current = true;
+    void applyProposalTemplate(preselectedTemplateId);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isEditMode, preselectedTemplateId, selectedClient?.id, services.length]);
 
   // Load tenant default cover letter template when client is chosen (new proposals only)
   useEffect(() => {
@@ -1630,8 +1654,11 @@ export default function ProposalBuilder({ proposalId }: ProposalBuilderProps) {
             <p className="text-xs text-slate-500">Loading templates…</p>
           ) : proposalTemplates.length === 0 ? (
             <p className="text-xs text-slate-500">
-              No saved templates yet — build from scratch and {AI_COPILOT.name} will offer to save one when
-              you finish.
+              No saved templates yet —{' '}
+              <Link to="/templates" className="text-emerald-700 dark:text-emerald-400 hover:underline">
+                create one in Templates
+              </Link>{' '}
+              or build from scratch and {AI_COPILOT.name} will offer to save when you finish.
             </p>
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">

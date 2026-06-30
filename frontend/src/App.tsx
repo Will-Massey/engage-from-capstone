@@ -22,6 +22,7 @@ import ClientDetail from './pages/clients/ClientDetail';
 import CreateClient from './pages/clients/CreateClient';
 import Services from './pages/services/Services';
 import ServiceDetail from './pages/services/ServiceDetail';
+import ProposalTemplates from './pages/templates/ProposalTemplates';
 import Settings from './pages/Settings';
 import Subscription from './pages/Subscription';
 import Analytics from './pages/Analytics';
@@ -216,6 +217,16 @@ const AnimatedRoutes = () => {
             element={
               <AnimatedPage>
                 <ClientDetail />
+              </AnimatedPage>
+            }
+          />
+
+          {/* Catalogue */}
+          <Route
+            path="templates"
+            element={
+              <AnimatedPage>
+                <ProposalTemplates />
               </AnimatedPage>
             }
           />

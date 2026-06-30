@@ -461,6 +461,41 @@ export const apiClient = {
   // Proposal templates — save and reuse proposal configurations
   getProposalTemplates: () => api.get('/proposal-templates'),
   getProposalTemplate: (id: string) => api.get(`/proposal-templates/${id}`),
+  createProposalTemplate: (data: {
+    name: string;
+    description?: string;
+    title: string;
+    coverLetter?: string;
+    coverLetterTone?: string;
+    serviceConfig: Array<{
+      serviceId: string;
+      name?: string;
+      billingFrequency: string;
+      displayPrice: number;
+      quantity?: number;
+      discountPercent?: number;
+    }>;
+    targetEntityType?: string;
+  }) => api.post('/proposal-templates', data),
+  updateProposalTemplate: (
+    id: string,
+    data: Partial<{
+      name: string;
+      description: string;
+      title: string;
+      coverLetter: string;
+      coverLetterTone: string;
+      serviceConfig: Array<{
+        serviceId: string;
+        name?: string;
+        billingFrequency: string;
+        displayPrice: number;
+        quantity?: number;
+        discountPercent?: number;
+      }>;
+      targetEntityType: string;
+    }>
+  ) => api.put(`/proposal-templates/${id}`, data),
   saveProposalTemplateFromProposal: (proposalId: string, name: string, description?: string) =>
     api.post('/proposal-templates/from-proposal', { proposalId, name, description }),
   recordProposalTemplateUse: (id: string) => api.post(`/proposal-templates/${id}/record-use`, {}),

@@ -198,6 +198,58 @@ router.post(
   })
 );
 
+const updateTemplateSchema = createTemplateSchema.partial().refine(
+  (data) =>
+    Object.keys(data).some(
+      (k) => data[k as keyof typeof data] !== undefined
+    ),
+  { message: 'At least one field is required' }
+);
+
+/** PUT /api/proposal-templates/:id */
+router.put(
+  '/:id',
+  authenticate,
+  authorize('ADMIN', 'PARTNER', 'MANAGER', 'SENIOR'),
+  asyncHandler(async (req, res) => {
+    const existing = await prisma.proposalTemplate.findFirst({
+      where: { id: req.params.id, tenantId: req.tenantId!, isActive: true },
+    });
+    if (!existing) throw new ApiError('NOT_FOUND', 'Template not found', 404);
+
+    const data = updateTemplateSchema.parse(req.body);
+
+    const template = await prisma.proposalTemplate.update({
+      where: { id: existing.id },
+      data: {
+        ...(data.name !== undefined && { name: data.name }),
+        ...(data.description !== undefined && { description: data.description }),
+        ...(data.title !== undefined && { title: data.title }),
+        ...(data.coverLetter !== undefined && { coverLetter: data.coverLetter }),
+        ...(data.targetEntityType !== undefined && { targetEntityType: data.targetEntityType }),
+        ...(data.serviceConfig !== undefined && {
+          serviceConfig: JSON.stringify(deepCloneJson(data.serviceConfig)),
+        }),
+        ...(data.coverLetterTone !== undefined && {
+          defaultPricing: JSON.stringify({
+            ...parseDefaultPricing(existing.defaultPricing),
+            coverLetterTone: data.coverLetterTone,
+          }),
+        }),
+      },
+    });
+
+    res.json({
+      success: true,
+      data: {
+        ...template,
+        serviceConfig: parseServiceConfig(template.serviceConfig),
+        defaultPricing: parseDefaultPricing(template.defaultPricing),
+      },
+    });
+  })
+);
+
 /** POST /api/proposal-templates/:id/record-use */
 router.post(
   '/:id/record-use',
