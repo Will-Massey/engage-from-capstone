@@ -24,7 +24,7 @@ const createServiceSchema = z.object({
   longDescription: z.string().optional(),
   basePrice: z.number().min(0, 'Base price must be positive'),
   priceAmount: z.number().min(0).optional(),
-  baseHours: z.number().min(0.1, 'Base hours must be at least 0.1'),
+  baseHours: z.number().min(0).optional(),
   pricingModel: z.nativeEnum(PricingModel).default('FIXED'),
   frequencyOptions: z
     .array(z.nativeEnum(PricingFrequency))

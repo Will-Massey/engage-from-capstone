@@ -71,14 +71,13 @@ const Services = () => {
   const [showEditModal, setShowEditModal] = useState(false);
   const [editingService, setEditingService] = useState<Service | null>(null);
 
-  // Form states
+  // Form states — basePrice kept as string so price fields accept free typing
   const [formData, setFormData] = useState({
     name: '',
     description: '',
     longDescription: '',
     category: 'COMPLIANCE',
-    basePrice: 0,
-    baseHours: 1,
+    basePrice: '',
     defaultFrequency: 'MONTHLY',
     pricingModel: 'FIXED',
     isPopular: false,
@@ -108,8 +107,8 @@ const Services = () => {
       setIsLoading(true);
       const response = (await apiClient.createService({
         ...formData,
-        basePrice: Number(formData.basePrice),
-        baseHours: Number(formData.baseHours),
+        basePrice: parseFloat(formData.basePrice) || 0,
+        priceAmount: parseFloat(formData.basePrice) || 0,
       })) as any;
 
       if (response.success) {
@@ -132,8 +131,8 @@ const Services = () => {
       setIsLoading(true);
       const response = (await apiClient.updateService(editingService.id, {
         ...formData,
-        basePrice: Number(formData.basePrice),
-        baseHours: Number(formData.baseHours),
+        basePrice: parseFloat(formData.basePrice) || 0,
+        priceAmount: parseFloat(formData.basePrice) || 0,
       })) as any;
 
       if (response.success) {
@@ -195,8 +194,7 @@ const Services = () => {
       description: service.description,
       longDescription: service.longDescription || '',
       category: service.category,
-      basePrice: service.priceAmount || service.basePrice || 0,
-      baseHours: service.baseHours || 1,
+      basePrice: String(service.priceAmount ?? service.basePrice ?? ''),
       defaultFrequency: service.billingCycle || service.defaultFrequency || 'MONTHLY',
       pricingModel: service.pricingModel || 'FIXED',
       isPopular: service.isPopular,
@@ -218,8 +216,7 @@ const Services = () => {
       description: '',
       longDescription: '',
       category: 'COMPLIANCE',
-      basePrice: 0,
-      baseHours: 1,
+      basePrice: '',
       defaultFrequency: 'MONTHLY',
       pricingModel: 'FIXED',
       isPopular: false,
@@ -309,27 +306,21 @@ const Services = () => {
             />
           </div>
 
-          <div className="grid grid-cols-3 gap-4">
+          <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium text-slate-800 dark:text-slate-200">Base Price (£)</label>
+              <label className="block text-sm font-medium text-slate-800 dark:text-slate-200">Price (£)</label>
               <input
-                type="number"
+                type="text"
+                inputMode="decimal"
                 value={formData.basePrice}
-                onChange={(e) => setFormData({ ...formData, basePrice: Number(e.target.value) })}
+                onChange={(e) => {
+                  const next = e.target.value;
+                  if (next === '' || /^[0-9]*\.?[0-9]*$/.test(next)) {
+                    setFormData({ ...formData, basePrice: next });
+                  }
+                }}
                 className="mt-1 input-field w-full"
-                min="0"
-                step="0.01"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-slate-800 dark:text-slate-200">Base Hours</label>
-              <input
-                type="number"
-                value={formData.baseHours}
-                onChange={(e) => setFormData({ ...formData, baseHours: Number(e.target.value) })}
-                className="mt-1 input-field w-full"
-                min="0.1"
-                step="0.1"
+                placeholder="e.g. 150"
               />
             </div>
             <div>

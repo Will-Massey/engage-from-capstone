@@ -49,6 +49,19 @@ import AutoFitBanner, { type AutoFitResult } from '../ai/AutoFitBanner';
 import ProposalEmailPreviewDialog, { type ProposalEmailDraftInput } from '../ai/ProposalEmailPreviewDialog';
 import { AI_COPILOT } from '../../config/aiCopilot';
 
+type BuildMode = 'unset' | 'manual' | 'clara';
+
+/** Allow free typing in numeric fields without forcing 0 on empty input */
+function parseDecimalInput(value: string, fallback = 0): number {
+  if (value === '' || value === '.') return fallback;
+  const n = parseFloat(value);
+  return Number.isFinite(n) ? n : fallback;
+}
+
+function isValidDecimalDraft(value: string): boolean {
+  return value === '' || /^[0-9]*\.?[0-9]*$/.test(value);
+}
+
 // Types
 interface Client {
   id: string;
@@ -309,6 +322,8 @@ export default function ProposalBuilder({ proposalId }: ProposalBuilderProps) {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const preselectedClientId = searchParams.get('clientId');
+  const guidedParam = searchParams.get('guided');
+  const manualParam = searchParams.get('manual');
   const { tenant, user } = useAuthStore();
   const isEditMode = Boolean(proposalId);
   const draftKey = `engage-draft-${proposalId || 'new'}`;
@@ -364,10 +379,19 @@ export default function ProposalBuilder({ proposalId }: ProposalBuilderProps) {
   const [aiCoverLoading, setAiCoverLoading] = useState(false);
   const [aiCoverDraft, setAiCoverDraft] = useState<string | null>(null);
   const [showClientPreview, setShowClientPreview] = useState(false);
+
+  const [buildMode, setBuildMode] = useState<BuildMode>(() => {
+    if (manualParam === '1' || manualParam === 'true') return 'manual';
+    if (guidedParam === '1' || guidedParam === 'true') return 'clara';
+    return 'unset';
+  });
   const [validationErrors, setValidationErrors] = useState<string[]>([]);
   const [autoFitLoading, setAutoFitLoading] = useState(false);
   const [autoFitResult, setAutoFitResult] = useState<AutoFitResult | null>(null);
-  const [autoFitDismissed, setAutoFitDismissed] = useState(false);
+  const [autoFitDismissed, setAutoFitDismissed] = useState(
+    manualParam === '1' || manualParam === 'true'
+  );
+  const [editPriceText, setEditPriceText] = useState('');
   const [showEmailPreview, setShowEmailPreview] = useState(false);
   const autoFitClientRef = useRef<string | null>(null);
 
@@ -439,9 +463,17 @@ export default function ProposalBuilder({ proposalId }: ProposalBuilderProps) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedClient?.id, selectedServices.length]);
 
-  // Debounced auto-fit when client is selected (new proposals only)
+  // Debounced auto-fit when client is selected (Clara mode only)
   useEffect(() => {
-    if (!selectedClient || isEditMode || proposalId || !aiConfigured || autoFitDismissed) return;
+    if (
+      !selectedClient ||
+      isEditMode ||
+      proposalId ||
+      !aiConfigured ||
+      autoFitDismissed ||
+      buildMode !== 'clara'
+    )
+      return;
 
     const clientId = selectedClient.id;
     autoFitClientRef.current = clientId;
@@ -460,12 +492,14 @@ export default function ProposalBuilder({ proposalId }: ProposalBuilderProps) {
     }, 800);
 
     return () => clearTimeout(timer);
-  }, [selectedClient?.id, aiConfigured, isEditMode, proposalId, autoFitDismissed]);
+  }, [selectedClient?.id, aiConfigured, isEditMode, proposalId, autoFitDismissed, buildMode]);
 
   useEffect(() => {
-    setAutoFitDismissed(false);
-    setAutoFitResult(null);
-  }, [selectedClient?.id]);
+    if (buildMode === 'clara') {
+      setAutoFitDismissed(false);
+      setAutoFitResult(null);
+    }
+  }, [selectedClient?.id, buildMode]);
 
   useEffect(() => {
     if (isEditMode) return;
@@ -1024,6 +1058,7 @@ export default function ProposalBuilder({ proposalId }: ProposalBuilderProps) {
   // Start editing service
   const startEdit = (service: SelectedService) => {
     setEditingService(service.id);
+    setEditPriceText(String(service.displayPrice));
     setEditForm({
       displayPrice: service.displayPrice,
       quantity: service.quantity,
@@ -1042,7 +1077,7 @@ export default function ProposalBuilder({ proposalId }: ProposalBuilderProps) {
 
         const quantity = editForm.quantity || 1;
         const discount = editForm.discountPercent || 0;
-        const price = editForm.displayPrice || 0;
+        const price = parseDecimalInput(editPriceText, editForm.displayPrice);
         const vatRate = editForm.vatRate || 0;
 
         // Recalculate
@@ -1080,6 +1115,29 @@ export default function ProposalBuilder({ proposalId }: ProposalBuilderProps) {
 
   const removeService = (id: string) => {
     setSelectedServices((prev) => prev.filter((s) => s.id !== id));
+  };
+
+  const removeServiceByTemplateId = (templateId: string) => {
+    const line = selectedServices.find((s) => s.templateId === templateId);
+    if (line) removeService(line.id);
+  };
+
+  const clearAllServices = () => {
+    if (selectedServices.length === 0) return;
+    setSelectedServices([]);
+    toast.success('All services removed — pick from the catalogue');
+  };
+
+  const selectBuildMode = (mode: BuildMode) => {
+    setBuildMode(mode);
+    if (mode === 'manual') {
+      setAutoFitDismissed(true);
+      setAutoFitResult(null);
+      setAutoFitLoading(false);
+    } else if (mode === 'clara') {
+      setAutoFitDismissed(false);
+      setAutoFitResult(null);
+    }
   };
 
   const moveService = (id: string, direction: 'up' | 'down') => {
@@ -1336,8 +1394,68 @@ export default function ProposalBuilder({ proposalId }: ProposalBuilderProps) {
           ))}
       </div>
 
-      {selectedClient && (
-        <div className="flex justify-end">
+      {selectedClient && buildMode === 'unset' && (
+        <div className="rounded-2xl border border-slate-200 dark:border-slate-700 bg-white/80 dark:bg-slate-900/50 p-5 space-y-4">
+          <h3 className="text-sm font-semibold text-slate-900 dark:text-white">
+            How would you like to build this proposal?
+          </h3>
+          <p className="text-xs text-slate-600 dark:text-slate-400">
+            You can always add or remove services yourself — Clara suggestions are optional.
+          </p>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <button
+              type="button"
+              data-testid="build-mode-manual"
+              onClick={() => selectBuildMode('manual')}
+              className="text-left p-4 rounded-xl border-2 border-slate-200 dark:border-slate-700 hover:border-primary-400 dark:hover:border-primary-600 transition-colors"
+            >
+              <p className="font-semibold text-slate-900 dark:text-white">Build from scratch</p>
+              <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                Pick services from your catalogue, set prices, and shape the proposal yourself.
+              </p>
+            </button>
+            {aiConfigured && (
+              <button
+                type="button"
+                data-testid="build-mode-clara"
+                onClick={() => selectBuildMode('clara')}
+                className="text-left p-4 rounded-xl border-2 border-violet-200 dark:border-violet-800 hover:border-violet-400 dark:hover:border-violet-600 bg-violet-50/50 dark:bg-violet-950/20 transition-colors"
+              >
+                <p className="font-semibold text-slate-900 dark:text-white">
+                  Start with {AI_COPILOT.name} suggestions
+                </p>
+                <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                  Optional starter bundle — accept, tweak, add, or remove anything before sending.
+                </p>
+              </button>
+            )}
+          </div>
+          {!aiConfigured && (
+            <button
+              type="button"
+              onClick={() => selectBuildMode('manual')}
+              className="btn-primary text-sm"
+            >
+              Continue manually
+            </button>
+          )}
+        </div>
+      )}
+
+      {selectedClient && buildMode !== 'unset' && (
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <p className="text-xs text-slate-500 dark:text-slate-400">
+            {buildMode === 'manual'
+              ? 'Manual build — add services from your catalogue on the next step.'
+              : `${AI_COPILOT.name} may suggest a starter — you stay in control of every line item.`}
+            <button
+              type="button"
+              className="ml-2 text-primary-600 hover:underline"
+              onClick={() => selectBuildMode('unset')}
+            >
+              Change
+            </button>
+          </p>
           <button data-testid="client-continue-button" onClick={() => setCurrentStep(2)} className="btn-primary">
             Continue
             <ArrowRightIcon className="w-5 h-5 ml-2" />
@@ -1349,15 +1467,15 @@ export default function ProposalBuilder({ proposalId }: ProposalBuilderProps) {
 
   // Render compact service row
   const renderServiceRow = (service: Service) => {
-    const isSelected = selectedServices.find((s) => s.templateId === service.id);
+    const isSelected = selectedServices.some((s) => s.templateId === service.id);
 
     return (
       <div
         key={service.id}
         data-testid="available-service-row"
         data-service-name={service.name}
-        onClick={() => !isSelected && addService(service)}
-        className={`flex items-center justify-between p-3 rounded-lg border transition-all cursor-pointer ${
+        onClick={() => (isSelected ? removeServiceByTemplateId(service.id) : addService(service))}
+        className={`flex items-center justify-between gap-2 p-3 rounded-lg border transition-all cursor-pointer ${
           isSelected
             ? 'bg-green-50 border-green-300 dark:bg-green-900/20 dark:border-green-700'
             : 'bg-white border-slate-200 hover:border-primary-300 hover:bg-slate-50 dark:bg-slate-800 dark:border-slate-700 dark:hover:border-primary-600'
@@ -1370,10 +1488,27 @@ export default function ProposalBuilder({ proposalId }: ProposalBuilderProps) {
           </div>
           <p className="text-xs text-slate-500 dark:text-slate-400 truncate">{service.category}</p>
         </div>
-        <div className="text-right flex-shrink-0 ml-4">
+        <div className="flex items-center gap-2 flex-shrink-0">
           <span className="font-semibold text-primary-600 text-sm">
             {formatPriceForDisplay(service.priceAmount, service.billingCycle)}
           </span>
+          <button
+            type="button"
+            data-testid={isSelected ? 'remove-from-catalogue' : 'add-from-catalogue'}
+            onClick={(e) => {
+              e.stopPropagation();
+              if (isSelected) removeServiceByTemplateId(service.id);
+              else addService(service);
+            }}
+            className={`p-1.5 rounded-lg ${
+              isSelected
+                ? 'text-red-600 hover:bg-red-100 dark:hover:bg-red-900/30'
+                : 'text-primary-600 hover:bg-primary-100 dark:hover:bg-primary-900/30'
+            }`}
+            title={isSelected ? 'Remove from proposal' : 'Add to proposal'}
+          >
+            {isSelected ? <TrashIcon className="w-4 h-4" /> : <PlusIcon className="w-4 h-4" />}
+          </button>
         </div>
       </div>
     );
@@ -1411,9 +1546,15 @@ export default function ProposalBuilder({ proposalId }: ProposalBuilderProps) {
               <label className="block text-[10px] uppercase tracking-wide text-slate-500 mb-0.5">Price (£)</label>
               <input
                 data-testid="edit-price-input"
-                type="number"
-                value={editForm.displayPrice}
-                onChange={(e) => setEditForm({ ...editForm, displayPrice: Number(e.target.value) })}
+                type="text"
+                inputMode="decimal"
+                value={editPriceText}
+                onChange={(e) => {
+                  const next = e.target.value;
+                  if (!isValidDecimalDraft(next)) return;
+                  setEditPriceText(next);
+                  setEditForm({ ...editForm, displayPrice: parseDecimalInput(next, editForm.displayPrice) });
+                }}
                 className="w-full px-2 py-1 text-sm border rounded dark:bg-slate-800 dark:border-slate-600"
               />
             </div>
@@ -1661,11 +1802,22 @@ export default function ProposalBuilder({ proposalId }: ProposalBuilderProps) {
 
         {/* Selected Services */}
         <div className="space-y-3">
-          <h3 className="text-sm font-medium text-slate-500 uppercase tracking-wide">
-            Selected ({selectedServices.length})
-          </h3>
+        <div className="flex items-center justify-between gap-2">
+            <h3 className="text-sm font-medium text-slate-500 uppercase tracking-wide">
+              Selected ({selectedServices.length})
+            </h3>
+            {selectedServices.length > 0 && (
+              <button
+                type="button"
+                onClick={clearAllServices}
+                className="text-[10px] text-red-600 hover:underline"
+              >
+                Clear all
+              </button>
+            )}
+          </div>
           <p className="text-xs text-slate-500 dark:text-slate-400">
-            Tap a billing period per service — the price converts to match the new cadence.
+            Click any service on the left to add or remove. Edit price, quantity, and billing per line.
           </p>
 
           {selectedServices.length === 0 ? (
@@ -2099,7 +2251,7 @@ export default function ProposalBuilder({ proposalId }: ProposalBuilderProps) {
     <div className="max-w-7xl mx-auto">
       {renderStepIndicator()}
 
-      {selectedClient && !autoFitDismissed && (autoFitLoading || autoFitResult) && (
+      {selectedClient && buildMode === 'clara' && !autoFitDismissed && (autoFitLoading || autoFitResult) && (
         <AutoFitBanner
           clientName={selectedClient.name}
           result={autoFitResult}
@@ -2136,23 +2288,6 @@ export default function ProposalBuilder({ proposalId }: ProposalBuilderProps) {
 
         {selectedClient && currentStep >= 2 && (
           <div className="space-y-4 min-w-0 lg:sticky lg:top-4">
-            {liveClientPreview && (
-              <ProposalClientPreview
-                practiceName={tenant?.name || 'Your practice'}
-                clientName={selectedClient.name}
-                proposalTitle={proposalTitle}
-                coverLetter={coverLetter}
-                services={selectedServices.map((s) => ({
-                  name: s.name,
-                  displayPrice: s.displayPrice,
-                  billingCycle: s.billingCycle,
-                  quantity: s.quantity,
-                }))}
-                summary={summary}
-                validUntil={validUntil}
-                contractStartDate={contractStartDate}
-              />
-            )}
             <ProposalBuilderClara
               step={currentStep}
               clientId={selectedClient.id}

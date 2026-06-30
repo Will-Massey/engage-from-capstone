@@ -6,7 +6,7 @@ import {
   TrashIcon,
   DocumentDuplicateIcon,
   BuildingOfficeIcon,
-  ClockIcon,
+
   CurrencyPoundIcon,
   TagIcon,
   StarIcon,
@@ -217,23 +217,14 @@ const ServiceDetail = () => {
           {/* Pricing */}
           <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-6">
             <h2 className="text-lg font-semibold text-slate-900 mb-4">Pricing</h2>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="p-4 bg-slate-50 rounded-lg">
-                <div className="flex items-center text-slate-600 mb-1">
-                  <CurrencyPoundIcon className="h-4 w-4 mr-2" />
-                  <span className="text-sm">Base Price</span>
-                </div>
-                <p className="text-2xl font-bold text-slate-900">
-                  £{service.basePrice.toLocaleString()}
-                </p>
+            <div className="p-4 bg-slate-50 rounded-lg max-w-xs">
+              <div className="flex items-center text-slate-600 mb-1">
+                <CurrencyPoundIcon className="h-4 w-4 mr-2" />
+                <span className="text-sm">Catalogue price</span>
               </div>
-              <div className="p-4 bg-slate-50 rounded-lg">
-                <div className="flex items-center text-slate-600 mb-1">
-                  <ClockIcon className="h-4 w-4 mr-2" />
-                  <span className="text-sm">Base Hours</span>
-                </div>
-                <p className="text-2xl font-bold text-slate-900">{service.baseHours || 1}h</p>
-              </div>
+              <p className="text-2xl font-bold text-slate-900">
+                £{(service.priceAmount ?? service.basePrice ?? 0).toLocaleString('en-GB')}
+              </p>
             </div>
             <div className="mt-4 grid grid-cols-2 gap-4 text-sm">
               <div>
