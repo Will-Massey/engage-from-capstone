@@ -62,6 +62,7 @@ export async function generateClientBrief(
     const ch = ctx.companiesHouse;
     const lines = [
       `**${ctx.client.name}** (${ctx.client.companyType})`,
+      `Relationship: ${ctx.client.clientRelationship === 'EXISTING' ? 'Existing client (renewal/upsell)' : 'New client'}`,
       ctx.client.companyNumber ? `Companies House: ${ctx.client.companyNumber}` : '',
       ch?.companyName ? `CH registered name: ${ch.companyName}` : '',
       ch?.companyStatus ? `Status: ${ch.companyStatus}` : '',
@@ -189,6 +190,8 @@ export async function autoFitProposal(
   "validUntilDays": 30
 }
 Only use serviceId from catalog. Pick billingFrequency from each service's allowedBilling.
+If clientRelationship is EXISTING, frame as renewal — align with prior accepted services where sensible.
+If NEW, recommend a sensible onboarding bundle for the entity type.
 
 Context:
 ${JSON.stringify(

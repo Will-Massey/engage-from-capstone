@@ -34,6 +34,9 @@ export interface AiClientContext {
   industry?: string | null;
   yearEnd?: string | null;
   notes?: string | null;
+  clientRelationship: 'NEW' | 'EXISTING';
+  /** Human-readable hint for Clara prompts */
+  relationshipContext: string;
 }
 
 export interface AiUserContext {
@@ -134,6 +137,12 @@ function mapCatalogItem(
   };
 }
 
+function relationshipContextForAi(rel: string): string {
+  return rel === 'EXISTING'
+    ? 'Existing client — treat proposals as renewals or scope changes; reference continuity with the practice and prior work.'
+    : 'New client — first engagement with the practice; use welcoming onboarding tone and explain services clearly.';
+}
+
 function mapClient(client: {
   id: string;
   name: string;
@@ -149,7 +158,9 @@ function mapClient(client: {
   industry: string | null;
   yearEnd: string | null;
   notes: string | null;
+  clientRelationship: string;
 }): AiClientContext {
+  const rel = client.clientRelationship === 'EXISTING' ? 'EXISTING' : 'NEW';
   return {
     id: client.id,
     name: client.name,
@@ -165,6 +176,8 @@ function mapClient(client: {
     industry: client.industry,
     yearEnd: client.yearEnd,
     notes: client.notes,
+    clientRelationship: rel,
+    relationshipContext: relationshipContextForAi(rel),
   };
 }
 

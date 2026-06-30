@@ -301,13 +301,6 @@ const Dashboard = () => {
             <option value="90days">Last 90 days</option>
             <option value="year">This year</option>
           </select>
-          <Link
-            to="/proposals/new"
-            className="btn-primary bg-gradient-to-r from-primary-600 to-primary-700 hover:from-primary-700 hover:to-primary-800"
-          >
-            <DocumentTextIcon className="h-4 w-4 mr-2" />
-            New Proposal
-          </Link>
         </div>
       </div>
 
@@ -664,16 +657,7 @@ const Dashboard = () => {
       {/* Quick Actions - Glass Tiles */}
       <div className="card p-6">
         <h2 className="section-title mb-4">Quick Actions</h2>
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-          <Link
-            to="/proposals/new"
-            className="glass-tile group text-center hover:border-primary-300 dark:hover:border-primary-700"
-          >
-            <div className="w-14 h-14 mx-auto bg-gradient-to-br from-blue-500 to-blue-600 text-white rounded-xl shadow-lg mb-3 group-hover:scale-110 transition-transform flex items-center justify-center">
-              <DocumentTextIcon className="h-7 w-7" />
-            </div>
-            <p className="text-sm font-medium text-slate-900 dark:text-slate-100">New Proposal</p>
-          </Link>
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
           <Link
             to="/clients/new"
             className="glass-tile group text-center hover:border-emerald-300 dark:hover:border-emerald-700"

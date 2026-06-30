@@ -46,6 +46,7 @@ export interface EditableClientFields {
   turnover?: number | null;
   notes?: string | null;
   yearEnd?: string | null;
+  clientRelationship?: 'NEW' | 'EXISTING';
 }
 
 interface ClientContextCardProps {
@@ -106,6 +107,7 @@ export default function ClientContextCard({
   const [turnover, setTurnover] = useState('');
   const [notes, setNotes] = useState('');
   const [yearEnd, setYearEnd] = useState('');
+  const [clientRelationship, setClientRelationship] = useState<'NEW' | 'EXISTING'>('NEW');
 
   const applyClientFields = useCallback((c: Record<string, unknown>) => {
     setCompanyNumber(String(c.companyNumber || ''));
@@ -114,6 +116,7 @@ export default function ClientContextCard({
     setTurnover(c.turnover != null ? String(c.turnover) : '');
     setNotes(String(c.notes || ''));
     setYearEnd(String(c.yearEnd || ''));
+    setClientRelationship(c.clientRelationship === 'EXISTING' ? 'EXISTING' : 'NEW');
   }, []);
 
   const loadClientDetails = useCallback(async () => {
@@ -251,6 +254,7 @@ export default function ClientContextCard({
         turnover: parseDecimalInput(turnover) ?? undefined,
         notes: notes.trim() || undefined,
         yearEnd: yearEnd.trim() || undefined,
+        clientRelationship,
       };
       const res = (await apiClient.updateClient(clientId, payload)) as any;
       if (res.success) {
@@ -430,6 +434,27 @@ export default function ClientContextCard({
             These details feed {AI_COPILOT.name}&apos;s brief. Use <strong>Pull CH</strong> to import
             registered name, year end, industry (from SIC), and address from Companies House.
           </p>
+          <div>
+            <label className="block text-xs font-medium text-slate-600 dark:text-slate-400 mb-1">
+              Relationship with your practice
+            </label>
+            <div className="flex flex-wrap gap-2">
+              {(['NEW', 'EXISTING'] as const).map((value) => (
+                <button
+                  key={value}
+                  type="button"
+                  onClick={() => setClientRelationship(value)}
+                  className={`text-xs px-3 py-1.5 rounded-lg border transition-colors ${
+                    clientRelationship === value
+                      ? 'border-violet-500 bg-violet-50 dark:bg-violet-950/40 text-violet-800 dark:text-violet-200'
+                      : 'border-slate-200 dark:border-slate-600'
+                  }`}
+                >
+                  {value === 'NEW' ? 'New client' : 'Existing client'}
+                </button>
+              ))}
+            </div>
+          </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
               <label className="block text-xs font-medium text-slate-600 dark:text-slate-400 mb-1">

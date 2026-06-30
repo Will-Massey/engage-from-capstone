@@ -1,6 +1,11 @@
 import { Router } from 'express';
 import { z } from 'zod';
-import { CompanyType, MTDITSAStatus, ClientLifecycleStage } from '@prisma/client';
+import {
+  CompanyType,
+  MTDITSAStatus,
+  ClientLifecycleStage,
+  ClientRelationship,
+} from '@prisma/client';
 import { prisma } from '../config/database.js';
 import { authenticate, authorize } from '../middleware/auth.js';
 import { asyncHandler, ApiError } from '../middleware/errorHandler.js';
@@ -51,6 +56,7 @@ const createClientSchema = z.object({
   mtditsaIncome: z.number().min(0).optional(),
   notes: z.string().optional(),
   tags: z.array(z.string()).optional(),
+  clientRelationship: z.nativeEnum(ClientRelationship).default(ClientRelationship.NEW),
 });
 
 const updateClientSchema = createClientSchema.partial().extend({
@@ -62,6 +68,7 @@ const updateClientSchema = createClientSchema.partial().extend({
   industry: z.string().nullish(),
   yearEnd: z.string().nullish(),
   notes: z.string().nullish(),
+  clientRelationship: z.nativeEnum(ClientRelationship).optional(),
   lifecycleStage: z.nativeEnum(ClientLifecycleStage).optional(),
   touchpointsPaused: z.boolean().optional(),
   marketingConsent: z.boolean().optional(),

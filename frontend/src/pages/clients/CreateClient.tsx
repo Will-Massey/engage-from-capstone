@@ -56,6 +56,7 @@ const clientSchema = z.object({
     z.number().min(0).optional()
   ),
   notes: z.string().optional(),
+  clientRelationship: z.enum(['NEW', 'EXISTING']).default('NEW'),
   // Address - all optional
   addressLine1: z.string().optional(),
   addressLine2: z.string().optional(),
@@ -97,6 +98,7 @@ const CreateClient = ({ onSuccess, onCancel }: CreateClientProps = {}) => {
       companyType: 'LIMITED_COMPANY',
       vatRegistered: false,
       contactName: '',
+      clientRelationship: 'NEW',
     },
     mode: 'onChange',
   });
@@ -105,6 +107,7 @@ const CreateClient = ({ onSuccess, onCancel }: CreateClientProps = {}) => {
 
   const watchCompanyType = watch('companyType');
   const watchMtditsaIncome = watch('mtditsaIncome');
+  const watchClientRelationship = watch('clientRelationship');
 
   // Companies House search state
   const [chSearchQuery, setChSearchQuery] = useState('');
@@ -236,6 +239,7 @@ const CreateClient = ({ onSuccess, onCancel }: CreateClientProps = {}) => {
         turnover: data.turnover,
         mtditsaIncome: data.mtditsaIncome,
         notes: data.notes,
+        clientRelationship: data.clientRelationship,
         address,
       })) as any;
 
@@ -331,6 +335,55 @@ const CreateClient = ({ onSuccess, onCancel }: CreateClientProps = {}) => {
       >
         {step === 1 && (
           <div className="space-y-6 animate-fade-in">
+            {/* New vs existing — feeds Clara renewal vs onboarding tone */}
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-2">
+                Client relationship with your practice
+              </label>
+              <p className="text-xs text-slate-500 mb-3">
+                Clara uses this to tailor proposals — onboarding language for new clients, renewal
+                framing for existing ones.
+              </p>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <label
+                  className={`flex flex-col p-4 border-2 rounded-lg cursor-pointer transition-colors ${
+                    watchClientRelationship === 'NEW'
+                      ? 'border-blue-500 bg-blue-50'
+                      : 'border-slate-200 hover:border-slate-300'
+                  }`}
+                >
+                  <input
+                    type="radio"
+                    value="NEW"
+                    {...register('clientRelationship')}
+                    className="sr-only"
+                  />
+                  <span className="text-sm font-semibold text-slate-900">New client</span>
+                  <span className="text-xs text-slate-500 mt-1">
+                    First engagement — winning them onto your books
+                  </span>
+                </label>
+                <label
+                  className={`flex flex-col p-4 border-2 rounded-lg cursor-pointer transition-colors ${
+                    watchClientRelationship === 'EXISTING'
+                      ? 'border-blue-500 bg-blue-50'
+                      : 'border-slate-200 hover:border-slate-300'
+                  }`}
+                >
+                  <input
+                    type="radio"
+                    value="EXISTING"
+                    {...register('clientRelationship')}
+                    className="sr-only"
+                  />
+                  <span className="text-sm font-semibold text-slate-900">Existing client</span>
+                  <span className="text-xs text-slate-500 mt-1">
+                    Already on your books — renewal, uplift, or extra services
+                  </span>
+                </label>
+              </div>
+            </div>
+
             {/* Company Type */}
             <div>
               <label className="block text-sm font-medium text-slate-700 mb-3">Company Type</label>

@@ -111,6 +111,7 @@ export async function suggestProposalServices(
       vatNumber: client.vatNumber,
       mtditsaStatus: client.mtditsaStatus,
       companyNumber: client.companyNumber,
+      clientRelationship: client.clientRelationship,
     },
     catalog: catalogForPrompt(catalog),
     priorAcceptedServices: priorProposals.flatMap((p) =>
@@ -133,6 +134,8 @@ export async function suggestProposalServices(
   "summary": "2-3 sentence overview for the partner"
 }
 Only use serviceId values from the catalog. Pick billingFrequency from each service's allowedBilling.
+If client.clientRelationship is EXISTING, treat as renewal — prefer continuity with priorAcceptedServices.
+If NEW, suggest an appropriate first-engagement bundle for the entity type.
 
 Context:
 ${JSON.stringify(prompt, null, 2)}`,
@@ -198,6 +201,7 @@ export async function generateAiCoverLetter(
 Tone: ${params.tone.toLowerCase()}
 Practice: ${params.practiceName}
 Client: ${client.name} (${client.companyType})
+Relationship: ${client.clientRelationship === 'EXISTING' ? 'Existing client — renewal or scope change; warm continuity, not a cold pitch' : 'New client — welcoming onboarding tone'}
 Addressee: ${client.contactName || client.name}
 Sender: ${params.senderName || 'Partner'}
 Services: ${params.services.map((s) => `${s.name} (${s.billingFrequency || 'MONTHLY'})`).join('; ')}
@@ -229,6 +233,7 @@ export async function* generateAiCoverLetterStream(
 Tone: ${params.tone.toLowerCase()}
 Practice: ${params.practiceName}
 Client: ${client.name} (${client.companyType})
+Relationship: ${client.clientRelationship === 'EXISTING' ? 'Existing client — renewal or scope change; warm continuity, not a cold pitch' : 'New client — welcoming onboarding tone'}
 Addressee: ${client.contactName || client.name}
 Sender: ${params.senderName || 'Partner'}
 Services: ${params.services.map((s) => `${s.name} (${s.billingFrequency || 'MONTHLY'})`).join('; ')}

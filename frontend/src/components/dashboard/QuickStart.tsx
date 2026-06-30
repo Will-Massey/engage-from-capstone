@@ -19,10 +19,10 @@ const steps = [
   {
     step: 2,
     title: 'Create a proposal',
-    description: 'Pick services, set fees, and tailor your engagement letter',
-    href: '/proposals/new',
+    description: 'Use New Proposal in the header — pick services, fees, and your engagement letter',
+    href: '/proposals',
     icon: DocumentPlusIcon,
-    cta: 'New proposal',
+    cta: 'Open proposals',
   },
   {
     step: 3,

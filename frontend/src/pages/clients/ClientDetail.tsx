@@ -48,6 +48,7 @@ const ClientDetail = () => {
     addressLine2: '',
     city: '',
     postcode: '',
+    clientRelationship: 'NEW' as 'NEW' | 'EXISTING',
   });
 
   useEffect(() => {
@@ -88,6 +89,7 @@ const ClientDetail = () => {
       addressLine2: client.address?.line2 || '',
       city: client.address?.city || '',
       postcode: client.address?.postcode || '',
+      clientRelationship: client.clientRelationship === 'EXISTING' ? 'EXISTING' : 'NEW',
     });
     setShowEditModal(true);
   };
@@ -114,6 +116,7 @@ const ClientDetail = () => {
           postcode: editForm.postcode,
           country: 'United Kingdom',
         },
+        clientRelationship: editForm.clientRelationship,
       };
 
       await apiClient.updateClient(id!, updateData);
@@ -167,6 +170,11 @@ const ClientDetail = () => {
             <h1 className="text-2xl font-bold text-slate-900 dark:text-white">{client.name}</h1>
             <p className="text-sm text-slate-600">
               {client.companyType?.replace(/_/g, ' ')} • {client.industry || 'No industry set'}
+              {client.clientRelationship && (
+                <span className="ml-2 text-xs font-medium text-violet-700 dark:text-violet-300">
+                  • {client.clientRelationship === 'EXISTING' ? 'Existing client' : 'New client'}
+                </span>
+              )}
             </p>
           </div>
         </div>
@@ -494,6 +502,28 @@ const ClientDetail = () => {
                     <option value="CHARITY">Charity</option>
                     <option value="NON_PROFIT">Non-Profit</option>
                   </select>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-slate-800 mb-2">
+                  Relationship with your practice
+                </label>
+                <div className="flex flex-wrap gap-2">
+                  {(['NEW', 'EXISTING'] as const).map((value) => (
+                    <button
+                      key={value}
+                      type="button"
+                      onClick={() => setEditForm({ ...editForm, clientRelationship: value })}
+                      className={`text-sm px-3 py-2 rounded-lg border ${
+                        editForm.clientRelationship === value
+                          ? 'border-primary-500 bg-primary-50 text-primary-800'
+                          : 'border-slate-200'
+                      }`}
+                    >
+                      {value === 'NEW' ? 'New client' : 'Existing client'}
+                    </button>
+                  ))}
                 </div>
               </div>
 
