@@ -65,11 +65,23 @@ export default function ProposalAiAssist({ proposal, onUpdated }: ProposalAiAssi
 
   const generateEngagementLetter = async () => {
     setEngagementLoading(true);
+    setEngagementDraft('');
     try {
-      const res = (await apiClient.aiEngagementLetter(proposal.id)) as any;
-      if (res.success) setEngagementDraft(res.data.content);
+      // Prefer streaming for live draft feel (falls back gracefully if method missing)
+      const streamer = (apiClient as any).aiStreamEngagementLetter;
+      if (typeof streamer === 'function') {
+        let accumulated = '';
+        await streamer(proposal.id, (chunk: string) => {
+          accumulated += chunk;
+          setEngagementDraft(accumulated);
+        });
+      } else {
+        const res = (await apiClient.aiEngagementLetter(proposal.id)) as any;
+        if (res.success) setEngagementDraft(res.data.content);
+      }
     } catch (e) {
       showAiError(e);
+      setEngagementDraft(null);
     } finally {
       setEngagementLoading(false);
     }
@@ -201,7 +213,9 @@ export default function ProposalAiAssist({ proposal, onUpdated }: ProposalAiAssi
             content={engagementDraft}
             onApply={saveEngagementLetter}
             onDiscard={() => setEngagementDraft(null)}
-            applyLabel="Save to proposal"
+            onRegenerate={generateEngagementLetter}
+            applyLabel="Accept & save"
+            isStreaming={engagementLoading}
           />
         )}
       </AiPanel>

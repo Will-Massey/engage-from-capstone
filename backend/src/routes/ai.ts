@@ -5,8 +5,10 @@ import { authenticate, authorize } from '../middleware/auth.js';
 import { asyncHandler, ApiError } from '../middleware/errorHandler.js';
 import {
   assembleAiEngagementLetter,
+  assembleAiEngagementLetterStream,
   executeAiCommand,
   generateAiCoverLetter,
+  generateAiCoverLetterStream,
   generateAiFollowUp,
   generateRenewalDraft,
   getProposalHealth,
@@ -22,8 +24,10 @@ import {
 import {
   generateProposalSendEmail,
   generateProposalSendEmailFromDraft,
+  generateEmailContentStream,
   type ProposalEmailDraftInput,
 } from '../services/ai/proposalAiEmailService.js';
+import { chatCompletion } from '../services/ai/aiClient.js';
 import { autoFitProposal, generateClientBrief } from '../services/ai/clientFitService.js';
 import { generateFollowUpEmail } from '../services/ai/lifecycleAiEmailService.js';
 import { checkAiTokenBudget, getAiStatusMeta } from '../services/ai/aiClient.js';
@@ -70,13 +74,18 @@ router.get(
           'suggest_title',
           'draft_review',
           'cover_letter',
+          'cover_letter_stream',
           'follow_up',
           'follow_up_send_preview',
           'engagement_letter',
+          'engagement_letter_stream',
           'proposal_health',
           'renewal_draft',
           'command',
           'proposal_email_draft',
+          'proposal_email_draft_stream',
+          'email_revise',
+          'suggest_email_subjects',
           'client_brief',
           'auto_fit',
           'attention_queue',
@@ -391,6 +400,273 @@ router.post(
   })
 );
 
+/** Cheap low-token email revision (max impact tweak) */
+router.post(
+  '/email-revise',
+  asyncHandler(async (req, res) => {
+    const { currentBody, instruction, context } = z
+      .object({
+        currentBody: z.string().min(20),
+        instruction: z.string().min(3).max(200),
+        context: z.any().optional(),
+      })
+      .parse(req.body);
+
+    const prompt = `You are an expert UK accountant communicator.
+Current email body:
+${currentBody}
+
+Instruction: ${instruction}
+Context (client + proposal summary): ${JSON.stringify(context || {}).slice(0, 600)}
+
+Return ONLY the revised plain text body (no subject, no extra commentary). Keep professional UK tone.`;
+
+    const revised = await (await import('../services/ai/aiClient.js')).chatCompletion(
+      [
+        { role: 'system', content: 'You are concise and precise.' },
+        { role: 'user', content: prompt },
+      ],
+      { temperature: 0.4, maxTokens: 700 }
+    );
+
+    res.json({ success: true, data: { revisedBody: revised.trim() } });
+  })
+);
+
+/** Cheap low-token revise for cover letter (same philosophy as email-revise) */
+router.post(
+  '/cover-letter-revise',
+  asyncHandler(async (req, res) => {
+    const { currentBody, instruction, context } = z
+      .object({
+        currentBody: z.string().min(20),
+        instruction: z.string().min(3).max(200),
+        context: z.any().optional(),
+      })
+      .parse(req.body);
+
+    const prompt = `You are an expert UK accountant communicator.
+Current cover letter:
+${currentBody}
+
+Instruction: ${instruction}
+Context: ${JSON.stringify(context || {}).slice(0, 500)}
+
+Return ONLY the revised plain text cover letter (no extra commentary). Keep professional UK tone and the original structure.`;
+
+    const revised = await chatCompletion(
+      [
+        { role: 'system', content: 'You are concise and precise.' },
+        { role: 'user', content: prompt },
+      ],
+      { temperature: 0.4, maxTokens: 600 }
+    );
+
+    res.json({ success: true, data: { revisedBody: revised.trim() } });
+  })
+);
+
+/** Very cheap subject suggestions for the proposal email (max impact, tiny tokens) */
+router.post(
+  '/suggest-email-subjects',
+  asyncHandler(async (req, res) => {
+    const { body, context } = z
+      .object({
+        body: z.string().min(20),
+        context: z.any().optional(),
+      })
+      .parse(req.body);
+
+    const prompt = `Suggest 2-3 concise, professional subject lines for this UK accountancy proposal email.
+Client: ${context?.clientName || 'the client'}
+Proposal: ${context?.proposalTitle || 'the proposal'}
+
+Current body (first 400 chars):
+${body.slice(0, 400)}
+
+Return ONLY a JSON array like: ["Subject one", "Subject two", "Subject three"]
+No extra text.`;
+
+    const raw = await chatCompletion(
+      [
+        { role: 'system', content: 'You output only valid JSON arrays of strings.' },
+        { role: 'user', content: prompt },
+      ],
+      { temperature: 0.5, maxTokens: 80 }
+    );
+
+    let subjects: string[] = [];
+    try {
+      subjects = JSON.parse(raw);
+      if (!Array.isArray(subjects)) subjects = [];
+      subjects = subjects.slice(0, 3).map(s => String(s).trim()).filter(Boolean);
+    } catch {
+      // fallback: split lines
+      subjects = raw.split(/\n/).map(s => s.replace(/^[-•\s"]+|["\s]+$/g, '').trim()).filter(Boolean).slice(0, 3);
+    }
+
+    if (subjects.length === 0) {
+      subjects = [
+        `Proposal for ${context?.clientName || 'you'}`,
+        `Your engagement with ${context?.tenantName || 'us'}`,
+      ];
+    }
+
+    res.json({ success: true, data: { subjects } });
+  })
+);
+
+/** Very cheap CTA suggestions for the email body (tiny tokens, high impact) */
+router.post(
+  '/suggest-email-ctas',
+  asyncHandler(async (req, res) => {
+    const { body, context } = z
+      .object({
+        body: z.string().min(20),
+        context: z.any().optional(),
+      })
+      .parse(req.body);
+
+    const prompt = `From this UK accountancy proposal email body, suggest 2-3 stronger, clearer calls-to-action (CTAs).
+Keep them short (one sentence each), professional, and client-friendly.
+
+Body excerpt:
+${body.slice(0, 600)}
+
+Return ONLY a JSON array: ["CTA one here", "CTA two here"]
+No extra text.`;
+
+    const raw = await chatCompletion(
+      [
+        { role: 'system', content: 'You output only valid JSON arrays of strings.' },
+        { role: 'user', content: prompt },
+      ],
+      { temperature: 0.5, maxTokens: 100 }
+    );
+
+    let ctas: string[] = [];
+    try {
+      ctas = JSON.parse(raw);
+      if (!Array.isArray(ctas)) ctas = [];
+      ctas = ctas.slice(0, 3).map(s => String(s).trim()).filter(Boolean);
+    } catch {
+      ctas = raw.split(/\n/).map(s => s.replace(/^[-•\s"]+|["\s]+$/g, '').trim()).filter(Boolean).slice(0, 3);
+    }
+
+    if (ctas.length === 0) {
+      ctas = ['Please review and sign the attached proposal.', 'Let me know if you have any questions.'];
+    }
+
+    res.json({ success: true, data: { ctas } });
+  })
+);
+
+/** Very cheap email health check (length, missing elements) - tiny token cost */
+router.post(
+  '/analyze-email',
+  asyncHandler(async (req, res) => {
+    const { body, context } = z
+      .object({
+        body: z.string().min(20),
+        context: z.any().optional(),
+      })
+      .parse(req.body);
+
+    const prompt = `Quickly review this UK accountancy proposal email body.
+Flag only if:
+- Too long (> ~350 words)
+- Missing key elements (fees/total, next steps, valid until, clear CTA, services summary)
+- Tone feels off for a professional client email
+
+Body:
+${body.slice(0, 800)}
+
+Return a very short JSON: { "issues": ["short bullet 1", "short bullet 2"] } or { "issues": [] } if fine.
+Maximum 3 bullets.`;
+
+    const raw = await chatCompletion(
+      [
+        { role: 'system', content: 'You are brief and only output the requested JSON.' },
+        { role: 'user', content: prompt },
+      ],
+      { temperature: 0.3, maxTokens: 120 }
+    );
+
+    let issues: string[] = [];
+    try {
+      const parsed = JSON.parse(raw);
+      issues = Array.isArray(parsed.issues) ? parsed.issues.slice(0, 3) : [];
+    } catch {
+      // fallback simple parse
+      issues = raw.split(/\n|•|-/).map(s => s.trim()).filter(s => s.length > 5 && s.length < 120).slice(0, 3);
+    }
+
+    res.json({ success: true, data: { issues } });
+  })
+);
+
+/** POST /api/ai/proposal-email-draft/stream — live streaming version for email preview (high impact, same token cost) */
+router.post(
+  '/proposal-email-draft/stream',
+  asyncHandler(async (req, res) => {
+    const proposalId = z.string().uuid().optional().parse(req.body.proposalId);
+
+    res.setHeader('Content-Type', 'text/event-stream');
+    res.setHeader('Cache-Control', 'no-cache');
+    res.setHeader('Connection', 'keep-alive');
+    if ((res as any).flushHeaders) (res as any).flushHeaders();
+
+    try {
+      let payloadForStream: any;
+
+      if (proposalId) {
+        const ctx = await (await import('../services/ai/aiContextBuilder.js')).buildAiContext(req.tenantId!, { proposalId, userId: req.user?.id });
+        if (!ctx.proposal || !ctx.client) throw new Error('Proposal or client not found');
+        payloadForStream = {
+          clientName: ctx.client.name,
+          contactName: ctx.client.contactName,
+          tenantName: ctx.tenant.name,
+          proposalTitle: ctx.proposal.title,
+          proposalReference: ctx.proposal.reference,
+          validUntil: ctx.proposal.validUntil,
+          services: ctx.proposal.services,
+          total: ctx.proposal.total,
+          senderName: Array.from(new Set([ctx.user?.firstName, ctx.user?.lastName].filter(Boolean))).join(' ') || 'Partner',
+          senderEmail: ctx.user?.email || '',
+          coverLetter: ctx.proposal.coverLetter,
+        };
+      } else {
+        const draft = proposalEmailDraftInputSchema.parse(req.body.draft ?? req.body);
+        const ctx = await (await import('../services/ai/aiContextBuilder.js')).buildAiContext(req.tenantId!, { clientId: draft.clientId, userId: req.user?.id });
+        const services = draft.services || [];
+        const total = services.reduce((sum, s) => sum + (s.displayPrice ?? 0), 0);
+        payloadForStream = {
+          clientName: ctx.client!.name,
+          contactName: ctx.client!.contactName,
+          tenantName: draft.practiceName || ctx.tenant.name,
+          proposalTitle: draft.title || `Proposal for ${ctx.client!.name}`,
+          proposalReference: draft.reference || 'Draft',
+          validUntil: draft.validUntil || new Date(Date.now() + 30 * 86400000).toISOString().slice(0, 10),
+          services,
+          total,
+          senderName: draft.senderName || Array.from(new Set([ctx.user?.firstName, ctx.user?.lastName].filter(Boolean))).join(' ') || 'Partner',
+          senderEmail: draft.senderEmail || ctx.user?.email || '',
+          coverLetter: draft.coverLetter,
+          contextNote: 'This is a draft proposal not yet saved in Engage.',
+        };
+      }
+
+      for await (const event of generateEmailContentStream(req.tenantId!, req.user?.id, payloadForStream, { streamed: true })) {
+        res.write(`data: ${JSON.stringify(event)}\n\n`);
+      }
+    } catch (e: any) {
+      res.write(`data: ${JSON.stringify({ error: e.message || 'stream error' })}\n\n`);
+    } finally {
+      res.end();
+    }
+  })
+);
+
 /** POST /api/ai/client-brief/:clientId */
 router.post(
   '/client-brief/:clientId',
@@ -465,6 +741,79 @@ router.post(
       .parse(req.body);
     const data = await draftProposalFromVoice(req.tenantId!, req.user?.id, { clientId, transcript });
     res.json({ success: true, data });
+  })
+);
+
+/** POST /api/ai/cover-letter/stream — token stream for live cover letter drafting */
+router.post(
+  '/cover-letter/stream',
+  asyncHandler(async (req, res) => {
+    const body = z
+      .object({
+        clientId: z.string().uuid(),
+        tone: z.enum(['PROFESSIONAL', 'FRIENDLY', 'MODERN']).default('PROFESSIONAL'),
+        practiceName: z.string(),
+        senderName: z.string().optional(),
+        services: z.array(
+          z.object({
+            name: z.string(),
+            billingFrequency: z.string().optional(),
+            displayPrice: z.number().optional(),
+          })
+        ),
+      })
+      .parse(req.body);
+
+    res.setHeader('Content-Type', 'text/event-stream');
+    res.setHeader('Cache-Control', 'no-cache');
+    res.setHeader('Connection', 'keep-alive');
+    // @ts-ignore - flush for node
+    if (res.flushHeaders) res.flushHeaders();
+
+    try {
+      for await (const chunk of generateAiCoverLetterStream(req.tenantId!, req.user?.id, {
+        clientId: body.clientId,
+        tone: body.tone,
+        practiceName: body.practiceName,
+        senderName: body.senderName,
+        services: body.services.map((s) => ({
+          name: s.name,
+          billingFrequency: s.billingFrequency,
+          displayPrice: s.displayPrice,
+        })),
+      })) {
+        res.write(`data: ${JSON.stringify({ chunk })}\n\n`);
+      }
+      res.write(`data: ${JSON.stringify({ done: true })}\n\n`);
+    } catch (e: any) {
+      res.write(`data: ${JSON.stringify({ error: e.message || 'stream error' })}\n\n`);
+    } finally {
+      res.end();
+    }
+  })
+);
+
+/** POST /api/ai/engagement-letter/stream — stream the AI intro + full letter */
+router.post(
+  '/engagement-letter/stream',
+  asyncHandler(async (req, res) => {
+    const { proposalId } = z.object({ proposalId: z.string().uuid() }).parse(req.body);
+
+    res.setHeader('Content-Type', 'text/event-stream');
+    res.setHeader('Cache-Control', 'no-cache');
+    res.setHeader('Connection', 'keep-alive');
+    if ((res as any).flushHeaders) (res as any).flushHeaders();
+
+    try {
+      for await (const chunk of assembleAiEngagementLetterStream(req.tenantId!, req.user?.id, proposalId)) {
+        res.write(`data: ${JSON.stringify({ chunk })}\n\n`);
+      }
+      res.write(`data: ${JSON.stringify({ done: true })}\n\n`);
+    } catch (e: any) {
+      res.write(`data: ${JSON.stringify({ error: e.message || 'stream error' })}\n\n`);
+    } finally {
+      res.end();
+    }
   })
 );
 

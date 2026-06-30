@@ -113,7 +113,7 @@ export async function generateFollowUpEmail(
   const daysUntilExpiry = Math.floor((proposal.validUntil.getTime() - now) / 86400000);
   const viewLink = `${frontendBaseUrl()}/proposals/view/${proposal.shareToken || proposal.id}`;
   const senderName = proposal.createdBy
-    ? `${proposal.createdBy.firstName} ${proposal.createdBy.lastName}`
+    ? Array.from(new Set([proposal.createdBy.firstName, proposal.createdBy.lastName].filter(Boolean))).join(' ')
     : 'Partner';
 
   const raw = await chatCompletion(

@@ -426,6 +426,19 @@
            bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400
            hover:bg-slate-200 dark:hover:bg-slate-700;
   }
+
+  /* Toast override for dark mode (used by react-hot-toast) */
+  .glass-toast {
+    background: linear-gradient(135deg, rgba(255, 255, 255, 0.95) 0%, rgba(255, 255, 255, 0.9) 100%) !important;
+    border: 1px solid rgba(255, 255, 255, 0.6) !important;
+    color: #0f172a !important;
+  }
+  .dark .glass-toast {
+    background: linear-gradient(135deg, rgba(30, 41, 59, 0.95) 0%, rgba(15, 23, 42, 0.9) 100%) !important;
+    border: 1px solid rgba(255, 255, 255, 0.1) !important;
+    color: #e2e8f0 !important;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.05) !important;
+  }
 }
 
 @layer utilities {

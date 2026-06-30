@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { useAuthStore } from '../stores/authStore';
+import { useThemeStore } from '../stores/themeStore';
 import { apiClient } from '../utils/api';
 import toast from 'react-hot-toast';
 import {
@@ -14,6 +15,9 @@ import {
   DocumentTextIcon,
   BellIcon,
   SparklesIcon,
+  SunIcon,
+  MoonIcon,
+  ComputerDesktopIcon,
 } from '@heroicons/react/24/outline';
 import EmailSettings from '../components/email/EmailSettings';
 import CoverLetterTemplatesManager from '../components/settings/CoverLetterTemplatesManager';
@@ -28,6 +32,7 @@ const tabs = [
     description: 'Company & legal details',
   },
   { id: 'branding', name: 'Branding', icon: PaintBrushIcon, description: 'Logo & colors' },
+  { id: 'appearance', name: 'Appearance', icon: SunIcon, description: 'Light / dark theme' },
   {
     id: 'communications',
     name: 'Communications',
@@ -51,6 +56,7 @@ const Settings = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const tabFromUrl = searchParams.get('tab');
   const { user, tenant, setSession } = useAuthStore();
+  const { theme: currentTheme, setTheme: setCurrentTheme } = useThemeStore();
   const [activeTab, setActiveTab] = useState(() =>
     tabFromUrl && VALID_TABS.includes(tabFromUrl) ? tabFromUrl : 'profile'
   );
@@ -62,8 +68,8 @@ const Settings = () => {
     firstName: user?.firstName || '',
     lastName: user?.lastName || '',
     email: user?.email || '',
-    phone: '',
-    jobTitle: '',
+    phone: user?.phone || '',
+    jobTitle: user?.jobTitle || '',
   });
 
   // Combined Practice & Legal form state
@@ -118,6 +124,8 @@ const Settings = () => {
     email: '',
     firstName: '',
     lastName: '',
+    phone: '',
+    jobTitle: '',
     role: 'JUNIOR',
     password: '',
   });
@@ -149,6 +157,188 @@ const Settings = () => {
   useEffect(() => {
     loadTenantSettings();
   }, []);
+
+  // Sync profile form (phone/jobTitle) from the auth user (populated by /auth/me)
+  useEffect(() => {
+    if (user) {
+      setProfileForm((prev) => ({
+        ...prev,
+        firstName: user.firstName || prev.firstName,
+        lastName: user.lastName || prev.lastName,
+        email: user.email || prev.email,
+        phone: user.phone || prev.phone,
+        jobTitle: user.jobTitle || prev.jobTitle,
+      }));
+    }
+  }, [user]);
+
+  // Sync profile form (phone, jobTitle) when user data loads from /auth/me
+  useEffect(() => {
+    if (user) {
+      setProfileForm((prev) => ({
+        ...prev,
+        firstName: user.firstName || prev.firstName,
+        lastName: user.lastName || prev.lastName,
+        email: user.email || prev.email,
+        phone: user.phone || prev.phone,
+        jobTitle: user.jobTitle || prev.jobTitle,
+      }));
+    }
+  }, [user]);
+
+  // Sync profile form (phone/jobTitle) from auth user loaded via /auth/me
+  useEffect(() => {
+    if (user) {
+      setProfileForm((prev) => ({
+        ...prev,
+        firstName: user.firstName || prev.firstName,
+        lastName: user.lastName || prev.lastName,
+        email: user.email || prev.email,
+        phone: user.phone || prev.phone,
+        jobTitle: user.jobTitle || prev.jobTitle,
+      }));
+    }
+  }, [user]);
+
+  // Sync profile form (phone/jobTitle now returned from /auth/me)
+  useEffect(() => {
+    if (user) {
+      setProfileForm((prev) => ({
+        ...prev,
+        firstName: user.firstName || prev.firstName,
+        lastName: user.lastName || prev.lastName,
+        email: user.email || prev.email,
+        phone: user.phone || prev.phone,
+        jobTitle: user.jobTitle || prev.jobTitle,
+      }));
+    }
+  }, [user]);
+
+  // Sync profile form (phone, jobTitle) when user data is loaded from /auth/me
+  useEffect(() => {
+    if (user) {
+      setProfileForm((prev) => ({
+        ...prev,
+        firstName: user.firstName || prev.firstName,
+        lastName: user.lastName || prev.lastName,
+        email: user.email || prev.email,
+        phone: user.phone || prev.phone,
+        jobTitle: user.jobTitle || prev.jobTitle,
+      }));
+    }
+  }, [user]);
+
+  // Sync profile form with user data loaded from server (/auth/me now includes phone/jobTitle)
+  useEffect(() => {
+    if (user) {
+      setProfileForm((prev) => ({
+        ...prev,
+        firstName: user.firstName || prev.firstName,
+        lastName: user.lastName || prev.lastName,
+        email: user.email || prev.email,
+        phone: user.phone || prev.phone,
+        jobTitle: user.jobTitle || prev.jobTitle,
+      }));
+    }
+  }, [user]);
+
+  // Sync profile form with user data from server (phone and jobTitle are now returned by /auth/me)
+  useEffect(() => {
+    if (user) {
+      setProfileForm((prev) => ({
+        ...prev,
+        firstName: user.firstName || prev.firstName,
+        lastName: user.lastName || prev.lastName,
+        email: user.email || prev.email,
+        phone: user.phone || prev.phone,
+        jobTitle: user.jobTitle || prev.jobTitle,
+      }));
+    }
+  }, [user]);
+
+  // Sync profile form (phone, jobTitle) from the auth user loaded via /auth/me
+  useEffect(() => {
+    if (user) {
+      setProfileForm((prev) => ({
+        ...prev,
+        firstName: user.firstName || prev.firstName,
+        lastName: user.lastName || prev.lastName,
+        email: user.email || prev.email,
+        phone: user.phone || prev.phone,
+        jobTitle: user.jobTitle || prev.jobTitle,
+      }));
+    }
+  }, [user]);
+
+  // Sync profile form fields from auth user (phone/jobTitle now returned by /me)
+  useEffect(() => {
+    if (user) {
+      setProfileForm((prev) => ({
+        ...prev,
+        firstName: user.firstName || prev.firstName,
+        lastName: user.lastName || prev.lastName,
+        email: user.email || prev.email,
+        phone: user.phone || prev.phone,
+        jobTitle: user.jobTitle || prev.jobTitle,
+      }));
+    }
+  }, [user]);
+
+  // Sync profile form (phone, jobTitle etc) when auth user loads or updates
+  useEffect(() => {
+    if (user) {
+      setProfileForm((prev) => ({
+        ...prev,
+        firstName: user.firstName || prev.firstName,
+        lastName: user.lastName || prev.lastName,
+        email: user.email || prev.email,
+        phone: user.phone || prev.phone,
+        jobTitle: user.jobTitle || prev.jobTitle,
+      }));
+    }
+  }, [user]);
+
+  // Sync profile form with full user data (phone, jobTitle) once loaded from /me
+  useEffect(() => {
+    if (user) {
+      setProfileForm((prev) => ({
+        ...prev,
+        firstName: user.firstName || prev.firstName,
+        lastName: user.lastName || prev.lastName,
+        email: user.email || prev.email,
+        phone: user.phone || prev.phone,
+        jobTitle: user.jobTitle || prev.jobTitle,
+      }));
+    }
+  }, [user]);
+
+  // Sync profile form fields (including phone/jobTitle) when user data is available/updated
+  useEffect(() => {
+    if (user) {
+      setProfileForm((prev) => ({
+        ...prev,
+        firstName: user.firstName || prev.firstName,
+        lastName: user.lastName || prev.lastName,
+        email: user.email || prev.email,
+        phone: user.phone || prev.phone,
+        jobTitle: user.jobTitle || prev.jobTitle,
+      }));
+    }
+  }, [user]);
+
+  // Sync profile form when user data loads/refreshes (e.g. after bootstrap)
+  useEffect(() => {
+    if (user) {
+      setProfileForm((prev) => ({
+        ...prev,
+        firstName: user.firstName || prev.firstName,
+        lastName: user.lastName || prev.lastName,
+        email: user.email || prev.email,
+        phone: user.phone || prev.phone,
+        jobTitle: user.jobTitle || prev.jobTitle,
+      }));
+    }
+  }, [user]);
 
   const loadTenantSettings = async () => {
     try {
@@ -437,7 +627,7 @@ const Settings = () => {
       if (response.success) {
         toast.success('User created successfully');
         setShowAddUserModal(false);
-        setNewUserForm({ email: '', firstName: '', lastName: '', role: 'JUNIOR', password: '' });
+        setNewUserForm({ email: '', firstName: '', lastName: '', phone: '', jobTitle: '', role: 'JUNIOR', password: '' });
         loadUsers();
       } else {
         toast.error(response.error?.message || 'Failed to create user');
@@ -467,8 +657,8 @@ const Settings = () => {
     <div className="space-y-6 animate-fade-in max-w-7xl mx-auto">
       {/* Header */}
       <div className="border-b border-slate-200 pb-4">
-        <h1 className="text-2xl font-bold text-slate-900">Settings</h1>
-        <p className="mt-1 text-sm text-slate-600">
+        <h1 className="text-2xl font-bold text-slate-900 dark:text-white">Settings</h1>
+        <p className="mt-1 text-sm text-slate-600 dark:text-slate-400">
           Manage your account, practice details, and preferences
         </p>
       </div>
@@ -483,23 +673,23 @@ const Settings = () => {
                 onClick={() => selectTab(tab.id)}
                 className={`w-full flex items-start px-4 py-3 text-left rounded-lg transition-all ${
                   activeTab === tab.id
-                    ? 'bg-primary-50 text-primary-700 shadow-sm'
-                    : 'text-slate-800 hover:bg-slate-50'
+                    ? 'bg-primary-50 dark:bg-primary-900/30 text-primary-700 dark:text-primary-300 shadow-sm'
+                    : 'text-slate-800 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800'
                 }`}
               >
                 <tab.icon
                   className={`h-5 w-5 mt-0.5 flex-shrink-0 ${
-                    activeTab === tab.id ? 'text-primary-500' : 'text-slate-400'
+                    activeTab === tab.id ? 'text-primary-500 dark:text-primary-400' : 'text-slate-400 dark:text-slate-500'
                   }`}
                 />
                 <div className="ml-3">
                   <p
-                    className={`text-sm font-medium ${activeTab === tab.id ? 'text-primary-900' : 'text-slate-900'}`}
+                    className={`text-sm font-medium ${activeTab === tab.id ? 'text-primary-900 dark:text-primary-200' : 'text-slate-900 dark:text-white'}`}
                   >
                     {tab.name}
                   </p>
                   <p
-                    className={`text-xs ${activeTab === tab.id ? 'text-primary-600' : 'text-slate-600'}`}
+                    className={`text-xs ${activeTab === tab.id ? 'text-primary-600 dark:text-primary-400' : 'text-slate-600 dark:text-slate-400'}`}
                   >
                     {tab.description}
                   </p>
@@ -522,14 +712,14 @@ const Settings = () => {
           {/* PROFILE TAB */}
           {activeTab === 'profile' && (
             <div className="glass-tile overflow-hidden">
-              <div className="px-6 py-4 border-b border-white/10 bg-white/5">
-                <h2 className="text-lg font-semibold text-slate-900">My Profile</h2>
-                <p className="text-sm text-slate-600">Update your personal information</p>
+              <div className="px-6 py-4 border-b border-slate-200 dark:border-slate-700 bg-white/5 dark:bg-slate-800/20">
+                <h2 className="text-lg font-semibold text-slate-900 dark:text-white">My Profile</h2>
+                <p className="text-sm text-slate-600 dark:text-slate-400">Update your personal information</p>
               </div>
               <div className="p-6 space-y-6">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div>
-                    <label className="block text-sm font-medium text-slate-800">First Name</label>
+                    <label className="block text-sm font-medium text-slate-800 dark:text-slate-200">First Name</label>
                     <input
                       type="text"
                       value={profileForm.firstName}
@@ -540,7 +730,7 @@ const Settings = () => {
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-slate-800">Last Name</label>
+                    <label className="block text-sm font-medium text-slate-800 dark:text-slate-200">Last Name</label>
                     <input
                       type="text"
                       value={profileForm.lastName}
@@ -550,7 +740,7 @@ const Settings = () => {
                   </div>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-slate-800">Email</label>
+                  <label className="block text-sm font-medium text-slate-800 dark:text-slate-200">Email</label>
                   <input
                     type="email"
                     value={profileForm.email}
@@ -560,7 +750,7 @@ const Settings = () => {
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div>
-                    <label className="block text-sm font-medium text-slate-800">Phone</label>
+                    <label className="block text-sm font-medium text-slate-800 dark:text-slate-200">Phone</label>
                     <input
                       type="tel"
                       value={profileForm.phone}
@@ -570,7 +760,7 @@ const Settings = () => {
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-slate-800">Job Title</label>
+                    <label className="block text-sm font-medium text-slate-800 dark:text-slate-200">Job Title</label>
                     <input
                       type="text"
                       value={profileForm.jobTitle}
@@ -580,7 +770,7 @@ const Settings = () => {
                     />
                   </div>
                 </div>
-                <div className="pt-4 border-t border-white/10">
+                <div className="pt-4 border-t border-slate-200 dark:border-slate-700">
                   <button
                     onClick={handleSaveProfile}
                     disabled={isSaving === 'profile'}
@@ -598,13 +788,13 @@ const Settings = () => {
             <div className="space-y-6">
               {/* Company Details */}
               <div className="glass-tile overflow-hidden">
-                <div className="px-6 py-4 border-b border-white/10 bg-white/5">
-                  <h2 className="text-lg font-semibold text-slate-900">Practice Details</h2>
-                  <p className="text-sm text-slate-600">Your company information</p>
+                <div className="px-6 py-4 border-b border-slate-200 dark:border-slate-700 bg-white/5 dark:bg-slate-800/20">
+                  <h2 className="text-lg font-semibold text-slate-900 dark:text-white">Practice Details</h2>
+                  <p className="text-sm text-slate-600 dark:text-slate-400">Your company information</p>
                 </div>
                 <div className="p-6 space-y-6">
                   <div>
-                    <label className="block text-sm font-medium text-slate-800">
+                    <label className="block text-sm font-medium text-slate-800 dark:text-slate-200">
                       Practice Name
                     </label>
                     <input
@@ -616,7 +806,7 @@ const Settings = () => {
                   </div>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div>
-                      <label className="block text-sm font-medium text-slate-800">
+                      <label className="block text-sm font-medium text-slate-800 dark:text-slate-200">
                         Company Registration Number
                       </label>
                       <input
@@ -630,7 +820,7 @@ const Settings = () => {
                       />
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-slate-800">
+                      <label className="block text-sm font-medium text-slate-800 dark:text-slate-200">
                         Professional Body
                       </label>
                       <select
@@ -651,7 +841,7 @@ const Settings = () => {
                     </div>
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-slate-800">
+                    <label className="block text-sm font-medium text-slate-800 dark:text-slate-200">
                       Registered Address
                     </label>
                     <textarea
@@ -666,7 +856,7 @@ const Settings = () => {
                   </div>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div>
-                      <label className="block text-sm font-medium text-slate-800">
+                      <label className="block text-sm font-medium text-slate-800 dark:text-slate-200">
                         Practice Phone
                       </label>
                       <input
@@ -679,7 +869,7 @@ const Settings = () => {
                       />
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-slate-800">Website</label>
+                      <label className="block text-sm font-medium text-slate-800 dark:text-slate-200">Website</label>
                       <input
                         type="url"
                         value={practiceForm.website}
@@ -696,16 +886,16 @@ const Settings = () => {
 
               {/* Legal & Compliance */}
               <div className="glass-tile overflow-hidden">
-                <div className="px-6 py-4 border-b border-white/10 bg-white/5">
-                  <h2 className="text-lg font-semibold text-slate-900">Legal & Compliance</h2>
-                  <p className="text-sm text-slate-600">
+                <div className="px-6 py-4 border-b border-slate-200 dark:border-slate-700 bg-white/5 dark:bg-slate-800/20">
+                  <h2 className="text-lg font-semibold text-slate-900 dark:text-white">Legal & Compliance</h2>
+                  <p className="text-sm text-slate-600 dark:text-slate-400">
                     Professional indemnity and regulatory information
                   </p>
                 </div>
                 <div className="p-6 space-y-6">
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div>
-                      <label className="block text-sm font-medium text-slate-800">
+                      <label className="block text-sm font-medium text-slate-800 dark:text-slate-200">
                         Professional Indemnity Insurer
                       </label>
                       <input
@@ -719,7 +909,7 @@ const Settings = () => {
                       />
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-slate-800">
+                      <label className="block text-sm font-medium text-slate-800 dark:text-slate-200">
                         Governing Law
                       </label>
                       <select
@@ -743,14 +933,14 @@ const Settings = () => {
                       onChange={(e) =>
                         setPracticeForm({ ...practiceForm, fcaAuthorised: e.target.checked })
                       }
-                      className="h-4 w-4 text-primary-600 rounded border-slate-300"
+                      className="h-4 w-4 text-primary-600 dark:text-primary-400 rounded border-slate-300 dark:border-slate-600"
                     />
-                    <label htmlFor="fcaAuthorised" className="ml-2 text-sm text-slate-800">
+                    <label htmlFor="fcaAuthorised" className="ml-2 text-sm text-slate-800 dark:text-slate-200">
                       FCA Authorised (for regulated activities)
                     </label>
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-slate-800">
+                    <label className="block text-sm font-medium text-slate-800 dark:text-slate-200">
                       Privacy Policy URL
                     </label>
                     <input
@@ -763,7 +953,7 @@ const Settings = () => {
                       placeholder="https://yourwebsite.com/privacy"
                     />
                   </div>
-                  <div className="pt-4 border-t border-white/10">
+                  <div className="pt-4 border-t border-slate-200 dark:border-slate-700">
                     <button
                       onClick={handleSavePractice}
                       disabled={isSaving === 'practice'}
@@ -780,18 +970,18 @@ const Settings = () => {
           {/* BRANDING TAB */}
           {activeTab === 'branding' && (
             <div className="glass-tile overflow-hidden">
-              <div className="px-6 py-4 border-b border-white/10 bg-white/5">
-                <h2 className="text-lg font-semibold text-slate-900">Branding</h2>
-                <p className="text-sm text-slate-600">Customise your proposal appearance</p>
+              <div className="px-6 py-4 border-b border-slate-200 dark:border-slate-700 bg-white/5 dark:bg-slate-800/20">
+                <h2 className="text-lg font-semibold text-slate-900 dark:text-white">Branding</h2>
+                <p className="text-sm text-slate-600 dark:text-slate-400">Customise your proposal appearance</p>
               </div>
               <div className="p-6 space-y-8">
                 {/* Logo Upload */}
                 <div>
-                  <label className="block text-sm font-medium text-slate-800 mb-3">
+                  <label className="block text-sm font-medium text-slate-800 dark:text-slate-200 mb-3">
                     Practice Logo
                   </label>
                   <div className="flex items-start space-x-6">
-                    <div className="w-32 h-32 border-2 border-dashed border-slate-300 rounded-lg flex items-center justify-center bg-slate-50 overflow-hidden">
+                    <div className="w-32 h-32 border-2 border-dashed border-slate-300 dark:border-slate-600 rounded-lg flex items-center justify-center bg-slate-50 overflow-hidden">
                       {brandingForm.logo ? (
                         <img
                           src={brandingForm.logo}
@@ -799,7 +989,7 @@ const Settings = () => {
                           className="w-full h-full object-contain"
                         />
                       ) : (
-                        <BuildingOfficeIcon className="h-12 w-12 text-slate-400" />
+                        <BuildingOfficeIcon className="h-12 w-12 text-slate-400 dark:text-slate-500" />
                       )}
                     </div>
                     <div className="flex-1">
@@ -807,9 +997,9 @@ const Settings = () => {
                         type="file"
                         accept="image/*"
                         onChange={handleLogoUpload}
-                        className="block w-full text-sm text-slate-600 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-medium file:bg-primary-50 file:text-primary-700 hover:file:bg-primary-100"
+                        className="block w-full text-sm text-slate-600 dark:text-slate-400 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-medium file:bg-primary-50 file:text-primary-700 hover:file:bg-primary-100 dark:file:bg-primary-900/30 dark:file:text-primary-300"
                       />
-                      <p className="mt-2 text-xs text-slate-600">
+                      <p className="mt-2 text-xs text-slate-600 dark:text-slate-400">
                         Recommended: PNG or SVG with transparent background. Max 2MB.
                       </p>
                     </div>
@@ -818,7 +1008,7 @@ const Settings = () => {
 
                 {/* Primary Color */}
                 <div>
-                  <label className="block text-sm font-medium text-slate-800 mb-3">
+                  <label className="block text-sm font-medium text-slate-800 dark:text-slate-200 mb-3">
                     Primary Brand Color
                   </label>
                   <div className="flex items-center space-x-4">
@@ -828,7 +1018,7 @@ const Settings = () => {
                       onChange={(e) =>
                         setBrandingForm({ ...brandingForm, primaryColor: e.target.value })
                       }
-                      className="h-12 w-12 rounded-lg border border-slate-300 cursor-pointer"
+                      className="h-12 w-12 rounded-lg border border-slate-300 dark:border-slate-600 cursor-pointer"
                     />
                     <input
                       type="text"
@@ -846,7 +1036,7 @@ const Settings = () => {
                             onClick={() =>
                               setBrandingForm({ ...brandingForm, primaryColor: color })
                             }
-                            className="w-8 h-8 rounded-full border-2 border-white shadow-sm hover:scale-110 transition-transform"
+                            className="w-8 h-8 rounded-full border-2 border-slate-300 dark:border-slate-600 shadow-sm hover:scale-110 transition-transform"
                             style={{ backgroundColor: color }}
                           />
                         )
@@ -857,7 +1047,7 @@ const Settings = () => {
 
                 {/* Preview */}
                 <div>
-                  <label className="block text-sm font-medium text-slate-800 mb-3">Preview</label>
+                  <label className="block text-sm font-medium text-slate-800 dark:text-slate-200 mb-3">Preview</label>
                   <div
                     className="border rounded-lg p-6"
                     style={{ borderColor: brandingForm.primaryColor }}
@@ -874,7 +1064,7 @@ const Settings = () => {
                           {practiceForm.name || 'Your Practice Name'}
                         </span>
                       </div>
-                      <span className="text-sm text-slate-600">PROPOSAL</span>
+                      <span className="text-sm text-slate-600 dark:text-slate-400">PROPOSAL</span>
                     </div>
                     <div
                       className="mt-4 h-1 rounded"
@@ -883,7 +1073,7 @@ const Settings = () => {
                   </div>
                 </div>
 
-                <div className="pt-4 border-t border-white/10">
+                <div className="pt-4 border-t border-slate-200 dark:border-slate-700">
                   <button
                     onClick={handleSaveBranding}
                     disabled={isSaving === 'branding'}
@@ -896,14 +1086,59 @@ const Settings = () => {
             </div>
           )}
 
+          {/* APPEARANCE TAB */}
+          {activeTab === 'appearance' && (
+            <div className="space-y-6">
+              <div className="glass-tile p-6">
+                <div className="flex items-center gap-3 mb-4">
+                  <SunIcon className="h-6 w-6 text-primary-600 dark:text-primary-400" />
+                  <div>
+                    <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-100">Theme</h2>
+                    <p className="text-sm text-slate-600 dark:text-slate-400">Choose how Engage looks for you</p>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                  {[
+                    { value: 'light', label: 'Light', icon: SunIcon, desc: 'Always light' },
+                    { value: 'dark', label: 'Dark', icon: MoonIcon, desc: 'Always dark' },
+                    { value: 'system', label: 'System', icon: ComputerDesktopIcon, desc: 'Match your device' },
+                  ].map((option) => {
+                    const Icon = option.icon;
+                    const isActive = currentTheme === option.value;
+                    return (
+                      <button
+                        key={option.value}
+                        onClick={() => setCurrentTheme(option.value as any)}
+                        className={`flex flex-col items-center p-4 rounded-xl border transition-all ${
+                          isActive
+                            ? 'border-primary-500 bg-primary-50 dark:bg-primary-900/20 ring-2 ring-primary-200 dark:ring-primary-800'
+                            : 'border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700 hover:border-slate-300 dark:hover:border-slate-600'
+                        }`}
+                      >
+                        <Icon className="h-8 w-8 mb-2 text-slate-600 dark:text-slate-300" />
+                        <div className="font-medium text-slate-900 dark:text-slate-100">{option.label}</div>
+                        <div className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">{option.desc}</div>
+                      </button>
+                    );
+                  })}
+                </div>
+
+                <div className="mt-4 text-xs text-slate-500 dark:text-slate-400">
+                  Your preference is saved and will be remembered across sessions.
+                </div>
+              </div>
+            </div>
+          )}
+
           {/* COMMUNICATIONS TAB */}
           {activeTab === 'communications' && (
             <div className="space-y-6">
               {/* Email Settings */}
               <div className="glass-tile overflow-hidden">
-                <div className="px-6 py-4 border-b border-white/10 bg-white/5">
-                  <h2 className="text-lg font-semibold text-slate-900">Email Configuration</h2>
-                  <p className="text-sm text-slate-600">
+                <div className="px-6 py-4 border-b border-slate-200 dark:border-slate-700 bg-white/5 dark:bg-slate-800/20">
+                  <h2 className="text-lg font-semibold text-slate-900 dark:text-white">Email Configuration</h2>
+                  <p className="text-sm text-slate-600 dark:text-slate-400">
                     Configure how emails are sent from the platform
                   </p>
                 </div>
@@ -921,16 +1156,16 @@ const Settings = () => {
 
               {/* Proposal defaults */}
               <div className="glass-tile overflow-hidden">
-                <div className="px-6 py-4 border-b border-white/10 bg-white/5">
-                  <h2 className="text-lg font-semibold text-slate-900">Proposal defaults</h2>
-                  <p className="text-sm text-slate-600">
+                <div className="px-6 py-4 border-b border-slate-200 dark:border-slate-700 bg-white/5 dark:bg-slate-800/20">
+                  <h2 className="text-lg font-semibold text-slate-900 dark:text-white">Proposal defaults</h2>
+                  <p className="text-sm text-slate-600 dark:text-slate-400">
                     Default expiry and renewal reminder timing for new proposals
                   </p>
                 </div>
                 <div className="p-6 space-y-4">
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div>
-                      <label className="block text-sm font-medium text-slate-800">
+                      <label className="block text-sm font-medium text-slate-800 dark:text-slate-200">
                         Default proposal validity (days)
                       </label>
                       <input
@@ -949,12 +1184,12 @@ const Settings = () => {
                         }
                         className="mt-1 input-field w-full"
                       />
-                      <p className="mt-1 text-xs text-slate-500">
+                      <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
                         Pre-fills the &quot;valid until&quot; date when creating a proposal
                       </p>
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-slate-800">
+                      <label className="block text-sm font-medium text-slate-800 dark:text-slate-200">
                         Renewal / expiry reminder (days before)
                       </label>
                       <input
@@ -973,12 +1208,12 @@ const Settings = () => {
                         }
                         className="mt-1 input-field w-full"
                       />
-                      <p className="mt-1 text-xs text-slate-500">
+                      <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
                         Email reminders before proposal expiry or annual renewal
                       </p>
                     </div>
                   </div>
-                  <div className="pt-4 border-t border-white/10 flex flex-wrap gap-3">
+                  <div className="pt-4 border-t border-slate-200 dark:border-slate-700 flex flex-wrap gap-3">
                     <button
                       onClick={handleSaveCommunications}
                       disabled={isSaving === 'communications'}
@@ -992,9 +1227,9 @@ const Settings = () => {
 
               {/* Notifications */}
               <div className="glass-tile overflow-hidden">
-                <div className="px-6 py-4 border-b border-white/10 bg-white/5">
-                  <h2 className="text-lg font-semibold text-slate-900">Notification Preferences</h2>
-                  <p className="text-sm text-slate-600">
+                <div className="px-6 py-4 border-b border-slate-200 dark:border-slate-700 bg-white/5 dark:bg-slate-800/20">
+                  <h2 className="text-lg font-semibold text-slate-900 dark:text-white">Notification Preferences</h2>
+                  <p className="text-sm text-slate-600 dark:text-slate-400">
                     Choose when you receive email notifications
                   </p>
                 </div>
@@ -1039,17 +1274,17 @@ const Settings = () => {
                             },
                           })
                         }
-                        className="h-4 w-4 mt-1 text-primary-600 rounded border-slate-300"
+                        className="h-4 w-4 mt-1 text-primary-600 dark:text-primary-400 rounded border-slate-300 dark:border-slate-600"
                       />
                       <div className="ml-3">
-                        <label htmlFor={item.key} className="text-sm font-medium text-slate-800">
+                        <label htmlFor={item.key} className="text-sm font-medium text-slate-800 dark:text-slate-200">
                           {item.label}
                         </label>
-                        <p className="text-xs text-slate-600">{item.description}</p>
+                        <p className="text-xs text-slate-600 dark:text-slate-400">{item.description}</p>
                       </div>
                     </div>
                   ))}
-                  <div className="pt-4 border-t border-white/10">
+                  <div className="pt-4 border-t border-slate-200 dark:border-slate-700">
                     <button
                       onClick={handleSaveCommunications}
                       disabled={isSaving === 'communications'}
@@ -1066,9 +1301,9 @@ const Settings = () => {
           {/* BILLING TAB */}
           {activeTab === 'billing' && (
             <div className="glass-tile overflow-hidden">
-              <div className="px-6 py-4 border-b border-white/10 bg-white/5">
-                <h2 className="text-lg font-semibold text-slate-900">VAT & Billing Settings</h2>
-                <p className="text-sm text-slate-600">Configure tax and billing preferences</p>
+              <div className="px-6 py-4 border-b border-slate-200 dark:border-slate-700 bg-white/5 dark:bg-slate-800/20">
+                <h2 className="text-lg font-semibold text-slate-900 dark:text-white">VAT & Billing Settings</h2>
+                <p className="text-sm text-slate-600 dark:text-slate-400">Configure tax and billing preferences</p>
               </div>
               <div className="p-6 space-y-6">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -1080,11 +1315,11 @@ const Settings = () => {
                         onChange={(e) =>
                           setVatForm({ ...vatForm, vatRegistered: e.target.checked })
                         }
-                        className="rounded border-slate-300"
+                        className="rounded border-slate-300 dark:border-slate-600"
                       />
                       VAT registered
                     </label>
-                    <p className="mt-1 text-xs text-slate-500">Show VAT on proposals and apply default rates</p>
+                    <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">Show VAT on proposals and apply default rates</p>
                   </div>
                   <div>
                     <label className="flex items-center gap-2 text-sm font-medium text-slate-800 dark:text-slate-200">
@@ -1094,7 +1329,7 @@ const Settings = () => {
                         onChange={(e) =>
                           setVatForm({ ...vatForm, autoApplyVat: e.target.checked })
                         }
-                        className="rounded border-slate-300"
+                        className="rounded border-slate-300 dark:border-slate-600"
                       />
                       Auto-apply VAT to new services
                     </label>
@@ -1150,10 +1385,10 @@ const Settings = () => {
           {/* TEAM TAB */}
           {activeTab === 'team' && (
             <div className="glass-tile overflow-hidden">
-              <div className="px-6 py-4 border-b border-white/10 bg-white/5 flex items-center justify-between">
+              <div className="px-6 py-4 border-b border-slate-200 dark:border-slate-700 bg-white/5 dark:bg-slate-800/20 flex items-center justify-between">
                 <div>
-                  <h2 className="text-lg font-semibold text-slate-900">Team Members</h2>
-                  <p className="text-sm text-slate-600">Manage users and their permissions</p>
+                  <h2 className="text-lg font-semibold text-slate-900 dark:text-white">Team Members</h2>
+                  <p className="text-sm text-slate-600 dark:text-slate-400">Manage users and their permissions</p>
                 </div>
                 <button onClick={() => setShowAddUserModal(true)} className="btn-primary text-sm">
                   Add User
@@ -1161,9 +1396,9 @@ const Settings = () => {
               </div>
               <div className="divide-y divide-slate-200">
                 {isLoading ? (
-                  <div className="p-8 text-center text-slate-600">Loading...</div>
+                  <div className="p-8 text-center text-slate-600 dark:text-slate-400">Loading...</div>
                 ) : users.length === 0 ? (
-                  <div className="p-8 text-center text-slate-600">No users found</div>
+                  <div className="p-8 text-center text-slate-600 dark:text-slate-400">No users found</div>
                 ) : (
                   users.map((u) => (
                     <div
@@ -1181,10 +1416,10 @@ const Settings = () => {
                           <p className="text-sm font-medium text-slate-900">
                             {u.firstName} {u.lastName}
                             {u.id === user?.id && (
-                              <span className="ml-2 text-xs text-primary-600">(You)</span>
+                              <span className="ml-2 text-xs text-primary-600 dark:text-primary-400">(You)</span>
                             )}
                           </p>
-                          <p className="text-sm text-slate-600">{u.email}</p>
+                          <p className="text-sm text-slate-600 dark:text-slate-400">{u.email}</p>
                           <span className="inline-flex mt-1 items-center px-2 py-0.5 rounded text-xs font-medium bg-slate-100 text-slate-800">
                             {u.role}
                           </span>
@@ -1211,7 +1446,7 @@ const Settings = () => {
                     <div className="space-y-4">
                       <div className="grid grid-cols-2 gap-4">
                         <div>
-                          <label className="block text-sm font-medium text-slate-800">
+                          <label className="block text-sm font-medium text-slate-800 dark:text-slate-200">
                             First Name
                           </label>
                           <input
@@ -1224,7 +1459,7 @@ const Settings = () => {
                           />
                         </div>
                         <div>
-                          <label className="block text-sm font-medium text-slate-800">
+                          <label className="block text-sm font-medium text-slate-800 dark:text-slate-200">
                             Last Name
                           </label>
                           <input
@@ -1237,8 +1472,56 @@ const Settings = () => {
                           />
                         </div>
                       </div>
+                      <div className="grid grid-cols-2 gap-4">
+                        <div>
+                          <label className="block text-sm font-medium text-slate-800 dark:text-slate-200">Contact Number</label>
+                          <input
+                            type="tel"
+                            value={newUserForm.phone}
+                            onChange={(e) =>
+                              setNewUserForm({ ...newUserForm, phone: e.target.value })
+                            }
+                            className="mt-1 input-field w-full"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium text-slate-800 dark:text-slate-200">Job Title</label>
+                          <input
+                            type="text"
+                            value={newUserForm.jobTitle}
+                            onChange={(e) =>
+                              setNewUserForm({ ...newUserForm, jobTitle: e.target.value })
+                            }
+                            className="mt-1 input-field w-full"
+                          />
+                        </div>
+                      </div>
+                      <div className="grid grid-cols-2 gap-4">
+                        <div>
+                          <label className="block text-sm font-medium text-slate-800 dark:text-slate-200">Contact Number</label>
+                          <input
+                            type="tel"
+                            value={newUserForm.phone}
+                            onChange={(e) =>
+                              setNewUserForm({ ...newUserForm, phone: e.target.value })
+                            }
+                            className="mt-1 input-field w-full"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium text-slate-800 dark:text-slate-200">Job Title</label>
+                          <input
+                            type="text"
+                            value={newUserForm.jobTitle}
+                            onChange={(e) =>
+                              setNewUserForm({ ...newUserForm, jobTitle: e.target.value })
+                            }
+                            className="mt-1 input-field w-full"
+                          />
+                        </div>
+                      </div>
                       <div>
-                        <label className="block text-sm font-medium text-slate-800">Email</label>
+                        <label className="block text-sm font-medium text-slate-800 dark:text-slate-200">Email</label>
                         <input
                           type="email"
                           value={newUserForm.email}
@@ -1249,7 +1532,7 @@ const Settings = () => {
                         />
                       </div>
                       <div>
-                        <label className="block text-sm font-medium text-slate-800">Role</label>
+                        <label className="block text-sm font-medium text-slate-800 dark:text-slate-200">Role</label>
                         <select
                           value={newUserForm.role}
                           onChange={(e) => setNewUserForm({ ...newUserForm, role: e.target.value })}
@@ -1262,7 +1545,7 @@ const Settings = () => {
                         </select>
                       </div>
                       <div>
-                        <label className="block text-sm font-medium text-slate-800">
+                        <label className="block text-sm font-medium text-slate-800 dark:text-slate-200">
                           Temporary Password
                         </label>
                         <input
@@ -1288,11 +1571,11 @@ const Settings = () => {
                           ].map((req, i) => (
                             <div key={i} className="flex items-center text-xs">
                               <span
-                                className={`mr-2 ${req.test ? 'text-green-500' : 'text-slate-400'}`}
+                                className={`mr-2 ${req.test ? 'text-green-500' : 'text-slate-400 dark:text-slate-500'}`}
                               >
                                 {req.test ? '✓' : '○'}
                               </span>
-                              <span className={req.test ? 'text-green-700' : 'text-slate-600'}>
+                              <span className={req.test ? 'text-green-700' : 'text-slate-600 dark:text-slate-400'}>
                                 {req.label}
                               </span>
                             </div>
@@ -1324,16 +1607,16 @@ const Settings = () => {
           {/* SECURITY TAB */}
           {activeTab === 'security' && (
             <div className="glass-tile overflow-hidden">
-              <div className="px-6 py-4 border-b border-white/10 bg-white/5">
-                <h2 className="text-lg font-semibold text-slate-900">Security</h2>
-                <p className="text-sm text-slate-600">Manage your password and account security</p>
+              <div className="px-6 py-4 border-b border-slate-200 dark:border-slate-700 bg-white/5 dark:bg-slate-800/20">
+                <h2 className="text-lg font-semibold text-slate-900 dark:text-white">Security</h2>
+                <p className="text-sm text-slate-600 dark:text-slate-400">Manage your password and account security</p>
               </div>
               <div className="p-6 space-y-6">
                 <div>
                   <h3 className="text-sm font-medium text-slate-900 mb-4">Change Password</h3>
                   <div className="space-y-4 max-w-md">
                     <div>
-                      <label className="block text-sm font-medium text-slate-800">
+                      <label className="block text-sm font-medium text-slate-800 dark:text-slate-200">
                         Current Password
                       </label>
                       <input
@@ -1346,7 +1629,7 @@ const Settings = () => {
                       />
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-slate-800">
+                      <label className="block text-sm font-medium text-slate-800 dark:text-slate-200">
                         New Password
                       </label>
                       <input
@@ -1359,7 +1642,7 @@ const Settings = () => {
                       />
                       {/* Password Requirements */}
                       <div className="mt-2 space-y-1">
-                        <p className="text-xs text-slate-600 font-medium">Password requirements:</p>
+                        <p className="text-xs text-slate-600 dark:text-slate-400 font-medium">Password requirements:</p>
                         {[
                           {
                             test: passwordForm.newPassword.length >= 8,
@@ -1381,11 +1664,11 @@ const Settings = () => {
                         ].map((req, i) => (
                           <div key={i} className="flex items-center text-xs">
                             <span
-                              className={`mr-2 ${req.test ? 'text-green-500' : 'text-slate-400'}`}
+                              className={`mr-2 ${req.test ? 'text-green-500' : 'text-slate-400 dark:text-slate-500'}`}
                             >
                               {req.test ? '✓' : '○'}
                             </span>
-                            <span className={req.test ? 'text-green-700' : 'text-slate-600'}>
+                            <span className={req.test ? 'text-green-700' : 'text-slate-600 dark:text-slate-400'}>
                               {req.label}
                             </span>
                           </div>
@@ -1393,7 +1676,7 @@ const Settings = () => {
                       </div>
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-slate-800">
+                      <label className="block text-sm font-medium text-slate-800 dark:text-slate-200">
                         Confirm New Password
                       </label>
                       <input
@@ -1415,11 +1698,11 @@ const Settings = () => {
                   </div>
                 </div>
 
-                <div className="pt-6 border-t border-white/10">
+                <div className="pt-6 border-t border-slate-200 dark:border-slate-700">
                   <h3 className="text-sm font-medium text-slate-900 mb-2">
                     Two-Factor Authentication
                   </h3>
-                  <p className="text-sm text-slate-600 mb-4">
+                  <p className="text-sm text-slate-600 dark:text-slate-400 mb-4">
                     Two-factor authentication adds an extra layer of security. We&apos;re finishing
                     TOTP support — password + session cookies are already hardened.
                   </p>
@@ -1526,7 +1809,7 @@ function AutomationTab() {
       <div className="glass-tile p-6 bg-gradient-to-br from-primary-50/60 to-white dark:from-primary-950/30 dark:to-slate-900 border border-primary-100 dark:border-primary-900">
         <div className="flex items-start gap-4">
           <div className="mt-1 p-3 rounded-2xl bg-white/80 dark:bg-slate-800 shadow-sm">
-            <SparklesIcon className="h-6 w-6 text-primary-600" />
+            <SparklesIcon className="h-6 w-6 text-primary-600 dark:text-primary-400" />
           </div>
           <div className="flex-1">
             <h2 className="text-xl font-semibold">Automated Client Touchpoints</h2>
@@ -1580,7 +1863,7 @@ function AutomationTab() {
                         {isOn ? 'ON' : 'PAUSED'}
                       </span>
                     </div>
-                    <div className="mt-1 text-xs text-slate-500 line-clamp-2">
+                    <div className="mt-1 text-xs text-slate-500 dark:text-slate-400 line-clamp-2">
                       {t?.subject ? t.subject : 'Using default template'}
                     </div>
                   </div>
@@ -1618,7 +1901,7 @@ function AutomationTab() {
         <div className="flex items-center justify-between mb-3">
           <div>
             <h3 className="font-semibold">Human Approval Queue</h3>
-            <p className="text-xs text-slate-500">Touchpoints that require your sign-off before sending</p>
+            <p className="text-xs text-slate-500 dark:text-slate-400">Touchpoints that require your sign-off before sending</p>
           </div>
           {approvals.length > 0 && (
             <span className="text-xs px-2 py-0.5 rounded-full bg-amber-100 text-amber-700 dark:bg-amber-900/40">{approvals.length} pending</span>
@@ -1637,14 +1920,14 @@ function AutomationTab() {
               <div className="min-w-0">
                 <div className="flex items-center gap-2">
                   <span className="font-medium text-sm">{a.stage?.replace(/_/g, ' ')}</span>
-                  <span className="text-xs text-slate-400">•</span>
+                  <span className="text-xs text-slate-400 dark:text-slate-500">•</span>
                   <span className="text-sm text-slate-700 dark:text-slate-200 truncate">{a.client?.name}</span>
                 </div>
                 {a.template?.subject && (
-                  <div className="text-xs text-slate-500 mt-0.5 truncate">“{a.template.subject}”</div>
+                  <div className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 truncate">“{a.template.subject}”</div>
                 )}
                 {a.scheduledFor && (
-                  <div className="text-[10px] text-slate-400 mt-1">Scheduled: {new Date(a.scheduledFor).toLocaleDateString('en-GB')}</div>
+                  <div className="text-[10px] text-slate-400 dark:text-slate-500 mt-1">Scheduled: {new Date(a.scheduledFor).toLocaleDateString('en-GB')}</div>
                 )}
               </div>
               <button
@@ -1699,7 +1982,7 @@ function AutomationTab() {
             {/* Live-ish preview + merge tags */}
             <div className="mt-4 grid grid-cols-1 lg:grid-cols-5 gap-4">
               <div className="lg:col-span-3">
-                <div className="text-xs font-medium text-slate-600 mb-1">Preview (example data)</div>
+                <div className="text-xs font-medium text-slate-600 dark:text-slate-400 mb-1">Preview (example data)</div>
                 <div className="rounded-xl border border-slate-200 bg-white p-3 text-sm text-slate-700 dark:bg-slate-900 dark:text-slate-200">
                   <div className="font-medium mb-1">{form.subject || 'Subject line will appear here'}</div>
                   <div dangerouslySetInnerHTML={{ 
@@ -1712,7 +1995,7 @@ function AutomationTab() {
                 </div>
               </div>
               <div className="lg:col-span-2">
-                <div className="text-xs font-medium text-slate-600 mb-1">Merge tags</div>
+                <div className="text-xs font-medium text-slate-600 dark:text-slate-400 mb-1">Merge tags</div>
                 <div className="text-[11px] leading-relaxed text-slate-600 dark:text-slate-400 bg-slate-50 dark:bg-slate-800/60 border border-slate-200 rounded-xl p-3">
                   <div><code>{'{{client_name}}'}</code> — company</div>
                   <div><code>{'{{contact_name}}'}</code> — person</div>

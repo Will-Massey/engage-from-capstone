@@ -39,70 +39,29 @@ const ThemeToggle = () => {
       </button>
 
       {showMenu && (
-        <div
-          className="absolute right-0 mt-2 w-40 rounded-xl overflow-hidden animate-scale-in z-50"
-          style={{
-            background:
-              'linear-gradient(135deg, rgba(255, 255, 255, 0.95) 0%, rgba(255, 255, 255, 0.9) 100%)',
-            backdropFilter: 'blur(20px)',
-            WebkitBackdropFilter: 'blur(20px)',
-            border: '1px solid rgba(255, 255, 255, 0.5)',
-            boxShadow: '0 10px 40px rgba(0, 0, 0, 0.1)',
-          }}
-        >
-          <div className="dark:hidden">
-            {themes.map((t) => {
-              const Icon = t.icon;
-              const isActive = theme === t.value;
-              return (
-                <button
-                  key={t.value}
-                  onClick={() => {
-                    setTheme(t.value);
-                    setShowMenu(false);
-                  }}
-                  className={`w-full flex items-center px-4 py-3 text-sm transition-colors ${
-                    isActive ? 'bg-primary-50 text-primary-700' : 'text-slate-700 hover:bg-slate-50'
-                  }`}
-                >
-                  <Icon className="h-4 w-4 mr-3" />
-                  {t.label}
-                  {isActive && <span className="ml-auto w-2 h-2 rounded-full bg-primary-500" />}
-                </button>
-              );
-            })}
-          </div>
-          <div
-            className="hidden dark:block"
-            style={{
-              background:
-                'linear-gradient(135deg, rgba(30, 41, 59, 0.95) 0%, rgba(15, 23, 42, 0.9) 100%)',
-              border: '1px solid rgba(255, 255, 255, 0.1)',
-            }}
-          >
-            {themes.map((t) => {
-              const Icon = t.icon;
-              const isActive = theme === t.value;
-              return (
-                <button
-                  key={t.value}
-                  onClick={() => {
-                    setTheme(t.value);
-                    setShowMenu(false);
-                  }}
-                  className={`w-full flex items-center px-4 py-3 text-sm transition-colors ${
-                    isActive
-                      ? 'bg-primary-900/30 text-primary-300'
-                      : 'text-slate-300 hover:bg-slate-800'
-                  }`}
-                >
-                  <Icon className="h-4 w-4 mr-3" />
-                  {t.label}
-                  {isActive && <span className="ml-auto w-2 h-2 rounded-full bg-primary-400" />}
-                </button>
-              );
-            })}
-          </div>
+        <div className="absolute right-0 mt-2 w-44 rounded-xl overflow-hidden animate-scale-in z-50 border border-slate-200 dark:border-slate-700 bg-white/95 dark:bg-slate-800/95 backdrop-blur-xl shadow-xl">
+          {themes.map((t) => {
+            const Icon = t.icon;
+            const isActive = theme === t.value;
+            return (
+              <button
+                key={t.value}
+                onClick={() => {
+                  setTheme(t.value);
+                  setShowMenu(false);
+                }}
+                className={`w-full flex items-center px-4 py-2.5 text-sm transition-colors ${
+                  isActive
+                    ? 'bg-primary-50 dark:bg-primary-900/30 text-primary-700 dark:text-primary-300'
+                    : 'text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700'
+                }`}
+              >
+                <Icon className="h-4 w-4 mr-3" />
+                {t.label}
+                {isActive && <span className="ml-auto w-2 h-2 rounded-full bg-primary-500 dark:bg-primary-400" />}
+              </button>
+            );
+          })}
         </div>
       )}
     </div>

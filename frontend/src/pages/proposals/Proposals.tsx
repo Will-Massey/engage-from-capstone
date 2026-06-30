@@ -22,6 +22,7 @@ import { useAuthStore } from '../../stores/authStore';
 import { format, formatDistanceToNow } from 'date-fns';
 import toast from 'react-hot-toast';
 import EmptyState from '../../components/ui/EmptyState';
+import { SkeletonCard } from '../../components/skeleton/SkeletonCard';
 
 // Prevent tree-shaking
 const _iconRefs = [DocumentTextIcon, CheckCircleIcon, ClockIcon];

@@ -75,7 +75,7 @@ function getEmailTemplate(
   const clientName = proposal.client.name;
   const proposalTitle = proposal.title;
   const proposalRef = proposal.reference;
-  const senderName = `${proposal.createdBy.firstName} ${proposal.createdBy.lastName}`;
+  const senderName = Array.from(new Set([proposal.createdBy.firstName, proposal.createdBy.lastName].filter(Boolean))).join(' ');
   const senderPosition = proposal.createdBy.role;
   const practiceName = proposal.tenant.name;
 

@@ -260,7 +260,7 @@ const PublicProposalView = () => {
       <div className="min-h-screen flex items-center justify-center bg-slate-50 px-4">
         <div className="max-w-md w-full bg-white rounded-xl shadow-lg p-8 text-center">
           <ExclamationCircleIcon className="mx-auto h-16 w-16 text-red-500" />
-          <h2 className="mt-4 text-xl font-semibold text-slate-900">Proposal Not Available</h2>
+          <h2 className="mt-4 text-xl font-semibold text-slate-900 dark:text-white">Proposal Not Available</h2>
           <p className="mt-2 text-slate-700">{error}</p>
           <p className="mt-4 text-sm text-slate-600">
             Please contact the sender if you believe this is an error.
@@ -328,7 +328,7 @@ const PublicProposalView = () => {
               </div>
             </motion.div>
           ) : isExpired ? (
-            <div className="bg-red-50 border border-red-200 rounded-lg p-4 flex items-center">
+            <div className="bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-900 rounded-lg p-4 flex items-center">
               <ClockIcon className="h-6 w-6 text-red-600 mr-3" />
               <div>
                 <p className="font-medium text-red-900">Proposal Expired</p>
@@ -341,7 +341,7 @@ const PublicProposalView = () => {
 
           {/* Proposal Details */}
           <div>
-            <h2 className="text-xl font-semibold text-slate-900">{proposal.title}</h2>
+            <h2 className="text-xl font-semibold text-slate-900 dark:text-white">{proposal.title}</h2>
             <p className="text-sm text-slate-600 mt-1">Reference: {proposal.reference}</p>
             <p className="text-sm text-slate-600">Valid until: {formatDate(proposal.validUntil)}</p>
           </div>
@@ -351,7 +351,7 @@ const PublicProposalView = () => {
             <h3 className="text-sm font-medium text-slate-600 uppercase tracking-wide">
               Prepared For
             </h3>
-            <p className="mt-1 text-lg font-medium text-slate-900">{proposal.client.name}</p>
+            <p className="mt-1 text-lg font-medium text-slate-900 dark:text-white">{proposal.client.name}</p>
             <p className="text-sm text-slate-600 capitalize">
               {proposal.client.companyType.replace(/_/g, ' ')}
             </p>
@@ -631,7 +631,7 @@ const PublicProposalView = () => {
 
           {showDecline && !isAccepted && (
             <div className="border-t pt-6 space-y-3">
-              <h3 className="text-lg font-medium text-slate-900">Decline proposal</h3>
+              <h3 className="text-lg font-medium text-slate-900 dark:text-white">Decline proposal</h3>
               <textarea
                 data-testid="decline-reason-input"
                 value={declineReason}

@@ -252,9 +252,9 @@ router.post(
         <p>This is a test email from ${tenant.name} using Engage by Capstone.</p>
         <p>If you received this, your email configuration is working correctly!</p>
         <hr>
-        <p><small>Sent by: ${user.firstName} ${user.lastName}</small></p>
+        <p><small>Sent by: ${Array.from(new Set([user.firstName, user.lastName].filter(Boolean))).join(' ')}</small></p>
       `,
-        text: `Test Email\n\nThis is a test email from ${tenant.name} using Engage by Capstone.\n\nIf you received this, your email configuration is working correctly!\n\nSent by: ${user.firstName} ${user.lastName}`,
+        text: `Test Email\n\nThis is a test email from ${tenant.name} using Engage by Capstone.\n\nIf you received this, your email configuration is working correctly!\n\nSent by: ${Array.from(new Set([user.firstName, user.lastName].filter(Boolean))).join(' ')}`,
         replyTo: user.email,
       },
     });

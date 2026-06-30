@@ -40,14 +40,12 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
           position="top-right"
           toastOptions={{
             duration: 4000,
+            className: 'glass-toast',
             style: {
-              background:
-                'linear-gradient(135deg, rgba(255, 255, 255, 0.95) 0%, rgba(255, 255, 255, 0.9) 100%)',
+              // Theming now handled primarily by .glass-toast + .dark .glass-toast in index.css for light/dark
               backdropFilter: 'blur(12px)',
               WebkitBackdropFilter: 'blur(12px)',
-              color: '#0f172a',
               boxShadow: '0 8px 32px rgba(0, 0, 0, 0.12), inset 0 1px 0 rgba(255, 255, 255, 0.6)',
-              border: '1px solid rgba(255, 255, 255, 0.6)',
               borderRadius: '16px',
               padding: '16px 20px',
             },

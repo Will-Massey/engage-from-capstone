@@ -6,6 +6,8 @@ export interface User {
   email: string;
   firstName: string;
   lastName: string;
+  phone?: string;
+  jobTitle?: string;
   role: 'ADMIN' | 'PARTNER' | 'MANAGER' | 'SENIOR' | 'JUNIOR' | 'CLIENT';
   createdAt?: string;
   twoFactorEnabled?: boolean;

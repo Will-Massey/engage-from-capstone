@@ -18,7 +18,7 @@ import {
   type CoverLetterTone,
   getStyleByTone,
 } from '../../data/defaultCoverLetter';
-import toast from 'react-hot-toast';
+import { toast } from 'react-hot-toast';
 import { formatServiceCategory } from '../../utils/serviceCategoryLabels';
 import BillingCadenceSelector from './BillingCadenceSelector';
 import {
@@ -65,6 +65,7 @@ interface Service {
   priceAmount: number;
   priceDisplayMode: 'PER_MONTH' | 'PER_QUARTER' | 'PER_YEAR' | 'ONE_TIME';
   billingCycle: string;
+  defaultFrequency?: string;
   category: string;
   frequencyOptions?: string;
   isVatApplicable?: boolean;
@@ -347,6 +348,8 @@ export default function ProposalBuilder({ proposalId }: ProposalBuilderProps) {
   const [proposalTitle, setProposalTitle] = useState('');
   const [coverLetter, setCoverLetter] = useState('');
   const [coverLetterTone, setCoverLetterTone] = useState<CoverLetterTone>('PROFESSIONAL');
+  const [coverLetterCustomInstruction, setCoverLetterCustomInstruction] = useState('');
+  const [applyingCoverLetterTweak, setApplyingCoverLetterTweak] = useState(false);
   const [includeVat, setIncludeVat] = useState(true);
 
   // Contract & proposal validity
@@ -841,23 +844,63 @@ export default function ProposalBuilder({ proposalId }: ProposalBuilderProps) {
       return;
     }
     setAiCoverLoading(true);
+    setAiCoverDraft(''); // clear for streaming preview
     try {
-      const res = (await apiClient.aiCoverLetter({
-        clientId: selectedClient.id,
-        tone: coverLetterTone,
-        practiceName: tenant?.name || 'Our practice',
-        senderName: `${user?.firstName || ''} ${user?.lastName || ''}`.trim() || undefined,
-        services: selectedServices.map((s) => ({
-          name: s.name,
-          billingFrequency: s.billingCycle,
-          displayPrice: s.displayPrice,
-        })),
-      })) as any;
-      if (res.success) setAiCoverDraft(res.data.content);
+      const streamer = (apiClient as any).aiStreamCoverLetter;
+      if (typeof streamer === 'function') {
+        let acc = '';
+        await streamer(
+          {
+            clientId: selectedClient.id,
+            tone: coverLetterTone,
+            practiceName: tenant?.name || 'Our practice',
+            senderName: `${user?.firstName || ''} ${user?.lastName || ''}`.trim() || undefined,
+            services: selectedServices.map((s) => ({
+              name: s.name,
+              billingFrequency: s.billingCycle,
+              displayPrice: s.displayPrice,
+            })),
+          },
+          (chunk: string) => {
+            acc += chunk;
+            setAiCoverDraft(acc);
+          }
+        );
+      } else {
+        const res = (await apiClient.aiCoverLetter({
+          clientId: selectedClient.id,
+          tone: coverLetterTone,
+          practiceName: tenant?.name || 'Our practice',
+          senderName: `${user?.firstName || ''} ${user?.lastName || ''}`.trim() || undefined,
+          services: selectedServices.map((s) => ({
+            name: s.name,
+            billingFrequency: s.billingCycle,
+            displayPrice: s.displayPrice,
+          })),
+        })) as any;
+        if (res.success) setAiCoverDraft(res.data.content);
+      }
+    } catch (e) {
+      showAiError(e);
+      setAiCoverDraft(null);
+    } finally {
+      setAiCoverLoading(false);
+    }
+  };
+
+  const applyCoverLetterTweak = async (instruction: string) => {
+    if (!coverLetter.trim()) return;
+    setApplyingCoverLetterTweak(true);
+    try {
+      const res = (await apiClient.aiCoverLetterRevise(coverLetter, instruction, { clientId: selectedClient?.id })) as any;
+      if (res.success && res.data?.revisedBody) {
+        setCoverLetter(res.data.revisedBody);
+        toast.success('Clara updated the cover letter');
+      }
     } catch (e) {
       showAiError(e);
     } finally {
-      setAiCoverLoading(false);
+      setApplyingCoverLetterTweak(false);
     }
   };
 
@@ -1788,6 +1831,16 @@ export default function ProposalBuilder({ proposalId }: ProposalBuilderProps) {
               toast.success(`${AI_COPILOT.name}'s cover letter applied — review before sending`);
             }}
             onDiscard={() => setAiCoverDraft(null)}
+            onEdit={() => {
+              if (aiCoverDraft) {
+                setCoverLetter(aiCoverDraft);
+                setAiCoverDraft(null);
+                toast('Draft moved to editor — make your changes there');
+              }
+            }}
+            onRegenerate={runAiCoverLetter}
+            isStreaming={aiCoverLoading}
+            applyLabel="Accept cover letter"
           />
         )}
 
@@ -1844,6 +1897,58 @@ export default function ProposalBuilder({ proposalId }: ProposalBuilderProps) {
         <div className="mt-2 text-[10px] text-slate-400">
           Tip: The three styles above are production-ready. The rest of the proposal (services, pricing, terms, acceptance) is intentionally tone-neutral so the cover letter sets the voice without clashing.
         </div>
+
+        {/* Cheap Clara tweaks for cover letter - max impact, min tokens (edits existing text) */}
+        {coverLetter.trim() && aiConfigured && (
+          <div className="mt-3">
+            <div className="flex items-center gap-2 mb-1.5">
+              <SparklesIcon className="h-3.5 w-3.5 text-violet-600" />
+              <span className="text-[10px] uppercase tracking-wider text-slate-500 dark:text-slate-400">Clara quick tweaks (low cost)</span>
+            </div>
+            <div className="flex flex-wrap gap-2 mb-2">
+              {['Make warmer', 'Shorter & punchier', 'More formal', 'Add urgency on deadline'].map((label, i) => (
+                <button
+                  key={i}
+                  type="button"
+                  onClick={() => applyCoverLetterTweak(label)}
+                  disabled={applyingCoverLetterTweak}
+                  className="text-xs px-2 py-0.5 rounded border border-violet-200 dark:border-violet-800 text-violet-700 dark:text-violet-300 hover:bg-violet-50 dark:hover:bg-violet-950/30 disabled:opacity-50"
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+            <div className="flex gap-2">
+              <input
+                type="text"
+                value={coverLetterCustomInstruction}
+                onChange={(e) => setCoverLetterCustomInstruction(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && coverLetterCustomInstruction.trim()) {
+                    applyCoverLetterTweak(coverLetterCustomInstruction.trim());
+                    setCoverLetterCustomInstruction('');
+                  }
+                }}
+                placeholder="Or tell Clara what to change..."
+                className="input-field flex-1 text-xs py-1"
+                disabled={applyingCoverLetterTweak}
+              />
+              <button
+                type="button"
+                onClick={() => {
+                  if (coverLetterCustomInstruction.trim()) {
+                    applyCoverLetterTweak(coverLetterCustomInstruction.trim());
+                    setCoverLetterCustomInstruction('');
+                  }
+                }}
+                disabled={applyingCoverLetterTweak || !coverLetterCustomInstruction.trim()}
+                className="btn-secondary text-xs px-2 py-1 disabled:opacity-50"
+              >
+                Apply
+              </button>
+            </div>
+          </div>
+        )}
       </div>
 
       {validationErrors.length > 0 && (

@@ -41,7 +41,13 @@
 ## Remaining (post-ship)
 
 - [ ] Render Starter upgrade (manual dashboard)
-- [ ] Streaming cover letter drafts
+- [x] Streaming cover/engagement + **proposal email** (live) + cheap Clara body tweaks + **subject suggestions** (A/B style, tiny token cost)
 - [ ] Cloudflare delivery webhooks
 - [ ] E2E tests for new AI routes
 - [ ] Settings UI for AI token budget meter
+- [ ] Accept/Edit/Reject per streamed section (partial: drafts appear live)
+
+## UX Polish (dark/light mode full support)
+- Full dark/light mode consistency pass (2026-06-30): reactive Appearance tab in Settings, no-FOUC init script in index.html, improved DashboardLayout header, enhanced ui/Card+Input+Button primitives with dark variants, added missing dark: classes to ShareProposalDialog, ClientDetail, ProposalView, AiPanel, ProposalEmailPreviewDialog, toast import standardisation in key dialogs.
+- Theme store listener + early apply reinforced.
+- Typecheck clean; patterns kept (glass, Tailwind class strategy, UK English).

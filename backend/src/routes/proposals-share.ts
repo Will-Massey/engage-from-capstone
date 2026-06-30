@@ -223,7 +223,7 @@ router.post(
     }
 
     // Send email via tenant mailer (platform SendGrid or custom SMTP/OAuth)
-    const senderName = `${proposal.createdBy.firstName} ${proposal.createdBy.lastName}`;
+    const senderName = Array.from(new Set([proposal.createdBy.firstName, proposal.createdBy.lastName].filter(Boolean))).join(' ');
     const result = await tenantMailer.sendProposalEmail(
       tenant.id,
       {

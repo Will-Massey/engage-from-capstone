@@ -27,6 +27,25 @@
   </head>
   <body class="bg-slate-50 text-slate-800 antialiased">
     <div id="root"></div>
+    <!-- Prevent flash of wrong theme: set 'dark' class on <html> before React hydrates -->
+    <script>
+      (function () {
+        try {
+          var storage = localStorage.getItem('theme-storage');
+          var theme = 'system';
+          if (storage) {
+            var parsed = JSON.parse(storage);
+            if (parsed && parsed.state && parsed.state.theme) {
+              theme = parsed.state.theme;
+            }
+          }
+          var isDark = theme === 'dark' || (theme === 'system' && window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches);
+          if (isDark) {
+            document.documentElement.classList.add('dark');
+          }
+        } catch (e) {}
+      })();
+    </script>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>

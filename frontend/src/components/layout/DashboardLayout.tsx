@@ -45,31 +45,25 @@ const DashboardLayout = () => {
 
       {/* Main content */}
       <div className="lg:pl-72">
-        {/* Header with glass effect */}
+        {/* Header with glass effect — single instance, full dark support */}
         <div
           className={`fixed top-0 right-0 left-0 lg:left-72 z-30 transition-all duration-300 ${
             scrolled ? 'shadow-lg' : ''
           }`}
           style={{
             background: scrolled
-              ? 'linear-gradient(135deg, rgba(255, 255, 255, 0.9) 0%, rgba(255, 255, 255, 0.85) 100%)'
+              ? undefined
               : 'transparent',
             backdropFilter: scrolled ? 'blur(20px)' : 'none',
             WebkitBackdropFilter: scrolled ? 'blur(20px)' : 'none',
-            borderBottom: scrolled ? '1px solid rgba(226, 232, 240, 0.8)' : 'none',
           }}
         >
-          <div className="dark:hidden">
-            <Header onMenuClick={() => setSidebarOpen(true)} />
-          </div>
           <div
-            className="hidden dark:block"
-            style={{
-              background: scrolled
-                ? 'linear-gradient(135deg, rgba(15, 23, 42, 0.9) 0%, rgba(15, 23, 42, 0.85) 100%)'
-                : 'transparent',
-              borderBottom: scrolled ? '1px solid rgba(255, 255, 255, 0.1)' : 'none',
-            }}
+            className={
+              scrolled
+                ? 'bg-white/90 dark:bg-slate-900/90 border-b border-slate-200/80 dark:border-slate-700/80'
+                : 'bg-transparent border-b border-transparent'
+            }
           >
             <Header onMenuClick={() => setSidebarOpen(true)} />
           </div>

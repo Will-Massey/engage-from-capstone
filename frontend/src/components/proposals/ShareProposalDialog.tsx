@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { apiClient } from '../../utils/api';
-import toast from 'react-hot-toast';
+import { toast } from 'react-hot-toast';
 import {
   XMarkIcon,
   LinkIcon,
@@ -133,26 +133,26 @@ const ShareProposalDialog = ({
     <div className="fixed inset-0 z-50 overflow-y-auto">
       <div className="flex items-center justify-center min-h-screen px-4">
         {/* Backdrop */}
-        <div className="fixed inset-0 bg-gray-500 bg-opacity-75" onClick={onClose} />
+        <div className="fixed inset-0 bg-slate-900/60 dark:bg-slate-950/70 backdrop-blur-sm" onClick={onClose} />
 
         {/* Dialog */}
-        <div className="relative bg-white rounded-xl shadow-xl max-w-lg w-full">
+        <div className="relative bg-white dark:bg-slate-800 rounded-xl shadow-xl max-w-lg w-full border border-slate-200 dark:border-slate-700">
           {/* Header */}
-          <div className="flex items-center justify-between p-6 border-b border-gray-100">
-            <h3 className="text-lg font-semibold text-gray-900">Share Proposal</h3>
-            <button onClick={onClose} className="text-gray-400 hover:text-gray-500">
+          <div className="flex items-center justify-between p-6 border-b border-slate-200 dark:border-slate-700">
+            <h3 className="text-lg font-semibold text-slate-900 dark:text-white">Share Proposal</h3>
+            <button onClick={onClose} className="text-slate-400 dark:text-slate-500 hover:text-slate-500 dark:hover:text-slate-300">
               <XMarkIcon className="h-6 w-6" />
             </button>
           </div>
 
           {/* Tabs */}
-          <div className="flex border-b border-gray-100">
+          <div className="flex border-b border-slate-200 dark:border-slate-700">
             <button
               onClick={() => setActiveTab('link')}
               className={`flex-1 py-3 px-4 text-sm font-medium text-center border-b-2 transition-colors ${
                 activeTab === 'link'
                   ? 'border-primary-600 text-primary-600'
-                  : 'border-transparent text-gray-500 hover:text-gray-700'
+                  : 'border-transparent text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'
               }`}
             >
               <LinkIcon className="h-4 w-4 inline mr-2" />
@@ -163,7 +163,7 @@ const ShareProposalDialog = ({
               className={`flex-1 py-3 px-4 text-sm font-medium text-center border-b-2 transition-colors ${
                 activeTab === 'email'
                   ? 'border-primary-600 text-primary-600'
-                  : 'border-transparent text-gray-500 hover:text-gray-700'
+                  : 'border-transparent text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'
               }`}
             >
               <EnvelopeIcon className="h-4 w-4 inline mr-2" />
@@ -176,21 +176,21 @@ const ShareProposalDialog = ({
             {activeTab === 'link' ? (
               <div className="space-y-4">
                 {showPreview && proposalPreview && !shareData && (
-                  <div className="rounded-xl border border-slate-200 bg-slate-50 p-4 text-left">
-                    <p className="text-xs font-medium text-slate-500 uppercase tracking-wide">Preview before sharing</p>
-                    <h4 className="mt-2 font-semibold text-slate-900">{proposalPreview.title}</h4>
-                    <p className="text-sm text-slate-600">Ref: {proposalPreview.reference}</p>
-                    <p className="text-sm text-slate-600">Client: {proposalPreview.clientName}</p>
-                    <p className="text-sm text-slate-600 mt-1">
+                  <div className="rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/60 p-4 text-left">
+                    <p className="text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wide">Preview before sharing</p>
+                    <h4 className="mt-2 font-semibold text-slate-900 dark:text-white">{proposalPreview.title}</h4>
+                    <p className="text-sm text-slate-600 dark:text-slate-300">Ref: {proposalPreview.reference}</p>
+                    <p className="text-sm text-slate-600 dark:text-slate-300">Client: {proposalPreview.clientName}</p>
+                    <p className="text-sm text-slate-600 dark:text-slate-300 mt-1">
                       Total: £{Number(proposalPreview.total).toLocaleString('en-GB', { minimumFractionDigits: 2 })}
                     </p>
-                    <p className="text-xs text-slate-500 mt-2">Status: {proposalPreview.status}</p>
+                    <p className="text-xs text-slate-500 dark:text-slate-400 mt-2">Status: {proposalPreview.status}</p>
                   </div>
                 )}
                 {!shareData ? (
                   <div className="text-center py-6">
-                    <LinkIcon className="mx-auto h-12 w-12 text-gray-300" />
-                    <p className="mt-2 text-gray-500">
+                    <LinkIcon className="mx-auto h-12 w-12 text-slate-300 dark:text-slate-600" />
+                    <p className="mt-2 text-slate-500 dark:text-slate-400">
                       Generate a secure link for your client to view and sign this proposal
                     </p>
                     <button
@@ -204,7 +204,7 @@ const ShareProposalDialog = ({
                 ) : (
                   <div className="space-y-4">
                     <div>
-                      <label className="block text-sm font-medium text-gray-700">
+                      <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">
                         Shareable Link
                       </label>
                       <div className="mt-1 flex">
@@ -216,19 +216,19 @@ const ShareProposalDialog = ({
                         />
                         <button
                           onClick={copyToClipboard}
-                          className="px-4 py-2 bg-gray-100 border border-l-0 border-gray-300 rounded-r-lg hover:bg-gray-200"
+                          className="px-4 py-2 bg-slate-100 dark:bg-slate-700 border border-l-0 border-slate-300 dark:border-slate-600 rounded-r-lg hover:bg-slate-200 dark:hover:bg-slate-600"
                         >
                           {copied ? (
                             <CheckIcon className="h-5 w-5 text-green-600" />
                           ) : (
-                            <ClipboardIcon className="h-5 w-5 text-gray-500" />
+                            <ClipboardIcon className="h-5 w-5 text-slate-500 dark:text-slate-400" />
                           )}
                         </button>
                       </div>
                     </div>
 
-                    <div className="p-4 bg-blue-50 rounded-lg">
-                      <p className="text-sm text-blue-700">
+                    <div className="p-4 bg-blue-50 dark:bg-blue-950/30 rounded-lg border border-blue-100 dark:border-blue-900/50">
+                      <p className="text-sm text-blue-700 dark:text-blue-300">
                         <strong>Expires:</strong>{' '}
                         {new Date(shareData.expiresAt).toLocaleDateString('en-GB', {
                           day: 'numeric',
@@ -252,7 +252,7 @@ const ShareProposalDialog = ({
             ) : (
               <div className="space-y-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700">To</label>
+                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">To</label>
                   <input
                     type="email"
                     value={emailData.to}
@@ -262,7 +262,7 @@ const ShareProposalDialog = ({
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700">CC (optional)</label>
+                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">CC (optional)</label>
                   <input
                     type="text"
                     value={emailData.cc}
@@ -273,7 +273,7 @@ const ShareProposalDialog = ({
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700">Subject</label>
+                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">Subject</label>
                   <input
                     type="text"
                     value={emailData.subject}
@@ -283,7 +283,7 @@ const ShareProposalDialog = ({
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700">
+                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">
                     Message (optional)
                   </label>
                   <textarea
@@ -303,7 +303,7 @@ const ShareProposalDialog = ({
                     onChange={(e) => setEmailData({ ...emailData, includePdf: e.target.checked })}
                     className="h-4 w-4 text-primary-600 rounded"
                   />
-                  <label htmlFor="includePdf" className="ml-2 text-sm text-gray-700">
+                  <label htmlFor="includePdf" className="ml-2 text-sm text-slate-700 dark:text-slate-300">
                     Include PDF attachment
                   </label>
                 </div>

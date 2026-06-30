@@ -4,7 +4,7 @@
 import { prisma } from '../../config/database.js';
 import { ApiError } from '../../middleware/errorHandler.js';
 import { AI_COPILOT } from '../../config/aiCopilot.js';
-import { chatCompletion, parseJsonResponse, checkAiTokenBudget } from './aiClient.js';
+import { chatCompletion, chatCompletionStream, parseJsonResponse, checkAiTokenBudget } from './aiClient.js';
 import { buildAiContext } from './aiContextBuilder.js';
 import { logAiUsage } from './proposalAiService.js';
 
@@ -299,6 +299,150 @@ Return JSON only:
   };
 }
 
+/** Streaming version for live email preview. Yields body chunks. Subject is generated first (cheap). */
+export async function* generateEmailContentStream(
+  tenantId: string,
+  userId: string | undefined,
+  payload: {
+    clientName: string;
+    contactName?: string | null;
+    tenantName: string;
+    proposalTitle: string;
+    proposalReference: string;
+    validUntil: string;
+    services: Array<{ name: string; billingFrequency?: string; displayPrice?: number }>;
+    total: number;
+    senderName: string;
+    senderEmail: string;
+    senderPosition?: string;
+    viewLink?: string;
+    coverLetter?: string | null;
+    contextNote?: string;
+  },
+  logMeta: Record<string, unknown>
+): AsyncGenerator<{ subject?: string; bodyChunk?: string; done?: boolean }, ProposalSendEmailResult, unknown> {
+  await assertAiBudget(tenantId);
+
+  const serviceTableText = buildServiceTableText(payload.services);
+  const validUntilFormatted = formatValidUntil(payload.validUntil);
+  const totalFormatted = formatGbp(payload.total);
+
+  // First, get the subject (very cheap, low token)
+  const subjectRaw = await chatCompletion(
+    [
+      { role: 'system', content: UK_SYSTEM },
+      {
+        role: 'user',
+        content: `Write ONLY a concise, professional email subject line for this UK accountancy proposal.
+Proposal: ${payload.proposalTitle} (${payload.proposalReference})
+Client: ${payload.contactName || payload.clientName}
+Practice: ${payload.tenantName}
+Do not add quotes or extra text.`,
+      },
+    ],
+    { temperature: 0.4, maxTokens: 60 }
+  );
+
+  const subject = subjectRaw.trim().replace(/^["']|["']$/g, '') || `Proposal: ${payload.proposalTitle} — ${payload.proposalReference}`;
+  yield { subject };
+
+  // Now stream the body paragraphs
+  const bodyPrompt = `Draft the main body paragraphs for a UK accountancy proposal send email (not the signature or footer).
+Explain who you are, why you are writing, summarise services, mention fees, next steps, and valid until date.
+Use plain paragraphs only — no markdown, no HTML, no subject line.
+3-5 short paragraphs. Warm professional UK tone. Address ${payload.contactName || payload.clientName}.
+
+Proposal: ${payload.proposalTitle} (${payload.proposalReference})
+Practice: ${payload.tenantName}
+Sender: ${payload.senderName}
+Valid until: ${validUntilFormatted}
+Total fees: ${totalFormatted}
+
+Services (plain text table):
+${serviceTableText}
+${payload.coverLetter ? `\nCover letter context:\n${payload.coverLetter.slice(0, 800)}` : ''}
+${payload.contextNote ? `\n${payload.contextNote}` : ''}
+
+Output ONLY the body paragraphs, separated by blank lines. No JSON, no subject.`;
+
+  let bodyParagraphs = '';
+
+  for await (const chunk of chatCompletionStream(
+    [
+      { role: 'system', content: UK_SYSTEM },
+      { role: 'user', content: bodyPrompt },
+    ],
+    { temperature: 0.5, maxTokens: 900 }
+  )) {
+    bodyParagraphs += chunk;
+    yield { bodyChunk: chunk };
+  }
+
+  // Now build the final HTML / text like before
+  const bodyParagraphsHtml = bodyParagraphs
+    .split(/\n\n+/)
+    .map((p) => p.trim())
+    .filter(Boolean)
+    .map((p) => `<p>${escapeHtml(p)}</p>`)
+    .join('\n');
+
+  // We need nextSteps too for completeness — do a cheap follow-up or parse from body if present.
+  // For min tokens, we'll skip structured nextSteps in streaming or do a tiny call.
+  // Simple: just use paragraphs.
+  const bodyHtml = `${bodyParagraphsHtml}\n${servicesToHtmlTable(payload.services)}`;
+
+  const textBody = [
+    `Dear ${payload.contactName || payload.clientName},`,
+    '',
+    bodyParagraphs,
+    '',
+    'SERVICES',
+    '========',
+    serviceTableText,
+    '',
+    `Total: ${totalFormatted}`,
+    '',
+    `Valid until: ${validUntilFormatted}`,
+    payload.viewLink ? `\nView proposal: ${payload.viewLink}` : '',
+    '',
+    'Best regards,',
+    payload.senderName,
+    payload.tenantName,
+    payload.senderEmail,
+    '',
+    '---',
+    'Sent via Engage by Capstone',
+  ]
+    .filter((line) => line !== undefined)
+    .join('\n');
+
+  const htmlBody = wrapAiEmailHtml({
+    tenantName: payload.tenantName,
+    clientName: payload.clientName,
+    proposalTitle: payload.proposalTitle,
+    proposalReference: payload.proposalReference,
+    validUntil: validUntilFormatted,
+    senderName: payload.senderName,
+    senderPosition: payload.senderPosition,
+    senderEmail: payload.senderEmail,
+    bodyHtml,
+    viewLink: payload.viewLink,
+    totalAmount: totalFormatted,
+  });
+
+  await logAiUsage(tenantId, userId, 'proposal_send_email', logMeta);
+
+  const result: ProposalSendEmailResult = {
+    subject,
+    htmlBody,
+    textBody,
+    requiresApproval: true,
+  };
+
+  yield { done: true };
+  return result;
+}
+
 /** Generate a detailed send email for an existing proposal */
 export async function generateProposalSendEmail(
   tenantId: string,
@@ -317,8 +461,8 @@ export async function generateProposalSendEmail(
   if (!proposal) throw new ApiError('NOT_FOUND', 'Proposal not found', 404);
 
   const senderName = ctx.user
-    ? `${ctx.user.firstName} ${ctx.user.lastName}`
-    : `${proposal.createdBy.firstName} ${proposal.createdBy.lastName}`;
+    ? Array.from(new Set([ctx.user.firstName, ctx.user.lastName].filter(Boolean))).join(' ')
+    : Array.from(new Set([proposal.createdBy.firstName, proposal.createdBy.lastName].filter(Boolean))).join(' ');
   const senderEmail = ctx.user?.email ?? proposal.createdBy.email;
 
   return generateEmailContent(
@@ -355,7 +499,7 @@ export async function generateProposalSendEmailFromDraft(
   const total = services.reduce((sum, s) => sum + (s.displayPrice ?? 0), 0);
   const senderName =
     draft.senderName ||
-    (ctx.user ? `${ctx.user.firstName} ${ctx.user.lastName}` : 'Partner');
+    (ctx.user ? Array.from(new Set([ctx.user.firstName, ctx.user.lastName].filter(Boolean))).join(' ') : 'Partner');
   const senderEmail = draft.senderEmail || ctx.user?.email || '';
 
   return generateEmailContent(

@@ -138,7 +138,7 @@ const ClientDetail = () => {
   if (!client) {
     return (
       <div className="text-center py-16">
-        <h2 className="text-xl font-semibold text-slate-900">Client not found</h2>
+        <h2 className="text-xl font-semibold text-slate-900 dark:text-white">Client not found</h2>
         <Link to="/clients" className="mt-4 text-primary-600 hover:text-primary-500">
           Back to clients
         </Link>
@@ -164,7 +164,7 @@ const ClientDetail = () => {
             <BuildingOfficeIcon className="h-8 w-8 text-primary-600" />
           </div>
           <div className="ml-4">
-            <h1 className="text-2xl font-bold text-slate-900">{client.name}</h1>
+            <h1 className="text-2xl font-bold text-slate-900 dark:text-white">{client.name}</h1>
             <p className="text-sm text-slate-600">
               {client.companyType?.replace(/_/g, ' ')} • {client.industry || 'No industry set'}
             </p>
@@ -223,29 +223,29 @@ const ClientDetail = () => {
       {activeTab === 'overview' && (
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Contact Info */}
-          <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-6">
-            <h2 className="text-lg font-semibold text-slate-900 mb-4">Contact Information</h2>
+          <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm p-6">
+            <h2 className="text-lg font-semibold text-slate-900 dark:text-white mb-4">Contact Information</h2>
             <div className="space-y-3">
               {client.contactName && (
                 <div className="flex items-center">
                   <UserIcon className="h-5 w-5 text-slate-400 mr-3" />
-                  <span className="text-sm text-slate-900">{client.contactName}</span>
+                  <span className="text-sm text-slate-900 dark:text-slate-100">{client.contactName}</span>
                 </div>
               )}
               <div className="flex items-center">
                 <EnvelopeIcon className="h-5 w-5 text-slate-400 mr-3" />
-                <span className="text-sm text-slate-900">{client.contactEmail}</span>
+                <span className="text-sm text-slate-900 dark:text-slate-100">{client.contactEmail}</span>
               </div>
               {client.contactPhone && (
                 <div className="flex items-center">
                   <PhoneIcon className="h-5 w-5 text-slate-400 mr-3" />
-                  <span className="text-sm text-slate-900">{client.contactPhone}</span>
+                  <span className="text-sm text-slate-900 dark:text-slate-100">{client.contactPhone}</span>
                 </div>
               )}
               {client.address && (
                 <div className="flex items-start">
                   <MapPinIcon className="h-5 w-5 text-slate-400 mr-3 mt-0.5" />
-                  <span className="text-sm text-slate-900">
+                  <span className="text-sm text-slate-900 dark:text-slate-100">
                     {client.address.line1}
                     {client.address.line2 && <>, {client.address.line2}</>}
                     <br />
@@ -257,37 +257,37 @@ const ClientDetail = () => {
           </div>
 
           {/* Company Details */}
-          <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-6">
-            <h2 className="text-lg font-semibold text-slate-900 mb-4">Company Details</h2>
+          <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm p-6">
+            <h2 className="text-lg font-semibold text-slate-900 dark:text-white mb-4">Company Details</h2>
             <div className="space-y-3">
               {client.companyNumber && (
                 <div className="flex justify-between">
                   <span className="text-sm text-slate-600">Company Number</span>
-                  <span className="text-sm text-slate-900">{client.companyNumber}</span>
+                  <span className="text-sm text-slate-900 dark:text-slate-100">{client.companyNumber}</span>
                 </div>
               )}
               {client.utr && (
                 <div className="flex justify-between">
                   <span className="text-sm text-slate-600">UTR</span>
-                  <span className="text-sm text-slate-900">{client.utr}</span>
+                  <span className="text-sm text-slate-900 dark:text-slate-100">{client.utr}</span>
                 </div>
               )}
               {client.vatNumber && (
                 <div className="flex justify-between">
                   <span className="text-sm text-slate-600">VAT Number</span>
-                  <span className="text-sm text-slate-900">{client.vatNumber}</span>
+                  <span className="text-sm text-slate-900 dark:text-slate-100">{client.vatNumber}</span>
                 </div>
               )}
               {client.employeeCount && (
                 <div className="flex justify-between">
                   <span className="text-sm text-slate-600">Employees</span>
-                  <span className="text-sm text-slate-900">{client.employeeCount}</span>
+                  <span className="text-sm text-slate-900 dark:text-slate-100">{client.employeeCount}</span>
                 </div>
               )}
               {client.turnover && (
                 <div className="flex justify-between">
                   <span className="text-sm text-slate-600">Turnover</span>
-                  <span className="text-sm text-slate-900">
+                  <span className="text-sm text-slate-900 dark:text-slate-100">
                     £{client.turnover.toLocaleString()}
                   </span>
                 </div>
@@ -296,11 +296,11 @@ const ClientDetail = () => {
           </div>
 
           {/* Stats */}
-          <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-6">
-            <h2 className="text-lg font-semibold text-slate-900 mb-4">Statistics</h2>
+          <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm p-6">
+            <h2 className="text-lg font-semibold text-slate-900 dark:text-white mb-4">Statistics</h2>
             <div className="grid grid-cols-2 gap-4">
               <div className="text-center p-4 bg-slate-50 rounded-lg">
-                <p className="text-2xl font-bold text-slate-900">{client.proposals?.length || 0}</p>
+                <p className="text-2xl font-bold text-slate-900 dark:text-white">{client.proposals?.length || 0}</p>
                 <p className="text-xs text-slate-600">Total Proposals</p>
               </div>
               <div className="text-center p-4 bg-slate-50 rounded-lg">
@@ -315,7 +315,7 @@ const ClientDetail = () => {
       )}
 
       {activeTab === 'proposals' && (
-        <div className="bg-white rounded-xl border border-slate-200 shadow-sm">
+        <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm">
           {client.proposals?.length === 0 ? (
             <div className="text-center py-12">
               <DocumentTextIcon className="mx-auto h-12 w-12 text-gray-300" />
@@ -336,7 +336,7 @@ const ClientDetail = () => {
                   className="flex items-center justify-between px-6 py-4 hover:bg-slate-50"
                 >
                   <div>
-                    <p className="text-sm font-medium text-slate-900">{proposal.title}</p>
+                    <p className="text-sm font-medium text-slate-900 dark:text-white">{proposal.title}</p>
                     <p className="text-xs text-slate-600">
                       {proposal.reference} • {format(new Date(proposal.createdAt), 'dd MMM yyyy')}
                     </p>
@@ -365,8 +365,8 @@ const ClientDetail = () => {
       )}
 
       {activeTab === 'mtditsa' && (
-        <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-6">
-          <h2 className="text-lg font-semibold text-slate-900 mb-4">
+        <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm p-6">
+          <h2 className="text-lg font-semibold text-slate-900 dark:text-white mb-4">
             Making Tax Digital for Income Tax Self Assessment
           </h2>
 
@@ -458,9 +458,9 @@ const ClientDetail = () => {
       {/* Edit Modal */}
       {showEditModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-lg w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+          <div className="bg-white dark:bg-slate-800 rounded-lg w-full max-w-2xl max-h-[90vh] overflow-y-auto">
             <div className="p-6 border-b border-slate-200 flex items-center justify-between">
-              <h3 className="text-lg font-semibold text-slate-900">Edit Client</h3>
+              <h3 className="text-lg font-semibold text-slate-900 dark:text-white">Edit Client</h3>
               <button
                 onClick={() => setShowEditModal(false)}
                 className="text-slate-400 hover:text-slate-700"
@@ -1005,9 +1005,9 @@ function ClientTimeline({ clientId }: { clientId: string }) {
                     {/* Dot */}
                     <div className="absolute left-0 mt-1.5 w-3 h-3 rounded-full border-2 border-white bg-primary-500 shadow-sm" />
 
-                    <div className="flex-1 bg-white border border-slate-200 rounded-xl p-3 shadow-sm">
+                    <div className="flex-1 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl p-3 shadow-sm">
                       <div className="flex justify-between items-start">
-                        <div className="flex items-center gap-2 font-medium text-sm text-slate-900">
+                        <div className="flex items-center gap-2 font-medium text-sm text-slate-900 dark:text-slate-100">
                           <span className="text-primary-500">{getActionIcon(log.action)}</span>
                           {log.action}
                         </div>

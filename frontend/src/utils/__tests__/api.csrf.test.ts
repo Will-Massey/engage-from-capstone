@@ -4,7 +4,7 @@
 describe('api CSRF patterns', () => {
   it('clears in-memory CSRF cache on CSRF_INVALID', () => {
     let csrfTokenInMemory: string | null = 'stale-token';
-    const errorCode = 'CSRF_INVALID';
+    const errorCode: string = 'CSRF_INVALID';
 
     if (errorCode === 'CSRF_MISSING' || errorCode === 'CSRF_INVALID') {
       csrfTokenInMemory = null;

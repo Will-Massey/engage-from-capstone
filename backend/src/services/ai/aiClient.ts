@@ -122,6 +122,89 @@ export async function chatCompletion(
   return content;
 }
 
+/**
+ * Streaming chat completion for live token-by-token drafts (cover letters, engagement intros etc).
+ * Yields incremental content chunks. Does NOT support jsonMode (plain text only for UX).
+ * Compatible with xAI and OpenAI streaming SSE format.
+ */
+export async function* chatCompletionStream(
+  messages: ChatMessage[],
+  options?: { temperature?: number; maxTokens?: number }
+): AsyncGenerator<string, void, unknown> {
+  const provider = getAiProvider();
+  if (!provider) {
+    throw new ApiError(
+      'AI_NOT_CONFIGURED',
+      `${AI_COPILOT.name} is not available on this server — contact your administrator`,
+      503
+    );
+  }
+
+  const { apiKey, baseUrl, label } = providerConfig(provider);
+  const body: Record<string, unknown> = {
+    model: getAiModel(),
+    messages,
+    temperature: options?.temperature ?? 0.5,
+    max_tokens: options?.maxTokens ?? 2000,
+    stream: true,
+  };
+
+  const res = await fetch(`${baseUrl}/chat/completions`, {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${apiKey}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(body),
+  });
+
+  if (!res.ok || !res.body) {
+    const errText = await res.text().catch(() => '');
+    logger.error(`${label} stream error`, { status: res.status, body: errText.slice(0, 300) });
+    throw new ApiError('AI_PROVIDER_ERROR', `${AI_COPILOT.name} stream unavailable`, 502);
+  }
+
+  const reader = res.body.getReader();
+  const decoder = new TextDecoder('utf-8');
+  let buffer = '';
+
+  try {
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+
+      buffer += decoder.decode(value, { stream: true });
+
+      // SSE: split on double newlines for events
+      const events = buffer.split('\n\n');
+      buffer = events.pop() || '';
+
+      for (const event of events) {
+        const lines = event.split('\n');
+        for (const line of lines) {
+          const trimmed = line.trim();
+          if (!trimmed.startsWith('data:')) continue;
+          const dataStr = trimmed.slice(5).trim();
+          if (dataStr === '[DONE]') {
+            return;
+          }
+          try {
+            const json = JSON.parse(dataStr);
+            const delta = json.choices?.[0]?.delta?.content;
+            if (typeof delta === 'string' && delta.length > 0) {
+              yield delta;
+            }
+          } catch {
+            // ignore partial JSON in stream
+          }
+        }
+      }
+    }
+  } finally {
+    try { reader.releaseLock(); } catch {}
+  }
+}
+
 export function parseJsonResponse<T>(raw: string): T {
   try {
     return JSON.parse(raw) as T;

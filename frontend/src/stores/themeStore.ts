@@ -11,6 +11,39 @@ interface ThemeState {
   toggleTheme: () => void;
 }
 
+let mediaQueryListener: ((e: MediaQueryListEvent) => void) | null = null;
+
+function getSystemIsDark(): boolean {
+  return window.matchMedia('(prefers-color-scheme: dark)').matches;
+}
+
+function applyDocumentTheme(isDark: boolean) {
+  if (isDark) {
+    document.documentElement.classList.add('dark');
+  } else {
+    document.documentElement.classList.remove('dark');
+  }
+}
+
+function setupSystemListener() {
+  const media = window.matchMedia('(prefers-color-scheme: dark)');
+
+  if (mediaQueryListener) {
+    media.removeEventListener('change', mediaQueryListener);
+  }
+
+  mediaQueryListener = (e: MediaQueryListEvent) => {
+    const state = useThemeStore.getState();
+    if (state.theme === 'system') {
+      const isDark = e.matches;
+      useThemeStore.setState({ isDark });
+      applyDocumentTheme(isDark);
+    }
+  };
+
+  media.addEventListener('change', mediaQueryListener);
+}
+
 export const useThemeStore = create<ThemeState>()(
   persist(
     (set, get) => ({
@@ -18,17 +51,17 @@ export const useThemeStore = create<ThemeState>()(
       isDark: false,
 
       setTheme: (theme) => {
-        const isDark =
-          theme === 'dark' ||
-          (theme === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches);
+        const isDark = theme === 'dark' || (theme === 'system' && getSystemIsDark());
 
         set({ theme, isDark });
+        applyDocumentTheme(isDark);
 
-        // Apply theme to document
-        if (isDark) {
-          document.documentElement.classList.add('dark');
-        } else {
-          document.documentElement.classList.remove('dark');
+        if (theme === 'system') {
+          setupSystemListener();
+        } else if (mediaQueryListener) {
+          const media = window.matchMedia('(prefers-color-scheme: dark)');
+          media.removeEventListener('change', mediaQueryListener);
+          mediaQueryListener = null;
         }
       },
 
@@ -41,16 +74,13 @@ export const useThemeStore = create<ThemeState>()(
     {
       name: 'theme-storage',
       onRehydrateStorage: () => (state) => {
-        // Apply theme on store rehydration
         if (state) {
-          const isDark =
-            state.theme === 'dark' ||
-            (state.theme === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches);
+          const isDark = state.theme === 'dark' || (state.theme === 'system' && getSystemIsDark());
+          applyDocumentTheme(isDark);
+          useThemeStore.setState({ isDark });
 
-          if (isDark) {
-            document.documentElement.classList.add('dark');
-          } else {
-            document.documentElement.classList.remove('dark');
+          if (state.theme === 'system') {
+            setupSystemListener();
           }
         }
       },
@@ -60,6 +90,12 @@ export const useThemeStore = create<ThemeState>()(
 
 // Initialize theme on app load
 export const initializeTheme = () => {
-  const theme = useThemeStore.getState().theme;
-  useThemeStore.getState().setTheme(theme);
+  const state = useThemeStore.getState();
+  const theme = state.theme;
+  const isDark = theme === 'dark' || (theme === 'system' && getSystemIsDark());
+  applyDocumentTheme(isDark);
+  useThemeStore.setState({ isDark });
+  if (theme === 'system') {
+    setupSystemListener();
+  }
 };

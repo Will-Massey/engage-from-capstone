@@ -21,6 +21,7 @@ interface EmptyStateProps {
     label: string;
     onClick: () => void;
   };
+  claraTip?: string;
 }
 
 const icons = {
@@ -37,6 +38,7 @@ export const EmptyState = ({
   action,
   icon = 'inbox',
   secondaryAction,
+  claraTip,
 }: EmptyStateProps) => {
   const Icon = icons[icon];
 
@@ -52,6 +54,13 @@ export const EmptyState = ({
 
         <h3 className="text-xl font-semibold text-slate-900 mb-2">{title}</h3>
         <p className="text-slate-600 mb-6">{description}</p>
+
+        {claraTip && (
+          <div className="mb-6 p-3 rounded-lg bg-violet-50 dark:bg-violet-950/30 border border-violet-100 dark:border-violet-900 text-left">
+            <div className="text-xs font-medium text-violet-600 dark:text-violet-400 mb-1">Clara suggests</div>
+            <div className="text-sm text-slate-700 dark:text-slate-300">{claraTip}</div>
+          </div>
+        )}
 
         <div className="flex flex-col sm:flex-row gap-3 justify-center">
           {action && (
@@ -81,6 +90,7 @@ export const EmptyProposals = ({ onCreate }: { onCreate?: () => void }) => (
     icon="proposals"
     title="No proposals yet"
     description="Create your first proposal to start winning clients."
+    claraTip="Start with a standard limited company annual accounts + tax compliance proposal. Add MTD ITSA if they have trading income over the threshold."
     action={{ label: 'Create Proposal', to: '/proposals/new', onClick: onCreate }}
   />
 );
@@ -90,6 +100,7 @@ export const EmptyClients = () => (
     icon="clients"
     title="No clients yet"
     description="Add your first client to get started with proposals."
+    claraTip="Add a typical client (e.g. limited company with £200k–£500k turnover) — Clara can then auto-suggest services and draft the cover letter."
     action={{ label: 'Add Client', to: '/clients/new' }}
   />
 );

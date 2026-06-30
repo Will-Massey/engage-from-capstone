@@ -16,12 +16,12 @@ export const Card: React.FC<CardProps> = ({
   className = '',
   ...props
 }) => {
-  const baseClasses = 'bg-white rounded-xl border border-slate-200 overflow-hidden';
+  const baseClasses = 'bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 overflow-hidden';
 
   const variantClasses = {
     default: 'shadow-sm',
     interactive:
-      'shadow-sm cursor-pointer transition-all duration-200 hover:shadow-md hover:border-slate-300 hover:-translate-y-0.5',
+      'shadow-sm cursor-pointer transition-all duration-200 hover:shadow-md hover:border-slate-300 dark:hover:border-slate-600 hover:-translate-y-0.5',
     elevated: 'shadow-lg',
   };
 
@@ -69,12 +69,12 @@ export const StatCard: React.FC<StatCardProps> = ({
     <Card variant="interactive">
       <div className="flex items-start justify-between">
         <div>
-          <p className="text-sm font-medium text-slate-500">{title}</p>
-          <p className="mt-2 text-3xl font-bold font-mono text-slate-800">{value}</p>
+          <p className="text-sm font-medium text-slate-500 dark:text-slate-400">{title}</p>
+          <p className="mt-2 text-3xl font-bold font-mono text-slate-800 dark:text-slate-100">{value}</p>
           {change && (
             <div className="mt-2 flex items-center text-sm">
               <span className={`font-medium ${changeColors[changeType]}`}>{change}</span>
-              <span className="text-slate-400 ml-2">vs last month</span>
+              <span className="text-slate-400 dark:text-slate-500 ml-2">vs last month</span>
             </div>
           )}
         </div>

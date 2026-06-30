@@ -600,7 +600,7 @@ router.post(
         proposalTitle: proposal.title,
         proposalReference: proposal.reference,
         viewLink,
-        senderName: `${req.user!.firstName} ${req.user!.lastName}`,
+        senderName: Array.from(new Set([req.user!.firstName, req.user!.lastName].filter(Boolean))).join(' '),
         senderPosition: req.user!.role,
         senderEmail: req.user!.email,
         validUntil: new Date(proposal.validUntil).toLocaleDateString('en-GB', {
@@ -677,7 +677,7 @@ router.post(
     }
 
     const signerName =
-      acceptedBy || `${req.user?.firstName || ''} ${req.user?.lastName || ''}`.trim();
+      acceptedBy || Array.from(new Set([req.user?.firstName, req.user?.lastName].filter(Boolean))).join(' ').trim();
 
     if (!signature || String(signature).length < 100) {
       throw new ApiError('SIGNATURE_REQUIRED', 'Electronic signature is required', 400);

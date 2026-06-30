@@ -26,7 +26,7 @@ export const Input: React.FC<InputProps> = ({
   return (
     <div className="space-y-1.5">
       {label && (
-        <label className="block text-sm font-medium text-slate-700">
+        <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">
           {label}
           {props.required && <span className="text-red-500 ml-0.5">*</span>}
         </label>
@@ -37,14 +37,14 @@ export const Input: React.FC<InputProps> = ({
         )}
         <input
           className={`
-            w-full px-3.5 py-2.5 bg-white border rounded-lg text-sm text-slate-800
-            placeholder:text-slate-400
+            w-full px-3.5 py-2.5 bg-white dark:bg-slate-800 border rounded-lg text-sm text-slate-800 dark:text-slate-100
+            placeholder:text-slate-400 dark:placeholder:text-slate-500
             transition-all duration-200
             focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500
-            disabled:bg-slate-50 disabled:text-slate-500
+            disabled:bg-slate-50 dark:disabled:bg-slate-900 disabled:text-slate-500 dark:disabled:text-slate-400
             ${LeftIcon ? 'pl-10' : ''}
             ${RightIcon || error ? 'pr-10' : ''}
-            ${error ? 'border-red-300 focus:border-red-500 focus:ring-red-500/20' : 'border-slate-300'}
+            ${error ? 'border-red-300 dark:border-red-600 focus:border-red-500 focus:ring-red-500/20' : 'border-slate-300 dark:border-slate-600'}
             ${className}
           `}
           {...props}
@@ -57,12 +57,12 @@ export const Input: React.FC<InputProps> = ({
             onClick={onRightIconClick}
             className={`absolute right-3 top-1/2 -translate-y-1/2 ${onRightIconClick ? 'cursor-pointer hover:text-slate-600' : ''}`}
           >
-            <RightIcon className="w-5 h-5 text-slate-400" />
+            <RightIcon className="w-5 h-5 text-slate-400 dark:text-slate-500" />
           </button>
         ) : null}
       </div>
-      {helperText && !error && <p className="text-xs text-slate-500">{helperText}</p>}
-      {error && <p className="text-xs text-red-600">{error}</p>}
+      {helperText && !error && <p className="text-xs text-slate-500 dark:text-slate-400">{helperText}</p>}
+      {error && <p className="text-xs text-red-600 dark:text-red-400">{error}</p>}
     </div>
   );
 };

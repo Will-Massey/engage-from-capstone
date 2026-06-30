@@ -41,7 +41,7 @@
 ### Proposal builder (AI-native, not AI-extra)
 
 - [x] Clara sidebar: suggest services, title, cover letter, pre-send review (`b97b86d4`)
-- [ ] **Streaming drafts** — cover letter and engagement letter stream token-by-token into preview (feels live, not "click and wait")
+- [x] **Streaming drafts** — cover + engagement + **proposal send email** now stream live (body chunks delivered incrementally). Added very cheap Clara tweak buttons ("Warmer", "Shorter", "Add urgency") that do tiny follow-up prompts on the existing draft — maximum client wow for minimal extra tokens. [2026-06-30]
 - [ ] **Section accept/reject** — each Clara suggestion is a card: Accept · Edit · Reject (never overwrite without consent)
 - [ ] **Real-time client preview** — split pane: edit left, "what client sees" right, updates as Clara fills content
 - [ ] **Voice of the practice** — tenant uploads 2–3 example letters; Clara fine-tunes tone (stored as tenant embedding / style prompt, not raw paste in every call)
@@ -62,7 +62,7 @@
   - Valid until date and how to get in touch
 - [x] **Partner approval gate** — show full email preview in app before send; "Edit with Clara" inline
 - [ ] **Personalisation inputs** — client name, contact, company CH data, proposal JSON, partner sign-off — all in prompt context
-- [ ] **A/B subject lines** — Clara suggests 2 subjects; partner picks (track open rate later)
+- [x] **A/B subject lines** — cheap `/suggest-email-subjects` + UI chips in the email preview (one tiny call, high impact)  [2026-06-30]
 
 ### Follow-up & lifecycle emails
 
@@ -182,4 +182,5 @@ User action → gather tenant-scoped context (client, proposal, CH, catalog, his
 
 ---
 
-*Last updated: 2026-06-29 · Owner: William · Repo: `engage-from-capstone` master*
+*Last updated: 2026-06-30 · Owner: William · Repo: `engage-from-capstone` master*
+*Streaming drafts implemented (live token streaming for cover + engagement).*

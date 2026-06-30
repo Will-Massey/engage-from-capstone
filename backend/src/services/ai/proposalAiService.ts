@@ -9,7 +9,7 @@ import {
   selectClausesForServices,
 } from '../../data/engagementClauseLibrary.js';
 import { getProposalSettings, addDays } from '../../utils/tenantProposalSettings.js';
-import { chatCompletion, isAiConfigured, parseJsonResponse } from './aiClient.js';
+import { chatCompletion, chatCompletionStream, isAiConfigured, parseJsonResponse } from './aiClient.js';
 import { VALID_BILLING_FREQUENCIES } from '../../utils/proposalPricing.js';
 import { AI_COPILOT } from '../../config/aiCopilot.js';
 
@@ -211,6 +211,45 @@ Use plain paragraphs (no markdown headers). 3-5 short paragraphs. End with a cle
   return { content: raw, requiresApproval: true };
 }
 
+/** Streaming version of cover letter for live preview in builder. */
+export async function* generateAiCoverLetterStream(
+  tenantId: string,
+  userId: string | undefined,
+  params: {
+    clientId: string;
+    tone: 'PROFESSIONAL' | 'FRIENDLY' | 'MODERN';
+    practiceName: string;
+    senderName?: string;
+    services: Array<{ name: string; billingFrequency?: string; displayPrice?: number }>;
+  }
+): AsyncGenerator<string, void, unknown> {
+  const client = await loadClientContext(tenantId, params.clientId);
+
+  const prompt = `Write a proposal cover letter for a UK accountancy practice.
+Tone: ${params.tone.toLowerCase()}
+Practice: ${params.practiceName}
+Client: ${client.name} (${client.companyType})
+Addressee: ${client.contactName || client.name}
+Sender: ${params.senderName || 'Partner'}
+Services: ${params.services.map((s) => `${s.name} (${s.billingFrequency || 'MONTHLY'})`).join('; ')}
+Use plain paragraphs (no markdown headers). 3-5 short paragraphs. End with a clear call to review and sign. UK English.`;
+
+  let full = '';
+  for await (const chunk of chatCompletionStream(
+    [
+      { role: 'system', content: UK_SYSTEM },
+      { role: 'user', content: prompt },
+    ],
+    { temperature: 0.6, maxTokens: 1400 }
+  )) {
+    full += chunk;
+    yield chunk;
+  }
+
+  await logAiUsage(tenantId, userId, 'cover_letter_stream', { clientId: params.clientId, tone: params.tone });
+  // consumer may want the full at end; we yielded incrementally
+}
+
 /** Phase 2b — Follow-up email draft */
 export async function generateAiFollowUp(
   tenantId: string,
@@ -322,6 +361,66 @@ export async function assembleAiEngagementLetter(
     clauseIds: clauses.map((c) => c.id),
     requiresApproval: true,
   };
+}
+
+/** Streaming version: yields the AI intro first (if enabled), then the assembled letter body in one final chunk. */
+export async function* assembleAiEngagementLetterStream(
+  tenantId: string,
+  userId: string | undefined,
+  proposalId: string
+): AsyncGenerator<string, void, unknown> {
+  const proposal = await prisma.proposal.findFirst({
+    where: { id: proposalId, tenantId },
+    include: { client: true, services: true, tenant: true },
+  });
+  if (!proposal) throw new ApiError('NOT_FOUND', 'Proposal not found', 404);
+
+  const serviceRows = proposal.services.map((s) => ({ name: s.name, tags: '' }));
+  const clauses = selectClausesForServices(serviceRows);
+  const feesSummary = proposal.services
+    .map(
+      (s) =>
+        `• ${s.name}: £${(s.displayPrice || s.unitPrice).toFixed(2)} per ${String(s.billingFrequency).toLowerCase().replace('_', ' ')}`
+    )
+    .join('\n');
+
+  const periodStart = proposal.contractStartDate
+    ? proposal.contractStartDate.toISOString().slice(0, 10)
+    : 'On acceptance';
+  const periodEnd = proposal.renewalDate
+    ? proposal.renewalDate.toISOString().slice(0, 10)
+    : '12 months from commencement';
+
+  const baseLetter = assembleEngagementLetterFromClauses(
+    proposal.tenant.name,
+    proposal.client.name,
+    clauses,
+    feesSummary,
+    `${periodStart} to ${periodEnd}`
+  );
+
+  if (isAiConfigured()) {
+    // Stream the intro
+    const introPrompt = `Write a 2-paragraph introduction for this engagement letter (plain text, no headers). Client: ${proposal.client.name}. Services: ${proposal.services.map((s) => s.name).join(', ')}.`;
+    for await (const chunk of chatCompletionStream(
+      [
+        { role: 'system', content: UK_SYSTEM },
+        { role: 'user', content: introPrompt },
+      ],
+      { temperature: 0.4, maxTokens: 500 }
+    )) {
+      yield chunk;
+    }
+    yield '\n\n---\n\n';
+  }
+
+  // Yield the deterministic clause-based body
+  yield baseLetter;
+
+  await logAiUsage(tenantId, userId, 'engagement_letter_stream', {
+    proposalId,
+    clauseIds: clauses.map((c) => c.id),
+  });
 }
 
 /** Pre-send draft review (no saved proposal required) */

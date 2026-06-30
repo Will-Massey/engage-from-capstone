@@ -534,11 +534,146 @@ export const apiClient = {
     services?: Array<{ name: string; billingFrequency?: string; displayPrice?: number }>;
   }) => api.post('/ai/proposal-email-draft', data),
 
+  aiEmailRevise: (currentBody: string, instruction: string, context?: any) =>
+    api.post('/ai/email-revise', { currentBody, instruction, context }),
+
+  aiCoverLetterRevise: (currentBody: string, instruction: string, context?: any) =>
+    api.post('/ai/cover-letter-revise', { currentBody, instruction, context }),
+
+  aiSuggestEmailSubjects: (body: string, context?: any) =>
+    api.post('/ai/suggest-email-subjects', { body, context }),
+
+  aiSuggestEmailCtas: (body: string, context?: any) =>
+    api.post('/ai/suggest-email-ctas', { body, context }),
+
+  aiAnalyzeEmail: (body: string, context?: any) =>
+    api.post('/ai/analyze-email', { body, context }),
+
+  aiStreamProposalEmailDraft: async (
+    payload: any,
+    onEvent: (event: { subject?: string; bodyChunk?: string; done?: boolean; error?: string }) => void
+  ): Promise<void> => {
+    const { token } = useAuthStore.getState();
+    const base = API_URL.endsWith('/api') ? API_URL : `${API_URL}/api`;
+    const res = await fetch(`${base}/ai/proposal-email-draft/stream`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
+      body: JSON.stringify(payload),
+    });
+    if (!res.body) throw new Error('No stream body');
+    const reader = res.body.getReader();
+    const decoder = new TextDecoder();
+    let buffer = '';
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      buffer += decoder.decode(value, { stream: true });
+      const parts = buffer.split('\n\n');
+      buffer = parts.pop() || '';
+      for (const part of parts) {
+        const line = part.trim();
+        if (!line.startsWith('data:')) continue;
+        const jsonStr = line.slice(5).trim();
+        try {
+          const event = JSON.parse(jsonStr);
+          onEvent(event);
+          if (event.done || event.error) return;
+        } catch {}
+      }
+    }
+  },
+
   aiClientBrief: (clientId: string) => api.post(`/ai/client-brief/${clientId}`, {}),
 
   aiAutoFit: (clientId: string) => api.post('/ai/auto-fit', { clientId }),
 
   aiAttentionQueue: () => api.get('/ai/attention-queue'),
+
+  // Streaming (SSE) for live drafts — uses native fetch + token from auth store
+  aiStreamCoverLetter: async (
+    data: {
+      clientId: string;
+      tone: string;
+      practiceName: string;
+      senderName?: string;
+      services: Array<{ name: string; billingFrequency?: string; displayPrice?: number }>;
+    },
+    onChunk: (text: string) => void
+  ): Promise<void> => {
+    const { token } = useAuthStore.getState();
+    const base = API_URL.endsWith('/api') ? API_URL : `${API_URL}/api`;
+    const res = await fetch(`${base}/ai/cover-letter/stream`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
+      body: JSON.stringify(data),
+    });
+    if (!res.body) throw new Error('No stream body');
+    const reader = res.body.getReader();
+    const decoder = new TextDecoder();
+    let buffer = '';
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      buffer += decoder.decode(value, { stream: true });
+      const parts = buffer.split('\n\n');
+      buffer = parts.pop() || '';
+      for (const part of parts) {
+        const line = part.trim();
+        if (!line.startsWith('data:')) continue;
+        const jsonStr = line.slice(5).trim();
+        try {
+          const payload = JSON.parse(jsonStr);
+          if (payload.chunk) onChunk(payload.chunk);
+          if (payload.done) return;
+          if (payload.error) throw new Error(payload.error);
+        } catch {}
+      }
+    }
+  },
+
+  aiStreamEngagementLetter: async (
+    proposalId: string,
+    onChunk: (text: string) => void
+  ): Promise<void> => {
+    const { token } = useAuthStore.getState();
+    const base = API_URL.endsWith('/api') ? API_URL : `${API_URL}/api`;
+    const res = await fetch(`${base}/ai/engagement-letter/stream`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
+      body: JSON.stringify({ proposalId }),
+    });
+    if (!res.body) throw new Error('No stream body');
+    const reader = res.body.getReader();
+    const decoder = new TextDecoder();
+    let buffer = '';
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      buffer += decoder.decode(value, { stream: true });
+      const parts = buffer.split('\n\n');
+      buffer = parts.pop() || '';
+      for (const part of parts) {
+        const line = part.trim();
+        if (!line.startsWith('data:')) continue;
+        const jsonStr = line.slice(5).trim();
+        try {
+          const payload = JSON.parse(jsonStr);
+          if (payload.chunk) onChunk(payload.chunk);
+          if (payload.done) return;
+          if (payload.error) throw new Error(payload.error);
+        } catch {}
+      }
+    }
+  },
 };
 
 export default api;
