@@ -824,6 +824,37 @@ export default function ProposalBuilder({ proposalId }: ProposalBuilderProps) {
     }
   };
 
+  // Low-token voice (dictate) → structured proposal (roadmap item)
+  const runVoiceProposal = async () => {
+    if (!selectedClient) {
+      toast.error('Select a client first');
+      return;
+    }
+    const transcript = window.prompt('Paste or type short voice transcript / notes (e.g. "annual accounts + tax for limited company, around 3-4k fee, start next month")');
+    if (!transcript || transcript.trim().length < 10) return;
+    try {
+      const res = (await apiClient.aiVoiceProposal(selectedClient.id, transcript.trim())) as any;
+      if (res.success && res.data) {
+        const d = res.data;
+        if (d.title) setProposalTitle(d.title);
+        if (d.coverLetter) setCoverLetter(d.coverLetter);
+        if (d.coverLetterTone) setCoverLetterTone(d.coverLetterTone);
+        if (Array.isArray(d.suggestedServices) && d.suggestedServices.length) {
+          d.suggestedServices.forEach((s: any) => {
+            // Try match by name in catalog, else skip (user can add)
+            const match = services.find((cat) => cat.name.toLowerCase().includes((s.name || '').toLowerCase().slice(0, 20)));
+            if (match) addServiceWithCadence(match, s.billingFrequency || 'MONTHLY', s.displayPrice);
+          });
+          toast.success('Clara turned voice notes into title + draft + services');
+        } else {
+          toast.success('Clara drafted from voice');
+        }
+      }
+    } catch (e) {
+      showAiError(e);
+    }
+  };
+
   const applyAiSuggestions = () => {
     if (!aiSuggestions?.suggestions?.length) return;
     let added = 0;
@@ -2010,6 +2041,16 @@ export default function ProposalBuilder({ proposalId }: ProposalBuilderProps) {
             >
               <SparklesIcon className="h-4 w-4" />
               Preview client email
+            </button>
+          )}
+          {aiConfigured && selectedClient && (
+            <button
+              type="button"
+              onClick={runVoiceProposal}
+              className="btn-secondary text-sm inline-flex items-center gap-1.5 border-violet-200 dark:border-violet-700 text-violet-700 dark:text-violet-300"
+              title="Dictate scope or notes — Clara turns it into title, services and draft (very cheap)"
+            >
+              🎤 Voice with Clara
             </button>
           )}
           {isEditMode ? (

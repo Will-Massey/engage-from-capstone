@@ -13,7 +13,7 @@ import {
 import { apiClient } from '../../utils/api';
 import { useAuthStore } from '../../stores/authStore';
 import { SkeletonCard } from '../../components/skeleton/SkeletonCard';
-import EmptyState from '../../components/ui/EmptyState';
+import { EmptyClients } from '../../components/empty-states/EmptyStates';
 
 const Clients = () => {
   const { tenant } = useAuthStore();
@@ -186,15 +186,7 @@ const Clients = () => {
       {isLoading ? (
         <SkeletonCard count={6} />
       ) : clients.length === 0 ? (
-        <EmptyState
-          icon={<UsersIcon className="h-7 w-7" />}
-          title="No clients yet"
-          description="Add your first client to start building proposals, tracking lifecycle stages, and automating touchpoints."
-          actionLabel="Add client"
-          actionTo="/clients/new"
-          secondaryLabel="Import from Companies House"
-          secondaryTo="/clients/new"
-        />
+        <EmptyClients />
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {clients.map((client) => (

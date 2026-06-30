@@ -21,7 +21,7 @@ import { apiClient } from '../../utils/api';
 import { useAuthStore } from '../../stores/authStore';
 import { format, formatDistanceToNow } from 'date-fns';
 import toast from 'react-hot-toast';
-import EmptyState from '../../components/ui/EmptyState';
+import { EmptyProposals } from '../../components/empty-states/EmptyStates';
 import { SkeletonCard } from '../../components/skeleton/SkeletonCard';
 
 // Prevent tree-shaking
@@ -290,17 +290,7 @@ const Proposals = () => {
         {isLoading ? (
           <SkeletonCard count={6} />
         ) : proposals.length === 0 ? (
-          <div className="p-8">
-            <EmptyState
-              icon={<DocumentTextIcon className="h-7 w-7" />}
-              title="No proposals yet"
-              description="Create your first professional proposal in under five minutes — services, pricing, cover letter, and e-sign ready to send."
-              actionLabel="Create proposal"
-              actionTo="/proposals/new"
-              secondaryLabel="Browse clients"
-              secondaryTo="/clients"
-            />
-          </div>
+          <EmptyProposals />
         ) : (
           <div className="overflow-x-auto">
             <table className="min-w-[1100px] w-full divide-y divide-slate-200 dark:divide-slate-700">

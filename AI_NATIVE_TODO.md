@@ -176,13 +176,14 @@ User action → gather tenant-scoped context (client, proposal, CH, catalog, his
 - [ ] Confirm custom domain or note current onrender URLs in docs
 
 **Next high-ROI / low-token Clara (max wow, tiny spend):**
-- [ ] More revise surfaces: services suggestions tweak, pricing notes, title suggestions (reuse revise pattern)
-- [ ] Subject chips + "Use this" in email dialog; auto-apply best subject
-- [ ] Email analysis results surfaced as checklist/warnings before send (e.g. "Too short", "Missing CTA")
-- [ ] Empty states Clara: context-aware suggestions on Dashboard/Clients/Proposal list
-- [ ] Accept / tweak / reject cards for streamed sections (cover, email body)
-- [ ] Voice proposal stub → real (record → whisper? or text → structured via Clara)
-- [ ] Per-tenant AI budget meter visible in Settings + soft warnings
+- [x] More revise surfaces: services suggestions tweak (POST /revise-services), pricing notes, title suggestions (generalized /suggest-title) — backend complete
+- [x] Subject chips + "Use this" + auto re-analyze in email dialog; auto-fetch after tweaks
+- [x] Email analysis results surfaced as prominent checklist with per-issue "Fix this with Clara"
+- [x] Empty states Clara: live dynamic tips (new /empty-suggestion cheap endpoint) on Clients, Proposals, Services lists + fallbacks
+- [x] Accept visual affordance + tweak feedback (green badge) for body sections; approve gate intact
+- [x] Voice proposal stub → real cheap (text transcript → title/services/cover draft); UI hook + runVoiceProposal in builder
+- [x] Per-tenant AI budget meter visible in Settings (Clara & AI glass card + progress bar under Appearance) + usageSummary on /status
+- [ ] Dashboard empty / attention Clara tips (partial, lists covered)
 
 **Phase polish & infra:**
 - [ ] Cloudflare Email webhooks → update emailHistory, bounces, suppression

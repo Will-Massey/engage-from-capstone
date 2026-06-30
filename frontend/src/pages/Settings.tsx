@@ -137,6 +137,11 @@ const Settings = () => {
     autoApplyVat: true,
   });
 
+  // Clara & AI budget (fetched for visibility meter)
+  const [aiBudget, setAiBudget] = useState<any>(null);
+  const [aiBudgetLoading, setAiBudgetLoading] = useState(true);
+  const [aiBudgetError, setAiBudgetError] = useState<string | null>(null);
+
   useEffect(() => {
     if (tabFromUrl && VALID_TABS.includes(tabFromUrl) && tabFromUrl !== activeTab) {
       setActiveTab(tabFromUrl);
@@ -152,6 +157,28 @@ const Settings = () => {
       loadUsers();
     }
   }, [activeTab]);
+
+  // Load Clara AI budget status (cheap, always; used in Appearance + Automation)
+  useEffect(() => {
+    const loadAiBudget = async () => {
+      setAiBudgetLoading(true);
+      setAiBudgetError(null);
+      try {
+        const res = (await apiClient.aiStatus()) as any;
+        const budget = res?.data?.tokenBudget || res?.tokenBudget;
+        if (budget) {
+          setAiBudget(budget);
+        } else {
+          setAiBudgetError('No budget data');
+        }
+      } catch (e: any) {
+        setAiBudgetError(e?.message || 'Failed to load AI status');
+      } finally {
+        setAiBudgetLoading(false);
+      }
+    };
+    loadAiBudget();
+  }, []);
 
   // Load tenant settings on mount
   useEffect(() => {
@@ -1127,6 +1154,50 @@ const Settings = () => {
                 <div className="mt-4 text-xs text-slate-500 dark:text-slate-400">
                   Your preference is saved and will be remembered across sessions.
                 </div>
+              </div>
+
+              {/* Clara & AI budget visibility (polish + transparency) */}
+              <div className="glass-tile p-6">
+                <div className="flex items-center gap-3 mb-4">
+                  <SparklesIcon className="h-6 w-6 text-violet-600 dark:text-violet-400" />
+                  <div>
+                    <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-100">Clara &amp; AI</h2>
+                    <p className="text-sm text-slate-600 dark:text-slate-400">Monthly usage and budget for Clara AI features</p>
+                  </div>
+                </div>
+
+                {aiBudgetLoading ? (
+                  <div className="text-sm text-slate-500 dark:text-slate-400">Loading Clara budget…</div>
+                ) : aiBudgetError || !aiBudget ? (
+                  <div className="text-sm text-amber-600 dark:text-amber-400">
+                    {aiBudgetError || 'AI budget data unavailable.'}
+                  </div>
+                ) : (
+                  <div>
+                    <div className="text-sm text-slate-700 dark:text-slate-300 mb-2">
+                      Clara budget this month: {aiBudget.usedThisMonth?.toLocaleString?.() ?? aiBudget.usedThisMonth} / {aiBudget.budgetMonthly?.toLocaleString?.() ?? aiBudget.budgetMonthly} tokens used (remaining {aiBudget.remaining?.toLocaleString?.() ?? aiBudget.remaining}). Calls: {aiBudget.aiCallsThisMonth ?? '—'}
+                    </div>
+
+                    {/* Tailwind progress bar, perfect dark mode */}
+                    {(() => {
+                      const used = Number(aiBudget.usedThisMonth) || 0;
+                      const total = Number(aiBudget.budgetMonthly) || 1;
+                      const pct = Math.max(0, Math.min(100, Math.round((used / total) * 100)));
+                      return (
+                        <div className="w-full bg-slate-200 dark:bg-slate-700 rounded-full h-2.5 overflow-hidden" role="progressbar" aria-valuenow={pct} aria-valuemin={0} aria-valuemax={100}>
+                          <div
+                            className="h-2.5 rounded-full transition-all bg-violet-600 dark:bg-violet-500"
+                            style={{ width: `${pct}%` }}
+                          />
+                        </div>
+                      );
+                    })()}
+
+                    <p className="mt-2 text-xs text-slate-500 dark:text-slate-400">
+                      Budget resets monthly. Clara uses a small allowance per suggestion, draft or review.
+                    </p>
+                  </div>
+                )}
               </div>
             </div>
           )}

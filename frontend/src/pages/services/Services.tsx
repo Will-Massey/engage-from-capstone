@@ -5,7 +5,6 @@ import {
   MagnifyingGlassIcon,
   PencilIcon,
   TrashIcon,
-  BuildingOfficeIcon,
   StarIcon,
   DocumentDuplicateIcon,
   XMarkIcon,
@@ -14,6 +13,7 @@ import { apiClient } from '../../utils/api';
 import { useAuthStore } from '../../stores/authStore';
 import toast from 'react-hot-toast';
 import { SkeletonCard } from '../../components/skeleton/SkeletonCard';
+import { EmptyServices } from '../../components/empty-states/EmptyStates';
 import { formatServiceCategory, SERVICE_CATEGORY_OPTIONS } from '../../utils/serviceCategoryLabels';
 
 interface Service {
@@ -468,11 +468,7 @@ const Services = () => {
       </div>
 
       {filteredServices.length === 0 ? (
-        <div className="text-center py-16 card">
-          <BuildingOfficeIcon className="mx-auto h-12 w-12 text-gray-300" />
-          <h3 className="mt-4 text-lg font-medium text-slate-900 dark:text-white">No services found</h3>
-          <p className="mt-1 text-slate-600 dark:text-slate-300">Try adjusting your search or filter</p>
-        </div>
+        <EmptyServices />
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {filteredServices.map((service) => (

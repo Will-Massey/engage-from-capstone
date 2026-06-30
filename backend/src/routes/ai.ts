@@ -85,7 +85,11 @@ router.get(
           'proposal_email_draft',
           'proposal_email_draft_stream',
           'email_revise',
+          'cover_letter_revise',
           'suggest_email_subjects',
+          'suggest_email_ctas',
+          'analyze_email',
+          'revise_services',
           'client_brief',
           'auto_fit',
           'attention_queue',
@@ -94,8 +98,27 @@ router.get(
           'voice_proposal',
         ],
         tokenBudget: await checkAiTokenBudget(req.tenantId!),
+        usageSummary: `Monthly AI calls tracked via activity; see tokenBudget for details (calls * ~2.5k est.)`,
       },
     });
+  })
+);
+
+/** GET /api/ai/empty-suggestion — micro cheap tip for empty states (Clara powered, 1-2 sentences, tiny tokens) */
+router.get(
+  '/empty-suggestion',
+  asyncHandler(async (req, res) => {
+    const context = String(req.query.context || 'general').slice(0, 40);
+    // Tiny prompt only — low token cost, UK English, encouraging + actionable
+    const raw = await chatCompletion(
+      [
+        { role: 'system', content: 'You are Clara, concise helpful UK accountancy AI. Output 1-2 sentences only. Use UK spelling.' },
+        { role: 'user', content: `Empty ${context} list. Give 1 encouraging actionable tip (max 35 words) for a UK accountant user starting with Engage app. No intro, no quotes.` },
+      ],
+      { temperature: 0.55, maxTokens: 55 }
+    );
+    const tip = (raw || '').trim().replace(/^["']|["']$/g, '').slice(0, 220);
+    res.json({ success: true, data: { tip } });
   })
 );
 
@@ -267,13 +290,14 @@ router.post(
   })
 );
 
-/** POST /api/ai/suggest-title */
+/** POST /api/ai/suggest-title — cheap title suggestion; generalized to support clientName for unsaved drafts */
 router.post(
   '/suggest-title',
   asyncHandler(async (req, res) => {
-    const { clientId, services } = z
+    const { clientId, clientName, services } = z
       .object({
-        clientId: z.string().uuid(),
+        clientId: z.string().uuid().optional(),
+        clientName: z.string().optional(),
         services: z.array(
           z.object({
             name: z.string(),
@@ -283,13 +307,76 @@ router.post(
       })
       .parse(req.body);
 
-    const data = await suggestProposalTitle(
-      req.tenantId!,
-      req.user?.id,
-      clientId,
-      services.map((s) => ({ name: s.name, billingFrequency: s.billingFrequency }))
+    if (clientId) {
+      const data = await suggestProposalTitle(
+        req.tenantId!,
+        req.user?.id,
+        clientId,
+        services.map((s) => ({ name: s.name, billingFrequency: s.billingFrequency }))
+      );
+      return res.json({ success: true, data });
+    }
+
+    // generalized cheap direct path (no client load) for drafts
+    const nameForTitle = clientName || 'the client';
+    const svcNames = services.map((s) => s.name).join(', ') || 'general engagement';
+    const raw = await chatCompletion(
+      [
+        { role: 'system', content: 'You are concise. Output only the JSON requested.' },
+        { role: 'user', content: `Suggest a professional UK accountancy proposal title (max 8 words). Return JSON: { "title": "..." }
+Client: ${nameForTitle}
+Services: ${svcNames}` },
+      ],
+      { temperature: 0.4, maxTokens: 80 }
     );
-    res.json({ success: true, data });
+    let title = `Proposal for ${nameForTitle}`;
+    try { title = JSON.parse(raw).title?.trim() || title; } catch {}
+    res.json({ success: true, data: { title } });
+  })
+);
+
+/** Very cheap revise/tweak for services list or pricing notes (tiny token, high ROI for pricing advisor) */
+router.post(
+  '/revise-services',
+  asyncHandler(async (req, res) => {
+    const { services, instruction, clientContext } = z
+      .object({
+        services: z.array(
+          z.object({
+            name: z.string(),
+            billingFrequency: z.string().optional(),
+            displayPrice: z.number().optional(),
+          })
+        ),
+        instruction: z.string().min(3).max(150),
+        clientContext: z.any().optional(),
+      })
+      .parse(req.body);
+
+    const prompt = `UK accountancy pricing tweak. Services: ${JSON.stringify(services).slice(0, 300)}
+Instruction: ${instruction}
+Context: ${JSON.stringify(clientContext || {}).slice(0, 200)}
+Return ONLY JSON { "revised": [same shape], "notes": "short UK English advice" }. Keep prices realistic.`;
+
+    const raw = await chatCompletion(
+      [
+        { role: 'system', content: 'Return only valid compact JSON. Be concise.' },
+        { role: 'user', content: prompt },
+      ],
+      { temperature: 0.35, maxTokens: 280 }
+    );
+
+    let revised: any[] = services;
+    let notes = '';
+    try {
+      const p = JSON.parse(raw);
+      revised = Array.isArray(p.revised) ? p.revised : services;
+      notes = typeof p.notes === 'string' ? p.notes.trim() : '';
+    } catch {
+      notes = raw.trim().slice(0, 200);
+    }
+
+    res.json({ success: true, data: { revisedServices: revised.slice(0, services.length), notes } });
   })
 );
 
@@ -573,16 +660,8 @@ router.post(
       .parse(req.body);
 
     const prompt = `Quickly review this UK accountancy proposal email body.
-Flag only if:
-- Too long (> ~350 words)
-- Missing key elements (fees/total, next steps, valid until, clear CTA, services summary)
-- Tone feels off for a professional client email
-
-Body:
-${body.slice(0, 800)}
-
-Return a very short JSON: { "issues": ["short bullet 1", "short bullet 2"] } or { "issues": [] } if fine.
-Maximum 3 bullets.`;
+Flag issues for length, missing (fees/total, next steps, valid until, CTA, services), or tone.
+Return tiny JSON: { "issues": ["short bullet"], "score": 85, "missing": ["fees"] } . Max 3 issues/missing. UK English.`;
 
     const raw = await chatCompletion(
       [
@@ -593,15 +672,19 @@ Maximum 3 bullets.`;
     );
 
     let issues: string[] = [];
+    let score: number | undefined;
+    let missing: string[] = [];
     try {
       const parsed = JSON.parse(raw);
       issues = Array.isArray(parsed.issues) ? parsed.issues.slice(0, 3) : [];
+      score = typeof parsed.score === 'number' ? Math.max(0, Math.min(100, parsed.score)) : undefined;
+      missing = Array.isArray(parsed.missing) ? parsed.missing.slice(0, 3) : [];
     } catch {
       // fallback simple parse
       issues = raw.split(/\n|•|-/).map(s => s.trim()).filter(s => s.length > 5 && s.length < 120).slice(0, 3);
     }
 
-    res.json({ success: true, data: { issues } });
+    res.json({ success: true, data: { issues, score, missing } });
   })
 );
 
@@ -741,6 +824,33 @@ router.post(
       .parse(req.body);
     const data = await draftProposalFromVoice(req.tenantId!, req.user?.id, { clientId, transcript });
     res.json({ success: true, data });
+  })
+);
+
+/** Stub Cloudflare / other email delivery webhooks (updates email status / history). Expand with real signature validation later. */
+router.post(
+  '/webhooks/email',
+  asyncHandler(async (req, res) => {
+    // Expected minimal payload from email provider (adapt to Cloudflare Email or SendGrid style)
+    const { messageId, event, to, status, timestamp } = req.body || {};
+    // Best-effort update (no hard fail)
+    try {
+      if (messageId) {
+        // Could look up via EmailLog or proposal emailHistory in future
+        await (await import('../config/database.js')).prisma.activityLog.create({
+          data: {
+            tenantId: req.tenantId || 'unknown',
+            action: 'EMAIL_WEBHOOK',
+            entityType: 'EMAIL',
+            description: `${event || status || 'delivery'} for ${to || messageId}`,
+            metadata: JSON.stringify({ messageId, event, status, timestamp }),
+          },
+        });
+      }
+    } catch (e) {
+      // swallow for webhook resilience
+    }
+    res.json({ success: true, received: true });
   })
 );
 

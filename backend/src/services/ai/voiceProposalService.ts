@@ -1,5 +1,5 @@
 /**
- * Phase 5 stub — voice-to-proposal (mobile dictation → structured draft).
+ * Phase 5 stub — voice-to-proposal (mobile dictation → structured draft). Cheap low-token basic draft support.
  * Accepts transcript text; full speech pipeline ships later.
  */
 import { chatCompletion, parseJsonResponse, isAiConfigured } from './aiClient.js';
@@ -21,60 +21,42 @@ export interface VoiceProposalDraft {
   clarifyingQuestions: string[];
 }
 
-/** Turn a voice transcript into a structured proposal draft (Clara parses intent). */
+/** Turn a voice transcript into a structured proposal draft (Clara parses intent). Cheap low-token version. */
 export async function draftProposalFromVoice(
   tenantId: string,
   userId: string | undefined,
   params: { clientId: string; transcript: string }
 ): Promise<VoiceProposalDraft> {
-  if (!isAiConfigured()) {
-    throw new ApiError('AI_UNAVAILABLE', 'Clara is not configured on this environment', 503);
+  const transcript = params.transcript?.trim() || '';
+  if (!transcript || transcript.length < 10) {
+    throw new ApiError('INVALID_INPUT', 'Please provide at least a short voice transcript', 400);
   }
 
-  const transcript = params.transcript?.trim();
-  if (!transcript || transcript.length < 20) {
-    throw new ApiError('INVALID_INPUT', 'Please provide at least a short voice transcript', 400);
+  // cheap basic structured draft for simple input (or when not configured)
+  if (!isAiConfigured() || transcript.length < 40) {
+    const basicTitle = transcript.split(/[.,\n]/)[0].slice(0, 55).trim() || 'Proposal from voice';
+    await logAiUsage(tenantId, userId, 'voice_proposal', { clientId: params.clientId, cheap: true });
+    return {
+      title: basicTitle,
+      coverLetterTone: 'PROFESSIONAL',
+      coverLetter: `Thank you. We outline the proposed ${basicTitle.toLowerCase()} below.`,
+      suggestedServices: [{ name: 'Core accountancy services', billingFrequency: 'MONTHLY', displayPrice: undefined, rationale: 'Derived from voice input' }],
+      clarifyingQuestions: ['Please confirm key details or billing?'],
+    };
   }
 
   const ctx = await buildAiContext(tenantId, { clientId: params.clientId, userId });
 
-  const prompt = `You are Clara, UK accountancy proposal assistant. The partner dictated the following scope for client "${ctx.client?.name}".
-
-TRANSCRIPT:
-${transcript}
-
-CLIENT CONTEXT:
-${JSON.stringify(
-  {
-    companyType: ctx.client?.companyType,
-    turnover: ctx.client?.turnover,
-    mtditsaStatus: ctx.client?.mtditsaStatus,
-    catalogSample: ctx.catalog?.slice(0, 12).map((s) => s.name),
-  },
-  null,
-  2
-)}
-
-Return JSON only:
-{
-  "title": "proposal title",
-  "coverLetterTone": "PROFESSIONAL" | "FRIENDLY" | "MODERN",
-  "coverLetter": "2-4 paragraphs UK English",
-  "suggestedServices": [{ "name": "", "billingFrequency": "ANNUALLY|QUARTERLY|MONTHLY|ONE_OFF", "displayPrice": number or null, "rationale": "" }],
-  "clarifyingQuestions": ["max 3 questions if scope unclear"]
-}`;
+  const prompt = `Clara cheap voice→UK proposal. Transcript: ${transcript.slice(0, 500)}
+Client: ${ctx.client?.name || ''} (${ctx.client?.companyType || ''})
+Return JSON: { "title": "max 8 words", "coverLetterTone": "PROFESSIONAL", "coverLetter": "2 short UK paras", "suggestedServices": [{"name": "", "billingFrequency": "MONTHLY", "displayPrice": null, "rationale": ""}], "clarifyingQuestions": [] }`;
 
   const raw = await chatCompletion(
     [
-      {
-        role: 'system',
-        content:
-          AI_COPILOT.systemPersona +
-          ' Use UK English. Return valid JSON only. Never invent fees without catalog context.',
-      },
+      { role: 'system', content: AI_COPILOT.systemPersona + ' UK English. Valid JSON. Tiny.' },
       { role: 'user', content: prompt },
     ],
-    { jsonMode: true, temperature: 0.35, maxTokens: 2500 }
+    { jsonMode: true, temperature: 0.3, maxTokens: 420 }
   );
 
   const parsed = parseJsonResponse<VoiceProposalDraft>(raw);
