@@ -1,12 +1,12 @@
 # sendit.resume - auto-generated checkpoint (keep in git)
 pending: true
-written: 2026-06-30 20:49:25 UTC
-project_root: C:/Users/willi/Cline Workspace/engage-deploy
-commit: 121574bc
+written: 2026-06-30 22:31:07 UTC
+project_root: C:\Users\willi\Cline Workspace\engage-deploy
+commit: fbed4b5f
 branch: integrate-deploy
-phase: Phase: Manual Proposal Builder â€” **complete** (deployed)
-goal: Engage proposal builder: manual-first creation flow, free service add/remove, catalogue price editing, personalised admin acceptance emails.
-next_up_1: Smoke-test live: Proposals list â†’ **New proposal (manual)** â†’ pick client â†’ add/remove services â†’ create.
+phase: Phase: Templates + snapshot isolation â€” **deployed** (fbed4b5f)
+goal: Engage proposals: isolated per-proposal snapshots, **Templates** catalogue section for pre-made bundles, faster proposal drafting from sidebar.
+next_up_1: Smoke-test live: Sidebar **Catalogue â†’ Templates** â†’ create template â†’ **Use template** â†’ pick client â†’ proposal pre-fills.
 
 # Agent: on resume read ~/.grok/sendit.active OR project_root paths below.
 # NEVER glob search. Execute next_up_1 immediately. Set pending: false when done.

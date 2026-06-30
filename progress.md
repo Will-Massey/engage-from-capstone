@@ -1,6 +1,37 @@
 # Build Progress Log
 <!-- Append-only session log. Latest deploy checkpoint is the resume entry point. -->
 
+## Session: 2026-06-30 — templates in play
+
+### Deploy checkpoint — fbed4b5f
+- **Commit:** fbed4b5f feat: add Templates section to sidebar with proposal template management
+- **Also includes:** 48457d71 proposal/template snapshot isolation fix
+- **Branch:** master (integrate-deploy)
+- **Render services:** engage-backend, engage-frontend
+- **Deploy status:** deploying (Render auto-deploy from master; no hook script)
+- **Phase completed this session:** Templates catalogue + snapshot hardening
+
+#### Built this session
+- Sidebar **Templates** under Catalogue (next to Services)
+- `/templates` management page: create, edit, delete, use template
+- `PUT /api/proposal-templates/:id` for edits
+- Proposal builder deep-link `?template=<id>`
+- Backend: line-item snapshots preserved on save; templates deep-clone serviceConfig
+
+#### Tests
+| Test | Expected | Actual | Status |
+|------|----------|--------|--------|
+| frontend build | pass | pass | ok |
+| backend build | pass | pass | ok |
+| proposalSnapshot.test.ts | pass | pass | ok |
+
+#### Resume prompt
+```
+Continue per task_plan.md. Last deploy: fbed4b5f on master. Templates in play. Start Next Up #1 — smoke-test Templates → Use template on production.
+```
+
+---
+
 ## Session: 2026-06-30 — manual proposal deploy
 
 ### Deploy checkpoint — 121574bc
