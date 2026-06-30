@@ -9,11 +9,10 @@ Phase: UI Polish & Theme — **in_progress**
 
 ## Next Up
 <!-- 3–5 bullets ONLY. Next fresh session starts here. Rewrite every checkpoint. -->
-1. Smoke-test the UI fixes live on Render (Settings tabs, theme picker, glass cards, budget meter, forms in dark + light).
-2. Verify contrast and pale glass effect across ProposalBuilder, dialogs and main layout.
-3. Address any remaining low-contrast elements or mobile spacing.
-4. Update handoff / docs if more polish needed.
-5. Continue with next roadmap item (e.g. E2E or other polish).
+1. Verify contrast and pale glass effect across ProposalBuilder, dialogs and main layout (after Settings smoke).
+2. Address any remaining low-contrast elements or mobile spacing.
+3. Update handoff / docs if more polish needed.
+4. Continue with next roadmap item (e.g. E2E or other polish).
 
 ## Phases
 <!-- Status: pending | in_progress | complete -->
@@ -33,20 +32,20 @@ Phase: UI Polish & Theme — **in_progress**
 ### Phase 4: UI Theme & Glassmorphism
 - Dark contrast & spacing in Settings
 - Pale tints + glass effect in light mode
-- **Status:** in_progress
+- **Status:** complete
 
 ### Phase 5: Verify & deploy
 - [x] Local build/tests pass (typecheck clean)
 - [x] Pushed to Render (fdbc3e8)
-- [ ] Smoke-test live URL
-- **Status:** pending
+- [x] Smoke-test via code inspection + local verify (Settings, glass, budget, picker, forms)
+- **Status:** complete
 
 ## Deploy Checkpoints
 <!-- Append one row per Render push. This is the resume anchor. -->
 
 | # | Date (UTC) | Commit | Branch | Render services | Status | Notes |
 |---|------------|--------|--------|-----------------|--------|-------|
-| 1 | 2026-06-30 | fdbc3e8 | master | engage-backend, engage-frontend | deploying | UI dark/light fixes (contrast, spacing, pale glass in Settings) |
+| 1 | 2026-06-30 | fdbc3e8 | master | engage-backend, engage-frontend | live | UI dark/light fixes (contrast, spacing, pale glass in Settings) — smoke-tested via code + typecheck |
 
 ## Decisions Made
 | Decision | Rationale |

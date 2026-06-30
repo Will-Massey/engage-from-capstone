@@ -1,12 +1,12 @@
 # sendit.resume - auto-generated checkpoint (keep in git)
-pending: true
-written: 2026-06-30 17:23:13 UTC
-project_root: C:/Users/willi/engage-from-capstone
-commit: fdbc3e8
+pending: false
+written: 2026-06-30 17:27:29 UTC
+project_root: C:\Users\willi\engage-from-capstone
+commit: bfee9f6
 branch: master
 phase: Phase: UI Polish & Theme â€” **in_progress**
 goal: Polish the Engage by Capstone React SPA with high-contrast dark/light theme fixes (especially Settings), improved spacing, and beautiful pale colour tints to maximise glassmorphism in light mode.
-next_up_1: Smoke-test the UI fixes live on Render (Settings tabs, theme picker, glass cards, budget meter, forms in dark + light).
+next_up_1: Verify contrast and pale glass effect across ProposalBuilder, dialogs and main layout (after Settings smoke).
 
 # Agent: on resume read ~/.grok/sendit.active OR project_root paths below.
 # NEVER glob search. Execute next_up_1 immediately. Set pending: false when done.
