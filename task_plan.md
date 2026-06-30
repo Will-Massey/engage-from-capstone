@@ -2,66 +2,71 @@
 <!-- Token handoff file — update at every Render deploy checkpoint. Fresh sessions read THIS, not chat history. -->
 
 ## Goal
-Polish the Engage by Capstone React SPA with high-contrast dark/light theme fixes (especially Settings), improved spacing, and beautiful pale colour tints to maximise glassmorphism in light mode.
+Engage proposal builder: manual-first creation flow, free service add/remove, catalogue price editing, personalised admin acceptance emails.
 
 ## Current Phase
-Phase: UI Polish & Theme — **in_progress**
+Phase: Manual Proposal Builder — **complete** (deployed)
 
 ## Next Up
 <!-- 3–5 bullets ONLY. Next fresh session starts here. Rewrite every checkpoint. -->
-1. Smoke-test the UI fixes live on Render (Settings tabs, theme picker, glass cards, budget meter, forms in dark + light).
-2. Verify contrast and pale glass effect across ProposalBuilder, dialogs and main layout.
-3. Address any remaining low-contrast elements or mobile spacing.
-4. Update handoff / docs if more polish needed.
-5. Continue with next roadmap item (e.g. E2E or other polish).
+1. Smoke-test live: Proposals list → **New proposal (manual)** → pick client → add/remove services → create.
+2. Smoke-test catalogue: Settings → Services → edit price field accepts free typing (no base hours field).
+3. Smoke-test acceptance: sign a proposal → account admin receives personalised Clara email.
+4. Set `CLOUDFLARE_EMAIL_WEBHOOK_SECRET` on Render if delivery tracking needed.
+5. Next roadmap: custom domain `engage.capstonesoftware.co.uk` or e-signature certificate smoke-test.
 
 ## Phases
 <!-- Status: pending | in_progress | complete -->
 
 ### Phase 1: Core AI & Proposals
-- Clara streaming email, cheap revise, CTAs, analysis, voice, etc.
+- Clara streaming, pricing advisor, accept/reject sections
 - **Status:** complete
 
-### Phase 2: Features & Polish Prep
-- Profile fixes, dedup, theme store basics.
+### Phase 2: E-signature & Email
+- Certificate PDF, Cloudflare webhooks, admin acceptance alert
 - **Status:** complete
 
-### Phase 3: Roadmap Completion
-- Full low-token Clara surfaces, empty states, budget meter, etc.
+### Phase 3: Manual Proposal Builder
+- Build from scratch vs Clara mode, toggle add/remove services, clear all
+- Catalogue price input fix, remove base hours UI
 - **Status:** complete
 
 ### Phase 4: UI Theme & Glassmorphism
-- Dark contrast & spacing in Settings
-- Pale tints + glass effect in light mode
-- **Status:** in_progress
+- **Status:** complete (fdbc3e8)
 
 ### Phase 5: Verify & deploy
-- [x] Local build/tests pass (typecheck clean)
-- [x] Pushed to Render (fdbc3e8)
-- [ ] Smoke-test live URL
-- **Status:** pending
+- [x] Local builds pass
+- [x] Pushed to Render (121574bc)
+- [ ] Live smoke-test manual proposal flow
+- **Status:** in_progress
 
 ## Deploy Checkpoints
 <!-- Append one row per Render push. This is the resume anchor. -->
 
 | # | Date (UTC) | Commit | Branch | Render services | Status | Notes |
 |---|------------|--------|--------|-----------------|--------|-------|
-| 1 | 2026-06-30 | fdbc3e8 | master | engage-backend, engage-frontend | deploying | UI dark/light fixes (contrast, spacing, pale glass in Settings) |
+| 1 | 2026-06-30 | fdbc3e8 | master | engage-backend, engage-frontend | live | UI dark/light fixes |
+| 2 | 2026-06-30 | 986526fd | master | engage-backend, engage-frontend | live | E-signature audit, Cloudflare webhooks, Clara accept/reject |
+| 3 | 2026-06-30 | bb1328b5 | master | engage-backend, engage-frontend | live | Personalised admin acceptance email |
+| 4 | 2026-06-30 | eff1b326 | master | engage-backend, engage-frontend | live | Manual build mode, service toggle, price inputs |
+| 5 | 2026-06-30 | 121574bc | master | engage-backend, engage-frontend | deploying | New proposal (manual) list shortcut |
 
 ## Decisions Made
 | Decision | Rationale |
 |----------|-----------|
-| | |
+| Manual mode skips Clara auto-fit | User must control service selection without AI overwriting |
+| Price fields as decimal text | `type=number` + `Number()` blocked typing in catalogue modal |
+| baseHours hidden in UI | Not used in proposal flow; DB default retained |
 
 ## Errors Encountered
 | Error | Attempt | Resolution |
 |-------|---------|------------|
-| | 1 | |
+| ProposalClientPreview missing on branch | 1 | Removed broken import; Clara sidebar only |
 
 ## Blockers / open questions
--
+- `CLOUDFLARE_EMAIL_WEBHOOK_SECRET` still manual on Render
 
 ## Notes
-- `/sendit` = push + hooks + checkpoint + `sendit.resume`; then `/clear` + `/sendit resume` (auto-resume from file)
-- Or `/build-handoff checkpoint` after manual push, then `/clear` + `/sendit resume`
-- Never `/resume` old chat when these files exist
+- Frontend: https://engage-frontend-0g6u.onrender.com
+- Backend: https://engage-backend-e1ue.onrender.com
+- Manual proposal URL: `/proposals/new?manual=1`
