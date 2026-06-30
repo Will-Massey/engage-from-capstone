@@ -51,3 +51,9 @@
 - Full dark/light mode consistency pass (2026-06-30): reactive Appearance tab in Settings, no-FOUC init script in index.html, improved DashboardLayout header, enhanced ui/Card+Input+Button primitives with dark variants, added missing dark: classes to ShareProposalDialog, ClientDetail, ProposalView, AiPanel, ProposalEmailPreviewDialog, toast import standardisation in key dialogs.
 - Theme store listener + early apply reinforced.
 - Typecheck clean; patterns kept (glass, Tailwind class strategy, UK English).
+
+## 2026-06-30 Push to Render
+- Pushed af3b4aa (Clara email streaming + cheap revise/CTA/subject/analysis + cover revise + global theme + profile fixes + dedup).
+- GitHub updated (forced to align history); Render auto-deploy triggered for engage-backend + frontend.
+- Next manual: Render plan/disk upgrade for prod readiness.
+- All items 1-4 (cover revise, CTA suggestions, email auto-analysis, wire tweaked send) complete + verified in typecheck.

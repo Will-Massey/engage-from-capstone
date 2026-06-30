@@ -159,14 +159,50 @@ User action → gather tenant-scoped context (client, proposal, CH, catalog, his
 
 ---
 
-## Suggested build order (next 4 sprints)
+## Current Roadmap — Post-Push 2026-06-30 (af3b4aa on master → Render deploying)
 
-| Sprint | Focus | Wow outcome |
-|--------|-------|-------------|
-| **1** | Render Starter + AI proposal **send email** (Clara body, approval preview) | Client receives email that explains the engagement in detail |
-| **2** | Client select **auto-fit** + CH brief + streaming cover letter | Partner picks client → proposal 70% drafted in 30 seconds |
-| **3** | Follow-up + touchpoint AI emails; dashboard **attention queue** | Software tells partner who to call and what to say |
-| **4** | Public proposal Q&A + signing summary; onboarding wizard | Client-facing wow; first-run magic |
+**Just shipped (this push):**
+- Proposal email **streaming** (live body) + cheap `/email-revise`, `/suggest-email-subjects`, `/suggest-email-ctas`, `/analyze-email`
+- Cover letter cheap revise (inline "Warmer", "Shorter", custom + Apply)
+- Final tweaked email wired into send confirmation/approved version
+- Global dark/light theme (Zustand + class + FOUC script + contrast fixes across Settings, dialogs, cards, inputs)
+- phone + jobTitle persist in profile (backend /me + store + form sync)
+- Sender name dedup ("sent by X X" fixed)
+- All typechecks clean; low-token Clara pattern established (edit existing + tiny maxTokens)
+
+**Immediate (verify + unblock deploy):**
+- [ ] Smoke test on Render: create proposal → Clara email preview (stream + tweak CTA + analyse) → send; toggle theme; update profile phone/jobTitle; no "X X" dup
+- [ ] Upgrade engage-backend to Starter + 10 GB disk (manual dashboard: https://dashboard.render.com/web/srv-d6qkjlua2pns73a2r1fg/settings) — required for disk uploads/signatures
+- [ ] Confirm custom domain or note current onrender URLs in docs
+
+**Next high-ROI / low-token Clara (max wow, tiny spend):**
+- [ ] More revise surfaces: services suggestions tweak, pricing notes, title suggestions (reuse revise pattern)
+- [ ] Subject chips + "Use this" in email dialog; auto-apply best subject
+- [ ] Email analysis results surfaced as checklist/warnings before send (e.g. "Too short", "Missing CTA")
+- [ ] Empty states Clara: context-aware suggestions on Dashboard/Clients/Proposal list
+- [ ] Accept / tweak / reject cards for streamed sections (cover, email body)
+- [ ] Voice proposal stub → real (record → whisper? or text → structured via Clara)
+- [ ] Per-tenant AI budget meter visible in Settings + soft warnings
+
+**Phase polish & infra:**
+- [ ] Cloudflare Email webhooks → update emailHistory, bounces, suppression
+- [ ] E2E tests for streaming + revise flows (build gate)
+- [ ] Settings: AI token budget UI + "Clara voice" samples upload (style prompt)
+- [ ] Mobile signing polish + Clara "any questions?" on public view
+- [ ] Full WCAG + contrast audit (leverage existing theme primitives)
+
+**Later (moat / scale):**
+- [ ] Client sentiment from replies
+- [ ] Daily brief email (Clara prioritises actions)
+- [ ] SOC2 prep, AI disclosure in terms
+- [ ] Xero/Stripe deep integrations with Clara explanations
+
+| Sprint | Focus | Outcome |
+|--------|-------|---------|
+| 0 (now) | Verify + Starter plan | Live Clara email on prod |
+| 1 | Cheap Clara everywhere + empty states | 70% auto-draft feel |
+| 2 | Lifecycle + attention + webhooks | Proactive partner tool |
+| 3 | Polish + mobile + compliance | Production grade |
 
 ---
 
@@ -183,4 +219,5 @@ User action → gather tenant-scoped context (client, proposal, CH, catalog, his
 ---
 
 *Last updated: 2026-06-30 · Owner: William · Repo: `engage-from-capstone` master*
-*Streaming drafts implemented (live token streaming for cover + engagement).*
+*Streaming drafts implemented (live for cover + engagement + proposal send email). Cheap revise/CTA/subject/analysis wired. Global dark/light theme + contrast fixes complete. Profile phone/jobTitle persist. Name dedup fixed. Pushed to Render via GitHub (af3b4aa).*
+*Typecheck clean. Next: verify deploy, manual Render Starter upgrade.*
