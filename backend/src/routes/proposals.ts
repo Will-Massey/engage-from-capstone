@@ -716,6 +716,22 @@ router.post(
       throw new ApiError('SIGNATURE_FAILED', result.error || 'Failed to record signature', 500);
     }
 
+    try {
+      const { sendPracticeAcceptanceNotifications } = await import(
+        '../services/acceptanceNotificationService.js'
+      );
+      await sendPracticeAcceptanceNotifications({
+        proposalId: proposal.id,
+        tenantId: req.tenantId!,
+        signatureId: result.signatureId!,
+        signedBy: signerName,
+        signedByRole: signatoryPosition || 'Authorised signatory',
+        signerEmail: req.user?.email || null,
+      });
+    } catch (notifyErr) {
+      logger.error('Failed to send practice acceptance notification:', notifyErr);
+    }
+
     const updatedProposal = await prisma.proposal.findFirst({
       where: { id, tenantId: req.tenantId },
       include: { client: true, services: true },

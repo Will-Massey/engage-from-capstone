@@ -12,6 +12,9 @@ export interface AcceptanceNotificationData {
   signedBy: string;
   signedByRole: string;
   tenantName?: string;
+  /** Clara or rules-based personalised intro (greeting may be prepended by sender) */
+  personalizedMessage?: string;
+  proposalUrl?: string;
 }
 
 export function generateAcceptanceNotification(data: AcceptanceNotificationData): {
@@ -62,7 +65,13 @@ export function generateAcceptanceNotification(data: AcceptanceNotificationData)
     </div>
     
     <div class="content">
-      <p>Great news! <strong>${data.clientName}</strong> has electronically signed and accepted your proposal.</p>
+      ${
+        data.personalizedMessage
+          ? `<div style="background:#ecfdf5;border-left:4px solid #10b981;padding:16px 18px;border-radius:6px;margin-bottom:20px;">
+        <p style="margin:0;white-space:pre-wrap;line-height:1.65;">${escapeHtml(data.personalizedMessage)}</p>
+      </div>`
+          : `<p>Great news! <strong>${data.clientName}</strong> has electronically signed and accepted your proposal.</p>`
+      }
       
       <div class="details">
         <table>
@@ -103,7 +112,7 @@ export function generateAcceptanceNotification(data: AcceptanceNotificationData)
       </ul>
       
       <center>
-        <a href="${process.env.FRONTEND_URL || 'https://engage.capstone.co.uk'}/proposals" class="button">View in Dashboard</a>
+        <a href="${data.proposalUrl || `${process.env.FRONTEND_URL || 'https://engage.capstone.co.uk'}/proposals`}" class="button">View proposal in Engage</a>
       </center>
     </div>
     
@@ -118,7 +127,7 @@ export function generateAcceptanceNotification(data: AcceptanceNotificationData)
   const text = `
 PROPOSAL ACCEPTED - ${data.proposalReference}
 
-Great news! ${data.clientName} has electronically signed and accepted your proposal.
+${data.personalizedMessage || `Great news! ${data.clientName} has electronically signed and accepted your proposal.`}
 
 PROPOSAL DETAILS
 ----------------
@@ -136,12 +145,20 @@ Next steps:
 - Set up the client onboarding process
 - Schedule a kick-off call if needed
 
-View in Dashboard: ${process.env.FRONTEND_URL || 'https://engage.capstone.co.uk'}/proposals
+View in Engage: ${data.proposalUrl || `${process.env.FRONTEND_URL || 'https://engage.capstone.co.uk'}/proposals`}
 
 Sent by Engage by Capstone
   `.trim();
 
   return { html, text, subject };
+}
+
+function escapeHtml(value: string): string {
+  return value
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
 }
 
 export default generateAcceptanceNotification;

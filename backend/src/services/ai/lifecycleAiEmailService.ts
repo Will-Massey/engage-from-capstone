@@ -377,4 +377,97 @@ export async function tryGenerateTouchpointEmail(
   }
 }
 
+/** Context for practice admin acceptance alert emails */
+export interface AcceptanceAdminContext {
+  practiceName: string;
+  clientName: string;
+  clientCompanyType: string;
+  clientTurnover?: number | null;
+  clientEmployees?: number | null;
+  proposalTitle: string;
+  proposalReference: string;
+  totalAmount: string;
+  serviceCount: number;
+  servicesSummary: string;
+  signedBy: string;
+  signedByRole: string;
+  signerEmail?: string | null;
+  acceptedAtIso: string;
+  sentAtIso?: string | null;
+  hoursToSign: number | null;
+  daysToSign: number | null;
+  timeToSignLabel: string | null;
+  viewCount: number;
+  hoursFromFirstViewToSign: number | null;
+  totalViewMinutes: number;
+  geoLocation?: string | null;
+  deviceInfo?: string | null;
+  createdByName?: string | null;
+  proposalUrl: string;
+}
+
+/** Phase 2 — Personalised internal alert for account admins when a client signs */
+export async function generateAcceptanceAdminNotification(
+  tenantId: string,
+  context: AcceptanceAdminContext
+): Promise<LifecycleEmailDraft> {
+  const timingDetail = context.timeToSignLabel
+    ? `Time from send to signature: ${context.timeToSignLabel}`
+    : 'Send date not recorded';
+  const viewDetail =
+    context.viewCount > 0
+      ? `Proposal views before signing: ${context.viewCount}${context.totalViewMinutes ? ` (~${context.totalViewMinutes} min reading)` : ''}`
+      : 'No tracked views before signing';
+  const firstViewDetail =
+    context.hoursFromFirstViewToSign !== null
+      ? `Hours from first view to signature: ${context.hoursFromFirstViewToSign}`
+      : 'First view timing: n/a';
+
+  const raw = await chatCompletion(
+    [
+      { role: 'system', content: UK_SYSTEM },
+      {
+        role: 'user',
+        content: `Write a short, warm internal email body for UK accountancy practice admins — NOT to the client.
+Practice: ${context.practiceName}
+Client: ${context.clientName} (${context.clientCompanyType})
+Proposal: ${context.proposalTitle} (${context.proposalReference})
+Value: ${context.totalAmount} across ${context.serviceCount} service(s)
+Signed by: ${context.signedBy} (${context.signedByRole})${context.signerEmail ? ` — ${context.signerEmail}` : ''}
+Accepted: ${context.acceptedAtIso.slice(0, 16).replace('T', ' ')} UTC
+${timingDetail}
+${viewDetail}
+${firstViewDetail}
+${context.geoLocation ? `Signature location: ${context.geoLocation}` : ''}
+${context.createdByName ? `Proposal created by: ${context.createdByName}` : ''}
+Services: ${context.servicesSummary}
+
+Requirements:
+- 2-4 short paragraphs, UK English
+- Congratulate the practice — this is a win
+- Highlight ONE distinctive, personable detail (speed to sign, multiple views, client type, value, location) — use real numbers from above
+- Brief practical next step (onboarding, welcome call, AML if new client)
+- Do NOT include a subject line in the body
+- Do NOT mention AI, Clara, or third-party models
+- Plain text only
+
+Return JSON only: { "subject": "short celebratory subject with client name", "body": "plain text body without greeting — greeting added separately" }`,
+      },
+    ],
+    { jsonMode: true, temperature: 0.6, maxTokens: 700 }
+  );
+
+  const draft = parseJsonResponse<{ subject: string; body: string }>(raw);
+  await logAiUsage(tenantId, undefined, 'acceptance_admin_notify', {
+    proposalReference: context.proposalReference,
+  });
+
+  return {
+    subject: draft.subject,
+    body: draft.body.trim(),
+    html: textToHtml(draft.body.trim()),
+    source: 'ai',
+  };
+}
+
 export { isAiConfigured };

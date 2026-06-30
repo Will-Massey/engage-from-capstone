@@ -374,11 +374,14 @@ export async function sendAcceptanceNotificationForTenant(
     proposalPdf: Buffer;
     signaturePng?: Buffer;
     replyTo?: string;
+    personalizedMessage?: string;
+    subject?: string;
+    proposalUrl?: string;
   },
   relatedIds?: { proposalId?: string; clientId?: string }
 ): Promise<TenantMailSendResult> {
   const { generateAcceptanceNotification } = await import('../templates/acceptanceNotification.js');
-  const { html, text, subject } = generateAcceptanceNotification({
+  const generated = generateAcceptanceNotification({
     clientName: params.clientName,
     proposalTitle: params.proposalTitle,
     proposalReference: params.proposalReference,
@@ -386,7 +389,12 @@ export async function sendAcceptanceNotificationForTenant(
     totalAmount: params.totalAmount,
     signedBy: params.signedBy,
     signedByRole: params.signedByRole,
+    personalizedMessage: params.personalizedMessage,
+    proposalUrl: params.proposalUrl,
   });
+  const html = generated.html;
+  const text = generated.text;
+  const subject = params.subject || generated.subject;
 
   const attachments: TenantMailAttachment[] = [
     {

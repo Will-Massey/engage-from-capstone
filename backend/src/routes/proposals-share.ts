@@ -725,53 +725,19 @@ router.post(
       throw new ApiError('SIGNATURE_FAILED', result.error || 'Failed to record signature', 500);
     }
 
-    // Send acceptance notification to practice
+    // Personalised acceptance notification to account admin(s)
     try {
-      const fullProposal = await prisma.proposal.findUnique({
-        where: { id: proposal.id },
-        include: {
-          createdBy: {
-            select: { email: true, firstName: true, lastName: true },
-          },
-          client: true,
-        },
+      const { sendPracticeAcceptanceNotifications } = await import(
+        '../services/acceptanceNotificationService.js'
+      );
+      await sendPracticeAcceptanceNotifications({
+        proposalId: proposal.id,
+        tenantId: proposal.tenantId,
+        signatureId: result.signatureId!,
+        signedBy: parsed.signedBy,
+        signedByRole: parsed.signedByRole,
+        signerEmail: parsed.signerEmail,
       });
-
-      if (fullProposal?.createdBy?.email) {
-        const { PDFGenerator } = await import('../services/pdfGenerator.js');
-        const proposalPdf = await PDFGenerator.generateProposal(proposal.id);
-        const signatureImage = await getSignatureImage(result.signatureId!, proposal.tenantId);
-
-        const notifyResult = await tenantMailer.sendAcceptanceNotification(
-          proposal.tenantId,
-          {
-            to: fullProposal.createdBy.email,
-            clientName: fullProposal.client.name,
-            proposalTitle: fullProposal.title,
-            proposalReference: fullProposal.reference,
-            acceptedAt: new Date(),
-            totalAmount: `£${fullProposal.total.toFixed(2)}`,
-            signedBy: parsed.signedBy,
-            signedByRole: parsed.signedByRole,
-            proposalPdf,
-            signaturePng: signatureImage
-              ? Buffer.from(signatureImage.split(',')[1], 'base64')
-              : undefined,
-            replyTo: parsed.signerEmail,
-          },
-          { proposalId: proposal.id, clientId: fullProposal.clientId }
-        );
-
-        if (notifyResult.success) {
-          await prisma.proposal.update({
-            where: { id: proposal.id },
-            data: { acceptanceNotifiedAt: new Date() },
-          });
-          logger.info(`Acceptance notification sent for proposal ${proposal.id}`);
-        } else {
-          logger.error(`Acceptance notification failed: ${notifyResult.error}`);
-        }
-      }
     } catch (error) {
       logger.error('Failed to send acceptance notification:', error);
       // Don't fail the request - signature was still recorded
