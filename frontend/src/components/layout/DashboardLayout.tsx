@@ -61,7 +61,7 @@ const DashboardLayout = () => {
           <div
             className={
               scrolled
-                ? 'bg-white/90 dark:bg-slate-900/90 border-b border-slate-200/80 dark:border-slate-700/80'
+                ? 'bg-white/90 dark:bg-slate-900/90 border-b border-slate-200/80 dark:border-slate-700/80 backdrop-blur-xl'
                 : 'bg-transparent border-b border-transparent'
             }
           >
@@ -70,8 +70,8 @@ const DashboardLayout = () => {
         </div>
 
         {/* Main content area */}
-        <main id="main-content" className="pt-20 pb-8 px-4 sm:px-6 lg:px-8">
-          <div className="max-w-7xl mx-auto space-y-6">
+        <main id="main-content" className="pt-20 pb-10 px-4 sm:px-6 lg:px-8">
+          <div className="max-w-7xl mx-auto space-y-8">
             <AppRouteHeader />
             <Outlet />
           </div>

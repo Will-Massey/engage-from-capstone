@@ -204,7 +204,7 @@ export default function ProposalAiAssist({ proposal, onUpdated }: ProposalAiAssi
         actionLabel={proposal.engagementLetter ? 'Regenerate' : 'Generate'}
       >
         {proposal.engagementLetter && !engagementDraft && (
-          <p className="text-xs text-slate-500 dark:text-slate-400">
+          <p className="text-xs text-slate-500 dark:text-slate-300">
             A letter is already saved on this proposal.
           </p>
         )}
@@ -230,7 +230,7 @@ export default function ProposalAiAssist({ proposal, onUpdated }: ProposalAiAssi
           actionLabel="Draft renewal"
         >
           <div className="flex items-center gap-2 mb-2">
-            <label className="text-xs text-slate-600 dark:text-slate-400">Fee uplift %</label>
+            <label className="text-xs text-slate-600 dark:text-slate-300">Fee uplift %</label>
             <input
               type="number"
               min={0}

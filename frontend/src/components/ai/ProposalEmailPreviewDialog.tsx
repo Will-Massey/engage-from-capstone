@@ -331,7 +331,7 @@ export default function ProposalEmailPreviewDialog({
                   <h2 className="text-lg font-semibold text-slate-900 dark:text-white">
                     Client email preview
                   </h2>
-                  <p className="text-xs text-slate-600 dark:text-slate-400 mt-0.5">
+                  <p className="text-xs text-slate-500 dark:text-slate-300 mt-0.5">
                     Drafted by {AI_COPILOT.name} — approve before your client receives it
                   </p>
                 </div>
@@ -350,7 +350,7 @@ export default function ProposalEmailPreviewDialog({
             {loading ? (
               <div className="py-12 text-center space-y-3" aria-busy="true">
                 <SparklesIcon className="h-8 w-8 text-violet-500 mx-auto animate-pulse" />
-                <p className="text-sm text-slate-600 dark:text-slate-400">
+                <p className="text-sm text-slate-500 dark:text-slate-300">
                   {AI_COPILOT.name} is drafting the client email…
                 </p>
               </div>
@@ -562,7 +562,7 @@ export default function ProposalEmailPreviewDialog({
               type="button"
               onClick={fetchDraft}
               disabled={loading}
-              className="text-xs inline-flex items-center gap-1 text-slate-600 dark:text-slate-400 hover:text-violet-600 disabled:opacity-50"
+              className="text-xs inline-flex items-center gap-1 text-slate-500 dark:text-slate-300 hover:text-violet-600 disabled:opacity-50"
             >
               <ArrowPathIcon className={`h-3.5 w-3.5 ${loading ? 'animate-spin' : ''}`} />
               Redraft with {AI_COPILOT.shortName}

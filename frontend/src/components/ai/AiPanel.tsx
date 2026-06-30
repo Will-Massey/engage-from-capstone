@@ -30,7 +30,7 @@ export function AiPanel({
           <SparklesIcon className="h-5 w-5 text-violet-500 shrink-0 mt-0.5" />
           <div>
             <p className="text-sm font-medium text-slate-800 dark:text-slate-100">{title}</p>
-            <p className="text-xs text-slate-600 dark:text-slate-400 mt-1">
+            <p className="text-xs text-slate-600 dark:text-slate-300 mt-1">
               {AI_COPILOT.unavailableMessage}
             </p>
           </div>
@@ -47,7 +47,7 @@ export function AiPanel({
           <div>
             <h4 className="text-sm font-semibold text-slate-900 dark:text-white">{title}</h4>
             {description && (
-              <p className="text-xs text-slate-600 dark:text-slate-400 mt-0.5">{description}</p>
+              <p className="text-xs text-slate-600 dark:text-slate-300 mt-0.5">{description}</p>
             )}
           </div>
         </div>
@@ -136,7 +136,7 @@ export function AiDraftPreview({
         <p className="text-[10px] text-violet-500 dark:text-violet-400">Live preview — you can Apply at any time or wait for Clara to finish.</p>
       )}
       {showActions && onDiscard && (
-        <p className="text-[10px] text-slate-500 dark:text-slate-400">Accept · Edit · Regenerate · Reject (never overwrites without your action)</p>
+        <p className="text-[10px] text-slate-500 dark:text-slate-300">Accept · Edit · Regenerate · Reject (never overwrites without your action)</p>
       )}
     </div>
   );

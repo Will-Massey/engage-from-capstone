@@ -172,11 +172,11 @@ const SimpleBarChart = ({ data }: { data: AnalyticsData['monthlyTrend'] }) => {
       <div className="flex items-center justify-center gap-6 mt-4">
         <div className="flex items-center">
           <div className="w-3 h-3 bg-primary-500 rounded mr-2" />
-          <span className="text-sm text-slate-600 dark:text-slate-400">Created</span>
+          <span className="text-sm text-slate-600 dark:text-slate-300">Created</span>
         </div>
         <div className="flex items-center">
           <div className="w-3 h-3 bg-green-500 rounded mr-2" />
-          <span className="text-sm text-slate-600 dark:text-slate-400">Accepted</span>
+          <span className="text-sm text-slate-600 dark:text-slate-300">Accepted</span>
         </div>
       </div>
     </div>
@@ -221,15 +221,15 @@ const ConversionFunnel = ({ data }: { data: FunnelData }) => {
       {/* Conversion rates */}
       <div className="mt-4 pt-4 border-t border-white/10 dark:border-slate-700/50 grid grid-cols-3 gap-4">
         <div className="text-center">
-          <p className="text-xs text-slate-500 dark:text-slate-400">Sent → Viewed</p>
+          <p className="text-xs text-slate-500 dark:text-slate-300">Sent → Viewed</p>
           <p className="text-lg font-bold text-slate-900 dark:text-white">{data.conversionRates.sentToViewed}%</p>
         </div>
         <div className="text-center">
-          <p className="text-xs text-slate-500 dark:text-slate-400">Viewed → Accepted</p>
+          <p className="text-xs text-slate-500 dark:text-slate-300">Viewed → Accepted</p>
           <p className="text-lg font-bold text-slate-900 dark:text-white">{data.conversionRates.viewedToAccepted}%</p>
         </div>
         <div className="text-center">
-          <p className="text-xs text-slate-500 dark:text-slate-400">Sent → Accepted</p>
+          <p className="text-xs text-slate-500 dark:text-slate-300">Sent → Accepted</p>
           <p className="text-lg font-bold text-slate-900 dark:text-white">{data.conversionRates.sentToAccepted}%</p>
         </div>
       </div>
@@ -242,21 +242,21 @@ const RevenuePipeline = ({ data, formatCurrency }: { data: PipelineData; formatC
     <h3 className="text-lg font-semibold text-slate-900 dark:text-white mb-4">Revenue Pipeline</h3>
     <div className="grid grid-cols-2 gap-4 mb-4">
       <div className="p-4 bg-white/40 dark:bg-slate-700/40 rounded-lg">
-        <p className="text-xs text-slate-500 dark:text-slate-400">Pipeline Value</p>
+        <p className="text-xs text-slate-500 dark:text-slate-300">Pipeline Value</p>
         <p className="text-xl font-bold text-slate-900 dark:text-white">{formatCurrency(data.pipeline.value)}</p>
         <p className="text-xs text-slate-500">{data.pipeline.count} proposals</p>
       </div>
       <div className="p-4 bg-white/40 dark:bg-slate-700/40 rounded-lg">
-        <p className="text-xs text-slate-500 dark:text-slate-400">Accepted Revenue</p>
+        <p className="text-xs text-slate-500 dark:text-slate-300">Accepted Revenue</p>
         <p className="text-xl font-bold text-green-600">{formatCurrency(data.accepted.value)}</p>
       </div>
       <div className="p-4 bg-white/40 dark:bg-slate-700/40 rounded-lg">
-        <p className="text-xs text-slate-500 dark:text-slate-400">Monthly Recurring</p>
+        <p className="text-xs text-slate-500 dark:text-slate-300">Monthly Recurring</p>
         <p className="text-xl font-bold text-primary-600">{formatCurrency(data.monthlyRecurring)}</p>
         <p className="text-xs text-slate-500">/month</p>
       </div>
       <div className="p-4 bg-white/40 dark:bg-slate-700/40 rounded-lg">
-        <p className="text-xs text-slate-500 dark:text-slate-400">Forecast (30% conv.)</p>
+        <p className="text-xs text-slate-500 dark:text-slate-300">Forecast (30% conv.)</p>
         <p className="text-xl font-bold text-amber-600">{formatCurrency(data.forecast.expectedValue)}</p>
       </div>
     </div>
@@ -270,17 +270,17 @@ const TimeToDecision = ({ data }: { data: TimeToDecisionData }) => (
       <div className="text-center p-4 bg-white/40 dark:bg-slate-700/40 rounded-lg">
         <ClockIcon className="h-6 w-6 text-blue-500 mx-auto mb-2" />
         <p className="text-2xl font-bold text-slate-900 dark:text-white">{data.avgDaysToView}d</p>
-        <p className="text-xs text-slate-500 dark:text-slate-400">Avg. to View</p>
+        <p className="text-xs text-slate-500 dark:text-slate-300">Avg. to View</p>
       </div>
       <div className="text-center p-4 bg-white/40 dark:bg-slate-700/40 rounded-lg">
         <CheckCircleIcon className="h-6 w-6 text-green-500 mx-auto mb-2" />
         <p className="text-2xl font-bold text-slate-900 dark:text-white">{data.avgDaysToAccept}d</p>
-        <p className="text-xs text-slate-500 dark:text-slate-400">Avg. to Accept</p>
+        <p className="text-xs text-slate-500 dark:text-slate-300">Avg. to Accept</p>
       </div>
       <div className="text-center p-4 bg-white/40 dark:bg-slate-700/40 rounded-lg">
         <FunnelIcon className="h-6 w-6 text-red-500 mx-auto mb-2" />
         <p className="text-2xl font-bold text-slate-900 dark:text-white">{data.avgDaysToDecline}d</p>
-        <p className="text-xs text-slate-500 dark:text-slate-400">Avg. to Decline</p>
+        <p className="text-xs text-slate-500 dark:text-slate-300">Avg. to Decline</p>
       </div>
     </div>
     <p className="text-xs text-slate-500 text-center mt-3">
@@ -371,7 +371,7 @@ const Analytics = () => {
         <div className="glass-tile p-12 text-center">
           <ChartPieIcon className="mx-auto h-16 w-16 text-slate-300 mb-4" />
           <h2 className="text-xl font-semibold text-slate-900 dark:text-white mb-2">No data available</h2>
-          <p className="text-slate-600 dark:text-slate-400 mb-4">Start creating proposals to see analytics</p>
+          <p className="text-slate-600 dark:text-slate-300 mb-4">Start creating proposals to see analytics</p>
           <button onClick={loadAnalytics} className="btn-secondary">
             Retry
           </button>

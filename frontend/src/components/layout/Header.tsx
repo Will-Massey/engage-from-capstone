@@ -38,7 +38,7 @@ const Header = ({ onMenuClick }: HeaderProps) => {
         <div className="flex items-center">
           <button
             onClick={onMenuClick}
-            className="p-2 -ml-2 text-slate-500 dark:text-slate-400 rounded-xl hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-100/80 dark:hover:bg-slate-800/80 lg:hidden transition-colors"
+            className="p-2 -ml-2 text-slate-500 dark:text-slate-300 rounded-xl hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-100/80 dark:hover:bg-slate-800/80 lg:hidden transition-colors"
           >
             <Bars3Icon className="w-6 h-6" />
           </button>
@@ -64,7 +64,7 @@ const Header = ({ onMenuClick }: HeaderProps) => {
           <button
             type="button"
             onClick={openCommandPalette}
-            className="md:hidden p-2 text-slate-500 dark:text-slate-400 rounded-xl hover:bg-slate-100/80 dark:hover:bg-slate-800/80 transition-colors"
+            className="md:hidden p-2 text-slate-500 dark:text-slate-300 rounded-xl hover:bg-slate-100/80 dark:hover:bg-slate-800/80 transition-colors"
             aria-label="Search and jump to"
           >
             <MagnifyingGlassIcon className="w-6 h-6" />
@@ -90,7 +90,7 @@ const Header = ({ onMenuClick }: HeaderProps) => {
           {/* Command Palette Button */}
           <button
             onClick={openCommandPalette}
-            className="hidden sm:flex items-center px-3 py-1.5 text-sm text-slate-500 dark:text-slate-400 bg-slate-100/50 dark:bg-slate-800/50 rounded-lg hover:bg-slate-200/50 dark:hover:bg-slate-700/50 transition-colors"
+            className="hidden sm:flex items-center px-3 py-1.5 text-sm text-slate-500 dark:text-slate-300 bg-slate-100/50 dark:bg-slate-800/50 rounded-lg hover:bg-slate-200/50 dark:hover:bg-slate-700/50 transition-colors"
             data-tour="command-palette"
           >
             <CommandLineIcon className="w-4 h-4 mr-2" />
@@ -101,7 +101,7 @@ const Header = ({ onMenuClick }: HeaderProps) => {
           <ThemeToggle />
 
           {/* Notifications */}
-          <button className="p-2 text-slate-500 dark:text-slate-400 rounded-xl hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-100/80 dark:hover:bg-slate-800/80 relative transition-colors">
+          <button className="p-2 text-slate-500 dark:text-slate-300 rounded-xl hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-100/80 dark:hover:bg-slate-800/80 relative transition-colors">
             <BellIcon className="w-6 h-6" />
             <span
               className="absolute top-1.5 right-1.5 w-2 h-2 bg-primary-500 rounded-full"

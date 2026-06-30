@@ -148,7 +148,7 @@ function InvestmentSummaryBands({ summary }: { summary: PricingSummary }) {
           <span className="text-sm font-medium text-slate-800 dark:text-slate-100">Monthly</span>
           <span className="text-lg font-semibold text-slate-900 dark:text-white tabular-nums">
             {formatCurrency(summary.monthly.total)}
-            <span className="text-xs font-normal text-slate-500 ml-1">/month</span>
+            <span className="text-xs font-normal text-slate-500 dark:text-slate-300 ml-1">/month</span>
           </span>
         </div>
       )}
@@ -157,7 +157,7 @@ function InvestmentSummaryBands({ summary }: { summary: PricingSummary }) {
           <span className="text-sm font-medium text-slate-800 dark:text-slate-100">Annual</span>
           <span className="text-lg font-semibold text-slate-900 dark:text-white tabular-nums">
             {formatCurrency(summary.annually.total)}
-            <span className="text-xs font-normal text-slate-500 ml-1">/year</span>
+            <span className="text-xs font-normal text-slate-500 dark:text-slate-300 ml-1">/year</span>
           </span>
         </div>
       )}
@@ -166,7 +166,7 @@ function InvestmentSummaryBands({ summary }: { summary: PricingSummary }) {
           <span className="text-sm font-medium text-slate-800 dark:text-slate-100">Quarterly</span>
           <span className="text-lg font-semibold text-slate-900 dark:text-white tabular-nums">
             {formatCurrency(summary.quarterly.total)}
-            <span className="text-xs font-normal text-slate-500 ml-1">/quarter</span>
+            <span className="text-xs font-normal text-slate-500 dark:text-slate-300 ml-1">/quarter</span>
           </span>
         </div>
       )}
@@ -175,7 +175,7 @@ function InvestmentSummaryBands({ summary }: { summary: PricingSummary }) {
           <span className="text-sm font-medium text-slate-800 dark:text-slate-100">Weekly</span>
           <span className="text-lg font-semibold text-slate-900 dark:text-white tabular-nums">
             {formatCurrency(summary.weekly.total)}
-            <span className="text-xs font-normal text-slate-500 ml-1">/week</span>
+            <span className="text-xs font-normal text-slate-500 dark:text-slate-300 ml-1">/week</span>
           </span>
         </div>
       )}
@@ -1256,13 +1256,13 @@ export default function ProposalBuilder({ proposalId }: ProposalBuilderProps) {
                   ? 'bg-primary-600 text-white'
                   : currentStep > step.id
                     ? 'bg-green-500 text-white'
-                    : 'bg-slate-200 text-slate-500'
+                    : 'bg-slate-200 text-slate-500 dark:text-slate-300'
               }`}
             >
               {currentStep > step.id ? <CheckIcon className="w-5 h-5" /> : step.id}
             </div>
             <span
-              className={`text-xs mt-2 ${currentStep === step.id ? 'text-primary-600 font-medium' : 'text-slate-500'}`}
+              className={`text-xs mt-2 ${currentStep === step.id ? 'text-primary-600 font-medium' : 'text-slate-500 dark:text-slate-300'}`}
             >
               {step.name}
             </span>
@@ -1312,8 +1312,8 @@ export default function ProposalBuilder({ proposalId }: ProposalBuilderProps) {
               {client.contactName?.trim() && (
                 <p className="text-sm text-slate-600 dark:text-slate-300">{client.contactName.trim()}</p>
               )}
-              <p className="text-sm text-slate-500 dark:text-slate-400">{client.companyType}</p>
-              <p className="text-sm text-slate-400 dark:text-slate-500">{client.contactEmail}</p>
+              <p className="text-sm text-slate-500 dark:text-slate-300 dark:text-slate-300">{client.companyType}</p>
+              <p className="text-sm text-slate-400 dark:text-slate-500 dark:text-slate-300">{client.contactEmail}</p>
             </div>
           ))}
       </div>
@@ -1350,7 +1350,7 @@ export default function ProposalBuilder({ proposalId }: ProposalBuilderProps) {
             <h3 className="font-medium text-slate-900 dark:text-white truncate">{service.name}</h3>
             {isSelected && <CheckIcon className="w-4 h-4 text-green-600 flex-shrink-0" />}
           </div>
-          <p className="text-xs text-slate-500 dark:text-slate-400 truncate">{service.category}</p>
+          <p className="text-xs text-slate-500 dark:text-slate-300 dark:text-slate-300 truncate">{service.category}</p>
         </div>
         <div className="text-right flex-shrink-0 ml-4">
           <span className="font-semibold text-primary-600 text-sm">
@@ -1390,7 +1390,7 @@ export default function ProposalBuilder({ proposalId }: ProposalBuilderProps) {
           <div className="grid grid-cols-3 md:grid-cols-5 gap-2">
             {/* Price */}
             <div>
-              <label className="block text-[10px] uppercase tracking-wide text-slate-500 mb-0.5">Price (£)</label>
+              <label className="block text-[10px] uppercase tracking-wide text-slate-500 dark:text-slate-300 mb-0.5">Price (£)</label>
               <input
                 data-testid="edit-price-input"
                 type="number"
@@ -1402,7 +1402,7 @@ export default function ProposalBuilder({ proposalId }: ProposalBuilderProps) {
 
             {/* Quantity */}
             <div>
-              <label className="block text-[10px] uppercase tracking-wide text-slate-500 mb-0.5">Qty</label>
+              <label className="block text-[10px] uppercase tracking-wide text-slate-500 dark:text-slate-300 mb-0.5">Qty</label>
               <input
                 type="number"
                 min={1}
@@ -1414,7 +1414,7 @@ export default function ProposalBuilder({ proposalId }: ProposalBuilderProps) {
 
             {/* Discount */}
             <div>
-              <label className="block text-[10px] uppercase tracking-wide text-slate-500 mb-0.5">Disc %</label>
+              <label className="block text-[10px] uppercase tracking-wide text-slate-500 dark:text-slate-300 mb-0.5">Disc %</label>
               <input
                 type="number"
                 min={0}
@@ -1429,7 +1429,7 @@ export default function ProposalBuilder({ proposalId }: ProposalBuilderProps) {
 
             {/* VAT Rate */}
             <div>
-              <label className="block text-[10px] uppercase tracking-wide text-slate-500 mb-0.5">VAT %</label>
+              <label className="block text-[10px] uppercase tracking-wide text-slate-500 dark:text-slate-300 mb-0.5">VAT %</label>
               <select
                 data-testid="edit-vat-select"
                 value={editForm.vatRate}
@@ -1446,7 +1446,7 @@ export default function ProposalBuilder({ proposalId }: ProposalBuilderProps) {
 
             {/* Billing cadence */}
             <div className="col-span-3 md:col-span-5">
-              <label className="block text-[10px] uppercase tracking-wide text-slate-500 mb-1">
+              <label className="block text-[10px] uppercase tracking-wide text-slate-500 dark:text-slate-300 mb-1">
                 Billing period
               </label>
               <BillingCadenceSelector
@@ -1474,7 +1474,7 @@ export default function ProposalBuilder({ proposalId }: ProposalBuilderProps) {
 
           {editForm.billingCycle === 'ONE_TIME' && (
             <div>
-              <label className="block text-[10px] uppercase tracking-wide text-slate-500 mb-0.5">
+              <label className="block text-[10px] uppercase tracking-wide text-slate-500 dark:text-slate-300 mb-0.5">
                 Due date (optional)
               </label>
               <input
@@ -1489,7 +1489,7 @@ export default function ProposalBuilder({ proposalId }: ProposalBuilderProps) {
 
           {/* Live preview */}
           <div className="flex justify-between items-center pt-1 border-t border-amber-200 dark:border-amber-800">
-            <span className="text-xs text-slate-500">Preview (inc. VAT):</span>
+            <span className="text-xs text-slate-500 dark:text-slate-300">Preview (inc. VAT):</span>
             <span className="font-semibold text-primary-600 text-sm">
               {formatCurrency(
                 editForm.displayPrice *
@@ -1497,7 +1497,7 @@ export default function ProposalBuilder({ proposalId }: ProposalBuilderProps) {
                   (1 - editForm.discountPercent / 100) *
                   (1 + (includeVat ? editForm.vatRate : 0) / 100)
               )}
-              <span className="text-xs text-slate-500 font-normal ml-1">
+              <span className="text-xs text-slate-500 dark:text-slate-300 font-normal ml-1">
                 {editForm.billingCycle === 'ONE_TIME'
                   ? ' one-time'
                   : `/${BILLING_FREQUENCY_LABELS[editForm.billingCycle] || 'month'}`}
@@ -1522,7 +1522,7 @@ export default function ProposalBuilder({ proposalId }: ProposalBuilderProps) {
           <h4 className="font-medium text-slate-900 dark:text-white text-sm truncate">
             {service.name}
           </h4>
-          <p className="text-xs text-slate-500 dark:text-slate-400">
+          <p className="text-xs text-slate-500 dark:text-slate-300 dark:text-slate-300">
             {service.quantity} × {formatCurrency(service.displayPrice)}
             {service.discountPercent > 0 && (
               <span className="text-amber-600"> · −{service.discountPercent}%</span>
@@ -1539,7 +1539,7 @@ export default function ProposalBuilder({ proposalId }: ProposalBuilderProps) {
             <span className="font-semibold text-slate-900 dark:text-white text-sm block tabular-nums">
               {formatCurrency(service.grossTotal)}
             </span>
-            <span className="text-xs text-slate-500 dark:text-slate-400">
+            <span className="text-xs text-slate-500 dark:text-slate-300 dark:text-slate-300">
               {formatPriceWithFrequency(service.displayPrice, service.billingCycle)} inc VAT
             </span>
           </div>
@@ -1548,7 +1548,7 @@ export default function ProposalBuilder({ proposalId }: ProposalBuilderProps) {
             <button
               type="button"
               onClick={() => moveService(service.id, 'up')}
-              className="p-1.5 text-slate-500 hover:bg-slate-200 dark:hover:bg-slate-700 rounded"
+              className="p-1.5 text-slate-500 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 rounded"
               title="Move up"
             >
               <ArrowUpIcon className="w-4 h-4" />
@@ -1556,7 +1556,7 @@ export default function ProposalBuilder({ proposalId }: ProposalBuilderProps) {
             <button
               type="button"
               onClick={() => moveService(service.id, 'down')}
-              className="p-1.5 text-slate-500 hover:bg-slate-200 dark:hover:bg-slate-700 rounded"
+              className="p-1.5 text-slate-500 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 rounded"
               title="Move down"
             >
               <ArrowDownIcon className="w-4 h-4" />
@@ -1633,7 +1633,7 @@ export default function ProposalBuilder({ proposalId }: ProposalBuilderProps) {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Available Services - Compact List */}
         <div className="space-y-3">
-          <h3 className="text-sm font-medium text-slate-500 uppercase tracking-wide">
+          <h3 className="text-sm font-medium text-slate-500 dark:text-slate-300 uppercase tracking-wide">
             Available ({filteredServices.length})
           </h3>
           <div className="max-h-[500px] overflow-y-auto space-y-1 pr-1">
@@ -1643,10 +1643,10 @@ export default function ProposalBuilder({ proposalId }: ProposalBuilderProps) {
 
         {/* Selected Services */}
         <div className="space-y-3">
-          <h3 className="text-sm font-medium text-slate-500 uppercase tracking-wide">
+          <h3 className="text-sm font-medium text-slate-500 dark:text-slate-300 uppercase tracking-wide">
             Selected ({selectedServices.length})
           </h3>
-          <p className="text-xs text-slate-500 dark:text-slate-400">
+          <p className="text-xs text-slate-500 dark:text-slate-300 dark:text-slate-300">
             Tap a billing period per service — the price converts to match the new cadence.
           </p>
 
@@ -1673,7 +1673,7 @@ export default function ProposalBuilder({ proposalId }: ProposalBuilderProps) {
                       <span className="text-sm font-medium text-slate-800 dark:text-slate-100">
                         Typical monthly cash flow
                       </span>
-                      <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                      <p className="text-xs text-slate-500 dark:text-slate-300 dark:text-slate-300 mt-0.5">
                         Recurring fees averaged per month (inc. VAT). One-time fees are separate.
                       </p>
                     </div>
@@ -1732,7 +1732,7 @@ export default function ProposalBuilder({ proposalId }: ProposalBuilderProps) {
       {/* Contract start & proposal validity */}
       <div className="card p-4">
         <h3 className="font-semibold text-slate-900 dark:text-white mb-1">Contract & validity</h3>
-        <p className="text-xs text-slate-500 dark:text-slate-400 mb-4">
+        <p className="text-xs text-slate-500 dark:text-slate-300 dark:text-slate-300 mb-4">
           Set when the engagement begins and how long this proposal stays open. Annual renewals are
           calculated from the contract start date (or acceptance if left blank).
         </p>
@@ -1748,7 +1748,7 @@ export default function ProposalBuilder({ proposalId }: ProposalBuilderProps) {
               onChange={(e) => setContractStartDate(e.target.value)}
               className="input-field w-full"
             />
-            <p className="mt-1 text-xs text-slate-500">Optional — use for future-dated engagements</p>
+            <p className="mt-1 text-xs text-slate-500 dark:text-slate-300">Optional — use for future-dated engagements</p>
           </div>
           <div>
             <label className="block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1">
@@ -1762,7 +1762,7 @@ export default function ProposalBuilder({ proposalId }: ProposalBuilderProps) {
               onChange={(e) => setValidUntil(e.target.value)}
               className="input-field w-full"
             />
-            <p className="mt-1 text-xs text-slate-500">
+            <p className="mt-1 text-xs text-slate-500 dark:text-slate-300">
               Practice default: {defaultExpiryDays} days (change in Settings → Communications)
             </p>
           </div>
@@ -1791,13 +1791,13 @@ export default function ProposalBuilder({ proposalId }: ProposalBuilderProps) {
         {selectedClient?.contactName?.trim() && (
           <p className="text-sm text-slate-600 dark:text-slate-300 mt-1">{selectedClient.contactName.trim()}</p>
         )}
-        <p className="text-sm text-slate-500 dark:text-slate-400">{selectedClient?.contactEmail}</p>
+        <p className="text-sm text-slate-500 dark:text-slate-300 dark:text-slate-300">{selectedClient?.contactEmail}</p>
       </div>
 
       {/* Services — editable rows, grouped for clarity */}
       <div className="card p-6">
         <h3 className="font-semibold text-slate-900 dark:text-white mb-1">Services</h3>
-        <p className="text-xs text-slate-500 dark:text-slate-400 mb-4">
+        <p className="text-xs text-slate-500 dark:text-slate-300 dark:text-slate-300 mb-4">
           Choose each service&apos;s billing period below — prices adjust automatically when you
           change cadence. Use edit for price, quantity, VAT, or one-off due dates.
         </p>
@@ -1817,7 +1817,7 @@ export default function ProposalBuilder({ proposalId }: ProposalBuilderProps) {
                 <span className="text-sm font-medium text-slate-800 dark:text-slate-100">
                   Typical monthly cash flow
                 </span>
-                <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 max-w-md">
+                <p className="text-xs text-slate-500 dark:text-slate-300 dark:text-slate-300 mt-0.5 max-w-md">
                   Recurring fees averaged per month (inc. VAT). One-time project fees are listed
                   separately above.
                 </p>
@@ -1847,7 +1847,7 @@ export default function ProposalBuilder({ proposalId }: ProposalBuilderProps) {
               <SparklesIcon className={`h-3.5 w-3.5 ${aiCoverLoading ? 'animate-pulse' : ''}`} />
               {aiCoverLoading ? 'Drafting…' : AI_COPILOT.draftWithLabel}
             </button>
-            <span className="text-[10px] px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-500">
+            <span className="text-[10px] px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-300">
               Tone affects only this letter
             </span>
           </div>
@@ -1877,7 +1877,7 @@ export default function ProposalBuilder({ proposalId }: ProposalBuilderProps) {
 
         {/* Style picker — beautiful, instantly autofills names/services */}
         <div className="mb-3">
-          <div className="text-xs uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-1.5">
+          <div className="text-xs uppercase tracking-wider text-slate-500 dark:text-slate-300 dark:text-slate-300 mb-1.5">
             Choose tone (autofills client name, company, services, date)
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
@@ -1900,10 +1900,10 @@ export default function ProposalBuilder({ proposalId }: ProposalBuilderProps) {
                     </div>
                     {active && <span className="text-[10px] px-1.5 py-px rounded bg-primary-200 dark:bg-primary-900/50 text-primary-700 dark:text-primary-300">Active</span>}
                   </div>
-                  <div className="mt-1 text-xs text-slate-500 dark:text-slate-400 leading-snug">
+                  <div className="mt-1 text-xs text-slate-500 dark:text-slate-300 dark:text-slate-300 leading-snug">
                     {style.description}
                   </div>
-                  <div className="mt-2 text-[10px] text-slate-400 group-hover:text-slate-500 transition-colors">
+                  <div className="mt-2 text-[10px] text-slate-400 group-hover:text-slate-500 dark:text-slate-300 transition-colors">
                     {style.preview}
                   </div>
                 </button>
@@ -1912,7 +1912,7 @@ export default function ProposalBuilder({ proposalId }: ProposalBuilderProps) {
           </div>
         </div>
 
-        <p className="text-xs text-slate-500 dark:text-slate-400 mb-2">
+        <p className="text-xs text-slate-500 dark:text-slate-300 dark:text-slate-300 mb-2">
           Personalised for {selectedClient ? coverLetterAddressee(selectedClient) : 'your client'}. You can edit the text freely after choosing a tone.
         </p>
 
@@ -1934,7 +1934,7 @@ export default function ProposalBuilder({ proposalId }: ProposalBuilderProps) {
           <div className="mt-3">
             <div className="flex items-center gap-2 mb-1.5">
               <SparklesIcon className="h-3.5 w-3.5 text-violet-600" />
-              <span className="text-[10px] uppercase tracking-wider text-slate-500 dark:text-slate-400">Clara quick tweaks (low cost)</span>
+              <span className="text-[10px] uppercase tracking-wider text-slate-500 dark:text-slate-300 dark:text-slate-300">Clara quick tweaks (low cost)</span>
             </div>
             <div className="flex flex-wrap gap-2 mb-2">
               {['Make warmer', 'Shorter & punchier', 'More formal', 'Add urgency on deadline'].map((label, i) => (
@@ -2010,11 +2010,11 @@ export default function ProposalBuilder({ proposalId }: ProposalBuilderProps) {
         <div className="card p-5 border-2 border-slate-200 dark:border-slate-600">
           <div className="flex items-center justify-between mb-3">
             <h3 className="font-semibold text-slate-900 dark:text-white">Client preview</h3>
-            <button type="button" onClick={() => setShowClientPreview(false)} className="text-sm text-slate-500 hover:text-slate-700">
+            <button type="button" onClick={() => setShowClientPreview(false)} className="text-sm text-slate-500 dark:text-slate-300 hover:text-slate-700">
               Close
             </button>
           </div>
-          <p className="text-xs text-slate-500 mb-2">From {tenant?.name}</p>
+          <p className="text-xs text-slate-500 dark:text-slate-300 mb-2">From {tenant?.name}</p>
           <h4 className="text-lg font-bold">{proposalTitle || 'Proposal title'}</h4>
           <p className="text-sm text-slate-600 mt-2 whitespace-pre-wrap">{coverLetter.slice(0, 600)}{coverLetter.length > 600 ? '…' : ''}</p>
           <div className="mt-4 pt-4 border-t border-slate-200 dark:border-slate-600">

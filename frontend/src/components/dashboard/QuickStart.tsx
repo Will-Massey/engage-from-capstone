@@ -47,14 +47,14 @@ const QuickStart = () => {
           <h2 id="quick-start-heading" className="text-lg font-semibold text-slate-900 dark:text-slate-100">
             Quick start
           </h2>
-          <p className="mt-1 text-sm text-slate-600 dark:text-slate-400">
+          <p className="mt-1 text-sm text-slate-600 dark:text-slate-300">
             Three steps from new client to signed engagement
           </p>
         </div>
         <button
           type="button"
           onClick={openCommandPalette}
-          className="inline-flex items-center gap-2 self-start px-3 py-1.5 text-sm text-slate-600 dark:text-slate-400 bg-slate-100/80 dark:bg-slate-800/80 rounded-lg hover:bg-slate-200/80 dark:hover:bg-slate-700/80 transition-colors"
+          className="inline-flex items-center gap-2 self-start px-3 py-1.5 text-sm text-slate-600 dark:text-slate-300 bg-slate-100/80 dark:bg-slate-800/80 rounded-lg hover:bg-slate-200/80 dark:hover:bg-slate-700/80 transition-colors"
         >
           <CommandLineIcon className="h-4 w-4" />
           <span>
@@ -74,7 +74,7 @@ const QuickStart = () => {
             </span>
             <item.icon className="h-6 w-6 text-primary-600 dark:text-primary-400 mb-2" aria-hidden />
             <h3 className="font-medium text-slate-900 dark:text-slate-100">{item.title}</h3>
-            <p className="mt-1 text-sm text-slate-600 dark:text-slate-400 flex-1">{item.description}</p>
+            <p className="mt-1 text-sm text-slate-600 dark:text-slate-300 flex-1">{item.description}</p>
             <Link
               to={item.href}
               className="mt-4 text-sm font-medium text-primary-600 dark:text-primary-400 hover:text-primary-700 dark:hover:text-primary-300"

@@ -9,10 +9,10 @@ Phase: UI Polish & Theme — **in_progress**
 
 ## Next Up
 <!-- 3–5 bullets ONLY. Next fresh session starts here. Rewrite every checkpoint. -->
-1. Verify contrast and pale glass effect across ProposalBuilder, dialogs and main layout (after Settings smoke).
-2. Address any remaining low-contrast elements or mobile spacing.
-3. Update handoff / docs if more polish needed.
-4. Continue with next roadmap item (e.g. E2E or other polish).
+1. Address any remaining low-contrast elements or mobile spacing (quick scan/fixes done across Analytics, command palette, dashboards).
+2. Update handoff / docs if more polish needed.
+3. Continue with next roadmap item (e.g. E2E or other polish).
+4. Smoke-test full app on Render for theme consistency.
 
 ## Phases
 <!-- Status: pending | in_progress | complete -->
