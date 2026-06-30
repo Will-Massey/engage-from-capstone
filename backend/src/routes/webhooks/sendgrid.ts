@@ -4,9 +4,9 @@
 
 import { Router, Request, Response } from 'express';
 import { EventWebhook } from '@sendgrid/eventwebhook';
-import { prisma } from '../../config/database.js';
 import logger from '../../config/logger.js';
 import { asyncHandler } from '../../middleware/errorHandler.js';
+import { processEmailDeliveryEvent } from '../../services/emailDeliveryService.js';
 
 const router = Router();
 
@@ -30,21 +30,6 @@ function verifySendGridSignature(req: Request): boolean {
   }
 }
 
-function mapEventToStatus(event: string): string | null {
-  switch (event) {
-    case 'delivered':
-      return 'DELIVERED';
-    case 'bounce':
-    case 'dropped':
-      return 'BOUNCED';
-    case 'spamreport':
-    case 'unsubscribe':
-      return 'SUPPRESSED';
-    default:
-      return null;
-  }
-}
-
 router.post(
   '/',
   asyncHandler(async (req: Request, res: Response) => {
@@ -58,42 +43,23 @@ router.post(
     for (const evt of events) {
       const emailLogId = evt.emailLogId || evt.custom_args?.emailLogId;
       const tenantId = evt.tenantId || evt.custom_args?.tenantId;
+      const proposalId = evt.proposalId || evt.custom_args?.proposalId;
       const eventType = evt.event as string;
-      const status = mapEventToStatus(eventType);
 
-      if (emailLogId && status) {
-        await prisma.emailLog.updateMany({
-          where: { id: emailLogId },
-          data: {
-            status: status as any,
-            error: evt.reason || evt.response || undefined,
-            metadata: JSON.stringify({
-              event: eventType,
-              sgEventId: evt.sg_event_id,
-              timestamp: evt.timestamp,
-            }),
-          },
-        });
-      }
-
-      const shouldSuppress =
-        tenantId &&
-        evt.email &&
-        (eventType === 'bounce' || eventType === 'spamreport' || eventType === 'unsubscribe');
-
-      if (shouldSuppress) {
-        const email = String(evt.email).toLowerCase().trim();
-        await prisma.emailSuppression.upsert({
-          where: { tenantId_email: { tenantId, email } },
-          create: {
-            tenantId,
-            email,
-            reason: eventType,
-          },
-          update: { reason: eventType },
-        });
-        logger.info(`Suppressed ${email} for tenant ${tenantId} (${eventType})`);
-      }
+      await processEmailDeliveryEvent({
+        emailLogId,
+        tenantId,
+        proposalId,
+        email: evt.email,
+        event: eventType,
+        reason: evt.reason || evt.response,
+        messageId: evt.sg_message_id,
+        metadata: {
+          sgEventId: evt.sg_event_id,
+          timestamp: evt.timestamp,
+          source: 'sendgrid-webhook',
+        },
+      });
     }
 
     res.status(200).json({ success: true });

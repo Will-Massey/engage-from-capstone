@@ -841,7 +841,6 @@ export default function ProposalBuilder({ proposalId }: ProposalBuilderProps) {
         if (d.coverLetterTone) setCoverLetterTone(d.coverLetterTone);
         if (Array.isArray(d.suggestedServices) && d.suggestedServices.length) {
           d.suggestedServices.forEach((s: any) => {
-            // Try match by name in catalog, else skip (user can add)
             const match = services.find((cat) => cat.name.toLowerCase().includes((s.name || '').toLowerCase().slice(0, 20)));
             if (match) addServiceWithCadence(match, s.billingFrequency || 'MONTHLY', s.displayPrice);
           });
@@ -853,6 +852,25 @@ export default function ProposalBuilder({ proposalId }: ProposalBuilderProps) {
     } catch (e) {
       showAiError(e);
     }
+  };
+
+  const applySingleAiSuggestion = (serviceId: string) => {
+    if (!aiSuggestions?.suggestions?.length) return;
+    const sug = aiSuggestions.suggestions.find((s: { serviceId: string }) => s.serviceId === serviceId);
+    if (!sug) return;
+    const catalogService = services.find((s) => s.id === sug.serviceId);
+    if (!catalogService) return;
+    if (addServiceWithCadence(catalogService, sug.billingFrequency, sug.displayPrice)) {
+      toast.success(`${sug.name} added`);
+    } else {
+      toast.success('Service already selected');
+    }
+    setAiSuggestions((prev: typeof aiSuggestions) => {
+      if (!prev?.suggestions?.length) return prev;
+      const remaining = prev.suggestions.filter((s: { serviceId: string }) => s.serviceId !== serviceId);
+      if (!remaining.length) return null;
+      return { ...prev, suggestions: remaining };
+    });
   };
 
   const applyAiSuggestions = () => {
@@ -2117,23 +2135,42 @@ export default function ProposalBuilder({ proposalId }: ProposalBuilderProps) {
         </div>
 
         {selectedClient && currentStep >= 2 && (
-          <ProposalBuilderClara
-            step={currentStep}
-            clientId={selectedClient.id}
-            clientName={selectedClient.name}
-            proposalTitle={proposalTitle}
-            coverLetter={coverLetter}
-            validUntil={validUntil}
-            services={claraServiceLines}
-            configured={aiConfigured}
-            onApplyTitle={setProposalTitle}
-            onSuggestServices={runAiSuggestServices}
-            suggestLoading={aiSuggestLoading}
-            suggestions={aiSuggestions}
-            onApplySuggestions={applyAiSuggestions}
-            onDraftCoverLetter={runAiCoverLetter}
-            coverLoading={aiCoverLoading}
-          />
+          <div className="space-y-4 min-w-0 lg:sticky lg:top-4">
+            {liveClientPreview && (
+              <ProposalClientPreview
+                practiceName={tenant?.name || 'Your practice'}
+                clientName={selectedClient.name}
+                proposalTitle={proposalTitle}
+                coverLetter={coverLetter}
+                services={selectedServices.map((s) => ({
+                  name: s.name,
+                  displayPrice: s.displayPrice,
+                  billingCycle: s.billingCycle,
+                  quantity: s.quantity,
+                }))}
+                summary={summary}
+                validUntil={validUntil}
+                contractStartDate={contractStartDate}
+              />
+            )}
+            <ProposalBuilderClara
+              step={currentStep}
+              clientId={selectedClient.id}
+              clientName={selectedClient.name}
+              proposalTitle={proposalTitle}
+              coverLetter={coverLetter}
+              validUntil={validUntil}
+              services={claraServiceLines}
+              configured={aiConfigured}
+              onApplyTitle={setProposalTitle}
+              onSuggestServices={runAiSuggestServices}
+              suggestLoading={aiSuggestLoading}
+              suggestions={aiSuggestions}
+              onApplySingleSuggestion={applySingleAiSuggestion}
+              onDraftCoverLetter={runAiCoverLetter}
+              coverLoading={aiCoverLoading}
+            />
+          </div>
         )}
       </div>
 

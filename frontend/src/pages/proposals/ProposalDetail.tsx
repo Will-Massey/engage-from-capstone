@@ -259,14 +259,49 @@ const ProposalDetail = () => {
     setShowSendEmailPreview(true);
   };
 
-  const handleAccept = async () => {
+  const downloadSignatureCertificate = async (signatureId: string) => {
+    if (!id || !proposal) return;
     try {
-      await apiClient.acceptProposal(id!);
-      toast.success('Proposal marked as accepted');
-      loadProposal();
-      loadAuditTrail();
-    } catch (error) {
-      // Error handled by API interceptor
+      const blob = await apiClient.downloadSignatureCertificate(id, signatureId);
+      if (!blob || blob.size === 0) {
+        toast.error('Could not download certificate (empty file).');
+        return;
+      }
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `signature-certificate-${proposal.reference}-${signatureId.slice(0, 8)}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      setTimeout(() => window.URL.revokeObjectURL(url), 5000);
+      toast.success('Certificate PDF download started');
+    } catch {
+      toast.error('Could not download signature certificate.');
+    }
+  };
+
+  const downloadSignatureAuditJson = async (signatureId: string) => {
+    if (!id || !proposal) return;
+    try {
+      const response = (await apiClient.getSignatureAudit(id, signatureId)) as any;
+      if (!response?.success || !response?.data) {
+        toast.error('Could not download audit record.');
+        return;
+      }
+      const json = JSON.stringify(response.data, null, 2);
+      const blob = new Blob([json], { type: 'application/json' });
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `signature-audit-${proposal.reference}-${signatureId.slice(0, 8)}.json`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      setTimeout(() => window.URL.revokeObjectURL(url), 5000);
+      toast.success('Audit JSON download started');
+    } catch {
+      toast.error('Could not download audit record.');
     }
   };
 
@@ -591,10 +626,22 @@ const ProposalDetail = () => {
             </button>
           )}
 
-          {proposal.status === 'SENT' && (
-            <button onClick={handleAccept} className="btn-primary bg-green-600 hover:bg-green-700">
+          {(proposal.status === 'SENT' || proposal.status === 'VIEWED') && (
+            <button
+              type="button"
+              onClick={() => {
+                document
+                  .getElementById('electronic-signature-section')
+                  ?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                toast(
+                  'A forensic audit trail requires an electronic signature. Use the signature pad below.',
+                  { icon: '✍️', duration: 5000 }
+                );
+              }}
+              className="btn-primary bg-green-600 hover:bg-green-700"
+            >
               <CheckIcon className="h-4 w-4 mr-2" />
-              Mark Accepted
+              Accept with signature
             </button>
           )}
         </div>
@@ -847,7 +894,7 @@ const ProposalDetail = () => {
 
           {/* Signature Section */}
           {(proposal.status === 'SENT' || proposal.status === 'VIEWED') && (
-            <div className="glass-tile p-6 print:hidden">
+            <div id="electronic-signature-section" className="glass-tile p-6 print:hidden">
               <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-100 mb-4">
                 Electronic Signature
               </h2>
@@ -1011,50 +1058,105 @@ const ProposalDetail = () => {
               <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-100 mb-4">
                 Signature audit
               </h2>
-              {proposal.signatures.map((sig: any) => (
-                <dl key={sig.id} className="text-sm space-y-2 text-slate-800 dark:text-slate-200">
-                  <div className="flex justify-between gap-4">
-                    <dt className="text-slate-500 dark:text-slate-400">Type</dt>
-                    <dd>{sig.signatureType || 'SIMPLE_ELECTRONIC'}</dd>
+              <div className="space-y-6">
+                {proposal.signatures.map((sig: any) => (
+                  <div
+                    key={sig.id}
+                    className="rounded-2xl border border-slate-200/80 dark:border-slate-700/80 p-4 space-y-3"
+                  >
+                    <dl className="text-sm space-y-2 text-slate-800 dark:text-slate-200">
+                      <div className="flex justify-between gap-4">
+                        <dt className="text-slate-500 dark:text-slate-400">Type</dt>
+                        <dd>{sig.signatureType || 'SIMPLE_ELECTRONIC'}</dd>
+                      </div>
+                      {sig.agreementVersion && (
+                        <div className="flex justify-between gap-4">
+                          <dt className="text-slate-500 dark:text-slate-400">Agreement version</dt>
+                          <dd className="font-mono text-xs">{sig.agreementVersion}</dd>
+                        </div>
+                      )}
+                      {sig.signerEmail && (
+                        <div className="flex justify-between gap-4">
+                          <dt className="text-slate-500 dark:text-slate-400">Email</dt>
+                          <dd className="text-right break-all">{sig.signerEmail}</dd>
+                        </div>
+                      )}
+                      <div className="flex justify-between gap-4">
+                        <dt className="text-slate-500 dark:text-slate-400">Signed at (UTC)</dt>
+                        <dd>{format(new Date(sig.signedAt), 'dd MMM yyyy HH:mm:ss')}</dd>
+                      </div>
+                      {sig.ipAddress && (
+                        <div className="flex justify-between gap-4">
+                          <dt className="text-slate-500 dark:text-slate-400">IP address</dt>
+                          <dd className="font-mono text-xs">{sig.ipAddress}</dd>
+                        </div>
+                      )}
+                      {sig.geoLocation && (
+                        <div className="flex justify-between gap-4">
+                          <dt className="text-slate-500 dark:text-slate-400">Location</dt>
+                          <dd>{sig.geoLocation}</dd>
+                        </div>
+                      )}
+                      {sig.userAgent && (
+                        <div>
+                          <dt className="text-slate-500 dark:text-slate-400 mb-1">User agent</dt>
+                          <dd className="font-mono text-xs break-all bg-slate-100 dark:bg-slate-900/50 p-2 rounded">
+                            {sig.userAgent}
+                          </dd>
+                        </div>
+                      )}
+                      {sig.deviceInfo && (
+                        <div>
+                          <dt className="text-slate-500 dark:text-slate-400 mb-1">Device info</dt>
+                          <dd className="font-mono text-xs break-all bg-slate-100 dark:bg-slate-900/50 p-2 rounded">
+                            {sig.deviceInfo}
+                          </dd>
+                        </div>
+                      )}
+                      {sig.documentHash && (
+                        <div>
+                          <dt className="text-slate-500 dark:text-slate-400 mb-1">Document hash</dt>
+                          <dd className="font-mono text-xs break-all bg-slate-100 dark:bg-slate-900/50 p-2 rounded">
+                            {sig.documentHash}
+                          </dd>
+                        </div>
+                      )}
+                      {sig.termsHash && (
+                        <div>
+                          <dt className="text-slate-500 dark:text-slate-400 mb-1">Terms hash</dt>
+                          <dd className="font-mono text-xs break-all bg-slate-100 dark:bg-slate-900/50 p-2 rounded">
+                            {sig.termsHash}
+                          </dd>
+                        </div>
+                      )}
+                      {sig.consentText && (
+                        <div>
+                          <dt className="text-slate-500 dark:text-slate-400 mb-1">Consent</dt>
+                          <dd className="text-xs italic">{sig.consentText}</dd>
+                        </div>
+                      )}
+                    </dl>
+                    <div className="flex flex-wrap gap-2 print:hidden">
+                      <button
+                        type="button"
+                        onClick={() => downloadSignatureCertificate(sig.id)}
+                        className="btn-secondary text-xs flex items-center gap-1.5"
+                      >
+                        <ArrowDownTrayIcon className="h-3.5 w-3.5" />
+                        Download certificate PDF
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => downloadSignatureAuditJson(sig.id)}
+                        className="btn-secondary text-xs flex items-center gap-1.5"
+                      >
+                        <ArrowDownTrayIcon className="h-3.5 w-3.5" />
+                        Download audit JSON
+                      </button>
+                    </div>
                   </div>
-                  {sig.signerEmail && (
-                    <div className="flex justify-between gap-4">
-                      <dt className="text-slate-500 dark:text-slate-400">Email</dt>
-                      <dd className="text-right break-all">{sig.signerEmail}</dd>
-                    </div>
-                  )}
-                  <div className="flex justify-between gap-4">
-                    <dt className="text-slate-500 dark:text-slate-400">Signed at (UTC)</dt>
-                    <dd>{format(new Date(sig.signedAt), 'dd MMM yyyy HH:mm:ss')}</dd>
-                  </div>
-                  {sig.ipAddress && (
-                    <div className="flex justify-between gap-4">
-                      <dt className="text-slate-500 dark:text-slate-400">IP address</dt>
-                      <dd className="font-mono text-xs">{sig.ipAddress}</dd>
-                    </div>
-                  )}
-                  {sig.geoLocation && (
-                    <div className="flex justify-between gap-4">
-                      <dt className="text-slate-500 dark:text-slate-400">Location</dt>
-                      <dd>{sig.geoLocation}</dd>
-                    </div>
-                  )}
-                  {sig.documentHash && (
-                    <div>
-                      <dt className="text-slate-500 dark:text-slate-400 mb-1">Document hash</dt>
-                      <dd className="font-mono text-xs break-all bg-slate-100 dark:bg-slate-900/50 p-2 rounded">
-                        {sig.documentHash}
-                      </dd>
-                    </div>
-                  )}
-                  {sig.consentText && (
-                    <div>
-                      <dt className="text-slate-500 dark:text-slate-400 mb-1">Consent</dt>
-                      <dd className="text-xs italic">{sig.consentText}</dd>
-                    </div>
-                  )}
-                </dl>
-              ))}
+                ))}
+              </div>
             </div>
           )}
 

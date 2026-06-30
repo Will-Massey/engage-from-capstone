@@ -454,6 +454,12 @@ export const apiClient = {
   // Proposal audit trail & compliance (views + signatures + key events)
   getProposalAuditTrail: (id: string) => api.get(`/proposals/${id}/audit-trail`),
   getProposalSignatures: (id: string) => api.get(`/proposals/${id}/signatures`),
+  getSignatureAudit: (proposalId: string, signatureId: string) =>
+    api.get(`/proposals/${proposalId}/signatures/${signatureId}/audit`),
+  downloadSignatureCertificate: (proposalId: string, signatureId: string) =>
+    api.get(`/proposals/${proposalId}/signatures/${signatureId}/certificate`, {
+      responseType: 'blob',
+    }) as Promise<Blob>,
 
   downloadProposalPdf: async (id: string, reference?: string) => {
     const base = API_URL.endsWith('/api') ? API_URL : `${API_URL}/api`;

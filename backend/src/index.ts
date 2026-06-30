@@ -330,6 +330,9 @@ app.use(
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
+import cloudflareEmailWebhookRoutes from './routes/webhooks/cloudflare-email.js';
+app.use('/api/webhooks/cloudflare-email', cloudflareEmailWebhookRoutes);
+
 // Mount auth routes BEFORE CSRF protection
 app.use('/api/auth', extractTenant, authRoutes);
 

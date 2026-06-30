@@ -48,6 +48,8 @@ services:
         sync: false
       - key: CLOUDFLARE_EMAIL_API_TOKEN
         sync: false
+      - key: CLOUDFLARE_EMAIL_WEBHOOK_SECRET
+        sync: false
       - key: ENCRYPTION_KEY
         sync: false
       - key: OAUTH_STATE_SECRET

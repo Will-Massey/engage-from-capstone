@@ -111,6 +111,70 @@ export class PDFGenerator {
   }
 
   /**
+   * Generate a standalone signature certificate PDF (forensic audit export).
+   */
+  static async generateSignatureCertificate(
+    proposalId: string,
+    signatureId: string
+  ): Promise<Buffer> {
+    const proposal = await prisma.proposal.findUnique({
+      where: { id: proposalId },
+      select: { id: true, reference: true },
+    });
+
+    if (!proposal) {
+      throw new Error('Proposal not found');
+    }
+
+    const sig = await prisma.proposalSignature.findFirst({
+      where: { id: signatureId, proposalId },
+    });
+
+    if (!sig) {
+      throw new Error('Signature not found');
+    }
+
+    return this.createCertificateOnlyPDF(proposal, sig);
+  }
+
+  /**
+   * Create a single-page signature certificate PDF.
+   */
+  private static createCertificateOnlyPDF(
+    proposal: { reference: string },
+    sig: {
+      id: string;
+      signedBy: string;
+      signedByRole: string;
+      signerEmail: string | null;
+      signedAt: Date;
+      ipAddress: string | null;
+      geoLocation: string | null;
+      signatureType: string;
+      agreementVersion: string;
+      documentHash: string | null;
+      termsHash: string | null;
+      consentText: string | null;
+    }
+  ): Promise<Buffer> {
+    return new Promise((resolve, reject) => {
+      try {
+        const doc = new PDFDocument({ margin: 50 });
+        const chunks: Buffer[] = [];
+
+        doc.on('data', (chunk) => chunks.push(chunk));
+        doc.on('end', () => resolve(Buffer.concat(chunks)));
+        doc.on('error', reject);
+
+        this.drawSignatureCertificate(doc, proposal, sig);
+        doc.end();
+      } catch (error) {
+        reject(error);
+      }
+    });
+  }
+
+  /**
    * Create the PDF document
    */
   private static createPDF(proposal: ProposalData): Promise<Buffer> {
@@ -656,7 +720,11 @@ ${proposal.tenant.name}`;
     );
   }
 
-  private static drawSignatureCertificate(doc: PDFDoc, proposal: ProposalData, sig: any) {
+  private static drawSignatureCertificate(
+    doc: PDFDoc,
+    proposal: Pick<ProposalData, 'reference'>,
+    sig: any
+  ) {
     doc.fontSize(16).fillColor('#333333').text('Signature Certificate', { align: 'center' });
     doc.moveDown(1.5);
     doc.fontSize(10).fillColor('#444444');

@@ -338,6 +338,68 @@ export async function getProposalSignatures(proposalId: string) {
   }
 }
 
+/** Tenant-scoped forensic audit record for a single electronic signature. */
+export async function getSignatureAuditRecord(
+  proposalId: string,
+  signatureId: string,
+  tenantId: string
+) {
+  const proposal = await prisma.proposal.findFirst({
+    where: { id: proposalId, tenantId },
+    select: {
+      id: true,
+      reference: true,
+      title: true,
+      status: true,
+      acceptedAt: true,
+      acceptedBy: true,
+    },
+  });
+
+  if (!proposal) {
+    return null;
+  }
+
+  const signature = await prisma.proposalSignature.findFirst({
+    where: { id: signatureId, proposalId },
+    select: {
+      id: true,
+      signedBy: true,
+      signedByRole: true,
+      signerEmail: true,
+      signedAt: true,
+      ipAddress: true,
+      userAgent: true,
+      deviceInfo: true,
+      geoLocation: true,
+      documentHash: true,
+      termsHash: true,
+      consentText: true,
+      signatureType: true,
+      agreementVersion: true,
+      agreementAccepted: true,
+    },
+  });
+
+  if (!signature) {
+    return null;
+  }
+
+  return {
+    auditSchemaVersion: '1.0',
+    exportedAt: new Date().toISOString(),
+    proposal: {
+      id: proposal.id,
+      reference: proposal.reference,
+      title: proposal.title,
+      status: proposal.status,
+      acceptedAt: proposal.acceptedAt,
+      acceptedBy: proposal.acceptedBy,
+    },
+    signature,
+  };
+}
+
 // Get signature image (tenant-scoped — prevents cross-tenant IDOR)
 export async function getSignatureImage(
   signatureId: string,
@@ -514,6 +576,7 @@ export default {
   getProposalViewStats,
   recordElectronicSignature,
   getProposalSignatures,
+  getSignatureAuditRecord,
   getSignatureImage,
   generateComplianceAuditTrail,
   isShareTokenValid,

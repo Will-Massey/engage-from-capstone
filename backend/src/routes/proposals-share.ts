@@ -19,6 +19,7 @@ import {
   getProposalViewStats,
   recordElectronicSignature,
   getProposalSignatures,
+  getSignatureAuditRecord,
   getSignatureImage,
   generateComplianceAuditTrail,
   isShareTokenValid,
@@ -350,6 +351,65 @@ router.get(
     res.json({
       success: true,
       data: auditTrail,
+    });
+  })
+);
+
+// Download signature certificate PDF (tenant-scoped forensic export)
+router.get(
+  '/:id/signatures/:signatureId/certificate',
+  authenticate,
+  asyncHandler(async (req, res) => {
+    const { id, signatureId } = req.params;
+    const tenantId = req.tenantId!;
+
+    const proposal = await prisma.proposal.findFirst({
+      where: { id, tenantId },
+      select: { id: true, reference: true },
+    });
+
+    if (!proposal) {
+      throw new ApiError('PROPOSAL_NOT_FOUND', 'Proposal not found', 404);
+    }
+
+    const signature = await prisma.proposalSignature.findFirst({
+      where: { id: signatureId, proposalId: id },
+      select: { id: true },
+    });
+
+    if (!signature) {
+      throw new ApiError('SIGNATURE_NOT_FOUND', 'Signature not found', 404);
+    }
+
+    const { PDFGenerator } = await import('../services/pdfGenerator.js');
+    const pdfBuffer = await PDFGenerator.generateSignatureCertificate(id, signatureId);
+
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader(
+      'Content-Disposition',
+      `attachment; filename="signature-certificate-${proposal.reference}-${signatureId.slice(0, 8)}.pdf"`
+    );
+    res.send(pdfBuffer);
+  })
+);
+
+// Get signature audit record as JSON (tenant-scoped forensic export)
+router.get(
+  '/:id/signatures/:signatureId/audit',
+  authenticate,
+  asyncHandler(async (req, res) => {
+    const { id, signatureId } = req.params;
+    const tenantId = req.tenantId!;
+
+    const auditRecord = await getSignatureAuditRecord(id, signatureId, tenantId);
+
+    if (!auditRecord) {
+      throw new ApiError('SIGNATURE_NOT_FOUND', 'Signature not found', 404);
+    }
+
+    res.json({
+      success: true,
+      data: auditRecord,
     });
   })
 );
