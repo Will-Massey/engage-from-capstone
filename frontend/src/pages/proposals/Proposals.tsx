@@ -238,6 +238,10 @@ const Proposals = () => {
             Export CSV
           </button>
         )}
+        <Link to="/proposals/new?manual=1" className="btn-secondary">
+          <PlusIcon className="h-5 w-5 mr-2" />
+          New proposal (manual)
+        </Link>
         <Link to="/proposals/new" className="btn-primary">
           <PlusIcon className="h-5 w-5 mr-2" />
           Create Proposal
