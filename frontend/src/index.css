@@ -38,12 +38,12 @@
 @layer components {
   /* Glass morphism form inputs */
   .input-field {
-    @apply block w-full rounded-xl border-slate-300 dark:border-slate-600
-           bg-white/70 dark:bg-slate-800/70 backdrop-blur-sm
-           text-slate-800 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500
-           shadow-sm focus:border-primary-500 focus:ring-4 focus:ring-primary-500/10
+    @apply block w-full rounded-xl border-slate-200 dark:border-slate-600
+           bg-white/85 dark:bg-slate-800/70 backdrop-blur-md
+           text-slate-900 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-400
+           shadow-sm focus:border-primary-500 focus:ring-4 focus:ring-primary-500/15
            sm:text-sm transition-all duration-200
-           hover:border-primary-300 dark:hover:border-primary-700;
+           hover:border-primary-300 dark:hover:border-primary-500;
   }
 
   .input-field-error {
@@ -82,10 +82,10 @@
   }
 
   .btn-secondary {
-    @apply btn bg-white/80 dark:bg-slate-800/80 text-slate-700 dark:text-slate-200 
+    @apply btn bg-white/85 dark:bg-slate-800/80 text-slate-700 dark:text-slate-200 
            border border-slate-200 dark:border-slate-600 backdrop-blur-sm
-           hover:bg-slate-50 dark:hover:bg-slate-700
-           focus:ring-slate-200 dark:focus:ring-slate-700
+           hover:bg-slate-100 dark:hover:bg-slate-700
+           focus:ring-primary-100 dark:focus:ring-slate-700
            shadow-sm;
   }
 
@@ -133,21 +133,21 @@
   /* Glass morphism cards */
   .card {
     @apply rounded-2xl transition-all duration-300;
-    background: linear-gradient(135deg, rgba(255, 255, 255, 0.9) 0%, rgba(255, 255, 255, 0.8) 100%);
+    background: linear-gradient(135deg, rgba(245, 248, 255, 0.92) 0%, rgba(240, 245, 255, 0.85) 100%);
     backdrop-filter: blur(20px);
     -webkit-backdrop-filter: blur(20px);
-    border: 1px solid rgba(255, 255, 255, 0.6);
+    border: 1px solid rgba(199, 210, 254, 0.5);
     box-shadow:
-      0 8px 32px 0 rgba(31, 38, 135, 0.1),
-      inset 0 1px 0 0 rgba(255, 255, 255, 0.6);
+      0 8px 32px 0 rgba(31, 38, 135, 0.08),
+      inset 0 1px 0 0 rgba(255, 255, 255, 0.7);
   }
 
   .dark .card {
-    background: linear-gradient(135deg, rgba(30, 41, 59, 0.8) 0%, rgba(15, 23, 42, 0.9) 100%);
-    border: 1px solid rgba(255, 255, 255, 0.08);
+    background: linear-gradient(135deg, rgba(30, 41, 59, 0.88) 0%, rgba(15, 23, 42, 0.92) 100%);
+    border: 1px solid rgba(148, 163, 184, 0.15);
     box-shadow:
-      0 8px 32px 0 rgba(0, 0, 0, 0.4),
-      inset 0 1px 0 0 rgba(255, 255, 255, 0.05);
+      0 8px 32px 0 rgba(0, 0, 0, 0.45),
+      inset 0 1px 0 0 rgba(255, 255, 255, 0.06);
   }
 
   .card-hover {
@@ -170,30 +170,32 @@
   /* Glass tiles */
   .glass-tile {
     @apply rounded-2xl p-6 transition-all duration-300;
-    background: linear-gradient(135deg, rgba(255, 255, 255, 0.6) 0%, rgba(255, 255, 255, 0.4) 100%);
-    backdrop-filter: blur(12px);
-    -webkit-backdrop-filter: blur(12px);
-    border: 1px solid rgba(255, 255, 255, 0.5);
+    background: linear-gradient(135deg, rgba(248, 250, 255, 0.82) 0%, rgba(240, 245, 255, 0.72) 100%);
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
+    border: 1px solid rgba(199, 210, 254, 0.45);
     box-shadow:
-      0 4px 24px 0 rgba(31, 38, 135, 0.08),
-      inset 0 1px 0 0 rgba(255, 255, 255, 0.4);
+      0 6px 28px 0 rgba(31, 38, 135, 0.07),
+      inset 0 1px 0 0 rgba(255, 255, 255, 0.55);
   }
 
   .dark .glass-tile {
-    background: linear-gradient(135deg, rgba(30, 41, 59, 0.85) 0%, rgba(15, 23, 42, 0.75) 100%);
-    border: 1px solid rgba(255, 255, 255, 0.12);
+    background: linear-gradient(135deg, rgba(30, 41, 59, 0.9) 0%, rgba(15, 23, 42, 0.82) 100%);
+    border: 1px solid rgba(148, 163, 184, 0.18);
     box-shadow:
-      0 4px 24px 0 rgba(0, 0, 0, 0.4),
-      inset 0 1px 0 0 rgba(255, 255, 255, 0.05);
+      0 6px 28px 0 rgba(0, 0, 0, 0.45),
+      inset 0 1px 0 0 rgba(255, 255, 255, 0.07);
   }
 
   .glass-tile:hover {
     transform: translateY(-2px);
-    background: linear-gradient(135deg, rgba(255, 255, 255, 0.8) 0%, rgba(255, 255, 255, 0.6) 100%);
+    background: linear-gradient(135deg, rgba(248, 250, 255, 0.9) 0%, rgba(240, 245, 255, 0.82) 100%);
+    border-color: rgba(165, 180, 252, 0.5);
   }
 
   .dark .glass-tile:hover {
-    background: linear-gradient(135deg, rgba(30, 41, 59, 0.95) 0%, rgba(15, 23, 42, 0.85) 100%);
+    background: linear-gradient(135deg, rgba(30, 41, 59, 0.96) 0%, rgba(15, 23, 42, 0.9) 100%);
+    border-color: rgba(148, 163, 184, 0.22);
   }
 
   /* Badge styles with glass effect */

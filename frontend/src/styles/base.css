@@ -5,23 +5,23 @@
 
 /* CSS Variables for theming */
 :root {
-  /* Light theme (default) */
+  /* Light theme (default) — enhanced pale cool tones for beautiful glassmorphism */
   --bg-primary: #f8fafc;
   --bg-secondary: #ffffff;
   --bg-tertiary: #f1f5f9;
-  --bg-glass: rgba(255, 255, 255, 0.7);
+  --bg-glass: rgba(248, 250, 255, 0.82);
 
   --text-primary: #0f172a;
-  --text-secondary: #475569;
-  --text-tertiary: #94a3b8;
+  --text-secondary: #334155;
+  --text-tertiary: #64748b;
 
-  --border-color: rgba(226, 232, 240, 0.8);
-  --border-glass: rgba(255, 255, 255, 0.5);
+  --border-color: rgba(203, 213, 225, 0.7);
+  --border-glass: rgba(199, 210, 254, 0.45);
 
-  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
-  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -2px rgba(0, 0, 0, 0.05);
-  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.08), 0 4px 6px -4px rgba(0, 0, 0, 0.08);
-  --shadow-glass: 0 8px 32px 0 rgba(31, 38, 135, 0.07);
+  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.04);
+  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.04), 0 2px 4px -2px rgba(0, 0, 0, 0.04);
+  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.06), 0 4px 6px -4px rgba(0, 0, 0, 0.06);
+  --shadow-glass: 0 8px 32px 0 rgba(31, 38, 135, 0.06);
 
   --accent-primary: #6366f1;
   --accent-secondary: #8b5cf6;

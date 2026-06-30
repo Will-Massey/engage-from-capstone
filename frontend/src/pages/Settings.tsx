@@ -683,40 +683,40 @@ const Settings = () => {
   return (
     <div className="space-y-6 animate-fade-in max-w-7xl mx-auto">
       {/* Header */}
-      <div className="border-b border-slate-200 pb-4">
+      <div className="border-b border-slate-200 dark:border-slate-700 pb-5">
         <h1 className="text-2xl font-bold text-slate-900 dark:text-white">Settings</h1>
-        <p className="mt-1 text-sm text-slate-600 dark:text-slate-400">
+        <p className="mt-1.5 text-sm text-slate-600 dark:text-slate-300">
           Manage your account, practice details, and preferences
         </p>
       </div>
 
-      <div className="flex flex-col lg:flex-row gap-8">
+      <div className="flex flex-col lg:flex-row gap-10">
         {/* Sidebar - Modern card style */}
         <div className="lg:w-72 flex-shrink-0">
-          <nav className="space-y-2 glass-tile p-2">
+          <nav className="space-y-2 glass-tile p-3">
             {tabs.map((tab) => (
               <button
                 key={tab.id}
                 onClick={() => selectTab(tab.id)}
-                className={`w-full flex items-start px-4 py-3 text-left rounded-lg transition-all ${
+                className={`w-full flex items-start px-4 py-3.5 text-left rounded-xl transition-all ${
                   activeTab === tab.id
-                    ? 'bg-primary-50 dark:bg-primary-900/30 text-primary-700 dark:text-primary-300 shadow-sm'
-                    : 'text-slate-800 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800'
+                    ? 'bg-primary-50 dark:bg-primary-900/30 text-primary-700 dark:text-primary-300 shadow-sm border border-primary-200/50 dark:border-primary-800/50'
+                    : 'text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800/60 hover:border-slate-200 dark:hover:border-slate-700 border border-transparent'
                 }`}
               >
                 <tab.icon
                   className={`h-5 w-5 mt-0.5 flex-shrink-0 ${
-                    activeTab === tab.id ? 'text-primary-500 dark:text-primary-400' : 'text-slate-400 dark:text-slate-500'
+                    activeTab === tab.id ? 'text-primary-500 dark:text-primary-400' : 'text-slate-400 dark:text-slate-400'
                   }`}
                 />
                 <div className="ml-3">
                   <p
-                    className={`text-sm font-medium ${activeTab === tab.id ? 'text-primary-900 dark:text-primary-200' : 'text-slate-900 dark:text-white'}`}
+                    className={`text-sm font-semibold ${activeTab === tab.id ? 'text-primary-900 dark:text-primary-100' : 'text-slate-900 dark:text-white'}`}
                   >
                     {tab.name}
                   </p>
                   <p
-                    className={`text-xs ${activeTab === tab.id ? 'text-primary-600 dark:text-primary-400' : 'text-slate-600 dark:text-slate-400'}`}
+                    className={`text-xs mt-0.5 ${activeTab === tab.id ? 'text-primary-600 dark:text-primary-300' : 'text-slate-500 dark:text-slate-300'}`}
                   >
                     {tab.description}
                   </p>
@@ -726,27 +726,27 @@ const Settings = () => {
           </nav>
 
           {/* Quick Help Card */}
-          <div className="mt-4 bg-gradient-to-br from-primary-500 to-primary-600 rounded-xl p-4 text-white">
+          <div className="mt-4 glass-tile bg-gradient-to-br from-primary-500/95 to-primary-600/95 border-primary-400/30 p-5 text-white">
             <h4 className="font-semibold text-sm">Need Help?</h4>
-            <p className="text-xs text-primary-100 mt-1">
+            <p className="text-xs text-primary-100 mt-1.5">
               Contact support@capstonesoftware.co.uk for assistance with settings.
             </p>
           </div>
         </div>
 
         {/* Content */}
-        <div className="flex-1 space-y-6">
+        <div className="flex-1 space-y-8">
           {/* PROFILE TAB */}
           {activeTab === 'profile' && (
             <div className="glass-tile overflow-hidden">
-              <div className="px-6 py-4 border-b border-slate-200 dark:border-slate-700 bg-white/5 dark:bg-slate-800/20">
+              <div className="px-8 py-5 border-b border-slate-200 dark:border-slate-700 bg-white/40 dark:bg-slate-800/30">
                 <h2 className="text-lg font-semibold text-slate-900 dark:text-white">My Profile</h2>
-                <p className="text-sm text-slate-600 dark:text-slate-400">Update your personal information</p>
+                <p className="text-sm text-slate-500 dark:text-slate-300">Update your personal information</p>
               </div>
-              <div className="p-6 space-y-6">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="p-8 space-y-8">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                   <div>
-                    <label className="block text-sm font-medium text-slate-800 dark:text-slate-200">First Name</label>
+                    <label className="block text-sm font-semibold text-slate-700 dark:text-slate-100">First Name</label>
                     <input
                       type="text"
                       value={profileForm.firstName}
@@ -757,7 +757,7 @@ const Settings = () => {
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-slate-800 dark:text-slate-200">Last Name</label>
+                    <label className="block text-sm font-semibold text-slate-700 dark:text-slate-100">Last Name</label>
                     <input
                       type="text"
                       value={profileForm.lastName}
@@ -767,7 +767,7 @@ const Settings = () => {
                   </div>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-slate-800 dark:text-slate-200">Email</label>
+                  <label className="block text-sm font-semibold text-slate-700 dark:text-slate-100">Email</label>
                   <input
                     type="email"
                     value={profileForm.email}
@@ -775,9 +775,9 @@ const Settings = () => {
                     className="mt-1 input-field w-full"
                   />
                 </div>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                   <div>
-                    <label className="block text-sm font-medium text-slate-800 dark:text-slate-200">Phone</label>
+                    <label className="block text-sm font-semibold text-slate-700 dark:text-slate-100">Phone</label>
                     <input
                       type="tel"
                       value={profileForm.phone}
@@ -787,7 +787,7 @@ const Settings = () => {
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-slate-800 dark:text-slate-200">Job Title</label>
+                    <label className="block text-sm font-semibold text-slate-700 dark:text-slate-100">Job Title</label>
                     <input
                       type="text"
                       value={profileForm.jobTitle}
@@ -815,13 +815,13 @@ const Settings = () => {
             <div className="space-y-6">
               {/* Company Details */}
               <div className="glass-tile overflow-hidden">
-                <div className="px-6 py-4 border-b border-slate-200 dark:border-slate-700 bg-white/5 dark:bg-slate-800/20">
+                <div className="px-8 py-5 border-b border-slate-200 dark:border-slate-700 bg-white/40 dark:bg-slate-800/30">
                   <h2 className="text-lg font-semibold text-slate-900 dark:text-white">Practice Details</h2>
-                  <p className="text-sm text-slate-600 dark:text-slate-400">Your company information</p>
+                  <p className="text-sm text-slate-500 dark:text-slate-300">Your company information</p>
                 </div>
-                <div className="p-6 space-y-6">
+                <div className="p-8 space-y-8">
                   <div>
-                    <label className="block text-sm font-medium text-slate-800 dark:text-slate-200">
+                    <label className="block text-sm font-semibold text-slate-700 dark:text-slate-100">
                       Practice Name
                     </label>
                     <input
@@ -831,9 +831,9 @@ const Settings = () => {
                       className="mt-1 input-field w-full"
                     />
                   </div>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                     <div>
-                      <label className="block text-sm font-medium text-slate-800 dark:text-slate-200">
+                      <label className="block text-sm font-semibold text-slate-700 dark:text-slate-100">
                         Company Registration Number
                       </label>
                       <input
@@ -847,7 +847,7 @@ const Settings = () => {
                       />
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-slate-800 dark:text-slate-200">
+                      <label className="block text-sm font-semibold text-slate-700 dark:text-slate-100">
                         Professional Body
                       </label>
                       <select
@@ -868,7 +868,7 @@ const Settings = () => {
                     </div>
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-slate-800 dark:text-slate-200">
+                    <label className="block text-sm font-semibold text-slate-700 dark:text-slate-100">
                       Registered Address
                     </label>
                     <textarea
@@ -881,9 +881,9 @@ const Settings = () => {
                       placeholder="Street address&#10;City&#10;Postcode"
                     />
                   </div>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                     <div>
-                      <label className="block text-sm font-medium text-slate-800 dark:text-slate-200">
+                      <label className="block text-sm font-semibold text-slate-700 dark:text-slate-100">
                         Practice Phone
                       </label>
                       <input
@@ -896,7 +896,7 @@ const Settings = () => {
                       />
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-slate-800 dark:text-slate-200">Website</label>
+                      <label className="block text-sm font-semibold text-slate-700 dark:text-slate-100">Website</label>
                       <input
                         type="url"
                         value={practiceForm.website}
@@ -913,16 +913,16 @@ const Settings = () => {
 
               {/* Legal & Compliance */}
               <div className="glass-tile overflow-hidden">
-                <div className="px-6 py-4 border-b border-slate-200 dark:border-slate-700 bg-white/5 dark:bg-slate-800/20">
+                <div className="px-8 py-5 border-b border-slate-200 dark:border-slate-700 bg-white/40 dark:bg-slate-800/30">
                   <h2 className="text-lg font-semibold text-slate-900 dark:text-white">Legal & Compliance</h2>
-                  <p className="text-sm text-slate-600 dark:text-slate-400">
+                  <p className="text-sm text-slate-500 dark:text-slate-300">
                     Professional indemnity and regulatory information
                   </p>
                 </div>
-                <div className="p-6 space-y-6">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="p-8 space-y-8">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                     <div>
-                      <label className="block text-sm font-medium text-slate-800 dark:text-slate-200">
+                      <label className="block text-sm font-semibold text-slate-700 dark:text-slate-100">
                         Professional Indemnity Insurer
                       </label>
                       <input
@@ -936,7 +936,7 @@ const Settings = () => {
                       />
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-slate-800 dark:text-slate-200">
+                      <label className="block text-sm font-semibold text-slate-700 dark:text-slate-100">
                         Governing Law
                       </label>
                       <select
@@ -960,14 +960,14 @@ const Settings = () => {
                       onChange={(e) =>
                         setPracticeForm({ ...practiceForm, fcaAuthorised: e.target.checked })
                       }
-                      className="h-4 w-4 text-primary-600 dark:text-primary-400 rounded border-slate-300 dark:border-slate-600"
+                      className="h-4 w-4 text-primary-600 dark:text-primary-400 rounded border-slate-300 dark:border-slate-500"
                     />
                     <label htmlFor="fcaAuthorised" className="ml-2 text-sm text-slate-800 dark:text-slate-200">
                       FCA Authorised (for regulated activities)
                     </label>
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-slate-800 dark:text-slate-200">
+                    <label className="block text-sm font-semibold text-slate-700 dark:text-slate-100">
                       Privacy Policy URL
                     </label>
                     <input
@@ -997,18 +997,18 @@ const Settings = () => {
           {/* BRANDING TAB */}
           {activeTab === 'branding' && (
             <div className="glass-tile overflow-hidden">
-              <div className="px-6 py-4 border-b border-slate-200 dark:border-slate-700 bg-white/5 dark:bg-slate-800/20">
+              <div className="px-8 py-5 border-b border-slate-200 dark:border-slate-700 bg-white/40 dark:bg-slate-800/30">
                 <h2 className="text-lg font-semibold text-slate-900 dark:text-white">Branding</h2>
-                <p className="text-sm text-slate-600 dark:text-slate-400">Customise your proposal appearance</p>
+                <p className="text-sm text-slate-500 dark:text-slate-300">Customise your proposal appearance</p>
               </div>
               <div className="p-6 space-y-8">
                 {/* Logo Upload */}
                 <div>
-                  <label className="block text-sm font-medium text-slate-800 dark:text-slate-200 mb-3">
+                  <label className="block text-sm font-semibold text-slate-700 dark:text-slate-100 mb-3">
                     Practice Logo
                   </label>
                   <div className="flex items-start space-x-6">
-                    <div className="w-32 h-32 border-2 border-dashed border-slate-300 dark:border-slate-600 rounded-lg flex items-center justify-center bg-slate-50 overflow-hidden">
+                    <div className="w-32 h-32 border-2 border-dashed border-slate-300 dark:border-slate-500 rounded-lg flex items-center justify-center bg-slate-50 overflow-hidden">
                       {brandingForm.logo ? (
                         <img
                           src={brandingForm.logo}
@@ -1024,9 +1024,9 @@ const Settings = () => {
                         type="file"
                         accept="image/*"
                         onChange={handleLogoUpload}
-                        className="block w-full text-sm text-slate-600 dark:text-slate-400 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-medium file:bg-primary-50 file:text-primary-700 hover:file:bg-primary-100 dark:file:bg-primary-900/30 dark:file:text-primary-300"
+                        className="block w-full text-sm text-slate-500 dark:text-slate-300 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-medium file:bg-primary-50 file:text-primary-700 hover:file:bg-primary-100 dark:file:bg-primary-900/30 dark:file:text-primary-300"
                       />
-                      <p className="mt-2 text-xs text-slate-600 dark:text-slate-400">
+                      <p className="mt-2 text-xs text-slate-500 dark:text-slate-300">
                         Recommended: PNG or SVG with transparent background. Max 2MB.
                       </p>
                     </div>
@@ -1035,7 +1035,7 @@ const Settings = () => {
 
                 {/* Primary Color */}
                 <div>
-                  <label className="block text-sm font-medium text-slate-800 dark:text-slate-200 mb-3">
+                  <label className="block text-sm font-semibold text-slate-700 dark:text-slate-100 mb-3">
                     Primary Brand Color
                   </label>
                   <div className="flex items-center space-x-4">
@@ -1045,7 +1045,7 @@ const Settings = () => {
                       onChange={(e) =>
                         setBrandingForm({ ...brandingForm, primaryColor: e.target.value })
                       }
-                      className="h-12 w-12 rounded-lg border border-slate-300 dark:border-slate-600 cursor-pointer"
+                      className="h-12 w-12 rounded-lg border border-slate-300 dark:border-slate-500 cursor-pointer"
                     />
                     <input
                       type="text"
@@ -1063,7 +1063,7 @@ const Settings = () => {
                             onClick={() =>
                               setBrandingForm({ ...brandingForm, primaryColor: color })
                             }
-                            className="w-8 h-8 rounded-full border-2 border-slate-300 dark:border-slate-600 shadow-sm hover:scale-110 transition-transform"
+                            className="w-8 h-8 rounded-full border-2 border-slate-300 dark:border-slate-500 shadow-sm hover:scale-110 transition-transform"
                             style={{ backgroundColor: color }}
                           />
                         )
@@ -1074,7 +1074,7 @@ const Settings = () => {
 
                 {/* Preview */}
                 <div>
-                  <label className="block text-sm font-medium text-slate-800 dark:text-slate-200 mb-3">Preview</label>
+                  <label className="block text-sm font-semibold text-slate-700 dark:text-slate-100 mb-3">Preview</label>
                   <div
                     className="border rounded-lg p-6"
                     style={{ borderColor: brandingForm.primaryColor }}
@@ -1091,7 +1091,7 @@ const Settings = () => {
                           {practiceForm.name || 'Your Practice Name'}
                         </span>
                       </div>
-                      <span className="text-sm text-slate-600 dark:text-slate-400">PROPOSAL</span>
+                      <span className="text-sm text-slate-500 dark:text-slate-300">PROPOSAL</span>
                     </div>
                     <div
                       className="mt-4 h-1 rounded"
@@ -1121,7 +1121,7 @@ const Settings = () => {
                   <SunIcon className="h-6 w-6 text-primary-600 dark:text-primary-400" />
                   <div>
                     <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-100">Theme</h2>
-                    <p className="text-sm text-slate-600 dark:text-slate-400">Choose how Engage looks for you</p>
+                    <p className="text-sm text-slate-500 dark:text-slate-300">Choose how Engage looks for you</p>
                   </div>
                 </div>
 
@@ -1137,48 +1137,48 @@ const Settings = () => {
                       <button
                         key={option.value}
                         onClick={() => setCurrentTheme(option.value as any)}
-                        className={`flex flex-col items-center p-4 rounded-xl border transition-all ${
+                        className={`flex flex-col items-center p-5 rounded-2xl border transition-all ${
                           isActive
-                            ? 'border-primary-500 bg-primary-50 dark:bg-primary-900/20 ring-2 ring-primary-200 dark:ring-primary-800'
-                            : 'border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700 hover:border-slate-300 dark:hover:border-slate-600'
+                            ? 'border-primary-500 bg-primary-50/80 dark:bg-primary-900/30 ring-2 ring-primary-200 dark:ring-primary-700 shadow-sm'
+                            : 'border-slate-200 dark:border-slate-600 bg-white/70 dark:bg-slate-800/70 hover:bg-slate-50 dark:hover:bg-slate-700/70 hover:border-primary-200 dark:hover:border-slate-500'
                         }`}
                       >
-                        <Icon className="h-8 w-8 mb-2 text-slate-600 dark:text-slate-300" />
-                        <div className="font-medium text-slate-900 dark:text-slate-100">{option.label}</div>
-                        <div className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">{option.desc}</div>
+                        <Icon className="h-8 w-8 mb-2 text-primary-500 dark:text-primary-300" />
+                        <div className="font-semibold text-slate-900 dark:text-white">{option.label}</div>
+                        <div className="text-xs text-slate-500 dark:text-slate-300 mt-0.5">{option.desc}</div>
                       </button>
                     );
                   })}
                 </div>
 
-                <div className="mt-4 text-xs text-slate-500 dark:text-slate-400">
+                <div className="mt-4 text-xs text-slate-500 dark:text-slate-300">
                   Your preference is saved and will be remembered across sessions.
                 </div>
               </div>
 
               {/* Clara & AI budget visibility (polish + transparency) */}
-              <div className="glass-tile p-6">
-                <div className="flex items-center gap-3 mb-4">
+              <div className="glass-tile p-8">
+                <div className="flex items-center gap-3 mb-5">
                   <SparklesIcon className="h-6 w-6 text-violet-600 dark:text-violet-400" />
                   <div>
-                    <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-100">Clara &amp; AI</h2>
-                    <p className="text-sm text-slate-600 dark:text-slate-400">Monthly usage and budget for Clara AI features</p>
+                    <h2 className="text-lg font-semibold text-slate-900 dark:text-white">Clara &amp; AI</h2>
+                    <p className="text-sm text-slate-500 dark:text-slate-300">Monthly usage and budget for Clara AI features</p>
                   </div>
                 </div>
 
                 {aiBudgetLoading ? (
-                  <div className="text-sm text-slate-500 dark:text-slate-400">Loading Clara budget…</div>
+                  <div className="text-sm text-slate-500 dark:text-slate-300">Loading Clara budget…</div>
                 ) : aiBudgetError || !aiBudget ? (
                   <div className="text-sm text-amber-600 dark:text-amber-400">
                     {aiBudgetError || 'AI budget data unavailable.'}
                   </div>
                 ) : (
                   <div>
-                    <div className="text-sm text-slate-700 dark:text-slate-300 mb-2">
+                    <div className="text-sm text-slate-700 dark:text-slate-200 mb-2">
                       Clara budget this month: {aiBudget.usedThisMonth?.toLocaleString?.() ?? aiBudget.usedThisMonth} / {aiBudget.budgetMonthly?.toLocaleString?.() ?? aiBudget.budgetMonthly} tokens used (remaining {aiBudget.remaining?.toLocaleString?.() ?? aiBudget.remaining}). Calls: {aiBudget.aiCallsThisMonth ?? '—'}
                     </div>
 
-                    {/* Tailwind progress bar, perfect dark mode */}
+                    {/* Tailwind progress bar, perfect dark mode + pale light */}
                     {(() => {
                       const used = Number(aiBudget.usedThisMonth) || 0;
                       const total = Number(aiBudget.budgetMonthly) || 1;
@@ -1193,7 +1193,7 @@ const Settings = () => {
                       );
                     })()}
 
-                    <p className="mt-2 text-xs text-slate-500 dark:text-slate-400">
+                    <p className="mt-2 text-xs text-slate-500 dark:text-slate-300">
                       Budget resets monthly. Clara uses a small allowance per suggestion, draft or review.
                     </p>
                   </div>
@@ -1207,9 +1207,9 @@ const Settings = () => {
             <div className="space-y-6">
               {/* Email Settings */}
               <div className="glass-tile overflow-hidden">
-                <div className="px-6 py-4 border-b border-slate-200 dark:border-slate-700 bg-white/5 dark:bg-slate-800/20">
+                <div className="px-8 py-5 border-b border-slate-200 dark:border-slate-700 bg-white/40 dark:bg-slate-800/30">
                   <h2 className="text-lg font-semibold text-slate-900 dark:text-white">Email Configuration</h2>
-                  <p className="text-sm text-slate-600 dark:text-slate-400">
+                  <p className="text-sm text-slate-500 dark:text-slate-300">
                     Configure how emails are sent from the platform
                   </p>
                 </div>
@@ -1227,16 +1227,16 @@ const Settings = () => {
 
               {/* Proposal defaults */}
               <div className="glass-tile overflow-hidden">
-                <div className="px-6 py-4 border-b border-slate-200 dark:border-slate-700 bg-white/5 dark:bg-slate-800/20">
+                <div className="px-8 py-5 border-b border-slate-200 dark:border-slate-700 bg-white/40 dark:bg-slate-800/30">
                   <h2 className="text-lg font-semibold text-slate-900 dark:text-white">Proposal defaults</h2>
-                  <p className="text-sm text-slate-600 dark:text-slate-400">
+                  <p className="text-sm text-slate-500 dark:text-slate-300">
                     Default expiry and renewal reminder timing for new proposals
                   </p>
                 </div>
                 <div className="p-6 space-y-4">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                     <div>
-                      <label className="block text-sm font-medium text-slate-800 dark:text-slate-200">
+                      <label className="block text-sm font-semibold text-slate-700 dark:text-slate-100">
                         Default proposal validity (days)
                       </label>
                       <input
@@ -1255,12 +1255,12 @@ const Settings = () => {
                         }
                         className="mt-1 input-field w-full"
                       />
-                      <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+                      <p className="mt-1 text-xs text-slate-500 dark:text-slate-300">
                         Pre-fills the &quot;valid until&quot; date when creating a proposal
                       </p>
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-slate-800 dark:text-slate-200">
+                      <label className="block text-sm font-semibold text-slate-700 dark:text-slate-100">
                         Renewal / expiry reminder (days before)
                       </label>
                       <input
@@ -1279,7 +1279,7 @@ const Settings = () => {
                         }
                         className="mt-1 input-field w-full"
                       />
-                      <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+                      <p className="mt-1 text-xs text-slate-500 dark:text-slate-300">
                         Email reminders before proposal expiry or annual renewal
                       </p>
                     </div>
@@ -1298,9 +1298,9 @@ const Settings = () => {
 
               {/* Notifications */}
               <div className="glass-tile overflow-hidden">
-                <div className="px-6 py-4 border-b border-slate-200 dark:border-slate-700 bg-white/5 dark:bg-slate-800/20">
+                <div className="px-8 py-5 border-b border-slate-200 dark:border-slate-700 bg-white/40 dark:bg-slate-800/30">
                   <h2 className="text-lg font-semibold text-slate-900 dark:text-white">Notification Preferences</h2>
-                  <p className="text-sm text-slate-600 dark:text-slate-400">
+                  <p className="text-sm text-slate-500 dark:text-slate-300">
                     Choose when you receive email notifications
                   </p>
                 </div>
@@ -1327,7 +1327,7 @@ const Settings = () => {
                       description: 'Weekly activity digest every Monday',
                     },
                   ].map((item) => (
-                    <div key={item.key} className="flex items-start">
+                    <div key={item.key} className="flex items-start py-1.5">
                       <input
                         type="checkbox"
                         id={item.key}
@@ -1345,13 +1345,13 @@ const Settings = () => {
                             },
                           })
                         }
-                        className="h-4 w-4 mt-1 text-primary-600 dark:text-primary-400 rounded border-slate-300 dark:border-slate-600"
+                        className="h-4 w-4 mt-1 text-primary-600 dark:text-primary-400 rounded border-slate-300 dark:border-slate-500 focus:ring-2 focus:ring-primary-200"
                       />
                       <div className="ml-3">
-                        <label htmlFor={item.key} className="text-sm font-medium text-slate-800 dark:text-slate-200">
+                        <label htmlFor={item.key} className="text-sm font-semibold text-slate-700 dark:text-slate-100">
                           {item.label}
                         </label>
-                        <p className="text-xs text-slate-600 dark:text-slate-400">{item.description}</p>
+                        <p className="text-xs text-slate-500 dark:text-slate-300 mt-0.5">{item.description}</p>
                       </div>
                     </div>
                   ))}
@@ -1372,43 +1372,43 @@ const Settings = () => {
           {/* BILLING TAB */}
           {activeTab === 'billing' && (
             <div className="glass-tile overflow-hidden">
-              <div className="px-6 py-4 border-b border-slate-200 dark:border-slate-700 bg-white/5 dark:bg-slate-800/20">
+              <div className="px-8 py-5 border-b border-slate-200 dark:border-slate-700 bg-white/40 dark:bg-slate-800/30">
                 <h2 className="text-lg font-semibold text-slate-900 dark:text-white">VAT & Billing Settings</h2>
-                <p className="text-sm text-slate-600 dark:text-slate-400">Configure tax and billing preferences</p>
+                <p className="text-sm text-slate-500 dark:text-slate-300">Configure tax and billing preferences</p>
               </div>
-              <div className="p-6 space-y-6">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="p-8 space-y-8">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                   <div>
-                    <label className="flex items-center gap-2 text-sm font-medium text-slate-800 dark:text-slate-200">
+                    <label className="flex items-center gap-2 text-sm font-semibold text-slate-700 dark:text-slate-100">
                       <input
                         type="checkbox"
                         checked={vatForm.vatRegistered}
                         onChange={(e) =>
                           setVatForm({ ...vatForm, vatRegistered: e.target.checked })
                         }
-                        className="rounded border-slate-300 dark:border-slate-600"
+                        className="rounded border-slate-300 dark:border-slate-500 focus:ring-2 focus:ring-primary-200"
                       />
                       VAT registered
                     </label>
-                    <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">Show VAT on proposals and apply default rates</p>
+                    <p className="mt-1 text-xs text-slate-500 dark:text-slate-300">Show VAT on proposals and apply default rates</p>
                   </div>
                   <div>
-                    <label className="flex items-center gap-2 text-sm font-medium text-slate-800 dark:text-slate-200">
+                    <label className="flex items-center gap-2 text-sm font-semibold text-slate-700 dark:text-slate-100">
                       <input
                         type="checkbox"
                         checked={vatForm.autoApplyVat}
                         onChange={(e) =>
                           setVatForm({ ...vatForm, autoApplyVat: e.target.checked })
                         }
-                        className="rounded border-slate-300 dark:border-slate-600"
+                        className="rounded border-slate-300 dark:border-slate-500 focus:ring-2 focus:ring-primary-200"
                       />
                       Auto-apply VAT to new services
                     </label>
                   </div>
                 </div>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                   <div>
-                    <label className="block text-sm font-medium text-slate-800 dark:text-slate-200">
+                    <label className="block text-sm font-semibold text-slate-700 dark:text-slate-100">
                       VAT registration number
                     </label>
                     <input
@@ -1421,7 +1421,7 @@ const Settings = () => {
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-slate-800 dark:text-slate-200">
+                    <label className="block text-sm font-semibold text-slate-700 dark:text-slate-100">
                       Default VAT rate
                     </label>
                     <select
@@ -1456,10 +1456,10 @@ const Settings = () => {
           {/* TEAM TAB */}
           {activeTab === 'team' && (
             <div className="glass-tile overflow-hidden">
-              <div className="px-6 py-4 border-b border-slate-200 dark:border-slate-700 bg-white/5 dark:bg-slate-800/20 flex items-center justify-between">
+              <div className="px-8 py-5 border-b border-slate-200 dark:border-slate-700 bg-white/40 dark:bg-slate-800/30 flex items-center justify-between">
                 <div>
                   <h2 className="text-lg font-semibold text-slate-900 dark:text-white">Team Members</h2>
-                  <p className="text-sm text-slate-600 dark:text-slate-400">Manage users and their permissions</p>
+                  <p className="text-sm text-slate-500 dark:text-slate-300">Manage users and their permissions</p>
                 </div>
                 <button onClick={() => setShowAddUserModal(true)} className="btn-primary text-sm">
                   Add User
@@ -1467,14 +1467,14 @@ const Settings = () => {
               </div>
               <div className="divide-y divide-slate-200">
                 {isLoading ? (
-                  <div className="p-8 text-center text-slate-600 dark:text-slate-400">Loading...</div>
+                  <div className="p-8 text-center text-slate-500 dark:text-slate-300">Loading...</div>
                 ) : users.length === 0 ? (
-                  <div className="p-8 text-center text-slate-600 dark:text-slate-400">No users found</div>
+                  <div className="p-8 text-center text-slate-500 dark:text-slate-300">No users found</div>
                 ) : (
                   users.map((u) => (
                     <div
                       key={u.id}
-                      className="p-6 flex items-center justify-between hover:bg-slate-50 transition-colors"
+                      className="p-6 flex items-center justify-between hover:bg-slate-50 dark:hover:bg-slate-800/60 transition-colors rounded-lg"
                     >
                       <div className="flex items-center">
                         <div className="h-10 w-10 rounded-full bg-primary-100 flex items-center justify-center">
@@ -1490,7 +1490,7 @@ const Settings = () => {
                               <span className="ml-2 text-xs text-primary-600 dark:text-primary-400">(You)</span>
                             )}
                           </p>
-                          <p className="text-sm text-slate-600 dark:text-slate-400">{u.email}</p>
+                          <p className="text-sm text-slate-500 dark:text-slate-300">{u.email}</p>
                           <span className="inline-flex mt-1 items-center px-2 py-0.5 rounded text-xs font-medium bg-slate-100 text-slate-800">
                             {u.role}
                           </span>
@@ -1517,7 +1517,7 @@ const Settings = () => {
                     <div className="space-y-4">
                       <div className="grid grid-cols-2 gap-4">
                         <div>
-                          <label className="block text-sm font-medium text-slate-800 dark:text-slate-200">
+                          <label className="block text-sm font-semibold text-slate-700 dark:text-slate-100">
                             First Name
                           </label>
                           <input
@@ -1530,7 +1530,7 @@ const Settings = () => {
                           />
                         </div>
                         <div>
-                          <label className="block text-sm font-medium text-slate-800 dark:text-slate-200">
+                          <label className="block text-sm font-semibold text-slate-700 dark:text-slate-100">
                             Last Name
                           </label>
                           <input
@@ -1545,7 +1545,7 @@ const Settings = () => {
                       </div>
                       <div className="grid grid-cols-2 gap-4">
                         <div>
-                          <label className="block text-sm font-medium text-slate-800 dark:text-slate-200">Contact Number</label>
+                          <label className="block text-sm font-semibold text-slate-700 dark:text-slate-100">Contact Number</label>
                           <input
                             type="tel"
                             value={newUserForm.phone}
@@ -1556,7 +1556,7 @@ const Settings = () => {
                           />
                         </div>
                         <div>
-                          <label className="block text-sm font-medium text-slate-800 dark:text-slate-200">Job Title</label>
+                          <label className="block text-sm font-semibold text-slate-700 dark:text-slate-100">Job Title</label>
                           <input
                             type="text"
                             value={newUserForm.jobTitle}
@@ -1569,7 +1569,7 @@ const Settings = () => {
                       </div>
                       <div className="grid grid-cols-2 gap-4">
                         <div>
-                          <label className="block text-sm font-medium text-slate-800 dark:text-slate-200">Contact Number</label>
+                          <label className="block text-sm font-semibold text-slate-700 dark:text-slate-100">Contact Number</label>
                           <input
                             type="tel"
                             value={newUserForm.phone}
@@ -1580,7 +1580,7 @@ const Settings = () => {
                           />
                         </div>
                         <div>
-                          <label className="block text-sm font-medium text-slate-800 dark:text-slate-200">Job Title</label>
+                          <label className="block text-sm font-semibold text-slate-700 dark:text-slate-100">Job Title</label>
                           <input
                             type="text"
                             value={newUserForm.jobTitle}
@@ -1592,7 +1592,7 @@ const Settings = () => {
                         </div>
                       </div>
                       <div>
-                        <label className="block text-sm font-medium text-slate-800 dark:text-slate-200">Email</label>
+                        <label className="block text-sm font-semibold text-slate-700 dark:text-slate-100">Email</label>
                         <input
                           type="email"
                           value={newUserForm.email}
@@ -1603,7 +1603,7 @@ const Settings = () => {
                         />
                       </div>
                       <div>
-                        <label className="block text-sm font-medium text-slate-800 dark:text-slate-200">Role</label>
+                        <label className="block text-sm font-semibold text-slate-700 dark:text-slate-100">Role</label>
                         <select
                           value={newUserForm.role}
                           onChange={(e) => setNewUserForm({ ...newUserForm, role: e.target.value })}
@@ -1616,7 +1616,7 @@ const Settings = () => {
                         </select>
                       </div>
                       <div>
-                        <label className="block text-sm font-medium text-slate-800 dark:text-slate-200">
+                        <label className="block text-sm font-semibold text-slate-700 dark:text-slate-100">
                           Temporary Password
                         </label>
                         <input
@@ -1646,7 +1646,7 @@ const Settings = () => {
                               >
                                 {req.test ? '✓' : '○'}
                               </span>
-                              <span className={req.test ? 'text-green-700' : 'text-slate-600 dark:text-slate-400'}>
+                              <span className={req.test ? 'text-green-700' : 'text-slate-500 dark:text-slate-300'}>
                                 {req.label}
                               </span>
                             </div>
@@ -1678,16 +1678,16 @@ const Settings = () => {
           {/* SECURITY TAB */}
           {activeTab === 'security' && (
             <div className="glass-tile overflow-hidden">
-              <div className="px-6 py-4 border-b border-slate-200 dark:border-slate-700 bg-white/5 dark:bg-slate-800/20">
+              <div className="px-8 py-5 border-b border-slate-200 dark:border-slate-700 bg-white/40 dark:bg-slate-800/30">
                 <h2 className="text-lg font-semibold text-slate-900 dark:text-white">Security</h2>
-                <p className="text-sm text-slate-600 dark:text-slate-400">Manage your password and account security</p>
+                <p className="text-sm text-slate-500 dark:text-slate-300">Manage your password and account security</p>
               </div>
-              <div className="p-6 space-y-6">
+              <div className="p-8 space-y-8">
                 <div>
                   <h3 className="text-sm font-medium text-slate-900 mb-4">Change Password</h3>
                   <div className="space-y-4 max-w-md">
                     <div>
-                      <label className="block text-sm font-medium text-slate-800 dark:text-slate-200">
+                      <label className="block text-sm font-semibold text-slate-700 dark:text-slate-100">
                         Current Password
                       </label>
                       <input
@@ -1700,7 +1700,7 @@ const Settings = () => {
                       />
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-slate-800 dark:text-slate-200">
+                      <label className="block text-sm font-semibold text-slate-700 dark:text-slate-100">
                         New Password
                       </label>
                       <input
@@ -1713,7 +1713,7 @@ const Settings = () => {
                       />
                       {/* Password Requirements */}
                       <div className="mt-2 space-y-1">
-                        <p className="text-xs text-slate-600 dark:text-slate-400 font-medium">Password requirements:</p>
+                        <p className="text-xs text-slate-500 dark:text-slate-300 font-medium">Password requirements:</p>
                         {[
                           {
                             test: passwordForm.newPassword.length >= 8,
@@ -1739,7 +1739,7 @@ const Settings = () => {
                             >
                               {req.test ? '✓' : '○'}
                             </span>
-                            <span className={req.test ? 'text-green-700' : 'text-slate-600 dark:text-slate-400'}>
+                            <span className={req.test ? 'text-green-700' : 'text-slate-500 dark:text-slate-300'}>
                               {req.label}
                             </span>
                           </div>
@@ -1747,7 +1747,7 @@ const Settings = () => {
                       </div>
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-slate-800 dark:text-slate-200">
+                      <label className="block text-sm font-semibold text-slate-700 dark:text-slate-100">
                         Confirm New Password
                       </label>
                       <input
@@ -1773,7 +1773,7 @@ const Settings = () => {
                   <h3 className="text-sm font-medium text-slate-900 mb-2">
                     Two-Factor Authentication
                   </h3>
-                  <p className="text-sm text-slate-600 dark:text-slate-400 mb-4">
+                  <p className="text-sm text-slate-500 dark:text-slate-300 mb-4">
                     Two-factor authentication adds an extra layer of security. We&apos;re finishing
                     TOTP support — password + session cookies are already hardened.
                   </p>
@@ -1884,7 +1884,7 @@ function AutomationTab() {
           </div>
           <div className="flex-1">
             <h2 className="text-xl font-semibold">Automated Client Touchpoints</h2>
-            <p className="mt-1 text-sm text-slate-600 dark:text-slate-400 max-w-prose">
+            <p className="mt-1 text-sm text-slate-500 dark:text-slate-300 max-w-prose">
               Once a proposal is accepted, Engage automatically sends warm, timely messages at every stage — welcome, AML chase, engagement letters, info requests, milestone reminders, and annual reviews.
               You stay in control with per-stage templates, human approval gates, and the ability to pause any client.
             </p>
@@ -1892,7 +1892,7 @@ function AutomationTab() {
               <button onClick={runEngine} className="btn-primary text-sm px-4 py-1.5">Run engine now</button>
             </div>
             {automationSettings?.emailFollowUp && (
-              <p className="mt-3 text-xs text-slate-500 dark:text-slate-400">
+              <p className="mt-3 text-xs text-slate-500 dark:text-slate-300">
                 Email follow-up: {automationSettings.emailFollowUp.enabled ? 'enabled' : 'disabled'}
                 {automationSettings.proposalExpiry?.defaultExpiryDays
                   ? ` · Default proposal expiry ${automationSettings.proposalExpiry.defaultExpiryDays} days`
@@ -1907,7 +1907,7 @@ function AutomationTab() {
         <div className="flex items-center justify-between mb-4">
           <div>
             <h3 className="text-lg font-semibold">Stage Templates &amp; Controls</h3>
-            <p className="text-sm text-slate-600 dark:text-slate-400">Toggle stages on/off and customise the wording clients receive.</p>
+            <p className="text-sm text-slate-500 dark:text-slate-300">Toggle stages on/off and customise the wording clients receive.</p>
           </div>
           <button onClick={runEngine} className="btn-secondary text-sm hidden sm:block">Run Engine Now</button>
         </div>
@@ -1934,7 +1934,7 @@ function AutomationTab() {
                         {isOn ? 'ON' : 'PAUSED'}
                       </span>
                     </div>
-                    <div className="mt-1 text-xs text-slate-500 dark:text-slate-400 line-clamp-2">
+                    <div className="mt-1 text-xs text-slate-500 dark:text-slate-300 line-clamp-2">
                       {t?.subject ? t.subject : 'Using default template'}
                     </div>
                   </div>
@@ -1957,7 +1957,7 @@ function AutomationTab() {
                         }}
                         className="accent-primary-600"
                       />
-                      <span className="text-slate-600 dark:text-slate-400">Active</span>
+                      <span className="text-slate-500 dark:text-slate-300">Active</span>
                     </label>
                   </div>
                 </div>
@@ -1972,7 +1972,7 @@ function AutomationTab() {
         <div className="flex items-center justify-between mb-3">
           <div>
             <h3 className="font-semibold">Human Approval Queue</h3>
-            <p className="text-xs text-slate-500 dark:text-slate-400">Touchpoints that require your sign-off before sending</p>
+            <p className="text-xs text-slate-500 dark:text-slate-300">Touchpoints that require your sign-off before sending</p>
           </div>
           {approvals.length > 0 && (
             <span className="text-xs px-2 py-0.5 rounded-full bg-amber-100 text-amber-700 dark:bg-amber-900/40">{approvals.length} pending</span>
@@ -1995,7 +1995,7 @@ function AutomationTab() {
                   <span className="text-sm text-slate-700 dark:text-slate-200 truncate">{a.client?.name}</span>
                 </div>
                 {a.template?.subject && (
-                  <div className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 truncate">“{a.template.subject}”</div>
+                  <div className="text-xs text-slate-500 dark:text-slate-300 mt-0.5 truncate">“{a.template.subject}”</div>
                 )}
                 {a.scheduledFor && (
                   <div className="text-[10px] text-slate-400 dark:text-slate-500 mt-1">Scheduled: {new Date(a.scheduledFor).toLocaleDateString('en-GB')}</div>
@@ -2053,7 +2053,7 @@ function AutomationTab() {
             {/* Live-ish preview + merge tags */}
             <div className="mt-4 grid grid-cols-1 lg:grid-cols-5 gap-4">
               <div className="lg:col-span-3">
-                <div className="text-xs font-medium text-slate-600 dark:text-slate-400 mb-1">Preview (example data)</div>
+                <div className="text-xs font-medium text-slate-500 dark:text-slate-300 mb-1">Preview (example data)</div>
                 <div className="rounded-xl border border-slate-200 bg-white p-3 text-sm text-slate-700 dark:bg-slate-900 dark:text-slate-200">
                   <div className="font-medium mb-1">{form.subject || 'Subject line will appear here'}</div>
                   <div dangerouslySetInnerHTML={{ 
@@ -2066,8 +2066,8 @@ function AutomationTab() {
                 </div>
               </div>
               <div className="lg:col-span-2">
-                <div className="text-xs font-medium text-slate-600 dark:text-slate-400 mb-1">Merge tags</div>
-                <div className="text-[11px] leading-relaxed text-slate-600 dark:text-slate-400 bg-slate-50 dark:bg-slate-800/60 border border-slate-200 rounded-xl p-3">
+                <div className="text-xs font-medium text-slate-500 dark:text-slate-300 mb-1">Merge tags</div>
+                <div className="text-[11px] leading-relaxed text-slate-500 dark:text-slate-300 bg-slate-50 dark:bg-slate-800/60 border border-slate-200 rounded-xl p-3">
                   <div><code>{'{{client_name}}'}</code> — company</div>
                   <div><code>{'{{contact_name}}'}</code> — person</div>
                   <div><code>{'{{practice_name}}'}</code> — your firm</div>
