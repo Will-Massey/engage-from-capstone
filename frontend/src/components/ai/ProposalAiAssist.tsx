@@ -223,22 +223,29 @@ export default function ProposalAiAssist({ proposal, onUpdated }: ProposalAiAssi
       {showRenewal && (
         <AiPanel
           title="Renewal draft"
-          description="Create next year's proposal with optional fee uplift"
+          description="Create next year's proposal — ask Clara for an uplift or reduction (e.g. 10% or -10%)"
           configured={configured}
           loading={renewalLoading}
           onAction={generateRenewal}
           actionLabel="Draft renewal"
         >
-          <div className="flex items-center gap-2 mb-2">
-            <label className="text-xs text-slate-600 dark:text-slate-400">Fee uplift %</label>
+          <div className="flex flex-wrap items-center gap-2 mb-2">
+            <label className="text-xs text-slate-600 dark:text-slate-400">Fee adjustment %</label>
             <input
               type="number"
-              min={0}
+              min={-50}
               max={50}
+              step={0.5}
               value={upliftPercent}
-              onChange={(e) => setUpliftPercent(Number(e.target.value))}
-              className="w-16 px-2 py-1 text-sm border rounded dark:bg-slate-800 dark:border-slate-600"
+              onChange={(e) => {
+                const v = Number(e.target.value);
+                setUpliftPercent(Number.isFinite(v) ? Math.min(50, Math.max(-50, v)) : 0);
+              }}
+              className="w-20 px-2 py-1 text-sm border rounded dark:bg-slate-800 dark:border-slate-600"
             />
+            <span className="text-xs text-slate-500 dark:text-slate-400">
+              Negative = reduction · 0 = unchanged
+            </span>
           </div>
           {renewalDraft && (
             <div className="mt-2 space-y-2">

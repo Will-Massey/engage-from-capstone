@@ -259,7 +259,7 @@ Client: ${original.client.name}
 Prior proposal: ${original.title} (${original.reference}), accepted ${original.acceptedAt?.toISOString().slice(0, 10)}
 Renewal date: ${original.renewalDate?.toISOString().slice(0, 10) || 'approximately 12 months from acceptance'}
 Prior annual value: ${priorTotal}
-${upliftPercent > 0 ? `Fees increasing by ${upliftPercent}% (new indicative total ${newTotal}) — explain professionally (inflation, regulatory burden, continued service).` : 'Fees unchanged from prior year.'}
+${upliftPercent > 0 ? `Fees increasing by ${upliftPercent}% (new indicative total ${newTotal}) — explain professionally (inflation, regulatory burden, continued service).` : upliftPercent < 0 ? `Fees reducing by ${Math.abs(upliftPercent)}% (new indicative total ${newTotal}) — explain professionally.` : 'Fees unchanged from prior year.'}
 Renewed fee lines:
 ${renewedFees}
 

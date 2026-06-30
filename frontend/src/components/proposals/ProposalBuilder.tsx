@@ -47,9 +47,20 @@ import ProposalBuilderClara from '../ai/ProposalBuilderClara';
 import ClientContextCard from '../ai/ClientContextCard';
 import AutoFitBanner, { type AutoFitResult } from '../ai/AutoFitBanner';
 import ProposalEmailPreviewDialog, { type ProposalEmailDraftInput } from '../ai/ProposalEmailPreviewDialog';
+import SaveProposalTemplateDialog from './SaveProposalTemplateDialog';
 import { AI_COPILOT } from '../../config/aiCopilot';
 
-type BuildMode = 'unset' | 'manual' | 'clara';
+type BuildMode = 'unset' | 'manual' | 'clara' | 'template';
+
+interface ProposalTemplateSummary {
+  id: string;
+  name: string;
+  description?: string | null;
+  title: string;
+  serviceCount: number;
+  usageCount?: number | null;
+  lastUsedAt?: string | null;
+}
 
 /** Allow free typing in numeric fields without forcing 0 on empty input */
 function parseDecimalInput(value: string, fallback = 0): number {
@@ -385,6 +396,14 @@ export default function ProposalBuilder({ proposalId }: ProposalBuilderProps) {
     if (guidedParam === '1' || guidedParam === 'true') return 'clara';
     return 'unset';
   });
+  const [proposalTemplates, setProposalTemplates] = useState<ProposalTemplateSummary[]>([]);
+  const [templatesLoading, setTemplatesLoading] = useState(false);
+  const [selectedTemplateId, setSelectedTemplateId] = useState<string | null>(null);
+  const [applyingTemplateId, setApplyingTemplateId] = useState<string | null>(null);
+  const [saveTemplateDialog, setSaveTemplateDialog] = useState<{ open: boolean; proposalId: string }>({
+    open: false,
+    proposalId: '',
+  });
   const [validationErrors, setValidationErrors] = useState<string[]>([]);
   const [autoFitLoading, setAutoFitLoading] = useState(false);
   const [autoFitResult, setAutoFitResult] = useState<AutoFitResult | null>(null);
@@ -400,6 +419,7 @@ export default function ProposalBuilder({ proposalId }: ProposalBuilderProps) {
   useEffect(() => {
     loadClients();
     loadServices();
+    loadProposalTemplates();
     loadProposalDefaults();
     apiClient
       .getAiStatus()
@@ -547,6 +567,18 @@ export default function ProposalBuilder({ proposalId }: ProposalBuilderProps) {
       }
     } catch {
       // defaults are fine
+    }
+  };
+
+  const loadProposalTemplates = async () => {
+    setTemplatesLoading(true);
+    try {
+      const res = (await apiClient.getProposalTemplates()) as any;
+      if (res.success) setProposalTemplates(res.data || []);
+    } catch {
+      // templates are optional
+    } finally {
+      setTemplatesLoading(false);
     }
   };
 
@@ -1134,9 +1166,111 @@ export default function ProposalBuilder({ proposalId }: ProposalBuilderProps) {
       setAutoFitDismissed(true);
       setAutoFitResult(null);
       setAutoFitLoading(false);
+      setSelectedTemplateId(null);
     } else if (mode === 'clara') {
       setAutoFitDismissed(false);
       setAutoFitResult(null);
+      setSelectedTemplateId(null);
+    } else if (mode === 'template') {
+      setAutoFitDismissed(true);
+      setAutoFitResult(null);
+      setAutoFitLoading(false);
+    } else if (mode === 'unset') {
+      setSelectedTemplateId(null);
+    }
+  };
+
+  const buildLineFromCatalogue = (
+    service: Service,
+    billingFrequency: string,
+    displayPrice: number,
+    quantity: number,
+    discountPercent: number
+  ): SelectedService => {
+    const annualEquivalent = calculateAnnualEquivalent(displayPrice, billingFrequency);
+    const grossLine = displayPrice * quantity;
+    const lineTotal = grossLine - grossLine * (discountPercent / 100);
+    const vatPercent =
+      service.isVatApplicable !== false
+        ? service.vatRate === 'REDUCED_5'
+          ? 5
+          : service.vatRate === 'ZERO' || service.vatRate === 'EXEMPT'
+            ? 0
+            : 20
+        : 0;
+    const vatAmount = includeVat ? Math.round(lineTotal * (vatPercent / 100) * 100) / 100 : 0;
+    const allowedCadences = parseFrequencyOptions(service.frequencyOptions);
+
+    return {
+      ...service,
+      templateId: service.id,
+      quantity,
+      discountPercent,
+      displayPrice,
+      billingCycle: billingFrequency,
+      priceAmount: displayPrice,
+      annualEquivalent,
+      lineTotal,
+      vatRate: vatPercent,
+      vatAmount,
+      grossTotal: lineTotal + vatAmount,
+      allowedCadences,
+      oneOffDueDate: billingFrequency === 'ONE_TIME' ? '' : undefined,
+    };
+  };
+
+  const applyProposalTemplate = async (templateId: string) => {
+    setApplyingTemplateId(templateId);
+    try {
+      const res = (await apiClient.getProposalTemplate(templateId)) as any;
+      if (!res.success) {
+        toast.error('Could not load template');
+        return;
+      }
+      const t = res.data;
+      setProposalTitle(t.title || '');
+      if (t.coverLetter) setCoverLetter(t.coverLetter);
+      const pricing =
+        typeof t.defaultPricing === 'object' && t.defaultPricing
+          ? t.defaultPricing
+          : {};
+      if (pricing.coverLetterTone) {
+        setCoverLetterTone(pricing.coverLetterTone as CoverLetterTone);
+      }
+
+      const config = Array.isArray(t.serviceConfig) ? t.serviceConfig : [];
+      const lines: SelectedService[] = [];
+      const missing: string[] = [];
+      for (const item of config) {
+        const catalogue = services.find((s) => s.id === item.serviceId);
+        if (!catalogue) {
+          missing.push(item.name || item.serviceId);
+          continue;
+        }
+        lines.push(
+          buildLineFromCatalogue(
+            catalogue,
+            item.billingFrequency || catalogue.billingCycle,
+            item.displayPrice ?? catalogue.priceAmount,
+            item.quantity ?? 1,
+            item.discountPercent ?? 0
+          )
+        );
+      }
+      setSelectedServices(lines);
+      setSelectedTemplateId(templateId);
+      await apiClient.recordProposalTemplateUse(templateId);
+      if (missing.length > 0) {
+        toast(
+          `${missing.length} service(s) from this template are no longer in your catalogue — the rest were applied`
+        );
+      } else {
+        toast.success(`Template "${t.name}" applied`);
+      }
+    } catch {
+      toast.error('Failed to apply template');
+    } finally {
+      setApplyingTemplateId(null);
     }
   };
 
@@ -1294,7 +1428,12 @@ export default function ProposalBuilder({ proposalId }: ProposalBuilderProps) {
       if (response.success) {
         localStorage.removeItem(draftKey);
         toast.success(isEditMode ? 'Proposal updated successfully!' : 'Proposal created successfully!');
-        navigate(`/proposals/${isEditMode ? proposalId : response.data.id}`);
+        const savedId = isEditMode ? proposalId! : response.data.id;
+        if (!isEditMode && buildMode === 'manual') {
+          setSaveTemplateDialog({ open: true, proposalId: savedId });
+        } else {
+          navigate(`/proposals/${savedId}`);
+        }
       } else {
         toast.error(response.error?.message || 'Failed to save proposal');
       }
@@ -1402,7 +1541,7 @@ export default function ProposalBuilder({ proposalId }: ProposalBuilderProps) {
           <p className="text-xs text-slate-600 dark:text-slate-400">
             You can always add or remove services yourself — Clara suggestions are optional.
           </p>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
             <button
               type="button"
               data-testid="build-mode-manual"
@@ -1414,6 +1553,19 @@ export default function ProposalBuilder({ proposalId }: ProposalBuilderProps) {
                 Pick services from your catalogue, set prices, and shape the proposal yourself.
               </p>
             </button>
+            {proposalTemplates.length > 0 && (
+              <button
+                type="button"
+                data-testid="build-mode-template"
+                onClick={() => selectBuildMode('template')}
+                className="text-left p-4 rounded-xl border-2 border-emerald-200 dark:border-emerald-800 hover:border-emerald-400 dark:hover:border-emerald-600 bg-emerald-50/50 dark:bg-emerald-950/20 transition-colors"
+              >
+                <p className="font-semibold text-slate-900 dark:text-white">Use a saved template</p>
+                <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                  Start from a named bundle you saved before — adjust anything before sending.
+                </p>
+              </button>
+            )}
             {aiConfigured && (
               <button
                 type="button"
@@ -1442,12 +1594,58 @@ export default function ProposalBuilder({ proposalId }: ProposalBuilderProps) {
         </div>
       )}
 
+      {selectedClient && buildMode === 'template' && (
+        <div className="rounded-2xl border border-emerald-200 dark:border-emerald-800 bg-emerald-50/30 dark:bg-emerald-950/20 p-4 space-y-3">
+          <h4 className="text-sm font-semibold text-slate-900 dark:text-white">Choose a template</h4>
+          {templatesLoading ? (
+            <p className="text-xs text-slate-500">Loading templates…</p>
+          ) : proposalTemplates.length === 0 ? (
+            <p className="text-xs text-slate-500">
+              No saved templates yet — build from scratch and {AI_COPILOT.name} will offer to save one when
+              you finish.
+            </p>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+              {proposalTemplates.map((tpl) => (
+                <button
+                  key={tpl.id}
+                  type="button"
+                  data-testid="proposal-template-option"
+                  disabled={applyingTemplateId === tpl.id}
+                  onClick={() => void applyProposalTemplate(tpl.id)}
+                  className={`text-left p-3 rounded-xl border-2 transition-colors ${
+                    selectedTemplateId === tpl.id
+                      ? 'border-emerald-500 bg-emerald-50 dark:bg-emerald-900/30'
+                      : 'border-slate-200 dark:border-slate-700 hover:border-emerald-400'
+                  }`}
+                >
+                  <p className="font-medium text-slate-900 dark:text-white text-sm">{tpl.name}</p>
+                  {tpl.description && (
+                    <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 line-clamp-2">
+                      {tpl.description}
+                    </p>
+                  )}
+                  <p className="text-xs text-emerald-700 dark:text-emerald-400 mt-1">
+                    {tpl.serviceCount} service{tpl.serviceCount === 1 ? '' : 's'}
+                    {applyingTemplateId === tpl.id ? ' — applying…' : ''}
+                  </p>
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
       {selectedClient && buildMode !== 'unset' && (
         <div className="flex flex-wrap items-center justify-between gap-3">
           <p className="text-xs text-slate-500 dark:text-slate-400">
             {buildMode === 'manual'
               ? 'Manual build — add services from your catalogue on the next step.'
-              : `${AI_COPILOT.name} may suggest a starter — you stay in control of every line item.`}
+              : buildMode === 'template'
+                ? selectedTemplateId
+                  ? 'Template applied — tweak services and pricing on the next step.'
+                  : 'Pick a template above, or change approach.'
+                : `${AI_COPILOT.name} may suggest a starter — you stay in control of every line item.`}
             <button
               type="button"
               className="ml-2 text-primary-600 hover:underline"
@@ -1456,7 +1654,12 @@ export default function ProposalBuilder({ proposalId }: ProposalBuilderProps) {
               Change
             </button>
           </p>
-          <button data-testid="client-continue-button" onClick={() => setCurrentStep(2)} className="btn-primary">
+          <button
+            data-testid="client-continue-button"
+            onClick={() => setCurrentStep(2)}
+            disabled={buildMode === 'template' && !selectedTemplateId}
+            className="btn-primary disabled:opacity-50"
+          >
             Continue
             <ArrowRightIcon className="w-5 h-5 ml-2" />
           </button>
@@ -2278,6 +2481,7 @@ export default function ProposalBuilder({ proposalId }: ProposalBuilderProps) {
             <ClientContextCard
               clientId={selectedClient.id}
               clientName={selectedClient.name}
+              companyType={selectedClient.companyType}
               configured={aiConfigured}
             />
           )}
@@ -2314,6 +2518,18 @@ export default function ProposalBuilder({ proposalId }: ProposalBuilderProps) {
         onClose={() => setShowEmailPreview(false)}
         draft={emailDraftPayload}
         previewOnly
+      />
+
+      <SaveProposalTemplateDialog
+        open={saveTemplateDialog.open}
+        proposalId={saveTemplateDialog.proposalId}
+        proposalTitle={proposalTitle}
+        onClose={() => {
+          const id = saveTemplateDialog.proposalId;
+          setSaveTemplateDialog({ open: false, proposalId: '' });
+          if (id) navigate(`/proposals/${id}`);
+        }}
+        onSaved={() => void loadProposalTemplates()}
       />
     </div>
   );

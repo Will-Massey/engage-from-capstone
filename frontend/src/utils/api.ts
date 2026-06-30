@@ -347,6 +347,16 @@ export const apiClient = {
 
   updateClient: (id: string, data: any) => api.put(`/clients/${id}`, data),
 
+  enrichClientFromCompaniesHouse: (
+    clientId: string,
+    options?: { companyNumber?: string; searchByName?: boolean; fillMissingOnly?: boolean }
+  ) => api.post(`/clients/${clientId}/enrich-companies-house`, options ?? {}),
+
+  getClientCompaniesHouse: (clientId: string, companyNumber?: string) =>
+    api.get(`/clients/${clientId}/companies-house`, {
+      params: companyNumber ? { companyNumber } : undefined,
+    }),
+
   deleteClient: (id: string) => api.delete(`/clients/${id}`),
 
   assessMTDITSA: (id: string, incomeSources?: any[]) =>
@@ -447,6 +457,21 @@ export const apiClient = {
     api.post(`/cover-letter-templates/${id}/preview`, previewData),
   previewCoverLetterRaw: (content: string, previewData: any) =>
     api.post('/cover-letter-templates/preview', { content, previewData }),
+
+  // Proposal templates — save and reuse proposal configurations
+  getProposalTemplates: () => api.get('/proposal-templates'),
+  getProposalTemplate: (id: string) => api.get(`/proposal-templates/${id}`),
+  saveProposalTemplateFromProposal: (proposalId: string, name: string, description?: string) =>
+    api.post('/proposal-templates/from-proposal', { proposalId, name, description }),
+  recordProposalTemplateUse: (id: string) => api.post(`/proposal-templates/${id}/record-use`, {}),
+  deleteProposalTemplate: (id: string) => api.delete(`/proposal-templates/${id}`),
+
+  // Companies House
+  getCompaniesHouseStatus: () => api.get('/companies-house/status'),
+  searchCompaniesHouse: (query: string, limit = 5) =>
+    api.get('/companies-house/search', { params: { q: query, limit } }),
+  getCompaniesHouseCompany: (companyNumber: string) =>
+    api.get(`/companies-house/company/${companyNumber}`),
   createCoverLetterTemplate: (data: any) => api.post('/cover-letter-templates', data),
   updateCoverLetterTemplate: (id: string, data: any) => api.put(`/cover-letter-templates/${id}`, data),
   deleteCoverLetterTemplate: (id: string) => api.delete(`/cover-letter-templates/${id}`),

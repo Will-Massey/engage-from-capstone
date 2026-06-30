@@ -670,7 +670,10 @@ export async function generateRenewalDraft(
     serviceId: s.serviceTemplateId,
     name: s.name,
     billingFrequency: s.billingFrequency,
-    displayPrice: Math.round((s.displayPrice || s.unitPrice) * multiplier * 100) / 100,
+    displayPrice: Math.max(
+      0,
+      Math.round((s.displayPrice || s.unitPrice) * multiplier * 100) / 100
+    ),
     quantity: s.quantity,
     discountPercent: s.discountPercent,
   }));
@@ -686,7 +689,7 @@ export async function generateRenewalDraft(
           role: 'user',
           content: `Write a renewal cover letter for ${original.client.name}. 
 Prior proposal: ${original.title}, accepted ${original.acceptedAt?.toISOString().slice(0, 10)}.
-${upliftPercent > 0 ? `Fees increased by ${upliftPercent}% reflecting ongoing service and inflation.` : 'Fees unchanged from prior year.'}
+${upliftPercent > 0 ? `Fees increased by ${upliftPercent}% reflecting ongoing service and inflation.` : upliftPercent < 0 ? `Fees reduced by ${Math.abs(upliftPercent)}% — explain professionally (efficiency, scope alignment, or goodwill).` : 'Fees unchanged from prior year.'}
 Practice: ${original.tenant.name}
 3-4 paragraphs, warm professional UK tone, plain text.`,
         },
@@ -694,9 +697,12 @@ Practice: ${original.tenant.name}
       { temperature: 0.55, maxTokens: 900 }
     );
     coverLetter = raw;
-    renewalNarrative = upliftPercent
-      ? `Renewal with ${upliftPercent}% fee adjustment`
-      : 'Straight renewal at existing fees';
+    renewalNarrative =
+      upliftPercent > 0
+        ? `Renewal with ${upliftPercent}% fee uplift`
+        : upliftPercent < 0
+          ? `Renewal with ${Math.abs(upliftPercent)}% fee reduction`
+          : 'Straight renewal at existing fees';
   }
 
   await logAiUsage(tenantId, userId, 'renewal_draft', { proposalId, upliftPercent });

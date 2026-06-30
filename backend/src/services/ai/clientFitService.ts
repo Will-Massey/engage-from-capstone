@@ -34,6 +34,7 @@ export interface AutoFitProposalResult {
 export interface ClientBriefResult {
   brief: string;
   highlights: string[];
+  companiesHouse?: import('./aiContextBuilder.js').AiCompaniesHouseContext;
   requiresApproval: true;
 }
 
@@ -58,17 +59,30 @@ export async function generateClientBrief(
   if (!ctx.client) throw new ApiError('CLIENT_NOT_FOUND', 'Client not found', 404);
 
   if (!isAiConfigured()) {
+    const ch = ctx.companiesHouse;
     const lines = [
       `**${ctx.client.name}** (${ctx.client.companyType})`,
       ctx.client.companyNumber ? `Companies House: ${ctx.client.companyNumber}` : '',
+      ch?.companyName ? `CH registered name: ${ch.companyName}` : '',
+      ch?.companyStatus ? `Status: ${ch.companyStatus}` : '',
+      ch?.dateOfCreation ? `Incorporated: ${ch.dateOfCreation}` : '',
+      ch?.accountsNextDue ? `Accounts due: ${ch.accountsNextDue}` : '',
+      ch?.registeredOfficeAddress ? `Registered office: ${ch.registeredOfficeAddress}` : '',
+      ctx.client.industry ? `Industry: ${ctx.client.industry}` : '',
       ctx.client.turnover ? `Turnover: £${ctx.client.turnover.toLocaleString('en-GB')}` : '',
       ctx.priorProposals.length
         ? `Prior proposals: ${ctx.priorProposals.map((p) => `${p.reference} (${p.status})`).join(', ')}`
         : 'No prior proposals on record.',
     ].filter(Boolean);
+    const highlights = [
+      ...(ch?.sicCodes?.length ? [`SIC: ${ch.sicCodes.join(', ')}`] : []),
+      ...(ch?.accountsNextDue ? [`Accounts filing due ${ch.accountsNextDue}`] : []),
+      'Configure AI for a fuller narrative brief.',
+    ];
     return {
       brief: lines.join('\n'),
-      highlights: ['Limited context — configure AI for a fuller brief.'],
+      highlights,
+      companiesHouse: ch,
       requiresApproval: true,
     };
   }
@@ -109,6 +123,7 @@ ${JSON.stringify(
   return {
     brief: parsed.brief?.trim() || 'Brief unavailable.',
     highlights: parsed.highlights || [],
+    companiesHouse: ctx.companiesHouse,
     requiresApproval: true,
   };
 }

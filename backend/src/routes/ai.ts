@@ -241,7 +241,7 @@ router.post(
     const { proposalId, upliftPercent } = z
       .object({
         proposalId: z.string().uuid(),
-        upliftPercent: z.number().min(0).max(50).default(0),
+        upliftPercent: z.number().min(-50).max(50).default(0),
       })
       .parse(req.body);
 

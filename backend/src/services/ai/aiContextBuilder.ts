@@ -3,7 +3,8 @@
  */
 import { prisma } from '../../config/database.js';
 import { ApiError } from '../../middleware/errorHandler.js';
-import { createCompaniesHouseService, type CompanyDetails } from '../companiesHouse.js';
+import { createCompaniesHouseService } from '../companiesHouse.js';
+import { mapDetailsToAiContext } from '../companiesHouseEnrichment.js';
 
 export interface BuildAiContextOptions {
   clientId?: string;
@@ -167,30 +168,13 @@ function mapClient(client: {
   };
 }
 
-function formatChAddress(details: CompanyDetails): string | undefined {
-  const a = details.registered_office_address;
-  if (!a) return undefined;
-  return [a.address_line_1, a.address_line_2, a.locality, a.region, a.postal_code]
-    .filter(Boolean)
-    .join(', ');
-}
-
 async function loadCompaniesHouse(companyNumber: string): Promise<AiCompaniesHouseContext | undefined> {
   const ch = createCompaniesHouseService();
   if (!ch) return undefined;
 
   try {
     const details = await ch.getCompanyDetails(companyNumber);
-    return {
-      companyNumber: details.company_number,
-      companyName: details.company_name,
-      companyStatus: details.company_status,
-      companyType: details.company_type,
-      dateOfCreation: details.date_of_creation,
-      registeredOfficeAddress: formatChAddress(details),
-      sicCodes: details.sic_codes,
-      accountsNextDue: details.accounts?.next_due,
-    };
+    return mapDetailsToAiContext(details);
   } catch {
     return undefined;
   }
