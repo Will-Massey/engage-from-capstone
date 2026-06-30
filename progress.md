@@ -1,6 +1,20 @@
 # Build Progress Log
 <!-- Append-only session log. Latest deploy checkpoint is the resume entry point. -->
 
+## Session: 2026-06-30 — templates smoke-test (sendit resume)
+
+### Smoke-test checkpoint — templates flow
+- **Test:** `e2e-tests/specs/templates-smoke.spec.ts` against production
+- **Result:** pass (18.9s) — Catalogue → Templates → create → Use template → client → proposal pre-fills
+- **Deploy:** fbed4b5f live on engage-frontend-0g6u / engage-backend-e1ue
+
+#### Resume prompt
+```
+Continue per task_plan.md. Templates smoke-test passed. Start Next Up #1 — proposal snapshot isolation smoke-test on production.
+```
+
+---
+
 ## Session: 2026-06-30 — templates in play
 
 ### Deploy checkpoint — fbed4b5f

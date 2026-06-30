@@ -9,11 +9,10 @@ Phase: Templates + snapshot isolation — **deployed** (fbed4b5f)
 
 ## Next Up
 <!-- 3–5 bullets ONLY. Next fresh session starts here. Rewrite every checkpoint. -->
-1. Smoke-test live: Sidebar **Catalogue → Templates** → create template → **Use template** → pick client → proposal pre-fills.
-2. Smoke-test isolation: complete proposal B with different fees → open proposal A → prices unchanged.
-3. Smoke-test Caroline client save + Companies House enrich if not yet verified on production.
-4. Set `CLOUDFLARE_EMAIL_WEBHOOK_SECRET` on Render if delivery tracking needed.
-5. Optional: custom domain `engage.capstonesoftware.co.uk`.
+1. Smoke-test isolation: complete proposal B with different fees → open proposal A → prices unchanged.
+2. Smoke-test Caroline client save + Companies House enrich if not yet verified on production.
+3. Set `CLOUDFLARE_EMAIL_WEBHOOK_SECRET` on Render if delivery tracking needed.
+4. Optional: custom domain `engage.capstonesoftware.co.uk`.
 
 ## Phases
 <!-- Status: pending | in_progress | complete -->
@@ -50,7 +49,7 @@ Phase: Templates + snapshot isolation — **deployed** (fbed4b5f)
 | 3 | 2026-06-30 | bb1328b5 | master | engage-backend, engage-frontend | live | Personalised admin acceptance email |
 | 4 | 2026-06-30 | eff1b326 | master | engage-backend, engage-frontend | live | Manual build mode, service toggle, price inputs |
 | 5 | 2026-06-30 | 121574bc | master | engage-backend, engage-frontend | live | New proposal (manual) list shortcut |
-| 6 | 2026-06-30 | fbed4b5f | master | engage-backend, engage-frontend | deploying | Proposal snapshot isolation (48457d71) + Templates sidebar & management page |
+| 6 | 2026-06-30 | fbed4b5f | master | engage-backend, engage-frontend | live | Proposal snapshot isolation (48457d71) + Templates sidebar & management page |
 
 ## Decisions Made
 | Decision | Rationale |
