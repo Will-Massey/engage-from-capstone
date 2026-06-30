@@ -7,12 +7,14 @@ import { z } from 'zod';
 import { prisma } from '../config/database.js';
 import { authenticate, authorize } from '../middleware/auth.js';
 import { asyncHandler, ApiError } from '../middleware/errorHandler.js';
+import { deepCloneJson } from '../utils/proposalServiceSnapshot.js';
 
 const router = Router();
 
 const serviceConfigItemSchema = z.object({
   serviceId: z.string().uuid(),
   name: z.string().optional(),
+  description: z.string().nullable().optional(),
   billingFrequency: z.string(),
   displayPrice: z.number().min(0),
   quantity: z.number().min(0.01).default(1),
@@ -38,7 +40,7 @@ const createTemplateSchema = z.object({
 function parseServiceConfig(raw: string) {
   try {
     const parsed = JSON.parse(raw || '[]');
-    return Array.isArray(parsed) ? parsed : [];
+    return Array.isArray(parsed) ? deepCloneJson(parsed) : [];
   } catch {
     return [];
   }
@@ -120,16 +122,19 @@ router.post(
     });
     if (!proposal) throw new ApiError('NOT_FOUND', 'Proposal not found', 404);
 
-    const serviceConfig = proposal.services
-      .filter((s) => s.serviceTemplateId)
-      .map((s) => ({
-        serviceId: s.serviceTemplateId!,
-        name: s.name,
-        billingFrequency: s.billingFrequency,
-        displayPrice: s.displayPrice,
-        quantity: s.quantity,
-        discountPercent: s.discountPercent,
-      }));
+    const serviceConfig = deepCloneJson(
+      proposal.services
+        .filter((s) => s.serviceTemplateId)
+        .map((s) => ({
+          serviceId: s.serviceTemplateId!,
+          name: s.name,
+          description: s.description ?? null,
+          billingFrequency: s.billingFrequency,
+          displayPrice: s.displayPrice,
+          quantity: s.quantity,
+          discountPercent: s.discountPercent,
+        }))
+    );
 
     if (!serviceConfig.length) {
       throw new ApiError('VALIDATION_ERROR', 'Proposal has no catalogue services to save as a template', 400);
@@ -183,7 +188,7 @@ router.post(
         title: data.title,
         coverLetter: data.coverLetter,
         targetEntityType: data.targetEntityType,
-        serviceConfig: JSON.stringify(data.serviceConfig),
+        serviceConfig: JSON.stringify(deepCloneJson(data.serviceConfig)),
         defaultPricing: JSON.stringify({ coverLetterTone: data.coverLetterTone || 'PROFESSIONAL' }),
         usageCount: 0,
       },

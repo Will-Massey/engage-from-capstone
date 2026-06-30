@@ -96,8 +96,17 @@ interface Service {
   vatRate?: string | number;
 }
 
+function newLineId(): string {
+  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+    return crypto.randomUUID();
+  }
+  return `line-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
+}
+
 interface SelectedService extends Service {
-  /** Stable catalog template id sent to the API as `serviceId` */
+  /** Unique id per proposal line (for UI/editing — never sent as catalogue serviceId) */
+  id: string;
+  /** Catalogue template id sent to the API as `serviceId` */
   templateId: string;
   quantity: number;
   discountPercent: number;
@@ -840,6 +849,7 @@ export default function ProposalBuilder({ proposalId }: ProposalBuilderProps) {
 
     const newService: SelectedService = {
       ...service,
+      id: newLineId(),
       templateId: service.id,
       quantity: 1,
       discountPercent: 0,
@@ -1185,7 +1195,8 @@ export default function ProposalBuilder({ proposalId }: ProposalBuilderProps) {
     billingFrequency: string,
     displayPrice: number,
     quantity: number,
-    discountPercent: number
+    discountPercent: number,
+    snapshot?: { name?: string; description?: string | null }
   ): SelectedService => {
     const annualEquivalent = calculateAnnualEquivalent(displayPrice, billingFrequency);
     const grossLine = displayPrice * quantity;
@@ -1203,7 +1214,13 @@ export default function ProposalBuilder({ proposalId }: ProposalBuilderProps) {
 
     return {
       ...service,
+      id: newLineId(),
       templateId: service.id,
+      name: snapshot?.name?.trim() || service.name,
+      description:
+        snapshot?.description !== undefined && snapshot?.description !== null
+          ? snapshot.description
+          : service.description,
       quantity,
       discountPercent,
       displayPrice,
@@ -1253,7 +1270,8 @@ export default function ProposalBuilder({ proposalId }: ProposalBuilderProps) {
             item.billingFrequency || catalogue.billingCycle,
             item.displayPrice ?? catalogue.priceAmount,
             item.quantity ?? 1,
-            item.discountPercent ?? 0
+            item.discountPercent ?? 0,
+            { name: item.name, description: item.description }
           )
         );
       }
@@ -1323,15 +1341,16 @@ export default function ProposalBuilder({ proposalId }: ProposalBuilderProps) {
         const net = grossLine - grossLine * (discount / 100);
         const vatRate = svc.vatRate ?? 20;
         const vatAmount = svc.vatAmount ?? Math.round(net * (vatRate / 100) * 100) / 100;
+        const catalogId = svc.serviceTemplateId || svc.catalogServiceId || null;
         return {
-          id: svc.serviceTemplateId || svc.id || `line-${i}`,
-          templateId: svc.serviceTemplateId || svc.id,
+          id: svc.id || `line-${i}`,
+          templateId: catalogId || '',
           name: svc.name,
           description: svc.description,
           priceAmount: displayPrice,
           priceDisplayMode: svc.priceDisplayMode || 'PER_MONTH',
           billingCycle: freq,
-          category: svc.serviceTemplate?.category || 'Custom',
+          category: svc.category || svc.serviceTemplate?.category || 'Custom',
           quantity: qty,
           discountPercent: discount,
           displayPrice,
@@ -1369,6 +1388,12 @@ export default function ProposalBuilder({ proposalId }: ProposalBuilderProps) {
     const errors: string[] = [];
     if (!selectedClient) errors.push('Select a client');
     if (selectedServices.length === 0) errors.push('Add at least one service');
+    const missingCatalogue = selectedServices.filter((s) => !s.templateId);
+    if (missingCatalogue.length > 0) {
+      errors.push(
+        `${missingCatalogue.length} service line(s) are not linked to your catalogue — remove and re-add them`
+      );
+    }
     if (!proposalTitle.trim()) errors.push('Enter a proposal title');
     if (!validUntil) errors.push('Set a proposal expiry date');
     if (validUntil && validUntil < todayIso) errors.push('Expiry date must be today or in the future');
@@ -1388,17 +1413,21 @@ export default function ProposalBuilder({ proposalId }: ProposalBuilderProps) {
 
     setIsLoading(true);
     try {
-      const servicesData = selectedServices.map((s) => ({
-        serviceId: s.templateId,
-        displayPrice: s.displayPrice,
-        billingFrequency: s.billingCycle,
-        quantity: s.quantity,
-        discountPercent: s.discountPercent,
-        vatRate: includeVat ? s.vatRate : 0,
-        ...(s.billingCycle === 'ONE_TIME' && s.oneOffDueDate?.trim()
-          ? { oneOffDueDate: s.oneOffDueDate.trim() }
-          : {}),
-      }));
+      const servicesData = selectedServices
+        .filter((s) => s.templateId)
+        .map((s) => ({
+          serviceId: s.templateId,
+          name: s.name,
+          description: s.description ?? null,
+          displayPrice: s.displayPrice,
+          billingFrequency: s.billingCycle,
+          quantity: s.quantity,
+          discountPercent: s.discountPercent,
+          vatRate: includeVat ? s.vatRate : 0,
+          ...(s.billingCycle === 'ONE_TIME' && s.oneOffDueDate?.trim()
+            ? { oneOffDueDate: s.oneOffDueDate.trim() }
+            : {}),
+        }));
 
       const proposalData = {
         clientId: selectedClient!.id,

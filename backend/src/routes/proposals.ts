@@ -11,6 +11,7 @@ import {
   buildProposalServiceRecord,
   calculateHeaderTotals,
 } from '../utils/proposalPricing.js';
+import { serializeProposalServicesForApi } from '../utils/proposalServiceSnapshot.js';
 import {
   addDays,
   getProposalSettings,
@@ -44,6 +45,8 @@ const createProposalSchema = z.object({
     .array(
       z.object({
         serviceId: z.string(),
+        name: z.string().min(1).optional(),
+        description: z.string().nullable().optional(),
         quantity: z.number().min(1).default(1),
         unitPrice: z.number().min(0).optional(), // Allow custom unit price
         discountPercent: z.number().min(0).max(100).optional(),
@@ -75,6 +78,8 @@ const updateProposalSchema = z.object({
     .array(
       z.object({
         serviceId: z.string(),
+        name: z.string().min(1).optional(),
+        description: z.string().nullable().optional(),
         quantity: z.number().min(1),
         discountPercent: z.number().min(0).max(100).optional(),
         // v2 pricing fields
@@ -200,7 +205,7 @@ router.get(
         client: true,
         services: {
           include: {
-            serviceTemplate: true,
+            serviceTemplate: { select: { id: true, category: true } },
           },
         },
         createdBy: {
@@ -241,6 +246,7 @@ router.get(
       success: true,
       data: {
         ...proposal,
+        services: serializeProposalServicesForApi(proposal.services as any),
         viewCount: viewStats?.totalViews ?? 0,
         lastViewedAt: viewStats?.lastViewedAt ?? null,
       },
@@ -373,7 +379,10 @@ router.post(
 
     res.status(201).json({
       success: true,
-      data: proposal,
+      data: {
+        ...proposal,
+        services: serializeProposalServicesForApi(proposal.services as any),
+      },
     });
   })
 );
@@ -456,12 +465,6 @@ router.put(
 
     // Update services if provided
     if (data.services) {
-      // Delete existing services
-      await prisma.proposalService.deleteMany({
-        where: { proposalId: id },
-      });
-
-      // Fetch service templates for the new services
       const serviceTemplateIds = data.services.map((s) => s.serviceId);
       const serviceTemplates = await prisma.serviceTemplate.findMany({
         where: {
@@ -470,10 +473,43 @@ router.put(
         },
       });
 
+      if (serviceTemplates.length !== serviceTemplateIds.length) {
+        throw new ApiError(
+          'INVALID_SERVICES',
+          'One or more services are invalid or belong to another practice',
+          400
+        );
+      }
+
+      const existingByTemplateId = new Map(
+        existingProposal.services
+          .filter((s) => s.serviceTemplateId)
+          .map((s) => [s.serviceTemplateId!, s])
+      );
+
+      // Delete existing lines for THIS proposal only, then recreate snapshots
+      await prisma.proposalService.deleteMany({
+        where: { proposalId: id },
+      });
+
       const built = data.services.map((svc) => {
         const template = serviceTemplates.find((t) => t.id === svc.serviceId);
+        const prior = existingByTemplateId.get(svc.serviceId);
         return buildProposalServiceRecord(
-          { ...svc, serviceId: svc.serviceId },
+          {
+            ...svc,
+            serviceId: svc.serviceId,
+            name: svc.name ?? prior?.name,
+            description:
+              svc.description !== undefined ? svc.description : prior?.description,
+            displayPrice:
+              svc.displayPrice !== undefined
+                ? svc.displayPrice
+                : prior?.displayPrice ?? prior?.unitPrice,
+            billingFrequency:
+              svc.billingFrequency ?? prior?.billingFrequency ?? prior?.frequency,
+            vatRate: svc.vatRate ?? prior?.vatRate,
+          },
           template,
           parseOneOffDueDate
         );
@@ -512,9 +548,32 @@ router.put(
       },
     });
 
+    const refreshed = await prisma.proposal.findFirst({
+      where: { id, tenantId: req.tenantId },
+      include: {
+        client: true,
+        services: {
+          include: {
+            serviceTemplate: { select: { id: true, category: true } },
+          },
+        },
+        createdBy: {
+          select: {
+            firstName: true,
+            lastName: true,
+          },
+        },
+      },
+    });
+
     res.json({
       success: true,
-      data: proposal,
+      data: refreshed
+        ? {
+            ...refreshed,
+            services: serializeProposalServicesForApi(refreshed.services as any),
+          }
+        : proposal,
     });
   })
 );
