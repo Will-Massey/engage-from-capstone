@@ -5,15 +5,15 @@
 **Market leader:** UK proposal-to-cash platform — CH lookup → priced proposal → signed engagement → collected fees, with Clara AI that saves 30+ min/proposal without token overspend. Full plan: `MARKET_LEADER_PLAN.md`.
 
 ## Current Phase
-**Build 2.0** — **saleable-product push** — automated UAT e2e + wizard fix; Render paid ops **deferred until first sale**
+**Build 2.0** — **saleable on free tier** (a83b3a53) — 36/36 e2e pass; Render paid ops **deferred until first sale**
 
 ## Next Up
 <!-- 3–5 bullets ONLY. Next fresh session starts here. Rewrite every checkpoint. -->
-1. Caroline UAT (human): partner approval, MFA setup, pricing calculator, live Xero OAuth once env set.
+1. Caroline UAT (human): MFA enrolment, live Xero OAuth, send a real proposal end-to-end.
 2. **Deferred (post-sale):** Render Starter + disk, custom domain, `XERO_*` / webhook secrets.
 3. W2.10 real-time client preview split pane (product polish).
 4. W3.2–W3.5 compliance content: seed templates, AML scaffold, regulatory rules.
-5. Push this commit → re-run `npm run test:e2e:build` (target 35+ pass, 0 skipped).
+5. Stripe trial enforcement smoke with live Stripe keys (post-sale).
 
 ## Phases
 <!-- Status: pending | in_progress | complete -->
@@ -54,7 +54,8 @@
 | 7 | 2026-07-01 | 7cc735bb | master | engage-backend, engage-frontend | live | Per-client proposal drafts — switching clients mid-build no longer shares services/title/cover letter |
 | 8 | 2026-07-01 | 845effcf | master | engage-backend, engage-frontend | live | Market leader batch: MFA, password reset, Xero, post-sign payments, bulk renewals, first-proposal wizard, pricing calculator, engagement library versioning, win/loss analytics, AI cost refactor. Migrations verified via live API probes. |
 | 9 | 2026-07-01 | a14a7371 | master | engage-backend, engage-frontend | live | W0–W4 remainder: partner approval, legal pages, trial enforcement, preview pane, Xero invoices, AML/regulatory, 33 clauses, fee benchmarks, webhooks, QBO, status page. 3 migrations. |
-| 10 | 2026-07-01 | c28d9216 | master | engage-backend, engage-frontend | deploying | **Build 2.0** — e2e fix for build-mode chooser (`advanceToProposalServicesStep` helper); 3 flaky proposal tests green on production. |
+| 10 | 2026-07-01 | c28d9216 | master | engage-backend, engage-frontend | live | **Build 2.0** — e2e fix for build-mode chooser (`advanceToProposalServicesStep` helper); 3 flaky proposal tests green on production. |
+| 11 | 2026-07-01 | a83b3a53 | master | engage-backend, engage-frontend | live | UAT automation: `/proposals/first-wizard`, legal/status pages, partner approval API+UI, Xero settings; **36/36 e2e pass**. |
 
 ## Decisions Made
 | Decision | Rationale |
