@@ -95,32 +95,51 @@ router.get(
   })
 );
 
-/** POST /api/proposal-templates/seed-library — seed 143 ICAEW/ACCA template packages */
+const seedLibraryQuerySchema = z.object({
+  offset: z.coerce.number().int().min(0).optional(),
+  limit: z.coerce.number().int().min(1).max(50).optional(),
+  includeSanity: z
+    .enum(['true', 'false'])
+    .optional()
+    .transform((v) => v === 'true'),
+});
+
+/** POST /api/proposal-templates/seed-library — seed ICAEW/ACCA template packages (chunked) */
 router.post(
   '/seed-library',
   authenticate,
   authorize('ADMIN', 'PARTNER'),
   asyncHandler(async (req, res) => {
-    const seed = await seedProposalTemplatesForTenant(req.tenantId!, req.user!.id);
-    const sanity = await sanityCheckTemplatePricing(req.tenantId!);
-
-    await prisma.activityLog.create({
-      data: {
-        tenantId: req.tenantId!,
-        userId: req.user!.id,
-        action: 'PROPOSAL_TEMPLATE_LIBRARY_SEEDED',
-        entityType: 'PROPOSAL_TEMPLATE',
-        entityId: req.tenantId!,
-        description: `Seeded proposal template library: ${seed.created} created, ${seed.totalActive} active`,
-      },
+    const query = seedLibraryQuerySchema.parse(req.query);
+    const seed = await seedProposalTemplatesForTenant(req.tenantId!, req.user!.id, {
+      offset: query.offset,
+      limit: query.limit,
     });
+
+    if (!seed.hasMore) {
+      await prisma.activityLog.create({
+        data: {
+          tenantId: req.tenantId!,
+          userId: req.user!.id,
+          action: 'PROPOSAL_TEMPLATE_LIBRARY_SEEDED',
+          entityType: 'PROPOSAL_TEMPLATE',
+          entityId: req.tenantId!,
+          description: `Seeded proposal template library: ${seed.totalActive} active templates`,
+        },
+      });
+    }
+
+    const sanity =
+      query.includeSanity || !seed.hasMore
+        ? await sanityCheckTemplatePricing(req.tenantId!)
+        : undefined;
 
     res.json({
       success: true,
       data: {
         expectedPackages: getExpectedPackageCount(),
         seed,
-        sanity,
+        ...(sanity ? { sanity } : {}),
       },
     });
   })

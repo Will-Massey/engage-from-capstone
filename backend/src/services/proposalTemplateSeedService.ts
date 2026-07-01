@@ -17,6 +17,11 @@ export interface TemplateServiceConfigItem {
   quantity: number;
 }
 
+export interface SeedProposalTemplatesOptions {
+  offset?: number;
+  limit?: number;
+}
+
 export interface SeedProposalTemplatesResult {
   packageCount: number;
   catalogueCount: number;
@@ -24,6 +29,9 @@ export interface SeedProposalTemplatesResult {
   skipped: number;
   skippedNoServices: number;
   totalActive: number;
+  offset: number;
+  processed: number;
+  hasMore: boolean;
   warnings: string[];
 }
 
@@ -74,15 +82,28 @@ function cataloguePriceBands(): Map<string, { min: number; max: number }> {
   return bands;
 }
 
+const SEED_BATCH_SIZE = 25;
+
 export async function seedProposalTemplatesForTenant(
   tenantId: string,
-  userId: string
+  userId: string,
+  options: SeedProposalTemplatesOptions = {}
 ): Promise<SeedProposalTemplatesResult> {
-  const catalogue = await prisma.serviceTemplate.findMany({
-    where: { tenantId, isActive: true },
-    select: { id: true, name: true, billingCycle: true, basePrice: true },
-  });
+  const offset = Math.max(0, options.offset ?? 0);
+  const limit = Math.min(50, Math.max(1, options.limit ?? SEED_BATCH_SIZE));
+
+  const [catalogue, existingTemplates] = await Promise.all([
+    prisma.serviceTemplate.findMany({
+      where: { tenantId, isActive: true },
+      select: { id: true, name: true, billingCycle: true, basePrice: true },
+    }),
+    prisma.proposalTemplate.findMany({
+      where: { tenantId, isActive: true },
+      select: { name: true },
+    }),
+  ]);
   const byName = new Map(catalogue.map((s) => [s.name, s]));
+  const existingNames = new Set(existingTemplates.map((t) => t.name));
 
   const warnings: string[] = [];
   if (catalogue.length < 5) {
@@ -99,15 +120,30 @@ export async function seedProposalTemplatesForTenant(
   }
 
   const packages = getUkProposalTemplatePackages();
+  const slice = packages.slice(offset, offset + limit);
   let created = 0;
   let skipped = 0;
   let skippedNoServices = 0;
+  const toCreate: Array<{
+    tenantId: string;
+    createdById: string;
+    name: string;
+    description: string;
+    title: string;
+    coverLetter: string | null;
+    targetEntityType: string;
+    targetIndustry: string | null;
+    serviceConfig: string;
+    defaultPricing: string;
+    usageCount: number;
+    isActive: boolean;
+    isDefault: boolean;
+    engagementLibraryVersionId: string | null;
+    needsUpdate: boolean;
+  }> = [];
 
-  for (const pkg of packages) {
-    const existing = await prisma.proposalTemplate.findFirst({
-      where: { tenantId, name: pkg.name, isActive: true },
-    });
-    if (existing) {
+  for (const pkg of slice) {
+    if (existingNames.has(pkg.name)) {
       skipped++;
       continue;
     }
@@ -132,31 +168,37 @@ export async function seedProposalTemplatesForTenant(
       continue;
     }
 
-    await prisma.proposalTemplate.create({
-      data: {
-        tenantId,
-        createdById: userId,
-        name: pkg.name,
-        description: pkg.description,
-        title: pkg.title,
-        coverLetter: pkg.coverLetterSnippet || null,
-        targetEntityType: pkg.targetEntityType,
-        targetIndustry: pkg.targetIndustry || null,
-        serviceConfig: JSON.stringify(serviceConfig),
-        defaultPricing: JSON.stringify({ coverLetterTone: 'PROFESSIONAL' }),
-        usageCount: 0,
-        isActive: true,
-        isDefault: false,
-        engagementLibraryVersionId: libraryVersionId,
-        needsUpdate: false,
-      },
+    toCreate.push({
+      tenantId,
+      createdById: userId,
+      name: pkg.name,
+      description: pkg.description,
+      title: pkg.title,
+      coverLetter: pkg.coverLetterSnippet || null,
+      targetEntityType: pkg.targetEntityType,
+      targetIndustry: pkg.targetIndustry || null,
+      serviceConfig: JSON.stringify(serviceConfig),
+      defaultPricing: JSON.stringify({ coverLetterTone: 'PROFESSIONAL' }),
+      usageCount: 0,
+      isActive: true,
+      isDefault: false,
+      engagementLibraryVersionId: libraryVersionId,
+      needsUpdate: false,
     });
-    created++;
+  }
+
+  if (toCreate.length) {
+    const result = await prisma.proposalTemplate.createMany({ data: toCreate });
+    created = result.count;
+    for (const row of toCreate) existingNames.add(row.name);
   }
 
   const totalActive = await prisma.proposalTemplate.count({
     where: { tenantId, isActive: true },
   });
+
+  const nextOffset = offset + slice.length;
+  const hasMore = nextOffset < packages.length;
 
   return {
     packageCount: packages.length,
@@ -165,6 +207,9 @@ export async function seedProposalTemplatesForTenant(
     skipped,
     skippedNoServices,
     totalActive,
+    offset,
+    processed: slice.length,
+    hasMore,
     warnings,
   };
 }

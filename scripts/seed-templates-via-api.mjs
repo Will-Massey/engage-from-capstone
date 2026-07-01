@@ -12,6 +12,8 @@ const API = API_BASE.endsWith('/api') ? API_BASE : `${API_BASE}/api`;
 
 const EMAIL = process.env.TEST_USER_EMAIL || 'admin@demo.practice';
 const PASSWORD = process.env.TEST_USER_PASSWORD || 'DemoPass123!';
+const CHUNK = Number(process.env.SEED_CHUNK_SIZE || 25);
+const FETCH_TIMEOUT_MS = 120_000;
 
 function parseCookies(setCookieHeaders) {
   const jar = new Map();
@@ -30,31 +32,39 @@ function cookieHeader(jar) {
 }
 
 async function api(method, path, { jar, body, headers = {} } = {}) {
-  const res = await fetch(`${API}${path}`, {
-    method,
-    headers: {
-      'Content-Type': 'application/json',
-      'X-Test-Mode': 'e2e-build',
-      ...(jar?.size ? { Cookie: cookieHeader(jar) } : {}),
-      ...headers,
-    },
-    body: body ? JSON.stringify(body) : undefined,
-  });
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
 
-  const text = await res.text();
-  let json;
   try {
-    json = JSON.parse(text);
-  } catch {
-    json = { raw: text };
-  }
+    const res = await fetch(`${API}${path}`, {
+      method,
+      signal: controller.signal,
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Test-Mode': 'e2e-build',
+        ...(jar?.size ? { Cookie: cookieHeader(jar) } : {}),
+        ...headers,
+      },
+      body: body ? JSON.stringify(body) : undefined,
+    });
 
-  const newCookies = parseCookies(res.headers.getSetCookie?.() || res.headers.raw?.()['set-cookie']);
-  if (jar) {
-    for (const [k, v] of newCookies) jar.set(k, v);
-  }
+    const text = await res.text();
+    let json;
+    try {
+      json = JSON.parse(text);
+    } catch {
+      json = { raw: text };
+    }
 
-  return { status: res.status, json, jar };
+    const newCookies = parseCookies(res.headers.getSetCookie?.() || res.headers.raw?.()['set-cookie']);
+    if (jar) {
+      for (const [k, v] of newCookies) jar.set(k, v);
+    }
+
+    return { status: res.status, json, jar };
+  } finally {
+    clearTimeout(timer);
+  }
 }
 
 async function main() {
@@ -63,7 +73,6 @@ async function main() {
 
   const jar = new Map();
 
-  // Bootstrap CSRF cookie
   await api('GET', '/status', { jar });
 
   const login = await api('POST', '/auth/login', {
@@ -78,43 +87,71 @@ async function main() {
 
   const accessToken = jar.get('accessToken');
   const csrfToken = jar.get('csrfToken');
-  if (!accessToken) {
-    console.error('No accessToken cookie after login');
-    process.exit(1);
-  }
-  if (!csrfToken) {
-    console.error('No csrfToken cookie — fetch /api/status first');
+  if (!accessToken || !csrfToken) {
+    console.error('Missing auth cookies after login');
     process.exit(1);
   }
 
   console.log('✅ Logged in\n');
 
-  const seed = await api('POST', '/proposal-templates/seed-library', {
+  const authHeaders = {
+    Authorization: `Bearer ${accessToken}`,
+    'X-CSRF-Token': csrfToken,
+  };
+
+  let offset = 0;
+  let totalCreated = 0;
+  let totalSkipped = 0;
+  let expectedPackages = 0;
+  let lastSeed = null;
+
+  while (true) {
+    const path = `/proposal-templates/seed-library?offset=${offset}&limit=${CHUNK}`;
+    console.log(`📦 Seeding chunk offset=${offset} limit=${CHUNK}…`);
+
+    const seed = await api('POST', path, { jar, headers: authHeaders });
+
+    if (seed.status !== 200 || !seed.json.success) {
+      console.error('Seed failed:', seed.status, JSON.stringify(seed.json, null, 2));
+      process.exit(1);
+    }
+
+    const { data } = seed.json;
+    const s = data.seed;
+    lastSeed = s;
+    expectedPackages = data.expectedPackages;
+    totalCreated += s.created;
+    totalSkipped += s.skipped;
+
+    console.log(
+      `   created=${s.created} skipped=${s.skipped} active=${s.totalActive} hasMore=${s.hasMore}`
+    );
+
+    if (!s.hasMore) break;
+    offset += s.processed;
+  }
+
+  console.log('\n📦 Seed complete');
+  console.log(`   Expected packages: ${expectedPackages}`);
+  console.log(`   Total created this run: ${totalCreated}`);
+  console.log(`   Total skipped this run: ${totalSkipped}`);
+  console.log(`   Active templates: ${lastSeed?.totalActive ?? '?'}`);
+  console.log(`   Catalogue services: ${lastSeed?.catalogueCount ?? '?'}`);
+  if (lastSeed?.warnings?.length) {
+    for (const w of lastSeed.warnings) console.log(`   ⚠️  ${w}`);
+  }
+
+  const sanityRes = await api('GET', '/proposal-templates/pricing-sanity', {
     jar,
-    headers: {
-      Authorization: `Bearer ${accessToken}`,
-      'X-CSRF-Token': csrfToken,
-    },
+    headers: { Authorization: `Bearer ${accessToken}` },
   });
 
-  if (seed.status !== 200 || !seed.json.success) {
-    console.error('Seed failed:', seed.status, JSON.stringify(seed.json, null, 2));
+  if (sanityRes.status !== 200 || !sanityRes.json.success) {
+    console.error('Sanity check failed:', sanityRes.status, sanityRes.json);
     process.exit(1);
   }
 
-  const { data } = seed.json;
-  const s = data.seed;
-  const sanity = data.sanity;
-
-  console.log('📦 Seed results');
-  console.log(`   Expected packages: ${data.expectedPackages}`);
-  console.log(`   Created: ${s.created}`);
-  console.log(`   Skipped: ${s.skipped} (${s.skippedNoServices} no matching services)`);
-  console.log(`   Active templates: ${s.totalActive}`);
-  console.log(`   Catalogue services: ${s.catalogueCount}`);
-  if (s.warnings?.length) {
-    for (const w of s.warnings) console.log(`   ⚠️  ${w}`);
-  }
+  const sanity = sanityRes.json.data.sanity;
 
   console.log('\n💷 Pricing sanity');
   console.log(`   Status: ${sanity.passed ? 'PASS ✅' : 'FAIL ❌'}`);
