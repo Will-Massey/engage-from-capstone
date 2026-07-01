@@ -1,6 +1,17 @@
 # Build Progress Log
 <!-- Append-only session log. Latest deploy checkpoint is the resume entry point. -->
 
+## Session: 2026-07-01 — sendit resume: deploy + migration verification
+
+### Verification checkpoint — 845effcf live
+- **Backend:** `/ping` + `/health` healthy; DB connected
+- **New routes live:** `/api/auth/2fa/login`, `/api/auth/forgot-password`, `/api/xero/connect`, `/api/proposals/bulk-renewal`, `/api/analytics/win-loss`, `/api/engagement-library/*`
+- **Migrations (inferred):** `PasswordReset` + 2FA tables/columns working (`forgot-password` 200, `2fa/login` 401 not 500); engagement-library + decline-reason routes registered
+- **Frontend:** bundle `index-DJfs409T.js` contains `twoFactor`, `bulk-renewal`, `paymentMandate`, `declineReason`, `pricing-calculator`
+- **Next:** smoke-test wizard → bulk renew → sign + payment on production
+
+---
+
 ## Session: 2026-07-01 — build upgrade deploy (845effcf)
 
 ### Deploy checkpoint — 845effcf
