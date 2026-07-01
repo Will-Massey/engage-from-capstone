@@ -137,8 +137,12 @@ test.describe('Build smoke — new proposal (no error popups)', () => {
       timeout: 30_000,
     });
 
-    await page.getByTestId('toggle-client-preview-pane').click();
-    await expect(page.getByTestId('proposal-client-preview')).toBeVisible({ timeout: 15_000 });
+    const preview = page.getByTestId('proposal-client-preview');
+    const toggle = page.getByTestId('toggle-client-preview-pane');
+    if (!(await preview.isVisible({ timeout: 3_000 }).catch(() => false))) {
+      await toggle.click();
+    }
+    await expect(preview).toBeVisible({ timeout: 15_000 });
     await expectNoErrorToasts(page);
   });
 });
