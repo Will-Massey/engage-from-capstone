@@ -1,8 +1,8 @@
 # sendit.resume - auto-generated checkpoint (keep in git)
-pending: true
-written: 2026-07-01 09:21:39 UTC
+pending: false
+written: 2026-07-01 09:29:15 UTC
 project_root: C:\Users\willi\Cline Workspace\engage-deploy
-commit: c28d9216
+commit: 5aa9a2ac
 branch: integrate-deploy
 phase: **Build 2.0** â€” **deployed** (c28d9216) e2e build-mode fix on top of W0â€“W4 batch
 goal: **Market leader:** UK proposal-to-cash platform â€” CH lookup â†’ priced proposal â†’ signed engagement â†’ collected fees, with Clara AI that saves 30+ min/proposal without token overspend. Full plan: `MARKET_LEADER_PLAN.md`.

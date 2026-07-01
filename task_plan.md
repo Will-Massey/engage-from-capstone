@@ -5,15 +5,15 @@
 **Market leader:** UK proposal-to-cash platform — CH lookup → priced proposal → signed engagement → collected fees, with Clara AI that saves 30+ min/proposal without token overspend. Full plan: `MARKET_LEADER_PLAN.md`.
 
 ## Current Phase
-**Build 2.0** — **deployed** (c28d9216) e2e build-mode fix on top of W0–W4 batch
+**Build 2.0** — **verified** (c28d9216) — Render live, e2e build suite 25/26 pass (1 skipped)
 
 ## Next Up
 <!-- 3–5 bullets ONLY. Next fresh session starts here. Rewrite every checkpoint. -->
-1. Verify Render deploy c28d9216 live; run full e2e suite (expect 25+ pass).
-2. Caroline UAT: partner approval flow, MFA, pricing calculator, Xero connect.
-3. Set Render env: `XERO_*`, `AML_WEBHOOK_SECRET`, `CLOUDFLARE_EMAIL_WEBHOOK_SECRET`.
-4. W0.3 custom domain + Render Starter disk (manual dashboard).
-5. W0.4 legal pages live check at `/legal/terms`, `/status`.
+1. Caroline UAT: partner approval flow, MFA, pricing calculator, Xero connect.
+2. Set Render env: `XERO_*`, `AML_WEBHOOK_SECRET`, `CLOUDFLARE_EMAIL_WEBHOOK_SECRET`.
+3. W0.3 custom domain + Render Starter disk (manual dashboard).
+4. W0.4 legal pages live check at `/legal/terms`, `/status`.
+5. Investigate skipped test: market-leader first proposal wizard from dashboard.
 
 ## Phases
 <!-- Status: pending | in_progress | complete -->
