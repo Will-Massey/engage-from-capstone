@@ -1,6 +1,23 @@
 # Build Progress Log
 <!-- Append-only session log. Latest deploy checkpoint is the resume entry point. -->
 
+## Session: 2026-07-01 — Build 2.0 deploy (c28d9216)
+
+### Deploy checkpoint — c28d9216
+- **Label:** Build 2.0
+- **Commit:** `fix(e2e): handle build-mode chooser in proposal builder smoke tests`
+- **Branch:** master (from integrate-deploy)
+- **Render services:** engage-backend, engage-frontend
+- **Scope:** 4 e2e files — `advanceToProposalServicesStep` helper; manual + Clara build-mode paths
+- **Pre-deploy verification:** 3/3 targeted tests passed on production (~47s)
+
+#### Resume prompt
+```
+Verify c28d9216 live. Run full e2e suite. Caroline UAT: partner approval + MFA + pricing.
+```
+
+---
+
 ## Session: 2026-07-01 — W0–W4 parallel agent batch + deploy (a14a7371)
 
 ### Build checkpoint — a14a7371

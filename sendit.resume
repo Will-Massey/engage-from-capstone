@@ -1,12 +1,12 @@
 # sendit.resume - auto-generated checkpoint (keep in git)
 pending: true
-written: 2026-07-01 09:07:01 UTC
+written: 2026-07-01 09:21:39 UTC
 project_root: C:\Users\willi\Cline Workspace\engage-deploy
-commit: a14a7371
+commit: c28d9216
 branch: integrate-deploy
-phase: Phase W0â€“W4 batch â€” **deployed** (a14a7371) full market-leader remainder
+phase: **Build 2.0** â€” **deployed** (c28d9216) e2e build-mode fix on top of W0â€“W4 batch
 goal: **Market leader:** UK proposal-to-cash platform â€” CH lookup â†’ priced proposal â†’ signed engagement â†’ collected fees, with Clara AI that saves 30+ min/proposal without token overspend. Full plan: `MARKET_LEADER_PLAN.md`.
-next_up_1: Deploy this batch to Render + run `prisma migrate deploy` (3 new migrations).
+next_up_1: Verify Render deploy c28d9216 live; run full e2e suite (expect 25+ pass).
 
 # Agent: on resume read ~/.grok/sendit.active OR project_root paths below.
 # NEVER glob search. Execute next_up_1 immediately. Set pending: false when done.
