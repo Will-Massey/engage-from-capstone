@@ -5,14 +5,15 @@
 **Market leader:** UK proposal-to-cash platform — CH lookup → priced proposal → signed engagement → collected fees, with Clara AI that saves 30+ min/proposal without token overspend. Full plan: `MARKET_LEADER_PLAN.md`.
 
 ## Current Phase
-Phase W1+W2 kickoff — parallel agent tracks (security, AI cost, Xero, wizard, renewals, payments, pricing, compliance, analytics)
+Phase W1+W2 — **deployed** (845effcf) market leader build upgrade
 
 ## Next Up
 <!-- 3–5 bullets ONLY. Next fresh session starts here. Rewrite every checkpoint. -->
-1. Review subagent PRs/commits — merge W0.1 MFA, W2.1 AI cost refactor, W2.7 wizard first.
-2. Wire Xero env vars on Render when W1.1 scaffold lands.
-3. E2E smoke: first-proposal wizard → send → sign → mandate stub.
-4. Update `findings.md` agent execution log with each track status.
+1. Verify Render deploy + 4 Prisma migrations applied (`prisma migrate deploy` on production).
+2. Smoke-test live: first-proposal wizard → bulk renew → sign + payment mandate → win/loss decline.
+3. Set `XERO_CLIENT_ID`, `XERO_CLIENT_SECRET`, `XERO_REDIRECT_URI` on Render if testing Xero.
+4. Caroline UAT: MFA enable, pricing calculator → apply to proposal, Settings → Integrations.
+5. W1.6 partner approval workflow (next build slice per `MARKET_LEADER_PLAN.md`).
 
 ## Phases
 <!-- Status: pending | in_progress | complete -->
@@ -50,7 +51,8 @@ Phase W1+W2 kickoff — parallel agent tracks (security, AI cost, Xero, wizard, 
 | 4 | 2026-06-30 | eff1b326 | master | engage-backend, engage-frontend | live | Manual build mode, service toggle, price inputs |
 | 5 | 2026-06-30 | 121574bc | master | engage-backend, engage-frontend | live | New proposal (manual) list shortcut |
 | 6 | 2026-06-30 | fbed4b5f | master | engage-backend, engage-frontend | live | Proposal snapshot isolation (48457d71) + Templates sidebar & management page |
-| 7 | 2026-07-01 | 7cc735bb | master | engage-backend, engage-frontend | deploying | Per-client proposal drafts — switching clients mid-build no longer shares services/title/cover letter |
+| 7 | 2026-07-01 | 7cc735bb | master | engage-backend, engage-frontend | live | Per-client proposal drafts — switching clients mid-build no longer shares services/title/cover letter |
+| 8 | 2026-07-01 | 845effcf | master | engage-backend, engage-frontend | deploying | Market leader batch: MFA, password reset, Xero, post-sign payments, bulk renewals, first-proposal wizard, pricing calculator, engagement library versioning, win/loss analytics, AI cost refactor |
 
 ## Decisions Made
 | Decision | Rationale |

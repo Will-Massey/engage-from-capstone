@@ -1,6 +1,28 @@
 # Build Progress Log
 <!-- Append-only session log. Latest deploy checkpoint is the resume entry point. -->
 
+## Session: 2026-07-01 — build upgrade deploy (845effcf)
+
+### Deploy checkpoint — 845effcf
+- **Commit:** 845effcf build upgrade: market leader batch — MFA, Xero, payments, wizard, renewals, pricing, compliance
+- **Branch:** master (from integrate-deploy)
+- **Render services:** engage-backend, engage-frontend
+- **Deploy status:** deploying (auto-deploy; 4 new Prisma migrations)
+- **Scope:** 83 files, +10k lines — see `MARKET_LEADER_PLAN.md`
+
+#### Migrations to verify on production
+- `20260701120000_add_security_2fa_password_reset`
+- `20260701120000_add_payment_mandate`
+- `20260701120000_engagement_library_versioning`
+- `20260701120000_add_decline_reason`
+
+#### Resume prompt
+```
+Continue per task_plan.md. Last deploy: 845effcf. Verify migrations + smoke wizard, bulk renew, sign payment on production.
+```
+
+---
+
 ## Session: 2026-07-01 — Market Leader plan + 9 parallel agent tracks
 
 ### Planning

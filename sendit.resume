@@ -1,12 +1,12 @@
 # sendit.resume - auto-generated checkpoint (keep in git)
 pending: true
-written: 2026-07-01 07:32:38 UTC
+written: 2026-07-01 08:26:55 UTC
 project_root: C:\Users\willi\Cline Workspace\engage-deploy
-commit: 7cc735bb
+commit: 845effcf
 branch: integrate-deploy
-phase: Phase: Per-client draft isolation â€” **deployed** (7cc735bb)
-goal: Engage proposals: isolated per-proposal snapshots, **Templates** catalogue section for pre-made bundles, faster proposal drafting from sidebar.
-next_up_1: Caroline smoke-test: start proposals for 2 clients, add different services, switch between them â€” each keeps its own draft.
+phase: Phase W1+W2 â€” **deployed** (845effcf) market leader build upgrade
+goal: **Market leader:** UK proposal-to-cash platform â€” CH lookup â†’ priced proposal â†’ signed engagement â†’ collected fees, with Clara AI that saves 30+ min/proposal without token overspend. Full plan: `MARKET_LEADER_PLAN.md`.
+next_up_1: Verify Render deploy + 4 Prisma migrations applied (`prisma migrate deploy` on production).
 
 # Agent: on resume read ~/.grok/sendit.active OR project_root paths below.
 # NEVER glob search. Execute next_up_1 immediately. Set pending: false when done.
