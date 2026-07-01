@@ -11,9 +11,9 @@
 <!-- 3–5 bullets ONLY. Next fresh session starts here. Rewrite every checkpoint. -->
 1. Caroline UAT (human): MFA enrolment, live Xero OAuth, send a real proposal end-to-end.
 2. **Deferred (post-sale):** Render Starter + disk, custom domain, `XERO_*` / webhook secrets.
-3. Run `npm run db:seed:templates` on production DB after services catalogue seeded.
-4. Stripe trial enforcement smoke with live Stripe keys (post-sale).
-5. W4.3 multi-firm workspace admin (beyond read-only scaffold).
+3. Stripe trial enforcement smoke with live Stripe keys (post-sale).
+4. W4.3 multi-firm workspace admin (beyond read-only scaffold).
+5. G2 case study + marketing ROI calculator (W4.6).
 
 ## Phases
 <!-- Status: pending | in_progress | complete -->
@@ -57,6 +57,7 @@
 | 10 | 2026-07-01 | c28d9216 | master | engage-backend, engage-frontend | live | **Build 2.0** — e2e fix for build-mode chooser (`advanceToProposalServicesStep` helper); 3 flaky proposal tests green on production. |
 | 11 | 2026-07-01 | a83b3a53 | master | engage-backend, engage-frontend | live | UAT automation: `/proposals/first-wizard`, legal/status pages, partner approval API+UI, Xero settings; **36/36 e2e pass**. |
 | 12 | 2026-07-01 | 3167538a | master | engage-backend, engage-frontend | live | Services-step edit column full width (preview stacks below); flex-wrap edit fields; deduped wakeup toasts during Render restarts. |
+| 13 | 2026-07-01 | bc45724a | master | engage-backend, engage-frontend | live | Production catalogue 43 services + **143 templates** seeded; pricing sanity PASS; **38/38 e2e** green. |
 
 ## Decisions Made
 | Decision | Rationale |
