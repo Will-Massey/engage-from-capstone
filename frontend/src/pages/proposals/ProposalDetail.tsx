@@ -20,6 +20,7 @@ import {
   ArrowPathIcon,
   CreditCardIcon,
   BanknotesIcon,
+  NoSymbolIcon,
 } from '@heroicons/react/24/outline';
 import { apiClient } from '../../utils/api';
 import toast from 'react-hot-toast';
@@ -70,6 +71,12 @@ const statusConfig: Record<string, { color: string; bg: string; icon: any; label
     bg: 'bg-slate-100 dark:bg-slate-800',
     icon: ClockIcon,
     label: 'Expired',
+  },
+  WITHDRAWN: {
+    color: 'text-amber-800 dark:text-amber-200',
+    bg: 'bg-amber-100 dark:bg-amber-900/40',
+    icon: NoSymbolIcon,
+    label: 'Withdrawn',
   },
 };
 
@@ -163,8 +170,10 @@ const ProposalDetail = () => {
   const [savingCoverLetter, setSavingCoverLetter] = useState(false);
   const [showSendEmailPreview, setShowSendEmailPreview] = useState(false);
   const [showRejectModal, setShowRejectModal] = useState(false);
+  const [showWithdrawModal, setShowWithdrawModal] = useState(false);
   const [rejectionReason, setRejectionReason] = useState('');
   const [approvalActionLoading, setApprovalActionLoading] = useState(false);
+  const [withdrawLoading, setWithdrawLoading] = useState(false);
 
   // Rich compliance history (views + signatures + sent events) from dedicated audit trail
   const [auditTrail, setAuditTrail] = useState<any[]>([]);
@@ -381,6 +390,22 @@ const ProposalDetail = () => {
       // handled by API interceptor
     } finally {
       setApprovalActionLoading(false);
+    }
+  };
+
+  const handleWithdrawProposal = async () => {
+    if (!id) return;
+    try {
+      setWithdrawLoading(true);
+      await apiClient.withdrawProposal(id);
+      toast.success('Proposal rescinded — client link is no longer valid');
+      setShowWithdrawModal(false);
+      loadProposal();
+      loadAuditTrail();
+    } catch {
+      // handled by API interceptor
+    } finally {
+      setWithdrawLoading(false);
     }
   };
 
@@ -669,7 +694,9 @@ const ProposalDetail = () => {
     (userRole ? SUBMITTER_ROLES.has(userRole) || isApprover : false);
   const canSendDraft =
     proposal.status === 'DRAFT' && (canOverrideApproval || approvalStatus === 'APPROVED');
-  const showClientLinkButton = !['DECLINED', 'EXPIRED'].includes(proposal.status);
+  const showClientLinkButton = !['DECLINED', 'EXPIRED', 'WITHDRAWN'].includes(proposal.status);
+  const canWithdrawProposal =
+    proposal.status === 'SENT' || proposal.status === 'VIEWED';
   const clientOpenCount = typeof proposal.viewCount === 'number' ? proposal.viewCount : 0;
   /** Backend rejects updates once the proposal is signed (ACCEPTED). */
   const canEditCoverLetter = proposal.status !== 'ACCEPTED';
@@ -827,7 +854,19 @@ const ProposalDetail = () => {
             </button>
           )}
 
-          {(proposal.status === 'SENT' || proposal.status === 'VIEWED') && (
+          {canWithdrawProposal && (
+            <button
+              type="button"
+              onClick={() => setShowWithdrawModal(true)}
+              disabled={withdrawLoading}
+              className="btn-secondary text-amber-800 border-amber-200 hover:bg-amber-50 dark:text-amber-200 dark:border-amber-800 dark:hover:bg-amber-950/30"
+            >
+              <NoSymbolIcon className="h-4 w-4 mr-2" />
+              Rescind proposal
+            </button>
+          )}
+
+          {canWithdrawProposal && (
             <button
               type="button"
               onClick={() => {
@@ -1538,6 +1577,10 @@ const ProposalDetail = () => {
                     icon = <EnvelopeIcon className="h-4 w-4 text-blue-600" />;
                     label = 'Proposal sent to client';
                     highlight = 'text-blue-700 dark:text-blue-300';
+                  } else if (action.includes('WITHDRAW')) {
+                    icon = <NoSymbolIcon className="h-4 w-4 text-amber-600" />;
+                    label = 'Proposal rescinded by practice';
+                    highlight = 'text-amber-700 dark:text-amber-300';
                   }
 
                   return (
@@ -1821,6 +1864,37 @@ const ProposalDetail = () => {
         proposalId={id}
         onSend={handleSend}
       />
+
+      {showWithdrawModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+          <div className="w-full max-w-md rounded-xl bg-white dark:bg-slate-900 p-6 shadow-xl">
+            <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-100">
+              Rescind proposal
+            </h3>
+            <p className="mt-2 text-sm text-slate-600 dark:text-slate-400">
+              This will withdraw the proposal from your client. Their share link will stop working
+              immediately and they will no longer be able to view or sign it.
+            </p>
+            <div className="mt-4 flex justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => setShowWithdrawModal(false)}
+                className="btn-secondary"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleWithdrawProposal}
+                disabled={withdrawLoading}
+                className="btn-primary bg-amber-600 hover:bg-amber-700"
+              >
+                {withdrawLoading ? 'Rescinding…' : 'Rescind proposal'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {showRejectModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">

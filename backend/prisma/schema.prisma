@@ -61,6 +61,7 @@ enum ProposalStatus {
   ACCEPTED
   DECLINED
   EXPIRED
+  WITHDRAWN
 }
 
 enum ApprovalStatus {
@@ -489,7 +490,7 @@ model Proposal {
   total          Float   @default(0)
 
   // Payment terms
-  paymentTerms     String           @default("30 days")
+  paymentTerms     String           @default("7 days")
   paymentFrequency PricingFrequency @default(MONTHLY)
 
   // Content

@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, type Dispatch, type SetStateAction } from 'react';
 import { Link } from 'react-router-dom';
 import {
   PlusIcon,
@@ -61,6 +61,180 @@ const frequencyLabels: Record<string, string> = {
   ANNUALLY: 'Annually',
 };
 
+type ServiceFormData = {
+  name: string;
+  description: string;
+  longDescription: string;
+  category: string;
+  basePrice: string;
+  defaultFrequency: string;
+  pricingModel: string;
+  isPopular: boolean;
+  complexityFactors: any[];
+  requirements: string[];
+  deliverables: string[];
+};
+
+interface ServiceModalProps {
+  formData: ServiceFormData;
+  setFormData: Dispatch<SetStateAction<ServiceFormData>>;
+  isLoading: boolean;
+  isEdit: boolean;
+  onClose: () => void;
+  onSave: () => void;
+}
+
+const ServiceModal = ({
+  formData,
+  setFormData,
+  isLoading,
+  isEdit,
+  onClose,
+  onSave,
+}: ServiceModalProps) => (
+  <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+    <div className="glass-tile rounded-lg w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+      <div className="p-6 border-b border-white/10 flex items-center justify-between">
+        <h3 className="text-lg font-semibold text-slate-900 dark:text-white">
+          {isEdit ? 'Edit Service' : 'Add New Service'}
+        </h3>
+        <button
+          onClick={onClose}
+          className="text-slate-400 hover:text-slate-700 dark:hover:text-slate-300"
+        >
+          <XMarkIcon className="h-6 w-6" />
+        </button>
+      </div>
+
+      <div className="p-6 space-y-4">
+        <div className="grid grid-cols-2 gap-4">
+          <div>
+            <label className="block text-sm font-medium text-slate-800 dark:text-slate-200">Service Name</label>
+            <input
+              type="text"
+              value={formData.name}
+              onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+              className="mt-1 input-field w-full"
+              placeholder="e.g., Annual Accounts"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-slate-800 dark:text-slate-200">Category</label>
+            <select
+              value={formData.category}
+              onChange={(e) => setFormData({ ...formData, category: e.target.value })}
+              className="mt-1 input-field w-full"
+            >
+              {SERVICE_CATEGORY_OPTIONS.map(({ value, label }) => (
+                <option key={value} value={value}>
+                  {label}
+                </option>
+              ))}
+            </select>
+          </div>
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-slate-800 dark:text-slate-200">Short Description</label>
+          <input
+            type="text"
+            value={formData.description}
+            onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+            className="mt-1 input-field w-full"
+            placeholder="Brief description for proposals..."
+          />
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-slate-800 dark:text-slate-200">Long Description</label>
+          <textarea
+            rows={3}
+            value={formData.longDescription}
+            onChange={(e) => setFormData({ ...formData, longDescription: e.target.value })}
+            className="mt-1 input-field w-full"
+            placeholder="Detailed description of the service..."
+          />
+        </div>
+
+        <div className="grid grid-cols-2 gap-4">
+          <div>
+            <label className="block text-sm font-medium text-slate-800 dark:text-slate-200">Price (£)</label>
+            <input
+              type="text"
+              inputMode="decimal"
+              value={formData.basePrice}
+              onChange={(e) => {
+                const next = e.target.value;
+                if (next === '' || /^[0-9]*\.?[0-9]*$/.test(next)) {
+                  setFormData({ ...formData, basePrice: next });
+                }
+              }}
+              className="mt-1 input-field w-full"
+              placeholder="e.g. 150"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-slate-800 dark:text-slate-200">Frequency</label>
+            <select
+              value={formData.defaultFrequency}
+              onChange={(e) => setFormData({ ...formData, defaultFrequency: e.target.value })}
+              className="mt-1 input-field w-full"
+            >
+              <option value="ONE_TIME">One-time</option>
+              <option value="WEEKLY">Weekly</option>
+              <option value="MONTHLY">Monthly</option>
+              <option value="QUARTERLY">Quarterly</option>
+              <option value="ANNUALLY">Annually</option>
+            </select>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-2 gap-4">
+          <div>
+            <label className="block text-sm font-medium text-slate-800 dark:text-slate-200">Pricing Model</label>
+            <select
+              value={formData.pricingModel}
+              onChange={(e) => setFormData({ ...formData, pricingModel: e.target.value })}
+              className="mt-1 input-field w-full"
+            >
+              <option value="FIXED">Fixed Price</option>
+              <option value="HOURLY">Hourly Rate</option>
+              <option value="PER_EMPLOYEE">Per Employee</option>
+              <option value="PER_TRANSACTION">Per Transaction</option>
+              <option value="TIERED">Tiered</option>
+            </select>
+          </div>
+          <div className="flex items-center pt-6">
+            <input
+              type="checkbox"
+              id="isPopular"
+              checked={formData.isPopular}
+              onChange={(e) => setFormData({ ...formData, isPopular: e.target.checked })}
+              className="h-4 w-4 text-primary-600 border-gray-300 rounded"
+            />
+            <label htmlFor="isPopular" className="ml-2 text-sm text-slate-800 dark:text-slate-200">
+              Mark as Popular Service
+            </label>
+          </div>
+        </div>
+      </div>
+
+      <div className="p-6 border-t border-white/10 flex justify-end space-x-3">
+        <button onClick={onClose} className="btn-secondary">
+          Cancel
+        </button>
+        <button
+          onClick={onSave}
+          disabled={isLoading || !formData.name || !formData.description}
+          className="btn-primary"
+        >
+          {isLoading ? 'Saving...' : isEdit ? 'Update Service' : 'Create Service'}
+        </button>
+      </div>
+    </div>
+  </div>
+);
+
 const Services = () => {
   const { tenant } = useAuthStore();
   const [services, setServices] = useState<Service[]>([]);
@@ -75,7 +249,7 @@ const Services = () => {
   const [editingService, setEditingService] = useState<Service | null>(null);
 
   // Form states — basePrice kept as string so price fields accept free typing
-  const [formData, setFormData] = useState({
+  const [formData, setFormData] = useState<ServiceFormData>({
     name: '',
     description: '',
     longDescription: '',
@@ -240,160 +414,15 @@ const Services = () => {
     return matchesSearch && matchesCategory && matchesBilling;
   });
 
-  const ServiceModal = ({ isEdit }: { isEdit: boolean }) => (
-    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-      <div className="glass-tile rounded-lg w-full max-w-2xl max-h-[90vh] overflow-y-auto">
-        <div className="p-6 border-b border-white/10 flex items-center justify-between">
-          <h3 className="text-lg font-semibold text-slate-900 dark:text-white">
-            {isEdit ? 'Edit Service' : 'Add New Service'}
-          </h3>
-          <button
-            onClick={() => {
-              if (isEdit) setShowEditModal(false);
-              else setShowAddModal(false);
-              setEditingService(null);
-            }}
-            className="text-slate-400 hover:text-slate-700 dark:hover:text-slate-300"
-          >
-            <XMarkIcon className="h-6 w-6" />
-          </button>
-        </div>
+  const closeAddModal = () => {
+    setShowAddModal(false);
+    setEditingService(null);
+  };
 
-        <div className="p-6 space-y-4">
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-slate-800 dark:text-slate-200">Service Name</label>
-              <input
-                type="text"
-                value={formData.name}
-                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                className="mt-1 input-field w-full"
-                placeholder="e.g., Annual Accounts"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-slate-800 dark:text-slate-200">Category</label>
-              <select
-                value={formData.category}
-                onChange={(e) => setFormData({ ...formData, category: e.target.value })}
-                className="mt-1 input-field w-full"
-              >
-                {SERVICE_CATEGORY_OPTIONS.map(({ value, label }) => (
-                  <option key={value} value={value}>
-                    {label}
-                  </option>
-                ))}
-              </select>
-            </div>
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-slate-800 dark:text-slate-200">Short Description</label>
-            <input
-              type="text"
-              value={formData.description}
-              onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-              className="mt-1 input-field w-full"
-              placeholder="Brief description for proposals..."
-            />
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-slate-800 dark:text-slate-200">Long Description</label>
-            <textarea
-              rows={3}
-              value={formData.longDescription}
-              onChange={(e) => setFormData({ ...formData, longDescription: e.target.value })}
-              className="mt-1 input-field w-full"
-              placeholder="Detailed description of the service..."
-            />
-          </div>
-
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-slate-800 dark:text-slate-200">Price (£)</label>
-              <input
-                type="text"
-                inputMode="decimal"
-                value={formData.basePrice}
-                onChange={(e) => {
-                  const next = e.target.value;
-                  if (next === '' || /^[0-9]*\.?[0-9]*$/.test(next)) {
-                    setFormData({ ...formData, basePrice: next });
-                  }
-                }}
-                className="mt-1 input-field w-full"
-                placeholder="e.g. 150"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-slate-800 dark:text-slate-200">Frequency</label>
-              <select
-                value={formData.defaultFrequency}
-                onChange={(e) => setFormData({ ...formData, defaultFrequency: e.target.value })}
-                className="mt-1 input-field w-full"
-              >
-                <option value="ONE_TIME">One-time</option>
-                <option value="WEEKLY">Weekly</option>
-                <option value="MONTHLY">Monthly</option>
-                <option value="QUARTERLY">Quarterly</option>
-                <option value="ANNUALLY">Annually</option>
-              </select>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-slate-800 dark:text-slate-200">Pricing Model</label>
-              <select
-                value={formData.pricingModel}
-                onChange={(e) => setFormData({ ...formData, pricingModel: e.target.value })}
-                className="mt-1 input-field w-full"
-              >
-                <option value="FIXED">Fixed Price</option>
-                <option value="HOURLY">Hourly Rate</option>
-                <option value="PER_EMPLOYEE">Per Employee</option>
-                <option value="PER_TRANSACTION">Per Transaction</option>
-                <option value="TIERED">Tiered</option>
-              </select>
-            </div>
-            <div className="flex items-center pt-6">
-              <input
-                type="checkbox"
-                id="isPopular"
-                checked={formData.isPopular}
-                onChange={(e) => setFormData({ ...formData, isPopular: e.target.checked })}
-                className="h-4 w-4 text-primary-600 border-gray-300 rounded"
-              />
-              <label htmlFor="isPopular" className="ml-2 text-sm text-slate-800 dark:text-slate-200">
-                Mark as Popular Service
-              </label>
-            </div>
-          </div>
-        </div>
-
-        <div className="p-6 border-t border-white/10 flex justify-end space-x-3">
-          <button
-            onClick={() => {
-              if (isEdit) setShowEditModal(false);
-              else setShowAddModal(false);
-              setEditingService(null);
-            }}
-            className="btn-secondary"
-          >
-            Cancel
-          </button>
-          <button
-            onClick={isEdit ? handleUpdateService : handleCreateService}
-            disabled={isLoading || !formData.name || !formData.description}
-            className="btn-primary"
-          >
-            {isLoading ? 'Saving...' : isEdit ? 'Update Service' : 'Create Service'}
-          </button>
-        </div>
-      </div>
-    </div>
-  );
+  const closeEditModal = () => {
+    setShowEditModal(false);
+    setEditingService(null);
+  };
 
   if (isLoading && services.length === 0) {
     return (
@@ -546,10 +575,28 @@ const Services = () => {
       )}
 
       {/* Add Modal */}
-      {showAddModal && <ServiceModal isEdit={false} />}
+      {showAddModal && (
+        <ServiceModal
+          isEdit={false}
+          formData={formData}
+          setFormData={setFormData}
+          isLoading={isLoading}
+          onClose={closeAddModal}
+          onSave={handleCreateService}
+        />
+      )}
 
       {/* Edit Modal */}
-      {showEditModal && editingService && <ServiceModal isEdit={true} />}
+      {showEditModal && editingService && (
+        <ServiceModal
+          isEdit={true}
+          formData={formData}
+          setFormData={setFormData}
+          isLoading={isLoading}
+          onClose={closeEditModal}
+          onSave={handleUpdateService}
+        />
+      )}
     </div>
   );
 };

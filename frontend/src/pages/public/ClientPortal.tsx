@@ -95,6 +95,12 @@ const statusConfig: Record<string, { label: string; icon: any; color: string; bg
     color: 'text-slate-600 dark:text-slate-400',
     bg: 'bg-slate-50 dark:bg-slate-900/20',
   },
+  WITHDRAWN: {
+    label: 'Withdrawn',
+    icon: ClockIcon,
+    color: 'text-amber-700 dark:text-amber-300',
+    bg: 'bg-amber-50 dark:bg-amber-900/20',
+  },
 };
 
 function StatusBadge({ status }: { status: string }) {

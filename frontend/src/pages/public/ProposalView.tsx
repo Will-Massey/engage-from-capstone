@@ -653,27 +653,20 @@ const PublicProposalView = () => {
             )}
           </div>
 
-          {/* Cover Letter */}
-          {proposal.coverLetter && (
+          {(proposal.coverLetter ||
+            (proposal as { proposalSummary?: string }).proposalSummary) && (
             <div className="border-t pt-6">
-              <h3 className="text-sm font-medium text-slate-600 uppercase tracking-wide">
-                Cover Letter
-              </h3>
-              <div className="mt-2 prose prose-sm max-w-none text-slate-800">
-                {proposal.coverLetter.split('\n').map((paragraph, i) => (
-                  <p key={i}>{paragraph}</p>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {(proposal as { proposalSummary?: string }).proposalSummary && (
-            <div className="border-t pt-6">
-              <h3 className="text-sm font-semibold text-primary-700 dark:text-primary-300 uppercase tracking-wide">
-                What We Are Proposing For You
-              </h3>
-              <div className="mt-3 rounded-xl border border-primary-100 bg-primary-50/40 dark:bg-primary-950/20 p-4 prose prose-sm max-w-none text-slate-800 dark:text-slate-200">
-                {(proposal as { proposalSummary?: string }).proposalSummary}
+              <div className="mt-2 prose prose-sm max-w-none text-slate-800 dark:text-slate-200 rounded-xl border border-primary-100 bg-primary-50/30 dark:bg-primary-950/20 p-4">
+                {[
+                  proposal.coverLetter,
+                  (proposal as { proposalSummary?: string }).proposalSummary,
+                ]
+                  .filter(Boolean)
+                  .join('\n\n')
+                  .split('\n')
+                  .map((paragraph, i) => (
+                    <p key={i}>{paragraph}</p>
+                  ))}
               </div>
             </div>
           )}

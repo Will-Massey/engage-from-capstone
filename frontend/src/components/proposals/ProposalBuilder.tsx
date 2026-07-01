@@ -415,7 +415,7 @@ export default function ProposalBuilder({ proposalId }: ProposalBuilderProps) {
   // Step 3: Review
   const [proposalTitle, setProposalTitle] = useState('');
   const [coverLetter, setCoverLetter] = useState('');
-  const [proposalSummary, setProposalSummary] = useState('');
+  const [detailedCoverLetter, setDetailedCoverLetter] = useState(false);
   const [summaryLoading, setSummaryLoading] = useState(false);
   const [coverLetterTone, setCoverLetterTone] = useState<CoverLetterTone>('PROFESSIONAL');
   const [coverLetterCustomInstruction, setCoverLetterCustomInstruction] = useState('');
@@ -426,6 +426,7 @@ export default function ProposalBuilder({ proposalId }: ProposalBuilderProps) {
   const [contractStartDate, setContractStartDate] = useState('');
   const [validUntil, setValidUntil] = useState('');
   const [defaultExpiryDays, setDefaultExpiryDays] = useState(30);
+  const [defaultPaymentTermsDays, setDefaultPaymentTermsDays] = useState(7);
 
   // AI assistance
   const [aiConfigured, setAiConfigured] = useState(false);
@@ -826,14 +827,23 @@ export default function ProposalBuilder({ proposalId }: ProposalBuilderProps) {
   const loadProposalDefaults = async () => {
     try {
       const response = (await apiClient.getTenantSettings()) as any;
-      if (response.success && response.data?.proposals?.defaultExpiryDays) {
-        const days = response.data.proposals.defaultExpiryDays as number;
-        setDefaultExpiryDays(days);
-        if (!proposalId) {
-          setValidUntil((prev) => {
-            if (prev) return prev;
-            return format(addDays(new Date(), days), 'yyyy-MM-dd');
-          });
+      if (response.success && response.data?.proposals) {
+        const proposals = response.data.proposals as {
+          defaultExpiryDays?: number;
+          defaultPaymentTermsDays?: number;
+        };
+        if (proposals.defaultExpiryDays) {
+          const days = proposals.defaultExpiryDays;
+          setDefaultExpiryDays(days);
+          if (!proposalId) {
+            setValidUntil((prev) => {
+              if (prev) return prev;
+              return format(addDays(new Date(), days), 'yyyy-MM-dd');
+            });
+          }
+        }
+        if (proposals.defaultPaymentTermsDays) {
+          setDefaultPaymentTermsDays(proposals.defaultPaymentTermsDays);
         }
       }
     } catch {
@@ -1151,36 +1161,6 @@ export default function ProposalBuilder({ proposalId }: ProposalBuilderProps) {
     }
   };
 
-  // Low-token voice (dictate) → structured proposal (roadmap item)
-  const runVoiceProposal = async () => {
-    if (!selectedClient) {
-      toast.error('Select a client first');
-      return;
-    }
-    const transcript = window.prompt('Paste or type short voice transcript / notes (e.g. "annual accounts + tax for limited company, around 3-4k fee, start next month")');
-    if (!transcript || transcript.trim().length < 10) return;
-    try {
-      const res = (await apiClient.aiVoiceProposal(selectedClient.id, transcript.trim())) as any;
-      if (res.success && res.data) {
-        const d = res.data;
-        if (d.title) setProposalTitle(d.title);
-        if (d.coverLetter) setCoverLetter(d.coverLetter);
-        if (d.coverLetterTone) setCoverLetterTone(d.coverLetterTone);
-        if (Array.isArray(d.suggestedServices) && d.suggestedServices.length) {
-          d.suggestedServices.forEach((s: any) => {
-            const match = services.find((cat) => cat.name.toLowerCase().includes((s.name || '').toLowerCase().slice(0, 20)));
-            if (match) addServiceWithCadence(match, s.billingFrequency || 'MONTHLY', s.displayPrice);
-          });
-          toast.success('Clara turned voice notes into title + draft + services');
-        } else {
-          toast.success('Clara drafted from voice');
-        }
-      }
-    } catch (e) {
-      showAiError(e);
-    }
-  };
-
   const applySingleAiSuggestion = (serviceId: string) => {
     if (!aiSuggestions?.suggestions?.length) return;
     const sug = aiSuggestions.suggestions.find((s: { serviceId: string }) => s.serviceId === serviceId);
@@ -1295,9 +1275,9 @@ export default function ProposalBuilder({ proposalId }: ProposalBuilderProps) {
     }
   };
 
-  const runGenerateProposalSummary = async () => {
+  const runExpandCoverLetter = async () => {
     if (!selectedClient || selectedServices.length === 0) {
-      toast.error('Add at least one service before generating the proposal narrative');
+      toast.error('Add at least one service before expanding the cover letter');
       return;
     }
     setSummaryLoading(true);
@@ -1314,8 +1294,11 @@ export default function ProposalBuilder({ proposalId }: ProposalBuilderProps) {
         contractTotal: summary.contractTotalIncVat,
       })) as any;
       if (res?.success && res.data?.explanation) {
-        setProposalSummary(res.data.explanation);
-        toast.success('Client proposal narrative ready — review and edit if needed');
+        const intro = coverLetter.trim();
+        const expanded = res.data.explanation as string;
+        setCoverLetter(intro ? `${intro}\n\n${expanded}` : expanded);
+        setDetailedCoverLetter(true);
+        toast.success('Detailed personal cover letter ready — review and edit if needed');
       }
     } catch (e) {
       showAiError(e);
@@ -1611,8 +1594,10 @@ export default function ProposalBuilder({ proposalId }: ProposalBuilderProps) {
       if (!response.success) return;
       const p = response.data;
       setProposalTitle(p.title || '');
-      setCoverLetter(p.coverLetter || '');
-      setProposalSummary(p.proposalSummary || '');
+      const legacySummary = (p.proposalSummary || '').trim();
+      const letter = (p.coverLetter || '').trim();
+      setCoverLetter(legacySummary && letter ? `${letter}\n\n${legacySummary}` : letter || legacySummary);
+      setDetailedCoverLetter(legacySummary.length > 0);
       if (p.validUntil) {
         setValidUntil(format(new Date(p.validUntil), 'yyyy-MM-dd'));
       }
@@ -1749,7 +1734,7 @@ export default function ProposalBuilder({ proposalId }: ProposalBuilderProps) {
             senderPosition: user?.jobTitle?.trim() || undefined,
             services: selectedServices,
           }),
-        ...(proposalSummary.trim() ? { proposalSummary: proposalSummary.trim() } : {}),
+        paymentTerms: `${defaultPaymentTermsDays} day${defaultPaymentTermsDays === 1 ? '' : 's'}`,
       };
 
       const response = isEditMode
@@ -2666,17 +2651,50 @@ export default function ProposalBuilder({ proposalId }: ProposalBuilderProps) {
           Personalised for {selectedClient ? coverLetterAddressee(selectedClient) : 'your client'}. You can edit the text freely after choosing a tone.
         </p>
 
+        <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
+          <label className="inline-flex items-center gap-2 text-sm text-slate-600 dark:text-slate-300 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={detailedCoverLetter}
+              onChange={(e) => setDetailedCoverLetter(e.target.checked)}
+              className="h-4 w-4 rounded border-slate-300 text-primary-600"
+            />
+            Detailed personal letter
+          </label>
+          {detailedCoverLetter && aiConfigured && (
+            <button
+              type="button"
+              onClick={() => void runExpandCoverLetter()}
+              disabled={summaryLoading || selectedServices.length === 0}
+              className="text-xs inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg border border-primary-300 dark:border-primary-700 text-primary-700 dark:text-primary-300 hover:bg-primary-50 dark:hover:bg-primary-950/30 disabled:opacity-50"
+            >
+              <SparklesIcon className={`h-3.5 w-3.5 ${summaryLoading ? 'animate-pulse' : ''}`} />
+              {summaryLoading ? 'Writing…' : `Expand with ${AI_COPILOT.name}`}
+            </button>
+          )}
+        </div>
+        {detailedCoverLetter && (
+          <p className="text-xs text-slate-500 dark:text-slate-400 mb-2">
+            Adds a service-by-service narrative into your cover letter — ideal for a warmer, more persuasive opening.
+          </p>
+        )}
+
         <textarea
           value={coverLetter}
           onChange={(e) => setCoverLetter(e.target.value)}
-          rows={11}
-          className="input-field w-full text-sm font-sans min-h-[220px] leading-relaxed"
-          placeholder="Choose a tone above or write your own cover letter…"
+          rows={detailedCoverLetter ? 18 : 11}
+          className="input-field w-full text-sm font-sans leading-relaxed"
+          style={{ minHeight: detailedCoverLetter ? 360 : 220 }}
+          placeholder={
+            detailedCoverLetter
+              ? 'Start with a tone above, then use Expand with Clara for a detailed personal letter…'
+              : 'Choose a tone above or write your own cover letter…'
+          }
           aria-label="Cover letter"
         />
 
         <div className="mt-2 text-[10px] text-slate-400">
-          Tip: The three styles above are production-ready. The rest of the proposal (services, pricing, terms, acceptance) is intentionally tone-neutral so the cover letter sets the voice without clashing.
+          Tip: Keep it concise for a standard letter, or enable detailed mode for a longer personal introduction.
         </div>
 
         {/* Cheap Clara tweaks for cover letter - max impact, min tokens (edits existing text) */}
@@ -2732,38 +2750,6 @@ export default function ProposalBuilder({ proposalId }: ProposalBuilderProps) {
         )}
       </div>
 
-      <div className="card p-4 border border-primary-100 dark:border-primary-900/40">
-        <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
-          <div>
-            <label className="block text-sm font-medium text-slate-700 dark:text-slate-200">
-              Sales narrative for the client
-            </label>
-            <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-              Addressed directly to the client — explains each service and the benefits to their business. Appears after the cover letter in the PDF and client view.
-            </p>
-          </div>
-          {aiConfigured && (
-            <button
-              type="button"
-              onClick={() => void runGenerateProposalSummary()}
-              disabled={summaryLoading || selectedServices.length === 0}
-              className="text-xs inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg border border-primary-300 dark:border-primary-700 text-primary-700 dark:text-primary-300 hover:bg-primary-50 dark:hover:bg-primary-950/30 disabled:opacity-50"
-            >
-              <SparklesIcon className={`h-3.5 w-3.5 ${summaryLoading ? 'animate-pulse' : ''}`} />
-              {summaryLoading ? 'Writing…' : proposalSummary.trim() ? 'Regenerate' : `Draft with ${AI_COPILOT.name}`}
-            </button>
-          )}
-        </div>
-        <textarea
-          value={proposalSummary}
-          onChange={(e) => setProposalSummary(e.target.value)}
-          rows={14}
-          className="input-field w-full text-sm leading-relaxed"
-          placeholder={`Dear ${selectedClient ? coverLetterAddressee(selectedClient) : 'Client'},\n\nClick Draft with Clara to generate a persuasive, service-by-service narrative — or write your own.`}
-          aria-label="Sales narrative for client"
-        />
-      </div>
-
       {validationErrors.length > 0 && (
         <div className="rounded-xl border border-amber-200 bg-amber-50/80 dark:bg-amber-950/20 dark:border-amber-800 p-4">
           <p className="text-sm font-medium text-amber-900 dark:text-amber-200">Before you send</p>
@@ -2806,16 +2792,6 @@ export default function ProposalBuilder({ proposalId }: ProposalBuilderProps) {
             >
               <SparklesIcon className="h-4 w-4" />
               Preview client email
-            </button>
-          )}
-          {aiConfigured && selectedClient && (
-            <button
-              type="button"
-              onClick={runVoiceProposal}
-              className="btn-secondary text-sm inline-flex items-center gap-1.5 border-violet-200 dark:border-violet-700 text-violet-700 dark:text-violet-300"
-              title="Dictate scope or notes — Clara turns it into title, services and draft (very cheap)"
-            >
-              🎤 Voice with Clara
             </button>
           )}
           {isEditMode ? (
@@ -2936,7 +2912,6 @@ export default function ProposalBuilder({ proposalId }: ProposalBuilderProps) {
               preparedByTitle={user?.jobTitle?.trim() || undefined}
               proposalTitle={proposalTitle}
               coverLetter={coverLetter}
-              proposalSummary={proposalSummary}
               services={previewServices}
               summary={summary}
               validUntil={validUntil}

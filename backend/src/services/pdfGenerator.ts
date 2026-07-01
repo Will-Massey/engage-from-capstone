@@ -255,21 +255,18 @@ export class PDFGenerator {
         const secondaryColor = '#666666';
 
         // ========== PAGE 1: HEADER + PARTIES ==========
+        this.drawWatermark(doc, logoBuffer, primaryColor);
         this.drawHeader(doc, proposal, primaryColor, logoBuffer);
         this.drawClientInfo(doc, proposal, primaryColor);
 
-        // ========== COVER LETTER ==========
+        // ========== COVER LETTER (includes legacy proposalSummary when present) ==========
         doc.addPage();
+        this.drawWatermark(doc, logoBuffer, primaryColor);
         this.drawCoverLetter(doc, proposal, primaryColor);
-
-        // ========== CLIENT NARRATIVE (AI / editable) ==========
-        if (proposal.proposalSummary?.trim()) {
-          doc.addPage();
-          this.drawProposalSummary(doc, proposal, primaryColor);
-        }
 
         // ========== SERVICES ==========
         doc.addPage();
+        this.drawWatermark(doc, logoBuffer, primaryColor);
         this.drawServices(doc, proposal, primaryColor);
 
         // ========== PRICING ==========
@@ -278,11 +275,13 @@ export class PDFGenerator {
         // ========== TERMS ==========
         if (proposal.terms) {
           doc.addPage();
+          this.drawWatermark(doc, logoBuffer, primaryColor);
           this.drawTerms(doc, proposal, primaryColor);
         }
 
         // ========== ACCEPTANCE ==========
         doc.addPage();
+        this.drawWatermark(doc, logoBuffer, primaryColor);
         if (proposal.status === 'ACCEPTED' && proposal.signature) {
           this.drawSignedAcceptance(doc, proposal, primaryColor);
           if ((proposal as any).signatures?.[0]) {
@@ -412,42 +411,53 @@ export class PDFGenerator {
     doc.y = Math.max(leftY, rightY) + 12;
   }
 
-  /**
-   * Client-facing proposal narrative — services, benefits, reassurance.
-   */
-  private static drawProposalSummary(doc: PDFDoc, proposal: ProposalData, primaryColor: string) {
-    doc.fontSize(18).fillColor(primaryColor).text('What We Are Proposing For You', { align: 'center' });
-    doc.moveDown(0.4);
-    doc.moveTo(180, doc.y).lineTo(420, doc.y).strokeColor('#dddddd').lineWidth(1).stroke();
-    doc.moveDown(1);
-
-    doc.fontSize(11).fillColor('#444444');
-    const paragraphs = proposal.proposalSummary!.split(/\n{2,}/);
-    for (const paragraph of paragraphs) {
-      if (paragraph.trim()) {
-        doc.text(paragraph.trim(), { align: 'justify', lineGap: 6 });
-        doc.moveDown(0.8);
+  /** Faded logo watermark centred on the page */
+  private static drawWatermark(doc: PDFDoc, logoBuffer: Buffer | null, primaryColor: string) {
+    if (logoBuffer) {
+      try {
+        doc.save();
+        doc.opacity(0.06);
+        doc.image(logoBuffer, 130, 220, { width: 340, align: 'center', valign: 'center' });
+        doc.restore();
+        return;
+      } catch {
+        // fall through to text watermark
       }
     }
+    doc.save();
+    doc.opacity(0.04);
+    doc.fontSize(48).fillColor(primaryColor).text('PROPOSAL', 50, 280, {
+      align: 'center',
+      width: 500,
+    });
+    doc.restore();
+  }
+
+  /** Combined cover letter body — merges legacy proposalSummary into the letter */
+  private static resolveCoverLetterBody(proposal: ProposalData): string {
+    const letter = proposal.coverLetter?.trim() || '';
+    const summary = proposal.proposalSummary?.trim() || '';
+    if (letter && summary) {
+      return `${letter}\n\n${summary}`;
+    }
+    return letter || summary;
   }
 
   /**
    * Draw cover letter / Introduction
    */
   private static drawCoverLetter(doc: PDFDoc, proposal: ProposalData, primaryColor: string) {
-    doc.fontSize(18).fillColor(primaryColor).text('Cover Letter', { align: 'center' });
+    const body = this.resolveCoverLetterBody(proposal);
 
-    doc.moveDown(1);
-
-    // Decorative line
-    doc.moveTo(200, doc.y).lineTo(400, doc.y).strokeColor('#cccccc').lineWidth(1).stroke();
-
-    doc.moveDown(1);
+    // Accent bar — no "Cover Letter" heading
+    const barY = doc.y;
+    doc.rect(50, barY, 500, 3).fill(primaryColor);
+    doc.y = barY + 16;
 
     doc.fontSize(11).fillColor('#444444');
 
     // Default introduction template if no custom cover letter
-    if (!proposal.coverLetter || proposal.coverLetter.trim().length < 50) {
+    if (!body || body.length < 50) {
       // Use director's first name if available, otherwise fall back to business name
       const directorFirstName = proposal.client.contactName
         ? proposal.client.contactName.split(' ')[0]
@@ -477,8 +487,7 @@ ${senderPosition(proposal.createdBy) ? `${senderPosition(proposal.createdBy)}, `
         }
       });
     } else {
-      // Use custom cover letter
-      const paragraphs = proposal.coverLetter.split('\n\n');
+      const paragraphs = body.split('\n\n');
       paragraphs.forEach((paragraph) => {
         if (paragraph.trim()) {
           doc.text(paragraph.trim(), {
@@ -490,54 +499,52 @@ ${senderPosition(proposal.createdBy) ? `${senderPosition(proposal.createdBy)}, `
       });
     }
 
-    // Page break before T&Cs note
     doc.moveDown(2);
     doc
       .fontSize(10)
       .fillColor('#666666')
-      .text('Please turn over for full Terms and Conditions of Engagement →', { align: 'center' });
+      .text('Please turn over for full Terms and Conditions of Engagement.', { align: 'center' });
   }
 
   /**
    * Draw services section as a flat list
    */
   private static drawServices(doc: PDFDoc, proposal: ProposalData, primaryColor: string) {
-    doc.fontSize(16).fillColor('#333333').text('Services', { align: 'center' });
-
-    doc.moveDown(1);
+    const sectionY = doc.y;
+    doc.rect(50, sectionY, 500, 28).fill(primaryColor);
+    doc.fontSize(14).fillColor('#ffffff').text('Services & Fees', 50, sectionY + 8, {
+      align: 'center',
+      width: 500,
+    });
+    doc.y = sectionY + 40;
 
     if (!proposal.services || proposal.services.length === 0) return;
 
-    // Table header
     const tableTop = doc.y;
     const colX = { name: 50, qty: 310, price: 380, total: 490 };
 
-    doc.fontSize(9).fillColor('#888888');
-
+    doc.fontSize(9).fillColor('#ffffff');
+    doc.rect(50, tableTop, 500, 18).fill('#f0f4f8');
+    doc.fillColor('#555555');
     doc
-      .text('Service', colX.name, tableTop)
-      .text('Qty', colX.qty, tableTop)
-      .text('Price', colX.price, tableTop)
-      .text('Total', colX.total, tableTop);
+      .text('Service', colX.name, tableTop + 4)
+      .text('Qty', colX.qty, tableTop + 4)
+      .text('Price', colX.price, tableTop + 4)
+      .text('Total', colX.total, tableTop + 4);
 
-    // Header line
-    doc
-      .moveTo(50, tableTop + 15)
-      .lineTo(550, tableTop + 15)
-      .strokeColor('#CCCCCC')
-      .lineWidth(0.5)
-      .stroke();
-
-    // Services rows — flat list, no grouping
     doc.fontSize(10).fillColor('#333333');
 
-    let y = tableTop + 25;
+    let y = tableTop + 28;
 
-    proposal.services.forEach((service) => {
-      // Check if we need a new page
+    proposal.services.forEach((service, index) => {
       if (y > 700) {
         doc.addPage();
         y = 50;
+      }
+
+      const rowHeight = service.description ? 52 : 28;
+      if (index % 2 === 0) {
+        doc.rect(50, y - 4, 500, rowHeight).fill('#f8fafc');
       }
 
       const displayPrice = service.displayPrice || service.unitPrice;
@@ -545,7 +552,7 @@ ${senderPosition(proposal.createdBy) ? `${senderPosition(proposal.createdBy)}, `
       const priceLabel = this.formatPriceWithFrequency(displayPrice, billingFreq);
       const lineTotal = (service.displayPrice || service.unitPrice) * service.quantity;
 
-      doc.text(service.name, colX.name, y, { width: 250 });
+      doc.fillColor('#1e293b').fontSize(10).text(service.name, colX.name, y, { width: 250 });
 
       // Description if present
       if (service.description) {
@@ -572,13 +579,23 @@ ${senderPosition(proposal.createdBy) ? `${senderPosition(proposal.createdBy)}, `
       }
 
       doc
+        .fillColor('#334155')
         .text(service.quantity.toString(), colX.qty, y)
         .text(priceLabel, colX.price, y)
+        .font('Helvetica-Bold')
         .text(this.formatCurrency(lineTotal), colX.total, y);
+      doc.font('Helvetica');
 
       const baseStep = service.description ? 45 : 25;
       y += baseStep + (extraLines ? 14 : 0);
     });
+
+    doc
+      .moveTo(50, y + 4)
+      .lineTo(550, y + 4)
+      .strokeColor(primaryColor)
+      .lineWidth(1)
+      .stroke();
 
     doc.moveDown(2);
   }

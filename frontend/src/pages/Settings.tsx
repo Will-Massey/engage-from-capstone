@@ -121,6 +121,7 @@ const Settings = () => {
     proposals: {
       defaultExpiryDays: 30,
       renewalReminderDays: 30,
+      defaultPaymentTermsDays: 7,
     },
     notifications: {
       proposalAccepted: true,
@@ -1429,6 +1430,30 @@ const Settings = () => {
                     </div>
                     <div>
                       <label className="block text-sm font-semibold text-slate-700 dark:text-slate-100">
+                        Default payment terms (days)
+                      </label>
+                      <input
+                        type="number"
+                        min={1}
+                        max={90}
+                        value={communicationsForm.proposals.defaultPaymentTermsDays ?? 7}
+                        onChange={(e) =>
+                          setCommunicationsForm({
+                            ...communicationsForm,
+                            proposals: {
+                              ...communicationsForm.proposals,
+                              defaultPaymentTermsDays: Number(e.target.value) || 7,
+                            },
+                          })
+                        }
+                        className="mt-1 input-field w-full"
+                      />
+                      <p className="mt-1 text-xs text-slate-500 dark:text-slate-300">
+                        Invoices are payable within this many days (shown on proposals and engagement letters)
+                      </p>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-semibold text-slate-700 dark:text-slate-100">
                         Renewal / expiry reminder (days before)
                       </label>
                       <input
@@ -1972,18 +1997,12 @@ const Settings = () => {
                           value={editUserForm.role}
                           onChange={(e) => setEditUserForm({ ...editUserForm, role: e.target.value })}
                           className="mt-1 input-field w-full"
-                          disabled={editingUserId === user?.id}
                         >
                           <option value="PARTNER">Partner</option>
                           <option value="MANAGER">Manager</option>
                           <option value="SENIOR">Senior</option>
                           <option value="JUNIOR">Junior</option>
                         </select>
-                        {editingUserId === user?.id && (
-                          <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-                            You cannot change your own role here.
-                          </p>
-                        )}
                       </div>
                     </div>
                     <div className="mt-6 flex space-x-3">

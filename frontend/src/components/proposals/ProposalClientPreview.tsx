@@ -28,7 +28,6 @@ export interface ProposalClientPreviewProps {
   preparedByTitle?: string;
   proposalTitle: string;
   coverLetter?: string;
-  proposalSummary?: string;
   services: PreviewServiceLine[];
   summary: PreviewPricingSummary;
   validUntil?: string;
@@ -122,7 +121,6 @@ export default function ProposalClientPreview({
   preparedByTitle,
   proposalTitle,
   coverLetter = '',
-  proposalSummary = '',
   services,
   summary,
   validUntil,
@@ -203,22 +201,6 @@ export default function ProposalClientPreview({
 
         {showCoverLetter && coverLetter.trim() && (
           <div>
-            <h4 className="text-xs font-semibold uppercase tracking-wide mb-2" style={{ color: primaryColor }}>
-              Cover letter
-            </h4>
-            <div className="rounded-xl bg-slate-50 dark:bg-slate-800/50 p-3 border border-slate-100 dark:border-slate-700">
-              <p className="text-sm text-slate-700 dark:text-slate-300 whitespace-pre-wrap leading-relaxed">
-                {coverLetter}
-              </p>
-            </div>
-          </div>
-        )}
-
-        {proposalSummary.trim() && (
-          <div>
-            <h4 className="text-xs font-semibold uppercase tracking-wide mb-2" style={{ color: primaryColor }}>
-              What we are proposing for you
-            </h4>
             <div
               className="rounded-xl p-4 border text-sm leading-relaxed text-slate-700 dark:text-slate-200"
               style={{
@@ -226,7 +208,7 @@ export default function ProposalClientPreview({
                 background: `linear-gradient(135deg, ${primaryColor}08, transparent)`,
               }}
             >
-              {proposalSummary}
+              <p className="whitespace-pre-wrap">{coverLetter}</p>
             </div>
           </div>
         )}

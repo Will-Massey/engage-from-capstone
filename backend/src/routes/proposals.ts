@@ -7,7 +7,11 @@ import { requireActiveSubscription } from '../middleware/subscription.js';
 import { asyncHandler, ApiError } from '../middleware/errorHandler.js';
 import { PDFGenerator } from '../services/pdfGenerator.js';
 import logger from '../config/logger.js';
-import { getProposalViewStats, createShareableLink } from '../services/proposalSharingService.js';
+import {
+  getProposalViewStats,
+  createShareableLink,
+  revokeShareableLink,
+} from '../services/proposalSharingService.js';
 import {
   buildProposalServiceRecord,
   calculateHeaderTotals,
@@ -16,6 +20,7 @@ import { serializeProposalServicesForApi } from '../utils/proposalServiceSnapsho
 import { formatUserRole } from '../utils/proposalDisplay.js';
 import {
   addDays,
+  formatPaymentTerms,
   getProposalSettings,
   parseProposalDateInput,
 } from '../utils/tenantProposalSettings.js';
@@ -568,7 +573,9 @@ router.post(
         vatRate: 20, // Default VAT rate
         vatAmount: totalVat,
         total: grandTotal,
-        paymentTerms: data.paymentTerms || '30 days',
+        paymentTerms:
+          data.paymentTerms ||
+          formatPaymentTerms(proposalSettings.defaultPaymentTermsDays),
         paymentFrequency: data.paymentFrequency || 'MONTHLY',
         coverLetter: data.coverLetter,
         proposalSummary: data.proposalSummary,
@@ -1282,6 +1289,65 @@ router.post(
 );
 
 /**
+ * POST /api/proposals/:id/withdraw
+ * Rescind/withdraw a sent or viewed proposal (revokes client share link)
+ */
+router.post(
+  '/:id/withdraw',
+  authenticate,
+  authorize('ADMIN', 'PARTNER', 'MANAGER', 'SENIOR'),
+  requireActiveSubscription,
+  asyncHandler(async (req, res) => {
+    const { id } = req.params;
+
+    const proposal = await prisma.proposal.findFirst({
+      where: { id, tenantId: req.tenantId },
+      include: { client: true },
+    });
+
+    if (!proposal) {
+      throw new ApiError('NOT_FOUND', 'Proposal not found', 404);
+    }
+
+    if (proposal.status !== 'SENT' && proposal.status !== 'VIEWED') {
+      throw new ApiError(
+        'INVALID_STATUS',
+        'Only sent or viewed proposals can be withdrawn',
+        400
+      );
+    }
+
+    if (proposal.shareToken || proposal.publicAccessEnabled) {
+      await revokeShareableLink(id);
+    }
+
+    const updatedProposal = await prisma.proposal.update({
+      where: { id },
+      data: { status: 'WITHDRAWN' },
+    });
+
+    await prisma.activityLog.create({
+      data: {
+        tenantId: req.tenantId,
+        userId: req.user!.id,
+        action: 'PROPOSAL_WITHDRAWN',
+        entityType: 'PROPOSAL',
+        entityId: proposal.id,
+        description: `Withdrew proposal "${proposal.title}" sent to ${proposal.client.name}`,
+        ipAddress: req.ip,
+        userAgent: req.headers['user-agent'],
+      },
+    });
+
+    res.json({
+      success: true,
+      data: updatedProposal,
+      message: 'Proposal withdrawn successfully',
+    });
+  })
+);
+
+/**
  * GET /api/proposals/:id/pdf
  * Generate proposal PDF
  */
@@ -1538,6 +1604,7 @@ router.get(
       ACCEPTED: '#10B981',
       DECLINED: '#EF4444',
       EXPIRED: '#6B7280',
+      WITHDRAWN: '#F59E0B',
     };
 
     const proposalStatusData = statusCounts.map((s: any) => ({

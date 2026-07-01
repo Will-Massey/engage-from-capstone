@@ -6,12 +6,19 @@ export interface ProposalSettings {
   defaultExpiryDays: number;
   /** Days before validUntil / renewalDate to send reminder emails */
   renewalReminderDays: number;
+  /** Invoice payment terms in days (e.g. 7 → "7 days") */
+  defaultPaymentTermsDays: number;
 }
 
 export const DEFAULT_PROPOSAL_SETTINGS: ProposalSettings = {
   defaultExpiryDays: 30,
   renewalReminderDays: 30,
+  defaultPaymentTermsDays: 7,
 };
+
+export function formatPaymentTerms(days: number): string {
+  return `${days} day${days === 1 ? '' : 's'}`;
+}
 
 export function getProposalSettings(tenantSettingsJson?: string | null): ProposalSettings {
   try {
@@ -26,6 +33,10 @@ export function getProposalSettings(tenantSettingsJson?: string | null): Proposa
         typeof p.renewalReminderDays === 'number' && p.renewalReminderDays > 0
           ? p.renewalReminderDays
           : DEFAULT_PROPOSAL_SETTINGS.renewalReminderDays,
+      defaultPaymentTermsDays:
+        typeof p.defaultPaymentTermsDays === 'number' && p.defaultPaymentTermsDays > 0
+          ? p.defaultPaymentTermsDays
+          : DEFAULT_PROPOSAL_SETTINGS.defaultPaymentTermsDays,
     };
   } catch {
     return DEFAULT_PROPOSAL_SETTINGS;

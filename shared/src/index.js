@@ -36,6 +36,7 @@ var ProposalStatus;
     ProposalStatus["ACCEPTED"] = "ACCEPTED";
     ProposalStatus["DECLINED"] = "DECLINED";
     ProposalStatus["EXPIRED"] = "EXPIRED";
+    ProposalStatus["WITHDRAWN"] = "WITHDRAWN";
 })(ProposalStatus || (exports.ProposalStatus = ProposalStatus = {}));
 var MTDITSAStatus;
 (function (MTDITSAStatus) {

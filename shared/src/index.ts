@@ -45,6 +45,7 @@ export enum ProposalStatus {
   ACCEPTED = 'ACCEPTED',
   DECLINED = 'DECLINED',
   EXPIRED = 'EXPIRED',
+  WITHDRAWN = 'WITHDRAWN',
 }
 
 export enum MTDITSAStatus {

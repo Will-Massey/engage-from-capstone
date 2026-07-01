@@ -36,6 +36,7 @@ const statusColors: Record<string, string> = {
   ACCEPTED: 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-200',
   DECLINED: 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-200',
   EXPIRED: 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-200',
+  WITHDRAWN: 'bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-200',
 };
 
 const statusLabels: Record<string, string> = {
@@ -45,6 +46,7 @@ const statusLabels: Record<string, string> = {
   ACCEPTED: 'Signed',
   DECLINED: 'Declined',
   EXPIRED: 'Expired',
+  WITHDRAWN: 'Withdrawn',
 };
 
 const Proposals = () => {
@@ -298,6 +300,7 @@ const Proposals = () => {
               <option value="SENT">Sent</option>
               <option value="ACCEPTED">Accepted</option>
               <option value="DECLINED">Declined</option>
+              <option value="WITHDRAWN">Withdrawn</option>
               <option value="EXPIRED">Expired</option>
               <option value="RENEWALS_DUE">Renewals Due (30 days)</option>
             </select>
@@ -348,7 +351,10 @@ const Proposals = () => {
                 {proposals.map((proposal) => {
                   const isExpired = checkExpired(proposal.validUntil);
                   const displayStatus =
-                    isExpired && proposal.status !== 'ACCEPTED' && proposal.status !== 'DECLINED'
+                    isExpired &&
+                    proposal.status !== 'ACCEPTED' &&
+                    proposal.status !== 'DECLINED' &&
+                    proposal.status !== 'WITHDRAWN'
                       ? 'EXPIRED'
                       : proposal.status;
 

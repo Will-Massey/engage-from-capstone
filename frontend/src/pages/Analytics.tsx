@@ -720,8 +720,10 @@ const Analytics = () => {
                             ? 'bg-slate-400'
                             : status === 'DECLINED'
                               ? 'bg-red-500'
-                              : status === 'VIEWED'
-                                ? 'bg-amber-500'
+                            : status === 'VIEWED'
+                              ? 'bg-amber-500'
+                              : status === 'WITHDRAWN'
+                                ? 'bg-orange-500'
                                 : 'bg-slate-300'
                     }`}
                   />

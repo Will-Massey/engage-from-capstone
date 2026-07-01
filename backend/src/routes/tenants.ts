@@ -743,6 +743,7 @@ router.put(
         .object({
           defaultExpiryDays: z.number().int().min(1).max(365).optional(),
           renewalReminderDays: z.number().int().min(1).max(90).optional(),
+          defaultPaymentTermsDays: z.number().int().min(1).max(90).optional(),
         })
         .optional(),
       payments: z
