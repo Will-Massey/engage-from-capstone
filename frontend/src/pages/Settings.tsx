@@ -143,6 +143,8 @@ const Settings = () => {
   // Team/Users state
   const [users, setUsers] = useState<any[]>([]);
   const [showAddUserModal, setShowAddUserModal] = useState(false);
+  const [showEditUserModal, setShowEditUserModal] = useState(false);
+  const [editingUserId, setEditingUserId] = useState<string | null>(null);
   const [newUserForm, setNewUserForm] = useState({
     email: '',
     firstName: '',
@@ -152,6 +154,21 @@ const Settings = () => {
     role: 'JUNIOR',
     password: '',
   });
+  const [editUserForm, setEditUserForm] = useState({
+    email: '',
+    firstName: '',
+    lastName: '',
+    phone: '',
+    jobTitle: '',
+    role: 'JUNIOR',
+  });
+
+  const formatTeamRole = (role: string) =>
+    role
+      .toLowerCase()
+      .split('_')
+      .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
+      .join(' ');
 
   const [vatForm, setVatForm] = useState({
     vatRegistered: true,
@@ -734,6 +751,61 @@ const Settings = () => {
       }
     } catch (error: any) {
       toast.error(error.response?.data?.error?.message || 'Failed to create user');
+    } finally {
+      setIsSaving(null);
+    }
+  };
+
+  const openEditUser = (member: {
+    id: string;
+    email: string;
+    firstName: string;
+    lastName: string;
+    phone?: string;
+    jobTitle?: string;
+    role: string;
+  }) => {
+    setEditingUserId(member.id);
+    setEditUserForm({
+      email: member.email || '',
+      firstName: member.firstName || '',
+      lastName: member.lastName || '',
+      phone: member.phone || '',
+      jobTitle: member.jobTitle || '',
+      role: member.role || 'JUNIOR',
+    });
+    setShowEditUserModal(true);
+  };
+
+  const handleUpdateUser = async () => {
+    if (!editingUserId) return;
+    if (!editUserForm.firstName.trim() || !editUserForm.lastName.trim() || !editUserForm.email.trim()) {
+      toast.error('First name, last name, and email are required');
+      return;
+    }
+    setIsSaving('team');
+    try {
+      const response = (await apiClient.updateUser(editingUserId, {
+        firstName: editUserForm.firstName.trim(),
+        lastName: editUserForm.lastName.trim(),
+        email: editUserForm.email.trim(),
+        phone: editUserForm.phone.trim() || undefined,
+        jobTitle: editUserForm.jobTitle.trim() || undefined,
+        role: editUserForm.role,
+      })) as any;
+      if (response.success) {
+        toast.success('Team member updated');
+        setShowEditUserModal(false);
+        setEditingUserId(null);
+        loadUsers();
+        if (editingUserId === user?.id && response.data) {
+          setSession({ ...user!, ...response.data }, tenant!);
+        }
+      } else {
+        toast.error(response.error?.message || 'Failed to update user');
+      }
+    } catch (error: any) {
+      toast.error(error.response?.data?.error?.message || 'Failed to update user');
     } finally {
       setIsSaving(null);
     }
@@ -1644,19 +1716,32 @@ const Settings = () => {
                             )}
                           </p>
                           <p className="text-sm text-slate-500 dark:text-slate-300">{u.email}</p>
-                          <span className="inline-flex mt-1 items-center px-2 py-0.5 rounded text-xs font-medium bg-slate-100 text-slate-800">
-                            {u.role}
-                          </span>
+                          <div className="flex flex-wrap items-center gap-2 mt-1">
+                            <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-slate-100 text-slate-800 dark:bg-slate-700 dark:text-slate-200">
+                              {formatTeamRole(u.role)}
+                            </span>
+                            {u.jobTitle?.trim() && (
+                              <span className="text-xs text-slate-500 dark:text-slate-400">{u.jobTitle}</span>
+                            )}
+                          </div>
                         </div>
                       </div>
-                      {u.id !== user?.id && (
+                      <div className="flex items-center gap-3">
                         <button
-                          onClick={() => handleDeleteUser(u.id)}
-                          className="text-red-600 hover:text-red-800 text-sm"
+                          onClick={() => openEditUser(u)}
+                          className="text-primary-600 hover:text-primary-800 text-sm font-medium"
                         >
-                          Remove
+                          Edit
                         </button>
-                      )}
+                        {u.id !== user?.id && (
+                          <button
+                            onClick={() => handleDeleteUser(u.id)}
+                            className="text-red-600 hover:text-red-800 text-sm"
+                          >
+                            Remove
+                          </button>
+                        )}
+                      </div>
                     </div>
                   ))
                 )}
@@ -1691,30 +1776,6 @@ const Settings = () => {
                             value={newUserForm.lastName}
                             onChange={(e) =>
                               setNewUserForm({ ...newUserForm, lastName: e.target.value })
-                            }
-                            className="mt-1 input-field w-full"
-                          />
-                        </div>
-                      </div>
-                      <div className="grid grid-cols-2 gap-4">
-                        <div>
-                          <label className="block text-sm font-semibold text-slate-700 dark:text-slate-100">Contact Number</label>
-                          <input
-                            type="tel"
-                            value={newUserForm.phone}
-                            onChange={(e) =>
-                              setNewUserForm({ ...newUserForm, phone: e.target.value })
-                            }
-                            className="mt-1 input-field w-full"
-                          />
-                        </div>
-                        <div>
-                          <label className="block text-sm font-semibold text-slate-700 dark:text-slate-100">Job Title</label>
-                          <input
-                            type="text"
-                            value={newUserForm.jobTitle}
-                            onChange={(e) =>
-                              setNewUserForm({ ...newUserForm, jobTitle: e.target.value })
                             }
                             className="mt-1 input-field w-full"
                           />
@@ -1820,6 +1881,127 @@ const Settings = () => {
                         className="flex-1 btn-primary"
                       >
                         {isSaving === 'team' ? 'Adding...' : 'Add User'}
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {showEditUserModal && (
+                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+                  <div className="bg-white dark:bg-slate-900 rounded-xl shadow-xl max-w-md w-full mx-4 p-6">
+                    <h3 className="text-lg font-semibold text-slate-900 dark:text-white mb-4">
+                      Edit Team Member
+                    </h3>
+                    <div className="space-y-4">
+                      <div className="grid grid-cols-2 gap-4">
+                        <div>
+                          <label className="block text-sm font-semibold text-slate-700 dark:text-slate-100">
+                            First Name
+                          </label>
+                          <input
+                            type="text"
+                            value={editUserForm.firstName}
+                            onChange={(e) =>
+                              setEditUserForm({ ...editUserForm, firstName: e.target.value })
+                            }
+                            className="mt-1 input-field w-full"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-sm font-semibold text-slate-700 dark:text-slate-100">
+                            Last Name
+                          </label>
+                          <input
+                            type="text"
+                            value={editUserForm.lastName}
+                            onChange={(e) =>
+                              setEditUserForm({ ...editUserForm, lastName: e.target.value })
+                            }
+                            className="mt-1 input-field w-full"
+                          />
+                        </div>
+                      </div>
+                      <div className="grid grid-cols-2 gap-4">
+                        <div>
+                          <label className="block text-sm font-semibold text-slate-700 dark:text-slate-100">
+                            Contact Number
+                          </label>
+                          <input
+                            type="tel"
+                            value={editUserForm.phone}
+                            onChange={(e) =>
+                              setEditUserForm({ ...editUserForm, phone: e.target.value })
+                            }
+                            className="mt-1 input-field w-full"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-sm font-semibold text-slate-700 dark:text-slate-100">
+                            Job Title
+                          </label>
+                          <input
+                            type="text"
+                            value={editUserForm.jobTitle}
+                            onChange={(e) =>
+                              setEditUserForm({ ...editUserForm, jobTitle: e.target.value })
+                            }
+                            className="mt-1 input-field w-full"
+                            placeholder="e.g. Director, Partner"
+                          />
+                        </div>
+                      </div>
+                      <div>
+                        <label className="block text-sm font-semibold text-slate-700 dark:text-slate-100">
+                          Email
+                        </label>
+                        <input
+                          type="email"
+                          value={editUserForm.email}
+                          onChange={(e) =>
+                            setEditUserForm({ ...editUserForm, email: e.target.value })
+                          }
+                          className="mt-1 input-field w-full"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-semibold text-slate-700 dark:text-slate-100">
+                          Role
+                        </label>
+                        <select
+                          value={editUserForm.role}
+                          onChange={(e) => setEditUserForm({ ...editUserForm, role: e.target.value })}
+                          className="mt-1 input-field w-full"
+                          disabled={editingUserId === user?.id}
+                        >
+                          <option value="PARTNER">Partner</option>
+                          <option value="MANAGER">Manager</option>
+                          <option value="SENIOR">Senior</option>
+                          <option value="JUNIOR">Junior</option>
+                        </select>
+                        {editingUserId === user?.id && (
+                          <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                            You cannot change your own role here.
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                    <div className="mt-6 flex space-x-3">
+                      <button
+                        onClick={() => {
+                          setShowEditUserModal(false);
+                          setEditingUserId(null);
+                        }}
+                        className="flex-1 btn-secondary"
+                      >
+                        Cancel
+                      </button>
+                      <button
+                        onClick={handleUpdateUser}
+                        disabled={isSaving === 'team'}
+                        className="flex-1 btn-primary"
+                      >
+                        {isSaving === 'team' ? 'Saving...' : 'Save Changes'}
                       </button>
                     </div>
                   </div>

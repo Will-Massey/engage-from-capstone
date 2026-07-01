@@ -544,6 +544,7 @@ router.post(
           .array(
             z.object({
               name: z.string(),
+              description: z.string().optional(),
               billingFrequency: z.string().optional(),
               billingCycle: z.string().optional(),
             })
@@ -560,6 +561,7 @@ router.post(
       title: body.title,
       services: body.services.map((s) => ({
         name: s.name,
+        description: s.description,
         billingFrequency: s.billingFrequency,
         billingCycle: s.billingCycle,
       })),

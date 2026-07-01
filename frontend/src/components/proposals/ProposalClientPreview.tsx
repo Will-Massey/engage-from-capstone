@@ -217,7 +217,7 @@ export default function ProposalClientPreview({
         {proposalSummary.trim() && (
           <div>
             <h4 className="text-xs font-semibold uppercase tracking-wide mb-2" style={{ color: primaryColor }}>
-              Your proposal
+              What we are proposing for you
             </h4>
             <div
               className="rounded-xl p-4 border text-sm leading-relaxed text-slate-700 dark:text-slate-200"

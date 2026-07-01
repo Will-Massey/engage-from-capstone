@@ -1307,6 +1307,7 @@ export default function ProposalBuilder({ proposalId }: ProposalBuilderProps) {
         title: proposalTitle.trim() || 'Proposal',
         services: selectedServices.map((s) => ({
           name: s.name,
+          description: s.description,
           billingCycle: s.billingCycle,
         })),
         monthlyTotal: reviewMonthlyCostIncVat,
@@ -2735,10 +2736,10 @@ export default function ProposalBuilder({ proposalId }: ProposalBuilderProps) {
         <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
           <div>
             <label className="block text-sm font-medium text-slate-700 dark:text-slate-200">
-              Your proposal for the client
+              Sales narrative for the client
             </label>
             <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-              A short, reassuring explanation of services and benefits — sits after the cover letter in the PDF.
+              Addressed directly to the client — explains each service and the benefits to their business. Appears after the cover letter in the PDF and client view.
             </p>
           </div>
           {aiConfigured && (
@@ -2756,10 +2757,10 @@ export default function ProposalBuilder({ proposalId }: ProposalBuilderProps) {
         <textarea
           value={proposalSummary}
           onChange={(e) => setProposalSummary(e.target.value)}
-          rows={5}
+          rows={14}
           className="input-field w-full text-sm leading-relaxed"
-          placeholder="Click Draft with Clara for a concise, client-friendly summary of what you are proposing and why it helps them — or write your own."
-          aria-label="Proposal narrative for client"
+          placeholder={`Dear ${selectedClient ? coverLetterAddressee(selectedClient) : 'Client'},\n\nClick Draft with Clara to generate a persuasive, service-by-service narrative — or write your own.`}
+          aria-label="Sales narrative for client"
         />
       </div>
 

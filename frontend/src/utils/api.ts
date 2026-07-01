@@ -716,7 +716,7 @@ export const apiClient = {
   aiProposalExplanation: (data: {
     clientId: string;
     title: string;
-    services: Array<{ name: string; billingFrequency?: string; billingCycle?: string }>;
+    services: Array<{ name: string; description?: string; billingFrequency?: string; billingCycle?: string }>;
     monthlyTotal?: number;
     annualTotal?: number;
     contractTotal?: number;

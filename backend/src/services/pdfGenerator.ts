@@ -416,7 +416,7 @@ export class PDFGenerator {
    * Client-facing proposal narrative — services, benefits, reassurance.
    */
   private static drawProposalSummary(doc: PDFDoc, proposal: ProposalData, primaryColor: string) {
-    doc.fontSize(18).fillColor(primaryColor).text('Your Proposal', { align: 'center' });
+    doc.fontSize(18).fillColor(primaryColor).text('What We Are Proposing For You', { align: 'center' });
     doc.moveDown(0.4);
     doc.moveTo(180, doc.y).lineTo(420, doc.y).strokeColor('#dddddd').lineWidth(1).stroke();
     doc.moveDown(1);

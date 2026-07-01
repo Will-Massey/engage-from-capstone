@@ -584,6 +584,8 @@ router.get(
         email: true,
         firstName: true,
         lastName: true,
+        phone: true,
+        jobTitle: true,
         role: true,
         isActive: true,
         lastLoginAt: true,

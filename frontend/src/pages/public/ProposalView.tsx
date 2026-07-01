@@ -670,7 +670,7 @@ const PublicProposalView = () => {
           {(proposal as { proposalSummary?: string }).proposalSummary && (
             <div className="border-t pt-6">
               <h3 className="text-sm font-semibold text-primary-700 dark:text-primary-300 uppercase tracking-wide">
-                Your Proposal
+                What We Are Proposing For You
               </h3>
               <div className="mt-3 rounded-xl border border-primary-100 bg-primary-50/40 dark:bg-primary-950/20 p-4 prose prose-sm max-w-none text-slate-800 dark:text-slate-200">
                 {(proposal as { proposalSummary?: string }).proposalSummary}
