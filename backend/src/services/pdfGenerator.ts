@@ -1,4 +1,6 @@
 import PDFDocument from 'pdfkit';
+import fs from 'fs';
+import path from 'path';
 
 // pdfkit types export the constructor as a value, not a type
 // Use any for the document type to avoid TS2749 errors
@@ -69,6 +71,9 @@ interface ProposalData {
   };
 }
 
+const PDF_PAGE_WIDTH = 612;
+const PDF_PAGE_HEIGHT = 792;
+
 // Billing frequency labels for display
 const BILLING_LABELS: Record<string, string> = {
   MONTHLY: 'month',
@@ -79,6 +84,49 @@ const BILLING_LABELS: Record<string, string> = {
 };
 
 export class PDFGenerator {
+  private static pageBackgroundBuffer: Buffer | null | undefined;
+
+  private static loadPageBackgroundBuffer(): Buffer | null {
+    if (this.pageBackgroundBuffer !== undefined) {
+      return this.pageBackgroundBuffer;
+    }
+
+    const candidates = [
+      path.join(__dirname, '../assets/pdf-page-background.jpg'),
+      path.join(process.cwd(), 'dist/assets/pdf-page-background.jpg'),
+      path.join(process.cwd(), 'src/assets/pdf-page-background.jpg'),
+    ];
+
+    for (const candidate of candidates) {
+      try {
+        if (fs.existsSync(candidate)) {
+          this.pageBackgroundBuffer = fs.readFileSync(candidate);
+          return this.pageBackgroundBuffer;
+        }
+      } catch {
+        // try next path
+      }
+    }
+
+    this.pageBackgroundBuffer = null;
+    return null;
+  }
+
+  /** Full-page Engage background artwork — drawn behind all content */
+  private static drawPageBackground(doc: PDFDoc, backgroundBuffer: Buffer | null) {
+    if (!backgroundBuffer) return;
+    try {
+      doc.save();
+      doc.image(backgroundBuffer, 0, 0, {
+        width: PDF_PAGE_WIDTH,
+        height: PDF_PAGE_HEIGHT,
+      });
+      doc.restore();
+    } catch {
+      // continue without background if image fails
+    }
+  }
+
   /**
    * Generate a professional proposal PDF
    */
@@ -214,6 +262,11 @@ export class PDFGenerator {
         doc.on('end', () => resolve(Buffer.concat(chunks)));
         doc.on('error', reject);
 
+        const pageBackgroundBuffer = this.loadPageBackgroundBuffer();
+        const applyPageBackground = () => this.drawPageBackground(doc, pageBackgroundBuffer);
+        doc.on('pageAdded', applyPageBackground);
+        applyPageBackground();
+
         this.drawSignatureCertificate(doc, proposal, sig);
         doc.end();
       } catch (error) {
@@ -253,20 +306,22 @@ export class PDFGenerator {
           (settings.primaryColor as string | undefined) ||
           '#0ea5e9';
         const secondaryColor = '#666666';
+        const pageBackgroundBuffer = this.loadPageBackgroundBuffer();
+        const applyPageBackground = () => this.drawPageBackground(doc, pageBackgroundBuffer);
+
+        doc.on('pageAdded', applyPageBackground);
+        applyPageBackground();
 
         // ========== PAGE 1: HEADER + PARTIES ==========
-        this.drawWatermark(doc, logoBuffer, primaryColor);
         this.drawHeader(doc, proposal, primaryColor, logoBuffer);
         this.drawClientInfo(doc, proposal, primaryColor);
 
         // ========== COVER LETTER (includes legacy proposalSummary when present) ==========
         doc.addPage();
-        this.drawWatermark(doc, logoBuffer, primaryColor);
         this.drawCoverLetter(doc, proposal, primaryColor);
 
         // ========== SERVICES ==========
         doc.addPage();
-        this.drawWatermark(doc, logoBuffer, primaryColor);
         this.drawServices(doc, proposal, primaryColor);
 
         // ========== PRICING ==========
@@ -275,13 +330,11 @@ export class PDFGenerator {
         // ========== TERMS ==========
         if (proposal.terms) {
           doc.addPage();
-          this.drawWatermark(doc, logoBuffer, primaryColor);
           this.drawTerms(doc, proposal, primaryColor);
         }
 
         // ========== ACCEPTANCE ==========
         doc.addPage();
-        this.drawWatermark(doc, logoBuffer, primaryColor);
         if (proposal.status === 'ACCEPTED' && proposal.signature) {
           this.drawSignedAcceptance(doc, proposal, primaryColor);
           if ((proposal as any).signatures?.[0]) {
@@ -411,28 +464,6 @@ export class PDFGenerator {
     doc.y = Math.max(leftY, rightY) + 12;
   }
 
-  /** Faded logo watermark centred on the page */
-  private static drawWatermark(doc: PDFDoc, logoBuffer: Buffer | null, primaryColor: string) {
-    if (logoBuffer) {
-      try {
-        doc.save();
-        doc.opacity(0.06);
-        doc.image(logoBuffer, 130, 220, { width: 340, align: 'center', valign: 'center' });
-        doc.restore();
-        return;
-      } catch {
-        // fall through to text watermark
-      }
-    }
-    doc.save();
-    doc.opacity(0.04);
-    doc.fontSize(48).fillColor(primaryColor).text('PROPOSAL', 50, 280, {
-      align: 'center',
-      width: 500,
-    });
-    doc.restore();
-  }
-
   /** Combined cover letter body — merges legacy proposalSummary into the letter */
   private static resolveCoverLetterBody(proposal: ProposalData): string {
     const letter = proposal.coverLetter?.trim() || '';
@@ -446,14 +477,10 @@ export class PDFGenerator {
   /**
    * Draw cover letter / Introduction
    */
-  private static drawCoverLetter(doc: PDFDoc, proposal: ProposalData, primaryColor: string) {
+  private static drawCoverLetter(doc: PDFDoc, proposal: ProposalData, _primaryColor: string) {
     const body = this.resolveCoverLetterBody(proposal);
 
-    // Accent bar — no "Cover Letter" heading
-    const barY = doc.y;
-    doc.rect(50, barY, 500, 3).fill(primaryColor);
-    doc.y = barY + 16;
-
+    doc.moveDown(0.5);
     doc.fontSize(11).fillColor('#444444');
 
     // Default introduction template if no custom cover letter
@@ -510,41 +537,38 @@ ${senderPosition(proposal.createdBy) ? `${senderPosition(proposal.createdBy)}, `
    * Draw services section as a flat list
    */
   private static drawServices(doc: PDFDoc, proposal: ProposalData, primaryColor: string) {
-    const sectionY = doc.y;
-    doc.rect(50, sectionY, 500, 28).fill(primaryColor);
-    doc.fontSize(14).fillColor('#ffffff').text('Services & Fees', 50, sectionY + 8, {
-      align: 'center',
-      width: 500,
-    });
-    doc.y = sectionY + 40;
+    doc.fontSize(16).fillColor('#333333').text('Services', { align: 'center' });
+
+    doc.moveDown(1);
 
     if (!proposal.services || proposal.services.length === 0) return;
 
     const tableTop = doc.y;
     const colX = { name: 50, qty: 310, price: 380, total: 490 };
 
-    doc.fontSize(9).fillColor('#ffffff');
-    doc.rect(50, tableTop, 500, 18).fill('#f0f4f8');
-    doc.fillColor('#555555');
+    doc.fontSize(9).fillColor('#888888');
+
     doc
-      .text('Service', colX.name, tableTop + 4)
-      .text('Qty', colX.qty, tableTop + 4)
-      .text('Price', colX.price, tableTop + 4)
-      .text('Total', colX.total, tableTop + 4);
+      .text('Service', colX.name, tableTop)
+      .text('Qty', colX.qty, tableTop)
+      .text('Price', colX.price, tableTop)
+      .text('Total', colX.total, tableTop);
+
+    doc
+      .moveTo(50, tableTop + 15)
+      .lineTo(550, tableTop + 15)
+      .strokeColor('#CCCCCC')
+      .lineWidth(0.5)
+      .stroke();
 
     doc.fontSize(10).fillColor('#333333');
 
-    let y = tableTop + 28;
+    let y = tableTop + 25;
 
-    proposal.services.forEach((service, index) => {
+    proposal.services.forEach((service) => {
       if (y > 700) {
         doc.addPage();
         y = 50;
-      }
-
-      const rowHeight = service.description ? 52 : 28;
-      if (index % 2 === 0) {
-        doc.rect(50, y - 4, 500, rowHeight).fill('#f8fafc');
       }
 
       const displayPrice = service.displayPrice || service.unitPrice;
@@ -552,7 +576,7 @@ ${senderPosition(proposal.createdBy) ? `${senderPosition(proposal.createdBy)}, `
       const priceLabel = this.formatPriceWithFrequency(displayPrice, billingFreq);
       const lineTotal = (service.displayPrice || service.unitPrice) * service.quantity;
 
-      doc.fillColor('#1e293b').fontSize(10).text(service.name, colX.name, y, { width: 250 });
+      doc.text(service.name, colX.name, y, { width: 250 });
 
       // Description if present
       if (service.description) {
@@ -579,23 +603,13 @@ ${senderPosition(proposal.createdBy) ? `${senderPosition(proposal.createdBy)}, `
       }
 
       doc
-        .fillColor('#334155')
         .text(service.quantity.toString(), colX.qty, y)
         .text(priceLabel, colX.price, y)
-        .font('Helvetica-Bold')
         .text(this.formatCurrency(lineTotal), colX.total, y);
-      doc.font('Helvetica');
 
       const baseStep = service.description ? 45 : 25;
       y += baseStep + (extraLines ? 14 : 0);
     });
-
-    doc
-      .moveTo(50, y + 4)
-      .lineTo(550, y + 4)
-      .strokeColor(primaryColor)
-      .lineWidth(1)
-      .stroke();
 
     doc.moveDown(2);
   }
