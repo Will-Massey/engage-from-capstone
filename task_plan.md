@@ -56,6 +56,7 @@
 | 9 | 2026-07-01 | a14a7371 | master | engage-backend, engage-frontend | live | W0–W4 remainder: partner approval, legal pages, trial enforcement, preview pane, Xero invoices, AML/regulatory, 33 clauses, fee benchmarks, webhooks, QBO, status page. 3 migrations. |
 | 10 | 2026-07-01 | c28d9216 | master | engage-backend, engage-frontend | live | **Build 2.0** — e2e fix for build-mode chooser (`advanceToProposalServicesStep` helper); 3 flaky proposal tests green on production. |
 | 11 | 2026-07-01 | a83b3a53 | master | engage-backend, engage-frontend | live | UAT automation: `/proposals/first-wizard`, legal/status pages, partner approval API+UI, Xero settings; **36/36 e2e pass**. |
+| 12 | 2026-07-01 | 3167538a | master | engage-backend, engage-frontend | live | Services-step edit column full width (preview stacks below); flex-wrap edit fields; deduped wakeup toasts during Render restarts. |
 
 ## Decisions Made
 | Decision | Rationale |
