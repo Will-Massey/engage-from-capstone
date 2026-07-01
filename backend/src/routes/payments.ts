@@ -4,6 +4,7 @@ import { stripe, SUBSCRIPTION_TIERS } from '../config/stripe.js';
 import { prisma } from '../config/database.js';
 import { authenticate, authorize } from '../middleware/auth.js';
 import { asyncHandler, ApiError } from '../middleware/errorHandler.js';
+import { evaluateTenantBilling, getTrialEndsAt } from '../services/subscriptionService.js';
 
 const router = Router();
 
@@ -147,6 +148,9 @@ router.get(
     const tenant = await prisma.tenant.findUnique({
       where: { id: tenantId },
       select: {
+        id: true,
+        createdAt: true,
+        settings: true,
         stripeSubscriptionId: true,
         subscriptionStatus: true,
         subscriptionTier: true,
@@ -154,13 +158,23 @@ router.get(
       },
     });
 
-    if (!tenant?.stripeSubscriptionId) {
+    if (!tenant) {
+      throw new ApiError('TENANT_NOT_FOUND', 'Tenant not found', 404);
+    }
+
+    const billing = evaluateTenantBilling(tenant);
+    const trialEndsAt = getTrialEndsAt(tenant);
+
+    if (!tenant.stripeSubscriptionId) {
       return res.json({
         success: true,
         data: {
           hasSubscription: false,
-          tier: null,
-          status: null,
+          tier: tenant.subscriptionTier,
+          status: tenant.subscriptionStatus || 'trialing',
+          trialEndsAt: trialEndsAt.toISOString(),
+          daysRemaining: billing.daysRemaining,
+          canSendProposals: billing.allowed,
         },
       });
     }
@@ -175,6 +189,9 @@ router.get(
           status: tenant.subscriptionStatus,
           currentPeriodEnd: null,
           cancelAtPeriodEnd: false,
+          trialEndsAt: trialEndsAt.toISOString(),
+          daysRemaining: billing.daysRemaining,
+          canSendProposals: billing.allowed,
         },
       });
     }
@@ -190,6 +207,9 @@ router.get(
         status: subscription.status,
         currentPeriodEnd: new Date(subscription.current_period_end * 1000),
         cancelAtPeriodEnd: subscription.cancel_at_period_end,
+        trialEndsAt: trialEndsAt.toISOString(),
+        daysRemaining: billing.daysRemaining,
+        canSendProposals: billing.allowed,
       },
     });
   })

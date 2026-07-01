@@ -1,7 +1,10 @@
+import { useEffect, useState } from 'react';
 import { Link, NavLink } from 'react-router-dom';
 import { PlusIcon, SparklesIcon } from '@heroicons/react/24/outline';
 import { NAV_SECTIONS, PRIMARY_CREATE, isNavItemActive, type NavItem } from '../../config/navigation';
 import { useAiAssistantStore } from '../../stores/aiAssistantStore';
+import { useAuthStore } from '../../stores/authStore';
+import { apiClient } from '../../utils/api';
 import { AI_COPILOT } from '../../config/aiCopilot';
 
 interface SidebarNavItemsProps {
@@ -13,10 +16,12 @@ const NavItemLink = ({
   item,
   pathname,
   onNavigate,
+  badge,
 }: {
   item: NavItem;
   pathname: string;
   onNavigate?: () => void;
+  badge?: number;
 }) => {
   const active = isNavItemActive(pathname, item);
 
@@ -39,14 +44,55 @@ const NavItemLink = ({
             : 'text-slate-400 group-hover:text-slate-600 dark:group-hover:text-slate-300'
         }`}
       />
-      <span className="truncate">{item.name}</span>
+      <span className="truncate flex-1">{item.name}</span>
+      {badge != null && badge > 0 && (
+        <span className="ml-2 inline-flex min-w-[1.25rem] items-center justify-center rounded-full bg-amber-500 px-1.5 py-0.5 text-[10px] font-bold text-white">
+          {badge > 99 ? '99+' : badge}
+        </span>
+      )}
     </NavLink>
   );
 };
 
+const APPROVER_ROLES = new Set(['ADMIN', 'PARTNER', 'MANAGER']);
+
 const SidebarNavItems = ({ pathname, onNavigate }: SidebarNavItemsProps) => {
   const openAi = useAiAssistantStore((s) => s.open);
   const aiConfigured = useAiAssistantStore((s) => s.configured);
+  const user = useAuthStore((s) => s.user);
+  const [approvalQueueCount, setApprovalQueueCount] = useState(0);
+
+  useEffect(() => {
+    if (!user?.role || !APPROVER_ROLES.has(user.role)) {
+      setApprovalQueueCount(0);
+      return;
+    }
+
+    let cancelled = false;
+
+    const loadApprovalCount = async () => {
+      try {
+        const response = (await apiClient.getApprovalQueue({ page: 1, limit: 1 })) as {
+          meta?: { total?: number };
+        };
+        if (!cancelled) {
+          setApprovalQueueCount(response.meta?.total ?? 0);
+        }
+      } catch {
+        if (!cancelled) {
+          setApprovalQueueCount(0);
+        }
+      }
+    };
+
+    loadApprovalCount();
+    const interval = window.setInterval(loadApprovalCount, 60_000);
+
+    return () => {
+      cancelled = true;
+      window.clearInterval(interval);
+    };
+  }, [user?.role]);
 
   return (
     <div className="space-y-5">
@@ -82,7 +128,13 @@ const SidebarNavItems = ({ pathname, onNavigate }: SidebarNavItemsProps) => {
           </p>
           <div className="space-y-0.5 px-1">
             {section.items.map((item) => (
-              <NavItemLink key={item.href} item={item} pathname={pathname} onNavigate={onNavigate} />
+              <NavItemLink
+                key={item.href}
+                item={item}
+                pathname={pathname}
+                onNavigate={onNavigate}
+                badge={item.href === '/proposals' ? approvalQueueCount : undefined}
+              />
             ))}
           </div>
         </div>

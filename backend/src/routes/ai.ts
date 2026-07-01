@@ -947,4 +947,52 @@ router.post(
   })
 );
 
+/** POST /api/ai/voice-of-practice — upload sample letter; store per-tenant style hints */
+router.post(
+  '/voice-of-practice',
+  asyncHandler(async (req, res) => {
+    const { sampleText } = z
+      .object({
+        sampleText: z.string().min(80).max(12000),
+      })
+      .parse(req.body);
+
+    const { saveVoiceOfPracticeSample, getVoiceOfPractice } = await import(
+      '../services/voiceOfPracticeService.js'
+    );
+
+    const saved = await saveVoiceOfPracticeSample(req.tenantId!, req.user?.id, sampleText);
+
+    res.json({
+      success: true,
+      data: {
+        styleHints: saved.styleHints,
+        updatedAt: saved.updatedAt,
+        sampleLength: saved.sampleText?.length ?? 0,
+      },
+      message: 'Voice of practice style hints saved. Clara will use these in cover letter drafts.',
+    });
+  })
+);
+
+/** GET /api/ai/voice-of-practice — current style hints (no full sample text) */
+router.get(
+  '/voice-of-practice',
+  asyncHandler(async (req, res) => {
+    const { getVoiceOfPractice } = await import('../services/voiceOfPracticeService.js');
+    const vop = await getVoiceOfPractice(req.tenantId!);
+
+    res.json({
+      success: true,
+      data: vop
+        ? {
+            styleHints: vop.styleHints,
+            updatedAt: vop.updatedAt,
+            hasSample: Boolean(vop.sampleText),
+          }
+        : null,
+    });
+  })
+);
+
 export default router;

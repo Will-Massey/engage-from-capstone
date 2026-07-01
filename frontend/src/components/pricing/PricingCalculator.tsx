@@ -15,6 +15,7 @@ import {
   type SuggestedServiceFee,
 } from '../../utils/pricingSuggestionStorage';
 import toast from 'react-hot-toast';
+import FeeBenchmarkWidget from '../analytics/FeeBenchmarkWidget';
 
 const TURNOVER_OPTIONS = [
   { value: 'UNDER_50K', label: 'Under £50,000' },
@@ -165,6 +166,7 @@ export default function PricingCalculator({ compact = false }: PricingCalculator
 
   return (
     <div className={compact ? 'space-y-4' : 'space-y-6'}>
+      <FeeBenchmarkWidget compact />
       {!compact && (
         <div className="flex items-start gap-3">
           <div className="p-2 rounded-lg bg-primary-100 dark:bg-primary-900/30">

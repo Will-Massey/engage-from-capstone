@@ -9,7 +9,12 @@ const authFile = path.join(__dirname, '.auth', 'user.json');
  */
 export default defineConfig({
   testDir: './specs',
-  testMatch: ['build-smoke.spec.ts', 'ai-native.spec.ts', 'templates-smoke.spec.ts'],
+  testMatch: [
+    'build-smoke.spec.ts',
+    'ai-native.spec.ts',
+    'templates-smoke.spec.ts',
+    'market-leader-smoke.spec.ts',
+  ],
   fullyParallel: false,
   forbidOnly: !!process.env.CI,
   // AI endpoints can transiently 502 / socket-hang-up on Render

@@ -23,6 +23,10 @@ import {
 import EmailSettings from '../components/email/EmailSettings';
 import CoverLetterTemplatesManager from '../components/settings/CoverLetterTemplatesManager';
 import XeroConnect from '../components/integrations/XeroConnect';
+import QuickBooksConnect from '../components/integrations/QuickBooksConnect';
+import WebhookSettings from '../components/settings/WebhookSettings';
+import FirmGroupSettings from '../components/settings/FirmGroupSettings';
+import VoiceOfPracticeSettings from '../components/settings/VoiceOfPracticeSettings';
 import EngagementLibrarySettings from '../components/settings/EngagementLibrarySettings';
 
 // Simplified tabs - combined related sections
@@ -56,6 +60,12 @@ const tabs = [
     name: 'Integrations',
     icon: PuzzlePieceIcon,
     description: 'Xero, payments & connected apps',
+  },
+  {
+    id: 'firm-group',
+    name: 'Firm group',
+    icon: BuildingOfficeIcon,
+    description: 'Multi-firm workspace (read-only)',
   },
 ];
 
@@ -1283,6 +1293,18 @@ const Settings = () => {
                 </div>
               </div>
 
+              <div className="glass-tile overflow-hidden">
+                <div className="px-8 py-5 border-b border-slate-200 dark:border-slate-700 bg-white/40 dark:bg-slate-800/30">
+                  <h2 className="text-lg font-semibold text-slate-900 dark:text-white">Voice of practice</h2>
+                  <p className="text-sm text-slate-500 dark:text-slate-300">
+                    Train Clara to match your firm&apos;s letter style (W4.4)
+                  </p>
+                </div>
+                <div className="p-6">
+                  <VoiceOfPracticeSettings />
+                </div>
+              </div>
+
               {/* Proposal defaults */}
               <div className="glass-tile overflow-hidden">
                 <div className="px-8 py-5 border-b border-slate-200 dark:border-slate-700 bg-white/40 dark:bg-slate-800/30">
@@ -1937,6 +1959,20 @@ const Settings = () => {
           )}
 
           {/* INTEGRATIONS TAB */}
+          {activeTab === 'firm-group' && (
+            <div className="glass-tile overflow-hidden">
+              <div className="px-8 py-5 border-b border-slate-200 dark:border-slate-700 bg-white/40 dark:bg-slate-800/30">
+                <h2 className="text-lg font-semibold text-slate-900 dark:text-white">Firm group</h2>
+                <p className="text-sm text-slate-500 dark:text-slate-300">
+                  Multi-firm workspace for accounting groups (W4.3 scaffold)
+                </p>
+              </div>
+              <div className="p-6">
+                <FirmGroupSettings />
+              </div>
+            </div>
+          )}
+
           {activeTab === 'integrations' && (
             <div className="space-y-6">
               <div className="glass-tile overflow-hidden">
@@ -1948,8 +1984,23 @@ const Settings = () => {
                     Connect Xero to sync clients and push accepted proposal summaries
                   </p>
                 </div>
-                <div className="p-6">
+                <div className="p-6 space-y-4">
                   <XeroConnect />
+                  <QuickBooksConnect />
+                </div>
+              </div>
+
+              <div className="glass-tile overflow-hidden">
+                <div className="px-8 py-5 border-b border-slate-200 dark:border-slate-700 bg-white/40 dark:bg-slate-800/30">
+                  <h2 className="text-lg font-semibold text-slate-900 dark:text-white">
+                    Zapier &amp; HubSpot events (W4.2)
+                  </h2>
+                  <p className="text-sm text-slate-500 dark:text-slate-300">
+                    Proposal lifecycle webhooks for automation platforms
+                  </p>
+                </div>
+                <div className="p-6">
+                  <WebhookSettings />
                 </div>
               </div>
 

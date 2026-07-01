@@ -19,6 +19,7 @@ import { shouldSkipRateLimit } from './utils/securityFlags.js';
 import stripeWebhookRoutes from './routes/stripeWebhook.js';
 import { handleOAuthProviderCallback } from './handlers/oauthCallback.js';
 import { handleXeroOAuthCallback } from './handlers/xeroOAuthCallback.js';
+import { handleQuickBooksOAuthCallback } from './handlers/quickbooksOAuthCallback.js';
 
 // Import routes
 import authRoutes from './routes/auth.js';
@@ -44,6 +45,10 @@ import automationRoutes from './routes/automation.js';
 import uploadsRoutes from './routes/uploads.js';
 import diagnosticsRoutes from './routes/diagnostics.js';
 import xeroRoutes from './routes/xero.js';
+import amlRoutes from './routes/aml.js';
+import regulatoryRoutes from './routes/regulatory.js';
+import quickbooksRoutes from './routes/quickbooks.js';
+import statusRoutes from './routes/status.js';
 import { asyncHandler, ApiError } from './middleware/errorHandler.js';
 import { EmailService } from './services/emailService.js';
 
@@ -892,6 +897,12 @@ app.get('/api/oauth/callback/gmail', (req, res) => {
 app.get('/api/oauth/callback/xero', (req, res) => {
   void handleXeroOAuthCallback(req, res);
 });
+app.get('/api/oauth/callback/quickbooks', (req, res) => {
+  void handleQuickBooksOAuthCallback(req, res);
+});
+app.get('/api/quickbooks/callback', (req, res) => {
+  void handleQuickBooksOAuthCallback(req, res);
+});
 
 // API routes (auth already mounted above)
 // Share/portal/public routes first (before authenticated /:id handlers)
@@ -915,24 +926,13 @@ app.use('/api/automation', extractTenant, automationRoutes);
 app.use('/api/uploads', extractTenant, uploadsRoutes);
 app.use('/api/ai', extractTenant, aiRoutes);
 app.use('/api/xero', extractTenant, xeroRoutes);
+app.use('/api/aml', extractTenant, amlRoutes);
+app.use('/api/regulatory', extractTenant, regulatoryRoutes);
+app.use('/api/quickbooks', extractTenant, quickbooksRoutes);
 app.use('/api/pricing', extractTenant, pricingRoutes);
 
-// API status endpoint
-app.get('/api/status', (req, res) => {
-  res.json({
-    success: true,
-    data: {
-      status: 'operational',
-      features: {
-        multiTenancy: true,
-        mtddigital: true,
-        pdfGeneration: true,
-        pricingEngine: true,
-      },
-      timestamp: new Date().toISOString(),
-    },
-  });
-});
+// W4.5 — Public status page API (no auth)
+app.use('/api/status', statusRoutes);
 
 // Uploads are served via authenticated /api/uploads routes only (no public static dir)
 
@@ -1042,6 +1042,10 @@ if (shouldStartServer) {
 
     scheduleRenewalReminders();
     scheduleTouchpointEngine();
+
+    import('./services/engagementLibraryVersionService.js')
+      .then(({ ensureInitialLibraryVersion }) => ensureInitialLibraryVersion())
+      .catch((err) => logger.warn('Engagement library seed skipped on startup', err));
 
     if (autoMigrateOnStartup) {
       setTimeout(() => {

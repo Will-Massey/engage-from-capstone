@@ -33,8 +33,12 @@ import Subscription from './pages/Subscription';
 import Analytics from './pages/Analytics';
 import NotFound from './pages/NotFound';
 import PublicProposalView from './pages/public/ProposalView';
+import Status from './pages/Status';
 import ClientPortal from './pages/public/ClientPortal';
 import AmlOnboarding from './pages/public/AmlOnboarding';
+import TermsOfService from './pages/legal/TermsOfService';
+import PrivacyPolicy from './pages/legal/PrivacyPolicy';
+import AiDisclosure from './pages/legal/AiDisclosure';
 
 // World-class features
 import CommandPalette from './components/command-palette/CommandPalette';
@@ -327,6 +331,16 @@ const AnimatedRoutes = () => {
           />
         </Route>
 
+        {/* Public status page (W4.5) */}
+        <Route
+          path="/status"
+          element={
+            <AnimatedPage>
+              <Status />
+            </AnimatedPage>
+          }
+        />
+
         {/* Public Proposal View (link possession = access) */}
         <Route
           path="/proposals/view/:token"
@@ -353,6 +367,32 @@ const AnimatedRoutes = () => {
           element={
             <AnimatedPage>
               <AmlOnboarding />
+            </AnimatedPage>
+          }
+        />
+
+        {/* Legal pages (public) */}
+        <Route
+          path="/legal/terms"
+          element={
+            <AnimatedPage>
+              <TermsOfService />
+            </AnimatedPage>
+          }
+        />
+        <Route
+          path="/legal/privacy"
+          element={
+            <AnimatedPage>
+              <PrivacyPolicy />
+            </AnimatedPage>
+          }
+        />
+        <Route
+          path="/legal/ai-disclosure"
+          element={
+            <AnimatedPage>
+              <AiDisclosure />
             </AnimatedPage>
           }
         />

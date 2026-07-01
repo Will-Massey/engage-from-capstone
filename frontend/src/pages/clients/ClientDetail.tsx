@@ -30,6 +30,7 @@ const ClientDetail = () => {
   const [activeTab, setActiveTab] = useState('overview');
   const [showEditModal, setShowEditModal] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [isVerifyingId, setIsVerifyingId] = useState(false);
 
   // Edit form state
   const [editForm, setEditForm] = useState({
@@ -92,6 +93,25 @@ const ClientDetail = () => {
       clientRelationship: client.clientRelationship === 'EXISTING' ? 'EXISTING' : 'NEW',
     });
     setShowEditModal(true);
+  };
+
+  const handleRequestIdVerification = async () => {
+    if (!id) return;
+    try {
+      setIsVerifyingId(true);
+      const response = (await apiClient.verifyClientIdentity(id)) as any;
+      const link = response?.data?.verificationLink;
+      if (link) {
+        await navigator.clipboard.writeText(link);
+        toast.success('ID verification link copied to clipboard');
+      } else {
+        toast.success(response?.message || 'ID verification requested');
+      }
+    } catch {
+      // Error handled by API interceptor
+    } finally {
+      setIsVerifyingId(false);
+    }
   };
 
   const handleUpdateClient = async () => {
@@ -178,7 +198,7 @@ const ClientDetail = () => {
             </p>
           </div>
         </div>
-        <div className="flex space-x-3">
+        <div className="flex flex-wrap gap-3">
           <Link
             to={`/proposals/new?clientId=${client.id}`}
             className="btn-primary"
@@ -187,6 +207,14 @@ const ClientDetail = () => {
             <DocumentTextIcon className="h-4 w-4 mr-2" />
             New Proposal
           </Link>
+          <button
+            onClick={handleRequestIdVerification}
+            disabled={isVerifyingId}
+            className="btn-secondary"
+          >
+            <UserIcon className="h-4 w-4 mr-2" />
+            {isVerifyingId ? 'Requesting…' : 'Request ID verification'}
+          </button>
           <button onClick={openEditModal} className="btn-secondary">
             <PencilIcon className="h-4 w-4 mr-2" />
             Edit

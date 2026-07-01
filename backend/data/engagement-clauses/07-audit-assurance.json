@@ -1,0 +1,20 @@
+[
+  {
+    "id": "scope-audit-exemption",
+    "title": "Audit exemption advice",
+    "tags": ["audit", "advisory", "compliance", "_icaew"],
+    "body": "We will advise whether your company qualifies for audit exemption under the Companies Act 2006 and applicable thresholds. This does not constitute an audit opinion."
+  },
+  {
+    "id": "scope-independent-examination",
+    "title": "Independent examination (charities)",
+    "tags": ["charity", "audit", "compliance", "_icaew"],
+    "body": "Where agreed, we will perform an independent examination of charity accounts in accordance with Charities SORP and applicable regulations."
+  },
+  {
+    "id": "no-assurance",
+    "title": "No assurance provided",
+    "tags": ["_always", "_icaew", "_acca"],
+    "body": "Unless expressly stated, our work does not constitute an audit, review, or other assurance engagement, and no opinion is expressed on the accuracy or completeness of your records."
+  }
+]

@@ -1,0 +1,156 @@
+/**
+ * W4.1 — Anonymised fee benchmarks across tenants (k-anonymity min 5 tenants per category).
+ */
+
+import { ServiceCategory } from '@prisma/client';
+import { prisma } from '../config/database.js';
+
+const K_ANONYMITY_MIN_TENANTS = 5;
+
+const CATEGORY_LABELS: Record<ServiceCategory, string> = {
+  COMPLIANCE: 'Compliance',
+  ADVISORY: 'Advisory',
+  TAX: 'Tax',
+  PAYROLL: 'Payroll',
+  BOOKKEEPING: 'Bookkeeping',
+  AUDIT: 'Audit',
+  CONSULTING: 'Consulting',
+  TECHNICAL: 'Technical',
+  SPECIALIZED: 'Specialised',
+};
+
+/** Normalise line fees to a monthly GBP equivalent for comparison */
+export function toMonthlyEquivalent(displayPrice: number, billingFrequency: string): number {
+  switch (billingFrequency) {
+    case 'WEEKLY':
+      return (displayPrice * 52) / 12;
+    case 'MONTHLY':
+      return displayPrice;
+    case 'QUARTERLY':
+      return displayPrice / 3;
+    case 'ANNUALLY':
+      return displayPrice / 12;
+    case 'ONE_TIME':
+      return displayPrice / 12;
+    default:
+      return displayPrice;
+  }
+}
+
+function percentile(sorted: number[], p: number): number {
+  if (sorted.length === 0) return 0;
+  const idx = (sorted.length - 1) * p;
+  const lower = Math.floor(idx);
+  const upper = Math.ceil(idx);
+  if (lower === upper) return Math.round(sorted[lower] * 100) / 100;
+  const value = sorted[lower] + (sorted[upper] - sorted[lower]) * (idx - lower);
+  return Math.round(value * 100) / 100;
+}
+
+type CategoryBucket = {
+  category: ServiceCategory;
+  tenantIds: Set<string>;
+  monthlyFees: number[];
+};
+
+export interface FeeBenchmarkBand {
+  category: ServiceCategory;
+  label: string;
+  tenantCount: number;
+  sampleSize: number;
+  p25: number;
+  p50: number;
+  p75: number;
+  currency: 'GBP';
+  unit: 'per_month_gbp';
+}
+
+export interface FeeBenchmarkResult {
+  benchmarks: FeeBenchmarkBand[];
+  suppressedCategories: number;
+  kAnonymityMinTenants: number;
+  disclaimer: string;
+  generatedAt: string;
+}
+
+/**
+ * Aggregate accepted proposal line fees by service category across all tenants.
+ * Categories with fewer than k tenants are suppressed.
+ */
+export async function getFeeBenchmarks(): Promise<FeeBenchmarkResult> {
+  const rows = await prisma.proposalService.findMany({
+    where: {
+      proposal: {
+        status: { in: ['ACCEPTED', 'SENT', 'VIEWED'] },
+      },
+      displayPrice: { gt: 0 },
+    },
+    select: {
+      displayPrice: true,
+      billingFrequency: true,
+      proposal: {
+        select: {
+          tenantId: true,
+        },
+      },
+      serviceTemplate: {
+        select: {
+          category: true,
+        },
+      },
+    },
+  });
+
+  const buckets = new Map<ServiceCategory, CategoryBucket>();
+
+  for (const row of rows) {
+    const category = row.serviceTemplate?.category;
+    if (!category) continue;
+
+    const monthly = toMonthlyEquivalent(row.displayPrice, row.billingFrequency);
+    if (!Number.isFinite(monthly) || monthly <= 0) continue;
+
+    const bucket = buckets.get(category) || {
+      category,
+      tenantIds: new Set<string>(),
+      monthlyFees: [],
+    };
+    bucket.tenantIds.add(row.proposal.tenantId);
+    bucket.monthlyFees.push(monthly);
+    buckets.set(category, bucket);
+  }
+
+  const benchmarks: FeeBenchmarkBand[] = [];
+  let suppressedCategories = 0;
+
+  for (const bucket of buckets.values()) {
+    if (bucket.tenantIds.size < K_ANONYMITY_MIN_TENANTS) {
+      suppressedCategories += 1;
+      continue;
+    }
+
+    const sorted = [...bucket.monthlyFees].sort((a, b) => a - b);
+    benchmarks.push({
+      category: bucket.category,
+      label: CATEGORY_LABELS[bucket.category],
+      tenantCount: bucket.tenantIds.size,
+      sampleSize: sorted.length,
+      p25: percentile(sorted, 0.25),
+      p50: percentile(sorted, 0.5),
+      p75: percentile(sorted, 0.75),
+      currency: 'GBP',
+      unit: 'per_month_gbp',
+    });
+  }
+
+  benchmarks.sort((a, b) => a.label.localeCompare(b.label));
+
+  return {
+    benchmarks,
+    suppressedCategories,
+    kAnonymityMinTenants: K_ANONYMITY_MIN_TENANTS,
+    disclaimer:
+      'Anonymised percentile bands from accepted and sent proposals across Engage practices. No tenant or client identifiers are included. Categories with fewer than five contributing practices are withheld.',
+    generatedAt: new Date().toISOString(),
+  };
+}

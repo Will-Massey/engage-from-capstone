@@ -31,6 +31,13 @@ export enum ServiceCategory {
   SPECIALIZED = 'SPECIALIZED',
 }
 
+export enum ApprovalStatus {
+  NONE = 'NONE',
+  PENDING = 'PENDING',
+  APPROVED = 'APPROVED',
+  REJECTED = 'REJECTED',
+}
+
 export enum ProposalStatus {
   DRAFT = 'DRAFT',
   SENT = 'SENT',
@@ -153,6 +160,11 @@ export interface Proposal {
   title: string;
   reference: string;
   status: ProposalStatus;
+  approvalStatus?: ApprovalStatus;
+  submittedForApprovalAt?: Date;
+  approvedAt?: Date;
+  approvalNotes?: string;
+  rejectionReason?: string;
   validUntil: Date;
   services: ProposalService[];
   subtotal: number;

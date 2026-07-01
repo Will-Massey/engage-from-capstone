@@ -1,12 +1,13 @@
 /**
- * Xero Integration Routes (Phase W1.1–W1.2 scaffold)
+ * Xero Integration Routes (Phase W1.1–W1.2)
  *
  * OAuth2 connect/disconnect/callback — tokens encrypted on Tenant.settings.xero
  * GET  /status              — connection status
  * GET  /connect             — OAuth consent URL
  * POST /disconnect          — revoke + clear tokens
  * POST /import-clients      — pull Xero contacts → Engage clients (dedupe email/name)
- * POST /push-accepted/:id   — accepted proposal → Xero contact note (+ invoice stub)
+ * POST /push-accepted/:id   — accepted proposal → Xero (legacy alias)
+ * POST /push-proposal/:id   — accepted proposal → Xero contact + repeating invoices
  */
 
 import { Router } from 'express';
@@ -28,10 +29,10 @@ import {
   fetchAllXeroContacts,
   getAuthenticatedXeroSession,
   normalizeClientName,
-  pushAcceptedProposalToXero,
   revokeXeroConnection,
   getXeroPublicConfig,
 } from '../services/xeroService.js';
+import { pushProposalToXero } from '../services/xeroProposalPush.js';
 import logger from '../config/logger.js';
 
 const router = Router();
@@ -43,6 +44,46 @@ function ensureXeroConfigured() {
       'Xero OAuth is not configured on the server. Set XERO_CLIENT_ID, XERO_CLIENT_SECRET, and XERO_REDIRECT_URI.',
       503
     );
+  }
+}
+
+async function handlePushProposal(tenantId: string, proposalId: string) {
+
+  try {
+    const result = await pushProposalToXero(tenantId, proposalId);
+
+    const message =
+      result.mode === 'live'
+        ? result.xero.repeatingInvoice.created > 0
+          ? `Proposal pushed to Xero — ${result.xero.repeatingInvoice.created} repeating invoice(s) created`
+          : 'Proposal pushed to Xero with warnings — check response details'
+        : 'Xero stub mode — draft payloads returned (connect Xero for live sync)';
+
+    return {
+      success: true,
+      data: {
+        proposalId,
+        reference: result.reference,
+        mode: result.mode,
+        xero: result.xero,
+        warnings: result.warnings,
+      },
+      message,
+    };
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : 'Xero push failed';
+    if (msg.includes('not found')) {
+      throw new ApiError('PROPOSAL_NOT_FOUND', 'Proposal not found', 404);
+    }
+    if (msg.includes('Only accepted')) {
+      throw new ApiError(
+        'PROPOSAL_NOT_ACCEPTED',
+        'Only accepted proposals can be pushed to Xero',
+        400
+      );
+    }
+    logger.error('Xero push-proposal failed', err);
+    throw new ApiError('XERO_PUSH_FAILED', msg, 502);
   }
 }
 
@@ -123,7 +164,6 @@ router.post(
 
 /**
  * POST /api/xero/import-clients
- * Pull Xero contacts into Engage clients; dedupe by email then normalised name.
  */
 router.post(
   '/import-clients',
@@ -253,88 +293,26 @@ router.post(
 );
 
 /**
- * POST /api/xero/push-accepted/:proposalId
- * When proposal is ACCEPTED, push summary to Xero.
- *
- * Implemented: contact history note with line items and totals.
- * Stub: repeating invoice / ACCREC draft payload (not posted to Xero).
+ * POST /api/xero/push-proposal/:proposalId
+ * POST /api/xero/push-accepted/:proposalId (legacy alias)
  */
+router.post(
+  '/push-proposal/:proposalId',
+  authenticate,
+  authorize('ADMIN', 'PARTNER', 'MANAGER'),
+  asyncHandler(async (req, res) => {
+    const payload = await handlePushProposal(req.tenantId!, req.params.proposalId);
+    res.json(payload);
+  })
+);
+
 router.post(
   '/push-accepted/:proposalId',
   authenticate,
   authorize('ADMIN', 'PARTNER', 'MANAGER'),
   asyncHandler(async (req, res) => {
-    const tenantId = req.tenantId!;
-    const { proposalId } = req.params;
-
-    const proposal = await prisma.proposal.findFirst({
-      where: { id: proposalId, tenantId },
-      include: {
-        client: true,
-        services: { orderBy: { sortOrder: 'asc' } },
-      },
-    });
-
-    if (!proposal) {
-      throw new ApiError('PROPOSAL_NOT_FOUND', 'Proposal not found', 404);
-    }
-
-    if (proposal.status !== 'ACCEPTED') {
-      throw new ApiError(
-        'PROPOSAL_NOT_ACCEPTED',
-        'Only ACCEPTED proposals can be pushed to Xero',
-        400
-      );
-    }
-
-    const session = await getAuthenticatedXeroSession(tenantId);
-
-    const result = await pushAcceptedProposalToXero(session, {
-      reference: proposal.reference,
-      title: proposal.title,
-      acceptedAt: proposal.acceptedAt,
-      total: proposal.total,
-      subtotal: proposal.subtotal,
-      vatAmount: proposal.vatAmount,
-      paymentFrequency: proposal.paymentFrequency,
-      client: {
-        name: proposal.client.name,
-        contactEmail: proposal.client.contactEmail,
-        contactName: proposal.client.contactName,
-      },
-      services: proposal.services.map((s) => ({
-        name: s.name,
-        displayPrice: s.displayPrice,
-        billingFrequency: s.billingFrequency,
-        lineTotal: s.lineTotal,
-      })),
-    });
-
-    const settings = await getTenantXeroSettings(tenantId);
-    if (settings) {
-      await saveTenantXeroSettings(tenantId, {
-        ...settings,
-        lastPushAt: new Date().toISOString(),
-      });
-    }
-
-    res.json({
-      success: true,
-      data: {
-        proposalId,
-        reference: proposal.reference,
-        xero: result,
-        documentation: {
-          contactNote:
-            'LIVE — creates Engage proposal summary on matched Xero contact history',
-          repeatingInvoice:
-            'STUB — draft ACCREC payload returned for review; not created in Xero until revenue account mapping (W1.2 full)',
-        },
-      },
-      message: result.contactNote.updated
-        ? 'Proposal summary pushed to Xero contact history'
-        : 'Push completed with warnings — check xero.contactNote',
-    });
+    const payload = await handlePushProposal(req.tenantId!, req.params.proposalId);
+    res.json(payload);
   })
 );
 

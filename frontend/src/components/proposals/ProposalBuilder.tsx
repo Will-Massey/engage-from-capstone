@@ -40,7 +40,10 @@ import {
   MagnifyingGlassIcon,
   CalculatorIcon,
   SparklesIcon,
+  EyeIcon,
+  EyeSlashIcon,
 } from '@heroicons/react/24/outline';
+import ProposalClientPreview from './ProposalClientPreview';
 import { AiDraftPreview, showAiError } from '../ai/AiPanel';
 import ProposalHealthCard from '../ai/ProposalHealthCard';
 import ProposalBuilderClara from '../ai/ProposalBuilderClara';
@@ -423,7 +426,7 @@ export default function ProposalBuilder({ proposalId }: ProposalBuilderProps) {
   const [aiSuggestions, setAiSuggestions] = useState<any>(null);
   const [aiCoverLoading, setAiCoverLoading] = useState(false);
   const [aiCoverDraft, setAiCoverDraft] = useState<string | null>(null);
-  const [showClientPreview, setShowClientPreview] = useState(false);
+  const [showLivePreviewPane, setShowLivePreviewPane] = useState(false);
 
   const [buildMode, setBuildMode] = useState<BuildMode>(() => {
     if (manualParam === '1' || manualParam === 'true') return 'manual';
@@ -1724,7 +1727,7 @@ export default function ProposalBuilder({ proposalId }: ProposalBuilderProps) {
 
   const previewPdf = async () => {
     if (!isEditMode || !proposalId) {
-      setShowClientPreview(true);
+      setShowLivePreviewPane(true);
       return;
     }
     try {
@@ -1734,9 +1737,23 @@ export default function ProposalBuilder({ proposalId }: ProposalBuilderProps) {
     }
   };
 
+  const previewServices = useMemo(
+    () =>
+      selectedServices.map((s) => ({
+        name: s.name,
+        description: s.description,
+        quantity: s.quantity,
+        displayPrice: s.displayPrice,
+        billingCycle: s.billingCycle,
+        grossTotal: s.grossTotal,
+      })),
+    [selectedServices]
+  );
+
   // Render step indicator
   const renderStepIndicator = () => (
-    <div className="flex items-center justify-center mb-8">
+    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-8">
+      <div className="flex items-center justify-center flex-1">
       {STEPS.map((step, index) => (
         <div key={step.id} className="flex items-center">
           <div
@@ -1767,6 +1784,24 @@ export default function ProposalBuilder({ proposalId }: ProposalBuilderProps) {
           )}
         </div>
       ))}
+      </div>
+      {selectedClient && currentStep >= 2 && (
+        <button
+          type="button"
+          data-testid="toggle-client-preview-pane"
+          onClick={() => setShowLivePreviewPane((v) => !v)}
+          className={`btn-secondary text-sm inline-flex items-center gap-2 shrink-0 ${
+            showLivePreviewPane ? 'border-primary-300 dark:border-primary-700 text-primary-700 dark:text-primary-300' : ''
+          }`}
+        >
+          {showLivePreviewPane ? (
+            <EyeSlashIcon className="h-4 w-4" aria-hidden="true" />
+          ) : (
+            <EyeIcon className="h-4 w-4" aria-hidden="true" />
+          )}
+          {showLivePreviewPane ? 'Hide client preview' : 'Show client preview'}
+        </button>
+      )}
     </div>
   );
 
@@ -2662,23 +2697,6 @@ export default function ProposalBuilder({ proposalId }: ProposalBuilderProps) {
         </div>
       )}
 
-      {showClientPreview && (
-        <div className="card p-5 border-2 border-slate-200 dark:border-slate-600">
-          <div className="flex items-center justify-between mb-3">
-            <h3 className="font-semibold text-slate-900 dark:text-white">Client preview</h3>
-            <button type="button" onClick={() => setShowClientPreview(false)} className="text-sm text-slate-500 hover:text-slate-700">
-              Close
-            </button>
-          </div>
-          <p className="text-xs text-slate-500 mb-2">From {tenant?.name}</p>
-          <h4 className="text-lg font-bold">{proposalTitle || 'Proposal title'}</h4>
-          <p className="text-sm text-slate-600 mt-2 whitespace-pre-wrap">{coverLetter.slice(0, 600)}{coverLetter.length > 600 ? '…' : ''}</p>
-          <div className="mt-4 pt-4 border-t border-slate-200 dark:border-slate-600">
-            <InvestmentSummaryBands summary={summary} />
-          </div>
-        </div>
-      )}
-
       {/* Actions */}
       <div className="flex flex-wrap justify-between gap-3">
         <button data-testid="review-back-button" onClick={() => setCurrentStep(2)} className="btn-secondary">
@@ -2686,8 +2704,8 @@ export default function ProposalBuilder({ proposalId }: ProposalBuilderProps) {
           Back
         </button>
         <div className="flex flex-wrap gap-2">
-          <button type="button" onClick={() => setShowClientPreview((v) => !v)} className="btn-secondary text-sm">
-            {showClientPreview ? 'Hide preview' : 'Preview for client'}
+          <button type="button" onClick={() => setShowLivePreviewPane((v) => !v)} className="btn-secondary text-sm lg:hidden">
+            {showLivePreviewPane ? 'Hide preview' : 'Preview for client'}
           </button>
           {aiConfigured && selectedClient && (
             <button
@@ -2778,7 +2796,9 @@ export default function ProposalBuilder({ proposalId }: ProposalBuilderProps) {
       <div
         className={
           selectedClient && currentStep >= 2
-            ? 'grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_300px] gap-6 items-start'
+            ? showLivePreviewPane
+              ? 'grid grid-cols-1 xl:grid-cols-2 gap-6 items-start'
+              : 'grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_300px] gap-6 items-start'
             : ''
         }
       >
@@ -2796,8 +2816,25 @@ export default function ProposalBuilder({ proposalId }: ProposalBuilderProps) {
           {currentStep === 3 && renderReviewStep()}
         </div>
 
-        {selectedClient && currentStep >= 2 && (
-          <div className="space-y-4 min-w-0 lg:sticky lg:top-4">
+        {selectedClient && currentStep >= 2 && showLivePreviewPane && (
+          <div className="min-w-0 xl:sticky xl:top-4 order-first xl:order-none">
+            <ProposalClientPreview
+              practiceName={tenant?.name || 'Your practice'}
+              practiceLogo={tenant?.logo}
+              primaryColor={tenant?.primaryColor}
+              clientName={selectedClient.name}
+              proposalTitle={proposalTitle}
+              coverLetter={coverLetter}
+              services={previewServices}
+              summary={summary}
+              validUntil={validUntil}
+              showCoverLetter={currentStep >= 3}
+            />
+          </div>
+        )}
+
+        {selectedClient && currentStep >= 2 && !showLivePreviewPane && (
+          <div className="space-y-4 min-w-0 hidden lg:block lg:sticky lg:top-4">
             <ProposalBuilderClara
               step={currentStep}
               clientId={selectedClient.id}

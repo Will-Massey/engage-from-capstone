@@ -730,6 +730,62 @@ router.get(
 );
 
 /**
+ * POST /api/clients/:id/verify-identity
+ * ID verification stub — returns a verification link (W3.4)
+ */
+router.post(
+  '/:id/verify-identity',
+  authenticate,
+  authorize('ADMIN', 'PARTNER', 'MANAGER'),
+  asyncHandler(async (req, res) => {
+    const { id } = req.params;
+
+    const client = await prisma.client.findFirst({
+      where: { id, tenantId: req.tenantId, isActive: true },
+    });
+
+    if (!client) {
+      throw new ApiError('NOT_FOUND', 'Client not found', 404);
+    }
+
+    const { v4: uuidv4 } = await import('uuid');
+    const verificationRef = `idv_stub_${uuidv4().replace(/-/g, '').slice(0, 16)}`;
+
+    const frontendBase = (
+      process.env.FRONTEND_URL || 'http://localhost:5173'
+    ).replace(/\/$/, '');
+
+    const verificationLink = `${frontendBase}/verify-identity/${verificationRef}?clientId=${client.id}`;
+
+    await prisma.activityLog.create({
+      data: {
+        tenantId: req.tenantId!,
+        userId: req.user!.id,
+        action: 'ID_VERIFICATION_REQUESTED',
+        entityType: 'CLIENT',
+        entityId: client.id,
+        description: `ID verification link issued for ${client.name}`,
+        metadata: JSON.stringify({ verificationRef, isStub: true }),
+      },
+    });
+
+    res.json({
+      success: true,
+      data: {
+        clientId: client.id,
+        verificationRef,
+        verificationLink,
+        isStub: true,
+        expiresInHours: 72,
+        message:
+          'ID verification link generated (stub). Configure a live ID provider to enable automated checks.',
+      },
+      message: 'ID verification link created',
+    });
+  })
+);
+
+/**
  * DELETE /api/clients/:id
  * Soft delete client
  */

@@ -5,14 +5,15 @@
 **Market leader:** UK proposal-to-cash platform — CH lookup → priced proposal → signed engagement → collected fees, with Clara AI that saves 30+ min/proposal without token overspend. Full plan: `MARKET_LEADER_PLAN.md`.
 
 ## Current Phase
-Phase W1+W2 — **deployed** (845effcf) market leader build upgrade
+Phase W0–W4 batch — **building** (full market-leader remainder via parallel agents)
 
 ## Next Up
 <!-- 3–5 bullets ONLY. Next fresh session starts here. Rewrite every checkpoint. -->
-1. Smoke-test live: first-proposal wizard → bulk renew → sign + payment mandate → win/loss decline.
-2. Set `XERO_CLIENT_ID`, `XERO_CLIENT_SECRET`, `XERO_REDIRECT_URI` on Render if testing Xero.
-3. Caroline UAT: MFA enable, pricing calculator → apply to proposal, Settings → Integrations.
-4. W1.6 partner approval workflow (next build slice per `MARKET_LEADER_PLAN.md`).
+1. Deploy this batch to Render + run `prisma migrate deploy` (3 new migrations).
+2. Caroline UAT: partner approval flow, MFA, pricing calculator, Xero connect.
+3. Set Render env: `XERO_*`, `AML_WEBHOOK_SECRET`, `CLOUDFLARE_EMAIL_WEBHOOK_SECRET`.
+4. Fix 3 flaky production e2e tests (Clara sidebar, add-service review step).
+5. W0.3 custom domain + Render Starter disk (manual dashboard).
 
 ## Phases
 <!-- Status: pending | in_progress | complete -->

@@ -1,0 +1,32 @@
+[
+  {
+    "id": "client-records",
+    "title": "Client record-keeping",
+    "tags": ["_always", "_icaew", "_acca"],
+    "body": "You are responsible for maintaining adequate accounting records for six years (HMRC requirement) and providing information promptly when requested. Delays may affect our ability to meet statutory deadlines."
+  },
+  {
+    "id": "fees-payment",
+    "title": "Fees and payment",
+    "tags": ["_always", "_icaew", "_acca"],
+    "body": "Fees are as set out in your proposal. Invoices are payable within the stated payment terms. We may suspend services if fees remain outstanding beyond 30 days without prior agreement."
+  },
+  {
+    "id": "limitation-liability",
+    "title": "Limitation of liability",
+    "tags": ["_always", "_icaew", "_acca"],
+    "body": "Our liability in respect of any claim arising from this engagement is limited to the amount of fees paid for the services giving rise to the claim in the twelve months preceding the event, except where prohibited by law or professional regulations."
+  },
+  {
+    "id": "professional-standards",
+    "title": "Professional standards",
+    "tags": ["_always", "_icaew", "_acca"],
+    "body": "We will carry out our work in accordance with applicable technical and ethical standards issued by our professional body and relevant UK legislation."
+  },
+  {
+    "id": "confidentiality",
+    "title": "Confidentiality",
+    "tags": ["_always", "_icaew", "_acca"],
+    "body": "We will treat information obtained during the engagement as confidential, except where disclosure is required by law, regulation, or our professional obligations."
+  }
+]

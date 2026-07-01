@@ -9,7 +9,12 @@ const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
 export function isPublicClientPage(): boolean {
   if (typeof window === 'undefined') return false;
   const path = window.location.pathname;
-  return path.startsWith('/portal/') || path.startsWith('/proposals/view/') || path.startsWith('/onboarding/');
+  return (
+    path.startsWith('/portal/') ||
+    path.startsWith('/proposals/view/') ||
+    path.startsWith('/onboarding/') ||
+    path === '/status'
+  );
 }
 
 /** Login/register pages — skip session refresh and suppress noisy auth errors */
@@ -344,6 +349,18 @@ export const apiClient = {
         : {}),
     }),
 
+  getApprovalQueue: (params?: Record<string, unknown>) =>
+    api.get('/proposals/approval-queue', { params }),
+
+  submitProposalForApproval: (id: string) =>
+    api.post(`/proposals/${id}/submit-for-approval`, {}),
+
+  approveProposal: (id: string, data?: { approvalNotes?: string }) =>
+    api.post(`/proposals/${id}/approve`, data ?? {}),
+
+  rejectProposal: (id: string, data: { rejectionReason: string; approvalNotes?: string }) =>
+    api.post(`/proposals/${id}/reject`, data),
+
   acceptProposal: (id: string, data?: any) => api.post(`/proposals/${id}/accept`, data),
 
   // Response interceptor already returns `response.data`; for blobs that value IS the Blob.
@@ -373,6 +390,13 @@ export const apiClient = {
 
   assessMTDITSA: (id: string, incomeSources?: any[]) =>
     api.post(`/clients/${id}/mtditsa-assessment`, { incomeSources }),
+
+  verifyClientIdentity: (id: string) => api.post(`/clients/${id}/verify-identity`),
+
+  initiateAmlCheck: (clientId: string, provider?: 'smartsearch' | 'creditsafe' | 'stub') =>
+    api.post('/aml/check', { clientId, provider }),
+
+  getRegulatoryCheck: (clientId: string) => api.get(`/regulatory/check/${clientId}`),
 
   // Services
   // Pricing methodology (W2.9 — rule engine)
@@ -470,6 +494,22 @@ export const apiClient = {
   importXeroClients: (dryRun = false) => api.post('/xero/import-clients', { dryRun }),
   pushAcceptedProposalToXero: (proposalId: string) =>
     api.post(`/xero/push-accepted/${proposalId}`, {}),
+
+  // QuickBooks integration (W4.7 scaffold)
+  getQuickBooksStatus: () => api.get('/quickbooks/status'),
+  connectQuickBooks: () => api.get('/quickbooks/connect'),
+  disconnectQuickBooks: () => api.post('/quickbooks/disconnect', {}),
+
+  // W4.1 fee benchmarks
+  getFeeBenchmarks: () => api.get('/analytics/fee-benchmarks'),
+
+  // W4.3 firm group
+  getFirmGroup: () => api.get('/tenants/firm-group'),
+
+  // W4.4 voice of practice
+  getVoiceOfPractice: () => api.get('/ai/voice-of-practice'),
+  saveVoiceOfPractice: (sampleText: string) =>
+    api.post('/ai/voice-of-practice', { sampleText }),
 
   // Lifecycle actions (wired to touchpoint engine)
   markAmlComplete: (clientId: string) => api.post(`/clients/${clientId}/aml-complete`, {}),

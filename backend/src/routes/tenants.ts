@@ -6,6 +6,7 @@ import { asyncHandler, ApiError } from '../middleware/errorHandler.js';
 import { generateToken, authenticate, generateRefreshToken } from '../middleware/auth.js';
 import { allowPublicTenantSignup } from '../utils/securityFlags.js';
 import { setAuthCookies } from '../utils/authCookies.js';
+import { buildTrialSettings } from '../services/subscriptionService.js';
 
 const router = Router();
 
@@ -115,6 +116,8 @@ router.post(
     // Hash password
     const passwordHash = await bcrypt.hash(data.adminPassword, 12);
 
+    const trial = buildTrialSettings(data.settings);
+
     // Create tenant and admin user in transaction
     const result = await prisma.$transaction(async (tx) => {
       // Create tenant
@@ -123,7 +126,8 @@ router.post(
           subdomain: data.subdomain,
           name: data.name,
           primaryColor: data.primaryColor || '#0ea5e9',
-          settings: data.settings as any,
+          settings: trial.settingsJson,
+          subscriptionStatus: trial.subscriptionStatus,
         },
       });
 
@@ -480,6 +484,66 @@ async function createDefaultServices(tx: any, tenantId: string) {
 }
 
 /**
+ * GET /api/tenants/firm-group
+ * Multi-firm workspace stub (W4.3) — read-only group membership
+ */
+router.get(
+  '/firm-group',
+  authenticate,
+  asyncHandler(async (req, res) => {
+    const tenantId = req.tenantId!;
+
+    const tenant = await prisma.tenant.findUnique({
+      where: { id: tenantId },
+      select: {
+        id: true,
+        name: true,
+        subdomain: true,
+        firmGroupId: true,
+        firmGroup: {
+          select: {
+            id: true,
+            name: true,
+            slug: true,
+            createdAt: true,
+            _count: { select: { tenants: true } },
+          },
+        },
+      },
+    });
+
+    if (!tenant) {
+      throw new ApiError('TENANT_NOT_FOUND', 'Tenant not found', 404);
+    }
+
+    res.json({
+      success: true,
+      data: {
+        assigned: Boolean(tenant.firmGroup),
+        firmGroup: tenant.firmGroup
+          ? {
+              id: tenant.firmGroup.id,
+              name: tenant.firmGroup.name,
+              slug: tenant.firmGroup.slug,
+              practiceCount: tenant.firmGroup._count.tenants,
+              createdAt: tenant.firmGroup.createdAt,
+            }
+          : null,
+        practice: {
+          id: tenant.id,
+          name: tenant.name,
+          subdomain: tenant.subdomain,
+        },
+        scaffold: true,
+        message: tenant.firmGroup
+          ? 'Read-only firm group membership. Multi-firm administration is coming in a future release.'
+          : 'Your practice is not yet assigned to a firm group. Contact Capstone support to enable multi-firm workspace.',
+      },
+    });
+  })
+);
+
+/**
  * GET /api/tenants/settings
  * Get tenant settings (authenticated)
  */
@@ -638,6 +702,13 @@ router.put(
       fcaAuthorised: z.boolean().optional(),
       privacyPolicyUrl: z.string().optional(),
       termsVersion: z.string().optional(),
+      webhookUrl: z.string().url().optional().or(z.literal('')),
+      integrations: z
+        .object({
+          webhookUrl: z.string().url().optional().or(z.literal('')),
+          webhookFormat: z.enum(['default', 'hubspot']).optional(),
+        })
+        .optional(),
     });
 
     const data = schema.parse(req.body);
@@ -673,6 +744,15 @@ router.put(
       fcaAuthorised: data.fcaAuthorised || currentSettings.fcaAuthorised,
       privacyPolicyUrl: data.privacyPolicyUrl || currentSettings.privacyPolicyUrl,
       termsVersion: data.termsVersion || currentSettings.termsVersion,
+      webhookUrl:
+        data.webhookUrl !== undefined
+          ? data.webhookUrl
+          : data.integrations?.webhookUrl !== undefined
+            ? data.integrations.webhookUrl
+            : currentSettings.webhookUrl,
+      integrations: data.integrations
+        ? { ...(currentSettings.integrations || {}), ...data.integrations }
+        : currentSettings.integrations,
     };
 
     // Update tenant

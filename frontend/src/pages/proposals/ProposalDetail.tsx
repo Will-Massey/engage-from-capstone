@@ -81,6 +81,20 @@ const frequencyLabels: Record<string, string> = {
   ANNUALLY: 'Annually',
 };
 
+const approvalStatusConfig: Record<
+  string,
+  { label: string; color: string; bg: string }
+> = {
+  NONE: { label: 'Not submitted', color: 'text-slate-700', bg: 'bg-slate-100' },
+  PENDING: { label: 'Awaiting partner approval', color: 'text-amber-800', bg: 'bg-amber-100' },
+  APPROVED: { label: 'Partner approved', color: 'text-emerald-800', bg: 'bg-emerald-100' },
+  REJECTED: { label: 'Rejected by partner', color: 'text-red-800', bg: 'bg-red-100' },
+};
+
+const APPROVER_ROLES = new Set(['ADMIN', 'PARTNER', 'MANAGER']);
+const PARTNER_OVERRIDE_ROLES = new Set(['ADMIN', 'PARTNER']);
+const SUBMITTER_ROLES = new Set(['JUNIOR', 'SENIOR']);
+
 const paymentStatusConfig: Record<
   string,
   { label: string; color: string; bg: string }
@@ -133,7 +147,7 @@ const ProposalDetail = () => {
     else next.delete('tab');
     setSearchParams(next, { replace: true });
   };
-  const { tenant } = useAuthStore();
+  const { tenant, user } = useAuthStore();
   const [proposal, setProposal] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [showSignaturePad, setShowSignaturePad] = useState(false);
@@ -148,6 +162,9 @@ const ProposalDetail = () => {
   const [editingCoverLetter, setEditingCoverLetter] = useState(false);
   const [savingCoverLetter, setSavingCoverLetter] = useState(false);
   const [showSendEmailPreview, setShowSendEmailPreview] = useState(false);
+  const [showRejectModal, setShowRejectModal] = useState(false);
+  const [rejectionReason, setRejectionReason] = useState('');
+  const [approvalActionLoading, setApprovalActionLoading] = useState(false);
 
   // Rich compliance history (views + signatures + sent events) from dedicated audit trail
   const [auditTrail, setAuditTrail] = useState<any[]>([]);
@@ -272,6 +289,56 @@ const ProposalDetail = () => {
 
   const openSendFlow = () => {
     setShowSendEmailPreview(true);
+  };
+
+  const handleSubmitForApproval = async () => {
+    if (!id) return;
+    try {
+      setApprovalActionLoading(true);
+      await apiClient.submitProposalForApproval(id);
+      toast.success('Submitted for partner approval');
+      loadProposal();
+      loadAuditTrail();
+    } catch {
+      // handled by API interceptor
+    } finally {
+      setApprovalActionLoading(false);
+    }
+  };
+
+  const handleApproveProposal = async () => {
+    if (!id) return;
+    try {
+      setApprovalActionLoading(true);
+      await apiClient.approveProposal(id);
+      toast.success('Proposal approved');
+      loadProposal();
+      loadAuditTrail();
+    } catch {
+      // handled by API interceptor
+    } finally {
+      setApprovalActionLoading(false);
+    }
+  };
+
+  const handleRejectProposal = async () => {
+    if (!id || !rejectionReason.trim()) {
+      toast.error('Please provide a rejection reason');
+      return;
+    }
+    try {
+      setApprovalActionLoading(true);
+      await apiClient.rejectProposal(id, { rejectionReason: rejectionReason.trim() });
+      toast.success('Proposal rejected');
+      setShowRejectModal(false);
+      setRejectionReason('');
+      loadProposal();
+      loadAuditTrail();
+    } catch {
+      // handled by API interceptor
+    } finally {
+      setApprovalActionLoading(false);
+    }
   };
 
   const downloadSignatureCertificate = async (signatureId: string) => {
@@ -547,6 +614,18 @@ const ProposalDetail = () => {
 
   const status = statusConfig[proposal.status] || statusConfig.DRAFT;
   const StatusIcon = status.icon;
+  const approvalStatus = proposal.approvalStatus || 'NONE';
+  const approvalStatusUi =
+    approvalStatusConfig[approvalStatus] || approvalStatusConfig.NONE;
+  const userRole = user?.role;
+  const isApprover = userRole ? APPROVER_ROLES.has(userRole) : false;
+  const canOverrideApproval = userRole ? PARTNER_OVERRIDE_ROLES.has(userRole) : false;
+  const canSubmitForApproval =
+    proposal.status === 'DRAFT' &&
+    ['NONE', 'REJECTED'].includes(approvalStatus) &&
+    (userRole ? SUBMITTER_ROLES.has(userRole) || isApprover : false);
+  const canSendDraft =
+    proposal.status === 'DRAFT' && (canOverrideApproval || approvalStatus === 'APPROVED');
   const showClientLinkButton = !['DECLINED', 'EXPIRED'].includes(proposal.status);
   const clientOpenCount = typeof proposal.viewCount === 'number' ? proposal.viewCount : 0;
   /** Backend rejects updates once the proposal is signed (ACCEPTED). */
@@ -592,10 +671,39 @@ const ProposalDetail = () => {
               <StatusIcon className="h-3 w-3 mr-1" />
               {status.label}
             </span>
+            {proposal.status === 'DRAFT' && approvalStatus !== 'NONE' && (
+              <span
+                className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${approvalStatusUi.bg} ${approvalStatusUi.color}`}
+              >
+                <ShieldCheckIcon className="h-3 w-3 mr-1" />
+                {approvalStatusUi.label}
+              </span>
+            )}
           </div>
           <p className="mt-1 text-sm text-slate-600 dark:text-slate-400">
             {proposal.reference} • Created {format(new Date(proposal.createdAt), 'dd MMM yyyy')}
           </p>
+          {approvalStatus === 'PENDING' && proposal.submittedForApprovalAt && (
+            <p className="mt-1 text-xs text-amber-700 dark:text-amber-300">
+              Submitted {formatDistanceToNow(new Date(proposal.submittedForApprovalAt), { addSuffix: true })}
+              {proposal.createdBy
+                ? ` by ${proposal.createdBy.firstName} ${proposal.createdBy.lastName}`
+                : ''}
+            </p>
+          )}
+          {approvalStatus === 'REJECTED' && proposal.rejectionReason && (
+            <p className="mt-1 text-xs text-red-700 dark:text-red-300">
+              Rejection reason: {proposal.rejectionReason}
+            </p>
+          )}
+          {approvalStatus === 'APPROVED' && proposal.approvedBy && (
+            <p className="mt-1 text-xs text-emerald-700 dark:text-emerald-300">
+              Approved by {proposal.approvedBy.firstName} {proposal.approvedBy.lastName}
+              {proposal.approvedAt
+                ? ` on ${format(new Date(proposal.approvedAt), 'dd MMM yyyy')}`
+                : ''}
+            </p>
+          )}
         </div>
 
         <div className="flex flex-wrap gap-2">
@@ -630,7 +738,42 @@ const ProposalDetail = () => {
             </button>
           )}
 
-          {proposal.status === 'DRAFT' && (
+          {canSubmitForApproval && (
+            <button
+              type="button"
+              onClick={handleSubmitForApproval}
+              disabled={approvalActionLoading}
+              className="btn-secondary"
+            >
+              <ShieldCheckIcon className="h-4 w-4 mr-2" />
+              Submit for partner approval
+            </button>
+          )}
+
+          {proposal.status === 'DRAFT' && approvalStatus === 'PENDING' && isApprover && (
+            <>
+              <button
+                type="button"
+                onClick={handleApproveProposal}
+                disabled={approvalActionLoading}
+                className="btn-primary bg-emerald-600 hover:bg-emerald-700"
+              >
+                <CheckIcon className="h-4 w-4 mr-2" />
+                Approve
+              </button>
+              <button
+                type="button"
+                onClick={() => setShowRejectModal(true)}
+                disabled={approvalActionLoading}
+                className="btn-secondary text-red-700 border-red-200 hover:bg-red-50"
+              >
+                <XMarkIcon className="h-4 w-4 mr-2" />
+                Reject
+              </button>
+            </>
+          )}
+
+          {canSendDraft && (
             <button
               onClick={openSendFlow}
               className="btn-primary"
@@ -1635,6 +1778,45 @@ const ProposalDetail = () => {
         proposalId={id}
         onSend={handleSend}
       />
+
+      {showRejectModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+          <div className="w-full max-w-md rounded-xl bg-white dark:bg-slate-900 p-6 shadow-xl">
+            <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-100">
+              Reject proposal
+            </h3>
+            <p className="mt-2 text-sm text-slate-600 dark:text-slate-400">
+              Provide a reason so the drafter knows what to revise before resubmitting.
+            </p>
+            <textarea
+              value={rejectionReason}
+              onChange={(e) => setRejectionReason(e.target.value)}
+              className="input-field w-full mt-4 min-h-[120px]"
+              placeholder="Rejection reason (required)"
+            />
+            <div className="mt-4 flex justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => {
+                  setShowRejectModal(false);
+                  setRejectionReason('');
+                }}
+                className="btn-secondary"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleRejectProposal}
+                disabled={approvalActionLoading || !rejectionReason.trim()}
+                className="btn-primary bg-red-600 hover:bg-red-700"
+              >
+                Reject proposal
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

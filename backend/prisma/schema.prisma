@@ -63,6 +63,13 @@ enum ProposalStatus {
   EXPIRED
 }
 
+enum ApprovalStatus {
+  NONE
+  PENDING
+  APPROVED
+  REJECTED
+}
+
 enum DeclineReason {
   PRICE
   SCOPE
@@ -121,6 +128,14 @@ enum CoverLetterTone {
 enum ClientRelationship {
   NEW
   EXISTING
+}
+
+enum AmlStatus {
+  NOT_STARTED
+  PENDING
+  CLEAR
+  REFER
+  FAILED
 }
 
 enum ClientLifecycleStage {
@@ -192,6 +207,18 @@ enum EmailDeliveryStatus {
 
 // ==================== TENANT MODELS ====================
 
+model FirmGroup {
+  id        String   @id @default(uuid())
+  name      String
+  slug      String   @unique
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  tenants Tenant[]
+
+  @@index([slug])
+}
+
 model Tenant {
   id             String   @id @default(uuid())
   subdomain      String   @unique
@@ -202,6 +229,10 @@ model Tenant {
   isActive       Boolean  @default(true)
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
+
+  // Multi-firm workspace (W4.3)
+  firmGroupId String?
+  firmGroup   FirmGroup? @relation(fields: [firmGroupId], references: [id], onDelete: SetNull)
 
   // Settings stored as JSON string
   settings String @default("{}")
@@ -237,6 +268,7 @@ model Tenant {
   @@index([subdomain])
   @@index([isActive])
   @@index([stripeCustomerId])
+  @@index([firmGroupId])
 }
 
 // ==================== USER MODELS ====================
@@ -268,6 +300,7 @@ model User {
 
   // Relations
   createdProposals     Proposal[]            @relation("CreatedProposals")
+  approvedProposals    Proposal[]            @relation("ApprovedProposals")
   activityLogs         ActivityLog[]
   refreshTokens        RefreshToken[]
   passwordResets       PasswordReset[]
@@ -380,6 +413,9 @@ model Client {
   amlCompletedAt                 DateTime?
   amlSubmittedAt                 DateTime?
   amlSubmissionData              String?  // JSON: client AML self-service form
+  amlStatus                      AmlStatus @default(NOT_STARTED)
+  amlCheckedAt                   DateTime?
+  amlProviderRef                 String?
   engagementLetterSentAt         DateTime?
   engagementLetterSignedAt       DateTime?
 
@@ -394,6 +430,8 @@ model Client {
   @@index([mtditsaStatus])
   @@index([lifecycleStage])
   @@index([clientRelationship])
+  @@index([amlStatus])
+  @@index([amlProviderRef])
 }
 
 // ==================== PROPOSAL MODELS ====================
@@ -403,6 +441,15 @@ model Proposal {
   reference       String         @unique
   title           String
   status          ProposalStatus @default(DRAFT)
+
+  // Partner approval workflow (junior drafts → partner approves before send)
+  approvalStatus          ApprovalStatus @default(NONE)
+  submittedForApprovalAt  DateTime?
+  approvedAt              DateTime?
+  approvedById            String?
+  approvedBy              User?          @relation("ApprovedProposals", fields: [approvedById], references: [id], onDelete: SetNull)
+  approvalNotes           String?
+  rejectionReason         String?
 
   // Dates
   validUntil        DateTime  // Proposal expiry date
@@ -501,6 +548,8 @@ model Proposal {
   @@index([tenantId])
   @@index([clientId])
   @@index([status])
+  @@index([approvalStatus])
+  @@index([approvedById])
   @@index([reference])
   @@index([shareToken])
   @@index([paymentId])

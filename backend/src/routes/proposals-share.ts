@@ -9,6 +9,7 @@ import { z } from 'zod';
 import { prisma } from '../config/database.js';
 import { asyncHandler, ApiError } from '../middleware/errorHandler.js';
 import { authenticate } from '../middleware/auth.js';
+import { requireActiveSubscription } from '../middleware/subscription.js';
 import { extractTenant } from '../middleware/tenant.js';
 import { generateProposalTerms } from '../templates/ukEngagementLetter.js';
 import {
@@ -171,6 +172,7 @@ router.delete(
 router.post(
   '/:id/email',
   authenticate,
+  requireActiveSubscription,
   asyncHandler(async (req, res) => {
     const schema = z.object({
       to: z.string().email(),
@@ -295,6 +297,9 @@ router.post(
         userAgent: req.headers['user-agent'],
       },
     });
+
+    const { emitIntegrationEvent } = await import('../services/integrationEvents.js');
+    void emitIntegrationEvent(tenantId, id, 'proposal.sent');
 
     res.json({
       success: true,
@@ -1016,6 +1021,15 @@ router.post(
         ipAddress: req.ip || null,
         userAgent: req.headers['user-agent'] || null,
         proposalId: proposal.id,
+      },
+    });
+
+    const { emitIntegrationEvent } = await import('../services/integrationEvents.js');
+    void emitIntegrationEvent(proposal.tenantId, proposal.id, 'proposal.declined', {
+      extra: {
+        declinedAt: now.toISOString(),
+        declinedBy: declinedBy || null,
+        declineReason: declineReason || declineReasonAi || null,
       },
     });
 

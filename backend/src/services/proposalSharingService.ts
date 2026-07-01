@@ -281,6 +281,11 @@ export async function recordElectronicSignature(
       logger.warn('Failed to trigger touchpoint workflow on proposal acceptance', e);
     }
 
+    // Push accepted proposal to Xero (non-blocking — acceptance must not fail)
+    void import('./xeroProposalPush.js').then(({ triggerXeroPushOnAcceptance }) =>
+      triggerXeroPushOnAcceptance(data.tenantId, data.proposalId)
+    );
+
     await prisma.activityLog.create({
       data: {
         tenantId: data.tenantId,
@@ -298,6 +303,18 @@ export async function recordElectronicSignature(
     });
 
     logger.info(`Electronic signature recorded for proposal ${data.proposalId}`);
+
+    try {
+      const { emitIntegrationEvent } = await import('./integrationEvents.js');
+      void emitIntegrationEvent(data.tenantId, data.proposalId, 'proposal.accepted', {
+        extra: {
+          acceptedAt: new Date().toISOString(),
+          acceptedBy: data.signedBy,
+        },
+      });
+    } catch (e) {
+      logger.warn('Integration event emit failed on signature', e);
+    }
 
     return { success: true, signatureId: signature.id };
   } catch (error: any) {

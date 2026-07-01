@@ -1,6 +1,7 @@
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 import path from 'path';
+import { injectBuildTime } from './src/plugins/injectBuildTime';
 
 // PWA disabled — client portal and public proposal links must not prompt "Install app".
 // Staff use Engage in the browser; a standalone PWA confuses clients receiving proposal links.
@@ -11,7 +12,7 @@ const isCapacitorBuild = process.env.CAPACITOR === 'true' || process.env.VITE_CA
 export default defineConfig({
   // Relative asset paths required for Capacitor WebView (capacitor:// / https://localhost)
   base: isCapacitorBuild ? './' : '/',
-  plugins: [react()],
+  plugins: [react(), injectBuildTime()],
   resolve: {
     alias: {
       '@': path.resolve(__dirname, './src'),

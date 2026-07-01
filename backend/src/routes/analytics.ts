@@ -865,4 +865,18 @@ router.get(
   })
 );
 
+/** GET /api/analytics/fee-benchmarks — anonymised percentile bands (k-anonymity min 5 tenants) */
+router.get(
+  '/fee-benchmarks',
+  asyncHandler(async (_req, res) => {
+    const { getFeeBenchmarks } = await import('../services/feeBenchmarkService.js');
+    const data = await getFeeBenchmarks();
+
+    res.json({
+      success: true,
+      data,
+    });
+  })
+);
+
 export default router;

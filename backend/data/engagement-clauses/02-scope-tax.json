@@ -1,0 +1,38 @@
+[
+  {
+    "id": "scope-vat",
+    "title": "VAT returns",
+    "tags": ["vat", "mtd", "compliance", "tax", "_icaew", "_acca"],
+    "body": "We will prepare and submit VAT returns via Making Tax Digital (MTD) compatible software, reconcile VAT control accounts, and advise on VAT treatment of transactions."
+  },
+  {
+    "id": "scope-self-assessment",
+    "title": "Self Assessment",
+    "tags": ["self-assessment", "sa100", "personal-tax", "tax", "_acca"],
+    "body": "We will prepare and submit your Self Assessment tax return to HMRC, calculating tax liabilities and advising on payments on account where relevant."
+  },
+  {
+    "id": "scope-mtd-itsa-2026",
+    "title": "MTD ITSA from April 2026",
+    "tags": ["mtd-itsa", "quarterly", "tax", "compliance", "_icaew", "_acca"],
+    "body": "From April 2026, where your gross income exceeds £50,000, we will support quarterly digital updates, an End of Period Statement, and a Final Declaration under Making Tax Digital for Income Tax Self Assessment."
+  },
+  {
+    "id": "scope-mtd-itsa-2027",
+    "title": "MTD ITSA from April 2027",
+    "tags": ["mtd-itsa", "quarterly", "tax", "compliance", "_icaew", "_acca"],
+    "body": "From April 2027, where your gross income exceeds £30,000, we will support quarterly digital updates, an End of Period Statement, and a Final Declaration under Making Tax Digital for Income Tax Self Assessment."
+  },
+  {
+    "id": "scope-p11d",
+    "title": "P11D benefits in kind",
+    "tags": ["p11d", "benefits-in-kind", "tax", "_icaew"],
+    "body": "We will prepare and submit P11D forms for directors and employees receiving taxable benefits, and advise on Class 1A National Insurance obligations."
+  },
+  {
+    "id": "scope-rd-tax-credit",
+    "title": "R&D tax relief screening",
+    "tags": ["rd", "tax-relief", "advisory", "_icaew"],
+    "body": "We will review qualifying R&D expenditure and advise on SME or RDEC claims where applicable. Specialist R&D claim preparation may require a separate engagement."
+  }
+]

@@ -18,6 +18,7 @@ import {
 } from './aiClient.js';
 import { VALID_BILLING_FREQUENCIES } from '../../utils/proposalPricing.js';
 import { AI_COPILOT } from '../../config/aiCopilot.js';
+import { getVoiceOfPracticePromptContext } from '../voiceOfPracticeService.js';
 
 const UK_SYSTEM =
   AI_COPILOT.systemPersona +
@@ -211,6 +212,7 @@ export async function generateAiCoverLetter(
   }
 ) {
   const client = await loadClientContext(tenantId, params.clientId);
+  const voiceContext = await getVoiceOfPracticePromptContext(tenantId);
 
   const { content: raw, usage: aiUsage } = await chatCompletion(
     [
@@ -225,7 +227,7 @@ Relationship: ${client.clientRelationship === 'EXISTING' ? 'Existing client — 
 Addressee: ${client.contactName || client.name}
 Sender: ${params.senderName || 'Partner'}
 Services: ${params.services.map((s) => `${s.name} (${s.billingFrequency || 'MONTHLY'})`).join('; ')}
-Use plain paragraphs (no markdown headers). 3-5 short paragraphs. End with a clear call to review and sign. UK English.`,
+${voiceContext}Use plain paragraphs (no markdown headers). 3-5 short paragraphs. End with a clear call to review and sign. UK English.`,
       },
     ],
     { temperature: 0.6, maxTokens: 1200 }
@@ -252,6 +254,7 @@ export async function* generateAiCoverLetterStream(
   }
 ): AsyncGenerator<string, void, unknown> {
   const client = await loadClientContext(tenantId, params.clientId);
+  const voiceContext = await getVoiceOfPracticePromptContext(tenantId);
 
   const prompt = `Write a proposal cover letter for a UK accountancy practice.
 Tone: ${params.tone.toLowerCase()}
@@ -261,7 +264,7 @@ Relationship: ${client.clientRelationship === 'EXISTING' ? 'Existing client — 
 Addressee: ${client.contactName || client.name}
 Sender: ${params.senderName || 'Partner'}
 Services: ${params.services.map((s) => `${s.name} (${s.billingFrequency || 'MONTHLY'})`).join('; ')}
-Use plain paragraphs (no markdown headers). 3-5 short paragraphs. End with a clear call to review and sign. UK English.`;
+${voiceContext}Use plain paragraphs (no markdown headers). 3-5 short paragraphs. End with a clear call to review and sign. UK English.`;
 
   let full = '';
   for await (const chunk of chatCompletionStream(

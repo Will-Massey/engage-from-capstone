@@ -77,6 +77,34 @@ interface ProposalData {
 
 type QaMessage = { role: 'user' | 'assistant'; content: string };
 
+const SIGN_PAGE_FAQS: Array<{ question: string; answer: string }> = [
+  {
+    question: 'What am I agreeing to when I sign?',
+    answer:
+      'You confirm you are authorised to accept this proposal on behalf of the client named above, agree to the services and fees shown, and accept the terms and conditions. Your electronic signature is legally valid in the UK.',
+  },
+  {
+    question: 'How long is this proposal valid?',
+    answer:
+      'The validity date is shown at the top of this page. After that date, the proposal expires and fees or scope may need to be reconfirmed with your accountant.',
+  },
+  {
+    question: 'Can I decline without obligation?',
+    answer:
+      'Yes. Declining does not create a contract. You may optionally share a reason to help your accountant improve future proposals.',
+  },
+  {
+    question: 'What happens after I accept?',
+    answer:
+      'Your accountant is notified immediately. You will typically receive a welcome email, AML or ID verification requests, and onboarding steps for your engagement.',
+  },
+  {
+    question: 'Who can I contact for help?',
+    answer:
+      'For questions about fees, scope, or timing, contact your accountant directly. You can also ask Clara below — answers are based only on this proposal.',
+  },
+];
+
 function QaTypingIndicator() {
   return (
     <div className="flex items-center gap-1 px-3 py-2">
@@ -111,6 +139,8 @@ const PublicProposalView = () => {
   const [declineReasonText, setDeclineReasonText] = useState('');
   const [showDecline, setShowDecline] = useState(false);
   const [isAccepted, setIsAccepted] = useState(false);
+  const [faqExpanded, setFaqExpanded] = useState(false);
+  const [openFaqIndex, setOpenFaqIndex] = useState<number | null>(null);
   const [qaExpanded, setQaExpanded] = useState(false);
   const [qaMessages, setQaMessages] = useState<QaMessage[]>([]);
   const [qaInput, setQaInput] = useState('');
@@ -393,7 +423,7 @@ const PublicProposalView = () => {
   const isExpired = new Date(proposal.validUntil) < new Date();
 
   return (
-    <div className="min-h-screen bg-slate-50 dark:bg-slate-900 py-8 px-4 sm:px-6 lg:px-8">
+    <div className="min-h-screen bg-slate-50 dark:bg-slate-900 py-6 sm:py-8 px-4 sm:px-6 lg:px-8 pb-28 sm:pb-8 [padding-bottom:max(7rem,env(safe-area-inset-bottom))]">
       <div className="max-w-4xl mx-auto">
         {/* Header */}
         <div className="bg-white dark:bg-slate-800 rounded-t-xl shadow-sm p-6 border-b dark:border-slate-700">
@@ -654,14 +684,96 @@ const PublicProposalView = () => {
             <p className="text-sm text-slate-600 mt-2">Payment terms: {proposal.paymentTerms}</p>
           </div>
 
-          {/* Questions about this proposal — Clara-style Q&A */}
+          {/* Static FAQs — UK English */}
+          {!isAccepted && !isExpired && (
+            <div className="border-t pt-6" data-testid="clara-faq-section">
+              <button
+                type="button"
+                data-testid="faq-toggle"
+                onClick={() => setFaqExpanded((v) => !v)}
+                className="w-full flex items-center justify-between gap-3 text-left group min-h-[44px]"
+              >
+                <div className="flex items-center gap-2">
+                  <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-sky-100 dark:bg-sky-900/40">
+                    <SparklesIcon className="h-4 w-4 text-sky-600 dark:text-sky-300" />
+                  </span>
+                  <div>
+                    <h3 className="text-sm font-medium text-slate-900 dark:text-white">
+                      Questions? Ask {AI_COPILOT.name}
+                    </h3>
+                    <p className="text-xs text-slate-600 dark:text-slate-400">
+                      Common questions about signing this proposal
+                    </p>
+                  </div>
+                </div>
+                {faqExpanded ? (
+                  <ChevronUpIcon className="h-5 w-5 text-slate-400" />
+                ) : (
+                  <ChevronDownIcon className="h-5 w-5 text-slate-400" />
+                )}
+              </button>
+
+              <AnimatePresence initial={false}>
+                {faqExpanded && (
+                  <motion.div
+                    initial={{ height: 0, opacity: 0 }}
+                    animate={{ height: 'auto', opacity: 1 }}
+                    exit={{ height: 0, opacity: 0 }}
+                    className="overflow-hidden"
+                  >
+                    <div className="mt-4 space-y-2">
+                      {SIGN_PAGE_FAQS.map((faq, index) => (
+                        <div
+                          key={faq.question}
+                          className="rounded-xl border border-slate-200 dark:border-slate-700 overflow-hidden"
+                        >
+                          <button
+                            type="button"
+                            data-testid={`faq-item-${index}`}
+                            onClick={() =>
+                              setOpenFaqIndex((current) => (current === index ? null : index))
+                            }
+                            className="w-full flex items-center justify-between gap-3 px-4 py-3 text-left text-sm font-medium text-slate-900 dark:text-white min-h-[44px] hover:bg-slate-50 dark:hover:bg-slate-800/50"
+                          >
+                            <span>{faq.question}</span>
+                            {openFaqIndex === index ? (
+                              <ChevronUpIcon className="h-4 w-4 shrink-0 text-slate-400" />
+                            ) : (
+                              <ChevronDownIcon className="h-4 w-4 shrink-0 text-slate-400" />
+                            )}
+                          </button>
+                          {openFaqIndex === index && (
+                            <p className="px-4 pb-3 text-sm text-slate-600 dark:text-slate-300 leading-relaxed">
+                              {faq.answer}
+                            </p>
+                          )}
+                        </div>
+                      ))}
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setFaqExpanded(false);
+                          setQaExpanded(true);
+                        }}
+                        className="text-sm text-violet-700 dark:text-violet-300 hover:underline mt-2 min-h-[44px]"
+                      >
+                        Still have a question? Chat with {AI_COPILOT.name} about this proposal →
+                      </button>
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
+          )}
+
+          {/* Live Q&A — Clara answers from proposal content only */}
           {!isAccepted && !isExpired && (
             <div className="border-t pt-6">
               <button
                 type="button"
                 data-testid="qa-toggle"
                 onClick={() => setQaExpanded((v) => !v)}
-                className="w-full flex items-center justify-between gap-3 text-left group"
+                className="w-full flex items-center justify-between gap-3 text-left group min-h-[44px]"
               >
                 <div className="flex items-center gap-2">
                   <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-violet-100 dark:bg-violet-900/40">
@@ -669,10 +781,10 @@ const PublicProposalView = () => {
                   </span>
                   <div>
                     <h3 className="text-sm font-medium text-slate-900 dark:text-white">
-                      Questions about this proposal?
+                      Ask {AI_COPILOT.name} about this proposal
                     </h3>
                     <p className="text-xs text-slate-600 dark:text-slate-400">
-                      Ask {AI_COPILOT.name} — answers come only from this proposal
+                      Answers come only from this proposal — not general tax advice
                     </p>
                   </div>
                 </div>
@@ -1043,15 +1155,15 @@ const PublicProposalView = () => {
         </div>
 
         {/* Mobile sticky accept bar */}
-        {!isAccepted && !isExpired && !showSignature && (
-          <div className="fixed bottom-0 left-0 right-0 z-40 p-4 bg-white/95 dark:bg-slate-900/95 border-t border-slate-200 dark:border-slate-700 backdrop-blur-md sm:hidden">
+        {!isAccepted && !isExpired && !showSignature && !showDecline && (
+          <div className="fixed bottom-0 left-0 right-0 z-40 p-4 pt-3 bg-white/95 dark:bg-slate-900/95 border-t border-slate-200 dark:border-slate-700 backdrop-blur-md sm:hidden [padding-bottom:max(1rem,env(safe-area-inset-bottom))]">
             <button
               type="button"
               onClick={handleAccept}
               disabled={!termsAccepted}
-              className="btn-primary w-full py-3 text-base"
+              className="btn-primary w-full py-3.5 text-base min-h-[48px] touch-manipulation"
             >
-              Review & sign proposal
+              {termsAccepted ? 'Review & sign proposal' : 'Accept terms to continue'}
             </button>
           </div>
         )}

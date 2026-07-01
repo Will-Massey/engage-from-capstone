@@ -9,9 +9,9 @@ import {
   selectClausesForServices,
 } from '../data/engagementClauseLibrary.js';
 
-const INITIAL_VERSION_LABEL = '2026.1';
+const INITIAL_VERSION_LABEL = '2026.2';
 const INITIAL_CHANGELOG =
-  'Initial firm-approved engagement clause library (UK GAAP, MTD, AML, fees & liability).';
+  'ICAEW/ACCA-aligned engagement clause packages (33 clauses): compliance, tax, MTD ITSA, AML, payroll, advisory, and standard terms.';
 
 function clauseFingerprint(clause: EngagementClause): string {
   return JSON.stringify({

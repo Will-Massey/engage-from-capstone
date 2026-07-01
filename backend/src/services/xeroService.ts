@@ -1,17 +1,25 @@
 /**
- * Xero API client factory and helpers (W1.1–W1.2 scaffold)
+ * Xero API client factory and helpers (W1.1–W1.2)
  *
- * Implemented:
  * - OAuth2 connect via xero-node
  * - Token refresh + encrypted storage on Tenant.settings.xero
  * - Contact import from Xero → Engage clients (dedupe by email/name)
- * - Push accepted proposal summary as Xero contact history note
- *
- * Stub (W1.2 — documented, not live):
- * - Repeating invoice / ACCREC draft creation (returns stub payload only)
+ * - Push accepted proposal → Xero contact note + repeating invoices
+ * - Stub mode when XERO_* env not set or tenant not connected
  */
 
-import { XeroClient, Contact, Contacts, Invoice, HistoryRecords } from 'xero-node';
+import {
+  XeroClient,
+  Contact,
+  Contacts,
+  Invoice,
+  HistoryRecords,
+  RepeatingInvoice,
+  RepeatingInvoices,
+  Schedule,
+  LineAmountTypes,
+  CurrencyCode,
+} from 'xero-node';
 import logger from '../config/logger.js';
 import {
   getTenantXeroSettings,
@@ -33,6 +41,8 @@ export const XERO_OAUTH_SCOPES = [
 ] as const;
 
 export type XeroOAuthScope = (typeof XERO_OAUTH_SCOPES)[number];
+
+const DEFAULT_REVENUE_ACCOUNT = '200';
 
 function requireXeroEnv() {
   const clientId = process.env.XERO_CLIENT_ID;
@@ -177,7 +187,7 @@ export async function fetchAllXeroContacts(session: XeroSession): Promise<Contac
     all.push(...contacts);
     if (contacts.length < pageSize) break;
     page += 1;
-    if (page > 50) break; // safety cap
+    if (page > 50) break;
   }
 
   return all;
@@ -219,48 +229,82 @@ export function buildProposalSummaryNote(proposal: {
     'Services:',
     lines || '(no line items)',
     '',
-    'Synced from Engage by Capstone — W1.2 contact note',
+    'Synced from Engage by Capstone',
   ].join('\n');
 }
 
-/**
- * Append proposal summary via Xero contact history API (implemented).
- * Repeating invoice stub is returned separately for future W1.2 work.
- */
-export async function pushAcceptedProposalToXero(
-  session: XeroSession,
-  proposal: {
-    reference: string;
-    title: string;
-    acceptedAt?: Date | null;
-    total: number;
-    subtotal: number;
-    vatAmount: number;
-    paymentFrequency: string;
-    client: {
-      name: string;
-      contactEmail: string;
-      contactName?: string | null;
-    };
-    services: Array<{
-      name: string;
-      displayPrice: number;
-      billingFrequency: string;
-      lineTotal: number;
-    }>;
+type ProposalServiceLine = {
+  name: string;
+  displayPrice: number;
+  billingFrequency: string;
+  lineTotal: number;
+  vatAmount?: number;
+};
+
+function mapBillingToSchedule(billingFrequency: string): {
+  unit: Schedule.UnitEnum;
+  period: number;
+} {
+  switch (billingFrequency) {
+    case 'WEEKLY':
+      return { unit: Schedule.UnitEnum.WEEKLY, period: 1 };
+    case 'QUARTERLY':
+      return { unit: Schedule.UnitEnum.MONTHLY, period: 3 };
+    case 'ANNUALLY':
+      return { unit: Schedule.UnitEnum.MONTHLY, period: 12 };
+    case 'MONTHLY':
+    default:
+      return { unit: Schedule.UnitEnum.MONTHLY, period: 1 };
   }
-): Promise<{
-  contactNote: { implemented: true; contactId?: string; updated: boolean };
-  repeatingInvoice: { implemented: false; stub: true; message: string; draft?: unknown };
-}> {
-  const { client, xeroTenantId } = session;
-  const email = proposal.client.contactEmail?.trim().toLowerCase();
-  const name = proposal.client.name?.trim();
+}
+
+function groupRecurringServices(services: ProposalServiceLine[]) {
+  const recurring = services.filter((s) => s.billingFrequency !== 'ONE_TIME');
+  const oneTime = services.filter((s) => s.billingFrequency === 'ONE_TIME');
+
+  const groups = new Map<string, ProposalServiceLine[]>();
+  for (const service of recurring) {
+    const key = service.billingFrequency || 'MONTHLY';
+    const existing = groups.get(key) || [];
+    existing.push(service);
+    groups.set(key, existing);
+  }
+
+  return { groups, oneTime };
+}
+
+async function resolveOrCreateContact(
+  session: XeroSession,
+  client: {
+    name: string;
+    contactEmail: string;
+    contactName?: string | null;
+    xeroContactId?: string;
+  },
+  reference: string
+): Promise<string | undefined> {
+  const { client: xeroClient, xeroTenantId } = session;
+  const email = client.contactEmail?.trim().toLowerCase();
+  const name = client.name?.trim();
+
+  if (client.xeroContactId) {
+    try {
+      const existing = await xeroClient.accountingApi.getContact(
+        xeroTenantId,
+        client.xeroContactId
+      );
+      if (existing.body.contacts?.[0]?.contactID) {
+        return existing.body.contacts[0].contactID;
+      }
+    } catch {
+      logger.warn(`Linked Xero contact ${client.xeroContactId} not found — will match or create`);
+    }
+  }
 
   let contactId: string | undefined;
 
   if (email) {
-    const byEmail = await client.accountingApi.getContacts(
+    const byEmail = await xeroClient.accountingApi.getContacts(
       xeroTenantId,
       undefined,
       undefined,
@@ -275,13 +319,11 @@ export async function pushAcceptedProposalToXero(
     const match = (byEmail.body.contacts || []).find(
       (c) => c.emailAddress?.toLowerCase() === email
     );
-    if (match?.contactID) {
-      contactId = match.contactID;
-    }
+    if (match?.contactID) contactId = match.contactID;
   }
 
   if (!contactId && name) {
-    const byName = await client.accountingApi.getContacts(
+    const byName = await xeroClient.accountingApi.getContacts(
       xeroTenantId,
       undefined,
       undefined,
@@ -297,59 +339,231 @@ export async function pushAcceptedProposalToXero(
     const match = (byName.body.contacts || []).find(
       (c) => c.name && normalizeClientName(c.name) === normalized
     );
-    if (match?.contactID) {
-      contactId = match.contactID;
-    }
+    if (match?.contactID) contactId = match.contactID;
   }
-
-  const noteBody = buildProposalSummaryNote(proposal);
-  let updated = false;
 
   if (!contactId) {
     const contacts: Contacts = {
       contacts: [
         {
-          name: name || proposal.client.contactName || 'Engage Client',
+          name: name || client.contactName || 'Engage Client',
           emailAddress: email || undefined,
-          contactNumber: `ENGAGE-${proposal.reference}`,
+          contactNumber: `ENGAGE-${reference}`,
         },
       ],
     };
-    const created = await client.accountingApi.updateOrCreateContacts(xeroTenantId, contacts);
+    const created = await xeroClient.accountingApi.updateOrCreateContacts(
+      xeroTenantId,
+      contacts
+    );
     contactId = created.body.contacts?.[0]?.contactID;
   }
 
-  if (contactId) {
-    const history: HistoryRecords = {
-      historyRecords: [{ details: noteBody }],
-    };
-    await client.accountingApi.createContactHistory(xeroTenantId, contactId, history);
-    updated = true;
-  }
+  return contactId;
+}
 
-  // --- STUB: repeating invoice / mandate draft (not sent to Xero API yet) ---
-  const repeatingInvoiceStub = {
-    type: Invoice.TypeEnum.ACCREC,
+function buildRepeatingInvoiceDraft(
+  contactId: string | undefined,
+  reference: string,
+  billingFrequency: string,
+  services: ProposalServiceLine[],
+  revenueAccount: string
+) {
+  const schedule = mapBillingToSchedule(billingFrequency);
+  const startDate = new Date().toISOString().slice(0, 10);
+
+  return {
+    type: RepeatingInvoice.TypeEnum.ACCREC,
     contact: { contactID: contactId },
-    lineItems: proposal.services.map((s) => ({
+    schedule: {
+      period: schedule.period,
+      unit: schedule.unit,
+      dueDate: 20,
+      dueDateType: Schedule.DueDateTypeEnum.OFFOLLOWINGMONTH,
+      startDate,
+    },
+    lineItems: services.map((s) => ({
       description: s.name,
       quantity: 1,
       unitAmount: s.lineTotal,
-      accountCode: '200', // placeholder — practice must map revenue accounts in full implementation
+      accountCode: revenueAccount,
+      taxAmount: s.vatAmount ?? 0,
     })),
-    status: Invoice.StatusEnum.DRAFT,
-    reference: proposal.reference,
-    currencyCode: 'GBP' as const,
+    lineAmountTypes: LineAmountTypes.Exclusive,
+    status: RepeatingInvoice.StatusEnum.DRAFT,
+    reference: `${reference} (${billingFrequency})`,
+    currencyCode: CurrencyCode.GBP,
   };
+}
+
+/**
+ * Push accepted proposal to Xero.
+ * When session is null, returns stub payloads only (no API calls).
+ */
+export async function pushAcceptedProposalToXero(
+  session: XeroSession | null,
+  proposal: {
+    reference: string;
+    title: string;
+    acceptedAt?: Date | null;
+    total: number;
+    subtotal: number;
+    vatAmount: number;
+    paymentFrequency: string;
+    client: {
+      name: string;
+      contactEmail: string;
+      contactName?: string | null;
+      xeroContactId?: string;
+    };
+    services: ProposalServiceLine[];
+  }
+): Promise<{
+  contactNote: { implemented: boolean; contactId?: string; updated: boolean; error?: string };
+  repeatingInvoice: {
+    implemented: boolean;
+    stub: boolean;
+    created: number;
+    repeatingInvoiceIds: string[];
+    drafts: unknown[];
+    errors: string[];
+    message: string;
+  };
+}> {
+  const revenueAccount =
+    session?.settings.defaultRevenueAccountCode || DEFAULT_REVENUE_ACCOUNT;
+  const { groups, oneTime } = groupRecurringServices(proposal.services);
+
+  if (!session) {
+    const drafts = Array.from(groups.entries()).map(([freq, lines]) =>
+      buildRepeatingInvoiceDraft(undefined, proposal.reference, freq, lines, revenueAccount)
+    );
+
+    return {
+      contactNote: {
+        implemented: false,
+        updated: false,
+        error: 'Xero not connected — contact note not written',
+      },
+      repeatingInvoice: {
+        implemented: false,
+        stub: true,
+        created: 0,
+        repeatingInvoiceIds: [],
+        drafts,
+        errors: [],
+        message:
+          'Stub mode — repeating invoice drafts returned for review. Connect Xero to create live invoices.',
+      },
+    };
+  }
+
+  const { client, xeroTenantId } = session;
+  const errors: string[] = [];
+  let contactId: string | undefined;
+  let contactUpdated = false;
+
+  try {
+    contactId = await resolveOrCreateContact(session, proposal.client, proposal.reference);
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : 'Contact sync failed';
+    errors.push(`Could not create or update Xero contact: ${msg}`);
+    logger.error('Xero contact sync failed', err);
+  }
+
+  if (contactId) {
+    try {
+      const noteBody = buildProposalSummaryNote(proposal);
+      const history: HistoryRecords = {
+        historyRecords: [{ details: noteBody }],
+      };
+      await client.accountingApi.createContactHistory(xeroTenantId, contactId, history);
+      contactUpdated = true;
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Contact note failed';
+      errors.push(`Contact note not written: ${msg}`);
+      logger.warn('Xero contact history failed', err);
+    }
+  }
+
+  const repeatingInvoiceIds: string[] = [];
+  const drafts: unknown[] = [];
+
+  if (!contactId) {
+    errors.push('Repeating invoices skipped — no Xero contact available.');
+  } else if (groups.size === 0) {
+    errors.push(
+      oneTime.length
+        ? 'No recurring service lines — one-off charges were not added to a repeating invoice.'
+        : 'No service lines to invoice.'
+    );
+  } else {
+    for (const [billingFrequency, lines] of groups.entries()) {
+      const draft = buildRepeatingInvoiceDraft(
+        contactId,
+        proposal.reference,
+        billingFrequency,
+        lines,
+        revenueAccount
+      );
+      drafts.push(draft);
+
+      try {
+        const repeatingInvoice = draft as RepeatingInvoice;
+        const payload: RepeatingInvoices = { repeatingInvoices: [repeatingInvoice] };
+        const response = await client.accountingApi.createRepeatingInvoices(
+          xeroTenantId,
+          payload,
+          true
+        );
+        const created = response.body.repeatingInvoices?.[0];
+        if (created?.repeatingInvoiceID) {
+          repeatingInvoiceIds.push(created.repeatingInvoiceID);
+        } else {
+          const validationErrors = (created as { validationErrors?: Array<{ message?: string }> })
+            ?.validationErrors;
+          if (validationErrors?.length) {
+            errors.push(
+              ...validationErrors.map(
+                (e) => `${billingFrequency}: ${e.message || 'Validation error'}`
+              )
+            );
+          }
+        }
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : 'Repeating invoice creation failed';
+        errors.push(`${billingFrequency} invoice: ${msg}`);
+        logger.warn(`Xero repeating invoice failed (${billingFrequency})`, err);
+      }
+    }
+  }
+
+  if (oneTime.length) {
+    errors.push(
+      `${oneTime.length} one-off service line(s) were not added to repeating invoices — raise these separately in Xero.`
+    );
+  }
+
+  const created = repeatingInvoiceIds.length;
 
   return {
-    contactNote: { implemented: true, contactId, updated },
+    contactNote: {
+      implemented: true,
+      contactId,
+      updated: contactUpdated,
+      error: contactUpdated ? undefined : errors.find((e) => e.includes('Contact note')) ,
+    },
     repeatingInvoice: {
-      implemented: false,
-      stub: true,
+      implemented: true,
+      stub: false,
+      created,
+      repeatingInvoiceIds,
+      drafts,
+      errors,
       message:
-        'Repeating invoice / mandate draft is stubbed for W1.2. Contact note was written to Xero. Full invoice sync requires revenue account mapping and GoCardless mandate flow (W1.3).',
-      draft: repeatingInvoiceStub,
+        created > 0
+          ? `Created ${created} repeating invoice template(s) in Xero.`
+          : 'No repeating invoices were created — see errors for details.',
     },
   };
 }

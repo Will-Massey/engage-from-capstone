@@ -1,8 +1,9 @@
 import { Router } from 'express';
 import { z } from 'zod';
-import { ProposalStatus, PricingFrequency } from '@prisma/client';
+import { ApprovalStatus, ProposalStatus, PricingFrequency, UserRole } from '@prisma/client';
 import { prisma } from '../config/database.js';
 import { authenticate, authorize } from '../middleware/auth.js';
+import { requireActiveSubscription } from '../middleware/subscription.js';
 import { asyncHandler, ApiError } from '../middleware/errorHandler.js';
 import { PDFGenerator } from '../services/pdfGenerator.js';
 import logger from '../config/logger.js';
@@ -35,6 +36,32 @@ function parseOneOffDueDate(billingFrequency: string, raw: unknown): Date | null
 }
 
 const router = Router();
+
+const APPROVER_ROLES: UserRole[] = ['ADMIN', 'PARTNER', 'MANAGER'];
+const PARTNER_OVERRIDE_ROLES: UserRole[] = ['ADMIN', 'PARTNER'];
+const SUBMITTER_ROLES: UserRole[] = ['JUNIOR', 'SENIOR'];
+
+function canOverrideApproval(role: UserRole): boolean {
+  return PARTNER_OVERRIDE_ROLES.includes(role);
+}
+
+function canSendProposal(role: UserRole, approvalStatus: ApprovalStatus): boolean {
+  if (canOverrideApproval(role)) {
+    return true;
+  }
+  return approvalStatus === 'APPROVED';
+}
+
+const proposalApprovalInclude = {
+  approvedBy: {
+    select: {
+      id: true,
+      firstName: true,
+      lastName: true,
+      email: true,
+    },
+  },
+} as const;
 
 // Validation schemas
 const createProposalSchema = z.object({
@@ -114,7 +141,7 @@ router.get(
   '/',
   authenticate,
   asyncHandler(async (req, res) => {
-    const { status, clientId, search, page = '1', limit = '20' } = req.query;
+    const { status, approvalStatus, clientId, search, page = '1', limit = '20' } = req.query;
 
     logger.info(`Fetching proposals for tenant: ${req.tenantId}, user: ${req.user?.id}`);
 
@@ -128,6 +155,10 @@ router.get(
 
     if (status) {
       where.status = status;
+    }
+
+    if (approvalStatus) {
+      where.approvalStatus = approvalStatus;
     }
 
     if (clientId) {
@@ -162,6 +193,13 @@ router.get(
               lastName: true,
             },
           },
+          approvedBy: {
+            select: {
+              id: true,
+              firstName: true,
+              lastName: true,
+            },
+          },
           _count: {
             select: { services: true, views: true },
           },
@@ -169,6 +207,69 @@ router.get(
         skip,
         take,
         orderBy: { createdAt: 'desc' },
+      }),
+      prisma.proposal.count({ where }),
+    ]);
+
+    res.json({
+      success: true,
+      data: proposals,
+      meta: {
+        page: parseInt(page as string),
+        limit: take,
+        total,
+        totalPages: Math.ceil(total / take),
+      },
+    });
+  })
+);
+
+/**
+ * GET /api/proposals/approval-queue
+ * List proposals awaiting partner approval (for approvers)
+ */
+router.get(
+  '/approval-queue',
+  authenticate,
+  authorize(...APPROVER_ROLES),
+  asyncHandler(async (req, res) => {
+    const { page = '1', limit = '20' } = req.query;
+    const skip = (parseInt(page as string) - 1) * parseInt(limit as string);
+    const take = parseInt(limit as string);
+
+    const where = {
+      tenantId: req.tenantId,
+      approvalStatus: 'PENDING' as ApprovalStatus,
+      status: 'DRAFT' as ProposalStatus,
+    };
+
+    const [proposals, total] = await Promise.all([
+      prisma.proposal.findMany({
+        where,
+        include: {
+          client: {
+            select: {
+              id: true,
+              name: true,
+              companyType: true,
+              contactEmail: true,
+            },
+          },
+          createdBy: {
+            select: {
+              id: true,
+              firstName: true,
+              lastName: true,
+              email: true,
+            },
+          },
+          _count: {
+            select: { services: true },
+          },
+        },
+        skip,
+        take,
+        orderBy: { submittedForApprovalAt: 'asc' },
       }),
       prisma.proposal.count({ where }),
     ]);
@@ -328,6 +429,7 @@ router.get(
             email: true,
           },
         },
+        ...proposalApprovalInclude,
         documents: true,
         signatures: {
           orderBy: { signedAt: 'desc' },
@@ -691,6 +793,209 @@ router.put(
 );
 
 /**
+ * POST /api/proposals/:id/submit-for-approval
+ * Junior/senior staff submit a draft for partner approval before sending
+ */
+router.post(
+  '/:id/submit-for-approval',
+  authenticate,
+  authorize(...SUBMITTER_ROLES, ...APPROVER_ROLES),
+  asyncHandler(async (req, res) => {
+    const { id } = req.params;
+
+    const proposal = await prisma.proposal.findFirst({
+      where: { id, tenantId: req.tenantId },
+      include: { client: { select: { name: true } } },
+    });
+
+    if (!proposal) {
+      throw new ApiError('NOT_FOUND', 'Proposal not found', 404);
+    }
+
+    if (proposal.status !== 'DRAFT') {
+      throw new ApiError('INVALID_STATUS', 'Only draft proposals can be submitted for approval', 400);
+    }
+
+    if (!['NONE', 'REJECTED'].includes(proposal.approvalStatus)) {
+      throw new ApiError(
+        'INVALID_APPROVAL_STATUS',
+        'Proposal is already submitted or approved',
+        400
+      );
+    }
+
+    const updated = await prisma.proposal.update({
+      where: { id },
+      data: {
+        approvalStatus: 'PENDING',
+        submittedForApprovalAt: new Date(),
+        rejectionReason: null,
+        approvedAt: null,
+        approvedById: null,
+        approvalNotes: null,
+      },
+      include: {
+        client: { select: { id: true, name: true } },
+        createdBy: { select: { id: true, firstName: true, lastName: true } },
+        ...proposalApprovalInclude,
+      },
+    });
+
+    await prisma.activityLog.create({
+      data: {
+        tenantId: req.tenantId!,
+        userId: req.user!.id,
+        proposalId: id,
+        action: 'PROPOSAL_SUBMITTED_FOR_APPROVAL',
+        entityType: 'PROPOSAL',
+        entityId: id,
+        description: `Submitted proposal "${proposal.title}" for partner approval`,
+      },
+    });
+
+    res.json({
+      success: true,
+      data: updated,
+      message: 'Proposal submitted for partner approval',
+    });
+  })
+);
+
+/**
+ * POST /api/proposals/:id/approve
+ * Partner/manager approves a pending proposal
+ */
+router.post(
+  '/:id/approve',
+  authenticate,
+  authorize(...APPROVER_ROLES),
+  asyncHandler(async (req, res) => {
+    const { id } = req.params;
+    const body = z
+      .object({
+        approvalNotes: z.string().max(2000).optional(),
+      })
+      .parse(req.body ?? {});
+
+    const proposal = await prisma.proposal.findFirst({
+      where: { id, tenantId: req.tenantId },
+    });
+
+    if (!proposal) {
+      throw new ApiError('NOT_FOUND', 'Proposal not found', 404);
+    }
+
+    if (proposal.approvalStatus !== 'PENDING') {
+      throw new ApiError('INVALID_APPROVAL_STATUS', 'Proposal is not awaiting approval', 400);
+    }
+
+    const updated = await prisma.proposal.update({
+      where: { id },
+      data: {
+        approvalStatus: 'APPROVED',
+        approvedAt: new Date(),
+        approvedById: req.user!.id,
+        approvalNotes: body.approvalNotes ?? null,
+        rejectionReason: null,
+      },
+      include: {
+        client: { select: { id: true, name: true } },
+        createdBy: { select: { id: true, firstName: true, lastName: true } },
+        ...proposalApprovalInclude,
+      },
+    });
+
+    await prisma.activityLog.create({
+      data: {
+        tenantId: req.tenantId!,
+        userId: req.user!.id,
+        proposalId: id,
+        action: 'PROPOSAL_APPROVED',
+        entityType: 'PROPOSAL',
+        entityId: id,
+        description: `Approved proposal "${proposal.title}"`,
+        metadata: JSON.stringify({ approvalNotes: body.approvalNotes ?? null }),
+      },
+    });
+
+    res.json({
+      success: true,
+      data: updated,
+      message: 'Proposal approved',
+    });
+  })
+);
+
+/**
+ * POST /api/proposals/:id/reject
+ * Partner/manager rejects a pending proposal with a reason
+ */
+router.post(
+  '/:id/reject',
+  authenticate,
+  authorize(...APPROVER_ROLES),
+  asyncHandler(async (req, res) => {
+    const { id } = req.params;
+    const body = z
+      .object({
+        rejectionReason: z.string().min(1, 'Rejection reason is required').max(2000),
+        approvalNotes: z.string().max(2000).optional(),
+      })
+      .parse(req.body ?? {});
+
+    const proposal = await prisma.proposal.findFirst({
+      where: { id, tenantId: req.tenantId },
+    });
+
+    if (!proposal) {
+      throw new ApiError('NOT_FOUND', 'Proposal not found', 404);
+    }
+
+    if (proposal.approvalStatus !== 'PENDING') {
+      throw new ApiError('INVALID_APPROVAL_STATUS', 'Proposal is not awaiting approval', 400);
+    }
+
+    const updated = await prisma.proposal.update({
+      where: { id },
+      data: {
+        approvalStatus: 'REJECTED',
+        rejectionReason: body.rejectionReason,
+        approvalNotes: body.approvalNotes ?? null,
+        approvedAt: null,
+        approvedById: null,
+      },
+      include: {
+        client: { select: { id: true, name: true } },
+        createdBy: { select: { id: true, firstName: true, lastName: true } },
+        ...proposalApprovalInclude,
+      },
+    });
+
+    await prisma.activityLog.create({
+      data: {
+        tenantId: req.tenantId!,
+        userId: req.user!.id,
+        proposalId: id,
+        action: 'PROPOSAL_REJECTED',
+        entityType: 'PROPOSAL',
+        entityId: id,
+        description: `Rejected proposal "${proposal.title}"`,
+        metadata: JSON.stringify({
+          rejectionReason: body.rejectionReason,
+          approvalNotes: body.approvalNotes ?? null,
+        }),
+      },
+    });
+
+    res.json({
+      success: true,
+      data: updated,
+      message: 'Proposal rejected',
+    });
+  })
+);
+
+/**
  * POST /api/proposals/:id/send
  * Send proposal to client via email with PDF
  */
@@ -698,6 +1003,7 @@ router.post(
   '/:id/send',
   authenticate,
   authorize('ADMIN', 'PARTNER', 'MANAGER', 'SENIOR'),
+  requireActiveSubscription,
   asyncHandler(async (req, res) => {
     const { id } = req.params;
     const sendBody = z
@@ -727,6 +1033,33 @@ router.post(
 
     if (proposal.status !== 'DRAFT') {
       throw new ApiError('INVALID_STATUS', 'Proposal must be in draft status to send', 400);
+    }
+
+    const userRole = req.user!.role;
+    const overrideApproval = canOverrideApproval(userRole);
+
+    if (proposal.approvalStatus === 'PENDING' && !overrideApproval) {
+      throw new ApiError(
+        'APPROVAL_PENDING',
+        'This proposal is awaiting partner approval and cannot be sent yet',
+        403
+      );
+    }
+
+    if (proposal.approvalStatus === 'REJECTED' && !overrideApproval) {
+      throw new ApiError(
+        'APPROVAL_REJECTED',
+        'This proposal was rejected. Revise and resubmit for partner approval before sending',
+        403
+      );
+    }
+
+    if (!canSendProposal(userRole, proposal.approvalStatus)) {
+      throw new ApiError(
+        'APPROVAL_REQUIRED',
+        'Partner approval is required before this proposal can be sent',
+        403
+      );
     }
 
     if (!proposal.client.contactEmail) {
@@ -794,13 +1127,30 @@ router.post(
       throw new ApiError('EMAIL_SEND_FAILED', `Failed to send email: ${emailResult.error}`, 500);
     }
 
-    // Update status
+    // Update status (partners/admins sending without prior approval are auto-approved)
+    const sendUpdateData: {
+      status: ProposalStatus;
+      sentAt: Date;
+      approvalStatus?: ApprovalStatus;
+      approvedAt?: Date;
+      approvedById?: string;
+    } = {
+      status: 'SENT',
+      sentAt: new Date(),
+    };
+
+    if (
+      overrideApproval &&
+      proposal.approvalStatus !== 'APPROVED'
+    ) {
+      sendUpdateData.approvalStatus = 'APPROVED';
+      sendUpdateData.approvedAt = new Date();
+      sendUpdateData.approvedById = req.user!.id;
+    }
+
     const updatedProposal = await prisma.proposal.update({
       where: { id },
-      data: {
-        status: 'SENT',
-        sentAt: new Date(),
-      },
+      data: sendUpdateData,
     });
 
     // Log activity
@@ -814,6 +1164,9 @@ router.post(
         description: `Sent proposal "${proposal.title}" to ${proposal.client.name} via email`,
       },
     });
+
+    const { emitIntegrationEvent } = await import('../services/integrationEvents.js');
+    void emitIntegrationEvent(req.tenantId!, proposal.id, 'proposal.sent');
 
     res.json({
       success: true,

@@ -19,6 +19,8 @@ export interface TenantXeroSettings {
   connectedByUserId?: string;
   lastImportAt?: string;
   lastPushAt?: string;
+  /** Default Xero revenue account code for repeating invoices (e.g. 200) */
+  defaultRevenueAccountCode?: string;
 }
 
 export interface TenantSettingsJson {

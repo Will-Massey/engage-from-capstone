@@ -301,6 +301,7 @@ export const csrfProtection = async (
     '/onboarding', // AML self-service form (public, portal token)
     '/webhooks/sendgrid', // SendGrid delivery events
     '/webhooks/cloudflare-email', // Cloudflare delivery events
+    '/aml/webhook', // AML partner results webhook
     '/admin/seed-services', // One-click admin seed endpoint
     '/automation/migrate-service-pricing', // Data migration endpoint (protected by secret key)
     '/setup/migrate-pricing', // v2 pricing data migration

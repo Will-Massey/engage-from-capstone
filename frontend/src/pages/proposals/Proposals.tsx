@@ -67,7 +67,8 @@ const Proposals = () => {
       const response = (await apiClient.getProposals({
         page: meta.page,
         limit: 20,
-        status: statusFilter || undefined,
+        status: statusFilter && statusFilter !== 'AWAITING_APPROVAL' ? statusFilter : undefined,
+        approvalStatus: statusFilter === 'AWAITING_APPROVAL' ? 'PENDING' : undefined,
         search: searchQuery || undefined,
       })) as any;
 
@@ -280,6 +281,7 @@ const Proposals = () => {
             >
               <option value="">All Status</option>
               <option value="DRAFT">Draft</option>
+              <option value="AWAITING_APPROVAL">Awaiting approval</option>
               <option value="SENT">Sent</option>
               <option value="ACCEPTED">Accepted</option>
               <option value="DECLINED">Declined</option>
@@ -406,6 +408,16 @@ const Proposals = () => {
                               <CheckCircleIcon className="h-4 w-4 text-green-500" title="Signed" />
                             )}
                           </div>
+                          {proposal.status === 'DRAFT' && proposal.approvalStatus === 'PENDING' && (
+                            <span className="inline-flex px-2 py-0.5 rounded text-xs font-medium bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-200">
+                              Awaiting partner approval
+                            </span>
+                          )}
+                          {proposal.status === 'DRAFT' && proposal.approvalStatus === 'REJECTED' && (
+                            <span className="inline-flex px-2 py-0.5 rounded text-xs font-medium bg-red-100 text-red-800 dark:bg-red-900/40 dark:text-red-200">
+                              Rejected
+                            </span>
+                          )}
                           {/* Renewal Badge */}
                           {proposal.status === 'ACCEPTED' &&
                             proposal.renewalDate &&
