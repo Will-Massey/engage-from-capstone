@@ -493,10 +493,12 @@ model Proposal {
   paymentFrequency PricingFrequency @default(MONTHLY)
 
   // Content
-  coverLetter  String?
-  terms        String?
-  notes        String?
-  customFields String @default("{}")
+  coverLetter      String?
+  /// Client-facing narrative — services, benefits, positive NLP (AI-generated, editable)
+  proposalSummary  String?
+  terms            String?
+  notes            String?
+  customFields     String @default("{}")
 
   // UK Compliant Engagement Letter
   engagementLetter String?

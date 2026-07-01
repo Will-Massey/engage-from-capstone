@@ -13,6 +13,7 @@ import {
   calculateHeaderTotals,
 } from '../utils/proposalPricing.js';
 import { serializeProposalServicesForApi } from '../utils/proposalServiceSnapshot.js';
+import { formatUserRole } from '../utils/proposalDisplay.js';
 import {
   addDays,
   getProposalSettings,
@@ -50,6 +51,14 @@ function canSendProposal(role: UserRole, approvalStatus: ApprovalStatus): boolea
     return true;
   }
   return approvalStatus === 'APPROVED';
+}
+
+async function resolveSenderPosition(userId: string, role: UserRole): Promise<string | undefined> {
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { jobTitle: true, role: true },
+  });
+  return user?.jobTitle?.trim() || formatUserRole(user?.role || role);
 }
 
 const proposalApprovalInclude = {
@@ -92,6 +101,7 @@ const createProposalSchema = z.object({
   paymentTerms: z.string().optional(),
   paymentFrequency: z.nativeEnum(PricingFrequency).optional(),
   coverLetter: z.string().optional(),
+  proposalSummary: z.string().max(4000).optional(),
   engagementLetter: z.string().optional(),
   terms: z.string().optional(),
   notes: z.string().optional(),
@@ -125,6 +135,7 @@ const updateProposalSchema = z.object({
     .optional(),
   paymentTerms: z.string().optional(),
   coverLetter: z.string().optional(),
+  proposalSummary: z.string().max(4000).optional(),
   engagementLetter: z.string().optional(),
   terms: z.string().optional(),
   notes: z.string().optional(),
@@ -560,6 +571,7 @@ router.post(
         paymentTerms: data.paymentTerms || '30 days',
         paymentFrequency: data.paymentFrequency || 'MONTHLY',
         coverLetter: data.coverLetter,
+        proposalSummary: data.proposalSummary,
         engagementLetter: data.engagementLetter,
         terms: data.terms,
         notes: data.notes,
@@ -638,6 +650,7 @@ router.put(
       title: data.title,
       paymentTerms: data.paymentTerms,
       coverLetter: data.coverLetter,
+      proposalSummary: data.proposalSummary,
       engagementLetter: data.engagementLetter,
       terms: data.terms,
       notes: data.notes,
@@ -1105,7 +1118,7 @@ router.post(
         proposalReference: proposal.reference,
         viewLink,
         senderName: Array.from(new Set([req.user!.firstName, req.user!.lastName].filter(Boolean))).join(' '),
-        senderPosition: req.user!.role,
+        senderPosition: await resolveSenderPosition(req.user!.id, req.user!.role),
         senderEmail: req.user!.email,
         validUntil: new Date(proposal.validUntil).toLocaleDateString('en-GB', {
           day: 'numeric',

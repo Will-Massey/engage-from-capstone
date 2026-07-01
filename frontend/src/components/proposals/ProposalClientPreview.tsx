@@ -23,8 +23,12 @@ export interface ProposalClientPreviewProps {
   practiceLogo?: string | null;
   primaryColor?: string;
   clientName: string;
+  clientContactName?: string;
+  preparedByName?: string;
+  preparedByTitle?: string;
   proposalTitle: string;
   coverLetter?: string;
+  proposalSummary?: string;
   services: PreviewServiceLine[];
   summary: PreviewPricingSummary;
   validUntil?: string;
@@ -113,14 +117,20 @@ export default function ProposalClientPreview({
   practiceLogo,
   primaryColor = '#0ea5e9',
   clientName,
+  clientContactName,
+  preparedByName,
+  preparedByTitle,
   proposalTitle,
   coverLetter = '',
+  proposalSummary = '',
   services,
   summary,
   validUntil,
   showCoverLetter = true,
   compact = false,
 }: ProposalClientPreviewProps) {
+  const contact = clientContactName?.trim();
+  const showCompanyUnderContact = contact && clientName && contact !== clientName;
   const validUntilLabel = formatValidUntil(validUntil);
 
   return (
@@ -153,9 +163,33 @@ export default function ProposalClientPreview({
       </div>
 
       <div className={`p-4 sm:p-5 space-y-4 ${compact ? '' : 'max-h-[calc(100vh-12rem)] overflow-y-auto'}`}>
-        <div>
-          <p className="text-xs uppercase tracking-wide text-slate-500 dark:text-slate-400">Prepared for</p>
-          <p className="text-sm font-medium text-slate-800 dark:text-slate-200">{clientName}</p>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div>
+            <p className="text-xs uppercase tracking-wide font-semibold" style={{ color: primaryColor }}>
+              Prepared for
+            </p>
+            {contact && (
+              <p className="text-sm font-semibold text-slate-900 dark:text-white mt-1">{contact}</p>
+            )}
+            {showCompanyUnderContact && (
+              <p className="text-sm text-slate-700 dark:text-slate-300">{clientName}</p>
+            )}
+            {!contact && (
+              <p className="text-sm font-medium text-slate-800 dark:text-slate-200 mt-1">{clientName}</p>
+            )}
+          </div>
+          {preparedByName && (
+            <div>
+              <p className="text-xs uppercase tracking-wide font-semibold" style={{ color: primaryColor }}>
+                Prepared by
+              </p>
+              <p className="text-sm font-semibold text-slate-900 dark:text-white mt-1">{preparedByName}</p>
+              {preparedByTitle && (
+                <p className="text-sm text-slate-600 dark:text-slate-400">{preparedByTitle}</p>
+              )}
+              <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">{practiceName}</p>
+            </div>
+          )}
         </div>
 
         <div>
@@ -168,10 +202,32 @@ export default function ProposalClientPreview({
         </div>
 
         {showCoverLetter && coverLetter.trim() && (
-          <div className="rounded-xl bg-slate-50 dark:bg-slate-800/50 p-3 border border-slate-100 dark:border-slate-700">
-            <p className="text-sm text-slate-700 dark:text-slate-300 whitespace-pre-wrap leading-relaxed">
-              {coverLetter}
-            </p>
+          <div>
+            <h4 className="text-xs font-semibold uppercase tracking-wide mb-2" style={{ color: primaryColor }}>
+              Cover letter
+            </h4>
+            <div className="rounded-xl bg-slate-50 dark:bg-slate-800/50 p-3 border border-slate-100 dark:border-slate-700">
+              <p className="text-sm text-slate-700 dark:text-slate-300 whitespace-pre-wrap leading-relaxed">
+                {coverLetter}
+              </p>
+            </div>
+          </div>
+        )}
+
+        {proposalSummary.trim() && (
+          <div>
+            <h4 className="text-xs font-semibold uppercase tracking-wide mb-2" style={{ color: primaryColor }}>
+              Your proposal
+            </h4>
+            <div
+              className="rounded-xl p-4 border text-sm leading-relaxed text-slate-700 dark:text-slate-200"
+              style={{
+                borderColor: `${primaryColor}33`,
+                background: `linear-gradient(135deg, ${primaryColor}08, transparent)`,
+              }}
+            >
+              {proposalSummary}
+            </div>
           </div>
         )}
 

@@ -35,6 +35,7 @@ import { AI_FEATURE_FLAGS } from '../config/featureFlags.js';
 import { getRegulatoryAlerts } from '../services/ai/regulatoryWatcherService.js';
 import { getBenchmarkPricing } from '../services/ai/benchmarkPricingService.js';
 import { draftProposalFromVoice } from '../services/ai/voiceProposalService.js';
+import { generateProposalExplanation } from '../services/ai/proposalExplanationService.js';
 import { AI_COPILOT } from '../config/aiCopilot.js';
 import { shouldSkipRateLimit } from '../utils/securityFlags.js';
 
@@ -527,6 +528,46 @@ Return ONLY the revised plain text body (no subject, no extra commentary). Keep 
     );
 
     res.json({ success: true, data: { revisedBody: revised.trim() } });
+  })
+);
+
+/** Token-efficient client-facing proposal narrative (~110 tokens) */
+router.post(
+  '/proposal-explanation',
+  authenticate,
+  asyncHandler(async (req, res) => {
+    const body = z
+      .object({
+        clientId: z.string().uuid(),
+        title: z.string().min(1),
+        services: z
+          .array(
+            z.object({
+              name: z.string(),
+              billingFrequency: z.string().optional(),
+              billingCycle: z.string().optional(),
+            })
+          )
+          .min(1),
+        monthlyTotal: z.number().optional(),
+        annualTotal: z.number().optional(),
+        contractTotal: z.number().optional(),
+      })
+      .parse(req.body);
+
+    const explanation = await generateProposalExplanation(req.tenantId!, req.user?.id, {
+      clientId: body.clientId,
+      title: body.title,
+      services: body.services.map((s) => ({
+        name: s.name,
+        billingFrequency: s.billingFrequency,
+        billingCycle: s.billingCycle,
+      })),
+      monthlyTotal: body.monthlyTotal,
+      annualTotal: body.annualTotal,
+      contractTotal: body.contractTotal,
+    });
+    res.json({ success: true, data: { explanation } });
   })
 );
 

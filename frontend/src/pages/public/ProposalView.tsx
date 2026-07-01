@@ -612,14 +612,45 @@ const PublicProposalView = () => {
           </div>
 
           {/* Client */}
-          <div className="border-t pt-6">
-            <h3 className="text-sm font-medium text-slate-600 uppercase tracking-wide">
-              Prepared For
-            </h3>
-            <p className="mt-1 text-lg font-medium text-slate-900 dark:text-white">{proposal.client.name}</p>
-            <p className="text-sm text-slate-600 capitalize">
-              {proposal.client.companyType.replace(/_/g, ' ')}
-            </p>
+          <div className="border-t pt-6 grid sm:grid-cols-2 gap-6">
+            <div>
+              <h3 className="text-sm font-medium text-slate-600 uppercase tracking-wide">
+                Prepared For
+              </h3>
+              {proposal.client.contactName?.trim() && (
+                <p className="mt-1 text-lg font-semibold text-slate-900 dark:text-white">
+                  {proposal.client.contactName.trim()}
+                </p>
+              )}
+              <p
+                className={`${
+                  proposal.client.contactName?.trim() ? 'text-base text-slate-700' : 'mt-1 text-lg font-medium text-slate-900 dark:text-white'
+                }`}
+              >
+                {proposal.client.name}
+              </p>
+              <p className="text-sm text-slate-600 capitalize">
+                {proposal.client.companyType.replace(/_/g, ' ')}
+              </p>
+            </div>
+            {proposal.createdBy && (
+              <div>
+                <h3 className="text-sm font-medium text-slate-600 uppercase tracking-wide">
+                  Prepared By
+                </h3>
+                <p className="mt-1 text-lg font-semibold text-slate-900 dark:text-white">
+                  {[proposal.createdBy.firstName, proposal.createdBy.lastName].filter(Boolean).join(' ')}
+                </p>
+                {(proposal.createdBy as { jobTitle?: string }).jobTitle && (
+                  <p className="text-sm text-slate-600">
+                    {(proposal.createdBy as { jobTitle?: string }).jobTitle}
+                  </p>
+                )}
+                {proposal.tenant?.name && (
+                  <p className="text-sm text-slate-500 mt-0.5">{proposal.tenant.name}</p>
+                )}
+              </div>
+            )}
           </div>
 
           {/* Cover Letter */}
@@ -632,6 +663,17 @@ const PublicProposalView = () => {
                 {proposal.coverLetter.split('\n').map((paragraph, i) => (
                   <p key={i}>{paragraph}</p>
                 ))}
+              </div>
+            </div>
+          )}
+
+          {(proposal as { proposalSummary?: string }).proposalSummary && (
+            <div className="border-t pt-6">
+              <h3 className="text-sm font-semibold text-primary-700 dark:text-primary-300 uppercase tracking-wide">
+                Your Proposal
+              </h3>
+              <div className="mt-3 rounded-xl border border-primary-100 bg-primary-50/40 dark:bg-primary-950/20 p-4 prose prose-sm max-w-none text-slate-800 dark:text-slate-200">
+                {(proposal as { proposalSummary?: string }).proposalSummary}
               </div>
             </div>
           )}

@@ -713,6 +713,15 @@ export const apiClient = {
   aiCoverLetterRevise: (currentBody: string, instruction: string, context?: any) =>
     api.post('/ai/cover-letter-revise', { currentBody, instruction, context }),
 
+  aiProposalExplanation: (data: {
+    clientId: string;
+    title: string;
+    services: Array<{ name: string; billingFrequency?: string; billingCycle?: string }>;
+    monthlyTotal?: number;
+    annualTotal?: number;
+    contractTotal?: number;
+  }) => api.post('/ai/proposal-explanation', data),
+
   aiSuggestEmailSubjects: (body: string, context?: any) =>
     api.post('/ai/suggest-email-subjects', { body, context }),
 

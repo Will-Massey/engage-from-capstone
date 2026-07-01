@@ -4,6 +4,11 @@ import PDFDocument from 'pdfkit';
 // Use any for the document type to avoid TS2749 errors
 type PDFDoc = any;
 import { prisma } from '../config/database.js';
+import {
+  parseClientAddress,
+  preparedForLines,
+  senderPosition,
+} from '../utils/proposalDisplay.js';
 
 interface ProposalData {
   id: string;
@@ -18,6 +23,7 @@ interface ProposalData {
   paymentTerms: string;
   paymentFrequency: string;
   coverLetter?: string;
+  proposalSummary?: string;
   terms?: string;
   notes?: string;
   createdAt: Date;
@@ -39,6 +45,8 @@ interface ProposalData {
     firstName: string;
     lastName: string;
     email: string;
+    jobTitle?: string | null;
+    role?: string | null;
   };
   services: Array<{
     name: string;
@@ -92,7 +100,7 @@ export class PDFGenerator {
           },
         },
         createdBy: {
-          select: { firstName: true, lastName: true, email: true },
+          select: { firstName: true, lastName: true, email: true, jobTitle: true, role: true },
         },
         services: true,
         tenant: true,
@@ -246,15 +254,19 @@ export class PDFGenerator {
           '#0ea5e9';
         const secondaryColor = '#666666';
 
-        // ========== HEADER ==========
+        // ========== PAGE 1: HEADER + PARTIES ==========
         this.drawHeader(doc, proposal, primaryColor, logoBuffer);
-
-        // ========== CLIENT INFO ==========
-        this.drawClientInfo(doc, proposal);
+        this.drawClientInfo(doc, proposal, primaryColor);
 
         // ========== COVER LETTER ==========
         doc.addPage();
-        this.drawCoverLetter(doc, proposal);
+        this.drawCoverLetter(doc, proposal, primaryColor);
+
+        // ========== CLIENT NARRATIVE (AI / editable) ==========
+        if (proposal.proposalSummary?.trim()) {
+          doc.addPage();
+          this.drawProposalSummary(doc, proposal, primaryColor);
+        }
 
         // ========== SERVICES ==========
         doc.addPage();
@@ -322,76 +334,108 @@ export class PDFGenerator {
       .text(`Date: ${this.formatDate(proposal.createdAt)}`, { align: 'right' })
       .text(`Valid until: ${this.formatDate(proposal.validUntil)}`, { align: 'right' });
 
-    // Divider line — drawn below the logo area so it never intersects
-    const dividerY = Math.max(logoBottomY, doc.y + 10);
+    const dividerY = logoBottomY + 12;
     doc.moveTo(50, dividerY).lineTo(550, dividerY).strokeColor(primaryColor).lineWidth(2).stroke();
 
-    // Title
-    doc.moveDown(3).fontSize(20).fillColor('#333333').text(proposal.title, { align: 'center' });
-
-    doc.moveDown(1);
+    const titleY = dividerY + 28;
+    doc.fontSize(20).fillColor('#333333').text(proposal.title, 50, titleY, {
+      align: 'center',
+      width: 500,
+    });
+    doc.y = titleY + 36;
   }
 
   /**
    * Draw client information
    */
-  private static drawClientInfo(doc: PDFDoc, proposal: ProposalData) {
-    const startY = doc.y + 20;
+  private static drawClientInfo(doc: PDFDoc, proposal: ProposalData, primaryColor: string) {
+    const startY = doc.y + 16;
+    const leftX = 50;
+    const rightX = 320;
+    const colWidth = 240;
 
-    // Prepared for
-    doc.fontSize(12).fillColor('#333333').text('Prepared for:', 50, startY);
+    doc.fontSize(10).fillColor(primaryColor).text('PREPARED FOR', leftX, startY, { width: colWidth });
+    doc.fontSize(10).fillColor(primaryColor).text('PREPARED BY', rightX, startY, { width: colWidth });
 
-    doc.fontSize(11).fillColor('#666666');
+    doc.fontSize(11).fillColor('#444444');
+    let leftY = startY + 18;
+    let rightY = startY + 18;
 
-    let y = startY + 20;
-    doc.text(proposal.client.name, 50, y);
-    y += 15;
-
-    if (proposal.client.address) {
-      const addr = proposal.client.address;
-      if (addr.line1) doc.text(addr.line1, 50, y);
-      y += 15;
-      if (addr.line2) {
-        doc.text(addr.line2, 50, y);
-        y += 15;
-      }
-      if (addr.city) {
-        doc.text(`${addr.city}${addr.postcode ? ', ' + addr.postcode : ''}`, 50, y);
-        y += 15;
-      }
+    for (const line of preparedForLines(proposal.client)) {
+      doc.fontSize(11).fillColor('#333333').text(line, leftX, leftY, { width: colWidth });
+      leftY += 14;
     }
 
-    y += 10;
-    doc.text(`Email: ${proposal.client.contactEmail}`, 50, y);
+    const addr = parseClientAddress(proposal.client.address);
+    if (addr?.line1) {
+      doc.fontSize(10).fillColor('#666666').text(addr.line1, leftX, leftY, { width: colWidth });
+      leftY += 13;
+    }
+    if (addr?.line2) {
+      doc.text(addr.line2, leftX, leftY, { width: colWidth });
+      leftY += 13;
+    }
+    if (addr?.city || addr?.postcode) {
+      doc.text(
+        [addr.city, addr.postcode].filter(Boolean).join(', '),
+        leftX,
+        leftY,
+        { width: colWidth }
+      );
+      leftY += 13;
+    }
 
+    if (proposal.client.contactEmail) {
+      doc.text(proposal.client.contactEmail, leftX, leftY, { width: colWidth });
+      leftY += 13;
+    }
     if (proposal.client.contactPhone) {
-      y += 15;
-      doc.text(`Phone: ${proposal.client.contactPhone}`, 50, y);
+      doc.text(proposal.client.contactPhone, leftX, leftY, { width: colWidth });
+      leftY += 13;
     }
 
-    if (proposal.client.companyNumber) {
-      y += 15;
-      doc.text(`Company No: ${proposal.client.companyNumber}`, 50, y);
+    const senderName = `${proposal.createdBy.firstName} ${proposal.createdBy.lastName}`.trim();
+    const position = senderPosition(proposal.createdBy);
+    doc.fontSize(11).fillColor('#333333').text(senderName, rightX, rightY, { width: colWidth });
+    rightY += 14;
+    if (position) {
+      doc.fontSize(10).fillColor('#666666').text(position, rightX, rightY, { width: colWidth });
+      rightY += 13;
     }
+    doc.text(proposal.createdBy.email, rightX, rightY, { width: colWidth });
+    rightY += 13;
+    doc.fontSize(10).fillColor(primaryColor).text(proposal.tenant.name, rightX, rightY, {
+      width: colWidth,
+    });
+    rightY += 13;
 
-    // Prepared by
-    const rightX = 300;
-    doc.fontSize(12).fillColor('#333333').text('Prepared by:', rightX, startY);
+    doc.y = Math.max(leftY, rightY) + 12;
+  }
 
-    doc.fontSize(11).fillColor('#666666');
+  /**
+   * Client-facing proposal narrative — services, benefits, reassurance.
+   */
+  private static drawProposalSummary(doc: PDFDoc, proposal: ProposalData, primaryColor: string) {
+    doc.fontSize(18).fillColor(primaryColor).text('Your Proposal', { align: 'center' });
+    doc.moveDown(0.4);
+    doc.moveTo(180, doc.y).lineTo(420, doc.y).strokeColor('#dddddd').lineWidth(1).stroke();
+    doc.moveDown(1);
 
-    y = startY + 20;
-    doc.text(`${proposal.createdBy.firstName} ${proposal.createdBy.lastName}`, rightX, y);
-    y += 15;
-    doc.text(proposal.createdBy.email, rightX, y);
+    doc.fontSize(11).fillColor('#444444');
+    const paragraphs = proposal.proposalSummary!.split(/\n{2,}/);
+    for (const paragraph of paragraphs) {
+      if (paragraph.trim()) {
+        doc.text(paragraph.trim(), { align: 'justify', lineGap: 6 });
+        doc.moveDown(0.8);
+      }
+    }
   }
 
   /**
    * Draw cover letter / Introduction
    */
-  private static drawCoverLetter(doc: PDFDoc, proposal: ProposalData) {
-    // Introduction Header
-    doc.fontSize(18).fillColor('#333333').text('Introduction', { align: 'center' });
+  private static drawCoverLetter(doc: PDFDoc, proposal: ProposalData, primaryColor: string) {
+    doc.fontSize(18).fillColor(primaryColor).text('Cover Letter', { align: 'center' });
 
     doc.moveDown(1);
 
@@ -420,7 +464,7 @@ We are happy to discuss any aspect of this proposal at your convenience.
 Yours sincerely,
 
 ${proposal.createdBy.firstName} ${proposal.createdBy.lastName}
-${proposal.tenant.name}`;
+${senderPosition(proposal.createdBy) ? `${senderPosition(proposal.createdBy)}, ` : ''}${proposal.tenant.name}`;
 
       const paragraphs = defaultIntro.split('\n\n');
       paragraphs.forEach((paragraph) => {

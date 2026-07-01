@@ -82,6 +82,13 @@ export async function getProposalByShareToken(token: string) {
       },
       include: {
         client: true,
+        createdBy: {
+          select: {
+            firstName: true,
+            lastName: true,
+            jobTitle: true,
+          },
+        },
         tenant: {
           select: {
             id: true,

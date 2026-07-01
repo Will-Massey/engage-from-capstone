@@ -415,6 +415,8 @@ export default function ProposalBuilder({ proposalId }: ProposalBuilderProps) {
   // Step 3: Review
   const [proposalTitle, setProposalTitle] = useState('');
   const [coverLetter, setCoverLetter] = useState('');
+  const [proposalSummary, setProposalSummary] = useState('');
+  const [summaryLoading, setSummaryLoading] = useState(false);
   const [coverLetterTone, setCoverLetterTone] = useState<CoverLetterTone>('PROFESSIONAL');
   const [coverLetterCustomInstruction, setCoverLetterCustomInstruction] = useState('');
   const [applyingCoverLetterTweak, setApplyingCoverLetterTweak] = useState(false);
@@ -722,6 +724,7 @@ export default function ProposalBuilder({ proposalId }: ProposalBuilderProps) {
         companyName: client.name,
         tenantName: tenant?.name || 'Our practice',
         senderName: `${user?.firstName || ''} ${user?.lastName || ''}`.trim() || undefined,
+        senderPosition: user?.jobTitle?.trim() || undefined,
         serviceCount: serviceCount ?? (selectedServices.length || undefined),
       })) as any;
 
@@ -1292,6 +1295,34 @@ export default function ProposalBuilder({ proposalId }: ProposalBuilderProps) {
     }
   };
 
+  const runGenerateProposalSummary = async () => {
+    if (!selectedClient || selectedServices.length === 0) {
+      toast.error('Add at least one service before generating the proposal narrative');
+      return;
+    }
+    setSummaryLoading(true);
+    try {
+      const res = (await apiClient.aiProposalExplanation({
+        clientId: selectedClient.id,
+        title: proposalTitle.trim() || 'Proposal',
+        services: selectedServices.map((s) => ({
+          name: s.name,
+          billingCycle: s.billingCycle,
+        })),
+        monthlyTotal: reviewMonthlyCostIncVat,
+        contractTotal: summary.contractTotalIncVat,
+      })) as any;
+      if (res?.success && res.data?.explanation) {
+        setProposalSummary(res.data.explanation);
+        toast.success('Client proposal narrative ready — review and edit if needed');
+      }
+    } catch (e) {
+      showAiError(e);
+    } finally {
+      setSummaryLoading(false);
+    }
+  };
+
   const applyAutoFitSection = (
     section: 'title' | 'services' | 'coverLetter' | 'pricing' | 'validUntil'
   ) => {
@@ -1580,6 +1611,7 @@ export default function ProposalBuilder({ proposalId }: ProposalBuilderProps) {
       const p = response.data;
       setProposalTitle(p.title || '');
       setCoverLetter(p.coverLetter || '');
+      setProposalSummary(p.proposalSummary || '');
       if (p.validUntil) {
         setValidUntil(format(new Date(p.validUntil), 'yyyy-MM-dd'));
       }
@@ -1713,9 +1745,10 @@ export default function ProposalBuilder({ proposalId }: ProposalBuilderProps) {
             companyName: selectedClient!.name,
             practiceName: tenant?.name || 'Our practice',
             senderName: `${user?.firstName || ''} ${user?.lastName || ''}`.trim() || undefined,
-            senderPosition: (user as any)?.jobTitle || undefined,
+            senderPosition: user?.jobTitle?.trim() || undefined,
             services: selectedServices,
           }),
+        ...(proposalSummary.trim() ? { proposalSummary: proposalSummary.trim() } : {}),
       };
 
       const response = isEditMode
@@ -2698,6 +2731,38 @@ export default function ProposalBuilder({ proposalId }: ProposalBuilderProps) {
         )}
       </div>
 
+      <div className="card p-4 border border-primary-100 dark:border-primary-900/40">
+        <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
+          <div>
+            <label className="block text-sm font-medium text-slate-700 dark:text-slate-200">
+              Your proposal for the client
+            </label>
+            <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+              A short, reassuring explanation of services and benefits — sits after the cover letter in the PDF.
+            </p>
+          </div>
+          {aiConfigured && (
+            <button
+              type="button"
+              onClick={() => void runGenerateProposalSummary()}
+              disabled={summaryLoading || selectedServices.length === 0}
+              className="text-xs inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg border border-primary-300 dark:border-primary-700 text-primary-700 dark:text-primary-300 hover:bg-primary-50 dark:hover:bg-primary-950/30 disabled:opacity-50"
+            >
+              <SparklesIcon className={`h-3.5 w-3.5 ${summaryLoading ? 'animate-pulse' : ''}`} />
+              {summaryLoading ? 'Writing…' : proposalSummary.trim() ? 'Regenerate' : `Draft with ${AI_COPILOT.name}`}
+            </button>
+          )}
+        </div>
+        <textarea
+          value={proposalSummary}
+          onChange={(e) => setProposalSummary(e.target.value)}
+          rows={5}
+          className="input-field w-full text-sm leading-relaxed"
+          placeholder="Click Draft with Clara for a concise, client-friendly summary of what you are proposing and why it helps them — or write your own."
+          aria-label="Proposal narrative for client"
+        />
+      </div>
+
       {validationErrors.length > 0 && (
         <div className="rounded-xl border border-amber-200 bg-amber-50/80 dark:bg-amber-950/20 dark:border-amber-800 p-4">
           <p className="text-sm font-medium text-amber-900 dark:text-amber-200">Before you send</p>
@@ -2865,8 +2930,12 @@ export default function ProposalBuilder({ proposalId }: ProposalBuilderProps) {
               practiceLogo={tenant?.logo}
               primaryColor={tenant?.primaryColor}
               clientName={selectedClient.name}
+              clientContactName={coverLetterAddressee(selectedClient)}
+              preparedByName={`${user?.firstName || ''} ${user?.lastName || ''}`.trim() || undefined}
+              preparedByTitle={user?.jobTitle?.trim() || undefined}
               proposalTitle={proposalTitle}
               coverLetter={coverLetter}
+              proposalSummary={proposalSummary}
               services={previewServices}
               summary={summary}
               validUntil={validUntil}

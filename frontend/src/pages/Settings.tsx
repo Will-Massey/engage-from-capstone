@@ -540,6 +540,14 @@ const Settings = () => {
       })) as any;
 
       if (response.success) {
+        if (tenant && response.data?.branding) {
+          setSession(user!, {
+            ...tenant,
+            name: response.data.branding.name || practiceForm.name,
+            logo: response.data.branding.logo ?? brandingForm.logo,
+            primaryColor: response.data.branding.primaryColor ?? brandingForm.primaryColor,
+          });
+        }
         toast.success('Practice settings saved successfully');
       } else {
         toast.error(response.error?.message || 'Failed to save settings');
@@ -586,6 +594,14 @@ const Settings = () => {
       })) as any;
 
       if (response.success) {
+        if (tenant && response.data?.branding) {
+          setSession(user!, {
+            ...tenant,
+            logo: response.data.branding.logo ?? brandingForm.logo,
+            primaryColor: response.data.branding.primaryColor ?? brandingForm.primaryColor,
+            name: response.data.branding.name || tenant.name,
+          });
+        }
         toast.success('Branding saved successfully');
       }
     } catch (error) {

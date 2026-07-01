@@ -201,6 +201,7 @@ router.post(
             lastName: true,
             email: true,
             role: true,
+            jobTitle: true,
           },
         },
         tenant: {
@@ -255,7 +256,15 @@ router.post(
         proposalReference: proposal.reference,
         viewLink: shareUrl,
         senderName,
-        senderPosition: proposal.createdBy.role,
+        senderPosition:
+          proposal.createdBy.jobTitle?.trim() ||
+          (proposal.createdBy.role
+            ? proposal.createdBy.role
+                .toLowerCase()
+                .split('_')
+                .map((w: string) => w.charAt(0).toUpperCase() + w.slice(1))
+                .join(' ')
+            : undefined),
         senderEmail: (proposal.createdBy as any).email,
         tenantName: (proposal as any).tenant?.name || tenant.name,
         validUntil: new Date(proposal.validUntil).toLocaleDateString('en-GB'),
@@ -538,14 +547,23 @@ router.get(
         total: proposal.total,
         paymentTerms: proposal.paymentTerms,
         coverLetter: proposal.coverLetter,
+        proposalSummary: proposal.proposalSummary,
         terms: proposal.terms,
         engagementLetter: proposal.engagementLetter,
         payment: paymentConfig,
         client: {
           name: proposal.client.name,
+          contactName: proposal.client.contactName,
           companyType: proposal.client.companyType,
           contactEmail: proposal.client.contactEmail,
         },
+        createdBy: proposal.createdBy
+          ? {
+              firstName: proposal.createdBy.firstName,
+              lastName: proposal.createdBy.lastName,
+              jobTitle: proposal.createdBy.jobTitle,
+            }
+          : undefined,
         tenant: {
           name: proposal.tenant.name,
           primaryColor: proposal.tenant.primaryColor,
