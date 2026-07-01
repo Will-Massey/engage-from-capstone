@@ -1,5 +1,5 @@
 import { lazy, Suspense, useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import {
   DocumentTextIcon,
   UsersIcon,
@@ -100,10 +100,20 @@ const Dashboard = () => {
   const [dateRange, setDateRange] = useState('30days');
   const [sentProposalCount, setSentProposalCount] = useState<number | null>(null);
   const [showFirstProposalWizard, setShowFirstProposalWizard] = useState(false);
+  const [searchParams, setSearchParams] = useSearchParams();
 
   useEffect(() => {
     loadDashboardData();
   }, []);
+
+  useEffect(() => {
+    if (searchParams.get('openWizard') === '1') {
+      setShowFirstProposalWizard(true);
+      const next = new URLSearchParams(searchParams);
+      next.delete('openWizard');
+      setSearchParams(next, { replace: true });
+    }
+  }, [searchParams, setSearchParams]);
 
   useEffect(() => {
     if (isLoading || sentProposalCount === null) return;

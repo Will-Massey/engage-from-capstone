@@ -3,46 +3,15 @@ import { expectNoErrorToasts, apiGet, expectOkApi } from '../fixtures/build-help
 
 test.describe('Build smoke — market leader batch (845effcf)', () => {
   test('First proposal wizard opens from dashboard', async ({ page }) => {
-    await page.goto('/');
+    await page.goto('/?openWizard=1');
     await page.waitForLoadState('domcontentloaded');
 
-    // Clear dismissal so auto-open can trigger when tenant has no sent proposals yet
-    await page.evaluate(() => {
-      try {
-        const raw = localStorage.getItem('engage-wizard-dismissed');
-        if (!raw) return;
-        const parsed = JSON.parse(raw) as Record<string, boolean>;
-        for (const key of Object.keys(parsed)) delete parsed[key];
-        localStorage.setItem('engage-wizard-dismissed', JSON.stringify(parsed));
-      } catch {
-        localStorage.removeItem('engage-wizard-dismissed');
-      }
-    });
-    await page.reload();
-    await page.waitForLoadState('networkidle');
-
     const dialog = page.getByRole('dialog');
-    const openBtn = page.getByRole('button', { name: /open first proposal wizard/i });
-
-    const dialogVisible = await dialog
-      .isVisible({ timeout: 8_000 })
-      .catch(() => false);
-
-    if (dialogVisible) {
-      await expect(dialog.getByText(/first proposal wizard/i)).toBeVisible();
-      await expect(
-        dialog.getByRole('heading', { name: /create your first proposal in five minutes/i })
-      ).toBeVisible();
-    } else if (await openBtn.isVisible({ timeout: 5_000 }).catch(() => false)) {
-      await openBtn.click();
-      await expect(dialog).toBeVisible();
-      await expect(dialog.getByText(/first proposal wizard/i)).toBeVisible();
-    } else {
-      test.skip(
-        true,
-        'Demo tenant already has sent proposals — wizard entry hidden on dashboard'
-      );
-    }
+    await expect(dialog).toBeVisible({ timeout: 15_000 });
+    await expect(dialog.getByText(/first proposal wizard/i)).toBeVisible();
+    await expect(
+      dialog.getByRole('heading', { name: /create your first proposal in five minutes/i })
+    ).toBeVisible();
 
     await expectNoErrorToasts(page);
   });

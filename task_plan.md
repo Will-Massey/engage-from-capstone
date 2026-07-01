@@ -5,15 +5,15 @@
 **Market leader:** UK proposal-to-cash platform — CH lookup → priced proposal → signed engagement → collected fees, with Clara AI that saves 30+ min/proposal without token overspend. Full plan: `MARKET_LEADER_PLAN.md`.
 
 ## Current Phase
-**Build 2.0** — **verified** (c28d9216) — Render live, e2e build suite 25/26 pass (1 skipped)
+**Build 2.0** — **saleable-product push** — automated UAT e2e + wizard fix; Render paid ops **deferred until first sale**
 
 ## Next Up
 <!-- 3–5 bullets ONLY. Next fresh session starts here. Rewrite every checkpoint. -->
-1. Caroline UAT: partner approval flow, MFA, pricing calculator, Xero connect.
-2. Set Render env: `XERO_*`, `AML_WEBHOOK_SECRET`, `CLOUDFLARE_EMAIL_WEBHOOK_SECRET`.
-3. W0.3 custom domain + Render Starter disk (manual dashboard).
-4. W0.4 legal pages live check at `/legal/terms`, `/status`.
-5. Investigate skipped test: market-leader first proposal wizard from dashboard.
+1. Caroline UAT (human): partner approval, MFA setup, pricing calculator, live Xero OAuth once env set.
+2. **Deferred (post-sale):** Render Starter + disk, custom domain, `XERO_*` / webhook secrets.
+3. W2.10 real-time client preview split pane (product polish).
+4. W3.2–W3.5 compliance content: seed templates, AML scaffold, regulatory rules.
+5. Push this commit → re-run `npm run test:e2e:build` (target 35+ pass, 0 skipped).
 
 ## Phases
 <!-- Status: pending | in_progress | complete -->
@@ -37,8 +37,8 @@
 ### Phase 5: Verify & deploy
 - [x] Local builds pass
 - [x] Pushed to Render (121574bc)
-- [ ] Live smoke-test manual proposal flow
-- **Status:** in_progress
+- [x] Live smoke-test manual proposal flow (build-smoke + uat-smoke)
+- **Status:** complete (Render paid tier deferred)
 
 ## Deploy Checkpoints
 <!-- Append one row per Render push. This is the resume anchor. -->
@@ -69,7 +69,8 @@
 | ProposalClientPreview missing on branch | 1 | Removed broken import; Clara sidebar only |
 
 ## Blockers / open questions
-- `CLOUDFLARE_EMAIL_WEBHOOK_SECRET` still manual on Render
+- Render paid ops **intentionally deferred** until saleable product confirmed — free tier URLs remain live
+- `XERO_*`, `AML_WEBHOOK_SECRET`, `CLOUDFLARE_EMAIL_WEBHOOK_SECRET` — set at go-live, not before
 
 ## Notes
 - Frontend: https://engage-frontend-0g6u.onrender.com

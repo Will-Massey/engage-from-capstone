@@ -19,10 +19,10 @@ const steps = [
   {
     step: 2,
     title: 'Create a proposal',
-    description: 'Use New Proposal in the header — pick services, fees, and your engagement letter',
-    href: '/proposals',
+    description: 'Use the guided wizard or New Proposal — pick services, fees, and your engagement letter',
+    href: '/?openWizard=1',
     icon: DocumentPlusIcon,
-    cta: 'Open proposals',
+    cta: 'Open guided wizard',
   },
   {
     step: 3,

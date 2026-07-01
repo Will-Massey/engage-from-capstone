@@ -14,6 +14,7 @@ export default defineConfig({
     'ai-native.spec.ts',
     'templates-smoke.spec.ts',
     'market-leader-smoke.spec.ts',
+    'uat-smoke.spec.ts',
   ],
   fullyParallel: false,
   forbidOnly: !!process.env.CI,
