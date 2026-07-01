@@ -175,14 +175,14 @@ router.post(
   requireActiveSubscription,
   asyncHandler(async (req, res) => {
     const schema = z.object({
-      to: z.string().email(),
+      to: z.string().email().optional(),
       cc: z.array(z.string().email()).optional(),
       subject: z.string().optional(),
       message: z.string().optional(),
       includePdf: z.boolean().default(true),
     });
 
-    const { to, cc, subject, message, includePdf } = schema.parse(req.body);
+    const { to: toOverride, cc, subject, message, includePdf } = schema.parse(req.body);
     const { id } = req.params;
     const tenantId = req.tenantId!;
     const tenant = (req as any).tenant;
@@ -213,6 +213,15 @@ router.post(
 
     if (!proposal) {
       throw new ApiError('PROPOSAL_NOT_FOUND', 'Proposal not found', 404);
+    }
+
+    const to = toOverride || proposal.client.contactEmail;
+    if (!to) {
+      throw new ApiError(
+        'NO_CLIENT_EMAIL',
+        'Client does not have an email address — add one on the client record or pass a "to" address',
+        400
+      );
     }
 
     // Create or get shareable link

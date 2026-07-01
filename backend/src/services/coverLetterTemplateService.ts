@@ -8,6 +8,7 @@ import { CoverLetterTone } from '@prisma/client';
 import logger from '../config/logger.js';
 import { defaultCoverLetterTemplates, renderTemplate } from '../data/defaultCoverLetters.js';
 import { getCurrentVersionId } from './engagementLibraryVersionService.js';
+import { stripUnresolvedMergeParagraphs } from './coverLetterMergeContext.js';
 
 export interface CreateTemplateInput {
   name: string;
@@ -179,10 +180,10 @@ export function renderCoverLetter(
     servicesSummary: data.servicesSummary,
     discussionDate: data.discussionDate,
     tenantName: data.tenantName,
-    firmExperience: data.firmExperience || 'many years',
-    sectorOrRegion: data.sectorOrRegion || 'the UK',
-    firmCredentials: data.firmCredentials || 'professional',
-    keyOutcome: data.keyOutcome || 'clear financial visibility and full compliance',
+    firmExperience: data.firmExperience,
+    sectorOrRegion: data.sectorOrRegion,
+    firmCredentials: data.firmCredentials,
+    keyOutcome: data.keyOutcome,
     senderName: data.senderName,
     senderPosition: data.senderPosition,
     monthlyTotal: data.monthlyTotal,
@@ -191,7 +192,8 @@ export function renderCoverLetter(
     proposalTitle: data.proposalTitle,
   };
 
-  return renderTemplate(templateContent, mergeData);
+  const rendered = renderTemplate(templateContent, mergeData);
+  return stripUnresolvedMergeParagraphs(rendered);
 }
 
 /**

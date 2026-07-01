@@ -108,13 +108,26 @@ const Proposals = () => {
     }
   };
 
-  const sendProposalEmail = async (id: string) => {
+  const sendProposalEmail = async (proposal: { id: string; client?: { contactEmail?: string } }) => {
+    const to = proposal.client?.contactEmail?.trim();
+    if (!to) {
+      toast.error('Add a contact email on the client record before sending');
+      return;
+    }
     try {
-      await apiClient.post(`/proposals/${id}/email`, {});
+      toast.loading('Sending proposal…');
+      await apiClient.post(`/proposals/${proposal.id}/email`, { to, includePdf: true });
+      toast.dismiss();
       toast.success('Proposal sent via email');
       loadProposals();
-    } catch (error) {
-      toast.error('Failed to send proposal');
+    } catch (error: any) {
+      toast.dismiss();
+      const message =
+        error?.response?.data?.error?.message ||
+        error?.response?.data?.message ||
+        error?.message ||
+        'Failed to send proposal';
+      toast.error(message);
     }
   };
 
@@ -404,8 +417,8 @@ const Proposals = () => {
                             >
                               {statusLabels[displayStatus] || displayStatus}
                             </span>
-                            {proposal.signatures?.length > 0 && (
-                              <CheckCircleIcon className="h-4 w-4 text-green-500" title="Signed" />
+                            {proposal.status === 'ACCEPTED' && (
+                              <CheckCircleIcon className="h-4 w-4 text-green-500" title="Accepted & signed" />
                             )}
                           </div>
                           {proposal.status === 'DRAFT' && proposal.approvalStatus === 'PENDING' && (
@@ -524,7 +537,7 @@ const Proposals = () => {
                             proposal.status !== 'DECLINED' &&
                             !isExpired && (
                               <button
-                                onClick={() => sendProposalEmail(proposal.id)}
+                                onClick={() => sendProposalEmail(proposal)}
                                 className="p-1 text-slate-500 hover:text-blue-600"
                                 title="Send Email"
                               >
@@ -543,8 +556,8 @@ const Proposals = () => {
                                     ? copyProposalLink(proposal.shareToken)
                                     : generateShareLink(proposal)
                                 }
-                                className={`p-1 ${proposal.shareToken ? 'text-green-600 hover:text-green-700' : 'text-slate-500 hover:text-green-600'}`}
-                                title={proposal.shareToken ? 'Copy Link' : 'Generate Share Link'}
+                                className={`p-1 ${proposal.shareToken ? 'text-primary-600 hover:text-primary-700' : 'text-slate-500 hover:text-primary-600'}`}
+                                title={proposal.shareToken ? 'Copy client link' : 'Generate share link'}
                               >
                                 <LinkIcon className="h-5 w-5" />
                               </button>

@@ -107,7 +107,47 @@ export class PDFGenerator {
       throw new Error('Proposal not found');
     }
 
-    return this.createPDF(proposal);
+    const logoBuffer = await this.loadTenantLogoBuffer(proposal.tenant);
+    return this.createPDF(proposal, logoBuffer);
+  }
+
+  /** Resolve logo from tenant.logo column or settings.branding.logo */
+  private static resolveTenantLogoUrl(tenant: ProposalData['tenant']): string | undefined {
+    if (tenant.logo?.trim()) return tenant.logo.trim();
+    const settings =
+      typeof tenant.settings === 'string'
+        ? (() => {
+            try {
+              return JSON.parse(tenant.settings) as Record<string, unknown>;
+            } catch {
+              return {};
+            }
+          })()
+        : (tenant.settings as Record<string, unknown> | undefined) || {};
+    const branding = settings.branding as { logo?: string } | undefined;
+    return branding?.logo?.trim() || undefined;
+  }
+
+  private static async loadTenantLogoBuffer(
+    tenant: ProposalData['tenant']
+  ): Promise<Buffer | null> {
+    const logoData = this.resolveTenantLogoUrl(tenant);
+    if (!logoData) return null;
+
+    try {
+      if (logoData.startsWith('data:image')) {
+        const base64Data = logoData.split(',')[1];
+        return base64Data ? Buffer.from(base64Data, 'base64') : null;
+      }
+      if (logoData.startsWith('http://') || logoData.startsWith('https://')) {
+        const res = await fetch(logoData);
+        if (!res.ok) return null;
+        return Buffer.from(await res.arrayBuffer());
+      }
+      return Buffer.from(logoData, 'base64');
+    } catch {
+      return null;
+    }
   }
 
   /**
@@ -177,7 +217,7 @@ export class PDFGenerator {
   /**
    * Create the PDF document
    */
-  private static createPDF(proposal: ProposalData): Promise<Buffer> {
+  private static createPDF(proposal: ProposalData, logoBuffer: Buffer | null): Promise<Buffer> {
     return new Promise((resolve, reject) => {
       try {
         const doc = new PDFDocument({ margin: 50 });
@@ -188,14 +228,26 @@ export class PDFGenerator {
         doc.on('error', reject);
 
         // Primary and secondary colors — tenant branding
+        const settings =
+          typeof proposal.tenant.settings === 'string'
+            ? (() => {
+                try {
+                  return JSON.parse(proposal.tenant.settings) as Record<string, unknown>;
+                } catch {
+                  return {};
+                }
+              })()
+            : (proposal.tenant.settings as Record<string, unknown> | undefined) || {};
+        const branding = settings.branding as { primaryColor?: string } | undefined;
         const primaryColor =
           (proposal.tenant as { primaryColor?: string }).primaryColor ||
-          proposal.tenant.settings?.primaryColor ||
+          branding?.primaryColor ||
+          (settings.primaryColor as string | undefined) ||
           '#0ea5e9';
         const secondaryColor = '#666666';
 
         // ========== HEADER ==========
-        this.drawHeader(doc, proposal, primaryColor);
+        this.drawHeader(doc, proposal, primaryColor, logoBuffer);
 
         // ========== CLIENT INFO ==========
         this.drawClientInfo(doc, proposal);
@@ -239,27 +291,23 @@ export class PDFGenerator {
   /**
    * Draw header section
    */
-  private static drawHeader(doc: PDFDoc, proposal: ProposalData, primaryColor: string) {
+  private static drawHeader(
+    doc: PDFDoc,
+    proposal: ProposalData,
+    primaryColor: string,
+    logoBuffer: Buffer | null
+  ) {
     let logoBottomY = 50;
 
-    // Company Logo (if available)
-    if (proposal.tenant.logo) {
+    if (logoBuffer) {
       try {
-        // Handle base64 logo
-        const logoData = proposal.tenant.logo;
-        if (logoData.startsWith('data:image')) {
-          const base64Data = logoData.split(',')[1];
-          const imgBuffer = Buffer.from(base64Data, 'base64');
-          doc.image(imgBuffer, 50, 40, { width: 120 });
-          logoBottomY = 160; // Logo drawn at y=40 with width 120, give plenty of clearance
-        }
-      } catch (error) {
-        // Fall back to text if logo fails
+        doc.image(logoBuffer, 50, 40, { width: 120 });
+        logoBottomY = 160;
+      } catch {
         doc.fontSize(24).fillColor(primaryColor).text(proposal.tenant.name, 50, 50);
         logoBottomY = 80;
       }
     } else {
-      // No logo - use company name
       doc.fontSize(24).fillColor(primaryColor).text(proposal.tenant.name, 50, 50);
       logoBottomY = 80;
     }

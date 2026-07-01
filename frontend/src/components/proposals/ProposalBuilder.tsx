@@ -1747,12 +1747,17 @@ export default function ProposalBuilder({ proposalId }: ProposalBuilderProps) {
   const previewPdf = async () => {
     if (!isEditMode || !proposalId) {
       toggleLivePreviewPane(true);
+      toast('Save the proposal first to download a branded PDF', { icon: 'ℹ️' });
       return;
     }
     try {
+      toast.loading('Generating PDF…');
       await apiClient.downloadProposalPdf(proposalId, proposalTitle || undefined);
+      toast.dismiss();
+      toast.success('PDF downloaded');
     } catch {
-      toast.error('Could not generate PDF preview');
+      toast.dismiss();
+      toast.error('Could not generate PDF — save the proposal and try again');
     }
   };
 
@@ -2753,7 +2758,7 @@ export default function ProposalBuilder({ proposalId }: ProposalBuilderProps) {
             </button>
           ) : (
             <button type="button" onClick={previewPdf} className="btn-secondary text-sm">
-              Print preview
+              Client preview
             </button>
           )}
           <button data-testid="create-proposal-button" onClick={saveProposal} disabled={isLoading} className="btn-primary">

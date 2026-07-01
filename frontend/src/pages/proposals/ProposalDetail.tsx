@@ -239,8 +239,38 @@ const ProposalDetail = () => {
     return generateTermsAndConditions(companyDetails);
   };
 
-  const handlePrint = () => {
-    window.print();
+  const handlePrint = async () => {
+    if (!id) return;
+    try {
+      toast.loading('Preparing PDF for print…');
+      const blob = await apiClient.downloadProposalPDF(id);
+      toast.dismiss();
+      if (!blob || blob.size === 0) {
+        toast.error('Could not generate PDF for printing');
+        return;
+      }
+      const url = window.URL.createObjectURL(blob);
+      const printWindow = window.open(url, '_blank');
+      if (printWindow) {
+        printWindow.addEventListener('load', () => {
+          printWindow.focus();
+          printWindow.print();
+        });
+        toast.success('PDF opened — use your browser print dialog');
+      } else {
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `proposal-${proposal?.reference || id}.pdf`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        toast.success('PDF downloaded — open it to print');
+      }
+      setTimeout(() => window.URL.revokeObjectURL(url), 60_000);
+    } catch {
+      toast.dismiss();
+      toast.error('Could not prepare PDF for printing');
+    }
   };
 
   const loadProposal = async () => {
@@ -278,12 +308,25 @@ const ProposalDetail = () => {
     htmlBody?: string;
   }) => {
     try {
+      toast.loading('Sending proposal…');
       await apiClient.sendProposal(id!, approved);
+      toast.dismiss();
       toast.success('Proposal sent successfully');
       loadProposal();
       loadAuditTrail();
-    } catch (error) {
-      // Error handled by API interceptor
+    } catch (error: any) {
+      toast.dismiss();
+      const message =
+        error?.response?.data?.error?.message ||
+        error?.response?.data?.message ||
+        error?.message;
+      if (message?.toLowerCase().includes('email')) {
+        toast.error(
+          message.includes('transport') || message.includes('configured')
+            ? 'Email is not configured on the server — contact your administrator'
+            : message
+        );
+      }
     }
   };
 
@@ -1126,9 +1169,9 @@ const ProposalDetail = () => {
               <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-100">
                 Terms & Conditions
               </h2>
-              <button onClick={handlePrint} className="btn-secondary text-sm print:hidden">
+              <button onClick={() => void handlePrint()} className="btn-secondary text-sm print:hidden">
                 <PrinterIcon className="h-4 w-4 mr-2" />
-                Print T&Cs
+                Print proposal PDF
               </button>
             </div>
             <div className="prose prose-sm dark:prose-invert max-w-none text-slate-800 dark:text-slate-200 whitespace-pre-wrap text-sm max-h-96 overflow-y-auto print:max-h-none print:overflow-visible bg-white/40 dark:bg-slate-900/50 border border-white/20 dark:border-slate-600/50 p-4 rounded">

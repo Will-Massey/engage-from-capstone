@@ -21,7 +21,7 @@ export const defaultCoverLetterTemplates: DefaultTemplate[] = [
 
 Thank you for the opportunity to present this proposal for {{servicesSummary}} to {{companyName}}. Following our discussion on {{discussionDate}}, we have set out below the scope of work, fee structure, and terms under which we would be pleased to act on your behalf.
 
-{{tenantName}} has {{firmExperience}} of experience supporting businesses in {{sectorOrRegion}}, and we believe the approach outlined in this proposal reflects both the requirements you described and the standards we hold ourselves to as a {{firmCredentials}} practice.
+We believe the approach outlined in this proposal reflects the requirements you described and the professional standards we uphold.
 
 We would welcome the opportunity to discuss this proposal further at your convenience, and to answer any questions you may have before proceeding.
 
@@ -81,9 +81,9 @@ export const coverLetterMergeFields = [
   { key: 'servicesSummary', description: 'Short natural language list of services', example: 'monthly bookkeeping, VAT compliance and annual accounts' },
   { key: 'discussionDate', description: 'Date or reference to your conversation', example: '12 June 2026' },
   { key: 'tenantName', description: 'Your practice / firm name', example: 'Capstone Accounting' },
-  { key: 'firmExperience', description: 'Years or description of firm experience', example: 'over 25 years' },
-  { key: 'sectorOrRegion', description: 'Sector or region you serve', example: 'the Midlands' },
-  { key: 'firmCredentials', description: 'Regulatory or professional status', example: 'ICAEW-regulated' },
+  { key: 'firmExperience', description: 'Years of experience (from Settings — only included if set)', example: '15 years' },
+  { key: 'sectorOrRegion', description: 'Sector or region you serve (from Settings if set)', example: 'the Midlands' },
+  { key: 'firmCredentials', description: 'Professional body from Settings (e.g. CPAA-regulated practice)', example: 'CPAA-regulated practice' },
   { key: 'keyOutcome', description: 'Primary benefit / outcome (for direct tone)', example: 'compliant and ahead of MTD ITSA deadlines' },
   { key: 'senderName', description: 'Sender full name', example: 'Jordan Hale' },
   { key: 'senderPosition', description: 'Sender job title', example: 'Partner' },

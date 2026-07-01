@@ -146,7 +146,7 @@ export default function ProposalClientPreview({
             </div>
           )}
           <div className="min-w-0">
-            <p className="text-xs text-slate-500 dark:text-slate-400">Client preview</p>
+            <p className="text-xs text-slate-500 dark:text-slate-400">On-screen preview</p>
             <p className="text-sm font-semibold text-slate-900 dark:text-white truncate">{practiceName}</p>
           </div>
         </div>
