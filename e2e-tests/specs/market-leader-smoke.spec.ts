@@ -3,7 +3,7 @@ import { expectNoErrorToasts, apiGet, expectOkApi } from '../fixtures/build-help
 
 test.describe('Build smoke — market leader batch (845effcf)', () => {
   test('First proposal wizard opens from dashboard', async ({ page }) => {
-    await page.goto('/?openWizard=1');
+    await page.goto('/proposals/first-wizard');
     await page.waitForLoadState('domcontentloaded');
 
     const dialog = page.getByRole('dialog');

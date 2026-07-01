@@ -24,7 +24,7 @@ test.describe('UAT smoke — public legal & status pages', () => {
   test('AI disclosure page loads', async ({ page }) => {
     await page.goto('/legal/ai-disclosure');
     await expect(page.getByRole('heading', { name: /ai disclosure/i }).first()).toBeVisible();
-    await expect(page.getByText(/clara/i)).toBeVisible();
+    await expect(page.getByRole('heading', { name: /what clara does/i })).toBeVisible();
     await expectNoErrorToasts(page);
   });
 

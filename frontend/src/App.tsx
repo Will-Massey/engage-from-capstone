@@ -18,6 +18,7 @@ import TwoFactorSetup from './pages/auth/TwoFactorSetup';
 import Dashboard from './pages/Dashboard';
 import Proposals from './pages/proposals/Proposals';
 import BulkRenewalWizard from './pages/proposals/BulkRenewalWizard';
+import FirstProposalWizardPage from './pages/proposals/FirstProposalWizardPage';
 import ProposalDetail from './pages/proposals/ProposalDetail';
 import CreateProposal from './pages/proposals/CreateProposal';
 import EditProposal from './pages/proposals/EditProposal';
@@ -222,6 +223,14 @@ const AnimatedRoutes = () => {
             element={
               <AnimatedPage>
                 <BulkRenewalWizard />
+              </AnimatedPage>
+            }
+          />
+          <Route
+            path="proposals/first-wizard"
+            element={
+              <AnimatedPage>
+                <FirstProposalWizardPage />
               </AnimatedPage>
             }
           />

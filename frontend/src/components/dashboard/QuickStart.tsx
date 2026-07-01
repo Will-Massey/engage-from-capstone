@@ -20,7 +20,7 @@ const steps = [
     step: 2,
     title: 'Create a proposal',
     description: 'Use the guided wizard or New Proposal — pick services, fees, and your engagement letter',
-    href: '/?openWizard=1',
+    href: '/proposals/first-wizard',
     icon: DocumentPlusIcon,
     cta: 'Open guided wizard',
   },
