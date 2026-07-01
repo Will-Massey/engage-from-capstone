@@ -122,6 +122,26 @@ interface SelectedService extends Service {
   oneOffDueDate?: string;
 }
 
+/** Legacy key — all new proposals shared one draft; migrated to per-client keys on load */
+const LEGACY_NEW_DRAFT_KEY = 'engage-draft-new';
+
+interface ProposalDraft {
+  selectedServices?: SelectedService[];
+  proposalTitle?: string;
+  coverLetter?: string;
+  coverLetterTone?: CoverLetterTone;
+  currentStep?: number;
+  contractStartDate?: string;
+  validUntil?: string;
+  buildMode?: BuildMode;
+  selectedTemplateId?: string | null;
+}
+
+function proposalDraftKey(proposalId: string | undefined, clientId: string | null): string {
+  if (proposalId) return `engage-draft-${proposalId}`;
+  return clientId ? `engage-draft-new-${clientId}` : LEGACY_NEW_DRAFT_KEY;
+}
+
 interface BandTotals {
   subtotal: number;
   vat: number;
@@ -347,7 +367,6 @@ export default function ProposalBuilder({ proposalId }: ProposalBuilderProps) {
   const manualParam = searchParams.get('manual');
   const { tenant, user } = useAuthStore();
   const isEditMode = Boolean(proposalId);
-  const draftKey = `engage-draft-${proposalId || 'new'}`;
   const [currentStep, setCurrentStep] = useState(1);
   const [isLoading, setIsLoading] = useState(false);
 
@@ -424,8 +443,87 @@ export default function ProposalBuilder({ proposalId }: ProposalBuilderProps) {
   const [showEmailPreview, setShowEmailPreview] = useState(false);
   const autoFitClientRef = useRef<string | null>(null);
   const preselectedTemplateAppliedRef = useRef(false);
+  const activeClientIdRef = useRef<string | null>(null);
+  const isHydratingDraftRef = useRef(false);
 
   const todayIso = format(new Date(), 'yyyy-MM-dd');
+
+  const resolveInitialBuildMode = (): BuildMode => {
+    if (manualParam === '1' || manualParam === 'true') return 'manual';
+    if (guidedParam === '1' || guidedParam === 'true') return 'clara';
+    if (preselectedTemplateId) return 'template';
+    return 'unset';
+  };
+
+  const captureDraftSnapshot = (): ProposalDraft => ({
+    selectedServices,
+    proposalTitle,
+    coverLetter,
+    coverLetterTone,
+    currentStep,
+    contractStartDate,
+    validUntil,
+    buildMode,
+    selectedTemplateId,
+  });
+
+  const applyDraftSnapshot = useCallback((draft: ProposalDraft) => {
+    isHydratingDraftRef.current = true;
+    setSelectedServices(draft.selectedServices?.length ? draft.selectedServices : []);
+    setProposalTitle(draft.proposalTitle || '');
+    setCoverLetter(draft.coverLetter || '');
+    if (draft.coverLetterTone) setCoverLetterTone(draft.coverLetterTone);
+    setCurrentStep(draft.currentStep && draft.currentStep >= 1 ? draft.currentStep : 1);
+    setContractStartDate(draft.contractStartDate || '');
+    if (draft.validUntil) setValidUntil(draft.validUntil);
+    setBuildMode(draft.buildMode ?? 'unset');
+    setSelectedTemplateId(draft.selectedTemplateId ?? null);
+    setAutoFitResult(null);
+    setAutoFitLoading(false);
+    preselectedTemplateAppliedRef.current =
+      Boolean(draft.selectedTemplateId) ||
+      draft.buildMode === 'template' ||
+      (draft.selectedServices?.length ?? 0) > 0;
+    queueMicrotask(() => {
+      isHydratingDraftRef.current = false;
+    });
+  }, []);
+
+  const resetClientProposalState = useCallback(
+    (clientId: string) => {
+      isHydratingDraftRef.current = true;
+      setSelectedServices([]);
+      setProposalTitle('');
+      setCoverLetter('');
+      setCoverLetterTone('PROFESSIONAL');
+      setCurrentStep(preselectedClientId && clientId === preselectedClientId ? 2 : 1);
+      setContractStartDate('');
+      setValidUntil((prev) => prev || format(addDays(new Date(), defaultExpiryDays), 'yyyy-MM-dd'));
+      setBuildMode(resolveInitialBuildMode());
+      setSelectedTemplateId(preselectedTemplateId);
+      setAutoFitDismissed(manualParam === '1' || manualParam === 'true');
+      setAutoFitResult(null);
+      setAutoFitLoading(false);
+      preselectedTemplateAppliedRef.current = false;
+      queueMicrotask(() => {
+        isHydratingDraftRef.current = false;
+      });
+    },
+    [defaultExpiryDays, preselectedClientId, preselectedTemplateId, manualParam, guidedParam]
+  );
+
+  const selectClient = (client: Client) => {
+    if (selectedClient?.id === client.id) return;
+
+    if (!isEditMode && selectedClient?.id) {
+      localStorage.setItem(
+        proposalDraftKey(undefined, selectedClient.id),
+        JSON.stringify(captureDraftSnapshot())
+      );
+    }
+
+    setSelectedClient(client);
+  };
 
   useEffect(() => {
     loadClients();
@@ -438,26 +536,43 @@ export default function ProposalBuilder({ proposalId }: ProposalBuilderProps) {
       .catch(() => setAiConfigured(false));
     if (proposalId) {
       loadExistingProposal(proposalId);
-    } else {
-      try {
-        const saved = localStorage.getItem(draftKey);
-        if (saved) {
-          const draft = JSON.parse(saved);
-          if (draft.selectedClient) setSelectedClient(draft.selectedClient);
-          if (draft.selectedServices?.length) setSelectedServices(draft.selectedServices);
-          if (draft.proposalTitle) setProposalTitle(draft.proposalTitle);
-          if (draft.coverLetter) setCoverLetter(draft.coverLetter);
-          if (draft.coverLetterTone) setCoverLetterTone(draft.coverLetterTone);
-          if (draft.currentStep) setCurrentStep(draft.currentStep);
-          if (draft.contractStartDate) setContractStartDate(draft.contractStartDate);
-          if (draft.validUntil) setValidUntil(draft.validUntil);
-        }
-      } catch {
-        // ignore corrupt draft
-      }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [proposalId]);
+
+  // Per-client draft restore — each client gets an isolated in-progress proposal
+  useEffect(() => {
+    if (isEditMode || !selectedClient) return;
+    const clientId = selectedClient.id;
+    if (activeClientIdRef.current === clientId) return;
+    activeClientIdRef.current = clientId;
+
+    let loaded = false;
+    try {
+      const saved = localStorage.getItem(proposalDraftKey(undefined, clientId));
+      if (saved) {
+        applyDraftSnapshot(JSON.parse(saved) as ProposalDraft);
+        loaded = true;
+      } else {
+        const legacy = localStorage.getItem(LEGACY_NEW_DRAFT_KEY);
+        if (legacy) {
+          const legacyDraft = JSON.parse(legacy) as ProposalDraft & { selectedClient?: Client };
+          if (legacyDraft.selectedClient?.id === clientId) {
+            const { selectedClient: _omit, ...rest } = legacyDraft;
+            applyDraftSnapshot(rest);
+            localStorage.removeItem(LEGACY_NEW_DRAFT_KEY);
+            loaded = true;
+          }
+        }
+      }
+    } catch {
+      // ignore corrupt draft
+    }
+
+    if (!loaded) {
+      resetClientProposalState(clientId);
+    }
+  }, [isEditMode, selectedClient, applyDraftSnapshot, resetClientProposalState]);
 
   // Deep-link from Templates page: ?template=<id>
   useEffect(() => {
@@ -555,21 +670,12 @@ export default function ProposalBuilder({ proposalId }: ProposalBuilderProps) {
   }, [selectedClient?.id, buildMode]);
 
   useEffect(() => {
-    if (isEditMode) return;
+    if (isEditMode || !selectedClient || isHydratingDraftRef.current) return;
+    const clientId = selectedClient.id;
+    const key = proposalDraftKey(undefined, clientId);
     const timer = setTimeout(() => {
-      localStorage.setItem(
-        draftKey,
-        JSON.stringify({
-          selectedClient,
-          selectedServices,
-          proposalTitle,
-          coverLetter,
-          coverLetterTone,
-          currentStep,
-          contractStartDate,
-          validUntil,
-        })
-      );
+      if (isHydratingDraftRef.current) return;
+      localStorage.setItem(key, JSON.stringify(captureDraftSnapshot()));
     }, 1500);
     return () => clearTimeout(timer);
   }, [
@@ -581,7 +687,8 @@ export default function ProposalBuilder({ proposalId }: ProposalBuilderProps) {
     currentStep,
     contractStartDate,
     validUntil,
-    draftKey,
+    buildMode,
+    selectedTemplateId,
     isEditMode,
   ]);
 
@@ -624,7 +731,6 @@ export default function ProposalBuilder({ proposalId }: ProposalBuilderProps) {
         const match = list.find((c: Client) => c.id === preselectedClientId);
         if (match) {
           setSelectedClient(match);
-          setCurrentStep(2);
         }
       }
     } catch (error) {
@@ -1479,7 +1585,10 @@ export default function ProposalBuilder({ proposalId }: ProposalBuilderProps) {
         : ((await apiClient.createProposal(proposalData)) as any);
 
       if (response.success) {
-        localStorage.removeItem(draftKey);
+        if (selectedClient) {
+          localStorage.removeItem(proposalDraftKey(undefined, selectedClient.id));
+        }
+        localStorage.removeItem(LEGACY_NEW_DRAFT_KEY);
         toast.success(isEditMode ? 'Proposal updated successfully!' : 'Proposal created successfully!');
         const savedId = isEditMode ? proposalId! : response.data.id;
         if (!isEditMode && buildMode === 'manual') {
@@ -1569,7 +1678,7 @@ export default function ProposalBuilder({ proposalId }: ProposalBuilderProps) {
               key={client.id}
               data-testid="client-card"
               data-client-name={client.name}
-              onClick={() => setSelectedClient(client)}
+              onClick={() => selectClient(client)}
               className={`p-4 rounded-xl border-2 cursor-pointer transition-all ${
                 selectedClient?.id === client.id
                   ? 'border-primary-500 bg-primary-50 dark:bg-primary-900/20'
