@@ -439,7 +439,7 @@ Output ONLY the body paragraphs, separated by blank lines. No JSON, no subject.`
     requiresApproval: true,
   };
 
-  yield { done: true };
+  yield { done: true, subject, textBody };
   return result;
 }
 

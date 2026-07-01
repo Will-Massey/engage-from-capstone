@@ -73,6 +73,27 @@ export default function ProposalEmailPreviewDialog({
 
   const analyzeTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  const applyDraftResult = (data: {
+    subject?: string;
+    textBody?: string;
+    htmlBody?: string;
+    requiresApproval?: boolean;
+  }) => {
+    const nextSubject = data.subject?.trim() || 'Your proposal';
+    const nextBody = data.textBody?.trim() || '';
+    setEmailDraft({
+      subject: nextSubject,
+      htmlBody: data.htmlBody || '',
+      textBody: nextBody,
+      requiresApproval: data.requiresApproval ?? true,
+    });
+    setSubject(nextSubject);
+    setBody(nextBody);
+    if (nextBody.length >= 20) {
+      setTimeout(() => triggerAnalyze(true, nextBody), 20);
+    }
+  };
+
   const fetchDraft = async () => {
     setLoading(true);
     setApproved(false);
@@ -86,14 +107,25 @@ export default function ProposalEmailPreviewDialog({
     setBodyVersionAccepted(false);
 
     const payload = proposalId ? { proposalId } : draft;
+    if (!payload) {
+      toast.error('Select a client and add proposal details before previewing the email');
+      setLoading(false);
+      onClose();
+      return;
+    }
 
     try {
+      let finalSubject = '';
+      let accumulatedBody = '';
+      let resolvedBody = '';
+      let draftApplied = false;
+      let streamAttempted = false;
+
       const streamer = (apiClient as any).aiStreamProposalEmailDraft;
       if (typeof streamer === 'function') {
-        let finalSubject = '';
-        let accumulatedBody = '';
-
+        streamAttempted = true;
         await streamer(payload, (event: any) => {
+          if (event.error) throw new Error(event.error);
           if (event.subject) {
             finalSubject = event.subject;
             setSubject(event.subject);
@@ -103,26 +135,46 @@ export default function ProposalEmailPreviewDialog({
             setBody(accumulatedBody);
           }
           if (event.done) {
-            setEmailDraft({
-              subject: finalSubject,
-              htmlBody: '',
-              textBody: accumulatedBody,
-              requiresApproval: true,
-            });
-            // Auto-run analyze after draft loads (debounced cheap)
-            setTimeout(() => triggerAnalyze(true, accumulatedBody), 20);
+            resolvedBody = event.textBody?.trim() || accumulatedBody.trim();
           }
-          if (event.error) throw new Error(event.error);
         });
-      } else {
-        const res = (await apiClient.aiProposalEmailDraft(payload!)) as any;
-        if (res.success && res.data) {
-          setEmailDraft(res.data);
-          setSubject(res.data.subject || '');
-          setBody(res.data.textBody || '');
-          // Auto-run analyze after draft loads (debounced cheap)
-          setTimeout(() => triggerAnalyze(true, res.data.textBody || ''), 10);
+
+        if (!resolvedBody) {
+          resolvedBody = accumulatedBody.trim();
         }
+        if (!draftApplied && (resolvedBody || finalSubject)) {
+          draftApplied = true;
+          applyDraftResult({
+            subject: finalSubject || 'Your proposal',
+            textBody: resolvedBody,
+            requiresApproval: true,
+          });
+        }
+      }
+
+      if (!resolvedBody) {
+        const res = (await apiClient.aiProposalEmailDraft(
+          proposalId ? { proposalId } : (draft as ProposalEmailDraftInput)
+        )) as any;
+        if (res.success && res.data) {
+          resolvedBody = res.data.textBody?.trim() || '';
+          draftApplied = true;
+          applyDraftResult(res.data);
+        }
+      }
+
+      if (!resolvedBody) {
+        draftApplied = true;
+        applyDraftResult({
+          subject: finalSubject || 'Your proposal',
+          textBody: '',
+          requiresApproval: true,
+        });
+        toast.error(
+          streamAttempted
+            ? `${AI_COPILOT.name} could not draft the email — try Redraft or check AI settings`
+            : 'Email preview is unavailable — check AI configuration'
+        );
       }
     } catch (e) {
       showAiError(e);
@@ -356,6 +408,11 @@ export default function ProposalEmailPreviewDialog({
               </div>
             ) : emailDraft ? (
               <>
+                {!body.trim() && (
+                  <div className="rounded-lg border border-amber-200 dark:border-amber-800 bg-amber-50/70 dark:bg-amber-950/30 px-3 py-2 text-sm text-amber-800 dark:text-amber-200">
+                    {AI_COPILOT.name} did not return email content. Use &quot;Redraft with {AI_COPILOT.shortName}&quot; below, or edit manually after approving.
+                  </div>
+                )}
                 <div>
                   <label className="block text-xs font-medium text-slate-500 dark:text-slate-400 mb-1">
                     Subject

@@ -735,28 +735,50 @@ export const apiClient = {
 
   aiStreamProposalEmailDraft: async (
     payload: any,
-    onEvent: (event: { subject?: string; bodyChunk?: string; done?: boolean; error?: string }) => void
+    onEvent: (event: {
+      subject?: string;
+      bodyChunk?: string;
+      textBody?: string;
+      done?: boolean;
+      error?: string;
+    }) => void
   ): Promise<void> => {
     const { token } = useAuthStore.getState();
     const base = API_URL.endsWith('/api') ? API_URL : `${API_URL}/api`;
+    const body =
+      payload && typeof payload === 'object' && 'proposalId' in payload && payload.proposalId
+        ? { proposalId: payload.proposalId }
+        : { draft: payload?.draft ?? payload };
+
     const res = await fetch(`${base}/ai/proposal-email-draft/stream`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         ...(token ? { Authorization: `Bearer ${token}` } : {}),
       },
-      body: JSON.stringify(payload),
+      body: JSON.stringify(body),
     });
+
+    if (!res.ok) {
+      const err = (await res.json().catch(() => null)) as {
+        error?: { message?: string };
+        message?: string;
+      } | null;
+      throw new Error(err?.error?.message || err?.message || 'Email draft stream failed');
+    }
     if (!res.body) throw new Error('No stream body');
+
     const reader = res.body.getReader();
     const decoder = new TextDecoder();
     let buffer = '';
-    while (true) {
-      const { done, value } = await reader.read();
-      if (done) break;
-      buffer += decoder.decode(value, { stream: true });
+    let streamEnded = false;
+
+    const processBuffer = (flushAll = false) => {
+      if (flushAll && buffer.trim() && !buffer.endsWith('\n\n')) {
+        buffer += '\n\n';
+      }
       const parts = buffer.split('\n\n');
-      buffer = parts.pop() || '';
+      buffer = flushAll ? '' : parts.pop() || '';
       for (const part of parts) {
         const line = part.trim();
         if (!line.startsWith('data:')) continue;
@@ -764,9 +786,30 @@ export const apiClient = {
         try {
           const event = JSON.parse(jsonStr);
           onEvent(event);
-          if (event.done || event.error) return;
-        } catch {}
+          if (event.done || event.error) {
+            streamEnded = true;
+          }
+        } catch {
+          // ignore malformed SSE chunks
+        }
       }
+    };
+
+    while (true) {
+      const { done, value } = await reader.read();
+      if (value) {
+        buffer += decoder.decode(value, { stream: true });
+        processBuffer(false);
+      }
+      if (done) {
+        buffer += decoder.decode();
+        processBuffer(true);
+        break;
+      }
+    }
+
+    if (!streamEnded) {
+      onEvent({ done: true });
     }
   },
 
