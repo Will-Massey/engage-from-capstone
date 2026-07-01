@@ -3,10 +3,16 @@ import { z } from 'zod';
 import bcrypt from 'bcryptjs';
 import { prisma } from '../config/database.js';
 import { asyncHandler, ApiError } from '../middleware/errorHandler.js';
-import { generateToken, authenticate, generateRefreshToken } from '../middleware/auth.js';
+import {
+  generateToken,
+  authenticate,
+  generateRefreshToken,
+  authorize,
+} from '../middleware/auth.js';
 import { allowPublicTenantSignup } from '../utils/securityFlags.js';
 import { setAuthCookies } from '../utils/authCookies.js';
 import { buildTrialSettings } from '../services/subscriptionService.js';
+import { sendTestIntegrationWebhook } from '../services/integrationEvents.js';
 
 const router = Router();
 
@@ -801,6 +807,39 @@ router.put(
         },
       },
       message: 'Settings saved successfully',
+    });
+  })
+);
+
+/**
+ * POST /api/tenants/settings/test-webhook
+ * Send a test proposal.sent event to the configured webhook URL (W4.2).
+ */
+router.post(
+  '/settings/test-webhook',
+  authenticate,
+  authorize('ADMIN', 'PARTNER'),
+  asyncHandler(async (req, res) => {
+    const body = z
+      .object({
+        format: z.enum(['default', 'hubspot']).optional(),
+      })
+      .parse(req.body ?? {});
+
+    const result = await sendTestIntegrationWebhook(req.tenantId!, body.format ?? 'default');
+
+    if (!result.delivered) {
+      res.status(400).json({
+        success: false,
+        error: { code: 'NO_WEBHOOK', message: 'Save a webhook URL in Settings → Integrations first' },
+      });
+      return;
+    }
+
+    res.json({
+      success: true,
+      data: result,
+      message: 'Test webhook sent',
     });
   })
 );

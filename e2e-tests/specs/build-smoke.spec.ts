@@ -128,4 +128,17 @@ test.describe('Build smoke — new proposal (no error popups)', () => {
     await expect(page.locator('[data-testid="proposal-title-input"]')).toBeVisible();
     await expectNoErrorToasts(page);
   });
+
+  test('regulatory check banner and client preview pane on builder', async ({ page }) => {
+    await page.goto('/proposals/new');
+    await advanceToProposalServicesStep(page, 'manual');
+
+    await expect(page.getByTestId('regulatory-check-banner').or(page.getByTestId('regulatory-check-clear'))).toBeVisible({
+      timeout: 30_000,
+    });
+
+    await page.getByTestId('toggle-client-preview-pane').click();
+    await expect(page.getByTestId('proposal-client-preview')).toBeVisible({ timeout: 15_000 });
+    await expectNoErrorToasts(page);
+  });
 });

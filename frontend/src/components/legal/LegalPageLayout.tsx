@@ -10,6 +10,7 @@ const legalLinks = [
   { to: '/legal/terms', label: 'Terms of Service' },
   { to: '/legal/privacy', label: 'Privacy Policy' },
   { to: '/legal/ai-disclosure', label: 'AI Disclosure' },
+  { to: '/legal/soc2', label: 'Security & SOC 2' },
 ];
 
 export default function LegalPageLayout({ title, lastUpdated, children }: LegalPageLayoutProps) {

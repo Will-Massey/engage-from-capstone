@@ -21,6 +21,7 @@ import { useAuthStore } from '../../stores/authStore';
 import { format, formatDistanceToNow } from 'date-fns';
 import { motion } from 'framer-motion';
 import toast from 'react-hot-toast';
+import AmlPartnerPanel from '../../components/clients/AmlPartnerPanel';
 
 const ClientDetail = () => {
   const { id } = useParams<{ id: string }>();
@@ -895,6 +896,14 @@ function LifecyclePanel({ client, onRefresh }: { client: any; onRefresh: () => v
           . Review before marking complete.
         </div>
       )}
+
+      <AmlPartnerPanel
+        clientId={client.id}
+        clientName={client.name}
+        amlSubmittedAt={client.amlSubmittedAt}
+        amlCompletedAt={client.amlCompletedAt}
+        onUpdated={onRefresh}
+      />
 
       {/* Client controls - pause + marketing */}
       <div className="flex flex-wrap gap-2">

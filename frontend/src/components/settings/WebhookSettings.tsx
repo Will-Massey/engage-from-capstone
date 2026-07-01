@@ -7,6 +7,7 @@ export default function WebhookSettings() {
   const [webhookUrl, setWebhookUrl] = useState('');
   const [webhookFormat, setWebhookFormat] = useState<'default' | 'hubspot'>('default');
   const [saving, setSaving] = useState(false);
+  const [testing, setTesting] = useState(false);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -95,9 +96,31 @@ export default function WebhookSettings() {
         </select>
       </div>
 
-      <button type="button" onClick={save} disabled={saving} className="btn-primary">
-        {saving ? 'Saving…' : 'Save webhook URL'}
-      </button>
+      <div className="flex flex-wrap gap-2">
+        <button type="button" onClick={save} disabled={saving} className="btn-primary">
+          {saving ? 'Saving…' : 'Save webhook URL'}
+        </button>
+        <button
+          type="button"
+          disabled={testing || !webhookUrl.trim()}
+          className="btn-secondary"
+          onClick={async () => {
+            setTesting(true);
+            try {
+              const res = (await apiClient.testIntegrationWebhook(webhookFormat)) as any;
+              if (res.success) {
+                toast.success('Test event sent to your webhook');
+              }
+            } catch (e: any) {
+              toast.error(e?.message || 'Test webhook failed — save a URL first');
+            } finally {
+              setTesting(false);
+            }
+          }}
+        >
+          {testing ? 'Sending…' : 'Send test event'}
+        </button>
+      </div>
     </div>
   );
 }

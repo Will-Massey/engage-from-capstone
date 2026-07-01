@@ -139,7 +139,9 @@ const PublicProposalView = () => {
   const [declineReasonText, setDeclineReasonText] = useState('');
   const [showDecline, setShowDecline] = useState(false);
   const [isAccepted, setIsAccepted] = useState(false);
-  const [faqExpanded, setFaqExpanded] = useState(false);
+  const [faqExpanded, setFaqExpanded] = useState(
+    () => typeof window !== 'undefined' && window.matchMedia('(max-width: 639px)').matches
+  );
   const [openFaqIndex, setOpenFaqIndex] = useState<number | null>(null);
   const [qaExpanded, setQaExpanded] = useState(false);
   const [qaMessages, setQaMessages] = useState<QaMessage[]>([]);
@@ -155,6 +157,15 @@ const PublicProposalView = () => {
   const [stubMandateId, setStubMandateId] = useState<string | null>(null);
   const [isCompletingStub, setIsCompletingStub] = useState(false);
   const qaEndRef = useRef<HTMLDivElement>(null);
+  const [isMobileSign, setIsMobileSign] = useState(false);
+
+  useEffect(() => {
+    const mq = window.matchMedia('(max-width: 639px)');
+    const update = () => setIsMobileSign(mq.matches);
+    update();
+    mq.addEventListener('change', update);
+    return () => mq.removeEventListener('change', update);
+  }, []);
 
   useEffect(() => {
     const loadProposal = async () => {
@@ -1130,7 +1141,7 @@ const PublicProposalView = () => {
                     <strong>{proposal?.client?.name}</strong> (simple electronic signature).
                   </span>
                 </label>
-                <SignaturePad onSave={handleSignatureSave} />
+                <SignaturePad onSave={handleSignatureSave} height={isMobileSign ? 168 : 200} />
                 {signatureData && (
                   <div className="flex space-x-4">
                     <button

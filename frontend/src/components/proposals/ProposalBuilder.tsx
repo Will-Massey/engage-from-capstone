@@ -44,6 +44,11 @@ import {
   EyeSlashIcon,
 } from '@heroicons/react/24/outline';
 import ProposalClientPreview from './ProposalClientPreview';
+import RegulatoryCheckBanner from './RegulatoryCheckBanner';
+import {
+  getBuilderPreviewPreference,
+  setBuilderPreviewPreference,
+} from './builderPreviewStorage';
 import { AiDraftPreview, showAiError } from '../ai/AiPanel';
 import ProposalHealthCard from '../ai/ProposalHealthCard';
 import ProposalBuilderClara from '../ai/ProposalBuilderClara';
@@ -426,7 +431,15 @@ export default function ProposalBuilder({ proposalId }: ProposalBuilderProps) {
   const [aiSuggestions, setAiSuggestions] = useState<any>(null);
   const [aiCoverLoading, setAiCoverLoading] = useState(false);
   const [aiCoverDraft, setAiCoverDraft] = useState<string | null>(null);
-  const [showLivePreviewPane, setShowLivePreviewPane] = useState(false);
+  const [showLivePreviewPane, setShowLivePreviewPane] = useState(() => getBuilderPreviewPreference());
+
+  const toggleLivePreviewPane = useCallback((next?: boolean) => {
+    setShowLivePreviewPane((prev) => {
+      const value = next ?? !prev;
+      setBuilderPreviewPreference(value);
+      return value;
+    });
+  }, []);
 
   const [buildMode, setBuildMode] = useState<BuildMode>(() => {
     if (manualParam === '1' || manualParam === 'true') return 'manual';
@@ -689,6 +702,12 @@ export default function ProposalBuilder({ proposalId }: ProposalBuilderProps) {
     void applyProposalTemplate(preselectedTemplateId);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isEditMode, preselectedTemplateId, selectedClient?.id, services.length]);
+
+  useEffect(() => {
+    if (currentStep >= 3 && getBuilderPreviewPreference()) {
+      toggleLivePreviewPane(true);
+    }
+  }, [currentStep, toggleLivePreviewPane]);
 
   const loadCoverLetterFromTemplate = async (client: Client, serviceCount?: number) => {
     try {
@@ -1727,7 +1746,7 @@ export default function ProposalBuilder({ proposalId }: ProposalBuilderProps) {
 
   const previewPdf = async () => {
     if (!isEditMode || !proposalId) {
-      setShowLivePreviewPane(true);
+      toggleLivePreviewPane(true);
       return;
     }
     try {
@@ -1789,7 +1808,7 @@ export default function ProposalBuilder({ proposalId }: ProposalBuilderProps) {
         <button
           type="button"
           data-testid="toggle-client-preview-pane"
-          onClick={() => setShowLivePreviewPane((v) => !v)}
+          onClick={() => toggleLivePreviewPane()}
           className={`btn-secondary text-sm inline-flex items-center gap-2 shrink-0 ${
             showLivePreviewPane ? 'border-primary-300 dark:border-primary-700 text-primary-700 dark:text-primary-300' : ''
           }`}
@@ -2704,7 +2723,7 @@ export default function ProposalBuilder({ proposalId }: ProposalBuilderProps) {
           Back
         </button>
         <div className="flex flex-wrap gap-2">
-          <button type="button" onClick={() => setShowLivePreviewPane((v) => !v)} className="btn-secondary text-sm lg:hidden">
+          <button type="button" onClick={() => toggleLivePreviewPane()} className="btn-secondary text-sm lg:hidden">
             {showLivePreviewPane ? 'Hide preview' : 'Preview for client'}
           </button>
           {aiConfigured && selectedClient && (
@@ -2803,6 +2822,9 @@ export default function ProposalBuilder({ proposalId }: ProposalBuilderProps) {
         }
       >
         <div className="animate-fade-in min-w-0 space-y-4">
+          {selectedClient && currentStep >= 2 && (
+            <RegulatoryCheckBanner clientId={selectedClient.id} compact={currentStep === 2} />
+          )}
           {selectedClient && currentStep >= 2 && currentStep <= 3 && (
             <ClientContextCard
               clientId={selectedClient.id}

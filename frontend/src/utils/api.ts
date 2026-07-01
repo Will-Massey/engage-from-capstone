@@ -439,6 +439,9 @@ export const apiClient = {
 
   updateTenantSettings: (data: any) => api.put('/tenants/settings', data),
 
+  testIntegrationWebhook: (format?: 'default' | 'hubspot') =>
+    api.post('/tenants/settings/test-webhook', { format }),
+
   // Users
   updateMe: (data: any) => api.put('/auth/me', data),
 

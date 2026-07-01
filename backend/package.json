@@ -18,7 +18,8 @@
     "db:studio": "prisma studio",
     "lint": "eslint src --ext .ts",
     "typecheck": "tsc --noEmit",
-    "job:renewal-reminders": "npx tsx scripts/run-renewal-reminders.ts"
+    "job:renewal-reminders": "npx tsx scripts/run-renewal-reminders.ts",
+    "db:seed:templates": "tsx scripts/seed-proposal-templates.ts"
   },
   "dependencies": {
     "@prisma/client": "5.22.0",

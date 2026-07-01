@@ -40,6 +40,7 @@ import AmlOnboarding from './pages/public/AmlOnboarding';
 import TermsOfService from './pages/legal/TermsOfService';
 import PrivacyPolicy from './pages/legal/PrivacyPolicy';
 import AiDisclosure from './pages/legal/AiDisclosure';
+import Soc2Controls from './pages/legal/Soc2Controls';
 
 // World-class features
 import CommandPalette from './components/command-palette/CommandPalette';
@@ -402,6 +403,14 @@ const AnimatedRoutes = () => {
           element={
             <AnimatedPage>
               <AiDisclosure />
+            </AnimatedPage>
+          }
+        />
+        <Route
+          path="/legal/soc2"
+          element={
+            <AnimatedPage>
+              <Soc2Controls />
             </AnimatedPage>
           }
         />

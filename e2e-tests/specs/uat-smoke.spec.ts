@@ -28,6 +28,13 @@ test.describe('UAT smoke — public legal & status pages', () => {
     await expectNoErrorToasts(page);
   });
 
+  test('SOC 2 controls page loads', async ({ page }) => {
+    await page.goto('/legal/soc2');
+    await expect(page.getByRole('heading', { name: /security & soc 2 controls/i }).first()).toBeVisible();
+    await expect(page.getByText(/CC6\.1/i)).toBeVisible();
+    await expectNoErrorToasts(page);
+  });
+
   test('status page loads and shows component health', async ({ page }) => {
     await page.goto('/status');
     await expect(page.getByRole('heading', { name: /engage system status/i })).toBeVisible({
