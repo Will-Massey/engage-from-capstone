@@ -1,5 +1,12 @@
 import { test, expect } from '@playwright/test';
-import { API_BASE, expectNoErrorToasts, apiGet, apiPostResilient, expectOkApi } from '../fixtures/build-helpers';
+import {
+  API_BASE,
+  advanceToProposalServicesStep,
+  expectNoErrorToasts,
+  apiGet,
+  apiPostResilient,
+  expectOkApi,
+} from '../fixtures/build-helpers';
 
 test.describe('Build smoke — infrastructure', () => {
   test('backend ping responds', async ({ request }) => {
@@ -104,16 +111,7 @@ test.describe('Build smoke — authenticated app', () => {
 test.describe('Build smoke — new proposal (no error popups)', () => {
   test('select client and advance without AI/template errors', async ({ page }) => {
     await page.goto('/proposals/new');
-    await page.waitForSelector('[data-testid="client-card"]', { timeout: 30_000 });
-
-    const firstClient = page.locator('[data-testid="client-card"]').first();
-    await expect(firstClient).toBeVisible();
-    await firstClient.click();
-
-    await expectNoErrorToasts(page, 1500);
-
-    await page.locator('[data-testid="client-continue-button"]').click();
-    await page.waitForSelector('[data-testid="available-service-row"]', { timeout: 30_000 });
+    await advanceToProposalServicesStep(page, 'manual');
 
     await expectNoErrorToasts(page, 3000);
 
@@ -122,10 +120,7 @@ test.describe('Build smoke — new proposal (no error popups)', () => {
 
   test('can add a service and reach review step', async ({ page }) => {
     await page.goto('/proposals/new');
-    await page.waitForSelector('[data-testid="client-card"]');
-    await page.locator('[data-testid="client-card"]').first().click();
-    await page.locator('[data-testid="client-continue-button"]').click();
-    await page.waitForSelector('[data-testid="available-service-row"]');
+    await advanceToProposalServicesStep(page, 'manual');
 
     await page.locator('[data-testid="available-service-row"]').first().click();
     await page.locator('[data-testid="services-continue-button"]').click();

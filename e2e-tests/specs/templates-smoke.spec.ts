@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { expectNoErrorToasts } from '../fixtures/build-helpers';
+import { chooseProposalBuildMode, expectNoErrorToasts, selectFirstProposalClient } from '../fixtures/build-helpers';
 
 const stamp = Date.now();
 const TEMPLATE_NAME = `Sendit smoke ${stamp}`;
@@ -40,10 +40,13 @@ test.describe('Build smoke — proposal templates', () => {
     await card.getByRole('button', { name: /use template/i }).click();
     await expect(page).toHaveURL(/\/proposals\/new\?template=/);
 
-    // Pick client
-    await page.waitForSelector('[data-testid="client-card"]', { timeout: 30_000 });
-    await page.locator('[data-testid="client-card"]').first().click();
-    await page.locator('[data-testid="client-continue-button"]').click();
+    // Pick client (template URL may still show build-mode chooser until template applies)
+    await selectFirstProposalClient(page);
+    await chooseProposalBuildMode(page, 'manual');
+    const continueBtn = page.locator('[data-testid="client-continue-button"]');
+    if (await continueBtn.isVisible({ timeout: 2_000 }).catch(() => false)) {
+      await continueBtn.click();
+    }
 
     // Template applies after client selected — services step should show pre-filled line
     await page.waitForSelector('[data-testid="available-service-row"], [data-testid="proposal-title-input"]', {

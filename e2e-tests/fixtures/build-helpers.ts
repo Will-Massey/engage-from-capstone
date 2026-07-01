@@ -1,5 +1,54 @@
 import { type Page, type APIRequestContext, expect } from '@playwright/test';
 
+export type ProposalBuildMode = 'manual' | 'clara';
+
+/** Step 1: pick a client on /proposals/new */
+export async function selectFirstProposalClient(page: Page): Promise<void> {
+  await page.waitForSelector('[data-testid="client-card"]', { timeout: 30_000 });
+  const card = page.locator('[data-testid="client-card"]').first();
+  await expect(card).toBeVisible();
+  await card.click();
+}
+
+/**
+ * Step 1b: choose build mode when the chooser is shown.
+ * Skips when manual=1/guided=1 already set build mode on load.
+ */
+export async function chooseProposalBuildMode(
+  page: Page,
+  mode: ProposalBuildMode = 'manual'
+): Promise<void> {
+  const chooser = page.getByText(/how would you like to build this proposal/i);
+  const visible = await chooser.isVisible({ timeout: 3_000 }).catch(() => false);
+  if (!visible) return;
+
+  const testId = mode === 'clara' ? 'build-mode-clara' : 'build-mode-manual';
+  const modeButton = page.locator(`[data-testid="${testId}"]`);
+  if (await modeButton.isVisible({ timeout: 5_000 }).catch(() => false)) {
+    await modeButton.click();
+  } else if (mode === 'manual') {
+    // AI not configured — fallback "Continue manually" button
+    await page.getByRole('button', { name: /continue manually/i }).click();
+  } else {
+    throw new Error(`Build mode "${mode}" not available (Clara may be unconfigured)`);
+  }
+
+  await expect(page.locator('[data-testid="client-continue-button"]')).toBeVisible({
+    timeout: 10_000,
+  });
+}
+
+/** Steps 1 → 2: client, build mode, continue to services catalogue */
+export async function advanceToProposalServicesStep(
+  page: Page,
+  mode: ProposalBuildMode = 'manual'
+): Promise<void> {
+  await selectFirstProposalClient(page);
+  await chooseProposalBuildMode(page, mode);
+  await page.locator('[data-testid="client-continue-button"]').click();
+  await page.waitForSelector('[data-testid="available-service-row"]', { timeout: 30_000 });
+}
+
 export const API_BASE =
   (process.env.API_URL || 'https://engage-backend-e1ue.onrender.com').replace(/\/$/, '') +
   (process.env.API_URL?.endsWith('/api') ? '' : '/api');
