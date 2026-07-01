@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuthStore } from '../stores/authStore';
 import { useThemeStore } from '../stores/themeStore';
 import { apiClient } from '../utils/api';
@@ -18,9 +18,12 @@ import {
   SunIcon,
   MoonIcon,
   ComputerDesktopIcon,
+  PuzzlePieceIcon,
 } from '@heroicons/react/24/outline';
 import EmailSettings from '../components/email/EmailSettings';
 import CoverLetterTemplatesManager from '../components/settings/CoverLetterTemplatesManager';
+import XeroConnect from '../components/integrations/XeroConnect';
+import EngagementLibrarySettings from '../components/settings/EngagementLibrarySettings';
 
 // Simplified tabs - combined related sections
 const tabs = [
@@ -48,14 +51,21 @@ const tabs = [
   { id: 'team', name: 'Team', icon: UsersIcon, description: 'Users & permissions' },
   { id: 'security', name: 'Security', icon: ShieldCheckIcon, description: 'Password & access' },
   { id: 'automation', name: 'Automation', icon: BellIcon, description: 'Client touchpoints & onboarding workflow' },
+  {
+    id: 'integrations',
+    name: 'Integrations',
+    icon: PuzzlePieceIcon,
+    description: 'Xero, payments & connected apps',
+  },
 ];
 
 const VALID_TABS = tabs.map((t) => t.id);
 
 const Settings = () => {
+  const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const tabFromUrl = searchParams.get('tab');
-  const { user, tenant, setSession } = useAuthStore();
+  const { user, tenant, setSession, updateUser } = useAuthStore();
   const { theme: currentTheme, setTheme: setCurrentTheme } = useThemeStore();
   const [activeTab, setActiveTab] = useState(() =>
     tabFromUrl && VALID_TABS.includes(tabFromUrl) ? tabFromUrl : 'profile'
@@ -117,6 +127,9 @@ const Settings = () => {
     confirmPassword: '',
   });
 
+  const [disable2FAPassword, setDisable2FAPassword] = useState('');
+  const [isDisabling2FA, setIsDisabling2FA] = useState(false);
+
   // Team/Users state
   const [users, setUsers] = useState<any[]>([]);
   const [showAddUserModal, setShowAddUserModal] = useState(false);
@@ -135,6 +148,12 @@ const Settings = () => {
     vatNumber: '',
     defaultVatRate: 'STANDARD_20' as 'ZERO' | 'REDUCED_5' | 'STANDARD_20' | 'EXEMPT',
     autoApplyVat: true,
+  });
+
+  const [paymentForm, setPaymentForm] = useState({
+    collectPaymentAtSign: false,
+    allowDirectDebit: true,
+    allowCard: true,
   });
 
   // Clara & AI budget (fetched for visibility meter)
@@ -413,6 +432,14 @@ const Settings = () => {
             autoApplyVat: data.vat.autoApplyVat ?? prev.autoApplyVat,
           }));
         }
+        if (data.payments) {
+          setPaymentForm((prev) => ({
+            ...prev,
+            collectPaymentAtSign: data.payments.collectPaymentAtSign ?? prev.collectPaymentAtSign,
+            allowDirectDebit: data.payments.allowDirectDebit ?? prev.allowDirectDebit,
+            allowCard: data.payments.allowCard ?? prev.allowCard,
+          }));
+        }
       }
     } catch (error) {
       // Error handled by UI
@@ -524,14 +551,15 @@ const Settings = () => {
           defaultVatRate: vatForm.defaultVatRate,
           autoApplyVat: vatForm.autoApplyVat,
         },
+        payments: paymentForm,
       })) as any;
       if (response.success) {
-        toast.success('VAT settings saved');
+        toast.success('Billing settings saved');
       } else {
-        toast.error(response.error?.message || 'Failed to save VAT settings');
+        toast.error(response.error?.message || 'Failed to save billing settings');
       }
     } catch (error: any) {
-      toast.error(error.message || 'Failed to save VAT settings');
+      toast.error(error.message || 'Failed to save billing settings');
     } finally {
       setIsSaving(null);
     }
@@ -621,6 +649,25 @@ const Settings = () => {
       toast.error(error.response?.data?.error?.message || 'Failed to change password');
     } finally {
       setIsSaving(null);
+    }
+  };
+
+  const handleDisable2FA = async () => {
+    if (!disable2FAPassword) {
+      toast.error('Enter your password to disable 2FA');
+      return;
+    }
+
+    setIsDisabling2FA(true);
+    try {
+      await apiClient.post('/auth/2fa/disable', { password: disable2FAPassword });
+      updateUser({ twoFactorEnabled: false });
+      setDisable2FAPassword('');
+      toast.success('Two-factor authentication disabled');
+    } catch (error: any) {
+      toast.error(error.response?.data?.error?.message || 'Failed to disable 2FA');
+    } finally {
+      setIsDisabling2FA(false);
     }
   };
 
@@ -1176,6 +1223,14 @@ const Settings = () => {
                   <div>
                     <div className="text-sm text-slate-700 dark:text-slate-200 mb-2">
                       Clara budget this month: {aiBudget.usedThisMonth?.toLocaleString?.() ?? aiBudget.usedThisMonth} / {aiBudget.budgetMonthly?.toLocaleString?.() ?? aiBudget.budgetMonthly} tokens used (remaining {aiBudget.remaining?.toLocaleString?.() ?? aiBudget.remaining}). Calls: {aiBudget.aiCallsThisMonth ?? '—'}
+                      {typeof aiBudget.callsWithLoggedTokens === 'number' && (
+                        <span className="block text-xs text-slate-500 dark:text-slate-400 mt-1">
+                          {aiBudget.callsWithLoggedTokens} with logged provider tokens
+                          {aiBudget.callsEstimated > 0
+                            ? ` · ${aiBudget.callsEstimated} estimated from older activity`
+                            : ''}
+                        </span>
+                      )}
                     </div>
 
                     {/* Tailwind progress bar, perfect dark mode + pale light */}
@@ -1194,7 +1249,7 @@ const Settings = () => {
                     })()}
 
                     <p className="mt-2 text-xs text-slate-500 dark:text-slate-300">
-                      Budget resets monthly. Clara uses a small allowance per suggestion, draft or review.
+                      Budget resets monthly. Usage is based on provider token counts where available.
                     </p>
                   </div>
                 )}
@@ -1217,6 +1272,9 @@ const Settings = () => {
                   <EmailSettings />
                 </div>
               </div>
+
+              {/* Engagement clause library versioning */}
+              <EngagementLibrarySettings />
 
               {/* Cover letter templates */}
               <div className="glass-tile overflow-hidden">
@@ -1442,12 +1500,69 @@ const Settings = () => {
                     </select>
                   </div>
                 </div>
+                <div className="border-t border-slate-200 dark:border-slate-700 pt-8">
+                  <h3 className="text-base font-semibold text-slate-900 dark:text-white">
+                    Payment collection at sign
+                  </h3>
+                  <p className="mt-1 text-sm text-slate-500 dark:text-slate-300">
+                    Offer Direct Debit or card setup immediately after a client signs (Ignition-style).
+                    Uses Adfin when configured; otherwise a demo GoCardless stub is used.
+                  </p>
+                  <div className="mt-4 space-y-4">
+                    <label className="flex items-start gap-3">
+                      <input
+                        type="checkbox"
+                        data-testid="collect-payment-at-sign"
+                        checked={paymentForm.collectPaymentAtSign}
+                        onChange={(e) =>
+                          setPaymentForm({ ...paymentForm, collectPaymentAtSign: e.target.checked })
+                        }
+                        className="mt-1 rounded border-slate-300 dark:border-slate-500"
+                      />
+                      <span>
+                        <span className="text-sm font-semibold text-slate-700 dark:text-slate-100">
+                          Collect payment at sign
+                        </span>
+                        <span className="block text-xs text-slate-500 dark:text-slate-300 mt-0.5">
+                          Clients see a payment setup step after accepting the proposal
+                        </span>
+                      </span>
+                    </label>
+                    {paymentForm.collectPaymentAtSign && (
+                      <div className="ml-7 space-y-2">
+                        <label className="flex items-center gap-2 text-sm text-slate-700 dark:text-slate-200">
+                          <input
+                            type="checkbox"
+                            checked={paymentForm.allowDirectDebit}
+                            onChange={(e) =>
+                              setPaymentForm({ ...paymentForm, allowDirectDebit: e.target.checked })
+                            }
+                            className="rounded border-slate-300"
+                          />
+                          Direct Debit
+                        </label>
+                        <label className="flex items-center gap-2 text-sm text-slate-700 dark:text-slate-200">
+                          <input
+                            type="checkbox"
+                            checked={paymentForm.allowCard}
+                            onChange={(e) =>
+                              setPaymentForm({ ...paymentForm, allowCard: e.target.checked })
+                            }
+                            className="rounded border-slate-300"
+                          />
+                          Card
+                        </label>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
                 <button
                   onClick={handleSaveVat}
                   disabled={isSaving === 'billing'}
                   className="btn-primary"
                 >
-                  {isSaving === 'billing' ? 'Saving…' : 'Save VAT settings'}
+                  {isSaving === 'billing' ? 'Saving…' : 'Save billing settings'}
                 </button>
               </div>
             </div>
@@ -1770,16 +1885,47 @@ const Settings = () => {
                 </div>
 
                 <div className="pt-6 border-t border-slate-200 dark:border-slate-700">
-                  <h3 className="text-sm font-medium text-slate-900 mb-2">
+                  <h3 className="text-sm font-medium text-slate-900 dark:text-white mb-2">
                     Two-Factor Authentication
                   </h3>
                   <p className="text-sm text-slate-500 dark:text-slate-300 mb-4">
-                    Two-factor authentication adds an extra layer of security. We&apos;re finishing
-                    TOTP support — password + session cookies are already hardened.
+                    {user?.twoFactorEnabled
+                      ? 'Your account is protected with an authenticator app.'
+                      : 'Add an extra layer of security using an authenticator app.'}
                   </p>
-                  <button className="btn-secondary opacity-60 cursor-not-allowed" disabled type="button">
-                    Enable 2FA (in development)
-                  </button>
+                  {user?.twoFactorEnabled ? (
+                    <div className="space-y-3">
+                      <span className="inline-flex items-center text-sm text-green-600">
+                        <ShieldCheckIcon className="w-4 h-4 mr-1" />
+                        2FA is enabled
+                      </span>
+                      <div className="flex flex-col sm:flex-row gap-2 max-w-md">
+                        <input
+                          type="password"
+                          value={disable2FAPassword}
+                          onChange={(e) => setDisable2FAPassword(e.target.value)}
+                          placeholder="Password to disable 2FA"
+                          className="input-field flex-1"
+                        />
+                        <button
+                          type="button"
+                          className="btn-secondary"
+                          onClick={handleDisable2FA}
+                          disabled={isDisabling2FA || !disable2FAPassword}
+                        >
+                          {isDisabling2FA ? 'Disabling...' : 'Disable 2FA'}
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    <button
+                      type="button"
+                      className="btn-secondary"
+                      onClick={() => navigate('/2fa-setup')}
+                    >
+                      Enable 2FA
+                    </button>
+                  )}
                 </div>
               </div>
             </div>
@@ -1788,6 +1934,45 @@ const Settings = () => {
           {/* AUTOMATION / TOUCHPOINTS TAB */}
           {activeTab === 'automation' && (
             <AutomationTab />
+          )}
+
+          {/* INTEGRATIONS TAB */}
+          {activeTab === 'integrations' && (
+            <div className="space-y-6">
+              <div className="glass-tile overflow-hidden">
+                <div className="px-8 py-5 border-b border-slate-200 dark:border-slate-700 bg-white/40 dark:bg-slate-800/30">
+                  <h2 className="text-lg font-semibold text-slate-900 dark:text-white">
+                    Accounting integrations
+                  </h2>
+                  <p className="text-sm text-slate-500 dark:text-slate-300">
+                    Connect Xero to sync clients and push accepted proposal summaries
+                  </p>
+                </div>
+                <div className="p-6">
+                  <XeroConnect />
+                </div>
+              </div>
+
+              <div className="glass-tile overflow-hidden">
+                <div className="px-8 py-5 border-b border-slate-200 dark:border-slate-700 bg-white/40 dark:bg-slate-800/30">
+                  <h2 className="text-lg font-semibold text-slate-900 dark:text-white">
+                    What&apos;s implemented (W1.1–W1.2)
+                  </h2>
+                </div>
+                <div className="p-6 text-sm text-slate-600 dark:text-slate-300 space-y-2">
+                  <p>
+                    <span className="font-medium text-green-700 dark:text-green-400">Live:</span>{' '}
+                    OAuth connect, client import (dedupe by email/name), contact notes on accepted
+                    proposals.
+                  </p>
+                  <p>
+                    <span className="font-medium text-amber-700 dark:text-amber-400">Stub:</span>{' '}
+                    Repeating invoice / mandate draft — returned in API response only until revenue
+                    account mapping (full W1.2).
+                  </p>
+                </div>
+              </div>
+            </div>
           )}
         </div>
       </div>

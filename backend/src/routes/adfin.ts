@@ -119,6 +119,8 @@ router.post(
       where: { id: proposalId },
       data: {
         paymentId: payment.id,
+        paymentMandateId: payment.id,
+        paymentProvider: 'adfin',
         paymentStatus: 'PENDING',
         paymentUrl: payment.checkoutUrl,
       },
@@ -153,8 +155,12 @@ router.get(
       },
       select: {
         paymentId: true,
+        paymentMandateId: true,
+        paymentProvider: true,
         paymentStatus: true,
         paymentUrl: true,
+        paymentMethod: true,
+        paidAt: true,
         status: true,
         total: true,
       },
@@ -174,9 +180,14 @@ router.get(
           success: true,
           data: {
             status: adfinStatus.status,
+            paymentStatus: proposal.paymentStatus,
+            mandateId: proposal.paymentMandateId,
+            provider: proposal.paymentProvider,
             amount: proposal.total,
             paymentUrl: proposal.paymentUrl,
-            paid: proposal.status === 'ACCEPTED',
+            method: proposal.paymentMethod,
+            paidAt: proposal.paidAt,
+            paid: ['ACTIVE', 'PAID'].includes(proposal.paymentStatus || ''),
           },
         });
         return;
@@ -190,9 +201,14 @@ router.get(
       success: true,
       data: {
         status: proposal.paymentStatus || 'NOT_STARTED',
+        paymentStatus: proposal.paymentStatus || 'NOT_STARTED',
+        mandateId: proposal.paymentMandateId,
+        provider: proposal.paymentProvider,
         amount: proposal.total,
         paymentUrl: proposal.paymentUrl,
-        paid: proposal.status === 'ACCEPTED',
+        method: proposal.paymentMethod,
+        paidAt: proposal.paidAt,
+        paid: ['ACTIVE', 'PAID'].includes(proposal.paymentStatus || ''),
       },
     });
   })

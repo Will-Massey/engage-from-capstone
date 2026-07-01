@@ -187,6 +187,118 @@ router.get(
 );
 
 /**
+ * GET /api/proposals/renewal-candidates
+ * List accepted contracts due for renewal (bulk renewal wizard step 1)
+ */
+router.get(
+  '/renewal-candidates',
+  authenticate,
+  asyncHandler(async (req, res) => {
+    const query = z
+      .object({
+        expiringBefore: z
+          .union([z.string().datetime(), z.string().regex(/^\d{4}-\d{2}-\d{2}$/)])
+          .optional(),
+        clientIds: z
+          .union([z.string(), z.array(z.string())])
+          .optional()
+          .transform((val) => {
+            if (!val) return undefined;
+            const ids = Array.isArray(val) ? val : val.split(',').map((s) => s.trim());
+            return ids.filter(Boolean);
+          }),
+      })
+      .parse(req.query);
+
+    const { findRenewalCandidates, parseExpiringBeforeInput } = await import(
+      '../services/renewalProposalService.js'
+    );
+
+    const expiringBefore = query.expiringBefore
+      ? parseExpiringBeforeInput(query.expiringBefore)
+      : undefined;
+
+    const candidates = await findRenewalCandidates({
+      tenantId: req.tenantId!,
+      expiringBefore,
+      clientIds: query.clientIds,
+    });
+
+    res.json({
+      success: true,
+      data: candidates,
+      meta: {
+        count: candidates.length,
+        expiringBefore: expiringBefore?.toISOString() ?? null,
+        eligible: candidates.filter((c) => !c.hasPendingRenewal).length,
+      },
+    });
+  })
+);
+
+/**
+ * POST /api/proposals/bulk-renewal
+ * Batch-create DRAFT renewal proposals (does not send)
+ */
+router.post(
+  '/bulk-renewal',
+  authenticate,
+  authorize('ADMIN', 'PARTNER', 'MANAGER', 'SENIOR'),
+  asyncHandler(async (req, res) => {
+    const body = z
+      .object({
+        clientIds: z.array(z.string().uuid()).optional(),
+        proposalIds: z.array(z.string().uuid()).optional(),
+        expiringBefore: z
+          .union([z.string().datetime(), z.string().regex(/^\d{4}-\d{2}-\d{2}$/)])
+          .optional(),
+        templateId: z.string().uuid().optional(),
+        upliftPercent: z.number().min(-50).max(50).default(0),
+        useAiCoverLetter: z.boolean().default(false),
+      })
+      .parse(req.body);
+
+    if (
+      !body.clientIds?.length &&
+      !body.proposalIds?.length &&
+      !body.expiringBefore
+    ) {
+      throw new ApiError(
+        'INVALID_REQUEST',
+        'Provide clientIds, proposalIds, or expiringBefore',
+        400
+      );
+    }
+
+    const { bulkCreateRenewalDrafts, parseExpiringBeforeInput } = await import(
+      '../services/renewalProposalService.js'
+    );
+
+    const result = await bulkCreateRenewalDrafts({
+      tenantId: req.tenantId!,
+      userId: req.user!.id,
+      clientIds: body.clientIds,
+      proposalIds: body.proposalIds,
+      expiringBefore: body.expiringBefore
+        ? parseExpiringBeforeInput(body.expiringBefore)
+        : undefined,
+      templateId: body.templateId,
+      upliftPercent: body.upliftPercent,
+      useAiCoverLetter: body.useAiCoverLetter,
+    });
+
+    res.status(result.summary.created > 0 ? 201 : 200).json({
+      success: true,
+      data: result,
+      message:
+        result.summary.created > 0
+          ? `Created ${result.summary.created} renewal draft${result.summary.created === 1 ? '' : 's'}`
+          : 'No renewal drafts were created',
+    });
+  })
+);
+
+/**
  * GET /api/proposals/:id
  * Get single proposal
  */
@@ -975,101 +1087,20 @@ router.post(
   authorize('ADMIN', 'PARTNER', 'MANAGER', 'SENIOR'),
   asyncHandler(async (req, res) => {
     const { id } = req.params;
+    const body = z
+      .object({
+        upliftPercent: z.number().min(-50).max(50).optional(),
+        templateId: z.string().uuid().optional(),
+        useAiCoverLetter: z.boolean().optional(),
+      })
+      .parse(req.body ?? {});
 
-    // Get the original proposal
-    const originalProposal = await prisma.proposal.findFirst({
-      where: {
-        id,
-        tenantId: req.tenantId,
-        status: 'ACCEPTED',
-      },
-      include: {
-        client: true,
-        services: true,
-      },
-    });
+    const { createRenewalDraft } = await import('../services/renewalProposalService.js');
 
-    if (!originalProposal) {
-      throw new ApiError('NOT_FOUND', 'Accepted proposal not found', 404);
-    }
-
-    // Generate new reference
-    const reference = generateReference('PROP');
-
-    // Set valid until (default 30 days)
-    const validUntil = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
-
-    // Calculate renewal date (12 months from now)
-    const renewalDate = new Date();
-    renewalDate.setFullYear(renewalDate.getFullYear() + 1);
-
-    // Create renewal proposal
-    const renewalProposal = await prisma.proposal.create({
-      data: {
-        reference,
-        title: `${originalProposal.title} (Renewal)`,
-        tenantId: req.tenantId,
-        clientId: originalProposal.clientId,
-        createdById: req.user!.id,
-        status: 'DRAFT',
-        validUntil,
-        subtotal: originalProposal.subtotal,
-        discountType: originalProposal.discountType,
-        discountValue: originalProposal.discountValue,
-        discountAmount: originalProposal.discountAmount,
-        // vatAmount: originalProposal.vatAmount, // Temporarily disabled
-        total: originalProposal.total,
-        paymentTerms: originalProposal.paymentTerms,
-        paymentFrequency: originalProposal.paymentFrequency,
-        coverLetter: originalProposal.coverLetter,
-        terms: originalProposal.terms,
-        notes: `Renewal of proposal ${originalProposal.reference}. ${originalProposal.notes || ''}`,
-        isRenewal: true,
-        originalProposalId: originalProposal.id,
-        renewalDate,
-        services: {
-          create: originalProposal.services.map((svc) => ({
-            name: svc.name,
-            description: svc.description,
-            quantity: svc.quantity,
-            unitPrice: svc.unitPrice,
-            discountPercent: svc.discountPercent,
-            displayPrice: svc.displayPrice,
-            lineTotal: svc.lineTotal,
-            billingFrequency: svc.billingFrequency,
-            priceDisplayMode: svc.priceDisplayMode,
-            frequency: svc.frequency,
-            isOptional: svc.isOptional,
-            serviceTemplateId: svc.serviceTemplateId,
-          })) as any,
-        },
-      },
-      include: {
-        client: true,
-        services: true,
-        createdBy: {
-          select: {
-            firstName: true,
-            lastName: true,
-          },
-        },
-      },
-    });
-
-    // Log activity
-    await prisma.activityLog.create({
-      data: {
-        tenantId: req.tenantId,
-        userId: req.user!.id,
-        action: 'PROPOSAL_RENEWAL_CREATED',
-        entityType: 'PROPOSAL',
-        entityId: renewalProposal.id,
-        description: `Created renewal proposal "${renewalProposal.title}" from ${originalProposal.reference}`,
-        metadata: JSON.stringify({
-          originalProposalId: originalProposal.id,
-          originalReference: originalProposal.reference,
-        }),
-      },
+    const renewalProposal = await createRenewalDraft(req.tenantId!, req.user!.id, id, {
+      upliftPercent: body.upliftPercent,
+      templateId: body.templateId,
+      useAiCoverLetter: body.useAiCoverLetter,
     });
 
     res.status(201).json({

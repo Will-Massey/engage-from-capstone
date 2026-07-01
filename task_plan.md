@@ -2,17 +2,17 @@
 <!-- Token handoff file — update at every Render deploy checkpoint. Fresh sessions read THIS, not chat history. -->
 
 ## Goal
-Engage proposals: isolated per-proposal snapshots, **Templates** catalogue section for pre-made bundles, faster proposal drafting from sidebar.
+**Market leader:** UK proposal-to-cash platform — CH lookup → priced proposal → signed engagement → collected fees, with Clara AI that saves 30+ min/proposal without token overspend. Full plan: `MARKET_LEADER_PLAN.md`.
 
 ## Current Phase
-Phase: Per-client draft isolation — **deployed** (7cc735bb)
+Phase W1+W2 kickoff — parallel agent tracks (security, AI cost, Xero, wizard, renewals, payments, pricing, compliance, analytics)
 
 ## Next Up
 <!-- 3–5 bullets ONLY. Next fresh session starts here. Rewrite every checkpoint. -->
-1. Caroline smoke-test: start proposals for 2 clients, add different services, switch between them — each keeps its own draft.
-2. Smoke-test saved-proposal isolation: complete proposal B with different fees → open proposal A → prices unchanged.
-3. Smoke-test Caroline client save + Companies House enrich if not yet verified on production.
-4. Set `CLOUDFLARE_EMAIL_WEBHOOK_SECRET` on Render if delivery tracking needed.
+1. Review subagent PRs/commits — merge W0.1 MFA, W2.1 AI cost refactor, W2.7 wizard first.
+2. Wire Xero env vars on Render when W1.1 scaffold lands.
+3. E2E smoke: first-proposal wizard → send → sign → mandate stub.
+4. Update `findings.md` agent execution log with each track status.
 
 ## Phases
 <!-- Status: pending | in_progress | complete -->

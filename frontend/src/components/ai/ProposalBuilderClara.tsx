@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { SparklesIcon, ChatBubbleLeftRightIcon, CheckIcon, XMarkIcon } from '@heroicons/react/24/outline';
+import ClaraServiceSuggestionCards, { type ClaraServiceSuggestion } from './ClaraServiceSuggestionCards';
 import { apiClient } from '../../utils/api';
 import { useAiAssistantStore } from '../../stores/aiAssistantStore';
 import { AiPanel, showAiError } from './AiPanel';
@@ -15,6 +16,8 @@ interface ServiceSuggestion {
   serviceId: string;
   name: string;
   rationale: string;
+  billingFrequency?: string;
+  displayPrice?: number;
 }
 
 type MappableAction =
@@ -60,6 +63,10 @@ interface ProposalBuilderClaraProps {
     suggestions?: ServiceSuggestion[];
   } | null;
   onApplySingleSuggestion: (serviceId: string) => void;
+  onTweakSingleSuggestion?: (
+    serviceId: string,
+    tweaks: { billingFrequency: string; displayPrice: number }
+  ) => void;
   onDraftCoverLetter: () => void;
   coverLoading: boolean;
 }
@@ -78,6 +85,7 @@ export default function ProposalBuilderClara({
   suggestLoading,
   suggestions,
   onApplySingleSuggestion,
+  onTweakSingleSuggestion,
   onDraftCoverLetter,
   coverLoading,
 }: ProposalBuilderClaraProps) {
@@ -166,6 +174,14 @@ export default function ProposalBuilderClara({
   const visibleSuggestions =
     suggestions?.suggestions?.filter((s) => !dismissedServiceIds.has(s.serviceId)) ?? [];
 
+  const claraCards: ClaraServiceSuggestion[] = visibleSuggestions.map((s) => ({
+    serviceId: s.serviceId,
+    name: s.name,
+    billingFrequency: s.billingFrequency || 'MONTHLY',
+    displayPrice: s.displayPrice ?? 0,
+    rationale: s.rationale,
+  }));
+
   const scoreColor =
     !draftReview
       ? 'text-slate-500'
@@ -201,53 +217,24 @@ export default function ProposalBuilderClara({
                 {suggestions.summary && (
                   <p className="text-sm text-slate-700 dark:text-slate-200">{suggestions.summary}</p>
                 )}
-                {visibleSuggestions.length > 0 ? (
-                  <ul className="text-xs space-y-2">
-                    {visibleSuggestions.map((s) => (
-                      <li
-                        key={s.serviceId}
-                        className="rounded-lg border border-violet-100 dark:border-violet-900/50 bg-white/70 dark:bg-slate-900/50 p-2.5 text-slate-600 dark:text-slate-300"
-                      >
-                        <p>
-                          <strong>{s.name}</strong> — {s.rationale}
-                        </p>
-                        <div className="flex flex-wrap gap-1.5 mt-2">
-                          <button
-                            type="button"
-                            onClick={() => onApplySingleSuggestion(s.serviceId)}
-                            className="text-[10px] px-2 py-0.5 rounded-full bg-violet-100 dark:bg-violet-900/40 text-violet-700 dark:text-violet-200 hover:bg-violet-200 dark:hover:bg-violet-800/50 inline-flex items-center gap-1"
-                          >
-                            <CheckIcon className="h-3 w-3" />
-                            Accept
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => dismissService(s.serviceId)}
-                            className="text-[10px] px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800/60 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700/60 inline-flex items-center gap-1"
-                          >
-                            <XMarkIcon className="h-3 w-3" />
-                            Dismiss
-                          </button>
-                        </div>
-                      </li>
-                    ))}
-                  </ul>
-                ) : (
-                  <p className="text-xs text-slate-500 dark:text-slate-400">All service suggestions handled.</p>
-                )}
-                {visibleSuggestions.length > 1 && (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      for (const s of visibleSuggestions) {
-                        onApplySingleSuggestion(s.serviceId);
-                      }
-                    }}
-                    className="btn-primary text-xs py-1.5 px-3 mt-1"
-                  >
-                    Accept all remaining
-                  </button>
-                )}
+                <ClaraServiceSuggestionCards
+                  suggestions={claraCards}
+                  onAccept={(s) => onApplySingleSuggestion(s.serviceId)}
+                  onTweak={(s, tweaks) => {
+                    if (onTweakSingleSuggestion) {
+                      onTweakSingleSuggestion(s.serviceId, tweaks);
+                    } else {
+                      onApplySingleSuggestion(s.serviceId);
+                    }
+                    dismissService(s.serviceId);
+                  }}
+                  onReject={dismissService}
+                  onAcceptAll={() => {
+                    for (const s of visibleSuggestions) {
+                      onApplySingleSuggestion(s.serviceId);
+                    }
+                  }}
+                />
               </div>
             )}
           </AiPanel>
@@ -298,11 +285,12 @@ export default function ProposalBuilderClara({
 
             <AiPanel
               title="Cover letter"
-              description="Personalised introduction using your selected services"
+              description="Template loads automatically — ask Clara only to revise your draft"
               configured={configured}
               loading={coverLoading}
               onAction={onDraftCoverLetter}
-              actionLabel={AI_COPILOT.draftWithLabel}
+              actionLabel={AI_COPILOT.reviseWithLabel}
+              actionDisabled={!coverLetter.trim()}
             />
 
             <AiPanel

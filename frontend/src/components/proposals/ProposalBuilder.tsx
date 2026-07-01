@@ -48,6 +48,10 @@ import ClientContextCard from '../ai/ClientContextCard';
 import AutoFitBanner, { type AutoFitResult } from '../ai/AutoFitBanner';
 import ProposalEmailPreviewDialog, { type ProposalEmailDraftInput } from '../ai/ProposalEmailPreviewDialog';
 import SaveProposalTemplateDialog from './SaveProposalTemplateDialog';
+import {
+  loadPricingSuggestion,
+  clearPricingSuggestion,
+} from '../../utils/pricingSuggestionStorage';
 import { AI_COPILOT } from '../../config/aiCopilot';
 
 type BuildMode = 'unset' | 'manual' | 'clara' | 'template';
@@ -365,6 +369,7 @@ export default function ProposalBuilder({ proposalId }: ProposalBuilderProps) {
   const preselectedTemplateId = searchParams.get('template');
   const guidedParam = searchParams.get('guided');
   const manualParam = searchParams.get('manual');
+  const fromPricingParam = searchParams.get('fromPricing');
   const { tenant, user } = useAuthStore();
   const isEditMode = Boolean(proposalId);
   const [currentStep, setCurrentStep] = useState(1);
@@ -443,6 +448,7 @@ export default function ProposalBuilder({ proposalId }: ProposalBuilderProps) {
   const [showEmailPreview, setShowEmailPreview] = useState(false);
   const autoFitClientRef = useRef<string | null>(null);
   const preselectedTemplateAppliedRef = useRef(false);
+  const pricingSuggestionAppliedRef = useRef(false);
   const activeClientIdRef = useRef<string | null>(null);
   const isHydratingDraftRef = useRef(false);
 
@@ -574,6 +580,91 @@ export default function ProposalBuilder({ proposalId }: ProposalBuilderProps) {
     }
   }, [isEditMode, selectedClient, applyDraftSnapshot, resetClientProposalState]);
 
+  // Apply pricing calculator suggestions: ?fromPricing=1
+  useEffect(() => {
+    if (
+      isEditMode ||
+      fromPricingParam !== '1' ||
+      pricingSuggestionAppliedRef.current ||
+      services.length === 0
+    ) {
+      return;
+    }
+
+    const suggestion = loadPricingSuggestion();
+    if (!suggestion?.services?.length) return;
+
+    pricingSuggestionAppliedRef.current = true;
+    const lines: SelectedService[] = [];
+    let skipped = 0;
+
+    for (const suggested of suggestion.services) {
+      const catalogue = services.find(
+        (s) =>
+          s.id === suggested.serviceTemplateId ||
+          s.name.trim().toLowerCase() === suggested.catalogName.trim().toLowerCase()
+      );
+      if (!catalogue) {
+        skipped += 1;
+        continue;
+      }
+
+      const price = suggested.suggestedPrice;
+      const frequency =
+        suggested.billingCycle || catalogue.billingCycle || catalogue.defaultFrequency || 'MONTHLY';
+      const annualEquivalent = calculateAnnualEquivalent(price, frequency);
+      const vatPercent =
+        catalogue.isVatApplicable !== false
+          ? catalogue.vatRate === 'REDUCED_5'
+            ? 5
+            : catalogue.vatRate === 'ZERO' || catalogue.vatRate === 'EXEMPT'
+              ? 0
+              : 20
+          : 0;
+      const lineTotal = price;
+      const vatAmount = includeVat ? Math.round(lineTotal * (vatPercent / 100) * 100) / 100 : 0;
+
+      lines.push({
+        ...catalogue,
+        id: newLineId(),
+        templateId: catalogue.id,
+        quantity: 1,
+        discountPercent: 0,
+        displayPrice: price,
+        billingCycle: frequency,
+        priceAmount: price,
+        annualEquivalent,
+        lineTotal,
+        vatRate: vatPercent,
+        vatAmount,
+        grossTotal: lineTotal + vatAmount,
+        allowedCadences: parseFrequencyOptions(catalogue.frequencyOptions),
+        oneOffDueDate: frequency === 'ONE_TIME' ? '' : undefined,
+      });
+    }
+
+    if (lines.length > 0) {
+      setSelectedServices(lines);
+      setBuildMode('manual');
+      setAutoFitDismissed(true);
+      setCurrentStep(preselectedClientId ? 2 : 1);
+      if (!proposalTitle.trim()) {
+        const entityLabel = suggestion.inputs.entityType.replace(/_/g, ' ').toLowerCase();
+        setProposalTitle(`Engagement proposal — ${entityLabel}`);
+      }
+      toast.success(`Applied ${lines.length} priced service(s) from calculator`);
+    }
+
+    if (skipped > 0) {
+      toast(
+        `${skipped} suggested service(s) not found in your catalogue — add them from UK templates`,
+        { icon: 'ℹ️', duration: 6000 }
+      );
+    }
+
+    clearPricingSuggestion();
+  }, [isEditMode, fromPricingParam, services.length, preselectedClientId, includeVat, proposalTitle]);
+
   // Deep-link from Templates page: ?template=<id>
   useEffect(() => {
     if (isEditMode || !preselectedTemplateId || preselectedTemplateAppliedRef.current) return;
@@ -596,33 +687,40 @@ export default function ProposalBuilder({ proposalId }: ProposalBuilderProps) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isEditMode, preselectedTemplateId, selectedClient?.id, services.length]);
 
-  // Load tenant default cover letter template when client is chosen (new proposals only)
+  const loadCoverLetterFromTemplate = async (client: Client, serviceCount?: number) => {
+    try {
+      const tplRes = (await apiClient.getDefaultCoverLetterTemplate()) as any;
+      if (!tplRes?.success || !tplRes.data?.content) return false;
+
+      const tone = (tplRes.data.tone || 'PROFESSIONAL') as CoverLetterTone;
+      setCoverLetterTone(tone);
+
+      const previewRes = (await apiClient.previewCoverLetterRaw(tplRes.data.content, {
+        clientName: coverLetterAddressee(client),
+        companyName: client.name,
+        tenantName: tenant?.name || 'Our practice',
+        senderName: `${user?.firstName || ''} ${user?.lastName || ''}`.trim() || undefined,
+        serviceCount: serviceCount ?? (selectedServices.length || undefined),
+      })) as any;
+
+      if (previewRes?.success && previewRes.data?.rendered) {
+        setCoverLetter(previewRes.data.rendered);
+        return true;
+      }
+    } catch {
+      // fall back to tone presets in UI
+    }
+    return false;
+  };
+
+  // Template-first cover letter when client is chosen (no AI — W2.2)
   useEffect(() => {
     if (!selectedClient || isEditMode || proposalId || coverLetter.trim().length >= 40) return;
 
     let cancelled = false;
-    (async () => {
-      try {
-        const tplRes = (await apiClient.getDefaultCoverLetterTemplate()) as any;
-        if (!tplRes?.success || !tplRes.data?.content || cancelled) return;
-
-        const tone = (tplRes.data.tone || 'PROFESSIONAL') as CoverLetterTone;
-        setCoverLetterTone(tone);
-
-        const previewRes = (await apiClient.previewCoverLetterRaw(tplRes.data.content, {
-          clientName: coverLetterAddressee(selectedClient),
-          companyName: selectedClient.name,
-          tenantName: tenant?.name || 'Our practice',
-          senderName: `${user?.firstName || ''} ${user?.lastName || ''}`.trim() || undefined,
-          serviceCount: selectedServices.length || undefined,
-        })) as any;
-
-        if (!cancelled && previewRes?.success && previewRes.data?.rendered) {
-          setCoverLetter(previewRes.data.rendered);
-        }
-      } catch {
-        // fall back to tone presets in UI
-      }
+    void (async () => {
+      if (cancelled) return;
+      await loadCoverLetterFromTemplate(selectedClient, selectedServices.length);
     })();
 
     return () => {
@@ -631,42 +729,50 @@ export default function ProposalBuilder({ proposalId }: ProposalBuilderProps) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedClient?.id, selectedServices.length]);
 
-  // Debounced auto-fit when client is selected (Clara mode only)
+  const runAutoFitForClient = async (clientId: string) => {
+    if (!aiConfigured || isEditMode || proposalId) return;
+    autoFitClientRef.current = clientId;
+    setAutoFitLoading(true);
+    setAutoFitDismissed(false);
+    setAutoFitResult(null);
+    try {
+      const res = (await apiClient.aiAutoFit(clientId)) as any;
+      if (autoFitClientRef.current === clientId && res.success) {
+        setAutoFitResult(res.data);
+      }
+    } catch {
+      // User-triggered only — avoid error popups unless they asked for suggestions
+    } finally {
+      if (autoFitClientRef.current === clientId) setAutoFitLoading(false);
+    }
+  };
+
+  const guidedAutoFitDoneRef = useRef(false);
   useEffect(() => {
+    const guided = guidedParam === '1' || guidedParam === 'true';
     if (
+      !guided ||
+      guidedAutoFitDoneRef.current ||
+      buildMode !== 'clara' ||
       !selectedClient ||
       isEditMode ||
       proposalId ||
-      !aiConfigured ||
-      autoFitDismissed ||
-      buildMode !== 'clara'
-    )
+      !aiConfigured
+    ) {
       return;
-
-    const clientId = selectedClient.id;
-    autoFitClientRef.current = clientId;
-    const timer = setTimeout(async () => {
-      setAutoFitLoading(true);
-      try {
-        const res = (await apiClient.aiAutoFit(clientId)) as any;
-        if (autoFitClientRef.current === clientId && res.success) {
-          setAutoFitResult(res.data);
-        }
-      } catch {
-        // Background auto-fit is optional — avoid error popups on client select
-      } finally {
-        if (autoFitClientRef.current === clientId) setAutoFitLoading(false);
-      }
-    }, 800);
-
-    return () => clearTimeout(timer);
-  }, [selectedClient?.id, aiConfigured, isEditMode, proposalId, autoFitDismissed, buildMode]);
-
-  useEffect(() => {
-    if (buildMode === 'clara') {
-      setAutoFitDismissed(false);
-      setAutoFitResult(null);
     }
+    guidedAutoFitDoneRef.current = true;
+    void runAutoFitForClient(selectedClient.id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [buildMode, selectedClient?.id, guidedParam, aiConfigured, isEditMode, proposalId]);
+
+  // Changing client in Clara mode clears stale suggestions — no background API call (W2.1)
+  useEffect(() => {
+    if (buildMode !== 'clara') return;
+    setAutoFitDismissed(false);
+    setAutoFitResult(null);
+    setAutoFitLoading(false);
+    autoFitClientRef.current = null;
   }, [selectedClient?.id, buildMode]);
 
   useEffect(() => {
@@ -910,19 +1016,9 @@ export default function ProposalBuilder({ proposalId }: ProposalBuilderProps) {
 
   const goToReviewStep = () => {
     setCurrentStep(3);
-    setCoverLetter((prev) => {
-      if (prev.trim() || !selectedClient) return prev;
-      // Autofill using the currently selected tone (defaults to PROFESSIONAL)
-      return generateCoverLetterForTone({
-        tone: coverLetterTone,
-        addresseeName: coverLetterAddressee(selectedClient),
-        companyName: selectedClient.name,
-        practiceName: tenant?.name || 'Our practice',
-        senderName: `${user?.firstName || ''} ${user?.lastName || ''}`.trim() || undefined,
-        senderPosition: (user as any)?.jobTitle || undefined,
-        services: selectedServices,
-      });
-    });
+    if (!coverLetter.trim() && selectedClient && !isEditMode && !proposalId) {
+      void loadCoverLetterFromTemplate(selectedClient, selectedServices.length);
+    }
   };
 
   /**
@@ -1079,6 +1175,43 @@ export default function ProposalBuilder({ proposalId }: ProposalBuilderProps) {
     });
   };
 
+  const applyTweakedAiSuggestion = (
+    serviceId: string,
+    tweaks: { billingFrequency: string; displayPrice: number }
+  ) => {
+    const catalogService = services.find((s) => s.id === serviceId);
+    if (!catalogService) return;
+    if (addServiceWithCadence(catalogService, tweaks.billingFrequency, tweaks.displayPrice)) {
+      const name = aiSuggestions?.suggestions?.find((s: { serviceId: string }) => s.serviceId === serviceId)?.name;
+      toast.success(name ? `${name} added with your tweaks` : 'Service added with your tweaks');
+    }
+    setAiSuggestions((prev: typeof aiSuggestions) => {
+      if (!prev?.suggestions?.length) return prev;
+      const remaining = prev.suggestions.filter((s: { serviceId: string }) => s.serviceId !== serviceId);
+      if (!remaining.length) return null;
+      return { ...prev, suggestions: remaining };
+    });
+  };
+
+  const applyAutoFitService = (sug: { serviceId: string; name: string; billingFrequency: string; displayPrice: number }) => {
+    const catalogService = services.find((s) => s.id === sug.serviceId);
+    if (!catalogService) return;
+    if (addServiceWithCadence(catalogService, sug.billingFrequency, sug.displayPrice)) {
+      toast.success(`${sug.name} added`);
+    }
+  };
+
+  const applyTweakedAutoFitService = (
+    sug: { serviceId: string; name: string },
+    tweaks: { billingFrequency: string; displayPrice: number }
+  ) => {
+    const catalogService = services.find((s) => s.id === sug.serviceId);
+    if (!catalogService) return;
+    if (addServiceWithCadence(catalogService, tweaks.billingFrequency, tweaks.displayPrice)) {
+      toast.success(`${sug.name} added with your tweaks`);
+    }
+  };
+
   const applyAiSuggestions = () => {
     if (!aiSuggestions?.suggestions?.length) return;
     let added = 0;
@@ -1098,46 +1231,24 @@ export default function ProposalBuilder({ proposalId }: ProposalBuilderProps) {
       toast.error('Select a client first');
       return;
     }
+    if (!coverLetter.trim()) {
+      toast.error('Add or load a cover letter first — Clara revises your template, she does not draft from scratch');
+      return;
+    }
     setAiCoverLoading(true);
-    setAiCoverDraft(''); // clear for streaming preview
     try {
-      const streamer = (apiClient as any).aiStreamCoverLetter;
-      if (typeof streamer === 'function') {
-        let acc = '';
-        await streamer(
-          {
-            clientId: selectedClient.id,
-            tone: coverLetterTone,
-            practiceName: tenant?.name || 'Our practice',
-            senderName: `${user?.firstName || ''} ${user?.lastName || ''}`.trim() || undefined,
-            services: selectedServices.map((s) => ({
-              name: s.name,
-              billingFrequency: s.billingCycle,
-              displayPrice: s.displayPrice,
-            })),
-          },
-          (chunk: string) => {
-            acc += chunk;
-            setAiCoverDraft(acc);
-          }
-        );
-      } else {
-        const res = (await apiClient.aiCoverLetter({
-          clientId: selectedClient.id,
-          tone: coverLetterTone,
-          practiceName: tenant?.name || 'Our practice',
-          senderName: `${user?.firstName || ''} ${user?.lastName || ''}`.trim() || undefined,
-          services: selectedServices.map((s) => ({
-            name: s.name,
-            billingFrequency: s.billingCycle,
-            displayPrice: s.displayPrice,
-          })),
-        })) as any;
-        if (res.success) setAiCoverDraft(res.data.content);
+      const serviceSummary = selectedServices.map((s) => s.name).join(', ') || 'your selected services';
+      const res = (await apiClient.aiCoverLetterRevise(
+        coverLetter,
+        `Personalise and polish this cover letter for ${selectedClient.name}. Keep UK English and a ${coverLetterTone.toLowerCase()} tone. Reflect these services: ${serviceSummary}.`,
+        { clientId: selectedClient.id }
+      )) as any;
+      if (res.success && res.data?.revisedBody) {
+        setCoverLetter(res.data.revisedBody);
+        toast.success(`${AI_COPILOT.name} revised your cover letter — review before sending`);
       }
     } catch (e) {
       showAiError(e);
-      setAiCoverDraft(null);
     } finally {
       setAiCoverLoading(false);
     }
@@ -1308,9 +1419,14 @@ export default function ProposalBuilder({ proposalId }: ProposalBuilderProps) {
       setAutoFitLoading(false);
       setSelectedTemplateId(null);
     } else if (mode === 'clara') {
-      setAutoFitDismissed(false);
-      setAutoFitResult(null);
       setSelectedTemplateId(null);
+      if (selectedClient) {
+        void runAutoFitForClient(selectedClient.id);
+      } else {
+        setAutoFitDismissed(false);
+        setAutoFitResult(null);
+        setAutoFitLoading(false);
+      }
     } else if (mode === 'template') {
       setAutoFitDismissed(true);
       setAutoFitResult(null);
@@ -2375,16 +2491,18 @@ export default function ProposalBuilder({ proposalId }: ProposalBuilderProps) {
             Cover letter
           </label>
           <div className="flex items-center gap-2">
-            <button
-              type="button"
-              onClick={runAiCoverLetter}
-              disabled={aiCoverLoading || !aiConfigured}
-              className="text-xs inline-flex items-center gap-1 px-2 py-1 rounded-lg border border-violet-300 dark:border-violet-700 text-violet-700 dark:text-violet-300 hover:bg-violet-50 dark:hover:bg-violet-950/30 disabled:opacity-50"
-              title={aiConfigured ? AI_COPILOT.draftWithLabel : `${AI_COPILOT.name} unavailable`}
-            >
-              <SparklesIcon className={`h-3.5 w-3.5 ${aiCoverLoading ? 'animate-pulse' : ''}`} />
-              {aiCoverLoading ? 'Drafting…' : AI_COPILOT.draftWithLabel}
-            </button>
+            {coverLetter.trim().length >= 20 && (
+              <button
+                type="button"
+                onClick={runAiCoverLetter}
+                disabled={aiCoverLoading || !aiConfigured}
+                className="text-xs inline-flex items-center gap-1 px-2 py-1 rounded-lg border border-violet-300 dark:border-violet-700 text-violet-700 dark:text-violet-300 hover:bg-violet-50 dark:hover:bg-violet-950/30 disabled:opacity-50"
+                title={aiConfigured ? AI_COPILOT.reviseWithLabel : `${AI_COPILOT.name} unavailable`}
+              >
+                <SparklesIcon className={`h-3.5 w-3.5 ${aiCoverLoading ? 'animate-pulse' : ''}`} />
+                {aiCoverLoading ? 'Revising…' : AI_COPILOT.reviseWithLabel}
+              </button>
+            )}
             <span className="text-[10px] px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-500">
               Tone affects only this letter
             </span>
@@ -2619,6 +2737,26 @@ export default function ProposalBuilder({ proposalId }: ProposalBuilderProps) {
     <div className="max-w-7xl mx-auto">
       {renderStepIndicator()}
 
+      {selectedClient &&
+        buildMode === 'clara' &&
+        !autoFitDismissed &&
+        !autoFitLoading &&
+        !autoFitResult &&
+        aiConfigured && (
+          <div className="mb-6 rounded-2xl border border-violet-200 dark:border-violet-800 bg-violet-50/40 dark:bg-violet-950/20 p-4 flex flex-wrap items-center justify-between gap-3">
+            <p className="text-sm text-slate-700 dark:text-slate-200">
+              Ask {AI_COPILOT.name} for an optional starter bundle for {selectedClient.name}.
+            </p>
+            <button
+              type="button"
+              onClick={() => void runAutoFitForClient(selectedClient.id)}
+              className="btn-primary text-sm"
+            >
+              Get {AI_COPILOT.name} suggestions
+            </button>
+          </div>
+        )}
+
       {selectedClient && buildMode === 'clara' && !autoFitDismissed && (autoFitLoading || autoFitResult) && (
         <AutoFitBanner
           clientName={selectedClient.name}
@@ -2631,6 +2769,9 @@ export default function ProposalBuilder({ proposalId }: ProposalBuilderProps) {
             setAutoFitDismissed(true);
             setAutoFitResult(null);
           }}
+          onAcceptService={applyAutoFitService}
+          onTweakService={applyTweakedAutoFitService}
+          onRejectService={() => {}}
         />
       )}
 
@@ -2671,6 +2812,7 @@ export default function ProposalBuilder({ proposalId }: ProposalBuilderProps) {
               suggestLoading={aiSuggestLoading}
               suggestions={aiSuggestions}
               onApplySingleSuggestion={applySingleAiSuggestion}
+              onTweakSingleSuggestion={applyTweakedAiSuggestion}
               onDraftCoverLetter={runAiCoverLetter}
               coverLoading={aiCoverLoading}
             />

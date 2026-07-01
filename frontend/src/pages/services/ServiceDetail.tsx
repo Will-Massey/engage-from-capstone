@@ -26,6 +26,7 @@ interface Service {
   longDescription?: string;
   category: string;
   basePrice: number;
+  priceAmount?: number;
   baseHours?: number;
   billingCycle?: string;
   defaultFrequency?: string;

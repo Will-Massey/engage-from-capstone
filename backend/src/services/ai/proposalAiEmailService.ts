@@ -200,7 +200,7 @@ async function generateEmailContent(
   const validUntilFormatted = formatValidUntil(payload.validUntil);
   const totalFormatted = formatGbp(payload.total);
 
-  const raw = await chatCompletion(
+  const { content: raw } = await chatCompletion(
     [
       { role: 'system', content: UK_SYSTEM },
       {
@@ -328,7 +328,7 @@ export async function* generateEmailContentStream(
   const totalFormatted = formatGbp(payload.total);
 
   // First, get the subject (very cheap, low token)
-  const subjectRaw = await chatCompletion(
+  const { content: subjectRaw } = await chatCompletion(
     [
       { role: 'system', content: UK_SYSTEM },
       {

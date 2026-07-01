@@ -18,6 +18,7 @@ import cookieParser from 'cookie-parser';
 import { shouldSkipRateLimit } from './utils/securityFlags.js';
 import stripeWebhookRoutes from './routes/stripeWebhook.js';
 import { handleOAuthProviderCallback } from './handlers/oauthCallback.js';
+import { handleXeroOAuthCallback } from './handlers/xeroOAuthCallback.js';
 
 // Import routes
 import authRoutes from './routes/auth.js';
@@ -33,13 +34,16 @@ import paymentRoutes from './routes/payments.js';
 import adfinRoutes from './routes/adfin.js';
 import coverLetterTemplateRoutes from './routes/coverLetterTemplates.js';
 import proposalTemplateRoutes from './routes/proposalTemplates.js';
+import engagementLibraryRoutes from './routes/engagementLibrary.js';
 import analyticsRoutes from './routes/analytics.js';
 import touchpointRoutes from './routes/touchpoints.js';
 import onboardingRoutes from './routes/onboarding.js';
 import aiRoutes from './routes/ai.js';
+import pricingRoutes from './routes/pricing.js';
 import automationRoutes from './routes/automation.js';
 import uploadsRoutes from './routes/uploads.js';
 import diagnosticsRoutes from './routes/diagnostics.js';
+import xeroRoutes from './routes/xero.js';
 import { asyncHandler, ApiError } from './middleware/errorHandler.js';
 import { EmailService } from './services/emailService.js';
 
@@ -238,6 +242,12 @@ app.use('/api/auth/login', loginLimiter);
 app.use('/api/auth/csrf-token', csrfLimiter);
 app.use('/api/auth/register', authLimiter);
 app.use('/api/auth/refresh', authLimiter);
+app.use('/api/auth/forgot-password', authLimiter);
+app.use('/api/auth/reset-password', authLimiter);
+app.use('/api/auth/2fa/login', loginLimiter);
+app.use('/api/auth/2fa/setup', authLimiter);
+app.use('/api/auth/2fa/verify', authLimiter);
+app.use('/api/auth/2fa/disable', authLimiter);
 
 const privilegedLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
@@ -879,6 +889,9 @@ app.get('/api/oauth/callback/microsoft365', (req, res) => {
 app.get('/api/oauth/callback/gmail', (req, res) => {
   void handleOAuthProviderCallback(req, res, 'gmail');
 });
+app.get('/api/oauth/callback/xero', (req, res) => {
+  void handleXeroOAuthCallback(req, res);
+});
 
 // API routes (auth already mounted above)
 // Share/portal/public routes first (before authenticated /:id handlers)
@@ -895,11 +908,14 @@ app.use('/api/payments/adfin', extractTenant, adfinRoutes);
 app.use('/api/companies-house', extractTenant, companiesHouseRoutes);
 app.use('/api/cover-letter-templates', extractTenant, coverLetterTemplateRoutes);
 app.use('/api/proposal-templates', extractTenant, proposalTemplateRoutes);
+app.use('/api/engagement-library', extractTenant, engagementLibraryRoutes);
 app.use('/api/analytics', extractTenant, analyticsRoutes);
 app.use('/api/touchpoints', extractTenant, touchpointRoutes);
 app.use('/api/automation', extractTenant, automationRoutes);
 app.use('/api/uploads', extractTenant, uploadsRoutes);
 app.use('/api/ai', extractTenant, aiRoutes);
+app.use('/api/xero', extractTenant, xeroRoutes);
+app.use('/api/pricing', extractTenant, pricingRoutes);
 
 // API status endpoint
 app.get('/api/status', (req, res) => {

@@ -4,6 +4,7 @@ import { prisma } from '../config/database.js';
 import { authenticate } from '../middleware/auth.js';
 import { ApiError, asyncHandler } from '../middleware/errorHandler.js';
 import logger from '../config/logger.js';
+import { DECLINE_REASONS, DECLINE_REASON_LABELS } from '../constants/declineReasons.js';
 
 const router = Router();
 
@@ -645,6 +646,220 @@ router.get(
           stuck.length + noViews.length + expiring.length === 0
             ? 'No proposals need urgent attention right now.'
             : `${stuck.length} stuck, ${noViews.length} unopened, and ${expiring.length} expiring soon — review the highest-value items first.`,
+      },
+    });
+  })
+);
+
+// Win/loss analytics — decline reasons, service mix, client cohorts
+router.get(
+  '/win-loss',
+  asyncHandler(async (req, res) => {
+    const tenantId = req.tenantId!;
+
+    const [accepted, declined] = await Promise.all([
+      prisma.proposal.findMany({
+        where: { tenantId, status: 'ACCEPTED' },
+        select: {
+          id: true,
+          total: true,
+          client: {
+            select: { companyType: true, clientRelationship: true },
+          },
+          services: {
+            select: { name: true, serviceTemplateId: true },
+          },
+        },
+      }),
+      prisma.proposal.findMany({
+        where: { tenantId, status: 'DECLINED' },
+        select: {
+          id: true,
+          total: true,
+          declineReason: true,
+          declineReasonAi: true,
+          declineReasonText: true,
+          declinedAt: true,
+          client: {
+            select: { companyType: true, clientRelationship: true },
+          },
+          services: {
+            select: { name: true, serviceTemplateId: true },
+          },
+        },
+      }),
+    ]);
+
+    const decided = accepted.length + declined.length;
+    const winRate = decided > 0 ? Math.round((accepted.length / decided) * 100) : 0;
+
+    const byReason = DECLINE_REASONS.map((reason) => {
+      const items = declined.filter((p) => {
+        const effective = p.declineReasonAi || p.declineReason;
+        return effective === reason;
+      });
+      const withReason = declined.filter((p) => p.declineReason || p.declineReasonAi);
+      const reasonShare =
+        withReason.length > 0 ? Math.round((items.length / withReason.length) * 100) : 0;
+      return {
+        reason,
+        label: DECLINE_REASON_LABELS[reason],
+        declined: items.length,
+        shareOfLosses: reasonShare,
+      };
+    }).filter((r) => r.declined > 0);
+
+    const untaggedDeclines = declined.filter((p) => !p.declineReason && !p.declineReasonAi).length;
+
+    type ServiceAgg = {
+      key: string;
+      name: string;
+      accepted: number;
+      declined: number;
+      acceptedValue: number;
+      declinedValue: number;
+    };
+
+    const serviceMap = new Map<string, ServiceAgg>();
+
+    const touchService = (
+      proposal: (typeof accepted)[0] | (typeof declined)[0],
+      outcome: 'accepted' | 'declined'
+    ) => {
+      for (const svc of proposal.services) {
+        const key = svc.serviceTemplateId || svc.name;
+        const existing = serviceMap.get(key) || {
+          key,
+          name: svc.name,
+          accepted: 0,
+          declined: 0,
+          acceptedValue: 0,
+          declinedValue: 0,
+        };
+        if (outcome === 'accepted') {
+          existing.accepted += 1;
+          existing.acceptedValue += proposal.total;
+        } else {
+          existing.declined += 1;
+          existing.declinedValue += proposal.total;
+        }
+        serviceMap.set(key, existing);
+      }
+    };
+
+    for (const p of accepted) touchService(p, 'accepted');
+    for (const p of declined) touchService(p, 'declined');
+
+    const byServiceMix = Array.from(serviceMap.values())
+      .map((s) => {
+        const decidedCount = s.accepted + s.declined;
+        return {
+          name: s.name,
+          accepted: s.accepted,
+          declined: s.declined,
+          conversionRate: decidedCount > 0 ? Math.round((s.accepted / decidedCount) * 100) : 0,
+          acceptedValue: s.acceptedValue,
+          declinedValue: s.declinedValue,
+        };
+      })
+      .filter((s) => s.accepted + s.declined >= 1)
+      .sort((a, b) => b.declined + b.accepted - (a.declined + a.accepted))
+      .slice(0, 10);
+
+    type ClientTypeAgg = {
+      key: string;
+      label: string;
+      accepted: number;
+      declined: number;
+    };
+
+    const clientTypeMap = new Map<string, ClientTypeAgg>();
+
+    const touchClientType = (
+      proposal: (typeof accepted)[0] | (typeof declined)[0],
+      outcome: 'accepted' | 'declined'
+    ) => {
+      const companyType = proposal.client.companyType;
+      const key = companyType;
+      const label = companyType.replace(/_/g, ' ').toLowerCase().replace(/\b\w/g, (c) => c.toUpperCase());
+      const existing = clientTypeMap.get(key) || { key, label, accepted: 0, declined: 0 };
+      if (outcome === 'accepted') existing.accepted += 1;
+      else existing.declined += 1;
+      clientTypeMap.set(key, existing);
+    };
+
+    for (const p of accepted) touchClientType(p, 'accepted');
+    for (const p of declined) touchClientType(p, 'declined');
+
+    const byClientType = Array.from(clientTypeMap.values())
+      .map((c) => {
+        const decidedCount = c.accepted + c.declined;
+        return {
+          ...c,
+          conversionRate: decidedCount > 0 ? Math.round((c.accepted / decidedCount) * 100) : 0,
+        };
+      })
+      .sort((a, b) => b.accepted + b.declined - (a.accepted + a.declined));
+
+    const relationshipMap = new Map<string, ClientTypeAgg>();
+    const touchRelationship = (
+      proposal: (typeof accepted)[0] | (typeof declined)[0],
+      outcome: 'accepted' | 'declined'
+    ) => {
+      const rel = proposal.client.clientRelationship;
+      const key = rel;
+      const label = rel === 'EXISTING' ? 'Existing client' : 'New client';
+      const existing = relationshipMap.get(key) || { key, label, accepted: 0, declined: 0 };
+      if (outcome === 'accepted') existing.accepted += 1;
+      else existing.declined += 1;
+      relationshipMap.set(key, existing);
+    };
+
+    for (const p of accepted) touchRelationship(p, 'accepted');
+    for (const p of declined) touchRelationship(p, 'declined');
+
+    const byClientRelationship = Array.from(relationshipMap.values()).map((c) => {
+      const decidedCount = c.accepted + c.declined;
+      return {
+        ...c,
+        conversionRate: decidedCount > 0 ? Math.round((c.accepted / decidedCount) * 100) : 0,
+      };
+    });
+
+    res.json({
+      success: true,
+      data: {
+        summary: {
+          wins: accepted.length,
+          losses: declined.length,
+          decided,
+          winRate,
+          untaggedDeclines,
+          taggedDeclines: declined.length - untaggedDeclines,
+        },
+        byReason,
+        byServiceMix,
+        byClientType,
+        byClientRelationship,
+        recentLosses: declined
+          .filter((p) => p.declineReason || p.declineReasonText)
+          .sort((a, b) => {
+            const aT = a.declinedAt?.getTime() || 0;
+            const bT = b.declinedAt?.getTime() || 0;
+            return bT - aT;
+          })
+          .slice(0, 8)
+          .map((p) => ({
+            id: p.id,
+            reason: p.declineReasonAi || p.declineReason,
+            reasonLabel:
+              p.declineReasonAi || p.declineReason
+                ? DECLINE_REASON_LABELS[(p.declineReasonAi || p.declineReason)!]
+                : 'Unspecified',
+            text: p.declineReasonText,
+            total: p.total,
+            declinedAt: p.declinedAt,
+          })),
       },
     });
   })

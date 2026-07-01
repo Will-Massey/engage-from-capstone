@@ -310,6 +310,18 @@ export const apiClient = {
   // Proposals
   getProposals: (params?: Record<string, any>) => api.get('/proposals', { params }),
 
+  getRenewalCandidates: (params?: { expiringBefore?: string; clientIds?: string[] }) =>
+    api.get('/proposals/renewal-candidates', { params }),
+
+  bulkCreateRenewalDrafts: (data: {
+    clientIds?: string[];
+    proposalIds?: string[];
+    expiringBefore?: string;
+    templateId?: string;
+    upliftPercent?: number;
+    useAiCoverLetter?: boolean;
+  }) => api.post('/proposals/bulk-renewal', data),
+
   getProposal: (id: string) => api.get(`/proposals/${id}`),
 
   createProposal: (data: any) => api.post('/proposals', data),
@@ -363,6 +375,19 @@ export const apiClient = {
     api.post(`/clients/${id}/mtditsa-assessment`, { incomeSources }),
 
   // Services
+  // Pricing methodology (W2.9 — rule engine)
+  pricingSuggestFees: (data: {
+    turnoverBand: string;
+    entityType: string;
+    employeeCount: number;
+    vatRegistered: boolean;
+    mtdStatus: string;
+    complexity: { hasPayroll: boolean; hasRd: boolean; multiSite: boolean };
+  }) => api.post('/pricing/suggest-fees', data),
+
+  pricingExplain: (data: { suggestion: { inputs: any; services: any[]; totals: any } }) =>
+    api.post('/pricing/explain', data),
+
   getServices: (params?: Record<string, any>) => api.get('/services', { params }),
 
   getServiceCategories: () => api.get('/services/categories'),
@@ -438,6 +463,14 @@ export const apiClient = {
 
   getAutomationSettings: () => api.get('/automation/settings'),
 
+  // Xero integration (W1.1–W1.2)
+  getXeroStatus: () => api.get('/xero/status'),
+  connectXero: () => api.get('/xero/connect'),
+  disconnectXero: () => api.post('/xero/disconnect', {}),
+  importXeroClients: (dryRun = false) => api.post('/xero/import-clients', { dryRun }),
+  pushAcceptedProposalToXero: (proposalId: string) =>
+    api.post(`/xero/push-accepted/${proposalId}`, {}),
+
   // Lifecycle actions (wired to touchpoint engine)
   markAmlComplete: (clientId: string) => api.post(`/clients/${clientId}/aml-complete`, {}),
   markEngagementLetterSigned: (clientId: string) =>
@@ -448,6 +481,14 @@ export const apiClient = {
 
   // Touchpoints per client (for Lifecycle panel upcoming + history)
   getClientTouchpoints: (clientId: string) => api.get(`/touchpoints/client/${clientId}`),
+
+  // Engagement clause library versioning
+  getEngagementLibraryVersions: () => api.get('/engagement-library/versions'),
+  getEngagementLibraryCurrent: () => api.get('/engagement-library/current'),
+  getEngagementLibraryTemplatesNeedingUpdate: () =>
+    api.get('/engagement-library/templates-needing-update'),
+  publishEngagementLibraryVersion: (data: { versionLabel: string; changelog?: string }) =>
+    api.post('/engagement-library/publish', data),
 
   // Cover Letter Templates (tones: PROFESSIONAL | FRIENDLY | MODERN)
   getCoverLetterTemplates: () => api.get('/cover-letter-templates'),
@@ -574,7 +615,8 @@ export const apiClient = {
   }) => api.post('/ai/cover-letter', data),
   aiFollowUp: (proposalId: string, tone?: string) =>
     api.post('/ai/follow-up', { proposalId, tone: tone || 'professional' }),
-  aiEngagementLetter: (proposalId: string) => api.post('/ai/engagement-letter', { proposalId }),
+  aiEngagementLetter: (proposalId: string, options?: { includeAiIntro?: boolean }) =>
+    api.post('/ai/engagement-letter', { proposalId, includeAiIntro: options?.includeAiIntro ?? false }),
   getProposalHealth: (proposalId: string) => api.get(`/ai/proposal-health/${proposalId}`),
   aiRenewalDraft: (proposalId: string, upliftPercent?: number) =>
     api.post('/ai/renewal-draft', { proposalId, upliftPercent: upliftPercent ?? 0 }),
@@ -707,7 +749,8 @@ export const apiClient = {
 
   aiStreamEngagementLetter: async (
     proposalId: string,
-    onChunk: (text: string) => void
+    onChunk: (text: string) => void,
+    options?: { includeAiIntro?: boolean }
   ): Promise<void> => {
     const { token } = useAuthStore.getState();
     const base = API_URL.endsWith('/api') ? API_URL : `${API_URL}/api`;
@@ -717,7 +760,10 @@ export const apiClient = {
         'Content-Type': 'application/json',
         ...(token ? { Authorization: `Bearer ${token}` } : {}),
       },
-      body: JSON.stringify({ proposalId }),
+      body: JSON.stringify({
+        proposalId,
+        includeAiIntro: options?.includeAiIntro ?? false,
+      }),
     });
     if (!res.body) throw new Error('No stream body');
     const reader = res.body.getReader();

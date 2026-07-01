@@ -6,39 +6,7 @@
 import speakeasy from 'speakeasy';
 import QRCode from 'qrcode';
 import crypto from 'crypto';
-
-// Encryption helpers for storing secrets — never fall back to JWT_SECRET in production
-function resolveTwoFactorKey(): string {
-  const key = process.env.TWO_FACTOR_ENCRYPTION_KEY || process.env.ENCRYPTION_KEY;
-  if (key) return key;
-  if (process.env.NODE_ENV === 'production') {
-    throw new Error('TWO_FACTOR_ENCRYPTION_KEY or ENCRYPTION_KEY is required in production');
-  }
-  return process.env.JWT_SECRET || 'dev-only-2fa-key-not-for-production';
-}
-
-const ENCRYPTION_KEY = resolveTwoFactorKey();
-
-function encrypt(text: string): string {
-  const iv = crypto.randomBytes(16);
-  const cipher = crypto.createCipher('aes-256-gcm', ENCRYPTION_KEY);
-  let encrypted = cipher.update(text, 'utf8', 'hex');
-  encrypted += cipher.final('hex');
-  const authTag = cipher.getAuthTag();
-  return iv.toString('hex') + ':' + authTag.toString('hex') + ':' + encrypted;
-}
-
-function decrypt(encryptedData: string): string {
-  const parts = encryptedData.split(':');
-  const iv = Buffer.from(parts[0], 'hex');
-  const authTag = Buffer.from(parts[1], 'hex');
-  const encrypted = parts[2];
-  const decipher = crypto.createDecipher('aes-256-gcm', ENCRYPTION_KEY);
-  decipher.setAuthTag(authTag);
-  let decrypted = decipher.update(encrypted, 'hex', 'utf8');
-  decrypted += decipher.final('utf8');
-  return decrypted;
-}
+import { encrypt, decrypt } from '../utils/encryption.js';
 
 export interface TwoFactorSetup {
   secret: string;
@@ -50,26 +18,45 @@ export class TwoFactorService {
   /**
    * Generate a new 2FA secret for a user
    */
-  async generateSecret(userId: string, email: string): Promise<TwoFactorSetup> {
+  async generateSecret(_userId: string, email: string): Promise<TwoFactorSetup> {
     const secret = speakeasy.generateSecret({
       name: `Engage:${email}`,
       length: 32,
       issuer: 'Engage by Capstone',
     });
 
-    // Generate backup codes
     const backupCodes = Array.from({ length: 10 }, () =>
       crypto.randomBytes(4).toString('hex').toUpperCase()
     );
 
-    // Generate QR code
     const qrCodeUrl = await QRCode.toDataURL(secret.otpauth_url!);
 
     return {
-      secret: secret.base32,
+      secret: secret.base32!,
       qrCodeUrl,
       backupCodes,
     };
+  }
+
+  /**
+   * Encrypt a TOTP secret for database storage
+   */
+  encryptSecret(secret: string): string {
+    return encrypt(secret);
+  }
+
+  /**
+   * Decrypt a stored TOTP secret
+   */
+  decryptSecret(encryptedSecret: string): string {
+    return decrypt(encryptedSecret);
+  }
+
+  /**
+   * Hash a backup code for storage
+   */
+  hashBackupCode(code: string): string {
+    return crypto.createHash('sha256').update(code.toUpperCase().trim()).digest('hex');
   }
 
   /**
@@ -79,23 +66,23 @@ export class TwoFactorService {
     return speakeasy.totp.verify({
       secret,
       encoding: 'base32',
-      token,
-      window: 2, // Allow 1 minute time drift
+      token: token.trim(),
+      window: 2,
     });
   }
 
   /**
-   * Verify a backup code
+   * Verify a backup code against a list of hashed codes
    */
   verifyBackupCode(backupCodes: string[], code: string): boolean {
-    return backupCodes.includes(code.toUpperCase());
+    return backupCodes.includes(code.toUpperCase().trim());
   }
 
   /**
    * Remove a used backup code
    */
   removeBackupCode(backupCodes: string[], code: string): string[] {
-    return backupCodes.filter((c) => c !== code.toUpperCase());
+    return backupCodes.filter((c) => c !== code.toUpperCase().trim());
   }
 
   /**

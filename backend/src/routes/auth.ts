@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import bcrypt from 'bcryptjs';
+import jwt from 'jsonwebtoken';
 import { z } from 'zod';
 import { prisma } from '../config/database.js';
 import {
@@ -19,13 +20,77 @@ import {
   clearLoginAttempts,
   LOGIN_LOCKOUT_MAX,
 } from '../utils/loginLockout.js';
-// import { twoFactorService } from '../services/twoFactorService.js';
-// import { passwordResetService } from '../services/passwordResetService.js';
+import { twoFactorService } from '../services/twoFactorService.js';
+import { passwordResetService } from '../services/passwordResetService.js';
 import { gdprService } from '../services/gdprService.js';
 import { createEmailService } from '../services/emailService.js';
 import { setAuthCookies, clearAuthCookies } from '../utils/authCookies.js';
 
 const router = Router();
+const JWT_SECRET = process.env.JWT_SECRET!;
+
+type AuthUser = {
+  id: string;
+  email: string;
+  firstName: string;
+  lastName: string;
+  phone: string | null;
+  jobTitle: string | null;
+  role: string;
+  tenantId: string;
+  twoFactorEnabled: boolean;
+  tenant: {
+    id: string;
+    name: string;
+    subdomain: string;
+    primaryColor: string | null;
+    settings: unknown;
+  };
+};
+
+async function issueAuthSession(
+  res: import('express').Response,
+  user: AuthUser
+): Promise<void> {
+  const accessToken = generateToken({
+    id: user.id,
+    email: user.email,
+    firstName: user.firstName,
+    lastName: user.lastName,
+    role: user.role as import('@prisma/client').UserRole,
+    tenantId: user.tenantId,
+  });
+
+  const refreshToken = await generateRefreshToken(user.id);
+  setAuthCookies(res, accessToken, refreshToken);
+
+  res.json({
+    success: true,
+    data: {
+      user: {
+        id: user.id,
+        email: user.email,
+        firstName: user.firstName,
+        lastName: user.lastName,
+        phone: user.phone,
+        jobTitle: user.jobTitle,
+        role: user.role,
+        twoFactorEnabled: user.twoFactorEnabled,
+        tenant: {
+          id: user.tenant.id,
+          name: user.tenant.name,
+          subdomain: user.tenant.subdomain,
+          primaryColor: user.tenant.primaryColor,
+          settings: user.tenant.settings,
+        },
+      },
+    },
+  });
+}
+
+function frontendBaseUrl(): string {
+  return (process.env.FRONTEND_URL || 'http://localhost:5173').replace(/\/$/, '');
+}
 
 // Validation schemas
 const loginSchema = z.object({
@@ -123,49 +188,33 @@ router.post(
 
     await clearLoginAttempts(email, resolvedTenantId);
 
+    if (user.twoFactorEnabled && user.twoFactorSecret) {
+      const pendingToken = jwt.sign(
+        { userId: user.id, purpose: '2fa_pending' },
+        JWT_SECRET,
+        { expiresIn: '5m' }
+      );
+
+      logger.info(`Login requires 2FA: ${email} (${user.id})`);
+
+      res.json({
+        success: true,
+        data: {
+          requires2FA: true,
+          pendingToken,
+        },
+      });
+      return;
+    }
+
     logger.info(`Login successful: ${email} (${user.id})`);
 
-    // Update last login
     await prisma.user.update({
       where: { id: user.id },
       data: { lastLoginAt: new Date() },
     });
 
-    // Generate tokens
-    const accessToken = generateToken({
-      id: user.id,
-      email: user.email,
-      firstName: user.firstName,
-      lastName: user.lastName,
-      role: user.role,
-      tenantId: user.tenantId,
-    });
-
-    const refreshToken = await generateRefreshToken(user.id);
-
-    setAuthCookies(res, accessToken, refreshToken);
-
-    res.json({
-      success: true,
-      data: {
-        user: {
-          id: user.id,
-          email: user.email,
-          firstName: user.firstName,
-          lastName: user.lastName,
-          phone: user.phone,
-          jobTitle: user.jobTitle,
-          role: user.role,
-          tenant: {
-            id: user.tenant.id,
-            name: user.tenant.name,
-            subdomain: user.tenant.subdomain,
-            primaryColor: user.tenant.primaryColor,
-            settings: user.tenant.settings,
-          },
-        },
-      },
-    });
+    await issueAuthSession(res, user);
   })
 );
 
@@ -380,6 +429,7 @@ router.get(
           role: user.role,
           isActive: user.isActive,
           lastLoginAt: user.lastLoginAt,
+          twoFactorEnabled: user.twoFactorEnabled,
           tenant: {
             id: user.tenant.id,
             name: user.tenant.name,
@@ -731,82 +781,384 @@ router.delete(
 );
 
 // ============================================================================
-// PASSWORD RESET - DISABLED (requires passwordReset model in schema)
+// PASSWORD RESET
 // ============================================================================
+
+const forgotPasswordSchema = z.object({
+  email: z.string().email('Invalid email address'),
+});
+
+const resetPasswordSchema = z.object({
+  token: z.string().min(1, 'Reset token is required'),
+  newPassword: z.string().min(12, 'Password must be at least 12 characters'),
+});
 
 /**
  * POST /api/auth/forgot-password
- * Request password reset email - DISABLED
+ * Request password reset email
  */
 router.post(
   '/forgot-password',
-  asyncHandler(async (_req, res) => {
-    res.status(501).json({
-      success: false,
-      error: { code: 'NOT_IMPLEMENTED', message: 'Password reset not implemented' },
+  asyncHandler(async (req, res) => {
+    const { email } = forgotPasswordSchema.parse(req.body);
+    const normalisedEmail = email.toLowerCase();
+
+    const user = await prisma.user.findFirst({
+      where: {
+        email: normalisedEmail,
+        isActive: true,
+        deletedAt: null,
+      },
+      include: { tenant: true },
+    });
+
+    if (user) {
+      await prisma.passwordReset.updateMany({
+        where: {
+          userId: user.id,
+          usedAt: null,
+        },
+        data: { usedAt: new Date() },
+      });
+
+      const { token, tokenHash, expiresAt } = passwordResetService.generateToken();
+
+      await prisma.passwordReset.create({
+        data: {
+          tokenHash,
+          expiresAt,
+          userId: user.id,
+        },
+      });
+
+      const resetUrl = `${frontendBaseUrl()}/reset-password?token=${token}`;
+      const emailService = createEmailService();
+
+      if (emailService) {
+        await emailService.sendEmail({
+          to: user.email,
+          subject: 'Reset your Engage password',
+          text: [
+            `Hello ${user.firstName},`,
+            '',
+            'We received a request to reset your Engage password.',
+            '',
+            `Reset your password: ${resetUrl}`,
+            '',
+            'This link expires in 15 minutes. If you did not request this, please ignore this email.',
+            '',
+            'Kind regards,',
+            'The Engage by Capstone Team',
+          ].join('\n'),
+          html: `
+            <p>Hello ${user.firstName},</p>
+            <p>We received a request to reset your Engage password.</p>
+            <p><a href="${resetUrl}" style="display:inline-block;padding:12px 24px;background:#2563eb;color:#ffffff;text-decoration:none;border-radius:6px;">Reset your password</a></p>
+            <p>Or copy this link into your browser:<br><a href="${resetUrl}">${resetUrl}</a></p>
+            <p>This link expires in 15 minutes. If you did not request this, please ignore this email.</p>
+            <p>Kind regards,<br>The Engage by Capstone Team</p>
+          `,
+        });
+      } else {
+        logger.info('Password reset link (email service disabled)', {
+          email: user.email,
+          resetUrl,
+        });
+      }
+    }
+
+    res.json({
+      success: true,
+      data: {
+        message:
+          'If an account exists for that email address, we have sent password reset instructions.',
+      },
     });
   })
 );
 
 /**
  * POST /api/auth/reset-password
- * Reset password with token - DISABLED
+ * Reset password with token
  */
 router.post(
   '/reset-password',
-  asyncHandler(async (_req, res) => {
-    res.status(501).json({
-      success: false,
-      error: { code: 'NOT_IMPLEMENTED', message: 'Password reset not implemented' },
+  asyncHandler(async (req, res) => {
+    const { token, newPassword } = resetPasswordSchema.parse(req.body);
+
+    const strength = passwordResetService.validatePasswordStrength(newPassword);
+    if (!strength.isValid) {
+      throw new ApiError('WEAK_PASSWORD', strength.errors.join('. '), 400);
+    }
+
+    const tokenHash = passwordResetService.hashToken(token);
+    const resetRecord = await prisma.passwordReset.findFirst({
+      where: {
+        tokenHash,
+        usedAt: null,
+        expiresAt: { gt: new Date() },
+      },
+      include: { user: true },
+    });
+
+    if (!resetRecord || !resetRecord.user.isActive || resetRecord.user.deletedAt) {
+      throw new ApiError('INVALID_RESET_TOKEN', 'Invalid or expired reset token', 400);
+    }
+
+    const passwordHash = await bcrypt.hash(newPassword, 12);
+
+    await prisma.$transaction([
+      prisma.user.update({
+        where: { id: resetRecord.userId },
+        data: { passwordHash },
+      }),
+      prisma.passwordReset.update({
+        where: { id: resetRecord.id },
+        data: { usedAt: new Date() },
+      }),
+      prisma.refreshToken.deleteMany({
+        where: { userId: resetRecord.userId },
+      }),
+    ]);
+
+    logger.info('Password reset completed', { userId: resetRecord.userId });
+
+    res.json({
+      success: true,
+      data: { message: 'Password reset successfully. You can now sign in with your new password.' },
     });
   })
 );
 
 // ============================================================================
-// TWO-FACTOR AUTHENTICATION - DISABLED (requires 2FA models in schema)
+// TWO-FACTOR AUTHENTICATION
 // ============================================================================
+
+const twoFactorVerifySchema = z.object({
+  token: z.string().min(6, 'Verification code is required'),
+});
+
+const twoFactorDisableSchema = z.object({
+  password: z.string().min(1, 'Password is required'),
+});
+
+const twoFactorLoginSchema = z.object({
+  pendingToken: z.string().min(1, '2FA session token is required'),
+  totpToken: z.string().min(6, 'Verification code is required'),
+});
+
+/**
+ * POST /api/auth/2fa/login
+ * Complete login after password verification when 2FA is enabled
+ */
+router.post(
+  '/2fa/login',
+  asyncHandler(async (req, res) => {
+    const { pendingToken, totpToken } = twoFactorLoginSchema.parse(req.body);
+
+    let decoded: { userId: string; purpose?: string };
+    try {
+      decoded = jwt.verify(pendingToken, JWT_SECRET) as { userId: string; purpose?: string };
+    } catch {
+      throw new ApiError('INVALID_2FA_SESSION', '2FA session expired. Please sign in again.', 401);
+    }
+
+    if (decoded.purpose !== '2fa_pending') {
+      throw new ApiError('INVALID_2FA_SESSION', 'Invalid 2FA session', 401);
+    }
+
+    const user = await prisma.user.findFirst({
+      where: {
+        id: decoded.userId,
+        isActive: true,
+        deletedAt: null,
+        twoFactorEnabled: true,
+      },
+      include: { tenant: true },
+    });
+
+    if (!user || !user.twoFactorSecret) {
+      throw new ApiError('INVALID_2FA_SESSION', '2FA session expired. Please sign in again.', 401);
+    }
+
+    const secret = twoFactorService.decryptSecret(user.twoFactorSecret);
+    let verified = twoFactorService.verifyToken(secret, totpToken);
+
+    if (!verified) {
+      const backupCode = await prisma.twoFactorBackupCode.findFirst({
+        where: {
+          userId: user.id,
+          codeHash: twoFactorService.hashBackupCode(totpToken),
+          usedAt: null,
+        },
+      });
+
+      if (backupCode) {
+        await prisma.twoFactorBackupCode.update({
+          where: { id: backupCode.id },
+          data: { usedAt: new Date() },
+        });
+        verified = true;
+      }
+    }
+
+    if (!verified) {
+      throw new ApiError('INVALID_2FA_TOKEN', 'Invalid verification code', 401);
+    }
+
+    await prisma.user.update({
+      where: { id: user.id },
+      data: { lastLoginAt: new Date() },
+    });
+
+    logger.info(`2FA login successful: ${user.email} (${user.id})`);
+    await issueAuthSession(res, user);
+  })
+);
 
 /**
  * POST /api/auth/2fa/setup
- * Setup 2FA for user - DISABLED
+ * Setup 2FA for user — returns QR code and backup codes
  */
 router.post(
   '/2fa/setup',
   authenticate,
-  asyncHandler(async (_req, res) => {
-    res.status(501).json({
-      success: false,
-      error: { code: 'NOT_IMPLEMENTED', message: '2FA not implemented' },
+  asyncHandler(async (req, res) => {
+    const user = await prisma.user.findUnique({
+      where: { id: req.user!.id },
+    });
+
+    if (!user || user.deletedAt) {
+      throw new ApiError('USER_NOT_FOUND', 'User not found', 404);
+    }
+
+    if (user.twoFactorEnabled) {
+      throw new ApiError('2FA_ALREADY_ENABLED', 'Two-factor authentication is already enabled', 400);
+    }
+
+    const setup = await twoFactorService.generateSecret(user.id, user.email);
+    const encryptedSecret = twoFactorService.encryptSecret(setup.secret);
+
+    await prisma.$transaction([
+      prisma.twoFactorBackupCode.deleteMany({ where: { userId: user.id } }),
+      prisma.user.update({
+        where: { id: user.id },
+        data: {
+          twoFactorSecret: encryptedSecret,
+          twoFactorEnabled: false,
+        },
+      }),
+      ...setup.backupCodes.map((code) =>
+        prisma.twoFactorBackupCode.create({
+          data: {
+            userId: user.id,
+            codeHash: twoFactorService.hashBackupCode(code),
+          },
+        })
+      ),
+    ]);
+
+    res.json({
+      success: true,
+      data: {
+        qrCodeUrl: setup.qrCodeUrl,
+        secret: setup.secret,
+        backupCodes: setup.backupCodes,
+      },
     });
   })
 );
 
 /**
  * POST /api/auth/2fa/verify
- * Verify 2FA token and enable 2FA - DISABLED
+ * Verify 2FA token and enable 2FA
  */
 router.post(
   '/2fa/verify',
   authenticate,
-  asyncHandler(async (_req, res) => {
-    res.status(501).json({
-      success: false,
-      error: { code: 'NOT_IMPLEMENTED', message: '2FA not implemented' },
+  asyncHandler(async (req, res) => {
+    const { token } = twoFactorVerifySchema.parse(req.body);
+
+    const user = await prisma.user.findUnique({
+      where: { id: req.user!.id },
+    });
+
+    if (!user || user.deletedAt) {
+      throw new ApiError('USER_NOT_FOUND', 'User not found', 404);
+    }
+
+    if (user.twoFactorEnabled) {
+      throw new ApiError('2FA_ALREADY_ENABLED', 'Two-factor authentication is already enabled', 400);
+    }
+
+    if (!user.twoFactorSecret) {
+      throw new ApiError('2FA_NOT_SETUP', 'Please set up two-factor authentication first', 400);
+    }
+
+    const secret = twoFactorService.decryptSecret(user.twoFactorSecret);
+    const isValid = twoFactorService.verifyToken(secret, token);
+
+    if (!isValid) {
+      throw new ApiError('INVALID_2FA_TOKEN', 'Invalid verification code', 400);
+    }
+
+    await prisma.user.update({
+      where: { id: user.id },
+      data: { twoFactorEnabled: true },
+    });
+
+    logger.info('2FA enabled', { userId: user.id });
+
+    res.json({
+      success: true,
+      data: { message: 'Two-factor authentication enabled successfully', twoFactorEnabled: true },
     });
   })
 );
 
 /**
  * POST /api/auth/2fa/disable
- * Disable 2FA - DISABLED
+ * Disable 2FA
  */
 router.post(
   '/2fa/disable',
   authenticate,
-  asyncHandler(async (_req, res) => {
-    res.status(501).json({
-      success: false,
-      error: { code: 'NOT_IMPLEMENTED', message: '2FA not implemented' },
+  asyncHandler(async (req, res) => {
+    const { password } = twoFactorDisableSchema.parse(req.body);
+
+    const user = await prisma.user.findUnique({
+      where: { id: req.user!.id },
+    });
+
+    if (!user || user.deletedAt) {
+      throw new ApiError('USER_NOT_FOUND', 'User not found', 404);
+    }
+
+    if (!user.twoFactorEnabled) {
+      throw new ApiError('2FA_NOT_ENABLED', 'Two-factor authentication is not enabled', 400);
+    }
+
+    const isValidPassword = await bcrypt.compare(password, user.passwordHash);
+    if (!isValidPassword) {
+      throw new ApiError('INVALID_PASSWORD', 'Password is incorrect', 400);
+    }
+
+    await prisma.$transaction([
+      prisma.twoFactorBackupCode.deleteMany({ where: { userId: user.id } }),
+      prisma.user.update({
+        where: { id: user.id },
+        data: {
+          twoFactorEnabled: false,
+          twoFactorSecret: null,
+        },
+      }),
+    ]);
+
+    logger.info('2FA disabled', { userId: user.id });
+
+    res.json({
+      success: true,
+      data: { message: 'Two-factor authentication disabled', twoFactorEnabled: false },
     });
   })
 );

@@ -49,6 +49,7 @@ export class GDPRService {
           avatar: null,
           isActive: false,
           twoFactorSecret: null,
+          twoFactorEnabled: false,
           deletedAt,
           updatedAt: deletedAt,
         },

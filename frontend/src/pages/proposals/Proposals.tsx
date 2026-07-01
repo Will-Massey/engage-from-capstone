@@ -1,11 +1,12 @@
 // Cache-bust: 2026-03-03T09:00:00Z - Force rebuild v6
 import { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import {
   PlusIcon,
   MagnifyingGlassIcon,
   FunnelIcon,
   ArrowDownTrayIcon,
+  ArrowPathIcon,
   EyeIcon,
   DocumentTextIcon,
   CheckCircleIcon,
@@ -48,10 +49,11 @@ const statusLabels: Record<string, string> = {
 
 const Proposals = () => {
   const { tenant } = useAuthStore();
+  const [searchParams] = useSearchParams();
   const [proposals, setProposals] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
-  const [statusFilter, setStatusFilter] = useState('');
+  const [statusFilter, setStatusFilter] = useState(searchParams.get('status') || '');
   const [meta, setMeta] = useState({ page: 1, totalPages: 1, total: 0 });
 
   useEffect(() => {
@@ -232,6 +234,10 @@ const Proposals = () => {
   return (
     <div className="space-y-6 animate-fade-in">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-end gap-4 -mt-2">
+        <Link to="/proposals/renewals" className="btn-secondary text-sm">
+          <ArrowPathIcon className="h-4 w-4 mr-1.5" />
+          Bulk renew
+        </Link>
         {proposals.length > 0 && (
           <button type="button" onClick={exportCsv} className="btn-secondary text-sm">
             <ArrowDownTrayIcon className="h-4 w-4 mr-1.5" />

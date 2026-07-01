@@ -96,6 +96,12 @@ services:
         sync: false
       - key: MICROSOFT_TENANT_ID
         sync: false
+      - key: XERO_CLIENT_ID
+        sync: false
+      - key: XERO_CLIENT_SECRET
+        sync: false
+      - key: XERO_REDIRECT_URI
+        value: https://engage-backend-e1ue.onrender.com/api/oauth/callback/xero
     autoDeploy: true
 
   # Frontend Static Site

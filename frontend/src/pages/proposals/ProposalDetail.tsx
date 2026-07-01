@@ -18,6 +18,8 @@ import {
   PencilSquareIcon,
   ShieldCheckIcon,
   ArrowPathIcon,
+  CreditCardIcon,
+  BanknotesIcon,
 } from '@heroicons/react/24/outline';
 import { apiClient } from '../../utils/api';
 import toast from 'react-hot-toast';
@@ -77,6 +79,19 @@ const frequencyLabels: Record<string, string> = {
   MONTHLY: 'Monthly',
   QUARTERLY: 'Quarterly',
   ANNUALLY: 'Annually',
+};
+
+const paymentStatusConfig: Record<
+  string,
+  { label: string; color: string; bg: string }
+> = {
+  NOT_STARTED: { label: 'Not started', color: 'text-slate-700', bg: 'bg-slate-100' },
+  PENDING: { label: 'Pending setup', color: 'text-amber-800', bg: 'bg-amber-100' },
+  ACTIVE: { label: 'Mandate active', color: 'text-emerald-800', bg: 'bg-emerald-100' },
+  PAID: { label: 'Paid', color: 'text-emerald-800', bg: 'bg-emerald-100' },
+  FAILED: { label: 'Failed', color: 'text-red-800', bg: 'bg-red-100' },
+  CANCELLED: { label: 'Cancelled', color: 'text-slate-700', bg: 'bg-slate-100' },
+  SKIPPED: { label: 'Skipped by client', color: 'text-slate-600', bg: 'bg-slate-100' },
 };
 
 type ProposalDetailTab = 'overview' | 'audit';
@@ -646,6 +661,92 @@ const ProposalDetail = () => {
           )}
         </div>
       </div>
+
+      {/* Payment collection status (post-sign mandate) */}
+      {proposal.status === 'ACCEPTED' && (
+        <div
+          data-testid="payment-collection-status"
+          className="glass-tile p-5 print:hidden"
+        >
+          <div className="flex items-start justify-between gap-4">
+            <div className="flex items-start gap-3">
+              <div className="rounded-lg bg-sky-100 dark:bg-sky-900/40 p-2">
+                <CreditCardIcon className="h-5 w-5 text-sky-600 dark:text-sky-300" />
+              </div>
+              <div>
+                <h3 className="text-sm font-semibold text-slate-900 dark:text-white">
+                  Payment collection
+                </h3>
+                <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                  Direct Debit / card mandate status after sign
+                </p>
+              </div>
+            </div>
+            <span
+              className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                paymentStatusConfig[proposal.paymentStatus || 'NOT_STARTED']?.bg || 'bg-slate-100'
+              } ${
+                paymentStatusConfig[proposal.paymentStatus || 'NOT_STARTED']?.color ||
+                'text-slate-700'
+              }`}
+            >
+              {paymentStatusConfig[proposal.paymentStatus || 'NOT_STARTED']?.label ||
+                'Not started'}
+            </span>
+          </div>
+
+          <dl className="mt-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 text-sm">
+            {proposal.paymentProvider && (
+              <div>
+                <dt className="text-slate-500 dark:text-slate-400">Provider</dt>
+                <dd className="font-medium text-slate-900 dark:text-white capitalize">
+                  {proposal.paymentProvider === 'gocardless_stub'
+                    ? 'GoCardless (demo)'
+                    : proposal.paymentProvider}
+                </dd>
+              </div>
+            )}
+            {proposal.paymentMandateId && (
+              <div>
+                <dt className="text-slate-500 dark:text-slate-400">Mandate ID</dt>
+                <dd className="font-mono text-xs text-slate-800 dark:text-slate-200 truncate">
+                  {proposal.paymentMandateId}
+                </dd>
+              </div>
+            )}
+            {proposal.paymentMethod && (
+              <div>
+                <dt className="text-slate-500 dark:text-slate-400">Method</dt>
+                <dd className="font-medium text-slate-900 dark:text-white capitalize">
+                  {String(proposal.paymentMethod).replace(/_/g, ' ')}
+                </dd>
+              </div>
+            )}
+            {proposal.paidAt && (
+              <div>
+                <dt className="text-slate-500 dark:text-slate-400">Activated</dt>
+                <dd className="font-medium text-slate-900 dark:text-white">
+                  {format(new Date(proposal.paidAt), 'dd MMM yyyy, HH:mm')}
+                </dd>
+              </div>
+            )}
+          </dl>
+
+          {proposal.paymentStatus === 'PENDING' && proposal.paymentUrl && (
+            <p className="mt-3 text-xs text-amber-700 dark:text-amber-300 flex items-center gap-1.5">
+              <BanknotesIcon className="h-4 w-4" />
+              Awaiting client to complete payment setup via the public proposal link.
+            </p>
+          )}
+
+          {!proposal.paymentStatus && proposal.total > 0 && (
+            <p className="mt-3 text-xs text-slate-500 dark:text-slate-400">
+              No mandate yet. Enable &quot;Collect payment at sign&quot; in Settings → Billing to
+              prompt clients after acceptance.
+            </p>
+          )}
+        </div>
+      )}
 
       {/* Client engagement at a glance */}
       {proposal.status !== 'DRAFT' && (

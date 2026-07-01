@@ -12,8 +12,12 @@ import AuthLayout from './components/layout/AuthLayout';
 import Login from './pages/auth/Login';
 import Register from './pages/auth/Register';
 import Onboarding from './pages/auth/Onboarding';
+import ForgotPassword from './pages/auth/ForgotPassword';
+import ResetPassword from './pages/auth/ResetPassword';
+import TwoFactorSetup from './pages/auth/TwoFactorSetup';
 import Dashboard from './pages/Dashboard';
 import Proposals from './pages/proposals/Proposals';
+import BulkRenewalWizard from './pages/proposals/BulkRenewalWizard';
 import ProposalDetail from './pages/proposals/ProposalDetail';
 import CreateProposal from './pages/proposals/CreateProposal';
 import EditProposal from './pages/proposals/EditProposal';
@@ -22,6 +26,7 @@ import ClientDetail from './pages/clients/ClientDetail';
 import CreateClient from './pages/clients/CreateClient';
 import Services from './pages/services/Services';
 import ServiceDetail from './pages/services/ServiceDetail';
+import PricingCalculatorPage from './pages/pricing/PricingCalculatorPage';
 import ProposalTemplates from './pages/templates/ProposalTemplates';
 import Settings from './pages/Settings';
 import Subscription from './pages/Subscription';
@@ -142,6 +147,36 @@ const AnimatedRoutes = () => {
             </PublicRoute>
           }
         />
+        <Route
+          path="/forgot-password"
+          element={
+            <PublicRoute>
+              <AnimatedPage>
+                <ForgotPassword />
+              </AnimatedPage>
+            </PublicRoute>
+          }
+        />
+        <Route
+          path="/reset-password"
+          element={
+            <PublicRoute>
+              <AnimatedPage>
+                <ResetPassword />
+              </AnimatedPage>
+            </PublicRoute>
+          }
+        />
+        <Route
+          path="/2fa-setup"
+          element={
+            <ProtectedRoute>
+              <AnimatedPage>
+                <TwoFactorSetup />
+              </AnimatedPage>
+            </ProtectedRoute>
+          }
+        />
 
         {/* Protected Routes */}
         <Route
@@ -175,6 +210,14 @@ const AnimatedRoutes = () => {
             element={
               <AnimatedPage>
                 <CreateProposal />
+              </AnimatedPage>
+            }
+          />
+          <Route
+            path="proposals/renewals"
+            element={
+              <AnimatedPage>
+                <BulkRenewalWizard />
               </AnimatedPage>
             }
           />
@@ -245,6 +288,14 @@ const AnimatedRoutes = () => {
             element={
               <AnimatedPage>
                 <ServiceDetail />
+              </AnimatedPage>
+            }
+          />
+          <Route
+            path="pricing-calculator"
+            element={
+              <AnimatedPage>
+                <PricingCalculatorPage />
               </AnimatedPage>
             }
           />

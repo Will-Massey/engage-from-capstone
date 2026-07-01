@@ -116,7 +116,7 @@ export async function generateFollowUpEmail(
     ? Array.from(new Set([proposal.createdBy.firstName, proposal.createdBy.lastName].filter(Boolean))).join(' ')
     : 'Partner';
 
-  const raw = await chatCompletion(
+  const { content: raw } = await chatCompletion(
     [
       { role: 'system', content: UK_SYSTEM },
       {
@@ -182,7 +182,7 @@ export async function generateAcceptanceClientEmail(
     )
     .join('\n');
 
-  const raw = await chatCompletion(
+  const { content: raw } = await chatCompletion(
     [
       { role: 'system', content: UK_SYSTEM },
       {
@@ -248,7 +248,7 @@ export async function generateRenewalEmail(
     )
   );
 
-  const raw = await chatCompletion(
+  const { content: raw } = await chatCompletion(
     [
       { role: 'system', content: UK_SYSTEM },
       {
@@ -305,7 +305,7 @@ export async function generateTouchpointEmail(
   const accepted = client.proposals[0];
   const ctx = context || {};
 
-  const raw = await chatCompletion(
+  const { content: raw } = await chatCompletion(
     [
       { role: 'system', content: UK_SYSTEM },
       {
@@ -423,7 +423,7 @@ export async function generateAcceptanceAdminNotification(
       ? `Hours from first view to signature: ${context.hoursFromFirstViewToSign}`
       : 'First view timing: n/a';
 
-  const raw = await chatCompletion(
+  const { content: raw } = await chatCompletion(
     [
       { role: 'system', content: UK_SYSTEM },
       {

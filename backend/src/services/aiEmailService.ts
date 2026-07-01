@@ -45,7 +45,7 @@ export class AIEmailService {
       return emailText;
     }
     const { chatCompletion } = await import('./ai/aiClient.js');
-    return chatCompletion(
+    const { content } = await chatCompletion(
       [
         {
           role: 'system',
@@ -55,6 +55,7 @@ export class AIEmailService {
       ],
       { temperature: 0.4 }
     );
+    return content;
   }
 }
 

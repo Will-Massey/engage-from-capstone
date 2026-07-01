@@ -88,7 +88,7 @@ function ruleBasedSigningSummary(proposal: PublicProposalRecord): string {
 export async function logPublicAiUsage(
   tenantId: string,
   proposalId: string,
-  feature: 'public_proposal_ask' | 'public_signing_summary'
+  feature: 'public_proposal_ask' | 'public_signing_summary' | 'public_decline_classify'
 ) {
   try {
     await prisma.activityLog.create({
@@ -141,7 +141,7 @@ export async function askPublicProposalQuestion(
     content: `Client question: ${trimmed.slice(0, 500)}`,
   });
 
-  const answer = await chatCompletion(messages, {
+  const { content: answer } = await chatCompletion(messages, {
     temperature: 0.2,
     maxTokens: 400,
   });
@@ -163,7 +163,7 @@ export async function getPublicSigningSummary(proposal: PublicProposalRecord) {
     return { summary, source: 'rules' as const };
   }
 
-  const raw = await chatCompletion(
+  const { content: raw } = await chatCompletion(
     [
       {
         role: 'system',

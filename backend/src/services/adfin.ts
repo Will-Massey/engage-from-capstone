@@ -171,19 +171,19 @@ export class AdfinService {
   }
 
   private async handlePaymentCompleted(data: AdfinWebhookEvent['data']): Promise<void> {
-    // Update proposal payment status in database
     const { prisma } = await import('../config/database.js');
 
     await prisma.proposal.updateMany({
       where: { reference: data.reference },
       data: {
-        status: 'ACCEPTED',
-        paymentStatus: 'PAID',
+        paymentMandateId: data.paymentId,
+        paymentProvider: 'adfin',
+        paymentStatus: 'ACTIVE',
         paidAt: new Date(data.paidAt || Date.now()),
       },
     });
 
-    logger.info(`Payment completed for proposal: ${data.reference}`);
+    logger.info(`Payment mandate activated for proposal: ${data.reference}`);
   }
 
   private async handlePaymentFailed(data: AdfinWebhookEvent['data']): Promise<void> {

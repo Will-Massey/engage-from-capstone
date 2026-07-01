@@ -12,7 +12,9 @@ import {
   ClockIcon,
   FunnelIcon,
   BoltIcon,
+  ScaleIcon,
 } from '@heroicons/react/24/outline';
+import { DECLINE_REASON_LABELS, type DeclineReason } from '../constants/declineReasons';
 import { apiClient } from '../utils/api';
 import { useAuthStore } from '../stores/authStore';
 import { format, parseISO } from 'date-fns';
@@ -76,6 +78,53 @@ interface TimeToDecisionData {
   avgDaysToDecline: number;
   avgDaysToView: number;
   sampleSize: { accepted: number; declined: number };
+}
+
+interface WinLossData {
+  summary: {
+    wins: number;
+    losses: number;
+    decided: number;
+    winRate: number;
+    untaggedDeclines: number;
+    taggedDeclines: number;
+  };
+  byReason: Array<{
+    reason: DeclineReason;
+    label: string;
+    declined: number;
+    shareOfLosses: number;
+  }>;
+  byServiceMix: Array<{
+    name: string;
+    accepted: number;
+    declined: number;
+    conversionRate: number;
+    acceptedValue: number;
+    declinedValue: number;
+  }>;
+  byClientType: Array<{
+    key: string;
+    label: string;
+    accepted: number;
+    declined: number;
+    conversionRate: number;
+  }>;
+  byClientRelationship: Array<{
+    key: string;
+    label: string;
+    accepted: number;
+    declined: number;
+    conversionRate: number;
+  }>;
+  recentLosses: Array<{
+    id: string;
+    reason: DeclineReason | null;
+    reasonLabel: string;
+    text: string | null;
+    total: number;
+    declinedAt: string | null;
+  }>;
 }
 
 const StatCard = ({
@@ -289,6 +338,218 @@ const TimeToDecision = ({ data }: { data: TimeToDecisionData }) => (
   </div>
 );
 
+const WinLossSection = ({
+  data,
+  formatCurrency,
+}: {
+  data: WinLossData;
+  formatCurrency: (n: number) => string;
+}) => {
+  const maxReasonCount = Math.max(...data.byReason.map((r) => r.declined), 1);
+
+  return (
+    <div className="space-y-6">
+      <div className="flex items-center gap-2">
+        <ScaleIcon className="h-6 w-6 text-slate-600 dark:text-slate-300" />
+        <h2 className="text-xl font-semibold text-slate-900 dark:text-white">Win / Loss</h2>
+      </div>
+
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <div className="glass-tile p-5">
+          <p className="text-sm text-slate-600 dark:text-slate-400">Win rate</p>
+          <p className="text-3xl font-bold text-green-600 mt-1">{data.summary.winRate}%</p>
+          <p className="text-xs text-slate-500 mt-1">
+            {data.summary.wins} won / {data.summary.decided} decided
+          </p>
+        </div>
+        <div className="glass-tile p-5">
+          <p className="text-sm text-slate-600 dark:text-slate-400">Losses tagged</p>
+          <p className="text-3xl font-bold text-red-600 mt-1">{data.summary.taggedDeclines}</p>
+          <p className="text-xs text-slate-500 mt-1">
+            {data.summary.untaggedDeclines} without a reason
+          </p>
+        </div>
+        <div className="glass-tile p-5">
+          <p className="text-sm text-slate-600 dark:text-slate-400">Top loss driver</p>
+          <p className="text-lg font-bold text-slate-900 dark:text-white mt-1">
+            {data.byReason[0]?.label || '—'}
+          </p>
+          <p className="text-xs text-slate-500 mt-1">
+            {data.byReason[0] ? `${data.byReason[0].declined} declines` : 'No tagged losses yet'}
+          </p>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div className="glass-tile p-6">
+          <h3 className="text-lg font-semibold text-slate-900 dark:text-white mb-4">
+            Losses by reason
+          </h3>
+          {data.byReason.length === 0 ? (
+            <p className="text-sm text-slate-500">
+              Decline reasons will appear here once clients tag losses on the public proposal page.
+            </p>
+          ) : (
+            <div className="space-y-3">
+              {[...data.byReason]
+                .sort((a, b) => b.declined - a.declined)
+                .map((item) => (
+                  <div key={item.reason}>
+                    <div className="flex justify-between text-sm mb-1">
+                      <span className="font-medium text-slate-800 dark:text-slate-200">
+                        {item.label}
+                      </span>
+                      <span className="text-slate-600 dark:text-slate-400">
+                        {item.declined} ({item.shareOfLosses}%)
+                      </span>
+                    </div>
+                    <div className="h-2 bg-white/30 dark:bg-slate-700/30 rounded-full overflow-hidden">
+                      <motion.div
+                        initial={{ width: 0 }}
+                        animate={{ width: `${(item.declined / maxReasonCount) * 100}%` }}
+                        className="h-full bg-red-500 rounded-full"
+                      />
+                    </div>
+                  </div>
+                ))}
+            </div>
+          )}
+        </div>
+
+        <div className="glass-tile p-6">
+          <h3 className="text-lg font-semibold text-slate-900 dark:text-white mb-4">
+            Conversion by client type
+          </h3>
+          <div className="space-y-3">
+            {data.byClientType.map((item) => (
+              <div
+                key={item.key}
+                className="flex items-center justify-between p-3 bg-white/40 dark:bg-slate-700/40 rounded-lg"
+              >
+                <div>
+                  <p className="font-medium text-slate-900 dark:text-white">{item.label}</p>
+                  <p className="text-xs text-slate-500">
+                    {item.accepted} won · {item.declined} lost
+                  </p>
+                </div>
+                <span
+                  className={`text-lg font-bold ${
+                    item.conversionRate >= 50 ? 'text-green-600' : 'text-amber-600'
+                  }`}
+                >
+                  {item.conversionRate}%
+                </span>
+              </div>
+            ))}
+            {data.byClientRelationship.map((item) => (
+              <div
+                key={item.key}
+                className="flex items-center justify-between p-3 bg-white/40 dark:bg-slate-700/40 rounded-lg border border-dashed border-slate-200 dark:border-slate-600"
+              >
+                <div>
+                  <p className="font-medium text-slate-900 dark:text-white">{item.label}</p>
+                  <p className="text-xs text-slate-500">
+                    {item.accepted} won · {item.declined} lost
+                  </p>
+                </div>
+                <span
+                  className={`text-lg font-bold ${
+                    item.conversionRate >= 50 ? 'text-green-600' : 'text-amber-600'
+                  }`}
+                >
+                  {item.conversionRate}%
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div className="glass-tile p-6">
+          <h3 className="text-lg font-semibold text-slate-900 dark:text-white mb-4">
+            Conversion by service mix
+          </h3>
+          {data.byServiceMix.length === 0 ? (
+            <p className="text-sm text-slate-500">No service-level win/loss data yet.</p>
+          ) : (
+            <div className="space-y-3">
+              {data.byServiceMix.map((svc) => (
+                <div
+                  key={svc.name}
+                  className="flex items-center justify-between p-3 bg-white/40 dark:bg-slate-700/40 rounded-lg"
+                >
+                  <div className="min-w-0 flex-1 pr-3">
+                    <p className="font-medium text-slate-900 dark:text-white truncate">{svc.name}</p>
+                    <p className="text-xs text-slate-500">
+                      {svc.accepted} won · {svc.declined} lost
+                    </p>
+                  </div>
+                  <div className="text-right shrink-0">
+                    <p
+                      className={`text-sm font-bold ${
+                        svc.conversionRate >= 50 ? 'text-green-600' : 'text-red-600'
+                      }`}
+                    >
+                      {svc.conversionRate}%
+                    </p>
+                    <p className="text-[10px] text-slate-500">
+                      {formatCurrency(svc.declinedValue)} at risk
+                    </p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        <div className="glass-tile p-6">
+          <h3 className="text-lg font-semibold text-slate-900 dark:text-white mb-4">
+            Recent tagged losses
+          </h3>
+          {data.recentLosses.length === 0 ? (
+            <p className="text-sm text-slate-500">No tagged decline feedback yet.</p>
+          ) : (
+            <div className="space-y-3">
+              {data.recentLosses.map((loss) => (
+                <div
+                  key={loss.id}
+                  className="p-3 bg-white/40 dark:bg-slate-700/40 rounded-lg border-l-4 border-red-400"
+                >
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="min-w-0">
+                      <p className="text-sm font-medium text-slate-900 dark:text-white">
+                        {loss.reason
+                          ? DECLINE_REASON_LABELS[loss.reason] || loss.reasonLabel
+                          : loss.reasonLabel}
+                      </p>
+                      {loss.text && (
+                        <p className="text-xs text-slate-600 dark:text-slate-400 mt-1 line-clamp-2">
+                          {loss.text}
+                        </p>
+                      )}
+                    </div>
+                    <div className="text-right shrink-0">
+                      <p className="text-sm font-semibold text-slate-900 dark:text-white">
+                        {formatCurrency(loss.total)}
+                      </p>
+                      {loss.declinedAt && (
+                        <p className="text-[10px] text-slate-500">
+                          {format(parseISO(loss.declinedAt), 'd MMM yyyy')}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+};
+
 const TopServicesTable = ({ services }: { services: AnalyticsData['topServices'] }) => (
   <div className="glass-tile p-6">
     <h3 className="text-lg font-semibold text-slate-900 dark:text-white mb-4">Top Services</h3>
@@ -319,6 +580,7 @@ const Analytics = () => {
   const [funnel, setFunnel] = useState<FunnelData | null>(null);
   const [pipeline, setPipeline] = useState<PipelineData | null>(null);
   const [timeToDecision, setTimeToDecision] = useState<TimeToDecisionData | null>(null);
+  const [winLoss, setWinLoss] = useState<WinLossData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
@@ -328,17 +590,19 @@ const Analytics = () => {
   const loadAnalytics = async () => {
     try {
       setIsLoading(true);
-      const [dashboardRes, funnelRes, pipelineRes, timeRes] = await Promise.all([
+      const [dashboardRes, funnelRes, pipelineRes, timeRes, winLossRes] = await Promise.all([
         apiClient.get('/analytics/dashboard') as any,
         apiClient.get('/analytics/funnel') as any,
         apiClient.get('/analytics/revenue-pipeline') as any,
         apiClient.get('/analytics/time-to-decision') as any,
+        apiClient.get('/analytics/win-loss') as any,
       ]);
 
       if (dashboardRes.success) setData(dashboardRes.data);
       if (funnelRes.success) setFunnel(funnelRes.data);
       if (pipelineRes.success) setPipeline(pipelineRes.data);
       if (timeRes.success) setTimeToDecision(timeRes.data);
+      if (winLossRes.success) setWinLoss(winLossRes.data);
     } catch (error) {
       console.error('Failed to load analytics:', error);
     } finally {
@@ -425,6 +689,9 @@ const Analytics = () => {
         <SimpleBarChart data={data.monthlyTrend} />
         {funnel && <ConversionFunnel data={funnel} />}
       </div>
+
+      {/* Win / Loss analytics (W3.6) */}
+      {winLoss && <WinLossSection data={winLoss} formatCurrency={formatCurrency} />}
 
       {/* Bottom Row */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">

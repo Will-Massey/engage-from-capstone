@@ -26,7 +26,7 @@ import {
 
 export const SecuritySettings: React.FC = () => {
   const navigate = useNavigate();
-  const { user, logout } = useAuthStore();
+  const { user, logout, updateUser } = useAuthStore();
 
   // Password change state
   const [currentPassword, setCurrentPassword] = useState('');
@@ -78,6 +78,7 @@ export const SecuritySettings: React.FC = () => {
     setIsDisabling2FA(true);
     try {
       await apiClient.post('/auth/2fa/disable', { password: disable2FAPassword });
+      updateUser({ twoFactorEnabled: false });
       toast.success('Two-factor authentication disabled');
       setShowDisable2FAConfirm(false);
       setDisable2FAPassword('');

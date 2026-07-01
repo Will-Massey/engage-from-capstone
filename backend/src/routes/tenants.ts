@@ -611,6 +611,13 @@ router.put(
           renewalReminderDays: z.number().int().min(1).max(90).optional(),
         })
         .optional(),
+      payments: z
+        .object({
+          collectPaymentAtSign: z.boolean().optional(),
+          allowDirectDebit: z.boolean().optional(),
+          allowCard: z.boolean().optional(),
+        })
+        .optional(),
       professionalBody: z
         .enum(['ACCA', 'ICAEW', 'ICAS', 'CIMA', 'AAT', 'CPAA', 'OTHER'])
         .optional(),
@@ -653,6 +660,9 @@ router.put(
       proposals: data.proposals
         ? { ...(currentSettings.proposals || {}), ...data.proposals }
         : currentSettings.proposals,
+      payments: data.payments
+        ? { ...(currentSettings.payments || {}), ...data.payments }
+        : currentSettings.payments,
       professionalBody: data.professionalBody || currentSettings.professionalBody,
       companyRegistration: data.companyRegistration || currentSettings.companyRegistration,
       phone: data.phone || currentSettings.phone,

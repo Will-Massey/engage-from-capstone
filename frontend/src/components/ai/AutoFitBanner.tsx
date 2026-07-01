@@ -7,6 +7,7 @@ import {
   ChevronUpIcon,
 } from '@heroicons/react/24/outline';
 import { AI_COPILOT } from '../../config/aiCopilot';
+import ClaraServiceSuggestionCards, { type ClaraServiceSuggestion } from './ClaraServiceSuggestionCards';
 
 export interface AutoFitServiceSuggestion {
   serviceId: string;
@@ -35,6 +36,13 @@ interface AutoFitBannerProps {
   onAcceptAll: () => void;
   onAcceptSection: (section: SectionKey) => void;
   onDismiss: () => void;
+  /** W2.8 — per-service Accept / Tweak / Reject (optional; enables line-item cards) */
+  onAcceptService?: (service: AutoFitServiceSuggestion) => void;
+  onTweakService?: (
+    service: AutoFitServiceSuggestion,
+    tweaks: { billingFrequency: string; displayPrice: number }
+  ) => void;
+  onRejectService?: (serviceId: string) => void;
 }
 
 const SECTION_LABELS: Record<SectionKey, string> = {
@@ -55,19 +63,34 @@ export default function AutoFitBanner({
   onAcceptAll,
   onAcceptSection,
   onDismiss,
+  onAcceptService,
+  onTweakService,
+  onRejectService,
 }: AutoFitBannerProps) {
   const [expanded, setExpanded] = useState(true);
   const [reviewMode, setReviewMode] = useState(false);
   const [reviewIndex, setReviewIndex] = useState(0);
   const [rejectedSections, setRejectedSections] = useState<Set<SectionKey>>(new Set());
+  const [rejectedServiceIds, setRejectedServiceIds] = useState<Set<string>>(new Set());
+  const perServiceMode = Boolean(onAcceptService && onTweakService && onRejectService);
 
   useEffect(() => {
     setRejectedSections(new Set());
+    setRejectedServiceIds(new Set());
     setReviewMode(false);
     setReviewIndex(0);
   }, [result]);
 
-  const visibleSections = ALL_SECTIONS.filter((key) => !rejectedSections.has(key));
+  const visibleSections = ALL_SECTIONS.filter((key) => {
+    if (key === 'services' && perServiceMode && result?.services?.length) {
+      const pending = result.services.filter((s) => !rejectedServiceIds.has(s.serviceId));
+      return pending.length > 0;
+    }
+    return !rejectedSections.has(key);
+  });
+
+  const pendingServiceSuggestions: ClaraServiceSuggestion[] =
+    result?.services?.filter((s) => !rejectedServiceIds.has(s.serviceId)) ?? [];
 
   useEffect(() => {
     if (!reviewMode) return;
@@ -112,6 +135,36 @@ export default function AutoFitBanner({
       case 'title':
         return <p className="text-sm font-medium text-slate-800 dark:text-slate-100">{result.suggestedTitle}</p>;
       case 'services':
+        if (perServiceMode && pendingServiceSuggestions.length > 0) {
+          return (
+            <ClaraServiceSuggestionCards
+              suggestions={pendingServiceSuggestions}
+              onAccept={(s) => {
+                onAcceptService?.(s);
+                setRejectedServiceIds((prev) => new Set([...prev, s.serviceId]));
+              }}
+              onTweak={(s, tweaks) => {
+                onTweakService?.(s, tweaks);
+                setRejectedServiceIds((prev) => new Set([...prev, s.serviceId]));
+              }}
+              onReject={(serviceId) => {
+                onRejectService?.(serviceId);
+                setRejectedServiceIds((prev) => new Set([...prev, serviceId]));
+              }}
+              onAcceptAll={() => {
+                for (const s of pendingServiceSuggestions) {
+                  onAcceptService?.(s);
+                }
+                setRejectedServiceIds((prev) => {
+                  const next = new Set(prev);
+                  pendingServiceSuggestions.forEach((s) => next.add(s.serviceId));
+                  return next;
+                });
+              }}
+              emptyMessage="All service lines handled."
+            />
+          );
+        }
         return (
           <ul className="text-xs space-y-1.5 text-slate-600 dark:text-slate-300">
             {result.services.map((s) => (

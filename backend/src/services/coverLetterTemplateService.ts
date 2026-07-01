@@ -7,6 +7,7 @@ import { prisma } from '../config/database.js';
 import { CoverLetterTone } from '@prisma/client';
 import logger from '../config/logger.js';
 import { defaultCoverLetterTemplates, renderTemplate } from '../data/defaultCoverLetters.js';
+import { getCurrentVersionId } from './engagementLibraryVersionService.js';
 
 export interface CreateTemplateInput {
   name: string;
@@ -70,6 +71,8 @@ export async function createTemplate(
       });
     }
 
+    const libraryVersionId = await getCurrentVersionId();
+
     const template = await prisma.coverLetterTemplate.create({
       data: {
         tenantId,
@@ -78,6 +81,8 @@ export async function createTemplate(
         content: data.content,
         isDefault: data.isDefault || false,
         createdById,
+        engagementLibraryVersionId: libraryVersionId,
+        needsUpdate: false,
       },
     });
 
@@ -106,6 +111,8 @@ export async function updateTemplate(
       });
     }
 
+    const libraryVersionId = await getCurrentVersionId();
+
     const template = await prisma.coverLetterTemplate.update({
       where: { id: templateId },
       data: {
@@ -113,6 +120,8 @@ export async function updateTemplate(
         ...(data.tone && { tone: data.tone }),
         ...(data.content && { content: data.content }),
         ...(data.isDefault !== undefined && { isDefault: data.isDefault }),
+        engagementLibraryVersionId: libraryVersionId,
+        needsUpdate: false,
       },
     });
 
@@ -199,6 +208,8 @@ export async function seedDefaultTemplates(tenantId: string): Promise<number> {
       return 0;
     }
 
+    const libraryVersionId = await getCurrentVersionId();
+
     const created = await prisma.coverLetterTemplate.createMany({
       data: defaultCoverLetterTemplates.map((t) => ({
         tenantId,
@@ -207,6 +218,8 @@ export async function seedDefaultTemplates(tenantId: string): Promise<number> {
         content: t.content,
         isDefault: t.isDefault,
         isSystem: t.isSystem,
+        engagementLibraryVersionId: libraryVersionId,
+        needsUpdate: false,
       })),
     });
 

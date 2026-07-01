@@ -36,7 +36,10 @@ import { rateLimitingEnabled } from '../utils/securityFlags.js';
 import {
   askPublicProposalQuestion,
   getPublicSigningSummary,
+  logPublicAiUsage,
 } from '../services/ai/publicProposalAiService.js';
+import { classifyDeclineReasonText } from '../services/ai/winLossAiService.js';
+import { DECLINE_REASONS } from '../constants/declineReasons.js';
 import {
   AGREEMENT_VERSION,
   DEFAULT_CONSENT_TEXT,
@@ -44,6 +47,13 @@ import {
   hashTerms,
   lookupGeoFromIp,
 } from '../utils/signatureAudit.js';
+import {
+  createPostSignMandate,
+  completeStubMandateForProposal,
+  getPublicPaymentConfig,
+  shouldCollectPaymentAtSign,
+  skipPaymentSetup,
+} from '../services/paymentCollection.js';
 
 const router = Router();
 
@@ -495,6 +505,11 @@ router.get(
       });
     }
 
+    const paymentConfig =
+      proposal.status === 'ACCEPTED'
+        ? await getPublicPaymentConfig(proposal.id, proposal.tenantId)
+        : null;
+
     // Return proposal data (without sensitive fields)
     res.json({
       success: true,
@@ -511,6 +526,7 @@ router.get(
         coverLetter: proposal.coverLetter,
         terms: proposal.terms,
         engagementLetter: proposal.engagementLetter,
+        payment: paymentConfig,
         client: {
           name: proposal.client.name,
           companyType: proposal.client.companyType,
@@ -743,6 +759,9 @@ router.post(
       // Don't fail the request - signature was still recorded
     }
 
+    const collectPayment = await shouldCollectPaymentAtSign(proposal.tenantId);
+    const paymentConfig = await getPublicPaymentConfig(proposal.id, proposal.tenantId);
+
     res.json({
       success: true,
       message: 'Proposal accepted successfully',
@@ -750,6 +769,169 @@ router.post(
         acceptedAt: new Date(),
         acceptedBy: parsed.signedBy,
         signatureId: result.signatureId,
+        payment: {
+          collectPaymentAtSign: collectPayment,
+          paymentRequired: paymentConfig.paymentRequired,
+          provider: paymentConfig.provider,
+          isStub: paymentConfig.isStub,
+          methods: paymentConfig.methods,
+        },
+      },
+    });
+  })
+);
+
+// Payment mandate config (public — after sign)
+router.get(
+  '/view/:token/payment/config',
+  asyncHandler(async (req, res) => {
+    const { token } = req.params;
+    const proposal = await getProposalByShareToken(token);
+
+    if (!proposal) {
+      throw new ApiError('PROPOSAL_NOT_FOUND', 'Proposal not found or link expired', 404);
+    }
+
+    const config = await getPublicPaymentConfig(proposal.id, proposal.tenantId);
+
+    res.json({ success: true, data: config });
+  })
+);
+
+// Create payment mandate / checkout after sign (public)
+router.post(
+  '/view/:token/payment/setup',
+  asyncHandler(async (req, res) => {
+    const schema = z.object({
+      preferredMethod: z.enum(['direct_debit', 'card']).optional(),
+    });
+    const { preferredMethod } = schema.parse(req.body ?? {});
+    const { token } = req.params;
+
+    const proposal = await getProposalByShareToken(token);
+
+    if (!proposal) {
+      throw new ApiError('PROPOSAL_NOT_FOUND', 'Proposal not found or link expired', 404);
+    }
+
+    if (proposal.status !== 'ACCEPTED') {
+      throw new ApiError('NOT_ACCEPTED', 'Proposal must be accepted before payment setup', 400);
+    }
+
+    const collectPayment = await shouldCollectPaymentAtSign(proposal.tenantId);
+    if (!collectPayment) {
+      throw new ApiError('PAYMENT_NOT_ENABLED', 'Payment collection is not enabled for this practice', 400);
+    }
+
+    if (proposal.total <= 0) {
+      throw new ApiError('NO_AMOUNT', 'No fees to collect for this proposal', 400);
+    }
+
+    try {
+      const result = await createPostSignMandate(proposal.id, { preferredMethod });
+
+      res.json({
+        success: true,
+        data: {
+          provider: result.provider,
+          mandateId: result.mandateId,
+          checkoutUrl: result.checkoutUrl,
+          status: result.status,
+          isStub: result.isStub,
+        },
+      });
+    } catch (error: any) {
+      logger.error('Failed to create post-sign mandate:', error);
+      throw new ApiError(
+        'PAYMENT_SETUP_FAILED',
+        error.message || 'Failed to set up payment collection',
+        503
+      );
+    }
+  })
+);
+
+// Complete stub mandate (demo flow when Adfin not configured)
+router.post(
+  '/view/:token/payment/complete-stub',
+  asyncHandler(async (req, res) => {
+    const schema = z.object({
+      mandateId: z.string().min(8),
+    });
+    const { mandateId } = schema.parse(req.body);
+    const { token } = req.params;
+
+    const proposal = await getProposalByShareToken(token);
+
+    if (!proposal) {
+      throw new ApiError('PROPOSAL_NOT_FOUND', 'Proposal not found or link expired', 404);
+    }
+
+    try {
+      const result = await completeStubMandateForProposal(proposal.id, mandateId);
+      res.json({ success: true, data: { status: result.status, paymentStatus: 'ACTIVE' } });
+    } catch (error: any) {
+      throw new ApiError('STUB_COMPLETE_FAILED', error.message || 'Failed to complete mandate', 400);
+    }
+  })
+);
+
+// Skip payment setup (client opts to set up later)
+router.post(
+  '/view/:token/payment/skip',
+  asyncHandler(async (req, res) => {
+    const { token } = req.params;
+    const proposal = await getProposalByShareToken(token);
+
+    if (!proposal) {
+      throw new ApiError('PROPOSAL_NOT_FOUND', 'Proposal not found or link expired', 404);
+    }
+
+    if (proposal.status !== 'ACCEPTED') {
+      throw new ApiError('NOT_ACCEPTED', 'Proposal must be accepted first', 400);
+    }
+
+    await skipPaymentSetup(proposal.id);
+
+    res.json({ success: true, message: 'Payment setup skipped', data: { paymentStatus: 'SKIPPED' } });
+  })
+);
+
+// Payment status for public proposal view
+router.get(
+  '/view/:token/payment/status',
+  asyncHandler(async (req, res) => {
+    const { token } = req.params;
+    const proposal = await getProposalByShareToken(token);
+
+    if (!proposal) {
+      throw new ApiError('PROPOSAL_NOT_FOUND', 'Proposal not found or link expired', 404);
+    }
+
+    const full = await prisma.proposal.findUnique({
+      where: { id: proposal.id },
+      select: {
+        paymentStatus: true,
+        paymentMandateId: true,
+        paymentProvider: true,
+        paymentUrl: true,
+        paymentMethod: true,
+        paidAt: true,
+        total: true,
+      },
+    });
+
+    res.json({
+      success: true,
+      data: {
+        status: full?.paymentStatus || 'NOT_STARTED',
+        mandateId: full?.paymentMandateId,
+        provider: full?.paymentProvider,
+        checkoutUrl: full?.paymentUrl,
+        method: full?.paymentMethod,
+        paidAt: full?.paidAt,
+        amount: full?.total,
+        complete: ['ACTIVE', 'PAID', 'SKIPPED'].includes(full?.paymentStatus || ''),
       },
     });
   })
@@ -759,11 +941,27 @@ router.post(
 router.post(
   '/view/:token/decline',
   asyncHandler(async (req, res) => {
-    const schema = z.object({
-      reason: z.string().min(3).max(2000),
-      declinedBy: z.string().min(2).optional(),
-    });
-    const { reason, declinedBy } = schema.parse(req.body);
+    const schema = z
+      .object({
+        declineReason: z.enum(DECLINE_REASONS).optional(),
+        reason: z.string().max(2000).optional(),
+        declinedBy: z.string().min(2).optional(),
+      })
+      .refine(
+        (data) =>
+          data.declineReason != null ||
+          (typeof data.reason === 'string' && data.reason.trim().length >= 3),
+        { message: 'declineReason or reason (min 3 chars) is required' }
+      )
+      .refine(
+        (data) =>
+          data.declineReason !== 'OTHER' ||
+          (typeof data.reason === 'string' && data.reason.trim().length >= 3),
+        { message: 'Please provide details when selecting Other' }
+      );
+
+    const { declineReason, reason, declinedBy } = schema.parse(req.body);
+    const reasonText = reason?.trim() || null;
     const { token } = req.params;
 
     const proposal = await getProposalByShareToken(token);
@@ -774,9 +972,29 @@ router.post(
       throw new ApiError('INVALID_STATUS', 'Proposal already accepted', 400);
     }
 
+    let declineReasonAi: (typeof DECLINE_REASONS)[number] | null = null;
+    if (declineReason === 'OTHER' && reasonText) {
+      declineReasonAi = await classifyDeclineReasonText(reasonText);
+      if (declineReasonAi) {
+        await logPublicAiUsage(proposal.tenantId, proposal.id, 'public_decline_classify');
+      }
+    }
+
+    const now = new Date();
+    const summaryLabel = declineReason
+      ? `${declineReason}${reasonText ? `: ${reasonText}` : ''}`
+      : reasonText!;
+
     await prisma.proposal.update({
       where: { id: proposal.id },
-      data: { status: 'DECLINED' },
+      data: {
+        status: 'DECLINED',
+        declinedAt: now,
+        declinedBy: declinedBy || null,
+        declineReason: declineReason || null,
+        declineReasonText: reasonText,
+        declineReasonAi,
+      },
     });
 
     await prisma.activityLog.create({
@@ -786,9 +1004,15 @@ router.post(
         entityType: 'PROPOSAL',
         entityId: proposal.id,
         description: declinedBy
-          ? `Proposal declined by ${declinedBy}: ${reason}`
-          : `Proposal declined: ${reason}`,
-        metadata: JSON.stringify({ reason, declinedBy, ipAddress: req.ip }),
+          ? `Proposal declined by ${declinedBy}: ${summaryLabel}`
+          : `Proposal declined: ${summaryLabel}`,
+        metadata: JSON.stringify({
+          declineReason,
+          declineReasonAi,
+          reason: reasonText,
+          declinedBy,
+          ipAddress: req.ip,
+        }),
         ipAddress: req.ip || null,
         userAgent: req.headers['user-agent'] || null,
         proposalId: proposal.id,

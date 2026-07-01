@@ -63,6 +63,14 @@ enum ProposalStatus {
   EXPIRED
 }
 
+enum DeclineReason {
+  PRICE
+  SCOPE
+  TIMING
+  COMPETITOR
+  OTHER
+}
+
 enum PricingFrequency {
   ONE_TIME
   WEEKLY
@@ -249,18 +257,53 @@ model User {
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
 
+  // Security
+  twoFactorEnabled Boolean @default(false)
+  twoFactorSecret  String? // Encrypted TOTP secret
+  deletedAt        DateTime?
+
   // Tenant relation
   tenantId String
   tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
 
   // Relations
-  createdProposals Proposal[] @relation("CreatedProposals")
-  activityLogs     ActivityLog[]
-  refreshTokens    RefreshToken[]
+  createdProposals     Proposal[]            @relation("CreatedProposals")
+  activityLogs         ActivityLog[]
+  refreshTokens        RefreshToken[]
+  passwordResets       PasswordReset[]
+  twoFactorBackupCodes TwoFactorBackupCode[]
 
   @@unique([email, tenantId])
   @@index([tenantId])
   @@index([role])
+  @@index([deletedAt])
+}
+
+model PasswordReset {
+  id        String    @id @default(uuid())
+  tokenHash String    @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([tokenHash])
+  @@index([expiresAt])
+}
+
+model TwoFactorBackupCode {
+  id        String    @id @default(uuid())
+  codeHash  String
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
 }
 
 model RefreshToken {
@@ -368,6 +411,11 @@ model Proposal {
   viewedAt          DateTime?
   acceptedAt        DateTime?
   declinedAt        DateTime?
+  declinedBy        String?
+  declineReason     DeclineReason?
+  declineReasonText String?
+  /// AI reclassification when declineReason=OTHER and free text provided
+  declineReasonAi   DeclineReason?
   expiredAt         DateTime?
   
   // Renewal tracking
@@ -419,9 +467,11 @@ model Proposal {
   lastEmailedAt  DateTime?
   emailHistory   String @default("[]")
 
-  // Payment tracking (Adfin integration)
+  // Payment tracking (Adfin / GoCardless integration)
   paymentId            String?
-  paymentStatus        String?   // PENDING, COMPLETED, FAILED, CANCELLED
+  paymentMandateId     String?   // Direct Debit mandate ID (Adfin or GoCardless)
+  paymentProvider      String?   // adfin, gocardless_stub
+  paymentStatus        String?   // NOT_STARTED, PENDING, ACTIVE, PAID, FAILED, CANCELLED, SKIPPED
   paymentUrl           String?
   paymentMethod        String?   // card, open_banking, direct_debit
   paidAt               DateTime?
@@ -618,6 +668,24 @@ model ServiceTemplate {
   @@index([isActive])
 }
 
+// ==================== ENGAGEMENT LIBRARY VERSIONING ====================
+
+model EngagementLibraryVersion {
+  id           String   @id @default(uuid())
+  versionLabel String   @unique // e.g. "2026.1"
+  publishedAt  DateTime @default(now())
+  changelog    String   @default("")
+  clausesJson  String   // JSON snapshot of EngagementClause[]
+  isCurrent    Boolean  @default(false)
+  createdAt    DateTime @default(now())
+
+  proposalTemplates    ProposalTemplate[]
+  coverLetterTemplates CoverLetterTemplate[]
+
+  @@index([isCurrent])
+  @@index([publishedAt])
+}
+
 // ==================== PROPOSAL TEMPLATE MODELS ====================
 
 model ProposalTemplate {
@@ -644,6 +712,11 @@ model ProposalTemplate {
   usageCount Int?
   lastUsedAt DateTime?
 
+  // Engagement library versioning (OverSuite-style)
+  engagementLibraryVersionId String?
+  engagementLibraryVersion   EngagementLibraryVersion? @relation(fields: [engagementLibraryVersionId], references: [id], onDelete: SetNull)
+  needsUpdate                Boolean @default(false)
+
   // Metadata
   isActive  Boolean  @default(true)
   isDefault Boolean  @default(false)
@@ -658,6 +731,8 @@ model ProposalTemplate {
   @@index([tenantId])
   @@index([isDefault])
   @@index([targetEntityType])
+  @@index([needsUpdate])
+  @@index([engagementLibraryVersionId])
 }
 
 model CoverLetterTemplate {
@@ -670,11 +745,19 @@ model CoverLetterTemplate {
   isDefault   Boolean         @default(false)
   isSystem    Boolean         @default(false)  // Pre-designed templates
   createdById String?
+
+  // Engagement library versioning (OverSuite-style)
+  engagementLibraryVersionId String?
+  engagementLibraryVersion   EngagementLibraryVersion? @relation(fields: [engagementLibraryVersionId], references: [id], onDelete: SetNull)
+  needsUpdate                Boolean @default(false)
+
   createdAt   DateTime        @default(now())
   updatedAt   DateTime        @updatedAt
 
   @@index([tenantId])
   @@index([isDefault])
+  @@index([needsUpdate])
+  @@index([engagementLibraryVersionId])
 }
 
 // ==================== PRICING RULE MODELS ====================

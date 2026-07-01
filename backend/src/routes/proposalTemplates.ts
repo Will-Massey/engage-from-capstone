@@ -8,6 +8,7 @@ import { prisma } from '../config/database.js';
 import { authenticate, authorize } from '../middleware/auth.js';
 import { asyncHandler, ApiError } from '../middleware/errorHandler.js';
 import { deepCloneJson } from '../utils/proposalServiceSnapshot.js';
+import { getCurrentVersionId } from '../services/engagementLibraryVersionService.js';
 
 const router = Router();
 
@@ -73,6 +74,8 @@ router.get(
         updatedAt: true,
         serviceConfig: true,
         defaultPricing: true,
+        needsUpdate: true,
+        engagementLibraryVersion: { select: { versionLabel: true } },
       },
     });
 
@@ -140,6 +143,8 @@ router.post(
       throw new ApiError('VALIDATION_ERROR', 'Proposal has no catalogue services to save as a template', 400);
     }
 
+    const libraryVersionId = await getCurrentVersionId();
+
     const template = await prisma.proposalTemplate.create({
       data: {
         tenantId: req.tenantId!,
@@ -153,6 +158,8 @@ router.post(
         serviceConfig: JSON.stringify(serviceConfig),
         defaultPricing: JSON.stringify({ coverLetterTone: 'PROFESSIONAL' }),
         usageCount: 0,
+        engagementLibraryVersionId: libraryVersionId,
+        needsUpdate: false,
       },
     });
 
@@ -178,6 +185,7 @@ router.post(
   authorize('ADMIN', 'PARTNER', 'MANAGER', 'SENIOR'),
   asyncHandler(async (req, res) => {
     const data = createTemplateSchema.parse(req.body);
+    const libraryVersionId = await getCurrentVersionId();
 
     const template = await prisma.proposalTemplate.create({
       data: {
@@ -191,6 +199,8 @@ router.post(
         serviceConfig: JSON.stringify(deepCloneJson(data.serviceConfig)),
         defaultPricing: JSON.stringify({ coverLetterTone: data.coverLetterTone || 'PROFESSIONAL' }),
         usageCount: 0,
+        engagementLibraryVersionId: libraryVersionId,
+        needsUpdate: false,
       },
     });
 
@@ -218,6 +228,7 @@ router.put(
     if (!existing) throw new ApiError('NOT_FOUND', 'Template not found', 404);
 
     const data = updateTemplateSchema.parse(req.body);
+    const libraryVersionId = await getCurrentVersionId();
 
     const template = await prisma.proposalTemplate.update({
       where: { id: existing.id },
@@ -236,6 +247,8 @@ router.put(
             coverLetterTone: data.coverLetterTone,
           }),
         }),
+        engagementLibraryVersionId: libraryVersionId,
+        needsUpdate: false,
       },
     });
 

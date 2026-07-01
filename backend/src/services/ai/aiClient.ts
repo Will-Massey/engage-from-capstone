@@ -55,6 +55,37 @@ export interface ChatMessage {
   content: string;
 }
 
+export interface AiTokenUsage {
+  prompt_tokens?: number;
+  completion_tokens?: number;
+  total_tokens?: number;
+}
+
+export interface ChatCompletionResult {
+  content: string;
+  usage?: AiTokenUsage;
+}
+
+/** Merge provider token usage into activity-log metadata */
+export function tokenMetaFromUsage(usage?: AiTokenUsage): Record<string, number> {
+  const meta: Record<string, number> = {};
+  if (usage?.prompt_tokens != null) meta.prompt_tokens = usage.prompt_tokens;
+  if (usage?.completion_tokens != null) meta.completion_tokens = usage.completion_tokens;
+  if (usage?.total_tokens != null) meta.total_tokens = usage.total_tokens;
+  return meta;
+}
+
+/** Resolved token count for budget — prefers total, else prompt + completion */
+export function resolvedTokenCount(meta: Record<string, unknown>): number | null {
+  if (typeof meta.total_tokens === 'number' && meta.total_tokens > 0) return meta.total_tokens;
+  const prompt = typeof meta.prompt_tokens === 'number' ? meta.prompt_tokens : 0;
+  const completion = typeof meta.completion_tokens === 'number' ? meta.completion_tokens : 0;
+  const sum = prompt + completion;
+  if (sum > 0) return sum;
+  if (typeof meta.prompt_tokens === 'number' && meta.prompt_tokens > 0) return meta.prompt_tokens;
+  return null;
+}
+
 function providerConfig(provider: AiProvider): { apiKey: string; baseUrl: string; label: string } {
   if (provider === 'xai') {
     return {
@@ -73,7 +104,7 @@ function providerConfig(provider: AiProvider): { apiKey: string; baseUrl: string
 export async function chatCompletion(
   messages: ChatMessage[],
   options?: { jsonMode?: boolean; temperature?: number; maxTokens?: number }
-): Promise<string> {
+): Promise<ChatCompletionResult> {
   const provider = getAiProvider();
   if (!provider) {
     throw new ApiError(
@@ -112,6 +143,7 @@ export async function chatCompletion(
 
   const data = (await res.json()) as {
     choices?: Array<{ message?: { content?: string } }>;
+    usage?: AiTokenUsage;
   };
 
   const content = data.choices?.[0]?.message?.content?.trim();
@@ -119,7 +151,18 @@ export async function chatCompletion(
     throw new ApiError('AI_EMPTY_RESPONSE', `${AI_COPILOT.name} returned an empty response`, 502);
   }
 
-  return content;
+  const usage = data.usage;
+  if (usage?.prompt_tokens != null) {
+    logger.info('AI provider token usage', {
+      prompt_tokens: usage.prompt_tokens,
+      completion_tokens: usage.completion_tokens,
+      total_tokens: usage.total_tokens,
+      model: getAiModel(),
+      provider,
+    });
+  }
+
+  return { content, usage };
 }
 
 /**
@@ -227,6 +270,10 @@ export interface AiTokenBudgetStatus {
   remaining: number;
   withinBudget: boolean;
   aiCallsThisMonth: number;
+  /** Calls with logged provider token counts */
+  callsWithLoggedTokens: number;
+  /** Calls still estimated (legacy logs without token metadata) */
+  callsEstimated: number;
 }
 
 function parseAiTokenBudget(settingsJson?: string | null): number {
@@ -252,15 +299,38 @@ export async function checkAiTokenBudget(tenantId: string): Promise<AiTokenBudge
   monthStart.setDate(1);
   monthStart.setHours(0, 0, 0, 0);
 
-  const aiCallsThisMonth = await prisma.activityLog.count({
+  const aiLogs = await prisma.activityLog.findMany({
     where: {
       tenantId,
       action: 'AI_FEATURE_USED',
       createdAt: { gte: monthStart },
     },
+    select: { metadata: true },
   });
 
-  const usedThisMonth = aiCallsThisMonth * ESTIMATED_TOKENS_PER_AI_CALL;
+  let usedThisMonth = 0;
+  let callsWithLoggedTokens = 0;
+  let callsEstimated = 0;
+
+  for (const log of aiLogs) {
+    let meta: Record<string, unknown> = {};
+    try {
+      meta = JSON.parse(log.metadata || '{}') as Record<string, unknown>;
+    } catch {
+      /* treat as empty */
+    }
+
+    const tokens = resolvedTokenCount(meta);
+    if (tokens != null) {
+      usedThisMonth += tokens;
+      callsWithLoggedTokens++;
+    } else {
+      usedThisMonth += ESTIMATED_TOKENS_PER_AI_CALL;
+      callsEstimated++;
+    }
+  }
+
+  const aiCallsThisMonth = aiLogs.length;
   const remaining = Math.max(0, budgetMonthly - usedThisMonth);
 
   return {
@@ -269,5 +339,7 @@ export async function checkAiTokenBudget(tenantId: string): Promise<AiTokenBudge
     remaining,
     withinBudget: usedThisMonth < budgetMonthly,
     aiCallsThisMonth,
+    callsWithLoggedTokens,
+    callsEstimated,
   };
 }

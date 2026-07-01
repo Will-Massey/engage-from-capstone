@@ -3,7 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { EyeIcon, EyeSlashIcon } from '@heroicons/react/24/outline';
+import { EyeIcon, EyeSlashIcon, ShieldCheckIcon } from '@heroicons/react/24/outline';
 import { apiClient, clearCsrfCache } from '../../utils/api';
 import { useAuthStore } from '../../stores/authStore';
 import toast from 'react-hot-toast';
@@ -21,8 +21,10 @@ const Login = () => {
   const { setSession, clearAuth } = useAuthStore();
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [requires2FA, setRequires2FA] = useState(false);
+  const [pendingToken, setPendingToken] = useState('');
+  const [totpToken, setTotpToken] = useState('');
 
-  // Clear stale persisted session so /me + refresh are not triggered on login
   useEffect(() => {
     clearAuth();
     clearCsrfCache();
@@ -45,16 +47,111 @@ const Login = () => {
       const response = (await apiClient.login(data.email, data.password)) as any;
 
       if (response.success) {
+        if (response.data.requires2FA && response.data.pendingToken) {
+          setPendingToken(response.data.pendingToken);
+          setRequires2FA(true);
+          toast.success('Please enter your authenticator code');
+          return;
+        }
+
         setSession(response.data.user, response.data.user.tenant);
         toast.success('Welcome to Engage!');
         navigate('/');
       }
-    } catch (error) {
+    } catch {
       // Error handled by API interceptor
     } finally {
       setIsLoading(false);
     }
   };
+
+  const handle2FASubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+
+    if (totpToken.length < 6) {
+      toast.error('Please enter your 6-digit code');
+      return;
+    }
+
+    setIsLoading(true);
+    try {
+      const response = (await apiClient.post('/auth/2fa/login', {
+        pendingToken,
+        totpToken,
+      })) as any;
+
+      if (response.success) {
+        setSession(response.data.user, response.data.user.tenant);
+        toast.success('Welcome to Engage!');
+        navigate('/');
+      }
+    } catch {
+      // Error handled by API interceptor
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  if (requires2FA) {
+    return (
+      <div>
+        <div className="flex items-center gap-3 mb-2">
+          <ShieldCheckIcon className="h-8 w-8 text-primary-600" />
+          <h2 className="text-2xl font-bold text-slate-900 dark:text-white">
+            Two-factor authentication
+          </h2>
+        </div>
+        <p className="text-slate-600 dark:text-slate-300 mb-6">
+          Enter the 6-digit code from your authenticator app, or use a backup code.
+        </p>
+
+        <form onSubmit={handle2FASubmit} className="space-y-5">
+          <div>
+            <label
+              htmlFor="totpToken"
+              className="block text-sm font-medium text-slate-800 dark:text-slate-200"
+            >
+              Verification code
+            </label>
+            <div className="mt-1">
+              <input
+                id="totpToken"
+                type="text"
+                inputMode="numeric"
+                autoComplete="one-time-code"
+                maxLength={8}
+                value={totpToken}
+                onChange={(e) => setTotpToken(e.target.value.replace(/\s/g, '').toUpperCase())}
+                className="input-field"
+                placeholder="000000"
+                autoFocus
+              />
+            </div>
+          </div>
+
+          <button
+            type="submit"
+            disabled={isLoading || totpToken.length < 6}
+            className="w-full btn-primary py-2.5 bg-gradient-to-r from-primary-600 to-primary-700 hover:from-primary-700 hover:to-primary-800"
+          >
+            {isLoading ? 'Verifying...' : 'Verify and sign in'}
+          </button>
+
+          <button
+            type="button"
+            onClick={() => {
+              setRequires2FA(false);
+              setPendingToken('');
+              setTotpToken('');
+            }}
+            className="w-full text-sm text-slate-600 hover:text-slate-900"
+          >
+            Back to sign in
+          </button>
+        </form>
+      </div>
+    );
+  }
 
   return (
     <div>
@@ -62,7 +159,6 @@ const Login = () => {
       <p className="text-slate-600 dark:text-slate-300 mb-6">Sign in to your Engage account</p>
 
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
-        {/* Email */}
         <div>
           <label
             htmlFor="email"
@@ -82,7 +178,6 @@ const Login = () => {
           </div>
         </div>
 
-        {/* Password */}
         <div>
           <label
             htmlFor="password"
@@ -115,7 +210,6 @@ const Login = () => {
           )}
         </div>
 
-        {/* Remember me & Forgot password */}
         <div className="flex items-center justify-between">
           <div className="flex items-center">
             <input
@@ -131,13 +225,12 @@ const Login = () => {
             </label>
           </div>
           <div className="text-sm">
-            <a href="#" className="font-medium text-primary-600 hover:text-primary-500">
+            <Link to="/forgot-password" className="font-medium text-primary-600 hover:text-primary-500">
               Forgot password?
-            </a>
+            </Link>
           </div>
         </div>
 
-        {/* Submit */}
         <button
           type="submit"
           disabled={isLoading}
@@ -172,7 +265,6 @@ const Login = () => {
         </button>
       </form>
 
-      {/* Demo hint - only shown in development */}
       {import.meta.env.DEV && (
         <div className="mt-6 p-4 bg-primary-50 rounded-lg border border-primary-100">
           <p className="text-sm text-primary-800">
@@ -185,9 +277,8 @@ const Login = () => {
         </div>
       )}
 
-      {/* Sign up link */}
       <p className="mt-6 text-center text-sm text-slate-700 dark:text-slate-300">
-        Don't have an account?{' '}
+        Don&apos;t have an account?{' '}
         <Link to="/register" className="font-medium text-primary-600 hover:text-primary-500">
           Start your free trial
         </Link>

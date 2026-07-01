@@ -12,9 +12,29 @@ import {
   ChevronDownIcon,
   ChevronUpIcon,
   PaperAirplaneIcon,
+  CreditCardIcon,
+  BuildingLibraryIcon,
+  CheckCircleIcon,
 } from '@heroicons/react/24/outline';
 import { motion, AnimatePresence } from 'framer-motion';
 import { AI_COPILOT } from '../../config/aiCopilot';
+import {
+  DECLINE_REASONS,
+  DECLINE_REASON_LABELS,
+  type DeclineReason,
+} from '../../constants/declineReasons';
+
+interface PaymentConfig {
+  collectPaymentAtSign: boolean;
+  paymentRequired: boolean;
+  provider: 'adfin' | 'gocardless_stub' | 'none';
+  providerConfigured: boolean;
+  isStub: boolean;
+  methods: { directDebit: boolean; card: boolean };
+  paymentStatus: string | null;
+  paymentMandateId: string | null;
+  checkoutUrl: string | null;
+}
 
 interface ProposalData {
   id: string;
@@ -29,6 +49,7 @@ interface ProposalData {
   coverLetter?: string;
   terms?: string;
   engagementLetter?: string;
+  payment?: PaymentConfig | null;
   client: {
     name: string;
     companyType: string;
@@ -86,7 +107,8 @@ const PublicProposalView = () => {
   const [authorisedToSign, setAuthorisedToSign] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isDeclining, setIsDeclining] = useState(false);
-  const [declineReason, setDeclineReason] = useState('');
+  const [declineReasonCategory, setDeclineReasonCategory] = useState<DeclineReason | ''>('');
+  const [declineReasonText, setDeclineReasonText] = useState('');
   const [showDecline, setShowDecline] = useState(false);
   const [isAccepted, setIsAccepted] = useState(false);
   const [qaExpanded, setQaExpanded] = useState(false);
@@ -95,6 +117,13 @@ const PublicProposalView = () => {
   const [qaLoading, setQaLoading] = useState(false);
   const [signingSummary, setSigningSummary] = useState<string | null>(null);
   const [signingSummaryLoading, setSigningSummaryLoading] = useState(false);
+  const [paymentConfig, setPaymentConfig] = useState<PaymentConfig | null>(null);
+  const [showPaymentStep, setShowPaymentStep] = useState(false);
+  const [paymentMethodChoice, setPaymentMethodChoice] = useState<'direct_debit' | 'card' | null>(null);
+  const [isSettingUpPayment, setIsSettingUpPayment] = useState(false);
+  const [paymentComplete, setPaymentComplete] = useState(false);
+  const [stubMandateId, setStubMandateId] = useState<string | null>(null);
+  const [isCompletingStub, setIsCompletingStub] = useState(false);
   const qaEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -106,6 +135,14 @@ const PublicProposalView = () => {
         if (response.success) {
           setProposal(response.data);
           setIsAccepted(response.data.status === 'ACCEPTED');
+          if (response.data.payment) {
+            setPaymentConfig(response.data.payment);
+            const ps = response.data.payment.paymentStatus;
+            setPaymentComplete(['ACTIVE', 'PAID', 'SKIPPED'].includes(ps || ''));
+            setShowPaymentStep(
+              response.data.payment.paymentRequired && !['ACTIVE', 'PAID', 'SKIPPED'].includes(ps || '')
+            );
+          }
           if (response.data.client?.contactEmail) {
             setSignerEmail(response.data.client.contactEmail);
           }
@@ -193,6 +230,68 @@ const PublicProposalView = () => {
     setSignatureData(signature);
   };
 
+  const handleSetupPayment = async (method: 'direct_debit' | 'card') => {
+    if (!token) return;
+    setPaymentMethodChoice(method);
+    setIsSettingUpPayment(true);
+    try {
+      const response = (await apiClient.post(`/proposals/view/${token}/payment/setup`, {
+        preferredMethod: method,
+      })) as any;
+
+      if (response.success) {
+        const { checkoutUrl, isStub, mandateId, provider } = response.data;
+
+        if (provider === 'adfin' && checkoutUrl) {
+          window.location.href = checkoutUrl;
+          return;
+        }
+
+        if (isStub && mandateId) {
+          setStubMandateId(mandateId);
+          toast('Demo mode: complete the Direct Debit setup below', { icon: '🏦' });
+        }
+      }
+    } catch (error: any) {
+      toast.error(error.response?.data?.error?.message || 'Failed to set up payment');
+    } finally {
+      setIsSettingUpPayment(false);
+    }
+  };
+
+  const handleCompleteStubMandate = async () => {
+    if (!token || !stubMandateId) return;
+    setIsCompletingStub(true);
+    try {
+      const response = (await apiClient.post(`/proposals/view/${token}/payment/complete-stub`, {
+        mandateId: stubMandateId,
+      })) as any;
+      if (response.success) {
+        setPaymentComplete(true);
+        setShowPaymentStep(false);
+        setPaymentConfig((prev) => (prev ? { ...prev, paymentStatus: 'ACTIVE' } : prev));
+        toast.success('Direct Debit mandate set up successfully');
+      }
+    } catch (error: any) {
+      toast.error(error.response?.data?.error?.message || 'Failed to complete mandate setup');
+    } finally {
+      setIsCompletingStub(false);
+    }
+  };
+
+  const handleSkipPayment = async () => {
+    if (!token) return;
+    try {
+      await apiClient.post(`/proposals/view/${token}/payment/skip`);
+      setPaymentComplete(true);
+      setShowPaymentStep(false);
+      setPaymentConfig((prev) => (prev ? { ...prev, paymentStatus: 'SKIPPED' } : prev));
+      toast('You can set up payment with your accountant later', { icon: 'ℹ️' });
+    } catch (error: any) {
+      toast.error(error.response?.data?.error?.message || 'Failed to skip payment setup');
+    }
+  };
+
   const handleSubmitSignature = async () => {
     if (!signatureData || !signerName || !signerRole || !signerEmail) {
       toast.error('Please provide your name, role, email, and signature');
@@ -233,6 +332,25 @@ const PublicProposalView = () => {
         toast.success('Proposal accepted successfully');
         setIsAccepted(true);
         setShowSignature(false);
+
+        const payment = response.data?.payment;
+        if (payment) {
+          setPaymentConfig(payment);
+          if (payment.paymentRequired) {
+            setShowPaymentStep(true);
+            toast('Next step: set up payment for your engagement fees', { icon: '💳', duration: 6000 });
+          }
+        } else if (token) {
+          try {
+            const cfg = (await apiClient.get(`/proposals/view/${token}/payment/config`)) as any;
+            if (cfg.success) {
+              setPaymentConfig(cfg.data);
+              if (cfg.data.paymentRequired) setShowPaymentStep(true);
+            }
+          } catch {
+            // Non-blocking
+          }
+        }
       }
     } catch (error: any) {
       toast.error(error.response?.data?.error?.message || 'Failed to submit signature');
@@ -292,41 +410,147 @@ const PublicProposalView = () => {
         <div className="bg-white dark:bg-slate-800 shadow-sm p-6 space-y-8">
           {/* Status Banner - Enhanced with lifecycle journey tie-in */}
           {isAccepted ? (
-            <motion.div 
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="rounded-2xl border border-emerald-200 bg-gradient-to-br from-emerald-50 to-white p-6 dark:from-emerald-950/30 dark:to-slate-800"
-            >
-              <div className="flex items-start gap-4">
-                <div className="mt-1 rounded-full bg-emerald-100 p-2 dark:bg-emerald-900/40">
-                  <SparklesIcon className="h-6 w-6 text-emerald-600" />
+            <>
+              <motion.div
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="rounded-2xl border border-emerald-200 bg-gradient-to-br from-emerald-50 to-white p-6 dark:from-emerald-950/30 dark:to-slate-800"
+              >
+                <div className="flex items-start gap-4">
+                  <div className="mt-1 rounded-full bg-emerald-100 p-2 dark:bg-emerald-900/40">
+                    <SparklesIcon className="h-6 w-6 text-emerald-600" />
+                  </div>
+                  <div className="flex-1">
+                    <p className="font-semibold text-emerald-900 dark:text-emerald-200 text-lg">
+                      Thank you — Proposal accepted!
+                    </p>
+                    <p className="mt-1 text-sm text-emerald-700 dark:text-emerald-300">
+                      Your automated client onboarding journey has started. Expect a warm welcome email
+                      shortly, followed by secure requests for ID/AML verification and next steps.
+                    </p>
+
+                    <div className="mt-4 grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs">
+                      {[
+                        { label: 'Welcome', desc: 'Email sent' },
+                        { label: 'AML / ID', desc: 'Verification' },
+                        { label: 'Engagement', desc: 'Letter & sign' },
+                        { label: 'Onboarding', desc: 'Setup & kickoff' },
+                      ].map((s, i) => (
+                        <div
+                          key={i}
+                          className="rounded-xl border border-emerald-100 bg-white/70 px-3 py-2 dark:border-emerald-900/50 dark:bg-emerald-950/20"
+                        >
+                          <div className="font-medium text-emerald-800 dark:text-emerald-200">{s.label}</div>
+                          <div className="text-emerald-600/70 dark:text-emerald-400/70">{s.desc}</div>
+                        </div>
+                      ))}
+                    </div>
+                    <p className="mt-3 text-[11px] text-emerald-600/80 dark:text-emerald-400/70">
+                      All communications are automated and tailored. Your accountant can pause or customise
+                      them at any time.
+                    </p>
+                  </div>
                 </div>
-                <div className="flex-1">
-                  <p className="font-semibold text-emerald-900 dark:text-emerald-200 text-lg">Thank you — Proposal accepted!</p>
-                  <p className="mt-1 text-sm text-emerald-700 dark:text-emerald-300">
-                    Your automated client onboarding journey has started. Expect a warm welcome email shortly, followed by secure requests for ID/AML verification and next steps.
+              </motion.div>
+
+              {/* Post-sign payment mandate collection (W1.3–W1.4) */}
+              {showPaymentStep && paymentConfig?.paymentRequired && !paymentComplete && (
+                <motion.div
+                  data-testid="payment-setup-card"
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="rounded-2xl border border-sky-200 bg-gradient-to-br from-sky-50 to-white p-6 dark:from-sky-950/30 dark:to-slate-800 dark:border-sky-800"
+                >
+                  <h3 className="text-lg font-semibold text-sky-900 dark:text-sky-100">
+                    Set up payment
+                  </h3>
+                  <p className="mt-1 text-sm text-sky-800 dark:text-sky-200/90">
+                    To complete your engagement with {proposal.tenant.name}, please authorise payment of{' '}
+                    <strong>{formatCurrency(proposal.total)}</strong> via Direct Debit or card.
+                    {paymentConfig.isStub && (
+                      <span className="block mt-1 text-xs text-amber-700 dark:text-amber-300">
+                        Demo mode — Adfin is not configured; using a GoCardless-style stub flow.
+                      </span>
+                    )}
                   </p>
 
-                  {/* Mini journey steps tied to touchpoint automation */}
-                  <div className="mt-4 grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs">
-                    {[
-                      { label: 'Welcome', desc: 'Email sent' },
-                      { label: 'AML / ID', desc: 'Verification' },
-                      { label: 'Engagement', desc: 'Letter & sign' },
-                      { label: 'Onboarding', desc: 'Setup & kickoff' },
-                    ].map((s, i) => (
-                      <div key={i} className="rounded-xl border border-emerald-100 bg-white/70 px-3 py-2 dark:border-emerald-900/50 dark:bg-emerald-950/20">
-                        <div className="font-medium text-emerald-800 dark:text-emerald-200">{s.label}</div>
-                        <div className="text-emerald-600/70 dark:text-emerald-400/70">{s.desc}</div>
-                      </div>
-                    ))}
-                  </div>
-                  <p className="mt-3 text-[11px] text-emerald-600/80 dark:text-emerald-400/70">
-                    All communications are automated and tailored. Your accountant can pause or customise them at any time.
+                  {!stubMandateId ? (
+                    <div className="mt-4 flex flex-col sm:flex-row gap-3">
+                      {paymentConfig.methods.directDebit && (
+                        <button
+                          type="button"
+                          data-testid="setup-direct-debit"
+                          onClick={() => handleSetupPayment('direct_debit')}
+                          disabled={isSettingUpPayment}
+                          className="flex-1 inline-flex items-center justify-center gap-2 rounded-xl border border-sky-300 bg-white px-4 py-3 text-sm font-medium text-sky-900 hover:bg-sky-50 disabled:opacity-50 dark:bg-slate-800 dark:border-sky-700 dark:text-sky-100"
+                        >
+                          <BuildingLibraryIcon className="h-5 w-5" />
+                          {isSettingUpPayment && paymentMethodChoice === 'direct_debit'
+                            ? 'Setting up…'
+                            : 'Set up Direct Debit'}
+                        </button>
+                      )}
+                      {paymentConfig.methods.card && (
+                        <button
+                          type="button"
+                          data-testid="setup-card"
+                          onClick={() => handleSetupPayment('card')}
+                          disabled={isSettingUpPayment}
+                          className="flex-1 inline-flex items-center justify-center gap-2 rounded-xl border border-sky-300 bg-white px-4 py-3 text-sm font-medium text-sky-900 hover:bg-sky-50 disabled:opacity-50 dark:bg-slate-800 dark:border-sky-700 dark:text-sky-100"
+                        >
+                          <CreditCardIcon className="h-5 w-5" />
+                          {isSettingUpPayment && paymentMethodChoice === 'card'
+                            ? 'Setting up…'
+                            : 'Pay by card'}
+                        </button>
+                      )}
+                    </div>
+                  ) : (
+                    <div className="mt-4 rounded-xl border border-dashed border-sky-300 bg-white/80 p-5 dark:bg-slate-900/50 dark:border-sky-700">
+                      <p className="text-sm font-medium text-sky-900 dark:text-sky-100">
+                        Demo Direct Debit mandate
+                      </p>
+                      <p className="mt-2 text-sm text-sky-800 dark:text-sky-200/80">
+                        In production, you would be redirected to a secure bank authorisation page. For
+                        this demo, confirm below to simulate mandate activation.
+                      </p>
+                      <p className="mt-2 text-xs font-mono text-slate-500 dark:text-slate-400">
+                        Mandate ref: {stubMandateId}
+                      </p>
+                      <button
+                        type="button"
+                        data-testid="complete-stub-mandate"
+                        onClick={handleCompleteStubMandate}
+                        disabled={isCompletingStub}
+                        className="mt-4 btn-primary w-full sm:w-auto"
+                      >
+                        {isCompletingStub ? 'Activating…' : 'Confirm Direct Debit (demo)'}
+                      </button>
+                    </div>
+                  )}
+
+                  <button
+                    type="button"
+                    onClick={handleSkipPayment}
+                    className="mt-4 text-sm text-slate-600 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200 underline"
+                  >
+                    Set up payment later
+                  </button>
+                </motion.div>
+              )}
+
+              {paymentComplete && paymentConfig && paymentConfig.paymentStatus !== 'SKIPPED' && (
+                <div
+                  data-testid="payment-complete-banner"
+                  className="rounded-xl border border-emerald-200 bg-emerald-50/80 px-4 py-3 flex items-center gap-3 dark:border-emerald-800 dark:bg-emerald-950/30"
+                >
+                  <CheckCircleIcon className="h-5 w-5 text-emerald-600 shrink-0" />
+                  <p className="text-sm text-emerald-800 dark:text-emerald-200">
+                    Payment mandate active — your accountant can now collect fees as agreed.
                   </p>
                 </div>
-              </div>
-            </motion.div>
+              )}
+            </>
           ) : isExpired ? (
             <div className="bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-900 rounded-lg p-4 flex items-center">
               <ClockIcon className="h-6 w-6 text-red-600 mr-3" />
@@ -630,34 +854,104 @@ const PublicProposalView = () => {
           )}
 
           {showDecline && !isAccepted && (
-            <div className="border-t pt-6 space-y-3">
-              <h3 className="text-lg font-medium text-slate-900 dark:text-white">Decline proposal</h3>
-              <textarea
-                data-testid="decline-reason-input"
-                value={declineReason}
-                onChange={(e) => setDeclineReason(e.target.value)}
-                rows={3}
-                className="input-field w-full"
-                placeholder="Please let us know why you are declining…"
-              />
+            <div className="border-t pt-6 space-y-4">
+              <div>
+                <h3 className="text-lg font-medium text-slate-900 dark:text-white">Decline proposal</h3>
+                <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">
+                  Help us improve — let us know why this proposal isn&apos;t right for you.
+                </p>
+              </div>
+
+              <fieldset className="space-y-2">
+                <legend className="text-sm font-medium text-slate-800 dark:text-slate-200 mb-2">
+                  Main reason <span className="text-red-500">*</span>
+                </legend>
+                {DECLINE_REASONS.map((reason) => (
+                  <label
+                    key={reason}
+                    data-testid={`decline-reason-${reason.toLowerCase()}`}
+                    className={`flex items-start gap-3 p-3 rounded-lg border cursor-pointer transition-colors ${
+                      declineReasonCategory === reason
+                        ? 'border-primary-500 bg-primary-50/60 dark:bg-primary-950/20'
+                        : 'border-slate-200 dark:border-slate-600 hover:border-slate-300'
+                    }`}
+                  >
+                    <input
+                      type="radio"
+                      name="declineReason"
+                      value={reason}
+                      checked={declineReasonCategory === reason}
+                      onChange={() => setDeclineReasonCategory(reason)}
+                      className="mt-1 h-4 w-4 text-primary-600"
+                    />
+                    <span className="text-sm text-slate-800 dark:text-slate-100">
+                      {DECLINE_REASON_LABELS[reason]}
+                    </span>
+                  </label>
+                ))}
+              </fieldset>
+
+              <div>
+                <label
+                  htmlFor="decline-reason-text"
+                  className="block text-sm font-medium text-slate-800 dark:text-slate-200"
+                >
+                  {declineReasonCategory === 'OTHER' ? (
+                    <>
+                      Tell us more <span className="text-red-500">*</span>
+                    </>
+                  ) : (
+                    'Additional comments (optional)'
+                  )}
+                </label>
+                <textarea
+                  id="decline-reason-text"
+                  data-testid="decline-reason-input"
+                  value={declineReasonText}
+                  onChange={(e) => setDeclineReasonText(e.target.value)}
+                  rows={3}
+                  className="input-field w-full mt-1"
+                  placeholder={
+                    declineReasonCategory === 'OTHER'
+                      ? 'Please describe your reason…'
+                      : 'Any extra detail that might help us…'
+                  }
+                />
+              </div>
+
               <div className="flex gap-3">
-                <button type="button" className="btn-secondary flex-1" onClick={() => setShowDecline(false)}>
+                <button
+                  type="button"
+                  className="btn-secondary flex-1"
+                  onClick={() => {
+                    setShowDecline(false);
+                    setDeclineReasonCategory('');
+                    setDeclineReasonText('');
+                  }}
+                >
                   Cancel
                 </button>
                 <button
                   type="button"
                   data-testid="confirm-decline-button"
-                  disabled={isDeclining || declineReason.trim().length < 3}
+                  disabled={
+                    isDeclining ||
+                    !declineReasonCategory ||
+                    (declineReasonCategory === 'OTHER' && declineReasonText.trim().length < 3)
+                  }
                   className="btn-primary flex-1"
                   onClick={async () => {
                     setIsDeclining(true);
                     try {
                       await apiClient.post(`/proposals/view/${token}/decline`, {
-                        reason: declineReason.trim(),
+                        declineReason: declineReasonCategory,
+                        reason: declineReasonText.trim() || undefined,
                         declinedBy: signerName || undefined,
                       });
-                      toast.success('Proposal declined');
+                      toast.success('Proposal declined — thank you for your feedback');
                       setShowDecline(false);
+                      setDeclineReasonCategory('');
+                      setDeclineReasonText('');
                     } catch (err: any) {
                       toast.error(err?.response?.data?.error?.message || 'Failed to decline');
                     } finally {

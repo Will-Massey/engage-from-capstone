@@ -1,6 +1,30 @@
 # Build Progress Log
 <!-- Append-only session log. Latest deploy checkpoint is the resume entry point. -->
 
+## Session: 2026-07-01 — Market Leader plan + 9 parallel agent tracks
+
+### Planning
+- Created `MARKET_LEADER_PLAN.md` (phases W0–W4)
+- Spawned 9 subagents; ~49 files changed, +3494 lines
+
+### Implemented (not yet deployed)
+- W0.1–W0.2: MFA + password reset
+- W1.1–W1.5: Xero scaffold, post-sign payments, bulk renewals
+- W2.1–W2.9: AI cost refactor, first proposal wizard, pricing calculator
+- W3.1, W3.6: Engagement library versioning, win/loss analytics
+
+### Before deploy
+1. Run all Prisma migrations (`20260701120000_*` × 4)
+2. Set XERO_* env vars if testing integrations
+3. Full build + e2e smoke
+
+#### Resume prompt
+```
+Deploy market-leader batch: migrate DB → build → smoke wizard + bulk renew + sign payment → /sendit
+```
+
+---
+
 ## Session: 2026-07-01 — per-client draft isolation deploy
 
 ### Deploy checkpoint — 7cc735bb
