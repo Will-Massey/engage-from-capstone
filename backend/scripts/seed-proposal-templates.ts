@@ -1,10 +1,13 @@
 /**
  * W3.2 — Seed 100+ ICAEW/ACCA-aligned proposal templates per tenant.
- * Run: npx tsx scripts/seed-proposal-templates.ts
+ * Run: npm run db:seed:templates
  */
 import { PrismaClient } from '@prisma/client';
-import { getUkProposalTemplatePackages } from '../src/data/ukProposalTemplatePackages.js';
-import { getCurrentVersionId } from '../src/services/engagementLibraryVersionService.js';
+import {
+  seedProposalTemplatesForTenant,
+  sanityCheckTemplatePricing,
+  getExpectedPackageCount,
+} from '../src/services/proposalTemplateSeedService.js';
 
 const prisma = new PrismaClient();
 
@@ -24,92 +27,34 @@ async function main() {
     process.exit(1);
   }
 
-  const catalogue = await prisma.serviceTemplate.findMany({
-    where: { tenantId: tenant.id, isActive: true },
-    select: { id: true, name: true, billingCycle: true, basePrice: true },
-  });
-  const byName = new Map(catalogue.map((s) => [s.name, s]));
+  console.log(`📦 Seeding up to ${getExpectedPackageCount()} proposal templates for ${tenant.name}…\n`);
 
-  if (catalogue.length < 5) {
-    console.warn('⚠️  Few services in catalogue — run seedServices.ts first for best template coverage');
+  const seed = await seedProposalTemplatesForTenant(tenant.id, admin.id);
+  const sanity = await sanityCheckTemplatePricing(tenant.id);
+
+  for (const w of seed.warnings) {
+    console.warn(`⚠️  ${w}`);
   }
 
-  let libraryVersionId: string | null = null;
-  try {
-    libraryVersionId = await getCurrentVersionId();
-  } catch {
-    libraryVersionId = null;
+  console.log(`✅ Created: ${seed.created}`);
+  console.log(`⏭️  Skipped: ${seed.skipped} (${seed.skippedNoServices} with no matching services)`);
+  console.log(`📊 Active templates for tenant: ${seed.totalActive}`);
+  console.log(`📋 Catalogue services: ${seed.catalogueCount}`);
+  console.log(
+    `💷 Pricing sanity: ${sanity.passed ? 'PASS' : 'FAIL'} — ${sanity.servicesChecked} line items, ` +
+      `${sanity.mismatches.length} mismatches, ${sanity.missingServiceIds.length} missing IDs`
+  );
+
+  if (sanity.mismatches.length) {
+    console.log('\nSample mismatches:');
+    for (const m of sanity.mismatches.slice(0, 5)) {
+      console.log(`  - ${m.templateName} / ${m.serviceName}: template £${m.templatePrice} vs catalogue £${m.cataloguePrice}`);
+    }
   }
 
-  const packages = getUkProposalTemplatePackages();
-  console.log(`📦 Seeding up to ${packages.length} proposal templates for ${tenant.name}…\n`);
-
-  let created = 0;
-  let skipped = 0;
-
-  for (const pkg of packages) {
-    const existing = await prisma.proposalTemplate.findFirst({
-      where: { tenantId: tenant.id, name: pkg.name, isActive: true },
-    });
-    if (existing) {
-      skipped++;
-      continue;
-    }
-
-    const serviceConfig: Array<{
-      serviceId: string;
-      name: string;
-      billingFrequency: string;
-      displayPrice: number;
-      quantity: number;
-    }> = [];
-
-    for (const serviceName of pkg.serviceNames) {
-      const tmpl = byName.get(serviceName);
-      if (!tmpl) continue;
-      serviceConfig.push({
-        serviceId: tmpl.id,
-        name: tmpl.name,
-        billingFrequency: tmpl.billingCycle,
-        displayPrice: tmpl.basePrice,
-        quantity: 1,
-      });
-    }
-
-    if (!serviceConfig.length) {
-      skipped++;
-      continue;
-    }
-
-    await prisma.proposalTemplate.create({
-      data: {
-        tenantId: tenant.id,
-        createdById: admin.id,
-        name: pkg.name,
-        description: pkg.description,
-        title: pkg.title,
-        coverLetter: pkg.coverLetterSnippet || null,
-        targetEntityType: pkg.targetEntityType,
-        targetIndustry: pkg.targetIndustry || null,
-        serviceConfig: JSON.stringify(serviceConfig),
-        defaultPricing: JSON.stringify({ coverLetterTone: 'PROFESSIONAL' }),
-        usageCount: 0,
-        isActive: true,
-        isDefault: false,
-        engagementLibraryVersionId: libraryVersionId,
-        needsUpdate: false,
-      },
-    });
-    created++;
-  }
-
-  const total = await prisma.proposalTemplate.count({
-    where: { tenantId: tenant.id, isActive: true },
-  });
-
-  console.log(`✅ Created: ${created}`);
-  console.log(`⏭️  Skipped: ${skipped}`);
-  console.log(`📊 Active templates for tenant: ${total}`);
+  console.log(
+    `\nPrice bands: min £${sanity.priceBands.min}, median £${sanity.priceBands.median}, max £${sanity.priceBands.max}`
+  );
 }
 
 main()

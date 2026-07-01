@@ -9,6 +9,11 @@ import { authenticate, authorize } from '../middleware/auth.js';
 import { asyncHandler, ApiError } from '../middleware/errorHandler.js';
 import { deepCloneJson } from '../utils/proposalServiceSnapshot.js';
 import { getCurrentVersionId } from '../services/engagementLibraryVersionService.js';
+import {
+  seedProposalTemplatesForTenant,
+  sanityCheckTemplatePricing,
+  getExpectedPackageCount,
+} from '../services/proposalTemplateSeedService.js';
 
 const router = Router();
 
@@ -86,6 +91,54 @@ router.get(
         serviceCount: parseServiceConfig(t.serviceConfig).length,
         coverLetterTone: parseDefaultPricing(t.defaultPricing).coverLetterTone,
       })),
+    });
+  })
+);
+
+/** POST /api/proposal-templates/seed-library — seed 143 ICAEW/ACCA template packages */
+router.post(
+  '/seed-library',
+  authenticate,
+  authorize('ADMIN', 'PARTNER'),
+  asyncHandler(async (req, res) => {
+    const seed = await seedProposalTemplatesForTenant(req.tenantId!, req.user!.id);
+    const sanity = await sanityCheckTemplatePricing(req.tenantId!);
+
+    await prisma.activityLog.create({
+      data: {
+        tenantId: req.tenantId!,
+        userId: req.user!.id,
+        action: 'PROPOSAL_TEMPLATE_LIBRARY_SEEDED',
+        entityType: 'PROPOSAL_TEMPLATE',
+        entityId: req.tenantId!,
+        description: `Seeded proposal template library: ${seed.created} created, ${seed.totalActive} active`,
+      },
+    });
+
+    res.json({
+      success: true,
+      data: {
+        expectedPackages: getExpectedPackageCount(),
+        seed,
+        sanity,
+      },
+    });
+  })
+);
+
+/** GET /api/proposal-templates/pricing-sanity — verify template prices match catalogue */
+router.get(
+  '/pricing-sanity',
+  authenticate,
+  authorize('ADMIN', 'PARTNER'),
+  asyncHandler(async (req, res) => {
+    const sanity = await sanityCheckTemplatePricing(req.tenantId!);
+    res.json({
+      success: true,
+      data: {
+        expectedPackages: getExpectedPackageCount(),
+        sanity,
+      },
     });
   })
 );
