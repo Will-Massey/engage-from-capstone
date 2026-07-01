@@ -1,6 +1,23 @@
 # Build Progress Log
 <!-- Append-only session log. Latest deploy checkpoint is the resume entry point. -->
 
+## Session: 2026-07-01 — W0–W4 parallel agent batch + deploy (a14a7371)
+
+### Build checkpoint — a14a7371
+- **5 parallel agents:** smoke e2e, W1.6 approval, W0/W2 UX, W1/W3 integrations, W4 enterprise
+- **77 files, +5444 lines**
+- **Builds:** backend ✓ frontend ✓
+- **E2E:** 22 pass, 3 fail (pre-existing Clara/add-service on prod), 1 skip (wizard hidden for demo tenant)
+- **Migrations:** partner approval, firm group, AML fields
+- **Pushed:** `integrate-deploy:master` → Render auto-deploy
+
+#### Resume prompt
+```
+Verify 3 migrations on production. Caroline UAT: partner approval + MFA + pricing. Set XERO_* env vars.
+```
+
+---
+
 ## Session: 2026-07-01 — sendit resume: deploy + migration verification
 
 ### Verification checkpoint — 845effcf live
