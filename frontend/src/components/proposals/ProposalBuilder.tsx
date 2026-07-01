@@ -2078,9 +2078,9 @@ export default function ProposalBuilder({ proposalId }: ProposalBuilderProps) {
             </div>
           </div>
 
-          <div className="grid grid-cols-3 md:grid-cols-5 gap-2">
+          <div className="flex flex-wrap items-end gap-3">
             {/* Price */}
-            <div>
+            <div className="min-w-[5.5rem] flex-[1_1_5.5rem]">
               <label className="block text-[10px] uppercase tracking-wide text-slate-500 mb-0.5">Price (£)</label>
               <input
                 data-testid="edit-price-input"
@@ -2098,7 +2098,7 @@ export default function ProposalBuilder({ proposalId }: ProposalBuilderProps) {
             </div>
 
             {/* Quantity */}
-            <div>
+            <div className="min-w-[4rem] flex-[1_1_4rem]">
               <label className="block text-[10px] uppercase tracking-wide text-slate-500 mb-0.5">Qty</label>
               <input
                 type="number"
@@ -2110,7 +2110,7 @@ export default function ProposalBuilder({ proposalId }: ProposalBuilderProps) {
             </div>
 
             {/* Discount */}
-            <div>
+            <div className="min-w-[4.5rem] flex-[1_1_4.5rem]">
               <label className="block text-[10px] uppercase tracking-wide text-slate-500 mb-0.5">Disc %</label>
               <input
                 type="number"
@@ -2125,7 +2125,7 @@ export default function ProposalBuilder({ proposalId }: ProposalBuilderProps) {
             </div>
 
             {/* VAT Rate */}
-            <div>
+            <div className="min-w-[5rem] flex-[1_1_5rem]">
               <label className="block text-[10px] uppercase tracking-wide text-slate-500 mb-0.5">VAT %</label>
               <select
                 data-testid="edit-vat-select"
@@ -2142,12 +2142,13 @@ export default function ProposalBuilder({ proposalId }: ProposalBuilderProps) {
             </div>
 
             {/* Billing cadence */}
-            <div className="col-span-3 md:col-span-5">
+            <div className="w-full min-w-0 flex-[1_1_100%]">
               <label className="block text-[10px] uppercase tracking-wide text-slate-500 mb-1">
                 Billing period
               </label>
               <BillingCadenceSelector
                 size="sm"
+                className="w-full max-w-full"
                 value={editForm.billingCycle}
                 allowedCadences={
                   selectedServices.find((s) => s.id === service.id)?.allowedCadences
@@ -2327,7 +2328,7 @@ export default function ProposalBuilder({ proposalId }: ProposalBuilderProps) {
       </div>
 
       {/* Two-column layout: Available Services | Selected Services */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 xl:grid-cols-[minmax(0,1fr)_minmax(22rem,1.2fr)] gap-6">
         {/* Available Services - Compact List */}
         <div className="space-y-3">
           <h3 className="text-sm font-medium text-slate-500 uppercase tracking-wide">
@@ -2365,7 +2366,7 @@ export default function ProposalBuilder({ proposalId }: ProposalBuilderProps) {
             </div>
           ) : (
             <>
-              <div className="max-h-[400px] overflow-y-auto space-y-2 pr-1">
+              <div className="max-h-[min(70vh,560px)] overflow-y-auto space-y-2 pr-1">
                 {selectedServices.map(renderSelectedServiceRow)}
               </div>
 
@@ -2770,6 +2771,10 @@ export default function ProposalBuilder({ proposalId }: ProposalBuilderProps) {
     displayPrice: s.displayPrice,
   }));
 
+  const showPreviewPane = Boolean(selectedClient && currentStep >= 2 && showLivePreviewPane);
+  /** Services step needs full builder width — preview stacks below instead of squeezing the edit column. */
+  const sideBySidePreview = showPreviewPane && currentStep !== 2;
+
   return (
     <div className="max-w-7xl mx-auto">
       {renderStepIndicator()}
@@ -2815,13 +2820,17 @@ export default function ProposalBuilder({ proposalId }: ProposalBuilderProps) {
       <div
         className={
           selectedClient && currentStep >= 2
-            ? showLivePreviewPane
-              ? 'grid grid-cols-1 xl:grid-cols-2 gap-6 items-start'
-              : 'grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_300px] gap-6 items-start'
+            ? sideBySidePreview
+              ? 'grid grid-cols-1 2xl:grid-cols-[minmax(0,1.35fr)_minmax(280px,420px)] gap-6 items-start'
+              : showPreviewPane
+                ? 'flex flex-col gap-6'
+                : 'grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_minmax(280px,320px)] gap-6 items-start'
             : ''
         }
       >
-        <div className="animate-fade-in min-w-0 space-y-4">
+        <div
+          className={`animate-fade-in space-y-4 ${sideBySidePreview ? 'min-w-0' : 'w-full min-w-[min(100%,42rem)]'}`}
+        >
           {selectedClient && currentStep >= 2 && (
             <RegulatoryCheckBanner clientId={selectedClient.id} compact={currentStep === 2} />
           )}
@@ -2838,8 +2847,14 @@ export default function ProposalBuilder({ proposalId }: ProposalBuilderProps) {
           {currentStep === 3 && renderReviewStep()}
         </div>
 
-        {selectedClient && currentStep >= 2 && showLivePreviewPane && (
-          <div className="min-w-0 xl:sticky xl:top-4 order-first xl:order-none">
+        {showPreviewPane && (
+          <div
+            className={
+              sideBySidePreview
+                ? 'min-w-0 2xl:sticky 2xl:top-4 order-first 2xl:order-none'
+                : 'w-full order-last'
+            }
+          >
             <ProposalClientPreview
               practiceName={tenant?.name || 'Your practice'}
               practiceLogo={tenant?.logo}

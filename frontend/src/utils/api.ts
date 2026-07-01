@@ -31,6 +31,17 @@ export function isAuthPage(): boolean {
 
 // API URL is configured from environment
 
+/** Avoid stacking identical network/wakeup toasts when Render cold-starts or restarts. */
+let lastTransientToastAt = 0;
+const TRANSIENT_TOAST_COOLDOWN_MS = 20_000;
+
+function toastTransientError(message: string): void {
+  const now = Date.now();
+  if (now - lastTransientToastAt < TRANSIENT_TOAST_COOLDOWN_MS) return;
+  lastTransientToastAt = now;
+  toast.error(message, { id: 'transient-network' });
+}
+
 // Create axios instance
 const api: AxiosInstance = axios.create({
   baseURL: API_URL.endsWith('/api') ? API_URL : `${API_URL}/api`,
@@ -272,7 +283,7 @@ api.interceptors.response.use(
         : publicPage
           ? 'Unable to reach the server. Please check your connection and try again.'
           : 'Network error. Please check your connection.';
-      if (!publicPage) toast.error(message);
+      if (!publicPage) toastTransientError(message);
       return Promise.reject({
         code: isTimeout ? 'TIMEOUT' : 'NETWORK_ERROR',
         message,

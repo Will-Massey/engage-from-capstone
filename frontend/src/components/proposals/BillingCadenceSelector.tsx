@@ -35,7 +35,7 @@ export default function BillingCadenceSelector({
 
   return (
     <div
-      className={`inline-flex flex-wrap gap-1 p-0.5 rounded-lg bg-slate-100 dark:bg-slate-800/80 ${className}`}
+      className={`flex flex-wrap gap-1 p-0.5 rounded-lg bg-slate-100 dark:bg-slate-800/80 ${className}`}
       role="group"
       aria-label="Billing period"
     >
