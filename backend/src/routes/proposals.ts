@@ -24,6 +24,7 @@ import {
   getProposalSettings,
   parseProposalDateInput,
 } from '../utils/tenantProposalSettings.js';
+import { DECLINE_REASONS } from '../constants/declineReasons.js';
 // generateReference helper function
 const generateReference = (prefix: string = 'PROP'): string => {
   const timestamp = Date.now().toString(36).toUpperCase();
@@ -43,8 +44,8 @@ function parseOneOffDueDate(billingFrequency: string, raw: unknown): Date | null
 
 const router = Router();
 
-const APPROVER_ROLES: UserRole[] = ['ADMIN', 'PARTNER', 'MANAGER'];
-const PARTNER_OVERRIDE_ROLES: UserRole[] = ['ADMIN', 'PARTNER'];
+const APPROVER_ROLES: UserRole[] = ['ADMIN', 'PARTNER', 'MD', 'MANAGER'];
+const PARTNER_OVERRIDE_ROLES: UserRole[] = ['ADMIN', 'PARTNER', 'MD'];
 const SUBMITTER_ROLES: UserRole[] = ['JUNIOR', 'SENIOR'];
 
 function canOverrideApproval(role: UserRole): boolean {
@@ -1295,7 +1296,7 @@ router.post(
 router.post(
   '/:id/withdraw',
   authenticate,
-  authorize('ADMIN', 'PARTNER', 'MANAGER', 'SENIOR'),
+  authorize('ADMIN', 'PARTNER', 'MD', 'MANAGER', 'SENIOR'),
   requireActiveSubscription,
   asyncHandler(async (req, res) => {
     const { id } = req.params;
@@ -1348,6 +1349,85 @@ router.post(
 );
 
 /**
+ * POST /api/proposals/:id/mark-lost
+ * Practice marks an open quotation as lost (feeds win/loss stats)
+ */
+router.post(
+  '/:id/mark-lost',
+  authenticate,
+  authorize('ADMIN', 'PARTNER', 'MD', 'MANAGER', 'SENIOR'),
+  requireActiveSubscription,
+  asyncHandler(async (req, res) => {
+    const { id } = req.params;
+    const body = z
+      .object({
+        declineReason: z.enum(DECLINE_REASONS),
+        reason: z.string().max(500).optional(),
+      })
+      .parse(req.body);
+
+    const proposal = await prisma.proposal.findFirst({
+      where: { id, tenantId: req.tenantId },
+      include: { client: true },
+    });
+
+    if (!proposal) {
+      throw new ApiError('NOT_FOUND', 'Proposal not found', 404);
+    }
+
+    const markable: ProposalStatus[] = ['DRAFT', 'SENT', 'VIEWED', 'EXPIRED', 'WITHDRAWN'];
+    if (!markable.includes(proposal.status)) {
+      throw new ApiError(
+        'INVALID_STATUS',
+        'Only open quotations (draft, sent, viewed, expired, or rescinded) can be marked as lost',
+        400
+      );
+    }
+
+    if (proposal.shareToken || proposal.publicAccessEnabled) {
+      await revokeShareableLink(id);
+    }
+
+    const reasonText = body.reason?.trim() || null;
+
+    const updatedProposal = await prisma.proposal.update({
+      where: { id },
+      data: {
+        status: 'LOST',
+        declinedAt: new Date(),
+        declineReason: body.declineReason,
+        declineReasonText: reasonText,
+        declinedBy: req.user!.email || `${req.user!.firstName} ${req.user!.lastName}`.trim(),
+      },
+    });
+
+    await prisma.activityLog.create({
+      data: {
+        tenantId: req.tenantId,
+        userId: req.user!.id,
+        action: 'PROPOSAL_MARKED_LOST',
+        entityType: 'PROPOSAL',
+        entityId: proposal.id,
+        description: `Marked proposal "${proposal.title}" as lost (${body.declineReason})`,
+        metadata: JSON.stringify({
+          declineReason: body.declineReason,
+          reason: reasonText,
+          clientName: proposal.client.name,
+        }),
+        ipAddress: req.ip,
+        userAgent: req.headers['user-agent'],
+      },
+    });
+
+    res.json({
+      success: true,
+      data: updatedProposal,
+      message: 'Proposal marked as lost',
+    });
+  })
+);
+
+/**
  * GET /api/proposals/:id/pdf
  * Generate proposal PDF
  */
@@ -1388,7 +1468,7 @@ router.get(
 router.delete(
   '/:id',
   authenticate,
-  authorize('ADMIN', 'PARTNER', 'MANAGER'),
+  authorize('ADMIN', 'PARTNER', 'MD', 'MANAGER'),
   asyncHandler(async (req, res) => {
     const { id } = req.params;
 
@@ -1605,6 +1685,8 @@ router.get(
       DECLINED: '#EF4444',
       EXPIRED: '#6B7280',
       WITHDRAWN: '#F59E0B',
+      ARCHIVED: '#94A3B8',
+      LOST: '#DC2626',
     };
 
     const proposalStatusData = statusCounts.map((s: any) => ({

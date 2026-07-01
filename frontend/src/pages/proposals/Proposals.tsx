@@ -37,6 +37,8 @@ const statusColors: Record<string, string> = {
   DECLINED: 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-200',
   EXPIRED: 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-200',
   WITHDRAWN: 'bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-200',
+  ARCHIVED: 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300',
+  LOST: 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-200',
 };
 
 const statusLabels: Record<string, string> = {
@@ -46,7 +48,9 @@ const statusLabels: Record<string, string> = {
   ACCEPTED: 'Signed',
   DECLINED: 'Declined',
   EXPIRED: 'Expired',
-  WITHDRAWN: 'Withdrawn',
+  WITHDRAWN: 'Rescinded',
+  ARCHIVED: 'Archived',
+  LOST: 'Lost',
 };
 
 const Proposals = () => {
@@ -300,7 +304,9 @@ const Proposals = () => {
               <option value="SENT">Sent</option>
               <option value="ACCEPTED">Accepted</option>
               <option value="DECLINED">Declined</option>
-              <option value="WITHDRAWN">Withdrawn</option>
+              <option value="WITHDRAWN">Rescinded</option>
+              <option value="LOST">Lost</option>
+              <option value="ARCHIVED">Archived</option>
               <option value="EXPIRED">Expired</option>
               <option value="RENEWALS_DUE">Renewals Due (30 days)</option>
             </select>

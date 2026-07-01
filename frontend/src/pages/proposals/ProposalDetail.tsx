@@ -1,5 +1,5 @@
 import { useEffect, useState, useMemo } from 'react';
-import { useParams, Link, useSearchParams } from 'react-router-dom';
+import { useParams, Link, useSearchParams, useNavigate } from 'react-router-dom';
 import {
   ArrowLeftIcon,
   PencilIcon,
@@ -21,6 +21,8 @@ import {
   CreditCardIcon,
   BanknotesIcon,
   NoSymbolIcon,
+  TrashIcon,
+  ArchiveBoxIcon,
 } from '@heroicons/react/24/outline';
 import { apiClient } from '../../utils/api';
 import toast from 'react-hot-toast';
@@ -34,6 +36,11 @@ import { generateTermsAndConditions } from '../../data/defaultTerms';
 import { generateDefaultCoverLetter } from '../../data/defaultCoverLetter';
 import SignaturePad from '../../components/SignaturePad';
 import SkeletonProposalDetail from '../../components/skeleton/SkeletonProposalDetail';
+import {
+  DECLINE_REASONS,
+  DECLINE_REASON_LABELS,
+  type DeclineReason,
+} from '../../constants/declineReasons';
 
 const statusConfig: Record<string, { color: string; bg: string; icon: any; label: string }> = {
   DRAFT: {
@@ -76,7 +83,19 @@ const statusConfig: Record<string, { color: string; bg: string; icon: any; label
     color: 'text-amber-800 dark:text-amber-200',
     bg: 'bg-amber-100 dark:bg-amber-900/40',
     icon: NoSymbolIcon,
-    label: 'Withdrawn',
+    label: 'Rescinded',
+  },
+  ARCHIVED: {
+    color: 'text-slate-600 dark:text-slate-300',
+    bg: 'bg-slate-100 dark:bg-slate-800',
+    icon: ArchiveBoxIcon,
+    label: 'Archived',
+  },
+  LOST: {
+    color: 'text-red-700 dark:text-red-200',
+    bg: 'bg-red-100 dark:bg-red-900/40',
+    icon: XMarkIcon,
+    label: 'Lost',
   },
 };
 
@@ -145,6 +164,7 @@ function downloadAuditTrailCsv(trail: any[], reference: string) {
 
 const ProposalDetail = () => {
   const { id } = useParams<{ id: string }>();
+  const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const activeTab: ProposalDetailTab = searchParams.get('tab') === 'audit' ? 'audit' : 'overview';
 
@@ -174,6 +194,12 @@ const ProposalDetail = () => {
   const [rejectionReason, setRejectionReason] = useState('');
   const [approvalActionLoading, setApprovalActionLoading] = useState(false);
   const [withdrawLoading, setWithdrawLoading] = useState(false);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [deleteLoading, setDeleteLoading] = useState(false);
+  const [showMarkLostModal, setShowMarkLostModal] = useState(false);
+  const [markLostLoading, setMarkLostLoading] = useState(false);
+  const [markLostReason, setMarkLostReason] = useState<DeclineReason>('PRICE');
+  const [markLostNotes, setMarkLostNotes] = useState('');
 
   // Rich compliance history (views + signatures + sent events) from dedicated audit trail
   const [auditTrail, setAuditTrail] = useState<any[]>([]);
@@ -398,7 +424,7 @@ const ProposalDetail = () => {
     try {
       setWithdrawLoading(true);
       await apiClient.withdrawProposal(id);
-      toast.success('Proposal rescinded — client link is no longer valid');
+      toast.success('Proposal rescinded — client can no longer sign. Edit and resend when ready.');
       setShowWithdrawModal(false);
       loadProposal();
       loadAuditTrail();
@@ -406,6 +432,41 @@ const ProposalDetail = () => {
       // handled by API interceptor
     } finally {
       setWithdrawLoading(false);
+    }
+  };
+
+  const handleDeleteProposal = async () => {
+    if (!id) return;
+    try {
+      setDeleteLoading(true);
+      await apiClient.deleteProposal(id);
+      toast.success('Quotation deleted');
+      setShowDeleteModal(false);
+      navigate('/proposals');
+    } catch {
+      // handled by API interceptor
+    } finally {
+      setDeleteLoading(false);
+    }
+  };
+
+  const handleMarkProposalLost = async () => {
+    if (!id) return;
+    try {
+      setMarkLostLoading(true);
+      await apiClient.markProposalLost(id, {
+        declineReason: markLostReason,
+        reason: markLostNotes.trim() || undefined,
+      });
+      toast.success('Quotation marked as lost');
+      setShowMarkLostModal(false);
+      setMarkLostNotes('');
+      loadProposal();
+      loadAuditTrail();
+    } catch {
+      // handled by API interceptor
+    } finally {
+      setMarkLostLoading(false);
     }
   };
 
@@ -694,9 +755,18 @@ const ProposalDetail = () => {
     (userRole ? SUBMITTER_ROLES.has(userRole) || isApprover : false);
   const canSendDraft =
     proposal.status === 'DRAFT' && (canOverrideApproval || approvalStatus === 'APPROVED');
-  const showClientLinkButton = !['DECLINED', 'EXPIRED', 'WITHDRAWN'].includes(proposal.status);
+  const showClientLinkButton = !['DECLINED', 'EXPIRED', 'WITHDRAWN', 'ARCHIVED', 'LOST'].includes(
+    proposal.status
+  );
   const canWithdrawProposal =
     proposal.status === 'SENT' || proposal.status === 'VIEWED';
+  const canMarkAsLost = ['DRAFT', 'SENT', 'VIEWED', 'EXPIRED', 'WITHDRAWN'].includes(
+    proposal.status
+  );
+  const canDeleteProposal =
+    proposal.status !== 'ACCEPTED' && proposal.status !== 'ARCHIVED';
+  const deleteManageRoles = new Set(['ADMIN', 'PARTNER', 'MD', 'MANAGER']);
+  const canManageProposal = userRole ? deleteManageRoles.has(userRole) : false;
   const clientOpenCount = typeof proposal.viewCount === 'number' ? proposal.viewCount : 0;
   /** Backend rejects updates once the proposal is signed (ACCEPTED). */
   const canEditCoverLetter = proposal.status !== 'ACCEPTED';
@@ -721,6 +791,61 @@ const ProposalDetail = () => {
 
   return (
     <div className="space-y-6 animate-fade-in">
+      {proposal.status === 'WITHDRAWN' && (
+        <div className="rounded-xl border border-amber-200 dark:border-amber-800 bg-amber-50/80 dark:bg-amber-950/30 px-4 py-3 flex flex-wrap items-center justify-between gap-3">
+          <div className="flex items-start gap-2 text-sm text-amber-900 dark:text-amber-100">
+            <ArchiveBoxIcon className="h-5 w-5 shrink-0 mt-0.5" />
+            <span>
+              This quotation was rescinded — your client cannot sign it. Edit the proposal, then send
+              again when you are ready.
+            </span>
+          </div>
+          {canEditCoverLetter && (
+            <Link to={`/proposals/${id}/edit`} className="btn-secondary text-sm shrink-0">
+              <PencilIcon className="h-4 w-4 mr-1.5" />
+              Edit proposal
+            </Link>
+          )}
+        </div>
+      )}
+
+      {proposal.status === 'ARCHIVED' && (
+        <div className="rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50/80 dark:bg-slate-900/40 px-4 py-3 flex flex-wrap items-center justify-between gap-3">
+          <div className="flex items-start gap-2 text-sm text-slate-700 dark:text-slate-200">
+            <ArchiveBoxIcon className="h-5 w-5 shrink-0 mt-0.5" />
+            <span>
+              This signed proposal was archived when a renewal quotation was created.
+              {proposal.supersededById && (
+                <>
+                  {' '}
+                  <Link
+                    to={`/proposals/${proposal.supersededById}`}
+                    className="text-primary-600 dark:text-primary-400 hover:underline font-medium"
+                  >
+                    View renewal quotation
+                  </Link>
+                </>
+              )}
+            </span>
+          </div>
+        </div>
+      )}
+
+      {proposal.status === 'LOST' && (
+        <div className="rounded-xl border border-red-200 dark:border-red-800 bg-red-50/80 dark:bg-red-950/30 px-4 py-3">
+          <div className="flex items-start gap-2 text-sm text-red-900 dark:text-red-100">
+            <XMarkIcon className="h-5 w-5 shrink-0 mt-0.5" />
+            <span>
+              Marked as lost
+              {proposal.declineReason && (
+                <> — {DECLINE_REASON_LABELS[proposal.declineReason as DeclineReason] || proposal.declineReason}</>
+              )}
+              {proposal.declineReasonText ? `: ${proposal.declineReasonText}` : ''}.
+            </span>
+          </div>
+        </div>
+      )}
+
       {/* Back button */}
       <Link
         to="/proposals"
@@ -854,7 +979,7 @@ const ProposalDetail = () => {
             </button>
           )}
 
-          {canWithdrawProposal && (
+          {canWithdrawProposal && canManageProposal && (
             <button
               type="button"
               onClick={() => setShowWithdrawModal(true)}
@@ -863,6 +988,30 @@ const ProposalDetail = () => {
             >
               <NoSymbolIcon className="h-4 w-4 mr-2" />
               Rescind proposal
+            </button>
+          )}
+
+          {canMarkAsLost && canManageProposal && (
+            <button
+              type="button"
+              onClick={() => setShowMarkLostModal(true)}
+              disabled={markLostLoading}
+              className="btn-secondary text-red-700 border-red-200 hover:bg-red-50 dark:text-red-300 dark:border-red-800 dark:hover:bg-red-950/30"
+            >
+              <XMarkIcon className="h-4 w-4 mr-2" />
+              Mark as lost
+            </button>
+          )}
+
+          {canDeleteProposal && canManageProposal && (
+            <button
+              type="button"
+              onClick={() => setShowDeleteModal(true)}
+              disabled={deleteLoading}
+              className="btn-secondary text-red-700 border-red-200 hover:bg-red-50 dark:text-red-300 dark:border-red-800 dark:hover:bg-red-950/30"
+            >
+              <TrashIcon className="h-4 w-4 mr-2" />
+              Delete
             </button>
           )}
 
@@ -1743,16 +1892,6 @@ const ProposalDetail = () => {
                   </div>
                 )}
 
-                {pricingBreakdown.monthlyIncVat > 0 && (
-                  <div className="flex justify-between items-baseline pt-2 border-t border-white/10 dark:border-slate-600/30">
-                    <span className="font-semibold text-slate-900 dark:text-white">
-                      Typical monthly cash flow
-                    </span>
-                    <span className="font-bold text-2xl text-slate-900 dark:text-white tabular-nums tracking-tight">
-                      {formatCurrency(pricingBreakdown.monthlyIncVat)}
-                    </span>
-                  </div>
-                )}
               </div>
               )}
 
@@ -1761,7 +1900,7 @@ const ProposalDetail = () => {
                   ? 'First payment includes one-time fees plus your first month of recurring services.'
                   : pricingBreakdown.oneOffIncVat > 0
                     ? 'One-time fees are payable as agreed in your engagement letter.'
-                    : 'Monthly figure averages recurring fees across the year where annual or quarterly lines apply.'}
+                    : 'Fees are shown at their actual billing frequency — monthly, quarterly, or annual.'}
               </p>
             </div>
           </div>
@@ -1865,6 +2004,33 @@ const ProposalDetail = () => {
         onSend={handleSend}
       />
 
+      {showDeleteModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+          <div className="w-full max-w-md rounded-xl bg-white dark:bg-slate-900 p-6 shadow-xl">
+            <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-100">
+              Delete quotation
+            </h3>
+            <p className="mt-2 text-sm text-slate-600 dark:text-slate-400">
+              Permanently remove &quot;{proposal.title}&quot;? This cannot be undone. If the client
+              still has a live link, rescind first instead.
+            </p>
+            <div className="mt-4 flex justify-end gap-2">
+              <button type="button" onClick={() => setShowDeleteModal(false)} className="btn-secondary">
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleDeleteProposal}
+                disabled={deleteLoading}
+                className="btn-primary bg-red-600 hover:bg-red-700"
+              >
+                {deleteLoading ? 'Deleting…' : 'Delete quotation'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {showWithdrawModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
           <div className="w-full max-w-md rounded-xl bg-white dark:bg-slate-900 p-6 shadow-xl">
@@ -1872,8 +2038,8 @@ const ProposalDetail = () => {
               Rescind proposal
             </h3>
             <p className="mt-2 text-sm text-slate-600 dark:text-slate-400">
-              This will withdraw the proposal from your client. Their share link will stop working
-              immediately and they will no longer be able to view or sign it.
+              This rescinds the quotation so your client cannot sign it. Their share link will stop
+              working immediately. You can edit and resend when ready.
             </p>
             <div className="mt-4 flex justify-end gap-2">
               <button
@@ -1890,6 +2056,64 @@ const ProposalDetail = () => {
                 className="btn-primary bg-amber-600 hover:bg-amber-700"
               >
                 {withdrawLoading ? 'Rescinding…' : 'Rescind proposal'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showMarkLostModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+          <div className="w-full max-w-md rounded-xl bg-white dark:bg-slate-900 p-6 shadow-xl">
+            <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-100">
+              Mark quotation as lost
+            </h3>
+            <p className="mt-2 text-sm text-slate-600 dark:text-slate-400">
+              Record why this quotation did not convert. This feeds your win/loss analytics and
+              revokes any live client link.
+            </p>
+            <label className="block text-sm font-medium text-slate-700 dark:text-slate-200 mt-4 mb-1">
+              Primary reason
+            </label>
+            <select
+              value={markLostReason}
+              onChange={(e) => setMarkLostReason(e.target.value as DeclineReason)}
+              className="input-field w-full"
+            >
+              {DECLINE_REASONS.map((reason) => (
+                <option key={reason} value={reason}>
+                  {DECLINE_REASON_LABELS[reason]}
+                </option>
+              ))}
+            </select>
+            <label className="block text-sm font-medium text-slate-700 dark:text-slate-200 mt-3 mb-1">
+              Notes (optional)
+            </label>
+            <textarea
+              value={markLostNotes}
+              onChange={(e) => setMarkLostNotes(e.target.value)}
+              className="input-field w-full min-h-[80px]"
+              placeholder="Any extra context for your records"
+              maxLength={500}
+            />
+            <div className="mt-4 flex justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => {
+                  setShowMarkLostModal(false);
+                  setMarkLostNotes('');
+                }}
+                className="btn-secondary"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleMarkProposalLost}
+                disabled={markLostLoading}
+                className="btn-primary bg-red-600 hover:bg-red-700"
+              >
+                {markLostLoading ? 'Saving…' : 'Mark as lost'}
               </button>
             </div>
           </div>

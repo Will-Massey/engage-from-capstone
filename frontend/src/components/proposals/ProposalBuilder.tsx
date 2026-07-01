@@ -415,8 +415,8 @@ export default function ProposalBuilder({ proposalId }: ProposalBuilderProps) {
   // Step 3: Review
   const [proposalTitle, setProposalTitle] = useState('');
   const [coverLetter, setCoverLetter] = useState('');
-  const [detailedCoverLetter, setDetailedCoverLetter] = useState(false);
-  const [summaryLoading, setSummaryLoading] = useState(false);
+  const [coverLetterLoading, setCoverLetterLoading] = useState(false);
+  const coverLetterServicesKeyRef = useRef('');
   const [coverLetterTone, setCoverLetterTone] = useState<CoverLetterTone>('PROFESSIONAL');
   const [coverLetterCustomInstruction, setCoverLetterCustomInstruction] = useState('');
   const [applyingCoverLetterTweak, setApplyingCoverLetterTweak] = useState(false);
@@ -739,21 +739,12 @@ export default function ProposalBuilder({ proposalId }: ProposalBuilderProps) {
     return false;
   };
 
-  // Template-first cover letter when client is chosen (no AI — W2.2)
+  // Auto-generate verbose client proposal letter when entering review step
   useEffect(() => {
-    if (!selectedClient || isEditMode || proposalId || coverLetter.trim().length >= 40) return;
-
-    let cancelled = false;
-    void (async () => {
-      if (cancelled) return;
-      await loadCoverLetterFromTemplate(selectedClient, selectedServices.length);
-    })();
-
-    return () => {
-      cancelled = true;
-    };
+    if (currentStep !== 3 || !selectedClient || selectedServices.length === 0 || !aiConfigured) return;
+    void runGenerateClientCoverLetter(false);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedClient?.id, selectedServices.length]);
+  }, [currentStep, selectedClient?.id, selectedServices.length, aiConfigured, proposalTitle]);
 
   const runAutoFitForClient = async (clientId: string) => {
     if (!aiConfigured || isEditMode || proposalId) return;
@@ -1051,7 +1042,13 @@ export default function ProposalBuilder({ proposalId }: ProposalBuilderProps) {
 
   const goToReviewStep = () => {
     setCurrentStep(3);
-    if (!coverLetter.trim() && selectedClient && !isEditMode && !proposalId) {
+    if (
+      !coverLetter.trim() &&
+      selectedClient &&
+      !isEditMode &&
+      !proposalId &&
+      !aiConfigured
+    ) {
       void loadCoverLetterFromTemplate(selectedClient, selectedServices.length);
     }
   };
@@ -1275,12 +1272,17 @@ export default function ProposalBuilder({ proposalId }: ProposalBuilderProps) {
     }
   };
 
-  const runExpandCoverLetter = async () => {
+  const runGenerateClientCoverLetter = async (force = false) => {
     if (!selectedClient || selectedServices.length === 0) {
-      toast.error('Add at least one service before expanding the cover letter');
+      toast.error('Add at least one service before generating the proposal letter');
       return;
     }
-    setSummaryLoading(true);
+    const servicesKey = selectedServices.map((s) => `${s.id}:${s.billingCycle}`).join('|');
+    if (!force && coverLetter.trim().length >= 120 && coverLetterServicesKeyRef.current === servicesKey) {
+      return;
+    }
+
+    setCoverLetterLoading(true);
     try {
       const res = (await apiClient.aiProposalExplanation({
         clientId: selectedClient.id,
@@ -1294,16 +1296,14 @@ export default function ProposalBuilder({ proposalId }: ProposalBuilderProps) {
         contractTotal: summary.contractTotalIncVat,
       })) as any;
       if (res?.success && res.data?.explanation) {
-        const intro = coverLetter.trim();
-        const expanded = res.data.explanation as string;
-        setCoverLetter(intro ? `${intro}\n\n${expanded}` : expanded);
-        setDetailedCoverLetter(true);
-        toast.success('Detailed personal cover letter ready — review and edit if needed');
+        setCoverLetter(res.data.explanation);
+        coverLetterServicesKeyRef.current = servicesKey;
+        toast.success('Client proposal letter ready — review and edit before sending');
       }
     } catch (e) {
       showAiError(e);
     } finally {
-      setSummaryLoading(false);
+      setCoverLetterLoading(false);
     }
   };
 
@@ -1597,7 +1597,7 @@ export default function ProposalBuilder({ proposalId }: ProposalBuilderProps) {
       const legacySummary = (p.proposalSummary || '').trim();
       const letter = (p.coverLetter || '').trim();
       setCoverLetter(legacySummary && letter ? `${letter}\n\n${legacySummary}` : letter || legacySummary);
-      setDetailedCoverLetter(legacySummary.length > 0);
+      coverLetterServicesKeyRef.current = 'loaded';
       if (p.validUntil) {
         setValidUntil(format(new Date(p.validUntil), 'yyyy-MM-dd'));
       }
@@ -1683,8 +1683,11 @@ export default function ProposalBuilder({ proposalId }: ProposalBuilderProps) {
     if (!proposalTitle.trim()) errors.push('Enter a proposal title');
     if (!validUntil) errors.push('Set a proposal expiry date');
     if (validUntil && validUntil < todayIso) errors.push('Expiry date must be today or in the future');
-    if (coverLetter.trim().length > 0 && coverLetter.trim().length < 40) {
-      errors.push('Cover letter is very short — consider expanding or using a tone preset');
+    if (coverLetter.trim().length > 0 && coverLetter.trim().length < 80) {
+      errors.push('Proposal letter is very short — regenerate with Clara or expand it');
+    }
+    if (!coverLetter.trim()) {
+      errors.push('Generate the client proposal letter before saving');
     }
     return errors;
   };
@@ -1723,17 +1726,7 @@ export default function ProposalBuilder({ proposalId }: ProposalBuilderProps) {
         contractStartDate: contractStartDate.trim()
           ? `${contractStartDate.trim()}T12:00:00.000Z`
           : null,
-        coverLetter:
-          coverLetter.trim() ||
-          generateCoverLetterForTone({
-            tone: coverLetterTone,
-            addresseeName: coverLetterAddressee(selectedClient!),
-            companyName: selectedClient!.name,
-            practiceName: tenant?.name || 'Our practice',
-            senderName: `${user?.firstName || ''} ${user?.lastName || ''}`.trim() || undefined,
-            senderPosition: user?.jobTitle?.trim() || undefined,
-            services: selectedServices,
-          }),
+        coverLetter: coverLetter.trim(),
         paymentTerms: `${defaultPaymentTermsDays} day${defaultPaymentTermsDays === 1 ? '' : 's'}`,
       };
 
@@ -2397,24 +2390,6 @@ export default function ProposalBuilder({ proposalId }: ProposalBuilderProps) {
               {/* Investment by billing period */}
               <div className="p-4 bg-primary-50 dark:bg-primary-900/20 rounded-lg border border-primary-100 dark:border-primary-800 space-y-3 text-sm">
                 <InvestmentSummaryBands summary={summary} />
-                {(summary.monthly.count > 0 ||
-                  summary.annually.count > 0 ||
-                  summary.quarterly.count > 0 ||
-                  summary.weekly.count > 0) && (
-                  <div className="flex justify-between items-baseline pt-2 border-t border-primary-200 dark:border-primary-800">
-                    <div>
-                      <span className="text-sm font-medium text-slate-800 dark:text-slate-100">
-                        Typical monthly cash flow
-                      </span>
-                      <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-                        Recurring fees averaged per month (inc. VAT). One-time fees are separate.
-                      </p>
-                    </div>
-                    <span className="text-xl font-bold text-primary-600 tabular-nums">
-                      {formatCurrency(reviewMonthlyCostIncVat)}
-                    </span>
-                  </div>
-                )}
                 <div className="flex justify-between items-center pt-2 border-t border-primary-200 dark:border-primary-800 text-sm">
                   <span className="text-slate-600 dark:text-slate-300">Subtotal (ex VAT)</span>
                   <span className="font-medium text-slate-900 dark:text-white tabular-nums">
@@ -2541,50 +2516,45 @@ export default function ProposalBuilder({ proposalId }: ProposalBuilderProps) {
 
         <div className="mt-6 p-4 rounded-lg bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-600 space-y-3">
           <InvestmentSummaryBands summary={summary} />
-          {(summary.monthly.count > 0 ||
-            summary.annually.count > 0 ||
-            summary.quarterly.count > 0 ||
-            summary.weekly.count > 0) && (
-            <div className="flex justify-between items-baseline pt-2 border-t border-slate-200 dark:border-slate-600">
-              <div>
-                <span className="text-sm font-medium text-slate-800 dark:text-slate-100">
-                  Typical monthly cash flow
-                </span>
-                <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 max-w-md">
-                  Recurring fees averaged per month (inc. VAT). One-time project fees are listed
-                  separately above.
-                </p>
-              </div>
-              <span className="text-xl font-bold text-primary-600 tabular-nums">
-                {formatCurrency(reviewMonthlyCostIncVat)}
-              </span>
-            </div>
-          )}
         </div>
       </div>
 
-      {/* Cover letter — 3 professional tone options with autofill */}
-      <div className="card p-4">
-        <div className="flex items-center justify-between mb-2">
-          <label className="block text-sm font-medium text-slate-700 dark:text-slate-200">
-            Cover letter
-          </label>
+      {/* Client proposal letter — verbose sales prose */}
+      <div className="card p-4 border border-primary-100 dark:border-primary-900/40">
+        <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
+          <div>
+            <label className="block text-sm font-medium text-slate-700 dark:text-slate-200">
+              Proposal letter for your client
+            </label>
+            <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 max-w-xl">
+              Persuasive, personal sales prose — introduces each service and its benefits before the fee
+              schedule. This is your key differentiator; edit freely after Clara drafts it.
+            </p>
+          </div>
           <div className="flex items-center gap-2">
-            {coverLetter.trim().length >= 20 && (
+            {aiConfigured && (
+              <button
+                type="button"
+                onClick={() => void runGenerateClientCoverLetter(true)}
+                disabled={coverLetterLoading || selectedServices.length === 0}
+                className="text-xs inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg border border-primary-300 dark:border-primary-700 text-primary-700 dark:text-primary-300 hover:bg-primary-50 dark:hover:bg-primary-950/30 disabled:opacity-50"
+              >
+                <SparklesIcon className={`h-3.5 w-3.5 ${coverLetterLoading ? 'animate-pulse' : ''}`} />
+                {coverLetterLoading ? 'Writing…' : coverLetter.trim() ? `Regenerate with ${AI_COPILOT.name}` : `Draft with ${AI_COPILOT.name}`}
+              </button>
+            )}
+            {coverLetter.trim().length >= 20 && aiConfigured && (
               <button
                 type="button"
                 onClick={runAiCoverLetter}
                 disabled={aiCoverLoading || !aiConfigured}
                 className="text-xs inline-flex items-center gap-1 px-2 py-1 rounded-lg border border-violet-300 dark:border-violet-700 text-violet-700 dark:text-violet-300 hover:bg-violet-50 dark:hover:bg-violet-950/30 disabled:opacity-50"
-                title={aiConfigured ? AI_COPILOT.reviseWithLabel : `${AI_COPILOT.name} unavailable`}
+                title={AI_COPILOT.reviseWithLabel}
               >
                 <SparklesIcon className={`h-3.5 w-3.5 ${aiCoverLoading ? 'animate-pulse' : ''}`} />
-                {aiCoverLoading ? 'Revising…' : AI_COPILOT.reviseWithLabel}
+                {aiCoverLoading ? 'Revising…' : 'Polish'}
               </button>
             )}
-            <span className="text-[10px] px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-500">
-              Tone affects only this letter
-            </span>
           </div>
         </div>
 
@@ -2594,7 +2564,7 @@ export default function ProposalBuilder({ proposalId }: ProposalBuilderProps) {
             onApply={() => {
               setCoverLetter(aiCoverDraft);
               setAiCoverDraft(null);
-              toast.success(`${AI_COPILOT.name}'s cover letter applied — review before sending`);
+              toast.success(`${AI_COPILOT.name}'s letter applied — review before sending`);
             }}
             onDiscard={() => setAiCoverDraft(null)}
             onEdit={() => {
@@ -2606,96 +2576,35 @@ export default function ProposalBuilder({ proposalId }: ProposalBuilderProps) {
             }}
             onRegenerate={runAiCoverLetter}
             isStreaming={aiCoverLoading}
-            applyLabel="Accept cover letter"
+            applyLabel="Accept letter"
           />
         )}
 
-        {/* Style picker — beautiful, instantly autofills names/services */}
-        <div className="mb-3">
-          <div className="text-xs uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-1.5">
-            Choose tone (autofills client name, company, services, date)
-          </div>
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-            {COVER_LETTER_STYLES.map((style) => {
-              const active = coverLetterTone === style.tone;
-              return (
-                <button
-                  key={style.tone}
-                  type="button"
-                  onClick={() => applyCoverLetterStyle(style.tone)}
-                  className={`group text-left rounded-2xl border p-3 transition-all hover:shadow-sm focus:outline-none focus:ring-2 focus:ring-primary-500/40
-                    ${active
-                      ? 'border-primary-400 bg-primary-50/70 dark:bg-primary-950/30 shadow-sm'
-                      : 'border-slate-200 dark:border-slate-700 bg-white/60 dark:bg-slate-900/40 hover:border-slate-300 dark:hover:border-slate-600'
-                    }`}
-                >
-                  <div className="flex items-center gap-2">
-                    <div className={`text-sm font-semibold ${active ? 'text-primary-700 dark:text-primary-300' : 'text-slate-800 dark:text-slate-100'}`}>
-                      {style.name}
-                    </div>
-                    {active && <span className="text-[10px] px-1.5 py-px rounded bg-primary-200 dark:bg-primary-900/50 text-primary-700 dark:text-primary-300">Active</span>}
-                  </div>
-                  <div className="mt-1 text-xs text-slate-500 dark:text-slate-400 leading-snug">
-                    {style.description}
-                  </div>
-                  <div className="mt-2 text-[10px] text-slate-400 group-hover:text-slate-500 transition-colors">
-                    {style.preview}
-                  </div>
-                </button>
-              );
-            })}
-          </div>
-        </div>
-
         <p className="text-xs text-slate-500 dark:text-slate-400 mb-2">
-          Personalised for {selectedClient ? coverLetterAddressee(selectedClient) : 'your client'}. You can edit the text freely after choosing a tone.
+          Addressed to {selectedClient ? coverLetterAddressee(selectedClient) : 'your client'} at{' '}
+          {selectedClient?.name || 'their business'}.
         </p>
 
-        <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
-          <label className="inline-flex items-center gap-2 text-sm text-slate-600 dark:text-slate-300 cursor-pointer">
-            <input
-              type="checkbox"
-              checked={detailedCoverLetter}
-              onChange={(e) => setDetailedCoverLetter(e.target.checked)}
-              className="h-4 w-4 rounded border-slate-300 text-primary-600"
-            />
-            Detailed personal letter
-          </label>
-          {detailedCoverLetter && aiConfigured && (
-            <button
-              type="button"
-              onClick={() => void runExpandCoverLetter()}
-              disabled={summaryLoading || selectedServices.length === 0}
-              className="text-xs inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg border border-primary-300 dark:border-primary-700 text-primary-700 dark:text-primary-300 hover:bg-primary-50 dark:hover:bg-primary-950/30 disabled:opacity-50"
-            >
-              <SparklesIcon className={`h-3.5 w-3.5 ${summaryLoading ? 'animate-pulse' : ''}`} />
-              {summaryLoading ? 'Writing…' : `Expand with ${AI_COPILOT.name}`}
-            </button>
-          )}
-        </div>
-        {detailedCoverLetter && (
-          <p className="text-xs text-slate-500 dark:text-slate-400 mb-2">
-            Adds a service-by-service narrative into your cover letter — ideal for a warmer, more persuasive opening.
-          </p>
+        {coverLetterLoading && !coverLetter.trim() && (
+          <div className="py-8 text-center text-sm text-slate-500 dark:text-slate-400" aria-busy="true">
+            <SparklesIcon className="h-6 w-6 text-primary-500 mx-auto animate-pulse mb-2" />
+            {AI_COPILOT.name} is writing your client proposal letter…
+          </div>
         )}
 
         <textarea
           value={coverLetter}
           onChange={(e) => setCoverLetter(e.target.value)}
-          rows={detailedCoverLetter ? 18 : 11}
-          className="input-field w-full text-sm font-sans leading-relaxed"
-          style={{ minHeight: detailedCoverLetter ? 360 : 220 }}
+          rows={20}
+          className="input-field w-full text-sm font-sans leading-relaxed min-h-[380px]"
           placeholder={
-            detailedCoverLetter
-              ? 'Start with a tone above, then use Expand with Clara for a detailed personal letter…'
-              : 'Choose a tone above or write your own cover letter…'
+            aiConfigured
+              ? 'Clara will draft a persuasive letter when you reach this step — or click Draft with Clara…'
+              : 'Write a persuasive proposal letter for your client…'
           }
-          aria-label="Cover letter"
+          aria-label="Proposal letter for client"
+          disabled={coverLetterLoading && !coverLetter.trim()}
         />
-
-        <div className="mt-2 text-[10px] text-slate-400">
-          Tip: Keep it concise for a standard letter, or enable detailed mode for a longer personal introduction.
-        </div>
 
         {/* Cheap Clara tweaks for cover letter - max impact, min tokens (edits existing text) */}
         {coverLetter.trim() && aiConfigured && (

@@ -14,6 +14,7 @@ import {
   calculateHeaderTotals,
 } from '../utils/proposalPricing.js';
 import { calculateRenewalDate } from '../jobs/renewalReminders.js';
+import { revokeShareableLink } from './proposalSharingService.js';
 
 const generateReference = (prefix: string = 'PROP'): string => {
   const timestamp = Date.now().toString(36).toUpperCase();
@@ -396,6 +397,42 @@ export async function createRenewalDraft(
         templateId: options.templateId ?? null,
         useAiCoverLetter: options.useAiCoverLetter ?? false,
         bulkRenewal: options.bulkRenewal ?? false,
+      }),
+    },
+  });
+
+  // Archive the superseded accepted proposal — renewal quote replaces it in the pipeline
+  if (originalProposal.shareToken || originalProposal.publicAccessEnabled) {
+    try {
+      await revokeShareableLink(originalProposal.id);
+    } catch {
+      // non-fatal
+    }
+  }
+
+  await prisma.proposal.update({
+    where: { id: originalProposal.id },
+    data: {
+      status: 'ARCHIVED',
+      supersededById: renewalProposal.id,
+      archivedAt: new Date(),
+      publicAccessEnabled: false,
+      shareToken: null,
+      shareTokenExpiry: null,
+    },
+  });
+
+  await prisma.activityLog.create({
+    data: {
+      tenantId,
+      userId,
+      action: 'PROPOSAL_ARCHIVED_SUPERSEDED',
+      entityType: 'PROPOSAL',
+      entityId: originalProposal.id,
+      description: `Archived ${originalProposal.reference} — superseded by renewal ${renewalProposal.reference}`,
+      metadata: JSON.stringify({
+        supersededById: renewalProposal.id,
+        supersededByReference: renewalProposal.reference,
       }),
     },
   });

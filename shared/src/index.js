@@ -6,6 +6,7 @@ exports.mtditsaCalculator = exports.calculatePrice = exports.validateCompanyNumb
 var UserRole;
 (function (UserRole) {
     UserRole["PARTNER"] = "PARTNER";
+    UserRole["MD"] = "MD";
     UserRole["MANAGER"] = "MANAGER";
     UserRole["SENIOR"] = "SENIOR";
     UserRole["JUNIOR"] = "JUNIOR";
@@ -37,6 +38,8 @@ var ProposalStatus;
     ProposalStatus["DECLINED"] = "DECLINED";
     ProposalStatus["EXPIRED"] = "EXPIRED";
     ProposalStatus["WITHDRAWN"] = "WITHDRAWN";
+    ProposalStatus["ARCHIVED"] = "ARCHIVED";
+    ProposalStatus["LOST"] = "LOST";
 })(ProposalStatus || (exports.ProposalStatus = ProposalStatus = {}));
 var MTDITSAStatus;
 (function (MTDITSAStatus) {

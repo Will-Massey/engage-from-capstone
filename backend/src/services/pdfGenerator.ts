@@ -753,30 +753,6 @@ ${senderPosition(proposal.createdBy) ? `${senderPosition(proposal.createdBy)}, `
       .text('Combined total:', rightX, y)
       .text(this.formatCurrency(proposal.total), 490, y, { align: 'right' });
 
-    // Annual equivalent note
-    const annualEquivalent =
-      grouped.weekly.reduce(
-        (sum, s) => sum + (s.displayPrice || s.unitPrice) * s.quantity * 52,
-        0
-      ) +
-      grouped.monthly.reduce(
-        (sum, s) => sum + (s.displayPrice || s.unitPrice) * s.quantity * 12,
-        0
-      ) +
-      grouped.quarterly.reduce(
-        (sum, s) => sum + (s.displayPrice || s.unitPrice) * s.quantity * 4,
-        0
-      ) +
-      grouped.annually.reduce((sum, s) => sum + (s.displayPrice || s.unitPrice) * s.quantity, 0);
-
-    if (annualEquivalent > 0) {
-      y += 25;
-      doc
-        .fontSize(9)
-        .fillColor('#888888')
-        .text(`Annual equivalent: ${this.formatCurrency(annualEquivalent)}/year`, rightX, y);
-    }
-
     // VAT breakdown
     y += 20;
     doc

@@ -376,6 +376,11 @@ export const apiClient = {
 
   withdrawProposal: (id: string) => api.post(`/proposals/${id}/withdraw`, {}),
 
+  markProposalLost: (
+    id: string,
+    data: { declineReason: string; reason?: string }
+  ) => api.post(`/proposals/${id}/mark-lost`, data),
+
   // Response interceptor already returns `response.data`; for blobs that value IS the Blob.
   downloadProposalPDF: (id: string) =>
     api.get(`/proposals/${id}/pdf`, { responseType: 'blob' }) as Promise<Blob>,

@@ -616,7 +616,7 @@ router.post(
       lastName: z.string().min(1, 'Last name is required'),
       phone: z.string().optional(),
       jobTitle: z.string().optional(),
-      role: z.enum(['PARTNER', 'MANAGER', 'SENIOR', 'JUNIOR']),
+      role: z.enum(['PARTNER', 'MD', 'MANAGER', 'SENIOR', 'JUNIOR']),
       password: z.string().min(8, 'Password must be at least 8 characters'),
     });
 
@@ -685,7 +685,7 @@ router.put(
       email: z.string().email().optional(),
       phone: z.string().optional(),
       jobTitle: z.string().optional(),
-      role: z.enum(['PARTNER', 'MANAGER', 'SENIOR', 'JUNIOR']).optional(),
+      role: z.enum(['PARTNER', 'MD', 'MANAGER', 'SENIOR', 'JUNIOR']).optional(),
       isActive: z.boolean().optional(),
     });
 

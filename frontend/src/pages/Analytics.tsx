@@ -388,7 +388,7 @@ const WinLossSection = ({
           </h3>
           {data.byReason.length === 0 ? (
             <p className="text-sm text-slate-500">
-              Decline reasons will appear here once clients tag losses on the public proposal page.
+              Loss reasons will appear here when clients decline on the portal or you mark quotations as lost.
             </p>
           ) : (
             <div className="space-y-3">
@@ -718,17 +718,25 @@ const Analytics = () => {
                           ? 'bg-blue-500'
                           : status === 'DRAFT'
                             ? 'bg-slate-400'
-                            : status === 'DECLINED'
+                            : status === 'DECLINED' || status === 'LOST'
                               ? 'bg-red-500'
-                            : status === 'VIEWED'
-                              ? 'bg-amber-500'
-                              : status === 'WITHDRAWN'
-                                ? 'bg-orange-500'
-                                : 'bg-slate-300'
+                              : status === 'VIEWED'
+                                ? 'bg-amber-500'
+                                : status === 'WITHDRAWN'
+                                  ? 'bg-orange-500'
+                                  : status === 'ARCHIVED'
+                                    ? 'bg-slate-500'
+                                    : 'bg-slate-300'
                     }`}
                   />
                   <span className="font-medium text-slate-900 dark:text-white">
-                    {status.charAt(0) + status.slice(1).toLowerCase()}
+                    {status === 'LOST'
+                      ? 'Lost'
+                      : status === 'ARCHIVED'
+                        ? 'Archived'
+                        : status === 'WITHDRAWN'
+                          ? 'Rescinded'
+                          : status.charAt(0) + status.slice(1).toLowerCase()}
                   </span>
                 </div>
                 <span className="font-semibold text-slate-900 dark:text-white">{count}</span>

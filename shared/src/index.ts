@@ -5,6 +5,7 @@
 export enum UserRole {
   ADMIN = 'ADMIN',
   PARTNER = 'PARTNER',
+  MD = 'MD',
   MANAGER = 'MANAGER',
   SENIOR = 'SENIOR',
   JUNIOR = 'JUNIOR',
@@ -46,6 +47,8 @@ export enum ProposalStatus {
   DECLINED = 'DECLINED',
   EXPIRED = 'EXPIRED',
   WITHDRAWN = 'WITHDRAWN',
+  ARCHIVED = 'ARCHIVED',
+  LOST = 'LOST',
 }
 
 export enum MTDITSAStatus {

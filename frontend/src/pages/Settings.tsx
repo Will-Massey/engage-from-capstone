@@ -1849,6 +1849,7 @@ const Settings = () => {
                           className="mt-1 input-field w-full"
                         >
                           <option value="PARTNER">Partner</option>
+                          <option value="MD">MD</option>
                           <option value="MANAGER">Manager</option>
                           <option value="SENIOR">Senior</option>
                           <option value="JUNIOR">Junior</option>
@@ -1999,6 +2000,7 @@ const Settings = () => {
                           className="mt-1 input-field w-full"
                         >
                           <option value="PARTNER">Partner</option>
+                          <option value="MD">MD</option>
                           <option value="MANAGER">Manager</option>
                           <option value="SENIOR">Senior</option>
                           <option value="JUNIOR">Junior</option>

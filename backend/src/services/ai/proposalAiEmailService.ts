@@ -320,7 +320,11 @@ export async function* generateEmailContentStream(
     contextNote?: string;
   },
   logMeta: Record<string, unknown>
-): AsyncGenerator<{ subject?: string; bodyChunk?: string; done?: boolean }, ProposalSendEmailResult, unknown> {
+): AsyncGenerator<
+  { subject?: string; bodyChunk?: string; textBody?: string; done?: boolean },
+  ProposalSendEmailResult,
+  unknown
+> {
   await assertAiBudget(tenantId);
 
   const serviceTableText = buildServiceTableText(payload.services);

@@ -29,6 +29,7 @@ enum VATRate {
 enum UserRole {
   ADMIN
   PARTNER
+  MD
   MANAGER
   SENIOR
   JUNIOR
@@ -62,6 +63,8 @@ enum ProposalStatus {
   DECLINED
   EXPIRED
   WITHDRAWN
+  ARCHIVED
+  LOST
 }
 
 enum ApprovalStatus {
@@ -476,6 +479,9 @@ model Proposal {
   renewalReminderSentAt DateTime?
   isRenewal            Boolean   @default(false)
   originalProposalId   String?
+  /// Renewal or replacement quote that superseded this proposal
+  supersededById       String?
+  archivedAt           DateTime?
   
   // Acceptance notification
   acceptanceNotifiedAt DateTime?

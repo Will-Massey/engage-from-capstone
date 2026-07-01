@@ -77,36 +77,36 @@ export async function generateProposalExplanation(
     .filter(Boolean)
     .join('; ');
 
-  const prompt = `Write a client-facing sales narrative for a UK accountancy proposal.
+  const prompt = `Write the opening proposal letter for a UK accountancy firm — this IS the cover letter the client reads first.
 
-Addressee: ${addressee} (speak directly to them — use "you" and "your").
+Addressee: ${addressee} (speak directly to them — use "you" and "your" throughout).
 Business: ${client.name} (${companyType}${industry ? `, ${industry}` : ''}).
 Practice: ${tenant?.name || 'the firm'}.
 Proposal title: "${input.title}".
 ${totalHint ? `Investment indication: ${totalHint}.` : ''}
 
-Services included:
+Services included (you MUST reference each by name and sell its value):
 ${serviceBlocks.join('\n')}
 
 Requirements:
-- Open with "Dear ${addressee}," then write 3–4 substantial paragraphs (220–320 words total), UK English.
-- Paragraph 1: warmly acknowledge their business and why this proposal fits them now.
-- Paragraphs 2–3: walk through the services listed — name each one and explain the practical benefit to ${client.name} (compliance, clarity, time saved, risk reduced, growth support — tie benefits to their situation).
-- Final paragraph: confident, reassuring close — what working together will feel like; invite them to review the detail below. No hard sell or pressure.
-- Subtle positive NLP (clarity, confidence, peace of mind) — professional accountant tone, not marketing hype.
-- Do NOT invent credentials, awards, or years of experience.
-- No bullet points in the output. Plain prose paragraphs only.`;
+- Open with "Dear ${addressee}," then write 4–5 substantial paragraphs (350–480 words), UK English.
+- Paragraph 1: personal, warm opening — acknowledge ${client.name}, their situation, and why now is the right time for this engagement.
+- Paragraphs 2–4: persuasive sales prose — for EACH service listed, explain what it is, what it delivers for their business, and the outcome they gain (compliance certainty, reclaimed time, better decisions, reduced risk, growth headroom). Make them feel the value before they see the fee table.
+- Final paragraph: confident close — how you will work together, responsiveness, and a gentle invitation to review the services and fees that follow. Sign off with "Yours sincerely," on its own line (no fabricated name after it).
+- Tone: expert adviser who genuinely wants their success — persuasive but never pushy or hypey.
+- Do NOT invent credentials, ICAEW/ACCA membership years, awards, or client counts.
+- No bullet points, headings, or markdown. Plain prose paragraphs separated by blank lines only.`;
 
   const { content, usage } = await chatCompletion(
     [
       {
         role: 'system',
         content:
-          'You are a senior UK accountancy partner writing a persuasive but trustworthy proposal narrative. Address the client by name. Be specific about each service and its business benefit. UK spelling throughout.',
+          'You are a senior UK accountancy partner writing a compelling, client-facing proposal letter. This letter is the primary sales document — verbose, personal, and benefit-led. Name every service and sell its value. UK spelling throughout.',
       },
       { role: 'user', content: prompt },
     ],
-    { temperature: 0.45, maxTokens: 520 }
+    { temperature: 0.5, maxTokens: 750 }
   );
 
   const explanation = content.trim();

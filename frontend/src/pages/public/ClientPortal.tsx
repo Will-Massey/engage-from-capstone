@@ -101,6 +101,18 @@ const statusConfig: Record<string, { label: string; icon: any; color: string; bg
     color: 'text-amber-700 dark:text-amber-300',
     bg: 'bg-amber-50 dark:bg-amber-900/20',
   },
+  ARCHIVED: {
+    label: 'Archived',
+    icon: ClockIcon,
+    color: 'text-slate-600 dark:text-slate-400',
+    bg: 'bg-slate-50 dark:bg-slate-900/20',
+  },
+  LOST: {
+    label: 'Lost',
+    icon: XCircleIcon,
+    color: 'text-red-600 dark:text-red-400',
+    bg: 'bg-red-50 dark:bg-red-900/20',
+  },
 };
 
 function StatusBadge({ status }: { status: string }) {
