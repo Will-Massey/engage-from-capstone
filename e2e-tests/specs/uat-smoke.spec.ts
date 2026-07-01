@@ -1,5 +1,6 @@
 import { test, expect } from '@playwright/test';
 import {
+  apiDelete,
   apiGet,
   apiPost,
   expectNoErrorToasts,
@@ -136,6 +137,41 @@ test.describe('UAT smoke — Caroline checklist (automated)', () => {
     await expect(page.getByRole('button', { name: /submit for partner approval/i })).toBeVisible({
       timeout: 30_000,
     });
+    await expectNoErrorToasts(page);
+  });
+
+  test('firm group API — create, list practices, dissolve (W4.3)', async ({ request }) => {
+    const stamp = Date.now();
+    const existing = await apiGet(request, '/tenants/firm-group');
+    await expectOkApi('firm-group get', existing);
+
+    if (existing.body?.data?.assigned && existing.body?.data?.canAdmin) {
+      const dissolved = await apiDelete(request, '/tenants/firm-group');
+      expect(dissolved.status).toBe(200);
+      expect(dissolved.body?.success).toBe(true);
+    }
+
+    const created = await apiPost(request, '/tenants/firm-group', {
+      name: `UAT Firm Group ${stamp}`,
+    });
+    expect(created.status).toBe(201);
+    expect(created.body?.success).toBe(true);
+    expect(created.body?.data?.assigned).toBe(true);
+    expect(created.body?.data?.canAdmin).toBe(true);
+    expect(created.body?.data?.practices?.length).toBeGreaterThanOrEqual(1);
+
+    const cleanup = await apiDelete(request, '/tenants/firm-group');
+    expect(cleanup.status).toBe(200);
+    expect(cleanup.body?.success).toBe(true);
+    expect(cleanup.body?.data?.assigned).toBe(false);
+  });
+
+  test('firm group settings UI loads', async ({ page }) => {
+    await page.goto('/settings?tab=firm-group');
+    await expect(page.getByRole('heading', { name: /firm group/i })).toBeVisible();
+    await expect(
+      page.getByText(/create a firm group|practices in this group/i).first()
+    ).toBeVisible({ timeout: 15_000 });
     await expectNoErrorToasts(page);
   });
 });

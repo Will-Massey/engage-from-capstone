@@ -5,14 +5,14 @@
 **Market leader:** UK proposal-to-cash platform — CH lookup → priced proposal → signed engagement → collected fees, with Clara AI that saves 30+ min/proposal without token overspend. Full plan: `MARKET_LEADER_PLAN.md`.
 
 ## Current Phase
-**Build 3.0** — **W2–W4 product batch** — preview pane, compliance, integrations; Caroline UAT + Render ops still deferred
+**Build 3.0** — W4.3 multi-firm admin shipped; Caroline UAT + Render ops deferred
 
 ## Next Up
 <!-- 3–5 bullets ONLY. Next fresh session starts here. Rewrite every checkpoint. -->
 1. Caroline UAT (human): MFA enrolment, live Xero OAuth, send a real proposal end-to-end.
 2. **Deferred (post-sale):** Render Starter + disk, custom domain, `XERO_*` / webhook secrets.
 3. Stripe trial enforcement smoke with live Stripe keys (post-sale).
-4. W4.3 multi-firm workspace admin (beyond read-only scaffold).
+4. Run production migration `20260701170000_firm_group_owner` after W4.3 deploy.
 5. G2 case study + marketing ROI calculator (W4.6).
 
 ## Phases

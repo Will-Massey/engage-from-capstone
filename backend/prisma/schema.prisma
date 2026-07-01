@@ -208,15 +208,18 @@ enum EmailDeliveryStatus {
 // ==================== TENANT MODELS ====================
 
 model FirmGroup {
-  id        String   @id @default(uuid())
-  name      String
-  slug      String   @unique
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id            String   @id @default(uuid())
+  name          String
+  slug          String   @unique
+  ownerTenantId String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
 
-  tenants Tenant[]
+  ownerTenant Tenant?  @relation("FirmGroupOwner", fields: [ownerTenantId], references: [id], onDelete: SetNull)
+  tenants     Tenant[] @relation("FirmGroupMembers")
 
   @@index([slug])
+  @@index([ownerTenantId])
 }
 
 model Tenant {
@@ -231,8 +234,9 @@ model Tenant {
   updatedAt      DateTime @updatedAt
 
   // Multi-firm workspace (W4.3)
-  firmGroupId String?
-  firmGroup   FirmGroup? @relation(fields: [firmGroupId], references: [id], onDelete: SetNull)
+  firmGroupId     String?
+  firmGroup       FirmGroup?  @relation("FirmGroupMembers", fields: [firmGroupId], references: [id], onDelete: SetNull)
+  ownedFirmGroups FirmGroup[] @relation("FirmGroupOwner")
 
   // Settings stored as JSON string
   settings String @default("{}")

@@ -519,6 +519,15 @@ export const apiClient = {
 
   // W4.3 firm group
   getFirmGroup: () => api.get('/tenants/firm-group'),
+  createFirmGroup: (data: { name: string; slug?: string }) =>
+    api.post('/tenants/firm-group', data),
+  updateFirmGroup: (data: { name: string }) => api.put('/tenants/firm-group', data),
+  dissolveFirmGroup: () => api.delete('/tenants/firm-group'),
+  addFirmGroupPractice: (subdomain: string) =>
+    api.post('/tenants/firm-group/practices', { subdomain }),
+  removeFirmGroupPractice: (practiceId: string) =>
+    api.delete(`/tenants/firm-group/practices/${practiceId}`),
+  leaveFirmGroup: () => api.post('/tenants/firm-group/leave', {}),
 
   // W4.4 voice of practice
   getVoiceOfPractice: () => api.get('/ai/voice-of-practice'),

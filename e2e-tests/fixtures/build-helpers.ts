@@ -106,6 +106,15 @@ export async function apiPost(request: APIRequestContext, path: string, data?: o
   return { status: res.status(), body };
 }
 
+export async function apiDelete(request: APIRequestContext, path: string): Promise<any> {
+  const res = await request.delete(`${API_BASE}${path}`, {
+    headers: { ...E2E_HEADERS, ...(await csrfHeader(request)) },
+    timeout: apiTimeout(path),
+  });
+  const body = await res.json().catch(() => ({}));
+  return { status: res.status(), body };
+}
+
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
 function isTransientApiFailure(err: unknown, status?: number): boolean {

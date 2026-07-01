@@ -65,7 +65,7 @@ const tabs = [
     id: 'firm-group',
     name: 'Firm group',
     icon: BuildingOfficeIcon,
-    description: 'Multi-firm workspace (read-only)',
+    description: 'Multi-firm workspace admin',
   },
 ];
 
@@ -1964,7 +1964,7 @@ const Settings = () => {
               <div className="px-8 py-5 border-b border-slate-200 dark:border-slate-700 bg-white/40 dark:bg-slate-800/30">
                 <h2 className="text-lg font-semibold text-slate-900 dark:text-white">Firm group</h2>
                 <p className="text-sm text-slate-500 dark:text-slate-300">
-                  Multi-firm workspace for accounting groups (W4.3 scaffold)
+                  Link practices across offices — owner practice admins manage membership
                 </p>
               </div>
               <div className="p-6">
