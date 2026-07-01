@@ -5,14 +5,14 @@
 Engage proposals: isolated per-proposal snapshots, **Templates** catalogue section for pre-made bundles, faster proposal drafting from sidebar.
 
 ## Current Phase
-Phase: Templates + snapshot isolation — **deployed** (fbed4b5f)
+Phase: Per-client draft isolation — **deployed** (7cc735bb)
 
 ## Next Up
 <!-- 3–5 bullets ONLY. Next fresh session starts here. Rewrite every checkpoint. -->
-1. Smoke-test isolation: complete proposal B with different fees → open proposal A → prices unchanged.
-2. Smoke-test Caroline client save + Companies House enrich if not yet verified on production.
-3. Set `CLOUDFLARE_EMAIL_WEBHOOK_SECRET` on Render if delivery tracking needed.
-4. Optional: custom domain `engage.capstonesoftware.co.uk`.
+1. Caroline smoke-test: start proposals for 2 clients, add different services, switch between them — each keeps its own draft.
+2. Smoke-test saved-proposal isolation: complete proposal B with different fees → open proposal A → prices unchanged.
+3. Smoke-test Caroline client save + Companies House enrich if not yet verified on production.
+4. Set `CLOUDFLARE_EMAIL_WEBHOOK_SECRET` on Render if delivery tracking needed.
 
 ## Phases
 <!-- Status: pending | in_progress | complete -->
@@ -50,6 +50,7 @@ Phase: Templates + snapshot isolation — **deployed** (fbed4b5f)
 | 4 | 2026-06-30 | eff1b326 | master | engage-backend, engage-frontend | live | Manual build mode, service toggle, price inputs |
 | 5 | 2026-06-30 | 121574bc | master | engage-backend, engage-frontend | live | New proposal (manual) list shortcut |
 | 6 | 2026-06-30 | fbed4b5f | master | engage-backend, engage-frontend | live | Proposal snapshot isolation (48457d71) + Templates sidebar & management page |
+| 7 | 2026-07-01 | 7cc735bb | master | engage-backend, engage-frontend | deploying | Per-client proposal drafts — switching clients mid-build no longer shares services/title/cover letter |
 
 ## Decisions Made
 | Decision | Rationale |

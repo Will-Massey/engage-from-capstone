@@ -1,12 +1,12 @@
 # sendit.resume - auto-generated checkpoint (keep in git)
-pending: false
-written: 2026-06-30 22:38:49 UTC
+pending: true
+written: 2026-07-01 07:32:38 UTC
 project_root: C:\Users\willi\Cline Workspace\engage-deploy
-commit: 47f93bb4
+commit: 7cc735bb
 branch: integrate-deploy
-phase: Phase: Templates + snapshot isolation â€” **deployed** (fbed4b5f)
+phase: Phase: Per-client draft isolation â€” **deployed** (7cc735bb)
 goal: Engage proposals: isolated per-proposal snapshots, **Templates** catalogue section for pre-made bundles, faster proposal drafting from sidebar.
-next_up_1: Smoke-test isolation: complete proposal B with different fees â†’ open proposal A â†’ prices unchanged.
+next_up_1: Caroline smoke-test: start proposals for 2 clients, add different services, switch between them â€” each keeps its own draft.
 
 # Agent: on resume read ~/.grok/sendit.active OR project_root paths below.
 # NEVER glob search. Execute next_up_1 immediately. Set pending: false when done.

@@ -1,6 +1,22 @@
 # Build Progress Log
 <!-- Append-only session log. Latest deploy checkpoint is the resume entry point. -->
 
+## Session: 2026-07-01 — per-client draft isolation deploy
+
+### Deploy checkpoint — 7cc735bb
+- **Commit:** 7cc735bb fix: isolate per-client proposal drafts when switching clients mid-build
+- **Branch:** master (pushed from integrate-deploy)
+- **Render services:** engage-backend, engage-frontend
+- **Deploy status:** deploying (Render auto-deploy from master)
+- **Fix:** `engage-draft-new-{clientId}` localStorage keys; flush on client switch; legacy key migration
+
+#### Resume prompt
+```
+Continue per task_plan.md. Last deploy: 7cc735bb on master. Start Next Up #1 — Caroline multi-client draft smoke-test on production.
+```
+
+---
+
 ## Session: 2026-06-30 — templates smoke-test (sendit resume)
 
 ### Smoke-test checkpoint — templates flow
