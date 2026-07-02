@@ -5,6 +5,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { EyeIcon, EyeSlashIcon, ShieldCheckIcon } from '@heroicons/react/24/outline';
 import { apiClient, clearCsrfCache, rememberCsrfToken } from '../../utils/api';
+import { appPath } from '../../utils/appBase';
 import { useAuthStore } from '../../stores/authStore';
 import toast from 'react-hot-toast';
 
@@ -57,10 +58,15 @@ const Login = () => {
         setSession(response.data.user, response.data.user.tenant);
         rememberCsrfToken(response.data.csrfToken);
         toast.success('Welcome to Engage!');
-        navigate('/');
+        window.location.assign(appPath('/'));
+        return;
       }
-    } catch {
-      // Error handled by API interceptor
+    } catch (err: unknown) {
+      const message =
+        err && typeof err === 'object' && 'message' in err
+          ? String((err as { message?: string }).message)
+          : 'Sign-in failed. Please check your email and password.';
+      toast.error(message);
     } finally {
       setIsLoading(false);
     }
@@ -85,10 +91,15 @@ const Login = () => {
         setSession(response.data.user, response.data.user.tenant);
         rememberCsrfToken(response.data.csrfToken);
         toast.success('Welcome to Engage!');
-        navigate('/');
+        window.location.assign(appPath('/'));
+        return;
       }
-    } catch {
-      // Error handled by API interceptor
+    } catch (err: unknown) {
+      const message =
+        err && typeof err === 'object' && 'message' in err
+          ? String((err as { message?: string }).message)
+          : 'Verification failed. Please try again.';
+      toast.error(message);
     } finally {
       setIsLoading(false);
     }

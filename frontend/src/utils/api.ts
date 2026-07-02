@@ -317,6 +317,21 @@ api.interceptors.response.use(
           }
           break;
 
+        case 'INVALID_CREDENTIALS':
+        case 'NO_TENANT':
+          if (authPage) {
+            toast.error(errorMessage);
+          } else if (!publicPage) {
+            toast.error(errorMessage);
+          }
+          break;
+
+        case 'ACCOUNT_LOCKED':
+          if (authPage || !publicPage) {
+            toast.error(errorMessage);
+          }
+          break;
+
         case 'INVALID_REFRESH_TOKEN':
           if (authPage || publicPage) {
             useAuthStore.getState().clearAuth();
@@ -384,9 +399,6 @@ api.interceptors.response.use(
 
         default:
           if (!publicPage && !authPage) toast.error(errorMessage);
-          else if (authPage && errorCode === 'ACCOUNT_LOCKED') {
-            toast.error(errorMessage);
-          }
       }
 
       return Promise.reject({
