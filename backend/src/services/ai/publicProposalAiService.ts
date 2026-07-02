@@ -36,8 +36,20 @@ function lineGrossTotal(service: ProposalServiceLine): number {
   return net + (service.vatAmount ?? 0);
 }
 
-/** Fee wording for signing summary — monthly/annual/one-off, not annualised monthly totals. */
-export function computeSigningCostSummary(proposal: PublicProposalRecord) {
+export type SigningCostBreakdown = {
+  dueToday: { amount: number; vatAmount: number; label: string } | null;
+  recurring: {
+    label: string;
+    amount: number;
+    vatAmount: number;
+    periodPhrase: string;
+    frequency: string;
+  } | null;
+  primaryFrequency: string;
+};
+
+/** Fee breakdown for signing summary — due today vs recurring, never annualised monthly totals. */
+export function computeSigningCostSummary(proposal: PublicProposalRecord): SigningCostBreakdown {
   const coreServices = proposal.services.filter((s) => !s.isOptional);
   const byFrequency = new Map<string, { gross: number; vat: number }>();
 
@@ -49,80 +61,92 @@ export function computeSigningCostSummary(proposal: PublicProposalRecord) {
     byFrequency.set(freq, bucket);
   }
 
+  const oneTimeGross = byFrequency.get('ONE_TIME')?.gross ?? 0;
+  const oneTimeVat = byFrequency.get('ONE_TIME')?.vat ?? 0;
   const monthlyGross =
     (byFrequency.get('MONTHLY')?.gross ?? 0) + (byFrequency.get('WEEKLY')?.gross ?? 0);
   const monthlyVat =
     (byFrequency.get('MONTHLY')?.vat ?? 0) + (byFrequency.get('WEEKLY')?.vat ?? 0);
-  const annualGross = byFrequency.get('ANNUALLY')?.gross ?? 0;
-  const annualVat = byFrequency.get('ANNUALLY')?.vat ?? 0;
-  const oneTimeGross = byFrequency.get('ONE_TIME')?.gross ?? 0;
-  const oneTimeVat = byFrequency.get('ONE_TIME')?.vat ?? 0;
   const quarterlyGross = byFrequency.get('QUARTERLY')?.gross ?? 0;
   const quarterlyVat = byFrequency.get('QUARTERLY')?.vat ?? 0;
+  const annualGross = byFrequency.get('ANNUALLY')?.gross ?? 0;
+  const annualVat = byFrequency.get('ANNUALLY')?.vat ?? 0;
 
+  const dueToday =
+    oneTimeGross > 0
+      ? { amount: oneTimeGross, vatAmount: oneTimeVat, label: 'Due today (one-off fees)' }
+      : null;
+
+  let recurring: SigningCostBreakdown['recurring'] = null;
   if (monthlyGross > 0) {
-    return {
-      label: 'Monthly fees',
+    recurring = {
+      label: 'Monthly recurring fee',
       amount: monthlyGross,
       vatAmount: monthlyVat,
       periodPhrase: 'per month',
-      primaryFrequency: 'MONTHLY' as const,
+      frequency: 'MONTHLY',
     };
-  }
-  if (quarterlyGross > 0) {
-    return {
-      label: 'Quarterly fees',
+  } else if (quarterlyGross > 0) {
+    recurring = {
+      label: 'Quarterly recurring fee',
       amount: quarterlyGross,
       vatAmount: quarterlyVat,
       periodPhrase: 'per quarter',
-      primaryFrequency: 'QUARTERLY' as const,
+      frequency: 'QUARTERLY',
     };
-  }
-  if (annualGross > 0) {
-    return {
-      label: 'Annual fees',
+  } else if (annualGross > 0) {
+    recurring = {
+      label: 'Annual recurring fee',
       amount: annualGross,
       vatAmount: annualVat,
       periodPhrase: 'per year',
-      primaryFrequency: 'ANNUALLY' as const,
-    };
-  }
-  if (oneTimeGross > 0) {
-    return {
-      label: 'One-off fees',
-      amount: oneTimeGross,
-      vatAmount: oneTimeVat,
-      periodPhrase: 'in total',
-      primaryFrequency: 'ONE_TIME' as const,
+      frequency: 'ANNUALLY',
     };
   }
 
-  const paymentFrequency = String(proposal.paymentFrequency || 'MONTHLY').toUpperCase();
-  if (paymentFrequency === 'ONE_TIME') {
+  if (!dueToday && !recurring) {
+    const paymentFrequency = String(proposal.paymentFrequency || 'MONTHLY').toUpperCase();
+    if (paymentFrequency === 'ONE_TIME') {
+      return {
+        dueToday: {
+          amount: proposal.total,
+          vatAmount: proposal.vatAmount,
+          label: 'Due today (one-off fees)',
+        },
+        recurring: null,
+        primaryFrequency: 'ONE_TIME',
+      };
+    }
+    if (paymentFrequency === 'ANNUALLY') {
+      return {
+        dueToday: null,
+        recurring: {
+          label: 'Annual recurring fee',
+          amount: proposal.total,
+          vatAmount: proposal.vatAmount,
+          periodPhrase: 'per year',
+          frequency: 'ANNUALLY',
+        },
+        primaryFrequency: 'ANNUALLY',
+      };
+    }
     return {
-      label: 'One-off fees',
-      amount: proposal.total,
-      vatAmount: proposal.vatAmount,
-      periodPhrase: 'in total',
-      primaryFrequency: 'ONE_TIME' as const,
-    };
-  }
-  if (paymentFrequency === 'ANNUALLY') {
-    return {
-      label: 'Annual fees',
-      amount: proposal.total,
-      vatAmount: proposal.vatAmount,
-      periodPhrase: 'per year',
-      primaryFrequency: 'ANNUALLY' as const,
+      dueToday: null,
+      recurring: {
+        label: 'Monthly recurring fee',
+        amount: proposal.total,
+        vatAmount: proposal.vatAmount,
+        periodPhrase: 'per month',
+        frequency: 'MONTHLY',
+      },
+      primaryFrequency: 'MONTHLY',
     };
   }
 
   return {
-    label: 'Monthly fees',
-    amount: proposal.total,
-    vatAmount: proposal.vatAmount,
-    periodPhrase: 'per month',
-    primaryFrequency: 'MONTHLY' as const,
+    dueToday,
+    recurring,
+    primaryFrequency: recurring?.frequency ?? 'ONE_TIME',
   };
 }
 
@@ -166,10 +190,21 @@ export function buildPublicProposalContext(proposal: PublicProposalRecord) {
   };
 }
 
-function formatSigningCostPhrase(cost: ReturnType<typeof computeSigningCostSummary>): string {
-  const period =
-    cost.periodPhrase === 'in total' ? '' : ` ${cost.periodPhrase}`;
-  return `${cost.label}: £${cost.amount.toFixed(2)}${period} (including VAT of £${cost.vatAmount.toFixed(2)}).`;
+export function formatSigningCostPhrase(cost: SigningCostBreakdown): string {
+  const parts: string[] = [];
+  if (cost.dueToday) {
+    parts.push(
+      `${cost.dueToday.label}: £${cost.dueToday.amount.toFixed(2)} (including VAT of £${cost.dueToday.vatAmount.toFixed(2)}).`
+    );
+  }
+  if (cost.recurring) {
+    const period =
+      cost.recurring.periodPhrase === 'in total' ? '' : ` ${cost.recurring.periodPhrase}`;
+    parts.push(
+      `${cost.recurring.label}: £${cost.recurring.amount.toFixed(2)}${period} (including VAT of £${cost.recurring.vatAmount.toFixed(2)}).`
+    );
+  }
+  return parts.join(' ');
 }
 
 function ruleBasedSigningSummary(proposal: PublicProposalRecord): string {
@@ -283,7 +318,8 @@ export async function getPublicSigningSummary(proposal: PublicProposalRecord) {
           PUBLIC_SYSTEM +
           ' Write a plain-English signing summary for the client (4–6 short sentences). ' +
           'Explain what they are agreeing to, key services, payment terms, validity, and that signing accepts the terms. ' +
-          'For fees, use costSummary in the JSON: quote monthly fees per month for MONTHLY billing, quarterly per quarter, annual per year, or one-off in total. ' +
+          'For fees, use costSummary.dueToday for any one-off amount payable today and costSummary.recurring for ongoing fees. ' +
+          'When both exist, state what is due today first, then the monthly (or quarterly/annual) recurring fee. ' +
           'Do not describe an annual total when services are billed monthly. ' +
           'No bullet points — flowing prose. Do not add facts beyond the proposal JSON.',
       },

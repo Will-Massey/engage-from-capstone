@@ -1,7 +1,9 @@
 import { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { apiClient } from '../../utils/api';
+import { appPath } from '../../utils/appBase';
 import { formatCurrency, formatDate } from '../../utils/formatters';
+import { stripMarkdownHeadings } from '../../utils/termsPlainText';
 import toast from 'react-hot-toast';
 import SignaturePad from '../../components/signature/SignaturePad';
 import {
@@ -103,6 +105,24 @@ interface ProposalData {
 
 type QaMessage = { role: 'user' | 'assistant'; content: string };
 
+type SigningCostSummary = {
+  dueToday: { amount: number; vatAmount: number; label: string } | null;
+  recurring: {
+    label: string;
+    amount: number;
+    vatAmount: number;
+    periodPhrase: string;
+    frequency: string;
+  } | null;
+};
+
+const TERMS_PANEL_STYLE = {
+  backgroundImage: `url('${appPath('/images/pdf-page-background.jpg')}')`,
+  backgroundSize: 'cover',
+  backgroundPosition: 'center',
+  backgroundRepeat: 'no-repeat',
+} as const;
+
 const SIGN_PAGE_FAQS: Array<{ question: string; answer: string }> = [
   {
     question: 'What am I agreeing to when I sign?',
@@ -182,6 +202,7 @@ const PublicProposalView = () => {
   const [qaInput, setQaInput] = useState('');
   const [qaLoading, setQaLoading] = useState(false);
   const [signingSummary, setSigningSummary] = useState<string | null>(null);
+  const [signingCostSummary, setSigningCostSummary] = useState<SigningCostSummary | null>(null);
   const [signingSummaryLoading, setSigningSummaryLoading] = useState(false);
   const [paymentConfig, setPaymentConfig] = useState<PaymentConfig | null>(null);
   const [showPaymentStep, setShowPaymentStep] = useState(false);
@@ -259,6 +280,9 @@ const PublicProposalView = () => {
         const response = (await apiClient.get(`/proposals/view/${token}/signing-summary`)) as any;
         if (response.success) {
           setSigningSummary(response.data.summary);
+          if (response.data.costSummary) {
+            setSigningCostSummary(response.data.costSummary);
+          }
         }
       } catch {
         // Non-blocking — summary is helpful but not required to sign
@@ -1157,22 +1181,22 @@ const PublicProposalView = () => {
 
           {/* Terms & Conditions */}
           {!isAccepted && !isExpired && (
-            <div className="border-t pt-6">
-              <h3 className="text-sm font-medium text-slate-600 uppercase tracking-wide">
+            <div className="border-t border-slate-200 dark:border-slate-600 pt-6">
+              <h3 className="text-sm font-medium text-slate-600 dark:text-slate-300 uppercase tracking-wide">
                 Terms & Conditions
               </h3>
-              <div
-                className="mt-4 rounded-xl border border-slate-200 dark:border-slate-600 max-h-72 overflow-y-auto relative"
-                style={{
-                  backgroundImage: "url('/images/pdf-page-background.jpg')",
-                  backgroundSize: 'cover',
-                  backgroundPosition: 'center',
-                }}
-              >
-                <div className="p-4 bg-white/90 dark:bg-slate-900/92 backdrop-blur-[1px] min-h-[12rem]">
-                  <pre className="text-sm text-slate-800 dark:text-slate-200 whitespace-pre-wrap font-sans">
-                    {proposal.terms || 'Standard terms and conditions apply.'}
-                  </pre>
+              <div className="mt-4 rounded-xl border border-slate-200 dark:border-slate-600 max-h-72 overflow-y-auto">
+                <div className="relative min-h-[12rem]" style={TERMS_PANEL_STYLE}>
+                  <div className="relative z-10 m-0 rounded-lg bg-white dark:bg-slate-900 p-4 shadow-sm">
+                    <div
+                      data-testid="proposal-terms-body"
+                      className="text-sm leading-relaxed whitespace-pre-wrap font-sans text-slate-900 dark:text-slate-100"
+                    >
+                      {stripMarkdownHeadings(
+                        proposal.terms || 'Standard terms and conditions apply.'
+                      )}
+                    </div>
+                  </div>
                 </div>
               </div>
               <div className="mt-4 flex items-start">
@@ -1214,9 +1238,59 @@ const PublicProposalView = () => {
                         <div className="h-3 bg-slate-200 dark:bg-slate-700 rounded w-4/6" />
                       </div>
                     ) : signingSummary ? (
-                      <p className="mt-2 text-sm text-slate-800 dark:text-slate-100 leading-relaxed">
-                        {signingSummary}
-                      </p>
+                      <>
+                        <p className="mt-2 text-sm text-slate-800 dark:text-slate-100 leading-relaxed">
+                          {signingSummary}
+                        </p>
+                        {signingCostSummary &&
+                          (signingCostSummary.dueToday || signingCostSummary.recurring) && (
+                            <ul className="mt-4 space-y-2 text-sm border-t border-slate-200 dark:border-slate-600 pt-3">
+                              {signingCostSummary.dueToday && (
+                                <li className="flex justify-between gap-4 text-slate-800 dark:text-slate-100">
+                                  <span className="font-medium">Due today</span>
+                                  <span className="tabular-nums text-right">
+                                    {formatCurrency(signingCostSummary.dueToday.amount)}
+                                    <span className="block text-xs font-normal text-slate-600 dark:text-slate-400">
+                                      inc. VAT
+                                    </span>
+                                  </span>
+                                </li>
+                              )}
+                              {signingCostSummary.recurring && (
+                                <li className="flex justify-between gap-4 text-slate-800 dark:text-slate-100">
+                                  <span className="font-medium">
+                                    {signingCostSummary.recurring.label}
+                                  </span>
+                                  <span className="tabular-nums text-right">
+                                    {formatCurrency(signingCostSummary.recurring.amount)}
+                                    <span className="block text-xs font-normal text-slate-600 dark:text-slate-400">
+                                      {signingCostSummary.recurring.periodPhrase} · inc. VAT
+                                    </span>
+                                  </span>
+                                </li>
+                              )}
+                            </ul>
+                          )}
+                      </>
+                    ) : signingCostSummary &&
+                      (signingCostSummary.dueToday || signingCostSummary.recurring) ? (
+                      <ul className="mt-2 space-y-2 text-sm">
+                        {signingCostSummary.dueToday && (
+                          <li className="text-slate-800 dark:text-slate-100">
+                            <span className="font-medium">Due today: </span>
+                            {formatCurrency(signingCostSummary.dueToday.amount)} (inc. VAT)
+                          </li>
+                        )}
+                        {signingCostSummary.recurring && (
+                          <li className="text-slate-800 dark:text-slate-100">
+                            <span className="font-medium">
+                              {signingCostSummary.recurring.label}:{' '}
+                            </span>
+                            {formatCurrency(signingCostSummary.recurring.amount)}{' '}
+                            {signingCostSummary.recurring.periodPhrase} (inc. VAT)
+                          </li>
+                        )}
+                      </ul>
                     ) : (
                       <p className="mt-2 text-sm text-slate-800 dark:text-slate-100 leading-relaxed">
                         By signing, you confirm you are authorised to accept this proposal on behalf

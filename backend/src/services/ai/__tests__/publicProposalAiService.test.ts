@@ -1,4 +1,7 @@
-import { computeSigningCostSummary } from '../publicProposalAiService.js';
+import {
+  computeSigningCostSummary,
+  formatSigningCostPhrase,
+} from '../publicProposalAiService.js';
 
 function mockProposal(services: Array<Record<string, unknown>>, overrides: Record<string, unknown> = {}) {
   return {
@@ -27,37 +30,48 @@ function mockProposal(services: Array<Record<string, unknown>>, overrides: Recor
 }
 
 describe('computeSigningCostSummary', () => {
-  it('uses monthly fees when services are billed monthly', () => {
+  it('uses monthly recurring when services are billed monthly', () => {
     const summary = computeSigningCostSummary(
       mockProposal([
         { name: 'Bookkeeping', grossTotal: 600, vatAmount: 100, billingFrequency: 'MONTHLY' },
         { name: 'Payroll', grossTotal: 540, vatAmount: 90, billingFrequency: 'MONTHLY' },
       ])
     );
-    expect(summary.label).toBe('Monthly fees');
-    expect(summary.amount).toBe(1140);
-    expect(summary.periodPhrase).toBe('per month');
+    expect(summary.dueToday).toBeNull();
+    expect(summary.recurring?.amount).toBe(1140);
+    expect(summary.recurring?.periodPhrase).toBe('per month');
   });
 
-  it('uses annual fees when services are billed annually', () => {
+  it('splits due today and monthly recurring fees', () => {
+    const summary = computeSigningCostSummary(
+      mockProposal([
+        { name: 'Setup', grossTotal: 300, vatAmount: 50, billingFrequency: 'ONE_TIME' },
+        { name: 'Bookkeeping', grossTotal: 600, vatAmount: 100, billingFrequency: 'MONTHLY' },
+      ])
+    );
+    expect(summary.dueToday?.amount).toBe(300);
+    expect(summary.recurring?.amount).toBe(600);
+    expect(formatSigningCostPhrase(summary)).toMatch(/Due today/i);
+    expect(formatSigningCostPhrase(summary)).toMatch(/Monthly recurring fee/i);
+  });
+
+  it('uses annual recurring when services are billed annually', () => {
     const summary = computeSigningCostSummary(
       mockProposal([
         { name: 'Accounts', grossTotal: 960, vatAmount: 160, billingFrequency: 'ANNUALLY' },
       ])
     );
-    expect(summary.label).toBe('Annual fees');
-    expect(summary.amount).toBe(960);
-    expect(summary.periodPhrase).toBe('per year');
+    expect(summary.recurring?.amount).toBe(960);
+    expect(summary.recurring?.periodPhrase).toBe('per year');
   });
 
-  it('uses one-off fees for single one-time services', () => {
+  it('uses due today only for one-off proposals', () => {
     const summary = computeSigningCostSummary(
       mockProposal([
         { name: 'Setup', grossTotal: 300, vatAmount: 50, billingFrequency: 'ONE_TIME' },
       ])
     );
-    expect(summary.label).toBe('One-off fees');
-    expect(summary.amount).toBe(300);
-    expect(summary.periodPhrase).toBe('in total');
+    expect(summary.dueToday?.amount).toBe(300);
+    expect(summary.recurring).toBeNull();
   });
 });

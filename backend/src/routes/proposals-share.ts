@@ -684,10 +684,13 @@ router.get(
       source: result.source,
     });
 
+    const { computeSigningCostSummary } = await import('../services/ai/publicProposalAiService.js');
+
     res.json({
       success: true,
       data: {
         summary: result.summary,
+        costSummary: computeSigningCostSummary(proposal),
         practiceName: proposal.tenant.name,
         clientName: proposal.client.name,
         reference: proposal.reference,
