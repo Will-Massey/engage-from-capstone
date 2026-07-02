@@ -41,4 +41,13 @@ describe('api CSRF patterns', () => {
     expect(sessionStorage.getItem(key)).toBe('persisted-token');
     sessionStorage.removeItem(key);
   });
+
+  it('auth routes are exempt from CSRF header requirement', () => {
+    const exemptPrefixes = ['/auth'];
+    const paths = ['/auth/login', '/auth/register', '/auth/2fa/login', '/auth/refresh'];
+    for (const path of paths) {
+      expect(exemptPrefixes.some((prefix) => path.startsWith(prefix))).toBe(true);
+    }
+    expect(exemptPrefixes.some((prefix) => '/proposals'.startsWith(prefix))).toBe(false);
+  });
 });

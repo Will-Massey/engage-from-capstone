@@ -112,6 +112,26 @@ function captureCsrfFromPayload(payload: unknown): void {
   rememberCsrfToken(token);
 }
 
+/** Paths exempt from CSRF on the backend — login/register must work without a prior token. */
+function isCsrfExemptRequest(url?: string): boolean {
+  if (!url) return false;
+  const path = url.split('?')[0];
+  const exemptPrefixes = [
+    '/auth',
+    '/payments/webhook',
+    '/oauth/callback',
+    '/proposals/view',
+    '/proposals/portal',
+    '/onboarding',
+    '/webhooks/',
+    '/aml/webhook',
+    '/admin/seed-services',
+    '/automation/migrate-service-pricing',
+    '/setup',
+  ];
+  return exemptPrefixes.some((prefix) => path.startsWith(prefix));
+}
+
 // Fetch CSRF token from backend
 let csrfTokenPromise: Promise<string> | null = null;
 
@@ -141,24 +161,37 @@ const fetchCsrfToken = async (forceRefresh = false): Promise<string> => {
 
   if (csrfTokenPromise) return csrfTokenPromise;
 
-  csrfTokenPromise = api
-    .get('/auth/me')
-    .then((res: any) => {
-      csrfTokenPromise = null;
-      const token = res?.data?.csrfToken;
+  csrfTokenPromise = (async () => {
+    try {
+      const meRes = (await api.get('/auth/me')) as { data?: { csrfToken?: string } };
+      const meToken = meRes?.data?.csrfToken;
+      if (meToken) {
+        rememberCsrfToken(meToken);
+        if (import.meta.env.DEV) console.log('[CSRF] Token fetched via /auth/me');
+        return meToken;
+      }
+    } catch {
+      // No session — use public csrf-token endpoint
+    }
+
+    try {
+      const csrfRes = (await api.get('/auth/csrf-token')) as { data?: { csrfToken?: string } };
+      const token = csrfRes?.data?.csrfToken;
       if (token) {
         rememberCsrfToken(token);
-        if (import.meta.env.DEV) console.log('[CSRF] Token fetched via /auth/me');
+        if (import.meta.env.DEV) console.log('[CSRF] Token fetched via /auth/csrf-token');
         return token;
       }
-      console.warn('[CSRF] No token in /auth/me response');
+      console.warn('[CSRF] No token in /auth/csrf-token response');
       return '';
-    })
-    .catch((err) => {
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : String(err);
+      console.error('[CSRF] Failed to fetch token:', message);
+      return '';
+    } finally {
       csrfTokenPromise = null;
-      console.error('[CSRF] Failed to fetch token:', err?.message || err);
-      return '';
-    });
+    }
+  })();
 
   return csrfTokenPromise;
 };
@@ -203,8 +236,12 @@ api.interceptors.request.use(
       config.headers['X-Tenant-Id'] = tenant.id;
     }
 
-    // Add CSRF token for state-changing requests
-    if (['POST', 'PUT', 'DELETE', 'PATCH'].includes(config.method?.toUpperCase() || '')) {
+    // Add CSRF token for state-changing requests (skip auth/public routes — backend exempts them)
+    const method = config.method?.toUpperCase() || '';
+    const needsCsrf =
+      ['POST', 'PUT', 'DELETE', 'PATCH'].includes(method) && !isCsrfExemptRequest(config.url);
+
+    if (needsCsrf) {
       let csrfToken = await fetchCsrfToken();
       if (!csrfToken) {
         csrfToken = await fetchCsrfToken(true);
