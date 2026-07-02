@@ -84,6 +84,8 @@ const Clients = () => {
     const cls =
       /AML|RECEIVED|COMPLETE|PROPOSAL_ACCEPTED/.test(stage)
         ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300'
+        : stage === 'PROSPECT'
+        ? 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300'
         : /INFO/.test(stage)
         ? 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300'
         : /ENGAGEMENT/.test(stage)

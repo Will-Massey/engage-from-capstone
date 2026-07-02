@@ -791,7 +791,7 @@ const Settings = () => {
         lastName: editUserForm.lastName.trim(),
         email: editUserForm.email.trim(),
         phone: editUserForm.phone.trim() || undefined,
-        jobTitle: editUserForm.jobTitle.trim() || undefined,
+        jobTitle: editUserForm.jobTitle.trim() || null,
         role: editUserForm.role,
       })) as any;
       if (response.success) {
@@ -1848,6 +1848,9 @@ const Settings = () => {
                           onChange={(e) => setNewUserForm({ ...newUserForm, role: e.target.value })}
                           className="mt-1 input-field w-full"
                         >
+                          {editUserForm.role === 'ADMIN' && (
+                            <option value="ADMIN">Admin</option>
+                          )}
                           <option value="PARTNER">Partner</option>
                           <option value="MD">MD</option>
                           <option value="MANAGER">Manager</option>
@@ -1999,6 +2002,9 @@ const Settings = () => {
                           onChange={(e) => setEditUserForm({ ...editUserForm, role: e.target.value })}
                           className="mt-1 input-field w-full"
                         >
+                          {editUserForm.role === 'ADMIN' && (
+                            <option value="ADMIN">Admin</option>
+                          )}
                           <option value="PARTNER">Partner</option>
                           <option value="MD">MD</option>
                           <option value="MANAGER">Manager</option>

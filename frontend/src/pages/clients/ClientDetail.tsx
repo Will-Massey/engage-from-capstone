@@ -719,6 +719,7 @@ const ClientDetail = () => {
 
 // --- Lifecycle + Timeline Components ---
 const STAGE_COLORS: Record<string, string> = {
+  PROSPECT: 'bg-slate-100 text-slate-700',
   PROPOSAL_ACCEPTED: 'bg-emerald-100 text-emerald-700',
   AML_PENDING: 'bg-amber-100 text-amber-700',
   AML_COMPLETE: 'bg-emerald-100 text-emerald-700',
@@ -737,7 +738,7 @@ const STAGE_COLORS: Record<string, string> = {
 function LifecyclePanel({ client, onRefresh }: { client: any; onRefresh: () => void }) {
   const [busy, setBusy] = useState<string | null>(null);
   const [upcoming, setUpcoming] = useState<any[]>([]);
-  const stage = client.lifecycleStage || 'PROPOSAL_ACCEPTED';
+  const stage = client.lifecycleStage || 'PROSPECT';
 
   useEffect(() => {
     (async () => {
@@ -774,7 +775,8 @@ function LifecyclePanel({ client, onRefresh }: { client: any; onRefresh: () => v
 
   // Beautiful grouped journey for intuitiveness (main phases)
   const journeySteps = [
-    { key: 'PROPOSAL', label: 'Proposal', stages: ['PROPOSAL_ACCEPTED'] },
+    { key: 'PROSPECT', label: 'Prospect', stages: ['PROSPECT'] },
+    { key: 'PROPOSAL', label: 'Proposal signed', stages: ['PROPOSAL_ACCEPTED'] },
     { key: 'AML', label: 'AML & ID', stages: ['AML_PENDING', 'AML_COMPLETE'] },
     { key: 'ENGAGEMENT', label: 'Engagement', stages: ['ENGAGEMENT_LETTER_SENT', 'ENGAGEMENT_LETTER_SIGNED'] },
     { key: 'INFO', label: 'Info Gathering', stages: ['INFO_REQUESTED', 'INFO_RECEIVED'] },
@@ -785,6 +787,7 @@ function LifecyclePanel({ client, onRefresh }: { client: any; onRefresh: () => v
   const currentStepIndex = journeySteps.findIndex((s) => s.stages.some((st) => stage.includes(st.split('_')[0]) || stage === st));
 
   const guidance: Record<string, string> = {
+    PROSPECT: 'No signed proposal yet — send a quotation when you are ready to engage this client.',
     PROPOSAL_ACCEPTED: 'Welcome sent. Next: complete AML verification to unlock engagement letter.',
     AML_PENDING: client.amlSubmittedAt
       ? 'Client submitted AML details — review in client record, then mark complete when verified.'

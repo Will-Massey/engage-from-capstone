@@ -507,7 +507,7 @@ router.put(
       lastName: z.string().min(1, 'Last name is required').optional(),
       email: z.string().email('Invalid email').optional(),
       phone: z.string().optional(),
-      jobTitle: z.string().optional(),
+      jobTitle: z.string().nullable().optional(),
     });
 
     const data = updateSchema.parse(req.body);
@@ -530,8 +530,11 @@ router.put(
     const user = await prisma.user.update({
       where: { id: req.user!.id },
       data: {
-        ...data,
+        firstName: data.firstName,
+        lastName: data.lastName,
         email: data.email?.toLowerCase(),
+        phone: data.phone,
+        jobTitle: data.jobTitle,
       },
       include: {
         tenant: true,
@@ -572,7 +575,7 @@ router.put(
 router.get(
   '/users',
   authenticate,
-  authorize('ADMIN', 'PARTNER', 'MANAGER'),
+  authorize('ADMIN', 'PARTNER', 'MD', 'MANAGER'),
   asyncHandler(async (req, res) => {
     const users = await prisma.user.findMany({
       where: {
@@ -608,7 +611,7 @@ router.get(
 router.post(
   '/users',
   authenticate,
-  authorize('ADMIN', 'PARTNER', 'MANAGER'),
+  authorize('ADMIN', 'PARTNER', 'MD', 'MANAGER'),
   asyncHandler(async (req, res) => {
     const createUserSchema = z.object({
       email: z.string().email('Invalid email'),
@@ -675,7 +678,7 @@ router.post(
 router.put(
   '/users/:id',
   authenticate,
-  authorize('ADMIN', 'PARTNER', 'MANAGER'),
+  authorize('ADMIN', 'PARTNER', 'MD', 'MANAGER'),
   asyncHandler(async (req, res) => {
     const { id } = req.params;
 
@@ -683,9 +686,9 @@ router.put(
       firstName: z.string().min(1).optional(),
       lastName: z.string().min(1).optional(),
       email: z.string().email().optional(),
-      phone: z.string().optional(),
-      jobTitle: z.string().optional(),
-      role: z.enum(['PARTNER', 'MD', 'MANAGER', 'SENIOR', 'JUNIOR']).optional(),
+      phone: z.string().nullable().optional(),
+      jobTitle: z.string().nullable().optional(),
+      role: z.enum(['ADMIN', 'PARTNER', 'MD', 'MANAGER', 'SENIOR', 'JUNIOR']).optional(),
       isActive: z.boolean().optional(),
     });
 
@@ -721,8 +724,13 @@ router.put(
     const user = await prisma.user.update({
       where: { id },
       data: {
-        ...data,
+        firstName: data.firstName,
+        lastName: data.lastName,
         email: data.email?.toLowerCase(),
+        phone: data.phone,
+        jobTitle: data.jobTitle,
+        role: data.role,
+        isActive: data.isActive,
       },
     });
 
@@ -750,7 +758,7 @@ router.put(
 router.delete(
   '/users/:id',
   authenticate,
-  authorize('ADMIN', 'PARTNER', 'MANAGER'),
+  authorize('ADMIN', 'PARTNER', 'MD', 'MANAGER'),
   asyncHandler(async (req, res) => {
     const { id } = req.params;
 

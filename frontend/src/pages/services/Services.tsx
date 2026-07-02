@@ -284,8 +284,11 @@ const Services = () => {
       setIsLoading(true);
       const response = (await apiClient.createService({
         ...formData,
+        description: formData.description.trim() || formData.name.trim(),
         basePrice: parseFloat(formData.basePrice) || 0,
         priceAmount: parseFloat(formData.basePrice) || 0,
+        defaultFrequency: formData.defaultFrequency,
+        billingCycle: formData.defaultFrequency,
       })) as any;
 
       if (response.success) {

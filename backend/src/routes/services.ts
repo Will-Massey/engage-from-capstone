@@ -43,6 +43,45 @@ const createServiceSchema = z.object({
 
 const updateServiceSchema = createServiceSchema.partial();
 
+function mapFrequencyToBillingCycle(
+  frequency: PricingFrequency | undefined
+): import('@prisma/client').BillingCycle | undefined {
+  if (!frequency) return undefined;
+  if (frequency === 'ONE_TIME') return 'ONE_TIME';
+  return frequency as import('@prisma/client').BillingCycle;
+}
+
+function buildServiceWriteData(
+  data: z.infer<typeof createServiceSchema>,
+  tenantId: string
+) {
+  const billingCycle =
+    mapFrequencyToBillingCycle(data.billingCycle as PricingFrequency | undefined) ??
+    mapFrequencyToBillingCycle(data.defaultFrequency);
+
+  return {
+    category: data.category,
+    subcategory: data.subcategory,
+    name: data.name,
+    description: data.description,
+    longDescription: data.longDescription,
+    basePrice: data.basePrice,
+    priceAmount: data.priceAmount ?? data.basePrice,
+    baseHours: data.baseHours,
+    pricingModel: data.pricingModel,
+    billingCycle: billingCycle ?? 'MONTHLY',
+    defaultFrequency: data.defaultFrequency,
+    frequencyOptions: (data.frequencyOptions ?? []).join(','),
+    applicableEntityTypes: (data.applicableEntityTypes ?? []).join(','),
+    complexityFactors: JSON.stringify(data.complexityFactors ?? []),
+    requirements: JSON.stringify(data.requirements ?? []),
+    deliverables: JSON.stringify(data.deliverables ?? []),
+    regulatoryNotes: data.regulatoryNotes,
+    tags: (data.tags ?? []).join(','),
+    tenantId,
+  };
+}
+
 const pricingRuleSchema = z.object({
   name: z.string().min(1, 'Rule name is required'),
   description: z.string().optional(),
@@ -194,19 +233,12 @@ router.get(
 router.post(
   '/',
   authenticate,
-  authorize('ADMIN', 'PARTNER', 'MANAGER'),
+  authorize('ADMIN', 'PARTNER', 'MD', 'MANAGER'),
   asyncHandler(async (req, res) => {
     const data = createServiceSchema.parse(req.body);
 
     const service = await prisma.serviceTemplate.create({
-      data: {
-        ...(data as any),
-        tenantId: req.tenantId,
-        complexityFactors: JSON.stringify(data.complexityFactors),
-        requirements: JSON.stringify(data.requirements),
-        deliverables: JSON.stringify(data.deliverables),
-        tags: data.tags?.join(','),
-      },
+      data: buildServiceWriteData(data, req.tenantId!),
     });
 
     // Log activity
@@ -235,7 +267,7 @@ router.post(
 router.put(
   '/:id',
   authenticate,
-  authorize('ADMIN', 'PARTNER', 'MANAGER'),
+  authorize('ADMIN', 'PARTNER', 'MD', 'MANAGER'),
   asyncHandler(async (req, res) => {
     const { id } = req.params;
 
@@ -267,12 +299,28 @@ router.put(
     }
 
     const updateData: any = {
-      ...(data as any),
+      category: data.category,
+      subcategory: data.subcategory,
+      name: data.name,
+      description: data.description,
+      longDescription: data.longDescription,
+      basePrice: data.basePrice,
+      priceAmount: data.priceAmount,
+      baseHours: data.baseHours,
+      pricingModel: data.pricingModel,
+      defaultFrequency: data.defaultFrequency,
+      regulatoryNotes: data.regulatoryNotes,
       complexityFactors: data.complexityFactors
         ? JSON.stringify(data.complexityFactors)
         : undefined,
       requirements: data.requirements ? JSON.stringify(data.requirements) : undefined,
       deliverables: data.deliverables ? JSON.stringify(data.deliverables) : undefined,
+      frequencyOptions:
+        data.frequencyOptions !== undefined ? data.frequencyOptions.join(',') : undefined,
+      applicableEntityTypes:
+        data.applicableEntityTypes !== undefined
+          ? data.applicableEntityTypes.join(',')
+          : undefined,
       tags: data.tags !== undefined ? data.tags.join(',') : undefined,
     };
 
@@ -280,8 +328,10 @@ router.put(
     if (data.basePrice !== undefined && data.priceAmount === undefined) {
       updateData.priceAmount = data.basePrice;
     }
-    if (data.defaultFrequency !== undefined && data.billingCycle === undefined) {
-      updateData.billingCycle = data.defaultFrequency;
+    if (data.billingCycle !== undefined || data.defaultFrequency !== undefined) {
+      updateData.billingCycle =
+        mapFrequencyToBillingCycle(data.billingCycle as PricingFrequency | undefined) ??
+        mapFrequencyToBillingCycle(data.defaultFrequency);
     }
 
     const service = await prisma.serviceTemplate.update({

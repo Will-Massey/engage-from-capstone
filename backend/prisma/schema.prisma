@@ -143,6 +143,7 @@ enum AmlStatus {
 }
 
 enum ClientLifecycleStage {
+  PROSPECT
   PROPOSAL_ACCEPTED
   AML_PENDING
   AML_COMPLETE
@@ -410,7 +411,7 @@ model Client {
   portalEnabled    Boolean @default(false)
 
   // Client Lifecycle & Touchpoints (automated onboarding workflow)
-  lifecycleStage     ClientLifecycleStage @default(PROPOSAL_ACCEPTED)
+  lifecycleStage     ClientLifecycleStage @default(PROSPECT)
   touchpointsPaused  Boolean              @default(false)
   marketingConsent   Boolean              @default(false)
 
