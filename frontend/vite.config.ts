@@ -7,11 +7,13 @@ import { injectBuildTime } from './src/plugins/injectBuildTime';
 // Staff use Engage in the browser; a standalone PWA confuses clients receiving proposal links.
 
 const isCapacitorBuild = process.env.CAPACITOR === 'true' || process.env.VITE_CAPACITOR === 'true';
+const appBase = process.env.VITE_APP_BASE || '/';
 
 // https://vitejs.dev/config/
 export default defineConfig({
   // Relative asset paths required for Capacitor WebView (capacitor:// / https://localhost)
-  base: isCapacitorBuild ? './' : '/',
+  // Production: /engage/ when served at capstonesoftware.co.uk/engage
+  base: isCapacitorBuild ? './' : appBase.endsWith('/') ? appBase : `${appBase}/`,
   plugins: [react(), injectBuildTime()],
   resolve: {
     alias: {

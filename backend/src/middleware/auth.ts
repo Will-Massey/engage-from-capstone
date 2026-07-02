@@ -363,10 +363,15 @@ export const setCsrfCookie = (req: Request, res: Response, next: NextFunction): 
   if (!req.cookies?.csrfToken) {
     const csrfToken = generateCsrfToken();
     registerCsrfToken(csrfToken);
+    const cookiePath = process.env.AUTH_COOKIE_PATH || '/';
+    const sameOrigin =
+      process.env.NODE_ENV === 'production' &&
+      (cookiePath !== '/' || process.env.FRONTEND_URL?.includes('/engage'));
     res.cookie('csrfToken', csrfToken, {
       httpOnly: false,
-      secure: true,
-      sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: sameOrigin ? 'lax' : process.env.NODE_ENV === 'production' ? 'none' : 'lax',
+      path: cookiePath,
       maxAge: 24 * 60 * 60 * 1000,
     });
   }

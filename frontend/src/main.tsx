@@ -1,6 +1,7 @@
 import React from 'react';
 import ReactDOM from 'react-dom/client';
 import { BrowserRouter } from 'react-router-dom';
+import { APP_BASENAME } from './utils/appBase';
 import { Toaster } from 'react-hot-toast';
 import App from './App';
 import { initializeTheme } from './stores/themeStore';
@@ -34,7 +35,7 @@ try {
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
     <ErrorBoundary>
-      <BrowserRouter>
+      <BrowserRouter basename={APP_BASENAME || undefined}>
         <App />
         <Toaster
           position="top-right"

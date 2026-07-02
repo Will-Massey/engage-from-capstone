@@ -114,6 +114,8 @@ app.use(
 // CORS configuration - allow multiple origins
 const allowedOrigins = [
   process.env.FRONTEND_URL,
+  'https://capstonesoftware.co.uk',
+  'https://www.capstonesoftware.co.uk',
   'https://engage.capstonesoftware.co.uk',
   'https://engage-frontend-0g6u.onrender.com',
   'http://localhost:5173',

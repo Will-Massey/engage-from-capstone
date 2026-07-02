@@ -35,7 +35,9 @@ services:
       - key: JWT_REFRESH_EXPIRES_IN
         value: 7d
       - key: FRONTEND_URL
-        value: https://engage-frontend-0g6u.onrender.com
+        value: https://capstonesoftware.co.uk/engage
+      - key: AUTH_COOKIE_PATH
+        value: /engage
       - key: DEFAULT_TENANT_SUBDOMAIN
         value: demo
       - key: API_URL
@@ -101,7 +103,7 @@ services:
       - key: XERO_CLIENT_SECRET
         sync: false
       - key: XERO_REDIRECT_URI
-        value: https://engage-backend-e1ue.onrender.com/api/oauth/callback/xero
+        value: https://capstonesoftware.co.uk/engage/api/oauth/callback/xero
     autoDeploy: true
 
   # Frontend Static Site
@@ -113,7 +115,9 @@ services:
     staticPublishPath: ./dist
     envVars:
       - key: VITE_API_URL
-        value: https://engage-backend-e1ue.onrender.com
+        value: https://capstonesoftware.co.uk/engage
+      - key: VITE_APP_BASE
+        value: /engage
     autoDeploy: true
     routes:
       - type: rewrite

@@ -1,6 +1,7 @@
 import axios, { AxiosInstance, AxiosError } from 'axios';
 import toast from 'react-hot-toast';
 import { useAuthStore } from '../stores/authStore';
+import { appPath } from './appBase';
 
 // API base URL
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
@@ -286,7 +287,7 @@ api.interceptors.response.use(
           }
           useAuthStore.getState().clearAuth();
           if (!authPage) {
-            window.location.href = '/login';
+            window.location.href = appPath('/login');
             toast.error('Your session has expired. Please log in again.');
           }
           break;
@@ -313,7 +314,7 @@ api.interceptors.response.use(
           }
 
           useAuthStore.getState().clearAuth();
-          window.location.href = '/login';
+          window.location.href = appPath('/login');
           toast.error('Your session has expired. Please log in again.');
           break;
         }
