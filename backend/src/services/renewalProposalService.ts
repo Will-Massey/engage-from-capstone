@@ -51,8 +51,17 @@ export interface FindRenewalCandidatesOptions {
   clientIds?: string[];
 }
 
+export interface UpliftRules {
+  mode: 'percent' | 'cpi' | 'min_floor';
+  percent?: number;
+  cpiPercent?: number;
+  minFeeGbp?: number;
+  perServiceFloors?: Record<string, number>;
+}
+
 export interface CreateRenewalDraftOptions {
   upliftPercent?: number;
+  upliftRules?: UpliftRules;
   templateId?: string;
   useAiCoverLetter?: boolean;
   bulkRenewal?: boolean;
@@ -174,30 +183,79 @@ export async function findRenewalCandidates(
   return candidates;
 }
 
-function applyUpliftToServices(
-  services: Array<{
-    name: string;
-    description: string | null;
-    quantity: number;
-    unitPrice: number;
-    discountPercent: number;
-    displayPrice: number | null;
-    lineTotal: number;
-    billingFrequency: string;
-    priceDisplayMode: string;
-    frequency: string;
-    isOptional: boolean;
-    serviceTemplateId: string | null;
-    vatRate: number;
-    oneOffDueDate: Date | null;
-  }>,
-  upliftPercent: number
-) {
-  const multiplier = 1 + upliftPercent / 100;
+type RenewalServiceInput = {
+  name: string;
+  description: string | null;
+  quantity: number;
+  unitPrice: number;
+  discountPercent: number;
+  displayPrice: number | null;
+  lineTotal: number;
+  billingFrequency: string;
+  priceDisplayMode: string;
+  frequency: string;
+  isOptional: boolean;
+  serviceTemplateId: string | null;
+  vatRate: number;
+  oneOffDueDate: Date | null;
+};
 
+export function resolveUpliftRules(
+  upliftRules?: UpliftRules,
+  upliftPercent?: number
+): UpliftRules {
+  if (upliftRules) return upliftRules;
+  return {
+    mode: 'percent',
+    percent: upliftPercent ?? 0,
+  };
+}
+
+/**
+ * Per line: max(percent uplift, CPI uplift, service/global minimum floor).
+ */
+export function computeUpliftedUnitPrice(
+  basePrice: number,
+  rules: UpliftRules,
+  service: { name: string; serviceTemplateId: string | null }
+): number {
+  const candidates: number[] = [basePrice];
+
+  if (rules.percent != null) {
+    candidates.push(Math.round(basePrice * (1 + rules.percent / 100) * 100) / 100);
+  }
+  if (rules.cpiPercent != null) {
+    candidates.push(Math.round(basePrice * (1 + rules.cpiPercent / 100) * 100) / 100);
+  }
+
+  const serviceKeys = [
+    service.serviceTemplateId,
+    service.name,
+  ].filter((k): k is string => Boolean(k));
+
+  let floor: number | undefined;
+  if (rules.perServiceFloors) {
+    for (const key of serviceKeys) {
+      const value = rules.perServiceFloors[key];
+      if (value != null) {
+        floor = floor == null ? value : Math.max(floor, value);
+      }
+    }
+  }
+  if (rules.minFeeGbp != null) {
+    floor = floor == null ? rules.minFeeGbp : Math.max(floor, rules.minFeeGbp);
+  }
+  if (floor != null) {
+    candidates.push(floor);
+  }
+
+  return Math.max(0, Math.round(Math.max(...candidates) * 100) / 100);
+}
+
+function applyUpliftRulesToServices(services: RenewalServiceInput[], rules: UpliftRules) {
   return services.map((svc) => {
     const basePrice = svc.displayPrice ?? svc.unitPrice;
-    const displayPrice = Math.max(0, Math.round(basePrice * multiplier * 100) / 100);
+    const displayPrice = computeUpliftedUnitPrice(basePrice, rules, svc);
 
     return buildProposalServiceRecord(
       {
@@ -215,6 +273,24 @@ function applyUpliftToServices(
       parseOneOffDueDate
     );
   });
+}
+
+function describeUpliftRules(rules: UpliftRules): string {
+  const parts: string[] = [];
+  if (rules.percent != null && rules.percent !== 0) {
+    parts.push(`${rules.percent > 0 ? '+' : ''}${rules.percent}% uplift`);
+  }
+  if (rules.cpiPercent != null && rules.cpiPercent !== 0) {
+    parts.push(`${rules.cpiPercent}% CPI adjustment`);
+  }
+  if (rules.minFeeGbp != null) {
+    parts.push(`£${rules.minFeeGbp} minimum per line`);
+  }
+  if (rules.perServiceFloors && Object.keys(rules.perServiceFloors).length > 0) {
+    parts.push('per-service fee floors');
+  }
+  if (parts.length === 0) return '';
+  return ` Fees adjusted (${parts.join('; ')}; highest value per line applied).`;
 }
 
 async function loadProposalTemplate(templateId: string, tenantId: string) {
@@ -277,7 +353,8 @@ export async function createRenewalDraft(
     );
   }
 
-  const upliftPercent = options.upliftPercent ?? 0;
+  const upliftRules = resolveUpliftRules(options.upliftRules, options.upliftPercent);
+  const upliftPercent = upliftRules.percent ?? options.upliftPercent ?? 0;
   const tenantRecord = await prisma.tenant.findUnique({
     where: { id: tenantId },
     select: { settings: true },
@@ -308,7 +385,7 @@ export async function createRenewalDraft(
     });
   }
 
-  let builtServices = applyUpliftToServices(originalProposal.services, upliftPercent);
+  let builtServices = applyUpliftRulesToServices(originalProposal.services, upliftRules);
 
   if (options.useAiCoverLetter) {
     try {
@@ -349,7 +426,7 @@ export async function createRenewalDraft(
       paymentFrequency,
       coverLetter,
       terms,
-      notes: `Renewal of proposal ${originalProposal.reference}.${upliftPercent !== 0 ? ` Fees adjusted by ${upliftPercent}%.` : ''} ${originalProposal.notes || ''}`.trim(),
+      notes: `Renewal of proposal ${originalProposal.reference}.${describeUpliftRules(upliftRules)} ${originalProposal.notes || ''}`.trim(),
       isRenewal: true,
       originalProposalId: originalProposal.id,
       renewalDate,
@@ -394,6 +471,7 @@ export async function createRenewalDraft(
         originalProposalId: originalProposal.id,
         originalReference: originalProposal.reference,
         upliftPercent,
+        upliftRules,
         templateId: options.templateId ?? null,
         useAiCoverLetter: options.useAiCoverLetter ?? false,
         bulkRenewal: options.bulkRenewal ?? false,
@@ -448,6 +526,7 @@ export interface BulkRenewalRequest {
   expiringBefore?: Date;
   templateId?: string;
   upliftPercent?: number;
+  upliftRules?: UpliftRules;
   useAiCoverLetter?: boolean;
 }
 
@@ -464,8 +543,11 @@ export async function bulkCreateRenewalDrafts(
     proposalIds,
     templateId,
     upliftPercent = 0,
+    upliftRules,
     useAiCoverLetter = false,
   } = request;
+
+  const resolvedUpliftRules = resolveUpliftRules(upliftRules, upliftPercent);
 
   let targets: RenewalCandidate[] = [];
 
@@ -548,7 +630,8 @@ export async function bulkCreateRenewalDrafts(
     try {
       const created = await createRenewalDraft(tenantId, userId, target.proposalId, {
         templateId,
-        upliftPercent,
+        upliftPercent: resolvedUpliftRules.percent ?? upliftPercent,
+        upliftRules: resolvedUpliftRules,
         useAiCoverLetter,
         bulkRenewal: true,
       });

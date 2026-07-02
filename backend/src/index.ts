@@ -985,9 +985,11 @@ app.use(errorHandler);
 
 // Schedule renewal reminder job (daily at 9 AM)
 import { runRenewalReminders } from './jobs/renewalReminders.js';
+import { runProposalChaseJob } from './jobs/proposalChaseJob.js';
 
 // Client touchpoint / lifecycle automation engine
 import { runTouchpointEngine } from './jobs/touchpointEngine.js';
+import { runQuarterlyLibraryRelease } from './jobs/quarterlyLibraryRelease.js';
 
 // Run immediately on startup in production, or every 24 hours
 const RENEWAL_CHECK_INTERVAL = 24 * 60 * 60 * 1000; // 24 hours
@@ -1012,6 +1014,24 @@ function scheduleRenewalReminders() {
   logger.info('✅ Renewal reminder job scheduled (every 24 hours)');
 }
 
+function scheduleProposalChaseJob() {
+  logger.info('📅 Scheduling proposal chase job...');
+
+  setTimeout(() => {
+    runProposalChaseJob().catch((err) => {
+      logger.error('Initial proposal chase check failed:', err);
+    });
+  }, 120_000);
+
+  setInterval(() => {
+    runProposalChaseJob().catch((err) => {
+      logger.error('Scheduled proposal chase check failed:', err);
+    });
+  }, RENEWAL_CHECK_INTERVAL);
+
+  logger.info('✅ Proposal chase job scheduled (every 24 hours)');
+}
+
 function scheduleTouchpointEngine() {
   logger.info('📅 Scheduling client touchpoint engine...');
 
@@ -1029,6 +1049,26 @@ function scheduleTouchpointEngine() {
   logger.info('✅ Touchpoint engine scheduled (every 15 minutes)');
 }
 
+function scheduleQuarterlyLibraryRelease() {
+  logger.info('📅 Scheduling quarterly engagement library release…');
+
+  const INTERVAL = 24 * 60 * 60 * 1000;
+
+  setTimeout(() => {
+    runQuarterlyLibraryRelease().catch((err) =>
+      logger.error('Initial quarterly library release check failed:', err)
+    );
+  }, 120_000);
+
+  setInterval(() => {
+    runQuarterlyLibraryRelease().catch((err) =>
+      logger.error('Scheduled quarterly library release check failed:', err)
+    );
+  }, INTERVAL);
+
+  logger.info('✅ Quarterly library release scheduled (daily check on quarter start)');
+}
+
 // Start server (skipped in Jest so supertest can import the app)
 const shouldStartServer =
   process.env.NODE_ENV !== 'test' && !process.env.JEST_WORKER_ID;
@@ -1041,7 +1081,9 @@ if (shouldStartServer) {
     logger.info(`🔧 Admin endpoints available at /api/admin (requires ADMIN_SECRET_KEY)`);
 
     scheduleRenewalReminders();
+    scheduleProposalChaseJob();
     scheduleTouchpointEngine();
+    scheduleQuarterlyLibraryRelease();
 
     import('./services/engagementLibraryVersionService.js')
       .then(({ ensureInitialLibraryVersion }) => ensureInitialLibraryVersion())

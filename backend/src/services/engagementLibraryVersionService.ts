@@ -13,6 +13,11 @@ const INITIAL_VERSION_LABEL = '2026.2';
 const INITIAL_CHANGELOG =
   'ICAEW/ACCA-aligned engagement clause packages (33 clauses): compliance, tax, MTD ITSA, AML, payroll, advisory, and standard terms.';
 
+/** Version labels: `2026.2` (point) or `2026.Q3` (quarterly). */
+export const VERSION_LABEL_PATTERN = /^\d{4}\.(Q[1-4]|\d+)$/;
+
+const QUARTER_REVIEW_MONTHS = [0, 3, 6, 9]; // Jan, Apr, Jul, Oct
+
 function clauseFingerprint(clause: EngagementClause): string {
   return JSON.stringify({
     id: clause.id,
@@ -352,4 +357,120 @@ export async function getCurrentVersionId(): Promise<string | null> {
     select: { id: true },
   });
   return current?.id ?? null;
+}
+
+export function getQuarterNumber(date: Date): number {
+  return Math.floor(date.getMonth() / 3) + 1;
+}
+
+export function getQuarterlyVersionLabel(date = new Date()): string {
+  return `${date.getFullYear()}.Q${getQuarterNumber(date)}`;
+}
+
+/** First calendar day of the next quarter (UK English copy: "quarterly review"). */
+export function getNextQuarterlyReviewDate(from = new Date()): Date {
+  const year = from.getFullYear();
+  const month = from.getMonth();
+  const quarterStartMonths = QUARTER_REVIEW_MONTHS;
+
+  for (const startMonth of quarterStartMonths) {
+    const candidate = new Date(year, startMonth, 1, 9, 0, 0, 0);
+    if (candidate.getTime() > from.getTime()) {
+      return candidate;
+    }
+  }
+
+  return new Date(year + 1, 0, 1, 9, 0, 0, 0);
+}
+
+export function isQuarterlyReviewDay(date = new Date()): boolean {
+  return date.getDate() === 1 && QUARTER_REVIEW_MONTHS.includes(date.getMonth());
+}
+
+export type QuarterlyReleaseResult =
+  | {
+      skipped: true;
+      reason: string;
+      version: Awaited<ReturnType<typeof publishLibraryVersion>>['version'];
+      proposalTemplatesFlagged: number;
+      coverLetterTemplatesFlagged: number;
+      changedClauseIds: string[];
+    }
+  | {
+      skipped: false;
+      versionLabel: string;
+      version: Awaited<ReturnType<typeof publishLibraryVersion>>['version'];
+      proposalTemplatesFlagged: number;
+      coverLetterTemplatesFlagged: number;
+      changedClauseIds: string[];
+    };
+
+export async function publishQuarterlyLibraryRelease(input?: {
+  publishedByUserId?: string;
+  simulated?: boolean;
+  asOf?: Date;
+}): Promise<QuarterlyReleaseResult> {
+  const asOf = input?.asOf ?? new Date();
+  const versionLabel = getQuarterlyVersionLabel(asOf);
+  const quarter = getQuarterNumber(asOf);
+  const year = asOf.getFullYear();
+
+  const existing = await prisma.engagementLibraryVersion.findUnique({
+    where: { versionLabel },
+  });
+  if (existing) {
+    return {
+      skipped: true as const,
+      reason: `Version ${versionLabel} already published`,
+      version: existing,
+      proposalTemplatesFlagged: 0,
+      coverLetterTemplatesFlagged: 0,
+      changedClauseIds: [] as string[],
+    };
+  }
+
+  const previousCurrent = await prisma.engagementLibraryVersion.findFirst({
+    where: { isCurrent: true },
+    orderBy: { publishedAt: 'desc' },
+  });
+
+  const clauses = getLiveClauseLibrary();
+  const changelog = input?.simulated
+    ? `Simulated quarterly LOE content release for ${year} Q${quarter} — cloned ${clauses.length} clauses from the live library (admin test).`
+    : `Quarterly LOE content release for ${year} Q${quarter} — ${clauses.length} clauses cloned from the current engagement library with version bump.`;
+
+  const result = await publishLibraryVersion({
+    versionLabel,
+    changelog,
+    clauses,
+    publishedByUserId: input?.publishedByUserId,
+  });
+
+  return {
+    skipped: false as const,
+    versionLabel,
+    version: result.version,
+    proposalTemplatesFlagged: result.proposalTemplatesFlagged,
+    coverLetterTemplatesFlagged: result.coverLetterTemplatesFlagged,
+    changedClauseIds: result.changedClauseIds,
+  };
+}
+
+export async function getQuarterlySchedule() {
+  const now = new Date();
+  const nextReview = getNextQuarterlyReviewDate(now);
+  const currentQuarterLabel = getQuarterlyVersionLabel(now);
+
+  const existingCurrentQuarter = await prisma.engagementLibraryVersion.findUnique({
+    where: { versionLabel: currentQuarterLabel },
+    select: { id: true, versionLabel: true, publishedAt: true },
+  });
+
+  return {
+    nextQuarterlyReview: nextReview.toISOString(),
+    currentQuarterLabel,
+    currentQuarterPublished: Boolean(existingCurrentQuarter),
+    currentQuarterPublishedAt: existingCurrentQuarter?.publishedAt?.toISOString() ?? null,
+    isReviewDayToday: isQuarterlyReviewDay(now),
+  };
 }

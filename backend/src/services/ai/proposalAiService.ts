@@ -8,6 +8,7 @@ import {
   assembleEngagementLetterFromClauses,
   selectClausesForServices,
 } from '../../data/engagementClauseLibrary.js';
+import { regulatoryBodyLabel } from '../../utils/professionalBodyClauses.js';
 import { getProposalSettings, addDays } from '../../utils/tenantProposalSettings.js';
 import {
   chatCompletion,
@@ -64,6 +65,25 @@ async function loadClientContext(tenantId: string, clientId: string) {
   });
   if (!client) throw new ApiError('CLIENT_NOT_FOUND', 'Client not found', 404);
   return client;
+}
+
+function parseTenantSettingsJson(raw: unknown): Record<string, unknown> {
+  if (!raw) return {};
+  if (typeof raw === 'string') {
+    try {
+      return JSON.parse(raw) as Record<string, unknown>;
+    } catch {
+      return {};
+    }
+  }
+  return raw as Record<string, unknown>;
+}
+
+function professionalBodyFromTenantSettings(settingsRaw: unknown): string | undefined {
+  const settings = parseTenantSettingsJson(settingsRaw);
+  return regulatoryBodyLabel(
+    typeof settings.professionalBody === 'string' ? settings.professionalBody : undefined
+  );
 }
 
 async function loadCatalog(tenantId: string) {
@@ -356,7 +376,8 @@ export async function assembleAiEngagementLetter(
     tags: '',
   }));
 
-  const clauses = selectClausesForServices(serviceRows);
+  const professionalBody = professionalBodyFromTenantSettings(proposal.tenant.settings);
+  const clauses = selectClausesForServices(serviceRows, { professionalBody });
   const feesSummary = proposal.services
     .map(
       (s) =>
@@ -423,7 +444,8 @@ export async function* assembleAiEngagementLetterStream(
   if (!proposal) throw new ApiError('NOT_FOUND', 'Proposal not found', 404);
 
   const serviceRows = proposal.services.map((s) => ({ name: s.name, tags: '' }));
-  const clauses = selectClausesForServices(serviceRows);
+  const professionalBody = professionalBodyFromTenantSettings(proposal.tenant.settings);
+  const clauses = selectClausesForServices(serviceRows, { professionalBody });
   const feesSummary = proposal.services
     .map(
       (s) =>

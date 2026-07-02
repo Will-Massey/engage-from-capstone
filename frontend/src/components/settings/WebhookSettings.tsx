@@ -3,9 +3,41 @@ import { apiClient } from '../../utils/api';
 import toast from 'react-hot-toast';
 import { LinkIcon } from '@heroicons/react/24/outline';
 
+export type WebhookFormat = 'default' | 'hubspot' | 'zapier' | 'senta' | 'karbon';
+
+const FORMAT_OPTIONS: Array<{ value: WebhookFormat; label: string; hint: string }> = [
+  {
+    value: 'default',
+    label: 'Engage default',
+    hint: 'Nested JSON with proposal and services arrays — suitable for custom endpoints.',
+  },
+  {
+    value: 'zapier',
+    label: 'Zapier / Make (flat)',
+    hint: 'Flat key-value fields including services_json — easiest for no-code automations.',
+  },
+  {
+    value: 'hubspot',
+    label: 'HubSpot-shaped events',
+    hint: 'eventName + properties object for HubSpot workflow triggers.',
+  },
+  {
+    value: 'senta',
+    label: 'Senta PM handoff',
+    hint: 'Client, engagement, and fees array for practice-management import.',
+  },
+  {
+    value: 'karbon',
+    label: 'Karbon-compatible',
+    hint: 'PascalCase Client / WorkItem / Fees subset for Karbon work-item flows.',
+  },
+];
+
+const VALID_FORMATS = new Set(FORMAT_OPTIONS.map((o) => o.value));
+
 export default function WebhookSettings() {
   const [webhookUrl, setWebhookUrl] = useState('');
-  const [webhookFormat, setWebhookFormat] = useState<'default' | 'hubspot'>('default');
+  const [webhookFormat, setWebhookFormat] = useState<WebhookFormat>('default');
   const [saving, setSaving] = useState(false);
   const [testing, setTesting] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -17,7 +49,7 @@ export default function WebhookSettings() {
         const url = res?.data?.webhookUrl || res?.data?.integrations?.webhookUrl || '';
         setWebhookUrl(url);
         const fmt = res?.data?.integrations?.webhookFormat;
-        if (fmt === 'hubspot') setWebhookFormat('hubspot');
+        if (fmt && VALID_FORMATS.has(fmt)) setWebhookFormat(fmt);
       } catch {
         // non-blocking
       } finally {
@@ -47,6 +79,8 @@ export default function WebhookSettings() {
     }
   };
 
+  const selectedHint = FORMAT_OPTIONS.find((o) => o.value === webhookFormat)?.hint;
+
   if (loading) {
     return <div className="h-24 animate-pulse rounded-lg bg-slate-100 dark:bg-slate-800" />;
   }
@@ -58,12 +92,12 @@ export default function WebhookSettings() {
         <div className="flex-1">
           <h4 className="font-medium text-slate-900 dark:text-white">Proposal event webhook</h4>
           <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">
-            Zapier, Make, or HubSpot workflows can receive{' '}
+            Zapier, Make, HubSpot, Senta, or Karbon workflows can receive{' '}
             <code className="text-xs">proposal.sent</code>,{' '}
-            <code className="text-xs">proposal.accepted</code>, and{' '}
-            <code className="text-xs">proposal.declined</code> events. Append{' '}
-            <code className="text-xs">?format=hubspot</code> on the server test call for HubSpot-shaped
-            payloads.
+            <code className="text-xs">proposal.viewed</code>,{' '}
+            <code className="text-xs">proposal.signed</code>, and{' '}
+            <code className="text-xs">proposal.declined</code> events when proposals move through
+            your pipeline.
           </p>
         </div>
       </div>
@@ -88,12 +122,18 @@ export default function WebhookSettings() {
         </label>
         <select
           value={webhookFormat}
-          onChange={(e) => setWebhookFormat(e.target.value as 'default' | 'hubspot')}
-          className="input-field w-full max-w-xs"
+          onChange={(e) => setWebhookFormat(e.target.value as WebhookFormat)}
+          className="input-field w-full max-w-md"
         >
-          <option value="default">Engage default (Zapier / Make)</option>
-          <option value="hubspot">HubSpot-shaped events</option>
+          {FORMAT_OPTIONS.map((opt) => (
+            <option key={opt.value} value={opt.value}>
+              {opt.label}
+            </option>
+          ))}
         </select>
+        {selectedHint && (
+          <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">{selectedHint}</p>
+        )}
       </div>
 
       <div className="flex flex-wrap gap-2">

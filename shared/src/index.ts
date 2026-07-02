@@ -110,8 +110,10 @@ export enum ProfessionalBody {
   AAT = 'AAT',
   CIMA = 'CIMA',
   ICAS = 'ICAS',
+  ATT = 'ATT',
+  CIOT = 'CIOT',
   CTA = 'CTA',
-  CPAA = 'CPAA'
+  CPAA = 'CPAA',
 }
 
 export interface Address {

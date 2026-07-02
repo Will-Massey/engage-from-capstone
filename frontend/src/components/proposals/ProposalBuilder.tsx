@@ -49,6 +49,13 @@ import {
   getBuilderPreviewPreference,
   setBuilderPreviewPreference,
 } from './builderPreviewStorage';
+import {
+  DEFAULT_PRICING_TIERS,
+  buildCustomFieldsPayload,
+  parseProposalCustomFields,
+  formatTierMultiplier,
+  type PricingTier,
+} from '../../utils/proposalCustomFields';
 import { AiDraftPreview, showAiError } from '../ai/AiPanel';
 import ProposalHealthCard from '../ai/ProposalHealthCard';
 import ProposalBuilderClara from '../ai/ProposalBuilderClara';
@@ -61,6 +68,8 @@ import {
   clearPricingSuggestion,
 } from '../../utils/pricingSuggestionStorage';
 import { AI_COPILOT } from '../../config/aiCopilot';
+import ContingentFeeCalculator from '../pricing/ContingentFeeCalculator';
+import FeeBenchmarkChips from '../pricing/FeeBenchmarkChips';
 
 type BuildMode = 'unset' | 'manual' | 'clara' | 'template';
 
@@ -427,6 +436,7 @@ export default function ProposalBuilder({ proposalId }: ProposalBuilderProps) {
   const [validUntil, setValidUntil] = useState('');
   const [defaultExpiryDays, setDefaultExpiryDays] = useState(30);
   const [defaultPaymentTermsDays, setDefaultPaymentTermsDays] = useState(7);
+  const [benchmarksOptIn, setBenchmarksOptIn] = useState(false);
 
   // AI assistance
   const [aiConfigured, setAiConfigured] = useState(false);
@@ -467,6 +477,9 @@ export default function ProposalBuilder({ proposalId }: ProposalBuilderProps) {
   const [showEmailPreview, setShowEmailPreview] = useState(false);
   const [proposalTerms, setProposalTerms] = useState('');
   const [termsLoading, setTermsLoading] = useState(false);
+  const [offerThreePackages, setOfferThreePackages] = useState(false);
+  const [pricingTiers, setPricingTiers] = useState<PricingTier[]>(DEFAULT_PRICING_TIERS);
+  const [requireTwoSigners, setRequireTwoSigners] = useState(false);
   const [hasResumedDraft, setHasResumedDraft] = useState(false);
   const autoFitClientRef = useRef<string | null>(null);
   const preselectedTemplateAppliedRef = useRef(false);
@@ -880,6 +893,7 @@ export default function ProposalBuilder({ proposalId }: ProposalBuilderProps) {
         const proposals = response.data.proposals as {
           defaultExpiryDays?: number;
           defaultPaymentTermsDays?: number;
+          benchmarksOptIn?: boolean;
         };
         if (proposals.defaultExpiryDays) {
           const days = proposals.defaultExpiryDays;
@@ -894,6 +908,7 @@ export default function ProposalBuilder({ proposalId }: ProposalBuilderProps) {
         if (proposals.defaultPaymentTermsDays) {
           setDefaultPaymentTermsDays(proposals.defaultPaymentTermsDays);
         }
+        setBenchmarksOptIn(proposals.benchmarksOptIn === true);
       }
     } catch {
       // defaults are fine
@@ -1506,6 +1521,56 @@ export default function ProposalBuilder({ proposalId }: ProposalBuilderProps) {
     toast.success('All services removed — pick from the catalogue');
   };
 
+  const taxServiceLines = useMemo(
+    () =>
+      selectedServices
+        .filter((s) => s.category === 'TAX')
+        .map((s) => ({ id: s.id, name: s.name })),
+    [selectedServices]
+  );
+
+  const applyContingentFeeToLine = (lineId: string, feeGbp: number, _explanation: string) => {
+    setSelectedServices((prev) =>
+      prev.map((s) => {
+        if (s.id !== lineId) return s;
+
+        const price = feeGbp;
+        const billingCycle = 'ONE_TIME';
+        const quantity = 1;
+        const discount = 0;
+        const grossLineTotal = price * quantity;
+        const lineTotal = grossLineTotal;
+        const vatAmount = includeVat
+          ? Math.round(lineTotal * (s.vatRate / 100) * 100) / 100
+          : 0;
+
+        return {
+          ...s,
+          displayPrice: price,
+          priceAmount: price,
+          quantity,
+          discountPercent: discount,
+          billingCycle,
+          lineTotal,
+          vatAmount,
+          grossTotal: lineTotal + vatAmount,
+          annualEquivalent: calculateAnnualEquivalent(price, billingCycle),
+          oneOffDueDate: s.oneOffDueDate || '',
+        };
+      })
+    );
+    if (editingService === lineId) {
+      setEditPriceText(String(feeGbp));
+      setEditForm((f) => ({
+        ...f,
+        displayPrice: feeGbp,
+        billingCycle: 'ONE_TIME',
+        quantity: 1,
+        discountPercent: 0,
+      }));
+    }
+  };
+
   const selectBuildMode = (mode: BuildMode) => {
     setBuildMode(mode);
     if (mode === 'manual') {
@@ -1714,6 +1779,15 @@ export default function ProposalBuilder({ proposalId }: ProposalBuilderProps) {
       });
       setSelectedServices(lines);
       setCurrentStep(lines.length > 0 ? 2 : 1);
+
+      const cf = parseProposalCustomFields(p.customFields);
+      setOfferThreePackages(Boolean(cf.offerThreePackages));
+      if (cf.pricingTiers?.length) {
+        setPricingTiers(cf.pricingTiers);
+      } else {
+        setPricingTiers(DEFAULT_PRICING_TIERS);
+      }
+      setRequireTwoSigners((cf.requiredSigners ?? 1) >= 2);
     } catch {
       toast.error('Failed to load proposal for editing');
     } finally {
@@ -1788,6 +1862,11 @@ export default function ProposalBuilder({ proposalId }: ProposalBuilderProps) {
         coverLetter: coverLetter.trim(),
         paymentTerms: `${defaultPaymentTermsDays} day${defaultPaymentTermsDays === 1 ? '' : 's'}`,
         ...(proposalTerms.trim() ? { terms: proposalTerms.trim() } : {}),
+        customFields: buildCustomFieldsPayload({
+          offerThreePackages,
+          pricingTiers,
+          requireTwoSigners,
+        }),
       };
 
       const response = isEditMode
@@ -2153,7 +2232,15 @@ export default function ProposalBuilder({ proposalId }: ProposalBuilderProps) {
             <h3 className="font-medium text-slate-900 dark:text-white truncate">{service.name}</h3>
             {isSelected && <CheckIcon className="w-4 h-4 text-green-600 flex-shrink-0" />}
           </div>
-          <p className="text-xs text-slate-500 dark:text-slate-400 truncate">{service.category}</p>
+          <div className="flex flex-wrap items-center gap-1.5 mt-0.5">
+            <p className="text-xs text-slate-500 dark:text-slate-400 truncate">
+              {formatServiceCategory(service.category)}
+            </p>
+            <FeeBenchmarkChips
+              category={service.category}
+              enabled={benchmarksOptIn}
+            />
+          </div>
         </div>
         <div className="flex items-center gap-2 flex-shrink-0">
           <span className="font-semibold text-primary-600 text-sm">
@@ -2455,6 +2542,16 @@ export default function ProposalBuilder({ proposalId }: ProposalBuilderProps) {
           </button>
         ))}
       </div>
+
+      <FeeBenchmarkChips categories={categories} />
+
+      {taxServiceLines.length > 0 && (
+        <ContingentFeeCalculator
+          taxLines={taxServiceLines}
+          onApplyFee={applyContingentFeeToLine}
+          compact
+        />
+      )}
 
       {/* Two-column layout: Available Services | Selected Services */}
       <div className="grid grid-cols-1 xl:grid-cols-[minmax(0,1fr)_minmax(22rem,1.2fr)] gap-6">
@@ -2769,6 +2866,83 @@ export default function ProposalBuilder({ proposalId }: ProposalBuilderProps) {
             </div>
           </div>
         )}
+      </div>
+
+      {/* Package options — Good / Better / Best */}
+      <div className="card p-4 border border-violet-100 dark:border-violet-900/40" data-testid="package-options-card">
+        <h3 className="font-semibold text-slate-900 dark:text-white mb-1">Package options</h3>
+        <p className="text-xs text-slate-500 dark:text-slate-400 mb-4">
+          Offer your client a choice of three packages on the sign page. Fees scale from your base
+          proposal total.
+        </p>
+
+        <label className="flex items-start gap-3 cursor-pointer mb-4">
+          <input
+            type="checkbox"
+            data-testid="offer-three-packages-toggle"
+            checked={offerThreePackages}
+            onChange={(e) => {
+              setOfferThreePackages(e.target.checked);
+              if (e.target.checked && pricingTiers.length < 3) {
+                setPricingTiers(DEFAULT_PRICING_TIERS);
+              }
+            }}
+            className="mt-1 h-4 w-4 rounded text-primary-600"
+          />
+          <span className="text-sm text-slate-800 dark:text-slate-100">
+            Offer three packages (Good / Better / Best)
+          </span>
+        </label>
+
+        {offerThreePackages && (
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-4">
+            {pricingTiers.map((tier, index) => (
+              <div
+                key={tier.id}
+                className="rounded-xl border border-slate-200 dark:border-slate-600 p-3 space-y-2 bg-slate-50/50 dark:bg-slate-800/40"
+              >
+                <p className="text-[10px] uppercase tracking-wider text-slate-500">
+                  Tier {index + 1} · {formatTierMultiplier(tier)}
+                </p>
+                <input
+                  type="text"
+                  value={tier.label}
+                  onChange={(e) => {
+                    const next = [...pricingTiers];
+                    next[index] = { ...tier, label: e.target.value };
+                    setPricingTiers(next);
+                  }}
+                  className="input-field w-full text-sm font-medium"
+                  placeholder="Package name"
+                />
+                <textarea
+                  value={tier.description || ''}
+                  onChange={(e) => {
+                    const next = [...pricingTiers];
+                    next[index] = { ...tier, description: e.target.value };
+                    setPricingTiers(next);
+                  }}
+                  rows={2}
+                  className="input-field w-full text-xs"
+                  placeholder="Short description for the client"
+                />
+              </div>
+            ))}
+          </div>
+        )}
+
+        <label className="flex items-start gap-3 cursor-pointer">
+          <input
+            type="checkbox"
+            data-testid="require-two-signers-toggle"
+            checked={requireTwoSigners}
+            onChange={(e) => setRequireTwoSigners(e.target.checked)}
+            className="mt-1 h-4 w-4 rounded text-primary-600"
+          />
+          <span className="text-sm text-slate-800 dark:text-slate-100">
+            Require an additional signatory (e.g. second director — max 2 signers)
+          </span>
+        </label>
       </div>
 
       <div className="card p-4">

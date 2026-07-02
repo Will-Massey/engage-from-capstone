@@ -32,6 +32,16 @@ interface ProposalTemplateSummary {
   serviceCount?: number;
 }
 
+type UpliftRuleMode = 'percent' | 'cpi' | 'min_floor';
+
+interface UpliftRules {
+  mode: UpliftRuleMode;
+  percent?: number;
+  cpiPercent?: number;
+  minFeeGbp?: number;
+  perServiceFloors?: Record<string, number>;
+}
+
 const STEPS = [
   { id: 1, label: 'Filter clients' },
   { id: 2, label: 'Template & uplift' },
@@ -43,8 +53,66 @@ function formatCurrency(amount: number) {
   return new Intl.NumberFormat('en-GB', { style: 'currency', currency: 'GBP' }).format(amount);
 }
 
-function projectedTotal(total: number, upliftPercent: number) {
-  return Math.round(total * (1 + upliftPercent / 100) * 100) / 100;
+function projectedTotalFromRules(total: number, rules: UpliftRules): number | null {
+  if (rules.mode === 'percent' && rules.percent != null) {
+    return Math.round(total * (1 + rules.percent / 100) * 100) / 100;
+  }
+  if (rules.mode === 'cpi' && rules.cpiPercent != null) {
+    return Math.round(total * (1 + rules.cpiPercent / 100) * 100) / 100;
+  }
+  return null;
+}
+
+function describeUpliftRules(rules: UpliftRules): string {
+  if (rules.mode === 'percent') {
+    const p = rules.percent ?? 0;
+    if (p === 0) return 'Fees unchanged from the prior year.';
+    return p > 0
+      ? `Fees will increase by ${p}% on each line (or higher if floors apply).`
+      : `Fees will decrease by ${Math.abs(p)}%.`;
+  }
+  if (rules.mode === 'cpi') {
+    const c = rules.cpiPercent ?? 0;
+    return c === 0
+      ? 'CPI adjustment set to 0% — fees unchanged.'
+      : `CPI adjustment of ${c}% applied per line (highest of CPI, percent, or floor wins).`;
+  }
+  const floor = rules.minFeeGbp ?? 0;
+  return floor > 0
+    ? `Each service line will be at least £${floor.toFixed(2)} where the current fee is lower.`
+    : 'Per-line minimum fees will be enforced where configured.';
+}
+
+function buildUpliftRulesPayload(rules: UpliftRules): UpliftRules {
+  const payload: UpliftRules = { mode: rules.mode };
+  if (rules.mode === 'percent' && rules.percent != null) payload.percent = rules.percent;
+  if (rules.mode === 'cpi' && rules.cpiPercent != null) payload.cpiPercent = rules.cpiPercent;
+  if (rules.mode === 'min_floor') {
+    if (rules.minFeeGbp != null) payload.minFeeGbp = rules.minFeeGbp;
+    if (rules.perServiceFloors && Object.keys(rules.perServiceFloors).length > 0) {
+      payload.perServiceFloors = rules.perServiceFloors;
+    }
+  }
+  return payload;
+}
+
+function upliftRulesSummary(rules: UpliftRules): string | null {
+  if (rules.mode === 'percent') {
+    const p = rules.percent ?? 0;
+    if (p === 0) return null;
+    return `Fee uplift: ${p > 0 ? '+' : ''}${p}%`;
+  }
+  if (rules.mode === 'cpi') {
+    const c = rules.cpiPercent ?? 0;
+    if (c === 0) return null;
+    return `CPI adjustment: +${c}%`;
+  }
+  const parts: string[] = [];
+  if (rules.minFeeGbp) parts.push(`£${rules.minFeeGbp} min per line`);
+  if (rules.perServiceFloors && Object.keys(rules.perServiceFloors).length > 0) {
+    parts.push(`${Object.keys(rules.perServiceFloors).length} per-service floor(s)`);
+  }
+  return parts.length > 0 ? parts.join(' · ') : null;
 }
 
 export default function BulkRenewalWizard() {
@@ -61,7 +129,8 @@ export default function BulkRenewalWizard() {
 
   const [templates, setTemplates] = useState<ProposalTemplateSummary[]>([]);
   const [templateId, setTemplateId] = useState('');
-  const [upliftPercent, setUpliftPercent] = useState(0);
+  const [upliftRules, setUpliftRules] = useState<UpliftRules>({ mode: 'percent', percent: 0 });
+  const [perServiceFloorsJson, setPerServiceFloorsJson] = useState('');
   const [useAiCoverLetter, setUseAiCoverLetter] = useState(false);
 
   const [result, setResult] = useState<{
@@ -146,12 +215,36 @@ export default function BulkRenewalWizard() {
       return;
     }
 
+    let parsedFloors: Record<string, number> | undefined;
+    if (upliftRules.mode === 'min_floor' && perServiceFloorsJson.trim()) {
+      try {
+        const parsed = JSON.parse(perServiceFloorsJson);
+        if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+          parsedFloors = Object.fromEntries(
+            Object.entries(parsed).map(([k, v]) => [k, Number(v)])
+          );
+        } else {
+          toast.error('Per-service floors must be a JSON object');
+          return;
+        }
+      } catch {
+        toast.error('Invalid JSON for per-service floors');
+        return;
+      }
+    }
+
+    const rulesPayload = buildUpliftRulesPayload({
+      ...upliftRules,
+      perServiceFloors: parsedFloors ?? upliftRules.perServiceFloors,
+    });
+
     setCreating(true);
     try {
       const res = (await apiClient.bulkCreateRenewalDrafts({
         proposalIds: eligibleSelected.map((c) => c.proposalId),
         templateId: templateId || undefined,
-        upliftPercent,
+        upliftPercent: rulesPayload.percent,
+        upliftRules: rulesPayload,
         useAiCoverLetter,
       })) as any;
 
@@ -361,37 +454,140 @@ export default function BulkRenewalWizard() {
 
             <div>
               <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
-                Fee uplift (%)
+                Uplift rule type
               </label>
-              <div className="flex items-center gap-3">
-                <input
-                  type="range"
-                  min={-10}
-                  max={20}
-                  step={0.5}
-                  value={upliftPercent}
-                  onChange={(e) => setUpliftPercent(Number(e.target.value))}
-                  className="flex-1"
-                />
-                <input
-                  type="number"
-                  min={-50}
-                  max={50}
-                  step={0.5}
-                  value={upliftPercent}
-                  onChange={(e) => setUpliftPercent(Number(e.target.value))}
-                  className="input-field w-24 text-right"
-                />
-                <span className="text-sm text-slate-600">%</span>
-              </div>
+              <select
+                value={upliftRules.mode}
+                onChange={(e) => {
+                  const mode = e.target.value as UpliftRuleMode;
+                  setUpliftRules({
+                    mode,
+                    percent: mode === 'percent' ? upliftRules.percent ?? 0 : undefined,
+                    cpiPercent: mode === 'cpi' ? upliftRules.cpiPercent ?? 3 : undefined,
+                    minFeeGbp: mode === 'min_floor' ? upliftRules.minFeeGbp ?? 0 : undefined,
+                  });
+                }}
+                className="input-field w-full max-w-xs"
+              >
+                <option value="percent">Percentage uplift</option>
+                <option value="cpi">CPI adjustment</option>
+                <option value="min_floor">Minimum fee floor</option>
+              </select>
               <p className="text-xs text-slate-500 mt-1">
-                {upliftPercent === 0
-                  ? 'Fees unchanged from the prior year.'
-                  : upliftPercent > 0
-                    ? `Fees will increase by ${upliftPercent}% on each line.`
-                    : `Fees will decrease by ${Math.abs(upliftPercent)}%.`}
+                Each line uses the highest of percentage uplift, CPI adjustment, and any configured
+                minimum floor.
               </p>
             </div>
+
+            {upliftRules.mode === 'percent' && (
+              <div>
+                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
+                  Fee uplift (%)
+                </label>
+                <div className="flex items-center gap-3">
+                  <input
+                    type="range"
+                    min={-10}
+                    max={20}
+                    step={0.5}
+                    value={upliftRules.percent ?? 0}
+                    onChange={(e) =>
+                      setUpliftRules((prev) => ({ ...prev, percent: Number(e.target.value) }))
+                    }
+                    className="flex-1"
+                  />
+                  <input
+                    type="number"
+                    min={-50}
+                    max={50}
+                    step={0.5}
+                    value={upliftRules.percent ?? 0}
+                    onChange={(e) =>
+                      setUpliftRules((prev) => ({ ...prev, percent: Number(e.target.value) }))
+                    }
+                    className="input-field w-24 text-right"
+                  />
+                  <span className="text-sm text-slate-600">%</span>
+                </div>
+              </div>
+            )}
+
+            {upliftRules.mode === 'cpi' && (
+              <div>
+                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
+                  CPI adjustment (%)
+                </label>
+                <div className="flex items-center gap-3">
+                  <input
+                    type="range"
+                    min={0}
+                    max={15}
+                    step={0.25}
+                    value={upliftRules.cpiPercent ?? 0}
+                    onChange={(e) =>
+                      setUpliftRules((prev) => ({ ...prev, cpiPercent: Number(e.target.value) }))
+                    }
+                    className="flex-1"
+                  />
+                  <input
+                    type="number"
+                    min={0}
+                    max={50}
+                    step={0.25}
+                    value={upliftRules.cpiPercent ?? 0}
+                    onChange={(e) =>
+                      setUpliftRules((prev) => ({ ...prev, cpiPercent: Number(e.target.value) }))
+                    }
+                    className="input-field w-24 text-right"
+                  />
+                  <span className="text-sm text-slate-600">%</span>
+                </div>
+                <p className="text-xs text-slate-500 mt-1">
+                  Typical UK CPI for accountancy renewals is 2–4%. Adjust to your firm&apos;s policy.
+                </p>
+              </div>
+            )}
+
+            {upliftRules.mode === 'min_floor' && (
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
+                    Global minimum fee per line (£)
+                  </label>
+                  <input
+                    type="number"
+                    min={0}
+                    step={1}
+                    value={upliftRules.minFeeGbp ?? 0}
+                    onChange={(e) =>
+                      setUpliftRules((prev) => ({
+                        ...prev,
+                        minFeeGbp: Number(e.target.value),
+                      }))
+                    }
+                    className="input-field w-full max-w-xs"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
+                    Per-service floors (optional JSON)
+                  </label>
+                  <textarea
+                    value={perServiceFloorsJson}
+                    onChange={(e) => setPerServiceFloorsJson(e.target.value)}
+                    placeholder='{"Annual accounts": 850, "Bookkeeping": 120}'
+                    rows={3}
+                    className="input-field w-full font-mono text-xs"
+                  />
+                  <p className="text-xs text-slate-500 mt-1">
+                    Keys match service names or template IDs. Lines below their floor are raised to
+                    the floor value.
+                  </p>
+                </div>
+              </div>
+            )}
+
+            <p className="text-xs text-slate-500">{describeUpliftRules(upliftRules)}</p>
 
             <label className="flex items-start gap-3 p-4 rounded-xl border border-slate-200 dark:border-slate-700 cursor-pointer hover:border-primary-400 transition-colors">
               <input
@@ -438,10 +634,9 @@ export default function BulkRenewalWizard() {
                   Template: {templates.find((t) => t.id === templateId)?.name}
                 </p>
               )}
-              {upliftPercent !== 0 && (
+              {upliftRulesSummary(upliftRules) && (
                 <p className="mt-1 text-slate-600 dark:text-slate-400">
-                  Fee uplift: {upliftPercent > 0 ? '+' : ''}
-                  {upliftPercent}%
+                  {upliftRulesSummary(upliftRules)}
                 </p>
               )}
               {useAiCoverLetter && (
@@ -471,7 +666,14 @@ export default function BulkRenewalWizard() {
                       </td>
                       <td className="px-4 py-2 text-right">{formatCurrency(c.total)}</td>
                       <td className="px-4 py-2 text-right font-medium text-emerald-700 dark:text-emerald-400">
-                        {formatCurrency(projectedTotal(c.total, upliftPercent))}
+                        {(() => {
+                          const projected = projectedTotalFromRules(c.total, upliftRules);
+                          return projected != null
+                            ? formatCurrency(projected)
+                            : upliftRules.mode === 'min_floor'
+                              ? 'Per-line floors'
+                              : formatCurrency(c.total);
+                        })()}
                       </td>
                     </tr>
                   ))}

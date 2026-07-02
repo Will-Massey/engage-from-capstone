@@ -23,6 +23,13 @@ import {
   DECLINE_REASON_LABELS,
   type DeclineReason,
 } from '../../constants/declineReasons';
+import {
+  hasPricingTiers,
+  calculateTierTotals,
+  findPricingTier,
+  type PricingTier,
+  type PublicSigningState,
+} from '../../utils/proposalCustomFields';
 
 interface PaymentConfig {
   collectPaymentAtSign: boolean;
@@ -36,6 +43,14 @@ interface PaymentConfig {
   checkoutUrl: string | null;
 }
 
+interface ProposalCustomFieldsView {
+  offerThreePackages?: boolean;
+  pricingTiers?: Array<PricingTier & { subtotal?: number; vatAmount?: number; total?: number }>;
+  requiredSigners?: number;
+  selectedTierId?: string;
+  selectedTierLabel?: string;
+}
+
 interface ProposalData {
   id: string;
   reference: string;
@@ -45,15 +60,26 @@ interface ProposalData {
   subtotal: number;
   vatAmount: number;
   total: number;
+  baseSubtotal?: number;
+  baseVatAmount?: number;
+  baseTotal?: number;
   paymentTerms: string;
   coverLetter?: string;
   terms?: string;
   engagementLetter?: string;
   payment?: PaymentConfig | null;
+  customFields?: ProposalCustomFieldsView;
+  signing?: PublicSigningState;
   client: {
     name: string;
+    contactName?: string;
     companyType: string;
     contactEmail?: string;
+  };
+  createdBy?: {
+    firstName: string;
+    lastName: string;
+    jobTitle?: string;
   };
   tenant: {
     name: string;
@@ -158,6 +184,9 @@ const PublicProposalView = () => {
   const [isCompletingStub, setIsCompletingStub] = useState(false);
   const qaEndRef = useRef<HTMLDivElement>(null);
   const [isMobileSign, setIsMobileSign] = useState(false);
+  const [selectedTierId, setSelectedTierId] = useState<string | null>(null);
+  const [awaitingAdditionalSigner, setAwaitingAdditionalSigner] = useState(false);
+  const [signingState, setSigningState] = useState<PublicSigningState | null>(null);
 
   useEffect(() => {
     const mq = window.matchMedia('(max-width: 639px)');
@@ -174,18 +203,32 @@ const PublicProposalView = () => {
         setIsLoading(true);
         const response = (await apiClient.get(`/proposals/view/${token}`)) as any;
         if (response.success) {
-          setProposal(response.data);
-          setIsAccepted(response.data.status === 'ACCEPTED');
-          if (response.data.payment) {
-            setPaymentConfig(response.data.payment);
-            const ps = response.data.payment.paymentStatus;
+          const data = response.data;
+          setProposal(data);
+          setIsAccepted(data.status === 'ACCEPTED');
+          if (data.signing) {
+            setSigningState(data.signing);
+            setAwaitingAdditionalSigner(data.signing.awaitingAdditionalSigner);
+            if (data.signing.awaitingAdditionalSigner) {
+              setTermsAccepted(true);
+              setSignerEmail('');
+              setSignerName('');
+              setSignerRole('');
+            }
+          }
+          if (data.customFields?.selectedTierId) {
+            setSelectedTierId(data.customFields.selectedTierId);
+          }
+          if (data.payment) {
+            setPaymentConfig(data.payment);
+            const ps = data.payment.paymentStatus;
             setPaymentComplete(['ACTIVE', 'PAID', 'SKIPPED'].includes(ps || ''));
             setShowPaymentStep(
-              response.data.payment.paymentRequired && !['ACTIVE', 'PAID', 'SKIPPED'].includes(ps || '')
+              data.payment.paymentRequired && !['ACTIVE', 'PAID', 'SKIPPED'].includes(ps || '')
             );
           }
-          if (response.data.client?.contactEmail) {
-            setSignerEmail(response.data.client.contactEmail);
+          if (data.client?.contactEmail && !data.signing?.awaitingAdditionalSigner) {
+            setSignerEmail(data.client.contactEmail);
           }
         } else {
           setError('Proposal not found or link expired');
@@ -259,9 +302,39 @@ const PublicProposalView = () => {
     }
   };
 
+  const tiersEnabled =
+    proposal?.customFields && hasPricingTiers(proposal.customFields as any);
+  const lockedTierId =
+    selectedTierId || proposal?.customFields?.selectedTierId || null;
+  const activeTier =
+    tiersEnabled && lockedTierId
+      ? findPricingTier(proposal!.customFields as any, lockedTierId)
+      : undefined;
+
+  const displayTotals = (() => {
+    if (!proposal) return { subtotal: 0, vatAmount: 0, total: 0 };
+    if (activeTier) {
+      const base = {
+        subtotal: proposal.baseSubtotal ?? proposal.subtotal,
+        vatAmount: proposal.baseVatAmount ?? proposal.vatAmount,
+        total: proposal.baseTotal ?? proposal.total,
+      };
+      return calculateTierTotals(base, activeTier);
+    }
+    return {
+      subtotal: proposal.subtotal,
+      vatAmount: proposal.vatAmount,
+      total: proposal.total,
+    };
+  })();
+
   const handleAccept = async () => {
     if (!termsAccepted) {
       toast.error('Please accept the terms and conditions');
+      return;
+    }
+    if (tiersEnabled && !lockedTierId && !awaitingAdditionalSigner) {
+      toast.error('Please select a package before continuing');
       return;
     }
     setShowSignature(true);
@@ -358,6 +431,10 @@ const PublicProposalView = () => {
     try {
       const consentText = `I confirm I am authorised to sign on behalf of ${proposal?.client?.name || 'the client'} and agree to the terms of this proposal.`;
 
+      const isFirstSigner = !awaitingAdditionalSigner;
+      const tierToSubmit =
+        isFirstSigner && tiersEnabled ? lockedTierId || undefined : undefined;
+
       const response = (await apiClient.post(`/proposals/view/${token}/sign`, {
         signedBy: signerName,
         signedByRole: signerRole,
@@ -367,12 +444,50 @@ const PublicProposalView = () => {
         authorisedToSign,
         deviceInfo,
         consentText,
+        ...(tierToSubmit ? { selectedTierId: tierToSubmit } : {}),
       })) as any;
 
       if (response.success) {
+        setShowSignature(false);
+        setSignatureData('');
+        setAuthorisedToSign(false);
+
+        if (response.data?.pendingAdditionalSigner) {
+          toast.success('Signature recorded — additional signatory required');
+          setAwaitingAdditionalSigner(true);
+          setSigningState({
+            requiredSigners: response.data.requiredSigners ?? 2,
+            signaturesReceived: response.data.signaturesReceived ?? 1,
+            awaitingAdditionalSigner: true,
+            existingSignatures: [
+              ...(signingState?.existingSignatures || []),
+              {
+                signedBy: signerName,
+                signedByRole: signerRole,
+                signedAt: new Date().toISOString(),
+              },
+            ],
+          });
+          setSignerName('');
+          setSignerRole('');
+          setSignerEmail('');
+          if (token) {
+            try {
+              const refreshed = (await apiClient.get(`/proposals/view/${token}`)) as any;
+              if (refreshed.success) {
+                setProposal(refreshed.data);
+                if (refreshed.data.signing) setSigningState(refreshed.data.signing);
+              }
+            } catch {
+              // Non-blocking
+            }
+          }
+          return;
+        }
+
         toast.success('Proposal accepted successfully');
         setIsAccepted(true);
-        setShowSignature(false);
+        setAwaitingAdditionalSigner(false);
 
         const payment = response.data?.payment;
         if (payment) {
@@ -641,10 +756,8 @@ const PublicProposalView = () => {
                 <p className="mt-1 text-lg font-semibold text-slate-900 dark:text-white">
                   {[proposal.createdBy.firstName, proposal.createdBy.lastName].filter(Boolean).join(' ')}
                 </p>
-                {(proposal.createdBy as { jobTitle?: string }).jobTitle && (
-                  <p className="text-sm text-slate-600">
-                    {(proposal.createdBy as { jobTitle?: string }).jobTitle}
-                  </p>
+                {proposal.createdBy.jobTitle && (
+                  <p className="text-sm text-slate-600">{proposal.createdBy.jobTitle}</p>
                 )}
                 {proposal.tenant?.name && (
                   <p className="text-sm text-slate-500 mt-0.5">{proposal.tenant.name}</p>
@@ -711,20 +824,117 @@ const PublicProposalView = () => {
             </div>
           </div>
 
+          {/* Package selection — Good / Better / Best */}
+          {!isAccepted && !isExpired && tiersEnabled && !awaitingAdditionalSigner && (
+            <div className="border-t pt-6" data-testid="tier-selection-section">
+              <h3 className="text-sm font-medium text-slate-600 uppercase tracking-wide">
+                Choose your package
+              </h3>
+              <p className="text-sm text-slate-600 dark:text-slate-400 mt-1 mb-4">
+                Select the option that best fits your needs before signing.
+              </p>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                {(proposal.customFields?.pricingTiers || []).map((tier) => {
+                  const tierTotals =
+                    tier.total != null
+                      ? {
+                          subtotal: tier.subtotal ?? displayTotals.subtotal,
+                          vatAmount: tier.vatAmount ?? displayTotals.vatAmount,
+                          total: tier.total,
+                        }
+                      : calculateTierTotals(
+                          {
+                            subtotal: proposal.baseSubtotal ?? proposal.subtotal,
+                            vatAmount: proposal.baseVatAmount ?? proposal.vatAmount,
+                            total: proposal.baseTotal ?? proposal.total,
+                          },
+                          tier
+                        );
+                  const isSelected = lockedTierId === tier.id;
+                  const isLocked = Boolean(proposal.customFields?.selectedTierId);
+                  return (
+                    <button
+                      key={tier.id}
+                      type="button"
+                      data-testid={`tier-option-${tier.id}`}
+                      disabled={isLocked && !isSelected}
+                      onClick={() => setSelectedTierId(tier.id)}
+                      className={`text-left rounded-xl border p-4 transition-all ${
+                        isSelected
+                          ? 'border-primary-500 bg-primary-50/60 dark:bg-primary-950/30 ring-2 ring-primary-400/40'
+                          : 'border-slate-200 dark:border-slate-600 hover:border-primary-300'
+                      } ${isLocked && !isSelected ? 'opacity-50 cursor-not-allowed' : ''}`}
+                    >
+                      <p className="font-semibold text-slate-900 dark:text-white">{tier.label}</p>
+                      {tier.description && (
+                        <p className="text-xs text-slate-600 dark:text-slate-400 mt-1">
+                          {tier.description}
+                        </p>
+                      )}
+                      <p className="text-lg font-bold text-primary-600 mt-3 tabular-nums">
+                        {formatCurrency(tierTotals.total)}
+                      </p>
+                      <p className="text-xs text-slate-500 mt-0.5">inc. VAT</p>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          {activeTier && (
+            <div className="border-t pt-4">
+              <p className="text-sm text-primary-700 dark:text-primary-300">
+                Selected package: <strong>{activeTier.label}</strong>
+              </p>
+            </div>
+          )}
+
+          {/* Additional signatory required */}
+          {awaitingAdditionalSigner && !isAccepted && (
+            <div
+              className="border-t pt-6"
+              data-testid="additional-signatory-banner"
+            >
+              <div className="rounded-xl border border-amber-200 dark:border-amber-800 bg-amber-50/70 dark:bg-amber-950/20 p-5">
+                <h3 className="text-sm font-semibold text-amber-900 dark:text-amber-200">
+                  Additional signatory required
+                </h3>
+                <p className="text-sm text-amber-800 dark:text-amber-100/90 mt-2">
+                  The primary signatory has completed their signature. A second authorised person
+                  must also sign before this proposal is fully accepted.
+                </p>
+                {signingState?.existingSignatures?.map((sig, i) => (
+                  <p key={i} className="text-xs text-amber-700/80 mt-2">
+                    Signed: {sig.signedBy} ({sig.signedByRole})
+                  </p>
+                ))}
+                <button
+                  type="button"
+                  data-testid="additional-signatory-button"
+                  onClick={() => setShowSignature(true)}
+                  className="btn-primary mt-4 w-full sm:w-auto"
+                >
+                  Add second signature
+                </button>
+              </div>
+            </div>
+          )}
+
           {/* Pricing Summary */}
           <div className="border-t pt-6">
             <div className="space-y-2">
               <div className="flex justify-between text-sm">
                 <span className="text-slate-700">Subtotal</span>
-                <span className="font-medium">{formatCurrency(proposal.subtotal)}</span>
+                <span className="font-medium">{formatCurrency(displayTotals.subtotal)}</span>
               </div>
               <div className="flex justify-between text-sm">
                 <span className="text-slate-700">VAT</span>
-                <span className="font-medium">{formatCurrency(proposal.vatAmount)}</span>
+                <span className="font-medium">{formatCurrency(displayTotals.vatAmount)}</span>
               </div>
               <div className="flex justify-between text-lg font-semibold pt-2 border-t">
                 <span className="text-slate-900">Total</span>
-                <span className="text-slate-900">{formatCurrency(proposal.total)}</span>
+                <span className="text-slate-900">{formatCurrency(displayTotals.total)}</span>
               </div>
             </div>
             <p className="text-sm text-slate-600 mt-2">Payment terms: {proposal.paymentTerms}</p>
@@ -999,7 +1209,7 @@ const PublicProposalView = () => {
           )}
 
           {/* Actions */}
-          {!isAccepted && !isExpired && !showSignature && !showDecline && (
+          {!isAccepted && !isExpired && !showSignature && !showDecline && !awaitingAdditionalSigner && (
             <div className="border-t pt-6 flex flex-col sm:flex-row gap-3">
               <button
                 data-testid="accept-proposal-button"
@@ -1135,7 +1345,11 @@ const PublicProposalView = () => {
           {/* Signature Pad */}
           {!isAccepted && !isExpired && showSignature && (
             <div className="border-t pt-6">
-              <h3 className="text-lg font-medium text-slate-900 mb-4">Electronic Signature</h3>
+              <h3 className="text-lg font-medium text-slate-900 mb-4">
+                {awaitingAdditionalSigner
+                  ? 'Additional signatory — electronic signature'
+                  : 'Electronic signature'}
+              </h3>
               <div className="space-y-4">
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
@@ -1200,7 +1414,11 @@ const PublicProposalView = () => {
                       disabled={isSubmitting}
                       className="flex-1 btn-primary"
                     >
-                      {isSubmitting ? 'Submitting...' : 'Confirm Acceptance'}
+                      {isSubmitting
+                        ? 'Submitting…'
+                        : awaitingAdditionalSigner
+                          ? 'Confirm second signature'
+                          : 'Confirm acceptance'}
                     </button>
                   </div>
                 )}
@@ -1210,7 +1428,7 @@ const PublicProposalView = () => {
         </div>
 
         {/* Mobile sticky accept bar */}
-        {!isAccepted && !isExpired && !showSignature && !showDecline && (
+        {!isAccepted && !isExpired && !showSignature && !showDecline && !awaitingAdditionalSigner && (
           <div className="fixed bottom-0 left-0 right-0 z-40 p-4 pt-3 bg-white/95 dark:bg-slate-900/95 border-t border-slate-200 dark:border-slate-700 backdrop-blur-md sm:hidden [padding-bottom:max(1rem,env(safe-area-inset-bottom))]">
             <button
               type="button"

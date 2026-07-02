@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { apiClient } from '../../utils/api';
 import toast from 'react-hot-toast';
@@ -8,7 +8,16 @@ import {
   CheckCircleIcon,
   ExclamationCircleIcon,
   BuildingOfficeIcon,
+  DocumentArrowUpIcon,
+  XMarkIcon,
 } from '@heroicons/react/24/outline';
+
+type UploadedFileMeta = {
+  fileName: string;
+  mimeType: string;
+  data: string;
+  sizeBytes: number;
+};
 
 type FormState = {
   idDocumentType: 'PASSPORT' | 'DRIVING_LICENCE' | 'OTHER';
@@ -23,6 +32,9 @@ type FormState = {
   confirmAccurate: boolean;
 };
 
+const ACCEPTED_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'application/pdf'];
+const MAX_FILE_BYTES = 10 * 1024 * 1024;
+
 const emptyForm = (): FormState => ({
   idDocumentType: 'PASSPORT',
   idDocumentTypeOther: '',
@@ -36,6 +48,132 @@ const emptyForm = (): FormState => ({
   confirmAccurate: false,
 });
 
+function formatFileSize(bytes: number): string {
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
+
+async function readFileAsDataUrl(file: File): Promise<UploadedFileMeta> {
+  if (!ACCEPTED_TYPES.includes(file.type)) {
+    throw new Error('Please upload a JPEG, PNG, WebP, or PDF file.');
+  }
+  if (file.size > MAX_FILE_BYTES) {
+    throw new Error('Each file must be 10 MB or smaller.');
+  }
+
+  const data = await new Promise<string>((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result as string);
+    reader.onerror = () => reject(new Error('Could not read the selected file'));
+    reader.readAsDataURL(file);
+  });
+
+  return {
+    fileName: file.name,
+    mimeType: file.type,
+    data,
+    sizeBytes: file.size,
+  };
+}
+
+interface FileUploadFieldProps {
+  label: string;
+  hint: string;
+  value: UploadedFileMeta | null;
+  existingMeta?: { fileName?: string; sizeBytes?: number } | null;
+  onChange: (file: UploadedFileMeta | null) => void;
+  disabled?: boolean;
+}
+
+function FileUploadField({
+  label,
+  hint,
+  value,
+  existingMeta,
+  onChange,
+  disabled,
+}: FileUploadFieldProps) {
+  const inputRef = useRef<HTMLInputElement>(null);
+  const [dragOver, setDragOver] = useState(false);
+
+  const handleFile = async (file: File | undefined) => {
+    if (!file) return;
+    try {
+      const meta = await readFileAsDataUrl(file);
+      onChange(meta);
+    } catch (err: any) {
+      toast.error(err?.message || 'Upload failed');
+    }
+  };
+
+  const displayName = value?.fileName ?? existingMeta?.fileName;
+  const displaySize = value?.sizeBytes ?? existingMeta?.sizeBytes;
+
+  return (
+    <div>
+      <label className="block text-sm font-medium text-slate-800 dark:text-slate-200 mb-1">{label}</label>
+      <p className="text-xs text-slate-500 dark:text-slate-400 mb-2">{hint}</p>
+
+      {displayName ? (
+        <div className="flex items-center justify-between gap-3 rounded-xl border border-emerald-200 dark:border-emerald-900/50 bg-emerald-50/50 dark:bg-emerald-950/20 px-4 py-3">
+          <div className="min-w-0">
+            <p className="text-sm font-medium text-slate-800 dark:text-slate-200 truncate">{displayName}</p>
+            {displaySize ? (
+              <p className="text-xs text-slate-500">{formatFileSize(displaySize)}</p>
+            ) : (
+              <p className="text-xs text-slate-500">Previously uploaded</p>
+            )}
+          </div>
+          {!disabled && (
+            <button
+              type="button"
+              onClick={() => onChange(null)}
+              className="shrink-0 p-1 rounded-md text-slate-500 hover:text-slate-700 dark:hover:text-slate-300"
+              aria-label={`Remove ${label}`}
+            >
+              <XMarkIcon className="h-5 w-5" />
+            </button>
+          )}
+        </div>
+      ) : (
+        <div
+          className={`relative rounded-xl border-2 border-dashed px-4 py-8 text-center transition-colors ${
+            dragOver
+              ? 'border-primary-400 bg-primary-50/40 dark:bg-primary-950/20'
+              : 'border-slate-300 dark:border-slate-600 hover:border-primary-300'
+          } ${disabled ? 'opacity-60 pointer-events-none' : 'cursor-pointer'}`}
+          onDragOver={(e) => {
+            e.preventDefault();
+            setDragOver(true);
+          }}
+          onDragLeave={() => setDragOver(false)}
+          onDrop={(e) => {
+            e.preventDefault();
+            setDragOver(false);
+            void handleFile(e.dataTransfer.files[0]);
+          }}
+          onClick={() => inputRef.current?.click()}
+        >
+          <DocumentArrowUpIcon className="h-8 w-8 text-slate-400 mx-auto mb-2" />
+          <p className="text-sm text-slate-700 dark:text-slate-300">
+            Drag and drop or <span className="text-primary-600 font-medium">browse</span>
+          </p>
+          <p className="text-xs text-slate-500 mt-1">JPEG, PNG, WebP or PDF — max 10 MB</p>
+          <input
+            ref={inputRef}
+            type="file"
+            accept={ACCEPTED_TYPES.join(',')}
+            className="hidden"
+            disabled={disabled}
+            onChange={(e) => void handleFile(e.target.files?.[0])}
+          />
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function AmlOnboarding() {
   const { token } = useParams<{ token: string }>();
   const [loading, setLoading] = useState(true);
@@ -44,6 +182,8 @@ export default function AmlOnboarding() {
   const [done, setDone] = useState(false);
   const [context, setContext] = useState<any>(null);
   const [form, setForm] = useState<FormState>(emptyForm());
+  const [photoIdFile, setPhotoIdFile] = useState<UploadedFileMeta | null>(null);
+  const [proofOfAddressFile, setProofOfAddressFile] = useState<UploadedFileMeta | null>(null);
 
   useEffect(() => {
     if (!token) return;
@@ -92,25 +232,44 @@ export default function AmlOnboarding() {
       toast.error('Please provide PEP details');
       return;
     }
+    if (!photoIdFile) {
+      toast.error('Please upload a photo of your ID document');
+      return;
+    }
+    if (!proofOfAddressFile) {
+      toast.error('Please upload proof of address');
+      return;
+    }
 
     setSubmitting(true);
     try {
       const res = (await apiClient.submitAmlOnboarding(token, {
         ...form,
         confirmAccurate: true,
+        photoIdDocument: {
+          fileName: photoIdFile.fileName,
+          mimeType: photoIdFile.mimeType,
+          data: photoIdFile.data,
+        },
+        proofOfAddressDocument: {
+          fileName: proofOfAddressFile.fileName,
+          mimeType: proofOfAddressFile.mimeType,
+          data: proofOfAddressFile.data,
+        },
       })) as any;
       if (res.success) {
         setDone(true);
         toast.success('Details submitted — thank you');
       }
     } catch (err: any) {
-      toast.error(err?.response?.data?.error?.message || 'Submission failed');
+      toast.error(err?.response?.data?.error?.message || err?.message || 'Submission failed');
     } finally {
       setSubmitting(false);
     }
   };
 
   const primary = context?.practice?.primaryColor || '#0ea5e9';
+  const existing = context?.existingSubmission;
 
   if (loading) {
     return (
@@ -146,7 +305,7 @@ export default function AmlOnboarding() {
           <p className="mt-2 text-sm text-slate-600 dark:text-slate-400">
             {context?.amlCompletedAt
               ? 'Your AML verification has been completed by your practice.'
-              : 'Your details have been received. Your accountant will review them and be in touch if anything else is needed.'}
+              : 'Your details and documents have been received securely. Your accountant will review them and be in touch if anything else is needed.'}
           </p>
           <p className="mt-4 text-xs text-slate-500">{context?.practice?.name}</p>
         </motion.div>
@@ -176,29 +335,52 @@ export default function AmlOnboarding() {
         </motion.div>
 
         <form onSubmit={handleSubmit} className="glass-tile p-6 sm:p-8 space-y-5">
-          <div>
-            <label className="block text-sm font-medium text-slate-800 dark:text-slate-200 mb-1">
-              Photo ID document
-            </label>
-            <select
-              className="input-field w-full"
-              value={form.idDocumentType}
-              onChange={(e) =>
-                setForm({ ...form, idDocumentType: e.target.value as FormState['idDocumentType'] })
-              }
-            >
-              <option value="PASSPORT">Passport</option>
-              <option value="DRIVING_LICENCE">Driving licence</option>
-              <option value="OTHER">Other government-issued ID</option>
-            </select>
-            {form.idDocumentType === 'OTHER' && (
-              <input
-                className="input-field w-full mt-2"
-                placeholder="Please specify document type"
-                value={form.idDocumentTypeOther}
-                onChange={(e) => setForm({ ...form, idDocumentTypeOther: e.target.value })}
-              />
-            )}
+          <div className="rounded-xl border border-slate-200 dark:border-slate-700 p-4 space-y-4 bg-slate-50/50 dark:bg-slate-900/30">
+            <h2 className="text-sm font-semibold text-slate-900 dark:text-slate-100">Identity documents</h2>
+            <p className="text-xs text-slate-500 dark:text-slate-400 -mt-2">
+              Please upload clear colour copies. We only use these for compliance purposes.
+            </p>
+
+            <div>
+              <label className="block text-sm font-medium text-slate-800 dark:text-slate-200 mb-1">
+                ID document type
+              </label>
+              <select
+                className="input-field w-full"
+                value={form.idDocumentType}
+                onChange={(e) =>
+                  setForm({ ...form, idDocumentType: e.target.value as FormState['idDocumentType'] })
+                }
+              >
+                <option value="PASSPORT">Passport</option>
+                <option value="DRIVING_LICENCE">Driving licence</option>
+                <option value="OTHER">Other government-issued ID</option>
+              </select>
+              {form.idDocumentType === 'OTHER' && (
+                <input
+                  className="input-field w-full mt-2"
+                  placeholder="Please specify document type"
+                  value={form.idDocumentTypeOther}
+                  onChange={(e) => setForm({ ...form, idDocumentTypeOther: e.target.value })}
+                />
+              )}
+            </div>
+
+            <FileUploadField
+              label="Photo ID"
+              hint="Upload a clear photo or scan of your passport, driving licence, or other government ID."
+              value={photoIdFile}
+              existingMeta={existing?.photoIdDocument}
+              onChange={setPhotoIdFile}
+            />
+
+            <FileUploadField
+              label="Proof of address"
+              hint="A utility bill, council tax statement, or bank statement dated within the last 3 months."
+              value={proofOfAddressFile}
+              existingMeta={existing?.proofOfAddressDocument}
+              onChange={setProofOfAddressFile}
+            />
           </div>
 
           <div className="grid sm:grid-cols-2 gap-4">
@@ -229,6 +411,7 @@ export default function AmlOnboarding() {
               required
               rows={3}
               className="input-field w-full"
+              placeholder="Include postcode"
               value={form.registeredAddress}
               onChange={(e) => setForm({ ...form, registeredAddress: e.target.value })}
             />

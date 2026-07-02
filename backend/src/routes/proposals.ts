@@ -17,6 +17,11 @@ import {
   calculateHeaderTotals,
 } from '../utils/proposalPricing.js';
 import { serializeProposalServicesForApi } from '../utils/proposalServiceSnapshot.js';
+import {
+  mergeProposalCustomFields,
+  parseProposalCustomFields,
+  serializeProposalCustomFields,
+} from '../utils/proposalCustomFields.js';
 import { formatUserRole } from '../utils/proposalDisplay.js';
 import {
   addDays,
@@ -25,6 +30,8 @@ import {
   parseProposalDateInput,
 } from '../utils/tenantProposalSettings.js';
 import { resolveProposalTerms } from '../services/proposalTermsService.js';
+import { createLoeOnlyProposal } from '../services/loeOnlyProposalService.js';
+import type { UpliftRules } from '../services/renewalProposalService.js';
 import { DECLINE_REASONS } from '../constants/declineReasons.js';
 // generateReference helper function
 const generateReference = (prefix: string = 'PROP'): string => {
@@ -79,6 +86,22 @@ const proposalApprovalInclude = {
   },
 } as const;
 
+const pricingTierSchema = z.object({
+  id: z.string().min(1),
+  label: z.string().min(1),
+  description: z.string().optional(),
+  feeMultiplier: z.number().min(0).optional(),
+  serviceLineIds: z.array(z.string()).optional(),
+});
+
+const proposalCustomFieldsSchema = z
+  .object({
+    offerThreePackages: z.boolean().optional(),
+    pricingTiers: z.array(pricingTierSchema).optional(),
+    requiredSigners: z.union([z.literal(1), z.literal(2)]).optional(),
+  })
+  .optional();
+
 // Validation schemas
 const createProposalSchema = z.object({
   clientId: z.string(),
@@ -114,6 +137,7 @@ const createProposalSchema = z.object({
   notes: z.string().optional(),
   discountType: z.enum(['PERCENTAGE', 'FIXED']).optional(),
   discountValue: z.number().min(0).optional(),
+  customFields: proposalCustomFieldsSchema,
 });
 
 const updateProposalSchema = z.object({
@@ -149,6 +173,7 @@ const updateProposalSchema = z.object({
   status: z.nativeEnum(ProposalStatus).optional(),
   discountType: z.enum(['PERCENTAGE', 'FIXED']).optional(),
   discountValue: z.number().min(0).optional(),
+  customFields: proposalCustomFieldsSchema,
 });
 
 /**
@@ -364,6 +389,14 @@ router.post(
   authenticate,
   authorize('ADMIN', 'PARTNER', 'MANAGER', 'SENIOR'),
   asyncHandler(async (req, res) => {
+    const upliftRulesSchema = z.object({
+      mode: z.enum(['percent', 'cpi', 'min_floor']),
+      percent: z.number().min(-50).max(50).optional(),
+      cpiPercent: z.number().min(0).max(50).optional(),
+      minFeeGbp: z.number().min(0).optional(),
+      perServiceFloors: z.record(z.string(), z.number().min(0)).optional(),
+    });
+
     const body = z
       .object({
         clientIds: z.array(z.string().uuid()).optional(),
@@ -372,7 +405,8 @@ router.post(
           .union([z.string().datetime(), z.string().regex(/^\d{4}-\d{2}-\d{2}$/)])
           .optional(),
         templateId: z.string().uuid().optional(),
-        upliftPercent: z.number().min(-50).max(50).default(0),
+        upliftPercent: z.number().min(-50).max(50).optional(),
+        upliftRules: upliftRulesSchema.optional(),
         useAiCoverLetter: z.boolean().default(false),
       })
       .parse(req.body);
@@ -403,6 +437,7 @@ router.post(
         : undefined,
       templateId: body.templateId,
       upliftPercent: body.upliftPercent,
+      upliftRules: body.upliftRules as UpliftRules | undefined,
       useAiCoverLetter: body.useAiCoverLetter,
     });
 
@@ -520,6 +555,54 @@ router.post(
 );
 
 /**
+ * POST /api/proposals/loe-only
+ * Create engagement-letter-only proposal (no pricing)
+ */
+router.post(
+  '/loe-only',
+  authenticate,
+  authorize('PARTNER', 'MANAGER', 'SENIOR', 'ADMIN', 'MD'),
+  asyncHandler(async (req, res) => {
+    const body = z
+      .object({
+        clientId: z.string().uuid(),
+        serviceIds: z.array(z.string().uuid()).min(1),
+        title: z.string().min(1).max(200).optional(),
+        validUntil: z
+          .union([z.string().datetime(), z.string().regex(/^\d{4}-\d{2}-\d{2}$/)])
+          .optional(),
+        contractStartDate: z
+          .union([z.string().datetime(), z.string().regex(/^\d{4}-\d{2}-\d{2}$/), z.null()])
+          .optional(),
+        notes: z.string().max(4000).optional(),
+      })
+      .parse(req.body);
+
+    const result = await createLoeOnlyProposal({
+      tenantId: req.tenantId!,
+      userId: req.user!.id,
+      clientId: body.clientId,
+      serviceIds: body.serviceIds,
+      title: body.title,
+      validUntil: body.validUntil,
+      contractStartDate: body.contractStartDate,
+      notes: body.notes,
+    });
+
+    res.status(201).json({
+      success: true,
+      data: {
+        ...result.proposal,
+        services: serializeProposalServicesForApi((result.proposal as any).services),
+        clauseIds: result.clauseIds,
+        proposalType: 'loe_only',
+      },
+      message: 'Engagement letter draft created — review and send when ready',
+    });
+  })
+);
+
+/**
  * POST /api/proposals
  * Create new proposal
  */
@@ -622,6 +705,9 @@ router.post(
             serviceTemplates.map((t) => ({ name: t.name, tags: t.tags }))
           )),
         notes: data.notes,
+        customFields: data.customFields
+          ? serializeProposalCustomFields(data.customFields as import('../utils/proposalCustomFields.js').ProposalCustomFields)
+          : '{}',
         services: {
           create: servicesWithClearPricing as any,
         },
@@ -713,6 +799,15 @@ router.put(
 
     if (data.contractStartDate !== undefined) {
       updateData.contractStartDate = parseProposalDateInput(data.contractStartDate);
+    }
+
+    if (data.customFields !== undefined) {
+      const existingFields = parseProposalCustomFields(existingProposal.customFields);
+      const incoming = data.customFields as import('../utils/proposalCustomFields.js').ProposalCustomFields;
+      const { selectedTierId: _st, selectedTierLabel: _stl, signaturesReceived: _sr, ...builderFields } =
+        incoming;
+      const merged = mergeProposalCustomFields(existingFields, builderFields);
+      updateData.customFields = serializeProposalCustomFields(merged);
     }
 
     // Remove undefined values
@@ -1638,9 +1733,18 @@ router.post(
   authorize('ADMIN', 'PARTNER', 'MANAGER', 'SENIOR'),
   asyncHandler(async (req, res) => {
     const { id } = req.params;
+    const upliftRulesSchema = z.object({
+      mode: z.enum(['percent', 'cpi', 'min_floor']),
+      percent: z.number().min(-50).max(50).optional(),
+      cpiPercent: z.number().min(0).max(50).optional(),
+      minFeeGbp: z.number().min(0).optional(),
+      perServiceFloors: z.record(z.string(), z.number().min(0)).optional(),
+    });
+
     const body = z
       .object({
         upliftPercent: z.number().min(-50).max(50).optional(),
+        upliftRules: upliftRulesSchema.optional(),
         templateId: z.string().uuid().optional(),
         useAiCoverLetter: z.boolean().optional(),
       })
@@ -1650,6 +1754,7 @@ router.post(
 
     const renewalProposal = await createRenewalDraft(req.tenantId!, req.user!.id, id, {
       upliftPercent: body.upliftPercent,
+      upliftRules: body.upliftRules as UpliftRules | undefined,
       templateId: body.templateId,
       useAiCoverLetter: body.useAiCoverLetter,
     });

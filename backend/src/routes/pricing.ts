@@ -16,6 +16,7 @@ import {
 } from '../services/pricingMethodology.js';
 import { chatCompletion, checkAiTokenBudget, isAiConfigured } from '../services/ai/aiClient.js';
 import { AI_COPILOT } from '../config/aiCopilot.js';
+import { calculateContingentFee } from '../services/contingentFeeCalculator.js';
 
 const router = Router();
 
@@ -139,6 +140,32 @@ Use UK English and GBP. Be professional, no bullet points.`;
         tokensUsed: 'minimal',
       },
     });
+  })
+);
+
+const contingentFeeSchema = z.object({
+  estimatedSavingGbp: z.number().positive().max(100_000_000),
+  percentOfSaving: z.number().positive().max(100),
+  capGbp: z.number().nonnegative().optional(),
+  floorGbp: z.number().nonnegative().optional(),
+});
+
+/**
+ * POST /api/pricing/contingent-fee
+ * Contingent fee for tax advisory — percent of estimated saving with optional cap/floor.
+ */
+router.post(
+  '/contingent-fee',
+  asyncHandler(async (req, res) => {
+    const input = contingentFeeSchema.parse(req.body);
+
+    try {
+      const result = calculateContingentFee(input);
+      res.json({ success: true, data: result });
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Invalid contingent fee inputs';
+      throw new ApiError('INVALID_CONTINGENT_FEE', message, 400);
+    }
   })
 );
 

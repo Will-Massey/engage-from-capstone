@@ -11,6 +11,7 @@ import {
   preparedForLines,
   senderPosition,
 } from '../utils/proposalDisplay.js';
+import { parseProposalCustomFields } from '../utils/proposalCustomFields.js';
 
 interface ProposalData {
   id: string;
@@ -33,6 +34,7 @@ interface ProposalData {
   acceptedBy?: string;
   signatoryPosition?: string;
   signature?: string;
+  customFields?: string;
   client: {
     name: string;
     companyType: string;
@@ -153,8 +155,7 @@ export class PDFGenerator {
         services: true,
         tenant: true,
         signatures: {
-          orderBy: { signedAt: 'desc' as const },
-          take: 1,
+          orderBy: { signedAt: 'asc' as const },
         },
       },
     })) as unknown as ProposalData & { signatures?: any[] };
@@ -337,9 +338,10 @@ export class PDFGenerator {
         doc.addPage();
         if (proposal.status === 'ACCEPTED' && proposal.signature) {
           this.drawSignedAcceptance(doc, proposal, primaryColor);
-          if ((proposal as any).signatures?.[0]) {
+          const sigs = (proposal as any).signatures || [];
+          for (const sig of sigs) {
             doc.addPage();
-            this.drawSignatureCertificate(doc, proposal, (proposal as any).signatures[0]);
+            this.drawSignatureCertificate(doc, proposal, sig);
           }
         } else {
           this.drawAcceptance(doc, proposal, primaryColor);
@@ -792,29 +794,62 @@ ${senderPosition(proposal.createdBy) ? `${senderPosition(proposal.createdBy)}, `
 
   private static drawSignedAcceptance(doc: PDFDoc, proposal: ProposalData, primaryColor: string) {
     doc.fontSize(16).fillColor('#333333').text('Electronic Acceptance', { align: 'center' });
-    doc.moveDown(2);
-    doc.fontSize(11).fillColor('#444444');
-    doc.text(`Signed by: ${proposal.acceptedBy || 'Client representative'}`);
-    if (proposal.signatoryPosition) {
-      doc.text(`Position: ${proposal.signatoryPosition}`);
+    doc.moveDown(1.5);
+
+    const customFields = parseProposalCustomFields(proposal.customFields);
+    if (customFields.selectedTierLabel) {
+      doc
+        .fontSize(11)
+        .fillColor(primaryColor)
+        .text(`Selected package: ${customFields.selectedTierLabel}`, { align: 'center' });
+      doc.moveDown(1);
     }
-    if (proposal.acceptedAt) {
-      doc.text(`Date: ${this.formatDate(proposal.acceptedAt)}`);
-    }
-    doc.moveDown(1);
-    if (proposal.signature) {
-      try {
-        const base64 = proposal.signature.includes(',')
-          ? proposal.signature.split(',')[1]
-          : proposal.signature;
-        doc.image(Buffer.from(base64, 'base64'), { fit: [200, 80] });
-      } catch {
-        doc.text('[Signature on file]');
+
+    const signatures: Array<{
+      signedBy: string;
+      signedByRole: string;
+      signedAt: Date | string;
+      signatureData?: string;
+      signerEmail?: string | null;
+    }> = (proposal as any).signatures?.length
+      ? (proposal as any).signatures
+      : [
+          {
+            signedBy: proposal.acceptedBy || 'Client representative',
+            signedByRole: proposal.signatoryPosition || '',
+            signedAt: proposal.acceptedAt || new Date(),
+            signatureData: proposal.signature,
+          },
+        ];
+
+    signatures.forEach((sig, index) => {
+      if (index > 0) doc.moveDown(1.5);
+      doc.fontSize(12).fillColor('#333333').text(`Signatory ${index + 1}`, { underline: true });
+      doc.moveDown(0.5);
+      doc.fontSize(11).fillColor('#444444');
+      doc.text(`Signed by: ${sig.signedBy}`);
+      if (sig.signedByRole) {
+        doc.text(`Position: ${sig.signedByRole}`);
       }
-    }
+      if (sig.signerEmail) {
+        doc.text(`Email: ${sig.signerEmail}`);
+      }
+      doc.text(`Date: ${this.formatDate(new Date(sig.signedAt))}`);
+      doc.moveDown(0.5);
+      const sigData = sig.signatureData;
+      if (sigData) {
+        try {
+          const base64 = sigData.includes(',') ? sigData.split(',')[1] : sigData;
+          doc.image(Buffer.from(base64, 'base64'), { fit: [200, 80] });
+        } catch {
+          doc.text('[Signature on file]');
+        }
+      }
+    });
+
     doc.moveDown(2);
     doc.fontSize(9).fillColor('#666666').text(
-      'This document was accepted using a simple electronic signature under UK law.',
+      'This document was accepted using simple electronic signature(s) under UK law.',
       { align: 'center' }
     );
   }

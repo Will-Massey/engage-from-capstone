@@ -14,13 +14,13 @@
   {
     "id": "scope-bookkeeping",
     "title": "Bookkeeping",
-    "tags": ["bookkeeping", "accounts", "_acca"],
+    "tags": ["bookkeeping", "accounts", "_acca", "_aat", "_icas"],
     "body": "We will maintain your accounting records, perform bank reconciliations, and produce management information as agreed. You remain responsible for providing complete and accurate source documents in a timely manner."
   },
   {
     "id": "scope-management-accounts",
     "title": "Management accounts",
-    "tags": ["management-accounts", "advisory", "bookkeeping", "_icaew"],
+    "tags": ["management-accounts", "advisory", "bookkeeping", "_icaew", "_cima"],
     "body": "We will prepare periodic management accounts and key performance indicators as agreed. These are prepared for management use only and do not constitute statutory accounts or an audit."
   }
 ]

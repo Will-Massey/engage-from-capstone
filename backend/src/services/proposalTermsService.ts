@@ -3,6 +3,7 @@
  */
 import { prisma } from '../config/database.js';
 import { selectClausesForServices } from '../data/engagementClauseLibrary.js';
+import { regulatoryBodyLabel } from '../utils/professionalBodyClauses.js';
 import { generateProposalTerms } from '../templates/ukEngagementLetter.js';
 import {
   formatPaymentTerms,
@@ -67,7 +68,7 @@ export function buildProposalTermsText(
   proposalSettings: ProposalSettings,
   governingLaw: string,
   services: TermsServiceInput[],
-  options?: { includeServiceAppendix?: boolean }
+  options?: { includeServiceAppendix?: boolean; professionalBody?: string | null }
 ): string {
   const paymentLabel = formatPaymentTerms(proposalSettings.defaultPaymentTermsDays);
   const cancellationLabel = cancellationNoticeLabel(proposalSettings.cancellationNoticeDays);
@@ -86,7 +87,8 @@ export function buildProposalTermsText(
   }
 
   const clauses = selectClausesForServices(
-    services.map((s) => ({ name: s.name, tags: s.tags || undefined }))
+    services.map((s) => ({ name: s.name, tags: s.tags || undefined })),
+    { professionalBody: options?.professionalBody }
   );
   const serviceSpecific = clauses.filter((c) => !c.tags.includes('_always'));
   if (!serviceSpecific.length) return base;
@@ -130,6 +132,9 @@ export async function resolveProposalTerms(
   const governingLaw =
     (settings.governingLaw as string | undefined)?.trim() || 'England and Wales';
   const practiceName = tenant?.name || 'Your practice';
+  const professionalBody = regulatoryBodyLabel(
+    typeof settings.professionalBody === 'string' ? settings.professionalBody : undefined
+  );
   const termsConfig = getTenantTermsConfig(tenant?.settings);
 
   if (termsConfig.termsSource === 'custom' && termsConfig.customTerms) {
@@ -141,7 +146,9 @@ export async function resolveProposalTerms(
     );
   }
 
-  return buildProposalTermsText(practiceName, proposalSettings, governingLaw, services);
+  return buildProposalTermsText(practiceName, proposalSettings, governingLaw, services, {
+    professionalBody,
+  });
 }
 
 /** Default Engage template for settings editor (placeholders preserved for editing). */

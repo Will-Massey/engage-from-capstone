@@ -8,6 +8,15 @@ import { prisma } from '../config/database.js';
 import logger from '../config/logger.js';
 import { saveSignaturePng, readSignature } from './fileStorage.js';
 import { calculateRenewalDate } from '../jobs/renewalReminders.js';
+import {
+  parseProposalCustomFields,
+  serializeProposalCustomFields,
+  mergeProposalCustomFields,
+  getRequiredSigners,
+  hasPricingTiers,
+  findPricingTier,
+  calculateTierTotals,
+} from '../utils/proposalCustomFields.js';
 
 // Generate unique share token
 export function generateShareToken(): string {
@@ -138,13 +147,29 @@ export async function trackProposalView(
     });
 
     if (proposal && !proposal.viewedAt) {
+      const viewedAt = new Date();
       await prisma.proposal.update({
         where: { id: proposalId },
         data: {
-          viewedAt: new Date(),
+          viewedAt,
           status: 'VIEWED',
         },
       });
+
+      try {
+        const full = await prisma.proposal.findUnique({
+          where: { id: proposalId },
+          select: { tenantId: true },
+        });
+        if (full?.tenantId) {
+          const { emitIntegrationEvent } = await import('./integrationEvents.js');
+          void emitIntegrationEvent(full.tenantId, proposalId, 'proposal.viewed', {
+            extra: { viewedAt: viewedAt.toISOString() },
+          });
+        }
+      } catch (e) {
+        logger.warn('Integration event emit failed on first view', e);
+      }
     } else {
       await prisma.proposal.update({
         where: { id: proposalId },
@@ -212,33 +237,76 @@ export interface ElectronicSignatureData {
   agreementVersion: string;
   tenantId: string;
   userId?: string | null;
+  /** Client-selected package tier (Good / Better / Best) */
+  selectedTierId?: string | null;
 }
 
-// Record electronic signature
+export interface ElectronicSignatureResult {
+  success: boolean;
+  error?: string;
+  signatureId?: string;
+  /** True when more signatories are still required */
+  pendingAdditionalSigner?: boolean;
+  signaturesReceived?: number;
+  requiredSigners?: number;
+  fullyAccepted?: boolean;
+}
+
+// Record electronic signature (supports multi-signer + tiered pricing)
 export async function recordElectronicSignature(
   data: ElectronicSignatureData
-): Promise<{ success: boolean; error?: string; signatureId?: string }> {
+): Promise<ElectronicSignatureResult> {
   try {
-    // Validate signature data
     if (!data.signatureData || data.signatureData.length < 100) {
       return { success: false, error: 'Invalid signature data' };
     }
 
-    // Save signature as PNG file
+    const proposalMeta = await prisma.proposal.findUnique({
+      where: { id: data.proposalId },
+      select: {
+        contractStartDate: true,
+        clientId: true,
+        customFields: true,
+        subtotal: true,
+        vatAmount: true,
+        total: true,
+        status: true,
+        _count: { select: { signatures: true } },
+      },
+    });
+
+    if (!proposalMeta) {
+      return { success: false, error: 'Proposal not found' };
+    }
+
+    if (proposalMeta.status === 'ACCEPTED') {
+      return { success: false, error: 'Proposal already accepted' };
+    }
+
+    const customFields = parseProposalCustomFields(proposalMeta.customFields);
+    const requiredSigners = getRequiredSigners(customFields);
+    const existingCount = proposalMeta._count.signatures;
+
+    if (existingCount >= requiredSigners) {
+      return { success: false, error: 'All required signatures have already been collected' };
+    }
+
+    const isFirstSigner = existingCount === 0;
+    const tierIdForAccept =
+      data.selectedTierId || customFields.selectedTierId || null;
+
+    if (isFirstSigner && hasPricingTiers(customFields) && !tierIdForAccept) {
+      return { success: false, error: 'Please select a package before signing' };
+    }
+
     const signatureFilePath = await saveSignaturePng(
       data.tenantId,
       data.proposalId,
       data.signatureData
     );
 
-    const proposalMeta = await prisma.proposal.findUnique({
-      where: { id: data.proposalId },
-      select: { contractStartDate: true, clientId: true },
-    });
+    const renewalAnchor = proposalMeta.contractStartDate || new Date();
 
-    const renewalAnchor = proposalMeta?.contractStartDate || new Date();
-
-    // Create signature record with file path and forensic metadata
     const signature = await prisma.proposalSignature.create({
       data: {
         proposalId: data.proposalId,
@@ -261,6 +329,80 @@ export async function recordElectronicSignature(
       },
     });
 
+    const signaturesReceived = existingCount + 1;
+    const pendingAdditionalSigner = signaturesReceived < requiredSigners;
+
+    let customFieldsPatch = mergeProposalCustomFields(customFields, {
+      signaturesReceived,
+    });
+
+    if (isFirstSigner && tierIdForAccept) {
+      const tier = findPricingTier(customFields, tierIdForAccept);
+      customFieldsPatch = mergeProposalCustomFields(customFieldsPatch, {
+        selectedTierId: tierIdForAccept,
+        selectedTierLabel: tier?.label,
+      });
+    }
+
+    if (pendingAdditionalSigner) {
+      await prisma.proposal.update({
+        where: { id: data.proposalId },
+        data: {
+          customFields: serializeProposalCustomFields(customFieldsPatch),
+          termsAccepted: true,
+          termsAcceptedAt: new Date(),
+        },
+      });
+
+      await prisma.activityLog.create({
+        data: {
+          tenantId: data.tenantId,
+          userId: data.userId || undefined,
+          action: 'PROPOSAL_SIGNED',
+          entityType: 'PROPOSAL',
+          entityId: data.proposalId,
+          description: `Partial signature recorded by ${data.signedBy} (${signaturesReceived}/${requiredSigners})`,
+          metadata: JSON.stringify({
+            signatureId: signature.id,
+            signaturesReceived,
+            requiredSigners,
+          }),
+        },
+      });
+
+      logger.info(
+        `Partial signature ${signaturesReceived}/${requiredSigners} for proposal ${data.proposalId}`
+      );
+
+      return {
+        success: true,
+        signatureId: signature.id,
+        pendingAdditionalSigner: true,
+        signaturesReceived,
+        requiredSigners,
+        fullyAccepted: false,
+      };
+    }
+
+    // All signers complete — finalise acceptance
+    const selectedTier = tierIdForAccept
+      ? findPricingTier(customFields, tierIdForAccept)
+      : undefined;
+    const tierTotals =
+      selectedTier &&
+      calculateTierTotals(
+        {
+          subtotal: proposalMeta.subtotal,
+          vatAmount: proposalMeta.vatAmount,
+          total: proposalMeta.total,
+        },
+        selectedTier
+      );
+
+    const finalCustomFields = mergeProposalCustomFields(customFieldsPatch, {
+      signaturesReceived,
+    });
+
     await prisma.proposal.update({
       where: { id: data.proposalId },
       data: {
@@ -275,12 +417,19 @@ export async function recordElectronicSignature(
         renewalDate: calculateRenewalDate(renewalAnchor),
         renewalReminderSent: false,
         renewalReminderSentAt: null,
+        customFields: serializeProposalCustomFields(finalCustomFields),
+        ...(tierTotals
+          ? {
+              subtotal: tierTotals.subtotal,
+              vatAmount: tierTotals.vatAmount,
+              total: tierTotals.total,
+            }
+          : {}),
       },
     });
 
-    // Kick off client touchpoint workflow (welcome + AML in parallel)
     try {
-      if (proposalMeta?.clientId) {
+      if (proposalMeta.clientId) {
         const { triggerProposalAccepted } = await import('../jobs/touchpointEngine.js');
         await triggerProposalAccepted(proposalMeta.clientId, data.tenantId);
       }
@@ -288,7 +437,6 @@ export async function recordElectronicSignature(
       logger.warn('Failed to trigger touchpoint workflow on proposal acceptance', e);
     }
 
-    // Push accepted proposal to Xero (non-blocking — acceptance must not fail)
     void import('./xeroProposalPush.js').then(({ triggerXeroPushOnAcceptance }) =>
       triggerXeroPushOnAcceptance(data.tenantId, data.proposalId)
     );
@@ -305,6 +453,7 @@ export async function recordElectronicSignature(
           signatureId: signature.id,
           documentHash: data.documentHash,
           ipAddress: data.ipAddress,
+          selectedTierId: tierIdForAccept,
         }),
       },
     });
@@ -315,15 +464,25 @@ export async function recordElectronicSignature(
       const { emitIntegrationEvent } = await import('./integrationEvents.js');
       void emitIntegrationEvent(data.tenantId, data.proposalId, 'proposal.accepted', {
         extra: {
+          signedAt: new Date().toISOString(),
+          signedBy: data.signedBy,
           acceptedAt: new Date().toISOString(),
           acceptedBy: data.signedBy,
-        },
+          ...(tierIdForAccept ? { selectedTierId: tierIdForAccept } : {}),
+        } as Record<string, string>,
       });
     } catch (e) {
       logger.warn('Integration event emit failed on signature', e);
     }
 
-    return { success: true, signatureId: signature.id };
+    return {
+      success: true,
+      signatureId: signature.id,
+      pendingAdditionalSigner: false,
+      signaturesReceived,
+      requiredSigners,
+      fullyAccepted: true,
+    };
   } catch (error: any) {
     logger.error('Failed to record electronic signature:', error);
     return { success: false, error: error.message };

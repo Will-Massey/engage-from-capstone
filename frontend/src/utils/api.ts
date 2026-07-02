@@ -335,12 +335,28 @@ export const apiClient = {
     expiringBefore?: string;
     templateId?: string;
     upliftPercent?: number;
+    upliftRules?: {
+      mode: 'percent' | 'cpi' | 'min_floor';
+      percent?: number;
+      cpiPercent?: number;
+      minFeeGbp?: number;
+      perServiceFloors?: Record<string, number>;
+    };
     useAiCoverLetter?: boolean;
   }) => api.post('/proposals/bulk-renewal', data),
 
   getProposal: (id: string) => api.get(`/proposals/${id}`),
 
   createProposal: (data: any) => api.post('/proposals', data),
+
+  createLoeOnlyProposal: (data: {
+    clientId: string;
+    serviceIds: string[];
+    title?: string;
+    validUntil?: string;
+    contractStartDate?: string | null;
+    notes?: string;
+  }) => api.post('/proposals/loe-only', data),
   previewProposalTerms: (serviceIds: string[]) =>
     api.post('/proposals/terms-preview', { serviceIds }),
 
@@ -416,6 +432,8 @@ export const apiClient = {
   initiateAmlCheck: (clientId: string, provider?: 'smartsearch' | 'creditsafe' | 'stub') =>
     api.post('/aml/check', { clientId, provider }),
 
+  getAmlStatus: (clientId: string) => api.get(`/aml/status/${clientId}`),
+
   getRegulatoryCheck: (clientId: string) => api.get(`/regulatory/check/${clientId}`),
 
   // Services
@@ -431,6 +449,13 @@ export const apiClient = {
 
   pricingExplain: (data: { suggestion: { inputs: any; services: any[]; totals: any } }) =>
     api.post('/pricing/explain', data),
+
+  pricingContingentFee: (data: {
+    estimatedSavingGbp: number;
+    percentOfSaving: number;
+    capGbp?: number;
+    floorGbp?: number;
+  }) => api.post('/pricing/contingent-fee', data),
 
   getServices: (params?: Record<string, any>) => api.get('/services', { params }),
 
@@ -461,8 +486,9 @@ export const apiClient = {
 
   updateTenantSettings: (data: any) => api.put('/tenants/settings', data),
 
-  testIntegrationWebhook: (format?: 'default' | 'hubspot') =>
-    api.post('/tenants/settings/test-webhook', { format }),
+  testIntegrationWebhook: (
+    format?: 'default' | 'hubspot' | 'zapier' | 'senta' | 'karbon'
+  ) => api.post('/tenants/settings/test-webhook', { format }),
 
   // Users
   updateMe: (data: any) => api.put('/auth/me', data),
@@ -528,6 +554,9 @@ export const apiClient = {
   // W4.1 fee benchmarks
   getFeeBenchmarks: () => api.get('/analytics/fee-benchmarks'),
 
+  getProposalFunnel: (params?: { startDate?: string; endDate?: string }) =>
+    api.get('/analytics/proposal-funnel', { params }),
+
   // W4.3 firm group
   getFirmGroup: () => api.get('/tenants/firm-group'),
   createFirmGroup: (data: { name: string; slug?: string }) =>
@@ -563,6 +592,9 @@ export const apiClient = {
     api.get('/engagement-library/templates-needing-update'),
   publishEngagementLibraryVersion: (data: { versionLabel: string; changelog?: string }) =>
     api.post('/engagement-library/publish', data),
+  getEngagementLibraryQuarterlySchedule: () => api.get('/engagement-library/quarterly-schedule'),
+  publishQuarterlyEngagementLibrary: () => api.post('/engagement-library/publish-quarterly', {}),
+  simulateQuarterlyEngagementLibrary: () => api.post('/engagement-library/simulate-quarterly', {}),
 
   // Cover Letter Templates (tones: PROFESSIONAL | FRIENDLY | MODERN)
   getCoverLetterTemplates: () => api.get('/cover-letter-templates'),

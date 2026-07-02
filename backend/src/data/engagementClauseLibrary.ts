@@ -5,6 +5,9 @@
  */
 
 import { loadEngagementClausePackages } from './loadEngagementClauses.js';
+import { clauseMatchesRegulatoryBody } from '../utils/professionalBodyClauses.js';
+
+export { REGULATORY_BODY_CLAUSE_TAGS, professionalBodyToClauseTag } from '../utils/professionalBodyClauses.js';
 
 export interface EngagementClause {
   id: string;
@@ -34,13 +37,23 @@ export const ENGAGEMENT_CLAUSE_LIBRARY: EngagementClause[] = mergeClauseLibrarie
   loadEngagementClausePackages()
 );
 
+export interface ClauseSelectionOptions {
+  /** Tenant professional body — filters body-specific clauses (ACCA, ICAEW, ATT, etc.) */
+  professionalBody?: string | null;
+}
+
 export function selectClausesForServices(
-  services: Array<{ name: string; tags?: string }>
+  services: Array<{ name: string; tags?: string }>,
+  options?: ClauseSelectionOptions
 ): EngagementClause[] {
+  const professionalBody = options?.professionalBody;
   const selected = new Map<string, EngagementClause>();
 
+  const includeClause = (clause: EngagementClause): boolean =>
+    clauseMatchesRegulatoryBody(clause.tags, professionalBody);
+
   for (const clause of ENGAGEMENT_CLAUSE_LIBRARY) {
-    if (clause.tags.includes('_always')) {
+    if (clause.tags.includes('_always') && includeClause(clause)) {
       selected.set(clause.id, clause);
     }
   }
@@ -56,6 +69,7 @@ export function selectClausesForServices(
 
   for (const clause of ENGAGEMENT_CLAUSE_LIBRARY) {
     if (clause.tags.includes('_always')) continue;
+    if (!includeClause(clause)) continue;
     const matches = clause.tags.some((tag) =>
       allTags.some((t) => t.includes(tag) || tag.includes(t))
     );

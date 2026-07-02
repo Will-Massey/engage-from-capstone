@@ -893,16 +893,132 @@ router.get(
   })
 );
 
+/** GET /api/analytics/proposal-funnel — sent → opened → viewed → signed → paid */
+router.get(
+  '/proposal-funnel',
+  asyncHandler(async (req, res) => {
+    const tenantId = req.tenantId!;
+    const schema = z.object({
+      startDate: z.string().optional(),
+      endDate: z.string().optional(),
+    });
+    const { startDate, endDate } = schema.parse(req.query);
+
+    const now = new Date();
+    const rangeStart = startDate ? new Date(startDate) : new Date(now.getTime() - 90 * 24 * 60 * 60 * 1000);
+    const rangeEnd = endDate ? new Date(endDate) : now;
+
+    if (Number.isNaN(rangeStart.getTime()) || Number.isNaN(rangeEnd.getTime())) {
+      throw new ApiError('INVALID_DATE', 'Invalid startDate or endDate', 400);
+    }
+
+    rangeEnd.setHours(23, 59, 59, 999);
+    rangeStart.setHours(0, 0, 0, 0);
+
+    const sentWhere = {
+      tenantId,
+      sentAt: { gte: rangeStart, lte: rangeEnd },
+      status: { not: 'DRAFT' as const },
+    };
+
+    const [sentCount, openedCount, viewEventCount, signedCount, paidCount] = await Promise.all([
+      prisma.proposal.count({ where: sentWhere }),
+      prisma.proposal.count({
+        where: { ...sentWhere, viewedAt: { not: null } },
+      }),
+      prisma.proposalView.count({
+        where: {
+          proposal: { tenantId, sentAt: { gte: rangeStart, lte: rangeEnd } },
+        },
+      }),
+      prisma.proposal.count({
+        where: {
+          ...sentWhere,
+          status: { in: ['ACCEPTED', 'ARCHIVED'] },
+          acceptedAt: { not: null },
+        },
+      }),
+      prisma.proposal.count({
+        where: {
+          ...sentWhere,
+          status: 'ACCEPTED',
+          paymentStatus: { in: ['ACTIVE', 'PAID'] },
+        },
+      }),
+    ]);
+
+    const pct = (numerator: number, denominator: number) =>
+      denominator > 0 ? Math.round((numerator / denominator) * 100) : 0;
+
+    res.json({
+      success: true,
+      data: {
+        dateRange: {
+          start: rangeStart.toISOString(),
+          end: rangeEnd.toISOString(),
+        },
+        funnel: {
+          sent: sentCount,
+          opened: openedCount,
+          viewed: viewEventCount,
+          signed: signedCount,
+          paid: paidCount,
+        },
+        conversionRates: {
+          sentToOpened: pct(openedCount, sentCount),
+          openedToSigned: pct(signedCount, openedCount),
+          sentToSigned: pct(signedCount, sentCount),
+          signedToPaid: pct(paidCount, signedCount),
+        },
+        stages: [
+          { key: 'sent', label: 'Sent', count: sentCount, color: 'bg-blue-500' },
+          { key: 'opened', label: 'Opened', count: openedCount, color: 'bg-amber-500' },
+          { key: 'viewed', label: 'View events', count: viewEventCount, color: 'bg-violet-500' },
+          { key: 'signed', label: 'Signed', count: signedCount, color: 'bg-green-500' },
+          { key: 'paid', label: 'Paid', count: paidCount, color: 'bg-emerald-600' },
+        ],
+      },
+    });
+  })
+);
+
 /** GET /api/analytics/fee-benchmarks — anonymised percentile bands (k-anonymity min 5 tenants) */
 router.get(
   '/fee-benchmarks',
-  asyncHandler(async (_req, res) => {
+  asyncHandler(async (req, res) => {
     const { getFeeBenchmarks } = await import('../services/feeBenchmarkService.js');
+    const { getProposalSettings } = await import('../utils/tenantProposalSettings.js');
+
+    const tenant = await prisma.tenant.findUnique({
+      where: { id: req.tenantId! },
+      select: { settings: true },
+    });
+    const proposalSettings = getProposalSettings(tenant?.settings);
+
+    if (!proposalSettings.benchmarksOptIn) {
+      res.json({
+        success: true,
+        data: {
+          benchmarks: [],
+          suppressedCategories: 0,
+          kAnonymityMinTenants: 5,
+          optedIn: false,
+          disclaimer:
+            'Enable "Share anonymised fee data to see benchmarks" in Settings → Communications to view typical fee ranges.',
+          generatedAt: new Date().toISOString(),
+        },
+      });
+      return;
+    }
+
     const data = await getFeeBenchmarks();
 
     res.json({
       success: true,
-      data,
+      data: {
+        ...data,
+        optedIn: true,
+      },
     });
   })
 );

@@ -4,6 +4,10 @@
 export interface ProposalSettings {
   /** Days from creation until the proposal expires if not set per proposal */
   defaultExpiryDays: number;
+  /** Automated reminder emails for unsigned proposals (days after send) */
+  chaseSequenceDays: number[];
+  /** Whether automated chase reminders are enabled */
+  chaseSequenceEnabled: boolean;
   /** Days before validUntil / renewalDate to send reminder emails */
   renewalReminderDays: number;
   /** Invoice payment terms in days (e.g. 7 → "7 days") */
@@ -14,19 +18,35 @@ export interface ProposalSettings {
   termsSource: 'engage_default' | 'custom';
   /** Firm-edited terms template (supports {{PRACTICE_NAME}}, {{PAYMENT_TERMS}}, etc.) */
   customTerms: string | null;
+  /** Opt in to share anonymised fee data and view cross-practice benchmarks */
+  benchmarksOptIn: boolean;
 }
+
+export const DEFAULT_CHASE_SEQUENCE_DAYS = [3, 7, 14] as const;
 
 export const DEFAULT_PROPOSAL_SETTINGS: ProposalSettings = {
   defaultExpiryDays: 30,
+  chaseSequenceDays: [...DEFAULT_CHASE_SEQUENCE_DAYS],
+  chaseSequenceEnabled: true,
   renewalReminderDays: 30,
   defaultPaymentTermsDays: 7,
   cancellationNoticeDays: 30,
   termsSource: 'engage_default',
   customTerms: null,
+  benchmarksOptIn: false,
 };
 
 export function formatPaymentTerms(days: number): string {
   return `${days} day${days === 1 ? '' : 's'}`;
+}
+
+function normaliseChaseSequenceDays(raw: unknown): number[] {
+  if (!Array.isArray(raw)) return [...DEFAULT_CHASE_SEQUENCE_DAYS];
+  const days = raw
+    .map((d) => (typeof d === 'number' ? d : Number.parseInt(String(d), 10)))
+    .filter((d) => Number.isFinite(d) && d >= 1 && d <= 90);
+  const unique = Array.from(new Set(days)).sort((a, b) => a - b);
+  return unique.length ? unique : [...DEFAULT_CHASE_SEQUENCE_DAYS];
 }
 
 export function getProposalSettings(tenantSettingsJson?: string | null): ProposalSettings {
@@ -38,6 +58,11 @@ export function getProposalSettings(tenantSettingsJson?: string | null): Proposa
         typeof p.defaultExpiryDays === 'number' && p.defaultExpiryDays > 0
           ? p.defaultExpiryDays
           : DEFAULT_PROPOSAL_SETTINGS.defaultExpiryDays,
+      chaseSequenceDays: normaliseChaseSequenceDays(p.chaseSequenceDays),
+      chaseSequenceEnabled:
+        typeof p.chaseSequenceEnabled === 'boolean'
+          ? p.chaseSequenceEnabled
+          : DEFAULT_PROPOSAL_SETTINGS.chaseSequenceEnabled,
       renewalReminderDays:
         typeof p.renewalReminderDays === 'number' && p.renewalReminderDays > 0
           ? p.renewalReminderDays
@@ -55,6 +80,7 @@ export function getProposalSettings(tenantSettingsJson?: string | null): Proposa
           ? 'custom'
           : 'engage_default',
       customTerms: typeof p.customTerms === 'string' ? p.customTerms : null,
+      benchmarksOptIn: p.benchmarksOptIn === true,
     };
   } catch {
     return DEFAULT_PROPOSAL_SETTINGS;

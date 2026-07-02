@@ -124,8 +124,11 @@ const Settings = () => {
       renewalReminderDays: 30,
       defaultPaymentTermsDays: 7,
       cancellationNoticeDays: 30,
+      chaseSequenceEnabled: true,
+      chaseSequenceDays: [3, 7, 14] as number[],
       termsSource: 'engage_default' as 'engage_default' | 'custom',
       customTerms: null as string | null,
+      benchmarksOptIn: false,
     },
     notifications: {
       proposalAccepted: true,
@@ -484,6 +487,7 @@ const Settings = () => {
                 typeof p.cancellationNoticeDays === 'number'
                   ? p.cancellationNoticeDays
                   : prev.proposals.cancellationNoticeDays,
+              benchmarksOptIn: p.benchmarksOptIn === true,
             },
           }));
         }
@@ -1078,9 +1082,15 @@ const Settings = () => {
                         <option value="ICAS">ICAS</option>
                         <option value="CIMA">CIMA</option>
                         <option value="AAT">AAT</option>
+                        <option value="ATT">ATT (Association of Taxation Technicians)</option>
+                        <option value="CIOT">CIOT (Chartered Institute of Taxation)</option>
                         <option value="CPAA">CPAA</option>
                         <option value="Other">Other</option>
                       </select>
+                      <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+                        Engagement letter clauses are filtered to match your regulatory body
+                        (ACCA, ICAEW, ICAS, CIMA, AAT, ATT, CIOT).
+                      </p>
                     </div>
                   </div>
                   <div>
@@ -1571,6 +1581,36 @@ const Settings = () => {
                       </p>
                     </div>
                   </div>
+
+                  <div className="pt-4 border-t border-slate-200 dark:border-slate-700">
+                    <label className="flex items-start gap-3 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={communicationsForm.proposals.benchmarksOptIn}
+                        onChange={(e) =>
+                          setCommunicationsForm({
+                            ...communicationsForm,
+                            proposals: {
+                              ...communicationsForm.proposals,
+                              benchmarksOptIn: e.target.checked,
+                            },
+                          })
+                        }
+                        className="mt-1 h-4 w-4 rounded border-slate-300 text-primary-600 focus:ring-primary-200"
+                      />
+                      <span>
+                        <span className="block text-sm font-semibold text-slate-700 dark:text-slate-100">
+                          Share anonymised fee data to see benchmarks
+                        </span>
+                        <span className="block text-xs text-slate-500 dark:text-slate-300 mt-1">
+                          Contribute anonymised proposal line fees to cross-practice percentile bands
+                          shown in the proposal builder. No client or firm identifiers are shared.
+                          Categories with fewer than five contributing practices are withheld.
+                        </span>
+                      </span>
+                    </label>
+                  </div>
+
                   <div className="pt-4 border-t border-slate-200 dark:border-slate-700 flex flex-wrap gap-3">
                     <button
                       onClick={handleSaveCommunications}
@@ -1601,6 +1641,131 @@ const Settings = () => {
                 onSave={handleSaveCommunications}
                 isSaving={isSaving === 'communications'}
               />
+
+              {/* Automated chase reminders */}
+              <div className="glass-tile overflow-hidden">
+                <div className="px-8 py-5 border-b border-slate-200 dark:border-slate-700 bg-white/40 dark:bg-slate-800/30">
+                  <h2 className="text-lg font-semibold text-slate-900 dark:text-white">
+                    Automated chase reminders
+                  </h2>
+                  <p className="text-sm text-slate-500 dark:text-slate-300">
+                    Send reminder emails to clients who have not signed unsigned proposals
+                  </p>
+                </div>
+                <div className="p-6 space-y-4">
+                  <label className="flex items-center gap-3 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={communicationsForm.proposals.chaseSequenceEnabled ?? true}
+                      onChange={(e) =>
+                        setCommunicationsForm({
+                          ...communicationsForm,
+                          proposals: {
+                            ...communicationsForm.proposals,
+                            chaseSequenceEnabled: e.target.checked,
+                          },
+                        })
+                      }
+                      className="h-4 w-4 rounded border-slate-300 text-primary-600 focus:ring-primary-500"
+                    />
+                    <span className="text-sm font-medium text-slate-700 dark:text-slate-100">
+                      Enable automated chase sequence
+                    </span>
+                  </label>
+
+                  <div>
+                    <label className="block text-sm font-semibold text-slate-700 dark:text-slate-100 mb-2">
+                      Reminder days after send
+                    </label>
+                    <div className="flex flex-wrap gap-2">
+                      {(communicationsForm.proposals.chaseSequenceDays ?? [3, 7, 14]).map(
+                        (day, index) => (
+                          <div key={index} className="flex items-center gap-1">
+                            <input
+                              type="number"
+                              min={1}
+                              max={90}
+                              value={day}
+                              disabled={!communicationsForm.proposals.chaseSequenceEnabled}
+                              onChange={(e) => {
+                                const days = [
+                                  ...(communicationsForm.proposals.chaseSequenceDays ?? [3, 7, 14]),
+                                ];
+                                days[index] = Number(e.target.value) || 1;
+                                setCommunicationsForm({
+                                  ...communicationsForm,
+                                  proposals: {
+                                    ...communicationsForm.proposals,
+                                    chaseSequenceDays: days,
+                                  },
+                                });
+                              }}
+                              className="input-field w-20"
+                            />
+                            <span className="text-xs text-slate-500">days</span>
+                            {(communicationsForm.proposals.chaseSequenceDays ?? []).length > 1 && (
+                              <button
+                                type="button"
+                                disabled={!communicationsForm.proposals.chaseSequenceEnabled}
+                                onClick={() => {
+                                  const days = (
+                                    communicationsForm.proposals.chaseSequenceDays ?? [3, 7, 14]
+                                  ).filter((_, i) => i !== index);
+                                  setCommunicationsForm({
+                                    ...communicationsForm,
+                                    proposals: {
+                                      ...communicationsForm.proposals,
+                                      chaseSequenceDays: days.length ? days : [7],
+                                    },
+                                  });
+                                }}
+                                className="text-xs text-red-500 hover:text-red-600 ml-1"
+                              >
+                                Remove
+                              </button>
+                            )}
+                          </div>
+                        )
+                      )}
+                      {(communicationsForm.proposals.chaseSequenceDays ?? []).length < 6 && (
+                        <button
+                          type="button"
+                          disabled={!communicationsForm.proposals.chaseSequenceEnabled}
+                          onClick={() =>
+                            setCommunicationsForm({
+                              ...communicationsForm,
+                              proposals: {
+                                ...communicationsForm.proposals,
+                                chaseSequenceDays: [
+                                  ...(communicationsForm.proposals.chaseSequenceDays ?? [3, 7, 14]),
+                                  21,
+                                ],
+                              },
+                            })
+                          }
+                          className="btn-secondary text-sm py-1 px-3"
+                        >
+                          Add day
+                        </button>
+                      )}
+                    </div>
+                    <p className="mt-2 text-xs text-slate-500 dark:text-slate-300">
+                      Default sequence: 3, 7 and 14 days after the proposal is sent. Clara
+                      personalises chase copy when AI emails are enabled.
+                    </p>
+                  </div>
+
+                  <div className="pt-4 border-t border-slate-200 dark:border-slate-700">
+                    <button
+                      onClick={handleSaveCommunications}
+                      disabled={isSaving === 'communications'}
+                      className="btn-primary"
+                    >
+                      {isSaving === 'communications' ? 'Saving...' : 'Save chase settings'}
+                    </button>
+                  </div>
+                </div>
+              </div>
 
               {/* Notifications */}
               <div className="glass-tile overflow-hidden">

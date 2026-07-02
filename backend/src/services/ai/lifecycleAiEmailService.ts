@@ -59,7 +59,13 @@ async function loadProposalForLifecycle(tenantId: string, proposalId: string) {
       activityLogs: {
         where: {
           action: {
-            in: ['FOLLOW_UP_SENT', 'PROPOSAL_SENT', 'PROPOSAL_VIEWED', 'PROPOSAL_ACCEPTED'],
+            in: [
+              'FOLLOW_UP_SENT',
+              'PROPOSAL_CHASE_SENT',
+              'PROPOSAL_SENT',
+              'PROPOSAL_VIEWED',
+              'PROPOSAL_ACCEPTED',
+            ],
           },
         },
         orderBy: { createdAt: 'desc' },

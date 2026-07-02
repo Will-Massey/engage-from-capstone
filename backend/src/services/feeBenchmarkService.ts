@@ -4,6 +4,7 @@
 
 import { ServiceCategory } from '@prisma/client';
 import { prisma } from '../config/database.js';
+import { getProposalSettings } from '../utils/tenantProposalSettings.js';
 
 const K_ANONYMITY_MIN_TENANTS = 5;
 
@@ -71,6 +72,22 @@ export interface FeeBenchmarkResult {
   kAnonymityMinTenants: number;
   disclaimer: string;
   generatedAt: string;
+  optedIn?: boolean;
+}
+
+/** Tenant IDs that opted in to anonymised fee benchmark sharing */
+export async function getBenchmarkOptInTenantIds(): Promise<Set<string>> {
+  const tenants = await prisma.tenant.findMany({
+    select: { id: true, settings: true },
+  });
+
+  const optedIn = new Set<string>();
+  for (const tenant of tenants) {
+    if (getProposalSettings(tenant.settings).benchmarksOptIn) {
+      optedIn.add(tenant.id);
+    }
+  }
+  return optedIn;
 }
 
 /**
@@ -78,10 +95,24 @@ export interface FeeBenchmarkResult {
  * Categories with fewer than k tenants are suppressed.
  */
 export async function getFeeBenchmarks(): Promise<FeeBenchmarkResult> {
+  const optedInTenantIds = await getBenchmarkOptInTenantIds();
+
+  if (optedInTenantIds.size === 0) {
+    return {
+      benchmarks: [],
+      suppressedCategories: 0,
+      kAnonymityMinTenants: K_ANONYMITY_MIN_TENANTS,
+      disclaimer:
+        'Anonymised percentile bands from accepted and sent proposals across Engage practices that have opted in. No tenant or client identifiers are included. Categories with fewer than five contributing practices are withheld.',
+      generatedAt: new Date().toISOString(),
+    };
+  }
+
   const rows = await prisma.proposalService.findMany({
     where: {
       proposal: {
         status: { in: ['ACCEPTED', 'SENT', 'VIEWED'] },
+        tenantId: { in: [...optedInTenantIds] },
       },
       displayPrice: { gt: 0 },
     },
@@ -150,7 +181,7 @@ export async function getFeeBenchmarks(): Promise<FeeBenchmarkResult> {
     suppressedCategories,
     kAnonymityMinTenants: K_ANONYMITY_MIN_TENANTS,
     disclaimer:
-      'Anonymised percentile bands from accepted and sent proposals across Engage practices. No tenant or client identifiers are included. Categories with fewer than five contributing practices are withheld.',
+      'Anonymised percentile bands from accepted and sent proposals across Engage practices that have opted in. No tenant or client identifiers are included. Categories with fewer than five contributing practices are withheld.',
     generatedAt: new Date().toISOString(),
   };
 }

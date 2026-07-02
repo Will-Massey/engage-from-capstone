@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { ChartBarIcon, InformationCircleIcon } from '@heroicons/react/24/outline';
 import { apiClient } from '../../utils/api';
 
@@ -17,6 +18,7 @@ interface FeeBenchmarkData {
   suppressedCategories: number;
   kAnonymityMinTenants: number;
   disclaimer: string;
+  optedIn?: boolean;
 }
 
 function formatGbp(amount: number): string {
@@ -66,6 +68,28 @@ export default function FeeBenchmarkWidget({ compact = false }: { compact?: bool
     return (
       <div className="rounded-xl border border-slate-200 dark:border-slate-700 p-4 text-sm text-slate-600 dark:text-slate-400">
         {error || 'No benchmark data'}
+      </div>
+    );
+  }
+
+  if (data.optedIn === false) {
+    return (
+      <div className="rounded-xl border border-slate-200 dark:border-slate-700 p-4">
+        <div className="flex items-start gap-2">
+          <InformationCircleIcon className="h-5 w-5 text-slate-500 shrink-0 mt-0.5" />
+          <div>
+            <p className="text-sm font-medium text-slate-900 dark:text-white">
+              Fee benchmarks require opt-in
+            </p>
+            <p className="text-xs text-slate-600 dark:text-slate-400 mt-1">
+              Enable &quot;Share anonymised fee data to see benchmarks&quot; in{' '}
+              <Link to="/settings?tab=communications" className="text-primary-600 hover:underline">
+                Settings → Communications
+              </Link>{' '}
+              to view typical fee ranges.
+            </p>
+          </div>
+        </div>
       </div>
     );
   }

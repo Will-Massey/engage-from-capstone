@@ -49,6 +49,13 @@ import {
   lookupGeoFromIp,
 } from '../utils/signatureAudit.js';
 import {
+  parseProposalCustomFields,
+  getRequiredSigners,
+  hasPricingTiers,
+  calculateTierTotals,
+  findPricingTier,
+} from '../utils/proposalCustomFields.js';
+import {
   createPostSignMandate,
   completeStubMandateForProposal,
   getPublicPaymentConfig,
@@ -533,6 +540,57 @@ router.get(
         ? await getPublicPaymentConfig(proposal.id, proposal.tenantId)
         : null;
 
+    const customFields = parseProposalCustomFields(proposal.customFields);
+    const existingSignatures = await prisma.proposalSignature.findMany({
+      where: { proposalId: proposal.id },
+      orderBy: { signedAt: 'asc' },
+      select: {
+        signedBy: true,
+        signedByRole: true,
+        signedAt: true,
+      },
+    });
+
+    const requiredSigners = getRequiredSigners(customFields);
+    const signaturesReceived = existingSignatures.length;
+    const awaitingAdditionalSigner =
+      proposal.status !== 'ACCEPTED' &&
+      signaturesReceived > 0 &&
+      signaturesReceived < requiredSigners;
+
+    const pricingTiers = hasPricingTiers(customFields)
+      ? customFields.pricingTiers!.map((tier) => ({
+          ...tier,
+          ...calculateTierTotals(
+            {
+              subtotal: proposal.subtotal,
+              vatAmount: proposal.vatAmount,
+              total: proposal.total,
+            },
+            tier
+          ),
+        }))
+      : undefined;
+
+    const selectedTier = customFields.selectedTierId
+      ? findPricingTier(customFields, customFields.selectedTierId)
+      : undefined;
+    const displayTotals =
+      selectedTier && proposal.status !== 'ACCEPTED'
+        ? calculateTierTotals(
+            {
+              subtotal: proposal.subtotal,
+              vatAmount: proposal.vatAmount,
+              total: proposal.total,
+            },
+            selectedTier
+          )
+        : {
+            subtotal: proposal.subtotal,
+            vatAmount: proposal.vatAmount,
+            total: proposal.total,
+          };
+
     // Return proposal data (without sensitive fields)
     res.json({
       success: true,
@@ -542,15 +600,31 @@ router.get(
         title: proposal.title,
         status: proposal.status,
         validUntil: proposal.validUntil,
-        subtotal: proposal.subtotal,
-        vatAmount: proposal.vatAmount,
-        total: proposal.total,
+        subtotal: displayTotals.subtotal,
+        vatAmount: displayTotals.vatAmount,
+        total: displayTotals.total,
+        baseSubtotal: proposal.subtotal,
+        baseVatAmount: proposal.vatAmount,
+        baseTotal: proposal.total,
         paymentTerms: proposal.paymentTerms,
         coverLetter: proposal.coverLetter,
         proposalSummary: proposal.proposalSummary,
         terms: proposal.terms,
         engagementLetter: proposal.engagementLetter,
         payment: paymentConfig,
+        customFields: {
+          offerThreePackages: customFields.offerThreePackages ?? false,
+          pricingTiers,
+          requiredSigners,
+          selectedTierId: customFields.selectedTierId,
+          selectedTierLabel: customFields.selectedTierLabel,
+        },
+        signing: {
+          requiredSigners,
+          signaturesReceived,
+          awaitingAdditionalSigner,
+          existingSignatures,
+        },
         client: {
           name: proposal.client.name,
           contactName: proposal.client.contactName,
@@ -711,6 +785,7 @@ router.post(
       authorisedToSign: z.boolean(),
       deviceInfo: z.string().optional(),
       consentText: z.string().optional(),
+      selectedTierId: z.string().optional(),
     });
 
     const parsed = schema.parse(req.body);
@@ -726,6 +801,20 @@ router.post(
       throw new ApiError(
         'PROPOSAL_ALREADY_ACCEPTED',
         'This proposal has already been accepted',
+        400
+      );
+    }
+
+    const customFields = parseProposalCustomFields(proposal.customFields);
+    const requiredSigners = getRequiredSigners(customFields);
+    const existingSignatures = await prisma.proposalSignature.count({
+      where: { proposalId: proposal.id },
+    });
+
+    if (existingSignatures >= requiredSigners) {
+      throw new ApiError(
+        'SIGNATURES_COMPLETE',
+        'All required signatures have already been collected',
         400
       );
     }
@@ -767,47 +856,61 @@ router.post(
       signatureType: 'SIMPLE_ELECTRONIC',
       agreementVersion: AGREEMENT_VERSION,
       tenantId: proposal.tenantId,
+      selectedTierId: parsed.selectedTierId,
     });
 
     if (!result.success) {
       throw new ApiError('SIGNATURE_FAILED', result.error || 'Failed to record signature', 500);
     }
 
-    // Personalised acceptance notification to account admin(s)
-    try {
-      const { sendPracticeAcceptanceNotifications } = await import(
-        '../services/acceptanceNotificationService.js'
-      );
-      await sendPracticeAcceptanceNotifications({
-        proposalId: proposal.id,
-        tenantId: proposal.tenantId,
-        signatureId: result.signatureId!,
-        signedBy: parsed.signedBy,
-        signedByRole: parsed.signedByRole,
-        signerEmail: parsed.signerEmail,
-      });
-    } catch (error) {
-      logger.error('Failed to send acceptance notification:', error);
-      // Don't fail the request - signature was still recorded
+    // Notify practice only when all required signatories have signed
+    if (result.fullyAccepted) {
+      try {
+        const { sendPracticeAcceptanceNotifications } = await import(
+          '../services/acceptanceNotificationService.js'
+        );
+        await sendPracticeAcceptanceNotifications({
+          proposalId: proposal.id,
+          tenantId: proposal.tenantId,
+          signatureId: result.signatureId!,
+          signedBy: parsed.signedBy,
+          signedByRole: parsed.signedByRole,
+          signerEmail: parsed.signerEmail,
+        });
+      } catch (error) {
+        logger.error('Failed to send acceptance notification:', error);
+      }
     }
 
-    const collectPayment = await shouldCollectPaymentAtSign(proposal.tenantId);
-    const paymentConfig = await getPublicPaymentConfig(proposal.id, proposal.tenantId);
+    const collectPayment = result.fullyAccepted
+      ? await shouldCollectPaymentAtSign(proposal.tenantId)
+      : false;
+    const paymentConfig = result.fullyAccepted
+      ? await getPublicPaymentConfig(proposal.id, proposal.tenantId)
+      : null;
 
     res.json({
       success: true,
-      message: 'Proposal accepted successfully',
+      message: result.pendingAdditionalSigner
+        ? 'Signature recorded — additional signatory required'
+        : 'Proposal accepted successfully',
       data: {
-        acceptedAt: new Date(),
-        acceptedBy: parsed.signedBy,
+        acceptedAt: result.fullyAccepted ? new Date() : undefined,
+        acceptedBy: result.fullyAccepted ? parsed.signedBy : undefined,
         signatureId: result.signatureId,
-        payment: {
-          collectPaymentAtSign: collectPayment,
-          paymentRequired: paymentConfig.paymentRequired,
-          provider: paymentConfig.provider,
-          isStub: paymentConfig.isStub,
-          methods: paymentConfig.methods,
-        },
+        pendingAdditionalSigner: result.pendingAdditionalSigner ?? false,
+        signaturesReceived: result.signaturesReceived,
+        requiredSigners: result.requiredSigners,
+        fullyAccepted: result.fullyAccepted ?? false,
+        payment: paymentConfig
+          ? {
+              collectPaymentAtSign: collectPayment,
+              paymentRequired: paymentConfig.paymentRequired,
+              provider: paymentConfig.provider,
+              isStub: paymentConfig.isStub,
+              methods: paymentConfig.methods,
+            }
+          : null,
       },
     });
   })

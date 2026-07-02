@@ -49,7 +49,7 @@ const createTenantSchema = z.object({
     .object({
       defaultCurrency: z.string().default('GBP'),
       vatRegistered: z.boolean().default(true),
-      professionalBody: z.enum(['ACCA', 'ICAEW', 'AAT', 'CIMA', 'ICAS', 'CTA', 'CPAA']).optional(),
+      professionalBody: z.enum(['ACCA', 'ICAEW', 'AAT', 'CIMA', 'ICAS', 'ATT', 'CIOT', 'CTA', 'CPAA']).optional(),
       companyRegistration: z.string().optional(),
       vatNumber: z.string().optional(),
       address: z
@@ -81,7 +81,7 @@ const updateTenantSchema = z.object({
       defaultCurrency: z.string().optional(),
       defaultPaymentTerms: z.number().optional(),
       vatRegistered: z.boolean().optional(),
-      professionalBody: z.enum(['ACCA', 'ICAEW', 'AAT', 'CIMA', 'ICAS', 'CTA', 'CPAA']).optional(),
+      professionalBody: z.enum(['ACCA', 'ICAEW', 'AAT', 'CIMA', 'ICAS', 'ATT', 'CIOT', 'CTA', 'CPAA']).optional(),
       companyRegistration: z.string().optional(),
       vatNumber: z.string().optional(),
       address: z
@@ -746,11 +746,14 @@ router.put(
       proposals: z
         .object({
           defaultExpiryDays: z.number().int().min(1).max(365).optional(),
+          chaseSequenceDays: z.array(z.number().int().min(1).max(90)).max(10).optional(),
+          chaseSequenceEnabled: z.boolean().optional(),
           renewalReminderDays: z.number().int().min(1).max(90).optional(),
           defaultPaymentTermsDays: z.number().int().min(1).max(90).optional(),
           cancellationNoticeDays: z.number().int().min(1).max(365).optional(),
           termsSource: z.enum(['engage_default', 'custom']).optional(),
           customTerms: z.string().max(50000).nullable().optional(),
+          benchmarksOptIn: z.boolean().optional(),
         })
         .optional(),
       payments: z
@@ -761,7 +764,7 @@ router.put(
         })
         .optional(),
       professionalBody: z
-        .enum(['ACCA', 'ICAEW', 'ICAS', 'CIMA', 'AAT', 'CPAA', 'OTHER'])
+        .enum(['ACCA', 'ICAEW', 'ICAS', 'CIMA', 'AAT', 'ATT', 'CIOT', 'CPAA', 'OTHER'])
         .optional(),
       companyRegistration: z.string().optional(),
       phone: z.string().optional(),
@@ -784,7 +787,7 @@ router.put(
       integrations: z
         .object({
           webhookUrl: z.string().url().optional().or(z.literal('')),
-          webhookFormat: z.enum(['default', 'hubspot']).optional(),
+          webhookFormat: z.enum(['default', 'hubspot', 'zapier', 'senta', 'karbon']).optional(),
         })
         .optional(),
     });
@@ -922,7 +925,7 @@ router.post(
   asyncHandler(async (req, res) => {
     const body = z
       .object({
-        format: z.enum(['default', 'hubspot']).optional(),
+        format: z.enum(['default', 'hubspot', 'zapier', 'senta', 'karbon']).optional(),
       })
       .parse(req.body ?? {});
 

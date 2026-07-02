@@ -1,14 +1,20 @@
 /**
- * AML partner scaffold routes (W3.3)
- * POST /api/aml/check     — initiate AML check (SmartSearch/Creditsafe stub)
- * POST /api/aml/webhook   — partner results webhook
+ * AML partner routes (W3.3)
+ * POST /api/aml/check            — initiate AML check (SmartSearch/Creditsafe / demo stub)
+ * GET  /api/aml/status/:clientId — staff panel AML status
+ * POST /api/aml/webhook          — partner results webhook
  */
 
 import { Router } from 'express';
 import { z } from 'zod';
 import { authenticate, authorize } from '../middleware/auth.js';
 import { asyncHandler, ApiError } from '../middleware/errorHandler.js';
-import { initiateAmlCheck, processAmlWebhook } from '../services/amlService.js';
+import {
+  getAmlPartnerConfig,
+  getAmlStatusForClient,
+  initiateAmlCheck,
+  processAmlWebhook,
+} from '../services/amlService.js';
 import logger from '../config/logger.js';
 
 const router = Router();
@@ -54,6 +60,36 @@ router.post(
         throw new ApiError('CLIENT_NOT_FOUND', 'Client not found', 404);
       }
       throw new ApiError('AML_CHECK_FAILED', msg, 500);
+    }
+  })
+);
+
+/**
+ * GET /api/aml/status/:clientId
+ * Staff panel — live/demo mode, provider, last check status.
+ */
+router.get(
+  '/status/:clientId',
+  authenticate,
+  authorize('ADMIN', 'PARTNER', 'MANAGER'),
+  asyncHandler(async (req, res) => {
+    try {
+      const status = await getAmlStatusForClient(req.tenantId!, req.params.clientId);
+      const config = getAmlPartnerConfig();
+
+      res.json({
+        success: true,
+        data: {
+          ...status,
+          config,
+        },
+      });
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Failed to load AML status';
+      if (msg.includes('not found')) {
+        throw new ApiError('CLIENT_NOT_FOUND', 'Client not found', 404);
+      }
+      throw new ApiError('AML_STATUS_FAILED', msg, 500);
     }
   })
 );

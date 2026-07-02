@@ -22,6 +22,7 @@ import { format, formatDistanceToNow } from 'date-fns';
 import { motion } from 'framer-motion';
 import toast from 'react-hot-toast';
 import AmlPartnerPanel from '../../components/clients/AmlPartnerPanel';
+import LoeOnlyModal from '../../components/proposals/LoeOnlyModal';
 
 const ClientDetail = () => {
   const { id } = useParams<{ id: string }>();
@@ -32,6 +33,7 @@ const ClientDetail = () => {
   const [showEditModal, setShowEditModal] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [isVerifyingId, setIsVerifyingId] = useState(false);
+  const [showLoeOnlyModal, setShowLoeOnlyModal] = useState(false);
 
   // Edit form state
   const [editForm, setEditForm] = useState({
@@ -208,6 +210,14 @@ const ClientDetail = () => {
             <DocumentTextIcon className="h-4 w-4 mr-2" />
             New Proposal
           </Link>
+          <button
+            type="button"
+            onClick={() => setShowLoeOnlyModal(true)}
+            className="btn-secondary"
+          >
+            <DocumentTextIcon className="h-4 w-4 mr-2" />
+            Send engagement letter only
+          </button>
           <button
             onClick={handleRequestIdVerification}
             disabled={isVerifyingId}
@@ -712,6 +722,14 @@ const ClientDetail = () => {
             </div>
           </div>
         </div>
+      )}
+
+      {showLoeOnlyModal && client && (
+        <LoeOnlyModal
+          clientId={client.id}
+          clientName={client.name}
+          onClose={() => setShowLoeOnlyModal(false)}
+        />
       )}
     </div>
   );

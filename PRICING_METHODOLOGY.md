@@ -8,6 +8,7 @@ Value-based pricing calculator for UK accountants. **Rule engine only** — Clar
 |--------|------|-------------|
 | `POST` | `/api/pricing/suggest-fees` | Rule-based fee suggestions (authenticated) |
 | `POST` | `/api/pricing/explain` | Optional Clara explanation (authenticated, AI budget check) |
+| `POST` | `/api/pricing/contingent-fee` | Contingent tax advisory fee from estimated saving (authenticated) |
 
 ## Frontend
 
@@ -124,6 +125,10 @@ feeHigh      = round(suggestedPrice × 1.10)
 
 Monthly totals normalise quarterly/annual lines to monthly equivalents for comparison. Annual total sums each line’s `annualEquivalent`.
 
+### 7. Contingent fees (tax advisory)
+
+For tax planning and dispute work, firms often charge a **contingent fee** — a percentage of the client’s estimated tax saving rather than a fixed quote. Engage calculates this deterministically: `fee = estimatedSavingGbp × (percentOfSaving ÷ 100)`, then applies an optional **cap** (maximum fee) and **floor** (minimum fee). The result includes a plain-English explanation suitable for proposal lines. In the proposal builder, add a Tax-category service, open the contingent fee panel, enter the estimated saving and percentage, then **Apply to line** to set a one-off fee on that service.
+
 ---
 
 ## Example: £250k Ltd with payroll
@@ -168,6 +173,9 @@ Monthly totals normalise quarterly/annual lines to monthly equivalents for compa
 | `backend/src/index.ts` | Mount `/api/pricing` |
 | `backend/src/services/__tests__/pricingMethodology.test.ts` | Unit tests |
 | `frontend/src/components/pricing/PricingCalculator.tsx` | Calculator UI |
+| `frontend/src/components/pricing/ContingentFeeCalculator.tsx` | Contingent tax fee UI |
+| `frontend/src/components/pricing/FeeBenchmarkChips.tsx` | In-builder benchmark chips |
+| `backend/src/services/contingentFeeCalculator.ts` | Contingent fee rule engine |
 | `frontend/src/pages/pricing/PricingCalculatorPage.tsx` | Full page |
 | `frontend/src/pages/services/Services.tsx` | Embedded section |
 | `frontend/src/utils/pricingSuggestionStorage.ts` | Proposal handoff |
@@ -184,4 +192,4 @@ Monthly totals normalise quarterly/annual lines to monthly equivalents for compa
 - No LLM in `/suggest-fees` — deterministic and cacheable.
 - Clara `/explain` checks AI token budget before one cheap completion.
 - Unmatched catalogue names are flagged in UI; user can import UK templates via Services → seed/import flows.
-- Feeds **W4.1** anonymised fee benchmarks (future).
+- Feeds **W4.1** anonymised fee benchmarks when the practice opts in via Settings → Communications.

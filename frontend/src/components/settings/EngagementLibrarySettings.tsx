@@ -35,18 +35,27 @@ export default function EngagementLibrarySettings() {
   const [loading, setLoading] = useState(true);
   const [publishing, setPublishing] = useState(false);
   const [publishForm, setPublishForm] = useState({ versionLabel: '', changelog: '' });
+  const [quarterlySchedule, setQuarterlySchedule] = useState<{
+    nextQuarterlyReview?: string;
+    currentQuarterLabel?: string;
+    currentQuarterPublished?: boolean;
+    isReviewDayToday?: boolean;
+  } | null>(null);
+  const [simulatingQuarterly, setSimulatingQuarterly] = useState(false);
 
   const load = async () => {
     setLoading(true);
     try {
-      const [currentRes, versionsRes, statusRes] = await Promise.all([
+      const [currentRes, versionsRes, statusRes, scheduleRes] = await Promise.all([
         apiClient.getEngagementLibraryCurrent(),
         apiClient.getEngagementLibraryVersions(),
         apiClient.getEngagementLibraryTemplatesNeedingUpdate(),
+        apiClient.getEngagementLibraryQuarterlySchedule(),
       ]);
 
       setCurrent((currentRes as any).data || null);
       setVersions((versionsRes as any).data || []);
+      setQuarterlySchedule((scheduleRes as any).data || null);
       const status = (statusRes as any).data || {};
       setProposalTemplates(status.proposalTemplates || []);
       setCoverLetterTemplates(status.coverLetterTemplates || []);
@@ -90,6 +99,28 @@ export default function EngagementLibrarySettings() {
     }
   };
 
+  const handleSimulateQuarterly = async () => {
+    setSimulatingQuarterly(true);
+    try {
+      const res = (await apiClient.simulateQuarterlyEngagementLibrary()) as any;
+      if (res.data?.skipped) {
+        toast(res.data.reason || 'Quarterly version already published', { icon: 'ℹ️' });
+      } else {
+        const flagged =
+          (res.data?.proposalTemplatesFlagged || 0) +
+          (res.data?.coverLetterTemplatesFlagged || 0);
+        toast.success(
+          `Simulated quarterly release ${res.data?.versionLabel}. ${flagged} template(s) flagged.`
+        );
+      }
+      await load();
+    } catch (e: any) {
+      toast.error(e?.response?.data?.error?.message || 'Failed to simulate quarterly release');
+    } finally {
+      setSimulatingQuarterly(false);
+    }
+  };
+
   const totalNeedingUpdate = proposalTemplates.length + coverLetterTemplates.length;
 
   return (
@@ -113,6 +144,43 @@ export default function EngagementLibrarySettings() {
           <p className="text-sm text-slate-500 dark:text-slate-300">Loading library status…</p>
         ) : (
           <>
+            {quarterlySchedule && (
+              <div className="rounded-xl border border-primary-200 dark:border-primary-900/50 bg-primary-50/50 dark:bg-primary-950/20 p-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                <div>
+                  <p className="text-xs font-medium uppercase tracking-wide text-primary-700 dark:text-primary-300">
+                    Next quarterly review
+                  </p>
+                  <p className="mt-1 text-sm font-semibold text-slate-900 dark:text-white">
+                    {quarterlySchedule.nextQuarterlyReview
+                      ? new Date(quarterlySchedule.nextQuarterlyReview).toLocaleDateString('en-GB', {
+                          weekday: 'long',
+                          day: 'numeric',
+                          month: 'long',
+                          year: 'numeric',
+                        })
+                      : '—'}
+                  </p>
+                  <p className="mt-1 text-xs text-slate-500 dark:text-slate-300">
+                    Current quarter: {quarterlySchedule.currentQuarterLabel || '—'}
+                    {quarterlySchedule.currentQuarterPublished
+                      ? ' · published'
+                      : ' · awaiting release'}
+                    {quarterlySchedule.isReviewDayToday ? ' · review due today' : ''}
+                  </p>
+                </div>
+                {isAdmin && (
+                  <button
+                    type="button"
+                    onClick={handleSimulateQuarterly}
+                    disabled={simulatingQuarterly}
+                    className="btn-secondary text-sm whitespace-nowrap"
+                  >
+                    {simulatingQuarterly ? 'Simulating…' : 'Simulate quarterly release'}
+                  </button>
+                )}
+              </div>
+            )}
+
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div className="rounded-xl border border-slate-200 dark:border-slate-700 p-4 bg-white/50 dark:bg-slate-900/40">
                 <p className="text-xs font-medium uppercase tracking-wide text-slate-500 dark:text-slate-400">
