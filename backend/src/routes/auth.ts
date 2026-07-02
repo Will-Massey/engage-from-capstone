@@ -24,7 +24,7 @@ import { twoFactorService } from '../services/twoFactorService.js';
 import { passwordResetService } from '../services/passwordResetService.js';
 import { gdprService } from '../services/gdprService.js';
 import { createEmailService } from '../services/emailService.js';
-import { setAuthCookies, clearAuthCookies } from '../utils/authCookies.js';
+import { setAuthCookies, clearAuthCookies, issueCsrfToken } from '../utils/authCookies.js';
 
 const router = Router();
 const JWT_SECRET = process.env.JWT_SECRET!;
@@ -62,11 +62,12 @@ async function issueAuthSession(
   });
 
   const refreshToken = await generateRefreshToken(user.id);
-  setAuthCookies(res, accessToken, refreshToken);
+  const { csrfToken } = setAuthCookies(res, accessToken, refreshToken);
 
   res.json({
     success: true,
     data: {
+      csrfToken,
       user: {
         id: user.id,
         email: user.email,
@@ -278,11 +279,12 @@ router.post(
 
     const refreshToken = await generateRefreshToken(user.id);
 
-    setAuthCookies(res, accessToken, refreshToken);
+    const { csrfToken } = setAuthCookies(res, accessToken, refreshToken);
 
     res.status(201).json({
       success: true,
       data: {
+        csrfToken,
         user: {
           id: user.id,
           email: user.email,
@@ -355,12 +357,13 @@ router.post(
       where: { id: tokenRecord.id },
     });
 
-    setAuthCookies(res, accessToken, newRefreshToken);
+    const { csrfToken } = setAuthCookies(res, accessToken, newRefreshToken);
 
     res.json({
       success: true,
       data: {
         message: 'Session refreshed',
+        csrfToken,
       },
     });
   })
@@ -416,9 +419,12 @@ router.get(
       throw new ApiError('USER_NOT_FOUND', 'User not found', 404);
     }
 
+    const csrfToken = issueCsrfToken(res);
+
     res.json({
       success: true,
       data: {
+        csrfToken,
         user: {
           id: user.id,
           email: user.email,

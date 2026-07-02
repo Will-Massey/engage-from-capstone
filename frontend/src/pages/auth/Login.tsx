@@ -4,7 +4,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { EyeIcon, EyeSlashIcon, ShieldCheckIcon } from '@heroicons/react/24/outline';
-import { apiClient, clearCsrfCache } from '../../utils/api';
+import { apiClient, clearCsrfCache, rememberCsrfToken } from '../../utils/api';
 import { useAuthStore } from '../../stores/authStore';
 import toast from 'react-hot-toast';
 
@@ -55,6 +55,7 @@ const Login = () => {
         }
 
         setSession(response.data.user, response.data.user.tenant);
+        rememberCsrfToken(response.data.csrfToken);
         toast.success('Welcome to Engage!');
         navigate('/');
       }
@@ -82,6 +83,7 @@ const Login = () => {
 
       if (response.success) {
         setSession(response.data.user, response.data.user.tenant);
+        rememberCsrfToken(response.data.csrfToken);
         toast.success('Welcome to Engage!');
         navigate('/');
       }

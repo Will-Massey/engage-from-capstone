@@ -11,6 +11,7 @@ import {
 } from '../middleware/auth.js';
 import { allowPublicTenantSignup } from '../utils/securityFlags.js';
 import { setAuthCookies } from '../utils/authCookies.js';
+import { scheduleTenantLibraryProvision } from '../services/tenantLibraryProvisionService.js';
 import { buildTrialSettings } from '../services/subscriptionService.js';
 import { sendTestIntegrationWebhook } from '../services/integrationEvents.js';
 import {
@@ -180,11 +181,14 @@ router.post(
     });
 
     const refreshToken = await generateRefreshToken(result.user.id);
-    setAuthCookies(res, token, refreshToken);
+    const { csrfToken } = setAuthCookies(res, token, refreshToken);
+
+    scheduleTenantLibraryProvision(result.tenant.id, result.user.id);
 
     res.status(201).json({
       success: true,
       data: {
+        csrfToken,
         tenant: {
           id: result.tenant.id,
           subdomain: result.tenant.subdomain,

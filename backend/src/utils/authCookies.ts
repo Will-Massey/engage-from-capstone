@@ -6,7 +6,7 @@ export function setAuthCookies(
   res: Response,
   accessToken: string,
   refreshToken: string
-): void {
+): { csrfToken: string } {
   const isProduction = process.env.NODE_ENV === 'production';
 
   res.cookie('accessToken', accessToken, {
@@ -31,6 +31,22 @@ export function setAuthCookies(
     sameSite: isProduction ? 'none' : 'strict',
     maxAge: 24 * 60 * 60 * 1000,
   });
+
+  return { csrfToken };
+}
+
+/** Issue a fresh CSRF token (session bootstrap without rotating JWT cookies). */
+export function issueCsrfToken(res: Response): string {
+  const isProduction = process.env.NODE_ENV === 'production';
+  const csrfToken = generateCsrfToken();
+  registerCsrfToken(csrfToken);
+  res.cookie('csrfToken', csrfToken, {
+    httpOnly: false,
+    secure: isProduction,
+    sameSite: isProduction ? 'none' : 'strict',
+    maxAge: 24 * 60 * 60 * 1000,
+  });
+  return csrfToken;
 }
 
 export function clearAuthCookies(res: Response): void {

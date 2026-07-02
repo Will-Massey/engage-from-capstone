@@ -67,6 +67,20 @@ export function clearCsrfCache(): void {
   csrfTokenPromise = null;
 }
 
+/** Store CSRF from auth responses (cross-domain — cookie not readable by JS). */
+export function rememberCsrfToken(token: string | undefined | null): void {
+  if (token && token !== 'undefined') {
+    csrfTokenInMemory = token;
+  }
+}
+
+function captureCsrfFromPayload(payload: unknown): void {
+  if (!payload || typeof payload !== 'object') return;
+  const data = (payload as { data?: { csrfToken?: string }; csrfToken?: string }).data;
+  const token = data?.csrfToken ?? (payload as { csrfToken?: string }).csrfToken;
+  rememberCsrfToken(token);
+}
+
 // Fetch CSRF token from backend
 let csrfTokenPromise: Promise<string> | null = null;
 const fetchCsrfToken = async (): Promise<string> => {
@@ -127,7 +141,7 @@ api.interceptors.request.use(
         config.headers['X-CSRF-Token'] = csrfToken;
         if (import.meta.env.DEV) console.log('[CSRF] Token added to request');
       } else {
-        console.warn('[CSRF] No token available for request');
+        console.error('[CSRF] No token available — request will fail CSRF check');
       }
     }
 
@@ -141,6 +155,7 @@ api.interceptors.request.use(
 // Response interceptor
 api.interceptors.response.use(
   (response) => {
+    captureCsrfFromPayload(response.data);
     return response.data;
   },
   async (error: AxiosError) => {
@@ -151,24 +166,17 @@ api.interceptors.response.use(
       const errorMessage = data?.error?.message || 'An error occurred';
       const errorCode = data?.error?.code;
 
-      // Handle CSRF errors with automatic retry
+      // Handle CSRF errors with automatic retry (once)
       if (errorCode === 'CSRF_MISSING' || errorCode === 'CSRF_INVALID') {
-        if (import.meta.env.DEV) console.log('[CSRF] Token invalid, fetching new token and retrying...');
-
-        // Clear the cached token to force a refresh
-        csrfTokenInMemory = null;
-
-        // Get the original request config
-        const originalRequest = error.config;
-        if (originalRequest) {
+        const originalRequest = error.config as typeof error.config & { _csrfRetry?: boolean };
+        if (originalRequest && !originalRequest._csrfRetry) {
+          originalRequest._csrfRetry = true;
+          csrfTokenInMemory = null;
           try {
-            // Fetch a new CSRF token
+            await api.get('/auth/me');
             const newToken = await fetchCsrfToken();
             if (newToken) {
-              // Update the request with the new token
               originalRequest.headers['X-CSRF-Token'] = newToken;
-              if (import.meta.env.DEV) console.log('[CSRF] Retrying request with new token');
-              // Retry the request
               return api(originalRequest);
             }
           } catch (retryError) {
@@ -176,10 +184,12 @@ api.interceptors.response.use(
           }
         }
 
-        toast.error('Security token expired. Please try again.');
+        if (!isPublicClientPage() && !isAuthPage()) {
+          toast.error('Security token expired. Please refresh the page or log in again.');
+        }
         return Promise.reject({
           code: errorCode,
-          message: 'Security token expired. Please try again.',
+          message: 'Security token expired. Please refresh the page or log in again.',
           status: response.status,
         });
       }

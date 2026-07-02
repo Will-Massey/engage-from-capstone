@@ -13,15 +13,10 @@ import {
   seedProposalTemplatesForTenant,
   sanityCheckTemplatePricing,
   getExpectedPackageCount,
-  ensureProposalTemplateLibraryForTenant,
-  backfillLibraryTemplateFlagsForTenant,
   countLibraryTemplatesForTenant,
 } from '../services/proposalTemplateSeedService.js';
-import {
-  countActiveServicesForTenant,
-  ensureTenantUkServiceCatalogue,
-  getMinimumCatalogueForLibrary,
-} from '../services/catalogueSeedService.js';
+import { countActiveServicesForTenant } from '../services/catalogueSeedService.js';
+import { provisionTenantEngageLibraryBatched } from '../services/tenantLibraryProvisionService.js';
 
 const router = Router();
 
@@ -115,25 +110,17 @@ router.get(
   asyncHandler(async (req, res) => {
     const expected = getExpectedPackageCount();
     let libraryCount = await countLibraryTemplatesForTenant(req.tenantId!);
-    const minCatalogue = getMinimumCatalogueForLibrary();
     let catalogueCount = await countActiveServicesForTenant(req.tenantId!);
+    let libraryComplete = libraryCount >= expected;
 
-    // Template packages resolve services by exact name — import UK catalogue first when thin
-    if (libraryCount < expected && catalogueCount < minCatalogue) {
-      await ensureTenantUkServiceCatalogue(req.tenantId!);
+    if (!libraryComplete) {
+      const provision = await provisionTenantEngageLibraryBatched(req.tenantId!, req.user!.id, {
+        maxBatches: 4,
+        batchSize: 50,
+      });
+      libraryCount = provision.libraryActive;
+      libraryComplete = provision.libraryComplete;
       catalogueCount = await countActiveServicesForTenant(req.tenantId!);
-    }
-
-    // Backfill isDefault for templates seeded before the library flag existed
-    if (libraryCount < expected) {
-      await backfillLibraryTemplateFlagsForTenant(req.tenantId!);
-      libraryCount = await countLibraryTemplatesForTenant(req.tenantId!);
-    }
-
-    // Auto-seed missing Engage library packages (idempotent — never deletes custom templates)
-    if (libraryCount < expected) {
-      await ensureProposalTemplateLibraryForTenant(req.tenantId!, req.user!.id);
-      libraryCount = await countLibraryTemplatesForTenant(req.tenantId!);
     }
 
     const templates = await prisma.proposalTemplate.findMany({
@@ -170,7 +157,7 @@ router.get(
         customActive: templates.filter((t) => t.isDefault !== true).length,
         totalActive: templates.length,
         catalogueActive: catalogueCount,
-        libraryComplete: libraryCount >= expected,
+        libraryComplete,
       },
     });
   })

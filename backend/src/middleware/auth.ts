@@ -306,7 +306,7 @@ export const csrfProtection = async (
     '/aml/webhook', // AML partner results webhook
     '/admin/seed-services', // One-click admin seed endpoint
     '/automation/migrate-service-pricing', // Data migration endpoint (protected by secret key)
-    '/setup/migrate-pricing', // v2 pricing data migration
+    '/setup', // ops setup (migrate-pricing, seed-tenant-library, clear-login-lockout)
   ];
   if (publicPaths.some((path) => req.path.startsWith(path))) {
     next();

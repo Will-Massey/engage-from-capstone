@@ -4,6 +4,7 @@ import bcrypt from 'bcryptjs';
 import { z } from 'zod';
 import { asyncHandler } from '../middleware/errorHandler.js';
 import { clearLoginAttempts } from '../utils/loginLockout.js';
+import { provisionTenantEngageLibrary } from '../services/tenantLibraryProvisionService.js';
 
 const router = Router();
 const prisma = new PrismaClient();
@@ -203,6 +204,57 @@ router.post(
       success: true,
       message: `Login lockout cleared for ${email}`,
       tenantId: resolvedTenantId,
+    });
+  })
+);
+
+/**
+ * POST /api/setup/seed-tenant-library
+ * Ops: import UK catalogue + seed Engage proposal library for a tenant (by user email).
+ * Requires X-Migration-Key when MIGRATION_SECRET_KEY is set.
+ */
+router.post(
+  '/seed-tenant-library',
+  asyncHandler(async (req, res) => {
+    if (!setupEnabled) {
+      res.status(404).json({ success: false, error: 'Not found' });
+      return;
+    }
+
+    const expected = process.env.MIGRATION_SECRET_KEY;
+    if (!expected) {
+      res.status(503).json({
+        success: false,
+        error: 'Migration endpoint not configured (missing MIGRATION_SECRET_KEY)',
+      });
+      return;
+    }
+
+    const secret = req.headers['x-migration-key'];
+    if (secret !== expected) {
+      return res.status(403).json({ success: false, error: 'Invalid key' });
+    }
+
+    const { email } = z.object({ email: z.string().email() }).parse(req.body);
+    const user = await prisma.user.findFirst({
+      where: { email: email.toLowerCase(), isActive: true },
+      select: { id: true, tenantId: true, email: true },
+    });
+
+    if (!user) {
+      res.status(404).json({ success: false, error: 'User not found' });
+      return;
+    }
+
+    const result = await provisionTenantEngageLibrary(user.tenantId, user.id);
+
+    res.json({
+      success: true,
+      data: {
+        email: user.email,
+        tenantId: user.tenantId,
+        ...result,
+      },
     });
   })
 );
