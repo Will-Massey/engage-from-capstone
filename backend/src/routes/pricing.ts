@@ -157,10 +157,16 @@ const contingentFeeSchema = z.object({
 router.post(
   '/contingent-fee',
   asyncHandler(async (req, res) => {
-    const input = contingentFeeSchema.parse(req.body);
+    const { estimatedSavingGbp, percentOfSaving, capGbp, floorGbp } =
+      contingentFeeSchema.parse(req.body);
 
     try {
-      const result = calculateContingentFee(input);
+      const result = calculateContingentFee({
+        estimatedSavingGbp,
+        percentOfSaving,
+        capGbp,
+        floorGbp,
+      });
       res.json({ success: true, data: result });
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Invalid contingent fee inputs';
