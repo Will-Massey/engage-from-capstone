@@ -5,13 +5,13 @@
 **Market leader:** UK proposal-to-cash platform — CH lookup → priced proposal → signed engagement → collected fees, with Clara AI that saves 30+ min/proposal without token overspend. Full plan: `MARKET_LEADER_PLAN.md`.
 
 ## Current Phase
-**Build 3.1** — Template library auto-seed + lifecycle touchpoint copy deployed; Caroline template UAT next
+**Build 3.1** — Templates library UAT passed (143 Engage library); Automation touchpoint UAT next
 
 ## Next Up
 <!-- 3–5 bullets ONLY. Next fresh session starts here. Rewrite every checkpoint. -->
-1. Caroline UAT: open **Templates** — confirm full Engage library + her custom template (not replaced).
-2. Caroline UAT: **Settings → Automation** — all 13 stages show populated subjects; test restore-default wording.
-3. Smoke: create custom proposal template; verify it appears under **Yours** filter alongside library.
+1. Caroline UAT: **Settings → Automation** — all 13 stages show populated subjects; test restore-default wording.
+2. Smoke: create custom proposal template; verify it appears under **Yours** filter alongside library (demo tenant has 0 custom today).
+3. Run `templates-smoke.spec.ts` on production after button-label fix.
 4. Run `seed-expanded-uk-services.ts` on production DB if catalogue still thin after deploy.
 5. **Deferred (post-sale):** Render Starter + disk, custom domain, `XERO_*` / webhook secrets.
 
@@ -59,7 +59,8 @@
 | 12 | 2026-07-01 | 3167538a | master | engage-backend, engage-frontend | live | Services-step edit column full width (preview stacks below); flex-wrap edit fields; deduped wakeup toasts during Render restarts. |
 | 13 | 2026-07-01 | bc45724a | master | engage-backend, engage-frontend | live | Production catalogue 43 services + **143 templates** seeded; pricing sanity PASS; **38/38 e2e** green. |
 | 14 | 2026-07-02 | 36604df1 | master | engage-backend, engage-frontend | live | Expanded catalogue seed script, T&C auto-attach + watermark UI, proposal restart/back, MD→Managing Director + job role save UX. |
-| 15 | 2026-07-02 | e814c9cf | master | engage-backend, engage-frontend | deploying | **Template build:** auto-seed ICAEW/ACCA library on Templates GET; custom templates additive; 13 lifecycle touchpoint stages with UK copy; library/custom filters; restore defaults in Automation. |
+| 15 | 2026-07-02 | e814c9cf | master | engage-backend, engage-frontend | live | **Template build:** auto-seed ICAEW/ACCA library on Templates GET; custom templates additive; 13 lifecycle touchpoint stages with UK copy; library/custom filters; restore defaults in Automation. |
+| 16 | 2026-07-02 | e2018d88 | master | engage-backend, engage-frontend | live | **Library backfill fix:** `backfillLibraryTemplateFlagsForTenant` on GET; seed trigger uses `libraryCount` not `totalActive`; API meta adds `libraryActive`/`customActive`. Production: 143 library / 0 custom on demo tenant. |
 
 ## Decisions Made
 | Decision | Rationale |

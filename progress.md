@@ -1,6 +1,23 @@
 # Build Progress Log
 <!-- Append-only session log. Latest deploy checkpoint is the resume entry point. -->
 
+## Session: 2026-07-02 — Caroline Templates UAT + library backfill (e2018d88)
+
+### Deploy checkpoint — e2018d88
+- **Label:** Library backfill fix
+- **Commit:** `fix: backfill isDefault flags for Engage library templates on GET`
+- **Branch:** master (from integrate-deploy)
+- **Render services:** engage-backend, engage-frontend
+- **UAT result:** Templates page was showing 0 Engage library / 143 Yours — all rows had `isDefault: false` from pre-flag seed. Backfill on GET now promotes package-named rows; live API confirms 143 library / 0 custom. Demo tenant has no Caroline custom template yet (nothing replaced).
+- **Also:** `templates-smoke.spec.ts` button selector → `New custom template`
+
+#### Resume prompt
+```
+Verify e2018d88 live. Caroline: Settings → Automation — 13 stages with subjects + restore-default. Smoke create custom template under Yours filter.
+```
+
+---
+
 ## Session: 2026-07-02 — Template build deploy (e814c9cf)
 
 ### Deploy checkpoint — e814c9cf
