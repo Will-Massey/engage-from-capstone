@@ -24,6 +24,7 @@ import {
   getProposalSettings,
   parseProposalDateInput,
 } from '../utils/tenantProposalSettings.js';
+import { resolveProposalTerms } from '../services/proposalTermsService.js';
 import { DECLINE_REASONS } from '../constants/declineReasons.js';
 // generateReference helper function
 const generateReference = (prefix: string = 'PROP'): string => {
@@ -486,6 +487,39 @@ router.get(
 );
 
 /**
+ * POST /api/proposals/terms-preview
+ * Preview T&Cs for selected catalogue services (builder + Clara context)
+ */
+router.post(
+  '/terms-preview',
+  authenticate,
+  authorize('PARTNER', 'MANAGER', 'SENIOR', 'ADMIN', 'MD', 'JUNIOR'),
+  asyncHandler(async (req, res) => {
+    const body = z
+      .object({
+        serviceIds: z.array(z.string()).min(1),
+      })
+      .parse(req.body);
+
+    const templates = await prisma.serviceTemplate.findMany({
+      where: { id: { in: body.serviceIds }, tenantId: req.tenantId },
+      select: { name: true, tags: true },
+    });
+
+    if (!templates.length) {
+      throw new ApiError('INVALID_SERVICES', 'No matching services in your catalogue', 400);
+    }
+
+    const terms = await resolveProposalTerms(
+      req.tenantId!,
+      templates.map((t) => ({ name: t.name, tags: t.tags }))
+    );
+
+    res.json({ success: true, data: { terms } });
+  })
+);
+
+/**
  * POST /api/proposals
  * Create new proposal
  */
@@ -581,7 +615,12 @@ router.post(
         coverLetter: data.coverLetter,
         proposalSummary: data.proposalSummary,
         engagementLetter: data.engagementLetter,
-        terms: data.terms,
+        terms:
+          data.terms?.trim() ||
+          (await resolveProposalTerms(
+            req.tenantId!,
+            serviceTemplates.map((t) => ({ name: t.name, tags: t.tags }))
+          )),
         notes: data.notes,
         services: {
           create: servicesWithClearPricing as any,

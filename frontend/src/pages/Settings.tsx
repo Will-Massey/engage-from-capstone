@@ -164,12 +164,32 @@ const Settings = () => {
     role: 'JUNIOR',
   });
 
-  const formatTeamRole = (role: string) =>
-    role
-      .toLowerCase()
-      .split('_')
-      .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
-      .join(' ');
+  const formatTeamRole = (role: string) => {
+    const labels: Record<string, string> = {
+      ADMIN: 'Admin',
+      PARTNER: 'Partner',
+      MD: 'Managing Director',
+      MANAGER: 'Manager',
+      SENIOR: 'Senior',
+      JUNIOR: 'Junior',
+    };
+    const key = role?.trim().toUpperCase();
+    return labels[key] || role;
+  };
+
+  const JOB_TITLE_PRESETS = [
+    'Managing Director',
+    'Partner',
+    'Manager',
+    'Senior Accountant',
+    'Accountant',
+    'Bookkeeper',
+    'Practice Administrator',
+  ];
+
+  const applyJobTitlePreset = (preset: string) => {
+    setProfileForm((prev) => ({ ...prev, jobTitle: preset }));
+  };
 
   const [vatForm, setVatForm] = useState({
     vatRegistered: true,
@@ -933,14 +953,48 @@ const Settings = () => {
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-semibold text-slate-700 dark:text-slate-100">Job Title</label>
+                    <label className="block text-sm font-semibold text-slate-700 dark:text-slate-100">
+                      Job role (shown on proposals)
+                    </label>
+                    <select
+                      value={
+                        JOB_TITLE_PRESETS.includes(profileForm.jobTitle as (typeof JOB_TITLE_PRESETS)[number])
+                          ? profileForm.jobTitle
+                          : profileForm.jobTitle
+                            ? '__custom__'
+                            : ''
+                      }
+                      onChange={(e) => {
+                        const v = e.target.value;
+                        if (v === '__custom__') return;
+                        if (v) applyJobTitlePreset(v);
+                        else setProfileForm({ ...profileForm, jobTitle: '' });
+                      }}
+                      className="mt-1 input-field w-full"
+                    >
+                      <option value="">Select a job role…</option>
+                      {JOB_TITLE_PRESETS.map((preset) => (
+                        <option key={preset} value={preset}>
+                          {preset}
+                        </option>
+                      ))}
+                      <option value="__custom__">Custom title…</option>
+                    </select>
                     <input
                       type="text"
                       value={profileForm.jobTitle}
                       onChange={(e) => setProfileForm({ ...profileForm, jobTitle: e.target.value })}
-                      className="mt-1 input-field w-full"
-                      placeholder="e.g., Senior Accountant"
+                      className="mt-2 input-field w-full"
+                      placeholder="Or type a custom job title"
                     />
+                    <button
+                      type="button"
+                      onClick={handleSaveProfile}
+                      disabled={isSaving === 'profile'}
+                      className="mt-3 btn-primary text-sm"
+                    >
+                      {isSaving === 'profile' ? 'Saving…' : 'Save job role'}
+                    </button>
                   </div>
                 </div>
                 <div className="pt-4 border-t border-slate-200 dark:border-slate-700">
@@ -1848,11 +1902,11 @@ const Settings = () => {
                           onChange={(e) => setNewUserForm({ ...newUserForm, role: e.target.value })}
                           className="mt-1 input-field w-full"
                         >
-                          {editUserForm.role === 'ADMIN' && (
+                          {user?.role === 'ADMIN' && (
                             <option value="ADMIN">Admin</option>
                           )}
                           <option value="PARTNER">Partner</option>
-                          <option value="MD">MD</option>
+                          <option value="MD">Managing Director</option>
                           <option value="MANAGER">Manager</option>
                           <option value="SENIOR">Senior</option>
                           <option value="JUNIOR">Junior</option>
@@ -2006,14 +2060,22 @@ const Settings = () => {
                             <option value="ADMIN">Admin</option>
                           )}
                           <option value="PARTNER">Partner</option>
-                          <option value="MD">MD</option>
+                          <option value="MD">Managing Director</option>
                           <option value="MANAGER">Manager</option>
                           <option value="SENIOR">Senior</option>
                           <option value="JUNIOR">Junior</option>
                         </select>
+                        <button
+                          type="button"
+                          onClick={handleUpdateUser}
+                          disabled={isSaving === 'team'}
+                          className="mt-2 btn-primary text-sm w-full"
+                        >
+                          {isSaving === 'team' ? 'Saving…' : 'Save role & details'}
+                        </button>
                       </div>
                     </div>
-                    <div className="mt-6 flex space-x-3">
+                    <div className="mt-6 flex space-x-3 sticky bottom-0 bg-white dark:bg-slate-900 pt-3 border-t border-slate-200 dark:border-slate-700">
                       <button
                         onClick={() => {
                           setShowEditUserModal(false);

@@ -465,6 +465,9 @@ export default function ProposalBuilder({ proposalId }: ProposalBuilderProps) {
   );
   const [editPriceText, setEditPriceText] = useState('');
   const [showEmailPreview, setShowEmailPreview] = useState(false);
+  const [proposalTerms, setProposalTerms] = useState('');
+  const [termsLoading, setTermsLoading] = useState(false);
+  const [hasResumedDraft, setHasResumedDraft] = useState(false);
   const autoFitClientRef = useRef<string | null>(null);
   const preselectedTemplateAppliedRef = useRef(false);
   const pricingSuggestionAppliedRef = useRef(false);
@@ -596,8 +599,63 @@ export default function ProposalBuilder({ proposalId }: ProposalBuilderProps) {
 
     if (!loaded) {
       resetClientProposalState(clientId);
+      setHasResumedDraft(false);
+    } else {
+      setHasResumedDraft(true);
     }
   }, [isEditMode, selectedClient, applyDraftSnapshot, resetClientProposalState]);
+
+  const restartProposal = useCallback(
+    (keepClient: boolean) => {
+      const client = selectedClient;
+      if (client) {
+        localStorage.removeItem(proposalDraftKey(undefined, client.id));
+      }
+      localStorage.removeItem(LEGACY_NEW_DRAFT_KEY);
+      activeClientIdRef.current = null;
+      setHasResumedDraft(false);
+      setProposalTerms('');
+      if (keepClient && client) {
+        resetClientProposalState(client.id);
+        setSelectedClient(client);
+        setCurrentStep(1);
+      } else {
+        setSelectedClient(null);
+        setCurrentStep(1);
+        setBuildMode('unset');
+        setSelectedServices([]);
+        setProposalTitle('');
+        setCoverLetter('');
+      }
+    },
+    [selectedClient, resetClientProposalState]
+  );
+
+  useEffect(() => {
+    if (isEditMode || currentStep < 2 || selectedServices.length === 0) return;
+    const ids = selectedServices.map((s) => s.templateId).filter(Boolean);
+    if (!ids.length) return;
+
+    let cancelled = false;
+    setTermsLoading(true);
+    apiClient
+      .previewProposalTerms(ids)
+      .then((res: any) => {
+        if (!cancelled && res.success && res.data?.terms) {
+          setProposalTerms(res.data.terms);
+        }
+      })
+      .catch(() => {
+        if (!cancelled) setProposalTerms('');
+      })
+      .finally(() => {
+        if (!cancelled) setTermsLoading(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [isEditMode, currentStep, selectedServices]);
 
   // Apply pricing calculator suggestions: ?fromPricing=1
   useEffect(() => {
@@ -1597,6 +1655,7 @@ export default function ProposalBuilder({ proposalId }: ProposalBuilderProps) {
       const legacySummary = (p.proposalSummary || '').trim();
       const letter = (p.coverLetter || '').trim();
       setCoverLetter(legacySummary && letter ? `${letter}\n\n${legacySummary}` : letter || legacySummary);
+      setProposalTerms((p.terms || '').trim());
       coverLetterServicesKeyRef.current = 'loaded';
       if (p.validUntil) {
         setValidUntil(format(new Date(p.validUntil), 'yyyy-MM-dd'));
@@ -1728,6 +1787,7 @@ export default function ProposalBuilder({ proposalId }: ProposalBuilderProps) {
           : null,
         coverLetter: coverLetter.trim(),
         paymentTerms: `${defaultPaymentTermsDays} day${defaultPaymentTermsDays === 1 ? '' : 's'}`,
+        ...(proposalTerms.trim() ? { terms: proposalTerms.trim() } : {}),
       };
 
       const response = isEditMode
@@ -1794,7 +1854,9 @@ export default function ProposalBuilder({ proposalId }: ProposalBuilderProps) {
         <div key={step.id} className="flex items-center">
           <div
             className={`flex flex-col items-center ${currentStep >= step.id ? 'cursor-pointer' : ''}`}
-            onClick={() => currentStep > step.id && setCurrentStep(step.id)}
+            onClick={() => {
+              if (currentStep > step.id) setCurrentStep(step.id);
+            }}
           >
             <div
               className={`w-10 h-10 rounded-full flex items-center justify-center font-semibold transition-colors ${
@@ -1821,23 +1883,45 @@ export default function ProposalBuilder({ proposalId }: ProposalBuilderProps) {
         </div>
       ))}
       </div>
-      {selectedClient && currentStep >= 2 && (
-        <button
-          type="button"
-          data-testid="toggle-client-preview-pane"
-          onClick={() => toggleLivePreviewPane()}
-          className={`btn-secondary text-sm inline-flex items-center gap-2 shrink-0 ${
-            showLivePreviewPane ? 'border-primary-300 dark:border-primary-700 text-primary-700 dark:text-primary-300' : ''
-          }`}
-        >
-          {showLivePreviewPane ? (
-            <EyeSlashIcon className="h-4 w-4" aria-hidden="true" />
-          ) : (
-            <EyeIcon className="h-4 w-4" aria-hidden="true" />
-          )}
-          {showLivePreviewPane ? 'Hide client preview' : 'Show client preview'}
-        </button>
-      )}
+      <div className="flex flex-wrap items-center gap-2 shrink-0">
+        {!isEditMode && selectedClient && currentStep > 1 && (
+          <>
+            <button
+              type="button"
+              data-testid="back-to-step-one"
+              onClick={() => setCurrentStep(1)}
+              className="btn-secondary text-sm"
+            >
+              Back to start
+            </button>
+            <button
+              type="button"
+              data-testid="restart-proposal"
+              onClick={() => restartProposal(true)}
+              className="btn-secondary text-sm text-amber-800 border-amber-200 dark:text-amber-200 dark:border-amber-800"
+            >
+              Restart proposal
+            </button>
+          </>
+        )}
+        {selectedClient && currentStep >= 2 && (
+          <button
+            type="button"
+            data-testid="toggle-client-preview-pane"
+            onClick={() => toggleLivePreviewPane()}
+            className={`btn-secondary text-sm inline-flex items-center gap-2 ${
+              showLivePreviewPane ? 'border-primary-300 dark:border-primary-700 text-primary-700 dark:text-primary-300' : ''
+            }`}
+          >
+            {showLivePreviewPane ? (
+              <EyeSlashIcon className="h-4 w-4" aria-hidden="true" />
+            ) : (
+              <EyeIcon className="h-4 w-4" aria-hidden="true" />
+            )}
+            {showLivePreviewPane ? 'Hide client preview' : 'Show client preview'}
+          </button>
+        )}
+      </div>
     </div>
   );
 
@@ -1845,6 +1929,34 @@ export default function ProposalBuilder({ proposalId }: ProposalBuilderProps) {
   const renderClientStep = () => (
     <div className="space-y-6">
       <h2 className="text-xl font-semibold text-slate-900 dark:text-white">Select a Client</h2>
+
+      {!isEditMode && selectedClient && hasResumedDraft && (
+        <div
+          data-testid="draft-resume-banner"
+          className="rounded-xl border border-amber-200 dark:border-amber-800 bg-amber-50/80 dark:bg-amber-950/30 p-4 flex flex-wrap items-center justify-between gap-3"
+        >
+          <p className="text-sm text-amber-900 dark:text-amber-100">
+            You have a draft in progress for <strong>{selectedClient.name}</strong>. Continue where you
+            left off, go back to change the build approach, or restart from scratch.
+          </p>
+          <div className="flex flex-wrap gap-2">
+            <button
+              type="button"
+              className="btn-primary text-sm"
+              onClick={() => {
+                if (selectedServices.length > 0 && coverLetter.trim()) setCurrentStep(3);
+                else if (selectedServices.length > 0) setCurrentStep(2);
+                else setCurrentStep(1);
+              }}
+            >
+              Continue draft
+            </button>
+            <button type="button" className="btn-secondary text-sm" onClick={() => restartProposal(true)}>
+              Restart
+            </button>
+          </div>
+        </div>
+      )}
 
       <div className="relative">
         <input
@@ -2659,6 +2771,24 @@ export default function ProposalBuilder({ proposalId }: ProposalBuilderProps) {
         )}
       </div>
 
+      <div className="card p-4">
+        <h3 className="font-semibold text-slate-900 dark:text-white mb-1">Terms &amp; conditions</h3>
+        <p className="text-xs text-slate-500 dark:text-slate-400 mb-3">
+          Included in the proposal PDF and client view. Clara can answer questions about these terms.
+        </p>
+        <div
+          className="rounded-xl border border-slate-200 dark:border-slate-700 p-4 max-h-48 overflow-y-auto text-sm text-slate-700 dark:text-slate-200 whitespace-pre-wrap font-sans proposal-watermark-panel"
+        >
+          {termsLoading ? (
+            <p className="text-slate-500 italic">Preparing terms…</p>
+          ) : proposalTerms.trim() ? (
+            proposalTerms
+          ) : (
+            <p className="text-slate-500 italic">Add services to generate terms from your engagement library.</p>
+          )}
+        </div>
+      </div>
+
       {validationErrors.length > 0 && (
         <div className="rounded-xl border border-amber-200 bg-amber-50/80 dark:bg-amber-950/20 dark:border-amber-800 p-4">
           <p className="text-sm font-medium text-amber-900 dark:text-amber-200">Before you send</p>
@@ -2824,7 +2954,9 @@ export default function ProposalBuilder({ proposalId }: ProposalBuilderProps) {
               services={previewServices}
               summary={summary}
               validUntil={validUntil}
+              terms={proposalTerms}
               showCoverLetter={currentStep >= 3}
+              showTerms={currentStep >= 3}
             />
           </div>
         )}
@@ -2848,6 +2980,7 @@ export default function ProposalBuilder({ proposalId }: ProposalBuilderProps) {
               onTweakSingleSuggestion={applyTweakedAiSuggestion}
               onDraftCoverLetter={runAiCoverLetter}
               coverLoading={aiCoverLoading}
+              terms={proposalTerms}
             />
           </div>
         )}

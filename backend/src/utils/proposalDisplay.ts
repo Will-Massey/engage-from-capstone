@@ -49,9 +49,20 @@ export function parseClientAddress(raw: unknown): ClientAddress | null {
   };
 }
 
+const ROLE_LABELS: Record<string, string> = {
+  ADMIN: 'Admin',
+  PARTNER: 'Partner',
+  MD: 'Managing Director',
+  MANAGER: 'Manager',
+  SENIOR: 'Senior',
+  JUNIOR: 'Junior',
+};
+
 /** Human-readable role when job title is not set in Settings. */
 export function formatUserRole(role?: string | null): string | undefined {
   if (!role?.trim()) return undefined;
+  const key = role.trim().toUpperCase();
+  if (ROLE_LABELS[key]) return ROLE_LABELS[key];
   return role
     .trim()
     .toLowerCase()

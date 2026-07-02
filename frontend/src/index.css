@@ -536,3 +536,10 @@ html {
     min-width: 44px;
   }
 }
+
+.proposal-watermark-panel {
+  background-image: url('/images/pdf-page-background.jpg');
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+}

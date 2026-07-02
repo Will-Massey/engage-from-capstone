@@ -341,6 +341,8 @@ export const apiClient = {
   getProposal: (id: string) => api.get(`/proposals/${id}`),
 
   createProposal: (data: any) => api.post('/proposals', data),
+  previewProposalTerms: (serviceIds: string[]) =>
+    api.post('/proposals/terms-preview', { serviceIds }),
 
   updateProposal: (id: string, data: any) => api.put(`/proposals/${id}`, data),
 
@@ -670,6 +672,7 @@ export const apiClient = {
     title?: string;
     coverLetter?: string;
     validUntil?: string;
+    terms?: string;
     services: Array<{ name: string; billingFrequency?: string; displayPrice?: number }>;
   }) => api.post('/ai/draft-review', data),
   aiSuggestTitle: (

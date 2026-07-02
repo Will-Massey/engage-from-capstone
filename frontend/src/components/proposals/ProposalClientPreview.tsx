@@ -1,3 +1,4 @@
+import type { CSSProperties } from 'react';
 import { format, isValid, parseISO } from 'date-fns';
 
 export interface PreviewServiceLine {
@@ -31,9 +32,18 @@ export interface ProposalClientPreviewProps {
   services: PreviewServiceLine[];
   summary: PreviewPricingSummary;
   validUntil?: string;
+  terms?: string;
   showCoverLetter?: boolean;
+  showTerms?: boolean;
   compact?: boolean;
 }
+
+const WATERMARK_STYLE: CSSProperties = {
+  backgroundImage: "url('/images/pdf-page-background.jpg')",
+  backgroundSize: 'cover',
+  backgroundPosition: 'center',
+  backgroundRepeat: 'no-repeat',
+};
 
 const BILLING_LABELS: Record<string, string> = {
   WEEKLY: 'week',
@@ -124,7 +134,9 @@ export default function ProposalClientPreview({
   services,
   summary,
   validUntil,
+  terms = '',
   showCoverLetter = true,
+  showTerms = false,
   compact = false,
 }: ProposalClientPreviewProps) {
   const contact = clientContactName?.trim();
@@ -255,6 +267,22 @@ export default function ProposalClientPreview({
               <span className="text-lg font-bold text-slate-900 dark:text-white tabular-nums">
                 {formatCurrency(summary.contractTotalIncVat)}
               </span>
+            </div>
+          </div>
+        )}
+
+        {showTerms && terms.trim() && (
+          <div>
+            <h4 className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400 mb-3">
+              Terms &amp; conditions
+            </h4>
+            <div
+              className="rounded-xl border border-slate-200 dark:border-slate-700 p-4 max-h-56 overflow-y-auto text-sm text-slate-700 dark:text-slate-200 whitespace-pre-wrap relative"
+              style={WATERMARK_STYLE as CSSProperties}
+            >
+              <div className="relative z-10 bg-white/85 dark:bg-slate-900/88 rounded-lg p-3 backdrop-blur-[1px]">
+                {terms}
+              </div>
             </div>
           </div>
         )}

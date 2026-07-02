@@ -478,6 +478,7 @@ export async function reviewProposalDraft(
     title?: string;
     coverLetter?: string;
     validUntil?: string;
+    terms?: string;
     services: Array<{ name: string; billingFrequency?: string; displayPrice?: number }>;
   }
 ) {
@@ -517,6 +518,10 @@ export async function reviewProposalDraft(
     ruleActions.push('One or more services have zero fees — confirm pricing before sending.');
     healthScore -= 10;
   }
+  if (!draft.terms?.trim()) {
+    ruleActions.push('Terms and conditions will be attached automatically when you create the proposal.');
+    healthScore -= 5;
+  }
 
   healthScore = Math.max(0, Math.min(100, healthScore));
 
@@ -536,6 +541,8 @@ Client: ${client.name} (${client.companyType})
 Draft title: ${draft.title || '(none)'}
 Services: ${draft.services.map((s) => `${s.name} £${s.displayPrice ?? 0} ${s.billingFrequency || ''}`).join('; ') || '(none)'}
 Cover letter length: ${coverLen} chars
+Terms length: ${draft.terms?.trim().length ?? 0} chars
+Terms excerpt: ${draft.terms?.trim().slice(0, 1200) || '(will be generated on save)'}
 Rule flags already found: ${JSON.stringify(ruleActions)}`,
         },
       ],

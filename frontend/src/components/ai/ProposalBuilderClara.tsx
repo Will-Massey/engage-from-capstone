@@ -69,6 +69,7 @@ interface ProposalBuilderClaraProps {
   ) => void;
   onDraftCoverLetter: () => void;
   coverLoading: boolean;
+  terms?: string;
 }
 
 export default function ProposalBuilderClara({
@@ -88,6 +89,7 @@ export default function ProposalBuilderClara({
   onTweakSingleSuggestion,
   onDraftCoverLetter,
   coverLoading,
+  terms = '',
 }: ProposalBuilderClaraProps) {
   const openClara = useAiAssistantStore((s) => s.open);
   const [titleLoading, setTitleLoading] = useState(false);
@@ -135,6 +137,7 @@ export default function ProposalBuilderClara({
         title: proposalTitle,
         coverLetter,
         validUntil: validUntil || undefined,
+        terms: terms.trim() || undefined,
         services,
       })) as any;
       if (res.success) setDraftReview(res.data);

@@ -276,6 +276,7 @@ router.post(
         title: z.string().max(200).optional(),
         coverLetter: z.string().max(12000).optional(),
         validUntil: z.string().optional(),
+        terms: z.string().max(50000).optional(),
         services: z.array(
           z.object({
             name: z.string(),
@@ -291,6 +292,7 @@ router.post(
       title: body.title,
       coverLetter: body.coverLetter,
       validUntil: body.validUntil,
+      terms: body.terms,
       services: body.services.map((s) => ({
         name: s.name,
         billingFrequency: s.billingFrequency,

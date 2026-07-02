@@ -929,10 +929,19 @@ const PublicProposalView = () => {
               <h3 className="text-sm font-medium text-slate-600 uppercase tracking-wide">
                 Terms & Conditions
               </h3>
-              <div className="mt-4 p-4 bg-slate-50 rounded-lg max-h-60 overflow-y-auto">
-                <pre className="text-sm text-slate-800 whitespace-pre-wrap font-sans">
-                  {proposal.terms || 'Standard terms and conditions apply.'}
-                </pre>
+              <div
+                className="mt-4 rounded-xl border border-slate-200 dark:border-slate-600 max-h-72 overflow-y-auto relative"
+                style={{
+                  backgroundImage: "url('/images/pdf-page-background.jpg')",
+                  backgroundSize: 'cover',
+                  backgroundPosition: 'center',
+                }}
+              >
+                <div className="p-4 bg-white/90 dark:bg-slate-900/92 backdrop-blur-[1px] min-h-[12rem]">
+                  <pre className="text-sm text-slate-800 dark:text-slate-200 whitespace-pre-wrap font-sans">
+                    {proposal.terms || 'Standard terms and conditions apply.'}
+                  </pre>
+                </div>
               </div>
               <div className="mt-4 flex items-start">
                 <input
