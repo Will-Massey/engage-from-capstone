@@ -4,6 +4,7 @@ import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuthStore } from '../stores/authStore';
 import { useThemeStore } from '../stores/themeStore';
 import { apiClient } from '../utils/api';
+import { prepareTenantLogoUpload } from '../utils/tenantLogo';
 import toast from 'react-hot-toast';
 import {
   UserCircleIcon,
@@ -680,19 +681,19 @@ const Settings = () => {
   const handleLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
+    e.target.value = '';
 
-    if (file.size > 2 * 1024 * 1024) {
-      toast.error('Logo must be less than 2MB');
-      return;
+    try {
+      const { dataUrl, resized } = await prepareTenantLogoUpload(file);
+      setBrandingForm((prev) => ({ ...prev, logo: dataUrl }));
+      if (resized) {
+        toast.success('Logo resized for proposal PDFs. Click Save to apply.');
+      } else {
+        toast.success('Logo loaded. Click Save to apply.');
+      }
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Could not process logo');
     }
-
-    const reader = new FileReader();
-    reader.onload = async (event) => {
-      const base64 = event.target?.result as string;
-      setBrandingForm((prev) => ({ ...prev, logo: base64 }));
-      toast.success('Logo loaded. Click Save to apply.');
-    };
-    reader.readAsDataURL(file);
   };
 
   const handleChangePassword = async () => {
@@ -1256,12 +1257,13 @@ const Settings = () => {
                     <div className="flex-1">
                       <input
                         type="file"
-                        accept="image/*"
+                        accept="image/png,image/jpeg,image/webp"
                         onChange={handleLogoUpload}
                         className="block w-full text-sm text-slate-500 dark:text-slate-300 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-medium file:bg-primary-50 file:text-primary-700 hover:file:bg-primary-100 dark:file:bg-primary-900/30 dark:file:text-primary-300"
                       />
                       <p className="mt-2 text-xs text-slate-500 dark:text-slate-300">
-                        Recommended: PNG or SVG with transparent background. Max 2MB.
+                        PNG, JPEG, or WebP. Automatically resized to max 800px and 512 KB so
+                        proposal PDFs and emails stay reliable.
                       </p>
                     </div>
                   </div>

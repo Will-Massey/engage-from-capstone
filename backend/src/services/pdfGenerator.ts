@@ -12,6 +12,7 @@ import {
   senderPosition,
 } from '../utils/proposalDisplay.js';
 import { parseProposalCustomFields } from '../utils/proposalCustomFields.js';
+import { TENANT_LOGO_MAX_BYTES } from '../utils/tenantLogoConstraints.js';
 
 interface ProposalData {
   id: string;
@@ -191,8 +192,6 @@ export class PDFGenerator {
     const logoData = this.resolveTenantLogoUrl(tenant);
     if (!logoData) return null;
 
-    const MAX_LOGO_BYTES = 512 * 1024;
-
     try {
       let buffer: Buffer | null = null;
       if (logoData.startsWith('data:image')) {
@@ -205,7 +204,7 @@ export class PDFGenerator {
       } else {
         buffer = Buffer.from(logoData, 'base64');
       }
-      if (!buffer || buffer.length === 0 || buffer.length > MAX_LOGO_BYTES) {
+      if (!buffer || buffer.length === 0 || buffer.length > TENANT_LOGO_MAX_BYTES) {
         return null;
       }
       return buffer;

@@ -27,6 +27,7 @@ import {
   leaveFirmGroup,
   dissolveFirmGroup,
 } from '../services/firmGroupService.js';
+import { validateTenantLogoForStorage } from '../utils/tenantLogoConstraints.js';
 
 const router = Router();
 
@@ -797,6 +798,14 @@ router.put(
     });
 
     const data = schema.parse(req.body);
+
+    if (data.branding?.logo !== undefined) {
+      const logoCheck = validateTenantLogoForStorage(data.branding.logo);
+      if (!logoCheck.ok) {
+        throw new ApiError('VALIDATION_ERROR', logoCheck.message, 400);
+      }
+      data.branding.logo = logoCheck.logo;
+    }
 
     // Get current settings
     const tenant = await prisma.tenant.findUnique({
