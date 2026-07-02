@@ -58,20 +58,50 @@ const getCsrfToken = (): string | null => {
   return match ? match[1] : null;
 };
 
+const CSRF_STORAGE_KEY = 'engage_csrf_token';
+
 // In-memory storage for CSRF token (cross-domain cookies don't work)
 let csrfTokenInMemory: string | null = null;
+
+function readCsrfFromSession(): string | null {
+  if (typeof sessionStorage === 'undefined') return null;
+  try {
+    const stored = sessionStorage.getItem(CSRF_STORAGE_KEY);
+    return stored && stored !== 'undefined' ? stored : null;
+  } catch {
+    return null;
+  }
+}
+
+function writeCsrfToSession(token: string | null): void {
+  if (typeof sessionStorage === 'undefined') return;
+  try {
+    if (token) sessionStorage.setItem(CSRF_STORAGE_KEY, token);
+    else sessionStorage.removeItem(CSRF_STORAGE_KEY);
+  } catch {
+    // ignore quota / private mode
+  }
+}
 
 /** Reset cached CSRF token (e.g. on login page after rate-limit or logout) */
 export function clearCsrfCache(): void {
   csrfTokenInMemory = null;
   csrfTokenPromise = null;
+  writeCsrfToSession(null);
 }
 
 /** Store CSRF from auth responses (cross-domain — cookie not readable by JS). */
 export function rememberCsrfToken(token: string | undefined | null): void {
   if (token && token !== 'undefined') {
     csrfTokenInMemory = token;
+    writeCsrfToSession(token);
   }
+}
+
+/** Hydrate CSRF cache from sessionStorage on app load. */
+export function hydrateCsrfCache(): void {
+  const stored = readCsrfFromSession();
+  if (stored) csrfTokenInMemory = stored;
 }
 
 function captureCsrfFromPayload(payload: unknown): void {
@@ -83,41 +113,79 @@ function captureCsrfFromPayload(payload: unknown): void {
 
 // Fetch CSRF token from backend
 let csrfTokenPromise: Promise<string> | null = null;
-const fetchCsrfToken = async (): Promise<string> => {
-  // Check memory first (for cross-domain where cookies don't work)
+
+function resolveCachedCsrfToken(): string | null {
   if (csrfTokenInMemory) return csrfTokenInMemory;
-
-  // Then check cookie (for same-domain)
+  const stored = readCsrfFromSession();
+  if (stored) {
+    csrfTokenInMemory = stored;
+    return stored;
+  }
   const cookieToken = getCsrfToken();
-  if (cookieToken) return cookieToken;
+  if (cookieToken) {
+    csrfTokenInMemory = cookieToken;
+    return cookieToken;
+  }
+  return null;
+}
 
-  // Deduplicate concurrent requests
+const fetchCsrfToken = async (forceRefresh = false): Promise<string> => {
+  if (!forceRefresh) {
+    const cached = resolveCachedCsrfToken();
+    if (cached) return cached;
+  } else {
+    csrfTokenInMemory = null;
+    writeCsrfToSession(null);
+  }
+
   if (csrfTokenPromise) return csrfTokenPromise;
 
-  csrfTokenPromise = axios
-    .get(`${API_URL.endsWith('/api') ? API_URL : `${API_URL}/api`}/auth/csrf-token`, {
-      withCredentials: true,
-    })
+  csrfTokenPromise = api
+    .get('/auth/me')
     .then((res: any) => {
       csrfTokenPromise = null;
-      // Store in memory since cross-domain cookies don't work
-      const token = res.data?.data?.csrfToken;
+      const token = res?.data?.csrfToken;
       if (token) {
-        csrfTokenInMemory = token;
-        if (import.meta.env.DEV) console.log('[CSRF] Token fetched and stored in memory');
+        rememberCsrfToken(token);
+        if (import.meta.env.DEV) console.log('[CSRF] Token fetched via /auth/me');
         return token;
       }
-      console.warn('[CSRF] No token in response');
+      console.warn('[CSRF] No token in /auth/me response');
       return '';
     })
     .catch((err) => {
       csrfTokenPromise = null;
-      console.error('[CSRF] Failed to fetch token:', err.message);
+      console.error('[CSRF] Failed to fetch token:', err?.message || err);
       return '';
     });
 
   return csrfTokenPromise;
 };
+
+/** Ensure a CSRF token is available before state-changing requests (e.g. app bootstrap). */
+export async function ensureCsrfReady(): Promise<void> {
+  hydrateCsrfCache();
+  const token = await fetchCsrfToken();
+  if (!token) {
+    await fetchCsrfToken(true);
+  }
+}
+
+/** Headers for native fetch() calls that bypass the axios interceptor. */
+export async function buildAuthedFetchHeaders(
+  extra: Record<string, string> = {}
+): Promise<Record<string, string>> {
+  const token = useAuthStore.getState().token;
+  const tenant = useAuthStore.getState().tenant;
+  const csrfToken = await fetchCsrfToken();
+  return {
+    'Content-Type': 'application/json',
+    ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    ...(tenant ? { 'X-Tenant-Id': tenant.id } : {}),
+    ...(csrfToken ? { 'X-CSRF-Token': csrfToken } : {}),
+    ...extra,
+  };
+}
 
 // Request interceptor
 api.interceptors.request.use(
@@ -136,12 +204,19 @@ api.interceptors.request.use(
 
     // Add CSRF token for state-changing requests
     if (['POST', 'PUT', 'DELETE', 'PATCH'].includes(config.method?.toUpperCase() || '')) {
-      const csrfToken = await fetchCsrfToken();
+      let csrfToken = await fetchCsrfToken();
+      if (!csrfToken) {
+        csrfToken = await fetchCsrfToken(true);
+      }
       if (csrfToken && csrfToken !== 'undefined') {
-        config.headers['X-CSRF-Token'] = csrfToken;
+        config.headers.set('X-CSRF-Token', csrfToken);
         if (import.meta.env.DEV) console.log('[CSRF] Token added to request');
       } else {
-        console.error('[CSRF] No token available — request will fail CSRF check');
+        console.error('[CSRF] No token available — blocking state-changing request');
+        return Promise.reject({
+          code: 'CSRF_UNAVAILABLE',
+          message: 'Security token unavailable. Please refresh the page or log in again.',
+        });
       }
     }
 
@@ -171,12 +246,11 @@ api.interceptors.response.use(
         const originalRequest = error.config as typeof error.config & { _csrfRetry?: boolean };
         if (originalRequest && !originalRequest._csrfRetry) {
           originalRequest._csrfRetry = true;
-          csrfTokenInMemory = null;
+          clearCsrfCache();
           try {
-            await api.get('/auth/me');
-            const newToken = await fetchCsrfToken();
+            const newToken = await fetchCsrfToken(true);
             if (newToken) {
-              originalRequest.headers['X-CSRF-Token'] = newToken;
+              originalRequest.headers.set('X-CSRF-Token', newToken);
               return api(originalRequest);
             }
           } catch (retryError) {
@@ -799,7 +873,6 @@ export const apiClient = {
       error?: string;
     }) => void
   ): Promise<void> => {
-    const { token } = useAuthStore.getState();
     const base = API_URL.endsWith('/api') ? API_URL : `${API_URL}/api`;
     const body =
       payload && typeof payload === 'object' && 'proposalId' in payload && payload.proposalId
@@ -808,10 +881,8 @@ export const apiClient = {
 
     const res = await fetch(`${base}/ai/proposal-email-draft/stream`, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        ...(token ? { Authorization: `Bearer ${token}` } : {}),
-      },
+      headers: await buildAuthedFetchHeaders(),
+      credentials: 'include',
       body: JSON.stringify(body),
     });
 
@@ -886,14 +957,11 @@ export const apiClient = {
     },
     onChunk: (text: string) => void
   ): Promise<void> => {
-    const { token } = useAuthStore.getState();
     const base = API_URL.endsWith('/api') ? API_URL : `${API_URL}/api`;
     const res = await fetch(`${base}/ai/cover-letter/stream`, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        ...(token ? { Authorization: `Bearer ${token}` } : {}),
-      },
+      headers: await buildAuthedFetchHeaders(),
+      credentials: 'include',
       body: JSON.stringify(data),
     });
     if (!res.body) throw new Error('No stream body');
@@ -925,14 +993,11 @@ export const apiClient = {
     onChunk: (text: string) => void,
     options?: { includeAiIntro?: boolean }
   ): Promise<void> => {
-    const { token } = useAuthStore.getState();
     const base = API_URL.endsWith('/api') ? API_URL : `${API_URL}/api`;
     const res = await fetch(`${base}/ai/engagement-letter/stream`, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        ...(token ? { Authorization: `Bearer ${token}` } : {}),
-      },
+      headers: await buildAuthedFetchHeaders(),
+      credentials: 'include',
       body: JSON.stringify({
         proposalId,
         includeAiIntro: options?.includeAiIntro ?? false,

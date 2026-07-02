@@ -2,7 +2,7 @@ import { Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { useEffect, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { useAuthStore } from './stores/authStore';
-import { apiClient } from './utils/api';
+import { apiClient, ensureCsrfReady, hydrateCsrfCache, rememberCsrfToken } from './utils/api';
 
 // Layouts
 import DashboardLayout from './components/layout/DashboardLayout';
@@ -451,11 +451,14 @@ function App() {
         return;
       }
 
+      hydrateCsrfCache();
       setLoading(true);
       try {
         const response = (await apiClient.getMe()) as any;
         if (response.success) {
+          rememberCsrfToken(response.data.csrfToken);
           setSession(response.data.user, response.data.user.tenant);
+          await ensureCsrfReady();
         } else {
           clearAuth();
         }
