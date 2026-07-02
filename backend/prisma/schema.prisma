@@ -259,6 +259,8 @@ model Tenant {
   subscriptionTier      String?
   lastPaymentStatus     String?
   lastPaymentDate       DateTime?
+  revolutCustomerId     String?  @map("revolut_customer_id")
+  revolutOrderId        String?  @map("revolut_order_id")
 
   // Relations
   users                 User[]
@@ -273,6 +275,7 @@ model Tenant {
   touchpoints           Touchpoint[]
   emailLogs             EmailLog[]
   emailSuppressions     EmailSuppression[]
+  paymentSplits         PaymentSplit[]
 
   @@index([subdomain])
   @@index([isActive])
@@ -528,11 +531,11 @@ model Proposal {
   lastEmailedAt  DateTime?
   emailHistory   String @default("[]")
 
-  // Payment tracking (Adfin / GoCardless integration)
+  // Payment tracking (Revolut / GoCardless stub)
   paymentId            String?
-  paymentMandateId     String?   // Direct Debit mandate ID (Adfin or GoCardless)
-  paymentProvider      String?   // adfin, gocardless_stub
-  paymentStatus        String?   // NOT_STARTED, PENDING, ACTIVE, PAID, FAILED, CANCELLED, SKIPPED
+  paymentMandateId     String?
+  paymentProvider      String?   // revolut, gocardless_stub
+  paymentStatus        String?   // NOT_STARTED, PENDING, ACTIVE, COMPLETED, PAID, FAILED, CANCELLED, SKIPPED
   paymentUrl           String?
   paymentMethod        String?   // card, open_banking, direct_debit
   paidAt               DateTime?
@@ -557,6 +560,7 @@ model Proposal {
   documents    ProposalDocument[]
   views        ProposalView[]
   signatures   ProposalSignature[]
+  paymentSplits PaymentSplit[]
   emailLogs    EmailLog[]
 
   @@index([tenantId])
@@ -568,6 +572,32 @@ model Proposal {
   @@index([shareToken])
   @@index([paymentId])
   @@index([createdAt])
+}
+
+// Capstone platform fee + agency share ledger (client proposal payments via Revolut)
+model PaymentSplit {
+  id                String   @id @default(uuid())
+  revolutOrderId    String   @unique @map("revolut_order_id")
+  totalPence        Int      @map("total_pence")
+  platformFeePence  Int      @map("platform_fee_pence")
+  agencySharePence  Int      @map("agency_share_pence")
+  platformFeeBps    Int      @map("platform_fee_bps")
+  currency          String   @default("GBP")
+  payoutStatus      String   @default("PENDING")
+  payoutTransferId  String?  @map("payout_transfer_id")
+  paidAt            DateTime @default(now()) @map("paid_at")
+  createdAt         DateTime @default(now()) @map("created_at")
+  updatedAt         DateTime @updatedAt @map("updated_at")
+
+  proposalId String   @map("proposal_id")
+  proposal   Proposal @relation(fields: [proposalId], references: [id], onDelete: Cascade)
+
+  tenantId String @map("tenant_id")
+  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@index([proposalId])
+  @@index([tenantId])
+  @@map("payment_splits")
 }
 
 model ProposalService {

@@ -1,5 +1,5 @@
 /**
- * GoCardless mandate stub — used when Adfin is not configured.
+ * GoCardless mandate stub — used when Revolut is not configured.
  * Provides a demo Direct Debit setup flow until live GoCardless credentials are added.
  */
 

@@ -204,7 +204,7 @@ export async function sendViaSendGrid(params: SendGridSendParams): Promise<SendG
     if (params.attachments?.length) {
       payload.attachments = params.attachments.map((a) => ({
         content:
-          typeof a.content === 'string' ? a.content : a.content.toString('base64'),
+          typeof a.content === 'string' ? a.content : Buffer.from(a.content).toString('base64'),
         filename: a.filename,
         type: a.contentType || 'application/octet-stream',
         disposition: 'attachment',

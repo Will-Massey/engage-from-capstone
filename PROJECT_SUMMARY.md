@@ -28,8 +28,8 @@ Engage by Capstone is a professional proposal-generation platform for UK account
 
 ### Payment Integration ✅
 
-- [x] Adfin integration for UK payment collection
-- [x] Support for Card, Open Banking, and Direct Debit
+- [x] Revolut integration for UK payment collection
+- [x] Revolut Checkout popup + webhook fulfilment
 - [x] Payment tracking and webhook handling
 - [x] Stripe integration (alternative option)
 
@@ -71,12 +71,12 @@ Engage by Capstone is a professional proposal-generation platform for UK account
 **Issue:** Data was being saved without tenant ID (causing data loss)  
 **Fix:** Added strict tenant validation - API now fails if no tenant found
 
-### 4. Adfin Integration
+### 4. Revolut Integration
 
 **New Feature:** UK payment processing
 
-- Create payment requests
-- Handle webhooks
+- Create Revolut checkout orders
+- Handle webhooks with payment splits
 - Track payment status
 
 ---
@@ -91,11 +91,11 @@ engage/
 │   │   │   ├── proposals.ts          # Main proposal CRUD
 │   │   │   ├── proposals-share.ts    # Public sharing & signatures
 │   │   │   ├── clients.ts            # Client management
-│   │   │   ├── adfin.ts              # Payment integration
+│   │   │   ├── billing.ts            # Revolut billing + webhooks
 │   │   │   └── coverLetterTemplates.ts
 │   │   ├── services/
 │   │   │   ├── pdfGenerator.ts       # PDF creation
-│   │   │   ├── adfin.ts              # Adfin payment service
+│   │   │   ├── proposalPayment.ts    # Revolut proposal checkout
 │   │   │   ├── emailService.ts       # Email notifications
 │   │   │   ├── proposalSharingService.ts
 │   │   │   └── pricingEngine.ts
@@ -145,9 +145,11 @@ SMTP_PASS=your-password
 EMAIL_FROM_NAME=Your Practice
 EMAIL_FROM_ADDRESS=noreply@yourpractice.com
 
-# Payments (Adfin recommended for UK)
-ADFIN_API_KEY=your-adfin-key
-ADFIN_WEBHOOK_SECRET=your-webhook-secret
+# Payments (Revolut for client proposal payments)
+REVOLUT_API_SECRET_KEY=your-revolut-secret
+REVOLUT_API_PUBLIC_KEY=your-revolut-public-key
+REVOLUT_WEBHOOK_SECRET=your-webhook-secret
+ENGAGE_PLATFORM_FEE_BPS=250
 
 # OR Stripe (alternative)
 STRIPE_SECRET_KEY=sk_live_...
@@ -200,7 +202,7 @@ STRIPE_WEBHOOK_SECRET=whsec_...
 - [ ] Configure custom domain
 - [ ] Test email delivery
 - [ ] Test PDF generation
-- [ ] Test payment flow (if using Adfin/Stripe)
+- [ ] Test payment flow (if using Revolut/Stripe)
 
 ### Launch
 
@@ -268,7 +270,7 @@ The script will:
 
 - **Render Dashboard:** https://dashboard.render.com
 - **GitHub Repo:** https://github.com/Will-Massey/engage-from-capstone
-- **Adfin:** https://adfin.io
+- **Revolut Merchant API:** https://developer.revolut.com/docs/merchant
 - **Companies House API:** https://developer.company-information.service.gov.uk/
 
 ---

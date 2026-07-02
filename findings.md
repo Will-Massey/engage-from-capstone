@@ -33,7 +33,7 @@
 - Builder: `frontend/src/components/proposals/ProposalBuilder.tsx`
 - Auth 501: `backend/src/routes/auth.ts`
 - Clause library: `backend/src/data/engagementClauseLibrary.ts`
-- Adfin: `backend/src/routes/adfin.ts`
+- Revolut: `backend/src/lib/revolut/`, `backend/src/routes/billing.ts`
 - Renewals: `backend/src/jobs/renewalReminders.ts`
 
 ## Agent execution log
@@ -47,6 +47,6 @@
 | xero-agent | W1.1–W1.2 | ✅ OAuth scaffold; import clients; push notes (invoice stub) |
 | pricing-agent | W2.9 | ✅ Rule-engine calculator + PRICING_METHODOLOGY.md |
 | analytics-agent | W3.6 | ✅ Decline reasons + win-loss analytics |
-| payments-agent | W1.3–W1.4 | ✅ Post-sign Adfin/GoCardless stub + staff status panel |
+| payments-agent | W1.3–W1.4 | ✅ Post-sign Revolut/GoCardless stub + staff status panel |
 
 **Still pending:** W0.3–W0.6, W1.6 partner approval, W2.10 preview pane, W3.2–W3.5, entire W4.

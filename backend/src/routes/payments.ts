@@ -27,13 +27,17 @@ router.get(
   '/config',
   authenticate,
   asyncHandler(async (req, res) => {
-    const isEnabled = !!stripe && !!process.env.STRIPE_PUBLISHABLE_KEY;
+    const revolutEnabled = Boolean(process.env.REVOLUT_API_SECRET_KEY);
+    const stripeEnabled = !!stripe && !!process.env.STRIPE_PUBLISHABLE_KEY;
 
     res.json({
       success: true,
       data: {
-        isEnabled,
+        isEnabled: revolutEnabled || stripeEnabled,
+        provider: revolutEnabled ? 'revolut' : stripeEnabled ? 'stripe' : null,
         publishableKey: process.env.STRIPE_PUBLISHABLE_KEY || null,
+        revolutPublicKey: process.env.REVOLUT_API_PUBLIC_KEY || null,
+        mode: (process.env.REVOLUT_API_URL || '').includes('sandbox') ? 'sandbox' : 'prod',
         tiers: SUBSCRIPTION_TIERS,
       },
     });

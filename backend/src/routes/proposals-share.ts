@@ -976,6 +976,8 @@ router.post(
           checkoutUrl: result.checkoutUrl,
           status: result.status,
           isStub: result.isStub,
+          token: result.token,
+          mode: result.mode,
         },
       });
     } catch (error: any) {
@@ -989,7 +991,7 @@ router.post(
   })
 );
 
-// Complete stub mandate (demo flow when Adfin not configured)
+// Complete stub mandate (demo flow when Revolut is not configured)
 router.post(
   '/view/:token/payment/complete-stub',
   asyncHandler(async (req, res) => {
@@ -1069,7 +1071,7 @@ router.get(
         method: full?.paymentMethod,
         paidAt: full?.paidAt,
         amount: full?.total,
-        complete: ['ACTIVE', 'PAID', 'SKIPPED'].includes(full?.paymentStatus || ''),
+        complete: ['ACTIVE', 'PAID', 'COMPLETED', 'SKIPPED'].includes(full?.paymentStatus || ''),
       },
     });
   })

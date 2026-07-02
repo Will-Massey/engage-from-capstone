@@ -1903,7 +1903,7 @@ const Settings = () => {
                   </h3>
                   <p className="mt-1 text-sm text-slate-500 dark:text-slate-300">
                     Offer Direct Debit or card setup immediately after a client signs (Ignition-style).
-                    Uses Adfin when configured; otherwise a demo GoCardless stub is used.
+                    Uses Revolut when configured; otherwise a demo GoCardless stub is used.
                   </p>
                   <div className="mt-4 space-y-4">
                     <label className="flex items-start gap-3">

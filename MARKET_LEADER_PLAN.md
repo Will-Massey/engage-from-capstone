@@ -41,7 +41,7 @@
 |----|-------------|--------|-------------|
 | W1.1 | Xero OAuth + client import | **done** (scaffold) | xero-agent |
 | W1.2 | Push accepted proposal lines → Xero (contact notes / repeating invoice stub) | **partial** (notes live, invoice stub) | xero-agent |
-| W1.3 | GoCardless/Adfin mandate at sign (public sign page) | **done** | payments-agent |
+| W1.3 | GoCardless/Revolut payment at sign (public sign page) | **done** | payments-agent |
 | W1.4 | Post-accept confirmation + payment status on proposal | **done** | payments-agent |
 | W1.5 | Bulk renewal wizard (filter → template → batch send) | **done** | renewals-agent |
 | W1.6 | Partner approval before send (junior drafts → partner approves) | pending | workflow-agent |

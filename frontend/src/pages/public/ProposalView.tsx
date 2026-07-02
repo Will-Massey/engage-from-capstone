@@ -20,6 +20,7 @@ import {
 } from '@heroicons/react/24/outline';
 import { motion, AnimatePresence } from 'framer-motion';
 import { AI_COPILOT } from '../../config/aiCopilot';
+import { openRevolutCheckout } from '../../lib/revolut-checkout';
 import {
   DECLINE_REASONS,
   DECLINE_REASON_LABELS,
@@ -36,7 +37,7 @@ import {
 interface PaymentConfig {
   collectPaymentAtSign: boolean;
   paymentRequired: boolean;
-  provider: 'adfin' | 'gocardless_stub' | 'none';
+  provider: 'revolut' | 'gocardless_stub' | 'none';
   providerConfigured: boolean;
   isStub: boolean;
   methods: { directDebit: boolean; card: boolean };
@@ -218,6 +219,15 @@ const PublicProposalView = () => {
   const [signingState, setSigningState] = useState<PublicSigningState | null>(null);
 
   useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('payment') === 'success') {
+      setPaymentComplete(true);
+      setShowPaymentStep(false);
+      setPaymentConfig((prev) => (prev ? { ...prev, paymentStatus: 'COMPLETED' } : prev));
+    }
+  }, []);
+
+  useEffect(() => {
     const mq = window.matchMedia('(max-width: 639px)');
     const update = () => setIsMobileSign(mq.matches);
     update();
@@ -251,9 +261,10 @@ const PublicProposalView = () => {
           if (data.payment) {
             setPaymentConfig(data.payment);
             const ps = data.payment.paymentStatus;
-            setPaymentComplete(['ACTIVE', 'PAID', 'SKIPPED'].includes(ps || ''));
+            setPaymentComplete(['ACTIVE', 'PAID', 'COMPLETED', 'SKIPPED'].includes(ps || ''));
             setShowPaymentStep(
-              data.payment.paymentRequired && !['ACTIVE', 'PAID', 'SKIPPED'].includes(ps || '')
+              data.payment.paymentRequired &&
+                !['ACTIVE', 'PAID', 'COMPLETED', 'SKIPPED'].includes(ps || '')
             );
           }
           if (data.client?.contactEmail && !data.signing?.awaitingAdditionalSigner) {
@@ -386,9 +397,25 @@ const PublicProposalView = () => {
       })) as any;
 
       if (response.success) {
-        const { checkoutUrl, isStub, mandateId, provider } = response.data;
+        const { checkoutUrl, isStub, mandateId, provider, token, mode } = response.data;
 
-        if (provider === 'adfin' && checkoutUrl) {
+        if (provider === 'revolut' && token) {
+          await openRevolutCheckout({
+            token,
+            mode: mode || 'sandbox',
+            onSuccess: () => {
+              setPaymentComplete(true);
+              setShowPaymentStep(false);
+              setPaymentConfig((prev) => (prev ? { ...prev, paymentStatus: 'COMPLETED' } : prev));
+              toast.success('Payment received — thank you');
+            },
+            onError: (message) => toast.error(message || 'Payment failed'),
+            onCancel: () => toast('Payment cancelled — you can try again below', { icon: 'ℹ️' }),
+          });
+          return;
+        }
+
+        if (provider === 'revolut' && checkoutUrl) {
           window.location.href = checkoutUrl;
           return;
         }
@@ -653,44 +680,62 @@ const PublicProposalView = () => {
                     Set up payment
                   </h3>
                   <p className="mt-1 text-sm text-sky-800 dark:text-sky-200/90">
-                    To complete your engagement with {proposal.tenant.name}, please authorise payment of{' '}
-                    <strong>{formatCurrency(proposal.total)}</strong> via Direct Debit or card.
+                    To complete your engagement with {proposal.tenant.name}, please pay{' '}
+                    <strong>{formatCurrency(proposal.total)}</strong>
+                    {paymentConfig.provider === 'revolut'
+                      ? ' securely via Revolut.'
+                      : ' via Direct Debit or card.'}
                     {paymentConfig.isStub && (
                       <span className="block mt-1 text-xs text-amber-700 dark:text-amber-300">
-                        Demo mode — Adfin is not configured; using a GoCardless-style stub flow.
+                        Demo mode — Revolut is not configured; using a GoCardless-style stub flow.
                       </span>
                     )}
                   </p>
 
                   {!stubMandateId ? (
                     <div className="mt-4 flex flex-col sm:flex-row gap-3">
-                      {paymentConfig.methods.directDebit && (
+                      {paymentConfig.provider === 'revolut' ? (
                         <button
                           type="button"
-                          data-testid="setup-direct-debit"
-                          onClick={() => handleSetupPayment('direct_debit')}
-                          disabled={isSettingUpPayment}
-                          className="flex-1 inline-flex items-center justify-center gap-2 rounded-xl border border-sky-300 bg-white px-4 py-3 text-sm font-medium text-sky-900 hover:bg-sky-50 disabled:opacity-50 dark:bg-slate-800 dark:border-sky-700 dark:text-sky-100"
-                        >
-                          <BuildingLibraryIcon className="h-5 w-5" />
-                          {isSettingUpPayment && paymentMethodChoice === 'direct_debit'
-                            ? 'Setting up…'
-                            : 'Set up Direct Debit'}
-                        </button>
-                      )}
-                      {paymentConfig.methods.card && (
-                        <button
-                          type="button"
-                          data-testid="setup-card"
+                          data-testid="setup-revolut-payment"
                           onClick={() => handleSetupPayment('card')}
                           disabled={isSettingUpPayment}
                           className="flex-1 inline-flex items-center justify-center gap-2 rounded-xl border border-sky-300 bg-white px-4 py-3 text-sm font-medium text-sky-900 hover:bg-sky-50 disabled:opacity-50 dark:bg-slate-800 dark:border-sky-700 dark:text-sky-100"
                         >
                           <CreditCardIcon className="h-5 w-5" />
-                          {isSettingUpPayment && paymentMethodChoice === 'card'
-                            ? 'Setting up…'
-                            : 'Pay by card'}
+                          {isSettingUpPayment ? 'Opening checkout…' : 'Pay now'}
                         </button>
+                      ) : (
+                        <>
+                          {paymentConfig.methods.directDebit && (
+                            <button
+                              type="button"
+                              data-testid="setup-direct-debit"
+                              onClick={() => handleSetupPayment('direct_debit')}
+                              disabled={isSettingUpPayment}
+                              className="flex-1 inline-flex items-center justify-center gap-2 rounded-xl border border-sky-300 bg-white px-4 py-3 text-sm font-medium text-sky-900 hover:bg-sky-50 disabled:opacity-50 dark:bg-slate-800 dark:border-sky-700 dark:text-sky-100"
+                            >
+                              <BuildingLibraryIcon className="h-5 w-5" />
+                              {isSettingUpPayment && paymentMethodChoice === 'direct_debit'
+                                ? 'Setting up…'
+                                : 'Set up Direct Debit'}
+                            </button>
+                          )}
+                          {paymentConfig.methods.card && (
+                            <button
+                              type="button"
+                              data-testid="setup-card"
+                              onClick={() => handleSetupPayment('card')}
+                              disabled={isSettingUpPayment}
+                              className="flex-1 inline-flex items-center justify-center gap-2 rounded-xl border border-sky-300 bg-white px-4 py-3 text-sm font-medium text-sky-900 hover:bg-sky-50 disabled:opacity-50 dark:bg-slate-800 dark:border-sky-700 dark:text-sky-100"
+                            >
+                              <CreditCardIcon className="h-5 w-5" />
+                              {isSettingUpPayment && paymentMethodChoice === 'card'
+                                ? 'Setting up…'
+                                : 'Pay by card'}
+                            </button>
+                          )}
+                        </>
                       )}
                     </div>
                   ) : (
@@ -734,7 +779,9 @@ const PublicProposalView = () => {
                 >
                   <CheckCircleIcon className="h-5 w-5 text-emerald-600 shrink-0" />
                   <p className="text-sm text-emerald-800 dark:text-emerald-200">
-                    Payment mandate active — your accountant can now collect fees as agreed.
+                    {paymentConfig.provider === 'revolut'
+                      ? 'Payment received — thank you for completing your engagement fees.'
+                      : 'Payment mandate active — your accountant can now collect fees as agreed.'}
                   </p>
                 </div>
               )}

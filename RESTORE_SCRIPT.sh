@@ -176,7 +176,7 @@ echo ""
 echo "RECOMMENDED:"
 echo "  - COMPANIES_HOUSE_API_KEY"
 echo "  - EMAIL_PROVIDER + SMTP settings"
-echo "  - ADFIN_API_KEY (if using Adfin payments)"
+echo "  - REVOLUT_API_SECRET_KEY (if using Revolut payments)"
 echo ""
 
 # Check if .env file exists

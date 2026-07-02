@@ -32,7 +32,7 @@ import enhancedServiceRoutes from './routes/services-new.js';
 import tenantRoutes from './routes/tenants.js';
 import emailRoutes from './routes/email.js';
 import paymentRoutes from './routes/payments.js';
-import adfinRoutes from './routes/adfin.js';
+import billingRoutes from './routes/billing.js';
 import coverLetterTemplateRoutes from './routes/coverLetterTemplates.js';
 import proposalTemplateRoutes from './routes/proposalTemplates.js';
 import engagementLibraryRoutes from './routes/engagementLibrary.js';
@@ -82,12 +82,28 @@ app.use(
     contentSecurityPolicy: {
       directives: {
         defaultSrc: ["'self'"],
-        scriptSrc: ["'self'", "'unsafe-inline'"],
+        scriptSrc: [
+          "'self'",
+          "'unsafe-inline'",
+          'https://sandbox-checkout.revolut.com',
+          'https://checkout.revolut.com',
+        ],
         styleSrc: ["'self'", "'unsafe-inline'", 'https://fonts.googleapis.com'],
         fontSrc: ["'self'", 'https://fonts.gstatic.com'],
         imgSrc: ["'self'", 'data:', 'blob:', 'https:'],
-        connectSrc: ["'self'", process.env.FRONTEND_URL || 'http://localhost:5173'],
-        frameSrc: ["'self'"],
+        connectSrc: [
+          "'self'",
+          process.env.FRONTEND_URL || 'http://localhost:5173',
+          'https://sandbox-merchant.revolut.com',
+          'https://merchant.revolut.com',
+          'https://sandbox-checkout.revolut.com',
+          'https://checkout.revolut.com',
+        ],
+        frameSrc: [
+          "'self'",
+          'https://sandbox-checkout.revolut.com',
+          'https://checkout.revolut.com',
+        ],
         objectSrc: ["'none'"],
         baseUri: ["'self'"],
         formAction: ["'self'"],
@@ -325,6 +341,17 @@ app.use(cookieParser());
 
 // Stripe webhook must receive raw body — mount before express.json()
 app.use('/api/payments/webhook', stripeWebhookRoutes);
+
+// Revolut billing webhook — raw body for HMAC verification
+app.use(
+  '/api/billing/webhook',
+  express.json({
+    limit: '64kb',
+    verify: (req, _res, buf) => {
+      (req as express.Request & { rawBody?: Buffer }).rawBody = buf;
+    },
+  })
+);
 
 // Body parsing — SendGrid webhook needs raw body for signature verification
 import sendgridWebhookRoutes from './routes/webhooks/sendgrid.js';
@@ -917,7 +944,7 @@ app.use('/api/services/v2', extractTenant, enhancedServiceRoutes);
 app.use('/api/tenants', tenantRoutes);
 app.use('/api/email', extractTenant, emailRoutes);
 app.use('/api/payments', extractTenant, paymentRoutes);
-app.use('/api/payments/adfin', extractTenant, adfinRoutes);
+app.use('/api/billing', extractTenant, billingRoutes);
 app.use('/api/companies-house', extractTenant, companiesHouseRoutes);
 app.use('/api/cover-letter-templates', extractTenant, coverLetterTemplateRoutes);
 app.use('/api/proposal-templates', extractTenant, proposalTemplateRoutes);

@@ -1,15 +1,18 @@
 /**
- * Post-sign payment mandate collection (Ignition-style).
- * Uses Adfin when configured; falls back to GoCardless stub gracefully.
+ * Post-sign payment collection (Ignition-style).
+ * Uses Revolut when configured; falls back to GoCardless stub gracefully.
  */
 
 import { prisma } from '../config/database.js';
 import logger from '../config/logger.js';
-import { createAdfinService, type AdfinPaymentResponse } from './adfin.js';
+import { isRevolutConfigured } from '../lib/revolut/revolut-client.js';
+import { createProposalCheckoutOrder } from './proposalPayment.js';
 import { createMandateSetup, completeStubMandate } from './gocardlessStub.js';
 import { getPaymentSettings } from '../utils/tenantPaymentSettings.js';
 
-export type PaymentProviderName = 'adfin' | 'gocardless_stub' | 'none';
+export type PaymentProviderName = 'revolut' | 'gocardless_stub' | 'none';
+
+const PAYMENT_COMPLETE_STATUSES = ['ACTIVE', 'PAID', 'COMPLETED', 'SKIPPED'];
 
 export interface MandateSetupOptions {
   allowCard?: boolean;
@@ -24,10 +27,12 @@ export interface MandateSetupResult {
   checkoutUrl: string;
   status: string;
   isStub: boolean;
+  token?: string;
+  mode?: 'sandbox' | 'prod';
 }
 
 export function resolvePaymentProvider(): PaymentProviderName {
-  if (createAdfinService()) return 'adfin';
+  if (isRevolutConfigured()) return 'revolut';
   return 'gocardless_stub';
 }
 
@@ -56,7 +61,7 @@ export async function shouldCollectPaymentAtSign(tenantId: string): Promise<bool
 }
 
 /**
- * Create a payment mandate / checkout session after proposal acceptance.
+ * Create a payment checkout / mandate session after proposal acceptance.
  */
 export async function createPostSignMandate(
   proposalId: string,
@@ -81,15 +86,12 @@ export async function createPostSignMandate(
   const paymentSettings = getPaymentSettings(proposal.tenant.settings);
   const provider = resolvePaymentProvider();
 
-  const allowCard = options.allowCard ?? paymentSettings.allowCard;
-  const allowDirectDebit = options.allowDirectDebit ?? paymentSettings.allowDirectDebit;
   const shareToken = proposal.shareToken;
 
   if (!shareToken) {
     throw new Error('Proposal share token missing — cannot create payment setup link');
   }
 
-  const frontendBase = getFrontendBaseUrl(proposal.tenant.subdomain);
   const customerName = proposal.client.contactName || proposal.client.name;
   const customerEmail = proposal.client.contactEmail;
 
@@ -97,59 +99,57 @@ export async function createPostSignMandate(
     throw new Error('Client email is required for payment setup');
   }
 
-  if (provider === 'adfin') {
-    const adfin = createAdfinService()!;
-    const amountInPence = Math.round(proposal.total * 100);
-
-    const payment: AdfinPaymentResponse = await adfin.createPayment({
-      amount: amountInPence,
-      currency: 'GBP',
-      description: `Engagement fees: ${proposal.title}`,
-      reference: proposal.reference,
-      customer: {
-        name: customerName,
-        email: customerEmail,
-        companyName: proposal.client.name,
-      },
-      metadata: {
-        proposalId: proposal.id,
+  if (provider === 'revolut') {
+    const checkout = await createProposalCheckoutOrder(
+      {
+        id: proposal.id,
         tenantId: proposal.tenantId,
-        clientId: proposal.clientId,
-        flow: 'post_sign_mandate',
+        reference: proposal.reference,
+        title: proposal.title,
+        total: proposal.total,
+        paymentStatus: proposal.paymentStatus,
+        client: {
+          name: proposal.client.name,
+          contactName: proposal.client.contactName,
+          contactEmail: proposal.client.contactEmail,
+        },
       },
-      allowCard,
-      allowOpenBanking: false,
-      allowDirectDebit,
-    });
+      { email: customerEmail, name: customerName },
+      shareToken
+    );
+
+    if (!checkout) {
+      throw new Error('Revolut checkout could not be created');
+    }
 
     await prisma.proposal.update({
       where: { id: proposalId },
       data: {
-        paymentId: payment.id,
-        paymentMandateId: payment.id,
-        paymentProvider: 'adfin',
-        paymentStatus: 'PENDING',
-        paymentUrl: payment.checkoutUrl,
-        paymentMethod: options.preferredMethod || null,
+        paymentMandateId: checkout.orderId,
+        paymentProvider: 'revolut',
+        paymentMethod: options.preferredMethod || 'revolut',
       },
     });
 
-    await logPaymentActivity(proposal.tenantId, proposalId, 'PAYMENT_MANDATE_CREATED', {
-      provider: 'adfin',
-      mandateId: payment.id,
+    await logPaymentActivity(proposal.tenantId, proposalId, 'PAYMENT_CHECKOUT_CREATED', {
+      provider: 'revolut',
+      orderId: checkout.orderId,
     });
 
     return {
-      provider: 'adfin',
-      mandateId: payment.id,
-      paymentId: payment.id,
-      checkoutUrl: payment.checkoutUrl,
-      status: payment.status,
+      provider: 'revolut',
+      mandateId: checkout.orderId,
+      paymentId: checkout.orderId,
+      checkoutUrl: checkout.checkoutUrl || '',
+      status: 'PENDING',
       isStub: false,
+      token: checkout.token,
+      mode: checkout.mode,
     };
   }
 
   // GoCardless stub fallback
+  const frontendBase = getFrontendBaseUrl(proposal.tenant.subdomain);
   const stub = await createMandateSetup(
     {
       proposalId: proposal.id,
@@ -195,7 +195,7 @@ export async function createPostSignMandate(
 }
 
 /**
- * Complete a stub mandate (demo / dev flow when Adfin is not configured).
+ * Complete a stub mandate (demo / dev flow when Revolut is not configured).
  */
 export async function completeStubMandateForProposal(
   proposalId: string,
@@ -291,13 +291,13 @@ export async function getPublicPaymentConfig(
     proposal?.status === 'ACCEPTED' &&
     paymentSettings.collectPaymentAtSign &&
     (proposal.total ?? 0) > 0 &&
-    !['ACTIVE', 'PAID', 'SKIPPED'].includes(proposal.paymentStatus || '');
+    !PAYMENT_COMPLETE_STATUSES.includes(proposal.paymentStatus || '');
 
   return {
     collectPaymentAtSign: paymentSettings.collectPaymentAtSign,
     paymentRequired: !!paymentRequired,
     provider,
-    providerConfigured: provider === 'adfin',
+    providerConfigured: provider === 'revolut',
     isStub: provider === 'gocardless_stub',
     methods: {
       directDebit: paymentSettings.allowDirectDebit,
