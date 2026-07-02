@@ -131,6 +131,14 @@ const SIGN_PAGE_FAQS: Array<{ question: string; answer: string }> = [
   },
 ];
 
+function splitCoverLetterParagraphs(...parts: Array<string | undefined>): string[] {
+  const text = parts.filter(Boolean).join('\n\n');
+  return text
+    .split(/\n\s*\n+/)
+    .map((paragraph) => paragraph.trim())
+    .filter(Boolean);
+}
+
 function QaTypingIndicator() {
   return (
     <div className="flex items-center gap-1 px-3 py-2">
@@ -563,7 +571,7 @@ const PublicProposalView = () => {
         </div>
 
         {/* Proposal Content */}
-        <div className="bg-white dark:bg-slate-800 shadow-sm p-6 space-y-8">
+        <div className="bg-white dark:bg-slate-800 shadow-sm rounded-b-xl p-6 space-y-8">
           {/* Status Banner - Enhanced with lifecycle journey tie-in */}
           {isAccepted ? (
             <>
@@ -768,18 +776,22 @@ const PublicProposalView = () => {
 
           {(proposal.coverLetter ||
             (proposal as { proposalSummary?: string }).proposalSummary) && (
-            <div className="border-t pt-6">
-              <div className="mt-2 prose prose-sm max-w-none text-slate-800 dark:text-slate-200 rounded-xl border border-primary-100 bg-primary-50/30 dark:bg-primary-950/20 p-4">
-                {[
+            <div className="border-t border-slate-200 dark:border-slate-600 pt-6">
+              <h3 className="text-sm font-medium text-slate-600 dark:text-slate-300 uppercase tracking-wide">
+                Cover letter
+              </h3>
+              <div className="mt-3 rounded-xl border border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-900/60 p-5 space-y-5">
+                {splitCoverLetterParagraphs(
                   proposal.coverLetter,
-                  (proposal as { proposalSummary?: string }).proposalSummary,
-                ]
-                  .filter(Boolean)
-                  .join('\n\n')
-                  .split('\n')
-                  .map((paragraph, i) => (
-                    <p key={i}>{paragraph}</p>
-                  ))}
+                  (proposal as { proposalSummary?: string }).proposalSummary
+                ).map((paragraph, i) => (
+                  <p
+                    key={i}
+                    className="text-sm sm:text-base leading-relaxed text-slate-800 dark:text-slate-100"
+                  >
+                    {paragraph}
+                  </p>
+                ))}
               </div>
             </div>
           )}
@@ -791,33 +803,35 @@ const PublicProposalView = () => {
               {proposal.services.map((service) => (
                 <div
                   key={service.id}
-                  className="flex justify-between items-start p-4 bg-slate-50 rounded-lg"
+                  className="flex justify-between items-start p-4 bg-slate-50 dark:bg-slate-900/50 border border-slate-100 dark:border-slate-700 rounded-lg"
                 >
                   <div className="flex-1">
                     <div className="flex items-center">
-                      <h4 className="font-medium text-slate-900">{service.name}</h4>
+                      <h4 className="font-medium text-slate-900 dark:text-slate-100">{service.name}</h4>
                       {service.isOptional && (
-                        <span className="ml-2 px-2 py-0.5 text-xs bg-slate-200 text-slate-700 rounded-full">
+                        <span className="ml-2 px-2 py-0.5 text-xs bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-200 rounded-full">
                           Optional
                         </span>
                       )}
                     </div>
                     {service.description && (
-                      <p className="text-sm text-slate-600 mt-1">{service.description}</p>
+                      <p className="text-sm text-slate-600 dark:text-slate-300 mt-1">{service.description}</p>
                     )}
-                    <p className="text-sm text-slate-600 mt-1">
+                    <p className="text-sm text-slate-600 dark:text-slate-300 mt-1">
                       {service.quantity} x {formatCurrency(service.unitPrice)} /{' '}
                       {(service.billingFrequency || service.frequency).toLowerCase().replace(/_/g, ' ')}
                     </p>
                     {(service.billingFrequency || service.frequency) === 'ONE_TIME' &&
                       service.oneOffDueDate && (
-                        <p className="text-sm text-slate-700 mt-1">
+                        <p className="text-sm text-slate-700 dark:text-slate-200 mt-1">
                           Due: {formatDate(service.oneOffDueDate)}
                         </p>
                       )}
                   </div>
                   <div className="text-right">
-                    <p className="font-medium text-slate-900">{formatCurrency(service.lineTotal || service.total || 0)}</p>
+                    <p className="font-medium text-slate-900 dark:text-slate-100">
+                      {formatCurrency(service.lineTotal || service.total || 0)}
+                    </p>
                   </div>
                 </div>
               ))}
@@ -922,22 +936,30 @@ const PublicProposalView = () => {
           )}
 
           {/* Pricing Summary */}
-          <div className="border-t pt-6">
+          <div className="border-t border-slate-200 dark:border-slate-600 pt-6">
             <div className="space-y-2">
               <div className="flex justify-between text-sm">
-                <span className="text-slate-700">Subtotal</span>
-                <span className="font-medium">{formatCurrency(displayTotals.subtotal)}</span>
+                <span className="text-slate-700 dark:text-slate-200">Subtotal</span>
+                <span className="font-medium text-slate-900 dark:text-slate-100">
+                  {formatCurrency(displayTotals.subtotal)}
+                </span>
               </div>
               <div className="flex justify-between text-sm">
-                <span className="text-slate-700">VAT</span>
-                <span className="font-medium">{formatCurrency(displayTotals.vatAmount)}</span>
+                <span className="text-slate-700 dark:text-slate-200">VAT</span>
+                <span className="font-medium text-slate-900 dark:text-slate-100">
+                  {formatCurrency(displayTotals.vatAmount)}
+                </span>
               </div>
-              <div className="flex justify-between text-lg font-semibold pt-2 border-t">
-                <span className="text-slate-900">Total</span>
-                <span className="text-slate-900">{formatCurrency(displayTotals.total)}</span>
+              <div className="flex justify-between text-lg font-semibold pt-2 border-t border-slate-200 dark:border-slate-600">
+                <span className="text-slate-900 dark:text-slate-100">Total</span>
+                <span className="text-slate-900 dark:text-slate-100">
+                  {formatCurrency(displayTotals.total)}
+                </span>
               </div>
             </div>
-            <p className="text-sm text-slate-600 mt-2">Payment terms: {proposal.paymentTerms}</p>
+            <p className="text-sm text-slate-600 dark:text-slate-300 mt-2">
+              Payment terms: {proposal.paymentTerms}
+            </p>
           </div>
 
           {/* Static FAQs — UK English */}
@@ -1162,7 +1184,10 @@ const PublicProposalView = () => {
                   onChange={(e) => setTermsAccepted(e.target.checked)}
                   className="mt-1 h-4 w-4 text-primary-600 rounded"
                 />
-                <label htmlFor="terms" className="ml-2 text-sm text-slate-800">
+                <label
+                  htmlFor="terms"
+                  className="ml-2 text-sm text-slate-800 dark:text-slate-100"
+                >
                   I have read and agree to the terms and conditions outlined above.
                 </label>
               </div>
@@ -1175,31 +1200,31 @@ const PublicProposalView = () => {
               data-testid="signing-summary-card"
               className="border-t pt-6"
             >
-              <div className="rounded-xl border border-emerald-200 dark:border-emerald-800/60 bg-emerald-50/60 dark:bg-emerald-950/20 p-5">
+              <div className="rounded-xl border border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-900/70 p-5">
                 <div className="flex items-start gap-3">
-                  <DocumentTextIcon className="h-6 w-6 text-emerald-600 dark:text-emerald-400 shrink-0 mt-0.5" />
+                  <DocumentTextIcon className="h-6 w-6 text-primary-600 dark:text-primary-400 shrink-0 mt-0.5" />
                   <div className="flex-1 min-w-0">
-                    <h3 className="text-sm font-semibold text-emerald-900 dark:text-emerald-200">
+                    <h3 className="text-sm font-semibold text-slate-900 dark:text-slate-100">
                       What you are agreeing to
                     </h3>
                     {signingSummaryLoading ? (
                       <div className="mt-3 space-y-2 animate-pulse">
-                        <div className="h-3 bg-emerald-200/60 dark:bg-emerald-900/40 rounded w-full" />
-                        <div className="h-3 bg-emerald-200/60 dark:bg-emerald-900/40 rounded w-5/6" />
-                        <div className="h-3 bg-emerald-200/60 dark:bg-emerald-900/40 rounded w-4/6" />
+                        <div className="h-3 bg-slate-200 dark:bg-slate-700 rounded w-full" />
+                        <div className="h-3 bg-slate-200 dark:bg-slate-700 rounded w-5/6" />
+                        <div className="h-3 bg-slate-200 dark:bg-slate-700 rounded w-4/6" />
                       </div>
                     ) : signingSummary ? (
-                      <p className="mt-2 text-sm text-emerald-800 dark:text-emerald-100/90 leading-relaxed">
+                      <p className="mt-2 text-sm text-slate-800 dark:text-slate-100 leading-relaxed">
                         {signingSummary}
                       </p>
                     ) : (
-                      <p className="mt-2 text-sm text-emerald-800 dark:text-emerald-100/90 leading-relaxed">
+                      <p className="mt-2 text-sm text-slate-800 dark:text-slate-100 leading-relaxed">
                         By signing, you confirm you are authorised to accept this proposal on behalf
-                        of {proposal.client.name}, agree to the services and fees shown above, and
-                        accept the terms and conditions.
+                        of {proposal.client.name}, agree to the services and recurring fees shown
+                        above, and accept the terms and conditions.
                       </p>
                     )}
-                    <p className="mt-3 text-xs text-emerald-700/80 dark:text-emerald-400/70">
+                    <p className="mt-3 text-xs text-slate-600 dark:text-slate-400">
                       Please read this summary carefully before adding your signature.
                     </p>
                   </div>
@@ -1345,7 +1370,7 @@ const PublicProposalView = () => {
           {/* Signature Pad */}
           {!isAccepted && !isExpired && showSignature && (
             <div className="border-t pt-6">
-              <h3 className="text-lg font-medium text-slate-900 mb-4">
+              <h3 className="text-lg font-medium text-slate-900 dark:text-slate-100 mb-4">
                 {awaitingAdditionalSigner
                   ? 'Additional signatory — electronic signature'
                   : 'Electronic signature'}
@@ -1353,7 +1378,9 @@ const PublicProposalView = () => {
               <div className="space-y-4">
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-sm font-medium text-slate-800">Full Name</label>
+                    <label className="block text-sm font-medium text-slate-800 dark:text-slate-200">
+                      Full Name
+                    </label>
                     <input
                       data-testid="signer-name-input"
                       type="text"
@@ -1364,7 +1391,9 @@ const PublicProposalView = () => {
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-slate-800">Role/Title</label>
+                    <label className="block text-sm font-medium text-slate-800 dark:text-slate-200">
+                      Role/Title
+                    </label>
                     <input
                       data-testid="signer-role-input"
                       type="text"
@@ -1375,7 +1404,9 @@ const PublicProposalView = () => {
                     />
                   </div>
                   <div className="sm:col-span-2">
-                    <label className="block text-sm font-medium text-slate-800">Email address</label>
+                    <label className="block text-sm font-medium text-slate-800 dark:text-slate-200">
+                      Email address
+                    </label>
                     <input
                       data-testid="signer-email-input"
                       type="email"
@@ -1386,7 +1417,7 @@ const PublicProposalView = () => {
                     />
                   </div>
                 </div>
-                <label className="flex items-start gap-2 text-sm text-slate-800">
+                <label className="flex items-start gap-2 text-sm text-slate-800 dark:text-slate-100">
                   <input
                     data-testid="authorised-checkbox"
                     type="checkbox"
