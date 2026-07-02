@@ -282,32 +282,32 @@ I confirm that:
 `;
 }
 
-// Standard proposal terms and conditions (shorter version for proposals)
+// Standard proposal terms and conditions (plain text — no markdown; safe for <pre> display)
 export function generateProposalTerms(): string {
-  return `# TERMS AND CONDITIONS OF SERVICE
+  return `TERMS AND CONDITIONS OF SERVICE
 
-## 1. Acceptance of Proposal
+1. Acceptance of Proposal
 
-By accepting this proposal, you agree to engage ${'{{PRACTICE_NAME}}'} to provide the services detailed herein, subject to the terms and conditions set out below and our full Letter of Engagement to be provided upon acceptance.
+By accepting this proposal, you agree to engage {{PRACTICE_NAME}} to provide the services detailed herein, subject to the terms and conditions set out below and our full Letter of Engagement to be provided upon acceptance.
 
-## 2. Services
+2. Services
 
 We will provide the services described in this proposal with reasonable skill and care, in accordance with applicable professional standards and the rules of our regulatory body.
 
-## 3. Fees
+3. Fees
 
-### 3.1 Fee Structure
+3.1 Fee Structure
 - Fees are as stated in this proposal
 - VAT will be applied at the prevailing rate where applicable
 - For recurring services, fees may be reviewed annually
 
-### 3.2 Payment Terms
-- Invoices are payable within 30 days
+3.2 Payment Terms
+- Invoices are payable within {{PAYMENT_TERMS}}
 - Monthly/Quarterly services: billed in advance
 - Annual/One-off services: billed on completion or as agreed
 - Late payments subject to interest at 8% above Bank of England base rate
 
-## 4. Client Obligations
+4. Client Obligations
 
 You agree to:
 - Provide complete and accurate information
@@ -316,30 +316,30 @@ You agree to:
 - Pay fees in accordance with these terms
 - Maintain proper business records
 
-## 5. Limitation of Liability
+5. Limitation of Liability
 
 Our liability is limited to the fees paid for the specific service or £1,000,000, whichever is lower. This does not exclude liability for fraud, death, or personal injury.
 
-## 6. Confidentiality
+6. Confidentiality
 
 We maintain strict confidentiality of your affairs, subject to legal and regulatory obligations, including anti-money laundering regulations.
 
-## 7. Termination
+7. Termination
 
-Either party may terminate by giving 3 months' written notice. We may terminate immediately for non-payment or failure to provide required information.
+Either party may terminate by giving {{CANCELLATION_NOTICE}} written notice. We may terminate immediately for non-payment or failure to provide required information.
 
-## 8. Governing Law
+8. Governing Law
 
-These terms are governed by the laws of England and Wales.
+These terms are governed by the laws of {{GOVERNING_LAW}}.
 
-## 9. Acceptance
+9. Acceptance
 
 Your electronic or physical signature on this proposal constitutes acceptance of these terms and agreement to our full Letter of Engagement.
 
 ---
 
-**Version:** PRO-2024-001  
-**Date:** ${new Date().toLocaleDateString('en-GB')}
+Version: PRO-2025-001
+Date: ${new Date().toLocaleDateString('en-GB')}
 `;
 }
 

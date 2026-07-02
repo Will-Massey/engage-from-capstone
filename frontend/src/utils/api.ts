@@ -457,6 +457,8 @@ export const apiClient = {
 
   getTenantSettings: () => api.get('/tenants/settings'),
 
+  getDefaultProposalTerms: () => api.get('/tenants/settings/proposal-terms-default'),
+
   updateTenantSettings: (data: any) => api.put('/tenants/settings', data),
 
   testIntegrationWebhook: (format?: 'default' | 'hubspot') =>

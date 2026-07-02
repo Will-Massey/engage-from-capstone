@@ -14,6 +14,10 @@ import { setAuthCookies } from '../utils/authCookies.js';
 import { buildTrialSettings } from '../services/subscriptionService.js';
 import { sendTestIntegrationWebhook } from '../services/integrationEvents.js';
 import {
+  getEngageDefaultTermsTemplate,
+  previewEngageDefaultTermsForTenant,
+} from '../services/proposalTermsService.js';
+import {
   getFirmGroupContext,
   createFirmGroup,
   updateFirmGroup,
@@ -744,6 +748,9 @@ router.put(
           defaultExpiryDays: z.number().int().min(1).max(365).optional(),
           renewalReminderDays: z.number().int().min(1).max(90).optional(),
           defaultPaymentTermsDays: z.number().int().min(1).max(90).optional(),
+          cancellationNoticeDays: z.number().int().min(1).max(365).optional(),
+          termsSource: z.enum(['engage_default', 'custom']).optional(),
+          customTerms: z.string().max(50000).nullable().optional(),
         })
         .optional(),
       payments: z
@@ -872,6 +879,34 @@ router.put(
         },
       },
       message: 'Settings saved successfully',
+    });
+  })
+);
+
+/**
+ * GET /api/tenants/settings/proposal-terms-default
+ * Engage default T&C template (with placeholders) and resolved preview for the settings editor.
+ */
+router.get(
+  '/settings/proposal-terms-default',
+  authenticate,
+  asyncHandler(async (req, res) => {
+    const tenantId = req.tenantId!;
+    const template = getEngageDefaultTermsTemplate();
+    const preview = await previewEngageDefaultTermsForTenant(tenantId);
+
+    res.json({
+      success: true,
+      data: {
+        template,
+        preview,
+        placeholders: [
+          '{{PRACTICE_NAME}}',
+          '{{PAYMENT_TERMS}}',
+          '{{CANCELLATION_NOTICE}}',
+          '{{GOVERNING_LAW}}',
+        ],
+      },
     });
   })
 );

@@ -28,6 +28,7 @@ import WebhookSettings from '../components/settings/WebhookSettings';
 import FirmGroupSettings from '../components/settings/FirmGroupSettings';
 import VoiceOfPracticeSettings from '../components/settings/VoiceOfPracticeSettings';
 import EngagementLibrarySettings from '../components/settings/EngagementLibrarySettings';
+import ProposalTermsSettings from '../components/settings/ProposalTermsSettings';
 
 // Simplified tabs - combined related sections
 const tabs = [
@@ -122,6 +123,9 @@ const Settings = () => {
       defaultExpiryDays: 30,
       renewalReminderDays: 30,
       defaultPaymentTermsDays: 7,
+      cancellationNoticeDays: 30,
+      termsSource: 'engage_default' as 'engage_default' | 'custom',
+      customTerms: null as string | null,
     },
     notifications: {
       proposalAccepted: true,
@@ -466,9 +470,21 @@ const Settings = () => {
           }));
         }
         if (data.proposals) {
+          const p = data.proposals as Record<string, unknown>;
           setCommunicationsForm((prev) => ({
             ...prev,
-            proposals: { ...prev.proposals, ...data.proposals },
+            proposals: {
+              ...prev.proposals,
+              ...data.proposals,
+              termsSource:
+                p.termsSource === 'custom' || p.useCustomTerms === true
+                  ? 'custom'
+                  : 'engage_default',
+              cancellationNoticeDays:
+                typeof p.cancellationNoticeDays === 'number'
+                  ? p.cancellationNoticeDays
+                  : prev.proposals.cancellationNoticeDays,
+            },
           }));
         }
         if (data.vat) {
@@ -1530,6 +1546,30 @@ const Settings = () => {
                         Email reminders before proposal expiry or annual renewal
                       </p>
                     </div>
+                    <div>
+                      <label className="block text-sm font-semibold text-slate-700 dark:text-slate-100">
+                        Cancellation notice (days)
+                      </label>
+                      <input
+                        type="number"
+                        min={1}
+                        max={365}
+                        value={communicationsForm.proposals.cancellationNoticeDays ?? 30}
+                        onChange={(e) =>
+                          setCommunicationsForm({
+                            ...communicationsForm,
+                            proposals: {
+                              ...communicationsForm.proposals,
+                              cancellationNoticeDays: Number(e.target.value) || 30,
+                            },
+                          })
+                        }
+                        className="mt-1 input-field w-full"
+                      />
+                      <p className="mt-1 text-xs text-slate-500 dark:text-slate-300">
+                        Written notice required to terminate the engagement (shown in terms)
+                      </p>
+                    </div>
                   </div>
                   <div className="pt-4 border-t border-slate-200 dark:border-slate-700 flex flex-wrap gap-3">
                     <button
@@ -1542,6 +1582,25 @@ const Settings = () => {
                   </div>
                 </div>
               </div>
+
+              <ProposalTermsSettings
+                proposals={{
+                  defaultPaymentTermsDays:
+                    communicationsForm.proposals.defaultPaymentTermsDays ?? 7,
+                  cancellationNoticeDays:
+                    communicationsForm.proposals.cancellationNoticeDays ?? 30,
+                  termsSource: communicationsForm.proposals.termsSource ?? 'engage_default',
+                  customTerms: communicationsForm.proposals.customTerms ?? null,
+                }}
+                onChange={(patch) =>
+                  setCommunicationsForm({
+                    ...communicationsForm,
+                    proposals: { ...communicationsForm.proposals, ...patch },
+                  })
+                }
+                onSave={handleSaveCommunications}
+                isSaving={isSaving === 'communications'}
+              />
 
               {/* Notifications */}
               <div className="glass-tile overflow-hidden">

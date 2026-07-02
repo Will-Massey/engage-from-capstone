@@ -8,12 +8,21 @@ export interface ProposalSettings {
   renewalReminderDays: number;
   /** Invoice payment terms in days (e.g. 7 → "7 days") */
   defaultPaymentTermsDays: number;
+  /** Written notice required to terminate the engagement */
+  cancellationNoticeDays: number;
+  /** 'engage_default' | 'custom' — which T&C template proposals use */
+  termsSource: 'engage_default' | 'custom';
+  /** Firm-edited terms template (supports {{PRACTICE_NAME}}, {{PAYMENT_TERMS}}, etc.) */
+  customTerms: string | null;
 }
 
 export const DEFAULT_PROPOSAL_SETTINGS: ProposalSettings = {
   defaultExpiryDays: 30,
   renewalReminderDays: 30,
   defaultPaymentTermsDays: 7,
+  cancellationNoticeDays: 30,
+  termsSource: 'engage_default',
+  customTerms: null,
 };
 
 export function formatPaymentTerms(days: number): string {
@@ -37,6 +46,15 @@ export function getProposalSettings(tenantSettingsJson?: string | null): Proposa
         typeof p.defaultPaymentTermsDays === 'number' && p.defaultPaymentTermsDays > 0
           ? p.defaultPaymentTermsDays
           : DEFAULT_PROPOSAL_SETTINGS.defaultPaymentTermsDays,
+      cancellationNoticeDays:
+        typeof p.cancellationNoticeDays === 'number' && p.cancellationNoticeDays > 0
+          ? p.cancellationNoticeDays
+          : DEFAULT_PROPOSAL_SETTINGS.cancellationNoticeDays,
+      termsSource:
+        p.termsSource === 'custom' || p.useCustomTerms === true
+          ? 'custom'
+          : 'engage_default',
+      customTerms: typeof p.customTerms === 'string' ? p.customTerms : null,
     };
   } catch {
     return DEFAULT_PROPOSAL_SETTINGS;
