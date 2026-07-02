@@ -8,10 +8,7 @@ import {
   StarIcon,
   DocumentDuplicateIcon,
   XMarkIcon,
-  CalculatorIcon,
-  ArrowRightIcon,
 } from '@heroicons/react/24/outline';
-import PricingCalculator from '../../components/pricing/PricingCalculator';
 import { apiClient } from '../../utils/api';
 import { useAuthStore } from '../../stores/authStore';
 import toast from 'react-hot-toast';
@@ -449,31 +446,18 @@ const Services = () => {
 
   return (
     <div className="space-y-6 animate-fade-in">
-      <div className="glass-tile p-5 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div className="flex items-start gap-3">
-          <CalculatorIcon className="h-8 w-8 text-primary-600 dark:text-primary-400 shrink-0" />
-          <div>
-            <h2 className="font-semibold text-slate-900 dark:text-white">Pricing methodology</h2>
-            <p className="text-sm text-slate-600 dark:text-slate-300 mt-0.5">
-              Estimate fee bands from turnover, entity type, and complexity — then apply to a proposal.
-            </p>
-          </div>
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-bold text-slate-900 dark:text-white">Services catalogue</h1>
+          <p className="text-sm text-slate-600 dark:text-slate-300 mt-1">
+            Manage fees and service lines for proposals. Use the{' '}
+            <Link to="/pricing-calculator" className="text-primary-600 dark:text-primary-400 hover:underline">
+              pricing calculator
+            </Link>{' '}
+            from the sidebar when you need turnover-based fee suggestions.
+          </p>
         </div>
-        <Link
-          to="/pricing-calculator"
-          className="btn-secondary inline-flex items-center gap-2 shrink-0 self-start sm:self-center"
-        >
-          Full calculator
-          <ArrowRightIcon className="h-4 w-4" />
-        </Link>
-      </div>
-
-      <div className="card p-5">
-        <PricingCalculator compact />
-      </div>
-
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-end gap-4 -mt-2">
-        <button onClick={openAddModal} className="btn-primary inline-flex">
+        <button onClick={openAddModal} className="btn-primary inline-flex shrink-0">
           <PlusIcon className="h-5 w-5 mr-2" />
           Add Service
         </button>

@@ -766,16 +766,14 @@ export default function ProposalBuilder({ proposalId }: ProposalBuilderProps) {
     if (
       isEditMode ||
       !preselectedTemplateId ||
-      !selectedClient ||
       services.length === 0 ||
       preselectedTemplateAppliedRef.current
     ) {
       return;
     }
-    preselectedTemplateAppliedRef.current = true;
     void applyProposalTemplate(preselectedTemplateId);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isEditMode, preselectedTemplateId, selectedClient?.id, services.length]);
+  }, [isEditMode, preselectedTemplateId, services.length]);
 
   useEffect(() => {
     if (currentStep >= 3 && getBuilderPreviewPreference()) {
@@ -1642,12 +1640,27 @@ export default function ProposalBuilder({ proposalId }: ProposalBuilderProps) {
     };
   };
 
+  const findCatalogueForTemplateItem = (item: {
+    serviceId?: string;
+    name?: string;
+  }): Service | undefined => {
+    if (item.serviceId) {
+      const byId = services.find((s) => s.id === item.serviceId);
+      if (byId) return byId;
+    }
+    const needle = (item.name || '').trim().toLowerCase();
+    if (!needle) return undefined;
+    return services.find((s) => s.name.trim().toLowerCase() === needle);
+  };
+
   const applyProposalTemplate = async (templateId: string) => {
+    const isDeepLinkApply = templateId === preselectedTemplateId;
     setApplyingTemplateId(templateId);
     try {
       const res = (await apiClient.getProposalTemplate(templateId)) as any;
       if (!res.success) {
         toast.error('Could not load template');
+        if (isDeepLinkApply) preselectedTemplateAppliedRef.current = false;
         return;
       }
       const t = res.data;
@@ -1662,12 +1675,18 @@ export default function ProposalBuilder({ proposalId }: ProposalBuilderProps) {
       }
 
       const config = Array.isArray(t.serviceConfig) ? t.serviceConfig : [];
+      if (config.length === 0) {
+        toast.error('This template has no services configured');
+        if (isDeepLinkApply) preselectedTemplateAppliedRef.current = false;
+        return;
+      }
+
       const lines: SelectedService[] = [];
       const missing: string[] = [];
       for (const item of config) {
-        const catalogue = services.find((s) => s.id === item.serviceId);
+        const catalogue = findCatalogueForTemplateItem(item);
         if (!catalogue) {
-          missing.push(item.name || item.serviceId);
+          missing.push(item.name || item.serviceId || 'Unknown service');
           continue;
         }
         lines.push(
@@ -1681,9 +1700,22 @@ export default function ProposalBuilder({ proposalId }: ProposalBuilderProps) {
           )
         );
       }
+
+      if (lines.length === 0) {
+        toast.error(
+          'None of the template services are in your catalogue. Add matching services or update the template.'
+        );
+        if (isDeepLinkApply) preselectedTemplateAppliedRef.current = false;
+        return;
+      }
+
       setSelectedServices(lines);
       setSelectedTemplateId(templateId);
+      setBuildMode('template');
+      setCurrentStep(2);
       await apiClient.recordProposalTemplateUse(templateId);
+      if (isDeepLinkApply) preselectedTemplateAppliedRef.current = true;
+
       if (missing.length > 0) {
         toast(
           `${missing.length} service(s) from this template are no longer in your catalogue — the rest were applied`
@@ -1693,6 +1725,7 @@ export default function ProposalBuilder({ proposalId }: ProposalBuilderProps) {
       }
     } catch {
       toast.error('Failed to apply template');
+      if (isDeepLinkApply) preselectedTemplateAppliedRef.current = false;
     } finally {
       setApplyingTemplateId(null);
     }
@@ -2868,12 +2901,12 @@ export default function ProposalBuilder({ proposalId }: ProposalBuilderProps) {
         )}
       </div>
 
-      {/* Package options — Good / Better / Best */}
+      {/* Package options — Bronze / Silver / Gold / Platinum */}
       <div className="card p-4 border border-violet-100 dark:border-violet-900/40" data-testid="package-options-card">
         <h3 className="font-semibold text-slate-900 dark:text-white mb-1">Package options</h3>
         <p className="text-xs text-slate-500 dark:text-slate-400 mb-4">
-          Offer your client a choice of three packages on the sign page. Fees scale from your base
-          proposal total.
+          Offer your client a choice of Bronze, Silver, Gold, or Platinum packages on the sign page.
+          Fees scale from your base proposal total.
         </p>
 
         <label className="flex items-start gap-3 cursor-pointer mb-4">
@@ -2883,19 +2916,19 @@ export default function ProposalBuilder({ proposalId }: ProposalBuilderProps) {
             checked={offerThreePackages}
             onChange={(e) => {
               setOfferThreePackages(e.target.checked);
-              if (e.target.checked && pricingTiers.length < 3) {
+              if (e.target.checked && pricingTiers.length < 4) {
                 setPricingTiers(DEFAULT_PRICING_TIERS);
               }
             }}
             className="mt-1 h-4 w-4 rounded text-primary-600"
           />
           <span className="text-sm text-slate-800 dark:text-slate-100">
-            Offer three packages (Good / Better / Best)
+            Offer package tiers (Bronze / Silver / Gold / Platinum)
           </span>
         </label>
 
         {offerThreePackages && (
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3 mb-4">
             {pricingTiers.map((tier, index) => (
               <div
                 key={tier.id}

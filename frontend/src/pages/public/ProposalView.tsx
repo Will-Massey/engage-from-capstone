@@ -824,7 +824,7 @@ const PublicProposalView = () => {
             </div>
           </div>
 
-          {/* Package selection — Good / Better / Best */}
+          {/* Package selection — Bronze / Silver / Gold / Platinum */}
           {!isAccepted && !isExpired && tiersEnabled && !awaitingAdditionalSigner && (
             <div className="border-t pt-6" data-testid="tier-selection-section">
               <h3 className="text-sm font-medium text-slate-600 uppercase tracking-wide">

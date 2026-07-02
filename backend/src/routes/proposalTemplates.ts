@@ -43,10 +43,50 @@ const createTemplateSchema = z.object({
   targetEntityType: z.string().optional(),
 });
 
-function parseServiceConfig(raw: string) {
+type ParsedServiceConfigItem = {
+  serviceId: string;
+  name?: string;
+  description?: string | null;
+  billingFrequency?: string;
+  displayPrice?: number;
+  quantity?: number;
+  discountPercent?: number;
+};
+
+function normalizeServiceConfigItem(raw: unknown): ParsedServiceConfigItem | null {
+  if (!raw || typeof raw !== 'object') return null;
+  const item = raw as Record<string, unknown>;
+  const serviceId =
+    typeof item.serviceId === 'string'
+      ? item.serviceId
+      : typeof item.serviceTemplateId === 'string'
+        ? item.serviceTemplateId
+        : null;
+  if (!serviceId) return null;
+  return {
+    serviceId,
+    name: typeof item.name === 'string' ? item.name : undefined,
+    description:
+      typeof item.description === 'string' || item.description === null
+        ? (item.description as string | null)
+        : undefined,
+    billingFrequency:
+      typeof item.billingFrequency === 'string' ? item.billingFrequency : undefined,
+    displayPrice: typeof item.displayPrice === 'number' ? item.displayPrice : undefined,
+    quantity: typeof item.quantity === 'number' ? item.quantity : undefined,
+    discountPercent: typeof item.discountPercent === 'number' ? item.discountPercent : undefined,
+  };
+}
+
+function parseServiceConfig(raw: string): ParsedServiceConfigItem[] {
   try {
     const parsed = JSON.parse(raw || '[]');
-    return Array.isArray(parsed) ? deepCloneJson(parsed) : [];
+    if (!Array.isArray(parsed)) return [];
+    return deepCloneJson(
+      parsed
+        .map(normalizeServiceConfigItem)
+        .filter((item): item is ParsedServiceConfigItem => item !== null)
+    );
   } catch {
     return [];
   }

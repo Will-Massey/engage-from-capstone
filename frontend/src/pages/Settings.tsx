@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { createPortal } from 'react-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuthStore } from '../stores/authStore';
 import { useThemeStore } from '../stores/themeStore';
 import { apiClient } from '../utils/api';
@@ -19,6 +20,7 @@ import {
   MoonIcon,
   ComputerDesktopIcon,
   PuzzlePieceIcon,
+  RectangleStackIcon,
 } from '@heroicons/react/24/outline';
 import EmailSettings from '../components/email/EmailSettings';
 import CoverLetterTemplatesManager from '../components/settings/CoverLetterTemplatesManager';
@@ -45,7 +47,13 @@ const tabs = [
     id: 'communications',
     name: 'Communications',
     icon: EnvelopeIcon,
-    description: 'Email & templates',
+    description: 'Email & notifications',
+  },
+  {
+    id: 'templates',
+    name: 'Templates & terms',
+    icon: RectangleStackIcon,
+    description: 'Proposal bundles, letters, T&Cs',
   },
   {
     id: 'billing',
@@ -1455,13 +1463,6 @@ const Settings = () => {
               {/* Engagement clause library versioning */}
               <EngagementLibrarySettings />
 
-              {/* Cover letter templates */}
-              <div className="glass-tile overflow-hidden">
-                <div className="p-6">
-                  <CoverLetterTemplatesManager />
-                </div>
-              </div>
-
               <div className="glass-tile overflow-hidden">
                 <div className="px-8 py-5 border-b border-slate-200 dark:border-slate-700 bg-white/40 dark:bg-slate-800/30">
                   <h2 className="text-lg font-semibold text-slate-900 dark:text-white">Voice of practice</h2>
@@ -1622,25 +1623,6 @@ const Settings = () => {
                   </div>
                 </div>
               </div>
-
-              <ProposalTermsSettings
-                proposals={{
-                  defaultPaymentTermsDays:
-                    communicationsForm.proposals.defaultPaymentTermsDays ?? 7,
-                  cancellationNoticeDays:
-                    communicationsForm.proposals.cancellationNoticeDays ?? 30,
-                  termsSource: communicationsForm.proposals.termsSource ?? 'engage_default',
-                  customTerms: communicationsForm.proposals.customTerms ?? null,
-                }}
-                onChange={(patch) =>
-                  setCommunicationsForm({
-                    ...communicationsForm,
-                    proposals: { ...communicationsForm.proposals, ...patch },
-                  })
-                }
-                onSave={handleSaveCommunications}
-                isSaving={isSaving === 'communications'}
-              />
 
               {/* Automated chase reminders */}
               <div className="glass-tile overflow-hidden">
@@ -1981,9 +1963,60 @@ const Settings = () => {
             </div>
           )}
 
+          {/* TEMPLATES & TERMS TAB */}
+          {activeTab === 'templates' && (
+            <div className="space-y-6">
+              <div className="glass-tile overflow-hidden">
+                <div className="px-8 py-5 border-b border-slate-200 dark:border-slate-700 bg-white/40 dark:bg-slate-800/30">
+                  <h2 className="text-lg font-semibold text-slate-900 dark:text-white">
+                    Proposal templates
+                  </h2>
+                  <p className="text-sm text-slate-500 dark:text-slate-300 mt-1">
+                    Pre-made service bundles with fixed fees — start proposals in seconds.
+                  </p>
+                </div>
+                <div className="p-6">
+                  <Link to="/templates" className="btn-primary inline-flex items-center gap-2">
+                    <RectangleStackIcon className="h-5 w-5" />
+                    Open proposal templates
+                  </Link>
+                  <p className="mt-3 text-xs text-slate-500 dark:text-slate-400">
+                    Create, edit, and use templates from the Templates page in the left sidebar under
+                    Catalogue.
+                  </p>
+                </div>
+              </div>
+
+              <div className="glass-tile overflow-hidden">
+                <div className="p-6">
+                  <CoverLetterTemplatesManager />
+                </div>
+              </div>
+
+              <ProposalTermsSettings
+                proposals={{
+                  defaultPaymentTermsDays:
+                    communicationsForm.proposals.defaultPaymentTermsDays ?? 7,
+                  cancellationNoticeDays:
+                    communicationsForm.proposals.cancellationNoticeDays ?? 30,
+                  termsSource: communicationsForm.proposals.termsSource ?? 'engage_default',
+                  customTerms: communicationsForm.proposals.customTerms ?? null,
+                }}
+                onChange={(patch) =>
+                  setCommunicationsForm({
+                    ...communicationsForm,
+                    proposals: { ...communicationsForm.proposals, ...patch },
+                  })
+                }
+                onSave={handleSaveCommunications}
+                isSaving={isSaving === 'communications'}
+              />
+            </div>
+          )}
+
           {/* TEAM TAB */}
           {activeTab === 'team' && (
-            <div className="glass-tile overflow-hidden">
+            <div className="glass-tile">
               <div className="px-8 py-5 border-b border-slate-200 dark:border-slate-700 bg-white/40 dark:bg-slate-800/30 flex items-center justify-between">
                 <div>
                   <h2 className="text-lg font-semibold text-slate-900 dark:text-white">Team Members</h2>
@@ -2050,276 +2083,6 @@ const Settings = () => {
                 )}
               </div>
 
-              {/* Add User Modal */}
-              {showAddUserModal && (
-                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-                  <div className="bg-white rounded-xl shadow-xl max-w-md w-full mx-4 p-6">
-                    <h3 className="text-lg font-semibold text-slate-900 mb-4">Add Team Member</h3>
-                    <div className="space-y-4">
-                      <div className="grid grid-cols-2 gap-4">
-                        <div>
-                          <label className="block text-sm font-semibold text-slate-700 dark:text-slate-100">
-                            First Name
-                          </label>
-                          <input
-                            type="text"
-                            value={newUserForm.firstName}
-                            onChange={(e) =>
-                              setNewUserForm({ ...newUserForm, firstName: e.target.value })
-                            }
-                            className="mt-1 input-field w-full"
-                          />
-                        </div>
-                        <div>
-                          <label className="block text-sm font-semibold text-slate-700 dark:text-slate-100">
-                            Last Name
-                          </label>
-                          <input
-                            type="text"
-                            value={newUserForm.lastName}
-                            onChange={(e) =>
-                              setNewUserForm({ ...newUserForm, lastName: e.target.value })
-                            }
-                            className="mt-1 input-field w-full"
-                          />
-                        </div>
-                      </div>
-                      <div className="grid grid-cols-2 gap-4">
-                        <div>
-                          <label className="block text-sm font-semibold text-slate-700 dark:text-slate-100">Contact Number</label>
-                          <input
-                            type="tel"
-                            value={newUserForm.phone}
-                            onChange={(e) =>
-                              setNewUserForm({ ...newUserForm, phone: e.target.value })
-                            }
-                            className="mt-1 input-field w-full"
-                          />
-                        </div>
-                        <div>
-                          <label className="block text-sm font-semibold text-slate-700 dark:text-slate-100">Job Title</label>
-                          <input
-                            type="text"
-                            value={newUserForm.jobTitle}
-                            onChange={(e) =>
-                              setNewUserForm({ ...newUserForm, jobTitle: e.target.value })
-                            }
-                            className="mt-1 input-field w-full"
-                          />
-                        </div>
-                      </div>
-                      <div>
-                        <label className="block text-sm font-semibold text-slate-700 dark:text-slate-100">Email</label>
-                        <input
-                          type="email"
-                          value={newUserForm.email}
-                          onChange={(e) =>
-                            setNewUserForm({ ...newUserForm, email: e.target.value })
-                          }
-                          className="mt-1 input-field w-full"
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-sm font-semibold text-slate-700 dark:text-slate-100">Role</label>
-                        <select
-                          value={newUserForm.role}
-                          onChange={(e) => setNewUserForm({ ...newUserForm, role: e.target.value })}
-                          className="mt-1 input-field w-full"
-                        >
-                          {user?.role === 'ADMIN' && (
-                            <option value="ADMIN">Admin</option>
-                          )}
-                          <option value="PARTNER">Partner</option>
-                          <option value="MD">Managing Director</option>
-                          <option value="MANAGER">Manager</option>
-                          <option value="SENIOR">Senior</option>
-                          <option value="JUNIOR">Junior</option>
-                        </select>
-                      </div>
-                      <div>
-                        <label className="block text-sm font-semibold text-slate-700 dark:text-slate-100">
-                          Temporary Password
-                        </label>
-                        <input
-                          type="password"
-                          value={newUserForm.password}
-                          onChange={(e) =>
-                            setNewUserForm({ ...newUserForm, password: e.target.value })
-                          }
-                          className="mt-1 input-field w-full"
-                          placeholder="Min 8 characters with complexity"
-                        />
-                        {/* Password Requirements */}
-                        <div className="mt-2 space-y-1">
-                          {[
-                            { test: newUserForm.password.length >= 8, label: '8+ characters' },
-                            { test: /[A-Z]/.test(newUserForm.password), label: 'Uppercase' },
-                            { test: /[a-z]/.test(newUserForm.password), label: 'Lowercase' },
-                            { test: /[0-9]/.test(newUserForm.password), label: 'Number' },
-                            {
-                              test: /[^A-Za-z0-9]/.test(newUserForm.password),
-                              label: 'Special char',
-                            },
-                          ].map((req, i) => (
-                            <div key={i} className="flex items-center text-xs">
-                              <span
-                                className={`mr-2 ${req.test ? 'text-green-500' : 'text-slate-400 dark:text-slate-500'}`}
-                              >
-                                {req.test ? '✓' : '○'}
-                              </span>
-                              <span className={req.test ? 'text-green-700' : 'text-slate-500 dark:text-slate-300'}>
-                                {req.label}
-                              </span>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    </div>
-                    <div className="mt-6 flex space-x-3">
-                      <button
-                        onClick={() => setShowAddUserModal(false)}
-                        className="flex-1 btn-secondary"
-                      >
-                        Cancel
-                      </button>
-                      <button
-                        onClick={handleCreateUser}
-                        disabled={isSaving === 'team'}
-                        className="flex-1 btn-primary"
-                      >
-                        {isSaving === 'team' ? 'Adding...' : 'Add User'}
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {showEditUserModal && (
-                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-                  <div className="bg-white dark:bg-slate-900 rounded-xl shadow-xl max-w-md w-full mx-4 p-6">
-                    <h3 className="text-lg font-semibold text-slate-900 dark:text-white mb-4">
-                      Edit Team Member
-                    </h3>
-                    <div className="space-y-4">
-                      <div className="grid grid-cols-2 gap-4">
-                        <div>
-                          <label className="block text-sm font-semibold text-slate-700 dark:text-slate-100">
-                            First Name
-                          </label>
-                          <input
-                            type="text"
-                            value={editUserForm.firstName}
-                            onChange={(e) =>
-                              setEditUserForm({ ...editUserForm, firstName: e.target.value })
-                            }
-                            className="mt-1 input-field w-full"
-                          />
-                        </div>
-                        <div>
-                          <label className="block text-sm font-semibold text-slate-700 dark:text-slate-100">
-                            Last Name
-                          </label>
-                          <input
-                            type="text"
-                            value={editUserForm.lastName}
-                            onChange={(e) =>
-                              setEditUserForm({ ...editUserForm, lastName: e.target.value })
-                            }
-                            className="mt-1 input-field w-full"
-                          />
-                        </div>
-                      </div>
-                      <div className="grid grid-cols-2 gap-4">
-                        <div>
-                          <label className="block text-sm font-semibold text-slate-700 dark:text-slate-100">
-                            Contact Number
-                          </label>
-                          <input
-                            type="tel"
-                            value={editUserForm.phone}
-                            onChange={(e) =>
-                              setEditUserForm({ ...editUserForm, phone: e.target.value })
-                            }
-                            className="mt-1 input-field w-full"
-                          />
-                        </div>
-                        <div>
-                          <label className="block text-sm font-semibold text-slate-700 dark:text-slate-100">
-                            Job Title
-                          </label>
-                          <input
-                            type="text"
-                            value={editUserForm.jobTitle}
-                            onChange={(e) =>
-                              setEditUserForm({ ...editUserForm, jobTitle: e.target.value })
-                            }
-                            className="mt-1 input-field w-full"
-                            placeholder="e.g. Director, Partner"
-                          />
-                        </div>
-                      </div>
-                      <div>
-                        <label className="block text-sm font-semibold text-slate-700 dark:text-slate-100">
-                          Email
-                        </label>
-                        <input
-                          type="email"
-                          value={editUserForm.email}
-                          onChange={(e) =>
-                            setEditUserForm({ ...editUserForm, email: e.target.value })
-                          }
-                          className="mt-1 input-field w-full"
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-sm font-semibold text-slate-700 dark:text-slate-100">
-                          Role
-                        </label>
-                        <select
-                          value={editUserForm.role}
-                          onChange={(e) => setEditUserForm({ ...editUserForm, role: e.target.value })}
-                          className="mt-1 input-field w-full"
-                        >
-                          {editUserForm.role === 'ADMIN' && (
-                            <option value="ADMIN">Admin</option>
-                          )}
-                          <option value="PARTNER">Partner</option>
-                          <option value="MD">Managing Director</option>
-                          <option value="MANAGER">Manager</option>
-                          <option value="SENIOR">Senior</option>
-                          <option value="JUNIOR">Junior</option>
-                        </select>
-                        <button
-                          type="button"
-                          onClick={handleUpdateUser}
-                          disabled={isSaving === 'team'}
-                          className="mt-2 btn-primary text-sm w-full"
-                        >
-                          {isSaving === 'team' ? 'Saving…' : 'Save role & details'}
-                        </button>
-                      </div>
-                    </div>
-                    <div className="mt-6 flex space-x-3 sticky bottom-0 bg-white dark:bg-slate-900 pt-3 border-t border-slate-200 dark:border-slate-700">
-                      <button
-                        onClick={() => {
-                          setShowEditUserModal(false);
-                          setEditingUserId(null);
-                        }}
-                        className="flex-1 btn-secondary"
-                      >
-                        Cancel
-                      </button>
-                      <button
-                        onClick={handleUpdateUser}
-                        disabled={isSaving === 'team'}
-                        className="flex-1 btn-primary"
-                      >
-                        {isSaving === 'team' ? 'Saving...' : 'Save Changes'}
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              )}
             </div>
           )}
 
@@ -2538,6 +2301,267 @@ const Settings = () => {
           )}
         </div>
       </div>
+
+      {showAddUserModal &&
+        createPortal(
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 sm:p-6 bg-black/50">
+            <div
+              role="dialog"
+              aria-modal="true"
+              className="bg-white dark:bg-slate-900 rounded-xl shadow-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto p-6 sm:p-8"
+            >
+              <h3 className="text-xl font-semibold text-slate-900 dark:text-white mb-6">
+                Add team member
+              </h3>
+              <div className="space-y-5">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+                  <div>
+                    <label className="block text-sm font-semibold text-slate-700 dark:text-slate-100">
+                      First name
+                    </label>
+                    <input
+                      type="text"
+                      value={newUserForm.firstName}
+                      onChange={(e) =>
+                        setNewUserForm({ ...newUserForm, firstName: e.target.value })
+                      }
+                      className="mt-1 input-field w-full"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-semibold text-slate-700 dark:text-slate-100">
+                      Last name
+                    </label>
+                    <input
+                      type="text"
+                      value={newUserForm.lastName}
+                      onChange={(e) =>
+                        setNewUserForm({ ...newUserForm, lastName: e.target.value })
+                      }
+                      className="mt-1 input-field w-full"
+                    />
+                  </div>
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+                  <div>
+                    <label className="block text-sm font-semibold text-slate-700 dark:text-slate-100">
+                      Contact number
+                    </label>
+                    <input
+                      type="tel"
+                      value={newUserForm.phone}
+                      onChange={(e) => setNewUserForm({ ...newUserForm, phone: e.target.value })}
+                      className="mt-1 input-field w-full"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-semibold text-slate-700 dark:text-slate-100">
+                      Job title
+                    </label>
+                    <input
+                      type="text"
+                      value={newUserForm.jobTitle}
+                      onChange={(e) =>
+                        setNewUserForm({ ...newUserForm, jobTitle: e.target.value })
+                      }
+                      className="mt-1 input-field w-full"
+                    />
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-sm font-semibold text-slate-700 dark:text-slate-100">
+                    Email
+                  </label>
+                  <input
+                    type="email"
+                    value={newUserForm.email}
+                    onChange={(e) => setNewUserForm({ ...newUserForm, email: e.target.value })}
+                    className="mt-1 input-field w-full"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-semibold text-slate-700 dark:text-slate-100">
+                    Role
+                  </label>
+                  <select
+                    value={newUserForm.role}
+                    onChange={(e) => setNewUserForm({ ...newUserForm, role: e.target.value })}
+                    className="mt-1 input-field w-full"
+                  >
+                    {user?.role === 'ADMIN' && <option value="ADMIN">Admin</option>}
+                    <option value="PARTNER">Partner</option>
+                    <option value="MD">Managing Director</option>
+                    <option value="MANAGER">Manager</option>
+                    <option value="SENIOR">Senior</option>
+                    <option value="JUNIOR">Junior</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-semibold text-slate-700 dark:text-slate-100">
+                    Temporary password
+                  </label>
+                  <input
+                    type="password"
+                    value={newUserForm.password}
+                    onChange={(e) => setNewUserForm({ ...newUserForm, password: e.target.value })}
+                    className="mt-1 input-field w-full"
+                    placeholder="Min 8 characters with complexity"
+                  />
+                  <div className="mt-2 grid grid-cols-2 sm:grid-cols-3 gap-2">
+                    {[
+                      { test: newUserForm.password.length >= 8, label: '8+ characters' },
+                      { test: /[A-Z]/.test(newUserForm.password), label: 'Uppercase' },
+                      { test: /[a-z]/.test(newUserForm.password), label: 'Lowercase' },
+                      { test: /[0-9]/.test(newUserForm.password), label: 'Number' },
+                      { test: /[^A-Za-z0-9]/.test(newUserForm.password), label: 'Special char' },
+                    ].map((req, i) => (
+                      <div key={i} className="flex items-center text-xs">
+                        <span className={`mr-1.5 ${req.test ? 'text-green-500' : 'text-slate-400'}`}>
+                          {req.test ? '✓' : '○'}
+                        </span>
+                        <span className={req.test ? 'text-green-700' : 'text-slate-500'}>
+                          {req.label}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+              <div className="mt-8 flex flex-col-reverse sm:flex-row gap-3 sm:justify-end border-t border-slate-200 dark:border-slate-700 pt-6">
+                <button onClick={() => setShowAddUserModal(false)} className="btn-secondary sm:min-w-[120px]">
+                  Cancel
+                </button>
+                <button
+                  onClick={handleCreateUser}
+                  disabled={isSaving === 'team'}
+                  className="btn-primary sm:min-w-[140px]"
+                >
+                  {isSaving === 'team' ? 'Adding…' : 'Add user'}
+                </button>
+              </div>
+            </div>
+          </div>,
+          document.body
+        )}
+
+      {showEditUserModal &&
+        createPortal(
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 sm:p-6 bg-black/50">
+            <div
+              role="dialog"
+              aria-modal="true"
+              className="bg-white dark:bg-slate-900 rounded-xl shadow-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto p-6 sm:p-8"
+            >
+              <h3 className="text-xl font-semibold text-slate-900 dark:text-white mb-6">
+                Edit team member
+              </h3>
+              <div className="space-y-5">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+                  <div>
+                    <label className="block text-sm font-semibold text-slate-700 dark:text-slate-100">
+                      First name
+                    </label>
+                    <input
+                      type="text"
+                      value={editUserForm.firstName}
+                      onChange={(e) =>
+                        setEditUserForm({ ...editUserForm, firstName: e.target.value })
+                      }
+                      className="mt-1 input-field w-full"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-semibold text-slate-700 dark:text-slate-100">
+                      Last name
+                    </label>
+                    <input
+                      type="text"
+                      value={editUserForm.lastName}
+                      onChange={(e) =>
+                        setEditUserForm({ ...editUserForm, lastName: e.target.value })
+                      }
+                      className="mt-1 input-field w-full"
+                    />
+                  </div>
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+                  <div>
+                    <label className="block text-sm font-semibold text-slate-700 dark:text-slate-100">
+                      Contact number
+                    </label>
+                    <input
+                      type="tel"
+                      value={editUserForm.phone}
+                      onChange={(e) => setEditUserForm({ ...editUserForm, phone: e.target.value })}
+                      className="mt-1 input-field w-full"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-semibold text-slate-700 dark:text-slate-100">
+                      Job title
+                    </label>
+                    <input
+                      type="text"
+                      value={editUserForm.jobTitle}
+                      onChange={(e) =>
+                        setEditUserForm({ ...editUserForm, jobTitle: e.target.value })
+                      }
+                      className="mt-1 input-field w-full"
+                      placeholder="e.g. Director, Partner"
+                    />
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-sm font-semibold text-slate-700 dark:text-slate-100">
+                    Email
+                  </label>
+                  <input
+                    type="email"
+                    value={editUserForm.email}
+                    onChange={(e) => setEditUserForm({ ...editUserForm, email: e.target.value })}
+                    className="mt-1 input-field w-full"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-semibold text-slate-700 dark:text-slate-100">
+                    Role
+                  </label>
+                  <select
+                    value={editUserForm.role}
+                    onChange={(e) => setEditUserForm({ ...editUserForm, role: e.target.value })}
+                    className="mt-1 input-field w-full"
+                  >
+                    {editUserForm.role === 'ADMIN' && <option value="ADMIN">Admin</option>}
+                    <option value="PARTNER">Partner</option>
+                    <option value="MD">Managing Director</option>
+                    <option value="MANAGER">Manager</option>
+                    <option value="SENIOR">Senior</option>
+                    <option value="JUNIOR">Junior</option>
+                  </select>
+                </div>
+              </div>
+              <div className="mt-8 flex flex-col-reverse sm:flex-row gap-3 sm:justify-end border-t border-slate-200 dark:border-slate-700 pt-6">
+                <button
+                  onClick={() => {
+                    setShowEditUserModal(false);
+                    setEditingUserId(null);
+                  }}
+                  className="btn-secondary sm:min-w-[120px]"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleUpdateUser}
+                  disabled={isSaving === 'team'}
+                  className="btn-primary sm:min-w-[140px]"
+                >
+                  {isSaving === 'team' ? 'Saving…' : 'Save changes'}
+                </button>
+              </div>
+            </div>
+          </div>,
+          document.body
+        )}
     </div>
   );
 };

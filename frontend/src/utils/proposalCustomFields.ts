@@ -32,21 +32,27 @@ export interface PublicSigningState {
 
 export const DEFAULT_PRICING_TIERS: PricingTier[] = [
   {
-    id: 'good',
-    label: 'Good',
-    description: 'Core compliance — everything you need to stay on track',
+    id: 'bronze',
+    label: 'Bronze',
+    description: 'Essential compliance — core filings and statutory obligations',
+    feeMultiplier: 0.85,
+  },
+  {
+    id: 'silver',
+    label: 'Silver',
+    description: 'Standard compliance plus routine advisory support',
     feeMultiplier: 1,
   },
   {
-    id: 'better',
-    label: 'Better',
-    description: 'Compliance plus proactive advisory support',
+    id: 'gold',
+    label: 'Gold',
+    description: 'Enhanced compliance with proactive planning and reviews',
     feeMultiplier: 1.3,
   },
   {
-    id: 'best',
-    label: 'Best',
-    description: 'Full-service partnership with priority access',
+    id: 'platinum',
+    label: 'Platinum',
+    description: 'Full-service partnership with priority access and strategic advice',
     feeMultiplier: 1.6,
   },
 ];
