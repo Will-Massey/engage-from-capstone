@@ -5,15 +5,15 @@
 **Market leader:** UK proposal-to-cash platform — CH lookup → priced proposal → signed engagement → collected fees, with Clara AI that saves 30+ min/proposal without token overspend. Full plan: `MARKET_LEADER_PLAN.md`.
 
 ## Current Phase
-**Build 3.0** — W4.3 multi-firm admin shipped; Caroline UAT + Render ops deferred
+**Build 3.1** — Template library auto-seed + lifecycle touchpoint copy deployed; Caroline template UAT next
 
 ## Next Up
 <!-- 3–5 bullets ONLY. Next fresh session starts here. Rewrite every checkpoint. -->
-1. Caroline UAT (human): MFA enrolment, live Xero OAuth, send a real proposal end-to-end.
-2. **Deferred (post-sale):** Render Starter + disk, custom domain, `XERO_*` / webhook secrets.
-3. Stripe trial enforcement smoke with live Stripe keys (post-sale).
-4. Run production migration `20260701170000_firm_group_owner` after W4.3 deploy.
-5. G2 case study + marketing ROI calculator (W4.6).
+1. Caroline UAT: open **Templates** — confirm full Engage library + her custom template (not replaced).
+2. Caroline UAT: **Settings → Automation** — all 13 stages show populated subjects; test restore-default wording.
+3. Smoke: create custom proposal template; verify it appears under **Yours** filter alongside library.
+4. Run `seed-expanded-uk-services.ts` on production DB if catalogue still thin after deploy.
+5. **Deferred (post-sale):** Render Starter + disk, custom domain, `XERO_*` / webhook secrets.
 
 ## Phases
 <!-- Status: pending | in_progress | complete -->
@@ -58,6 +58,8 @@
 | 11 | 2026-07-01 | a83b3a53 | master | engage-backend, engage-frontend | live | UAT automation: `/proposals/first-wizard`, legal/status pages, partner approval API+UI, Xero settings; **36/36 e2e pass**. |
 | 12 | 2026-07-01 | 3167538a | master | engage-backend, engage-frontend | live | Services-step edit column full width (preview stacks below); flex-wrap edit fields; deduped wakeup toasts during Render restarts. |
 | 13 | 2026-07-01 | bc45724a | master | engage-backend, engage-frontend | live | Production catalogue 43 services + **143 templates** seeded; pricing sanity PASS; **38/38 e2e** green. |
+| 14 | 2026-07-02 | 36604df1 | master | engage-backend, engage-frontend | live | Expanded catalogue seed script, T&C auto-attach + watermark UI, proposal restart/back, MD→Managing Director + job role save UX. |
+| 15 | 2026-07-02 | e814c9cf | master | engage-backend, engage-frontend | deploying | **Template build:** auto-seed ICAEW/ACCA library on Templates GET; custom templates additive; 13 lifecycle touchpoint stages with UK copy; library/custom filters; restore defaults in Automation. |
 
 ## Decisions Made
 | Decision | Rationale |

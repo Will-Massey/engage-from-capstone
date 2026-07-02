@@ -1,12 +1,12 @@
 # sendit.resume - auto-generated checkpoint (keep in git)
-pending: false
-written: 2026-07-01 09:29:15 UTC
+pending: true
+written: 2026-07-02 09:27:34 UTC
 project_root: C:\Users\willi\Cline Workspace\engage-deploy
-commit: 5aa9a2ac
+commit: e814c9cf
 branch: integrate-deploy
-phase: **Build 2.0** â€” **deployed** (c28d9216) e2e build-mode fix on top of W0â€“W4 batch
+phase: **Build 3.1** â€” Template library auto-seed + lifecycle touchpoint copy deployed; Caroline template UAT next
 goal: **Market leader:** UK proposal-to-cash platform â€” CH lookup â†’ priced proposal â†’ signed engagement â†’ collected fees, with Clara AI that saves 30+ min/proposal without token overspend. Full plan: `MARKET_LEADER_PLAN.md`.
-next_up_1: Verify Render deploy c28d9216 live; run full e2e suite (expect 25+ pass).
+next_up_1: Caroline UAT: open **Templates** â€” confirm full Engage library + her custom template (not replaced).
 
 # Agent: on resume read ~/.grok/sendit.active OR project_root paths below.
 # NEVER glob search. Execute next_up_1 immediately. Set pending: false when done.

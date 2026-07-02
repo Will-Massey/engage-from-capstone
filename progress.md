@@ -1,6 +1,23 @@
 # Build Progress Log
 <!-- Append-only session log. Latest deploy checkpoint is the resume entry point. -->
 
+## Session: 2026-07-02 — Template build deploy (e814c9cf)
+
+### Deploy checkpoint — e814c9cf
+- **Label:** Template build
+- **Commit:** `Auto-seed Engage template library and populate lifecycle touchpoints`
+- **Branch:** master (from integrate-deploy)
+- **Render services:** engage-backend, engage-frontend
+- **Scope:** Proposal template library auto-seed (`ensureProposalTemplateLibraryForTenant`); touchpoint defaults for all 13 stages; ProposalTemplates library/custom filters; Automation restore-default controls; library templates non-deletable
+- **Pre-deploy verification:** backend `tsc` ✓ frontend `tsc` ✓
+
+#### Resume prompt
+```
+Verify e814c9cf live. Caroline: Templates page shows full library + custom template. Settings → Automation shows populated stage subjects. Smoke custom template create under Yours filter.
+```
+
+---
+
 ## Session: 2026-07-01 — Build 2.0 deploy (c28d9216)
 
 ### Deploy checkpoint — c28d9216

@@ -22,6 +22,11 @@
 - MFA/password reset return 501
 - Benchmark/regulatory AI endpoints are stubs
 
+## Template library seeding (2026-07-02)
+- **Root cause:** Tenants with only a custom template never had the Engage ICAEW/ACCA library seeded — `GET /api/proposal-templates` now calls `ensureProposalTemplateLibraryForTenant` when `activeBefore < expected`.
+- **Additive:** `seedProposalTemplatesForTenant` skips existing names; `isDefault: true` = library, `false` = custom; library rows cannot be deleted.
+- **Touchpoints:** `DEFAULT_TOUCHPOINT_TEMPLATES` in `backend/src/data/defaultTouchpointTemplates.ts`; `ensureTouchpointTemplatesForTenant` on GET; restore per-stage via `POST /touchpoints/templates/:stage/restore-default`.
+
 ## Technical anchors (codebase)
 - AI: `backend/src/routes/ai.ts`, `backend/src/services/ai/aiClient.ts`
 - Builder: `frontend/src/components/proposals/ProposalBuilder.tsx`
