@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { useAuthStore } from './stores/authStore';
 import { apiClient, ensureCsrfReady, hydrateCsrfCache, rememberCsrfToken } from './utils/api';
+import { appRelativePath } from './utils/appBase';
 
 // Layouts
 import DashboardLayout from './components/layout/DashboardLayout';
@@ -438,7 +439,7 @@ function App() {
   // Restore session from httpOnly cookies via /me (skip on login/register to avoid refresh noise)
   useEffect(() => {
     const bootstrapSession = async () => {
-      const path = window.location.pathname;
+      const path = appRelativePath();
       const skipBootstrap =
         path === '/login' ||
         path === '/register' ||

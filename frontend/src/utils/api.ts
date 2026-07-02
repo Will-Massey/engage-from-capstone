@@ -1,7 +1,7 @@
 import axios, { AxiosInstance, AxiosError } from 'axios';
 import toast from 'react-hot-toast';
 import { useAuthStore } from '../stores/authStore';
-import { appPath } from './appBase';
+import { appPath, appRelativePath } from './appBase';
 
 // API base URL
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
@@ -9,7 +9,7 @@ const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
 /** Client-facing pages — no install prompts, no auth redirects, quieter errors */
 export function isPublicClientPage(): boolean {
   if (typeof window === 'undefined') return false;
-  const path = window.location.pathname;
+  const path = appRelativePath();
   return (
     path.startsWith('/portal/') ||
     path.startsWith('/proposals/view/') ||
@@ -21,7 +21,7 @@ export function isPublicClientPage(): boolean {
 /** Login/register pages — skip session refresh and suppress noisy auth errors */
 export function isAuthPage(): boolean {
   if (typeof window === 'undefined') return false;
-  const path = window.location.pathname;
+  const path = appRelativePath();
   return (
     path === '/login' ||
     path === '/register' ||
