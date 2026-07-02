@@ -61,20 +61,24 @@ async function main() {
 
   if (!services.length) throw new Error('Source proposal has no catalogue services to clone');
 
+  const createBody = {
+    clientId: full.clientId || full.client?.id,
+    title: full.title || 'Fortis Proposal',
+    paymentTerms: full.paymentTerms,
+    paymentFrequency: full.paymentFrequency || 'MONTHLY',
+    validUntil:
+      full.validUntil?.slice?.(0, 10) ||
+      new Date(Date.now() + 90 * 86400000).toISOString().slice(0, 10),
+    services,
+  };
+  if (full.coverLetter) createBody.coverLetter = full.coverLetter;
+  if (full.proposalSummary) createBody.proposalSummary = full.proposalSummary;
+
   const create = await api('/api/proposals', {
     method: 'POST',
     cookies,
     csrf,
-    body: {
-      clientId: full.clientId || full.client?.id,
-      title: full.title || 'Fortis Proposal',
-      coverLetter: full.coverLetter,
-      proposalSummary: full.proposalSummary,
-      paymentTerms: full.paymentTerms,
-      paymentFrequency: full.paymentFrequency || 'MONTHLY',
-      validUntil: full.validUntil?.slice?.(0, 10) || new Date(Date.now() + 90 * 86400000).toISOString().slice(0, 10),
-      services,
-    },
+    body: createBody,
   });
   if (create.status !== 201 && create.status !== 200) {
     throw new Error('Create failed: ' + JSON.stringify(create.data));
