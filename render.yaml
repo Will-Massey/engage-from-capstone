@@ -55,7 +55,7 @@ services:
       - key: OAUTH_STATE_SECRET
         sync: false
       - key: EMAIL_PLATFORM_FROM
-        value: notifications@engage.capstonesoftware.co.uk
+        value: proposals@capstonesoftware.co.uk
       - key: EMAIL_PLATFORM_FROM_NAME
         value: Engage by Capstone
       - key: EMAIL_DEFAULT_REPLY_TO_FALLBACK

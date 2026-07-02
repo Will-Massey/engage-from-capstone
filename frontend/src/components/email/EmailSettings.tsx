@@ -255,7 +255,7 @@ const EmailSettings = () => {
                 Client emails send via <strong>Capstone</strong>
               </p>
               <p className="text-sm text-green-800 dark:text-green-200 mt-1">
-                From: {platform?.platformFrom || 'notifications@engage.capstonesoftware.co.uk'}
+                From: {platform?.platformFrom || 'proposals@capstonesoftware.co.uk'}
                 {platform?.replyTo && (
                   <>
                     {' '}

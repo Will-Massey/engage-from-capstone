@@ -41,12 +41,18 @@ export function isSendGridConfigured(): boolean {
   );
 }
 
+/** Cloudflare Email Sending only has capstonesoftware.co.uk onboarded — not engage.* subdomain. */
+const PLATFORM_FROM_EMAIL =
+  process.env.EMAIL_PLATFORM_FROM ||
+  process.env.EMAIL_FROM_ADDRESS ||
+  'proposals@capstonesoftware.co.uk';
+
 export function getPlatformFromAddress(): { email: string; name: string } {
+  const email = PLATFORM_FROM_EMAIL.includes('@engage.capstonesoftware.co.uk')
+    ? 'proposals@capstonesoftware.co.uk'
+    : PLATFORM_FROM_EMAIL;
   return {
-    email:
-      process.env.EMAIL_PLATFORM_FROM ||
-      process.env.EMAIL_FROM_ADDRESS ||
-      'proposals@capstonesoftware.co.uk',
+    email,
     name:
       process.env.EMAIL_PLATFORM_FROM_NAME ||
       process.env.EMAIL_FROM_NAME ||
