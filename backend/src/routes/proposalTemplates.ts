@@ -17,6 +17,11 @@ import {
   backfillLibraryTemplateFlagsForTenant,
   countLibraryTemplatesForTenant,
 } from '../services/proposalTemplateSeedService.js';
+import {
+  countActiveServicesForTenant,
+  ensureTenantUkServiceCatalogue,
+  getMinimumCatalogueForLibrary,
+} from '../services/catalogueSeedService.js';
 
 const router = Router();
 
@@ -110,6 +115,14 @@ router.get(
   asyncHandler(async (req, res) => {
     const expected = getExpectedPackageCount();
     let libraryCount = await countLibraryTemplatesForTenant(req.tenantId!);
+    const minCatalogue = getMinimumCatalogueForLibrary();
+    let catalogueCount = await countActiveServicesForTenant(req.tenantId!);
+
+    // Template packages resolve services by exact name — import UK catalogue first when thin
+    if (libraryCount < expected && catalogueCount < minCatalogue) {
+      await ensureTenantUkServiceCatalogue(req.tenantId!);
+      catalogueCount = await countActiveServicesForTenant(req.tenantId!);
+    }
 
     // Backfill isDefault for templates seeded before the library flag existed
     if (libraryCount < expected) {
@@ -120,6 +133,7 @@ router.get(
     // Auto-seed missing Engage library packages (idempotent — never deletes custom templates)
     if (libraryCount < expected) {
       await ensureProposalTemplateLibraryForTenant(req.tenantId!, req.user!.id);
+      libraryCount = await countLibraryTemplatesForTenant(req.tenantId!);
     }
 
     const templates = await prisma.proposalTemplate.findMany({
@@ -155,6 +169,8 @@ router.get(
         libraryActive: templates.filter((t) => t.isDefault === true).length,
         customActive: templates.filter((t) => t.isDefault !== true).length,
         totalActive: templates.length,
+        catalogueActive: catalogueCount,
+        libraryComplete: libraryCount >= expected,
       },
     });
   })

@@ -14,6 +14,7 @@ import {
   allServices,
   serviceCategories,
 } from '../data/ukAccountancyServices.js';
+import { ensureTenantUkServiceCatalogue } from '../services/catalogueSeedService.js';
 
 const router = Router();
 
@@ -159,69 +160,15 @@ router.post(
     const { category } = schema.parse(req.body);
     const tenantId = req.tenantId!;
 
-    let servicesToImport = allServices;
-    if (category) {
-      servicesToImport = servicesToImport.filter((s) => s.category === category);
-    }
-
-    const results = {
-      imported: 0,
-      skipped: 0,
-      errors: [] as string[],
-    };
-
-    for (const catalogService of servicesToImport) {
-      try {
-        // Check if exists
-        const existing = await prisma.serviceTemplate.findFirst({
-          where: {
-            tenantId,
-            name: catalogService.name,
-          },
-        });
-
-        if (existing) {
-          results.skipped++;
-          continue;
-        }
-
-        // Create service
-        await prisma.serviceTemplate.create({
-          data: {
-            tenantId,
-            category: catalogService.category as any,
-            subcategory: catalogService.subcategory,
-            name: catalogService.name,
-            description: catalogService.description,
-            longDescription: catalogService.longDescription,
-            basePrice: catalogService.basePrice,
-            baseHours: catalogService.baseHours,
-            pricingModel: catalogService.pricingModel,
-            billingCycle: catalogService.billingCycle,
-            vatRate: catalogService.vatRate,
-            isVatApplicable: catalogService.isVatApplicable,
-            frequencyOptions: catalogService.frequencyOptions.join(','),
-            defaultFrequency: catalogService.defaultFrequency as any,
-            applicableEntityTypes: catalogService.applicableEntityTypes.join(','),
-            complexityFactors: JSON.stringify(catalogService.complexityFactors),
-            requirements: JSON.stringify(catalogService.requirements),
-            deliverables: JSON.stringify(catalogService.deliverables),
-            regulatoryNotes: catalogService.regulatoryNotes,
-            tags: catalogService.tags.join(','),
-            isPopular: catalogService.isPopular,
-            isActive: true,
-          },
-        });
-
-        results.imported++;
-      } catch (error: any) {
-        results.errors.push(`Failed to import ${catalogService.name}: ${error.message}`);
-      }
-    }
+    const results = await ensureTenantUkServiceCatalogue(tenantId, { category });
 
     res.json({
       success: true,
-      data: results,
+      data: {
+        imported: results.imported,
+        skipped: results.skipped,
+        errors: results.errors,
+      },
       message: `Imported ${results.imported} services, skipped ${results.skipped}`,
     });
   })

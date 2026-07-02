@@ -36,6 +36,10 @@ interface ProposalTemplateSummary {
 interface TemplatesMeta {
   expectedLibraryCount: number;
   totalActive: number;
+  libraryActive?: number;
+  customActive?: number;
+  catalogueActive?: number;
+  libraryComplete?: boolean;
 }
 
 export default function ProposalTemplates() {
@@ -50,18 +54,18 @@ export default function ProposalTemplates() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editorInitial, setEditorInitial] = useState<Partial<ProposalTemplateEditorValues>>();
 
-  const loadTemplates = async () => {
+  const loadTemplates = async (opts?: { silent?: boolean }) => {
     try {
-      setLoading(true);
+      if (!opts?.silent) setLoading(true);
       const res = (await apiClient.getProposalTemplates()) as any;
       if (res.success) {
         setTemplates(res.data || []);
         setMeta(res.meta || null);
       }
     } catch {
-      toast.error('Failed to load templates');
+      if (!opts?.silent) toast.error('Failed to load templates');
     } finally {
-      setLoading(false);
+      if (!opts?.silent) setLoading(false);
     }
   };
 
@@ -77,6 +81,21 @@ export default function ProposalTemplates() {
     () => templates.filter((t) => !t.isLibraryTemplate).length,
     [templates]
   );
+
+  // Library seeds on first GET — poll until Engage catalogue + templates are complete
+  useEffect(() => {
+    const expected = meta?.expectedLibraryCount ?? 0;
+    const activeLibrary = meta?.libraryActive ?? libraryCount;
+    const libraryReady =
+      meta?.libraryComplete === true || (expected > 0 && activeLibrary >= expected);
+    if (loading || !meta || libraryReady) return;
+
+    const timer = window.setInterval(() => {
+      void loadTemplates({ silent: true });
+    }, 4000);
+
+    return () => window.clearInterval(timer);
+  }, [loading, meta, libraryCount]);
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -190,7 +209,10 @@ export default function ProposalTemplates() {
           </span>
           {seedingLibrary && (
             <span className="text-amber-700 dark:text-amber-300 animate-pulse">
-              Loading full library…
+              Loading full Engage library…
+              {meta.catalogueActive != null && meta.catalogueActive < 20
+                ? ' (importing services catalogue first)'
+                : ''}
             </span>
           )}
         </div>
