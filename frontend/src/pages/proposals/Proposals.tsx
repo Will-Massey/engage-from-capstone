@@ -19,6 +19,7 @@ import {
   PencilSquareIcon,
 } from '@heroicons/react/24/outline';
 import { apiClient } from '../../utils/api';
+import { appPath } from '../../utils/appBase';
 import { useAuthStore } from '../../stores/authStore';
 import { format, formatDistanceToNow } from 'date-fns';
 import toast from 'react-hot-toast';
@@ -138,7 +139,7 @@ const Proposals = () => {
   };
 
   const copyProposalLink = (shareToken: string) => {
-    const link = `${window.location.origin}/proposals/view/${shareToken}`;
+    const link = `${window.location.origin}${appPath(`/proposals/view/${shareToken}`)}`;
     navigator.clipboard.writeText(link);
     toast.success('Proposal link copied to clipboard');
   };

@@ -25,6 +25,7 @@ import {
   ArchiveBoxIcon,
 } from '@heroicons/react/24/outline';
 import { apiClient } from '../../utils/api';
+import { appPath } from '../../utils/appBase';
 import toast from 'react-hot-toast';
 import ProposalAiAssist from '../../components/ai/ProposalAiAssist';
 import ProposalEmailPreviewDialog from '../../components/ai/ProposalEmailPreviewDialog';
@@ -552,7 +553,7 @@ const ProposalDetail = () => {
     if (!id || !proposal) return;
     try {
       if (proposal.shareToken) {
-        const link = `${window.location.origin}/proposals/view/${proposal.shareToken}`;
+        const link = `${window.location.origin}${appPath(`/proposals/view/${proposal.shareToken}`)}`;
         const ok = await copyTextToClipboard(link);
         if (ok) {
           toast.success('Client link copied to clipboard');

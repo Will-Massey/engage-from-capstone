@@ -1228,8 +1228,12 @@ router.post(
     const { createShareableLink } = await import('../services/proposalSharingService.js');
 
     const pdfBuffer = await PDFGenerator.generateProposal(id);
+    const pdfHeader = pdfBuffer.subarray(0, 5).toString('ascii');
+    if (!pdfHeader.startsWith('%PDF')) {
+      logger.warn(`Proposal ${id} PDF generation returned invalid header — attachment will be omitted`);
+    }
 
-    const frontendUrl = (process.env.FRONTEND_URL || 'https://engagebycapstone.co.uk').replace(
+    const frontendUrl = (process.env.FRONTEND_URL || 'https://capstonesoftware.co.uk/engage').replace(
       /\/$/,
       ''
     );

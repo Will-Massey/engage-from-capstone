@@ -191,17 +191,24 @@ export class PDFGenerator {
     const logoData = this.resolveTenantLogoUrl(tenant);
     if (!logoData) return null;
 
+    const MAX_LOGO_BYTES = 512 * 1024;
+
     try {
+      let buffer: Buffer | null = null;
       if (logoData.startsWith('data:image')) {
         const base64Data = logoData.split(',')[1];
-        return base64Data ? Buffer.from(base64Data, 'base64') : null;
-      }
-      if (logoData.startsWith('http://') || logoData.startsWith('https://')) {
+        buffer = base64Data ? Buffer.from(base64Data, 'base64') : null;
+      } else if (logoData.startsWith('http://') || logoData.startsWith('https://')) {
         const res = await fetch(logoData);
         if (!res.ok) return null;
-        return Buffer.from(await res.arrayBuffer());
+        buffer = Buffer.from(await res.arrayBuffer());
+      } else {
+        buffer = Buffer.from(logoData, 'base64');
       }
-      return Buffer.from(logoData, 'base64');
+      if (!buffer || buffer.length === 0 || buffer.length > MAX_LOGO_BYTES) {
+        return null;
+      }
+      return buffer;
     } catch {
       return null;
     }

@@ -84,8 +84,13 @@ function wrapAiEmailHtml(params: {
   totalAmount?: string;
 }): string {
   const ctaBlock = params.viewLink
-    ? `<div style="text-align: center;">
-        <a href="${params.viewLink}" style="display: inline-block; background: #0ea5e9; color: #ffffff; padding: 14px 28px; text-decoration: none; border-radius: 6px; font-weight: bold; margin: 20px 0;">View Full Proposal</a>
+    ? `<div style="background: #eff6ff; border: 2px solid #0ea5e9; border-radius: 8px; padding: 24px; margin: 28px 0; text-align: center;">
+        <p style="margin: 0 0 8px; font-size: 18px; font-weight: bold; color: #0f172a;">Review and sign electronically</p>
+        <p style="margin: 0 0 20px; font-size: 15px; line-height: 1.6; color: #334155;">
+          Use our secure portal to read the full proposal and sign online. A PDF is attached for your records only.
+        </p>
+        <a href="${params.viewLink}" style="display: inline-block; background: #0284c7; color: #ffffff; padding: 16px 32px; text-decoration: none; border-radius: 8px; font-weight: bold; font-size: 16px;">Open secure signing portal</a>
+        <p style="margin: 16px 0 0; font-size: 13px; color: #64748b; word-break: break-all;"><a href="${params.viewLink}" style="color: #0284c7;">${params.viewLink}</a></p>
       </div>`
     : '';
 
@@ -460,9 +465,31 @@ export async function generateProposalSendEmail(
 
   const proposal = await prisma.proposal.findFirst({
     where: { id: proposalId, tenantId },
-    include: { createdBy: true },
+    include: { createdBy: true, tenant: true },
   });
   if (!proposal) throw new ApiError('NOT_FOUND', 'Proposal not found', 404);
+
+  const frontendUrl = (process.env.FRONTEND_URL || 'https://capstonesoftware.co.uk/engage').replace(
+    /\/$/,
+    ''
+  );
+  let viewLink: string | undefined;
+  const tokenValid =
+    proposal.shareToken &&
+    proposal.publicAccessEnabled &&
+    proposal.shareTokenExpiry &&
+    new Date(proposal.shareTokenExpiry).getTime() > Date.now();
+  if (tokenValid && proposal.shareToken) {
+    viewLink = `${frontendUrl}/proposals/view/${proposal.shareToken}`;
+  } else if (proposal.status === 'DRAFT') {
+    const { createShareableLink } = await import('../proposalSharingService.js');
+    const link = await createShareableLink(
+      proposalId,
+      30,
+      proposal.tenant?.subdomain || 'demo'
+    );
+    viewLink = link.shareUrl;
+  }
 
   const senderName = ctx.user
     ? Array.from(new Set([ctx.user.firstName, ctx.user.lastName].filter(Boolean))).join(' ')
@@ -484,6 +511,7 @@ export async function generateProposalSendEmail(
       senderName,
       senderEmail,
       senderPosition: ctx.user?.jobTitle ?? ctx.user?.role ?? proposal.createdBy.role,
+      viewLink,
       coverLetter: ctx.proposal.coverLetter,
     },
     { proposalId }

@@ -305,41 +305,39 @@ export async function sendProposalEmailForTenant(
   },
   relatedIds?: { proposalId?: string; clientId?: string }
 ): Promise<TenantMailSendResult> {
-  let html: string;
-  let text: string;
-  let subject: string;
+  const { composeProposalSendEmail, prepareProposalPdfAttachment } = await import(
+    '../templates/proposalSendEmailComposer.js'
+  );
 
-  if (params.aiHtml || params.aiText || params.aiSubject) {
-    html = params.aiHtml || params.aiText || '';
-    text = params.aiText || '';
-    subject =
-      params.aiSubject || `Proposal: ${params.proposalTitle} - ${params.proposalReference}`;
-  } else {
-    const { generateProposalEmailTemplate } = await import('../templates/proposalEmail.js');
-    const emailTemplate = generateProposalEmailTemplate({
-      clientName: params.clientName,
-      tenantName: params.tenantName,
-      proposalReference: params.proposalReference,
-      proposalTitle: params.proposalTitle,
-      viewLink: params.viewLink,
-      senderName: params.senderName,
-      senderPosition: params.senderPosition,
-      senderEmail: params.senderEmail,
-      validUntil: params.validUntil,
-      totalAmount: params.totalAmount,
-      serviceCount: params.serviceCount,
-    });
-    html = emailTemplate.html;
-    text = emailTemplate.text;
-    subject = `Proposal: ${params.proposalTitle} - ${params.proposalReference}`;
+  const { html, text, subject } = composeProposalSendEmail({
+    clientName: params.clientName,
+    tenantName: params.tenantName,
+    proposalReference: params.proposalReference,
+    proposalTitle: params.proposalTitle,
+    viewLink: params.viewLink,
+    senderName: params.senderName,
+    senderPosition: params.senderPosition,
+    senderEmail: params.senderEmail,
+    validUntil: params.validUntil,
+    totalAmount: params.totalAmount,
+    serviceCount: params.serviceCount,
+    aiHtml: params.aiHtml,
+    aiText: params.aiText,
+    aiSubject: params.aiSubject,
+  });
+
+  const pdfAttachment = prepareProposalPdfAttachment(params.attachment, params.proposalReference);
+  if (params.attachment && !pdfAttachment) {
+    logger.warn(
+      `Proposal ${params.proposalReference}: PDF attachment omitted (invalid or empty PDF buffer)`
+    );
   }
-
-  const attachments = params.attachment
+  const attachments = pdfAttachment
     ? [
         {
-          filename: `Proposal_${params.proposalReference}.pdf`,
-          content: params.attachment,
-          contentType: 'application/pdf',
+          filename: pdfAttachment.filename,
+          content: pdfAttachment.content,
+          contentType: pdfAttachment.contentType,
         },
       ]
     : undefined;

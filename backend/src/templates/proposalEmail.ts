@@ -60,7 +60,7 @@ export function generateProposalEmailTemplate(data: ProposalEmailData): {
     <div class="content">
       <p class="greeting">Dear ${escapeHtml(data.clientName)},</p>
       
-      <p>We are pleased to present you with a proposal for our accounting services. Please review the details below and let us know if you have any questions.</p>
+      <p>We are pleased to present you with a proposal for our accounting services. Please review the summary below, then use our <strong>secure online portal</strong> to read the full details and sign electronically when you are ready.</p>
       
       <div class="proposal-box">
         <div class="proposal-title">${escapeHtml(data.proposalTitle)}</div>
@@ -68,17 +68,25 @@ export function generateProposalEmailTemplate(data: ProposalEmailData): {
         ${data.totalAmount ? `<div style="margin-top: 10px; font-size: 18px; color: #0ea5e9; font-weight: bold;">Total: ${data.totalAmount}</div>` : ''}
         ${data.serviceCount ? `<div style="margin-top: 5px; color: #64748b;">${data.serviceCount} service${data.serviceCount > 1 ? 's' : ''} included</div>` : ''}
       </div>
-      
-      <div style="text-align: center;">
-        <a href="${data.viewLink}" class="cta-button">View Full Proposal</a>
+
+      <div style="background: #eff6ff; border: 2px solid #0ea5e9; border-radius: 8px; padding: 24px; margin: 24px 0; text-align: center;">
+        <p style="margin: 0 0 8px; font-size: 18px; font-weight: bold; color: #0f172a;">Review and sign electronically</p>
+        <p style="margin: 0 0 20px; font-size: 15px; line-height: 1.6; color: #334155;">
+          Open our secure portal to read the full proposal, ask questions if needed, and sign online.
+          A PDF copy is attached for your records — you do not need to print or return it.
+        </p>
+        <a href="${data.viewLink}" class="cta-button">Open secure signing portal</a>
+        <p style="margin: 16px 0 0; font-size: 13px; line-height: 1.5; color: #64748b;">
+          Or copy this link: <a href="${data.viewLink}" style="color: #0ea5e9; word-break: break-all;">${data.viewLink}</a>
+        </p>
       </div>
       
       <div class="validity">
-        <strong>⏰ Valid Until:</strong> ${data.validUntil}<br>
-        Please review and respond before this date to ensure availability.
+        <strong>Valid until:</strong> ${data.validUntil}<br>
+        Please review and sign via the portal before this date.
       </div>
       
-      <p>If you have any questions about this proposal or would like to discuss any aspects of our services, please don't hesitate to contact us.</p>
+      <p>If you have any questions before signing, reply to this email or contact us using the details below.</p>
       
       <div class="signature">
         <p>Best regards,</p>
@@ -111,12 +119,15 @@ Reference: ${data.proposalReference}
 ${data.totalAmount ? `Total: ${data.totalAmount}\n` : ''}${data.serviceCount ? `Services: ${data.serviceCount}\n` : ''}
 Valid Until: ${data.validUntil}
 
-View the full proposal here:
+REVIEW AND SIGN ELECTRONICALLY
+==============================
+Please use our secure online portal to read the full proposal and sign when you are ready:
+
 ${data.viewLink}
 
-Please review and respond before ${data.validUntil} to ensure availability.
+A PDF copy is attached for your records — you do not need to print or return it.
 
-If you have any questions, please don't hesitate to contact us.
+If you have any questions before signing, please reply to this email.
 
 Best regards,
 ${data.senderName}
