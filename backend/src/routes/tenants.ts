@@ -801,7 +801,7 @@ router.put(
 
     if (data.branding?.logo !== undefined) {
       const logoCheck = validateTenantLogoForStorage(data.branding.logo);
-      if (!logoCheck.ok) {
+      if (logoCheck.ok === false) {
         throw new ApiError('VALIDATION_ERROR', logoCheck.message, 400);
       }
       data.branding.logo = logoCheck.logo;
