@@ -49,7 +49,7 @@ router.get(
 /** POST /api/touchpoints/templates/seed-defaults — fill missing stages with Engage defaults */
 router.post(
   '/templates/seed-defaults',
-  authorize('ADMIN', 'PARTNER', 'MANAGER'),
+  authorize('ADMIN', 'PARTNER', 'MD', 'MANAGER'),
   asyncHandler(async (req, res) => {
     const body = z
       .object({ resetAll: z.boolean().optional() })
@@ -67,7 +67,7 @@ router.post(
 /** POST /api/touchpoints/templates/:stage/restore-default — reset one stage to Engage wording */
 router.post(
   '/templates/:stage/restore-default',
-  authorize('ADMIN', 'PARTNER', 'MANAGER'),
+  authorize('ADMIN', 'PARTNER', 'MD', 'MANAGER'),
   asyncHandler(async (req, res) => {
     const stage = StageEnum.parse(req.params.stage);
     const result = await restoreTouchpointTemplateForStage(req.tenantId!, stage);
@@ -84,7 +84,7 @@ router.post(
 // Create or update a template for a stage
 router.put(
   '/templates/:stage',
-  authorize('ADMIN', 'PARTNER', 'MANAGER'),
+  authorize('ADMIN', 'PARTNER', 'MD', 'MANAGER'),
   asyncHandler(async (req, res) => {
     const tenantId = req.tenantId!;
     const { stage } = req.params;
@@ -139,7 +139,7 @@ router.get(
 // Approve + send a gated touchpoint
 router.post(
   '/:id/approve',
-  authorize('ADMIN', 'PARTNER', 'MANAGER'),
+  authorize('ADMIN', 'PARTNER', 'MD', 'MANAGER'),
   asyncHandler(async (req, res) => {
     const { id } = req.params;
     const tenantId = req.tenantId!;
@@ -190,7 +190,7 @@ router.patch(
 // Manually trigger engine (useful for testing)
 router.post(
   '/run',
-  authorize('ADMIN', 'PARTNER', 'MANAGER'),
+  authorize('ADMIN', 'PARTNER', 'MD', 'MANAGER'),
   asyncHandler(async (_req, res) => {
     const { runTouchpointEngine } = await import('../jobs/touchpointEngine.js');
     const stats = await runTouchpointEngine();

@@ -8,7 +8,7 @@ export interface User {
   lastName: string;
   phone?: string;
   jobTitle?: string;
-  role: 'ADMIN' | 'PARTNER' | 'MANAGER' | 'SENIOR' | 'JUNIOR' | 'CLIENT';
+  role: 'ADMIN' | 'PARTNER' | 'MD' | 'MANAGER' | 'SENIOR' | 'JUNIOR' | 'CLIENT';
   createdAt?: string;
   twoFactorEnabled?: boolean;
 }

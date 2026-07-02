@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { apiClient } from '../../utils/api';
 import { useAuthStore } from '../../stores/authStore';
+import { hasFullAccess } from '../../constants/roles';
 import toast from 'react-hot-toast';
 import {
   BookOpenIcon,
@@ -26,7 +27,7 @@ interface TemplateNeedingUpdate {
 
 export default function EngagementLibrarySettings() {
   const { user } = useAuthStore();
-  const isAdmin = user?.role === 'ADMIN';
+  const isAdmin = hasFullAccess(user?.role);
 
   const [current, setCurrent] = useState<LibraryVersion | null>(null);
   const [versions, setVersions] = useState<LibraryVersion[]>([]);

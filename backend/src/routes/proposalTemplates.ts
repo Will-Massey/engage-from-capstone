@@ -252,7 +252,7 @@ router.get(
 router.post(
   '/from-proposal',
   authenticate,
-  authorize('ADMIN', 'PARTNER', 'MANAGER', 'SENIOR'),
+  authorize('ADMIN', 'PARTNER', 'MD', 'MANAGER', 'SENIOR'),
   asyncHandler(async (req, res) => {
     const { proposalId, name, description } = createFromProposalSchema.parse(req.body);
 
@@ -320,7 +320,7 @@ router.post(
 router.post(
   '/',
   authenticate,
-  authorize('ADMIN', 'PARTNER', 'MANAGER', 'SENIOR'),
+  authorize('ADMIN', 'PARTNER', 'MD', 'MANAGER', 'SENIOR'),
   asyncHandler(async (req, res) => {
     const data = createTemplateSchema.parse(req.body);
     const libraryVersionId = await getCurrentVersionId();
@@ -359,7 +359,7 @@ const updateTemplateSchema = createTemplateSchema.partial().refine(
 router.put(
   '/:id',
   authenticate,
-  authorize('ADMIN', 'PARTNER', 'MANAGER', 'SENIOR'),
+  authorize('ADMIN', 'PARTNER', 'MD', 'MANAGER', 'SENIOR'),
   asyncHandler(async (req, res) => {
     const existing = await prisma.proposalTemplate.findFirst({
       where: { id: req.params.id, tenantId: req.tenantId!, isActive: true },
@@ -428,7 +428,7 @@ router.post(
 router.delete(
   '/:id',
   authenticate,
-  authorize('ADMIN', 'PARTNER', 'MANAGER'),
+  authorize('ADMIN', 'PARTNER', 'MD', 'MANAGER'),
   asyncHandler(async (req, res) => {
     const existing = await prisma.proposalTemplate.findFirst({
       where: { id: req.params.id, tenantId: req.tenantId! },

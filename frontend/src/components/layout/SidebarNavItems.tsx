@@ -6,6 +6,7 @@ import { useAiAssistantStore } from '../../stores/aiAssistantStore';
 import { useAuthStore } from '../../stores/authStore';
 import { apiClient } from '../../utils/api';
 import { AI_COPILOT } from '../../config/aiCopilot';
+import { isApprover } from '../../constants/roles';
 
 interface SidebarNavItemsProps {
   pathname: string;
@@ -54,8 +55,6 @@ const NavItemLink = ({
   );
 };
 
-const APPROVER_ROLES = new Set(['ADMIN', 'PARTNER', 'MANAGER']);
-
 const SidebarNavItems = ({ pathname, onNavigate }: SidebarNavItemsProps) => {
   const openAi = useAiAssistantStore((s) => s.open);
   const aiConfigured = useAiAssistantStore((s) => s.configured);
@@ -63,7 +62,7 @@ const SidebarNavItems = ({ pathname, onNavigate }: SidebarNavItemsProps) => {
   const [approvalQueueCount, setApprovalQueueCount] = useState(0);
 
   useEffect(() => {
-    if (!user?.role || !APPROVER_ROLES.has(user.role)) {
+    if (!isApprover(user?.role)) {
       setApprovalQueueCount(0);
       return;
     }

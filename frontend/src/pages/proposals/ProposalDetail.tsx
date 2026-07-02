@@ -117,8 +117,8 @@ const approvalStatusConfig: Record<
   REJECTED: { label: 'Rejected by partner', color: 'text-red-800', bg: 'bg-red-100' },
 };
 
-const APPROVER_ROLES = new Set(['ADMIN', 'PARTNER', 'MANAGER']);
-const PARTNER_OVERRIDE_ROLES = new Set(['ADMIN', 'PARTNER']);
+const APPROVER_ROLES = new Set(['ADMIN', 'PARTNER', 'MD', 'MANAGER']);
+const PARTNER_OVERRIDE_ROLES = new Set(['ADMIN', 'PARTNER', 'MD']);
 const SUBMITTER_ROLES = new Set(['JUNIOR', 'SENIOR']);
 
 const paymentStatusConfig: Record<

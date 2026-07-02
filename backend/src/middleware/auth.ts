@@ -3,6 +3,7 @@ import jwt from 'jsonwebtoken';
 import crypto from 'crypto';
 import { prisma } from '../config/database.js';
 import { UserRole } from '@prisma/client';
+import { hasFullAccess } from '../constants/roles.js';
 import { isCsrfTokenRegistered, isCsrfTokenRegisteredAsync, registerCsrfToken } from '../utils/csrfStore.js';
 
 const JWT_SECRET = process.env.JWT_SECRET;
@@ -210,7 +211,8 @@ export const authorize = (...roles: UserRole[]) => {
       return;
     }
 
-    if (!roles.includes(req.user.role)) {
+    // Managing Director has full tenant access (settings, AI, templates, automation, etc.)
+    if (!hasFullAccess(req.user.role) && !roles.includes(req.user.role)) {
       res.status(403).json({
         success: false,
         error: {

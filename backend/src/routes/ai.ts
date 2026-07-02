@@ -55,7 +55,7 @@ const aiLimiter = rateLimit({
 
 router.use(aiLimiter);
 router.use(authenticate);
-router.use(authorize('ADMIN', 'PARTNER', 'MANAGER', 'SENIOR'));
+router.use(authorize('ADMIN', 'PARTNER', 'MD', 'MANAGER', 'SENIOR'));
 
 /** GET /api/ai/status */
 router.get(
