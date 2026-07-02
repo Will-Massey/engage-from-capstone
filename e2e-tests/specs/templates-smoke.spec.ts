@@ -14,7 +14,7 @@ test.describe('Build smoke — proposal templates', () => {
     await expectNoErrorToasts(page);
 
     // Create template
-    await page.getByRole('button', { name: /new template/i }).click();
+    await page.getByRole('button', { name: /new custom template/i }).click();
     const dialog = page.getByRole('dialog');
     await expect(dialog).toBeVisible();
 

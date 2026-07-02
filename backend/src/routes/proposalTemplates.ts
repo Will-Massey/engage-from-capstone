@@ -14,6 +14,8 @@ import {
   sanityCheckTemplatePricing,
   getExpectedPackageCount,
   ensureProposalTemplateLibraryForTenant,
+  backfillLibraryTemplateFlagsForTenant,
+  countLibraryTemplatesForTenant,
 } from '../services/proposalTemplateSeedService.js';
 
 const router = Router();
@@ -107,12 +109,16 @@ router.get(
   authenticate,
   asyncHandler(async (req, res) => {
     const expected = getExpectedPackageCount();
-    const activeBefore = await prisma.proposalTemplate.count({
-      where: { tenantId: req.tenantId!, isActive: true },
-    });
+    let libraryCount = await countLibraryTemplatesForTenant(req.tenantId!);
 
-    // Auto-seed Engage library packages (idempotent — never deletes custom templates)
-    if (activeBefore < expected) {
+    // Backfill isDefault for templates seeded before the library flag existed
+    if (libraryCount < expected) {
+      await backfillLibraryTemplateFlagsForTenant(req.tenantId!);
+      libraryCount = await countLibraryTemplatesForTenant(req.tenantId!);
+    }
+
+    // Auto-seed missing Engage library packages (idempotent — never deletes custom templates)
+    if (libraryCount < expected) {
       await ensureProposalTemplateLibraryForTenant(req.tenantId!, req.user!.id);
     }
 
@@ -146,6 +152,8 @@ router.get(
       })),
       meta: {
         expectedLibraryCount: expected,
+        libraryActive: templates.filter((t) => t.isDefault === true).length,
+        customActive: templates.filter((t) => t.isDefault !== true).length,
         totalActive: templates.length,
       },
     });

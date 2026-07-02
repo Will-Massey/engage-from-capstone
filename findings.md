@@ -23,8 +23,9 @@
 - Benchmark/regulatory AI endpoints are stubs
 
 ## Template library seeding (2026-07-02)
-- **Root cause:** Tenants with only a custom template never had the Engage ICAEW/ACCA library seeded — `GET /api/proposal-templates` now calls `ensureProposalTemplateLibraryForTenant` when `activeBefore < expected`.
+- **Root cause:** Tenants with only a custom template never had the Engage ICAEW/ACCA library seeded — `GET /api/proposal-templates` now calls `ensureProposalTemplateLibraryForTenant` when `libraryCount < expected`.
 - **Additive:** `seedProposalTemplatesForTenant` skips existing names; `isDefault: true` = library, `false` = custom; library rows cannot be deleted.
+- **Backfill (2026-07-02):** Demo tenant had 143 templates but `isDefault: false` on all (seeded before library flag). GET now runs `backfillLibraryTemplateFlagsForTenant` to promote rows matching package names; custom names stay `isDefault: false`.
 - **Touchpoints:** `DEFAULT_TOUCHPOINT_TEMPLATES` in `backend/src/data/defaultTouchpointTemplates.ts`; `ensureTouchpointTemplatesForTenant` on GET; restore per-stage via `POST /touchpoints/templates/:stage/restore-default`.
 
 ## Technical anchors (codebase)

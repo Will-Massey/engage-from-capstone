@@ -324,6 +324,33 @@ export function getExpectedPackageCount(): number {
   return getUkProposalTemplatePackageCount();
 }
 
+export async function countLibraryTemplatesForTenant(tenantId: string): Promise<number> {
+  return prisma.proposalTemplate.count({
+    where: { tenantId, isActive: true, isDefault: true },
+  });
+}
+
+/**
+ * Promote pre-flag templates that match Engage package names to library rows.
+ * Custom templates with unique names are never touched.
+ */
+export async function backfillLibraryTemplateFlagsForTenant(tenantId: string): Promise<number> {
+  const packageNames = new Set(getUkProposalTemplatePackages().map((pkg) => pkg.name));
+  const candidates = await prisma.proposalTemplate.findMany({
+    where: { tenantId, isActive: true, isDefault: false },
+    select: { id: true, name: true },
+  });
+
+  const ids = candidates.filter((t) => packageNames.has(t.name)).map((t) => t.id);
+  if (!ids.length) return 0;
+
+  const result = await prisma.proposalTemplate.updateMany({
+    where: { id: { in: ids } },
+    data: { isDefault: true },
+  });
+  return result.count;
+}
+
 /**
  * Idempotently seed the full UK proposal template library for a tenant.
  * Skips packages whose names already exist — custom templates are never removed.
@@ -347,7 +374,8 @@ export async function ensureProposalTemplateLibraryForTenant(
     offset += lastResult.processed;
     guard++;
 
-    if (lastResult.totalActive >= expected) {
+    const libraryCount = await countLibraryTemplatesForTenant(tenantId);
+    if (libraryCount >= expected) {
       hasMore = false;
     }
   }
