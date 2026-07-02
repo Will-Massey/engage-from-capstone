@@ -8,6 +8,7 @@ import {
   RocketLaunchIcon,
   RectangleStackIcon,
   ClockIcon,
+  BookOpenIcon,
 } from '@heroicons/react/24/outline';
 import { formatDistanceToNow } from 'date-fns';
 import toast from 'react-hot-toast';
@@ -18,6 +19,8 @@ import ProposalTemplateEditor, {
 } from '../../components/templates/ProposalTemplateEditor';
 import { AI_COPILOT } from '../../config/aiCopilot';
 
+type TemplateFilter = 'all' | 'library' | 'custom';
+
 interface ProposalTemplateSummary {
   id: string;
   name: string;
@@ -27,13 +30,21 @@ interface ProposalTemplateSummary {
   usageCount?: number | null;
   lastUsedAt?: string | null;
   updatedAt: string;
+  isLibraryTemplate?: boolean;
+}
+
+interface TemplatesMeta {
+  expectedLibraryCount: number;
+  totalActive: number;
 }
 
 export default function ProposalTemplates() {
   const navigate = useNavigate();
   const [templates, setTemplates] = useState<ProposalTemplateSummary[]>([]);
+  const [meta, setMeta] = useState<TemplatesMeta | null>(null);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
+  const [filter, setFilter] = useState<TemplateFilter>('all');
   const [editorOpen, setEditorOpen] = useState(false);
   const [editorMode, setEditorMode] = useState<'create' | 'edit'>('create');
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -43,7 +54,10 @@ export default function ProposalTemplates() {
     try {
       setLoading(true);
       const res = (await apiClient.getProposalTemplates()) as any;
-      if (res.success) setTemplates(res.data || []);
+      if (res.success) {
+        setTemplates(res.data || []);
+        setMeta(res.meta || null);
+      }
     } catch {
       toast.error('Failed to load templates');
     } finally {
@@ -55,16 +69,28 @@ export default function ProposalTemplates() {
     void loadTemplates();
   }, []);
 
+  const libraryCount = useMemo(
+    () => templates.filter((t) => t.isLibraryTemplate).length,
+    [templates]
+  );
+  const customCount = useMemo(
+    () => templates.filter((t) => !t.isLibraryTemplate).length,
+    [templates]
+  );
+
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
-    if (!q) return templates;
-    return templates.filter(
-      (t) =>
+    return templates.filter((t) => {
+      if (filter === 'library' && !t.isLibraryTemplate) return false;
+      if (filter === 'custom' && t.isLibraryTemplate) return false;
+      if (!q) return true;
+      return (
         t.name.toLowerCase().includes(q) ||
         t.title.toLowerCase().includes(q) ||
         (t.description || '').toLowerCase().includes(q)
-    );
-  }, [templates, search]);
+      );
+    });
+  }, [templates, search, filter]);
 
   const openCreate = () => {
     setEditorMode('create');
@@ -104,6 +130,10 @@ export default function ProposalTemplates() {
   };
 
   const handleDelete = async (template: ProposalTemplateSummary) => {
+    if (template.isLibraryTemplate) {
+      toast.error('Engage library templates cannot be deleted — create your own copy instead.');
+      return;
+    }
     if (
       !confirm(
         `Delete template "${template.name}"? Existing proposals are not affected — only this reusable bundle.`
@@ -124,6 +154,12 @@ export default function ProposalTemplates() {
     navigate(`/proposals/new?template=${id}`);
   };
 
+  const seedingLibrary =
+    loading ||
+    (meta != null &&
+      meta.expectedLibraryCount > 0 &&
+      libraryCount < meta.expectedLibraryCount);
+
   return (
     <div className="space-y-6 animate-fade-in">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
@@ -133,15 +169,32 @@ export default function ProposalTemplates() {
             Proposal templates
           </h1>
           <p className="text-sm text-slate-600 dark:text-slate-400 mt-1 max-w-xl">
-            Pre-make service bundles with fixed fees and cover letters. Start a proposal in seconds
-            instead of building from scratch each time.
+            The Engage library gives you ready-made ICAEW and ACCA service bundles. Add your own
+            templates alongside them — nothing is replaced when you create something custom.
           </p>
         </div>
         <button type="button" onClick={openCreate} className="btn-primary inline-flex items-center gap-2">
           <PlusIcon className="h-4 w-4" />
-          New template
+          New custom template
         </button>
       </div>
+
+      {!loading && meta && (
+        <div className="flex flex-wrap items-center gap-2 text-xs text-slate-600 dark:text-slate-400">
+          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-emerald-50 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-200">
+            <BookOpenIcon className="h-3.5 w-3.5" />
+            {libraryCount} Engage library
+          </span>
+          <span className="px-2.5 py-1 rounded-full bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300">
+            {customCount} your template{customCount === 1 ? '' : 's'}
+          </span>
+          {seedingLibrary && (
+            <span className="text-amber-700 dark:text-amber-300 animate-pulse">
+              Loading full library…
+            </span>
+          )}
+        </div>
+      )}
 
       <div className="flex flex-col sm:flex-row gap-3">
         <div className="relative flex-1">
@@ -154,32 +207,61 @@ export default function ProposalTemplates() {
             className="w-full pl-10 pr-4 py-2 rounded-lg border border-slate-200 dark:border-slate-700 dark:bg-slate-800"
           />
         </div>
+        <div className="flex rounded-lg border border-slate-200 dark:border-slate-700 overflow-hidden text-sm shrink-0">
+          {(
+            [
+              ['all', `All (${templates.length})`],
+              ['library', `Engage library (${libraryCount})`],
+              ['custom', `Yours (${customCount})`],
+            ] as const
+          ).map(([key, label]) => (
+            <button
+              key={key}
+              type="button"
+              onClick={() => setFilter(key)}
+              className={`px-3 py-2 transition-colors ${
+                filter === key
+                  ? 'bg-emerald-600 text-white'
+                  : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700'
+              }`}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
         <Link to="/services" className="btn-secondary text-sm text-center">
           Manage services catalogue
         </Link>
       </div>
 
       {loading ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {[1, 2, 3].map((i) => (
-            <SkeletonCard key={i} />
-          ))}
+        <div className="space-y-3">
+          <p className="text-sm text-slate-500 dark:text-slate-400 text-center">
+            Preparing your Engage template library…
+          </p>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {[1, 2, 3, 4, 5, 6].map((i) => (
+              <SkeletonCard key={i} />
+            ))}
+          </div>
         </div>
       ) : filtered.length === 0 ? (
         <div className="card p-10 text-center max-w-lg mx-auto">
           <RectangleStackIcon className="mx-auto h-14 w-14 text-slate-300 dark:text-slate-600 mb-4" />
           <h2 className="text-lg font-semibold text-slate-900 dark:text-white mb-2">
-            {search ? 'No templates match your search' : 'No templates yet'}
+            {search ? 'No templates match your search' : filter === 'custom' ? 'No custom templates yet' : 'No templates yet'}
           </h2>
           <p className="text-sm text-slate-600 dark:text-slate-400 mb-6">
             {search
-              ? 'Try a different search term.'
-              : `Create a template here, or finish a proposal manually and let ${AI_COPILOT.name} offer to save it as one.`}
+              ? 'Try a different search term or filter.'
+              : filter === 'custom'
+                ? `Create a template here, or finish a proposal and let ${AI_COPILOT.name} offer to save it as one. Your custom templates sit alongside the full Engage library.`
+                : `Create a custom template, or visit again in a moment while the Engage library finishes loading.`}
           </p>
-          {!search && (
+          {(!search || filter === 'custom') && (
             <button type="button" onClick={openCreate} className="btn-primary inline-flex items-center gap-2">
               <PlusIcon className="h-4 w-4" />
-              Create your first template
+              Create a custom template
             </button>
           )}
         </div>
@@ -191,7 +273,20 @@ export default function ProposalTemplates() {
               className="card p-5 flex flex-col gap-3 hover:shadow-md transition-shadow border border-slate-200/80 dark:border-slate-700"
             >
               <div className="flex-1">
-                <h3 className="font-semibold text-slate-900 dark:text-white">{template.name}</h3>
+                <div className="flex flex-wrap items-start gap-2">
+                  <h3 className="font-semibold text-slate-900 dark:text-white flex-1 min-w-0">
+                    {template.name}
+                  </h3>
+                  {template.isLibraryTemplate ? (
+                    <span className="text-[10px] px-2 py-0.5 rounded-full font-medium bg-indigo-100 text-indigo-800 dark:bg-indigo-900/40 dark:text-indigo-200 shrink-0">
+                      Engage library
+                    </span>
+                  ) : (
+                    <span className="text-[10px] px-2 py-0.5 rounded-full font-medium bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-200 shrink-0">
+                      Your template
+                    </span>
+                  )}
+                </div>
                 {template.description && (
                   <p className="text-sm text-slate-600 dark:text-slate-400 mt-1 line-clamp-2">
                     {template.description}
@@ -235,14 +330,16 @@ export default function ProposalTemplates() {
                 >
                   <PencilIcon className="h-4 w-4" />
                 </button>
-                <button
-                  type="button"
-                  onClick={() => void handleDelete(template)}
-                  className="btn-secondary text-xs p-2 text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20"
-                  aria-label="Delete template"
-                >
-                  <TrashIcon className="h-4 w-4" />
-                </button>
+                {!template.isLibraryTemplate && (
+                  <button
+                    type="button"
+                    onClick={() => void handleDelete(template)}
+                    className="btn-secondary text-xs p-2 text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20"
+                    aria-label="Delete template"
+                  >
+                    <TrashIcon className="h-4 w-4" />
+                  </button>
+                )}
               </div>
             </article>
           ))}

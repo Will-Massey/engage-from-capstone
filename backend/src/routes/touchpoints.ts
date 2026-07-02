@@ -5,6 +5,10 @@ import { authenticate, authorize } from '../middleware/auth.js';
 import { validateTenantMembership } from '../middleware/tenant.js';
 import { asyncHandler, ApiError } from '../middleware/errorHandler.js';
 import { approveAndSendTouchpoint } from '../jobs/touchpointEngine.js';
+import {
+  ensureTouchpointTemplatesForTenant,
+  restoreTouchpointTemplateForStage,
+} from '../services/touchpointTemplateSeedService.js';
 import logger from '../config/logger.js';
 
 const router = Router();
@@ -28,12 +32,52 @@ router.get(
   asyncHandler(async (req, res) => {
     const tenantId = req.tenantId!;
 
+    await ensureTouchpointTemplatesForTenant(tenantId, {
+      fillMissingOnly: true,
+      upgradePlaceholders: true,
+    });
+
     const templates = await prisma.touchpointTemplate.findMany({
       where: { tenantId },
       orderBy: { stage: 'asc' },
     });
 
     res.json({ success: true, data: templates });
+  })
+);
+
+/** POST /api/touchpoints/templates/seed-defaults — fill missing stages with Engage defaults */
+router.post(
+  '/templates/seed-defaults',
+  authorize('ADMIN', 'PARTNER', 'MANAGER'),
+  asyncHandler(async (req, res) => {
+    const body = z
+      .object({ resetAll: z.boolean().optional() })
+      .parse(req.body ?? {});
+
+    const result = await ensureTouchpointTemplatesForTenant(req.tenantId!, {
+      fillMissingOnly: !body.resetAll,
+      upgradePlaceholders: true,
+    });
+
+    res.json({ success: true, data: result });
+  })
+);
+
+/** POST /api/touchpoints/templates/:stage/restore-default — reset one stage to Engage wording */
+router.post(
+  '/templates/:stage/restore-default',
+  authorize('ADMIN', 'PARTNER', 'MANAGER'),
+  asyncHandler(async (req, res) => {
+    const stage = StageEnum.parse(req.params.stage);
+    const result = await restoreTouchpointTemplateForStage(req.tenantId!, stage);
+    if (!result.restored) {
+      throw new ApiError('NOT_FOUND', 'No default template for this stage', 404);
+    }
+    const template = await prisma.touchpointTemplate.findFirst({
+      where: { tenantId: req.tenantId!, stage },
+    });
+    res.json({ success: true, data: template });
   })
 );
 

@@ -13,6 +13,7 @@ import {
   seedProposalTemplatesForTenant,
   sanityCheckTemplatePricing,
   getExpectedPackageCount,
+  ensureProposalTemplateLibraryForTenant,
 } from '../services/proposalTemplateSeedService.js';
 
 const router = Router();
@@ -105,6 +106,16 @@ router.get(
   '/',
   authenticate,
   asyncHandler(async (req, res) => {
+    const expected = getExpectedPackageCount();
+    const activeBefore = await prisma.proposalTemplate.count({
+      where: { tenantId: req.tenantId!, isActive: true },
+    });
+
+    // Auto-seed Engage library packages (idempotent — never deletes custom templates)
+    if (activeBefore < expected) {
+      await ensureProposalTemplateLibraryForTenant(req.tenantId!, req.user!.id);
+    }
+
     const templates = await prisma.proposalTemplate.findMany({
       where: { tenantId: req.tenantId!, isActive: true },
       orderBy: [{ lastUsedAt: 'desc' }, { updatedAt: 'desc' }],
@@ -120,6 +131,7 @@ router.get(
         serviceConfig: true,
         defaultPricing: true,
         needsUpdate: true,
+        isDefault: true,
         engagementLibraryVersion: { select: { versionLabel: true } },
       },
     });
@@ -130,7 +142,12 @@ router.get(
         ...t,
         serviceCount: parseServiceConfig(t.serviceConfig).length,
         coverLetterTone: parseDefaultPricing(t.defaultPricing).coverLetterTone,
+        isLibraryTemplate: t.isDefault === true,
       })),
+      meta: {
+        expectedLibraryCount: expected,
+        totalActive: templates.length,
+      },
     });
   })
 );
@@ -270,6 +287,7 @@ router.post(
         serviceConfig: JSON.stringify(serviceConfig),
         defaultPricing: JSON.stringify({ coverLetterTone: 'PROFESSIONAL' }),
         usageCount: 0,
+        isDefault: false,
         engagementLibraryVersionId: libraryVersionId,
         needsUpdate: false,
       },
@@ -311,6 +329,7 @@ router.post(
         serviceConfig: JSON.stringify(deepCloneJson(data.serviceConfig)),
         defaultPricing: JSON.stringify({ coverLetterTone: data.coverLetterTone || 'PROFESSIONAL' }),
         usageCount: 0,
+        isDefault: false,
         engagementLibraryVersionId: libraryVersionId,
         needsUpdate: false,
       },
@@ -407,6 +426,13 @@ router.delete(
       where: { id: req.params.id, tenantId: req.tenantId! },
     });
     if (!existing) throw new ApiError('NOT_FOUND', 'Template not found', 404);
+    if (existing.isDefault) {
+      throw new ApiError(
+        'VALIDATION_ERROR',
+        'Engage library templates cannot be deleted — create your own custom template instead',
+        400
+      );
+    }
 
     await prisma.proposalTemplate.update({
       where: { id: existing.id },

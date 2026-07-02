@@ -2573,6 +2573,22 @@ const LIFECYCLE_STAGES = [
   'KICKOFF_SENT', 'MILESTONE_CHECK_IN', 'SATISFACTION_CHECK', 'ONGOING', 'ANNUAL_REVIEW',
 ] as const;
 
+const STAGE_LABELS: Record<(typeof LIFECYCLE_STAGES)[number], string> = {
+  PROPOSAL_ACCEPTED: 'Proposal accepted — welcome',
+  AML_PENDING: 'AML verification pending',
+  AML_COMPLETE: 'AML complete — thank you',
+  ENGAGEMENT_LETTER_SENT: 'Engagement letter sent',
+  ENGAGEMENT_LETTER_SIGNED: 'Engagement letter signed',
+  INFO_REQUESTED: 'Information requested',
+  INFO_RECEIVED: 'Information received',
+  ONBOARDING_SETUP: 'Onboarding setup',
+  KICKOFF_SENT: 'Kick-off welcome',
+  MILESTONE_CHECK_IN: 'Milestone check-in',
+  SATISFACTION_CHECK: 'Satisfaction check',
+  ONGOING: 'Ongoing relationship',
+  ANNUAL_REVIEW: 'Annual review',
+};
+
 function AutomationTab() {
   const [templates, setTemplates] = useState<any[]>([]);
   const [approvals, setApprovals] = useState<any[]>([]);
@@ -2580,6 +2596,7 @@ function AutomationTab() {
   const [loading, setLoading] = useState(false);
   const [editing, setEditing] = useState<any>(null);
   const [form, setForm] = useState({ subject: '', body: '', tone: 'WARM', isMarketing: false, isActive: true });
+  const [restoring, setRestoring] = useState(false);
 
   const loadData = async () => {
     setLoading(true);
@@ -2645,6 +2662,53 @@ function AutomationTab() {
     }
   };
 
+  const restoreStageDefault = async () => {
+    if (!editing?.stage) return;
+    if (!confirm('Restore Engage default wording for this stage? Your current text will be replaced.')) {
+      return;
+    }
+    setRestoring(true);
+    try {
+      const res = (await apiClient.restoreTouchpointDefault(editing.stage)) as any;
+      if (res.success && res.data) {
+        setForm({
+          subject: res.data.subject || '',
+          body: res.data.body || '',
+          tone: res.data.tone || 'WARM',
+          isMarketing: !!res.data.isMarketing,
+          isActive: res.data.isActive !== false,
+        });
+        toast.success('Restored Engage default wording');
+        await loadData();
+      }
+    } catch {
+      toast.error('Could not restore default wording');
+    } finally {
+      setRestoring(false);
+    }
+  };
+
+  const restoreAllDefaults = async () => {
+    if (
+      !confirm(
+        'Restore Engage default wording for all stages? Custom edits on every stage will be replaced.'
+      )
+    ) {
+      return;
+    }
+    setRestoring(true);
+    try {
+      await apiClient.seedTouchpointDefaults(true);
+      toast.success('All stages restored to Engage defaults');
+      setEditing(null);
+      await loadData();
+    } catch {
+      toast.error('Could not restore defaults');
+    } finally {
+      setRestoring(false);
+    }
+  };
+
   return (
     <div className="space-y-6">
       {/* Beautiful intro explaining the value */}
@@ -2675,12 +2739,26 @@ function AutomationTab() {
       </div>
 
       <div className="glass-tile p-6">
-        <div className="flex items-center justify-between mb-4">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
           <div>
             <h3 className="text-lg font-semibold">Stage Templates &amp; Controls</h3>
-            <p className="text-sm text-slate-500 dark:text-slate-300">Toggle stages on/off and customise the wording clients receive.</p>
+            <p className="text-sm text-slate-500 dark:text-slate-300">
+              Every lifecycle stage ships with warm, UK English copy designed to reassure clients. Toggle stages on or off and customise wording to match your voice.
+            </p>
           </div>
-          <button onClick={runEngine} className="btn-secondary text-sm hidden sm:block">Run Engine Now</button>
+          <div className="flex flex-wrap gap-2 shrink-0">
+            <button
+              type="button"
+              onClick={() => void restoreAllDefaults()}
+              disabled={restoring || loading}
+              className="btn-secondary text-sm"
+            >
+              Restore all Engage defaults
+            </button>
+            <button type="button" onClick={runEngine} className="btn-secondary text-sm hidden sm:block">
+              Run engine now
+            </button>
+          </div>
         </div>
 
         {/* Templates / Global Toggles */}
@@ -2699,14 +2777,16 @@ function AutomationTab() {
                       : 'border-slate-200 bg-slate-50/60 dark:bg-slate-900/40 opacity-90'}`}
                 >
                   <div>
-                    <div className="flex items-start justify-between">
-                      <div className="font-semibold text-sm tracking-tight">{stage.replace(/_/g, ' ')}</div>
-                      <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${isOn ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40' : 'bg-slate-200 text-slate-600 dark:bg-slate-800'}`}>
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="font-semibold text-sm tracking-tight leading-snug">
+                        {STAGE_LABELS[stage]}
+                      </div>
+                      <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium shrink-0 ${isOn ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40' : 'bg-slate-200 text-slate-600 dark:bg-slate-800'}`}>
                         {isOn ? 'ON' : 'PAUSED'}
                       </span>
                     </div>
                     <div className="mt-1 text-xs text-slate-500 dark:text-slate-300 line-clamp-2">
-                      {t?.subject ? t.subject : 'Using default template'}
+                      {t?.subject || 'Engage default — loading…'}
                     </div>
                   </div>
 
@@ -2787,7 +2867,12 @@ function AutomationTab() {
       {editing && (
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
           <div className="glass-tile w-full max-w-2xl p-6 rounded-2xl">
-            <h3 className="text-lg font-semibold mb-4">Edit Template — {editing.stage}</h3>
+            <h3 className="text-lg font-semibold mb-1">
+              Edit template — {STAGE_LABELS[editing.stage as (typeof LIFECYCLE_STAGES)[number]] || editing.stage}
+            </h3>
+            <p className="text-sm text-slate-500 dark:text-slate-400 mb-4">
+              Clients receive this email when they reach this stage. Keep the tone warm and clear.
+            </p>
 
             <div className="space-y-4">
               <input
@@ -2817,9 +2902,23 @@ function AutomationTab() {
               </div>
             </div>
 
-            <div className="mt-6 flex justify-end gap-3">
-              <button onClick={() => setEditing(null)} className="btn-secondary">Cancel</button>
-              <button onClick={saveTemplate} className="btn-primary">Save Template</button>
+            <div className="mt-6 flex flex-wrap justify-between gap-3">
+              <button
+                type="button"
+                onClick={() => void restoreStageDefault()}
+                disabled={restoring}
+                className="btn-secondary text-sm"
+              >
+                Restore Engage default wording
+              </button>
+              <div className="flex gap-3">
+                <button type="button" onClick={() => setEditing(null)} className="btn-secondary">
+                  Cancel
+                </button>
+                <button type="button" onClick={saveTemplate} className="btn-primary">
+                  Save template
+                </button>
+              </div>
             </div>
             {/* Live-ish preview + merge tags */}
             <div className="mt-4 grid grid-cols-1 lg:grid-cols-5 gap-4">

@@ -181,7 +181,7 @@ export async function seedProposalTemplatesForTenant(
       defaultPricing: JSON.stringify({ coverLetterTone: 'PROFESSIONAL' }),
       usageCount: 0,
       isActive: true,
-      isDefault: false,
+      isDefault: true,
       engagementLibraryVersionId: libraryVersionId,
       needsUpdate: false,
     });
@@ -322,4 +322,51 @@ export async function sanityCheckTemplatePricing(
 
 export function getExpectedPackageCount(): number {
   return getUkProposalTemplatePackageCount();
+}
+
+/**
+ * Idempotently seed the full UK proposal template library for a tenant.
+ * Skips packages whose names already exist — custom templates are never removed.
+ */
+export async function ensureProposalTemplateLibraryForTenant(
+  tenantId: string,
+  userId: string
+): Promise<SeedProposalTemplatesResult & { librarySeeded: boolean }> {
+  const expected = getExpectedPackageCount();
+  let offset = 0;
+  let hasMore = true;
+  let lastResult: SeedProposalTemplatesResult | null = null;
+  let guard = 0;
+
+  while (hasMore && guard < 50) {
+    lastResult = await seedProposalTemplatesForTenant(tenantId, userId, {
+      offset,
+      limit: SEED_BATCH_SIZE,
+    });
+    hasMore = lastResult.hasMore;
+    offset += lastResult.processed;
+    guard++;
+
+    if (lastResult.totalActive >= expected) {
+      hasMore = false;
+    }
+  }
+
+  const result = lastResult ?? {
+    packageCount: expected,
+    catalogueCount: 0,
+    created: 0,
+    skipped: 0,
+    skippedNoServices: 0,
+    totalActive: 0,
+    offset: 0,
+    processed: 0,
+    hasMore: false,
+    warnings: [],
+  };
+
+  return {
+    ...result,
+    librarySeeded: result.totalActive > 0,
+  };
 }

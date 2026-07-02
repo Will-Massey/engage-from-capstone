@@ -528,6 +528,10 @@ export const apiClient = {
 
   // Client Touchpoints / Automated Lifecycle
   getTouchpointTemplates: () => api.get('/touchpoints/templates'),
+  seedTouchpointDefaults: (resetAll = false) =>
+    api.post('/touchpoints/templates/seed-defaults', { resetAll }),
+  restoreTouchpointDefault: (stage: string) =>
+    api.post(`/touchpoints/templates/${stage}/restore-default`, {}),
   upsertTouchpointTemplate: (stage: string, data: any) =>
     api.put(`/touchpoints/templates/${stage}`, data),
   getTouchpointApprovals: () => api.get('/touchpoints/approvals'),
