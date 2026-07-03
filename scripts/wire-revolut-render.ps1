@@ -63,16 +63,10 @@ foreach ($k in $defaults.Keys) {
   if (-not $revolut[$k]) { $revolut[$k] = $defaults[$k] }
 }
 
-$headers = @{ Authorization = "Bearer $apiKey"; 'Content-Type' = 'application/json' }
-$existing = Invoke-RestMethod -Uri "https://api.render.com/v1/services/$engageServiceId/env-vars" -Headers $headers
-$map = @{}
-foreach ($item in $existing) { $map[$item.envVar.key] = $item.envVar.value }
-
-foreach ($k in $revolut.Keys) { $map[$k] = $revolut[$k] }
-
-$body = $map.GetEnumerator() | ForEach-Object { @{ key = $_.Key; value = $_.Value } }
-Invoke-RestMethod -Uri "https://api.render.com/v1/services/$engageServiceId/env-vars" -Method PUT -Headers $headers -Body ($body | ConvertTo-Json -Depth 3) | Out-Null
-Invoke-RestMethod -Uri "https://api.render.com/v1/services/$engageServiceId/deploys" -Method POST -Headers @{ Authorization = "Bearer $apiKey" } | Out-Null
+. (Join-Path $PSScriptRoot 'render-env-guard.ps1')
+$revolutUpdates = @{}
+foreach ($k in $revolut.Keys) { $revolutUpdates[$k] = $revolut[$k] }
+Set-RenderEnvVarsSafe -ServiceId $engageServiceId -Updates $revolutUpdates | Out-Null
 
 Write-Host 'Revolut env vars applied to engage-backend and redeploy triggered.'
 Write-Host "Webhook URL: $webhookUrl"

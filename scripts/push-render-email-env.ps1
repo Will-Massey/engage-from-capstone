@@ -91,20 +91,7 @@ if (-not $existing['EMAIL_WORKER_SECRET']) {
   throw 'EMAIL_WORKER_SECRET missing — set in capstone-engage/.env'
 }
 
-$payload = @(
-  foreach ($key in ($existing.Keys | Sort-Object -Unique)) {
-    @{ key = $key; value = [string]$existing[$key] }
-  }
-)
-
-Write-Host "Setting $($payload.Count) environment variables (email keys ensured)..." -ForegroundColor Yellow
-Invoke-RenderApi -Method PUT -Path "/services/$ServiceId/env-vars" -Body $payload | Out-Null
-Write-Host 'Environment updated.' -ForegroundColor Green
-
-if (-not $SkipDeploy) {
-  Write-Host 'Triggering deploy...' -ForegroundColor Yellow
-  # clearCache must be the string "clear" or "do_not_clear" (not a boolean).
-  $deploy = Invoke-RenderApi -Method POST -Path "/services/$ServiceId/deploys" -Body @{ clearCache = 'do_not_clear' }
-  $deployId = if ($deploy.id) { $deploy.id } else { $deploy.deploy.id }
-  Write-Host "Deploy started: $deployId" -ForegroundColor Green
-}
+. (Join-Path $PSScriptRoot 'render-env-guard.ps1')
+Write-Host 'Setting environment variables (email keys + core guard)...' -ForegroundColor Yellow
+$count = Set-RenderEnvVarsSafe -ServiceId $ServiceId -Updates $existing -SkipDeploy:$SkipDeploy
+Write-Host "Environment updated ($count vars)." -ForegroundColor Green

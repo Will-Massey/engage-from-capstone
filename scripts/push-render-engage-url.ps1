@@ -4,46 +4,14 @@ param(
 )
 
 $ErrorActionPreference = 'Stop'
-$apiKey = $env:RENDER_API_KEY
-if (-not $apiKey) {
-  $keyFile = 'C:\Users\willi\boardroom\deploy\.render-api-key'
-  if (Test-Path $keyFile) { $apiKey = (Get-Content $keyFile -Raw).Trim() }
-}
-if (-not $apiKey) { throw 'RENDER_API_KEY not set' }
-
+. (Join-Path $PSScriptRoot 'render-env-guard.ps1')
+$apiKey = Get-RenderApiKey
 $headers = @{ Authorization = "Bearer $apiKey"; Accept = 'application/json' }
-
-function Get-RenderEnvVars($serviceId) {
-  $existing = @{}
-  $cursor = $null
-  do {
-    $path = "/services/$serviceId/env-vars?limit=100"
-    if ($cursor) { $path += "&cursor=$cursor" }
-    $page = Invoke-RestMethod -Method GET -Uri "https://api.render.com/v1$path" -Headers $headers
-    foreach ($item in $page) {
-      # Render may return duplicate keys — last wins
-      $existing[$item.envVar.key] = $item.envVar.value
-    }
-    $cursor = if ($page.Count -gt 0) { $page[-1].cursor } else { $null }
-  } while ($cursor -and $page.Count -eq 100)
-  return $existing
-}
-
-function Set-RenderEnvVars($serviceId, $updates) {
-  $existing = Get-RenderEnvVars $serviceId
-  foreach ($kv in $updates.GetEnumerator()) { $existing[$kv.Key] = $kv.Value }
-  $payload = @(
-    foreach ($key in ($existing.Keys | Sort-Object -Unique)) {
-      @{ key = $key; value = [string]$existing[$key] }
-    }
-  )
-  Invoke-RestMethod -Method PUT -Uri "https://api.render.com/v1/services/$serviceId/env-vars" -Headers $headers -ContentType 'application/json' -Body ($payload | ConvertTo-Json -Depth 5 -Compress) | Out-Null
-}
 
 $canonical = 'https://capstonesoftware.co.uk/engage'
 
 Write-Host "Updating backend $BackendServiceId..." -ForegroundColor Cyan
-Set-RenderEnvVars $BackendServiceId @{
+Set-RenderEnvVarsSafe -ServiceId $BackendServiceId -SkipDeploy -Updates @{
   FRONTEND_URL        = $canonical
   API_URL             = $canonical
   AUTH_COOKIE_PATH    = '/engage'
@@ -58,10 +26,11 @@ $frontend = $services | Where-Object { $_.service.name -eq 'engage-frontend' } |
 if ($frontend) {
   $fid = $frontend.service.id
   Write-Host "Updating frontend $fid..." -ForegroundColor Cyan
-  Set-RenderEnvVars $fid @{
-    VITE_API_URL  = $canonical
-    VITE_APP_BASE = '/engage'
-  }
+  $existing = Get-RenderEnvVars -ServiceId $fid -ApiKey $apiKey
+  $existing['VITE_API_URL'] = $canonical
+  $existing['VITE_APP_BASE'] = '/engage'
+  $payload = @(foreach ($key in ($existing.Keys | Sort-Object -Unique)) { @{ key = $key; value = [string]$existing[$key] } })
+  Invoke-RestMethod -Method PUT -Uri "https://api.render.com/v1/services/$fid/env-vars" -Headers $headers -ContentType 'application/json' -Body ($payload | ConvertTo-Json -Depth 5 -Compress) | Out-Null
 }
 
 Write-Host 'Render env updated for capstonesoftware.co.uk/engage' -ForegroundColor Green
