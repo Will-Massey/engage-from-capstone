@@ -22,9 +22,11 @@ async function globalSetup(config: FullConfig): Promise<void> {
   });
   const page = await context.newPage();
 
-  await page.goto('/login', { waitUntil: 'domcontentloaded' });
-  await page.locator('input[name="email"]').fill(email);
-  await page.locator('input[name="password"]').fill(password);
+  await page.goto('/login', { waitUntil: 'domcontentloaded', timeout: 60_000 });
+  const emailInput = page.locator('input[type="email"], input[name="email"]');
+  await emailInput.waitFor({ state: 'visible', timeout: 60_000 });
+  await emailInput.fill(email);
+  await page.locator('input[type="password"], input[name="password"]').fill(password);
 
   const submit = page.locator('button[type="submit"]');
   await submit.click();

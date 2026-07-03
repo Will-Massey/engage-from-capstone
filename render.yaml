@@ -115,7 +115,7 @@ services:
     staticPublishPath: ./dist
     envVars:
       - key: VITE_API_URL
-        value: https://capstonesoftware.co.uk/engage
+        value: https://engage-backend-e1ue.onrender.com
       - key: VITE_APP_BASE
         value: /engage
     autoDeploy: true
