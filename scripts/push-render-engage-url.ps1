@@ -20,7 +20,10 @@ function Get-RenderEnvVars($serviceId) {
     $path = "/services/$serviceId/env-vars?limit=100"
     if ($cursor) { $path += "&cursor=$cursor" }
     $page = Invoke-RestMethod -Method GET -Uri "https://api.render.com/v1$path" -Headers $headers
-    foreach ($item in $page) { $existing[$item.envVar.key] = $item.envVar.value }
+    foreach ($item in $page) {
+      # Render may return duplicate keys — last wins
+      $existing[$item.envVar.key] = $item.envVar.value
+    }
     $cursor = if ($page.Count -gt 0) { $page[-1].cursor } else { $null }
   } while ($cursor -and $page.Count -eq 100)
   return $existing
@@ -30,7 +33,7 @@ function Set-RenderEnvVars($serviceId, $updates) {
   $existing = Get-RenderEnvVars $serviceId
   foreach ($kv in $updates.GetEnumerator()) { $existing[$kv.Key] = $kv.Value }
   $payload = @(
-    foreach ($key in $existing.Keys) {
+    foreach ($key in ($existing.Keys | Sort-Object -Unique)) {
       @{ key = $key; value = [string]$existing[$key] }
     }
   )

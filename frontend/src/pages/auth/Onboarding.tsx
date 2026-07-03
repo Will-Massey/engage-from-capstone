@@ -236,7 +236,7 @@ const Onboarding = () => {
                   placeholder="your-practice"
                 />
                 <span className="inline-flex items-center px-3 rounded-r-lg border border-l-0 border-slate-300 bg-slate-50 text-slate-600 text-sm">
-                  .engage.capstone.co.uk
+                  .engage.capstonesoftware.co.uk
                 </span>
               </div>
               {errors.subdomain && (
@@ -404,7 +404,7 @@ const Onboarding = () => {
               </div>
               <div>
                 <span className="text-sm text-slate-600">Subdomain:</span>
-                <p className="font-medium">{watch('subdomain')}.engage.capstone.co.uk</p>
+                <p className="font-medium">{watch('subdomain')}.engage.capstonesoftware.co.uk</p>
               </div>
               <div>
                 <span className="text-sm text-slate-600">Admin:</span>

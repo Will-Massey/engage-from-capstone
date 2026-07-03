@@ -92,7 +92,7 @@ if (-not $existing['EMAIL_WORKER_SECRET']) {
 }
 
 $payload = @(
-  foreach ($key in $existing.Keys) {
+  foreach ($key in ($existing.Keys | Sort-Object -Unique)) {
     @{ key = $key; value = [string]$existing[$key] }
   }
 )
