@@ -5,39 +5,40 @@ import {
   apiPost,
   expectNoErrorToasts,
   expectOkApi,
+  gotoApp,
 } from '../fixtures/build-helpers';
 
 test.describe('UAT smoke — public legal & status pages', () => {
   test('terms of service page loads', async ({ page }) => {
-    await page.goto('/legal/terms');
+    await gotoApp(page, '/legal/terms');
     await expect(page.getByRole('heading', { name: /terms of service/i }).first()).toBeVisible();
     await expect(page.getByText(/these terms of service/i)).toBeVisible();
     await expectNoErrorToasts(page);
   });
 
   test('privacy policy page loads', async ({ page }) => {
-    await page.goto('/legal/privacy');
+    await gotoApp(page, '/legal/privacy');
     await expect(page.getByRole('heading', { name: /privacy policy/i }).first()).toBeVisible();
     await expect(page.getByText(/data we process/i)).toBeVisible();
     await expectNoErrorToasts(page);
   });
 
   test('AI disclosure page loads', async ({ page }) => {
-    await page.goto('/legal/ai-disclosure');
+    await gotoApp(page, '/legal/ai-disclosure');
     await expect(page.getByRole('heading', { name: /ai disclosure/i }).first()).toBeVisible();
     await expect(page.getByRole('heading', { name: /what clara does/i })).toBeVisible();
     await expectNoErrorToasts(page);
   });
 
   test('SOC 2 controls page loads', async ({ page }) => {
-    await page.goto('/legal/soc2');
+    await gotoApp(page, '/legal/soc2');
     await expect(page.getByRole('heading', { name: /security & soc 2 controls/i }).first()).toBeVisible();
     await expect(page.getByText(/CC6\.1/i)).toBeVisible();
     await expectNoErrorToasts(page);
   });
 
   test('status page loads and shows component health', async ({ page }) => {
-    await page.goto('/status');
+    await gotoApp(page, '/status');
     await expect(page.getByRole('heading', { name: /engage system status/i })).toBeVisible({
       timeout: 30_000,
     });
@@ -48,7 +49,7 @@ test.describe('UAT smoke — public legal & status pages', () => {
 
 test.describe('UAT smoke — Caroline checklist (automated)', () => {
   test('Xero integration settings page loads', async ({ page }) => {
-    await page.goto('/settings?tab=integrations');
+    await gotoApp(page, '/settings?tab=integrations');
     await expect(page).toHaveURL(/tab=integrations/);
     await expect(page.getByText(/xero/i).first()).toBeVisible({ timeout: 30_000 });
     await expect(
@@ -133,7 +134,7 @@ test.describe('UAT smoke — Caroline checklist (automated)', () => {
     const proposalId = created.body?.data?.id as string;
     test.skip(!proposalId, 'Could not create proposal');
 
-    await page.goto(`/proposals/${proposalId}`);
+    await gotoApp(page, `/proposals/${proposalId}`);
     await expect(page.getByRole('button', { name: /submit for partner approval/i })).toBeVisible({
       timeout: 30_000,
     });
@@ -167,7 +168,7 @@ test.describe('UAT smoke — Caroline checklist (automated)', () => {
   });
 
   test('firm group settings UI loads', async ({ page }) => {
-    await page.goto('/settings?tab=firm-group');
+    await gotoApp(page, '/settings?tab=firm-group');
     await expect(page.getByRole('heading', { name: /firm group/i })).toBeVisible();
     await expect(
       page.getByText(/create a firm group|practices in this group/i).first()

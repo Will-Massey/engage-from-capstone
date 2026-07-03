@@ -1,6 +1,19 @@
 # Build Progress Log
 <!-- Append-only session log. Latest deploy checkpoint is the resume entry point. -->
 
+## Session: 2026-07-03 — Full build e2e suite on production
+
+### UAT checkpoint
+- **gotoApp()** rolled across all `playwright.build.config.ts` specs; API default → `engage.capstonesoftware.co.uk`
+- **Result:** 43 tests — **41 passed**, 2 flaky (Clara sidebar step 2+, automation restore-default) — all green after retry (4.4m)
+
+#### Resume prompt
+```
+Caroline browser sign-off. seed-expanded-uk-services if needed. Harden 2 flaky e2e tests.
+```
+
+---
+
 ## Session: 2026-07-03 — Yours filter template smoke (templates-smoke 2/2)
 
 ### UAT checkpoint

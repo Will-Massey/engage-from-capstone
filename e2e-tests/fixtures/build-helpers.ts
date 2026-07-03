@@ -54,7 +54,7 @@ export const FRONTEND_ORIGIN = (
 ).replace(/\/$/, '');
 
 export const API_BASE =
-  (process.env.API_URL || 'https://engage-backend-e1ue.onrender.com').replace(/\/$/, '') +
+  (process.env.API_URL || 'https://engage.capstonesoftware.co.uk').replace(/\/$/, '') +
   (process.env.API_URL?.endsWith('/api') ? '' : '/api');
 
 /** Navigate under the /engage app base — Playwright baseURL strips path on leading-slash URLs. */

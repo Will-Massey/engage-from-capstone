@@ -50,6 +50,7 @@ test.describe('Automation UAT — lifecycle touchpoints', () => {
     await expect(dialog).toBeVisible();
 
     const subjectInput = dialog.locator('input[placeholder="Subject"]');
+    await expect(subjectInput).not.toBeEmpty({ timeout: 15_000 });
     await expect(subjectInput).toHaveValue(DEFAULT_PROPOSAL_ACCEPTED_SUBJECT);
 
     const customisedSubject = `UAT custom subject ${Date.now()}`;

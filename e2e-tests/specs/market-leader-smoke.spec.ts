@@ -1,9 +1,9 @@
 import { test, expect } from '@playwright/test';
-import { expectNoErrorToasts, apiGet, expectOkApi } from '../fixtures/build-helpers';
+import { expectNoErrorToasts, apiGet, expectOkApi, gotoApp } from '../fixtures/build-helpers';
 
 test.describe('Build smoke — market leader batch (845effcf)', () => {
   test('First proposal wizard opens from dashboard', async ({ page }) => {
-    await page.goto('/proposals/first-wizard');
+    await gotoApp(page, '/proposals/first-wizard');
     await page.waitForLoadState('domcontentloaded');
 
     const dialog = page.getByRole('dialog');
@@ -17,7 +17,7 @@ test.describe('Build smoke — market leader batch (845effcf)', () => {
   });
 
   test('Bulk renewal wizard page loads', async ({ page }) => {
-    await page.goto('/proposals/renewals');
+    await gotoApp(page, '/proposals/renewals');
     await expect(page).toHaveURL(/\/proposals\/renewals/);
     await expect(page.getByRole('heading', { name: /bulk renewal wizard/i })).toBeVisible();
     await expect(page.getByText(/contracts renewing on or before/i)).toBeVisible();
@@ -25,7 +25,7 @@ test.describe('Build smoke — market leader batch (845effcf)', () => {
   });
 
   test('Manual proposal flow loads without error toasts', async ({ page }) => {
-    await page.goto('/proposals/new?manual=1');
+    await gotoApp(page, '/proposals/new?manual=1');
     await page.waitForSelector('[data-testid="client-card"]', { timeout: 30_000 });
     await expectNoErrorToasts(page, 1500);
 
@@ -44,7 +44,7 @@ test.describe('Build smoke — market leader batch (845effcf)', () => {
     const result = await apiGet(request, '/analytics/win-loss');
     await expectOkApi('win-loss analytics', result);
 
-    await page.goto('/analytics');
+    await gotoApp(page, '/analytics');
     await expect(page).toHaveURL(/\/analytics/);
     await page.waitForLoadState('networkidle');
     await expect(page.getByRole('heading', { name: /win \/ loss/i })).toBeVisible({
@@ -54,7 +54,7 @@ test.describe('Build smoke — market leader batch (845effcf)', () => {
   });
 
   test('MFA settings page loads with 2FA setup UI', async ({ page }) => {
-    await page.goto('/settings?tab=security');
+    await gotoApp(page, '/settings?tab=security');
     await expect(page).toHaveURL(/tab=security/);
     await expect(page.getByText(/two-factor authentication/i).first()).toBeVisible();
 
@@ -64,7 +64,7 @@ test.describe('Build smoke — market leader batch (845effcf)', () => {
     await expectNoErrorToasts(page);
 
     if (await enableBtn.isVisible()) {
-      await page.goto('/2fa-setup');
+      await gotoApp(page, '/2fa-setup');
       await expect(
         page
           .getByRole('heading', { name: /set up two-factor authentication/i })
@@ -75,7 +75,7 @@ test.describe('Build smoke — market leader batch (845effcf)', () => {
   });
 
   test('Pricing calculator page is accessible', async ({ page }) => {
-    await page.goto('/pricing-calculator');
+    await gotoApp(page, '/pricing-calculator');
     await expect(page).toHaveURL(/\/pricing-calculator/);
     await expect(
       page.getByRole('heading', { name: 'Pricing calculator', exact: true }).first()
