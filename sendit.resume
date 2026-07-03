@@ -1,12 +1,12 @@
 # sendit.resume - auto-generated checkpoint (keep in git)
 pending: false
-written: 2026-07-02 09:39:56 UTC
+written: 2026-07-03 12:25:00 UTC
 project_root: C:\Users\willi\Cline Workspace\engage-deploy
-commit: e2018d88
+commit: ab2823ac
 branch: integrate-deploy
-phase: **Build 3.1** â€” Templates library UAT passed (143 Engage library); Automation touchpoint UAT next
-goal: **Market leader:** UK proposal-to-cash platform â€” CH lookup â†’ priced proposal â†’ signed engagement â†’ collected fees, with Clara AI that saves 30+ min/proposal without token overspend. Full plan: `MARKET_LEADER_PLAN.md`.
-next_up_1: Caroline UAT: **Settings â†’ Automation** â€” all 13 stages show populated subjects; test restore-default wording.
+phase: **Build 3.1** — Automation API UAT passed; frontend asset-path + API URL fix deploying
+goal: **Market leader:** UK proposal-to-cash platform — CH lookup → priced proposal → signed engagement → collected fees, with Clara AI that saves 30+ min/proposal without token overspend. Full plan: `MARKET_LEADER_PLAN.md`.
+next_up_1: After frontend redeploy (ab2823ac): run automation-smoke + templates-smoke on capstonesoftware.co.uk/engage; Caroline browser UAT on Settings → Automation.
 
 # Agent: on resume read ~/.grok/sendit.active OR project_root paths below.
 # NEVER glob search. Execute next_up_1 immediately. Set pending: false when done.
