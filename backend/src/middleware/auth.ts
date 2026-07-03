@@ -297,6 +297,7 @@ export const csrfProtection = async (
   const publicPaths = [
     '/auth', // All auth routes (login, register, csrf-token, etc.)
     '/payments/webhook',
+    '/billing/webhook', // Revolut Merchant API (HMAC-verified)
     '/oauth/callback',
     '/proposals/view', // Public proposal viewing and signing
     '/proposals/portal', // Client portal (public access)

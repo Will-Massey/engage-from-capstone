@@ -49,7 +49,12 @@ import {
   calculateTierTotals,
   findPricingTier,
 } from '../utils/proposalCustomFields.js';
-import { getPublicPaymentConfig } from '../services/paymentCollection.js';
+import {
+  createPostSignMandate,
+  skipPaymentSetup,
+  completeStubMandateForProposal,
+  getPublicPaymentConfig,
+} from '../services/paymentCollection.js';
 import {
   AGREEMENT_VERSION,
   DEFAULT_CONSENT_TEXT,
@@ -921,6 +926,102 @@ router.post(
         paymentRequired: proposalRequiresPayment(proposal.total) && isRevolutConfigured(),
         checkout,
       },
+    });
+  })
+);
+
+// Post-sign payment setup (public — share token)
+router.post(
+  '/view/:token/payment/setup',
+  asyncHandler(async (req, res) => {
+    const { token } = req.params;
+    const schema = z.object({
+      preferredMethod: z.enum(['direct_debit', 'card']).optional(),
+    });
+    const { preferredMethod } = schema.parse(req.body ?? {});
+
+    const proposal = await getProposalByShareToken(token);
+    if (!proposal) {
+      throw new ApiError('PROPOSAL_NOT_FOUND', 'Proposal not found or link expired', 404);
+    }
+
+    if (proposal.status !== 'ACCEPTED') {
+      throw new ApiError(
+        'INVALID_STATUS',
+        'Payment setup is only available after the proposal is accepted',
+        400
+      );
+    }
+
+    try {
+      const result = await createPostSignMandate(proposal.id, {
+        preferredMethod: preferredMethod || 'card',
+      });
+
+      res.json({
+        success: true,
+        data: result,
+      });
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : 'Failed to set up payment';
+      throw new ApiError('PAYMENT_SETUP_FAILED', message, 400);
+    }
+  })
+);
+
+// Complete demo GoCardless stub mandate (public — share token)
+router.post(
+  '/view/:token/payment/complete-stub',
+  asyncHandler(async (req, res) => {
+    const { token } = req.params;
+    const schema = z.object({
+      mandateId: z.string().min(1),
+    });
+    const { mandateId } = schema.parse(req.body ?? {});
+
+    const proposal = await getProposalByShareToken(token);
+    if (!proposal) {
+      throw new ApiError('PROPOSAL_NOT_FOUND', 'Proposal not found or link expired', 404);
+    }
+
+    try {
+      const result = await completeStubMandateForProposal(proposal.id, mandateId);
+      res.json({
+        success: true,
+        data: result,
+      });
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : 'Failed to complete mandate';
+      throw new ApiError('PAYMENT_STUB_FAILED', message, 400);
+    }
+  })
+);
+
+// Skip post-sign payment (public — share token)
+router.post(
+  '/view/:token/payment/skip',
+  asyncHandler(async (req, res) => {
+    const { token } = req.params;
+
+    const proposal = await getProposalByShareToken(token);
+    if (!proposal) {
+      throw new ApiError('PROPOSAL_NOT_FOUND', 'Proposal not found or link expired', 404);
+    }
+
+    if (proposal.status !== 'ACCEPTED') {
+      throw new ApiError(
+        'INVALID_STATUS',
+        'Only accepted proposals can skip payment setup',
+        400
+      );
+    }
+
+    await skipPaymentSetup(proposal.id);
+
+    res.json({
+      success: true,
+      message: 'Payment setup skipped',
+      data: { paymentStatus: 'SKIPPED' },
     });
   })
 );
