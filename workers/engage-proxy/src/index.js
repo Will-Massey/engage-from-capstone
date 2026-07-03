@@ -7,7 +7,7 @@
  * /engage/*       → engage-frontend SPA (index.html for client routes)
  */
 
-const FRONTEND_UPSTREAM = 'https://engage-frontend-0g6u.onrender.com';
+const FRONTEND_UPSTREAM = 'https://engage-web.pages.dev';
 const BACKEND_UPSTREAM = 'https://engage-backend-e1ue.onrender.com';
 const PREFIX = '/engage';
 
@@ -71,8 +71,8 @@ export default {
       return Response.redirect(`${url.origin}${PREFIX}/`, 301);
     }
 
-    if (pathname === `${PREFIX}/ping`) {
-      return proxyRequest(request, BACKEND_UPSTREAM, '/ping');
+    if (pathname === `${PREFIX}/ping` || pathname === `${PREFIX}/health`) {
+      return proxyRequest(request, BACKEND_UPSTREAM, pathname.slice(PREFIX.length));
     }
 
     if (pathname.startsWith(`${PREFIX}/api/`)) {
@@ -88,9 +88,9 @@ export default {
       return proxyRequest(request, FRONTEND_UPSTREAM, pathname);
     }
 
-    // SPA fallback — path-strip to root index.html on Render
+    // SPA fallback — nested /engage/index.html on Cloudflare Pages
     if (request.method === 'GET' || request.method === 'HEAD') {
-      return proxyRequest(request, FRONTEND_UPSTREAM, '/index.html');
+      return proxyRequest(request, FRONTEND_UPSTREAM, `${PREFIX}/index.html` + url.search);
     }
 
     return proxyRequest(request, FRONTEND_UPSTREAM, stripPrefix(pathname));

@@ -3,6 +3,7 @@ import path from 'path';
 import fs from 'fs/promises';
 import { authenticateTenantMember } from '../middleware/tenant.js';
 import { asyncHandler, ApiError } from '../middleware/errorHandler.js';
+import { r2Enabled, r2GetObject } from '../services/r2Storage.js';
 
 const router = Router();
 
@@ -32,6 +33,19 @@ router.get(
     const allowedRoot = path.resolve(path.join(uploadsDir, 'signatures', tenantId));
     if (!resolved.startsWith(allowedRoot)) {
       throw new ApiError('FORBIDDEN', 'Invalid path', 403);
+    }
+
+    if (r2Enabled()) {
+      const key = path.join('signatures', tenantId, filename).replace(/\\/g, '/');
+      try {
+        const buffer = await r2GetObject(key);
+        res.setHeader('Content-Type', 'image/png');
+        res.setHeader('Cache-Control', 'private, no-store');
+        res.send(buffer);
+        return;
+      } catch {
+        throw new ApiError('NOT_FOUND', 'File not found', 404);
+      }
     }
 
     try {

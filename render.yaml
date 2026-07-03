@@ -8,17 +8,13 @@ services:
     name: engage-backend
     runtime: node
     plan: starter
-    disk:
-      name: engage-uploads
-      mountPath: /var/data
-      sizeGB: 10
     buildCommand: |
       npm ci &&
       npm run build:shared &&
       npm run build:backend
     # npm start runs start-prod.mjs which handles prisma migrate deploy automatically
     startCommand: cd backend && npm start
-    healthCheckPath: /ping
+    healthCheckPath: /health
     envVars:
       - key: NODE_ENV
         value: production
@@ -27,9 +23,7 @@ services:
       - key: PORT
         value: 10000
       - key: DATABASE_URL
-        fromDatabase:
-          name: engage-db
-          property: connectionString
+        sync: false
       - key: JWT_SECRET
         generateValue: true
       - key: JWT_EXPIRES_IN
@@ -81,7 +75,7 @@ services:
       - key: UPLOAD_DIR
         value: uploads
       - key: UPLOADS_DIR
-        value: /var/data/uploads
+        value: uploads
       - key: COMPANIES_HOUSE_API_KEY
         sync: false
       - key: XAI_API_KEY
@@ -141,12 +135,6 @@ services:
       - type: rewrite
         source: /engage/*
         destination: /engage/index.html
-
-databases:
-  - name: engage-db
-    plan: free
-    databaseName: engage_production
-    user: engage_user
 
 # Deploy trigger: Sat Apr 11 08:59:19 BST 2026
 # Cache bust: Sat Apr 11 14:17:37 BST 2026
