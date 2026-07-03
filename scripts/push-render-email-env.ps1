@@ -103,7 +103,8 @@ Write-Host 'Environment updated.' -ForegroundColor Green
 
 if (-not $SkipDeploy) {
   Write-Host 'Triggering deploy...' -ForegroundColor Yellow
-  $deploy = Invoke-RenderApi -Method POST -Path "/services/$ServiceId/deploys" -Body @{ clearCache = $false }
+  # clearCache must be the string "clear" or "do_not_clear" (not a boolean).
+  $deploy = Invoke-RenderApi -Method POST -Path "/services/$ServiceId/deploys" -Body @{ clearCache = 'do_not_clear' }
   $deployId = if ($deploy.id) { $deploy.id } else { $deploy.deploy.id }
   Write-Host "Deploy started: $deployId" -ForegroundColor Green
 }

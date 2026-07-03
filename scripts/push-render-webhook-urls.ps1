@@ -12,7 +12,7 @@ Write-Host "  Cloudflare Email delivery: $base/api/webhooks/cloudflare-email"
 Write-Host "  Stripe payments:           $base/api/payments/webhook"
 Write-Host "  Revolut billing:             $base/api/billing/webhook"
 Write-Host ""
-Write-Host "Email worker (unchanged — Cloudflare Workers):" -ForegroundColor Yellow
+Write-Host "Email worker (unchanged - Cloudflare Workers):" -ForegroundColor Yellow
 Write-Host "  EMAIL_WORKER_URL: https://capstone-engage-email.william-19a.workers.dev"
 Write-Host "  EMAIL_PLATFORM_FROM: proposals@capstonesoftware.co.uk"
 Write-Host ""
