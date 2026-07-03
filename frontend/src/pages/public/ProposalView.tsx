@@ -609,21 +609,18 @@ const PublicProposalView = () => {
                       All communications are automated and tailored. Your accountant can pause or customise
                       them at any time.
                     </p>
-                  </div>
-                </div>
-                <div className="flex-1">
-                  <p className="font-semibold text-emerald-900 dark:text-emerald-200 text-lg">
-                    {paymentPending && !paymentComplete
-                      ? 'Proposal accepted — payment pending'
-                      : 'Thank you — Proposal accepted!'}
-                  </p>
-                  <p className="mt-1 text-sm text-emerald-700 dark:text-emerald-300">
-                    {paymentPending && !paymentComplete
-                      ? `Please complete your payment of ${formatCurrency(proposal.total)} to confirm your engagement.`
-                      : 'Your automated client onboarding journey has started. Expect a warm welcome email shortly, followed by secure requests for ID/AML verification and next steps.'}
-                  </p>
 
-                  {!stubMandateId ? (
+                    {paymentPending && !paymentComplete && paymentConfig && (
+                      <>
+                        <p className="mt-4 font-semibold text-emerald-900 dark:text-emerald-200 text-lg">
+                          Proposal accepted — payment pending
+                        </p>
+                        <p className="mt-1 text-sm text-emerald-700 dark:text-emerald-300">
+                          Please complete your payment of {formatCurrency(proposal.total)} to confirm
+                          your engagement.
+                        </p>
+
+                        {!stubMandateId ? (
                     <div className="mt-4 flex flex-col sm:flex-row gap-3">
                       {paymentConfig.provider === 'revolut' ? (
                         <button
@@ -700,8 +697,11 @@ const PublicProposalView = () => {
                   >
                     Set up payment later
                   </button>
-                </motion.div>
-              )}
+                      </>
+                    )}
+                  </div>
+                </div>
+              </motion.div>
 
               {paymentComplete && paymentConfig && paymentConfig.paymentStatus !== 'SKIPPED' && (
                 <div
