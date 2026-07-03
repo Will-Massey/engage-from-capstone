@@ -131,7 +131,7 @@ router.post(
       if (evt.messageId && (evt.eventType === 'bounce' || evt.eventType === 'spam')) {
         try {
           await prisma.emailLog.updateMany({
-            where: { messageId: evt.messageId },
+            where: { externalId: evt.messageId },
             data: {
               status: 'BOUNCED',
               error: evt.eventType,

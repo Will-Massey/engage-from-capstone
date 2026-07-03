@@ -42,6 +42,14 @@ import {
 import { classifyDeclineReasonText } from '../services/ai/winLossAiService.js';
 import { DECLINE_REASONS } from '../constants/declineReasons.js';
 import {
+  parseProposalCustomFields,
+  getRequiredSigners,
+  hasPricingTiers,
+  calculateTierTotals,
+  findPricingTier,
+} from '../utils/proposalCustomFields.js';
+import { getPublicPaymentConfig } from '../services/paymentCollection.js';
+import {
   AGREEMENT_VERSION,
   DEFAULT_CONSENT_TEXT,
   hashProposalDocument,

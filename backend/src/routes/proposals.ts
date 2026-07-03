@@ -31,6 +31,9 @@ import {
   parseProposalDateInput,
 } from '../utils/tenantProposalSettings.js';
 import { getProposalRegulatoryFit } from '../services/regulatoryFitService.js';
+import { DECLINE_REASONS } from '../constants/declineReasons.js';
+import { UpliftRules } from '../services/renewalProposalService.js';
+import { resolveProposalTerms } from '../services/proposalTermsService.js';
 // generateReference helper function
 const generateReference = (prefix: string = 'PROP'): string => {
   const timestamp = Date.now().toString(36).toUpperCase();

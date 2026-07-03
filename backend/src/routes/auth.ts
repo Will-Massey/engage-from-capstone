@@ -20,7 +20,7 @@ import {
   clearLoginAttempts,
   LOGIN_LOCKOUT_MAX,
 } from '../utils/loginLockout.js';
-// import { twoFactorService } from '../services/twoFactorService.js';
+import { twoFactorService } from '../services/twoFactorService.js';
 import { passwordResetService } from '../services/passwordResetService.js';
 import { enforceTierLimit } from '../middleware/tierLimits.js';
 import { gdprService } from '../services/gdprService.js';

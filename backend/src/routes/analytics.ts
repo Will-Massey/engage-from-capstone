@@ -167,7 +167,7 @@ router.get(
     ]);
 
     // Get monthly proposal trend (last 6 months)
-    const sixMonthsAgo = new Date(now.getTime() - 180 * 24 * 60 * 60 * 1000);
+    const trendSixMonthsAgo = new Date(now.getTime() - 180 * 24 * 60 * 60 * 1000);
     const monthlyTrend = await prisma.$queryRaw`
       SELECT 
         DATE_TRUNC('month', "createdAt") as month,
@@ -176,7 +176,7 @@ router.get(
         COUNT(CASE WHEN "status" = 'ACCEPTED' THEN 1 END) as accepted
       FROM "Proposal"
       WHERE "tenantId" = ${tenantId}
-        AND "createdAt" >= ${sixMonthsAgo}
+        AND "createdAt" >= ${trendSixMonthsAgo}
       GROUP BY DATE_TRUNC('month', "createdAt")
       ORDER BY month ASC
     `;

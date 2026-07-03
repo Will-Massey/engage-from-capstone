@@ -32,10 +32,9 @@ import enhancedServiceRoutes from './routes/services-new.js';
 import tenantRoutes from './routes/tenants.js';
 import emailRoutes from './routes/email.js';
 import paymentRoutes from './routes/payments.js';
-import adfinRoutes from './routes/adfin.js';
 import billingRoutes from './routes/billing.js';
 import coverLetterTemplateRoutes from './routes/coverLetterTemplates.js';
-import proposalTemplateRoutes from './routes/proposalTemplates.js';
+import proposalTemplateRoutes from './routes/proposal-templates.js';
 import engagementLibraryRoutes from './routes/engagementLibrary.js';
 import analyticsRoutes from './routes/analytics.js';
 import touchpointRoutes from './routes/touchpoints.js';
@@ -360,7 +359,6 @@ app.use(
 // Body parsing — SendGrid webhook needs raw body for signature verification
 import sendgridWebhookRoutes from './routes/webhooks/sendgrid.js';
 import emailEventsWebhookRoutes from './routes/webhooks/email-events.js';
-import proposalTemplateRoutes from './routes/proposal-templates.js';
 
 app.use(
   '/api/webhooks/sendgrid',
@@ -952,14 +950,12 @@ app.use('/api/services/v2', extractTenant, enhancedServiceRoutes);
 app.use('/api/tenants', tenantRoutes);
 app.use('/api/email', extractTenant, emailRoutes);
 app.use('/api/payments', extractTenant, paymentRoutes);
-app.use('/api/payments/adfin', extractTenant, adfinRoutes);
 app.use('/api/billing', extractTenant, billingRoutes);
 app.use('/api/companies-house', extractTenant, companiesHouseRoutes);
 app.use('/api/cover-letter-templates', extractTenant, coverLetterTemplateRoutes);
 app.use('/api/proposal-templates', extractTenant, proposalTemplateRoutes);
 app.use('/api/engagement-library', extractTenant, engagementLibraryRoutes);
 app.use('/api/analytics', extractTenant, analyticsRoutes);
-app.use('/api/proposal-templates', extractTenant, proposalTemplateRoutes);
 app.use('/api/touchpoints', extractTenant, touchpointRoutes);
 app.use('/api/automation', extractTenant, automationRoutes);
 app.use('/api/uploads', extractTenant, uploadsRoutes);

@@ -36,7 +36,8 @@ import { getRegulatoryAlerts } from '../services/ai/regulatoryWatcherService.js'
 import { advisePricing, type PricingAdvisorLineInput } from '../services/regulatoryFitService.js';
 import { getBenchmarkPricing } from '../services/ai/benchmarkPricingService.js';
 import { draftProposalFromVoice } from '../services/ai/voiceProposalService.js';
-import { triageClientReply } from '../services/replyRoutingService.js';
+import { triageClientReply, type ReplyTriageInput } from '../services/replyRoutingService.js';
+import { generateProposalExplanation } from '../services/ai/proposalExplanationService.js';
 import { AI_COPILOT } from '../config/aiCopilot.js';
 import { shouldSkipRateLimit } from '../utils/securityFlags.js';
 
@@ -1035,7 +1036,7 @@ router.post(
       })
       .parse(req.body);
 
-    const data = await triageClientReply(req.tenantId!, req.user?.id, body);
+    const data = await triageClientReply(req.tenantId!, req.user?.id, body as ReplyTriageInput);
     res.json({ success: true, data });
   }),
 );

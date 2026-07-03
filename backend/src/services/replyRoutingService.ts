@@ -51,7 +51,7 @@ Return JSON only:
     { temperature: 0.4, maxTokens: 1200 },
   );
 
-  const parsed = parseJsonResponse<ReplyTriageResult>(raw);
+  const parsed = parseJsonResponse<ReplyTriageResult>(raw.content);
 
   await logAiUsage(tenantId, userId, 'reply_triage', {
     proposalId: input.proposalId,

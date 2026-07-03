@@ -82,10 +82,12 @@ async function fulfilPlatformSubscription(
   });
 
   const plan = PLATFORM_PLANS[tier];
+  const annualAmount =
+    'annualTotal' in plan && plan.annualTotal != null
+      ? plan.annualTotal
+      : plan.displayPrice * 12;
   const mrr =
-    plan.billingInterval === 'annual'
-      ? Math.round((plan.annualTotal || plan.displayPrice * 12) / 12)
-      : plan.displayPrice;
+    plan.billingInterval === 'annual' ? Math.round(annualAmount / 12) : plan.displayPrice;
 
   const superadmin = getEngageSuperadmin();
   if (superadmin) {

@@ -136,7 +136,7 @@ Return JSON only:
       { jsonMode: true, temperature: 0.4, maxTokens: 1200 },
     );
 
-    const parsed = parseJsonResponse<{ items: Array<{ title: string; description?: string; category?: string; dueInDays?: number }> }>(raw);
+    const parsed = parseJsonResponse<{ items: Array<{ title: string; description?: string; category?: string; dueInDays?: number }> }>(raw.content);
     if (!parsed?.items?.length) return null;
 
     return parsed.items.map((item, i) => ({
