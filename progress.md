@@ -1,6 +1,21 @@
 # Build Progress Log
 <!-- Append-only session log. Latest deploy checkpoint is the resume entry point. -->
 
+## Session: 2026-07-03 — sendit v3.5 deploy (bbb06094)
+
+### Deploy checkpoint — bbb06094
+- **Label:** v3.5
+- **Branch:** integrate-deploy → origin
+- **Render:** engage-backend, engage-frontend (auto-deploy from git push)
+- **Note:** Initial push blocked on `.github/workflows/security.yml` (OAuth workflow scope); reverted CI gate in bbb06094 to unblock
+
+#### Resume prompt
+```
+Wait for Render deploy live. Run full build e2e on production. Caroline UAT on approval queue + SOC2 pages.
+```
+
+---
+
 ## Session: 2026-07-03 — Build 3.2 sign-off (template e2e fix)
 
 ### UAT checkpoint

@@ -1,12 +1,12 @@
 # sendit.resume - auto-generated checkpoint (keep in git)
-pending: false
-written: 2026-07-03 13:36:00 UTC
+pending: true
+written: 2026-07-03 14:05:19 UTC
 project_root: C:\Users\willi\Cline Workspace\engage-deploy
-commit: pending
+commit: bbb06094
 branch: integrate-deploy
-phase: **Build 3.2** — complete; Automation + Templates e2e 4/4 `--retries=0`
-goal: **Market leader:** UK proposal-to-cash platform — CH lookup → priced proposal → signed engagement → collected fees, with Clara AI that saves 30+ min/proposal without token overspend. Full plan: `MARKET_LEADER_PLAN.md`.
-next_up_1: William picks Build 3.3 priority (W1.6 partner approval, W2.10 preview pane, W3.2 templates, W3.3 AML).
+phase: **v3.5** â€” Build 3.3 + SOC 2 deployed; production e2e verify pending
+goal: **Market leader:** UK proposal-to-cash platform â€” CH lookup â†’ priced proposal â†’ signed engagement â†’ collected fees, with Clara AI that saves 30+ min/proposal without token overspend. Full plan: `MARKET_LEADER_PLAN.md`.
+next_up_1: Run full build e2e suite on production (`playwright.build.config.ts`) â€” expect 50+ tests incl. aml, approval-queue, template-library.
 
 # Agent: on resume read ~/.grok/sendit.active OR project_root paths below.
 # NEVER glob search. Execute next_up_1 immediately. Set pending: false when done.

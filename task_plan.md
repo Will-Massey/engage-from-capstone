@@ -5,13 +5,13 @@
 **Market leader:** UK proposal-to-cash platform — CH lookup → priced proposal → signed engagement → collected fees, with Clara AI that saves 30+ min/proposal without token overspend. Full plan: `MARKET_LEADER_PLAN.md`.
 
 ## Current Phase
-**Build 3.3 + SOC 2** — W1.6/W2.10/W3.2/W3.3 polish + security hardening implemented; deploy + e2e verify pending
+**v3.5** — Build 3.3 + SOC 2 deployed; production e2e verify pending
 
 ## Next Up
 <!-- 3–5 bullets ONLY. Next fresh session starts here. Rewrite every checkpoint. -->
-1. `/sendit` — deploy Build 3.3 + security batch to production; run full build e2e suite.
-2. Enable `REQUIRE_MFA_FOR_PRIVILEGED=true` + `REDIS_URL` at enterprise go-live.
-3. **Deferred (post-sale):** Render Starter + disk, `XERO_*` / webhook secrets, formal SOC 2 Type II audit.
+1. Run full build e2e suite on production (`playwright.build.config.ts`) — expect 50+ tests incl. aml, approval-queue, template-library.
+2. Caroline browser sign-off: `/proposals/approval-queue`, Settings → Security sessions, `/legal/subprocessors`.
+3. Enable `REQUIRE_MFA_FOR_PRIVILEGED=true` + `REDIS_URL` at enterprise go-live; re-apply security.yml audit gate via GitHub UI (workflow scope).
 
 ## Phases
 <!-- Status: pending | in_progress | complete -->
@@ -59,6 +59,7 @@
 | 14 | 2026-07-02 | 36604df1 | master | engage-backend, engage-frontend | live | Expanded catalogue seed script, T&C auto-attach + watermark UI, proposal restart/back, MD→Managing Director + job role save UX. |
 | 15 | 2026-07-02 | e814c9cf | master | engage-backend, engage-frontend | live | **Template build:** auto-seed ICAEW/ACCA library on Templates GET; custom templates additive; 13 lifecycle touchpoint stages with UK copy; library/custom filters; restore defaults in Automation. |
 | 16 | 2026-07-02 | e2018d88 | master | engage-backend, engage-frontend | live | **Library backfill fix:** `backfillLibraryTemplateFlagsForTenant` on GET; seed trigger uses `libraryCount` not `totalActive`; API meta adds `libraryActive`/`customActive`. Production: 143 library / 0 custom on demo tenant. |
+| 17 | 2026-07-03 | bbb06094 | integrate-deploy | engage-backend, engage-frontend | deploying | **v3.5** — Build 3.3 (approval queue, preview pane, AML stub auto-complete, template-library e2e) + SOC 2 (security audit log, sessions, MFA policy, subprocessors, render env hardening). |
 
 ## Decisions Made
 | Decision | Rationale |
