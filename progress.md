@@ -1,6 +1,21 @@
 # Build Progress Log
 <!-- Append-only session log. Latest deploy checkpoint is the resume entry point. -->
 
+## Session: 2026-07-03 — Automation UAT + production routing/auth fixes (89b96435)
+
+### Deploy checkpoint — 89b96435
+- **Frontend:** SPA at root for capstonesoftware path-strip proxy; `_redirects` for `/engage/*`
+- **Auth:** `SameSite=None` + `.capstonesoftware.co.uk` cookie domain for cross-subdomain SPA
+- **E2E:** `gotoApp()` helper; global-setup full `/engage` URLs
+- **UAT:** `automation-smoke` 2/2 pass — 13 stages + restore-default; `templates-smoke` 1/1 pass (1.0m total)
+
+#### Resume prompt
+```
+Caroline browser sign-off on Settings → Automation. Smoke custom template under Yours filter.
+```
+
+---
+
 ## Session: 2026-07-03 — Automation UAT + frontend asset-path fix (deploying)
 
 ### Pre-deploy verification
