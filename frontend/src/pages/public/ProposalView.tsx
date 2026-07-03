@@ -183,7 +183,6 @@ const PublicProposalView = () => {
   const [showPaymentStep, setShowPaymentStep] = useState(false);
   const [paymentMethodChoice, setPaymentMethodChoice] = useState<'direct_debit' | 'card' | null>(null);
   const [isSettingUpPayment, setIsSettingUpPayment] = useState(false);
-  const [paymentComplete, setPaymentComplete] = useState(false);
   const [stubMandateId, setStubMandateId] = useState<string | null>(null);
   const [isCompletingStub, setIsCompletingStub] = useState(false);
   const qaEndRef = useRef<HTMLDivElement>(null);
