@@ -12,10 +12,13 @@ import AuthLayout from './components/layout/AuthLayout';
 import Login from './pages/auth/Login';
 import Register from './pages/auth/Register';
 import Onboarding from './pages/auth/Onboarding';
+import ForgotPassword from './pages/auth/ForgotPassword';
+import ResetPassword from './pages/auth/ResetPassword';
 import Dashboard from './pages/Dashboard';
 import Proposals from './pages/proposals/Proposals';
 import ProposalDetail from './pages/proposals/ProposalDetail';
 import CreateProposal from './pages/proposals/CreateProposal';
+import WizardProposal from './pages/proposals/WizardProposal';
 import EditProposal from './pages/proposals/EditProposal';
 import Clients from './pages/clients/Clients';
 import ClientDetail from './pages/clients/ClientDetail';
@@ -141,6 +144,30 @@ const AnimatedRoutes = () => {
             </PublicRoute>
           }
         />
+        <Route
+          path="/forgot-password"
+          element={
+            <PublicRoute>
+              <AuthLayout>
+                <AnimatedPage>
+                  <ForgotPassword />
+                </AnimatedPage>
+              </AuthLayout>
+            </PublicRoute>
+          }
+        />
+        <Route
+          path="/reset-password"
+          element={
+            <PublicRoute>
+              <AuthLayout>
+                <AnimatedPage>
+                  <ResetPassword />
+                </AnimatedPage>
+              </AuthLayout>
+            </PublicRoute>
+          }
+        />
 
         {/* Protected Routes */}
         <Route
@@ -166,6 +193,14 @@ const AnimatedRoutes = () => {
             element={
               <AnimatedPage>
                 <Proposals />
+              </AnimatedPage>
+            }
+          />
+          <Route
+            path="proposals/wizard"
+            element={
+              <AnimatedPage>
+                <WizardProposal />
               </AnimatedPage>
             }
           />

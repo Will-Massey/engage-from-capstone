@@ -32,6 +32,7 @@ import { autoFitProposal, generateClientBrief } from '../services/ai/clientFitSe
 import { generateFollowUpEmail } from '../services/ai/lifecycleAiEmailService.js';
 import { checkAiTokenBudget, getAiStatusMeta } from '../services/ai/aiClient.js';
 import { getRegulatoryAlerts } from '../services/ai/regulatoryWatcherService.js';
+import { advisePricing, type PricingAdvisorLineInput } from '../services/regulatoryFitService.js';
 import { getBenchmarkPricing } from '../services/ai/benchmarkPricingService.js';
 import { draftProposalFromVoice } from '../services/ai/voiceProposalService.js';
 import { AI_COPILOT } from '../config/aiCopilot.js';
@@ -94,6 +95,7 @@ router.get(
           'auto_fit',
           'attention_queue',
           'regulatory_watcher',
+          'pricing_advisor',
           'benchmark_pricing',
           'voice_proposal',
         ],
@@ -789,11 +791,38 @@ router.get(
   })
 );
 
-/** GET /api/ai/regulatory-alerts — Phase 5 regulatory watcher stub */
+/** GET /api/ai/regulatory-alerts — regulatory watcher powered by regulatoryFitService */
 router.get(
   '/regulatory-alerts',
   asyncHandler(async (req, res) => {
     const data = await getRegulatoryAlerts(req.tenantId!, req.user?.id);
+    res.json({ success: true, data });
+  })
+);
+
+/** POST /api/ai/pricing-advisor — flag fees below catalog floor for client turnover band */
+router.post(
+  '/pricing-advisor',
+  asyncHandler(async (req, res) => {
+    const body = z
+      .object({
+        clientId: z.string().uuid(),
+        lineItems: z.array(
+          z.object({
+            serviceId: z.string().uuid(),
+            name: z.string().optional(),
+            displayPrice: z.number().min(0),
+          })
+        ),
+      })
+      .parse(req.body);
+
+    const lineItems: PricingAdvisorLineInput[] = body.lineItems.map((l) => ({
+      serviceId: l.serviceId,
+      name: l.name,
+      displayPrice: l.displayPrice,
+    }));
+    const data = await advisePricing(req.tenantId!, body.clientId, lineItems);
     res.json({ success: true, data });
   })
 );

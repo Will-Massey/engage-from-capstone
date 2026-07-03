@@ -303,6 +303,38 @@ export const calculateVAT = (amount: number, vatRate: number = 20): number => {
   return Math.round(amount * (vatRate / 100) * 100) / 100;
 };
 
+// ==================== PROPOSAL PRICING ENGINE V2 ====================
+
+export {
+  calculateLineItem,
+  calculateProposalTotals,
+  formatPricingCurrency,
+  getBillingFrequencyLabel,
+  getBillingFrequencyShort,
+  type BillingFrequency,
+  type FrequencyBandTotals,
+  type LineItemResult,
+  type PriceDisplayMode,
+  type ProposalTotals,
+  type ServicePricingInput,
+} from './pricingEngine';
+
+export {
+  VALID_BILLING_FREQUENCIES,
+  billingFrequencyToDisplayMode,
+  resolveCatalogBillingCycle,
+  type CatalogServiceBillingFields,
+} from './serviceBilling';
+
+export {
+  buildProposalLinesForSummary,
+  calculateProposalSummaryBands,
+  calculateProposalSummaryFromInputs,
+  type BandTotals,
+  type PricingSummaryBands,
+  type ProposalLineForSummary,
+} from './proposalSummary';
+
 export const calculateMargin = (revenue: number, costs: number): number => {
   if (revenue === 0) return 0;
   return ((revenue - costs) / revenue) * 100;

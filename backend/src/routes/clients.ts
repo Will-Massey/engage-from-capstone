@@ -4,6 +4,7 @@ import { CompanyType, MTDITSAStatus, ClientLifecycleStage } from '@prisma/client
 import { prisma } from '../config/database.js';
 import { authenticate, authorize } from '../middleware/auth.js';
 import { asyncHandler, ApiError } from '../middleware/errorHandler.js';
+import { enforceTierLimit } from '../middleware/tierLimits.js';
 import { MTDITSAService } from '../services/mtditsa.js';
 import logger from '../config/logger.js';
 // Validation helper functions
@@ -343,6 +344,7 @@ router.post(
   '/',
   authenticate,
   authorize('ADMIN', 'PARTNER', 'MANAGER', 'SENIOR'),
+  enforceTierLimit('clients'),
   asyncHandler(async (req, res) => {
     const data = createClientSchema.parse(req.body);
 

@@ -7,7 +7,17 @@ import { promises as fs } from 'fs';
 import path from 'path';
 import logger from '../config/logger.js';
 
-const UPLOADS_DIR = process.env.UPLOADS_DIR || path.join(process.cwd(), 'uploads');
+function resolveUploadsDir(): string {
+  if (process.env.UPLOADS_DIR) {
+    return process.env.UPLOADS_DIR;
+  }
+  if (process.env.DATA_DIR) {
+    return path.join(process.env.DATA_DIR, 'uploads');
+  }
+  return path.join(process.cwd(), 'uploads');
+}
+
+const UPLOADS_DIR = resolveUploadsDir();
 const SIGNATURES_DIR = path.join(UPLOADS_DIR, 'signatures');
 
 /**

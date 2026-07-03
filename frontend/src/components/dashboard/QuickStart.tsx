@@ -1,54 +1,27 @@
 import { Link } from 'react-router-dom';
 import {
-  UserPlusIcon,
-  DocumentPlusIcon,
-  PaperAirplaneIcon,
+  SparklesIcon,
   CommandLineIcon,
+  UserPlusIcon,
+  PaperAirplaneIcon,
 } from '@heroicons/react/24/outline';
 import { useCommandPaletteStore } from '../../stores/commandPaletteStore';
-
-const steps = [
-  {
-    step: 1,
-    title: 'Add a client',
-    description: 'Capture company details and MTD ITSA eligibility',
-    href: '/clients/new',
-    icon: UserPlusIcon,
-    cta: 'Add client',
-  },
-  {
-    step: 2,
-    title: 'Create a proposal',
-    description: 'Pick services, set fees, and tailor your engagement letter',
-    href: '/proposals/new',
-    icon: DocumentPlusIcon,
-    cta: 'New proposal',
-  },
-  {
-    step: 3,
-    title: 'Send for signature',
-    description: 'Email the link or share a secure client portal URL',
-    href: '/proposals',
-    icon: PaperAirplaneIcon,
-    cta: 'View proposals',
-  },
-];
 
 const QuickStart = () => {
   const openCommandPalette = useCommandPaletteStore((s) => s.open);
 
   return (
     <section
-      className="card p-5 sm:p-6"
+      className="card p-5 sm:p-6 border border-violet-200/60 dark:border-violet-800/40 bg-gradient-to-br from-violet-50/80 via-white to-indigo-50/50 dark:from-violet-950/30 dark:via-slate-900/60 dark:to-indigo-950/20"
       aria-labelledby="quick-start-heading"
     >
-      <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 mb-5">
+      <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4 mb-5">
         <div>
           <h2 id="quick-start-heading" className="text-lg font-semibold text-slate-900 dark:text-slate-100">
-            Quick start
+            Get your first proposal out the door
           </h2>
           <p className="mt-1 text-sm text-slate-600 dark:text-slate-300">
-            Three steps from new client to signed engagement
+            Clara walks you through client, services, pricing, and send — in about five minutes
           </p>
         </div>
         <button
@@ -63,27 +36,44 @@ const QuickStart = () => {
         </button>
       </div>
 
-      <ol className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        {steps.map((item) => (
-          <li
-            key={item.step}
-            className="relative rounded-xl border border-slate-200/80 dark:border-slate-700/80 bg-slate-50/50 dark:bg-slate-800/30 p-4 flex flex-col"
+      <div className="flex flex-col sm:flex-row gap-4 items-stretch">
+        <Link
+          to="/proposals/wizard"
+          className="flex-1 group rounded-xl border-2 border-violet-400/70 dark:border-violet-600/60 bg-gradient-to-r from-violet-600 to-indigo-600 p-5 text-white shadow-lg hover:from-violet-700 hover:to-indigo-700 transition-all"
+        >
+          <div className="flex items-center gap-3">
+            <div className="p-2.5 rounded-xl bg-white/20">
+              <SparklesIcon className="h-6 w-6" />
+            </div>
+            <div>
+              <p className="font-semibold text-lg">Create proposal in 5 minutes</p>
+              <p className="text-sm text-violet-100 mt-0.5">
+                Client → Clara services → pricing → email → send
+              </p>
+            </div>
+          </div>
+          <p className="mt-4 text-sm font-medium text-white/90 group-hover:translate-x-1 transition-transform inline-block">
+            Start wizard →
+          </p>
+        </Link>
+
+        <div className="flex flex-col gap-3 sm:w-56 shrink-0">
+          <Link
+            to="/clients/new"
+            className="flex items-center gap-2 rounded-xl border border-slate-200/80 dark:border-slate-700/80 bg-slate-50/50 dark:bg-slate-800/30 p-3 text-sm font-medium text-slate-700 dark:text-slate-200 hover:border-primary-300 transition-colors"
           >
-            <span className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-primary-500/10 text-primary-700 dark:text-primary-300 text-sm font-semibold mb-3">
-              {item.step}
-            </span>
-            <item.icon className="h-6 w-6 text-primary-600 dark:text-primary-400 mb-2" aria-hidden />
-            <h3 className="font-medium text-slate-900 dark:text-slate-100">{item.title}</h3>
-            <p className="mt-1 text-sm text-slate-600 dark:text-slate-300 flex-1">{item.description}</p>
-            <Link
-              to={item.href}
-              className="mt-4 text-sm font-medium text-primary-600 dark:text-primary-400 hover:text-primary-700 dark:hover:text-primary-300"
-            >
-              {item.cta} →
-            </Link>
-          </li>
-        ))}
-      </ol>
+            <UserPlusIcon className="h-5 w-5 text-primary-600 dark:text-primary-400" />
+            Add a client first
+          </Link>
+          <Link
+            to="/proposals"
+            className="flex items-center gap-2 rounded-xl border border-slate-200/80 dark:border-slate-700/80 bg-slate-50/50 dark:bg-slate-800/30 p-3 text-sm font-medium text-slate-700 dark:text-slate-200 hover:border-primary-300 transition-colors"
+          >
+            <PaperAirplaneIcon className="h-5 w-5 text-primary-600 dark:text-primary-400" />
+            View sent proposals
+          </Link>
+        </div>
+      </div>
     </section>
   );
 };

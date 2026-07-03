@@ -78,13 +78,18 @@ const Dashboard = () => {
   const { tenant, user } = useAuthStore();
   const [stats, setStats] = useState({
     totalProposals: 0,
+    sentProposals: 0,
+    viewedProposals: 0,
     acceptedProposals: 0,
+    pipelineValue: 0,
     totalClients: 0,
     mtditsaClients: 0,
     totalRevenue: 0,
     conversionRate: 0,
-    recentProposals: [],
-    recentClients: [],
+    viewRate: 0,
+    signRate: 0,
+    recentProposals: [] as any[],
+    recentClients: [] as any[],
   });
   const [chartData, setChartData] = useState({
     revenueData: defaultRevenueData,
@@ -123,39 +128,35 @@ const Dashboard = () => {
       const proposals = proposalsRes.data || [];
       const clients = clientsRes.data || [];
 
-      const acceptedCount = proposals.filter((p: any) => p.status === 'ACCEPTED').length;
-      const totalRevenue = proposals
-        .filter((p: any) => p.status === 'ACCEPTED')
-        .reduce((sum: number, p: any) => sum + (p.total || 0), 0);
+      const dash = dashboardRes.success ? dashboardRes.data : null;
 
       setStats({
-        totalProposals: proposalsRes.meta?.total || 0,
-        acceptedProposals: acceptedCount,
-        totalClients: clientsRes.meta?.total || 0,
+        totalProposals: dash?.proposals?.total ?? proposalsRes.meta?.total ?? 0,
+        sentProposals: dash?.proposals?.sent ?? 0,
+        viewedProposals: dash?.proposals?.viewed ?? 0,
+        acceptedProposals: dash?.proposals?.signed ?? dash?.revenue?.accepted ?? 0,
+        pipelineValue: dash?.pipeline?.value ?? 0,
+        totalClients: dash?.clients?.total ?? clientsRes.meta?.total ?? 0,
         mtditsaClients: clients.filter((c: any) => c.mtditsaEligible).length,
-        totalRevenue,
-        conversionRate:
-          proposals.length > 0 ? Math.round((acceptedCount / proposals.length) * 100) : 0,
+        totalRevenue: dash?.revenue?.total ?? 0,
+        conversionRate: dash?.conversion?.rate ?? 0,
+        viewRate: dash?.conversion?.viewRate ?? 0,
+        signRate: dash?.conversion?.signRate ?? 0,
         recentProposals: proposals.slice(0, 5),
         recentClients: clients.slice(0, 5),
       });
 
-      // Set chart data from API
-      if (dashboardRes.success && dashboardRes.data) {
+      if (dash) {
         setChartData({
           revenueData:
-            dashboardRes.data.revenueData?.length > 0
-              ? dashboardRes.data.revenueData
-              : defaultRevenueData,
+            dash.revenueData?.length > 0 ? dash.revenueData : defaultRevenueData,
           proposalStatusData:
-            dashboardRes.data.proposalStatusData?.length > 0
-              ? dashboardRes.data.proposalStatusData
+            dash.proposalStatusData?.length > 0
+              ? dash.proposalStatusData
               : defaultProposalStatusData,
           weeklyActivity:
-            dashboardRes.data.weeklyActivity?.length > 0
-              ? dashboardRes.data.weeklyActivity
-              : defaultWeeklyActivity,
-          recentActivity: dashboardRes.data.recentActivity || [],
+            dash.weeklyActivity?.length > 0 ? dash.weeklyActivity : defaultWeeklyActivity,
+          recentActivity: dash.recentActivity || [],
         });
       }
 
@@ -222,28 +223,28 @@ const Dashboard = () => {
 
   const statsCards = [
     {
-      name: 'Total Revenue',
-      value: `£${stats.totalRevenue.toLocaleString()}`,
-      change: '+12.5%',
-      trend: 'up',
+      name: 'Pipeline Value',
+      value: `£${stats.pipelineValue.toLocaleString()}`,
+      change: `${stats.sentProposals} sent · ${stats.viewedProposals} viewed`,
+      trend: 'neutral' as 'up' | 'down' | 'neutral',
       icon: CurrencyPoundIcon,
       color: 'from-emerald-500 to-emerald-600',
       bgGradient: 'from-emerald-500/10 to-emerald-600/5',
     },
     {
-      name: 'Active Proposals',
-      value: stats.totalProposals,
-      change: '+3 this week',
-      trend: 'up',
-      icon: DocumentTextIcon,
+      name: 'Signed Proposals',
+      value: stats.acceptedProposals,
+      change: `£${stats.totalRevenue.toLocaleString()} accepted`,
+      trend: 'up' as const,
+      icon: CheckCircleIcon,
       color: 'from-blue-500 to-blue-600',
       bgGradient: 'from-blue-500/10 to-blue-600/5',
     },
     {
       name: 'Conversion Rate',
       value: `${stats.conversionRate}%`,
-      change: '+5.2%',
-      trend: 'up',
+      change: `${stats.viewRate}% viewed · ${stats.signRate}% signed`,
+      trend: stats.conversionRate > 0 ? ('up' as const) : ('neutral' as const),
       icon: ChartBarIcon,
       color: 'from-purple-500 to-purple-600',
       bgGradient: 'from-purple-500/10 to-purple-600/5',
@@ -251,8 +252,8 @@ const Dashboard = () => {
     {
       name: 'Total Clients',
       value: stats.totalClients,
-      change: `+${stats.mtditsaClients} MTD ITSA`,
-      trend: 'neutral',
+      change: `${stats.totalProposals} proposals`,
+      trend: 'neutral' as 'up' | 'down' | 'neutral',
       icon: UsersIcon,
       color: 'from-amber-500 to-orange-500',
       bgGradient: 'from-amber-500/10 to-orange-500/5',
@@ -302,11 +303,11 @@ const Dashboard = () => {
             <option value="year">This year</option>
           </select>
           <Link
-            to="/proposals/new"
-            className="btn-primary bg-gradient-to-r from-primary-600 to-primary-700 hover:from-primary-700 hover:to-primary-800"
+            to="/proposals/wizard"
+            className="btn-primary bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-700 hover:to-indigo-700"
           >
-            <DocumentTextIcon className="h-4 w-4 mr-2" />
-            New Proposal
+            <SparklesIcon className="h-4 w-4 mr-2" />
+            Create proposal in 5 minutes
           </Link>
         </div>
       </div>
@@ -551,7 +552,7 @@ const Dashboard = () => {
                 <SparklesIcon className="mx-auto h-12 w-12 text-slate-300 dark:text-slate-600 mb-3" />
                 <p className="text-slate-600 dark:text-slate-400">No proposals yet.</p>
                 <Link
-                  to="/proposals/new"
+                  to="/proposals/wizard"
                   className="text-primary-600 font-medium hover:text-primary-700"
                 >
                   Create your first proposal
@@ -666,13 +667,13 @@ const Dashboard = () => {
         <h2 className="section-title mb-4">Quick Actions</h2>
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
           <Link
-            to="/proposals/new"
-            className="glass-tile group text-center hover:border-primary-300 dark:hover:border-primary-700"
+            to="/proposals/wizard"
+            className="glass-tile group text-center hover:border-violet-300 dark:hover:border-violet-700"
           >
-            <div className="w-14 h-14 mx-auto bg-gradient-to-br from-blue-500 to-blue-600 text-white rounded-xl shadow-lg mb-3 group-hover:scale-110 transition-transform flex items-center justify-center">
-              <DocumentTextIcon className="h-7 w-7" />
+            <div className="w-14 h-14 mx-auto bg-gradient-to-br from-violet-500 to-indigo-600 text-white rounded-xl shadow-lg mb-3 group-hover:scale-110 transition-transform flex items-center justify-center">
+              <SparklesIcon className="h-7 w-7" />
             </div>
-            <p className="text-sm font-medium text-slate-900 dark:text-slate-100">New Proposal</p>
+            <p className="text-sm font-medium text-slate-900 dark:text-slate-100">5-min wizard</p>
           </Link>
           <Link
             to="/clients/new"

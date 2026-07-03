@@ -9,6 +9,7 @@ import { z } from 'zod';
 import { prisma } from '../config/database.js';
 import { asyncHandler, ApiError } from '../middleware/errorHandler.js';
 import { authenticate } from '../middleware/auth.js';
+import { requireActiveSubscriptionOrTrial } from '../middleware/tierLimits.js';
 import { extractTenant } from '../middleware/tenant.js';
 import { generateProposalTerms } from '../templates/ukEngagementLetter.js';
 import {
@@ -43,6 +44,11 @@ import {
   hashTerms,
   lookupGeoFromIp,
 } from '../utils/signatureAudit.js';
+import {
+  createProposalCheckoutOrder,
+  proposalRequiresPayment,
+} from '../services/proposalPayment.js';
+import { isRevolutConfigured } from '../lib/revolut/revolut-client.js';
 
 const router = Router();
 
@@ -160,6 +166,7 @@ router.delete(
 router.post(
   '/:id/email',
   authenticate,
+  requireActiveSubscriptionOrTrial,
   asyncHandler(async (req, res) => {
     const schema = z.object({
       to: z.string().email(),
@@ -447,6 +454,7 @@ router.get(
         subtotal: proposal.subtotal,
         vatAmount: proposal.vatAmount,
         total: proposal.total,
+        paymentStatus: proposal.paymentStatus,
         paymentTerms: proposal.paymentTerms,
         coverLetter: proposal.coverLetter,
         terms: proposal.terms,
@@ -717,13 +725,57 @@ router.post(
       // Don't fail the request - signature was still recorded
     }
 
+    let checkout: Awaited<ReturnType<typeof createProposalCheckoutOrder>> = null;
+
+    if (proposalRequiresPayment(proposal.total)) {
+      const fullProposal = await prisma.proposal.findUnique({
+        where: { id: proposal.id },
+        include: { client: true },
+      });
+
+      if (fullProposal) {
+        checkout = await createProposalCheckoutOrder(
+          fullProposal,
+          { email: parsed.signerEmail, name: parsed.signedBy },
+          token,
+        );
+      }
+    }
+
     res.json({
       success: true,
-      message: 'Proposal accepted successfully',
+      message: checkout
+        ? 'Proposal accepted — please complete payment to confirm'
+        : 'Proposal accepted successfully',
       data: {
         acceptedAt: new Date(),
         acceptedBy: parsed.signedBy,
         signatureId: result.signatureId,
+        paymentRequired: proposalRequiresPayment(proposal.total) && isRevolutConfigured(),
+        checkout,
+      },
+    });
+  })
+);
+
+// Get payment status for a signed proposal (public — share token)
+router.get(
+  '/view/:token/payment-status',
+  asyncHandler(async (req, res) => {
+    const { token } = req.params;
+    const proposal = await getProposalByShareToken(token);
+
+    if (!proposal) {
+      throw new ApiError('PROPOSAL_NOT_FOUND', 'Proposal not found or link expired', 404);
+    }
+
+    res.json({
+      success: true,
+      data: {
+        status: proposal.paymentStatus || 'NOT_STARTED',
+        paid: proposal.paymentStatus === 'COMPLETED',
+        amount: proposal.total,
+        paymentUrl: proposal.paymentUrl,
       },
     });
   })
@@ -750,7 +802,7 @@ router.post(
 
     await prisma.proposal.update({
       where: { id: proposal.id },
-      data: { status: 'DECLINED' },
+      data: { status: 'DECLINED', declinedAt: new Date() },
     });
 
     await prisma.activityLog.create({
@@ -768,6 +820,51 @@ router.post(
         proposalId: proposal.id,
       },
     });
+
+    // Notify practice by email
+    try {
+      const fullProposal = await prisma.proposal.findUnique({
+        where: { id: proposal.id },
+        include: {
+          client: true,
+          tenant: { select: { name: true } },
+          createdBy: { select: { email: true, firstName: true, lastName: true } },
+        },
+      });
+
+      const notifyEmail = fullProposal?.createdBy?.email;
+      if (notifyEmail) {
+        const senderName = [fullProposal.createdBy.firstName, fullProposal.createdBy.lastName]
+          .filter(Boolean)
+          .join(' ');
+        const subject = `Proposal declined: ${fullProposal.reference}`;
+        const text = [
+          `A client has declined your proposal.`,
+          ``,
+          `Client: ${fullProposal.client.name}`,
+          `Proposal: ${fullProposal.title} (${fullProposal.reference})`,
+          `Declined by: ${declinedBy || 'Client'}`,
+          `Reason: ${reason}`,
+          ``,
+          `View in Engage: ${(process.env.FRONTEND_URL || 'https://engagebycapstone.co.uk').replace(/\/$/, '')}/proposals/${proposal.id}`,
+        ].join('\n');
+
+        await tenantMailer.send({
+          tenantId: proposal.tenantId,
+          messageType: 'OTHER',
+          message: {
+            to: notifyEmail,
+            subject,
+            text,
+            html: text.replace(/\n/g, '<br>'),
+          },
+          relatedIds: { proposalId: proposal.id, clientId: fullProposal.clientId },
+        });
+        logger.info(`Decline notification sent for proposal ${proposal.id}`);
+      }
+    } catch (error) {
+      logger.error('Failed to send decline notification:', error);
+    }
 
     res.json({ success: true, message: 'Proposal declined' });
   })

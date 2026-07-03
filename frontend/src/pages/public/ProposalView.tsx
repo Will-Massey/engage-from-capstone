@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams } from 'react-router-dom';
 import { apiClient } from '../../utils/api';
 import { formatCurrency, formatDate } from '../../utils/formatters';
 import toast from 'react-hot-toast';
@@ -15,6 +15,7 @@ import {
 } from '@heroicons/react/24/outline';
 import { motion, AnimatePresence } from 'framer-motion';
 import { AI_COPILOT } from '../../config/aiCopilot';
+import { openRevolutCheckout } from '../../lib/revolut-checkout';
 
 interface ProposalData {
   id: string;
@@ -55,6 +56,15 @@ interface ProposalData {
 }
 
 type QaMessage = { role: 'user' | 'assistant'; content: string };
+type SigningStep = 'review' | 'terms' | 'identity' | 'sign' | 'confirmation';
+
+const SIGNING_STEPS: { id: SigningStep; label: string }[] = [
+  { id: 'review', label: 'Review' },
+  { id: 'terms', label: 'Terms' },
+  { id: 'identity', label: 'Identity' },
+  { id: 'sign', label: 'Sign' },
+  { id: 'confirmation', label: 'Done' },
+];
 
 function QaTypingIndicator() {
   return (
@@ -73,12 +83,11 @@ function QaTypingIndicator() {
 
 const PublicProposalView = () => {
   const { token } = useParams<{ token: string }>();
-  const navigate = useNavigate();
   const [proposal, setProposal] = useState<ProposalData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [termsAccepted, setTermsAccepted] = useState(false);
-  const [showSignature, setShowSignature] = useState(false);
+  const [signingStep, setSigningStep] = useState<SigningStep | null>(null);
   const [signatureData, setSignatureData] = useState<string>('');
   const [signerName, setSignerName] = useState('');
   const [signerRole, setSignerRole] = useState('');
@@ -89,6 +98,8 @@ const PublicProposalView = () => {
   const [declineReason, setDeclineReason] = useState('');
   const [showDecline, setShowDecline] = useState(false);
   const [isAccepted, setIsAccepted] = useState(false);
+  const [paymentComplete, setPaymentComplete] = useState(false);
+  const [paymentPending, setPaymentPending] = useState(false);
   const [qaExpanded, setQaExpanded] = useState(false);
   const [qaMessages, setQaMessages] = useState<QaMessage[]>([]);
   const [qaInput, setQaInput] = useState('');
@@ -96,6 +107,13 @@ const PublicProposalView = () => {
   const [signingSummary, setSigningSummary] = useState<string | null>(null);
   const [signingSummaryLoading, setSigningSummaryLoading] = useState(false);
   const qaEndRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('payment') === 'success') {
+      setPaymentComplete(true);
+    }
+  }, []);
 
   useEffect(() => {
     const loadProposal = async () => {
@@ -106,6 +124,11 @@ const PublicProposalView = () => {
         if (response.success) {
           setProposal(response.data);
           setIsAccepted(response.data.status === 'ACCEPTED');
+          setPaymentComplete(response.data.paymentStatus === 'COMPLETED');
+          setPaymentPending(
+            response.data.status === 'ACCEPTED' &&
+              response.data.paymentStatus === 'PENDING',
+          );
           if (response.data.client?.contactEmail) {
             setSignerEmail(response.data.client.contactEmail);
           }
@@ -139,10 +162,10 @@ const PublicProposalView = () => {
     };
 
     const expired = proposal ? new Date(proposal.validUntil) < new Date() : false;
-    if (proposal && !isAccepted && !expired && (termsAccepted || showSignature)) {
+    if (proposal && !isAccepted && !expired && signingStep && signingStep !== 'review') {
       loadSigningSummary();
     }
-  }, [token, proposal, isAccepted, termsAccepted, showSignature, signingSummary]);
+  }, [token, proposal, isAccepted, signingStep, signingSummary]);
 
   useEffect(() => {
     if (qaExpanded) {
@@ -181,12 +204,26 @@ const PublicProposalView = () => {
     }
   };
 
-  const handleAccept = async () => {
-    if (!termsAccepted) {
-      toast.error('Please accept the terms and conditions');
+  const startSigningFlow = () => {
+    setShowDecline(false);
+    setSigningStep('review');
+  };
+
+  const goToNextStep = () => {
+    if (!signingStep) return;
+    const idx = SIGNING_STEPS.findIndex((s) => s.id === signingStep);
+    if (idx < SIGNING_STEPS.length - 2) {
+      setSigningStep(SIGNING_STEPS[idx + 1].id);
+    }
+  };
+
+  const goToPrevStep = () => {
+    if (!signingStep || signingStep === 'review') {
+      setSigningStep(null);
       return;
     }
-    setShowSignature(true);
+    const idx = SIGNING_STEPS.findIndex((s) => s.id === signingStep);
+    if (idx > 0) setSigningStep(SIGNING_STEPS[idx - 1].id);
   };
 
   const handleSignatureSave = (signature: string) => {
@@ -230,9 +267,28 @@ const PublicProposalView = () => {
       })) as any;
 
       if (response.success) {
-        toast.success('Proposal accepted successfully');
         setIsAccepted(true);
-        setShowSignature(false);
+        setSigningStep('confirmation');
+
+        const checkout = response.data?.checkout;
+        if (checkout?.token) {
+          setPaymentPending(true);
+          toast.success('Proposal accepted — complete payment to confirm');
+          await openRevolutCheckout({
+            token: checkout.token,
+            mode: checkout.mode || 'sandbox',
+            onSuccess: () => {
+              setPaymentComplete(true);
+              setPaymentPending(false);
+              toast.success('Payment received — thank you');
+            },
+            onError: (message) => toast.error(message),
+            onCancel: () =>
+              toast('Payment cancelled — you can pay from the link in your confirmation email'),
+          });
+        } else {
+          toast.success('Proposal accepted successfully');
+        }
       }
     } catch (error: any) {
       toast.error(error.response?.data?.error?.message || 'Failed to submit signature');
@@ -273,6 +329,41 @@ const PublicProposalView = () => {
   if (!proposal) return null;
 
   const isExpired = new Date(proposal.validUntil) < new Date();
+  const inSigningFlow = !!signingStep && !isAccepted && !isExpired;
+  const currentStepIndex = signingStep
+    ? SIGNING_STEPS.findIndex((s) => s.id === signingStep)
+    : -1;
+
+  const StepIndicator = () => (
+    <div className="mb-6" data-testid="signing-step-indicator">
+      <div className="flex items-center justify-between gap-1">
+        {SIGNING_STEPS.slice(0, 4).map((step, i) => {
+          const active = currentStepIndex === i;
+          const done = currentStepIndex > i;
+          return (
+            <div key={step.id} className="flex-1 flex flex-col items-center gap-1">
+              <div
+                className={`h-2 w-full rounded-full transition-colors ${
+                  active
+                    ? 'bg-primary-600'
+                    : done
+                      ? 'bg-emerald-500'
+                      : 'bg-slate-200 dark:bg-slate-700'
+                }`}
+              />
+              <span
+                className={`text-[10px] sm:text-xs font-medium ${
+                  active ? 'text-primary-700 dark:text-primary-300' : 'text-slate-500'
+                }`}
+              >
+                {step.label}
+              </span>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
 
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-900 py-8 px-4 sm:px-6 lg:px-8">
@@ -302,9 +393,15 @@ const PublicProposalView = () => {
                   <SparklesIcon className="h-6 w-6 text-emerald-600" />
                 </div>
                 <div className="flex-1">
-                  <p className="font-semibold text-emerald-900 dark:text-emerald-200 text-lg">Thank you — Proposal accepted!</p>
+                  <p className="font-semibold text-emerald-900 dark:text-emerald-200 text-lg">
+                    {paymentPending && !paymentComplete
+                      ? 'Proposal accepted — payment pending'
+                      : 'Thank you — Proposal accepted!'}
+                  </p>
                   <p className="mt-1 text-sm text-emerald-700 dark:text-emerald-300">
-                    Your automated client onboarding journey has started. Expect a warm welcome email shortly, followed by secure requests for ID/AML verification and next steps.
+                    {paymentPending && !paymentComplete
+                      ? `Please complete your payment of ${formatCurrency(proposal.total)} to confirm your engagement.`
+                      : 'Your automated client onboarding journey has started. Expect a warm welcome email shortly, followed by secure requests for ID/AML verification and next steps.'}
                   </p>
 
                   {/* Mini journey steps tied to touchpoint automation */}
@@ -541,8 +638,189 @@ const PublicProposalView = () => {
             </div>
           )}
 
-          {/* Terms & Conditions */}
-          {!isAccepted && !isExpired && (
+          {/* Signing step flow */}
+          {inSigningFlow && (
+            <div className="border-t pt-6 space-y-4" data-testid="signing-flow">
+              <StepIndicator />
+
+              {signingStep === 'review' && (
+                <div className="space-y-4">
+                  <h3 className="text-lg font-semibold text-slate-900 dark:text-white">
+                    Review your proposal
+                  </h3>
+                  <p className="text-sm text-slate-600 dark:text-slate-400">
+                    Total engagement value:{' '}
+                    <strong className="text-slate-900 dark:text-white">
+                      {formatCurrency(proposal.total)}
+                    </strong>{' '}
+                    · {proposal.services.length} service
+                    {proposal.services.length !== 1 ? 's' : ''}
+                  </p>
+                  <ul className="space-y-2 text-sm text-slate-700 dark:text-slate-300">
+                    {proposal.services.map((s) => (
+                      <li key={s.id} className="flex justify-between gap-2">
+                        <span>{s.name}</span>
+                        <span className="font-medium">{formatCurrency(s.lineTotal || s.total || 0)}</span>
+                      </li>
+                    ))}
+                  </ul>
+                  <button type="button" className="btn-primary w-full py-3" onClick={goToNextStep}>
+                    Continue to terms
+                  </button>
+                </div>
+              )}
+
+              {signingStep === 'terms' && (
+                <div className="space-y-4">
+                  <h3 className="text-lg font-semibold text-slate-900 dark:text-white">
+                    Terms &amp; conditions
+                  </h3>
+                  <div className="p-4 bg-slate-50 dark:bg-slate-900/50 rounded-lg max-h-48 overflow-y-auto">
+                    <pre className="text-sm text-slate-800 dark:text-slate-200 whitespace-pre-wrap font-sans">
+                      {proposal.terms || 'Standard terms and conditions apply.'}
+                    </pre>
+                  </div>
+                  <label className="flex items-start gap-2 text-sm text-slate-800 dark:text-slate-200">
+                    <input
+                      data-testid="terms-checkbox"
+                      type="checkbox"
+                      checked={termsAccepted}
+                      onChange={(e) => setTermsAccepted(e.target.checked)}
+                      className="mt-1 h-4 w-4 rounded"
+                    />
+                    <span>I have read and agree to the terms and conditions.</span>
+                  </label>
+                  <div className="flex gap-3">
+                    <button type="button" className="btn-secondary flex-1" onClick={goToPrevStep}>
+                      Back
+                    </button>
+                    <button
+                      type="button"
+                      className="btn-primary flex-1"
+                      disabled={!termsAccepted}
+                      onClick={goToNextStep}
+                    >
+                      Continue
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {signingStep === 'identity' && (
+                <div className="space-y-4">
+                  <h3 className="text-lg font-semibold text-slate-900 dark:text-white">
+                    Confirm your identity
+                  </h3>
+                  {signingSummary && (
+                    <p className="text-sm text-emerald-800 dark:text-emerald-200 bg-emerald-50 dark:bg-emerald-950/30 rounded-lg p-3">
+                      {signingSummary}
+                    </p>
+                  )}
+                  <div className="grid grid-cols-1 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-slate-800">Full name</label>
+                      <input
+                        data-testid="signer-name-input"
+                        type="text"
+                        value={signerName}
+                        onChange={(e) => setSignerName(e.target.value)}
+                        placeholder="John Smith"
+                        className="mt-1 input-field w-full"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-slate-800">Role / title</label>
+                      <input
+                        data-testid="signer-role-input"
+                        type="text"
+                        value={signerRole}
+                        onChange={(e) => setSignerRole(e.target.value)}
+                        placeholder="Director"
+                        className="mt-1 input-field w-full"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-slate-800">Email address</label>
+                      <input
+                        data-testid="signer-email-input"
+                        type="email"
+                        value={signerEmail}
+                        onChange={(e) => setSignerEmail(e.target.value)}
+                        placeholder="director@company.co.uk"
+                        className="mt-1 input-field w-full"
+                      />
+                    </div>
+                  </div>
+                  <label className="flex items-start gap-2 text-sm text-slate-800 dark:text-slate-200">
+                    <input
+                      data-testid="authorised-checkbox"
+                      type="checkbox"
+                      checked={authorisedToSign}
+                      onChange={(e) => setAuthorisedToSign(e.target.checked)}
+                      className="mt-1 h-4 w-4 rounded"
+                    />
+                    <span>
+                      I confirm I am authorised to sign on behalf of{' '}
+                      <strong>{proposal.client.name}</strong>.
+                    </span>
+                  </label>
+                  <div className="flex gap-3">
+                    <button type="button" className="btn-secondary flex-1" onClick={goToPrevStep}>
+                      Back
+                    </button>
+                    <button
+                      type="button"
+                      className="btn-primary flex-1"
+                      disabled={!signerName || !signerRole || !signerEmail || !authorisedToSign}
+                      onClick={goToNextStep}
+                    >
+                      Continue to sign
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {signingStep === 'sign' && (
+                <div className="space-y-4">
+                  <h3 className="text-lg font-semibold text-slate-900 dark:text-white">
+                    Add your signature
+                  </h3>
+                  <SignaturePad onSave={handleSignatureSave} fullWidth height={220} />
+                  {signatureData && (
+                    <div className="flex gap-3">
+                      <button type="button" className="btn-secondary flex-1" onClick={goToPrevStep}>
+                        Back
+                      </button>
+                      <button
+                        data-testid="confirm-signature-button"
+                        type="button"
+                        className="btn-primary flex-1 py-3"
+                        disabled={isSubmitting}
+                        onClick={handleSubmitSignature}
+                      >
+                        {isSubmitting ? 'Submitting…' : 'Confirm acceptance'}
+                      </button>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              <button
+                type="button"
+                data-testid="decline-proposal-button"
+                className="w-full text-sm text-slate-500 hover:text-red-600 underline"
+                onClick={() => {
+                  setSigningStep(null);
+                  setShowDecline(true);
+                }}
+              >
+                Decline this proposal
+              </button>
+            </div>
+          )}
+
+          {/* Terms & Conditions — browse mode (not in step flow) */}
+          {!isAccepted && !isExpired && !inSigningFlow && (
             <div className="border-t pt-6">
               <h3 className="text-sm font-medium text-slate-600 uppercase tracking-wide">
                 Terms & Conditions
@@ -568,8 +846,8 @@ const PublicProposalView = () => {
             </div>
           )}
 
-          {/* Signing summary — shown before accept / signature step */}
-          {!isAccepted && !isExpired && (termsAccepted || showSignature) && (
+          {/* Signing summary — browse mode helper */}
+          {!isAccepted && !isExpired && !inSigningFlow && termsAccepted && (
             <div
               data-testid="signing-summary-card"
               className="border-t pt-6"
@@ -607,16 +885,15 @@ const PublicProposalView = () => {
             </div>
           )}
 
-          {/* Actions */}
-          {!isAccepted && !isExpired && !showSignature && !showDecline && (
+          {/* Actions — browse mode */}
+          {!isAccepted && !isExpired && !inSigningFlow && !showDecline && (
             <div className="border-t pt-6 flex flex-col sm:flex-row gap-3">
               <button
                 data-testid="accept-proposal-button"
-                onClick={handleAccept}
-                disabled={!termsAccepted}
-                className="flex-1 btn-primary py-3 disabled:opacity-50"
+                onClick={startSigningFlow}
+                className="flex-1 btn-primary py-3"
               >
-                Accept Proposal
+                Review &amp; sign proposal
               </button>
               <button
                 type="button"
@@ -656,8 +933,9 @@ const PublicProposalView = () => {
                         reason: declineReason.trim(),
                         declinedBy: signerName || undefined,
                       });
-                      toast.success('Proposal declined');
+                      toast.success('Proposal declined — the practice has been notified');
                       setShowDecline(false);
+                      setSigningStep(null);
                     } catch (err: any) {
                       toast.error(err?.response?.data?.error?.message || 'Failed to decline');
                     } finally {
@@ -671,93 +949,17 @@ const PublicProposalView = () => {
             </div>
           )}
 
-          {/* Signature Pad */}
-          {!isAccepted && !isExpired && showSignature && (
-            <div className="border-t pt-6">
-              <h3 className="text-lg font-medium text-slate-900 mb-4">Electronic Signature</h3>
-              <div className="space-y-4">
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-slate-800">Full Name</label>
-                    <input
-                      data-testid="signer-name-input"
-                      type="text"
-                      value={signerName}
-                      onChange={(e) => setSignerName(e.target.value)}
-                      placeholder="John Smith"
-                      className="mt-1 input-field"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-slate-800">Role/Title</label>
-                    <input
-                      data-testid="signer-role-input"
-                      type="text"
-                      value={signerRole}
-                      onChange={(e) => setSignerRole(e.target.value)}
-                      placeholder="Director"
-                      className="mt-1 input-field"
-                    />
-                  </div>
-                  <div className="sm:col-span-2">
-                    <label className="block text-sm font-medium text-slate-800">Email address</label>
-                    <input
-                      data-testid="signer-email-input"
-                      type="email"
-                      value={signerEmail}
-                      onChange={(e) => setSignerEmail(e.target.value)}
-                      placeholder="director@company.co.uk"
-                      className="mt-1 input-field"
-                    />
-                  </div>
-                </div>
-                <label className="flex items-start gap-2 text-sm text-slate-800">
-                  <input
-                    data-testid="authorised-checkbox"
-                    type="checkbox"
-                    checked={authorisedToSign}
-                    onChange={(e) => setAuthorisedToSign(e.target.checked)}
-                    className="mt-1 h-4 w-4 rounded"
-                  />
-                  <span>
-                    I confirm I am authorised to sign on behalf of{' '}
-                    <strong>{proposal?.client?.name}</strong> (simple electronic signature).
-                  </span>
-                </label>
-                <SignaturePad onSave={handleSignatureSave} />
-                {signatureData && (
-                  <div className="flex space-x-4">
-                    <button
-                      onClick={() => setShowSignature(false)}
-                      className="flex-1 btn-secondary"
-                    >
-                      Cancel
-                    </button>
-                    <button
-                      data-testid="confirm-signature-button"
-                      onClick={handleSubmitSignature}
-                      disabled={isSubmitting}
-                      className="flex-1 btn-primary"
-                    >
-                      {isSubmitting ? 'Submitting...' : 'Confirm Acceptance'}
-                    </button>
-                  </div>
-                )}
-              </div>
-            </div>
-          )}
         </div>
 
         {/* Mobile sticky accept bar */}
-        {!isAccepted && !isExpired && !showSignature && (
+        {!isAccepted && !isExpired && !inSigningFlow && !showDecline && (
           <div className="fixed bottom-0 left-0 right-0 z-40 p-4 bg-white/95 dark:bg-slate-900/95 border-t border-slate-200 dark:border-slate-700 backdrop-blur-md sm:hidden">
             <button
               type="button"
-              onClick={handleAccept}
-              disabled={!termsAccepted}
+              onClick={startSigningFlow}
               className="btn-primary w-full py-3 text-base"
             >
-              Review & sign proposal
+              Review &amp; sign proposal
             </button>
           </div>
         )}

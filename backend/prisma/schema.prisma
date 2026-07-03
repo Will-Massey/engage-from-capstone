@@ -199,13 +199,16 @@ model Tenant {
   defaultVatRate VATRate @default(STANDARD_20)
   autoApplyVat   Boolean @default(true)
 
-  // Stripe / Subscription
+  // Stripe / Subscription (Stripe legacy — Revolut primary)
   stripeCustomerId      String?
   stripeSubscriptionId  String?
   subscriptionStatus    String?
   subscriptionTier      String?
+  trialEndsAt           DateTime?
   lastPaymentStatus     String?
   lastPaymentDate       DateTime?
+  revolutCustomerId     String?  @map("revolut_customer_id")
+  revolutOrderId        String?  @map("revolut_order_id")
 
   // Relations
   users                 User[]
@@ -220,6 +223,7 @@ model Tenant {
   touchpoints           Touchpoint[]
   emailLogs             EmailLog[]
   emailSuppressions     EmailSuppression[]
+  paymentSplits         PaymentSplit[]
 
   @@index([subdomain])
   @@index([isActive])
@@ -252,6 +256,7 @@ model User {
   createdProposals Proposal[] @relation("CreatedProposals")
   activityLogs     ActivityLog[]
   refreshTokens    RefreshToken[]
+  passwordResets   PasswordReset[]
 
   @@unique([email, tenantId])
   @@index([tenantId])
@@ -269,6 +274,21 @@ model RefreshToken {
 
   @@index([token])
   @@index([userId])
+}
+
+model PasswordReset {
+  id        String    @id @default(uuid())
+  tokenHash String
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([tokenHash])
+  @@index([userId])
+  @@index([expiresAt])
 }
 
 // ==================== CLIENT MODELS ====================
@@ -438,6 +458,7 @@ model Proposal {
   views        ProposalView[]
   signatures   ProposalSignature[]
   emailLogs    EmailLog[]
+  paymentSplits PaymentSplit[]
 
   @@index([tenantId])
   @@index([clientId])
@@ -446,6 +467,32 @@ model Proposal {
   @@index([shareToken])
   @@index([paymentId])
   @@index([createdAt])
+}
+
+// Capstone platform fee + agency share ledger (client proposal payments)
+model PaymentSplit {
+  id                String   @id @default(uuid())
+  revolutOrderId    String   @unique @map("revolut_order_id")
+  totalPence        Int      @map("total_pence")
+  platformFeePence  Int      @map("platform_fee_pence")
+  agencySharePence  Int      @map("agency_share_pence")
+  platformFeeBps    Int      @map("platform_fee_bps")
+  currency          String   @default("GBP")
+  payoutStatus      String   @default("PENDING") // PENDING, TRANSFERRED, MANUAL, FAILED
+  payoutTransferId  String?  @map("payout_transfer_id")
+  paidAt            DateTime @default(now()) @map("paid_at")
+  createdAt         DateTime @default(now()) @map("created_at")
+  updatedAt         DateTime @updatedAt @map("updated_at")
+
+  proposalId String   @map("proposal_id")
+  proposal   Proposal @relation(fields: [proposalId], references: [id], onDelete: Cascade)
+
+  tenantId String @map("tenant_id")
+  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@index([proposalId])
+  @@index([tenantId])
+  @@map("payment_splits")
 }
 
 model ProposalService {

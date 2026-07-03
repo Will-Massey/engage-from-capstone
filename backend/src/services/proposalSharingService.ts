@@ -281,6 +281,14 @@ export async function recordElectronicSignature(
       logger.warn('Failed to trigger touchpoint workflow on proposal acceptance', e);
     }
 
+    // Clara post-sign onboarding checklist (stored on proposal customFields + activity log)
+    try {
+      const { generateAndStoreOnboardingChecklist } = await import('./onboardingChecklistService.js');
+      await generateAndStoreOnboardingChecklist(data.proposalId, data.tenantId);
+    } catch (e) {
+      logger.warn('Failed to generate post-sign onboarding checklist', e);
+    }
+
     await prisma.activityLog.create({
       data: {
         tenantId: data.tenantId,

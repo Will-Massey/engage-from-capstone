@@ -4,6 +4,7 @@ import { ProposalStatus, PricingFrequency } from '@prisma/client';
 import { prisma } from '../config/database.js';
 import { authenticate, authorize } from '../middleware/auth.js';
 import { asyncHandler, ApiError } from '../middleware/errorHandler.js';
+import { enforceTierLimit } from '../middleware/tierLimits.js';
 import { PDFGenerator } from '../services/pdfGenerator.js';
 import logger from '../config/logger.js';
 import { getProposalViewStats, createShareableLink } from '../services/proposalSharingService.js';
@@ -16,6 +17,7 @@ import {
   getProposalSettings,
   parseProposalDateInput,
 } from '../utils/tenantProposalSettings.js';
+import { getProposalRegulatoryFit } from '../services/regulatoryFitService.js';
 // generateReference helper function
 const generateReference = (prefix: string = 'PROP'): string => {
   const timestamp = Date.now().toString(36).toUpperCase();
@@ -249,6 +251,23 @@ router.get(
 );
 
 /**
+ * GET /api/proposals/:id/regulatory-fit
+ * Rule-based MTD / AML regulatory fit for a proposal
+ */
+router.get(
+  '/:id/regulatory-fit',
+  authenticate,
+  authorize('PARTNER', 'MANAGER', 'SENIOR', 'ADMIN'),
+  asyncHandler(async (req, res) => {
+    const data = await getProposalRegulatoryFit(req.tenantId!, req.params.id);
+    if (!data) {
+      throw new ApiError('NOT_FOUND', 'Proposal not found', 404);
+    }
+    res.json({ success: true, data });
+  })
+);
+
+/**
  * POST /api/proposals
  * Create new proposal
  */
@@ -256,6 +275,7 @@ router.post(
   '/',
   authenticate,
   authorize('PARTNER', 'MANAGER', 'SENIOR', 'ADMIN'),
+  enforceTierLimit('proposals'),
   asyncHandler(async (req, res) => {
     const data = createProposalSchema.parse(req.body);
 

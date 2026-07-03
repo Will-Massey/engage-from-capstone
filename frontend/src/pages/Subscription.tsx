@@ -1,94 +1,211 @@
 import { useState, useEffect, lazy, Suspense } from 'react';
 import { apiClient } from '../utils/api';
-import { useAuthStore } from '../stores/authStore';
 import toast from 'react-hot-toast';
-import {
-  CheckIcon,
-  CreditCardIcon,
-  CalendarIcon,
-  XCircleIcon,
-  ArrowPathIcon,
-} from '@heroicons/react/24/outline';
+import { CheckIcon, CreditCardIcon } from '@heroicons/react/24/outline';
+import { openRevolutCheckout } from '../lib/revolut-checkout';
 
-// Lazy load Stripe components
-const loadStripeComponents = async () => {
-  const [{ loadStripe }, { Elements }] = await Promise.all([
-    import('@stripe/stripe-js'),
-    import('@stripe/react-stripe-js'),
-  ]);
-  return { loadStripe, Elements };
-};
-
-// Lazy load payment form
 const StripePaymentForm = lazy(() => import('../components/payments/StripePaymentForm'));
 
 interface PricingTier {
   name: string;
   description: string;
+  price: number;
   maxUsers: number | string;
   maxClients: number | string;
   maxProposals: number | string;
   features: string[];
   priceId?: string;
-  price?: number;
 }
 
+const TIER_ORDER = ['STARTER', 'PROFESSIONAL', 'ENTERPRISE'] as const;
+
 const Subscription = () => {
-  const { tenant } = useAuthStore();
+  const [provider, setProvider] = useState<'revolut' | 'stripe' | null>(null);
+  const [revolutMode, setRevolutMode] = useState<'sandbox' | 'prod'>('sandbox');
   const [stripePromise, setStripePromise] = useState<any>(null);
   const [ElementsComponent, setElementsComponent] = useState<any>(null);
   const [tiers, setTiers] = useState<Record<string, PricingTier>>({});
-  const [currentSubscription, setCurrentSubscription] = useState<any>(null);
+  const [currentSubscription, setCurrentSubscription] = useState<{
+    hasSubscription?: boolean;
+    tier?: string;
+    status?: string;
+  } | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [selectedTier, setSelectedTier] = useState<string | null>(null);
-  const [showPaymentForm, setShowPaymentForm] = useState(false);
+  const [checkoutTier, setCheckoutTier] = useState<string | null>(null);
+  const [selectedStripeTier, setSelectedStripeTier] = useState<string | null>(null);
 
   useEffect(() => {
-    loadStripeConfig();
-    loadSubscription();
+    void loadBillingConfig();
+    void loadSubscription();
   }, []);
 
-  const loadStripeConfig = async () => {
+  const loadBillingConfig = async () => {
     try {
-      const response = (await apiClient.getStripeConfig()) as any;
-      if (response.success) {
-        setTiers(response.data.tiers);
-        // Only load Stripe if properly configured
-        if (response.data.publishableKey && response.data.publishableKey.startsWith('pk_')) {
-          const { loadStripe, Elements } = await loadStripeComponents();
-          setElementsComponent(() => Elements);
-          setStripePromise(loadStripe(response.data.publishableKey));
-        }
+      const response = (await apiClient.getBillingConfig()) as any;
+
+      if (!response.success) return;
+
+      setTiers(response.data.tiers);
+      setProvider(response.data.provider || null);
+      setRevolutMode(response.data.mode || 'sandbox');
+
+      if (response.data.provider === 'stripe' && response.data.publishableKey?.startsWith('pk_')) {
+        const [{ loadStripe }, { Elements }] = await Promise.all([
+          import('@stripe/stripe-js'),
+          import('@stripe/react-stripe-js'),
+        ]);
+        setElementsComponent(() => Elements);
+        setStripePromise(loadStripe(response.data.publishableKey));
       }
-    } catch (error) {
-      console.log('Stripe not configured');
+    } catch {
+      // Billing optional in dev
     }
   };
 
   const loadSubscription = async () => {
     try {
       setIsLoading(true);
-      const response = (await apiClient.getSubscription()) as any;
+      const response = (await apiClient.getBillingSubscription()) as any;
       if (response.success) {
         setCurrentSubscription(response.data);
       }
-    } catch (error) {
-      // Error handled by UI
     } finally {
       setIsLoading(false);
     }
   };
 
-  // ... rest of component
+  const handleRevolutCheckout = async (tier: string) => {
+    try {
+      setCheckoutTier(tier);
+      const response = (await apiClient.createBillingCheckout({ tier })) as any;
+
+      if (!response.success) {
+        toast.error('Could not start checkout');
+        return;
+      }
+
+      await openRevolutCheckout({
+        token: response.data.token,
+        mode: response.data.mode || revolutMode,
+        onSuccess: () => {
+          toast.success('Platform subscription activated');
+          void loadSubscription();
+        },
+        onError: (message) => toast.error(message),
+        onCancel: () => toast('Checkout cancelled'),
+      });
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : 'Checkout failed';
+      toast.error(message);
+    } finally {
+      setCheckoutTier(null);
+    }
+  };
+
+  if (isLoading) {
+    return (
+      <div className="max-w-7xl mx-auto px-4 py-8">
+        <div className="animate-pulse h-8 w-48 bg-gray-200 rounded mb-8" />
+        <div className="grid md:grid-cols-3 gap-6">
+          {[1, 2, 3].map((n) => (
+            <div key={n} className="h-64 bg-gray-100 rounded-xl" />
+          ))}
+        </div>
+      </div>
+    );
+  }
+
+  const activeTier = currentSubscription?.tier;
+
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-      <h1 className="text-3xl font-bold text-gray-900 mb-8">Subscription</h1>
-      {stripePromise && ElementsComponent ? (
-        <ElementsComponent stripe={stripePromise}>
-          <Suspense fallback={<div>Loading...</div>}>{/* Payment form content */}</Suspense>
-        </ElementsComponent>
-      ) : (
-        <div>Stripe not configured</div>
+      <div className="mb-8">
+        <h1 className="text-3xl font-bold text-gray-900">Platform subscription</h1>
+        <p className="mt-2 text-gray-600">
+          Monthly platform fee for your agency. Client proposal payments are handled separately when
+          proposals are accepted.
+        </p>
+        {currentSubscription?.hasSubscription && (
+          <p className="mt-3 text-sm text-emerald-700 font-medium">
+            Active plan: {activeTier} ({currentSubscription.status})
+          </p>
+        )}
+      </div>
+
+      {!provider && (
+        <div className="rounded-lg border border-amber-200 bg-amber-50 p-4 text-amber-900">
+          Billing is not configured yet. Contact support@capstonesoftware.co.uk.
+        </div>
+      )}
+
+      <div className="grid md:grid-cols-3 gap-6">
+        {TIER_ORDER.map((key) => {
+          const tier = tiers[key];
+          if (!tier) return null;
+          const isActive = activeTier === key;
+
+          return (
+            <div
+              key={key}
+              className={`rounded-xl border p-6 bg-white shadow-sm ${isActive ? 'border-emerald-500 ring-2 ring-emerald-100' : 'border-gray-200'}`}
+            >
+              <h2 className="text-xl font-semibold text-gray-900">{tier.name}</h2>
+              <p className="text-sm text-gray-500 mt-1">{tier.description}</p>
+              <p className="mt-4 text-3xl font-bold text-gray-900">
+                £{tier.price}
+                <span className="text-base font-normal text-gray-500">/month</span>
+              </p>
+              <ul className="mt-4 space-y-2 text-sm text-gray-600">
+                {tier.features.map((feature) => (
+                  <li key={feature} className="flex items-start gap-2">
+                    <CheckIcon className="h-4 w-4 text-emerald-500 mt-0.5 shrink-0" />
+                    {feature}
+                  </li>
+                ))}
+              </ul>
+
+              {provider === 'revolut' && (
+                <button
+                  type="button"
+                  onClick={() => void handleRevolutCheckout(key)}
+                  disabled={isActive || checkoutTier === key}
+                  className="mt-6 w-full btn-primary flex items-center justify-center gap-2 disabled:opacity-50"
+                >
+                  <CreditCardIcon className="h-5 w-5" />
+                  {isActive ? 'Current plan' : checkoutTier === key ? 'Opening checkout…' : 'Subscribe'}
+                </button>
+              )}
+
+              {provider === 'stripe' && tier.priceId && (
+                <button
+                  type="button"
+                  onClick={() => setSelectedStripeTier(key)}
+                  disabled={isActive}
+                  className="mt-6 w-full btn-primary disabled:opacity-50"
+                >
+                  {isActive ? 'Current plan' : 'Subscribe with card'}
+                </button>
+              )}
+            </div>
+          );
+        })}
+      </div>
+
+      {provider === 'stripe' && selectedStripeTier && stripePromise && ElementsComponent && (
+        <div className="mt-8 max-w-md mx-auto bg-white rounded-xl border p-6">
+          <ElementsComponent stripe={stripePromise}>
+            <Suspense fallback={<div>Loading payment form…</div>}>
+              <StripePaymentForm
+                priceId={tiers[selectedStripeTier]?.priceId || ''}
+                onSuccess={() => {
+                  setSelectedStripeTier(null);
+                  void loadSubscription();
+                }}
+                onCancel={() => setSelectedStripeTier(null)}
+              />
+            </Suspense>
+          </ElementsComponent>
+        </div>
       )}
     </div>
   );

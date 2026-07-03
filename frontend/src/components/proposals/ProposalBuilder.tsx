@@ -48,6 +48,9 @@ import ClientContextCard from '../ai/ClientContextCard';
 import AutoFitBanner, { type AutoFitResult } from '../ai/AutoFitBanner';
 import ProposalEmailPreviewDialog, { type ProposalEmailDraftInput } from '../ai/ProposalEmailPreviewDialog';
 import { AI_COPILOT } from '../../config/aiCopilot';
+import { calculateLineItem, type BillingFrequency } from '@shared/pricingEngine';
+import { calculateProposalSummaryBands, type PricingSummaryBands } from '@shared/proposalSummary';
+import { resolveCatalogBillingCycle } from '@shared/serviceBilling';
 
 // Types
 interface Client {
@@ -89,24 +92,7 @@ interface SelectedService extends Service {
   oneOffDueDate?: string;
 }
 
-interface BandTotals {
-  subtotal: number;
-  vat: number;
-  total: number;
-  count: number;
-}
-
-interface PricingSummary {
-  weekly: BandTotals;
-  monthly: BandTotals;
-  quarterly: BandTotals;
-  annually: BandTotals;
-  oneTime: BandTotals;
-  /** Sum of all line gross totals (matches stored proposal total) */
-  contractTotalIncVat: number;
-  totalSubtotalExVat: number;
-  totalVat: number;
-}
+type PricingSummary = PricingSummaryBands;
 
 const STEPS = [
   { id: 1, name: 'Select Client', description: 'Choose who this proposal is for' },
@@ -250,23 +236,13 @@ const formatCurrency = (amount: number): string => {
   }).format(amount);
 };
 
-// Calculate annual equivalent
-const calculateAnnualEquivalent = (price: number, frequency: string): number => {
-  switch (frequency) {
-    case 'MONTHLY':
-      return price * 12;
-    case 'QUARTERLY':
-      return price * 4;
-    case 'ANNUALLY':
-      return price;
-    case 'ONE_TIME':
-      return 0;
-    case 'WEEKLY':
-      return price * 52;
-    default:
-      return price * 12;
-  }
-};
+const calculateAnnualEquivalent = (price: number, frequency: string): number =>
+  calculateLineItem({
+    basePrice: price,
+    billingFrequency: (frequency as BillingFrequency) || 'MONTHLY',
+    quantity: 1,
+    vatRate: 0,
+  }).annualEquivalent;
 
 // Approximate monthly cash flow (catalog list only — not mixed into proposal totals)
 const calculateMonthlyEquivalent = (price: number, frequency: string): number => {
@@ -536,20 +512,12 @@ export default function ProposalBuilder({ proposalId }: ProposalBuilderProps) {
   const loadServices = async () => {
     try {
       const response = (await apiClient.getServices({ limit: 100 })) as any;
-      const mappedServices = (response.data || []).map((s: any) => {
-        const derivedBillingCycle =
-          s.billingCycle === 'ONE_TIME' || s.defaultFrequency === 'ONE_TIME'
-            ? 'ONE_TIME'
-            : s.defaultFrequency && s.defaultFrequency !== 'MONTHLY'
-              ? s.defaultFrequency
-              : s.billingCycle || 'MONTHLY';
-        return {
-          ...s,
-          priceAmount: s.priceAmount || s.basePrice || 0,
-          billingCycle: derivedBillingCycle,
-          frequencyOptions: s.frequencyOptions,
-        };
-      });
+      const mappedServices = (response.data || []).map((s: any) => ({
+        ...s,
+        priceAmount: s.priceAmount || s.basePrice || 0,
+        billingCycle: resolveCatalogBillingCycle(s),
+        frequencyOptions: s.frequencyOptions,
+      }));
       setServices(mappedServices);
     } catch (error) {
       toast.error('Failed to load services');
@@ -578,10 +546,13 @@ export default function ProposalBuilder({ proposalId }: ProposalBuilderProps) {
     const price = editForm.displayPrice || 0;
     const vatRate = editForm.vatRate || 0;
 
-    const grossLineTotal = price * quantity;
-    const discountAmount = grossLineTotal * (discount / 100);
-    const lineTotal = grossLineTotal - discountAmount;
-    const vatAmount = includeVat ? Math.round(lineTotal * (vatRate / 100) * 100) / 100 : 0;
+    const line = calculateLineItem({
+      basePrice: price,
+      billingFrequency: editForm.billingCycle as BillingFrequency,
+      quantity,
+      discountPercent: discount,
+      vatRate: includeVat ? vatRate : 0,
+    });
 
     return {
       ...original,
@@ -590,10 +561,10 @@ export default function ProposalBuilder({ proposalId }: ProposalBuilderProps) {
       discountPercent: discount,
       vatRate,
       billingCycle: editForm.billingCycle,
-      lineTotal,
-      vatAmount,
-      grossTotal: lineTotal + vatAmount,
-      annualEquivalent: calculateAnnualEquivalent(price, editForm.billingCycle),
+      lineTotal: line.netTotal,
+      vatAmount: line.vatAmount,
+      grossTotal: line.grossTotal,
+      annualEquivalent: line.annualEquivalent,
       oneOffDueDate:
         editForm.billingCycle === 'ONE_TIME' && editForm.oneOffDueDate.trim()
           ? editForm.oneOffDueDate.trim()
@@ -608,42 +579,14 @@ export default function ProposalBuilder({ proposalId }: ProposalBuilderProps) {
       ? selectedServices.map((s) => (s.id === editingService ? getEditingPreview(s) : s))
       : selectedServices;
 
-    const calcGroup = (items: SelectedService[]) => ({
-      subtotal: items.reduce((sum, s) => sum + s.lineTotal, 0),
-      vat: items.reduce((sum, s) => sum + s.vatAmount, 0),
-      total: items.reduce((sum, s) => sum + s.grossTotal, 0),
-      count: items.length,
-    });
-
-    const weekly = servicesForSummary.filter((s) => s.billingCycle === 'WEEKLY');
-    const monthly = servicesForSummary.filter((s) => s.billingCycle === 'MONTHLY');
-    const quarterly = servicesForSummary.filter((s) => s.billingCycle === 'QUARTERLY');
-    const annually = servicesForSummary.filter((s) => s.billingCycle === 'ANNUALLY');
-    const oneTime = servicesForSummary.filter((s) => s.billingCycle === 'ONE_TIME');
-
-    const weeklyGroup = calcGroup(weekly);
-    const monthlyGroup = calcGroup(monthly);
-    const quarterlyGroup = calcGroup(quarterly);
-    const annualGroup = calcGroup(annually);
-    const oneTimeGroup = calcGroup(oneTime);
-
-    const contractTotalIncVat =
-      weeklyGroup.total + monthlyGroup.total + quarterlyGroup.total + annualGroup.total + oneTimeGroup.total;
-    const totalSubtotalExVat =
-      weeklyGroup.subtotal + monthlyGroup.subtotal + quarterlyGroup.subtotal + annualGroup.subtotal + oneTimeGroup.subtotal;
-    const totalVat =
-      weeklyGroup.vat + monthlyGroup.vat + quarterlyGroup.vat + annualGroup.vat + oneTimeGroup.vat;
-
-    return {
-      weekly: weeklyGroup,
-      monthly: monthlyGroup,
-      quarterly: quarterlyGroup,
-      annually: annualGroup,
-      oneTime: oneTimeGroup,
-      contractTotalIncVat,
-      totalSubtotalExVat,
-      totalVat,
-    };
+    return calculateProposalSummaryBands(
+      servicesForSummary.map((s) => ({
+        billingFrequency: s.billingCycle as BillingFrequency,
+        lineTotal: s.lineTotal,
+        vatAmount: s.vatAmount,
+        grossTotal: s.grossTotal,
+      }))
+    );
   }, [selectedServices, editingService, getEditingPreview]);
 
   /** Review step: average monthly equivalent of all recurring lines (inc VAT) */
@@ -661,15 +604,18 @@ export default function ProposalBuilder({ proposalId }: ProposalBuilderProps) {
     vatRate: number,
     billingCycle: string
   ) => {
-    const grossLineTotal = price * quantity;
-    const discountAmount = grossLineTotal * (discountPercent / 100);
-    const lineTotal = grossLineTotal - discountAmount;
-    const vatAmount = includeVat ? Math.round(lineTotal * (vatRate / 100) * 100) / 100 : 0;
+    const line = calculateLineItem({
+      basePrice: price,
+      billingFrequency: billingCycle as BillingFrequency,
+      quantity,
+      discountPercent,
+      vatRate: includeVat ? vatRate : 0,
+    });
     return {
-      lineTotal,
-      vatAmount,
-      grossTotal: lineTotal + vatAmount,
-      annualEquivalent: calculateAnnualEquivalent(price, billingCycle),
+      lineTotal: line.netTotal,
+      vatAmount: line.vatAmount,
+      grossTotal: line.grossTotal,
+      annualEquivalent: line.annualEquivalent,
     };
   };
 
@@ -757,8 +703,6 @@ export default function ProposalBuilder({ proposalId }: ProposalBuilderProps) {
 
     const price = overridePrice ?? service.priceAmount ?? 0;
     const frequency = billingFrequency || service.billingCycle || service.defaultFrequency || 'MONTHLY';
-    const annualEquivalent = calculateAnnualEquivalent(price, frequency);
-    const lineTotal = price;
 
     const vatPercent =
       service.isVatApplicable !== false
@@ -768,7 +712,13 @@ export default function ProposalBuilder({ proposalId }: ProposalBuilderProps) {
             ? 0
             : 20
         : 0;
-    const vatAmount = includeVat ? Math.round(lineTotal * (vatPercent / 100) * 100) / 100 : 0;
+    const line = calculateLineItem({
+      basePrice: price,
+      billingFrequency: frequency as BillingFrequency,
+      quantity: 1,
+      discountPercent: 0,
+      vatRate: includeVat ? vatPercent : 0,
+    });
 
     const allowedCadences = parseFrequencyOptions(service.frequencyOptions);
 
@@ -780,11 +730,11 @@ export default function ProposalBuilder({ proposalId }: ProposalBuilderProps) {
       displayPrice: price,
       billingCycle: frequency,
       priceAmount: price,
-      annualEquivalent,
-      lineTotal,
+      annualEquivalent: line.annualEquivalent,
+      lineTotal: line.netTotal,
       vatRate: vatPercent,
-      vatAmount,
-      grossTotal: lineTotal + vatAmount,
+      vatAmount: line.vatAmount,
+      grossTotal: line.grossTotal,
       allowedCadences,
       oneOffDueDate: frequency === 'ONE_TIME' ? '' : undefined,
     };
@@ -1028,10 +978,13 @@ export default function ProposalBuilder({ proposalId }: ProposalBuilderProps) {
         const vatRate = editForm.vatRate || 0;
 
         // Recalculate
-        const grossLineTotal = price * quantity;
-        const discountAmount = grossLineTotal * (discount / 100);
-        const lineTotal = grossLineTotal - discountAmount;
-        const vatAmount = includeVat ? Math.round(lineTotal * (vatRate / 100) * 100) / 100 : 0;
+        const line = calculateLineItem({
+          basePrice: price,
+          billingFrequency: editForm.billingCycle as BillingFrequency,
+          quantity,
+          discountPercent: discount,
+          vatRate: includeVat ? vatRate : 0,
+        });
 
         return {
           ...s,
@@ -1040,10 +993,10 @@ export default function ProposalBuilder({ proposalId }: ProposalBuilderProps) {
           discountPercent: discount,
           vatRate,
           billingCycle: editForm.billingCycle,
-          lineTotal,
-          vatAmount,
-          grossTotal: lineTotal + vatAmount,
-          annualEquivalent: calculateAnnualEquivalent(price, editForm.billingCycle),
+          lineTotal: line.netTotal,
+          vatAmount: line.vatAmount,
+          grossTotal: line.grossTotal,
+          annualEquivalent: line.annualEquivalent,
           oneOffDueDate:
             editForm.billingCycle === 'ONE_TIME' && editForm.oneOffDueDate.trim()
               ? editForm.oneOffDueDate.trim()

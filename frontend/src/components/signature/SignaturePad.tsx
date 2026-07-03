@@ -6,6 +6,7 @@ interface SignaturePadProps {
   width?: number;
   height?: number;
   disabled?: boolean;
+  fullWidth?: boolean;
 }
 
 const SignaturePad = ({
@@ -14,13 +15,34 @@ const SignaturePad = ({
   width = 600,
   height = 200,
   disabled = false,
+  fullWidth = false,
 }: SignaturePadProps) => {
+  const containerRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [isDrawing, setIsDrawing] = useState(false);
   const [hasSignature, setHasSignature] = useState(false);
   const [context, setContext] = useState<CanvasRenderingContext2D | null>(null);
+  const [canvasSize, setCanvasSize] = useState({ width, height });
 
-  // Initialize canvas context
+  useEffect(() => {
+    if (!fullWidth) {
+      setCanvasSize({ width, height });
+      return;
+    }
+
+    const updateSize = () => {
+      const containerWidth = containerRef.current?.clientWidth || width;
+      setCanvasSize({
+        width: Math.max(containerWidth, 280),
+        height: Math.max(Math.round(containerWidth * 0.35), 180),
+      });
+    };
+
+    updateSize();
+    window.addEventListener('resize', updateSize);
+    return () => window.removeEventListener('resize', updateSize);
+  }, [fullWidth, width, height]);
+
   useEffect(() => {
     const canvas = canvasRef.current;
     if (canvas) {
@@ -33,13 +55,15 @@ const SignaturePad = ({
         setContext(ctx);
       }
     }
-  }, []);
+  }, [canvasSize.width, canvasSize.height]);
 
   const getCoordinates = useCallback((event: React.MouseEvent | React.TouchEvent) => {
     const canvas = canvasRef.current;
     if (!canvas) return { x: 0, y: 0 };
 
     const rect = canvas.getBoundingClientRect();
+    const scaleX = canvas.width / rect.width;
+    const scaleY = canvas.height / rect.height;
     let clientX, clientY;
 
     if ('touches' in event) {
@@ -51,8 +75,8 @@ const SignaturePad = ({
     }
 
     return {
-      x: clientX - rect.left,
-      y: clientY - rect.top,
+      x: (clientX - rect.left) * scaleX,
+      y: (clientY - rect.top) * scaleY,
     };
   }, []);
 
@@ -66,7 +90,7 @@ const SignaturePad = ({
       context.moveTo(x, y);
       setIsDrawing(true);
     },
-    [disabled, context, getCoordinates]
+    [disabled, context, getCoordinates],
   );
 
   const draw = useCallback(
@@ -78,7 +102,7 @@ const SignaturePad = ({
       context.lineTo(x, y);
       context.stroke();
     },
-    [isDrawing, context, getCoordinates]
+    [isDrawing, context, getCoordinates],
   );
 
   const stopDrawing = useCallback(() => {
@@ -102,41 +126,19 @@ const SignaturePad = ({
   const save = useCallback(() => {
     const canvas = canvasRef.current;
     if (canvas && hasSignature) {
-      // Convert to base64 PNG
       const signatureData = canvas.toDataURL('image/png');
       onSave(signatureData);
     }
   }, [hasSignature, onSave]);
 
-  // Handle window resize
-  useEffect(() => {
-    const handleResize = () => {
-      const canvas = canvasRef.current;
-      if (canvas && context) {
-        // Save current content
-        const tempCanvas = document.createElement('canvas');
-        tempCanvas.width = canvas.width;
-        tempCanvas.height = canvas.height;
-        const tempCtx = tempCanvas.getContext('2d');
-        if (tempCtx) {
-          tempCtx.drawImage(canvas, 0, 0);
-        }
-      }
-    };
-
-    window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
-  }, [context]);
-
   return (
-    <div className="space-y-4">
-      {/* Canvas Container */}
-      <div className="relative">
+    <div className="space-y-4" ref={containerRef}>
+      <div className={`relative ${fullWidth ? 'w-full' : ''}`}>
         <canvas
           data-testid="signature-canvas"
           ref={canvasRef}
-          width={width}
-          height={height}
+          width={canvasSize.width}
+          height={canvasSize.height}
           onMouseDown={startDrawing}
           onMouseMove={draw}
           onMouseUp={stopDrawing}
@@ -145,25 +147,22 @@ const SignaturePad = ({
           onTouchMove={draw}
           onTouchEnd={stopDrawing}
           className={`border-2 border-gray-300 rounded-lg bg-white touch-none ${
-            disabled ? 'cursor-not-allowed opacity-50' : 'cursor-crosshair'
-          }`}
-          style={{ maxWidth: '100%', height: 'auto' }}
+            fullWidth ? 'w-full' : ''
+          } ${disabled ? 'cursor-not-allowed opacity-50' : 'cursor-crosshair'}`}
+          style={fullWidth ? { height: canvasSize.height } : { maxWidth: '100%', height: 'auto' }}
         />
 
-        {/* Signature Line */}
-        <div className="absolute bottom-8 left-8 right-8 border-b-2 border-gray-400 pointer-events-none" />
-        <div className="absolute bottom-2 left-8 text-sm text-gray-400 pointer-events-none">
+        <div className="absolute bottom-8 left-4 right-4 border-b-2 border-gray-400 pointer-events-none" />
+        <div className="absolute bottom-2 left-4 text-sm text-gray-400 pointer-events-none">
           Sign here
         </div>
       </div>
 
-      {/* Instructions */}
       <p className="text-sm text-gray-500 text-center">
         Use your mouse or touch screen to sign above
       </p>
 
-      {/* Action Buttons */}
-      <div className="flex justify-center space-x-4">
+      <div className="flex justify-center gap-4">
         <button
           onClick={clear}
           disabled={disabled || !hasSignature}

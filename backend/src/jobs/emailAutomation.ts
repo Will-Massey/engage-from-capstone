@@ -13,53 +13,101 @@ import {
  * Should be run daily via a cron job.
  */
 
+type ReminderKind = 'unopened' | 'unsigned' | 'expiring';
+
 interface FollowUpConfig {
-  daysAfterSend: number;
+  kind: ReminderKind;
+  daysThreshold: number;
   subject: string;
   template: 'gentle' | 'urgent' | 'final';
+  actionTag: string;
 }
 
-// Follow-up schedule
-const FOLLOW_UP_SEQUENCE: FollowUpConfig[] = [
+/** Verified reminder schedule: unopened 3d, unsigned 7d, expiring 30d before validUntil */
+const REMINDER_SEQUENCE: FollowUpConfig[] = [
   {
-    daysAfterSend: 3,
+    kind: 'unopened',
+    daysThreshold: 3,
     subject: 'Following up on your proposal',
     template: 'gentle',
+    actionTag: 'unopened-3d',
   },
   {
-    daysAfterSend: 7,
+    kind: 'unsigned',
+    daysThreshold: 7,
     subject: 'Have you had a chance to review your proposal?',
     template: 'gentle',
+    actionTag: 'unsigned-7d',
   },
   {
-    daysAfterSend: 14,
-    subject: 'Your proposal is still waiting for you',
-    template: 'urgent',
-  },
-  {
-    daysAfterSend: 30,
-    subject: 'Final reminder: Your proposal expires soon',
+    kind: 'expiring',
+    daysThreshold: 30,
+    subject: 'Your proposal expires soon',
     template: 'final',
+    actionTag: 'expiring-30d',
   },
 ];
 
 /**
  * Check if a proposal needs a follow-up email
  */
-async function shouldSendFollowUp(proposalId: string, daysAfterSend: number): Promise<boolean> {
-  // Check if we've already sent a follow-up for this proposal at this interval
+async function shouldSendFollowUp(proposalId: string, actionTag: string): Promise<boolean> {
   const existingLog = await prisma.activityLog.findFirst({
     where: {
       entityType: 'PROPOSAL',
       entityId: proposalId,
       action: 'FOLLOW_UP_SENT',
-      description: {
-        contains: `${daysAfterSend} days`,
-      },
+      OR: [
+        { description: { contains: actionTag } },
+        { metadata: { contains: actionTag } },
+      ],
     },
   });
 
   return !existingLog;
+}
+
+function daysBetween(from: Date, to: Date): number {
+  return Math.floor((to.getTime() - from.getTime()) / (1000 * 60 * 60 * 24));
+}
+
+function resolveReminderConfig(
+  proposal: { status: string; sentAt: Date | null; viewedAt: Date | null; validUntil: Date },
+  now: Date,
+): FollowUpConfig | null {
+  if (!proposal.sentAt) return null;
+
+  const daysSinceSent = daysBetween(proposal.sentAt, now);
+
+  // Unopened: SENT status, never viewed, 3+ days
+  if (
+    proposal.status === 'SENT' &&
+    !proposal.viewedAt &&
+    daysSinceSent >= 3
+  ) {
+    return REMINDER_SEQUENCE.find((c) => c.kind === 'unopened') || null;
+  }
+
+  // Unsigned: VIEWED but not accepted, 7+ days since first view (or send)
+  if (proposal.status === 'VIEWED') {
+    const anchor = proposal.viewedAt || proposal.sentAt;
+    const daysSinceView = daysBetween(anchor, now);
+    if (daysSinceView >= 7) {
+      return REMINDER_SEQUENCE.find((c) => c.kind === 'unsigned') || null;
+    }
+  }
+
+  // Expiring: validUntil within 30 days
+  const daysUntilExpiry = daysBetween(now, proposal.validUntil);
+  if (
+    ['SENT', 'VIEWED'].includes(proposal.status) &&
+    daysUntilExpiry >= 0 &&
+    daysUntilExpiry <= 30
+  ) {
+    return REMINDER_SEQUENCE.find((c) => c.kind === 'expiring') || null;
+  }
+
+  return null;
 }
 
 /**
@@ -232,12 +280,18 @@ async function sendFollowUp(
           action: 'FOLLOW_UP_SENT',
           entityType: 'PROPOSAL',
           entityId: proposal.id,
-          description: `Sent ${config.template} follow-up email (${config.daysAfterSend} days after send)`,
+          proposalId: proposal.id,
+          description: `Sent ${config.kind} reminder (${config.actionTag})`,
+          metadata: JSON.stringify({
+            kind: config.kind,
+            actionTag: config.actionTag,
+            template: config.template,
+          }),
         },
       });
 
       logger.info(
-        `Follow-up email sent for proposal ${proposal.id} (${config.daysAfterSend} days)`
+        `Follow-up email sent for proposal ${proposal.id} (${config.actionTag})`
       );
       return true;
     } else {
@@ -299,13 +353,14 @@ export async function runEmailAutomation(): Promise<{
     logger.info(`Found ${proposals.length} proposals for potential follow-up`);
 
     for (const proposal of proposals) {
-      const daysSinceSent = Math.floor(
-        (now.getTime() - new Date(proposal.sentAt!).getTime()) / (1000 * 60 * 60 * 24)
-      );
-
-      // Find the appropriate follow-up stage
-      const followUpConfig = FOLLOW_UP_SEQUENCE.find(
-        (config) => daysSinceSent >= config.daysAfterSend
+      const followUpConfig = resolveReminderConfig(
+        {
+          status: proposal.status,
+          sentAt: proposal.sentAt,
+          viewedAt: proposal.viewedAt,
+          validUntil: proposal.validUntil,
+        },
+        now,
       );
 
       if (!followUpConfig) {
@@ -313,15 +368,13 @@ export async function runEmailAutomation(): Promise<{
         continue;
       }
 
-      // Check if we already sent a follow-up at this stage
-      const shouldSend = await shouldSendFollowUp(proposal.id, followUpConfig.daysAfterSend);
+      const shouldSend = await shouldSendFollowUp(proposal.id, followUpConfig.actionTag);
 
       if (!shouldSend) {
         stats.skipped++;
         continue;
       }
 
-      // Send the follow-up email
       const sent = await sendFollowUp(proposal, followUpConfig);
 
       if (sent) {
@@ -375,9 +428,11 @@ export async function testEmailAutomation(
     }
 
     const config: FollowUpConfig = {
-      daysAfterSend: 3,
+      kind: 'unopened',
+      daysThreshold: 3,
       subject: 'Test follow-up',
       template: 'gentle',
+      actionTag: 'unopened-3d-test',
     };
 
     return await sendFollowUp(proposal, config);

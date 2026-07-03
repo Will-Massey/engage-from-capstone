@@ -446,6 +446,107 @@ router.post(
 );
 
 /**
+ * POST /api/services/import-csv
+ * Bulk import service catalog from CSV text body.
+ * Columns: name, category, description, basePrice, baseHours, billingCycle, tags (optional)
+ */
+router.post(
+  '/import-csv',
+  authenticate,
+  authorize('ADMIN', 'PARTNER', 'MANAGER'),
+  asyncHandler(async (req, res) => {
+    const schema = z.object({
+      csv: z.string().min(10),
+      skipHeader: z.boolean().default(true),
+    });
+    const { csv, skipHeader } = schema.parse(req.body);
+    const tenantId = req.tenantId!;
+
+    const lines = csv
+      .split(/\r?\n/)
+      .map((l) => l.trim())
+      .filter(Boolean);
+
+    const dataLines = skipHeader ? lines.slice(1) : lines;
+    const created: string[] = [];
+    const errors: Array<{ line: number; error: string }> = [];
+
+    const validCategories = new Set(Object.values(ServiceCategory));
+
+    for (let i = 0; i < dataLines.length; i++) {
+      const line = dataLines[i];
+      const cols = line.split(',').map((c) => c.trim().replace(/^"|"$/g, ''));
+      const [name, category, description, basePriceStr, baseHoursStr, billingCycle, tags] = cols;
+
+      if (!name || !category || !description) {
+        errors.push({ line: i + 1, error: 'name, category, and description are required' });
+        continue;
+      }
+
+      const categoryUpper = category.toUpperCase().replace(/\s+/g, '_') as ServiceCategory;
+      if (!validCategories.has(categoryUpper)) {
+        errors.push({ line: i + 1, error: `Invalid category: ${category}` });
+        continue;
+      }
+
+      const basePrice = parseFloat(basePriceStr || '0');
+      const baseHours = parseFloat(baseHoursStr || '1');
+      if (Number.isNaN(basePrice) || basePrice < 0) {
+        errors.push({ line: i + 1, error: 'Invalid basePrice' });
+        continue;
+      }
+
+      const freq = (billingCycle || 'MONTHLY').toUpperCase() as PricingFrequency;
+      const validFreq = Object.values(PricingFrequency).includes(freq) ? freq : PricingFrequency.MONTHLY;
+
+      try {
+        const service = await prisma.serviceTemplate.create({
+          data: {
+            tenantId,
+            name,
+            category: categoryUpper,
+            description,
+            basePrice,
+            priceAmount: basePrice,
+            baseHours: baseHours > 0 ? baseHours : 1,
+            billingCycle: validFreq as any,
+            defaultFrequency: validFreq,
+            tags: tags || '',
+            applicableEntityTypes: 'LIMITED_COMPANY,SOLE_TRADER',
+          },
+        });
+        created.push(service.id);
+      } catch (err: any) {
+        errors.push({ line: i + 1, error: err.message || 'Create failed' });
+      }
+    }
+
+    if (created.length) {
+      await prisma.activityLog.create({
+        data: {
+          tenantId,
+          userId: req.user!.id,
+          action: 'SERVICES_IMPORTED',
+          entityType: 'SERVICE_TEMPLATE',
+          description: `Imported ${created.length} services from CSV`,
+          metadata: JSON.stringify({ count: created.length, errors: errors.length }),
+        },
+      });
+    }
+
+    res.json({
+      success: true,
+      data: {
+        imported: created.length,
+        failed: errors.length,
+        errors: errors.slice(0, 20),
+        serviceIds: created,
+      },
+    });
+  }),
+);
+
+/**
  * DELETE /api/services/:id
  * Soft delete service template
  */

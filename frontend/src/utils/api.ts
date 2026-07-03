@@ -386,7 +386,7 @@ export const apiClient = {
   getUsers: () => api.get('/auth/users'),
 
   // Dashboard
-  getDashboardStats: () => api.get('/proposals/stats/dashboard'),
+  getDashboardStats: () => api.get('/analytics/dashboard'),
 
   createUser: (data: any) => api.post('/auth/users', data),
 
@@ -404,6 +404,12 @@ export const apiClient = {
 
   // Payments
   getStripeConfig: () => api.get('/payments/config'),
+
+  getBillingConfig: () => api.get('/billing/config'),
+
+  createBillingCheckout: (data: { tier: string }) => api.post('/billing/checkout', data),
+
+  getBillingSubscription: () => api.get('/billing/subscription'),
 
   createSubscription: (data: { priceId: string; paymentMethodId: string }) =>
     api.post('/payments/create-subscription', data),
@@ -591,6 +597,16 @@ export const apiClient = {
   aiClientBrief: (clientId: string) => api.post(`/ai/client-brief/${clientId}`, {}),
 
   aiAutoFit: (clientId: string) => api.post('/ai/auto-fit', { clientId }),
+
+  aiPricingAdvisor: (data: {
+    clientId: string;
+    lineItems: Array<{ serviceId: string; name?: string; displayPrice: number }>;
+  }) => api.post('/ai/pricing-advisor', data),
+
+  getProposalRegulatoryFit: (proposalId: string) =>
+    api.get(`/proposals/${proposalId}/regulatory-fit`),
+
+  aiRegulatoryAlerts: () => api.get('/ai/regulatory-alerts'),
 
   aiAttentionQueue: () => api.get('/ai/attention-queue'),
 

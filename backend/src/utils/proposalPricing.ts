@@ -1,18 +1,16 @@
 /**
- * Shared proposal line-item pricing — single source of truth via pricingEngine_v2.
+ * Shared proposal line-item pricing — canonical logic in @shared/pricingEngine.
  */
 import { PricingFrequency } from '@prisma/client';
-import { calculateLineItem } from '../services/pricingEngine_v2.js';
+import {
+  calculateLineItem,
+  VALID_BILLING_FREQUENCIES,
+  billingFrequencyToDisplayMode,
+  type BillingFrequency,
+} from '../services/pricingEngine_v2.js';
 
-export const VALID_BILLING_FREQUENCIES = [
-  'ONE_TIME',
-  'WEEKLY',
-  'MONTHLY',
-  'QUARTERLY',
-  'ANNUALLY',
-] as const;
-
-export type BillingFrequency = (typeof VALID_BILLING_FREQUENCIES)[number];
+export { VALID_BILLING_FREQUENCIES };
+export type { BillingFrequency };
 
 export interface ProposalServiceInput {
   serviceId: string;
@@ -32,6 +30,7 @@ export interface ServiceTemplateInfo {
   priceAmount?: number | null;
   basePrice?: number | null;
   billingCycle?: string | null;
+  defaultFrequency?: string | null;
 }
 
 export function resolveBillingFrequency(
@@ -39,26 +38,11 @@ export function resolveBillingFrequency(
   template?: ServiceTemplateInfo
 ): BillingFrequency {
   let billingFrequency =
-    svc.billingFrequency || svc.frequency || template?.billingCycle || 'MONTHLY';
+    svc.billingFrequency || svc.frequency || template?.billingCycle || template?.defaultFrequency || 'MONTHLY';
   if (!VALID_BILLING_FREQUENCIES.includes(billingFrequency as BillingFrequency)) {
     billingFrequency = 'MONTHLY';
   }
   return billingFrequency as BillingFrequency;
-}
-
-export function billingFrequencyToDisplayMode(billingFrequency: string): string {
-  switch (billingFrequency) {
-    case 'QUARTERLY':
-      return 'PER_QUARTER';
-    case 'ANNUALLY':
-      return 'PER_YEAR';
-    case 'ONE_TIME':
-      return 'ONE_TIME';
-    case 'WEEKLY':
-    case 'MONTHLY':
-    default:
-      return 'PER_MONTH';
-  }
 }
 
 export interface BuiltProposalService {
@@ -97,7 +81,7 @@ export function buildProposalServiceRecord(
 
   const line = calculateLineItem({
     basePrice: displayPrice,
-    billingFrequency: billingFrequency as PricingFrequency,
+    billingFrequency,
     quantity,
     discountPercent,
     vatRate,

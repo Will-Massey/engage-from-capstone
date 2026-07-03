@@ -40,6 +40,8 @@ const CommandPalette = ({ isOpen, onClose }: CommandPaletteProps) => {
   const [selectedIndex, setSelectedIndex] = useState(0);
   const [aiLoading, setAiLoading] = useState(false);
   const [aiReply, setAiReply] = useState<string | null>(null);
+  const [searchResults, setSearchResults] = useState<Command[]>([]);
+  const [searchLoading, setSearchLoading] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -144,6 +146,57 @@ const CommandPalette = ({ isOpen, onClose }: CommandPaletteProps) => {
   const commands = getCommands();
 
   const aiQuery = search.trim().replace(/^ai\s+/i, '').trim();
+  const entityQuery = search.trim().toLowerCase();
+
+  useEffect(() => {
+    if (!isOpen) return;
+    if (entityQuery.length < 2 || entityQuery.startsWith('ai ')) {
+      setSearchResults([]);
+      return;
+    }
+
+    const timer = setTimeout(async () => {
+      setSearchLoading(true);
+      try {
+        const [proposalsRes, clientsRes] = await Promise.all([
+          apiClient.getProposals({ search: entityQuery, limit: 5 }) as Promise<any>,
+          apiClient.getClients({ search: entityQuery, limit: 5 }) as Promise<any>,
+        ]);
+
+        const dynamic: Command[] = [];
+
+        for (const p of proposalsRes.data || []) {
+          dynamic.push({
+            id: `proposal-${p.id}`,
+            title: p.title || p.reference,
+            subtitle: `${p.client?.name || 'Client'} · ${p.status} · £${(p.total || 0).toLocaleString()}`,
+            icon: DocumentTextIcon,
+            category: 'Proposals',
+            action: () => navigate(`/proposals/${p.id}`),
+          });
+        }
+
+        for (const c of clientsRes.data || []) {
+          dynamic.push({
+            id: `client-${c.id}`,
+            title: c.name,
+            subtitle: c.contactEmail || c.companyType?.replace(/_/g, ' '),
+            icon: UsersIcon,
+            category: 'Clients',
+            action: () => navigate(`/clients/${c.id}`),
+          });
+        }
+
+        setSearchResults(dynamic);
+      } catch {
+        setSearchResults([]);
+      } finally {
+        setSearchLoading(false);
+      }
+    }, 250);
+
+    return () => clearTimeout(timer);
+  }, [entityQuery, isOpen, navigate]);
 
   const runAiCommand = useCallback(async () => {
     if (!aiQuery || aiLoading) return;
@@ -203,9 +256,14 @@ const CommandPalette = ({ isOpen, onClose }: CommandPaletteProps) => {
       filteredCommands.length === 0 ||
       /^(draft|create|renew|follow|show|open|health|suggest)/i.test(aiQuery));
 
+  const baseItems =
+    searchResults.length > 0 && entityQuery.length >= 2 && !entityQuery.startsWith('ai ')
+      ? [...searchResults, ...filteredCommands.filter((c) => c.category === 'Actions')]
+      : filteredCommands;
+
   const displayItems = showAiFallback
     ? [
-        ...filteredCommands,
+        ...baseItems,
         {
           id: 'ai-run',
           title: aiLoading ? `Asking ${AI_COPILOT.name}…` : `Ask ${AI_COPILOT.name}: "${aiQuery}"`,
@@ -215,7 +273,7 @@ const CommandPalette = ({ isOpen, onClose }: CommandPaletteProps) => {
           action: runAiCommand,
         },
       ]
-    : filteredCommands;
+    : baseItems;
 
   // Group by category
   const groupedCommands = displayItems.reduce(
@@ -317,6 +375,9 @@ const CommandPalette = ({ isOpen, onClose }: CommandPaletteProps) => {
 
         {/* Results */}
         <div ref={containerRef} className="max-h-[60vh] overflow-y-auto py-2 scrollbar-hide">
+          {searchLoading && entityQuery.length >= 2 && (
+            <div className="px-4 py-3 text-sm text-slate-500">Searching clients and proposals…</div>
+          )}
           {displayItems.length === 0 ? (
             <div className="px-4 py-8 text-center">
               <p className="text-slate-500 dark:text-slate-300">No commands found</p>

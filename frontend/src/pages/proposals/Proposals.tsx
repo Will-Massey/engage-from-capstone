@@ -238,9 +238,9 @@ const Proposals = () => {
             Export CSV
           </button>
         )}
-        <Link to="/proposals/new" className="btn-primary">
+        <Link to="/proposals/wizard" className="btn-primary bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-700 hover:to-indigo-700">
           <PlusIcon className="h-5 w-5 mr-2" />
-          Create Proposal
+          Create proposal in 5 minutes
         </Link>
       </div>
 

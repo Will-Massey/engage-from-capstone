@@ -1449,6 +1449,43 @@ const Settings = () => {
                 >
                   {isSaving === 'billing' ? 'Saving…' : 'Save VAT settings'}
                 </button>
+
+                {/* MTD explainer — how clauses appear in generated letters */}
+                <div className="pt-6 border-t border-slate-200 dark:border-slate-700">
+                  <div className="flex items-start gap-3">
+                    <SparklesIcon className="h-5 w-5 text-violet-600 dark:text-violet-400 shrink-0 mt-0.5" />
+                    <div>
+                      <h3 className="text-sm font-semibold text-slate-900 dark:text-white">
+                        Making Tax Digital (MTD) in proposals
+                      </h3>
+                      <div className="mt-2 space-y-2 text-sm text-slate-600 dark:text-slate-300 leading-relaxed">
+                        <p>
+                          When a client&apos;s MTD ITSA status is <strong>mandatory</strong> or{' '}
+                          <strong>required from 2026/2027</strong>, Engage&apos;s regulatory fit
+                          engine flags proposals that lack MTD wording.
+                        </p>
+                        <p>
+                          MTD clauses appear in two places: as a dedicated{' '}
+                          <strong>MTD ITSA service line</strong> in the fee schedule, and/or within
+                          the <strong>engagement letter terms</strong> that Clara drafts when you
+                          generate or stream a cover letter. The standard block covers digital
+                          record-keeping, quarterly updates, and end-of-period statements.
+                        </p>
+                        <p>
+                          Use the <strong>5-minute proposal wizard</strong> or proposal builder —
+                          Clara will suggest MTD services for eligible clients. You can review and
+                          accept each section before it is applied; nothing is overwritten without
+                          your approval.
+                        </p>
+                        <p className="text-xs text-slate-500 dark:text-slate-400">
+                          Regulatory alerts for live proposals appear on the dashboard and via{' '}
+                          <code className="text-violet-600 dark:text-violet-400">/api/ai/regulatory-alerts</code>
+                          .
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
               </div>
             </div>
           )}

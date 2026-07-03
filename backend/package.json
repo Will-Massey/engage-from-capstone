@@ -21,6 +21,7 @@
     "job:renewal-reminders": "npx tsx scripts/run-renewal-reminders.ts"
   },
   "dependencies": {
+    "@uk-proposal-platform/shared": "1.0.0",
     "@prisma/client": "5.22.0",
     "@sendgrid/eventwebhook": "^8.0.0",
     "@sendgrid/mail": "^8.1.6",

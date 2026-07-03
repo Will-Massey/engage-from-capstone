@@ -19,6 +19,13 @@ router.get(
     const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
     const ninetyDaysAgo = new Date(now.getTime() - 90 * 24 * 60 * 60 * 1000);
 
+    const monthNames = [
+      'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+      'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
+    ];
+    const sixMonthsAgo = new Date(now.getFullYear(), now.getMonth() - 5, 1);
+    const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+
     // Get proposal stats
     const [
       totalProposals,
@@ -28,6 +35,14 @@ router.get(
       totalValue,
       valueThisMonth,
       conversionRate,
+      sentCount,
+      viewedCount,
+      signedCount,
+      pipelineValue,
+      monthlyRevenue,
+      statusCounts,
+      dailyActivity,
+      recentActivities,
     ] = await Promise.all([
       // Total proposals
       prisma.proposal.count({
@@ -90,6 +105,47 @@ router.get(
           },
         }),
       ]),
+
+      prisma.proposal.count({ where: { tenantId, status: 'SENT' } }),
+      prisma.proposal.count({ where: { tenantId, status: 'VIEWED' } }),
+      prisma.proposal.count({ where: { tenantId, status: 'ACCEPTED' } }),
+      prisma.proposal.aggregate({
+        where: { tenantId, status: { in: ['SENT', 'VIEWED'] } },
+        _sum: { total: true },
+      }),
+
+      prisma.$queryRaw`
+        SELECT DATE_TRUNC('month', "createdAt") as month, SUM(total) as revenue
+        FROM "Proposal"
+        WHERE "tenantId" = ${tenantId}
+          AND status = 'ACCEPTED'
+          AND "createdAt" >= ${sixMonthsAgo}
+        GROUP BY DATE_TRUNC('month', "createdAt")
+        ORDER BY month ASC
+      ` as Promise<any[]>,
+
+      prisma.proposal.groupBy({
+        by: ['status'],
+        where: { tenantId },
+        _count: { status: true },
+      }),
+
+      prisma.$queryRaw`
+        SELECT DATE("createdAt") as day,
+          COUNT(*) FILTER (WHERE "entityType" = 'PROPOSAL') as proposals,
+          COUNT(*) FILTER (WHERE action = 'VIEWED' OR action = 'PROPOSAL_VIEWED') as views
+        FROM "ActivityLog"
+        WHERE "tenantId" = ${tenantId}
+          AND "createdAt" >= ${sevenDaysAgo}
+        GROUP BY DATE("createdAt")
+        ORDER BY day ASC
+      ` as Promise<any[]>,
+
+      prisma.activityLog.findMany({
+        where: { tenantId },
+        orderBy: { createdAt: 'desc' },
+        take: 10,
+      }),
     ]);
 
     // Get client stats
@@ -150,17 +206,74 @@ router.get(
       name: serviceNames.find((n) => n.id === s.serviceTemplateId)?.name || 'Unknown Service',
     }));
 
-    // Calculate conversion rate
-    const [sentCount, acceptedCount] = conversionRate;
-    const conversionRatePercent = sentCount > 0 ? Math.round((acceptedCount / sentCount) * 100) : 0;
+    const [funnelSent, acceptedCount] = conversionRate;
+    const conversionRatePercent = funnelSent > 0 ? Math.round((acceptedCount / funnelSent) * 100) : 0;
+    const viewRate = sentCount > 0 ? Math.round((viewedCount / sentCount) * 100) : 0;
+    const signRate = viewedCount > 0 ? Math.round((signedCount / viewedCount) * 100) : 0;
 
-    // Calculate growth percentages
     const proposalGrowth =
       proposalsLastMonth > 0
         ? Math.round(((proposalsThisMonth - proposalsLastMonth) / proposalsLastMonth) * 100)
         : proposalsThisMonth > 0
           ? 100
           : 0;
+
+    const statusColors: Record<string, string> = {
+      DRAFT: '#9CA3AF',
+      SENT: '#3B82F6',
+      VIEWED: '#8B5CF6',
+      ACCEPTED: '#10B981',
+      DECLINED: '#EF4444',
+      EXPIRED: '#6B7280',
+    };
+
+    const revenueData = (monthlyRevenue as any[]).map((row: any) => ({
+      name: monthNames[new Date(row.month).getMonth()],
+      value: Number(row.revenue) || 0,
+    }));
+
+    const proposalStatusData = statusCounts.map((s: any) => ({
+      name: s.status.charAt(0) + s.status.slice(1).toLowerCase(),
+      value: s._count.status,
+      color: statusColors[s.status] || '#9CA3AF',
+    }));
+
+    const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+    const weeklyActivity = (dailyActivity as any[]).map((row: any) => ({
+      day: dayNames[new Date(row.day).getDay()],
+      proposals: Number(row.proposals) || 0,
+      views: Number(row.views) || 0,
+    }));
+
+    const activityTypeMap: Record<string, { message: string; color: string }> = {
+      CREATED: { message: 'New proposal created', color: 'blue' },
+      PROPOSAL_SENT: { message: 'Proposal sent', color: 'purple' },
+      SENT: { message: 'Proposal sent', color: 'purple' },
+      VIEWED: { message: 'Proposal viewed', color: 'gray' },
+      PROPOSAL_SIGNED: { message: 'Proposal signed', color: 'green' },
+      ACCEPTED: { message: 'Proposal accepted', color: 'green' },
+      PROPOSAL_DECLINED: { message: 'Proposal declined', color: 'red' },
+      DECLINED: { message: 'Proposal declined', color: 'red' },
+    };
+
+    const recentActivity = recentActivities.map((activity: any) => {
+      const mapped = activityTypeMap[activity.action] || {
+        message: activity.description || 'Activity recorded',
+        color: 'gray',
+      };
+      return {
+        id: activity.id,
+        type: activity.action,
+        message: mapped.message,
+        time: new Date(activity.createdAt).toLocaleDateString('en-GB', {
+          day: 'numeric',
+          month: 'short',
+          hour: '2-digit',
+          minute: '2-digit',
+        }),
+        color: mapped.color,
+      };
+    });
 
     res.json({
       success: true,
@@ -170,6 +283,9 @@ router.get(
           thisMonth: proposalsThisMonth,
           lastMonth: proposalsLastMonth,
           growth: proposalGrowth,
+          sent: sentCount,
+          viewed: viewedCount,
+          signed: signedCount,
           statusBreakdown: proposalStatusBreakdown.reduce(
             (acc, item) => ({
               ...acc,
@@ -178,15 +294,22 @@ router.get(
             {}
           ),
         },
+        pipeline: {
+          value: pipelineValue._sum.total || 0,
+          currency: 'GBP',
+        },
         revenue: {
           total: totalValue._sum.total || 0,
+          accepted: signedCount,
           thisMonth: valueThisMonth._sum.total || 0,
           currency: 'GBP',
         },
         conversion: {
           rate: conversionRatePercent,
-          sent: sentCount,
+          sent: funnelSent,
           accepted: acceptedCount,
+          viewRate,
+          signRate,
         },
         clients: {
           total: totalClients,
@@ -204,6 +327,10 @@ router.get(
           count: s._count.serviceTemplateId,
           revenue: s._sum.lineTotal || 0,
         })),
+        revenueData,
+        proposalStatusData,
+        weeklyActivity,
+        recentActivity,
       },
     });
   })

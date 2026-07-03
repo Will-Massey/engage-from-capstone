@@ -4,6 +4,7 @@ import PDFDocument from 'pdfkit';
 // Use any for the document type to avoid TS2749 errors
 type PDFDoc = any;
 import { prisma } from '../config/database.js';
+import { formatGeoLocationDisplay } from '../utils/signatureAudit.js';
 
 interface ProposalData {
   id: string;
@@ -668,7 +669,7 @@ ${proposal.tenant.name}`;
       ['Email', sig.signerEmail || '—'],
       ['Signed at (UTC)', new Date(sig.signedAt).toISOString()],
       ['IP address', sig.ipAddress || '—'],
-      ['Location', sig.geoLocation || '—'],
+      ['Location', formatGeoLocationDisplay(sig.geoLocation)],
       ['Signature type', sig.signatureType || 'SIMPLE_ELECTRONIC'],
       ['Agreement version', sig.agreementVersion || '—'],
       ['Document hash', sig.documentHash || '—'],

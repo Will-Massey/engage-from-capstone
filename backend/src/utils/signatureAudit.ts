@@ -48,31 +48,56 @@ export function hashTerms(terms: string | null | undefined): string {
   return crypto.createHash('sha256').update(terms || '').digest('hex');
 }
 
-/** Best-effort IP geolocation (no API key required). */
+export type GeoLocationPayload = {
+  city: string | null;
+  country: string | null;
+};
+
+/** Serialise geo payload for storage in ProposalSignature.geoLocation. */
+export function formatGeoLocationJson(payload: GeoLocationPayload): string | null {
+  if (!payload.city && !payload.country) return null;
+  return JSON.stringify(payload);
+}
+
+/** Human-readable label from stored geoLocation (JSON or legacy string). */
+export function formatGeoLocationDisplay(geoLocation: string | null | undefined): string {
+  if (!geoLocation) return '—';
+  try {
+    const parsed = JSON.parse(geoLocation) as GeoLocationPayload;
+    const parts = [parsed.city, parsed.country].filter(Boolean);
+    if (parts.length) return parts.join(', ');
+  } catch {
+    // Legacy plain-text value
+  }
+  return geoLocation;
+}
+
+/** Best-effort IP geolocation via ip-api.com (no API key, 3s timeout). */
 export async function lookupGeoFromIp(ip: string | null): Promise<string | null> {
   if (!ip) return null;
   const normalized = ip.replace(/^::ffff:/, '');
   if (normalized === '::1' || normalized.startsWith('127.') || normalized === 'localhost') {
-    return 'Local development';
+    return formatGeoLocationJson({ city: 'Local', country: 'Development' });
   }
 
   try {
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 3000);
     const res = await fetch(
-      `http://ip-api.com/json/${encodeURIComponent(normalized)}?fields=status,city,regionName,country`,
+      `http://ip-api.com/json/${encodeURIComponent(normalized)}?fields=status,city,country`,
       { signal: controller.signal }
     );
     clearTimeout(timeout);
     const data = (await res.json()) as {
       status?: string;
       city?: string;
-      regionName?: string;
       country?: string;
     };
     if (data.status === 'success') {
-      const parts = [data.city, data.regionName, data.country].filter(Boolean);
-      return parts.join(', ') || null;
+      return formatGeoLocationJson({
+        city: data.city || null,
+        country: data.country || null,
+      });
     }
   } catch (err) {
     logger.debug('IP geolocation lookup failed', err);

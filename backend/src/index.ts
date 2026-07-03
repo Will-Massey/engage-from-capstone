@@ -31,6 +31,7 @@ import tenantRoutes from './routes/tenants.js';
 import emailRoutes from './routes/email.js';
 import paymentRoutes from './routes/payments.js';
 import adfinRoutes from './routes/adfin.js';
+import billingRoutes from './routes/billing.js';
 import coverLetterTemplateRoutes from './routes/coverLetterTemplates.js';
 import analyticsRoutes from './routes/analytics.js';
 import touchpointRoutes from './routes/touchpoints.js';
@@ -51,6 +52,8 @@ import { cache } from './utils/cache.js';
 import healthRouter from './routes/health.js';
 import setupRouter from './routes/setup.js';
 import adminRouter from './routes/admin.js';
+import { initEngageSuperadmin } from './lib/superadmin.js';
+import { syncEngageToSuperadmin, isSuperadminSyncConfigured } from './services/superadminSyncService.js';
 
 // Dynamic import for auto-migration to handle cases where module might not be built
 let autoMigrateOnStartup: any = null;
@@ -72,12 +75,28 @@ app.use(
     contentSecurityPolicy: {
       directives: {
         defaultSrc: ["'self'"],
-        scriptSrc: ["'self'", "'unsafe-inline'"],
+        scriptSrc: [
+          "'self'",
+          "'unsafe-inline'",
+          'https://sandbox-checkout.revolut.com',
+          'https://checkout.revolut.com',
+        ],
         styleSrc: ["'self'", "'unsafe-inline'", 'https://fonts.googleapis.com'],
         fontSrc: ["'self'", 'https://fonts.gstatic.com'],
         imgSrc: ["'self'", 'data:', 'blob:', 'https:'],
-        connectSrc: ["'self'", process.env.FRONTEND_URL || 'http://localhost:5173'],
-        frameSrc: ["'self'"],
+        connectSrc: [
+          "'self'",
+          process.env.FRONTEND_URL || 'http://localhost:5173',
+          'https://sandbox-merchant.revolut.com',
+          'https://merchant.revolut.com',
+          'https://sandbox-checkout.revolut.com',
+          'https://checkout.revolut.com',
+        ],
+        frameSrc: [
+          "'self'",
+          'https://sandbox-checkout.revolut.com',
+          'https://checkout.revolut.com',
+        ],
         objectSrc: ["'none'"],
         baseUri: ["'self'"],
         formAction: ["'self'"],
@@ -308,8 +327,21 @@ app.use(cookieParser());
 // Stripe webhook must receive raw body — mount before express.json()
 app.use('/api/payments/webhook', stripeWebhookRoutes);
 
+// Revolut billing webhook — raw body for HMAC verification (handler mounted with /api/billing below)
+app.use(
+  '/api/billing/webhook',
+  express.json({
+    limit: '64kb',
+    verify: (req, _res, buf) => {
+      (req as express.Request & { rawBody?: Buffer }).rawBody = buf;
+    },
+  }),
+);
+
 // Body parsing — SendGrid webhook needs raw body for signature verification
 import sendgridWebhookRoutes from './routes/webhooks/sendgrid.js';
+import emailEventsWebhookRoutes from './routes/webhooks/email-events.js';
+import proposalTemplateRoutes from './routes/proposal-templates.js';
 
 app.use(
   '/api/webhooks/sendgrid',
@@ -326,6 +358,8 @@ app.use(
   },
   sendgridWebhookRoutes
 );
+
+app.use('/api/webhooks/email-events', emailEventsWebhookRoutes);
 
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
@@ -888,9 +922,11 @@ app.use('/api/tenants', tenantRoutes);
 app.use('/api/email', extractTenant, emailRoutes);
 app.use('/api/payments', extractTenant, paymentRoutes);
 app.use('/api/payments/adfin', extractTenant, adfinRoutes);
+app.use('/api/billing', extractTenant, billingRoutes);
 app.use('/api/companies-house', extractTenant, companiesHouseRoutes);
 app.use('/api/cover-letter-templates', extractTenant, coverLetterTemplateRoutes);
 app.use('/api/analytics', extractTenant, analyticsRoutes);
+app.use('/api/proposal-templates', extractTenant, proposalTemplateRoutes);
 app.use('/api/touchpoints', extractTenant, touchpointRoutes);
 app.use('/api/automation', extractTenant, automationRoutes);
 app.use('/api/uploads', extractTenant, uploadsRoutes);
@@ -967,6 +1003,7 @@ import { runRenewalReminders } from './jobs/renewalReminders.js';
 
 // Client touchpoint / lifecycle automation engine
 import { runTouchpointEngine } from './jobs/touchpointEngine.js';
+import { runEmailAutomation } from './jobs/emailAutomation.js';
 
 // Run immediately on startup in production, or every 24 hours
 const RENEWAL_CHECK_INTERVAL = 24 * 60 * 60 * 1000; // 24 hours
@@ -1008,6 +1045,22 @@ function scheduleTouchpointEngine() {
   logger.info('✅ Touchpoint engine scheduled (every 15 minutes)');
 }
 
+function scheduleEmailAutomation() {
+  logger.info('📅 Scheduling proposal email automation (unopened 3d, unsigned 7d, expiring 30d)...');
+
+  const INTERVAL = 24 * 60 * 60 * 1000; // daily
+
+  setTimeout(() => {
+    runEmailAutomation().catch((err) => logger.error('Initial email automation run failed:', err));
+  }, 120_000);
+
+  setInterval(() => {
+    runEmailAutomation().catch((err) => logger.error('Scheduled email automation failed:', err));
+  }, INTERVAL);
+
+  logger.info('✅ Email automation scheduled (every 24 hours)');
+}
+
 // Start server (skipped in Jest so supertest can import the app)
 const shouldStartServer =
   process.env.NODE_ENV !== 'test' && !process.env.JEST_WORKER_ID;
@@ -1021,6 +1074,25 @@ if (shouldStartServer) {
 
     scheduleRenewalReminders();
     scheduleTouchpointEngine();
+    scheduleEmailAutomation();
+    initEngageSuperadmin();
+
+    if (isSuperadminSyncConfigured()) {
+      syncEngageToSuperadmin()
+        .then((r) => logger.info('[engage] Superadmin initial sync', r))
+        .catch((err: unknown) => {
+          const message = err instanceof Error ? err.message : String(err);
+          logger.warn('[engage] Superadmin initial sync failed:', message);
+        });
+
+      const SUPERADMIN_SYNC_MS = 15 * 60 * 1000;
+      setInterval(() => {
+        syncEngageToSuperadmin().catch((err: unknown) => {
+          const message = err instanceof Error ? err.message : String(err);
+          logger.error('[engage] Superadmin scheduled sync failed:', message);
+        });
+      }, SUPERADMIN_SYNC_MS);
+    }
 
     if (autoMigrateOnStartup) {
       setTimeout(() => {

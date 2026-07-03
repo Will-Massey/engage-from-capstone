@@ -6,6 +6,8 @@ import { asyncHandler, ApiError } from '../middleware/errorHandler.js';
 import { generateToken, authenticate, generateRefreshToken } from '../middleware/auth.js';
 import { allowPublicTenantSignup } from '../utils/securityFlags.js';
 import { setAuthCookies } from '../utils/authCookies.js';
+import { getEngageSuperadmin } from '../lib/superadmin.js';
+import logger from '../config/logger.js';
 
 const router = Router();
 
@@ -115,15 +117,21 @@ router.post(
     // Hash password
     const passwordHash = await bcrypt.hash(data.adminPassword, 12);
 
+    const trialEndsAt = new Date();
+    trialEndsAt.setDate(trialEndsAt.getDate() + 14);
+
     // Create tenant and admin user in transaction
     const result = await prisma.$transaction(async (tx) => {
-      // Create tenant
+      // Create tenant with 14-day trial
       const tenant = await tx.tenant.create({
         data: {
           subdomain: data.subdomain,
           name: data.name,
           primaryColor: data.primaryColor || '#0ea5e9',
           settings: data.settings as any,
+          subscriptionStatus: 'trial',
+          subscriptionTier: 'PROFESSIONAL',
+          trialEndsAt,
         },
       });
 
@@ -158,6 +166,26 @@ router.post(
 
     const refreshToken = await generateRefreshToken(result.user.id);
     setAuthCookies(res, token, refreshToken);
+
+    const superadmin = getEngageSuperadmin();
+    if (superadmin) {
+      try {
+        await superadmin.reportSignup({
+          tenantId: result.tenant.id,
+          name: result.tenant.name,
+          email: result.user.email,
+          plan: 'trial',
+        });
+        await superadmin.reportTrialStarted({
+          tenantId: result.tenant.id,
+          name: result.tenant.name,
+          trialEndsAt: trialEndsAt.toISOString(),
+        });
+      } catch (err) {
+        const message = err instanceof Error ? err.message : String(err);
+        logger.warn('[tenants] Superadmin trial reporting failed:', message);
+      }
+    }
 
     res.status(201).json({
       success: true,

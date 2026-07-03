@@ -46,6 +46,66 @@ async function main() {
     console.log('ℹ️ Demo user already exists');
   }
 
+  // Sector proposal templates (contractor, landlord, SME Ltd)
+  const templates = [
+    {
+      name: 'Contractor / Freelancer',
+      description: 'Self-employed contractor engagement — accounts, SA, MTD ITSA',
+      targetEntityType: 'SOLE_TRADER',
+      targetIndustry: 'contractor',
+      title: 'Accountancy Services for Contractors',
+      coverLetter:
+        'Thank you for considering our services. This proposal outlines our fixed-fee package tailored for contractors and freelancers.',
+      serviceConfig: JSON.stringify([
+        { name: 'Self Assessment Tax Return', quantity: 1, billingFrequency: 'ANNUALLY' },
+        { name: 'Bookkeeping (Monthly)', quantity: 1, billingFrequency: 'MONTHLY' },
+      ]),
+      defaultPricing: JSON.stringify({ paymentTerms: '30 days' }),
+    },
+    {
+      name: 'Landlord Portfolio',
+      description: 'Property landlord package — rental accounts, SA, CGT advice',
+      targetEntityType: 'SOLE_TRADER',
+      targetIndustry: 'landlord',
+      title: 'Landlord Accountancy Services',
+      coverLetter:
+        'We specialise in supporting UK landlords with rental income reporting and tax-efficient structuring.',
+      serviceConfig: JSON.stringify([
+        { name: 'Rental Accounts & Self Assessment', quantity: 1, billingFrequency: 'ANNUALLY' },
+        { name: 'Quarterly Bookkeeping Review', quantity: 1, billingFrequency: 'QUARTERLY' },
+      ]),
+      defaultPricing: JSON.stringify({ paymentTerms: '30 days' }),
+    },
+    {
+      name: 'SME Limited Company',
+      description: 'Standard Ltd company compliance — accounts, CT, payroll, VAT',
+      targetEntityType: 'LIMITED_COMPANY',
+      targetIndustry: 'sme',
+      title: 'Limited Company Compliance Package',
+      coverLetter:
+        'This proposal covers the core compliance services your limited company requires.',
+      serviceConfig: JSON.stringify([
+        { name: 'Annual Accounts Preparation', quantity: 1, billingFrequency: 'ANNUALLY' },
+        { name: 'Corporation Tax Return (CT600)', quantity: 1, billingFrequency: 'ANNUALLY' },
+        { name: 'Payroll Processing', quantity: 1, billingFrequency: 'MONTHLY' },
+      ]),
+      defaultPricing: JSON.stringify({ paymentTerms: '30 days' }),
+      isDefault: true,
+    },
+  ];
+
+  for (const tpl of templates) {
+    const exists = await prisma.proposalTemplate.findFirst({
+      where: { tenantId: tenant.id, name: tpl.name },
+    });
+    if (!exists) {
+      await prisma.proposalTemplate.create({
+        data: { tenantId: tenant.id, ...tpl, isActive: true },
+      });
+      console.log(`✅ Created proposal template: ${tpl.name}`);
+    }
+  }
+
   console.log('Seed completed!');
 }
 

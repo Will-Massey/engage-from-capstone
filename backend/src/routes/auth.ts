@@ -20,7 +20,8 @@ import {
   LOGIN_LOCKOUT_MAX,
 } from '../utils/loginLockout.js';
 // import { twoFactorService } from '../services/twoFactorService.js';
-// import { passwordResetService } from '../services/passwordResetService.js';
+import { passwordResetService } from '../services/passwordResetService.js';
+import { enforceTierLimit } from '../middleware/tierLimits.js';
 import { gdprService } from '../services/gdprService.js';
 import { createEmailService } from '../services/emailService.js';
 import { setAuthCookies, clearAuthCookies } from '../utils/authCookies.js';
@@ -557,6 +558,7 @@ router.post(
   '/users',
   authenticate,
   authorize('ADMIN', 'PARTNER', 'MANAGER'),
+  enforceTierLimit('users'),
   asyncHandler(async (req, res) => {
     const createUserSchema = z.object({
       email: z.string().email('Invalid email'),
@@ -731,33 +733,140 @@ router.delete(
 );
 
 // ============================================================================
-// PASSWORD RESET - DISABLED (requires passwordReset model in schema)
+// PASSWORD RESET
 // ============================================================================
+
+const forgotPasswordSchema = z.object({
+  email: z.string().email('Please enter a valid email address'),
+});
+
+const resetPasswordSchema = z.object({
+  token: z.string().min(1, 'Reset token is required'),
+  newPassword: z.string().min(8, 'Password must be at least 8 characters'),
+});
 
 /**
  * POST /api/auth/forgot-password
- * Request password reset email - DISABLED
+ * Request password reset email
  */
 router.post(
   '/forgot-password',
-  asyncHandler(async (_req, res) => {
-    res.status(501).json({
-      success: false,
-      error: { code: 'NOT_IMPLEMENTED', message: 'Password reset not implemented' },
+  asyncHandler(async (req, res) => {
+    const { email } = forgotPasswordSchema.parse(req.body);
+
+    const user = await prisma.user.findFirst({
+      where: {
+        email: email.toLowerCase(),
+        isActive: true,
+      },
+      include: { tenant: true },
+    });
+
+    if (user) {
+      const { token, tokenHash, expiresAt } = passwordResetService.generateToken();
+
+      await prisma.passwordReset.deleteMany({
+        where: { userId: user.id },
+      });
+
+      await prisma.passwordReset.create({
+        data: {
+          userId: user.id,
+          tokenHash,
+          expiresAt,
+        },
+      });
+
+      const emailService = createEmailService();
+      if (emailService) {
+        const frontendUrl = (process.env.FRONTEND_URL || 'http://localhost:5173').replace(
+          /\/$/,
+          ''
+        );
+        const resetUrl = `${frontendUrl}/reset-password?token=${encodeURIComponent(token)}`;
+        const practiceName = user.tenant?.name || 'your practice';
+
+        await emailService.sendEmail({
+          to: user.email,
+          subject: 'Reset your Engage password',
+          text:
+            `Hello ${user.firstName},\n\n` +
+            `We received a request to reset the password for your Engage account at ${practiceName}.\n\n` +
+            `Reset your password using this link (valid for 15 minutes):\n${resetUrl}\n\n` +
+            `If you did not request this, you can safely ignore this email.\n\n` +
+            `Engage by Capstone`,
+          html:
+            `<p>Hello ${user.firstName},</p>` +
+            `<p>We received a request to reset the password for your Engage account at <strong>${practiceName}</strong>.</p>` +
+            `<p><a href="${resetUrl}">Reset your password</a> (link valid for 15 minutes).</p>` +
+            `<p>If you did not request this, you can safely ignore this email.</p>` +
+            `<p>Engage by Capstone</p>`,
+        });
+      } else {
+        logger.warn('Password reset requested but EMAIL_PROVIDER is not configured');
+      }
+    }
+
+    res.json({
+      success: true,
+      data: {
+        message: 'If an account exists for that email, reset instructions have been sent.',
+      },
     });
   })
 );
 
 /**
  * POST /api/auth/reset-password
- * Reset password with token - DISABLED
+ * Reset password with token
  */
 router.post(
   '/reset-password',
-  asyncHandler(async (_req, res) => {
-    res.status(501).json({
-      success: false,
-      error: { code: 'NOT_IMPLEMENTED', message: 'Password reset not implemented' },
+  asyncHandler(async (req, res) => {
+    const { token, newPassword } = resetPasswordSchema.parse(req.body);
+
+    const strength = passwordResetService.validatePasswordStrength(newPassword);
+    if (!strength.isValid) {
+      throw new ApiError('WEAK_PASSWORD', strength.errors.join('. '), 400);
+    }
+
+    const tokenHash = passwordResetService.hashToken(token);
+    const resetRecord = await prisma.passwordReset.findFirst({
+      where: {
+        tokenHash,
+        expiresAt: { gt: new Date() },
+        usedAt: null,
+      },
+      include: { user: true },
+    });
+
+    if (!resetRecord) {
+      throw new ApiError(
+        'INVALID_RESET_TOKEN',
+        'This password reset link is invalid or has expired.',
+        400
+      );
+    }
+
+    const passwordHash = await bcrypt.hash(newPassword, 12);
+
+    await prisma.$transaction([
+      prisma.user.update({
+        where: { id: resetRecord.userId },
+        data: { passwordHash },
+      }),
+      prisma.passwordReset.update({
+        where: { id: resetRecord.id },
+        data: { usedAt: new Date() },
+      }),
+      prisma.refreshToken.deleteMany({
+        where: { userId: resetRecord.userId },
+      }),
+    ]);
+
+    res.json({
+      success: true,
+      data: { message: 'Password reset successfully. You can now sign in.' },
     });
   })
 );
