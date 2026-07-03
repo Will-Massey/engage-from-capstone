@@ -35,6 +35,7 @@ import { getRegulatoryAlerts } from '../services/ai/regulatoryWatcherService.js'
 import { advisePricing, type PricingAdvisorLineInput } from '../services/regulatoryFitService.js';
 import { getBenchmarkPricing } from '../services/ai/benchmarkPricingService.js';
 import { draftProposalFromVoice } from '../services/ai/voiceProposalService.js';
+import { triageClientReply } from '../services/replyRoutingService.js';
 import { AI_COPILOT } from '../config/aiCopilot.js';
 import { shouldSkipRateLimit } from '../utils/securityFlags.js';
 
@@ -954,6 +955,65 @@ router.post(
       res.end();
     }
   })
+);
+
+/** POST /api/ai/reply-triage — Clara drafts partner response from client email reply */
+router.post(
+  '/reply-triage',
+  asyncHandler(async (req, res) => {
+    const body = z
+      .object({
+        from: z.string().email(),
+        subject: z.string().min(1).max(500),
+        body: z.string().min(10).max(8000),
+        proposalId: z.string().uuid().optional(),
+        clientName: z.string().optional(),
+      })
+      .parse(req.body);
+
+    const data = await triageClientReply(req.tenantId!, req.user?.id, body);
+    res.json({ success: true, data });
+  }),
+);
+
+/** POST /api/ai/voice-of-practice — store practice tone samples for Clara personalisation */
+router.post(
+  '/voice-of-practice',
+  asyncHandler(async (req, res) => {
+    const { samples } = z
+      .object({
+        samples: z
+          .array(
+            z.object({
+              label: z.string().min(1).max(100),
+              content: z.string().min(20).max(4000),
+            }),
+          )
+          .min(1)
+          .max(10),
+      })
+      .parse(req.body);
+
+    const { prisma } = await import('../config/database.js');
+    const tenant = await prisma.tenant.findUnique({
+      where: { id: req.tenantId! },
+      select: { settings: true },
+    });
+
+    const settings = JSON.parse(tenant?.settings || '{}');
+    settings.voiceOfPractice = {
+      samples,
+      updatedAt: new Date().toISOString(),
+      updatedBy: req.user?.id,
+    };
+
+    await prisma.tenant.update({
+      where: { id: req.tenantId! },
+      data: { settings: JSON.stringify(settings) },
+    });
+
+    res.json({ success: true, data: { sampleCount: samples.length } });
+  }),
 );
 
 export default router;

@@ -1,5 +1,6 @@
 import { prisma } from '../../config/database.js';
 import logger from '../../config/logger.js';
+import { getEngageSuperadmin } from '../superadmin.js';
 import { PLATFORM_PLANS, type SubscriptionTierKey } from './plans.js';
 import { recordProposalPaymentSplit } from './splits.js';
 
@@ -64,6 +65,11 @@ async function fulfilPlatformSubscription(
     return;
   }
 
+  const tenantBefore = await prisma.tenant.findUnique({
+    where: { id: tenantId },
+    select: { subscriptionStatus: true },
+  });
+
   await prisma.tenant.update({
     where: { id: tenantId },
     data: {
@@ -74,6 +80,26 @@ async function fulfilPlatformSubscription(
       lastPaymentDate: new Date(),
     },
   });
+
+  const plan = PLATFORM_PLANS[tier];
+  const mrr =
+    plan.billingInterval === 'annual'
+      ? Math.round((plan.annualTotal || plan.displayPrice * 12) / 12)
+      : plan.displayPrice;
+
+  const superadmin = getEngageSuperadmin();
+  if (superadmin && tenantBefore?.subscriptionStatus === 'trial') {
+    try {
+      await superadmin.reportConversion({
+        tenantId,
+        plan: tier.replace(/_ANNUAL$/, ''),
+        mrr,
+      });
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      logger.warn('[billing] Superadmin conversion reporting failed:', message);
+    }
+  }
 
   logger.info(`[billing] Engage platform subscription activated: ${tenantId} ${tier}`);
 }

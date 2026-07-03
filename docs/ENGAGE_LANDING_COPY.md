@@ -15,7 +15,7 @@
 Engage is the proposal platform built for UK accountants. Companies House lookup, Clara AI co-pilot, MTD-ready engagement letters, and legally defensible e-sign — all in one place.
 
 ### Primary CTA
-**Start 14-day free trial**
+**Start 7-day free trial**
 
 ### Secondary CTA
 **Book a 15-minute demo**
@@ -61,7 +61,7 @@ Trusted by forward-thinking UK practices · MTD ITSA ready · UK English through
 | API access | — | — | ✓ |
 | Priority support | — | Email | Dedicated |
 
-**All plans include:** 14-day free trial · UK VAT-ready pricing · GDPR-compliant data handling · No card required to start
+**All plans include:** 7-day free trial · UK VAT-ready pricing · GDPR-compliant data handling · No card required to start
 
 ---
 

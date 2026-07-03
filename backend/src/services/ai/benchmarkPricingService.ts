@@ -71,7 +71,9 @@ export async function getBenchmarkPricing(
 
   const optedIn = parseBenchmarkOptIn(tenant?.settings);
 
-  let bands = UK_STUB_BENCHMARKS;
+  const tenantBands = await aggregateTenantBenchmarks(tenantId);
+  let bands = tenantBands.length ? tenantBands : UK_STUB_BENCHMARKS;
+
   if (serviceNames?.length) {
     const lower = serviceNames.map((s) => s.toLowerCase());
     bands = bands.filter((b) =>
@@ -94,7 +96,48 @@ export async function getBenchmarkPricing(
     optedIn,
     bands,
     disclaimer: optedIn
-      ? 'Anonymised cross-practice benchmarks are in preview — figures shown are indicative placeholders.'
+      ? tenantBands.length
+        ? 'Bands combine your accepted proposal history with UK practice norms.'
+        : 'Anonymised cross-practice benchmarks are in preview — figures shown are indicative placeholders.'
       : 'Enable benchmark pricing in Settings to compare your fees with anonymised UK practice data (coming soon).',
   };
+}
+
+async function aggregateTenantBenchmarks(tenantId: string): Promise<BenchmarkBand[]> {
+  const accepted = await prisma.proposal.findMany({
+    where: { tenantId, status: 'ACCEPTED' },
+    include: { services: { select: { name: true, unitPrice: true, billingFrequency: true } } },
+    take: 200,
+    orderBy: { acceptedAt: 'desc' },
+  });
+
+  if (!accepted.length) return [];
+
+  const byCategory = new Map<string, number[]>();
+  for (const p of accepted) {
+    for (const s of p.services) {
+      const key = s.name.split(' ').slice(0, 3).join(' ');
+      const arr = byCategory.get(key) || [];
+      arr.push(s.unitPrice);
+      byCategory.set(key, arr);
+    }
+  }
+
+  const bands: BenchmarkBand[] = [];
+  for (const [category, prices] of byCategory.entries()) {
+    if (prices.length < 2) continue;
+    const sorted = [...prices].sort((a, b) => a - b);
+    const median = sorted[Math.floor(sorted.length / 2)];
+    bands.push({
+      serviceCategory: category,
+      currency: 'GBP',
+      low: sorted[0],
+      median,
+      high: sorted[sorted.length - 1],
+      sampleSize: prices.length,
+      note: `Based on ${prices.length} accepted proposals in your practice.`,
+    });
+  }
+
+  return bands.slice(0, 8);
 }

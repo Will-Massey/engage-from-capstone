@@ -944,6 +944,22 @@ router.get(
 );
 
 /**
+ * GET /api/auth/me/audit-export
+ * SOC2-style audit trail export (PARTNER/MANAGER only)
+ */
+router.get(
+  '/me/audit-export',
+  authenticate,
+  authorize('PARTNER', 'MANAGER', 'ADMIN'),
+  asyncHandler(async (req, res) => {
+    const exportData = await gdprService.exportTenantAudit(req.tenantId!, prisma);
+    res.setHeader('Content-Type', 'application/json');
+    res.setHeader('Content-Disposition', 'attachment; filename="engage-audit-export.json"');
+    res.json({ success: true, data: exportData });
+  }),
+);
+
+/**
  * DELETE /api/auth/me
  * Delete user account (GDPR Article 17)
  */

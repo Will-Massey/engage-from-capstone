@@ -179,7 +179,7 @@ const Onboarding = () => {
   return (
     <div>
       <h2 className="text-2xl font-bold text-slate-900 mb-2">Create your account</h2>
-      <p className="text-slate-700 mb-6">Get started with your 14-day free trial</p>
+      <p className="text-slate-700 mb-6">Get started with your 7-day free trial</p>
 
       {/* Progress steps */}
       <div className="mb-8 overflow-x-auto">

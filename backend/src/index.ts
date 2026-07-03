@@ -39,6 +39,7 @@ import onboardingRoutes from './routes/onboarding.js';
 import aiRoutes from './routes/ai.js';
 import automationRoutes from './routes/automation.js';
 import uploadsRoutes from './routes/uploads.js';
+import integrationsRoutes from './routes/integrations.js';
 import diagnosticsRoutes from './routes/diagnostics.js';
 import { asyncHandler, ApiError } from './middleware/errorHandler.js';
 import { EmailService } from './services/emailService.js';
@@ -931,6 +932,7 @@ app.use('/api/touchpoints', extractTenant, touchpointRoutes);
 app.use('/api/automation', extractTenant, automationRoutes);
 app.use('/api/uploads', extractTenant, uploadsRoutes);
 app.use('/api/ai', extractTenant, aiRoutes);
+app.use('/api/integrations', extractTenant, integrationsRoutes);
 
 // API status endpoint
 app.get('/api/status', (req, res) => {

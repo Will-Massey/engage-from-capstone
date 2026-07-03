@@ -203,6 +203,51 @@ test.describe('VAT Calculation', () => {
   });
 });
 
+test.describe('Pricing parity', () => {
+  test.beforeEach(async ({ page }) => {
+    await loginAsPartner(page);
+  });
+
+  test('create → save → detail view shows same monthly cost band', async ({ page }) => {
+    const client = await createTestClient(page, {
+      name: 'Parity Test Client',
+      email: 'parity-test@example.com',
+    });
+
+    await page.goto('/proposals/new');
+    await page.locator('[data-testid="client-card"]').filter({ hasText: client.name }).click();
+    await page.locator('[data-testid="client-continue-button"]').click();
+    await page.locator('[data-testid="available-service-row"]').filter({ hasText: 'Comprehensive Bookkeeping' }).click();
+    await page.locator('[data-testid="services-continue-button"]').click();
+
+    const reviewTotal = page
+      .getByText('Monthly cost')
+      .locator('..')
+      .locator('..')
+      .locator('span.text-xl');
+    await expect(reviewTotal).toBeVisible();
+    const reviewText = (await reviewTotal.textContent())!.replace(/[^0-9.]/g, '');
+    const reviewValue = parseFloat(reviewText);
+
+    await page.fill('[data-testid="proposal-title-input"]', 'Pricing Parity Test');
+    await page.locator('[data-testid="create-proposal-button"]').click();
+    await expect(page).toHaveURL(/\/proposals\/.+/);
+
+    const detailMonthly = page.getByText('Monthly cost').locator('..').locator('..').locator('span.text-xl');
+    if (await detailMonthly.count()) {
+      const detailText = (await detailMonthly.first().textContent())!.replace(/[^0-9.]/g, '');
+      const detailValue = parseFloat(detailText);
+      expect(Math.abs(detailValue - reviewValue)).toBeLessThan(1);
+    }
+
+    await page.reload();
+    if (await detailMonthly.count()) {
+      const reloadedText = (await detailMonthly.first().textContent())!.replace(/[^0-9.]/g, '');
+      expect(Math.abs(parseFloat(reloadedText) - reviewValue)).toBeLessThan(1);
+    }
+  });
+});
+
 test.describe('CSRF Handling', () => {
   test.beforeEach(async ({ page }) => {
     await loginAsPartner(page);

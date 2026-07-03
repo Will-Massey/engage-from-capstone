@@ -1,5 +1,7 @@
 // Shared types and utilities for Engage by Capstone
 
+export { TRIAL_DAYS } from './constants.js';
+
 // ==================== ENUMS (aligned with backend/prisma/schema.prisma) ====================
 
 export enum UserRole {

@@ -7,6 +7,11 @@ import { generateToken, authenticate, generateRefreshToken } from '../middleware
 import { allowPublicTenantSignup } from '../utils/securityFlags.js';
 import { setAuthCookies } from '../utils/authCookies.js';
 import { getEngageSuperadmin } from '../lib/superadmin.js';
+import { trialEndsAtFromNow } from '../config/trial.js';
+import {
+  linkAgencySubAccount,
+  listAgencySubAccounts,
+} from '../services/agencyAccountService.js';
 import logger from '../config/logger.js';
 
 const router = Router();
@@ -117,12 +122,11 @@ router.post(
     // Hash password
     const passwordHash = await bcrypt.hash(data.adminPassword, 12);
 
-    const trialEndsAt = new Date();
-    trialEndsAt.setDate(trialEndsAt.getDate() + 14);
+    const trialEndsAt = trialEndsAtFromNow();
 
     // Create tenant and admin user in transaction
     const result = await prisma.$transaction(async (tx) => {
-      // Create tenant with 14-day trial
+      // Create tenant with free trial
       const tenant = await tx.tenant.create({
         data: {
           subdomain: data.subdomain,
@@ -659,6 +663,14 @@ router.put(
       fcaAuthorised: z.boolean().optional(),
       privacyPolicyUrl: z.string().optional(),
       termsVersion: z.string().optional(),
+      whiteLabel: z
+        .object({
+          customDomain: z.string().max(255).optional(),
+          hideCapstoneBranding: z.boolean().optional(),
+          portalTitle: z.string().max(120).optional(),
+        })
+        .optional(),
+      benchmarkPricingOptIn: z.boolean().optional(),
     });
 
     const data = schema.parse(req.body);
@@ -691,6 +703,11 @@ router.put(
       fcaAuthorised: data.fcaAuthorised || currentSettings.fcaAuthorised,
       privacyPolicyUrl: data.privacyPolicyUrl || currentSettings.privacyPolicyUrl,
       termsVersion: data.termsVersion || currentSettings.termsVersion,
+      whiteLabel: data.whiteLabel
+        ? { ...(currentSettings.whiteLabel || {}), ...data.whiteLabel }
+        : currentSettings.whiteLabel,
+      benchmarkPricingOptIn:
+        data.benchmarkPricingOptIn ?? currentSettings.benchmarkPricingOptIn,
     };
 
     // Update tenant
@@ -741,6 +758,33 @@ router.put(
       message: 'Settings saved successfully',
     });
   })
+);
+
+/**
+ * GET /api/tenants/agency/sub-accounts
+ * List linked agency sub-accounts (Enterprise)
+ */
+router.get(
+  '/agency/sub-accounts',
+  authenticate,
+  asyncHandler(async (req, res) => {
+    const accounts = await listAgencySubAccounts(req.tenantId!);
+    res.json({ success: true, data: accounts });
+  }),
+);
+
+/**
+ * POST /api/tenants/agency/sub-accounts
+ * Link an existing tenant as agency sub-account
+ */
+router.post(
+  '/agency/sub-accounts',
+  authenticate,
+  asyncHandler(async (req, res) => {
+    const { childTenantId } = z.object({ childTenantId: z.string().uuid() }).parse(req.body);
+    const account = await linkAgencySubAccount(req.tenantId!, childTenantId);
+    res.status(201).json({ success: true, data: account });
+  }),
 );
 
 export default router;

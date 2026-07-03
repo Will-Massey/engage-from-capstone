@@ -4,6 +4,7 @@ import { prisma } from '../config/database.js';
 import { authenticate } from '../middleware/auth.js';
 import { ApiError, asyncHandler } from '../middleware/errorHandler.js';
 import logger from '../config/logger.js';
+import { synthesiseWinLoss } from '../services/winLossSynthesisService.js';
 
 const router = Router();
 
@@ -775,6 +776,16 @@ router.get(
       },
     });
   })
+);
+
+/** GET /api/analytics/win-loss — monthly win/loss synthesis */
+router.get(
+  '/win-loss',
+  asyncHandler(async (req, res) => {
+    const monthsBack = Math.min(12, Math.max(1, Number(req.query.months) || 1));
+    const data = await synthesiseWinLoss(req.tenantId!, monthsBack);
+    res.json({ success: true, data });
+  }),
 );
 
 export default router;

@@ -28,6 +28,7 @@ import ServiceDetail from './pages/services/ServiceDetail';
 import Settings from './pages/Settings';
 import Subscription from './pages/Subscription';
 import Analytics from './pages/Analytics';
+import PartnerProgramme from './pages/PartnerProgramme';
 import NotFound from './pages/NotFound';
 import PublicProposalView from './pages/public/ProposalView';
 import ClientPortal from './pages/public/ClientPortal';
@@ -295,6 +296,14 @@ const AnimatedRoutes = () => {
             element={
               <AnimatedPage>
                 <Analytics />
+              </AnimatedPage>
+            }
+          />
+          <Route
+            path="partners"
+            element={
+              <AnimatedPage>
+                <PartnerProgramme />
               </AnimatedPage>
             }
           />

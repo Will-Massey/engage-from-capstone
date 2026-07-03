@@ -13,6 +13,17 @@ export interface UserDataExport {
   activityLogs: unknown[];
 }
 
+export interface AuditExport {
+  exportDate: Date;
+  exportType: 'soc2_audit';
+  tenant: Record<string, unknown>;
+  users: unknown[];
+  signatures: unknown[];
+  activityLogs: unknown[];
+  emailLogs: unknown[];
+  accessEvents: unknown[];
+}
+
 export interface DataDeletionResult {
   success: boolean;
   anonymizedId: string;
@@ -194,6 +205,83 @@ export class GDPRService {
         createdAt: new Date(),
       },
     });
+  }
+
+  /**
+   * SOC2-style audit export for tenant compliance reviews.
+   */
+  async exportTenantAudit(tenantId: string, prisma: any): Promise<AuditExport> {
+    const [tenant, users, signatures, activityLogs, emailLogs] = await Promise.all([
+      prisma.tenant.findUnique({
+        where: { id: tenantId },
+        select: {
+          id: true,
+          name: true,
+          subdomain: true,
+          subscriptionTier: true,
+          subscriptionStatus: true,
+          trialEndsAt: true,
+          createdAt: true,
+          updatedAt: true,
+        },
+      }),
+      prisma.user.findMany({
+        where: { tenantId },
+        select: {
+          id: true,
+          email: true,
+          firstName: true,
+          lastName: true,
+          role: true,
+          isActive: true,
+          createdAt: true,
+          lastLoginAt: true,
+        },
+      }),
+      prisma.proposalSignature.findMany({
+        where: { proposal: { tenantId } },
+        select: {
+          id: true,
+          signedBy: true,
+          signerEmail: true,
+          signatureType: true,
+          documentHash: true,
+          termsHash: true,
+          ipAddress: true,
+          signedAt: true,
+          proposalId: true,
+        },
+        orderBy: { signedAt: 'desc' },
+        take: 5000,
+      }),
+      prisma.activityLog.findMany({
+        where: { tenantId },
+        orderBy: { createdAt: 'desc' },
+        take: 5000,
+      }),
+      prisma.emailLog.findMany({
+        where: { tenantId },
+        orderBy: { createdAt: 'desc' },
+        take: 2000,
+      }),
+    ]);
+
+    const accessEvents = activityLogs.filter((l: { action: string }) =>
+      ['USER_LOGIN', 'USER_LOGOUT', 'PROPOSAL_SENT', 'PROPOSAL_ACCEPTED', 'EMAIL_WEBHOOK_EVENT'].includes(
+        l.action,
+      ),
+    );
+
+    return {
+      exportDate: new Date(),
+      exportType: 'soc2_audit',
+      tenant: tenant || {},
+      users,
+      signatures,
+      activityLogs,
+      emailLogs,
+      accessEvents,
+    };
   }
 
   /**

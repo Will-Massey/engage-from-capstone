@@ -5,6 +5,7 @@
 import { Request, Response, NextFunction } from 'express';
 import { prisma } from '../config/database.js';
 import { SUBSCRIPTION_TIERS } from '../config/stripe.js';
+import { TRIAL_DAYS } from '../config/trial.js';
 import { ApiError, asyncHandler } from './errorHandler.js';
 
 export type SubscriptionTierKey = keyof typeof SUBSCRIPTION_TIERS;
@@ -84,7 +85,7 @@ export const requireActiveSubscriptionOrTrial = asyncHandler(
     if (tenant.subscriptionStatus === 'trial') {
       throw new ApiError(
         'TRIAL_EXPIRED',
-        'Your 14-day trial has ended. Please subscribe to continue sending proposals.',
+        `Your ${TRIAL_DAYS}-day trial has ended. Please subscribe to continue sending proposals.`,
         403
       );
     }
