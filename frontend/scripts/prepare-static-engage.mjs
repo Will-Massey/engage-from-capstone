@@ -28,18 +28,16 @@ for (const entry of fs.readdirSync(distDir)) {
   fs.cpSync(path.join(distDir, entry), path.join(nestedDir, entry), { recursive: true });
 }
 
-const rootRedirect = `<!DOCTYPE html>
-<html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta http-equiv="refresh" content="0;url=/${segment}/" />
-    <script>location.replace('/${segment}/' + (location.search || '') + (location.hash || ''));</script>
-    <title>Engage by Capstone</title>
-  </head>
-  <body></body>
-</html>
-`;
-fs.writeFileSync(path.join(publishRoot, 'index.html'), rootRedirect, 'utf8');
+// Capstonesoftware.co.uk/engage strips the /engage prefix when fetching from Render —
+// so /engage/login becomes origin /login. Serve the SPA at root + nested paths.
+const spaIndex = path.join(nestedDir, 'index.html');
+fs.cpSync(spaIndex, path.join(publishRoot, 'index.html'));
+
+const redirects = [
+  `/${segment}/*  /${segment}/index.html  200`,
+  '/*            /index.html  200',
+].join('\n');
+fs.writeFileSync(path.join(publishRoot, '_redirects'), `${redirects}\n`, 'utf8');
 
 fs.rmSync(distDir, { recursive: true, force: true });
 fs.renameSync(publishRoot, distDir);
