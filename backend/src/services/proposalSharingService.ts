@@ -152,7 +152,7 @@ export async function trackProposalView(
         where: { id: proposalId },
         data: {
           viewedAt,
-          status: 'VIEWED',
+          ...(proposal.status === 'SENT' ? { status: 'VIEWED' as const } : {}),
         },
       });
 

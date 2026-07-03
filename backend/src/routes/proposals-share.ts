@@ -293,14 +293,24 @@ router.post(
       messageId: result.messageId,
     });
 
+    const emailSentUpdate: {
+      lastEmailedAt: Date;
+      emailHistory: string;
+      sentAt: Date;
+      status?: 'SENT';
+    } = {
+      lastEmailedAt: new Date(),
+      emailHistory: JSON.stringify(emailHistory),
+      sentAt: new Date(),
+    };
+    // Resend must not downgrade ACCEPTED (or other terminal) proposals — only refresh email metadata.
+    if (!['ACCEPTED', 'DECLINED', 'LOST', 'WITHDRAWN'].includes(proposal.status)) {
+      emailSentUpdate.status = 'SENT';
+    }
+
     await prisma.proposal.update({
       where: { id },
-      data: {
-        lastEmailedAt: new Date(),
-        emailHistory: JSON.stringify(emailHistory),
-        sentAt: new Date(),
-        status: 'SENT',
-      },
+      data: emailSentUpdate,
     });
 
     // Log activity

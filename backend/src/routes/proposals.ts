@@ -1226,15 +1226,18 @@ router.post(
 
     // Update status (partners/admins sending without prior approval are auto-approved)
     const sendUpdateData: {
-      status: ProposalStatus;
+      status?: ProposalStatus;
       sentAt: Date;
       approvalStatus?: ApprovalStatus;
       approvedAt?: Date;
       approvedById?: string;
     } = {
-      status: 'SENT',
       sentAt: new Date(),
     };
+
+    if (!['ACCEPTED', 'DECLINED', 'LOST', 'WITHDRAWN'].includes(proposal.status)) {
+      sendUpdateData.status = 'SENT';
+    }
 
     if (
       overrideApproval &&
