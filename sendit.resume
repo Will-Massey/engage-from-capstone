@@ -1,12 +1,12 @@
 # sendit.resume - auto-generated checkpoint (keep in git)
-pending: true
-written: 2026-07-03 14:05:36 UTC
-project_root: C:/Users/willi/engage-from-capstone
-commit: 6372c68
+pending: false
+written: 2026-07-03 14:12:27 UTC
+project_root: C:\Users\willi\engage-from-capstone
+commit: a8016eb
 branch: master
 phase: Phase: **Premier Service â€” Deploy & verify** â€” `in_progress` (sendit v3.5)
 goal: Become the **premier UK accountancy proposal platform** â€” see `PREMIER_SERVICE_STRATEGY.md` and `PREMIER_SERVICE_TODO.md`.
-next_up_1: Confirm Render deploy green for latest commit (7-day trial, 123 tests, schema fix)
+next_up_1: William: finish Xero/QB mandate draft (`backend/src/routes/xero.ts`)
 
 # Agent: on resume read ~/.grok/sendit.active OR project_root paths below.
 # NEVER glob search. Execute next_up_1 immediately. Set pending: false when done.
