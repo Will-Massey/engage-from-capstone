@@ -1,5 +1,5 @@
 import { lazy, Suspense, useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import {
   DocumentTextIcon,
   UsersIcon,
@@ -19,6 +19,8 @@ import { apiClient } from '../utils/api';
 import { useAuthStore } from '../stores/authStore';
 import QuickStart from '../components/dashboard/QuickStart';
 import ClaraAttentionQueue from '../components/dashboard/ClaraAttentionQueue';
+import FirstProposalWizard from '../components/onboarding/FirstProposalWizard';
+import { isFirstProposalWizardDismissed } from '../components/onboarding/firstProposalWizardStorage';
 
 const RevenueAndPieCharts = lazy(() =>
   import('./DashboardRecharts').then((m) => ({ default: m.RevenueAndPieCharts }))
@@ -101,10 +103,29 @@ const Dashboard = () => {
   const [renewalProposals, setRenewalProposals] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [dateRange, setDateRange] = useState('30days');
+  const [sentProposalCount, setSentProposalCount] = useState<number | null>(null);
+  const [showFirstProposalWizard, setShowFirstProposalWizard] = useState(false);
+  const [searchParams, setSearchParams] = useSearchParams();
 
   useEffect(() => {
     loadDashboardData();
   }, []);
+
+  useEffect(() => {
+    if (searchParams.get('openWizard') === '1') {
+      setShowFirstProposalWizard(true);
+      const next = new URLSearchParams(searchParams);
+      next.delete('openWizard');
+      setSearchParams(next, { replace: true });
+    }
+  }, [searchParams, setSearchParams]);
+
+  useEffect(() => {
+    if (isLoading || sentProposalCount === null) return;
+    if (sentProposalCount === 0 && !isFirstProposalWizardDismissed(tenant?.id)) {
+      setShowFirstProposalWizard(true);
+    }
+  }, [isLoading, sentProposalCount, tenant?.id]);
 
   const loadDashboardData = async () => {
     try {
@@ -167,6 +188,16 @@ const Dashboard = () => {
         const needing = (clientsRes.data || []).filter((c: any) => attentionStages.includes(c.lifecycleStage));
         setAttentionClients(needing.slice(0, 8));
       } catch {}
+
+      try {
+        const sentCountRes = (await timeout(
+          apiClient.getProposals({ limit: 1, status: 'SENT' }) as Promise<any>,
+          10000
+        )) as any;
+        setSentProposalCount(sentCountRes.meta?.total ?? 0);
+      } catch {
+        setSentProposalCount(null);
+      }
 
       try {
         const allProposals = (await timeout(
@@ -270,6 +301,33 @@ const Dashboard = () => {
 
   return (
     <div className="space-y-6 animate-fade-in">
+      <FirstProposalWizard
+        open={showFirstProposalWizard}
+        onClose={() => setShowFirstProposalWizard(false)}
+        onSent={() => {
+          setSentProposalCount(1);
+          void loadDashboardData();
+        }}
+      />
+
+      {sentProposalCount === 0 && (
+        <div className="rounded-2xl border border-violet-200/80 dark:border-violet-800/60 bg-gradient-to-r from-violet-50/90 via-white to-indigo-50/70 dark:from-violet-950/40 dark:via-slate-900/50 dark:to-indigo-950/30 p-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+          <div>
+            <p className="text-sm font-semibold text-slate-900 dark:text-white">Ready to send your first proposal?</p>
+            <p className="text-xs text-slate-600 dark:text-slate-400 mt-0.5">
+              The guided wizard walks you from client to sent email in five steps.
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={() => setShowFirstProposalWizard(true)}
+            className="btn-primary text-sm shrink-0"
+          >
+            Open first proposal wizard
+          </button>
+        </div>
+      )}
+
       {/* Welcome Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>

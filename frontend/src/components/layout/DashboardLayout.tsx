@@ -7,6 +7,7 @@ import { initializeTheme } from '../../stores/themeStore';
 import OnboardingTour from '../onboarding/OnboardingTour';
 import { useOnboarding } from '../onboarding/useOnboarding';
 import AiAssistant from '../ai/AiAssistant';
+import { LegalFooterLinks } from '../legal/LegalPageLayout';
 
 const DashboardLayout = () => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -74,6 +75,9 @@ const DashboardLayout = () => {
           <div className="max-w-7xl mx-auto space-y-8">
             <AppRouteHeader />
             <Outlet />
+            <footer className="pt-8 pb-2 border-t border-slate-200/60 dark:border-slate-700/60">
+              <LegalFooterLinks />
+            </footer>
           </div>
         </main>
       </div>

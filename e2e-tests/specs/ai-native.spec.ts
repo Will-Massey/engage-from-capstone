@@ -1,9 +1,15 @@
 import { test, expect } from '@playwright/test';
-import { apiGet, apiPostResilient, expectNoErrorToasts } from '../fixtures/build-helpers';
+import {
+  advanceToProposalServicesStep,
+  apiGet,
+  apiPostResilient,
+  expectNoErrorToasts,
+  gotoApp,
+} from '../fixtures/build-helpers';
 
 test.describe('AI-native UI surfaces', () => {
   test('dashboard attention queue renders', async ({ page }) => {
-    await page.goto('/');
+    await gotoApp(page, '/');
     await page.waitForLoadState('networkidle');
     const queue = page.getByText(/need attention|attention queue|proposals need/i);
     await expect(queue.first()).toBeVisible({ timeout: 20_000 });
@@ -11,7 +17,7 @@ test.describe('AI-native UI surfaces', () => {
   });
 
   test('Clara panel available from header', async ({ page }) => {
-    await page.goto('/');
+    await gotoApp(page, '/');
     const claraBtn = page.getByRole('button', { name: /clara|assistant|ai/i }).first();
     if (await claraBtn.isVisible().catch(() => false)) {
       await claraBtn.click();
@@ -21,11 +27,9 @@ test.describe('AI-native UI surfaces', () => {
   });
 
   test('proposal builder Clara sidebar on step 2+', async ({ page }) => {
-    await page.goto('/proposals/new');
-    await page.waitForSelector('[data-testid="client-card"]');
-    await page.locator('[data-testid="client-card"]').first().click();
-    await page.locator('[data-testid="client-continue-button"]').click();
-    await page.waitForSelector('[data-testid="available-service-row"]');
+    await gotoApp(page, '/proposals/new');
+    await page.waitForSelector('[data-testid="client-card"]', { timeout: 30_000 });
+    await advanceToProposalServicesStep(page, 'clara');
 
     await expect(page.getByRole('heading', { name: 'Client context' })).toBeVisible({ timeout: 15_000 });
     await expectNoErrorToasts(page, 3000);

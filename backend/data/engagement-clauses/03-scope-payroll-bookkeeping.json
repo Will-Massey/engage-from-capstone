@@ -1,0 +1,26 @@
+[
+  {
+    "id": "scope-payroll",
+    "title": "Payroll & RTI",
+    "tags": ["payroll", "rti", "paye", "compliance", "_icaew", "_acca"],
+    "body": "We will operate your payroll, issue payslips, submit Real Time Information (RTI) returns to HMRC, and provide year-end P60s. Auto-enrolment assessments will be performed where applicable."
+  },
+  {
+    "id": "scope-auto-enrolment",
+    "title": "Workplace pension auto-enrolment",
+    "tags": ["auto-enrolment", "pension", "payroll", "_icaew"],
+    "body": "We will assess worker eligibility each pay period, process enrolment communications, and submit contribution data to your pension provider in line with The Pensions Regulator requirements."
+  },
+  {
+    "id": "scope-bookkeeping",
+    "title": "Bookkeeping",
+    "tags": ["bookkeeping", "accounts", "_acca", "_aat", "_icas"],
+    "body": "We will maintain your accounting records, perform bank reconciliations, and produce management information as agreed. You remain responsible for providing complete and accurate source documents in a timely manner."
+  },
+  {
+    "id": "scope-management-accounts",
+    "title": "Management accounts",
+    "tags": ["management-accounts", "advisory", "bookkeeping", "_icaew", "_cima"],
+    "body": "We will prepare periodic management accounts and key performance indicators as agreed. These are prepared for management use only and do not constitute statutory accounts or an audit."
+  }
+]

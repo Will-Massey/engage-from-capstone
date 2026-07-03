@@ -15,6 +15,7 @@ export const AI_COPILOT = {
   onlineSubtitle: 'Ready to help',
   askPlaceholder: 'Ask Clara anything about proposals…',
   draftWithLabel: 'Draft with Clara',
+  reviseWithLabel: 'Revise with Clara',
   panelAriaLabel: 'Open Clara, your Engage proposal co-pilot',
 } as const;
 

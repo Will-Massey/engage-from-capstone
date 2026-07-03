@@ -635,8 +635,11 @@ Three Dockerfiles exist:
 | `FRONTEND_URL`                                     | CORS origin                  |
 | `REDIS_URL`                                        | Optional but recommended     |
 | `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS` | Email delivery               |
-| `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`       | Payments                     |
+| `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`       | Subscription billing         |
 | `STRIPE_PUBLISHABLE_KEY`                           | Frontend Stripe integration  |
+| `REVOLUT_API_SECRET_KEY`, `REVOLUT_API_PUBLIC_KEY` | Client proposal payments     |
+| `REVOLUT_WEBHOOK_SECRET`                           | Revolut webhook verification |
+| `ENGAGE_PLATFORM_FEE_BPS`                          | Platform fee (default 250)   |
 | `COMPANIES_HOUSE_API_KEY`                          | UK company lookup            |
 
 ---
@@ -706,7 +709,7 @@ Three Dockerfiles exist:
 | Service               | Purpose                        | Key Files                                                        |
 | --------------------- | ------------------------------ | ---------------------------------------------------------------- |
 | **Stripe**            | Subscription billing, payments | `backend/src/routes/payments.ts`, `backend/src/config/stripe.ts` |
-| **Adfin**             | Alternative payment provider   | `backend/src/routes/adfin.ts`, `backend/src/services/adfin.ts`   |
+| **Revolut**           | Client proposal payments       | `backend/src/lib/revolut/`, `backend/src/routes/billing.ts`       |
 | **Companies House**   | UK company lookup              | `backend/src/services/companiesHouse.ts`                         |
 | **SMTP (Nodemailer)** | Email delivery                 | `backend/src/services/emailService.ts`                           |
 | **Redis**             | Caching, session storage       | `backend/src/config/redis.ts`                                    |

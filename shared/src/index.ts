@@ -7,6 +7,7 @@ export { TRIAL_DAYS } from './constants.js';
 export enum UserRole {
   ADMIN = 'ADMIN',
   PARTNER = 'PARTNER',
+  MD = 'MD',
   MANAGER = 'MANAGER',
   SENIOR = 'SENIOR',
   JUNIOR = 'JUNIOR',
@@ -33,6 +34,13 @@ export enum ServiceCategory {
   SPECIALIZED = 'SPECIALIZED',
 }
 
+export enum ApprovalStatus {
+  NONE = 'NONE',
+  PENDING = 'PENDING',
+  APPROVED = 'APPROVED',
+  REJECTED = 'REJECTED',
+}
+
 export enum ProposalStatus {
   DRAFT = 'DRAFT',
   SENT = 'SENT',
@@ -40,6 +48,9 @@ export enum ProposalStatus {
   ACCEPTED = 'ACCEPTED',
   DECLINED = 'DECLINED',
   EXPIRED = 'EXPIRED',
+  WITHDRAWN = 'WITHDRAWN',
+  ARCHIVED = 'ARCHIVED',
+  LOST = 'LOST',
 }
 
 export enum MTDITSAStatus {
@@ -101,8 +112,10 @@ export enum ProfessionalBody {
   AAT = 'AAT',
   CIMA = 'CIMA',
   ICAS = 'ICAS',
+  ATT = 'ATT',
+  CIOT = 'CIOT',
   CTA = 'CTA',
-  CPAA = 'CPAA'
+  CPAA = 'CPAA',
 }
 
 export interface Address {
@@ -155,6 +168,11 @@ export interface Proposal {
   title: string;
   reference: string;
   status: ProposalStatus;
+  approvalStatus?: ApprovalStatus;
+  submittedForApprovalAt?: Date;
+  approvedAt?: Date;
+  approvalNotes?: string;
+  rejectionReason?: string;
   validUntil: Date;
   services: ProposalService[];
   subtotal: number;

@@ -1,8 +1,67 @@
 import { type Page, type APIRequestContext, expect } from '@playwright/test';
 
+export type ProposalBuildMode = 'manual' | 'clara';
+
+/** Step 1: pick a client on /proposals/new */
+export async function selectFirstProposalClient(page: Page): Promise<void> {
+  await page.waitForSelector('[data-testid="client-card"]', { timeout: 30_000 });
+  const card = page.locator('[data-testid="client-card"]').first();
+  await expect(card).toBeVisible();
+  await card.click();
+}
+
+/**
+ * Step 1b: choose build mode when the chooser is shown.
+ * Skips when manual=1/guided=1 already set build mode on load.
+ */
+export async function chooseProposalBuildMode(
+  page: Page,
+  mode: ProposalBuildMode = 'manual'
+): Promise<void> {
+  const chooser = page.getByText(/how would you like to build this proposal/i);
+  const visible = await chooser.isVisible({ timeout: 10_000 }).catch(() => false);
+  if (!visible) return;
+
+  const testId = mode === 'clara' ? 'build-mode-clara' : 'build-mode-manual';
+  const modeButton = page.locator(`[data-testid="${testId}"]`);
+  if (await modeButton.isVisible({ timeout: 15_000 }).catch(() => false)) {
+    await modeButton.click();
+  } else if (mode === 'manual') {
+    // AI not configured — fallback "Continue manually" button
+    await page.getByRole('button', { name: /continue manually/i }).click();
+  } else {
+    throw new Error(`Build mode "${mode}" not available (Clara may be unconfigured)`);
+  }
+
+  await expect(page.locator('[data-testid="client-continue-button"]')).toBeVisible({
+    timeout: 10_000,
+  });
+}
+
+/** Steps 1 → 2: client, build mode, continue to services catalogue */
+export async function advanceToProposalServicesStep(
+  page: Page,
+  mode: ProposalBuildMode = 'manual'
+): Promise<void> {
+  await selectFirstProposalClient(page);
+  await chooseProposalBuildMode(page, mode);
+  await page.locator('[data-testid="client-continue-button"]').click();
+  await page.waitForSelector('[data-testid="available-service-row"]', { timeout: 30_000 });
+}
+
+export const FRONTEND_ORIGIN = (
+  process.env.FRONTEND_URL || 'https://capstonesoftware.co.uk/engage'
+).replace(/\/$/, '');
+
 export const API_BASE =
-  (process.env.API_URL || 'https://engage-backend-e1ue.onrender.com').replace(/\/$/, '') +
+  (process.env.API_URL || 'https://engage.capstonesoftware.co.uk').replace(/\/$/, '') +
   (process.env.API_URL?.endsWith('/api') ? '' : '/api');
+
+/** Navigate under the /engage app base — Playwright baseURL strips path on leading-slash URLs. */
+export async function gotoApp(page: Page, path: string): Promise<void> {
+  const rel = path.startsWith('/') ? path : `/${path}`;
+  await page.goto(`${FRONTEND_ORIGIN}${rel}`);
+}
 
 const E2E_HEADERS = { 'X-Test-Mode': 'e2e-build' };
 
@@ -50,6 +109,15 @@ export async function apiGet(request: APIRequestContext, path: string): Promise<
 export async function apiPost(request: APIRequestContext, path: string, data?: object): Promise<any> {
   const res = await request.post(`${API_BASE}${path}`, {
     data: data ?? {},
+    headers: { ...E2E_HEADERS, ...(await csrfHeader(request)) },
+    timeout: apiTimeout(path),
+  });
+  const body = await res.json().catch(() => ({}));
+  return { status: res.status(), body };
+}
+
+export async function apiDelete(request: APIRequestContext, path: string): Promise<any> {
+  const res = await request.delete(`${API_BASE}${path}`, {
     headers: { ...E2E_HEADERS, ...(await csrfHeader(request)) },
     timeout: apiTimeout(path),
   });

@@ -20,6 +20,7 @@ import {
   getProposalViewStats,
   recordElectronicSignature,
   getProposalSignatures,
+  getSignatureAuditRecord,
   getSignatureImage,
   generateComplianceAuditTrail,
   isShareTokenValid,
@@ -36,7 +37,10 @@ import { rateLimitingEnabled } from '../utils/securityFlags.js';
 import {
   askPublicProposalQuestion,
   getPublicSigningSummary,
+  logPublicAiUsage,
 } from '../services/ai/publicProposalAiService.js';
+import { classifyDeclineReasonText } from '../services/ai/winLossAiService.js';
+import { DECLINE_REASONS } from '../constants/declineReasons.js';
 import {
   AGREEMENT_VERSION,
   DEFAULT_CONSENT_TEXT,
@@ -169,14 +173,14 @@ router.post(
   requireActiveSubscriptionOrTrial,
   asyncHandler(async (req, res) => {
     const schema = z.object({
-      to: z.string().email(),
+      to: z.string().email().optional(),
       cc: z.array(z.string().email()).optional(),
       subject: z.string().optional(),
       message: z.string().optional(),
       includePdf: z.boolean().default(true),
     });
 
-    const { to, cc, subject, message, includePdf } = schema.parse(req.body);
+    const { to: toOverride, cc, subject, message, includePdf } = schema.parse(req.body);
     const { id } = req.params;
     const tenantId = req.tenantId!;
     const tenant = (req as any).tenant;
@@ -195,6 +199,7 @@ router.post(
             lastName: true,
             email: true,
             role: true,
+            jobTitle: true,
           },
         },
         tenant: {
@@ -207,6 +212,15 @@ router.post(
 
     if (!proposal) {
       throw new ApiError('PROPOSAL_NOT_FOUND', 'Proposal not found', 404);
+    }
+
+    const to = toOverride || proposal.client.contactEmail;
+    if (!to) {
+      throw new ApiError(
+        'NO_CLIENT_EMAIL',
+        'Client does not have an email address — add one on the client record or pass a "to" address',
+        400
+      );
     }
 
     // Create or get shareable link
@@ -240,7 +254,15 @@ router.post(
         proposalReference: proposal.reference,
         viewLink: shareUrl,
         senderName,
-        senderPosition: proposal.createdBy.role,
+        senderPosition:
+          proposal.createdBy.jobTitle?.trim() ||
+          (proposal.createdBy.role
+            ? proposal.createdBy.role
+                .toLowerCase()
+                .split('_')
+                .map((w: string) => w.charAt(0).toUpperCase() + w.slice(1))
+                .join(' ')
+            : undefined),
         senderEmail: (proposal.createdBy as any).email,
         tenantName: (proposal as any).tenant?.name || tenant.name,
         validUntil: new Date(proposal.validUntil).toLocaleDateString('en-GB'),
@@ -291,6 +313,9 @@ router.post(
         userAgent: req.headers['user-agent'],
       },
     });
+
+    const { emitIntegrationEvent } = await import('../services/integrationEvents.js');
+    void emitIntegrationEvent(tenantId, id, 'proposal.sent');
 
     res.json({
       success: true,
@@ -357,6 +382,65 @@ router.get(
     res.json({
       success: true,
       data: auditTrail,
+    });
+  })
+);
+
+// Download signature certificate PDF (tenant-scoped forensic export)
+router.get(
+  '/:id/signatures/:signatureId/certificate',
+  authenticate,
+  asyncHandler(async (req, res) => {
+    const { id, signatureId } = req.params;
+    const tenantId = req.tenantId!;
+
+    const proposal = await prisma.proposal.findFirst({
+      where: { id, tenantId },
+      select: { id: true, reference: true },
+    });
+
+    if (!proposal) {
+      throw new ApiError('PROPOSAL_NOT_FOUND', 'Proposal not found', 404);
+    }
+
+    const signature = await prisma.proposalSignature.findFirst({
+      where: { id: signatureId, proposalId: id },
+      select: { id: true },
+    });
+
+    if (!signature) {
+      throw new ApiError('SIGNATURE_NOT_FOUND', 'Signature not found', 404);
+    }
+
+    const { PDFGenerator } = await import('../services/pdfGenerator.js');
+    const pdfBuffer = await PDFGenerator.generateSignatureCertificate(id, signatureId);
+
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader(
+      'Content-Disposition',
+      `attachment; filename="signature-certificate-${proposal.reference}-${signatureId.slice(0, 8)}.pdf"`
+    );
+    res.send(pdfBuffer);
+  })
+);
+
+// Get signature audit record as JSON (tenant-scoped forensic export)
+router.get(
+  '/:id/signatures/:signatureId/audit',
+  authenticate,
+  asyncHandler(async (req, res) => {
+    const { id, signatureId } = req.params;
+    const tenantId = req.tenantId!;
+
+    const auditRecord = await getSignatureAuditRecord(id, signatureId, tenantId);
+
+    if (!auditRecord) {
+      throw new ApiError('SIGNATURE_NOT_FOUND', 'Signature not found', 404);
+    }
+
+    res.json({
+      success: true,
+      data: auditRecord,
     });
   })
 );
@@ -442,6 +526,62 @@ router.get(
       });
     }
 
+    const paymentConfig =
+      proposal.status === 'ACCEPTED'
+        ? await getPublicPaymentConfig(proposal.id, proposal.tenantId)
+        : null;
+
+    const customFields = parseProposalCustomFields(proposal.customFields);
+    const existingSignatures = await prisma.proposalSignature.findMany({
+      where: { proposalId: proposal.id },
+      orderBy: { signedAt: 'asc' },
+      select: {
+        signedBy: true,
+        signedByRole: true,
+        signedAt: true,
+      },
+    });
+
+    const requiredSigners = getRequiredSigners(customFields);
+    const signaturesReceived = existingSignatures.length;
+    const awaitingAdditionalSigner =
+      proposal.status !== 'ACCEPTED' &&
+      signaturesReceived > 0 &&
+      signaturesReceived < requiredSigners;
+
+    const pricingTiers = hasPricingTiers(customFields)
+      ? customFields.pricingTiers!.map((tier) => ({
+          ...tier,
+          ...calculateTierTotals(
+            {
+              subtotal: proposal.subtotal,
+              vatAmount: proposal.vatAmount,
+              total: proposal.total,
+            },
+            tier
+          ),
+        }))
+      : undefined;
+
+    const selectedTier = customFields.selectedTierId
+      ? findPricingTier(customFields, customFields.selectedTierId)
+      : undefined;
+    const displayTotals =
+      selectedTier && proposal.status !== 'ACCEPTED'
+        ? calculateTierTotals(
+            {
+              subtotal: proposal.subtotal,
+              vatAmount: proposal.vatAmount,
+              total: proposal.total,
+            },
+            selectedTier
+          )
+        : {
+            subtotal: proposal.subtotal,
+            vatAmount: proposal.vatAmount,
+            total: proposal.total,
+          };
+
     // Return proposal data (without sensitive fields)
     res.json({
       success: true,
@@ -457,13 +597,36 @@ router.get(
         paymentStatus: proposal.paymentStatus,
         paymentTerms: proposal.paymentTerms,
         coverLetter: proposal.coverLetter,
+        proposalSummary: proposal.proposalSummary,
         terms: proposal.terms,
         engagementLetter: proposal.engagementLetter,
+        payment: paymentConfig,
+        customFields: {
+          offerThreePackages: customFields.offerThreePackages ?? false,
+          pricingTiers,
+          requiredSigners,
+          selectedTierId: customFields.selectedTierId,
+          selectedTierLabel: customFields.selectedTierLabel,
+        },
+        signing: {
+          requiredSigners,
+          signaturesReceived,
+          awaitingAdditionalSigner,
+          existingSignatures,
+        },
         client: {
           name: proposal.client.name,
+          contactName: proposal.client.contactName,
           companyType: proposal.client.companyType,
           contactEmail: proposal.client.contactEmail,
         },
+        createdBy: proposal.createdBy
+          ? {
+              firstName: proposal.createdBy.firstName,
+              lastName: proposal.createdBy.lastName,
+              jobTitle: proposal.createdBy.jobTitle,
+            }
+          : undefined,
         tenant: {
           name: proposal.tenant.name,
           primaryColor: proposal.tenant.primaryColor,
@@ -510,10 +673,13 @@ router.get(
       source: result.source,
     });
 
+    const { computeSigningCostSummary } = await import('../services/ai/publicProposalAiService.js');
+
     res.json({
       success: true,
       data: {
         summary: result.summary,
+        costSummary: computeSigningCostSummary(proposal),
         practiceName: proposal.tenant.name,
         clientName: proposal.client.name,
         reference: proposal.reference,
@@ -611,6 +777,7 @@ router.post(
       authorisedToSign: z.boolean(),
       deviceInfo: z.string().optional(),
       consentText: z.string().optional(),
+      selectedTierId: z.string().optional(),
     });
 
     const parsed = schema.parse(req.body);
@@ -626,6 +793,20 @@ router.post(
       throw new ApiError(
         'PROPOSAL_ALREADY_ACCEPTED',
         'This proposal has already been accepted',
+        400
+      );
+    }
+
+    const customFields = parseProposalCustomFields(proposal.customFields);
+    const requiredSigners = getRequiredSigners(customFields);
+    const existingSignatures = await prisma.proposalSignature.count({
+      where: { proposalId: proposal.id },
+    });
+
+    if (existingSignatures >= requiredSigners) {
+      throw new ApiError(
+        'SIGNATURES_COMPLETE',
+        'All required signatures have already been collected',
         400
       );
     }
@@ -667,62 +848,30 @@ router.post(
       signatureType: 'SIMPLE_ELECTRONIC',
       agreementVersion: AGREEMENT_VERSION,
       tenantId: proposal.tenantId,
+      selectedTierId: parsed.selectedTierId,
     });
 
     if (!result.success) {
       throw new ApiError('SIGNATURE_FAILED', result.error || 'Failed to record signature', 500);
     }
 
-    // Send acceptance notification to practice
-    try {
-      const fullProposal = await prisma.proposal.findUnique({
-        where: { id: proposal.id },
-        include: {
-          createdBy: {
-            select: { email: true, firstName: true, lastName: true },
-          },
-          client: true,
-        },
-      });
-
-      if (fullProposal?.createdBy?.email) {
-        const { PDFGenerator } = await import('../services/pdfGenerator.js');
-        const proposalPdf = await PDFGenerator.generateProposal(proposal.id);
-        const signatureImage = await getSignatureImage(result.signatureId!, proposal.tenantId);
-
-        const notifyResult = await tenantMailer.sendAcceptanceNotification(
-          proposal.tenantId,
-          {
-            to: fullProposal.createdBy.email,
-            clientName: fullProposal.client.name,
-            proposalTitle: fullProposal.title,
-            proposalReference: fullProposal.reference,
-            acceptedAt: new Date(),
-            totalAmount: `£${fullProposal.total.toFixed(2)}`,
-            signedBy: parsed.signedBy,
-            signedByRole: parsed.signedByRole,
-            proposalPdf,
-            signaturePng: signatureImage
-              ? Buffer.from(signatureImage.split(',')[1], 'base64')
-              : undefined,
-            replyTo: parsed.signerEmail,
-          },
-          { proposalId: proposal.id, clientId: fullProposal.clientId }
+    // Notify practice only when all required signatories have signed
+    if (result.fullyAccepted) {
+      try {
+        const { sendPracticeAcceptanceNotifications } = await import(
+          '../services/acceptanceNotificationService.js'
         );
-
-        if (notifyResult.success) {
-          await prisma.proposal.update({
-            where: { id: proposal.id },
-            data: { acceptanceNotifiedAt: new Date() },
-          });
-          logger.info(`Acceptance notification sent for proposal ${proposal.id}`);
-        } else {
-          logger.error(`Acceptance notification failed: ${notifyResult.error}`);
-        }
+        await sendPracticeAcceptanceNotifications({
+          proposalId: proposal.id,
+          tenantId: proposal.tenantId,
+          signatureId: result.signatureId!,
+          signedBy: parsed.signedBy,
+          signedByRole: parsed.signedByRole,
+          signerEmail: parsed.signerEmail,
+        });
+      } catch (error) {
+        logger.error('Failed to send acceptance notification:', error);
       }
-    } catch (error) {
-      logger.error('Failed to send acceptance notification:', error);
-      // Don't fail the request - signature was still recorded
     }
 
     let checkout: Awaited<ReturnType<typeof createProposalCheckoutOrder>> = null;
@@ -748,8 +897,8 @@ router.post(
         ? 'Proposal accepted — please complete payment to confirm'
         : 'Proposal accepted successfully',
       data: {
-        acceptedAt: new Date(),
-        acceptedBy: parsed.signedBy,
+        acceptedAt: result.fullyAccepted ? new Date() : undefined,
+        acceptedBy: result.fullyAccepted ? parsed.signedBy : undefined,
         signatureId: result.signatureId,
         paymentRequired: proposalRequiresPayment(proposal.total) && isRevolutConfigured(),
         checkout,
@@ -785,11 +934,27 @@ router.get(
 router.post(
   '/view/:token/decline',
   asyncHandler(async (req, res) => {
-    const schema = z.object({
-      reason: z.string().min(3).max(2000),
-      declinedBy: z.string().min(2).optional(),
-    });
-    const { reason, declinedBy } = schema.parse(req.body);
+    const schema = z
+      .object({
+        declineReason: z.enum(DECLINE_REASONS).optional(),
+        reason: z.string().max(2000).optional(),
+        declinedBy: z.string().min(2).optional(),
+      })
+      .refine(
+        (data) =>
+          data.declineReason != null ||
+          (typeof data.reason === 'string' && data.reason.trim().length >= 3),
+        { message: 'declineReason or reason (min 3 chars) is required' }
+      )
+      .refine(
+        (data) =>
+          data.declineReason !== 'OTHER' ||
+          (typeof data.reason === 'string' && data.reason.trim().length >= 3),
+        { message: 'Please provide details when selecting Other' }
+      );
+
+    const { declineReason, reason, declinedBy } = schema.parse(req.body);
+    const reasonText = reason?.trim() || null;
     const { token } = req.params;
 
     const proposal = await getProposalByShareToken(token);
@@ -799,6 +964,19 @@ router.post(
     if (proposal.status === 'ACCEPTED') {
       throw new ApiError('INVALID_STATUS', 'Proposal already accepted', 400);
     }
+
+    let declineReasonAi: (typeof DECLINE_REASONS)[number] | null = null;
+    if (declineReason === 'OTHER' && reasonText) {
+      declineReasonAi = await classifyDeclineReasonText(reasonText);
+      if (declineReasonAi) {
+        await logPublicAiUsage(proposal.tenantId, proposal.id, 'public_decline_classify');
+      }
+    }
+
+    const now = new Date();
+    const summaryLabel = declineReason
+      ? `${declineReason}${reasonText ? `: ${reasonText}` : ''}`
+      : reasonText!;
 
     await prisma.proposal.update({
       where: { id: proposal.id },
@@ -812,9 +990,15 @@ router.post(
         entityType: 'PROPOSAL',
         entityId: proposal.id,
         description: declinedBy
-          ? `Proposal declined by ${declinedBy}: ${reason}`
-          : `Proposal declined: ${reason}`,
-        metadata: JSON.stringify({ reason, declinedBy, ipAddress: req.ip }),
+          ? `Proposal declined by ${declinedBy}: ${summaryLabel}`
+          : `Proposal declined: ${summaryLabel}`,
+        metadata: JSON.stringify({
+          declineReason,
+          declineReasonAi,
+          reason: reasonText,
+          declinedBy,
+          ipAddress: req.ip,
+        }),
         ipAddress: req.ip || null,
         userAgent: req.headers['user-agent'] || null,
         proposalId: proposal.id,

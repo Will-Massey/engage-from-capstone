@@ -1,0 +1,32 @@
+[
+  {
+    "id": "scope-advisory",
+    "title": "Advisory services",
+    "tags": ["advisory", "consulting", "planning", "_icaew", "_acca", "_cima"],
+    "body": "We will provide advisory services as specified in your proposal. Advisory work is limited to the agreed scope and does not constitute an audit or assurance engagement unless explicitly stated."
+  },
+  {
+    "id": "scope-registered-office",
+    "title": "Registered office",
+    "tags": ["registered-office", "address", "specialized", "_icaew"],
+    "body": "We will provide a registered office address service, forward statutory correspondence, and remind you of key filing deadlines. You must notify us promptly of any changes to directors or shareholders."
+  },
+  {
+    "id": "third-party-reliance",
+    "title": "Third-party reliance",
+    "tags": ["_always", "_icaew"],
+    "body": "Our report or advice is prepared solely for your use. No responsibility is accepted to any third party to whom our work may be shown without our prior written consent."
+  },
+  {
+    "id": "complaints-procedure",
+    "title": "Complaints procedure",
+    "tags": ["_always", "_icaew", "_acca"],
+    "body": "If you are dissatisfied with our services, please contact us promptly. We operate an internal complaints procedure and will provide details of external redress routes where applicable."
+  },
+  {
+    "id": "engagement-period",
+    "title": "Period of engagement",
+    "tags": ["_always", "_icaew", "_acca"],
+    "body": "This engagement covers the period stated in your proposal. Either party may terminate on reasonable notice; fees for work performed to the date of termination remain payable."
+  }
+]

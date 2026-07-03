@@ -4,6 +4,8 @@ import {
   DocumentTextIcon,
   UsersIcon,
   WrenchScrewdriverIcon,
+  CalculatorIcon,
+  RectangleStackIcon,
   ChartPieIcon,
   CogIcon,
 } from '@heroicons/react/24/outline';
@@ -60,6 +62,20 @@ export const NAV_SECTIONS: NavSection[] = [
         href: '/services',
         icon: WrenchScrewdriverIcon,
         description: 'Fees and service templates',
+        matchPrefix: true,
+      },
+      {
+        name: 'Pricing calculator',
+        href: '/pricing-calculator',
+        icon: CalculatorIcon,
+        description: 'Turnover and complexity → suggested fee bands',
+        matchPrefix: false,
+      },
+      {
+        name: 'Templates',
+        href: '/templates',
+        icon: RectangleStackIcon,
+        description: 'Pre-made proposal bundles for faster drafting',
         matchPrefix: true,
       },
     ],
@@ -123,6 +139,18 @@ export function getPageMeta(pathname: string): {
       ],
     };
   }
+  if (pathname === '/proposals/renewals') {
+    return {
+      title: 'Bulk renewals',
+      description: 'Create draft renewal proposals for multiple clients at once',
+      breadcrumbs: [
+        { label: 'Dashboard', href: '/' },
+        { label: 'Proposals', href: '/proposals' },
+        { label: 'Bulk renewals' },
+      ],
+      backTo: { label: 'Back to proposals', href: '/proposals' },
+    };
+  }
   if (pathname.startsWith('/proposals/')) {
     return {
       title: 'Proposal details',
@@ -174,6 +202,18 @@ export function getPageMeta(pathname: string): {
       breadcrumbs: [{ label: 'Dashboard', href: '/' }, { label: 'Services' }],
     };
   }
+  if (pathname === '/pricing-calculator') {
+    return {
+      title: 'Pricing calculator',
+      description: 'Value-based fee suggestions from client turnover and complexity',
+      breadcrumbs: [
+        { label: 'Dashboard', href: '/' },
+        { label: 'Services', href: '/services' },
+        { label: 'Pricing calculator' },
+      ],
+      backTo: { label: 'Back to services', href: '/services' },
+    };
+  }
   if (pathname.startsWith('/services/')) {
     return {
       title: 'Service',
@@ -182,6 +222,14 @@ export function getPageMeta(pathname: string): {
         { label: 'Services', href: '/services' },
         { label: 'Details' },
       ],
+    };
+  }
+
+  if (pathname === '/templates') {
+    return {
+      title: 'Templates',
+      description: 'Pre-made proposal bundles — services, pricing, and cover letters',
+      breadcrumbs: [{ label: 'Dashboard', href: '/' }, { label: 'Templates' }],
     };
   }
 

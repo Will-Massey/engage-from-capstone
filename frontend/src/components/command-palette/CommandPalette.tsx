@@ -17,6 +17,7 @@ import { useAuthStore } from '../../stores/authStore';
 import { apiClient } from '../../utils/api';
 import toast from 'react-hot-toast';
 import { AI_COPILOT, copilotUnavailableToast } from '../../config/aiCopilot';
+import { STAFF_WITH_AI } from '../../constants/roles';
 
 interface Command {
   id: string;
@@ -126,7 +127,7 @@ const CommandPalette = ({ isOpen, onClose }: CommandPaletteProps) => {
     ];
 
     // Add AI suggestions if applicable
-    if (user?.role === 'PARTNER' || user?.role === 'MANAGER' || user?.role === 'SENIOR' || user?.role === 'ADMIN') {
+    if (user?.role && STAFF_WITH_AI.has(user.role)) {
       commands.push({
         id: 'ai-new-proposal',
         title: `Ask ${AI_COPILOT.name}`,

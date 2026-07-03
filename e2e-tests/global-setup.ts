@@ -9,7 +9,13 @@ const AUTH_FILE = path.join(AUTH_DIR, 'user.json');
  * Single login before the suite — avoids tripping auth rate limits.
  */
 async function globalSetup(config: FullConfig): Promise<void> {
-  const baseURL = config.projects[0]?.use?.baseURL || process.env.FRONTEND_URL || 'http://localhost:5173';
+  const baseURL = (
+    config.projects[0]?.use?.baseURL ||
+    process.env.FRONTEND_URL ||
+    'http://localhost:5173'
+  )
+    .toString()
+    .replace(/\/$/, '');
   const email = process.env.TEST_USER_EMAIL || 'admin@demo.practice';
   const password = process.env.TEST_USER_PASSWORD || 'DemoPass123!';
 
@@ -22,15 +28,24 @@ async function globalSetup(config: FullConfig): Promise<void> {
   });
   const page = await context.newPage();
 
-  await page.goto('/login', { waitUntil: 'domcontentloaded' });
-  await page.locator('input[name="email"]').fill(email);
-  await page.locator('input[name="password"]').fill(password);
+  await page.goto(`${baseURL}/login`, { waitUntil: 'load', timeout: 90_000 });
+  await page.getByRole('heading', { name: /welcome back/i }).waitFor({ state: 'visible', timeout: 60_000 });
+  const emailInput = page.locator('input[type="email"]');
+  await emailInput.waitFor({ state: 'visible', timeout: 30_000 });
+  await emailInput.fill(email);
+  await page.locator('input[type="password"], input[name="password"]').fill(password);
 
   const submit = page.locator('button[type="submit"]');
   await submit.click();
 
   try {
-    await page.waitForURL(/\/($|dashboard|proposals|clients)/, { timeout: 45_000 });
+    await page.waitForURL(
+      (url) => {
+        const path = url.pathname.replace(/\/$/, '') || '/';
+        return !path.endsWith('/login') && !path.endsWith('/register');
+      },
+      { timeout: 45_000 }
+    );
   } catch {
     const body = await page.locator('body').innerText().catch(() => '');
     throw new Error(`Global login failed at ${page.url()}. Page snippet: ${body.slice(0, 300)}`);

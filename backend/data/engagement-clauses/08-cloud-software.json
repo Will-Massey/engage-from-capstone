@@ -1,0 +1,20 @@
+[
+  {
+    "id": "scope-xero",
+    "title": "Xero cloud accounting",
+    "tags": ["xero", "cloud-accounting", "technical", "_acca"],
+    "body": "We will configure and maintain your Xero organisation, including chart of accounts, bank feeds, and MTD-compatible VAT settings. Xero subscription fees are billed separately by Xero."
+  },
+  {
+    "id": "scope-dext",
+    "title": "Dext document capture",
+    "tags": ["dext", "automation", "technical", "_acca"],
+    "body": "We will implement Dext for automated receipt and invoice capture, including supplier rules and publishing workflows to your accounting software."
+  },
+  {
+    "id": "client-software-access",
+    "title": "Client software obligations",
+    "tags": ["_always", "_acca"],
+    "body": "You are responsible for maintaining subscriptions to third-party software and granting us appropriate user access to complete the agreed services."
+  }
+]

@@ -1,0 +1,10 @@
+{
+  "name": "engage-proxy",
+  "main": "src/index.js",
+  "compatibility_date": "2025-06-01",
+  "account_id": "19ad15686e6bd22ab2896661ac1976f1",
+  "routes": [
+    { "pattern": "capstonesoftware.co.uk/engage*", "zone_name": "capstonesoftware.co.uk" },
+    { "pattern": "www.capstonesoftware.co.uk/engage*", "zone_name": "capstonesoftware.co.uk" }
+  ]
+}

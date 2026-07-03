@@ -31,6 +31,7 @@ import { chatCompletion } from '../services/ai/aiClient.js';
 import { autoFitProposal, generateClientBrief } from '../services/ai/clientFitService.js';
 import { generateFollowUpEmail } from '../services/ai/lifecycleAiEmailService.js';
 import { checkAiTokenBudget, getAiStatusMeta } from '../services/ai/aiClient.js';
+import { AI_FEATURE_FLAGS } from '../config/featureFlags.js';
 import { getRegulatoryAlerts } from '../services/ai/regulatoryWatcherService.js';
 import { advisePricing, type PricingAdvisorLineInput } from '../services/regulatoryFitService.js';
 import { getBenchmarkPricing } from '../services/ai/benchmarkPricingService.js';
@@ -55,7 +56,7 @@ const aiLimiter = rateLimit({
 
 router.use(aiLimiter);
 router.use(authenticate);
-router.use(authorize('ADMIN', 'PARTNER', 'MANAGER', 'SENIOR'));
+router.use(authorize('ADMIN', 'PARTNER', 'MD', 'MANAGER', 'SENIOR'));
 
 /** GET /api/ai/status */
 router.get(
@@ -100,8 +101,10 @@ router.get(
           'benchmark_pricing',
           'voice_proposal',
         ],
+        featureFlags: AI_FEATURE_FLAGS,
         tokenBudget: await checkAiTokenBudget(req.tenantId!),
-        usageSummary: `Monthly AI calls tracked via activity; see tokenBudget for details (calls * ~2.5k est.)`,
+        usageSummary:
+          'Monthly AI usage from logged provider tokens where available; older calls use an estimate until refreshed.',
       },
     });
   })
@@ -113,7 +116,7 @@ router.get(
   asyncHandler(async (req, res) => {
     const context = String(req.query.context || 'general').slice(0, 40);
     // Tiny prompt only — low token cost, UK English, encouraging + actionable
-    const raw = await chatCompletion(
+    const { content: raw } = await chatCompletion(
       [
         { role: 'system', content: 'You are Clara, concise helpful UK accountancy AI. Output 1-2 sentences only. Use UK spelling.' },
         { role: 'user', content: `Empty ${context} list. Give 1 encouraging actionable tip (max 35 words) for a UK accountant user starting with Engage app. No intro, no quotes.` },
@@ -222,8 +225,15 @@ router.post(
 router.post(
   '/engagement-letter',
   asyncHandler(async (req, res) => {
-    const { proposalId } = z.object({ proposalId: z.string().uuid() }).parse(req.body);
-    const data = await assembleAiEngagementLetter(req.tenantId!, req.user?.id, proposalId);
+    const { proposalId, includeAiIntro } = z
+      .object({
+        proposalId: z.string().uuid(),
+        includeAiIntro: z.boolean().optional().default(false),
+      })
+      .parse(req.body);
+    const data = await assembleAiEngagementLetter(req.tenantId!, req.user?.id, proposalId, {
+      includeAiIntro,
+    });
     res.json({ success: true, data });
   })
 );
@@ -244,7 +254,7 @@ router.post(
     const { proposalId, upliftPercent } = z
       .object({
         proposalId: z.string().uuid(),
-        upliftPercent: z.number().min(0).max(50).default(0),
+        upliftPercent: z.number().min(-50).max(50).default(0),
       })
       .parse(req.body);
 
@@ -268,6 +278,7 @@ router.post(
         title: z.string().max(200).optional(),
         coverLetter: z.string().max(12000).optional(),
         validUntil: z.string().optional(),
+        terms: z.string().max(50000).optional(),
         services: z.array(
           z.object({
             name: z.string(),
@@ -283,6 +294,7 @@ router.post(
       title: body.title,
       coverLetter: body.coverLetter,
       validUntil: body.validUntil,
+      terms: body.terms,
       services: body.services.map((s) => ({
         name: s.name,
         billingFrequency: s.billingFrequency,
@@ -323,7 +335,7 @@ router.post(
     // generalized cheap direct path (no client load) for drafts
     const nameForTitle = clientName || 'the client';
     const svcNames = services.map((s) => s.name).join(', ') || 'general engagement';
-    const raw = await chatCompletion(
+    const { content: raw } = await chatCompletion(
       [
         { role: 'system', content: 'You are concise. Output only the JSON requested.' },
         { role: 'user', content: `Suggest a professional UK accountancy proposal title (max 8 words). Return JSON: { "title": "..." }
@@ -361,7 +373,7 @@ Instruction: ${instruction}
 Context: ${JSON.stringify(clientContext || {}).slice(0, 200)}
 Return ONLY JSON { "revised": [same shape], "notes": "short UK English advice" }. Keep prices realistic.`;
 
-    const raw = await chatCompletion(
+    const { content: raw } = await chatCompletion(
       [
         { role: 'system', content: 'Return only valid compact JSON. Be concise.' },
         { role: 'user', content: prompt },
@@ -511,7 +523,7 @@ Context (client + proposal summary): ${JSON.stringify(context || {}).slice(0, 60
 
 Return ONLY the revised plain text body (no subject, no extra commentary). Keep professional UK tone.`;
 
-    const revised = await (await import('../services/ai/aiClient.js')).chatCompletion(
+    const { content: revised } = await (await import('../services/ai/aiClient.js')).chatCompletion(
       [
         { role: 'system', content: 'You are concise and precise.' },
         { role: 'user', content: prompt },
@@ -520,6 +532,48 @@ Return ONLY the revised plain text body (no subject, no extra commentary). Keep 
     );
 
     res.json({ success: true, data: { revisedBody: revised.trim() } });
+  })
+);
+
+/** Token-efficient client-facing proposal narrative (~110 tokens) */
+router.post(
+  '/proposal-explanation',
+  authenticate,
+  asyncHandler(async (req, res) => {
+    const body = z
+      .object({
+        clientId: z.string().uuid(),
+        title: z.string().min(1),
+        services: z
+          .array(
+            z.object({
+              name: z.string(),
+              description: z.string().optional(),
+              billingFrequency: z.string().optional(),
+              billingCycle: z.string().optional(),
+            })
+          )
+          .min(1),
+        monthlyTotal: z.number().optional(),
+        annualTotal: z.number().optional(),
+        contractTotal: z.number().optional(),
+      })
+      .parse(req.body);
+
+    const explanation = await generateProposalExplanation(req.tenantId!, req.user?.id, {
+      clientId: body.clientId,
+      title: body.title,
+      services: body.services.map((s) => ({
+        name: s.name,
+        description: s.description,
+        billingFrequency: s.billingFrequency,
+        billingCycle: s.billingCycle,
+      })),
+      monthlyTotal: body.monthlyTotal,
+      annualTotal: body.annualTotal,
+      contractTotal: body.contractTotal,
+    });
+    res.json({ success: true, data: { explanation } });
   })
 );
 
@@ -544,7 +598,7 @@ Context: ${JSON.stringify(context || {}).slice(0, 500)}
 
 Return ONLY the revised plain text cover letter (no extra commentary). Keep professional UK tone and the original structure.`;
 
-    const revised = await chatCompletion(
+    const { content: revised } = await chatCompletion(
       [
         { role: 'system', content: 'You are concise and precise.' },
         { role: 'user', content: prompt },
@@ -577,7 +631,7 @@ ${body.slice(0, 400)}
 Return ONLY a JSON array like: ["Subject one", "Subject two", "Subject three"]
 No extra text.`;
 
-    const raw = await chatCompletion(
+    const { content: raw } = await chatCompletion(
       [
         { role: 'system', content: 'You output only valid JSON arrays of strings.' },
         { role: 'user', content: prompt },
@@ -626,7 +680,7 @@ ${body.slice(0, 600)}
 Return ONLY a JSON array: ["CTA one here", "CTA two here"]
 No extra text.`;
 
-    const raw = await chatCompletion(
+    const { content: raw } = await chatCompletion(
       [
         { role: 'system', content: 'You output only valid JSON arrays of strings.' },
         { role: 'user', content: prompt },
@@ -666,7 +720,7 @@ router.post(
 Flag issues for length, missing (fees/total, next steps, valid until, CTA, services), or tone.
 Return tiny JSON: { "issues": ["short bullet"], "score": 85, "missing": ["fees"] } . Max 3 issues/missing. UK English.`;
 
-    const raw = await chatCompletion(
+    const { content: raw } = await chatCompletion(
       [
         { role: 'system', content: 'You are brief and only output the requested JSON.' },
         { role: 'user', content: prompt },
@@ -933,11 +987,16 @@ router.post(
   })
 );
 
-/** POST /api/ai/engagement-letter/stream — stream the AI intro + full letter */
+/** POST /api/ai/engagement-letter/stream — stream optional AI intro + clause-based letter */
 router.post(
   '/engagement-letter/stream',
   asyncHandler(async (req, res) => {
-    const { proposalId } = z.object({ proposalId: z.string().uuid() }).parse(req.body);
+    const { proposalId, includeAiIntro } = z
+      .object({
+        proposalId: z.string().uuid(),
+        includeAiIntro: z.boolean().optional().default(false),
+      })
+      .parse(req.body);
 
     res.setHeader('Content-Type', 'text/event-stream');
     res.setHeader('Cache-Control', 'no-cache');
@@ -945,7 +1004,12 @@ router.post(
     if ((res as any).flushHeaders) (res as any).flushHeaders();
 
     try {
-      for await (const chunk of assembleAiEngagementLetterStream(req.tenantId!, req.user?.id, proposalId)) {
+      for await (const chunk of assembleAiEngagementLetterStream(
+        req.tenantId!,
+        req.user?.id,
+        proposalId,
+        { includeAiIntro }
+      )) {
         res.write(`data: ${JSON.stringify({ chunk })}\n\n`);
       }
       res.write(`data: ${JSON.stringify({ done: true })}\n\n`);

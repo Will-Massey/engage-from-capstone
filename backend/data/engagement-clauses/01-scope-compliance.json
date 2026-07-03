@@ -1,0 +1,26 @@
+[
+  {
+    "id": "scope-annual-accounts",
+    "title": "Annual accounts preparation",
+    "tags": ["annual-accounts", "accounts", "compliance", "companies-house", "_icaew", "_acca"],
+    "body": "We will prepare statutory annual accounts in accordance with applicable UK GAAP (including FRS 102 or FRS 105 where relevant), including the directors' report and notes, and file them with Companies House within statutory deadlines."
+  },
+  {
+    "id": "scope-corporation-tax",
+    "title": "Corporation tax",
+    "tags": ["ct600", "corporation-tax", "tax", "compliance", "_icaew", "_acca"],
+    "body": "We will prepare your Corporation Tax return (CT600), tax computations, and supporting schedules, and submit them to HMRC electronically within the statutory filing deadline."
+  },
+  {
+    "id": "scope-confirmation-statement",
+    "title": "Confirmation statement",
+    "tags": ["confirmation-statement", "cs01", "compliance", "_icaew"],
+    "body": "We will verify your company details and file the annual Confirmation Statement (CS01) with Companies House."
+  },
+  {
+    "id": "scope-dormant-accounts",
+    "title": "Dormant company accounts",
+    "tags": ["dormant-accounts", "dca", "compliance", "_icaew"],
+    "body": "We will prepare and file dormant company accounts where the company has had no significant accounting transactions during the financial year."
+  }
+]

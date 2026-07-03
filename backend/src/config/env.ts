@@ -25,6 +25,7 @@ const envSchema = z
     OAUTH_STATE_SECRET: z.string().min(32).optional(),
     CLOUDFLARE_ACCOUNT_ID: z.string().optional(),
     CLOUDFLARE_EMAIL_API_TOKEN: z.string().optional(),
+    CLOUDFLARE_EMAIL_WEBHOOK_SECRET: z.string().optional(),
     EMAIL_WORKER_URL: z.string().optional(),
     EMAIL_WORKER_SECRET: z.string().optional(),
     EMAIL_FROM_ADDRESS: z.string().optional(),

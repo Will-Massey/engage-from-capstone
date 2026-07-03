@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import bcrypt from 'bcryptjs';
+import jwt from 'jsonwebtoken';
 import { z } from 'zod';
 import { prisma } from '../config/database.js';
 import {
@@ -24,9 +25,74 @@ import { passwordResetService } from '../services/passwordResetService.js';
 import { enforceTierLimit } from '../middleware/tierLimits.js';
 import { gdprService } from '../services/gdprService.js';
 import { createEmailService } from '../services/emailService.js';
-import { setAuthCookies, clearAuthCookies } from '../utils/authCookies.js';
+import { setAuthCookies, clearAuthCookies, issueCsrfToken } from '../utils/authCookies.js';
 
 const router = Router();
+const JWT_SECRET = process.env.JWT_SECRET!;
+
+type AuthUser = {
+  id: string;
+  email: string;
+  firstName: string;
+  lastName: string;
+  phone: string | null;
+  jobTitle: string | null;
+  role: string;
+  tenantId: string;
+  twoFactorEnabled: boolean;
+  tenant: {
+    id: string;
+    name: string;
+    subdomain: string;
+    primaryColor: string | null;
+    settings: unknown;
+  };
+};
+
+async function issueAuthSession(
+  res: import('express').Response,
+  user: AuthUser
+): Promise<void> {
+  const accessToken = generateToken({
+    id: user.id,
+    email: user.email,
+    firstName: user.firstName,
+    lastName: user.lastName,
+    role: user.role as import('@prisma/client').UserRole,
+    tenantId: user.tenantId,
+  });
+
+  const refreshToken = await generateRefreshToken(user.id);
+  const { csrfToken } = setAuthCookies(res, accessToken, refreshToken);
+
+  res.json({
+    success: true,
+    data: {
+      csrfToken,
+      user: {
+        id: user.id,
+        email: user.email,
+        firstName: user.firstName,
+        lastName: user.lastName,
+        phone: user.phone,
+        jobTitle: user.jobTitle,
+        role: user.role,
+        twoFactorEnabled: user.twoFactorEnabled,
+        tenant: {
+          id: user.tenant.id,
+          name: user.tenant.name,
+          subdomain: user.tenant.subdomain,
+          primaryColor: user.tenant.primaryColor,
+          settings: user.tenant.settings,
+        },
+      },
+    },
+  });
+}
+
+function frontendBaseUrl(): string {
+  return (process.env.FRONTEND_URL || 'http://localhost:5173').replace(/\/$/, '');
+}
 
 // Validation schemas
 const loginSchema = z.object({
@@ -124,49 +190,33 @@ router.post(
 
     await clearLoginAttempts(email, resolvedTenantId);
 
+    if (user.twoFactorEnabled && user.twoFactorSecret) {
+      const pendingToken = jwt.sign(
+        { userId: user.id, purpose: '2fa_pending' },
+        JWT_SECRET,
+        { expiresIn: '5m' }
+      );
+
+      logger.info(`Login requires 2FA: ${email} (${user.id})`);
+
+      res.json({
+        success: true,
+        data: {
+          requires2FA: true,
+          pendingToken,
+        },
+      });
+      return;
+    }
+
     logger.info(`Login successful: ${email} (${user.id})`);
 
-    // Update last login
     await prisma.user.update({
       where: { id: user.id },
       data: { lastLoginAt: new Date() },
     });
 
-    // Generate tokens
-    const accessToken = generateToken({
-      id: user.id,
-      email: user.email,
-      firstName: user.firstName,
-      lastName: user.lastName,
-      role: user.role,
-      tenantId: user.tenantId,
-    });
-
-    const refreshToken = await generateRefreshToken(user.id);
-
-    setAuthCookies(res, accessToken, refreshToken);
-
-    res.json({
-      success: true,
-      data: {
-        user: {
-          id: user.id,
-          email: user.email,
-          firstName: user.firstName,
-          lastName: user.lastName,
-          phone: user.phone,
-          jobTitle: user.jobTitle,
-          role: user.role,
-          tenant: {
-            id: user.tenant.id,
-            name: user.tenant.name,
-            subdomain: user.tenant.subdomain,
-            primaryColor: user.tenant.primaryColor,
-            settings: user.tenant.settings,
-          },
-        },
-      },
-    });
+    await issueAuthSession(res, user);
   })
 );
 
@@ -230,11 +280,12 @@ router.post(
 
     const refreshToken = await generateRefreshToken(user.id);
 
-    setAuthCookies(res, accessToken, refreshToken);
+    const { csrfToken } = setAuthCookies(res, accessToken, refreshToken);
 
     res.status(201).json({
       success: true,
       data: {
+        csrfToken,
         user: {
           id: user.id,
           email: user.email,
@@ -307,12 +358,13 @@ router.post(
       where: { id: tokenRecord.id },
     });
 
-    setAuthCookies(res, accessToken, newRefreshToken);
+    const { csrfToken } = setAuthCookies(res, accessToken, newRefreshToken);
 
     res.json({
       success: true,
       data: {
         message: 'Session refreshed',
+        csrfToken,
       },
     });
   })
@@ -368,9 +420,12 @@ router.get(
       throw new ApiError('USER_NOT_FOUND', 'User not found', 404);
     }
 
+    const csrfToken = issueCsrfToken(res);
+
     res.json({
       success: true,
       data: {
+        csrfToken,
         user: {
           id: user.id,
           email: user.email,
@@ -381,6 +436,7 @@ router.get(
           role: user.role,
           isActive: user.isActive,
           lastLoginAt: user.lastLoginAt,
+          twoFactorEnabled: user.twoFactorEnabled,
           tenant: {
             id: user.tenant.id,
             name: user.tenant.name,
@@ -458,7 +514,7 @@ router.put(
       lastName: z.string().min(1, 'Last name is required').optional(),
       email: z.string().email('Invalid email').optional(),
       phone: z.string().optional(),
-      jobTitle: z.string().optional(),
+      jobTitle: z.string().nullable().optional(),
     });
 
     const data = updateSchema.parse(req.body);
@@ -481,8 +537,11 @@ router.put(
     const user = await prisma.user.update({
       where: { id: req.user!.id },
       data: {
-        ...data,
+        firstName: data.firstName,
+        lastName: data.lastName,
         email: data.email?.toLowerCase(),
+        phone: data.phone,
+        jobTitle: data.jobTitle,
       },
       include: {
         tenant: true,
@@ -523,7 +582,7 @@ router.put(
 router.get(
   '/users',
   authenticate,
-  authorize('ADMIN', 'PARTNER', 'MANAGER'),
+  authorize('ADMIN', 'PARTNER', 'MD', 'MANAGER'),
   asyncHandler(async (req, res) => {
     const users = await prisma.user.findMany({
       where: {
@@ -535,6 +594,8 @@ router.get(
         email: true,
         firstName: true,
         lastName: true,
+        phone: true,
+        jobTitle: true,
         role: true,
         isActive: true,
         lastLoginAt: true,
@@ -566,7 +627,7 @@ router.post(
       lastName: z.string().min(1, 'Last name is required'),
       phone: z.string().optional(),
       jobTitle: z.string().optional(),
-      role: z.enum(['PARTNER', 'MANAGER', 'SENIOR', 'JUNIOR']),
+      role: z.enum(['PARTNER', 'MD', 'MANAGER', 'SENIOR', 'JUNIOR']),
       password: z.string().min(8, 'Password must be at least 8 characters'),
     });
 
@@ -625,7 +686,7 @@ router.post(
 router.put(
   '/users/:id',
   authenticate,
-  authorize('ADMIN', 'PARTNER', 'MANAGER'),
+  authorize('ADMIN', 'PARTNER', 'MD', 'MANAGER'),
   asyncHandler(async (req, res) => {
     const { id } = req.params;
 
@@ -633,9 +694,9 @@ router.put(
       firstName: z.string().min(1).optional(),
       lastName: z.string().min(1).optional(),
       email: z.string().email().optional(),
-      phone: z.string().optional(),
-      jobTitle: z.string().optional(),
-      role: z.enum(['PARTNER', 'MANAGER', 'SENIOR', 'JUNIOR']).optional(),
+      phone: z.string().nullable().optional(),
+      jobTitle: z.string().nullable().optional(),
+      role: z.enum(['ADMIN', 'PARTNER', 'MD', 'MANAGER', 'SENIOR', 'JUNIOR']).optional(),
       isActive: z.boolean().optional(),
     });
 
@@ -671,8 +732,13 @@ router.put(
     const user = await prisma.user.update({
       where: { id },
       data: {
-        ...data,
+        firstName: data.firstName,
+        lastName: data.lastName,
         email: data.email?.toLowerCase(),
+        phone: data.phone,
+        jobTitle: data.jobTitle,
+        role: data.role,
+        isActive: data.isActive,
       },
     });
 
@@ -700,7 +766,7 @@ router.put(
 router.delete(
   '/users/:id',
   authenticate,
-  authorize('ADMIN', 'PARTNER', 'MANAGER'),
+  authorize('ADMIN', 'PARTNER', 'MD', 'MANAGER'),
   asyncHandler(async (req, res) => {
     const { id } = req.params;
 
@@ -872,50 +938,234 @@ router.post(
 );
 
 // ============================================================================
-// TWO-FACTOR AUTHENTICATION - DISABLED (requires 2FA models in schema)
+// TWO-FACTOR AUTHENTICATION
 // ============================================================================
+
+const twoFactorVerifySchema = z.object({
+  token: z.string().min(6, 'Verification code is required'),
+});
+
+const twoFactorDisableSchema = z.object({
+  password: z.string().min(1, 'Password is required'),
+});
+
+const twoFactorLoginSchema = z.object({
+  pendingToken: z.string().min(1, '2FA session token is required'),
+  totpToken: z.string().min(6, 'Verification code is required'),
+});
+
+/**
+ * POST /api/auth/2fa/login
+ * Complete login after password verification when 2FA is enabled
+ */
+router.post(
+  '/2fa/login',
+  asyncHandler(async (req, res) => {
+    const { pendingToken, totpToken } = twoFactorLoginSchema.parse(req.body);
+
+    let decoded: { userId: string; purpose?: string };
+    try {
+      decoded = jwt.verify(pendingToken, JWT_SECRET) as { userId: string; purpose?: string };
+    } catch {
+      throw new ApiError('INVALID_2FA_SESSION', '2FA session expired. Please sign in again.', 401);
+    }
+
+    if (decoded.purpose !== '2fa_pending') {
+      throw new ApiError('INVALID_2FA_SESSION', 'Invalid 2FA session', 401);
+    }
+
+    const user = await prisma.user.findFirst({
+      where: {
+        id: decoded.userId,
+        isActive: true,
+        deletedAt: null,
+        twoFactorEnabled: true,
+      },
+      include: { tenant: true },
+    });
+
+    if (!user || !user.twoFactorSecret) {
+      throw new ApiError('INVALID_2FA_SESSION', '2FA session expired. Please sign in again.', 401);
+    }
+
+    const secret = twoFactorService.decryptSecret(user.twoFactorSecret);
+    let verified = twoFactorService.verifyToken(secret, totpToken);
+
+    if (!verified) {
+      const backupCode = await prisma.twoFactorBackupCode.findFirst({
+        where: {
+          userId: user.id,
+          codeHash: twoFactorService.hashBackupCode(totpToken),
+          usedAt: null,
+        },
+      });
+
+      if (backupCode) {
+        await prisma.twoFactorBackupCode.update({
+          where: { id: backupCode.id },
+          data: { usedAt: new Date() },
+        });
+        verified = true;
+      }
+    }
+
+    if (!verified) {
+      throw new ApiError('INVALID_2FA_TOKEN', 'Invalid verification code', 401);
+    }
+
+    await prisma.user.update({
+      where: { id: user.id },
+      data: { lastLoginAt: new Date() },
+    });
+
+    logger.info(`2FA login successful: ${user.email} (${user.id})`);
+    await issueAuthSession(res, user);
+  })
+);
 
 /**
  * POST /api/auth/2fa/setup
- * Setup 2FA for user - DISABLED
+ * Setup 2FA for user — returns QR code and backup codes
  */
 router.post(
   '/2fa/setup',
   authenticate,
-  asyncHandler(async (_req, res) => {
-    res.status(501).json({
-      success: false,
-      error: { code: 'NOT_IMPLEMENTED', message: '2FA not implemented' },
+  asyncHandler(async (req, res) => {
+    const user = await prisma.user.findUnique({
+      where: { id: req.user!.id },
+    });
+
+    if (!user || user.deletedAt) {
+      throw new ApiError('USER_NOT_FOUND', 'User not found', 404);
+    }
+
+    if (user.twoFactorEnabled) {
+      throw new ApiError('2FA_ALREADY_ENABLED', 'Two-factor authentication is already enabled', 400);
+    }
+
+    const setup = await twoFactorService.generateSecret(user.id, user.email);
+    const encryptedSecret = twoFactorService.encryptSecret(setup.secret);
+
+    await prisma.$transaction([
+      prisma.twoFactorBackupCode.deleteMany({ where: { userId: user.id } }),
+      prisma.user.update({
+        where: { id: user.id },
+        data: {
+          twoFactorSecret: encryptedSecret,
+          twoFactorEnabled: false,
+        },
+      }),
+      ...setup.backupCodes.map((code) =>
+        prisma.twoFactorBackupCode.create({
+          data: {
+            userId: user.id,
+            codeHash: twoFactorService.hashBackupCode(code),
+          },
+        })
+      ),
+    ]);
+
+    res.json({
+      success: true,
+      data: {
+        qrCodeUrl: setup.qrCodeUrl,
+        secret: setup.secret,
+        backupCodes: setup.backupCodes,
+      },
     });
   })
 );
 
 /**
  * POST /api/auth/2fa/verify
- * Verify 2FA token and enable 2FA - DISABLED
+ * Verify 2FA token and enable 2FA
  */
 router.post(
   '/2fa/verify',
   authenticate,
-  asyncHandler(async (_req, res) => {
-    res.status(501).json({
-      success: false,
-      error: { code: 'NOT_IMPLEMENTED', message: '2FA not implemented' },
+  asyncHandler(async (req, res) => {
+    const { token } = twoFactorVerifySchema.parse(req.body);
+
+    const user = await prisma.user.findUnique({
+      where: { id: req.user!.id },
+    });
+
+    if (!user || user.deletedAt) {
+      throw new ApiError('USER_NOT_FOUND', 'User not found', 404);
+    }
+
+    if (user.twoFactorEnabled) {
+      throw new ApiError('2FA_ALREADY_ENABLED', 'Two-factor authentication is already enabled', 400);
+    }
+
+    if (!user.twoFactorSecret) {
+      throw new ApiError('2FA_NOT_SETUP', 'Please set up two-factor authentication first', 400);
+    }
+
+    const secret = twoFactorService.decryptSecret(user.twoFactorSecret);
+    const isValid = twoFactorService.verifyToken(secret, token);
+
+    if (!isValid) {
+      throw new ApiError('INVALID_2FA_TOKEN', 'Invalid verification code', 400);
+    }
+
+    await prisma.user.update({
+      where: { id: user.id },
+      data: { twoFactorEnabled: true },
+    });
+
+    logger.info('2FA enabled', { userId: user.id });
+
+    res.json({
+      success: true,
+      data: { message: 'Two-factor authentication enabled successfully', twoFactorEnabled: true },
     });
   })
 );
 
 /**
  * POST /api/auth/2fa/disable
- * Disable 2FA - DISABLED
+ * Disable 2FA
  */
 router.post(
   '/2fa/disable',
   authenticate,
-  asyncHandler(async (_req, res) => {
-    res.status(501).json({
-      success: false,
-      error: { code: 'NOT_IMPLEMENTED', message: '2FA not implemented' },
+  asyncHandler(async (req, res) => {
+    const { password } = twoFactorDisableSchema.parse(req.body);
+
+    const user = await prisma.user.findUnique({
+      where: { id: req.user!.id },
+    });
+
+    if (!user || user.deletedAt) {
+      throw new ApiError('USER_NOT_FOUND', 'User not found', 404);
+    }
+
+    if (!user.twoFactorEnabled) {
+      throw new ApiError('2FA_NOT_ENABLED', 'Two-factor authentication is not enabled', 400);
+    }
+
+    const isValidPassword = await bcrypt.compare(password, user.passwordHash);
+    if (!isValidPassword) {
+      throw new ApiError('INVALID_PASSWORD', 'Password is incorrect', 400);
+    }
+
+    await prisma.$transaction([
+      prisma.twoFactorBackupCode.deleteMany({ where: { userId: user.id } }),
+      prisma.user.update({
+        where: { id: user.id },
+        data: {
+          twoFactorEnabled: false,
+          twoFactorSecret: null,
+        },
+      }),
+    ]);
+
+    logger.info('2FA disabled', { userId: user.id });
+
+    res.json({
+      success: true,
+      data: { message: 'Two-factor authentication disabled', twoFactorEnabled: false },
     });
   })
 );

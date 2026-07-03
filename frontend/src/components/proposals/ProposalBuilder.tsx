@@ -8,7 +8,7 @@
  */
 
 import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { apiClient } from '../../utils/api';
 import { useAuthStore } from '../../stores/authStore';
 import {
@@ -40,13 +40,33 @@ import {
   MagnifyingGlassIcon,
   CalculatorIcon,
   SparklesIcon,
+  EyeIcon,
+  EyeSlashIcon,
 } from '@heroicons/react/24/outline';
+import ProposalClientPreview from './ProposalClientPreview';
+import RegulatoryCheckBanner from './RegulatoryCheckBanner';
+import {
+  getBuilderPreviewPreference,
+  setBuilderPreviewPreference,
+} from './builderPreviewStorage';
+import {
+  DEFAULT_PRICING_TIERS,
+  buildCustomFieldsPayload,
+  parseProposalCustomFields,
+  formatTierMultiplier,
+  type PricingTier,
+} from '../../utils/proposalCustomFields';
 import { AiDraftPreview, showAiError } from '../ai/AiPanel';
 import ProposalHealthCard from '../ai/ProposalHealthCard';
 import ProposalBuilderClara from '../ai/ProposalBuilderClara';
 import ClientContextCard from '../ai/ClientContextCard';
 import AutoFitBanner, { type AutoFitResult } from '../ai/AutoFitBanner';
 import ProposalEmailPreviewDialog, { type ProposalEmailDraftInput } from '../ai/ProposalEmailPreviewDialog';
+import SaveProposalTemplateDialog from './SaveProposalTemplateDialog';
+import {
+  loadPricingSuggestion,
+  clearPricingSuggestion,
+} from '../../utils/pricingSuggestionStorage';
 import { AI_COPILOT } from '../../config/aiCopilot';
 import { calculateLineItem, type BillingFrequency } from '@shared/pricingEngine';
 import { calculateProposalSummaryBands, type PricingSummaryBands } from '@shared/proposalSummary';
@@ -75,8 +95,17 @@ interface Service {
   vatRate?: string | number;
 }
 
+function newLineId(): string {
+  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+    return crypto.randomUUID();
+  }
+  return `line-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
+}
+
 interface SelectedService extends Service {
-  /** Stable catalog template id sent to the API as `serviceId` */
+  /** Unique id per proposal line (for UI/editing — never sent as catalogue serviceId) */
+  id: string;
+  /** Catalogue template id sent to the API as `serviceId` */
   templateId: string;
   quantity: number;
   discountPercent: number;
@@ -285,9 +314,12 @@ export default function ProposalBuilder({ proposalId }: ProposalBuilderProps) {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const preselectedClientId = searchParams.get('clientId');
+  const preselectedTemplateId = searchParams.get('template');
+  const guidedParam = searchParams.get('guided');
+  const manualParam = searchParams.get('manual');
+  const fromPricingParam = searchParams.get('fromPricing');
   const { tenant, user } = useAuthStore();
   const isEditMode = Boolean(proposalId);
-  const draftKey = `engage-draft-${proposalId || 'new'}`;
   const [currentStep, setCurrentStep] = useState(1);
   const [isLoading, setIsLoading] = useState(false);
 
@@ -323,6 +355,8 @@ export default function ProposalBuilder({ proposalId }: ProposalBuilderProps) {
   // Step 3: Review
   const [proposalTitle, setProposalTitle] = useState('');
   const [coverLetter, setCoverLetter] = useState('');
+  const [coverLetterLoading, setCoverLetterLoading] = useState(false);
+  const coverLetterServicesKeyRef = useRef('');
   const [coverLetterTone, setCoverLetterTone] = useState<CoverLetterTone>('PROFESSIONAL');
   const [coverLetterCustomInstruction, setCoverLetterCustomInstruction] = useState('');
   const [applyingCoverLetterTweak, setApplyingCoverLetterTweak] = useState(false);
@@ -332,6 +366,8 @@ export default function ProposalBuilder({ proposalId }: ProposalBuilderProps) {
   const [contractStartDate, setContractStartDate] = useState('');
   const [validUntil, setValidUntil] = useState('');
   const [defaultExpiryDays, setDefaultExpiryDays] = useState(30);
+  const [defaultPaymentTermsDays, setDefaultPaymentTermsDays] = useState(7);
+  const [benchmarksOptIn, setBenchmarksOptIn] = useState(false);
 
   // AI assistance
   const [aiConfigured, setAiConfigured] = useState(false);
@@ -339,19 +375,132 @@ export default function ProposalBuilder({ proposalId }: ProposalBuilderProps) {
   const [aiSuggestions, setAiSuggestions] = useState<any>(null);
   const [aiCoverLoading, setAiCoverLoading] = useState(false);
   const [aiCoverDraft, setAiCoverDraft] = useState<string | null>(null);
-  const [showClientPreview, setShowClientPreview] = useState(false);
+  const [showLivePreviewPane, setShowLivePreviewPane] = useState(() => getBuilderPreviewPreference());
+
+  const toggleLivePreviewPane = useCallback((next?: boolean) => {
+    setShowLivePreviewPane((prev) => {
+      const value = next ?? !prev;
+      setBuilderPreviewPreference(value);
+      return value;
+    });
+  }, []);
+
+  const [buildMode, setBuildMode] = useState<BuildMode>(() => {
+    if (manualParam === '1' || manualParam === 'true') return 'manual';
+    if (guidedParam === '1' || guidedParam === 'true') return 'clara';
+    return 'unset';
+  });
+  const [proposalTemplates, setProposalTemplates] = useState<ProposalTemplateSummary[]>([]);
+  const [templatesLoading, setTemplatesLoading] = useState(false);
+  const [selectedTemplateId, setSelectedTemplateId] = useState<string | null>(null);
+  const [applyingTemplateId, setApplyingTemplateId] = useState<string | null>(null);
+  const [saveTemplateDialog, setSaveTemplateDialog] = useState<{ open: boolean; proposalId: string }>({
+    open: false,
+    proposalId: '',
+  });
   const [validationErrors, setValidationErrors] = useState<string[]>([]);
   const [autoFitLoading, setAutoFitLoading] = useState(false);
   const [autoFitResult, setAutoFitResult] = useState<AutoFitResult | null>(null);
-  const [autoFitDismissed, setAutoFitDismissed] = useState(false);
+  const [autoFitDismissed, setAutoFitDismissed] = useState(
+    manualParam === '1' || manualParam === 'true'
+  );
+  const [editPriceText, setEditPriceText] = useState('');
   const [showEmailPreview, setShowEmailPreview] = useState(false);
+  const [proposalTerms, setProposalTerms] = useState('');
+  const [termsLoading, setTermsLoading] = useState(false);
+  const [offerThreePackages, setOfferThreePackages] = useState(false);
+  const [pricingTiers, setPricingTiers] = useState<PricingTier[]>(DEFAULT_PRICING_TIERS);
+  const [requireTwoSigners, setRequireTwoSigners] = useState(false);
+  const [hasResumedDraft, setHasResumedDraft] = useState(false);
   const autoFitClientRef = useRef<string | null>(null);
+  const preselectedTemplateAppliedRef = useRef(false);
+  const pricingSuggestionAppliedRef = useRef(false);
+  const activeClientIdRef = useRef<string | null>(null);
+  const isHydratingDraftRef = useRef(false);
 
   const todayIso = format(new Date(), 'yyyy-MM-dd');
+
+  const resolveInitialBuildMode = (): BuildMode => {
+    if (manualParam === '1' || manualParam === 'true') return 'manual';
+    if (guidedParam === '1' || guidedParam === 'true') return 'clara';
+    if (preselectedTemplateId) return 'template';
+    return 'unset';
+  };
+
+  const captureDraftSnapshot = (): ProposalDraft => ({
+    selectedServices,
+    proposalTitle,
+    coverLetter,
+    coverLetterTone,
+    currentStep,
+    contractStartDate,
+    validUntil,
+    buildMode,
+    selectedTemplateId,
+  });
+
+  const applyDraftSnapshot = useCallback((draft: ProposalDraft) => {
+    isHydratingDraftRef.current = true;
+    setSelectedServices(draft.selectedServices?.length ? draft.selectedServices : []);
+    setProposalTitle(draft.proposalTitle || '');
+    setCoverLetter(draft.coverLetter || '');
+    if (draft.coverLetterTone) setCoverLetterTone(draft.coverLetterTone);
+    setCurrentStep(draft.currentStep && draft.currentStep >= 1 ? draft.currentStep : 1);
+    setContractStartDate(draft.contractStartDate || '');
+    if (draft.validUntil) setValidUntil(draft.validUntil);
+    setBuildMode(draft.buildMode ?? 'unset');
+    setSelectedTemplateId(draft.selectedTemplateId ?? null);
+    setAutoFitResult(null);
+    setAutoFitLoading(false);
+    preselectedTemplateAppliedRef.current =
+      Boolean(draft.selectedTemplateId) ||
+      draft.buildMode === 'template' ||
+      (draft.selectedServices?.length ?? 0) > 0;
+    queueMicrotask(() => {
+      isHydratingDraftRef.current = false;
+    });
+  }, []);
+
+  const resetClientProposalState = useCallback(
+    (clientId: string) => {
+      isHydratingDraftRef.current = true;
+      setSelectedServices([]);
+      setProposalTitle('');
+      setCoverLetter('');
+      setCoverLetterTone('PROFESSIONAL');
+      setCurrentStep(preselectedClientId && clientId === preselectedClientId ? 2 : 1);
+      setContractStartDate('');
+      setValidUntil((prev) => prev || format(addDays(new Date(), defaultExpiryDays), 'yyyy-MM-dd'));
+      setBuildMode(resolveInitialBuildMode());
+      setSelectedTemplateId(preselectedTemplateId);
+      setAutoFitDismissed(manualParam === '1' || manualParam === 'true');
+      setAutoFitResult(null);
+      setAutoFitLoading(false);
+      preselectedTemplateAppliedRef.current = false;
+      queueMicrotask(() => {
+        isHydratingDraftRef.current = false;
+      });
+    },
+    [defaultExpiryDays, preselectedClientId, preselectedTemplateId, manualParam, guidedParam]
+  );
+
+  const selectClient = (client: Client) => {
+    if (selectedClient?.id === client.id) return;
+
+    if (!isEditMode && selectedClient?.id) {
+      localStorage.setItem(
+        proposalDraftKey(undefined, selectedClient.id),
+        JSON.stringify(captureDraftSnapshot())
+      );
+    }
+
+    setSelectedClient(client);
+  };
 
   useEffect(() => {
     loadClients();
     loadServices();
+    loadProposalTemplates();
     loadProposalDefaults();
     apiClient
       .getAiStatus()
@@ -359,106 +508,297 @@ export default function ProposalBuilder({ proposalId }: ProposalBuilderProps) {
       .catch(() => setAiConfigured(false));
     if (proposalId) {
       loadExistingProposal(proposalId);
-    } else {
-      try {
-        const saved = localStorage.getItem(draftKey);
-        if (saved) {
-          const draft = JSON.parse(saved);
-          if (draft.selectedClient) setSelectedClient(draft.selectedClient);
-          if (draft.selectedServices?.length) setSelectedServices(draft.selectedServices);
-          if (draft.proposalTitle) setProposalTitle(draft.proposalTitle);
-          if (draft.coverLetter) setCoverLetter(draft.coverLetter);
-          if (draft.coverLetterTone) setCoverLetterTone(draft.coverLetterTone);
-          if (draft.currentStep) setCurrentStep(draft.currentStep);
-          if (draft.contractStartDate) setContractStartDate(draft.contractStartDate);
-          if (draft.validUntil) setValidUntil(draft.validUntil);
-        }
-      } catch {
-        // ignore corrupt draft
-      }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [proposalId]);
 
-  // Load tenant default cover letter template when client is chosen (new proposals only)
+  // Per-client draft restore — each client gets an isolated in-progress proposal
   useEffect(() => {
-    if (!selectedClient || isEditMode || proposalId || coverLetter.trim().length >= 40) return;
+    if (isEditMode || !selectedClient) return;
+    const clientId = selectedClient.id;
+    if (activeClientIdRef.current === clientId) return;
+    activeClientIdRef.current = clientId;
+
+    let loaded = false;
+    try {
+      const saved = localStorage.getItem(proposalDraftKey(undefined, clientId));
+      if (saved) {
+        applyDraftSnapshot(JSON.parse(saved) as ProposalDraft);
+        loaded = true;
+      } else {
+        const legacy = localStorage.getItem(LEGACY_NEW_DRAFT_KEY);
+        if (legacy) {
+          const legacyDraft = JSON.parse(legacy) as ProposalDraft & { selectedClient?: Client };
+          if (legacyDraft.selectedClient?.id === clientId) {
+            const { selectedClient: _omit, ...rest } = legacyDraft;
+            applyDraftSnapshot(rest);
+            localStorage.removeItem(LEGACY_NEW_DRAFT_KEY);
+            loaded = true;
+          }
+        }
+      }
+    } catch {
+      // ignore corrupt draft
+    }
+
+    if (!loaded) {
+      resetClientProposalState(clientId);
+      setHasResumedDraft(false);
+    } else {
+      setHasResumedDraft(true);
+    }
+  }, [isEditMode, selectedClient, applyDraftSnapshot, resetClientProposalState]);
+
+  const restartProposal = useCallback(
+    (keepClient: boolean) => {
+      const client = selectedClient;
+      if (client) {
+        localStorage.removeItem(proposalDraftKey(undefined, client.id));
+      }
+      localStorage.removeItem(LEGACY_NEW_DRAFT_KEY);
+      activeClientIdRef.current = null;
+      setHasResumedDraft(false);
+      setProposalTerms('');
+      if (keepClient && client) {
+        resetClientProposalState(client.id);
+        setSelectedClient(client);
+        setCurrentStep(1);
+      } else {
+        setSelectedClient(null);
+        setCurrentStep(1);
+        setBuildMode('unset');
+        setSelectedServices([]);
+        setProposalTitle('');
+        setCoverLetter('');
+      }
+    },
+    [selectedClient, resetClientProposalState]
+  );
+
+  useEffect(() => {
+    if (isEditMode || currentStep < 2 || selectedServices.length === 0) return;
+    const ids = selectedServices.map((s) => s.templateId).filter(Boolean);
+    if (!ids.length) return;
 
     let cancelled = false;
-    (async () => {
-      try {
-        const tplRes = (await apiClient.getDefaultCoverLetterTemplate()) as any;
-        if (!tplRes?.success || !tplRes.data?.content || cancelled) return;
-
-        const tone = (tplRes.data.tone || 'PROFESSIONAL') as CoverLetterTone;
-        setCoverLetterTone(tone);
-
-        const previewRes = (await apiClient.previewCoverLetterRaw(tplRes.data.content, {
-          clientName: coverLetterAddressee(selectedClient),
-          companyName: selectedClient.name,
-          tenantName: tenant?.name || 'Our practice',
-          senderName: `${user?.firstName || ''} ${user?.lastName || ''}`.trim() || undefined,
-          serviceCount: selectedServices.length || undefined,
-        })) as any;
-
-        if (!cancelled && previewRes?.success && previewRes.data?.rendered) {
-          setCoverLetter(previewRes.data.rendered);
+    setTermsLoading(true);
+    apiClient
+      .previewProposalTerms(ids)
+      .then((res: any) => {
+        if (!cancelled && res.success && res.data?.terms) {
+          setProposalTerms(res.data.terms);
         }
-      } catch {
-        // fall back to tone presets in UI
-      }
-    })();
+      })
+      .catch(() => {
+        if (!cancelled) setProposalTerms('');
+      })
+      .finally(() => {
+        if (!cancelled) setTermsLoading(false);
+      });
 
     return () => {
       cancelled = true;
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedClient?.id, selectedServices.length]);
+  }, [isEditMode, currentStep, selectedServices]);
 
-  // Debounced auto-fit when client is selected (new proposals only)
+  // Apply pricing calculator suggestions: ?fromPricing=1
   useEffect(() => {
-    if (!selectedClient || isEditMode || proposalId || !aiConfigured || autoFitDismissed) return;
+    if (
+      isEditMode ||
+      fromPricingParam !== '1' ||
+      pricingSuggestionAppliedRef.current ||
+      services.length === 0
+    ) {
+      return;
+    }
 
-    const clientId = selectedClient.id;
-    autoFitClientRef.current = clientId;
-    const timer = setTimeout(async () => {
-      setAutoFitLoading(true);
-      try {
-        const res = (await apiClient.aiAutoFit(clientId)) as any;
-        if (autoFitClientRef.current === clientId && res.success) {
-          setAutoFitResult(res.data);
-        }
-      } catch {
-        // Background auto-fit is optional — avoid error popups on client select
-      } finally {
-        if (autoFitClientRef.current === clientId) setAutoFitLoading(false);
+    const suggestion = loadPricingSuggestion();
+    if (!suggestion?.services?.length) return;
+
+    pricingSuggestionAppliedRef.current = true;
+    const lines: SelectedService[] = [];
+    let skipped = 0;
+
+    for (const suggested of suggestion.services) {
+      const catalogue = services.find(
+        (s) =>
+          s.id === suggested.serviceTemplateId ||
+          s.name.trim().toLowerCase() === suggested.catalogName.trim().toLowerCase()
+      );
+      if (!catalogue) {
+        skipped += 1;
+        continue;
       }
-    }, 800);
 
-    return () => clearTimeout(timer);
-  }, [selectedClient?.id, aiConfigured, isEditMode, proposalId, autoFitDismissed]);
+      const price = suggested.suggestedPrice;
+      const frequency =
+        suggested.billingCycle || catalogue.billingCycle || catalogue.defaultFrequency || 'MONTHLY';
+      const annualEquivalent = calculateAnnualEquivalent(price, frequency);
+      const vatPercent =
+        catalogue.isVatApplicable !== false
+          ? catalogue.vatRate === 'REDUCED_5'
+            ? 5
+            : catalogue.vatRate === 'ZERO' || catalogue.vatRate === 'EXEMPT'
+              ? 0
+              : 20
+          : 0;
+      const lineTotal = price;
+      const vatAmount = includeVat ? Math.round(lineTotal * (vatPercent / 100) * 100) / 100 : 0;
+
+      lines.push({
+        ...catalogue,
+        id: newLineId(),
+        templateId: catalogue.id,
+        quantity: 1,
+        discountPercent: 0,
+        displayPrice: price,
+        billingCycle: frequency,
+        priceAmount: price,
+        annualEquivalent,
+        lineTotal,
+        vatRate: vatPercent,
+        vatAmount,
+        grossTotal: lineTotal + vatAmount,
+        allowedCadences: parseFrequencyOptions(catalogue.frequencyOptions),
+        oneOffDueDate: frequency === 'ONE_TIME' ? '' : undefined,
+      });
+    }
+
+    if (lines.length > 0) {
+      setSelectedServices(lines);
+      setBuildMode('manual');
+      setAutoFitDismissed(true);
+      setCurrentStep(preselectedClientId ? 2 : 1);
+      if (!proposalTitle.trim()) {
+        const entityLabel = suggestion.inputs.entityType.replace(/_/g, ' ').toLowerCase();
+        setProposalTitle(`Engagement proposal — ${entityLabel}`);
+      }
+      toast.success(`Applied ${lines.length} priced service(s) from calculator`);
+    }
+
+    if (skipped > 0) {
+      toast(
+        `${skipped} suggested service(s) not found in your catalogue — add them from UK templates`,
+        { icon: 'ℹ️', duration: 6000 }
+      );
+    }
+
+    clearPricingSuggestion();
+  }, [isEditMode, fromPricingParam, services.length, preselectedClientId, includeVat, proposalTitle]);
+
+  // Deep-link from Templates page: ?template=<id>
+  useEffect(() => {
+    if (isEditMode || !preselectedTemplateId || preselectedTemplateAppliedRef.current) return;
+    setBuildMode('template');
+    setSelectedTemplateId(preselectedTemplateId);
+  }, [isEditMode, preselectedTemplateId]);
 
   useEffect(() => {
+    if (
+      isEditMode ||
+      !preselectedTemplateId ||
+      services.length === 0 ||
+      preselectedTemplateAppliedRef.current
+    ) {
+      return;
+    }
+    void applyProposalTemplate(preselectedTemplateId);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isEditMode, preselectedTemplateId, services.length]);
+
+  useEffect(() => {
+    if (currentStep >= 3 && getBuilderPreviewPreference()) {
+      toggleLivePreviewPane(true);
+    }
+  }, [currentStep, toggleLivePreviewPane]);
+
+  const loadCoverLetterFromTemplate = async (client: Client, serviceCount?: number) => {
+    try {
+      const tplRes = (await apiClient.getDefaultCoverLetterTemplate()) as any;
+      if (!tplRes?.success || !tplRes.data?.content) return false;
+
+      const tone = (tplRes.data.tone || 'PROFESSIONAL') as CoverLetterTone;
+      setCoverLetterTone(tone);
+
+      const previewRes = (await apiClient.previewCoverLetterRaw(tplRes.data.content, {
+        clientName: coverLetterAddressee(client),
+        companyName: client.name,
+        tenantName: tenant?.name || 'Our practice',
+        senderName: `${user?.firstName || ''} ${user?.lastName || ''}`.trim() || undefined,
+        senderPosition: user?.jobTitle?.trim() || undefined,
+        serviceCount: serviceCount ?? (selectedServices.length || undefined),
+      })) as any;
+
+      if (previewRes?.success && previewRes.data?.rendered) {
+        setCoverLetter(previewRes.data.rendered);
+        return true;
+      }
+    } catch {
+      // fall back to tone presets in UI
+    }
+    return false;
+  };
+
+  // Auto-generate verbose client proposal letter when entering review step
+  useEffect(() => {
+    if (currentStep !== 3 || !selectedClient || selectedServices.length === 0 || !aiConfigured) return;
+    void runGenerateClientCoverLetter(false);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentStep, selectedClient?.id, selectedServices.length, aiConfigured, proposalTitle]);
+
+  const runAutoFitForClient = async (clientId: string) => {
+    if (!aiConfigured || isEditMode || proposalId) return;
+    autoFitClientRef.current = clientId;
+    setAutoFitLoading(true);
     setAutoFitDismissed(false);
     setAutoFitResult(null);
-  }, [selectedClient?.id]);
+    try {
+      const res = (await apiClient.aiAutoFit(clientId)) as any;
+      if (autoFitClientRef.current === clientId && res.success) {
+        setAutoFitResult(res.data);
+      }
+    } catch {
+      // User-triggered only — avoid error popups unless they asked for suggestions
+    } finally {
+      if (autoFitClientRef.current === clientId) setAutoFitLoading(false);
+    }
+  };
+
+  const guidedAutoFitDoneRef = useRef(false);
+  useEffect(() => {
+    const guided = guidedParam === '1' || guidedParam === 'true';
+    if (
+      !guided ||
+      guidedAutoFitDoneRef.current ||
+      buildMode !== 'clara' ||
+      !selectedClient ||
+      isEditMode ||
+      proposalId ||
+      !aiConfigured
+    ) {
+      return;
+    }
+    guidedAutoFitDoneRef.current = true;
+    void runAutoFitForClient(selectedClient.id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [buildMode, selectedClient?.id, guidedParam, aiConfigured, isEditMode, proposalId]);
+
+  // Changing client in Clara mode clears stale suggestions — no background API call (W2.1)
+  useEffect(() => {
+    if (buildMode !== 'clara') return;
+    setAutoFitDismissed(false);
+    setAutoFitResult(null);
+    setAutoFitLoading(false);
+    autoFitClientRef.current = null;
+  }, [selectedClient?.id, buildMode]);
 
   useEffect(() => {
-    if (isEditMode) return;
+    if (isEditMode || !selectedClient || isHydratingDraftRef.current) return;
+    const clientId = selectedClient.id;
+    const key = proposalDraftKey(undefined, clientId);
     const timer = setTimeout(() => {
-      localStorage.setItem(
-        draftKey,
-        JSON.stringify({
-          selectedClient,
-          selectedServices,
-          proposalTitle,
-          coverLetter,
-          coverLetterTone,
-          currentStep,
-          contractStartDate,
-          validUntil,
-        })
-      );
+      if (isHydratingDraftRef.current) return;
+      localStorage.setItem(key, JSON.stringify(captureDraftSnapshot()));
     }, 1500);
     return () => clearTimeout(timer);
   }, [
@@ -470,25 +810,49 @@ export default function ProposalBuilder({ proposalId }: ProposalBuilderProps) {
     currentStep,
     contractStartDate,
     validUntil,
-    draftKey,
+    buildMode,
+    selectedTemplateId,
     isEditMode,
   ]);
 
   const loadProposalDefaults = async () => {
     try {
       const response = (await apiClient.getTenantSettings()) as any;
-      if (response.success && response.data?.proposals?.defaultExpiryDays) {
-        const days = response.data.proposals.defaultExpiryDays as number;
-        setDefaultExpiryDays(days);
-        if (!proposalId) {
-          setValidUntil((prev) => {
-            if (prev) return prev;
-            return format(addDays(new Date(), days), 'yyyy-MM-dd');
-          });
+      if (response.success && response.data?.proposals) {
+        const proposals = response.data.proposals as {
+          defaultExpiryDays?: number;
+          defaultPaymentTermsDays?: number;
+          benchmarksOptIn?: boolean;
+        };
+        if (proposals.defaultExpiryDays) {
+          const days = proposals.defaultExpiryDays;
+          setDefaultExpiryDays(days);
+          if (!proposalId) {
+            setValidUntil((prev) => {
+              if (prev) return prev;
+              return format(addDays(new Date(), days), 'yyyy-MM-dd');
+            });
+          }
         }
+        if (proposals.defaultPaymentTermsDays) {
+          setDefaultPaymentTermsDays(proposals.defaultPaymentTermsDays);
+        }
+        setBenchmarksOptIn(proposals.benchmarksOptIn === true);
       }
     } catch {
       // defaults are fine
+    }
+  };
+
+  const loadProposalTemplates = async () => {
+    setTemplatesLoading(true);
+    try {
+      const res = (await apiClient.getProposalTemplates()) as any;
+      if (res.success) setProposalTemplates(res.data || []);
+    } catch {
+      // templates are optional
+    } finally {
+      setTemplatesLoading(false);
     }
   };
 
@@ -501,7 +865,6 @@ export default function ProposalBuilder({ proposalId }: ProposalBuilderProps) {
         const match = list.find((c: Client) => c.id === preselectedClientId);
         if (match) {
           setSelectedClient(match);
-          setCurrentStep(2);
         }
       }
     } catch (error) {
@@ -651,19 +1014,15 @@ export default function ProposalBuilder({ proposalId }: ProposalBuilderProps) {
 
   const goToReviewStep = () => {
     setCurrentStep(3);
-    setCoverLetter((prev) => {
-      if (prev.trim() || !selectedClient) return prev;
-      // Autofill using the currently selected tone (defaults to PROFESSIONAL)
-      return generateCoverLetterForTone({
-        tone: coverLetterTone,
-        addresseeName: coverLetterAddressee(selectedClient),
-        companyName: selectedClient.name,
-        practiceName: tenant?.name || 'Our practice',
-        senderName: `${user?.firstName || ''} ${user?.lastName || ''}`.trim() || undefined,
-        senderPosition: (user as any)?.jobTitle || undefined,
-        services: selectedServices,
-      });
-    });
+    if (
+      !coverLetter.trim() &&
+      selectedClient &&
+      !isEditMode &&
+      !proposalId &&
+      !aiConfigured
+    ) {
+      void loadCoverLetterFromTemplate(selectedClient, selectedServices.length);
+    }
   };
 
   /**
@@ -724,6 +1083,7 @@ export default function ProposalBuilder({ proposalId }: ProposalBuilderProps) {
 
     const newService: SelectedService = {
       ...service,
+      id: newLineId(),
       templateId: service.id,
       quantity: 1,
       discountPercent: 0,
@@ -774,34 +1134,59 @@ export default function ProposalBuilder({ proposalId }: ProposalBuilderProps) {
     }
   };
 
-  // Low-token voice (dictate) → structured proposal (roadmap item)
-  const runVoiceProposal = async () => {
-    if (!selectedClient) {
-      toast.error('Select a client first');
-      return;
+  const applySingleAiSuggestion = (serviceId: string) => {
+    if (!aiSuggestions?.suggestions?.length) return;
+    const sug = aiSuggestions.suggestions.find((s: { serviceId: string }) => s.serviceId === serviceId);
+    if (!sug) return;
+    const catalogService = services.find((s) => s.id === sug.serviceId);
+    if (!catalogService) return;
+    if (addServiceWithCadence(catalogService, sug.billingFrequency, sug.displayPrice)) {
+      toast.success(`${sug.name} added`);
+    } else {
+      toast.success('Service already selected');
     }
-    const transcript = window.prompt('Paste or type short voice transcript / notes (e.g. "annual accounts + tax for limited company, around 3-4k fee, start next month")');
-    if (!transcript || transcript.trim().length < 10) return;
-    try {
-      const res = (await apiClient.aiVoiceProposal(selectedClient.id, transcript.trim())) as any;
-      if (res.success && res.data) {
-        const d = res.data;
-        if (d.title) setProposalTitle(d.title);
-        if (d.coverLetter) setCoverLetter(d.coverLetter);
-        if (d.coverLetterTone) setCoverLetterTone(d.coverLetterTone);
-        if (Array.isArray(d.suggestedServices) && d.suggestedServices.length) {
-          d.suggestedServices.forEach((s: any) => {
-            // Try match by name in catalog, else skip (user can add)
-            const match = services.find((cat) => cat.name.toLowerCase().includes((s.name || '').toLowerCase().slice(0, 20)));
-            if (match) addServiceWithCadence(match, s.billingFrequency || 'MONTHLY', s.displayPrice);
-          });
-          toast.success('Clara turned voice notes into title + draft + services');
-        } else {
-          toast.success('Clara drafted from voice');
-        }
-      }
-    } catch (e) {
-      showAiError(e);
+    setAiSuggestions((prev: typeof aiSuggestions) => {
+      if (!prev?.suggestions?.length) return prev;
+      const remaining = prev.suggestions.filter((s: { serviceId: string }) => s.serviceId !== serviceId);
+      if (!remaining.length) return null;
+      return { ...prev, suggestions: remaining };
+    });
+  };
+
+  const applyTweakedAiSuggestion = (
+    serviceId: string,
+    tweaks: { billingFrequency: string; displayPrice: number }
+  ) => {
+    const catalogService = services.find((s) => s.id === serviceId);
+    if (!catalogService) return;
+    if (addServiceWithCadence(catalogService, tweaks.billingFrequency, tweaks.displayPrice)) {
+      const name = aiSuggestions?.suggestions?.find((s: { serviceId: string }) => s.serviceId === serviceId)?.name;
+      toast.success(name ? `${name} added with your tweaks` : 'Service added with your tweaks');
+    }
+    setAiSuggestions((prev: typeof aiSuggestions) => {
+      if (!prev?.suggestions?.length) return prev;
+      const remaining = prev.suggestions.filter((s: { serviceId: string }) => s.serviceId !== serviceId);
+      if (!remaining.length) return null;
+      return { ...prev, suggestions: remaining };
+    });
+  };
+
+  const applyAutoFitService = (sug: { serviceId: string; name: string; billingFrequency: string; displayPrice: number }) => {
+    const catalogService = services.find((s) => s.id === sug.serviceId);
+    if (!catalogService) return;
+    if (addServiceWithCadence(catalogService, sug.billingFrequency, sug.displayPrice)) {
+      toast.success(`${sug.name} added`);
+    }
+  };
+
+  const applyTweakedAutoFitService = (
+    sug: { serviceId: string; name: string },
+    tweaks: { billingFrequency: string; displayPrice: number }
+  ) => {
+    const catalogService = services.find((s) => s.id === sug.serviceId);
+    if (!catalogService) return;
+    if (addServiceWithCadence(catalogService, tweaks.billingFrequency, tweaks.displayPrice)) {
+      toast.success(`${sug.name} added with your tweaks`);
     }
   };
 
@@ -824,46 +1209,24 @@ export default function ProposalBuilder({ proposalId }: ProposalBuilderProps) {
       toast.error('Select a client first');
       return;
     }
+    if (!coverLetter.trim()) {
+      toast.error('Add or load a cover letter first — Clara revises your template, she does not draft from scratch');
+      return;
+    }
     setAiCoverLoading(true);
-    setAiCoverDraft(''); // clear for streaming preview
     try {
-      const streamer = (apiClient as any).aiStreamCoverLetter;
-      if (typeof streamer === 'function') {
-        let acc = '';
-        await streamer(
-          {
-            clientId: selectedClient.id,
-            tone: coverLetterTone,
-            practiceName: tenant?.name || 'Our practice',
-            senderName: `${user?.firstName || ''} ${user?.lastName || ''}`.trim() || undefined,
-            services: selectedServices.map((s) => ({
-              name: s.name,
-              billingFrequency: s.billingCycle,
-              displayPrice: s.displayPrice,
-            })),
-          },
-          (chunk: string) => {
-            acc += chunk;
-            setAiCoverDraft(acc);
-          }
-        );
-      } else {
-        const res = (await apiClient.aiCoverLetter({
-          clientId: selectedClient.id,
-          tone: coverLetterTone,
-          practiceName: tenant?.name || 'Our practice',
-          senderName: `${user?.firstName || ''} ${user?.lastName || ''}`.trim() || undefined,
-          services: selectedServices.map((s) => ({
-            name: s.name,
-            billingFrequency: s.billingCycle,
-            displayPrice: s.displayPrice,
-          })),
-        })) as any;
-        if (res.success) setAiCoverDraft(res.data.content);
+      const serviceSummary = selectedServices.map((s) => s.name).join(', ') || 'your selected services';
+      const res = (await apiClient.aiCoverLetterRevise(
+        coverLetter,
+        `Personalise and polish this cover letter for ${selectedClient.name}. Keep UK English and a ${coverLetterTone.toLowerCase()} tone. Reflect these services: ${serviceSummary}.`,
+        { clientId: selectedClient.id }
+      )) as any;
+      if (res.success && res.data?.revisedBody) {
+        setCoverLetter(res.data.revisedBody);
+        toast.success(`${AI_COPILOT.name} revised your cover letter — review before sending`);
       }
     } catch (e) {
       showAiError(e);
-      setAiCoverDraft(null);
     } finally {
       setAiCoverLoading(false);
     }
@@ -882,6 +1245,41 @@ export default function ProposalBuilder({ proposalId }: ProposalBuilderProps) {
       showAiError(e);
     } finally {
       setApplyingCoverLetterTweak(false);
+    }
+  };
+
+  const runGenerateClientCoverLetter = async (force = false) => {
+    if (!selectedClient || selectedServices.length === 0) {
+      toast.error('Add at least one service before generating the proposal letter');
+      return;
+    }
+    const servicesKey = selectedServices.map((s) => `${s.id}:${s.billingCycle}`).join('|');
+    if (!force && coverLetter.trim().length >= 120 && coverLetterServicesKeyRef.current === servicesKey) {
+      return;
+    }
+
+    setCoverLetterLoading(true);
+    try {
+      const res = (await apiClient.aiProposalExplanation({
+        clientId: selectedClient.id,
+        title: proposalTitle.trim() || 'Proposal',
+        services: selectedServices.map((s) => ({
+          name: s.name,
+          description: s.description,
+          billingCycle: s.billingCycle,
+        })),
+        monthlyTotal: reviewMonthlyCostIncVat,
+        contractTotal: summary.contractTotalIncVat,
+      })) as any;
+      if (res?.success && res.data?.explanation) {
+        setCoverLetter(res.data.explanation);
+        coverLetterServicesKeyRef.current = servicesKey;
+        toast.success('Client proposal letter ready — review and edit before sending');
+      }
+    } catch (e) {
+      showAiError(e);
+    } finally {
+      setCoverLetterLoading(false);
     }
   };
 
@@ -956,6 +1354,7 @@ export default function ProposalBuilder({ proposalId }: ProposalBuilderProps) {
   // Start editing service
   const startEdit = (service: SelectedService) => {
     setEditingService(service.id);
+    setEditPriceText(String(service.displayPrice));
     setEditForm({
       displayPrice: service.displayPrice,
       quantity: service.quantity,
@@ -974,7 +1373,7 @@ export default function ProposalBuilder({ proposalId }: ProposalBuilderProps) {
 
         const quantity = editForm.quantity || 1;
         const discount = editForm.discountPercent || 0;
-        const price = editForm.displayPrice || 0;
+        const price = parseDecimalInput(editPriceText, editForm.displayPrice);
         const vatRate = editForm.vatRate || 0;
 
         // Recalculate
@@ -1017,6 +1416,229 @@ export default function ProposalBuilder({ proposalId }: ProposalBuilderProps) {
     setSelectedServices((prev) => prev.filter((s) => s.id !== id));
   };
 
+  const removeServiceByTemplateId = (templateId: string) => {
+    const line = selectedServices.find((s) => s.templateId === templateId);
+    if (line) removeService(line.id);
+  };
+
+  const clearAllServices = () => {
+    if (selectedServices.length === 0) return;
+    setSelectedServices([]);
+    toast.success('All services removed — pick from the catalogue');
+  };
+
+  const taxServiceLines = useMemo(
+    () =>
+      selectedServices
+        .filter((s) => s.category === 'TAX')
+        .map((s) => ({ id: s.id, name: s.name })),
+    [selectedServices]
+  );
+
+  const applyContingentFeeToLine = (lineId: string, feeGbp: number, _explanation: string) => {
+    setSelectedServices((prev) =>
+      prev.map((s) => {
+        if (s.id !== lineId) return s;
+
+        const price = feeGbp;
+        const billingCycle = 'ONE_TIME';
+        const quantity = 1;
+        const discount = 0;
+        const grossLineTotal = price * quantity;
+        const lineTotal = grossLineTotal;
+        const vatAmount = includeVat
+          ? Math.round(lineTotal * (s.vatRate / 100) * 100) / 100
+          : 0;
+
+        return {
+          ...s,
+          displayPrice: price,
+          priceAmount: price,
+          quantity,
+          discountPercent: discount,
+          billingCycle,
+          lineTotal,
+          vatAmount,
+          grossTotal: lineTotal + vatAmount,
+          annualEquivalent: calculateAnnualEquivalent(price, billingCycle),
+          oneOffDueDate: s.oneOffDueDate || '',
+        };
+      })
+    );
+    if (editingService === lineId) {
+      setEditPriceText(String(feeGbp));
+      setEditForm((f) => ({
+        ...f,
+        displayPrice: feeGbp,
+        billingCycle: 'ONE_TIME',
+        quantity: 1,
+        discountPercent: 0,
+      }));
+    }
+  };
+
+  const selectBuildMode = (mode: BuildMode) => {
+    setBuildMode(mode);
+    if (mode === 'manual') {
+      setAutoFitDismissed(true);
+      setAutoFitResult(null);
+      setAutoFitLoading(false);
+      setSelectedTemplateId(null);
+    } else if (mode === 'clara') {
+      setSelectedTemplateId(null);
+      if (selectedClient) {
+        void runAutoFitForClient(selectedClient.id);
+      } else {
+        setAutoFitDismissed(false);
+        setAutoFitResult(null);
+        setAutoFitLoading(false);
+      }
+    } else if (mode === 'template') {
+      setAutoFitDismissed(true);
+      setAutoFitResult(null);
+      setAutoFitLoading(false);
+    } else if (mode === 'unset') {
+      setSelectedTemplateId(null);
+    }
+  };
+
+  const buildLineFromCatalogue = (
+    service: Service,
+    billingFrequency: string,
+    displayPrice: number,
+    quantity: number,
+    discountPercent: number,
+    snapshot?: { name?: string; description?: string | null }
+  ): SelectedService => {
+    const annualEquivalent = calculateAnnualEquivalent(displayPrice, billingFrequency);
+    const grossLine = displayPrice * quantity;
+    const lineTotal = grossLine - grossLine * (discountPercent / 100);
+    const vatPercent =
+      service.isVatApplicable !== false
+        ? service.vatRate === 'REDUCED_5'
+          ? 5
+          : service.vatRate === 'ZERO' || service.vatRate === 'EXEMPT'
+            ? 0
+            : 20
+        : 0;
+    const vatAmount = includeVat ? Math.round(lineTotal * (vatPercent / 100) * 100) / 100 : 0;
+    const allowedCadences = parseFrequencyOptions(service.frequencyOptions);
+
+    return {
+      ...service,
+      id: newLineId(),
+      templateId: service.id,
+      name: snapshot?.name?.trim() || service.name,
+      description:
+        snapshot?.description !== undefined && snapshot?.description !== null
+          ? snapshot.description
+          : service.description,
+      quantity,
+      discountPercent,
+      displayPrice,
+      billingCycle: billingFrequency,
+      priceAmount: displayPrice,
+      annualEquivalent,
+      lineTotal,
+      vatRate: vatPercent,
+      vatAmount,
+      grossTotal: lineTotal + vatAmount,
+      allowedCadences,
+      oneOffDueDate: billingFrequency === 'ONE_TIME' ? '' : undefined,
+    };
+  };
+
+  const findCatalogueForTemplateItem = (item: {
+    serviceId?: string;
+    name?: string;
+  }): Service | undefined => {
+    if (item.serviceId) {
+      const byId = services.find((s) => s.id === item.serviceId);
+      if (byId) return byId;
+    }
+    const needle = (item.name || '').trim().toLowerCase();
+    if (!needle) return undefined;
+    return services.find((s) => s.name.trim().toLowerCase() === needle);
+  };
+
+  const applyProposalTemplate = async (templateId: string) => {
+    const isDeepLinkApply = templateId === preselectedTemplateId;
+    setApplyingTemplateId(templateId);
+    try {
+      const res = (await apiClient.getProposalTemplate(templateId)) as any;
+      if (!res.success) {
+        toast.error('Could not load template');
+        if (isDeepLinkApply) preselectedTemplateAppliedRef.current = false;
+        return;
+      }
+      const t = res.data;
+      setProposalTitle(t.title || '');
+      if (t.coverLetter) setCoverLetter(t.coverLetter);
+      const pricing =
+        typeof t.defaultPricing === 'object' && t.defaultPricing
+          ? t.defaultPricing
+          : {};
+      if (pricing.coverLetterTone) {
+        setCoverLetterTone(pricing.coverLetterTone as CoverLetterTone);
+      }
+
+      const config = Array.isArray(t.serviceConfig) ? t.serviceConfig : [];
+      if (config.length === 0) {
+        toast.error('This template has no services configured');
+        if (isDeepLinkApply) preselectedTemplateAppliedRef.current = false;
+        return;
+      }
+
+      const lines: SelectedService[] = [];
+      const missing: string[] = [];
+      for (const item of config) {
+        const catalogue = findCatalogueForTemplateItem(item);
+        if (!catalogue) {
+          missing.push(item.name || item.serviceId || 'Unknown service');
+          continue;
+        }
+        lines.push(
+          buildLineFromCatalogue(
+            catalogue,
+            item.billingFrequency || catalogue.billingCycle,
+            item.displayPrice ?? catalogue.priceAmount,
+            item.quantity ?? 1,
+            item.discountPercent ?? 0,
+            { name: item.name, description: item.description }
+          )
+        );
+      }
+
+      if (lines.length === 0) {
+        toast.error(
+          'None of the template services are in your catalogue. Add matching services or update the template.'
+        );
+        if (isDeepLinkApply) preselectedTemplateAppliedRef.current = false;
+        return;
+      }
+
+      setSelectedServices(lines);
+      setSelectedTemplateId(templateId);
+      setBuildMode('template');
+      setCurrentStep(2);
+      await apiClient.recordProposalTemplateUse(templateId);
+      if (isDeepLinkApply) preselectedTemplateAppliedRef.current = true;
+
+      if (missing.length > 0) {
+        toast(
+          `${missing.length} service(s) from this template are no longer in your catalogue — the rest were applied`
+        );
+      } else {
+        toast.success(`Template "${t.name}" applied`);
+      }
+    } catch {
+      toast.error('Failed to apply template');
+      if (isDeepLinkApply) preselectedTemplateAppliedRef.current = false;
+    } finally {
+      setApplyingTemplateId(null);
+    }
+  };
+
   const moveService = (id: string, direction: 'up' | 'down') => {
     setSelectedServices((prev) => {
       const idx = prev.findIndex((s) => s.id === id);
@@ -1036,7 +1658,11 @@ export default function ProposalBuilder({ proposalId }: ProposalBuilderProps) {
       if (!response.success) return;
       const p = response.data;
       setProposalTitle(p.title || '');
-      setCoverLetter(p.coverLetter || '');
+      const legacySummary = (p.proposalSummary || '').trim();
+      const letter = (p.coverLetter || '').trim();
+      setCoverLetter(legacySummary && letter ? `${letter}\n\n${legacySummary}` : letter || legacySummary);
+      setProposalTerms((p.terms || '').trim());
+      coverLetterServicesKeyRef.current = 'loaded';
       if (p.validUntil) {
         setValidUntil(format(new Date(p.validUntil), 'yyyy-MM-dd'));
       }
@@ -1066,15 +1692,16 @@ export default function ProposalBuilder({ proposalId }: ProposalBuilderProps) {
         const net = grossLine - grossLine * (discount / 100);
         const vatRate = svc.vatRate ?? 20;
         const vatAmount = svc.vatAmount ?? Math.round(net * (vatRate / 100) * 100) / 100;
+        const catalogId = svc.serviceTemplateId || svc.catalogServiceId || null;
         return {
-          id: svc.serviceTemplateId || svc.id || `line-${i}`,
-          templateId: svc.serviceTemplateId || svc.id,
+          id: svc.id || `line-${i}`,
+          templateId: catalogId || '',
           name: svc.name,
           description: svc.description,
           priceAmount: displayPrice,
           priceDisplayMode: svc.priceDisplayMode || 'PER_MONTH',
           billingCycle: freq,
-          category: svc.serviceTemplate?.category || 'Custom',
+          category: svc.category || svc.serviceTemplate?.category || 'Custom',
           quantity: qty,
           discountPercent: discount,
           displayPrice,
@@ -1093,6 +1720,15 @@ export default function ProposalBuilder({ proposalId }: ProposalBuilderProps) {
       });
       setSelectedServices(lines);
       setCurrentStep(lines.length > 0 ? 2 : 1);
+
+      const cf = parseProposalCustomFields(p.customFields);
+      setOfferThreePackages(Boolean(cf.offerThreePackages));
+      if (cf.pricingTiers?.length) {
+        setPricingTiers(cf.pricingTiers);
+      } else {
+        setPricingTiers(DEFAULT_PRICING_TIERS);
+      }
+      setRequireTwoSigners((cf.requiredSigners ?? 1) >= 2);
     } catch {
       toast.error('Failed to load proposal for editing');
     } finally {
@@ -1112,11 +1748,20 @@ export default function ProposalBuilder({ proposalId }: ProposalBuilderProps) {
     const errors: string[] = [];
     if (!selectedClient) errors.push('Select a client');
     if (selectedServices.length === 0) errors.push('Add at least one service');
+    const missingCatalogue = selectedServices.filter((s) => !s.templateId);
+    if (missingCatalogue.length > 0) {
+      errors.push(
+        `${missingCatalogue.length} service line(s) are not linked to your catalogue — remove and re-add them`
+      );
+    }
     if (!proposalTitle.trim()) errors.push('Enter a proposal title');
     if (!validUntil) errors.push('Set a proposal expiry date');
     if (validUntil && validUntil < todayIso) errors.push('Expiry date must be today or in the future');
-    if (coverLetter.trim().length > 0 && coverLetter.trim().length < 40) {
-      errors.push('Cover letter is very short — consider expanding or using a tone preset');
+    if (coverLetter.trim().length > 0 && coverLetter.trim().length < 80) {
+      errors.push('Proposal letter is very short — regenerate with Clara or expand it');
+    }
+    if (!coverLetter.trim()) {
+      errors.push('Generate the client proposal letter before saving');
     }
     return errors;
   };
@@ -1131,17 +1776,21 @@ export default function ProposalBuilder({ proposalId }: ProposalBuilderProps) {
 
     setIsLoading(true);
     try {
-      const servicesData = selectedServices.map((s) => ({
-        serviceId: s.templateId,
-        displayPrice: s.displayPrice,
-        billingFrequency: s.billingCycle,
-        quantity: s.quantity,
-        discountPercent: s.discountPercent,
-        vatRate: includeVat ? s.vatRate : 0,
-        ...(s.billingCycle === 'ONE_TIME' && s.oneOffDueDate?.trim()
-          ? { oneOffDueDate: s.oneOffDueDate.trim() }
-          : {}),
-      }));
+      const servicesData = selectedServices
+        .filter((s) => s.templateId)
+        .map((s) => ({
+          serviceId: s.templateId,
+          name: s.name,
+          description: s.description ?? null,
+          displayPrice: s.displayPrice,
+          billingFrequency: s.billingCycle,
+          quantity: s.quantity,
+          discountPercent: s.discountPercent,
+          vatRate: includeVat ? s.vatRate : 0,
+          ...(s.billingCycle === 'ONE_TIME' && s.oneOffDueDate?.trim()
+            ? { oneOffDueDate: s.oneOffDueDate.trim() }
+            : {}),
+        }));
 
       const proposalData = {
         clientId: selectedClient!.id,
@@ -1151,17 +1800,14 @@ export default function ProposalBuilder({ proposalId }: ProposalBuilderProps) {
         contractStartDate: contractStartDate.trim()
           ? `${contractStartDate.trim()}T12:00:00.000Z`
           : null,
-        coverLetter:
-          coverLetter.trim() ||
-          generateCoverLetterForTone({
-            tone: coverLetterTone,
-            addresseeName: coverLetterAddressee(selectedClient!),
-            companyName: selectedClient!.name,
-            practiceName: tenant?.name || 'Our practice',
-            senderName: `${user?.firstName || ''} ${user?.lastName || ''}`.trim() || undefined,
-            senderPosition: (user as any)?.jobTitle || undefined,
-            services: selectedServices,
-          }),
+        coverLetter: coverLetter.trim(),
+        paymentTerms: `${defaultPaymentTermsDays} day${defaultPaymentTermsDays === 1 ? '' : 's'}`,
+        ...(proposalTerms.trim() ? { terms: proposalTerms.trim() } : {}),
+        customFields: buildCustomFieldsPayload({
+          offerThreePackages,
+          pricingTiers,
+          requireTwoSigners,
+        }),
       };
 
       const response = isEditMode
@@ -1169,9 +1815,17 @@ export default function ProposalBuilder({ proposalId }: ProposalBuilderProps) {
         : ((await apiClient.createProposal(proposalData)) as any);
 
       if (response.success) {
-        localStorage.removeItem(draftKey);
+        if (selectedClient) {
+          localStorage.removeItem(proposalDraftKey(undefined, selectedClient.id));
+        }
+        localStorage.removeItem(LEGACY_NEW_DRAFT_KEY);
         toast.success(isEditMode ? 'Proposal updated successfully!' : 'Proposal created successfully!');
-        navigate(`/proposals/${isEditMode ? proposalId : response.data.id}`);
+        const savedId = isEditMode ? proposalId! : response.data.id;
+        if (!isEditMode && buildMode === 'manual') {
+          setSaveTemplateDialog({ open: true, proposalId: savedId });
+        } else {
+          navigate(`/proposals/${savedId}`);
+        }
       } else {
         toast.error(response.error?.message || 'Failed to save proposal');
       }
@@ -1184,24 +1838,45 @@ export default function ProposalBuilder({ proposalId }: ProposalBuilderProps) {
 
   const previewPdf = async () => {
     if (!isEditMode || !proposalId) {
-      setShowClientPreview(true);
+      toggleLivePreviewPane(true);
+      toast('Save the proposal first to download a branded PDF', { icon: 'ℹ️' });
       return;
     }
     try {
+      toast.loading('Generating PDF…');
       await apiClient.downloadProposalPdf(proposalId, proposalTitle || undefined);
+      toast.dismiss();
+      toast.success('PDF downloaded');
     } catch {
-      toast.error('Could not generate PDF preview');
+      toast.dismiss();
+      toast.error('Could not generate PDF — save the proposal and try again');
     }
   };
 
+  const previewServices = useMemo(
+    () =>
+      selectedServices.map((s) => ({
+        name: s.name,
+        description: s.description,
+        quantity: s.quantity,
+        displayPrice: s.displayPrice,
+        billingCycle: s.billingCycle,
+        grossTotal: s.grossTotal,
+      })),
+    [selectedServices]
+  );
+
   // Render step indicator
   const renderStepIndicator = () => (
-    <div className="flex items-center justify-center mb-8">
+    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-8">
+      <div className="flex items-center justify-center flex-1">
       {STEPS.map((step, index) => (
         <div key={step.id} className="flex items-center">
           <div
             className={`flex flex-col items-center ${currentStep >= step.id ? 'cursor-pointer' : ''}`}
-            onClick={() => currentStep > step.id && setCurrentStep(step.id)}
+            onClick={() => {
+              if (currentStep > step.id) setCurrentStep(step.id);
+            }}
           >
             <div
               className={`w-10 h-10 rounded-full flex items-center justify-center font-semibold transition-colors ${
@@ -1227,6 +1902,46 @@ export default function ProposalBuilder({ proposalId }: ProposalBuilderProps) {
           )}
         </div>
       ))}
+      </div>
+      <div className="flex flex-wrap items-center gap-2 shrink-0">
+        {!isEditMode && selectedClient && currentStep > 1 && (
+          <>
+            <button
+              type="button"
+              data-testid="back-to-step-one"
+              onClick={() => setCurrentStep(1)}
+              className="btn-secondary text-sm"
+            >
+              Back to start
+            </button>
+            <button
+              type="button"
+              data-testid="restart-proposal"
+              onClick={() => restartProposal(true)}
+              className="btn-secondary text-sm text-amber-800 border-amber-200 dark:text-amber-200 dark:border-amber-800"
+            >
+              Restart proposal
+            </button>
+          </>
+        )}
+        {selectedClient && currentStep >= 2 && (
+          <button
+            type="button"
+            data-testid="toggle-client-preview-pane"
+            onClick={() => toggleLivePreviewPane()}
+            className={`btn-secondary text-sm inline-flex items-center gap-2 ${
+              showLivePreviewPane ? 'border-primary-300 dark:border-primary-700 text-primary-700 dark:text-primary-300' : ''
+            }`}
+          >
+            {showLivePreviewPane ? (
+              <EyeSlashIcon className="h-4 w-4" aria-hidden="true" />
+            ) : (
+              <EyeIcon className="h-4 w-4" aria-hidden="true" />
+            )}
+            {showLivePreviewPane ? 'Hide client preview' : 'Show client preview'}
+          </button>
+        )}
+      </div>
     </div>
   );
 
@@ -1234,6 +1949,34 @@ export default function ProposalBuilder({ proposalId }: ProposalBuilderProps) {
   const renderClientStep = () => (
     <div className="space-y-6">
       <h2 className="text-xl font-semibold text-slate-900 dark:text-white">Select a Client</h2>
+
+      {!isEditMode && selectedClient && hasResumedDraft && (
+        <div
+          data-testid="draft-resume-banner"
+          className="rounded-xl border border-amber-200 dark:border-amber-800 bg-amber-50/80 dark:bg-amber-950/30 p-4 flex flex-wrap items-center justify-between gap-3"
+        >
+          <p className="text-sm text-amber-900 dark:text-amber-100">
+            You have a draft in progress for <strong>{selectedClient.name}</strong>. Continue where you
+            left off, go back to change the build approach, or restart from scratch.
+          </p>
+          <div className="flex flex-wrap gap-2">
+            <button
+              type="button"
+              className="btn-primary text-sm"
+              onClick={() => {
+                if (selectedServices.length > 0 && coverLetter.trim()) setCurrentStep(3);
+                else if (selectedServices.length > 0) setCurrentStep(2);
+                else setCurrentStep(1);
+              }}
+            >
+              Continue draft
+            </button>
+            <button type="button" className="btn-secondary text-sm" onClick={() => restartProposal(true)}>
+              Restart
+            </button>
+          </div>
+        </div>
+      )}
 
       <div className="relative">
         <input
@@ -1254,7 +1997,7 @@ export default function ProposalBuilder({ proposalId }: ProposalBuilderProps) {
               key={client.id}
               data-testid="client-card"
               data-client-name={client.name}
-              onClick={() => setSelectedClient(client)}
+              onClick={() => selectClient(client)}
               className={`p-4 rounded-xl border-2 cursor-pointer transition-all ${
                 selectedClient?.id === client.id
                   ? 'border-primary-500 bg-primary-50 dark:bg-primary-900/20'
@@ -1271,9 +2014,136 @@ export default function ProposalBuilder({ proposalId }: ProposalBuilderProps) {
           ))}
       </div>
 
-      {selectedClient && (
-        <div className="flex justify-end">
-          <button data-testid="client-continue-button" onClick={() => setCurrentStep(2)} className="btn-primary">
+      {selectedClient && buildMode === 'unset' && (
+        <div className="rounded-2xl border border-slate-200 dark:border-slate-700 bg-white/80 dark:bg-slate-900/50 p-5 space-y-4">
+          <h3 className="text-sm font-semibold text-slate-900 dark:text-white">
+            How would you like to build this proposal?
+          </h3>
+          <p className="text-xs text-slate-600 dark:text-slate-400">
+            You can always add or remove services yourself — Clara suggestions are optional.
+          </p>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+            <button
+              type="button"
+              data-testid="build-mode-manual"
+              onClick={() => selectBuildMode('manual')}
+              className="text-left p-4 rounded-xl border-2 border-slate-200 dark:border-slate-700 hover:border-primary-400 dark:hover:border-primary-600 transition-colors"
+            >
+              <p className="font-semibold text-slate-900 dark:text-white">Build from scratch</p>
+              <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                Pick services from your catalogue, set prices, and shape the proposal yourself.
+              </p>
+            </button>
+            {proposalTemplates.length > 0 && (
+              <button
+                type="button"
+                data-testid="build-mode-template"
+                onClick={() => selectBuildMode('template')}
+                className="text-left p-4 rounded-xl border-2 border-emerald-200 dark:border-emerald-800 hover:border-emerald-400 dark:hover:border-emerald-600 bg-emerald-50/50 dark:bg-emerald-950/20 transition-colors"
+              >
+                <p className="font-semibold text-slate-900 dark:text-white">Use a saved template</p>
+                <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                  Start from a named bundle you saved before — adjust anything before sending.
+                </p>
+              </button>
+            )}
+            {aiConfigured && (
+              <button
+                type="button"
+                data-testid="build-mode-clara"
+                onClick={() => selectBuildMode('clara')}
+                className="text-left p-4 rounded-xl border-2 border-violet-200 dark:border-violet-800 hover:border-violet-400 dark:hover:border-violet-600 bg-violet-50/50 dark:bg-violet-950/20 transition-colors"
+              >
+                <p className="font-semibold text-slate-900 dark:text-white">
+                  Start with {AI_COPILOT.name} suggestions
+                </p>
+                <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                  Optional starter bundle — accept, tweak, add, or remove anything before sending.
+                </p>
+              </button>
+            )}
+          </div>
+          {!aiConfigured && (
+            <button
+              type="button"
+              onClick={() => selectBuildMode('manual')}
+              className="btn-primary text-sm"
+            >
+              Continue manually
+            </button>
+          )}
+        </div>
+      )}
+
+      {selectedClient && buildMode === 'template' && (
+        <div className="rounded-2xl border border-emerald-200 dark:border-emerald-800 bg-emerald-50/30 dark:bg-emerald-950/20 p-4 space-y-3">
+          <h4 className="text-sm font-semibold text-slate-900 dark:text-white">Choose a template</h4>
+          {templatesLoading ? (
+            <p className="text-xs text-slate-500">Loading templates…</p>
+          ) : proposalTemplates.length === 0 ? (
+            <p className="text-xs text-slate-500">
+              No saved templates yet —{' '}
+              <Link to="/templates" className="text-emerald-700 dark:text-emerald-400 hover:underline">
+                create one in Templates
+              </Link>{' '}
+              or build from scratch and {AI_COPILOT.name} will offer to save when you finish.
+            </p>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+              {proposalTemplates.map((tpl) => (
+                <button
+                  key={tpl.id}
+                  type="button"
+                  data-testid="proposal-template-option"
+                  disabled={applyingTemplateId === tpl.id}
+                  onClick={() => void applyProposalTemplate(tpl.id)}
+                  className={`text-left p-3 rounded-xl border-2 transition-colors ${
+                    selectedTemplateId === tpl.id
+                      ? 'border-emerald-500 bg-emerald-50 dark:bg-emerald-900/30'
+                      : 'border-slate-200 dark:border-slate-700 hover:border-emerald-400'
+                  }`}
+                >
+                  <p className="font-medium text-slate-900 dark:text-white text-sm">{tpl.name}</p>
+                  {tpl.description && (
+                    <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 line-clamp-2">
+                      {tpl.description}
+                    </p>
+                  )}
+                  <p className="text-xs text-emerald-700 dark:text-emerald-400 mt-1">
+                    {tpl.serviceCount} service{tpl.serviceCount === 1 ? '' : 's'}
+                    {applyingTemplateId === tpl.id ? ' — applying…' : ''}
+                  </p>
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {selectedClient && buildMode !== 'unset' && (
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <p className="text-xs text-slate-500 dark:text-slate-400">
+            {buildMode === 'manual'
+              ? 'Manual build — add services from your catalogue on the next step.'
+              : buildMode === 'template'
+                ? selectedTemplateId
+                  ? 'Template applied — tweak services and pricing on the next step.'
+                  : 'Pick a template above, or change approach.'
+                : `${AI_COPILOT.name} may suggest a starter — you stay in control of every line item.`}
+            <button
+              type="button"
+              className="ml-2 text-primary-600 hover:underline"
+              onClick={() => selectBuildMode('unset')}
+            >
+              Change
+            </button>
+          </p>
+          <button
+            data-testid="client-continue-button"
+            onClick={() => setCurrentStep(2)}
+            disabled={buildMode === 'template' && !selectedTemplateId}
+            className="btn-primary disabled:opacity-50"
+          >
             Continue
             <ArrowRightIcon className="w-5 h-5 ml-2" />
           </button>
@@ -1284,15 +2154,15 @@ export default function ProposalBuilder({ proposalId }: ProposalBuilderProps) {
 
   // Render compact service row
   const renderServiceRow = (service: Service) => {
-    const isSelected = selectedServices.find((s) => s.templateId === service.id);
+    const isSelected = selectedServices.some((s) => s.templateId === service.id);
 
     return (
       <div
         key={service.id}
         data-testid="available-service-row"
         data-service-name={service.name}
-        onClick={() => !isSelected && addService(service)}
-        className={`flex items-center justify-between p-3 rounded-lg border transition-all cursor-pointer ${
+        onClick={() => (isSelected ? removeServiceByTemplateId(service.id) : addService(service))}
+        className={`flex items-center justify-between gap-2 p-3 rounded-lg border transition-all cursor-pointer ${
           isSelected
             ? 'bg-green-50 border-green-300 dark:bg-green-900/20 dark:border-green-700'
             : 'bg-white border-slate-200 hover:border-primary-300 hover:bg-slate-50 dark:bg-slate-800 dark:border-slate-700 dark:hover:border-primary-600'
@@ -1305,10 +2175,27 @@ export default function ProposalBuilder({ proposalId }: ProposalBuilderProps) {
           </div>
           <p className="text-xs text-slate-500 dark:text-slate-300 dark:text-slate-300 truncate">{service.category}</p>
         </div>
-        <div className="text-right flex-shrink-0 ml-4">
+        <div className="flex items-center gap-2 flex-shrink-0">
           <span className="font-semibold text-primary-600 text-sm">
             {formatPriceForDisplay(service.priceAmount, service.billingCycle)}
           </span>
+          <button
+            type="button"
+            data-testid={isSelected ? 'remove-from-catalogue' : 'add-from-catalogue'}
+            onClick={(e) => {
+              e.stopPropagation();
+              if (isSelected) removeServiceByTemplateId(service.id);
+              else addService(service);
+            }}
+            className={`p-1.5 rounded-lg ${
+              isSelected
+                ? 'text-red-600 hover:bg-red-100 dark:hover:bg-red-900/30'
+                : 'text-primary-600 hover:bg-primary-100 dark:hover:bg-primary-900/30'
+            }`}
+            title={isSelected ? 'Remove from proposal' : 'Add to proposal'}
+          >
+            {isSelected ? <TrashIcon className="w-4 h-4" /> : <PlusIcon className="w-4 h-4" />}
+          </button>
         </div>
       </div>
     );
@@ -1340,15 +2227,21 @@ export default function ProposalBuilder({ proposalId }: ProposalBuilderProps) {
             </div>
           </div>
 
-          <div className="grid grid-cols-3 md:grid-cols-5 gap-2">
+          <div className="flex flex-wrap items-end gap-3">
             {/* Price */}
             <div>
               <label className="block text-[10px] uppercase tracking-wide text-slate-500 dark:text-slate-300 mb-0.5">Price (£)</label>
               <input
                 data-testid="edit-price-input"
-                type="number"
-                value={editForm.displayPrice}
-                onChange={(e) => setEditForm({ ...editForm, displayPrice: Number(e.target.value) })}
+                type="text"
+                inputMode="decimal"
+                value={editPriceText}
+                onChange={(e) => {
+                  const next = e.target.value;
+                  if (!isValidDecimalDraft(next)) return;
+                  setEditPriceText(next);
+                  setEditForm({ ...editForm, displayPrice: parseDecimalInput(next, editForm.displayPrice) });
+                }}
                 className="w-full px-2 py-1 text-sm border rounded dark:bg-slate-800 dark:border-slate-600"
               />
             </div>
@@ -1404,6 +2297,7 @@ export default function ProposalBuilder({ proposalId }: ProposalBuilderProps) {
               </label>
               <BillingCadenceSelector
                 size="sm"
+                className="w-full max-w-full"
                 value={editForm.billingCycle}
                 allowedCadences={
                   selectedServices.find((s) => s.id === service.id)?.allowedCadences
@@ -1582,8 +2476,18 @@ export default function ProposalBuilder({ proposalId }: ProposalBuilderProps) {
         ))}
       </div>
 
+      <FeeBenchmarkChips categories={categories} />
+
+      {taxServiceLines.length > 0 && (
+        <ContingentFeeCalculator
+          taxLines={taxServiceLines}
+          onApplyFee={applyContingentFeeToLine}
+          compact
+        />
+      )}
+
       {/* Two-column layout: Available Services | Selected Services */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 xl:grid-cols-[minmax(0,1fr)_minmax(22rem,1.2fr)] gap-6">
         {/* Available Services - Compact List */}
         <div className="space-y-3">
           <h3 className="text-sm font-medium text-slate-500 dark:text-slate-300 uppercase tracking-wide">
@@ -1610,7 +2514,7 @@ export default function ProposalBuilder({ proposalId }: ProposalBuilderProps) {
             </div>
           ) : (
             <>
-              <div className="max-h-[400px] overflow-y-auto space-y-2 pr-1">
+              <div className="max-h-[min(70vh,560px)] overflow-y-auto space-y-2 pr-1">
                 {selectedServices.map(renderSelectedServiceRow)}
               </div>
 
@@ -1783,12 +2687,18 @@ export default function ProposalBuilder({ proposalId }: ProposalBuilderProps) {
         </div>
       </div>
 
-      {/* Cover letter — 3 professional tone options with autofill */}
-      <div className="card p-4">
-        <div className="flex items-center justify-between mb-2">
-          <label className="block text-sm font-medium text-slate-700 dark:text-slate-200">
-            Cover letter
-          </label>
+      {/* Client proposal letter — verbose sales prose */}
+      <div className="card p-4 border border-primary-100 dark:border-primary-900/40">
+        <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
+          <div>
+            <label className="block text-sm font-medium text-slate-700 dark:text-slate-200">
+              Proposal letter for your client
+            </label>
+            <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 max-w-xl">
+              Persuasive, personal sales prose — introduces each service and its benefits before the fee
+              schedule. This is your key differentiator; edit freely after Clara drafts it.
+            </p>
+          </div>
           <div className="flex items-center gap-2">
             <button
               type="button"
@@ -1812,7 +2722,7 @@ export default function ProposalBuilder({ proposalId }: ProposalBuilderProps) {
             onApply={() => {
               setCoverLetter(aiCoverDraft);
               setAiCoverDraft(null);
-              toast.success(`${AI_COPILOT.name}'s cover letter applied — review before sending`);
+              toast.success(`${AI_COPILOT.name}'s letter applied — review before sending`);
             }}
             onDiscard={() => setAiCoverDraft(null)}
             onEdit={() => {
@@ -1824,7 +2734,7 @@ export default function ProposalBuilder({ proposalId }: ProposalBuilderProps) {
             }}
             onRegenerate={runAiCoverLetter}
             isStreaming={aiCoverLoading}
-            applyLabel="Accept cover letter"
+            applyLabel="Accept letter"
           />
         )}
 
@@ -1869,18 +2779,26 @@ export default function ProposalBuilder({ proposalId }: ProposalBuilderProps) {
           Personalised for {selectedClient ? coverLetterAddressee(selectedClient) : 'your client'}. You can edit the text freely after choosing a tone.
         </p>
 
+        {coverLetterLoading && !coverLetter.trim() && (
+          <div className="py-8 text-center text-sm text-slate-500 dark:text-slate-400" aria-busy="true">
+            <SparklesIcon className="h-6 w-6 text-primary-500 mx-auto animate-pulse mb-2" />
+            {AI_COPILOT.name} is writing your client proposal letter…
+          </div>
+        )}
+
         <textarea
           value={coverLetter}
           onChange={(e) => setCoverLetter(e.target.value)}
-          rows={11}
-          className="input-field w-full text-sm font-sans min-h-[220px] leading-relaxed"
-          placeholder="Choose a tone above or write your own cover letter…"
-          aria-label="Cover letter"
+          rows={20}
+          className="input-field w-full text-sm font-sans leading-relaxed min-h-[380px]"
+          placeholder={
+            aiConfigured
+              ? 'Clara will draft a persuasive letter when you reach this step — or click Draft with Clara…'
+              : 'Write a persuasive proposal letter for your client…'
+          }
+          aria-label="Proposal letter for client"
+          disabled={coverLetterLoading && !coverLetter.trim()}
         />
-
-        <div className="mt-2 text-[10px] text-slate-400">
-          Tip: The three styles above are production-ready. The rest of the proposal (services, pricing, terms, acceptance) is intentionally tone-neutral so the cover letter sets the voice without clashing.
-        </div>
 
         {/* Cheap Clara tweaks for cover letter - max impact, min tokens (edits existing text) */}
         {coverLetter.trim() && aiConfigured && (
@@ -1935,6 +2853,101 @@ export default function ProposalBuilder({ proposalId }: ProposalBuilderProps) {
         )}
       </div>
 
+      {/* Package options — Bronze / Silver / Gold / Platinum */}
+      <div className="card p-4 border border-violet-100 dark:border-violet-900/40" data-testid="package-options-card">
+        <h3 className="font-semibold text-slate-900 dark:text-white mb-1">Package options</h3>
+        <p className="text-xs text-slate-500 dark:text-slate-400 mb-4">
+          Offer your client a choice of Bronze, Silver, Gold, or Platinum packages on the sign page.
+          Fees scale from your base proposal total.
+        </p>
+
+        <label className="flex items-start gap-3 cursor-pointer mb-4">
+          <input
+            type="checkbox"
+            data-testid="offer-three-packages-toggle"
+            checked={offerThreePackages}
+            onChange={(e) => {
+              setOfferThreePackages(e.target.checked);
+              if (e.target.checked && pricingTiers.length < 4) {
+                setPricingTiers(DEFAULT_PRICING_TIERS);
+              }
+            }}
+            className="mt-1 h-4 w-4 rounded text-primary-600"
+          />
+          <span className="text-sm text-slate-800 dark:text-slate-100">
+            Offer package tiers (Bronze / Silver / Gold / Platinum)
+          </span>
+        </label>
+
+        {offerThreePackages && (
+          <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3 mb-4">
+            {pricingTiers.map((tier, index) => (
+              <div
+                key={tier.id}
+                className="rounded-xl border border-slate-200 dark:border-slate-600 p-3 space-y-2 bg-slate-50/50 dark:bg-slate-800/40"
+              >
+                <p className="text-[10px] uppercase tracking-wider text-slate-500">
+                  Tier {index + 1} · {formatTierMultiplier(tier)}
+                </p>
+                <input
+                  type="text"
+                  value={tier.label}
+                  onChange={(e) => {
+                    const next = [...pricingTiers];
+                    next[index] = { ...tier, label: e.target.value };
+                    setPricingTiers(next);
+                  }}
+                  className="input-field w-full text-sm font-medium"
+                  placeholder="Package name"
+                />
+                <textarea
+                  value={tier.description || ''}
+                  onChange={(e) => {
+                    const next = [...pricingTiers];
+                    next[index] = { ...tier, description: e.target.value };
+                    setPricingTiers(next);
+                  }}
+                  rows={2}
+                  className="input-field w-full text-xs"
+                  placeholder="Short description for the client"
+                />
+              </div>
+            ))}
+          </div>
+        )}
+
+        <label className="flex items-start gap-3 cursor-pointer">
+          <input
+            type="checkbox"
+            data-testid="require-two-signers-toggle"
+            checked={requireTwoSigners}
+            onChange={(e) => setRequireTwoSigners(e.target.checked)}
+            className="mt-1 h-4 w-4 rounded text-primary-600"
+          />
+          <span className="text-sm text-slate-800 dark:text-slate-100">
+            Require an additional signatory (e.g. second director — max 2 signers)
+          </span>
+        </label>
+      </div>
+
+      <div className="card p-4">
+        <h3 className="font-semibold text-slate-900 dark:text-white mb-1">Terms &amp; conditions</h3>
+        <p className="text-xs text-slate-500 dark:text-slate-400 mb-3">
+          Included in the proposal PDF and client view. Clara can answer questions about these terms.
+        </p>
+        <div
+          className="rounded-xl border border-slate-200 dark:border-slate-700 p-4 max-h-48 overflow-y-auto text-sm text-slate-700 dark:text-slate-200 whitespace-pre-wrap font-sans proposal-watermark-panel"
+        >
+          {termsLoading ? (
+            <p className="text-slate-500 italic">Preparing terms…</p>
+          ) : proposalTerms.trim() ? (
+            proposalTerms
+          ) : (
+            <p className="text-slate-500 italic">Add services to generate terms from your engagement library.</p>
+          )}
+        </div>
+      </div>
+
       {validationErrors.length > 0 && (
         <div className="rounded-xl border border-amber-200 bg-amber-50/80 dark:bg-amber-950/20 dark:border-amber-800 p-4">
           <p className="text-sm font-medium text-amber-900 dark:text-amber-200">Before you send</p>
@@ -1983,8 +2996,8 @@ export default function ProposalBuilder({ proposalId }: ProposalBuilderProps) {
           Back
         </button>
         <div className="flex flex-wrap gap-2">
-          <button type="button" onClick={() => setShowClientPreview((v) => !v)} className="btn-secondary text-sm">
-            {showClientPreview ? 'Hide preview' : 'Preview for client'}
+          <button type="button" onClick={() => toggleLivePreviewPane()} className="btn-secondary text-sm lg:hidden">
+            {showLivePreviewPane ? 'Hide preview' : 'Preview for client'}
           </button>
           {aiConfigured && selectedClient && (
             <button
@@ -1996,23 +3009,13 @@ export default function ProposalBuilder({ proposalId }: ProposalBuilderProps) {
               Preview client email
             </button>
           )}
-          {aiConfigured && selectedClient && (
-            <button
-              type="button"
-              onClick={runVoiceProposal}
-              className="btn-secondary text-sm inline-flex items-center gap-1.5 border-violet-200 dark:border-violet-700 text-violet-700 dark:text-violet-300"
-              title="Dictate scope or notes — Clara turns it into title, services and draft (very cheap)"
-            >
-              🎤 Voice with Clara
-            </button>
-          )}
           {isEditMode ? (
             <button type="button" onClick={previewPdf} className="btn-secondary text-sm">
               Download PDF
             </button>
           ) : (
             <button type="button" onClick={previewPdf} className="btn-secondary text-sm">
-              Print preview
+              Client preview
             </button>
           )}
           <button data-testid="create-proposal-button" onClick={saveProposal} disabled={isLoading} className="btn-primary">
@@ -2030,11 +3033,35 @@ export default function ProposalBuilder({ proposalId }: ProposalBuilderProps) {
     displayPrice: s.displayPrice,
   }));
 
+  const showPreviewPane = Boolean(selectedClient && currentStep >= 2 && showLivePreviewPane);
+  /** Services step needs full builder width — preview stacks below instead of squeezing the edit column. */
+  const sideBySidePreview = showPreviewPane && currentStep !== 2;
+
   return (
     <div className="max-w-7xl mx-auto">
       {renderStepIndicator()}
 
-      {selectedClient && !autoFitDismissed && (autoFitLoading || autoFitResult) && (
+      {selectedClient &&
+        buildMode === 'clara' &&
+        !autoFitDismissed &&
+        !autoFitLoading &&
+        !autoFitResult &&
+        aiConfigured && (
+          <div className="mb-6 rounded-2xl border border-violet-200 dark:border-violet-800 bg-violet-50/40 dark:bg-violet-950/20 p-4 flex flex-wrap items-center justify-between gap-3">
+            <p className="text-sm text-slate-700 dark:text-slate-200">
+              Ask {AI_COPILOT.name} for an optional starter bundle for {selectedClient.name}.
+            </p>
+            <button
+              type="button"
+              onClick={() => void runAutoFitForClient(selectedClient.id)}
+              className="btn-primary text-sm"
+            >
+              Get {AI_COPILOT.name} suggestions
+            </button>
+          </div>
+        )}
+
+      {selectedClient && buildMode === 'clara' && !autoFitDismissed && (autoFitLoading || autoFitResult) && (
         <AutoFitBanner
           clientName={selectedClient.name}
           result={autoFitResult}
@@ -2046,21 +3073,34 @@ export default function ProposalBuilder({ proposalId }: ProposalBuilderProps) {
             setAutoFitDismissed(true);
             setAutoFitResult(null);
           }}
+          onAcceptService={applyAutoFitService}
+          onTweakService={applyTweakedAutoFitService}
+          onRejectService={() => {}}
         />
       )}
 
       <div
         className={
           selectedClient && currentStep >= 2
-            ? 'grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_300px] gap-6 items-start'
+            ? sideBySidePreview
+              ? 'grid grid-cols-1 2xl:grid-cols-[minmax(0,1.35fr)_minmax(280px,420px)] gap-6 items-start'
+              : showPreviewPane
+                ? 'flex flex-col gap-6'
+                : 'grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_minmax(280px,320px)] gap-6 items-start'
             : ''
         }
       >
-        <div className="animate-fade-in min-w-0 space-y-4">
+        <div
+          className={`animate-fade-in space-y-4 ${sideBySidePreview ? 'min-w-0' : 'w-full min-w-[min(100%,42rem)]'}`}
+        >
+          {selectedClient && currentStep >= 2 && (
+            <RegulatoryCheckBanner clientId={selectedClient.id} compact={currentStep === 2} />
+          )}
           {selectedClient && currentStep >= 2 && currentStep <= 3 && (
             <ClientContextCard
               clientId={selectedClient.id}
               clientName={selectedClient.name}
+              companyType={selectedClient.companyType}
               configured={aiConfigured}
             />
           )}
@@ -2069,24 +3109,56 @@ export default function ProposalBuilder({ proposalId }: ProposalBuilderProps) {
           {currentStep === 3 && renderReviewStep()}
         </div>
 
-        {selectedClient && currentStep >= 2 && (
-          <ProposalBuilderClara
-            step={currentStep}
-            clientId={selectedClient.id}
-            clientName={selectedClient.name}
-            proposalTitle={proposalTitle}
-            coverLetter={coverLetter}
-            validUntil={validUntil}
-            services={claraServiceLines}
-            configured={aiConfigured}
-            onApplyTitle={setProposalTitle}
-            onSuggestServices={runAiSuggestServices}
-            suggestLoading={aiSuggestLoading}
-            suggestions={aiSuggestions}
-            onApplySuggestions={applyAiSuggestions}
-            onDraftCoverLetter={runAiCoverLetter}
-            coverLoading={aiCoverLoading}
-          />
+        {showPreviewPane && (
+          <div
+            className={
+              sideBySidePreview
+                ? 'min-w-0 2xl:sticky 2xl:top-4 order-first 2xl:order-none'
+                : 'w-full order-last'
+            }
+          >
+            <ProposalClientPreview
+              practiceName={tenant?.name || 'Your practice'}
+              practiceLogo={tenant?.logo}
+              primaryColor={tenant?.primaryColor}
+              clientName={selectedClient.name}
+              clientContactName={coverLetterAddressee(selectedClient)}
+              preparedByName={`${user?.firstName || ''} ${user?.lastName || ''}`.trim() || undefined}
+              preparedByTitle={user?.jobTitle?.trim() || undefined}
+              proposalTitle={proposalTitle}
+              coverLetter={coverLetter}
+              services={previewServices}
+              summary={summary}
+              validUntil={validUntil}
+              terms={proposalTerms}
+              showCoverLetter={currentStep >= 3}
+              showTerms={currentStep >= 3}
+            />
+          </div>
+        )}
+
+        {selectedClient && currentStep >= 2 && !showLivePreviewPane && (
+          <div className="space-y-4 min-w-0 hidden lg:block lg:sticky lg:top-4">
+            <ProposalBuilderClara
+              step={currentStep}
+              clientId={selectedClient.id}
+              clientName={selectedClient.name}
+              proposalTitle={proposalTitle}
+              coverLetter={coverLetter}
+              validUntil={validUntil}
+              services={claraServiceLines}
+              configured={aiConfigured}
+              onApplyTitle={setProposalTitle}
+              onSuggestServices={runAiSuggestServices}
+              suggestLoading={aiSuggestLoading}
+              suggestions={aiSuggestions}
+              onApplySingleSuggestion={applySingleAiSuggestion}
+              onTweakSingleSuggestion={applyTweakedAiSuggestion}
+              onDraftCoverLetter={runAiCoverLetter}
+              coverLoading={aiCoverLoading}
+              terms={proposalTerms}
+            />
+          </div>
         )}
       </div>
 
@@ -2095,6 +3167,18 @@ export default function ProposalBuilder({ proposalId }: ProposalBuilderProps) {
         onClose={() => setShowEmailPreview(false)}
         draft={emailDraftPayload}
         previewOnly
+      />
+
+      <SaveProposalTemplateDialog
+        open={saveTemplateDialog.open}
+        proposalId={saveTemplateDialog.proposalId}
+        proposalTitle={proposalTitle}
+        onClose={() => {
+          const id = saveTemplateDialog.proposalId;
+          setSaveTemplateDialog({ open: false, proposalId: '' });
+          if (id) navigate(`/proposals/${id}`);
+        }}
+        onSaved={() => void loadProposalTemplates()}
       />
     </div>
   );

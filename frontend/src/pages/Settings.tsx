@@ -1,8 +1,10 @@
 import { useState, useEffect } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { createPortal } from 'react-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuthStore } from '../stores/authStore';
 import { useThemeStore } from '../stores/themeStore';
 import { apiClient } from '../utils/api';
+import { prepareTenantLogoUpload } from '../utils/tenantLogo';
 import toast from 'react-hot-toast';
 import {
   UserCircleIcon,
@@ -18,9 +20,18 @@ import {
   SunIcon,
   MoonIcon,
   ComputerDesktopIcon,
+  PuzzlePieceIcon,
+  RectangleStackIcon,
 } from '@heroicons/react/24/outline';
 import EmailSettings from '../components/email/EmailSettings';
 import CoverLetterTemplatesManager from '../components/settings/CoverLetterTemplatesManager';
+import XeroConnect from '../components/integrations/XeroConnect';
+import QuickBooksConnect from '../components/integrations/QuickBooksConnect';
+import WebhookSettings from '../components/settings/WebhookSettings';
+import FirmGroupSettings from '../components/settings/FirmGroupSettings';
+import VoiceOfPracticeSettings from '../components/settings/VoiceOfPracticeSettings';
+import EngagementLibrarySettings from '../components/settings/EngagementLibrarySettings';
+import ProposalTermsSettings from '../components/settings/ProposalTermsSettings';
 
 // Simplified tabs - combined related sections
 const tabs = [
@@ -37,7 +48,13 @@ const tabs = [
     id: 'communications',
     name: 'Communications',
     icon: EnvelopeIcon,
-    description: 'Email & templates',
+    description: 'Email & notifications',
+  },
+  {
+    id: 'templates',
+    name: 'Templates & terms',
+    icon: RectangleStackIcon,
+    description: 'Proposal bundles, letters, T&Cs',
   },
   {
     id: 'billing',
@@ -48,14 +65,27 @@ const tabs = [
   { id: 'team', name: 'Team', icon: UsersIcon, description: 'Users & permissions' },
   { id: 'security', name: 'Security', icon: ShieldCheckIcon, description: 'Password & access' },
   { id: 'automation', name: 'Automation', icon: BellIcon, description: 'Client touchpoints & onboarding workflow' },
+  {
+    id: 'integrations',
+    name: 'Integrations',
+    icon: PuzzlePieceIcon,
+    description: 'Xero, payments & connected apps',
+  },
+  {
+    id: 'firm-group',
+    name: 'Firm group',
+    icon: BuildingOfficeIcon,
+    description: 'Multi-firm workspace admin',
+  },
 ];
 
 const VALID_TABS = tabs.map((t) => t.id);
 
 const Settings = () => {
+  const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const tabFromUrl = searchParams.get('tab');
-  const { user, tenant, setSession } = useAuthStore();
+  const { user, tenant, setSession, updateUser } = useAuthStore();
   const { theme: currentTheme, setTheme: setCurrentTheme } = useThemeStore();
   const [activeTab, setActiveTab] = useState(() =>
     tabFromUrl && VALID_TABS.includes(tabFromUrl) ? tabFromUrl : 'profile'
@@ -101,6 +131,13 @@ const Settings = () => {
     proposals: {
       defaultExpiryDays: 30,
       renewalReminderDays: 30,
+      defaultPaymentTermsDays: 7,
+      cancellationNoticeDays: 30,
+      chaseSequenceEnabled: true,
+      chaseSequenceDays: [3, 7, 14] as number[],
+      termsSource: 'engage_default' as 'engage_default' | 'custom',
+      customTerms: null as string | null,
+      benchmarksOptIn: false,
     },
     notifications: {
       proposalAccepted: true,
@@ -117,9 +154,14 @@ const Settings = () => {
     confirmPassword: '',
   });
 
+  const [disable2FAPassword, setDisable2FAPassword] = useState('');
+  const [isDisabling2FA, setIsDisabling2FA] = useState(false);
+
   // Team/Users state
   const [users, setUsers] = useState<any[]>([]);
   const [showAddUserModal, setShowAddUserModal] = useState(false);
+  const [showEditUserModal, setShowEditUserModal] = useState(false);
+  const [editingUserId, setEditingUserId] = useState<string | null>(null);
   const [newUserForm, setNewUserForm] = useState({
     email: '',
     firstName: '',
@@ -129,12 +171,53 @@ const Settings = () => {
     role: 'JUNIOR',
     password: '',
   });
+  const [editUserForm, setEditUserForm] = useState({
+    email: '',
+    firstName: '',
+    lastName: '',
+    phone: '',
+    jobTitle: '',
+    role: 'JUNIOR',
+  });
+
+  const formatTeamRole = (role: string) => {
+    const labels: Record<string, string> = {
+      ADMIN: 'Admin',
+      PARTNER: 'Partner',
+      MD: 'Managing Director',
+      MANAGER: 'Manager',
+      SENIOR: 'Senior',
+      JUNIOR: 'Junior',
+    };
+    const key = role?.trim().toUpperCase();
+    return labels[key] || role;
+  };
+
+  const JOB_TITLE_PRESETS = [
+    'Managing Director',
+    'Partner',
+    'Manager',
+    'Senior Accountant',
+    'Accountant',
+    'Bookkeeper',
+    'Practice Administrator',
+  ];
+
+  const applyJobTitlePreset = (preset: string) => {
+    setProfileForm((prev) => ({ ...prev, jobTitle: preset }));
+  };
 
   const [vatForm, setVatForm] = useState({
     vatRegistered: true,
     vatNumber: '',
     defaultVatRate: 'STANDARD_20' as 'ZERO' | 'REDUCED_5' | 'STANDARD_20' | 'EXEMPT',
     autoApplyVat: true,
+  });
+
+  const [paymentForm, setPaymentForm] = useState({
+    collectPaymentAtSign: false,
+    allowDirectDebit: true,
+    allowCard: true,
   });
 
   // Clara & AI budget (fetched for visibility meter)
@@ -399,9 +482,22 @@ const Settings = () => {
           }));
         }
         if (data.proposals) {
+          const p = data.proposals as Record<string, unknown>;
           setCommunicationsForm((prev) => ({
             ...prev,
-            proposals: { ...prev.proposals, ...data.proposals },
+            proposals: {
+              ...prev.proposals,
+              ...data.proposals,
+              termsSource:
+                p.termsSource === 'custom' || p.useCustomTerms === true
+                  ? 'custom'
+                  : 'engage_default',
+              cancellationNoticeDays:
+                typeof p.cancellationNoticeDays === 'number'
+                  ? p.cancellationNoticeDays
+                  : prev.proposals.cancellationNoticeDays,
+              benchmarksOptIn: p.benchmarksOptIn === true,
+            },
           }));
         }
         if (data.vat) {
@@ -411,6 +507,14 @@ const Settings = () => {
             vatNumber: data.vat.vatNumber || '',
             defaultVatRate: data.vat.defaultVatRate || prev.defaultVatRate,
             autoApplyVat: data.vat.autoApplyVat ?? prev.autoApplyVat,
+          }));
+        }
+        if (data.payments) {
+          setPaymentForm((prev) => ({
+            ...prev,
+            collectPaymentAtSign: data.payments.collectPaymentAtSign ?? prev.collectPaymentAtSign,
+            allowDirectDebit: data.payments.allowDirectDebit ?? prev.allowDirectDebit,
+            allowCard: data.payments.allowCard ?? prev.allowCard,
           }));
         }
       }
@@ -503,6 +607,14 @@ const Settings = () => {
       })) as any;
 
       if (response.success) {
+        if (tenant && response.data?.branding) {
+          setSession(user!, {
+            ...tenant,
+            name: response.data.branding.name || practiceForm.name,
+            logo: response.data.branding.logo ?? brandingForm.logo,
+            primaryColor: response.data.branding.primaryColor ?? brandingForm.primaryColor,
+          });
+        }
         toast.success('Practice settings saved successfully');
       } else {
         toast.error(response.error?.message || 'Failed to save settings');
@@ -524,14 +636,15 @@ const Settings = () => {
           defaultVatRate: vatForm.defaultVatRate,
           autoApplyVat: vatForm.autoApplyVat,
         },
+        payments: paymentForm,
       })) as any;
       if (response.success) {
-        toast.success('VAT settings saved');
+        toast.success('Billing settings saved');
       } else {
-        toast.error(response.error?.message || 'Failed to save VAT settings');
+        toast.error(response.error?.message || 'Failed to save billing settings');
       }
     } catch (error: any) {
-      toast.error(error.message || 'Failed to save VAT settings');
+      toast.error(error.message || 'Failed to save billing settings');
     } finally {
       setIsSaving(null);
     }
@@ -548,6 +661,14 @@ const Settings = () => {
       })) as any;
 
       if (response.success) {
+        if (tenant && response.data?.branding) {
+          setSession(user!, {
+            ...tenant,
+            logo: response.data.branding.logo ?? brandingForm.logo,
+            primaryColor: response.data.branding.primaryColor ?? brandingForm.primaryColor,
+            name: response.data.branding.name || tenant.name,
+          });
+        }
         toast.success('Branding saved successfully');
       }
     } catch (error) {
@@ -560,19 +681,19 @@ const Settings = () => {
   const handleLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
+    e.target.value = '';
 
-    if (file.size > 2 * 1024 * 1024) {
-      toast.error('Logo must be less than 2MB');
-      return;
+    try {
+      const { dataUrl, resized } = await prepareTenantLogoUpload(file);
+      setBrandingForm((prev) => ({ ...prev, logo: dataUrl }));
+      if (resized) {
+        toast.success('Logo resized for proposal PDFs. Click Save to apply.');
+      } else {
+        toast.success('Logo loaded. Click Save to apply.');
+      }
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Could not process logo');
     }
-
-    const reader = new FileReader();
-    reader.onload = async (event) => {
-      const base64 = event.target?.result as string;
-      setBrandingForm((prev) => ({ ...prev, logo: base64 }));
-      toast.success('Logo loaded. Click Save to apply.');
-    };
-    reader.readAsDataURL(file);
   };
 
   const handleChangePassword = async () => {
@@ -624,6 +745,25 @@ const Settings = () => {
     }
   };
 
+  const handleDisable2FA = async () => {
+    if (!disable2FAPassword) {
+      toast.error('Enter your password to disable 2FA');
+      return;
+    }
+
+    setIsDisabling2FA(true);
+    try {
+      await apiClient.post('/auth/2fa/disable', { password: disable2FAPassword });
+      updateUser({ twoFactorEnabled: false });
+      setDisable2FAPassword('');
+      toast.success('Two-factor authentication disabled');
+    } catch (error: any) {
+      toast.error(error.response?.data?.error?.message || 'Failed to disable 2FA');
+    } finally {
+      setIsDisabling2FA(false);
+    }
+  };
+
   const handleCreateUser = async () => {
     // Validate password complexity
     const pwd = newUserForm.password;
@@ -661,6 +801,61 @@ const Settings = () => {
       }
     } catch (error: any) {
       toast.error(error.response?.data?.error?.message || 'Failed to create user');
+    } finally {
+      setIsSaving(null);
+    }
+  };
+
+  const openEditUser = (member: {
+    id: string;
+    email: string;
+    firstName: string;
+    lastName: string;
+    phone?: string;
+    jobTitle?: string;
+    role: string;
+  }) => {
+    setEditingUserId(member.id);
+    setEditUserForm({
+      email: member.email || '',
+      firstName: member.firstName || '',
+      lastName: member.lastName || '',
+      phone: member.phone || '',
+      jobTitle: member.jobTitle || '',
+      role: member.role || 'JUNIOR',
+    });
+    setShowEditUserModal(true);
+  };
+
+  const handleUpdateUser = async () => {
+    if (!editingUserId) return;
+    if (!editUserForm.firstName.trim() || !editUserForm.lastName.trim() || !editUserForm.email.trim()) {
+      toast.error('First name, last name, and email are required');
+      return;
+    }
+    setIsSaving('team');
+    try {
+      const response = (await apiClient.updateUser(editingUserId, {
+        firstName: editUserForm.firstName.trim(),
+        lastName: editUserForm.lastName.trim(),
+        email: editUserForm.email.trim(),
+        phone: editUserForm.phone.trim() || undefined,
+        jobTitle: editUserForm.jobTitle.trim() || null,
+        role: editUserForm.role,
+      })) as any;
+      if (response.success) {
+        toast.success('Team member updated');
+        setShowEditUserModal(false);
+        setEditingUserId(null);
+        loadUsers();
+        if (editingUserId === user?.id && response.data) {
+          setSession({ ...user!, ...response.data }, tenant!);
+        }
+      } else {
+        toast.error(response.error?.message || 'Failed to update user');
+      }
+    } catch (error: any) {
+      toast.error(error.response?.data?.error?.message || 'Failed to update user');
     } finally {
       setIsSaving(null);
     }
@@ -787,14 +982,48 @@ const Settings = () => {
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-semibold text-slate-700 dark:text-slate-100">Job Title</label>
+                    <label className="block text-sm font-semibold text-slate-700 dark:text-slate-100">
+                      Job role (shown on proposals)
+                    </label>
+                    <select
+                      value={
+                        JOB_TITLE_PRESETS.includes(profileForm.jobTitle as (typeof JOB_TITLE_PRESETS)[number])
+                          ? profileForm.jobTitle
+                          : profileForm.jobTitle
+                            ? '__custom__'
+                            : ''
+                      }
+                      onChange={(e) => {
+                        const v = e.target.value;
+                        if (v === '__custom__') return;
+                        if (v) applyJobTitlePreset(v);
+                        else setProfileForm({ ...profileForm, jobTitle: '' });
+                      }}
+                      className="mt-1 input-field w-full"
+                    >
+                      <option value="">Select a job role…</option>
+                      {JOB_TITLE_PRESETS.map((preset) => (
+                        <option key={preset} value={preset}>
+                          {preset}
+                        </option>
+                      ))}
+                      <option value="__custom__">Custom title…</option>
+                    </select>
                     <input
                       type="text"
                       value={profileForm.jobTitle}
                       onChange={(e) => setProfileForm({ ...profileForm, jobTitle: e.target.value })}
-                      className="mt-1 input-field w-full"
-                      placeholder="e.g., Senior Accountant"
+                      className="mt-2 input-field w-full"
+                      placeholder="Or type a custom job title"
                     />
+                    <button
+                      type="button"
+                      onClick={handleSaveProfile}
+                      disabled={isSaving === 'profile'}
+                      className="mt-3 btn-primary text-sm"
+                    >
+                      {isSaving === 'profile' ? 'Saving…' : 'Save job role'}
+                    </button>
                   </div>
                 </div>
                 <div className="pt-4 border-t border-slate-200 dark:border-slate-700">
@@ -862,9 +1091,15 @@ const Settings = () => {
                         <option value="ICAS">ICAS</option>
                         <option value="CIMA">CIMA</option>
                         <option value="AAT">AAT</option>
+                        <option value="ATT">ATT (Association of Taxation Technicians)</option>
+                        <option value="CIOT">CIOT (Chartered Institute of Taxation)</option>
                         <option value="CPAA">CPAA</option>
                         <option value="Other">Other</option>
                       </select>
+                      <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+                        Engagement letter clauses are filtered to match your regulatory body
+                        (ACCA, ICAEW, ICAS, CIMA, AAT, ATT, CIOT).
+                      </p>
                     </div>
                   </div>
                   <div>
@@ -1022,12 +1257,13 @@ const Settings = () => {
                     <div className="flex-1">
                       <input
                         type="file"
-                        accept="image/*"
+                        accept="image/png,image/jpeg,image/webp"
                         onChange={handleLogoUpload}
                         className="block w-full text-sm text-slate-500 dark:text-slate-300 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-medium file:bg-primary-50 file:text-primary-700 hover:file:bg-primary-100 dark:file:bg-primary-900/30 dark:file:text-primary-300"
                       />
                       <p className="mt-2 text-xs text-slate-500 dark:text-slate-300">
-                        Recommended: PNG or SVG with transparent background. Max 2MB.
+                        PNG, JPEG, or WebP. Automatically resized to max 800px and 512 KB so
+                        proposal PDFs and emails stay reliable.
                       </p>
                     </div>
                   </div>
@@ -1176,6 +1412,14 @@ const Settings = () => {
                   <div>
                     <div className="text-sm text-slate-700 dark:text-slate-200 mb-2">
                       Clara budget this month: {aiBudget.usedThisMonth?.toLocaleString?.() ?? aiBudget.usedThisMonth} / {aiBudget.budgetMonthly?.toLocaleString?.() ?? aiBudget.budgetMonthly} tokens used (remaining {aiBudget.remaining?.toLocaleString?.() ?? aiBudget.remaining}). Calls: {aiBudget.aiCallsThisMonth ?? '—'}
+                      {typeof aiBudget.callsWithLoggedTokens === 'number' && (
+                        <span className="block text-xs text-slate-500 dark:text-slate-400 mt-1">
+                          {aiBudget.callsWithLoggedTokens} with logged provider tokens
+                          {aiBudget.callsEstimated > 0
+                            ? ` · ${aiBudget.callsEstimated} estimated from older activity`
+                            : ''}
+                        </span>
+                      )}
                     </div>
 
                     {/* Tailwind progress bar, perfect dark mode + pale light */}
@@ -1194,7 +1438,7 @@ const Settings = () => {
                     })()}
 
                     <p className="mt-2 text-xs text-slate-500 dark:text-slate-300">
-                      Budget resets monthly. Clara uses a small allowance per suggestion, draft or review.
+                      Budget resets monthly. Usage is based on provider token counts where available.
                     </p>
                   </div>
                 )}
@@ -1218,10 +1462,18 @@ const Settings = () => {
                 </div>
               </div>
 
-              {/* Cover letter templates */}
+              {/* Engagement clause library versioning */}
+              <EngagementLibrarySettings />
+
               <div className="glass-tile overflow-hidden">
+                <div className="px-8 py-5 border-b border-slate-200 dark:border-slate-700 bg-white/40 dark:bg-slate-800/30">
+                  <h2 className="text-lg font-semibold text-slate-900 dark:text-white">Voice of practice</h2>
+                  <p className="text-sm text-slate-500 dark:text-slate-300">
+                    Train Clara to match your firm&apos;s letter style (W4.4)
+                  </p>
+                </div>
                 <div className="p-6">
-                  <CoverLetterTemplatesManager />
+                  <VoiceOfPracticeSettings />
                 </div>
               </div>
 
@@ -1261,6 +1513,30 @@ const Settings = () => {
                     </div>
                     <div>
                       <label className="block text-sm font-semibold text-slate-700 dark:text-slate-100">
+                        Default payment terms (days)
+                      </label>
+                      <input
+                        type="number"
+                        min={1}
+                        max={90}
+                        value={communicationsForm.proposals.defaultPaymentTermsDays ?? 7}
+                        onChange={(e) =>
+                          setCommunicationsForm({
+                            ...communicationsForm,
+                            proposals: {
+                              ...communicationsForm.proposals,
+                              defaultPaymentTermsDays: Number(e.target.value) || 7,
+                            },
+                          })
+                        }
+                        className="mt-1 input-field w-full"
+                      />
+                      <p className="mt-1 text-xs text-slate-500 dark:text-slate-300">
+                        Invoices are payable within this many days (shown on proposals and engagement letters)
+                      </p>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-semibold text-slate-700 dark:text-slate-100">
                         Renewal / expiry reminder (days before)
                       </label>
                       <input
@@ -1283,7 +1559,61 @@ const Settings = () => {
                         Email reminders before proposal expiry or annual renewal
                       </p>
                     </div>
+                    <div>
+                      <label className="block text-sm font-semibold text-slate-700 dark:text-slate-100">
+                        Cancellation notice (days)
+                      </label>
+                      <input
+                        type="number"
+                        min={1}
+                        max={365}
+                        value={communicationsForm.proposals.cancellationNoticeDays ?? 30}
+                        onChange={(e) =>
+                          setCommunicationsForm({
+                            ...communicationsForm,
+                            proposals: {
+                              ...communicationsForm.proposals,
+                              cancellationNoticeDays: Number(e.target.value) || 30,
+                            },
+                          })
+                        }
+                        className="mt-1 input-field w-full"
+                      />
+                      <p className="mt-1 text-xs text-slate-500 dark:text-slate-300">
+                        Written notice required to terminate the engagement (shown in terms)
+                      </p>
+                    </div>
                   </div>
+
+                  <div className="pt-4 border-t border-slate-200 dark:border-slate-700">
+                    <label className="flex items-start gap-3 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={communicationsForm.proposals.benchmarksOptIn}
+                        onChange={(e) =>
+                          setCommunicationsForm({
+                            ...communicationsForm,
+                            proposals: {
+                              ...communicationsForm.proposals,
+                              benchmarksOptIn: e.target.checked,
+                            },
+                          })
+                        }
+                        className="mt-1 h-4 w-4 rounded border-slate-300 text-primary-600 focus:ring-primary-200"
+                      />
+                      <span>
+                        <span className="block text-sm font-semibold text-slate-700 dark:text-slate-100">
+                          Share anonymised fee data to see benchmarks
+                        </span>
+                        <span className="block text-xs text-slate-500 dark:text-slate-300 mt-1">
+                          Contribute anonymised proposal line fees to cross-practice percentile bands
+                          shown in the proposal builder. No client or firm identifiers are shared.
+                          Categories with fewer than five contributing practices are withheld.
+                        </span>
+                      </span>
+                    </label>
+                  </div>
+
                   <div className="pt-4 border-t border-slate-200 dark:border-slate-700 flex flex-wrap gap-3">
                     <button
                       onClick={handleSaveCommunications}
@@ -1291,6 +1621,131 @@ const Settings = () => {
                       className="btn-primary"
                     >
                       {isSaving === 'communications' ? 'Saving...' : 'Save proposal defaults'}
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              {/* Automated chase reminders */}
+              <div className="glass-tile overflow-hidden">
+                <div className="px-8 py-5 border-b border-slate-200 dark:border-slate-700 bg-white/40 dark:bg-slate-800/30">
+                  <h2 className="text-lg font-semibold text-slate-900 dark:text-white">
+                    Automated chase reminders
+                  </h2>
+                  <p className="text-sm text-slate-500 dark:text-slate-300">
+                    Send reminder emails to clients who have not signed unsigned proposals
+                  </p>
+                </div>
+                <div className="p-6 space-y-4">
+                  <label className="flex items-center gap-3 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={communicationsForm.proposals.chaseSequenceEnabled ?? true}
+                      onChange={(e) =>
+                        setCommunicationsForm({
+                          ...communicationsForm,
+                          proposals: {
+                            ...communicationsForm.proposals,
+                            chaseSequenceEnabled: e.target.checked,
+                          },
+                        })
+                      }
+                      className="h-4 w-4 rounded border-slate-300 text-primary-600 focus:ring-primary-500"
+                    />
+                    <span className="text-sm font-medium text-slate-700 dark:text-slate-100">
+                      Enable automated chase sequence
+                    </span>
+                  </label>
+
+                  <div>
+                    <label className="block text-sm font-semibold text-slate-700 dark:text-slate-100 mb-2">
+                      Reminder days after send
+                    </label>
+                    <div className="flex flex-wrap gap-2">
+                      {(communicationsForm.proposals.chaseSequenceDays ?? [3, 7, 14]).map(
+                        (day, index) => (
+                          <div key={index} className="flex items-center gap-1">
+                            <input
+                              type="number"
+                              min={1}
+                              max={90}
+                              value={day}
+                              disabled={!communicationsForm.proposals.chaseSequenceEnabled}
+                              onChange={(e) => {
+                                const days = [
+                                  ...(communicationsForm.proposals.chaseSequenceDays ?? [3, 7, 14]),
+                                ];
+                                days[index] = Number(e.target.value) || 1;
+                                setCommunicationsForm({
+                                  ...communicationsForm,
+                                  proposals: {
+                                    ...communicationsForm.proposals,
+                                    chaseSequenceDays: days,
+                                  },
+                                });
+                              }}
+                              className="input-field w-20"
+                            />
+                            <span className="text-xs text-slate-500">days</span>
+                            {(communicationsForm.proposals.chaseSequenceDays ?? []).length > 1 && (
+                              <button
+                                type="button"
+                                disabled={!communicationsForm.proposals.chaseSequenceEnabled}
+                                onClick={() => {
+                                  const days = (
+                                    communicationsForm.proposals.chaseSequenceDays ?? [3, 7, 14]
+                                  ).filter((_, i) => i !== index);
+                                  setCommunicationsForm({
+                                    ...communicationsForm,
+                                    proposals: {
+                                      ...communicationsForm.proposals,
+                                      chaseSequenceDays: days.length ? days : [7],
+                                    },
+                                  });
+                                }}
+                                className="text-xs text-red-500 hover:text-red-600 ml-1"
+                              >
+                                Remove
+                              </button>
+                            )}
+                          </div>
+                        )
+                      )}
+                      {(communicationsForm.proposals.chaseSequenceDays ?? []).length < 6 && (
+                        <button
+                          type="button"
+                          disabled={!communicationsForm.proposals.chaseSequenceEnabled}
+                          onClick={() =>
+                            setCommunicationsForm({
+                              ...communicationsForm,
+                              proposals: {
+                                ...communicationsForm.proposals,
+                                chaseSequenceDays: [
+                                  ...(communicationsForm.proposals.chaseSequenceDays ?? [3, 7, 14]),
+                                  21,
+                                ],
+                              },
+                            })
+                          }
+                          className="btn-secondary text-sm py-1 px-3"
+                        >
+                          Add day
+                        </button>
+                      )}
+                    </div>
+                    <p className="mt-2 text-xs text-slate-500 dark:text-slate-300">
+                      Default sequence: 3, 7 and 14 days after the proposal is sent. Clara
+                      personalises chase copy when AI emails are enabled.
+                    </p>
+                  </div>
+
+                  <div className="pt-4 border-t border-slate-200 dark:border-slate-700">
+                    <button
+                      onClick={handleSaveCommunications}
+                      disabled={isSaving === 'communications'}
+                      className="btn-primary"
+                    >
+                      {isSaving === 'communications' ? 'Saving...' : 'Save chase settings'}
                     </button>
                   </div>
                 </div>
@@ -1442,12 +1897,69 @@ const Settings = () => {
                     </select>
                   </div>
                 </div>
+                <div className="border-t border-slate-200 dark:border-slate-700 pt-8">
+                  <h3 className="text-base font-semibold text-slate-900 dark:text-white">
+                    Payment collection at sign
+                  </h3>
+                  <p className="mt-1 text-sm text-slate-500 dark:text-slate-300">
+                    Offer Direct Debit or card setup immediately after a client signs (Ignition-style).
+                    Uses Revolut when configured; otherwise a demo GoCardless stub is used.
+                  </p>
+                  <div className="mt-4 space-y-4">
+                    <label className="flex items-start gap-3">
+                      <input
+                        type="checkbox"
+                        data-testid="collect-payment-at-sign"
+                        checked={paymentForm.collectPaymentAtSign}
+                        onChange={(e) =>
+                          setPaymentForm({ ...paymentForm, collectPaymentAtSign: e.target.checked })
+                        }
+                        className="mt-1 rounded border-slate-300 dark:border-slate-500"
+                      />
+                      <span>
+                        <span className="text-sm font-semibold text-slate-700 dark:text-slate-100">
+                          Collect payment at sign
+                        </span>
+                        <span className="block text-xs text-slate-500 dark:text-slate-300 mt-0.5">
+                          Clients see a payment setup step after accepting the proposal
+                        </span>
+                      </span>
+                    </label>
+                    {paymentForm.collectPaymentAtSign && (
+                      <div className="ml-7 space-y-2">
+                        <label className="flex items-center gap-2 text-sm text-slate-700 dark:text-slate-200">
+                          <input
+                            type="checkbox"
+                            checked={paymentForm.allowDirectDebit}
+                            onChange={(e) =>
+                              setPaymentForm({ ...paymentForm, allowDirectDebit: e.target.checked })
+                            }
+                            className="rounded border-slate-300"
+                          />
+                          Direct Debit
+                        </label>
+                        <label className="flex items-center gap-2 text-sm text-slate-700 dark:text-slate-200">
+                          <input
+                            type="checkbox"
+                            checked={paymentForm.allowCard}
+                            onChange={(e) =>
+                              setPaymentForm({ ...paymentForm, allowCard: e.target.checked })
+                            }
+                            className="rounded border-slate-300"
+                          />
+                          Card
+                        </label>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
                 <button
                   onClick={handleSaveVat}
                   disabled={isSaving === 'billing'}
                   className="btn-primary"
                 >
-                  {isSaving === 'billing' ? 'Saving…' : 'Save VAT settings'}
+                  {isSaving === 'billing' ? 'Saving…' : 'Save billing settings'}
                 </button>
 
                 {/* MTD explainer — how clauses appear in generated letters */}
@@ -1490,9 +2002,60 @@ const Settings = () => {
             </div>
           )}
 
+          {/* TEMPLATES & TERMS TAB */}
+          {activeTab === 'templates' && (
+            <div className="space-y-6">
+              <div className="glass-tile overflow-hidden">
+                <div className="px-8 py-5 border-b border-slate-200 dark:border-slate-700 bg-white/40 dark:bg-slate-800/30">
+                  <h2 className="text-lg font-semibold text-slate-900 dark:text-white">
+                    Proposal templates
+                  </h2>
+                  <p className="text-sm text-slate-500 dark:text-slate-300 mt-1">
+                    Pre-made service bundles with fixed fees — start proposals in seconds.
+                  </p>
+                </div>
+                <div className="p-6">
+                  <Link to="/templates" className="btn-primary inline-flex items-center gap-2">
+                    <RectangleStackIcon className="h-5 w-5" />
+                    Open proposal templates
+                  </Link>
+                  <p className="mt-3 text-xs text-slate-500 dark:text-slate-400">
+                    Create, edit, and use templates from the Templates page in the left sidebar under
+                    Catalogue.
+                  </p>
+                </div>
+              </div>
+
+              <div className="glass-tile overflow-hidden">
+                <div className="p-6">
+                  <CoverLetterTemplatesManager />
+                </div>
+              </div>
+
+              <ProposalTermsSettings
+                proposals={{
+                  defaultPaymentTermsDays:
+                    communicationsForm.proposals.defaultPaymentTermsDays ?? 7,
+                  cancellationNoticeDays:
+                    communicationsForm.proposals.cancellationNoticeDays ?? 30,
+                  termsSource: communicationsForm.proposals.termsSource ?? 'engage_default',
+                  customTerms: communicationsForm.proposals.customTerms ?? null,
+                }}
+                onChange={(patch) =>
+                  setCommunicationsForm({
+                    ...communicationsForm,
+                    proposals: { ...communicationsForm.proposals, ...patch },
+                  })
+                }
+                onSave={handleSaveCommunications}
+                isSaving={isSaving === 'communications'}
+              />
+            </div>
+          )}
+
           {/* TEAM TAB */}
           {activeTab === 'team' && (
-            <div className="glass-tile overflow-hidden">
+            <div className="glass-tile">
               <div className="px-8 py-5 border-b border-slate-200 dark:border-slate-700 bg-white/40 dark:bg-slate-800/30 flex items-center justify-between">
                 <div>
                   <h2 className="text-lg font-semibold text-slate-900 dark:text-white">Team Members</h2>
@@ -1528,187 +2091,37 @@ const Settings = () => {
                             )}
                           </p>
                           <p className="text-sm text-slate-500 dark:text-slate-300">{u.email}</p>
-                          <span className="inline-flex mt-1 items-center px-2 py-0.5 rounded text-xs font-medium bg-slate-100 text-slate-800">
-                            {u.role}
-                          </span>
+                          <div className="flex flex-wrap items-center gap-2 mt-1">
+                            <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-slate-100 text-slate-800 dark:bg-slate-700 dark:text-slate-200">
+                              {formatTeamRole(u.role)}
+                            </span>
+                            {u.jobTitle?.trim() && (
+                              <span className="text-xs text-slate-500 dark:text-slate-400">{u.jobTitle}</span>
+                            )}
+                          </div>
                         </div>
                       </div>
-                      {u.id !== user?.id && (
+                      <div className="flex items-center gap-3">
                         <button
-                          onClick={() => handleDeleteUser(u.id)}
-                          className="text-red-600 hover:text-red-800 text-sm"
+                          onClick={() => openEditUser(u)}
+                          className="text-primary-600 hover:text-primary-800 text-sm font-medium"
                         >
-                          Remove
+                          Edit
                         </button>
-                      )}
+                        {u.id !== user?.id && (
+                          <button
+                            onClick={() => handleDeleteUser(u.id)}
+                            className="text-red-600 hover:text-red-800 text-sm"
+                          >
+                            Remove
+                          </button>
+                        )}
+                      </div>
                     </div>
                   ))
                 )}
               </div>
 
-              {/* Add User Modal */}
-              {showAddUserModal && (
-                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-                  <div className="bg-white rounded-xl shadow-xl max-w-md w-full mx-4 p-6">
-                    <h3 className="text-lg font-semibold text-slate-900 mb-4">Add Team Member</h3>
-                    <div className="space-y-4">
-                      <div className="grid grid-cols-2 gap-4">
-                        <div>
-                          <label className="block text-sm font-semibold text-slate-700 dark:text-slate-100">
-                            First Name
-                          </label>
-                          <input
-                            type="text"
-                            value={newUserForm.firstName}
-                            onChange={(e) =>
-                              setNewUserForm({ ...newUserForm, firstName: e.target.value })
-                            }
-                            className="mt-1 input-field w-full"
-                          />
-                        </div>
-                        <div>
-                          <label className="block text-sm font-semibold text-slate-700 dark:text-slate-100">
-                            Last Name
-                          </label>
-                          <input
-                            type="text"
-                            value={newUserForm.lastName}
-                            onChange={(e) =>
-                              setNewUserForm({ ...newUserForm, lastName: e.target.value })
-                            }
-                            className="mt-1 input-field w-full"
-                          />
-                        </div>
-                      </div>
-                      <div className="grid grid-cols-2 gap-4">
-                        <div>
-                          <label className="block text-sm font-semibold text-slate-700 dark:text-slate-100">Contact Number</label>
-                          <input
-                            type="tel"
-                            value={newUserForm.phone}
-                            onChange={(e) =>
-                              setNewUserForm({ ...newUserForm, phone: e.target.value })
-                            }
-                            className="mt-1 input-field w-full"
-                          />
-                        </div>
-                        <div>
-                          <label className="block text-sm font-semibold text-slate-700 dark:text-slate-100">Job Title</label>
-                          <input
-                            type="text"
-                            value={newUserForm.jobTitle}
-                            onChange={(e) =>
-                              setNewUserForm({ ...newUserForm, jobTitle: e.target.value })
-                            }
-                            className="mt-1 input-field w-full"
-                          />
-                        </div>
-                      </div>
-                      <div className="grid grid-cols-2 gap-4">
-                        <div>
-                          <label className="block text-sm font-semibold text-slate-700 dark:text-slate-100">Contact Number</label>
-                          <input
-                            type="tel"
-                            value={newUserForm.phone}
-                            onChange={(e) =>
-                              setNewUserForm({ ...newUserForm, phone: e.target.value })
-                            }
-                            className="mt-1 input-field w-full"
-                          />
-                        </div>
-                        <div>
-                          <label className="block text-sm font-semibold text-slate-700 dark:text-slate-100">Job Title</label>
-                          <input
-                            type="text"
-                            value={newUserForm.jobTitle}
-                            onChange={(e) =>
-                              setNewUserForm({ ...newUserForm, jobTitle: e.target.value })
-                            }
-                            className="mt-1 input-field w-full"
-                          />
-                        </div>
-                      </div>
-                      <div>
-                        <label className="block text-sm font-semibold text-slate-700 dark:text-slate-100">Email</label>
-                        <input
-                          type="email"
-                          value={newUserForm.email}
-                          onChange={(e) =>
-                            setNewUserForm({ ...newUserForm, email: e.target.value })
-                          }
-                          className="mt-1 input-field w-full"
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-sm font-semibold text-slate-700 dark:text-slate-100">Role</label>
-                        <select
-                          value={newUserForm.role}
-                          onChange={(e) => setNewUserForm({ ...newUserForm, role: e.target.value })}
-                          className="mt-1 input-field w-full"
-                        >
-                          <option value="PARTNER">Partner</option>
-                          <option value="MANAGER">Manager</option>
-                          <option value="SENIOR">Senior</option>
-                          <option value="JUNIOR">Junior</option>
-                        </select>
-                      </div>
-                      <div>
-                        <label className="block text-sm font-semibold text-slate-700 dark:text-slate-100">
-                          Temporary Password
-                        </label>
-                        <input
-                          type="password"
-                          value={newUserForm.password}
-                          onChange={(e) =>
-                            setNewUserForm({ ...newUserForm, password: e.target.value })
-                          }
-                          className="mt-1 input-field w-full"
-                          placeholder="Min 8 characters with complexity"
-                        />
-                        {/* Password Requirements */}
-                        <div className="mt-2 space-y-1">
-                          {[
-                            { test: newUserForm.password.length >= 8, label: '8+ characters' },
-                            { test: /[A-Z]/.test(newUserForm.password), label: 'Uppercase' },
-                            { test: /[a-z]/.test(newUserForm.password), label: 'Lowercase' },
-                            { test: /[0-9]/.test(newUserForm.password), label: 'Number' },
-                            {
-                              test: /[^A-Za-z0-9]/.test(newUserForm.password),
-                              label: 'Special char',
-                            },
-                          ].map((req, i) => (
-                            <div key={i} className="flex items-center text-xs">
-                              <span
-                                className={`mr-2 ${req.test ? 'text-green-500' : 'text-slate-400 dark:text-slate-500'}`}
-                              >
-                                {req.test ? '✓' : '○'}
-                              </span>
-                              <span className={req.test ? 'text-green-700' : 'text-slate-500 dark:text-slate-300'}>
-                                {req.label}
-                              </span>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    </div>
-                    <div className="mt-6 flex space-x-3">
-                      <button
-                        onClick={() => setShowAddUserModal(false)}
-                        className="flex-1 btn-secondary"
-                      >
-                        Cancel
-                      </button>
-                      <button
-                        onClick={handleCreateUser}
-                        disabled={isSaving === 'team'}
-                        className="flex-1 btn-primary"
-                      >
-                        {isSaving === 'team' ? 'Adding...' : 'Add User'}
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              )}
             </div>
           )}
 
@@ -1807,16 +2220,47 @@ const Settings = () => {
                 </div>
 
                 <div className="pt-6 border-t border-slate-200 dark:border-slate-700">
-                  <h3 className="text-sm font-medium text-slate-900 mb-2">
+                  <h3 className="text-sm font-medium text-slate-900 dark:text-white mb-2">
                     Two-Factor Authentication
                   </h3>
                   <p className="text-sm text-slate-500 dark:text-slate-300 mb-4">
-                    Two-factor authentication adds an extra layer of security. We&apos;re finishing
-                    TOTP support — password + session cookies are already hardened.
+                    {user?.twoFactorEnabled
+                      ? 'Your account is protected with an authenticator app.'
+                      : 'Add an extra layer of security using an authenticator app.'}
                   </p>
-                  <button className="btn-secondary opacity-60 cursor-not-allowed" disabled type="button">
-                    Enable 2FA (in development)
-                  </button>
+                  {user?.twoFactorEnabled ? (
+                    <div className="space-y-3">
+                      <span className="inline-flex items-center text-sm text-green-600">
+                        <ShieldCheckIcon className="w-4 h-4 mr-1" />
+                        2FA is enabled
+                      </span>
+                      <div className="flex flex-col sm:flex-row gap-2 max-w-md">
+                        <input
+                          type="password"
+                          value={disable2FAPassword}
+                          onChange={(e) => setDisable2FAPassword(e.target.value)}
+                          placeholder="Password to disable 2FA"
+                          className="input-field flex-1"
+                        />
+                        <button
+                          type="button"
+                          className="btn-secondary"
+                          onClick={handleDisable2FA}
+                          disabled={isDisabling2FA || !disable2FAPassword}
+                        >
+                          {isDisabling2FA ? 'Disabling...' : 'Disable 2FA'}
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    <button
+                      type="button"
+                      className="btn-secondary"
+                      onClick={() => navigate('/2fa-setup')}
+                    >
+                      Enable 2FA
+                    </button>
+                  )}
                 </div>
               </div>
             </div>
@@ -1826,8 +2270,337 @@ const Settings = () => {
           {activeTab === 'automation' && (
             <AutomationTab />
           )}
+
+          {/* INTEGRATIONS TAB */}
+          {activeTab === 'firm-group' && (
+            <div className="glass-tile overflow-hidden">
+              <div className="px-8 py-5 border-b border-slate-200 dark:border-slate-700 bg-white/40 dark:bg-slate-800/30">
+                <h2 className="text-lg font-semibold text-slate-900 dark:text-white">Firm group</h2>
+                <p className="text-sm text-slate-500 dark:text-slate-300">
+                  Link practices across offices — owner practice admins manage membership
+                </p>
+              </div>
+              <div className="p-6">
+                <FirmGroupSettings />
+              </div>
+            </div>
+          )}
+
+          {activeTab === 'integrations' && (
+            <div className="space-y-6">
+              <div className="glass-tile overflow-hidden">
+                <div className="px-8 py-5 border-b border-slate-200 dark:border-slate-700 bg-white/40 dark:bg-slate-800/30">
+                  <h2 className="text-lg font-semibold text-slate-900 dark:text-white">
+                    Accounting integrations
+                  </h2>
+                  <p className="text-sm text-slate-500 dark:text-slate-300">
+                    Connect Xero to sync clients and push accepted proposal summaries
+                  </p>
+                </div>
+                <div className="p-6 space-y-4">
+                  <XeroConnect />
+                  <QuickBooksConnect />
+                </div>
+              </div>
+
+              <div className="glass-tile overflow-hidden">
+                <div className="px-8 py-5 border-b border-slate-200 dark:border-slate-700 bg-white/40 dark:bg-slate-800/30">
+                  <h2 className="text-lg font-semibold text-slate-900 dark:text-white">
+                    Zapier &amp; HubSpot events (W4.2)
+                  </h2>
+                  <p className="text-sm text-slate-500 dark:text-slate-300">
+                    Proposal lifecycle webhooks for automation platforms
+                  </p>
+                </div>
+                <div className="p-6">
+                  <WebhookSettings />
+                </div>
+              </div>
+
+              <div className="glass-tile overflow-hidden">
+                <div className="px-8 py-5 border-b border-slate-200 dark:border-slate-700 bg-white/40 dark:bg-slate-800/30">
+                  <h2 className="text-lg font-semibold text-slate-900 dark:text-white">
+                    What&apos;s implemented (W1.1–W1.2)
+                  </h2>
+                </div>
+                <div className="p-6 text-sm text-slate-600 dark:text-slate-300 space-y-2">
+                  <p>
+                    <span className="font-medium text-green-700 dark:text-green-400">Live:</span>{' '}
+                    OAuth connect, client import (dedupe by email/name), contact notes on accepted
+                    proposals.
+                  </p>
+                  <p>
+                    <span className="font-medium text-amber-700 dark:text-amber-400">Stub:</span>{' '}
+                    Repeating invoice / mandate draft — returned in API response only until revenue
+                    account mapping (full W1.2).
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       </div>
+
+      {showAddUserModal &&
+        createPortal(
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 sm:p-6 bg-black/50">
+            <div
+              role="dialog"
+              aria-modal="true"
+              className="bg-white dark:bg-slate-900 rounded-xl shadow-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto p-6 sm:p-8"
+            >
+              <h3 className="text-xl font-semibold text-slate-900 dark:text-white mb-6">
+                Add team member
+              </h3>
+              <div className="space-y-5">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+                  <div>
+                    <label className="block text-sm font-semibold text-slate-700 dark:text-slate-100">
+                      First name
+                    </label>
+                    <input
+                      type="text"
+                      value={newUserForm.firstName}
+                      onChange={(e) =>
+                        setNewUserForm({ ...newUserForm, firstName: e.target.value })
+                      }
+                      className="mt-1 input-field w-full"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-semibold text-slate-700 dark:text-slate-100">
+                      Last name
+                    </label>
+                    <input
+                      type="text"
+                      value={newUserForm.lastName}
+                      onChange={(e) =>
+                        setNewUserForm({ ...newUserForm, lastName: e.target.value })
+                      }
+                      className="mt-1 input-field w-full"
+                    />
+                  </div>
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+                  <div>
+                    <label className="block text-sm font-semibold text-slate-700 dark:text-slate-100">
+                      Contact number
+                    </label>
+                    <input
+                      type="tel"
+                      value={newUserForm.phone}
+                      onChange={(e) => setNewUserForm({ ...newUserForm, phone: e.target.value })}
+                      className="mt-1 input-field w-full"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-semibold text-slate-700 dark:text-slate-100">
+                      Job title
+                    </label>
+                    <input
+                      type="text"
+                      value={newUserForm.jobTitle}
+                      onChange={(e) =>
+                        setNewUserForm({ ...newUserForm, jobTitle: e.target.value })
+                      }
+                      className="mt-1 input-field w-full"
+                    />
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-sm font-semibold text-slate-700 dark:text-slate-100">
+                    Email
+                  </label>
+                  <input
+                    type="email"
+                    value={newUserForm.email}
+                    onChange={(e) => setNewUserForm({ ...newUserForm, email: e.target.value })}
+                    className="mt-1 input-field w-full"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-semibold text-slate-700 dark:text-slate-100">
+                    Role
+                  </label>
+                  <select
+                    value={newUserForm.role}
+                    onChange={(e) => setNewUserForm({ ...newUserForm, role: e.target.value })}
+                    className="mt-1 input-field w-full"
+                  >
+                    {user?.role === 'ADMIN' && <option value="ADMIN">Admin</option>}
+                    <option value="PARTNER">Partner</option>
+                    <option value="MD">Managing Director</option>
+                    <option value="MANAGER">Manager</option>
+                    <option value="SENIOR">Senior</option>
+                    <option value="JUNIOR">Junior</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-semibold text-slate-700 dark:text-slate-100">
+                    Temporary password
+                  </label>
+                  <input
+                    type="password"
+                    value={newUserForm.password}
+                    onChange={(e) => setNewUserForm({ ...newUserForm, password: e.target.value })}
+                    className="mt-1 input-field w-full"
+                    placeholder="Min 8 characters with complexity"
+                  />
+                  <div className="mt-2 grid grid-cols-2 sm:grid-cols-3 gap-2">
+                    {[
+                      { test: newUserForm.password.length >= 8, label: '8+ characters' },
+                      { test: /[A-Z]/.test(newUserForm.password), label: 'Uppercase' },
+                      { test: /[a-z]/.test(newUserForm.password), label: 'Lowercase' },
+                      { test: /[0-9]/.test(newUserForm.password), label: 'Number' },
+                      { test: /[^A-Za-z0-9]/.test(newUserForm.password), label: 'Special char' },
+                    ].map((req, i) => (
+                      <div key={i} className="flex items-center text-xs">
+                        <span className={`mr-1.5 ${req.test ? 'text-green-500' : 'text-slate-400'}`}>
+                          {req.test ? '✓' : '○'}
+                        </span>
+                        <span className={req.test ? 'text-green-700' : 'text-slate-500'}>
+                          {req.label}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+              <div className="mt-8 flex flex-col-reverse sm:flex-row gap-3 sm:justify-end border-t border-slate-200 dark:border-slate-700 pt-6">
+                <button onClick={() => setShowAddUserModal(false)} className="btn-secondary sm:min-w-[120px]">
+                  Cancel
+                </button>
+                <button
+                  onClick={handleCreateUser}
+                  disabled={isSaving === 'team'}
+                  className="btn-primary sm:min-w-[140px]"
+                >
+                  {isSaving === 'team' ? 'Adding…' : 'Add user'}
+                </button>
+              </div>
+            </div>
+          </div>,
+          document.body
+        )}
+
+      {showEditUserModal &&
+        createPortal(
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 sm:p-6 bg-black/50">
+            <div
+              role="dialog"
+              aria-modal="true"
+              className="bg-white dark:bg-slate-900 rounded-xl shadow-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto p-6 sm:p-8"
+            >
+              <h3 className="text-xl font-semibold text-slate-900 dark:text-white mb-6">
+                Edit team member
+              </h3>
+              <div className="space-y-5">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+                  <div>
+                    <label className="block text-sm font-semibold text-slate-700 dark:text-slate-100">
+                      First name
+                    </label>
+                    <input
+                      type="text"
+                      value={editUserForm.firstName}
+                      onChange={(e) =>
+                        setEditUserForm({ ...editUserForm, firstName: e.target.value })
+                      }
+                      className="mt-1 input-field w-full"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-semibold text-slate-700 dark:text-slate-100">
+                      Last name
+                    </label>
+                    <input
+                      type="text"
+                      value={editUserForm.lastName}
+                      onChange={(e) =>
+                        setEditUserForm({ ...editUserForm, lastName: e.target.value })
+                      }
+                      className="mt-1 input-field w-full"
+                    />
+                  </div>
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+                  <div>
+                    <label className="block text-sm font-semibold text-slate-700 dark:text-slate-100">
+                      Contact number
+                    </label>
+                    <input
+                      type="tel"
+                      value={editUserForm.phone}
+                      onChange={(e) => setEditUserForm({ ...editUserForm, phone: e.target.value })}
+                      className="mt-1 input-field w-full"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-semibold text-slate-700 dark:text-slate-100">
+                      Job title
+                    </label>
+                    <input
+                      type="text"
+                      value={editUserForm.jobTitle}
+                      onChange={(e) =>
+                        setEditUserForm({ ...editUserForm, jobTitle: e.target.value })
+                      }
+                      className="mt-1 input-field w-full"
+                      placeholder="e.g. Director, Partner"
+                    />
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-sm font-semibold text-slate-700 dark:text-slate-100">
+                    Email
+                  </label>
+                  <input
+                    type="email"
+                    value={editUserForm.email}
+                    onChange={(e) => setEditUserForm({ ...editUserForm, email: e.target.value })}
+                    className="mt-1 input-field w-full"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-semibold text-slate-700 dark:text-slate-100">
+                    Role
+                  </label>
+                  <select
+                    value={editUserForm.role}
+                    onChange={(e) => setEditUserForm({ ...editUserForm, role: e.target.value })}
+                    className="mt-1 input-field w-full"
+                  >
+                    {editUserForm.role === 'ADMIN' && <option value="ADMIN">Admin</option>}
+                    <option value="PARTNER">Partner</option>
+                    <option value="MD">Managing Director</option>
+                    <option value="MANAGER">Manager</option>
+                    <option value="SENIOR">Senior</option>
+                    <option value="JUNIOR">Junior</option>
+                  </select>
+                </div>
+              </div>
+              <div className="mt-8 flex flex-col-reverse sm:flex-row gap-3 sm:justify-end border-t border-slate-200 dark:border-slate-700 pt-6">
+                <button
+                  onClick={() => {
+                    setShowEditUserModal(false);
+                    setEditingUserId(null);
+                  }}
+                  className="btn-secondary sm:min-w-[120px]"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleUpdateUser}
+                  disabled={isSaving === 'team'}
+                  className="btn-primary sm:min-w-[140px]"
+                >
+                  {isSaving === 'team' ? 'Saving…' : 'Save changes'}
+                </button>
+              </div>
+            </div>
+          </div>,
+          document.body
+        )}
     </div>
   );
 };
@@ -1839,6 +2612,22 @@ const LIFECYCLE_STAGES = [
   'KICKOFF_SENT', 'MILESTONE_CHECK_IN', 'SATISFACTION_CHECK', 'ONGOING', 'ANNUAL_REVIEW',
 ] as const;
 
+const STAGE_LABELS: Record<(typeof LIFECYCLE_STAGES)[number], string> = {
+  PROPOSAL_ACCEPTED: 'Proposal accepted — welcome',
+  AML_PENDING: 'AML verification pending',
+  AML_COMPLETE: 'AML complete — thank you',
+  ENGAGEMENT_LETTER_SENT: 'Engagement letter sent',
+  ENGAGEMENT_LETTER_SIGNED: 'Engagement letter signed',
+  INFO_REQUESTED: 'Information requested',
+  INFO_RECEIVED: 'Information received',
+  ONBOARDING_SETUP: 'Onboarding setup',
+  KICKOFF_SENT: 'Kick-off welcome',
+  MILESTONE_CHECK_IN: 'Milestone check-in',
+  SATISFACTION_CHECK: 'Satisfaction check',
+  ONGOING: 'Ongoing relationship',
+  ANNUAL_REVIEW: 'Annual review',
+};
+
 function AutomationTab() {
   const [templates, setTemplates] = useState<any[]>([]);
   const [approvals, setApprovals] = useState<any[]>([]);
@@ -1846,6 +2635,7 @@ function AutomationTab() {
   const [loading, setLoading] = useState(false);
   const [editing, setEditing] = useState<any>(null);
   const [form, setForm] = useState({ subject: '', body: '', tone: 'WARM', isMarketing: false, isActive: true });
+  const [restoring, setRestoring] = useState(false);
 
   const loadData = async () => {
     setLoading(true);
@@ -1911,6 +2701,53 @@ function AutomationTab() {
     }
   };
 
+  const restoreStageDefault = async () => {
+    if (!editing?.stage) return;
+    if (!confirm('Restore Engage default wording for this stage? Your current text will be replaced.')) {
+      return;
+    }
+    setRestoring(true);
+    try {
+      const res = (await apiClient.restoreTouchpointDefault(editing.stage)) as any;
+      if (res.success && res.data) {
+        setForm({
+          subject: res.data.subject || '',
+          body: res.data.body || '',
+          tone: res.data.tone || 'WARM',
+          isMarketing: !!res.data.isMarketing,
+          isActive: res.data.isActive !== false,
+        });
+        toast.success('Restored Engage default wording');
+        await loadData();
+      }
+    } catch {
+      toast.error('Could not restore default wording');
+    } finally {
+      setRestoring(false);
+    }
+  };
+
+  const restoreAllDefaults = async () => {
+    if (
+      !confirm(
+        'Restore Engage default wording for all stages? Custom edits on every stage will be replaced.'
+      )
+    ) {
+      return;
+    }
+    setRestoring(true);
+    try {
+      await apiClient.seedTouchpointDefaults(true);
+      toast.success('All stages restored to Engage defaults');
+      setEditing(null);
+      await loadData();
+    } catch {
+      toast.error('Could not restore defaults');
+    } finally {
+      setRestoring(false);
+    }
+  };
+
   return (
     <div className="space-y-6">
       {/* Beautiful intro explaining the value */}
@@ -1941,12 +2778,26 @@ function AutomationTab() {
       </div>
 
       <div className="glass-tile p-6">
-        <div className="flex items-center justify-between mb-4">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
           <div>
             <h3 className="text-lg font-semibold">Stage Templates &amp; Controls</h3>
-            <p className="text-sm text-slate-500 dark:text-slate-300">Toggle stages on/off and customise the wording clients receive.</p>
+            <p className="text-sm text-slate-500 dark:text-slate-300">
+              Every lifecycle stage ships with warm, UK English copy designed to reassure clients. Toggle stages on or off and customise wording to match your voice.
+            </p>
           </div>
-          <button onClick={runEngine} className="btn-secondary text-sm hidden sm:block">Run Engine Now</button>
+          <div className="flex flex-wrap gap-2 shrink-0">
+            <button
+              type="button"
+              onClick={() => void restoreAllDefaults()}
+              disabled={restoring || loading}
+              className="btn-secondary text-sm"
+            >
+              Restore all Engage defaults
+            </button>
+            <button type="button" onClick={runEngine} className="btn-secondary text-sm hidden sm:block">
+              Run engine now
+            </button>
+          </div>
         </div>
 
         {/* Templates / Global Toggles */}
@@ -1965,14 +2816,16 @@ function AutomationTab() {
                       : 'border-slate-200 bg-slate-50/60 dark:bg-slate-900/40 opacity-90'}`}
                 >
                   <div>
-                    <div className="flex items-start justify-between">
-                      <div className="font-semibold text-sm tracking-tight">{stage.replace(/_/g, ' ')}</div>
-                      <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${isOn ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40' : 'bg-slate-200 text-slate-600 dark:bg-slate-800'}`}>
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="font-semibold text-sm tracking-tight leading-snug">
+                        {STAGE_LABELS[stage]}
+                      </div>
+                      <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium shrink-0 ${isOn ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40' : 'bg-slate-200 text-slate-600 dark:bg-slate-800'}`}>
                         {isOn ? 'ON' : 'PAUSED'}
                       </span>
                     </div>
                     <div className="mt-1 text-xs text-slate-500 dark:text-slate-300 line-clamp-2">
-                      {t?.subject ? t.subject : 'Using default template'}
+                      {t?.subject || 'Engage default — loading…'}
                     </div>
                   </div>
 
@@ -2053,7 +2906,12 @@ function AutomationTab() {
       {editing && (
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
           <div className="glass-tile w-full max-w-2xl p-6 rounded-2xl">
-            <h3 className="text-lg font-semibold mb-4">Edit Template — {editing.stage}</h3>
+            <h3 className="text-lg font-semibold mb-1">
+              Edit template — {STAGE_LABELS[editing.stage as (typeof LIFECYCLE_STAGES)[number]] || editing.stage}
+            </h3>
+            <p className="text-sm text-slate-500 dark:text-slate-400 mb-4">
+              Clients receive this email when they reach this stage. Keep the tone warm and clear.
+            </p>
 
             <div className="space-y-4">
               <input
@@ -2083,9 +2941,23 @@ function AutomationTab() {
               </div>
             </div>
 
-            <div className="mt-6 flex justify-end gap-3">
-              <button onClick={() => setEditing(null)} className="btn-secondary">Cancel</button>
-              <button onClick={saveTemplate} className="btn-primary">Save Template</button>
+            <div className="mt-6 flex flex-wrap justify-between gap-3">
+              <button
+                type="button"
+                onClick={() => void restoreStageDefault()}
+                disabled={restoring}
+                className="btn-secondary text-sm"
+              >
+                Restore Engage default wording
+              </button>
+              <div className="flex gap-3">
+                <button type="button" onClick={() => setEditing(null)} className="btn-secondary">
+                  Cancel
+                </button>
+                <button type="button" onClick={saveTemplate} className="btn-primary">
+                  Save template
+                </button>
+              </div>
             </div>
             {/* Live-ish preview + merge tags */}
             <div className="mt-4 grid grid-cols-1 lg:grid-cols-5 gap-4">

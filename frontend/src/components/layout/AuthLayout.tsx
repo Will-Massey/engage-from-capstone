@@ -1,4 +1,5 @@
 import { useAuthStore } from '../../stores/authStore';
+import { LegalFooterLinks } from '../legal/LegalPageLayout';
 
 interface AuthLayoutProps {
   children: React.ReactNode;
@@ -38,11 +39,12 @@ const AuthLayout = ({ children }: AuthLayoutProps) => {
         </div>
 
         {/* Footer */}
-        <div className="mt-8 text-center">
+        <div className="mt-8 text-center space-y-2">
+          <LegalFooterLinks />
           <p className="text-xs text-slate-500">
             &copy; {new Date().getFullYear()} Capstone. All rights reserved.
           </p>
-          <p className="mt-1 text-xs text-slate-600">
+          <p className="text-xs text-slate-600">
             MTD ITSA Ready &bull; UK Compliant &bull; Secure & Private
           </p>
         </div>

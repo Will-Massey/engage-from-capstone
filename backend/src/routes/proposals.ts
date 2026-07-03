@@ -1,19 +1,32 @@
 import { Router } from 'express';
 import { z } from 'zod';
-import { ProposalStatus, PricingFrequency } from '@prisma/client';
+import { ApprovalStatus, ProposalStatus, PricingFrequency, UserRole } from '@prisma/client';
 import { prisma } from '../config/database.js';
 import { authenticate, authorize } from '../middleware/auth.js';
+import { requireActiveSubscription } from '../middleware/subscription.js';
 import { asyncHandler, ApiError } from '../middleware/errorHandler.js';
 import { enforceTierLimit } from '../middleware/tierLimits.js';
 import { PDFGenerator } from '../services/pdfGenerator.js';
 import logger from '../config/logger.js';
-import { getProposalViewStats, createShareableLink } from '../services/proposalSharingService.js';
+import {
+  getProposalViewStats,
+  createShareableLink,
+  revokeShareableLink,
+} from '../services/proposalSharingService.js';
 import {
   buildProposalServiceRecord,
   calculateHeaderTotals,
 } from '../utils/proposalPricing.js';
+import { serializeProposalServicesForApi } from '../utils/proposalServiceSnapshot.js';
+import {
+  mergeProposalCustomFields,
+  parseProposalCustomFields,
+  serializeProposalCustomFields,
+} from '../utils/proposalCustomFields.js';
+import { formatUserRole } from '../utils/proposalDisplay.js';
 import {
   addDays,
+  formatPaymentTerms,
   getProposalSettings,
   parseProposalDateInput,
 } from '../utils/tenantProposalSettings.js';
@@ -37,6 +50,56 @@ function parseOneOffDueDate(billingFrequency: string, raw: unknown): Date | null
 
 const router = Router();
 
+const APPROVER_ROLES: UserRole[] = ['ADMIN', 'PARTNER', 'MD', 'MANAGER'];
+const PARTNER_OVERRIDE_ROLES: UserRole[] = ['ADMIN', 'PARTNER', 'MD'];
+const SUBMITTER_ROLES: UserRole[] = ['JUNIOR', 'SENIOR'];
+
+function canOverrideApproval(role: UserRole): boolean {
+  return PARTNER_OVERRIDE_ROLES.includes(role);
+}
+
+function canSendProposal(role: UserRole, approvalStatus: ApprovalStatus): boolean {
+  if (canOverrideApproval(role)) {
+    return true;
+  }
+  return approvalStatus === 'APPROVED';
+}
+
+async function resolveSenderPosition(userId: string, role: UserRole): Promise<string | undefined> {
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { jobTitle: true, role: true },
+  });
+  return user?.jobTitle?.trim() || formatUserRole(user?.role || role);
+}
+
+const proposalApprovalInclude = {
+  approvedBy: {
+    select: {
+      id: true,
+      firstName: true,
+      lastName: true,
+      email: true,
+    },
+  },
+} as const;
+
+const pricingTierSchema = z.object({
+  id: z.string().min(1),
+  label: z.string().min(1),
+  description: z.string().optional(),
+  feeMultiplier: z.number().min(0).optional(),
+  serviceLineIds: z.array(z.string()).optional(),
+});
+
+const proposalCustomFieldsSchema = z
+  .object({
+    offerThreePackages: z.boolean().optional(),
+    pricingTiers: z.array(pricingTierSchema).optional(),
+    requiredSigners: z.union([z.literal(1), z.literal(2)]).optional(),
+  })
+  .optional();
+
 // Validation schemas
 const createProposalSchema = z.object({
   clientId: z.string(),
@@ -46,6 +109,8 @@ const createProposalSchema = z.object({
     .array(
       z.object({
         serviceId: z.string(),
+        name: z.string().min(1).optional(),
+        description: z.string().nullable().optional(),
         quantity: z.number().min(1).default(1),
         unitPrice: z.number().min(0).optional(), // Allow custom unit price
         discountPercent: z.number().min(0).max(100).optional(),
@@ -64,11 +129,13 @@ const createProposalSchema = z.object({
   paymentTerms: z.string().optional(),
   paymentFrequency: z.nativeEnum(PricingFrequency).optional(),
   coverLetter: z.string().optional(),
+  proposalSummary: z.string().max(4000).optional(),
   engagementLetter: z.string().optional(),
   terms: z.string().optional(),
   notes: z.string().optional(),
   discountType: z.enum(['PERCENTAGE', 'FIXED']).optional(),
   discountValue: z.number().min(0).optional(),
+  customFields: proposalCustomFieldsSchema,
 });
 
 const updateProposalSchema = z.object({
@@ -77,6 +144,8 @@ const updateProposalSchema = z.object({
     .array(
       z.object({
         serviceId: z.string(),
+        name: z.string().min(1).optional(),
+        description: z.string().nullable().optional(),
         quantity: z.number().min(1),
         discountPercent: z.number().min(0).max(100).optional(),
         // v2 pricing fields
@@ -95,12 +164,14 @@ const updateProposalSchema = z.object({
     .optional(),
   paymentTerms: z.string().optional(),
   coverLetter: z.string().optional(),
+  proposalSummary: z.string().max(4000).optional(),
   engagementLetter: z.string().optional(),
   terms: z.string().optional(),
   notes: z.string().optional(),
   status: z.nativeEnum(ProposalStatus).optional(),
   discountType: z.enum(['PERCENTAGE', 'FIXED']).optional(),
   discountValue: z.number().min(0).optional(),
+  customFields: proposalCustomFieldsSchema,
 });
 
 /**
@@ -111,7 +182,7 @@ router.get(
   '/',
   authenticate,
   asyncHandler(async (req, res) => {
-    const { status, clientId, search, page = '1', limit = '20' } = req.query;
+    const { status, approvalStatus, clientId, search, page = '1', limit = '20' } = req.query;
 
     logger.info(`Fetching proposals for tenant: ${req.tenantId}, user: ${req.user?.id}`);
 
@@ -125,6 +196,10 @@ router.get(
 
     if (status) {
       where.status = status;
+    }
+
+    if (approvalStatus) {
+      where.approvalStatus = approvalStatus;
     }
 
     if (clientId) {
@@ -159,6 +234,13 @@ router.get(
               lastName: true,
             },
           },
+          approvedBy: {
+            select: {
+              id: true,
+              firstName: true,
+              lastName: true,
+            },
+          },
           _count: {
             select: { services: true, views: true },
           },
@@ -184,6 +266,191 @@ router.get(
 );
 
 /**
+ * GET /api/proposals/approval-queue
+ * List proposals awaiting partner approval (for approvers)
+ */
+router.get(
+  '/approval-queue',
+  authenticate,
+  authorize(...APPROVER_ROLES),
+  asyncHandler(async (req, res) => {
+    const { page = '1', limit = '20' } = req.query;
+    const skip = (parseInt(page as string) - 1) * parseInt(limit as string);
+    const take = parseInt(limit as string);
+
+    const where = {
+      tenantId: req.tenantId,
+      approvalStatus: 'PENDING' as ApprovalStatus,
+      status: 'DRAFT' as ProposalStatus,
+    };
+
+    const [proposals, total] = await Promise.all([
+      prisma.proposal.findMany({
+        where,
+        include: {
+          client: {
+            select: {
+              id: true,
+              name: true,
+              companyType: true,
+              contactEmail: true,
+            },
+          },
+          createdBy: {
+            select: {
+              id: true,
+              firstName: true,
+              lastName: true,
+              email: true,
+            },
+          },
+          _count: {
+            select: { services: true },
+          },
+        },
+        skip,
+        take,
+        orderBy: { submittedForApprovalAt: 'asc' },
+      }),
+      prisma.proposal.count({ where }),
+    ]);
+
+    res.json({
+      success: true,
+      data: proposals,
+      meta: {
+        page: parseInt(page as string),
+        limit: take,
+        total,
+        totalPages: Math.ceil(total / take),
+      },
+    });
+  })
+);
+
+/**
+ * GET /api/proposals/renewal-candidates
+ * List accepted contracts due for renewal (bulk renewal wizard step 1)
+ */
+router.get(
+  '/renewal-candidates',
+  authenticate,
+  asyncHandler(async (req, res) => {
+    const query = z
+      .object({
+        expiringBefore: z
+          .union([z.string().datetime(), z.string().regex(/^\d{4}-\d{2}-\d{2}$/)])
+          .optional(),
+        clientIds: z
+          .union([z.string(), z.array(z.string())])
+          .optional()
+          .transform((val) => {
+            if (!val) return undefined;
+            const ids = Array.isArray(val) ? val : val.split(',').map((s) => s.trim());
+            return ids.filter(Boolean);
+          }),
+      })
+      .parse(req.query);
+
+    const { findRenewalCandidates, parseExpiringBeforeInput } = await import(
+      '../services/renewalProposalService.js'
+    );
+
+    const expiringBefore = query.expiringBefore
+      ? parseExpiringBeforeInput(query.expiringBefore)
+      : undefined;
+
+    const candidates = await findRenewalCandidates({
+      tenantId: req.tenantId!,
+      expiringBefore,
+      clientIds: query.clientIds,
+    });
+
+    res.json({
+      success: true,
+      data: candidates,
+      meta: {
+        count: candidates.length,
+        expiringBefore: expiringBefore?.toISOString() ?? null,
+        eligible: candidates.filter((c) => !c.hasPendingRenewal).length,
+      },
+    });
+  })
+);
+
+/**
+ * POST /api/proposals/bulk-renewal
+ * Batch-create DRAFT renewal proposals (does not send)
+ */
+router.post(
+  '/bulk-renewal',
+  authenticate,
+  authorize('ADMIN', 'PARTNER', 'MANAGER', 'SENIOR'),
+  asyncHandler(async (req, res) => {
+    const upliftRulesSchema = z.object({
+      mode: z.enum(['percent', 'cpi', 'min_floor']),
+      percent: z.number().min(-50).max(50).optional(),
+      cpiPercent: z.number().min(0).max(50).optional(),
+      minFeeGbp: z.number().min(0).optional(),
+      perServiceFloors: z.record(z.string(), z.number().min(0)).optional(),
+    });
+
+    const body = z
+      .object({
+        clientIds: z.array(z.string().uuid()).optional(),
+        proposalIds: z.array(z.string().uuid()).optional(),
+        expiringBefore: z
+          .union([z.string().datetime(), z.string().regex(/^\d{4}-\d{2}-\d{2}$/)])
+          .optional(),
+        templateId: z.string().uuid().optional(),
+        upliftPercent: z.number().min(-50).max(50).optional(),
+        upliftRules: upliftRulesSchema.optional(),
+        useAiCoverLetter: z.boolean().default(false),
+      })
+      .parse(req.body);
+
+    if (
+      !body.clientIds?.length &&
+      !body.proposalIds?.length &&
+      !body.expiringBefore
+    ) {
+      throw new ApiError(
+        'INVALID_REQUEST',
+        'Provide clientIds, proposalIds, or expiringBefore',
+        400
+      );
+    }
+
+    const { bulkCreateRenewalDrafts, parseExpiringBeforeInput } = await import(
+      '../services/renewalProposalService.js'
+    );
+
+    const result = await bulkCreateRenewalDrafts({
+      tenantId: req.tenantId!,
+      userId: req.user!.id,
+      clientIds: body.clientIds,
+      proposalIds: body.proposalIds,
+      expiringBefore: body.expiringBefore
+        ? parseExpiringBeforeInput(body.expiringBefore)
+        : undefined,
+      templateId: body.templateId,
+      upliftPercent: body.upliftPercent,
+      upliftRules: body.upliftRules as UpliftRules | undefined,
+      useAiCoverLetter: body.useAiCoverLetter,
+    });
+
+    res.status(result.summary.created > 0 ? 201 : 200).json({
+      success: true,
+      data: result,
+      message:
+        result.summary.created > 0
+          ? `Created ${result.summary.created} renewal draft${result.summary.created === 1 ? '' : 's'}`
+          : 'No renewal drafts were created',
+    });
+  })
+);
+
+/**
  * GET /api/proposals/:id
  * Get single proposal
  */
@@ -202,7 +469,7 @@ router.get(
         client: true,
         services: {
           include: {
-            serviceTemplate: true,
+            serviceTemplate: { select: { id: true, category: true } },
           },
         },
         createdBy: {
@@ -213,6 +480,7 @@ router.get(
             email: true,
           },
         },
+        ...proposalApprovalInclude,
         documents: true,
         signatures: {
           orderBy: { signedAt: 'desc' },
@@ -243,6 +511,7 @@ router.get(
       success: true,
       data: {
         ...proposal,
+        services: serializeProposalServicesForApi(proposal.services as any),
         viewCount: viewStats?.totalViews ?? 0,
         lastViewedAt: viewStats?.lastViewedAt ?? null,
       },
@@ -357,12 +626,23 @@ router.post(
         vatRate: 20, // Default VAT rate
         vatAmount: totalVat,
         total: grandTotal,
-        paymentTerms: data.paymentTerms || '30 days',
+        paymentTerms:
+          data.paymentTerms ||
+          formatPaymentTerms(proposalSettings.defaultPaymentTermsDays),
         paymentFrequency: data.paymentFrequency || 'MONTHLY',
         coverLetter: data.coverLetter,
+        proposalSummary: data.proposalSummary,
         engagementLetter: data.engagementLetter,
-        terms: data.terms,
+        terms:
+          data.terms?.trim() ||
+          (await resolveProposalTerms(
+            req.tenantId!,
+            serviceTemplates.map((t) => ({ name: t.name, tags: t.tags }))
+          )),
         notes: data.notes,
+        customFields: data.customFields
+          ? serializeProposalCustomFields(data.customFields as import('../utils/proposalCustomFields.js').ProposalCustomFields)
+          : '{}',
         services: {
           create: servicesWithClearPricing as any,
         },
@@ -393,7 +673,10 @@ router.post(
 
     res.status(201).json({
       success: true,
-      data: proposal,
+      data: {
+        ...proposal,
+        services: serializeProposalServicesForApi(proposal.services as any),
+      },
     });
   })
 );
@@ -435,6 +718,7 @@ router.put(
       title: data.title,
       paymentTerms: data.paymentTerms,
       coverLetter: data.coverLetter,
+      proposalSummary: data.proposalSummary,
       engagementLetter: data.engagementLetter,
       terms: data.terms,
       notes: data.notes,
@@ -450,6 +734,15 @@ router.put(
 
     if (data.contractStartDate !== undefined) {
       updateData.contractStartDate = parseProposalDateInput(data.contractStartDate);
+    }
+
+    if (data.customFields !== undefined) {
+      const existingFields = parseProposalCustomFields(existingProposal.customFields);
+      const incoming = data.customFields as import('../utils/proposalCustomFields.js').ProposalCustomFields;
+      const { selectedTierId: _st, selectedTierLabel: _stl, signaturesReceived: _sr, ...builderFields } =
+        incoming;
+      const merged = mergeProposalCustomFields(existingFields, builderFields);
+      updateData.customFields = serializeProposalCustomFields(merged);
     }
 
     // Remove undefined values
@@ -476,12 +769,6 @@ router.put(
 
     // Update services if provided
     if (data.services) {
-      // Delete existing services
-      await prisma.proposalService.deleteMany({
-        where: { proposalId: id },
-      });
-
-      // Fetch service templates for the new services
       const serviceTemplateIds = data.services.map((s) => s.serviceId);
       const serviceTemplates = await prisma.serviceTemplate.findMany({
         where: {
@@ -490,10 +777,43 @@ router.put(
         },
       });
 
+      if (serviceTemplates.length !== serviceTemplateIds.length) {
+        throw new ApiError(
+          'INVALID_SERVICES',
+          'One or more services are invalid or belong to another practice',
+          400
+        );
+      }
+
+      const existingByTemplateId = new Map(
+        existingProposal.services
+          .filter((s) => s.serviceTemplateId)
+          .map((s) => [s.serviceTemplateId!, s])
+      );
+
+      // Delete existing lines for THIS proposal only, then recreate snapshots
+      await prisma.proposalService.deleteMany({
+        where: { proposalId: id },
+      });
+
       const built = data.services.map((svc) => {
         const template = serviceTemplates.find((t) => t.id === svc.serviceId);
+        const prior = existingByTemplateId.get(svc.serviceId);
         return buildProposalServiceRecord(
-          { ...svc, serviceId: svc.serviceId },
+          {
+            ...svc,
+            serviceId: svc.serviceId,
+            name: svc.name ?? prior?.name,
+            description:
+              svc.description !== undefined ? svc.description : prior?.description,
+            displayPrice:
+              svc.displayPrice !== undefined
+                ? svc.displayPrice
+                : prior?.displayPrice ?? prior?.unitPrice,
+            billingFrequency:
+              svc.billingFrequency ?? prior?.billingFrequency ?? prior?.frequency,
+            vatRate: svc.vatRate ?? prior?.vatRate,
+          },
           template,
           parseOneOffDueDate
         );
@@ -532,9 +852,235 @@ router.put(
       },
     });
 
+    const refreshed = await prisma.proposal.findFirst({
+      where: { id, tenantId: req.tenantId },
+      include: {
+        client: true,
+        services: {
+          include: {
+            serviceTemplate: { select: { id: true, category: true } },
+          },
+        },
+        createdBy: {
+          select: {
+            firstName: true,
+            lastName: true,
+          },
+        },
+      },
+    });
+
     res.json({
       success: true,
-      data: proposal,
+      data: refreshed
+        ? {
+            ...refreshed,
+            services: serializeProposalServicesForApi(refreshed.services as any),
+          }
+        : proposal,
+    });
+  })
+);
+
+/**
+ * POST /api/proposals/:id/submit-for-approval
+ * Junior/senior staff submit a draft for partner approval before sending
+ */
+router.post(
+  '/:id/submit-for-approval',
+  authenticate,
+  authorize(...SUBMITTER_ROLES, ...APPROVER_ROLES),
+  asyncHandler(async (req, res) => {
+    const { id } = req.params;
+
+    const proposal = await prisma.proposal.findFirst({
+      where: { id, tenantId: req.tenantId },
+      include: { client: { select: { name: true } } },
+    });
+
+    if (!proposal) {
+      throw new ApiError('NOT_FOUND', 'Proposal not found', 404);
+    }
+
+    if (proposal.status !== 'DRAFT') {
+      throw new ApiError('INVALID_STATUS', 'Only draft proposals can be submitted for approval', 400);
+    }
+
+    if (!['NONE', 'REJECTED'].includes(proposal.approvalStatus)) {
+      throw new ApiError(
+        'INVALID_APPROVAL_STATUS',
+        'Proposal is already submitted or approved',
+        400
+      );
+    }
+
+    const updated = await prisma.proposal.update({
+      where: { id },
+      data: {
+        approvalStatus: 'PENDING',
+        submittedForApprovalAt: new Date(),
+        rejectionReason: null,
+        approvedAt: null,
+        approvedById: null,
+        approvalNotes: null,
+      },
+      include: {
+        client: { select: { id: true, name: true } },
+        createdBy: { select: { id: true, firstName: true, lastName: true } },
+        ...proposalApprovalInclude,
+      },
+    });
+
+    await prisma.activityLog.create({
+      data: {
+        tenantId: req.tenantId!,
+        userId: req.user!.id,
+        proposalId: id,
+        action: 'PROPOSAL_SUBMITTED_FOR_APPROVAL',
+        entityType: 'PROPOSAL',
+        entityId: id,
+        description: `Submitted proposal "${proposal.title}" for partner approval`,
+      },
+    });
+
+    res.json({
+      success: true,
+      data: updated,
+      message: 'Proposal submitted for partner approval',
+    });
+  })
+);
+
+/**
+ * POST /api/proposals/:id/approve
+ * Partner/manager approves a pending proposal
+ */
+router.post(
+  '/:id/approve',
+  authenticate,
+  authorize(...APPROVER_ROLES),
+  asyncHandler(async (req, res) => {
+    const { id } = req.params;
+    const body = z
+      .object({
+        approvalNotes: z.string().max(2000).optional(),
+      })
+      .parse(req.body ?? {});
+
+    const proposal = await prisma.proposal.findFirst({
+      where: { id, tenantId: req.tenantId },
+    });
+
+    if (!proposal) {
+      throw new ApiError('NOT_FOUND', 'Proposal not found', 404);
+    }
+
+    if (proposal.approvalStatus !== 'PENDING') {
+      throw new ApiError('INVALID_APPROVAL_STATUS', 'Proposal is not awaiting approval', 400);
+    }
+
+    const updated = await prisma.proposal.update({
+      where: { id },
+      data: {
+        approvalStatus: 'APPROVED',
+        approvedAt: new Date(),
+        approvedById: req.user!.id,
+        approvalNotes: body.approvalNotes ?? null,
+        rejectionReason: null,
+      },
+      include: {
+        client: { select: { id: true, name: true } },
+        createdBy: { select: { id: true, firstName: true, lastName: true } },
+        ...proposalApprovalInclude,
+      },
+    });
+
+    await prisma.activityLog.create({
+      data: {
+        tenantId: req.tenantId!,
+        userId: req.user!.id,
+        proposalId: id,
+        action: 'PROPOSAL_APPROVED',
+        entityType: 'PROPOSAL',
+        entityId: id,
+        description: `Approved proposal "${proposal.title}"`,
+        metadata: JSON.stringify({ approvalNotes: body.approvalNotes ?? null }),
+      },
+    });
+
+    res.json({
+      success: true,
+      data: updated,
+      message: 'Proposal approved',
+    });
+  })
+);
+
+/**
+ * POST /api/proposals/:id/reject
+ * Partner/manager rejects a pending proposal with a reason
+ */
+router.post(
+  '/:id/reject',
+  authenticate,
+  authorize(...APPROVER_ROLES),
+  asyncHandler(async (req, res) => {
+    const { id } = req.params;
+    const body = z
+      .object({
+        rejectionReason: z.string().min(1, 'Rejection reason is required').max(2000),
+        approvalNotes: z.string().max(2000).optional(),
+      })
+      .parse(req.body ?? {});
+
+    const proposal = await prisma.proposal.findFirst({
+      where: { id, tenantId: req.tenantId },
+    });
+
+    if (!proposal) {
+      throw new ApiError('NOT_FOUND', 'Proposal not found', 404);
+    }
+
+    if (proposal.approvalStatus !== 'PENDING') {
+      throw new ApiError('INVALID_APPROVAL_STATUS', 'Proposal is not awaiting approval', 400);
+    }
+
+    const updated = await prisma.proposal.update({
+      where: { id },
+      data: {
+        approvalStatus: 'REJECTED',
+        rejectionReason: body.rejectionReason,
+        approvalNotes: body.approvalNotes ?? null,
+        approvedAt: null,
+        approvedById: null,
+      },
+      include: {
+        client: { select: { id: true, name: true } },
+        createdBy: { select: { id: true, firstName: true, lastName: true } },
+        ...proposalApprovalInclude,
+      },
+    });
+
+    await prisma.activityLog.create({
+      data: {
+        tenantId: req.tenantId!,
+        userId: req.user!.id,
+        proposalId: id,
+        action: 'PROPOSAL_REJECTED',
+        entityType: 'PROPOSAL',
+        entityId: id,
+        description: `Rejected proposal "${proposal.title}"`,
+        metadata: JSON.stringify({
+          rejectionReason: body.rejectionReason,
+          approvalNotes: body.approvalNotes ?? null,
+        }),
+      },
+    });
+
+    res.json({
+      success: true,
+      data: updated,
+      message: 'Proposal rejected',
     });
   })
 );
@@ -547,6 +1093,7 @@ router.post(
   '/:id/send',
   authenticate,
   authorize('ADMIN', 'PARTNER', 'MANAGER', 'SENIOR'),
+  requireActiveSubscription,
   asyncHandler(async (req, res) => {
     const { id } = req.params;
     const sendBody = z
@@ -578,6 +1125,33 @@ router.post(
       throw new ApiError('INVALID_STATUS', 'Proposal must be in draft status to send', 400);
     }
 
+    const userRole = req.user!.role;
+    const overrideApproval = canOverrideApproval(userRole);
+
+    if (proposal.approvalStatus === 'PENDING' && !overrideApproval) {
+      throw new ApiError(
+        'APPROVAL_PENDING',
+        'This proposal is awaiting partner approval and cannot be sent yet',
+        403
+      );
+    }
+
+    if (proposal.approvalStatus === 'REJECTED' && !overrideApproval) {
+      throw new ApiError(
+        'APPROVAL_REJECTED',
+        'This proposal was rejected. Revise and resubmit for partner approval before sending',
+        403
+      );
+    }
+
+    if (!canSendProposal(userRole, proposal.approvalStatus)) {
+      throw new ApiError(
+        'APPROVAL_REQUIRED',
+        'Partner approval is required before this proposal can be sent',
+        403
+      );
+    }
+
     if (!proposal.client.contactEmail) {
       throw new ApiError('NO_CLIENT_EMAIL', 'Client does not have an email address', 400);
     }
@@ -589,8 +1163,12 @@ router.post(
     const { createShareableLink } = await import('../services/proposalSharingService.js');
 
     const pdfBuffer = await PDFGenerator.generateProposal(id);
+    const pdfHeader = pdfBuffer.subarray(0, 5).toString('ascii');
+    if (!pdfHeader.startsWith('%PDF')) {
+      logger.warn(`Proposal ${id} PDF generation returned invalid header — attachment will be omitted`);
+    }
 
-    const frontendUrl = (process.env.FRONTEND_URL || 'https://engagebycapstone.co.uk').replace(
+    const frontendUrl = (process.env.FRONTEND_URL || 'https://capstonesoftware.co.uk/engage').replace(
       /\/$/,
       ''
     );
@@ -621,7 +1199,7 @@ router.post(
         proposalReference: proposal.reference,
         viewLink,
         senderName: Array.from(new Set([req.user!.firstName, req.user!.lastName].filter(Boolean))).join(' '),
-        senderPosition: req.user!.role,
+        senderPosition: await resolveSenderPosition(req.user!.id, req.user!.role),
         senderEmail: req.user!.email,
         validUntil: new Date(proposal.validUntil).toLocaleDateString('en-GB', {
           day: 'numeric',
@@ -643,13 +1221,30 @@ router.post(
       throw new ApiError('EMAIL_SEND_FAILED', `Failed to send email: ${emailResult.error}`, 500);
     }
 
-    // Update status
+    // Update status (partners/admins sending without prior approval are auto-approved)
+    const sendUpdateData: {
+      status: ProposalStatus;
+      sentAt: Date;
+      approvalStatus?: ApprovalStatus;
+      approvedAt?: Date;
+      approvedById?: string;
+    } = {
+      status: 'SENT',
+      sentAt: new Date(),
+    };
+
+    if (
+      overrideApproval &&
+      proposal.approvalStatus !== 'APPROVED'
+    ) {
+      sendUpdateData.approvalStatus = 'APPROVED';
+      sendUpdateData.approvedAt = new Date();
+      sendUpdateData.approvedById = req.user!.id;
+    }
+
     const updatedProposal = await prisma.proposal.update({
       where: { id },
-      data: {
-        status: 'SENT',
-        sentAt: new Date(),
-      },
+      data: sendUpdateData,
     });
 
     // Log activity
@@ -663,6 +1258,9 @@ router.post(
         description: `Sent proposal "${proposal.title}" to ${proposal.client.name} via email`,
       },
     });
+
+    const { emitIntegrationEvent } = await import('../services/integrationEvents.js');
+    void emitIntegrationEvent(req.tenantId!, proposal.id, 'proposal.sent');
 
     res.json({
       success: true,
@@ -736,6 +1334,22 @@ router.post(
       throw new ApiError('SIGNATURE_FAILED', result.error || 'Failed to record signature', 500);
     }
 
+    try {
+      const { sendPracticeAcceptanceNotifications } = await import(
+        '../services/acceptanceNotificationService.js'
+      );
+      await sendPracticeAcceptanceNotifications({
+        proposalId: proposal.id,
+        tenantId: req.tenantId!,
+        signatureId: result.signatureId!,
+        signedBy: signerName,
+        signedByRole: signatoryPosition || 'Authorised signatory',
+        signerEmail: req.user?.email || null,
+      });
+    } catch (notifyErr) {
+      logger.error('Failed to send practice acceptance notification:', notifyErr);
+    }
+
     const updatedProposal = await prisma.proposal.findFirst({
       where: { id, tenantId: req.tenantId },
       include: { client: true, services: true },
@@ -744,6 +1358,144 @@ router.post(
     res.json({
       success: true,
       data: updatedProposal,
+    });
+  })
+);
+
+/**
+ * POST /api/proposals/:id/withdraw
+ * Rescind/withdraw a sent or viewed proposal (revokes client share link)
+ */
+router.post(
+  '/:id/withdraw',
+  authenticate,
+  authorize('ADMIN', 'PARTNER', 'MD', 'MANAGER', 'SENIOR'),
+  requireActiveSubscription,
+  asyncHandler(async (req, res) => {
+    const { id } = req.params;
+
+    const proposal = await prisma.proposal.findFirst({
+      where: { id, tenantId: req.tenantId },
+      include: { client: true },
+    });
+
+    if (!proposal) {
+      throw new ApiError('NOT_FOUND', 'Proposal not found', 404);
+    }
+
+    if (proposal.status !== 'SENT' && proposal.status !== 'VIEWED') {
+      throw new ApiError(
+        'INVALID_STATUS',
+        'Only sent or viewed proposals can be withdrawn',
+        400
+      );
+    }
+
+    if (proposal.shareToken || proposal.publicAccessEnabled) {
+      await revokeShareableLink(id);
+    }
+
+    const updatedProposal = await prisma.proposal.update({
+      where: { id },
+      data: { status: 'WITHDRAWN' },
+    });
+
+    await prisma.activityLog.create({
+      data: {
+        tenantId: req.tenantId,
+        userId: req.user!.id,
+        action: 'PROPOSAL_WITHDRAWN',
+        entityType: 'PROPOSAL',
+        entityId: proposal.id,
+        description: `Withdrew proposal "${proposal.title}" sent to ${proposal.client.name}`,
+        ipAddress: req.ip,
+        userAgent: req.headers['user-agent'],
+      },
+    });
+
+    res.json({
+      success: true,
+      data: updatedProposal,
+      message: 'Proposal withdrawn successfully',
+    });
+  })
+);
+
+/**
+ * POST /api/proposals/:id/mark-lost
+ * Practice marks an open quotation as lost (feeds win/loss stats)
+ */
+router.post(
+  '/:id/mark-lost',
+  authenticate,
+  authorize('ADMIN', 'PARTNER', 'MD', 'MANAGER', 'SENIOR'),
+  requireActiveSubscription,
+  asyncHandler(async (req, res) => {
+    const { id } = req.params;
+    const body = z
+      .object({
+        declineReason: z.enum(DECLINE_REASONS),
+        reason: z.string().max(500).optional(),
+      })
+      .parse(req.body);
+
+    const proposal = await prisma.proposal.findFirst({
+      where: { id, tenantId: req.tenantId },
+      include: { client: true },
+    });
+
+    if (!proposal) {
+      throw new ApiError('NOT_FOUND', 'Proposal not found', 404);
+    }
+
+    const markable: ProposalStatus[] = ['DRAFT', 'SENT', 'VIEWED', 'EXPIRED', 'WITHDRAWN'];
+    if (!markable.includes(proposal.status)) {
+      throw new ApiError(
+        'INVALID_STATUS',
+        'Only open quotations (draft, sent, viewed, expired, or rescinded) can be marked as lost',
+        400
+      );
+    }
+
+    if (proposal.shareToken || proposal.publicAccessEnabled) {
+      await revokeShareableLink(id);
+    }
+
+    const reasonText = body.reason?.trim() || null;
+
+    const updatedProposal = await prisma.proposal.update({
+      where: { id },
+      data: {
+        status: 'LOST',
+        declinedAt: new Date(),
+        declineReason: body.declineReason,
+        declineReasonText: reasonText,
+        declinedBy: req.user!.email || `${req.user!.firstName} ${req.user!.lastName}`.trim(),
+      },
+    });
+
+    await prisma.activityLog.create({
+      data: {
+        tenantId: req.tenantId,
+        userId: req.user!.id,
+        action: 'PROPOSAL_MARKED_LOST',
+        entityType: 'PROPOSAL',
+        entityId: proposal.id,
+        description: `Marked proposal "${proposal.title}" as lost (${body.declineReason})`,
+        metadata: JSON.stringify({
+          declineReason: body.declineReason,
+          reason: reasonText,
+          clientName: proposal.client.name,
+        }),
+        ipAddress: req.ip,
+        userAgent: req.headers['user-agent'],
+      },
+    });
+
+    res.json({
+      success: true,
+      data: updatedProposal,
+      message: 'Proposal marked as lost',
     });
   })
 );
@@ -789,7 +1541,7 @@ router.get(
 router.delete(
   '/:id',
   authenticate,
-  authorize('ADMIN', 'PARTNER', 'MANAGER'),
+  authorize('ADMIN', 'PARTNER', 'MD', 'MANAGER'),
   asyncHandler(async (req, res) => {
     const { id } = req.params;
 
@@ -920,101 +1672,30 @@ router.post(
   authorize('ADMIN', 'PARTNER', 'MANAGER', 'SENIOR'),
   asyncHandler(async (req, res) => {
     const { id } = req.params;
-
-    // Get the original proposal
-    const originalProposal = await prisma.proposal.findFirst({
-      where: {
-        id,
-        tenantId: req.tenantId,
-        status: 'ACCEPTED',
-      },
-      include: {
-        client: true,
-        services: true,
-      },
+    const upliftRulesSchema = z.object({
+      mode: z.enum(['percent', 'cpi', 'min_floor']),
+      percent: z.number().min(-50).max(50).optional(),
+      cpiPercent: z.number().min(0).max(50).optional(),
+      minFeeGbp: z.number().min(0).optional(),
+      perServiceFloors: z.record(z.string(), z.number().min(0)).optional(),
     });
 
-    if (!originalProposal) {
-      throw new ApiError('NOT_FOUND', 'Accepted proposal not found', 404);
-    }
+    const body = z
+      .object({
+        upliftPercent: z.number().min(-50).max(50).optional(),
+        upliftRules: upliftRulesSchema.optional(),
+        templateId: z.string().uuid().optional(),
+        useAiCoverLetter: z.boolean().optional(),
+      })
+      .parse(req.body ?? {});
 
-    // Generate new reference
-    const reference = generateReference('PROP');
+    const { createRenewalDraft } = await import('../services/renewalProposalService.js');
 
-    // Set valid until (default 30 days)
-    const validUntil = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
-
-    // Calculate renewal date (12 months from now)
-    const renewalDate = new Date();
-    renewalDate.setFullYear(renewalDate.getFullYear() + 1);
-
-    // Create renewal proposal
-    const renewalProposal = await prisma.proposal.create({
-      data: {
-        reference,
-        title: `${originalProposal.title} (Renewal)`,
-        tenantId: req.tenantId,
-        clientId: originalProposal.clientId,
-        createdById: req.user!.id,
-        status: 'DRAFT',
-        validUntil,
-        subtotal: originalProposal.subtotal,
-        discountType: originalProposal.discountType,
-        discountValue: originalProposal.discountValue,
-        discountAmount: originalProposal.discountAmount,
-        // vatAmount: originalProposal.vatAmount, // Temporarily disabled
-        total: originalProposal.total,
-        paymentTerms: originalProposal.paymentTerms,
-        paymentFrequency: originalProposal.paymentFrequency,
-        coverLetter: originalProposal.coverLetter,
-        terms: originalProposal.terms,
-        notes: `Renewal of proposal ${originalProposal.reference}. ${originalProposal.notes || ''}`,
-        isRenewal: true,
-        originalProposalId: originalProposal.id,
-        renewalDate,
-        services: {
-          create: originalProposal.services.map((svc) => ({
-            name: svc.name,
-            description: svc.description,
-            quantity: svc.quantity,
-            unitPrice: svc.unitPrice,
-            discountPercent: svc.discountPercent,
-            displayPrice: svc.displayPrice,
-            lineTotal: svc.lineTotal,
-            billingFrequency: svc.billingFrequency,
-            priceDisplayMode: svc.priceDisplayMode,
-            frequency: svc.frequency,
-            isOptional: svc.isOptional,
-            serviceTemplateId: svc.serviceTemplateId,
-          })) as any,
-        },
-      },
-      include: {
-        client: true,
-        services: true,
-        createdBy: {
-          select: {
-            firstName: true,
-            lastName: true,
-          },
-        },
-      },
-    });
-
-    // Log activity
-    await prisma.activityLog.create({
-      data: {
-        tenantId: req.tenantId,
-        userId: req.user!.id,
-        action: 'PROPOSAL_RENEWAL_CREATED',
-        entityType: 'PROPOSAL',
-        entityId: renewalProposal.id,
-        description: `Created renewal proposal "${renewalProposal.title}" from ${originalProposal.reference}`,
-        metadata: JSON.stringify({
-          originalProposalId: originalProposal.id,
-          originalReference: originalProposal.reference,
-        }),
-      },
+    const renewalProposal = await createRenewalDraft(req.tenantId!, req.user!.id, id, {
+      upliftPercent: body.upliftPercent,
+      upliftRules: body.upliftRules as UpliftRules | undefined,
+      templateId: body.templateId,
+      useAiCoverLetter: body.useAiCoverLetter,
     });
 
     res.status(201).json({
@@ -1086,6 +1767,9 @@ router.get(
       ACCEPTED: '#10B981',
       DECLINED: '#EF4444',
       EXPIRED: '#6B7280',
+      WITHDRAWN: '#F59E0B',
+      ARCHIVED: '#94A3B8',
+      LOST: '#DC2626',
     };
 
     const proposalStatusData = statusCounts.map((s: any) => ({

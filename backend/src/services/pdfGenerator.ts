@@ -1,4 +1,6 @@
 import PDFDocument from 'pdfkit';
+import fs from 'fs';
+import path from 'path';
 
 // pdfkit types export the constructor as a value, not a type
 // Use any for the document type to avoid TS2749 errors
@@ -19,6 +21,7 @@ interface ProposalData {
   paymentTerms: string;
   paymentFrequency: string;
   coverLetter?: string;
+  proposalSummary?: string;
   terms?: string;
   notes?: string;
   createdAt: Date;
@@ -26,6 +29,7 @@ interface ProposalData {
   acceptedBy?: string;
   signatoryPosition?: string;
   signature?: string;
+  customFields?: string;
   client: {
     name: string;
     companyType: string;
@@ -40,6 +44,8 @@ interface ProposalData {
     firstName: string;
     lastName: string;
     email: string;
+    jobTitle?: string | null;
+    role?: string | null;
   };
   services: Array<{
     name: string;
@@ -62,6 +68,9 @@ interface ProposalData {
   };
 }
 
+const PDF_PAGE_WIDTH = 612;
+const PDF_PAGE_HEIGHT = 792;
+
 // Billing frequency labels for display
 const BILLING_LABELS: Record<string, string> = {
   MONTHLY: 'month',
@@ -72,6 +81,49 @@ const BILLING_LABELS: Record<string, string> = {
 };
 
 export class PDFGenerator {
+  private static pageBackgroundBuffer: Buffer | null | undefined;
+
+  private static loadPageBackgroundBuffer(): Buffer | null {
+    if (this.pageBackgroundBuffer !== undefined) {
+      return this.pageBackgroundBuffer;
+    }
+
+    const candidates = [
+      path.join(__dirname, '../assets/pdf-page-background.jpg'),
+      path.join(process.cwd(), 'dist/assets/pdf-page-background.jpg'),
+      path.join(process.cwd(), 'src/assets/pdf-page-background.jpg'),
+    ];
+
+    for (const candidate of candidates) {
+      try {
+        if (fs.existsSync(candidate)) {
+          this.pageBackgroundBuffer = fs.readFileSync(candidate);
+          return this.pageBackgroundBuffer;
+        }
+      } catch {
+        // try next path
+      }
+    }
+
+    this.pageBackgroundBuffer = null;
+    return null;
+  }
+
+  /** Full-page Engage background artwork — drawn behind all content */
+  private static drawPageBackground(doc: PDFDoc, backgroundBuffer: Buffer | null) {
+    if (!backgroundBuffer) return;
+    try {
+      doc.save();
+      doc.image(backgroundBuffer, 0, 0, {
+        width: PDF_PAGE_WIDTH,
+        height: PDF_PAGE_HEIGHT,
+      });
+      doc.restore();
+    } catch {
+      // continue without background if image fails
+    }
+  }
+
   /**
    * Generate a professional proposal PDF
    */
@@ -93,13 +145,12 @@ export class PDFGenerator {
           },
         },
         createdBy: {
-          select: { firstName: true, lastName: true, email: true },
+          select: { firstName: true, lastName: true, email: true, jobTitle: true, role: true },
         },
         services: true,
         tenant: true,
         signatures: {
-          orderBy: { signedAt: 'desc' as const },
-          take: 1,
+          orderBy: { signedAt: 'asc' as const },
         },
       },
     })) as unknown as ProposalData & { signatures?: any[] };
@@ -108,13 +159,127 @@ export class PDFGenerator {
       throw new Error('Proposal not found');
     }
 
-    return this.createPDF(proposal);
+    const logoBuffer = await this.loadTenantLogoBuffer(proposal.tenant);
+    return this.createPDF(proposal, logoBuffer);
+  }
+
+  /** Resolve logo from tenant.logo column or settings.branding.logo */
+  private static resolveTenantLogoUrl(tenant: ProposalData['tenant']): string | undefined {
+    if (tenant.logo?.trim()) return tenant.logo.trim();
+    const settings =
+      typeof tenant.settings === 'string'
+        ? (() => {
+            try {
+              return JSON.parse(tenant.settings) as Record<string, unknown>;
+            } catch {
+              return {};
+            }
+          })()
+        : (tenant.settings as Record<string, unknown> | undefined) || {};
+    const branding = settings.branding as { logo?: string } | undefined;
+    return branding?.logo?.trim() || undefined;
+  }
+
+  private static async loadTenantLogoBuffer(
+    tenant: ProposalData['tenant']
+  ): Promise<Buffer | null> {
+    const logoData = this.resolveTenantLogoUrl(tenant);
+    if (!logoData) return null;
+
+    try {
+      let buffer: Buffer | null = null;
+      if (logoData.startsWith('data:image')) {
+        const base64Data = logoData.split(',')[1];
+        buffer = base64Data ? Buffer.from(base64Data, 'base64') : null;
+      } else if (logoData.startsWith('http://') || logoData.startsWith('https://')) {
+        const res = await fetch(logoData);
+        if (!res.ok) return null;
+        buffer = Buffer.from(await res.arrayBuffer());
+      } else {
+        buffer = Buffer.from(logoData, 'base64');
+      }
+      if (!buffer || buffer.length === 0 || buffer.length > TENANT_LOGO_MAX_BYTES) {
+        return null;
+      }
+      return buffer;
+    } catch {
+      return null;
+    }
+  }
+
+  /**
+   * Generate a standalone signature certificate PDF (forensic audit export).
+   */
+  static async generateSignatureCertificate(
+    proposalId: string,
+    signatureId: string
+  ): Promise<Buffer> {
+    const proposal = await prisma.proposal.findUnique({
+      where: { id: proposalId },
+      select: { id: true, reference: true },
+    });
+
+    if (!proposal) {
+      throw new Error('Proposal not found');
+    }
+
+    const sig = await prisma.proposalSignature.findFirst({
+      where: { id: signatureId, proposalId },
+    });
+
+    if (!sig) {
+      throw new Error('Signature not found');
+    }
+
+    return this.createCertificateOnlyPDF(proposal, sig);
+  }
+
+  /**
+   * Create a single-page signature certificate PDF.
+   */
+  private static createCertificateOnlyPDF(
+    proposal: { reference: string },
+    sig: {
+      id: string;
+      signedBy: string;
+      signedByRole: string;
+      signerEmail: string | null;
+      signedAt: Date;
+      ipAddress: string | null;
+      geoLocation: string | null;
+      signatureType: string;
+      agreementVersion: string;
+      documentHash: string | null;
+      termsHash: string | null;
+      consentText: string | null;
+    }
+  ): Promise<Buffer> {
+    return new Promise((resolve, reject) => {
+      try {
+        const doc = new PDFDocument({ margin: 50 });
+        const chunks: Buffer[] = [];
+
+        doc.on('data', (chunk) => chunks.push(chunk));
+        doc.on('end', () => resolve(Buffer.concat(chunks)));
+        doc.on('error', reject);
+
+        const pageBackgroundBuffer = this.loadPageBackgroundBuffer();
+        const applyPageBackground = () => this.drawPageBackground(doc, pageBackgroundBuffer);
+        doc.on('pageAdded', applyPageBackground);
+        applyPageBackground();
+
+        this.drawSignatureCertificate(doc, proposal, sig);
+        doc.end();
+      } catch (error) {
+        reject(error);
+      }
+    });
   }
 
   /**
    * Create the PDF document
    */
-  private static createPDF(proposal: ProposalData): Promise<Buffer> {
+  private static createPDF(proposal: ProposalData, logoBuffer: Buffer | null): Promise<Buffer> {
     return new Promise((resolve, reject) => {
       try {
         const doc = new PDFDocument({ margin: 50 });
@@ -125,21 +290,36 @@ export class PDFGenerator {
         doc.on('error', reject);
 
         // Primary and secondary colors — tenant branding
+        const settings =
+          typeof proposal.tenant.settings === 'string'
+            ? (() => {
+                try {
+                  return JSON.parse(proposal.tenant.settings) as Record<string, unknown>;
+                } catch {
+                  return {};
+                }
+              })()
+            : (proposal.tenant.settings as Record<string, unknown> | undefined) || {};
+        const branding = settings.branding as { primaryColor?: string } | undefined;
         const primaryColor =
           (proposal.tenant as { primaryColor?: string }).primaryColor ||
-          proposal.tenant.settings?.primaryColor ||
+          branding?.primaryColor ||
+          (settings.primaryColor as string | undefined) ||
           '#0ea5e9';
         const secondaryColor = '#666666';
+        const pageBackgroundBuffer = this.loadPageBackgroundBuffer();
+        const applyPageBackground = () => this.drawPageBackground(doc, pageBackgroundBuffer);
 
-        // ========== HEADER ==========
-        this.drawHeader(doc, proposal, primaryColor);
+        doc.on('pageAdded', applyPageBackground);
+        applyPageBackground();
 
-        // ========== CLIENT INFO ==========
-        this.drawClientInfo(doc, proposal);
+        // ========== PAGE 1: HEADER + PARTIES ==========
+        this.drawHeader(doc, proposal, primaryColor, logoBuffer);
+        this.drawClientInfo(doc, proposal, primaryColor);
 
-        // ========== COVER LETTER ==========
+        // ========== COVER LETTER (includes legacy proposalSummary when present) ==========
         doc.addPage();
-        this.drawCoverLetter(doc, proposal);
+        this.drawCoverLetter(doc, proposal, primaryColor);
 
         // ========== SERVICES ==========
         doc.addPage();
@@ -158,9 +338,10 @@ export class PDFGenerator {
         doc.addPage();
         if (proposal.status === 'ACCEPTED' && proposal.signature) {
           this.drawSignedAcceptance(doc, proposal, primaryColor);
-          if ((proposal as any).signatures?.[0]) {
+          const sigs = (proposal as any).signatures || [];
+          for (const sig of sigs) {
             doc.addPage();
-            this.drawSignatureCertificate(doc, proposal, (proposal as any).signatures[0]);
+            this.drawSignatureCertificate(doc, proposal, sig);
           }
         } else {
           this.drawAcceptance(doc, proposal, primaryColor);
@@ -176,27 +357,23 @@ export class PDFGenerator {
   /**
    * Draw header section
    */
-  private static drawHeader(doc: PDFDoc, proposal: ProposalData, primaryColor: string) {
+  private static drawHeader(
+    doc: PDFDoc,
+    proposal: ProposalData,
+    primaryColor: string,
+    logoBuffer: Buffer | null
+  ) {
     let logoBottomY = 50;
 
-    // Company Logo (if available)
-    if (proposal.tenant.logo) {
+    if (logoBuffer) {
       try {
-        // Handle base64 logo
-        const logoData = proposal.tenant.logo;
-        if (logoData.startsWith('data:image')) {
-          const base64Data = logoData.split(',')[1];
-          const imgBuffer = Buffer.from(base64Data, 'base64');
-          doc.image(imgBuffer, 50, 40, { width: 120 });
-          logoBottomY = 160; // Logo drawn at y=40 with width 120, give plenty of clearance
-        }
-      } catch (error) {
-        // Fall back to text if logo fails
+        doc.image(logoBuffer, 50, 40, { width: 120 });
+        logoBottomY = 160;
+      } catch {
         doc.fontSize(24).fillColor(primaryColor).text(proposal.tenant.name, 50, 50);
         logoBottomY = 80;
       }
     } else {
-      // No logo - use company name
       doc.fontSize(24).fillColor(primaryColor).text(proposal.tenant.name, 50, 50);
       logoBottomY = 80;
     }
@@ -211,88 +388,105 @@ export class PDFGenerator {
       .text(`Date: ${this.formatDate(proposal.createdAt)}`, { align: 'right' })
       .text(`Valid until: ${this.formatDate(proposal.validUntil)}`, { align: 'right' });
 
-    // Divider line — drawn below the logo area so it never intersects
-    const dividerY = Math.max(logoBottomY, doc.y + 10);
+    const dividerY = logoBottomY + 12;
     doc.moveTo(50, dividerY).lineTo(550, dividerY).strokeColor(primaryColor).lineWidth(2).stroke();
 
-    // Title
-    doc.moveDown(3).fontSize(20).fillColor('#333333').text(proposal.title, { align: 'center' });
-
-    doc.moveDown(1);
+    const titleY = dividerY + 28;
+    doc.fontSize(20).fillColor('#333333').text(proposal.title, 50, titleY, {
+      align: 'center',
+      width: 500,
+    });
+    doc.y = titleY + 36;
   }
 
   /**
    * Draw client information
    */
-  private static drawClientInfo(doc: PDFDoc, proposal: ProposalData) {
-    const startY = doc.y + 20;
+  private static drawClientInfo(doc: PDFDoc, proposal: ProposalData, primaryColor: string) {
+    const startY = doc.y + 16;
+    const leftX = 50;
+    const rightX = 320;
+    const colWidth = 240;
 
-    // Prepared for
-    doc.fontSize(12).fillColor('#333333').text('Prepared for:', 50, startY);
+    doc.fontSize(10).fillColor(primaryColor).text('PREPARED FOR', leftX, startY, { width: colWidth });
+    doc.fontSize(10).fillColor(primaryColor).text('PREPARED BY', rightX, startY, { width: colWidth });
 
-    doc.fontSize(11).fillColor('#666666');
+    doc.fontSize(11).fillColor('#444444');
+    let leftY = startY + 18;
+    let rightY = startY + 18;
 
-    let y = startY + 20;
-    doc.text(proposal.client.name, 50, y);
-    y += 15;
-
-    if (proposal.client.address) {
-      const addr = proposal.client.address;
-      if (addr.line1) doc.text(addr.line1, 50, y);
-      y += 15;
-      if (addr.line2) {
-        doc.text(addr.line2, 50, y);
-        y += 15;
-      }
-      if (addr.city) {
-        doc.text(`${addr.city}${addr.postcode ? ', ' + addr.postcode : ''}`, 50, y);
-        y += 15;
-      }
+    for (const line of preparedForLines(proposal.client)) {
+      doc.fontSize(11).fillColor('#333333').text(line, leftX, leftY, { width: colWidth });
+      leftY += 14;
     }
 
-    y += 10;
-    doc.text(`Email: ${proposal.client.contactEmail}`, 50, y);
+    const addr = parseClientAddress(proposal.client.address);
+    if (addr?.line1) {
+      doc.fontSize(10).fillColor('#666666').text(addr.line1, leftX, leftY, { width: colWidth });
+      leftY += 13;
+    }
+    if (addr?.line2) {
+      doc.text(addr.line2, leftX, leftY, { width: colWidth });
+      leftY += 13;
+    }
+    if (addr?.city || addr?.postcode) {
+      doc.text(
+        [addr.city, addr.postcode].filter(Boolean).join(', '),
+        leftX,
+        leftY,
+        { width: colWidth }
+      );
+      leftY += 13;
+    }
 
+    if (proposal.client.contactEmail) {
+      doc.text(proposal.client.contactEmail, leftX, leftY, { width: colWidth });
+      leftY += 13;
+    }
     if (proposal.client.contactPhone) {
-      y += 15;
-      doc.text(`Phone: ${proposal.client.contactPhone}`, 50, y);
+      doc.text(proposal.client.contactPhone, leftX, leftY, { width: colWidth });
+      leftY += 13;
     }
 
-    if (proposal.client.companyNumber) {
-      y += 15;
-      doc.text(`Company No: ${proposal.client.companyNumber}`, 50, y);
+    const senderName = `${proposal.createdBy.firstName} ${proposal.createdBy.lastName}`.trim();
+    const position = senderPosition(proposal.createdBy);
+    doc.fontSize(11).fillColor('#333333').text(senderName, rightX, rightY, { width: colWidth });
+    rightY += 14;
+    if (position) {
+      doc.fontSize(10).fillColor('#666666').text(position, rightX, rightY, { width: colWidth });
+      rightY += 13;
     }
+    doc.text(proposal.createdBy.email, rightX, rightY, { width: colWidth });
+    rightY += 13;
+    doc.fontSize(10).fillColor(primaryColor).text(proposal.tenant.name, rightX, rightY, {
+      width: colWidth,
+    });
+    rightY += 13;
 
-    // Prepared by
-    const rightX = 300;
-    doc.fontSize(12).fillColor('#333333').text('Prepared by:', rightX, startY);
+    doc.y = Math.max(leftY, rightY) + 12;
+  }
 
-    doc.fontSize(11).fillColor('#666666');
-
-    y = startY + 20;
-    doc.text(`${proposal.createdBy.firstName} ${proposal.createdBy.lastName}`, rightX, y);
-    y += 15;
-    doc.text(proposal.createdBy.email, rightX, y);
+  /** Combined cover letter body — merges legacy proposalSummary into the letter */
+  private static resolveCoverLetterBody(proposal: ProposalData): string {
+    const letter = proposal.coverLetter?.trim() || '';
+    const summary = proposal.proposalSummary?.trim() || '';
+    if (letter && summary) {
+      return `${letter}\n\n${summary}`;
+    }
+    return letter || summary;
   }
 
   /**
    * Draw cover letter / Introduction
    */
-  private static drawCoverLetter(doc: PDFDoc, proposal: ProposalData) {
-    // Introduction Header
-    doc.fontSize(18).fillColor('#333333').text('Introduction', { align: 'center' });
+  private static drawCoverLetter(doc: PDFDoc, proposal: ProposalData, _primaryColor: string) {
+    const body = this.resolveCoverLetterBody(proposal);
 
-    doc.moveDown(1);
-
-    // Decorative line
-    doc.moveTo(200, doc.y).lineTo(400, doc.y).strokeColor('#cccccc').lineWidth(1).stroke();
-
-    doc.moveDown(1);
-
+    doc.moveDown(0.5);
     doc.fontSize(11).fillColor('#444444');
 
     // Default introduction template if no custom cover letter
-    if (!proposal.coverLetter || proposal.coverLetter.trim().length < 50) {
+    if (!body || body.length < 50) {
       // Use director's first name if available, otherwise fall back to business name
       const directorFirstName = proposal.client.contactName
         ? proposal.client.contactName.split(' ')[0]
@@ -309,7 +503,7 @@ We are happy to discuss any aspect of this proposal at your convenience.
 Yours sincerely,
 
 ${proposal.createdBy.firstName} ${proposal.createdBy.lastName}
-${proposal.tenant.name}`;
+${senderPosition(proposal.createdBy) ? `${senderPosition(proposal.createdBy)}, ` : ''}${proposal.tenant.name}`;
 
       const paragraphs = defaultIntro.split('\n\n');
       paragraphs.forEach((paragraph) => {
@@ -322,8 +516,7 @@ ${proposal.tenant.name}`;
         }
       });
     } else {
-      // Use custom cover letter
-      const paragraphs = proposal.coverLetter.split('\n\n');
+      const paragraphs = body.split('\n\n');
       paragraphs.forEach((paragraph) => {
         if (paragraph.trim()) {
           doc.text(paragraph.trim(), {
@@ -335,12 +528,11 @@ ${proposal.tenant.name}`;
       });
     }
 
-    // Page break before T&Cs note
     doc.moveDown(2);
     doc
       .fontSize(10)
       .fillColor('#666666')
-      .text('Please turn over for full Terms and Conditions of Engagement →', { align: 'center' });
+      .text('Please turn over for full Terms and Conditions of Engagement.', { align: 'center' });
   }
 
   /**
@@ -353,7 +545,6 @@ ${proposal.tenant.name}`;
 
     if (!proposal.services || proposal.services.length === 0) return;
 
-    // Table header
     const tableTop = doc.y;
     const colX = { name: 50, qty: 310, price: 380, total: 490 };
 
@@ -365,7 +556,6 @@ ${proposal.tenant.name}`;
       .text('Price', colX.price, tableTop)
       .text('Total', colX.total, tableTop);
 
-    // Header line
     doc
       .moveTo(50, tableTop + 15)
       .lineTo(550, tableTop + 15)
@@ -373,13 +563,11 @@ ${proposal.tenant.name}`;
       .lineWidth(0.5)
       .stroke();
 
-    // Services rows — flat list, no grouping
     doc.fontSize(10).fillColor('#333333');
 
     let y = tableTop + 25;
 
     proposal.services.forEach((service) => {
-      // Check if we need a new page
       if (y > 700) {
         doc.addPage();
         y = 50;
@@ -567,30 +755,6 @@ ${proposal.tenant.name}`;
       .text('Combined total:', rightX, y)
       .text(this.formatCurrency(proposal.total), 490, y, { align: 'right' });
 
-    // Annual equivalent note
-    const annualEquivalent =
-      grouped.weekly.reduce(
-        (sum, s) => sum + (s.displayPrice || s.unitPrice) * s.quantity * 52,
-        0
-      ) +
-      grouped.monthly.reduce(
-        (sum, s) => sum + (s.displayPrice || s.unitPrice) * s.quantity * 12,
-        0
-      ) +
-      grouped.quarterly.reduce(
-        (sum, s) => sum + (s.displayPrice || s.unitPrice) * s.quantity * 4,
-        0
-      ) +
-      grouped.annually.reduce((sum, s) => sum + (s.displayPrice || s.unitPrice) * s.quantity, 0);
-
-    if (annualEquivalent > 0) {
-      y += 25;
-      doc
-        .fontSize(9)
-        .fillColor('#888888')
-        .text(`Annual equivalent: ${this.formatCurrency(annualEquivalent)}/year`, rightX, y);
-    }
-
     // VAT breakdown
     y += 20;
     doc
@@ -630,34 +794,71 @@ ${proposal.tenant.name}`;
 
   private static drawSignedAcceptance(doc: PDFDoc, proposal: ProposalData, primaryColor: string) {
     doc.fontSize(16).fillColor('#333333').text('Electronic Acceptance', { align: 'center' });
-    doc.moveDown(2);
-    doc.fontSize(11).fillColor('#444444');
-    doc.text(`Signed by: ${proposal.acceptedBy || 'Client representative'}`);
-    if (proposal.signatoryPosition) {
-      doc.text(`Position: ${proposal.signatoryPosition}`);
+    doc.moveDown(1.5);
+
+    const customFields = parseProposalCustomFields(proposal.customFields);
+    if (customFields.selectedTierLabel) {
+      doc
+        .fontSize(11)
+        .fillColor(primaryColor)
+        .text(`Selected package: ${customFields.selectedTierLabel}`, { align: 'center' });
+      doc.moveDown(1);
     }
-    if (proposal.acceptedAt) {
-      doc.text(`Date: ${this.formatDate(proposal.acceptedAt)}`);
-    }
-    doc.moveDown(1);
-    if (proposal.signature) {
-      try {
-        const base64 = proposal.signature.includes(',')
-          ? proposal.signature.split(',')[1]
-          : proposal.signature;
-        doc.image(Buffer.from(base64, 'base64'), { fit: [200, 80] });
-      } catch {
-        doc.text('[Signature on file]');
+
+    const signatures: Array<{
+      signedBy: string;
+      signedByRole: string;
+      signedAt: Date | string;
+      signatureData?: string;
+      signerEmail?: string | null;
+    }> = (proposal as any).signatures?.length
+      ? (proposal as any).signatures
+      : [
+          {
+            signedBy: proposal.acceptedBy || 'Client representative',
+            signedByRole: proposal.signatoryPosition || '',
+            signedAt: proposal.acceptedAt || new Date(),
+            signatureData: proposal.signature,
+          },
+        ];
+
+    signatures.forEach((sig, index) => {
+      if (index > 0) doc.moveDown(1.5);
+      doc.fontSize(12).fillColor('#333333').text(`Signatory ${index + 1}`, { underline: true });
+      doc.moveDown(0.5);
+      doc.fontSize(11).fillColor('#444444');
+      doc.text(`Signed by: ${sig.signedBy}`);
+      if (sig.signedByRole) {
+        doc.text(`Position: ${sig.signedByRole}`);
       }
-    }
+      if (sig.signerEmail) {
+        doc.text(`Email: ${sig.signerEmail}`);
+      }
+      doc.text(`Date: ${this.formatDate(new Date(sig.signedAt))}`);
+      doc.moveDown(0.5);
+      const sigData = sig.signatureData;
+      if (sigData) {
+        try {
+          const base64 = sigData.includes(',') ? sigData.split(',')[1] : sigData;
+          doc.image(Buffer.from(base64, 'base64'), { fit: [200, 80] });
+        } catch {
+          doc.text('[Signature on file]');
+        }
+      }
+    });
+
     doc.moveDown(2);
     doc.fontSize(9).fillColor('#666666').text(
-      'This document was accepted using a simple electronic signature under UK law.',
+      'This document was accepted using simple electronic signature(s) under UK law.',
       { align: 'center' }
     );
   }
 
-  private static drawSignatureCertificate(doc: PDFDoc, proposal: ProposalData, sig: any) {
+  private static drawSignatureCertificate(
+    doc: PDFDoc,
+    proposal: Pick<ProposalData, 'reference'>,
+    sig: any
+  ) {
     doc.fontSize(16).fillColor('#333333').text('Signature Certificate', { align: 'center' });
     doc.moveDown(1.5);
     doc.fontSize(10).fillColor('#444444');

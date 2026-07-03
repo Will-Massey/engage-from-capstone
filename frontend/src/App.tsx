@@ -2,7 +2,8 @@ import { Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { useEffect, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { useAuthStore } from './stores/authStore';
-import { apiClient } from './utils/api';
+import { apiClient, ensureCsrfReady, hydrateCsrfCache, rememberCsrfToken } from './utils/api';
+import { appRelativePath } from './utils/appBase';
 
 // Layouts
 import DashboardLayout from './components/layout/DashboardLayout';
@@ -16,6 +17,8 @@ import ForgotPassword from './pages/auth/ForgotPassword';
 import ResetPassword from './pages/auth/ResetPassword';
 import Dashboard from './pages/Dashboard';
 import Proposals from './pages/proposals/Proposals';
+import BulkRenewalWizard from './pages/proposals/BulkRenewalWizard';
+import FirstProposalWizardPage from './pages/proposals/FirstProposalWizardPage';
 import ProposalDetail from './pages/proposals/ProposalDetail';
 import CreateProposal from './pages/proposals/CreateProposal';
 import WizardProposal from './pages/proposals/WizardProposal';
@@ -25,14 +28,21 @@ import ClientDetail from './pages/clients/ClientDetail';
 import CreateClient from './pages/clients/CreateClient';
 import Services from './pages/services/Services';
 import ServiceDetail from './pages/services/ServiceDetail';
+import PricingCalculatorPage from './pages/pricing/PricingCalculatorPage';
+import ProposalTemplates from './pages/templates/ProposalTemplates';
 import Settings from './pages/Settings';
 import Subscription from './pages/Subscription';
 import Analytics from './pages/Analytics';
 import PartnerProgramme from './pages/PartnerProgramme';
 import NotFound from './pages/NotFound';
 import PublicProposalView from './pages/public/ProposalView';
+import Status from './pages/Status';
 import ClientPortal from './pages/public/ClientPortal';
 import AmlOnboarding from './pages/public/AmlOnboarding';
+import TermsOfService from './pages/legal/TermsOfService';
+import PrivacyPolicy from './pages/legal/PrivacyPolicy';
+import AiDisclosure from './pages/legal/AiDisclosure';
+import Soc2Controls from './pages/legal/Soc2Controls';
 
 // World-class features
 import CommandPalette from './components/command-palette/CommandPalette';
@@ -214,6 +224,22 @@ const AnimatedRoutes = () => {
             }
           />
           <Route
+            path="proposals/renewals"
+            element={
+              <AnimatedPage>
+                <BulkRenewalWizard />
+              </AnimatedPage>
+            }
+          />
+          <Route
+            path="proposals/first-wizard"
+            element={
+              <AnimatedPage>
+                <FirstProposalWizardPage />
+              </AnimatedPage>
+            }
+          />
+          <Route
             path="proposals/:id/edit"
             element={
               <AnimatedPage>
@@ -256,6 +282,16 @@ const AnimatedRoutes = () => {
             }
           />
 
+          {/* Catalogue */}
+          <Route
+            path="templates"
+            element={
+              <AnimatedPage>
+                <ProposalTemplates />
+              </AnimatedPage>
+            }
+          />
+
           {/* Services */}
           <Route
             path="services"
@@ -270,6 +306,14 @@ const AnimatedRoutes = () => {
             element={
               <AnimatedPage>
                 <ServiceDetail />
+              </AnimatedPage>
+            }
+          />
+          <Route
+            path="pricing-calculator"
+            element={
+              <AnimatedPage>
+                <PricingCalculatorPage />
               </AnimatedPage>
             }
           />
@@ -309,6 +353,16 @@ const AnimatedRoutes = () => {
           />
         </Route>
 
+        {/* Public status page (W4.5) */}
+        <Route
+          path="/status"
+          element={
+            <AnimatedPage>
+              <Status />
+            </AnimatedPage>
+          }
+        />
+
         {/* Public Proposal View (link possession = access) */}
         <Route
           path="/proposals/view/:token"
@@ -339,6 +393,40 @@ const AnimatedRoutes = () => {
           }
         />
 
+        {/* Legal pages (public) */}
+        <Route
+          path="/legal/terms"
+          element={
+            <AnimatedPage>
+              <TermsOfService />
+            </AnimatedPage>
+          }
+        />
+        <Route
+          path="/legal/privacy"
+          element={
+            <AnimatedPage>
+              <PrivacyPolicy />
+            </AnimatedPage>
+          }
+        />
+        <Route
+          path="/legal/ai-disclosure"
+          element={
+            <AnimatedPage>
+              <AiDisclosure />
+            </AnimatedPage>
+          }
+        />
+        <Route
+          path="/legal/soc2"
+          element={
+            <AnimatedPage>
+              <Soc2Controls />
+            </AnimatedPage>
+          }
+        />
+
         {/* 404 */}
         <Route
           path="*"
@@ -362,7 +450,7 @@ function App() {
   // Restore session from httpOnly cookies via /me (skip on login/register to avoid refresh noise)
   useEffect(() => {
     const bootstrapSession = async () => {
-      const path = window.location.pathname;
+      const path = appRelativePath();
       const skipBootstrap =
         path === '/login' ||
         path === '/register' ||
@@ -375,11 +463,14 @@ function App() {
         return;
       }
 
+      hydrateCsrfCache();
       setLoading(true);
       try {
         const response = (await apiClient.getMe()) as any;
         if (response.success) {
+          rememberCsrfToken(response.data.csrfToken);
           setSession(response.data.user, response.data.user.tenant);
+          await ensureCsrfReady();
         } else {
           clearAuth();
         }

@@ -219,7 +219,7 @@ Engage already has a foundation for electronic signatures. This section document
 
 - [ ] Companies House lookup in client create
 - [ ] Xero / QuickBooks client sync
-- [ ] Stripe payment on acceptance (Adfin path exists)
+- [x] Revolut payment on acceptance (Revolut checkout + webhook)
 - [ ] HMRC MTD ITSA assessment banners
 - [ ] Webhook on proposal signed (Zapier/Make)
 - [ ] Practice management export (CSV, API)

@@ -26,6 +26,7 @@ export default function ProposalAiAssist({ proposal, onUpdated }: ProposalAiAssi
 
   const [engagementLoading, setEngagementLoading] = useState(false);
   const [engagementDraft, setEngagementDraft] = useState<string | null>(null);
+  const [engagementIncludeAiIntro, setEngagementIncludeAiIntro] = useState(false);
 
   const [renewalLoading, setRenewalLoading] = useState(false);
   const [renewalDraft, setRenewalDraft] = useState<any>(null);
@@ -63,20 +64,23 @@ export default function ProposalAiAssist({ proposal, onUpdated }: ProposalAiAssi
     }
   };
 
-  const generateEngagementLetter = async () => {
+  const generateEngagementLetter = async (includeAiIntro = engagementIncludeAiIntro) => {
     setEngagementLoading(true);
     setEngagementDraft('');
     try {
-      // Prefer streaming for live draft feel (falls back gracefully if method missing)
       const streamer = (apiClient as any).aiStreamEngagementLetter;
       if (typeof streamer === 'function') {
         let accumulated = '';
-        await streamer(proposal.id, (chunk: string) => {
-          accumulated += chunk;
-          setEngagementDraft(accumulated);
-        });
+        await streamer(
+          proposal.id,
+          (chunk: string) => {
+            accumulated += chunk;
+            setEngagementDraft(accumulated);
+          },
+          { includeAiIntro }
+        );
       } else {
-        const res = (await apiClient.aiEngagementLetter(proposal.id)) as any;
+        const res = (await apiClient.aiEngagementLetter(proposal.id, { includeAiIntro })) as any;
         if (res.success) setEngagementDraft(res.data.content);
       }
     } catch (e) {
@@ -197,12 +201,33 @@ export default function ProposalAiAssist({ proposal, onUpdated }: ProposalAiAssi
 
       <AiPanel
         title="Engagement letter"
-        description={`Assembled from your approved clause library with an optional introduction from ${AI_COPILOT.name}`}
+        description="Assembled from your approved clause library — no AI unless you opt in below"
         configured={configured}
         loading={engagementLoading}
-        onAction={generateEngagementLetter}
-        actionLabel={proposal.engagementLetter ? 'Regenerate' : 'Generate'}
+        onAction={() => generateEngagementLetter(false)}
+        actionLabel={proposal.engagementLetter ? 'Reassemble clauses' : 'Assemble from clauses'}
       >
+        <label className="flex items-start gap-2 mt-2 text-xs text-slate-600 dark:text-slate-400 cursor-pointer">
+          <input
+            type="checkbox"
+            checked={engagementIncludeAiIntro}
+            onChange={(e) => setEngagementIncludeAiIntro(e.target.checked)}
+            className="mt-0.5 rounded border-slate-300"
+          />
+          <span>
+            Add a short introduction from {AI_COPILOT.name} (uses extra tokens — clause body stays from your library)
+          </span>
+        </label>
+        {engagementIncludeAiIntro && (
+          <button
+            type="button"
+            onClick={() => generateEngagementLetter(true)}
+            disabled={engagementLoading}
+            className="mt-2 text-xs px-2 py-1 rounded-lg border border-violet-300 dark:border-violet-700 text-violet-700 dark:text-violet-300 hover:bg-violet-50 dark:hover:bg-violet-950/30 disabled:opacity-50"
+          >
+            Assemble with {AI_COPILOT.name} introduction
+          </button>
+        )}
         {proposal.engagementLetter && !engagementDraft && (
           <p className="text-xs text-slate-500 dark:text-slate-300">
             A letter is already saved on this proposal.
@@ -213,7 +238,7 @@ export default function ProposalAiAssist({ proposal, onUpdated }: ProposalAiAssi
             content={engagementDraft}
             onApply={saveEngagementLetter}
             onDiscard={() => setEngagementDraft(null)}
-            onRegenerate={generateEngagementLetter}
+            onRegenerate={() => generateEngagementLetter(engagementIncludeAiIntro)}
             applyLabel="Accept & save"
             isStreaming={engagementLoading}
           />
@@ -223,7 +248,7 @@ export default function ProposalAiAssist({ proposal, onUpdated }: ProposalAiAssi
       {showRenewal && (
         <AiPanel
           title="Renewal draft"
-          description="Create next year's proposal with optional fee uplift"
+          description="Create next year's proposal — ask Clara for an uplift or reduction (e.g. 10% or -10%)"
           configured={configured}
           loading={renewalLoading}
           onAction={generateRenewal}
@@ -233,12 +258,19 @@ export default function ProposalAiAssist({ proposal, onUpdated }: ProposalAiAssi
             <label className="text-xs text-slate-600 dark:text-slate-300">Fee uplift %</label>
             <input
               type="number"
-              min={0}
+              min={-50}
               max={50}
+              step={0.5}
               value={upliftPercent}
-              onChange={(e) => setUpliftPercent(Number(e.target.value))}
-              className="w-16 px-2 py-1 text-sm border rounded dark:bg-slate-800 dark:border-slate-600"
+              onChange={(e) => {
+                const v = Number(e.target.value);
+                setUpliftPercent(Number.isFinite(v) ? Math.min(50, Math.max(-50, v)) : 0);
+              }}
+              className="w-20 px-2 py-1 text-sm border rounded dark:bg-slate-800 dark:border-slate-600"
             />
+            <span className="text-xs text-slate-500 dark:text-slate-400">
+              Negative = reduction · 0 = unchanged
+            </span>
           </div>
           {renewalDraft && (
             <div className="mt-2 space-y-2">

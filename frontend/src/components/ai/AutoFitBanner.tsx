@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
   SparklesIcon,
   CheckIcon,
@@ -7,6 +7,7 @@ import {
   ChevronUpIcon,
 } from '@heroicons/react/24/outline';
 import { AI_COPILOT } from '../../config/aiCopilot';
+import ClaraServiceSuggestionCards, { type ClaraServiceSuggestion } from './ClaraServiceSuggestionCards';
 
 export interface AutoFitServiceSuggestion {
   serviceId: string;
@@ -25,7 +26,7 @@ export interface AutoFitResult {
   validUntilDays: number;
 }
 
-type SectionKey = 'title' | 'services' | 'coverLetter' | 'pricing' | 'validUntil';
+export type SectionKey = 'title' | 'services' | 'coverLetter' | 'pricing' | 'validUntil';
 
 interface AutoFitBannerProps {
   clientName: string;
@@ -35,6 +36,13 @@ interface AutoFitBannerProps {
   onAcceptAll: () => void;
   onAcceptSection: (section: SectionKey) => void;
   onDismiss: () => void;
+  /** W2.8 — per-service Accept / Tweak / Reject (optional; enables line-item cards) */
+  onAcceptService?: (service: AutoFitServiceSuggestion) => void;
+  onTweakService?: (
+    service: AutoFitServiceSuggestion,
+    tweaks: { billingFrequency: string; displayPrice: number }
+  ) => void;
+  onRejectService?: (serviceId: string) => void;
 }
 
 const SECTION_LABELS: Record<SectionKey, string> = {
@@ -45,6 +53,8 @@ const SECTION_LABELS: Record<SectionKey, string> = {
   validUntil: 'Valid until',
 };
 
+const ALL_SECTIONS: SectionKey[] = ['title', 'services', 'coverLetter', 'pricing', 'validUntil'];
+
 export default function AutoFitBanner({
   clientName,
   result,
@@ -53,16 +63,71 @@ export default function AutoFitBanner({
   onAcceptAll,
   onAcceptSection,
   onDismiss,
+  onAcceptService,
+  onTweakService,
+  onRejectService,
 }: AutoFitBannerProps) {
   const [expanded, setExpanded] = useState(true);
   const [reviewMode, setReviewMode] = useState(false);
   const [reviewIndex, setReviewIndex] = useState(0);
+  const [rejectedSections, setRejectedSections] = useState<Set<SectionKey>>(new Set());
+  const [rejectedServiceIds, setRejectedServiceIds] = useState<Set<string>>(new Set());
+  const perServiceMode = Boolean(onAcceptService && onTweakService && onRejectService);
 
-  const sections: SectionKey[] = ['title', 'services', 'coverLetter', 'pricing', 'validUntil'];
+  useEffect(() => {
+    setRejectedSections(new Set());
+    setRejectedServiceIds(new Set());
+    setReviewMode(false);
+    setReviewIndex(0);
+  }, [result]);
+
+  const visibleSections = ALL_SECTIONS.filter((key) => {
+    if (key === 'services' && perServiceMode && result?.services?.length) {
+      const pending = result.services.filter((s) => !rejectedServiceIds.has(s.serviceId));
+      return pending.length > 0;
+    }
+    return !rejectedSections.has(key);
+  });
+
+  const pendingServiceSuggestions: ClaraServiceSuggestion[] =
+    result?.services?.filter((s) => !rejectedServiceIds.has(s.serviceId)) ?? [];
+
+  useEffect(() => {
+    if (!reviewMode) return;
+    if (visibleSections.length === 0) {
+      setReviewMode(false);
+      return;
+    }
+    if (reviewIndex >= visibleSections.length) {
+      setReviewIndex(visibleSections.length - 1);
+    }
+  }, [reviewMode, reviewIndex, visibleSections.length]);
+  const allRejected = visibleSections.length === 0 && !loading && !!result;
+
+  const rejectSection = (key: SectionKey) => {
+    setRejectedSections((prev) => new Set([...prev, key]));
+  };
+
+  const acceptSection = (key: SectionKey) => {
+    onAcceptSection(key);
+    rejectSection(key);
+  };
+
+  const rejectAllSections = () => {
+    setRejectedSections(new Set(ALL_SECTIONS));
+    setReviewMode(false);
+  };
+
+  const startReview = () => {
+    if (visibleSections.length === 0) return;
+    setReviewMode(true);
+    setReviewIndex(0);
+    setExpanded(true);
+  };
 
   if (!configured || (!loading && !result)) return null;
 
-  const currentSection = sections[reviewIndex];
+  const currentSection = visibleSections[reviewIndex];
 
   const renderSectionPreview = (key: SectionKey) => {
     if (!result) return null;
@@ -70,6 +135,36 @@ export default function AutoFitBanner({
       case 'title':
         return <p className="text-sm font-medium text-slate-800 dark:text-slate-100">{result.suggestedTitle}</p>;
       case 'services':
+        if (perServiceMode && pendingServiceSuggestions.length > 0) {
+          return (
+            <ClaraServiceSuggestionCards
+              suggestions={pendingServiceSuggestions}
+              onAccept={(s) => {
+                onAcceptService?.(s);
+                setRejectedServiceIds((prev) => new Set([...prev, s.serviceId]));
+              }}
+              onTweak={(s, tweaks) => {
+                onTweakService?.(s, tweaks);
+                setRejectedServiceIds((prev) => new Set([...prev, s.serviceId]));
+              }}
+              onReject={(serviceId) => {
+                onRejectService?.(serviceId);
+                setRejectedServiceIds((prev) => new Set([...prev, serviceId]));
+              }}
+              onAcceptAll={() => {
+                for (const s of pendingServiceSuggestions) {
+                  onAcceptService?.(s);
+                }
+                setRejectedServiceIds((prev) => {
+                  const next = new Set(prev);
+                  pendingServiceSuggestions.forEach((s) => next.add(s.serviceId));
+                  return next;
+                });
+              }}
+              emptyMessage="All service lines handled."
+            />
+          );
+        }
         return (
           <ul className="text-xs space-y-1.5 text-slate-600 dark:text-slate-300">
             {result.services.map((s) => (
@@ -123,7 +218,7 @@ export default function AutoFitBanner({
           </div>
         </div>
         <div className="flex flex-wrap items-center gap-2 shrink-0">
-          {!loading && result && (
+          {!loading && result && visibleSections.length > 0 && (
             <>
               <button type="button" onClick={onAcceptAll} className="btn-primary text-xs py-1.5 px-3 inline-flex items-center gap-1">
                 <CheckIcon className="h-4 w-4" />
@@ -131,14 +226,18 @@ export default function AutoFitBanner({
               </button>
               <button
                 type="button"
-                onClick={() => {
-                  setReviewMode(true);
-                  setReviewIndex(0);
-                  setExpanded(true);
-                }}
+                onClick={startReview}
                 className="btn-secondary text-xs py-1.5 px-3"
               >
                 Review section by section
+              </button>
+              <button
+                type="button"
+                onClick={rejectAllSections}
+                className="btn-secondary text-xs py-1.5 px-3 inline-flex items-center gap-1 text-slate-600 dark:text-slate-300"
+              >
+                <XMarkIcon className="h-4 w-4" />
+                Reject all
               </button>
             </>
           )}
@@ -161,9 +260,15 @@ export default function AutoFitBanner({
         </div>
       </div>
 
-      {expanded && !loading && result && !reviewMode && (
+      {expanded && !loading && result && allRejected && (
+        <p className="mt-4 text-sm text-slate-500 dark:text-slate-400">
+          All suggestions dismissed. Close this banner or run auto-fit again from the client card.
+        </p>
+      )}
+
+      {expanded && !loading && result && !reviewMode && visibleSections.length > 0 && (
         <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-3">
-          {sections.map((key) => (
+          {visibleSections.map((key) => (
             <div
               key={key}
               className="rounded-xl border border-violet-100 dark:border-violet-900/50 bg-white/70 dark:bg-slate-900/50 p-3"
@@ -172,13 +277,22 @@ export default function AutoFitBanner({
                 <span className="text-xs font-semibold text-violet-700 dark:text-violet-300">
                   {SECTION_LABELS[key]}
                 </span>
-                <button
-                  type="button"
-                  onClick={() => onAcceptSection(key)}
-                  className="text-[10px] px-2 py-0.5 rounded-full bg-violet-100 dark:bg-violet-900/40 text-violet-700 dark:text-violet-200 hover:bg-violet-200 dark:hover:bg-violet-800/50"
-                >
-                  Accept
-                </button>
+                <div className="flex items-center gap-1.5">
+                  <button
+                    type="button"
+                    onClick={() => acceptSection(key)}
+                    className="text-[10px] px-2 py-0.5 rounded-full bg-violet-100 dark:bg-violet-900/40 text-violet-700 dark:text-violet-200 hover:bg-violet-200 dark:hover:bg-violet-800/50"
+                  >
+                    Accept
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => rejectSection(key)}
+                    className="text-[10px] px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800/60 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700/60"
+                  >
+                    Dismiss
+                  </button>
+                </div>
               </div>
               {renderSectionPreview(key)}
             </div>
@@ -186,11 +300,11 @@ export default function AutoFitBanner({
         </div>
       )}
 
-      {reviewMode && result && (
+      {reviewMode && result && currentSection && (
         <div className="mt-4 rounded-xl border border-violet-200 dark:border-violet-800 bg-white/80 dark:bg-slate-900/60 p-4">
           <div className="flex items-center justify-between mb-3">
             <p className="text-xs font-medium text-violet-700 dark:text-violet-300">
-              Section {reviewIndex + 1} of {sections.length}: {SECTION_LABELS[currentSection]}
+              Section {reviewIndex + 1} of {visibleSections.length}: {SECTION_LABELS[currentSection]}
             </p>
             <button type="button" onClick={() => setReviewMode(false)} className="text-xs text-slate-500 hover:text-slate-700">
               Exit review
@@ -201,8 +315,8 @@ export default function AutoFitBanner({
             <button
               type="button"
               onClick={() => {
-                onAcceptSection(currentSection);
-                if (reviewIndex < sections.length - 1) {
+                acceptSection(currentSection);
+                if (reviewIndex < visibleSections.length - 1) {
                   setReviewIndex((i) => i + 1);
                 } else {
                   setReviewMode(false);
@@ -216,7 +330,7 @@ export default function AutoFitBanner({
             <button
               type="button"
               onClick={() => {
-                if (reviewIndex < sections.length - 1) {
+                if (reviewIndex < visibleSections.length - 1) {
                   setReviewIndex((i) => i + 1);
                 } else {
                   setReviewMode(false);
@@ -225,6 +339,20 @@ export default function AutoFitBanner({
               className="btn-secondary text-xs py-1.5 px-3"
             >
               Skip
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                const isLast = reviewIndex >= visibleSections.length - 1;
+                rejectSection(currentSection);
+                if (isLast) {
+                  setReviewMode(false);
+                }
+              }}
+              className="btn-secondary text-xs py-1.5 px-3 inline-flex items-center gap-1 text-slate-600 dark:text-slate-300"
+            >
+              <XMarkIcon className="h-4 w-4" />
+              Dismiss
             </button>
           </div>
         </div>

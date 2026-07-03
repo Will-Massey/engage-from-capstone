@@ -3,6 +3,7 @@ import jwt from 'jsonwebtoken';
 import crypto from 'crypto';
 import { prisma } from '../config/database.js';
 import { UserRole } from '@prisma/client';
+import { hasFullAccess } from '../constants/roles.js';
 import { isCsrfTokenRegistered, isCsrfTokenRegisteredAsync, registerCsrfToken } from '../utils/csrfStore.js';
 
 const JWT_SECRET = process.env.JWT_SECRET;
@@ -210,7 +211,8 @@ export const authorize = (...roles: UserRole[]) => {
       return;
     }
 
-    if (!roles.includes(req.user.role)) {
+    // Managing Director has full tenant access (settings, AI, templates, automation, etc.)
+    if (!hasFullAccess(req.user.role) && !roles.includes(req.user.role)) {
       res.status(403).json({
         success: false,
         error: {
@@ -300,9 +302,11 @@ export const csrfProtection = async (
     '/proposals/portal', // Client portal (public access)
     '/onboarding', // AML self-service form (public, portal token)
     '/webhooks/sendgrid', // SendGrid delivery events
+    '/webhooks/cloudflare-email', // Cloudflare delivery events
+    '/aml/webhook', // AML partner results webhook
     '/admin/seed-services', // One-click admin seed endpoint
     '/automation/migrate-service-pricing', // Data migration endpoint (protected by secret key)
-    '/setup/migrate-pricing', // v2 pricing data migration
+    '/setup', // ops setup (migrate-pricing, seed-tenant-library, clear-login-lockout)
   ];
   if (publicPaths.some((path) => req.path.startsWith(path))) {
     next();
@@ -359,10 +363,15 @@ export const setCsrfCookie = (req: Request, res: Response, next: NextFunction): 
   if (!req.cookies?.csrfToken) {
     const csrfToken = generateCsrfToken();
     registerCsrfToken(csrfToken);
+    const cookiePath = process.env.AUTH_COOKIE_PATH || '/';
+    const sameOrigin =
+      process.env.NODE_ENV === 'production' &&
+      (cookiePath !== '/' || process.env.FRONTEND_URL?.includes('/engage'));
     res.cookie('csrfToken', csrfToken, {
       httpOnly: false,
-      secure: true,
-      sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: sameOrigin ? 'lax' : process.env.NODE_ENV === 'production' ? 'none' : 'lax',
+      path: cookiePath,
       maxAge: 24 * 60 * 60 * 1000,
     });
   }

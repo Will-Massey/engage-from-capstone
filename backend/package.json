@@ -7,7 +7,7 @@
     "dev": "tsx watch src/index.ts",
     "prebuild": "npx prisma generate",
     "build": "npx tsc --project tsconfig.json",
-    "postbuild": "cp -r src/scripts dist/scripts 2>/dev/null || echo 'No scripts to copy'",
+    "postbuild": "node -e \"const fs=require('fs');const p=require('path');const copyDir=(s,d)=>{if(!fs.existsSync(s))return;fs.mkdirSync(d,{recursive:true});for(const f of fs.readdirSync(s)){const a=p.join(s,f),b=p.join(d,f);fs.statSync(a).isDirectory()?copyDir(a,b):fs.copyFileSync(a,b);}};copyDir('src/scripts','dist/scripts');copyDir('src/assets','dist/assets');\"",
     "start": "node start-prod.mjs",
     "test": "jest --testPathIgnorePatterns=/smoke/",
     "test:integration": "jest tests/smoke",
@@ -18,7 +18,8 @@
     "db:studio": "prisma studio",
     "lint": "eslint src --ext .ts",
     "typecheck": "tsc --noEmit",
-    "job:renewal-reminders": "npx tsx scripts/run-renewal-reminders.ts"
+    "job:renewal-reminders": "npx tsx scripts/run-renewal-reminders.ts",
+    "db:seed:templates": "tsx scripts/seed-proposal-templates.ts"
   },
   "dependencies": {
     "@uk-proposal-platform/shared": "1.0.0",
@@ -47,6 +48,7 @@
     "typescript": "^5.9.3",
     "uuid": "^9.0.1",
     "winston": "^3.11.0",
+    "xero-node": "^18.0.0",
     "zod": "^3.22.4"
   },
   "devDependencies": {

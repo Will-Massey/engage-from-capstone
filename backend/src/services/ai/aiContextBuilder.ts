@@ -3,7 +3,8 @@
  */
 import { prisma } from '../../config/database.js';
 import { ApiError } from '../../middleware/errorHandler.js';
-import { createCompaniesHouseService, type CompanyDetails } from '../companiesHouse.js';
+import { createCompaniesHouseService } from '../companiesHouse.js';
+import { mapDetailsToAiContext } from '../companiesHouseEnrichment.js';
 
 export interface BuildAiContextOptions {
   clientId?: string;
@@ -33,6 +34,9 @@ export interface AiClientContext {
   industry?: string | null;
   yearEnd?: string | null;
   notes?: string | null;
+  clientRelationship: 'NEW' | 'EXISTING';
+  /** Human-readable hint for Clara prompts */
+  relationshipContext: string;
 }
 
 export interface AiUserContext {
@@ -133,6 +137,12 @@ function mapCatalogItem(
   };
 }
 
+function relationshipContextForAi(rel: string): string {
+  return rel === 'EXISTING'
+    ? 'Existing client — treat proposals as renewals or scope changes; reference continuity with the practice and prior work.'
+    : 'New client — first engagement with the practice; use welcoming onboarding tone and explain services clearly.';
+}
+
 function mapClient(client: {
   id: string;
   name: string;
@@ -148,7 +158,9 @@ function mapClient(client: {
   industry: string | null;
   yearEnd: string | null;
   notes: string | null;
+  clientRelationship: string;
 }): AiClientContext {
+  const rel = client.clientRelationship === 'EXISTING' ? 'EXISTING' : 'NEW';
   return {
     id: client.id,
     name: client.name,
@@ -164,15 +176,9 @@ function mapClient(client: {
     industry: client.industry,
     yearEnd: client.yearEnd,
     notes: client.notes,
+    clientRelationship: rel,
+    relationshipContext: relationshipContextForAi(rel),
   };
-}
-
-function formatChAddress(details: CompanyDetails): string | undefined {
-  const a = details.registered_office_address;
-  if (!a) return undefined;
-  return [a.address_line_1, a.address_line_2, a.locality, a.region, a.postal_code]
-    .filter(Boolean)
-    .join(', ');
 }
 
 async function loadCompaniesHouse(companyNumber: string): Promise<AiCompaniesHouseContext | undefined> {
@@ -181,16 +187,7 @@ async function loadCompaniesHouse(companyNumber: string): Promise<AiCompaniesHou
 
   try {
     const details = await ch.getCompanyDetails(companyNumber);
-    return {
-      companyNumber: details.company_number,
-      companyName: details.company_name,
-      companyStatus: details.company_status,
-      companyType: details.company_type,
-      dateOfCreation: details.date_of_creation,
-      registeredOfficeAddress: formatChAddress(details),
-      sicCodes: details.sic_codes,
-      accountsNextDue: details.accounts?.next_due,
-    };
+    return mapDetailsToAiContext(details);
   } catch {
     return undefined;
   }

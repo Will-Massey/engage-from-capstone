@@ -683,57 +683,10 @@ async function createTouchpoint(params: {
 }
 
 async function ensureDefaultTemplate(tenantId: string, stage: ClientLifecycleStage) {
-  // Very basic defaults — in real usage these would be seeded or edited in admin UI
-  const defaults: Partial<Record<ClientLifecycleStage, { subject: string; body: string; tone: TouchpointTone; isMarketing?: boolean }>> = {
-    PROPOSAL_ACCEPTED: {
-      subject: 'Welcome to {{practice_name}}, {{client_name}}',
-      body: 'Hi {{contact_name}},<br/><br/>Thank you for choosing {{practice_name}}. We are excited to work with you.<br/>Next step: {{next_step}}.<br/><br/>Best,<br/>{{practice_name}}',
-      tone: 'WARM',
-    },
-    AML_PENDING: {
-      subject: 'ID & AML verification for {{client_name}}',
-      body: 'Hello {{contact_name}},<br/>To proceed with onboarding we need to complete our AML checks.<br/><br/><strong>Please submit your details securely using this link:</strong><br/><a href="{{aml_portal_link}}">{{aml_portal_link}}</a><br/><br/>You will need: photo ID, proof of address, and basic business information. This usually takes about 5 minutes.<br/><br/>If you have any questions, reply to this email.<br/><br/>Thank you,<br/>{{practice_name}}',
-      tone: 'NEUTRAL',
-    },
-    ENGAGEMENT_LETTER_SENT: {
-      subject: 'Your engagement letter from {{practice_name}}',
-      body: 'Hello {{contact_name}},<br/><br/>Please find your engagement letter attached to this email (PDF). It reflects the services and fees you agreed when signing your proposal.<br/><br/>If you have already signed, no further action is needed — otherwise please review and sign via your client portal:<br/><a href="{{portal_link}}">{{portal_link}}</a><br/><br/>Next step: {{next_step}}<br/><br/>Kind regards,<br/>{{practice_name}}',
-      tone: 'NEUTRAL',
-    },
-    INFO_REQUESTED: {
-      subject: 'Information required for {{client_name}}',
-      body: 'Hi {{contact_name}},<br/>We need a few more details to complete your onboarding. Please send the information by {{due_date}}.<br/><br/>Thank you,<br/>{{practice_name}}',
-      tone: 'WARM',
-    },
-    ONBOARDING_SETUP: {
-      subject: 'Setting up your account — {{client_name}}',
-      body: 'Hi {{contact_name}},<br/><br/>Thank you for providing your information. We are now setting up your records and systems with {{practice_name}}.<br/>{{next_step}}<br/><br/>We will be in touch shortly with your kick-off details.<br/><br/>Best,<br/>{{practice_name}}',
-      tone: 'WARM',
-    },
-    SATISFACTION_CHECK: {
-      subject: 'How are we doing? — {{practice_name}}',
-      body: 'Hi {{contact_name}},<br/><br/>We would love to know how your experience has been so far. Your feedback helps us improve.<br/>{{next_step}}<br/><br/>Warm regards,<br/>{{practice_name}}',
-      tone: 'WARM',
-      isMarketing: true,
-    },
-    KICKOFF_SENT: {
-      subject: 'Welcome aboard — kick-off for {{client_name}}',
-      body: 'Hi {{contact_name}},<br/><br/>Your onboarding is complete and we are ready to get started. {{next_step}}<br/>We look forward to working with you.<br/><br/>Best,<br/>{{practice_name}}',
-      tone: 'WARM',
-    },
-    MILESTONE_CHECK_IN: {
-      subject: '{{practice_name}} milestone check-in — {{due_date}}',
-      body: 'Hello {{contact_name}},<br/>Just a quick note ahead of the upcoming deadline on {{due_date}}.<br/>{{next_step}}<br/><br/>Let us know if you need anything.<br/>Kind regards,<br/>{{practice_name}}',
-      tone: 'NEUTRAL',
-    },
-    ANNUAL_REVIEW: {
-      subject: 'Time for your annual review with {{practice_name}}',
-      body: 'Hi {{contact_name}},<br/><br/>It has been a year since we started working together. We would like to schedule your annual review.<br/>{{next_step}}<br/><br/>Speak soon,<br/>{{practice_name}}',
-      tone: 'WARM',
-    },
-  };
-
-  const def = defaults[stage];
+  const { getDefaultTouchpointForStage } = await import(
+    '../services/touchpointTemplateSeedService.js'
+  );
+  const def = getDefaultTouchpointForStage(stage);
   if (!def) return null;
 
   return prisma.touchpointTemplate.create({
@@ -742,8 +695,8 @@ async function ensureDefaultTemplate(tenantId: string, stage: ClientLifecycleSta
       stage,
       subject: def.subject,
       body: def.body,
-      tone: def.tone,
-      isMarketing: def.isMarketing ?? false,
+      tone: def.tone as TouchpointTone,
+      isMarketing: def.isMarketing,
       isActive: true,
     },
   });

@@ -19,6 +19,10 @@ import {
   seedDefaultTemplates,
 } from '../services/coverLetterTemplateService.js';
 import { coverLetterMergeFields } from '../data/defaultCoverLetters.js';
+import {
+  buildCoverLetterMergeFields,
+  type CoverLetterMergeInput,
+} from '../services/coverLetterMergeContext.js';
 
 const router = Router();
 
@@ -42,10 +46,10 @@ const previewSchema = z.object({
   companyName: z.string().optional().default('Rivera & Co Ltd'),
   servicesSummary: z.string().optional().default('bookkeeping, VAT compliance and annual accounts'),
   discussionDate: z.string().optional().default('our recent discussion'),
-  tenantName: z.string().optional().default('Your Practice'),
-  firmExperience: z.string().optional().default('over 20 years'),
-  sectorOrRegion: z.string().optional().default('the region'),
-  firmCredentials: z.string().optional().default('ICAEW-regulated'),
+  tenantName: z.string().optional(),
+  firmExperience: z.string().optional(),
+  sectorOrRegion: z.string().optional(),
+  firmCredentials: z.string().optional(),
   keyOutcome: z.string().optional().default('compliant accounts and clear management information'),
   senderName: z.string().optional().default('Jordan Hale'),
   senderPosition: z.string().optional().default('Partner'),
@@ -54,6 +58,21 @@ const previewSchema = z.object({
   proposalReference: z.string().optional(),
   proposalTitle: z.string().optional(),
 });
+
+async function resolvePreviewMergeData(
+  tenantId: string,
+  previewData: z.infer<typeof previewSchema>
+) {
+  const fromSettings = await buildCoverLetterMergeFields(tenantId, previewData as CoverLetterMergeInput);
+  return {
+    ...fromSettings,
+    ...previewData,
+    firmCredentials: previewData.firmCredentials ?? fromSettings.firmCredentials,
+    firmExperience: previewData.firmExperience ?? fromSettings.firmExperience,
+    sectorOrRegion: previewData.sectorOrRegion ?? fromSettings.sectorOrRegion,
+    tenantName: previewData.tenantName ?? fromSettings.tenantName ?? 'Your Practice',
+  };
+}
 
 /**
  * GET /api/cover-letter-templates
@@ -233,16 +252,8 @@ router.post(
   authenticate,
   asyncHandler(async (req, res) => {
     const { id } = req.params;
-    const previewData = previewSchema.parse(req.body) as {
-      clientName: string;
-      tenantName: string;
-      serviceCount: number;
-      monthlyTotal: string;
-      senderName: string;
-      senderPosition?: string;
-      proposalReference?: string;
-      proposalTitle?: string;
-    };
+    const previewData = previewSchema.parse(req.body);
+    const mergeData = await resolvePreviewMergeData(req.tenantId!, previewData);
 
     const template = await getTemplateById(id, req.tenantId!);
 
@@ -250,7 +261,7 @@ router.post(
       throw new ApiError('NOT_FOUND', 'Template not found', 404);
     }
 
-    const rendered = renderCoverLetter(template.content, previewData);
+    const rendered = renderCoverLetter(template.content, mergeData);
 
     res.json({
       success: true,
@@ -276,18 +287,9 @@ router.post(
     });
 
     const { content, previewData } = schema.parse(req.body);
-    const typedPreviewData = previewData as {
-      clientName: string;
-      tenantName: string;
-      serviceCount: number;
-      monthlyTotal: string;
-      senderName: string;
-      senderPosition?: string;
-      proposalReference?: string;
-      proposalTitle?: string;
-    };
+    const mergeData = await resolvePreviewMergeData(req.tenantId!, previewData);
 
-    const rendered = renderCoverLetter(content, typedPreviewData);
+    const rendered = renderCoverLetter(content, mergeData);
 
     res.json({
       success: true,

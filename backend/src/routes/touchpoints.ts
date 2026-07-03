@@ -5,6 +5,10 @@ import { authenticate, authorize } from '../middleware/auth.js';
 import { validateTenantMembership } from '../middleware/tenant.js';
 import { asyncHandler, ApiError } from '../middleware/errorHandler.js';
 import { approveAndSendTouchpoint } from '../jobs/touchpointEngine.js';
+import {
+  ensureTouchpointTemplatesForTenant,
+  restoreTouchpointTemplateForStage,
+} from '../services/touchpointTemplateSeedService.js';
 import logger from '../config/logger.js';
 
 const router = Router();
@@ -28,6 +32,11 @@ router.get(
   asyncHandler(async (req, res) => {
     const tenantId = req.tenantId!;
 
+    await ensureTouchpointTemplatesForTenant(tenantId, {
+      fillMissingOnly: true,
+      upgradePlaceholders: true,
+    });
+
     const templates = await prisma.touchpointTemplate.findMany({
       where: { tenantId },
       orderBy: { stage: 'asc' },
@@ -37,10 +46,45 @@ router.get(
   })
 );
 
+/** POST /api/touchpoints/templates/seed-defaults — fill missing stages with Engage defaults */
+router.post(
+  '/templates/seed-defaults',
+  authorize('ADMIN', 'PARTNER', 'MD', 'MANAGER'),
+  asyncHandler(async (req, res) => {
+    const body = z
+      .object({ resetAll: z.boolean().optional() })
+      .parse(req.body ?? {});
+
+    const result = await ensureTouchpointTemplatesForTenant(req.tenantId!, {
+      fillMissingOnly: !body.resetAll,
+      upgradePlaceholders: true,
+    });
+
+    res.json({ success: true, data: result });
+  })
+);
+
+/** POST /api/touchpoints/templates/:stage/restore-default — reset one stage to Engage wording */
+router.post(
+  '/templates/:stage/restore-default',
+  authorize('ADMIN', 'PARTNER', 'MD', 'MANAGER'),
+  asyncHandler(async (req, res) => {
+    const stage = StageEnum.parse(req.params.stage);
+    const result = await restoreTouchpointTemplateForStage(req.tenantId!, stage);
+    if (!result.restored) {
+      throw new ApiError('NOT_FOUND', 'No default template for this stage', 404);
+    }
+    const template = await prisma.touchpointTemplate.findFirst({
+      where: { tenantId: req.tenantId!, stage },
+    });
+    res.json({ success: true, data: template });
+  })
+);
+
 // Create or update a template for a stage
 router.put(
   '/templates/:stage',
-  authorize('ADMIN', 'PARTNER', 'MANAGER'),
+  authorize('ADMIN', 'PARTNER', 'MD', 'MANAGER'),
   asyncHandler(async (req, res) => {
     const tenantId = req.tenantId!;
     const { stage } = req.params;
@@ -95,7 +139,7 @@ router.get(
 // Approve + send a gated touchpoint
 router.post(
   '/:id/approve',
-  authorize('ADMIN', 'PARTNER', 'MANAGER'),
+  authorize('ADMIN', 'PARTNER', 'MD', 'MANAGER'),
   asyncHandler(async (req, res) => {
     const { id } = req.params;
     const tenantId = req.tenantId!;
@@ -146,7 +190,7 @@ router.patch(
 // Manually trigger engine (useful for testing)
 router.post(
   '/run',
-  authorize('ADMIN', 'PARTNER', 'MANAGER'),
+  authorize('ADMIN', 'PARTNER', 'MD', 'MANAGER'),
   asyncHandler(async (_req, res) => {
     const { runTouchpointEngine } = await import('../jobs/touchpointEngine.js');
     const stats = await runTouchpointEngine();

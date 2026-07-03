@@ -1,5 +1,5 @@
 import { useEffect, useState, useMemo } from 'react';
-import { useParams, Link, useSearchParams } from 'react-router-dom';
+import { useParams, Link, useSearchParams, useNavigate } from 'react-router-dom';
 import {
   ArrowLeftIcon,
   PencilIcon,
@@ -18,8 +18,14 @@ import {
   PencilSquareIcon,
   ShieldCheckIcon,
   ArrowPathIcon,
+  CreditCardIcon,
+  BanknotesIcon,
+  NoSymbolIcon,
+  TrashIcon,
+  ArchiveBoxIcon,
 } from '@heroicons/react/24/outline';
 import { apiClient } from '../../utils/api';
+import { appPath } from '../../utils/appBase';
 import toast from 'react-hot-toast';
 import ProposalAiAssist from '../../components/ai/ProposalAiAssist';
 import ProposalEmailPreviewDialog from '../../components/ai/ProposalEmailPreviewDialog';
@@ -31,6 +37,11 @@ import { generateTermsAndConditions } from '../../data/defaultTerms';
 import { generateDefaultCoverLetter } from '../../data/defaultCoverLetter';
 import SignaturePad from '../../components/SignaturePad';
 import SkeletonProposalDetail from '../../components/skeleton/SkeletonProposalDetail';
+import {
+  DECLINE_REASONS,
+  DECLINE_REASON_LABELS,
+  type DeclineReason,
+} from '../../constants/declineReasons';
 
 const statusConfig: Record<string, { color: string; bg: string; icon: any; label: string }> = {
   DRAFT: {
@@ -69,6 +80,24 @@ const statusConfig: Record<string, { color: string; bg: string; icon: any; label
     icon: ClockIcon,
     label: 'Expired',
   },
+  WITHDRAWN: {
+    color: 'text-amber-800 dark:text-amber-200',
+    bg: 'bg-amber-100 dark:bg-amber-900/40',
+    icon: NoSymbolIcon,
+    label: 'Rescinded',
+  },
+  ARCHIVED: {
+    color: 'text-slate-600 dark:text-slate-300',
+    bg: 'bg-slate-100 dark:bg-slate-800',
+    icon: ArchiveBoxIcon,
+    label: 'Archived',
+  },
+  LOST: {
+    color: 'text-red-700 dark:text-red-200',
+    bg: 'bg-red-100 dark:bg-red-900/40',
+    icon: XMarkIcon,
+    label: 'Lost',
+  },
 };
 
 const frequencyLabels: Record<string, string> = {
@@ -77,6 +106,33 @@ const frequencyLabels: Record<string, string> = {
   MONTHLY: 'Monthly',
   QUARTERLY: 'Quarterly',
   ANNUALLY: 'Annually',
+};
+
+const approvalStatusConfig: Record<
+  string,
+  { label: string; color: string; bg: string }
+> = {
+  NONE: { label: 'Not submitted', color: 'text-slate-700', bg: 'bg-slate-100' },
+  PENDING: { label: 'Awaiting partner approval', color: 'text-amber-800', bg: 'bg-amber-100' },
+  APPROVED: { label: 'Partner approved', color: 'text-emerald-800', bg: 'bg-emerald-100' },
+  REJECTED: { label: 'Rejected by partner', color: 'text-red-800', bg: 'bg-red-100' },
+};
+
+const APPROVER_ROLES = new Set(['ADMIN', 'PARTNER', 'MD', 'MANAGER']);
+const PARTNER_OVERRIDE_ROLES = new Set(['ADMIN', 'PARTNER', 'MD']);
+const SUBMITTER_ROLES = new Set(['JUNIOR', 'SENIOR']);
+
+const paymentStatusConfig: Record<
+  string,
+  { label: string; color: string; bg: string }
+> = {
+  NOT_STARTED: { label: 'Not started', color: 'text-slate-700', bg: 'bg-slate-100' },
+  PENDING: { label: 'Pending setup', color: 'text-amber-800', bg: 'bg-amber-100' },
+  ACTIVE: { label: 'Mandate active', color: 'text-emerald-800', bg: 'bg-emerald-100' },
+  PAID: { label: 'Paid', color: 'text-emerald-800', bg: 'bg-emerald-100' },
+  FAILED: { label: 'Failed', color: 'text-red-800', bg: 'bg-red-100' },
+  CANCELLED: { label: 'Cancelled', color: 'text-slate-700', bg: 'bg-slate-100' },
+  SKIPPED: { label: 'Skipped by client', color: 'text-slate-600', bg: 'bg-slate-100' },
 };
 
 type ProposalDetailTab = 'overview' | 'audit';
@@ -109,6 +165,7 @@ function downloadAuditTrailCsv(trail: any[], reference: string) {
 
 const ProposalDetail = () => {
   const { id } = useParams<{ id: string }>();
+  const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const activeTab: ProposalDetailTab = searchParams.get('tab') === 'audit' ? 'audit' : 'overview';
 
@@ -118,7 +175,7 @@ const ProposalDetail = () => {
     else next.delete('tab');
     setSearchParams(next, { replace: true });
   };
-  const { tenant } = useAuthStore();
+  const { tenant, user } = useAuthStore();
   const [proposal, setProposal] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [showSignaturePad, setShowSignaturePad] = useState(false);
@@ -133,6 +190,17 @@ const ProposalDetail = () => {
   const [editingCoverLetter, setEditingCoverLetter] = useState(false);
   const [savingCoverLetter, setSavingCoverLetter] = useState(false);
   const [showSendEmailPreview, setShowSendEmailPreview] = useState(false);
+  const [showRejectModal, setShowRejectModal] = useState(false);
+  const [showWithdrawModal, setShowWithdrawModal] = useState(false);
+  const [rejectionReason, setRejectionReason] = useState('');
+  const [approvalActionLoading, setApprovalActionLoading] = useState(false);
+  const [withdrawLoading, setWithdrawLoading] = useState(false);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [deleteLoading, setDeleteLoading] = useState(false);
+  const [showMarkLostModal, setShowMarkLostModal] = useState(false);
+  const [markLostLoading, setMarkLostLoading] = useState(false);
+  const [markLostReason, setMarkLostReason] = useState<DeclineReason>('PRICE');
+  const [markLostNotes, setMarkLostNotes] = useState('');
 
   // Rich compliance history (views + signatures + sent events) from dedicated audit trail
   const [auditTrail, setAuditTrail] = useState<any[]>([]);
@@ -207,8 +275,38 @@ const ProposalDetail = () => {
     return generateTermsAndConditions(companyDetails);
   };
 
-  const handlePrint = () => {
-    window.print();
+  const handlePrint = async () => {
+    if (!id) return;
+    try {
+      toast.loading('Preparing PDF for print…');
+      const blob = await apiClient.downloadProposalPDF(id);
+      toast.dismiss();
+      if (!blob || blob.size === 0) {
+        toast.error('Could not generate PDF for printing');
+        return;
+      }
+      const url = window.URL.createObjectURL(blob);
+      const printWindow = window.open(url, '_blank');
+      if (printWindow) {
+        printWindow.addEventListener('load', () => {
+          printWindow.focus();
+          printWindow.print();
+        });
+        toast.success('PDF opened — use your browser print dialog');
+      } else {
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `proposal-${proposal?.reference || id}.pdf`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        toast.success('PDF downloaded — open it to print');
+      }
+      setTimeout(() => window.URL.revokeObjectURL(url), 60_000);
+    } catch {
+      toast.dismiss();
+      toast.error('Could not prepare PDF for printing');
+    }
   };
 
   const loadProposal = async () => {
@@ -246,12 +344,25 @@ const ProposalDetail = () => {
     htmlBody?: string;
   }) => {
     try {
+      toast.loading('Sending proposal…');
       await apiClient.sendProposal(id!, approved);
+      toast.dismiss();
       toast.success('Proposal sent successfully');
       loadProposal();
       loadAuditTrail();
-    } catch (error) {
-      // Error handled by API interceptor
+    } catch (error: any) {
+      toast.dismiss();
+      const message =
+        error?.response?.data?.error?.message ||
+        error?.response?.data?.message ||
+        error?.message;
+      if (message?.toLowerCase().includes('email')) {
+        toast.error(
+          message.includes('transport') || message.includes('configured')
+            ? 'Email is not configured on the server — contact your administrator'
+            : message
+        );
+      }
     }
   };
 
@@ -259,14 +370,150 @@ const ProposalDetail = () => {
     setShowSendEmailPreview(true);
   };
 
-  const handleAccept = async () => {
+  const handleSubmitForApproval = async () => {
+    if (!id) return;
     try {
-      await apiClient.acceptProposal(id!);
-      toast.success('Proposal marked as accepted');
+      setApprovalActionLoading(true);
+      await apiClient.submitProposalForApproval(id);
+      toast.success('Submitted for partner approval');
       loadProposal();
       loadAuditTrail();
-    } catch (error) {
-      // Error handled by API interceptor
+    } catch {
+      // handled by API interceptor
+    } finally {
+      setApprovalActionLoading(false);
+    }
+  };
+
+  const handleApproveProposal = async () => {
+    if (!id) return;
+    try {
+      setApprovalActionLoading(true);
+      await apiClient.approveProposal(id);
+      toast.success('Proposal approved');
+      loadProposal();
+      loadAuditTrail();
+    } catch {
+      // handled by API interceptor
+    } finally {
+      setApprovalActionLoading(false);
+    }
+  };
+
+  const handleRejectProposal = async () => {
+    if (!id || !rejectionReason.trim()) {
+      toast.error('Please provide a rejection reason');
+      return;
+    }
+    try {
+      setApprovalActionLoading(true);
+      await apiClient.rejectProposal(id, { rejectionReason: rejectionReason.trim() });
+      toast.success('Proposal rejected');
+      setShowRejectModal(false);
+      setRejectionReason('');
+      loadProposal();
+      loadAuditTrail();
+    } catch {
+      // handled by API interceptor
+    } finally {
+      setApprovalActionLoading(false);
+    }
+  };
+
+  const handleWithdrawProposal = async () => {
+    if (!id) return;
+    try {
+      setWithdrawLoading(true);
+      await apiClient.withdrawProposal(id);
+      toast.success('Proposal rescinded — client can no longer sign. Edit and resend when ready.');
+      setShowWithdrawModal(false);
+      loadProposal();
+      loadAuditTrail();
+    } catch {
+      // handled by API interceptor
+    } finally {
+      setWithdrawLoading(false);
+    }
+  };
+
+  const handleDeleteProposal = async () => {
+    if (!id) return;
+    try {
+      setDeleteLoading(true);
+      await apiClient.deleteProposal(id);
+      toast.success('Quotation deleted');
+      setShowDeleteModal(false);
+      navigate('/proposals');
+    } catch {
+      // handled by API interceptor
+    } finally {
+      setDeleteLoading(false);
+    }
+  };
+
+  const handleMarkProposalLost = async () => {
+    if (!id) return;
+    try {
+      setMarkLostLoading(true);
+      await apiClient.markProposalLost(id, {
+        declineReason: markLostReason,
+        reason: markLostNotes.trim() || undefined,
+      });
+      toast.success('Quotation marked as lost');
+      setShowMarkLostModal(false);
+      setMarkLostNotes('');
+      loadProposal();
+      loadAuditTrail();
+    } catch {
+      // handled by API interceptor
+    } finally {
+      setMarkLostLoading(false);
+    }
+  };
+
+  const downloadSignatureCertificate = async (signatureId: string) => {
+    if (!id || !proposal) return;
+    try {
+      const blob = await apiClient.downloadSignatureCertificate(id, signatureId);
+      if (!blob || blob.size === 0) {
+        toast.error('Could not download certificate (empty file).');
+        return;
+      }
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `signature-certificate-${proposal.reference}-${signatureId.slice(0, 8)}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      setTimeout(() => window.URL.revokeObjectURL(url), 5000);
+      toast.success('Certificate PDF download started');
+    } catch {
+      toast.error('Could not download signature certificate.');
+    }
+  };
+
+  const downloadSignatureAuditJson = async (signatureId: string) => {
+    if (!id || !proposal) return;
+    try {
+      const response = (await apiClient.getSignatureAudit(id, signatureId)) as any;
+      if (!response?.success || !response?.data) {
+        toast.error('Could not download audit record.');
+        return;
+      }
+      const json = JSON.stringify(response.data, null, 2);
+      const blob = new Blob([json], { type: 'application/json' });
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `signature-audit-${proposal.reference}-${signatureId.slice(0, 8)}.json`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      setTimeout(() => window.URL.revokeObjectURL(url), 5000);
+      toast.success('Audit JSON download started');
+    } catch {
+      toast.error('Could not download audit record.');
     }
   };
 
@@ -306,7 +553,7 @@ const ProposalDetail = () => {
     if (!id || !proposal) return;
     try {
       if (proposal.shareToken) {
-        const link = `${window.location.origin}/proposals/view/${proposal.shareToken}`;
+        const link = `${window.location.origin}${appPath(`/proposals/view/${proposal.shareToken}`)}`;
         const ok = await copyTextToClipboard(link);
         if (ok) {
           toast.success('Client link copied to clipboard');
@@ -497,7 +744,30 @@ const ProposalDetail = () => {
 
   const status = statusConfig[proposal.status] || statusConfig.DRAFT;
   const StatusIcon = status.icon;
-  const showClientLinkButton = !['DECLINED', 'EXPIRED'].includes(proposal.status);
+  const approvalStatus = proposal.approvalStatus || 'NONE';
+  const approvalStatusUi =
+    approvalStatusConfig[approvalStatus] || approvalStatusConfig.NONE;
+  const userRole = user?.role;
+  const isApprover = userRole ? APPROVER_ROLES.has(userRole) : false;
+  const canOverrideApproval = userRole ? PARTNER_OVERRIDE_ROLES.has(userRole) : false;
+  const canSubmitForApproval =
+    proposal.status === 'DRAFT' &&
+    ['NONE', 'REJECTED'].includes(approvalStatus) &&
+    (userRole ? SUBMITTER_ROLES.has(userRole) || isApprover : false);
+  const canSendDraft =
+    proposal.status === 'DRAFT' && (canOverrideApproval || approvalStatus === 'APPROVED');
+  const showClientLinkButton = !['DECLINED', 'EXPIRED', 'WITHDRAWN', 'ARCHIVED', 'LOST'].includes(
+    proposal.status
+  );
+  const canWithdrawProposal =
+    proposal.status === 'SENT' || proposal.status === 'VIEWED';
+  const canMarkAsLost = ['DRAFT', 'SENT', 'VIEWED', 'EXPIRED', 'WITHDRAWN'].includes(
+    proposal.status
+  );
+  const canDeleteProposal =
+    proposal.status !== 'ACCEPTED' && proposal.status !== 'ARCHIVED';
+  const deleteManageRoles = new Set(['ADMIN', 'PARTNER', 'MD', 'MANAGER']);
+  const canManageProposal = userRole ? deleteManageRoles.has(userRole) : false;
   const clientOpenCount = typeof proposal.viewCount === 'number' ? proposal.viewCount : 0;
   /** Backend rejects updates once the proposal is signed (ACCEPTED). */
   const canEditCoverLetter = proposal.status !== 'ACCEPTED';
@@ -522,6 +792,61 @@ const ProposalDetail = () => {
 
   return (
     <div className="space-y-6 animate-fade-in">
+      {proposal.status === 'WITHDRAWN' && (
+        <div className="rounded-xl border border-amber-200 dark:border-amber-800 bg-amber-50/80 dark:bg-amber-950/30 px-4 py-3 flex flex-wrap items-center justify-between gap-3">
+          <div className="flex items-start gap-2 text-sm text-amber-900 dark:text-amber-100">
+            <ArchiveBoxIcon className="h-5 w-5 shrink-0 mt-0.5" />
+            <span>
+              This quotation was rescinded — your client cannot sign it. Edit the proposal, then send
+              again when you are ready.
+            </span>
+          </div>
+          {canEditCoverLetter && (
+            <Link to={`/proposals/${id}/edit`} className="btn-secondary text-sm shrink-0">
+              <PencilIcon className="h-4 w-4 mr-1.5" />
+              Edit proposal
+            </Link>
+          )}
+        </div>
+      )}
+
+      {proposal.status === 'ARCHIVED' && (
+        <div className="rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50/80 dark:bg-slate-900/40 px-4 py-3 flex flex-wrap items-center justify-between gap-3">
+          <div className="flex items-start gap-2 text-sm text-slate-700 dark:text-slate-200">
+            <ArchiveBoxIcon className="h-5 w-5 shrink-0 mt-0.5" />
+            <span>
+              This signed proposal was archived when a renewal quotation was created.
+              {proposal.supersededById && (
+                <>
+                  {' '}
+                  <Link
+                    to={`/proposals/${proposal.supersededById}`}
+                    className="text-primary-600 dark:text-primary-400 hover:underline font-medium"
+                  >
+                    View renewal quotation
+                  </Link>
+                </>
+              )}
+            </span>
+          </div>
+        </div>
+      )}
+
+      {proposal.status === 'LOST' && (
+        <div className="rounded-xl border border-red-200 dark:border-red-800 bg-red-50/80 dark:bg-red-950/30 px-4 py-3">
+          <div className="flex items-start gap-2 text-sm text-red-900 dark:text-red-100">
+            <XMarkIcon className="h-5 w-5 shrink-0 mt-0.5" />
+            <span>
+              Marked as lost
+              {proposal.declineReason && (
+                <> — {DECLINE_REASON_LABELS[proposal.declineReason as DeclineReason] || proposal.declineReason}</>
+              )}
+              {proposal.declineReasonText ? `: ${proposal.declineReasonText}` : ''}.
+            </span>
+          </div>
+        </div>
+      )}
+
       {/* Back button */}
       <Link
         to="/proposals"
@@ -542,10 +867,39 @@ const ProposalDetail = () => {
               <StatusIcon className="h-3 w-3 mr-1" />
               {status.label}
             </span>
+            {proposal.status === 'DRAFT' && approvalStatus !== 'NONE' && (
+              <span
+                className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${approvalStatusUi.bg} ${approvalStatusUi.color}`}
+              >
+                <ShieldCheckIcon className="h-3 w-3 mr-1" />
+                {approvalStatusUi.label}
+              </span>
+            )}
           </div>
           <p className="mt-1 text-sm text-slate-600 dark:text-slate-400">
             {proposal.reference} • Created {format(new Date(proposal.createdAt), 'dd MMM yyyy')}
           </p>
+          {approvalStatus === 'PENDING' && proposal.submittedForApprovalAt && (
+            <p className="mt-1 text-xs text-amber-700 dark:text-amber-300">
+              Submitted {formatDistanceToNow(new Date(proposal.submittedForApprovalAt), { addSuffix: true })}
+              {proposal.createdBy
+                ? ` by ${proposal.createdBy.firstName} ${proposal.createdBy.lastName}`
+                : ''}
+            </p>
+          )}
+          {approvalStatus === 'REJECTED' && proposal.rejectionReason && (
+            <p className="mt-1 text-xs text-red-700 dark:text-red-300">
+              Rejection reason: {proposal.rejectionReason}
+            </p>
+          )}
+          {approvalStatus === 'APPROVED' && proposal.approvedBy && (
+            <p className="mt-1 text-xs text-emerald-700 dark:text-emerald-300">
+              Approved by {proposal.approvedBy.firstName} {proposal.approvedBy.lastName}
+              {proposal.approvedAt
+                ? ` on ${format(new Date(proposal.approvedAt), 'dd MMM yyyy')}`
+                : ''}
+            </p>
+          )}
         </div>
 
         <div className="flex flex-wrap gap-2">
@@ -580,7 +934,42 @@ const ProposalDetail = () => {
             </button>
           )}
 
-          {proposal.status === 'DRAFT' && (
+          {canSubmitForApproval && (
+            <button
+              type="button"
+              onClick={handleSubmitForApproval}
+              disabled={approvalActionLoading}
+              className="btn-secondary"
+            >
+              <ShieldCheckIcon className="h-4 w-4 mr-2" />
+              Submit for partner approval
+            </button>
+          )}
+
+          {proposal.status === 'DRAFT' && approvalStatus === 'PENDING' && isApprover && (
+            <>
+              <button
+                type="button"
+                onClick={handleApproveProposal}
+                disabled={approvalActionLoading}
+                className="btn-primary bg-emerald-600 hover:bg-emerald-700"
+              >
+                <CheckIcon className="h-4 w-4 mr-2" />
+                Approve
+              </button>
+              <button
+                type="button"
+                onClick={() => setShowRejectModal(true)}
+                disabled={approvalActionLoading}
+                className="btn-secondary text-red-700 border-red-200 hover:bg-red-50"
+              >
+                <XMarkIcon className="h-4 w-4 mr-2" />
+                Reject
+              </button>
+            </>
+          )}
+
+          {canSendDraft && (
             <button
               onClick={openSendFlow}
               className="btn-primary"
@@ -591,14 +980,148 @@ const ProposalDetail = () => {
             </button>
           )}
 
-          {proposal.status === 'SENT' && (
-            <button onClick={handleAccept} className="btn-primary bg-green-600 hover:bg-green-700">
+          {canWithdrawProposal && canManageProposal && (
+            <button
+              type="button"
+              onClick={() => setShowWithdrawModal(true)}
+              disabled={withdrawLoading}
+              className="btn-secondary text-amber-800 border-amber-200 hover:bg-amber-50 dark:text-amber-200 dark:border-amber-800 dark:hover:bg-amber-950/30"
+            >
+              <NoSymbolIcon className="h-4 w-4 mr-2" />
+              Rescind proposal
+            </button>
+          )}
+
+          {canMarkAsLost && canManageProposal && (
+            <button
+              type="button"
+              onClick={() => setShowMarkLostModal(true)}
+              disabled={markLostLoading}
+              className="btn-secondary text-red-700 border-red-200 hover:bg-red-50 dark:text-red-300 dark:border-red-800 dark:hover:bg-red-950/30"
+            >
+              <XMarkIcon className="h-4 w-4 mr-2" />
+              Mark as lost
+            </button>
+          )}
+
+          {canDeleteProposal && canManageProposal && (
+            <button
+              type="button"
+              onClick={() => setShowDeleteModal(true)}
+              disabled={deleteLoading}
+              className="btn-secondary text-red-700 border-red-200 hover:bg-red-50 dark:text-red-300 dark:border-red-800 dark:hover:bg-red-950/30"
+            >
+              <TrashIcon className="h-4 w-4 mr-2" />
+              Delete
+            </button>
+          )}
+
+          {canWithdrawProposal && (
+            <button
+              type="button"
+              onClick={() => {
+                document
+                  .getElementById('electronic-signature-section')
+                  ?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                toast(
+                  'A forensic audit trail requires an electronic signature. Use the signature pad below.',
+                  { icon: '✍️', duration: 5000 }
+                );
+              }}
+              className="btn-primary bg-green-600 hover:bg-green-700"
+            >
               <CheckIcon className="h-4 w-4 mr-2" />
-              Mark Accepted
+              Accept with signature
             </button>
           )}
         </div>
       </div>
+
+      {/* Payment collection status (post-sign mandate) */}
+      {proposal.status === 'ACCEPTED' && (
+        <div
+          data-testid="payment-collection-status"
+          className="glass-tile p-5 print:hidden"
+        >
+          <div className="flex items-start justify-between gap-4">
+            <div className="flex items-start gap-3">
+              <div className="rounded-lg bg-sky-100 dark:bg-sky-900/40 p-2">
+                <CreditCardIcon className="h-5 w-5 text-sky-600 dark:text-sky-300" />
+              </div>
+              <div>
+                <h3 className="text-sm font-semibold text-slate-900 dark:text-white">
+                  Payment collection
+                </h3>
+                <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                  Direct Debit / card mandate status after sign
+                </p>
+              </div>
+            </div>
+            <span
+              className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                paymentStatusConfig[proposal.paymentStatus || 'NOT_STARTED']?.bg || 'bg-slate-100'
+              } ${
+                paymentStatusConfig[proposal.paymentStatus || 'NOT_STARTED']?.color ||
+                'text-slate-700'
+              }`}
+            >
+              {paymentStatusConfig[proposal.paymentStatus || 'NOT_STARTED']?.label ||
+                'Not started'}
+            </span>
+          </div>
+
+          <dl className="mt-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 text-sm">
+            {proposal.paymentProvider && (
+              <div>
+                <dt className="text-slate-500 dark:text-slate-400">Provider</dt>
+                <dd className="font-medium text-slate-900 dark:text-white capitalize">
+                  {proposal.paymentProvider === 'gocardless_stub'
+                    ? 'GoCardless (demo)'
+                    : proposal.paymentProvider}
+                </dd>
+              </div>
+            )}
+            {proposal.paymentMandateId && (
+              <div>
+                <dt className="text-slate-500 dark:text-slate-400">Mandate ID</dt>
+                <dd className="font-mono text-xs text-slate-800 dark:text-slate-200 truncate">
+                  {proposal.paymentMandateId}
+                </dd>
+              </div>
+            )}
+            {proposal.paymentMethod && (
+              <div>
+                <dt className="text-slate-500 dark:text-slate-400">Method</dt>
+                <dd className="font-medium text-slate-900 dark:text-white capitalize">
+                  {String(proposal.paymentMethod).replace(/_/g, ' ')}
+                </dd>
+              </div>
+            )}
+            {proposal.paidAt && (
+              <div>
+                <dt className="text-slate-500 dark:text-slate-400">Activated</dt>
+                <dd className="font-medium text-slate-900 dark:text-white">
+                  {format(new Date(proposal.paidAt), 'dd MMM yyyy, HH:mm')}
+                </dd>
+              </div>
+            )}
+          </dl>
+
+          {proposal.paymentStatus === 'PENDING' && proposal.paymentUrl && (
+            <p className="mt-3 text-xs text-amber-700 dark:text-amber-300 flex items-center gap-1.5">
+              <BanknotesIcon className="h-4 w-4" />
+              Awaiting client to complete payment setup via the public proposal link.
+            </p>
+          )}
+
+          {!proposal.paymentStatus && proposal.total > 0 && (
+            <p className="mt-3 text-xs text-slate-500 dark:text-slate-400">
+              No mandate yet. Enable &quot;Collect payment at sign&quot; in Settings → Billing to
+              prompt clients after acceptance.
+            </p>
+          )}
+        </div>
+      )}
 
       {/* Client engagement at a glance */}
       {proposal.status !== 'DRAFT' && (
@@ -835,9 +1358,9 @@ const ProposalDetail = () => {
               <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-100">
                 Terms & Conditions
               </h2>
-              <button onClick={handlePrint} className="btn-secondary text-sm print:hidden">
+              <button onClick={() => void handlePrint()} className="btn-secondary text-sm print:hidden">
                 <PrinterIcon className="h-4 w-4 mr-2" />
-                Print T&Cs
+                Print proposal PDF
               </button>
             </div>
             <div className="prose prose-sm dark:prose-invert max-w-none text-slate-800 dark:text-slate-200 whitespace-pre-wrap text-sm max-h-96 overflow-y-auto print:max-h-none print:overflow-visible bg-white/40 dark:bg-slate-900/50 border border-white/20 dark:border-slate-600/50 p-4 rounded">
@@ -847,7 +1370,7 @@ const ProposalDetail = () => {
 
           {/* Signature Section */}
           {(proposal.status === 'SENT' || proposal.status === 'VIEWED') && (
-            <div className="glass-tile p-6 print:hidden">
+            <div id="electronic-signature-section" className="glass-tile p-6 print:hidden">
               <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-100 mb-4">
                 Electronic Signature
               </h2>
@@ -1011,50 +1534,105 @@ const ProposalDetail = () => {
               <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-100 mb-4">
                 Signature audit
               </h2>
-              {proposal.signatures.map((sig: any) => (
-                <dl key={sig.id} className="text-sm space-y-2 text-slate-800 dark:text-slate-200">
-                  <div className="flex justify-between gap-4">
-                    <dt className="text-slate-500 dark:text-slate-400">Type</dt>
-                    <dd>{sig.signatureType || 'SIMPLE_ELECTRONIC'}</dd>
+              <div className="space-y-6">
+                {proposal.signatures.map((sig: any) => (
+                  <div
+                    key={sig.id}
+                    className="rounded-2xl border border-slate-200/80 dark:border-slate-700/80 p-4 space-y-3"
+                  >
+                    <dl className="text-sm space-y-2 text-slate-800 dark:text-slate-200">
+                      <div className="flex justify-between gap-4">
+                        <dt className="text-slate-500 dark:text-slate-400">Type</dt>
+                        <dd>{sig.signatureType || 'SIMPLE_ELECTRONIC'}</dd>
+                      </div>
+                      {sig.agreementVersion && (
+                        <div className="flex justify-between gap-4">
+                          <dt className="text-slate-500 dark:text-slate-400">Agreement version</dt>
+                          <dd className="font-mono text-xs">{sig.agreementVersion}</dd>
+                        </div>
+                      )}
+                      {sig.signerEmail && (
+                        <div className="flex justify-between gap-4">
+                          <dt className="text-slate-500 dark:text-slate-400">Email</dt>
+                          <dd className="text-right break-all">{sig.signerEmail}</dd>
+                        </div>
+                      )}
+                      <div className="flex justify-between gap-4">
+                        <dt className="text-slate-500 dark:text-slate-400">Signed at (UTC)</dt>
+                        <dd>{format(new Date(sig.signedAt), 'dd MMM yyyy HH:mm:ss')}</dd>
+                      </div>
+                      {sig.ipAddress && (
+                        <div className="flex justify-between gap-4">
+                          <dt className="text-slate-500 dark:text-slate-400">IP address</dt>
+                          <dd className="font-mono text-xs">{sig.ipAddress}</dd>
+                        </div>
+                      )}
+                      {sig.geoLocation && (
+                        <div className="flex justify-between gap-4">
+                          <dt className="text-slate-500 dark:text-slate-400">Location</dt>
+                          <dd>{sig.geoLocation}</dd>
+                        </div>
+                      )}
+                      {sig.userAgent && (
+                        <div>
+                          <dt className="text-slate-500 dark:text-slate-400 mb-1">User agent</dt>
+                          <dd className="font-mono text-xs break-all bg-slate-100 dark:bg-slate-900/50 p-2 rounded">
+                            {sig.userAgent}
+                          </dd>
+                        </div>
+                      )}
+                      {sig.deviceInfo && (
+                        <div>
+                          <dt className="text-slate-500 dark:text-slate-400 mb-1">Device info</dt>
+                          <dd className="font-mono text-xs break-all bg-slate-100 dark:bg-slate-900/50 p-2 rounded">
+                            {sig.deviceInfo}
+                          </dd>
+                        </div>
+                      )}
+                      {sig.documentHash && (
+                        <div>
+                          <dt className="text-slate-500 dark:text-slate-400 mb-1">Document hash</dt>
+                          <dd className="font-mono text-xs break-all bg-slate-100 dark:bg-slate-900/50 p-2 rounded">
+                            {sig.documentHash}
+                          </dd>
+                        </div>
+                      )}
+                      {sig.termsHash && (
+                        <div>
+                          <dt className="text-slate-500 dark:text-slate-400 mb-1">Terms hash</dt>
+                          <dd className="font-mono text-xs break-all bg-slate-100 dark:bg-slate-900/50 p-2 rounded">
+                            {sig.termsHash}
+                          </dd>
+                        </div>
+                      )}
+                      {sig.consentText && (
+                        <div>
+                          <dt className="text-slate-500 dark:text-slate-400 mb-1">Consent</dt>
+                          <dd className="text-xs italic">{sig.consentText}</dd>
+                        </div>
+                      )}
+                    </dl>
+                    <div className="flex flex-wrap gap-2 print:hidden">
+                      <button
+                        type="button"
+                        onClick={() => downloadSignatureCertificate(sig.id)}
+                        className="btn-secondary text-xs flex items-center gap-1.5"
+                      >
+                        <ArrowDownTrayIcon className="h-3.5 w-3.5" />
+                        Download certificate PDF
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => downloadSignatureAuditJson(sig.id)}
+                        className="btn-secondary text-xs flex items-center gap-1.5"
+                      >
+                        <ArrowDownTrayIcon className="h-3.5 w-3.5" />
+                        Download audit JSON
+                      </button>
+                    </div>
                   </div>
-                  {sig.signerEmail && (
-                    <div className="flex justify-between gap-4">
-                      <dt className="text-slate-500 dark:text-slate-400">Email</dt>
-                      <dd className="text-right break-all">{sig.signerEmail}</dd>
-                    </div>
-                  )}
-                  <div className="flex justify-between gap-4">
-                    <dt className="text-slate-500 dark:text-slate-400">Signed at (UTC)</dt>
-                    <dd>{format(new Date(sig.signedAt), 'dd MMM yyyy HH:mm:ss')}</dd>
-                  </div>
-                  {sig.ipAddress && (
-                    <div className="flex justify-between gap-4">
-                      <dt className="text-slate-500 dark:text-slate-400">IP address</dt>
-                      <dd className="font-mono text-xs">{sig.ipAddress}</dd>
-                    </div>
-                  )}
-                  {sig.geoLocation && (
-                    <div className="flex justify-between gap-4">
-                      <dt className="text-slate-500 dark:text-slate-400">Location</dt>
-                      <dd>{sig.geoLocation}</dd>
-                    </div>
-                  )}
-                  {sig.documentHash && (
-                    <div>
-                      <dt className="text-slate-500 dark:text-slate-400 mb-1">Document hash</dt>
-                      <dd className="font-mono text-xs break-all bg-slate-100 dark:bg-slate-900/50 p-2 rounded">
-                        {sig.documentHash}
-                      </dd>
-                    </div>
-                  )}
-                  {sig.consentText && (
-                    <div>
-                      <dt className="text-slate-500 dark:text-slate-400 mb-1">Consent</dt>
-                      <dd className="text-xs italic">{sig.consentText}</dd>
-                    </div>
-                  )}
-                </dl>
-              ))}
+                ))}
+              </div>
             </div>
           )}
 
@@ -1149,6 +1727,10 @@ const ProposalDetail = () => {
                     icon = <EnvelopeIcon className="h-4 w-4 text-blue-600" />;
                     label = 'Proposal sent to client';
                     highlight = 'text-blue-700 dark:text-blue-300';
+                  } else if (action.includes('WITHDRAW')) {
+                    icon = <NoSymbolIcon className="h-4 w-4 text-amber-600" />;
+                    label = 'Proposal rescinded by practice';
+                    highlight = 'text-amber-700 dark:text-amber-300';
                   }
 
                   return (
@@ -1311,16 +1893,6 @@ const ProposalDetail = () => {
                   </div>
                 )}
 
-                {pricingBreakdown.monthlyIncVat > 0 && (
-                  <div className="flex justify-between items-baseline pt-2 border-t border-white/10 dark:border-slate-600/30">
-                    <span className="font-semibold text-slate-900 dark:text-white">
-                      Typical monthly cash flow
-                    </span>
-                    <span className="font-bold text-2xl text-slate-900 dark:text-white tabular-nums tracking-tight">
-                      {formatCurrency(pricingBreakdown.monthlyIncVat)}
-                    </span>
-                  </div>
-                )}
               </div>
               )}
 
@@ -1329,7 +1901,7 @@ const ProposalDetail = () => {
                   ? 'First payment includes one-time fees plus your first month of recurring services.'
                   : pricingBreakdown.oneOffIncVat > 0
                     ? 'One-time fees are payable as agreed in your engagement letter.'
-                    : 'Monthly figure averages recurring fees across the year where annual or quarterly lines apply.'}
+                    : 'Fees are shown at their actual billing frequency — monthly, quarterly, or annual.'}
               </p>
             </div>
           </div>
@@ -1432,6 +2004,161 @@ const ProposalDetail = () => {
         proposalId={id}
         onSend={handleSend}
       />
+
+      {showDeleteModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+          <div className="w-full max-w-md rounded-xl bg-white dark:bg-slate-900 p-6 shadow-xl">
+            <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-100">
+              Delete quotation
+            </h3>
+            <p className="mt-2 text-sm text-slate-600 dark:text-slate-400">
+              Permanently remove &quot;{proposal.title}&quot;? This cannot be undone. If the client
+              still has a live link, rescind first instead.
+            </p>
+            <div className="mt-4 flex justify-end gap-2">
+              <button type="button" onClick={() => setShowDeleteModal(false)} className="btn-secondary">
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleDeleteProposal}
+                disabled={deleteLoading}
+                className="btn-primary bg-red-600 hover:bg-red-700"
+              >
+                {deleteLoading ? 'Deleting…' : 'Delete quotation'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showWithdrawModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+          <div className="w-full max-w-md rounded-xl bg-white dark:bg-slate-900 p-6 shadow-xl">
+            <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-100">
+              Rescind proposal
+            </h3>
+            <p className="mt-2 text-sm text-slate-600 dark:text-slate-400">
+              This rescinds the quotation so your client cannot sign it. Their share link will stop
+              working immediately. You can edit and resend when ready.
+            </p>
+            <div className="mt-4 flex justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => setShowWithdrawModal(false)}
+                className="btn-secondary"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleWithdrawProposal}
+                disabled={withdrawLoading}
+                className="btn-primary bg-amber-600 hover:bg-amber-700"
+              >
+                {withdrawLoading ? 'Rescinding…' : 'Rescind proposal'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showMarkLostModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+          <div className="w-full max-w-md rounded-xl bg-white dark:bg-slate-900 p-6 shadow-xl">
+            <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-100">
+              Mark quotation as lost
+            </h3>
+            <p className="mt-2 text-sm text-slate-600 dark:text-slate-400">
+              Record why this quotation did not convert. This feeds your win/loss analytics and
+              revokes any live client link.
+            </p>
+            <label className="block text-sm font-medium text-slate-700 dark:text-slate-200 mt-4 mb-1">
+              Primary reason
+            </label>
+            <select
+              value={markLostReason}
+              onChange={(e) => setMarkLostReason(e.target.value as DeclineReason)}
+              className="input-field w-full"
+            >
+              {DECLINE_REASONS.map((reason) => (
+                <option key={reason} value={reason}>
+                  {DECLINE_REASON_LABELS[reason]}
+                </option>
+              ))}
+            </select>
+            <label className="block text-sm font-medium text-slate-700 dark:text-slate-200 mt-3 mb-1">
+              Notes (optional)
+            </label>
+            <textarea
+              value={markLostNotes}
+              onChange={(e) => setMarkLostNotes(e.target.value)}
+              className="input-field w-full min-h-[80px]"
+              placeholder="Any extra context for your records"
+              maxLength={500}
+            />
+            <div className="mt-4 flex justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => {
+                  setShowMarkLostModal(false);
+                  setMarkLostNotes('');
+                }}
+                className="btn-secondary"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleMarkProposalLost}
+                disabled={markLostLoading}
+                className="btn-primary bg-red-600 hover:bg-red-700"
+              >
+                {markLostLoading ? 'Saving…' : 'Mark as lost'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showRejectModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+          <div className="w-full max-w-md rounded-xl bg-white dark:bg-slate-900 p-6 shadow-xl">
+            <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-100">
+              Reject proposal
+            </h3>
+            <p className="mt-2 text-sm text-slate-600 dark:text-slate-400">
+              Provide a reason so the drafter knows what to revise before resubmitting.
+            </p>
+            <textarea
+              value={rejectionReason}
+              onChange={(e) => setRejectionReason(e.target.value)}
+              className="input-field w-full mt-4 min-h-[120px]"
+              placeholder="Rejection reason (required)"
+            />
+            <div className="mt-4 flex justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => {
+                  setShowRejectModal(false);
+                  setRejectionReason('');
+                }}
+                className="btn-secondary"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleRejectProposal}
+                disabled={approvalActionLoading || !rejectionReason.trim()}
+                className="btn-primary bg-red-600 hover:bg-red-700"
+              >
+                Reject proposal
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

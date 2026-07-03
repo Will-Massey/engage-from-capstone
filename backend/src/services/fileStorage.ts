@@ -19,6 +19,16 @@ function resolveUploadsDir(): string {
 
 const UPLOADS_DIR = resolveUploadsDir();
 const SIGNATURES_DIR = path.join(UPLOADS_DIR, 'signatures');
+const AML_DOCUMENTS_DIR = path.join(UPLOADS_DIR, 'aml-documents');
+
+const AML_ALLOWED_MIME_TYPES = new Set([
+  'image/jpeg',
+  'image/png',
+  'image/webp',
+  'application/pdf',
+]);
+
+const AML_MAX_FILE_BYTES = 10 * 1024 * 1024; // 10 MB
 
 /**
  * Ensure directory exists
@@ -109,9 +119,85 @@ export function getFullPath(relativePath: string): string {
   return path.join(UPLOADS_DIR, relativePath);
 }
 
+export interface SavedAmlDocumentMeta {
+  relativePath: string;
+  fileName: string;
+  mimeType: string;
+  sizeBytes: number;
+  uploadedAt: string;
+}
+
+function parseDataUrl(dataUrl: string): { mimeType: string; base64: string } {
+  const match = dataUrl.match(/^data:([^;]+);base64,(.+)$/);
+  if (match) {
+    return { mimeType: match[1], base64: match[2] };
+  }
+  return { mimeType: 'application/octet-stream', base64: dataUrl };
+}
+
+function extensionForMime(mimeType: string): string {
+  switch (mimeType) {
+    case 'image/jpeg':
+      return '.jpg';
+    case 'image/png':
+      return '.png';
+    case 'image/webp':
+      return '.webp';
+    case 'application/pdf':
+      return '.pdf';
+    default:
+      return '.bin';
+  }
+}
+
+/**
+ * Save AML onboarding document (photo ID or proof of address).
+ */
+export async function saveAmlDocument(
+  tenantId: string,
+  clientId: string,
+  documentType: 'photo_id' | 'proof_of_address',
+  dataUrl: string,
+  originalFileName: string
+): Promise<SavedAmlDocumentMeta> {
+  const { mimeType, base64 } = parseDataUrl(dataUrl);
+
+  if (!AML_ALLOWED_MIME_TYPES.has(mimeType)) {
+    throw new Error('Unsupported file type. Please upload a JPEG, PNG, WebP, or PDF.');
+  }
+
+  const buffer = Buffer.from(base64, 'base64');
+  if (buffer.length === 0) {
+    throw new Error('Uploaded file is empty');
+  }
+  if (buffer.length > AML_MAX_FILE_BYTES) {
+    throw new Error('File exceeds the 10 MB limit');
+  }
+
+  const tenantDir = path.join(AML_DOCUMENTS_DIR, tenantId, clientId);
+  await ensureDir(tenantDir);
+
+  const safeBase = originalFileName.replace(/[^\w.-]+/g, '_').slice(0, 80) || documentType;
+  const filename = `${documentType}_${Date.now()}_${safeBase}${extensionForMime(mimeType)}`;
+  const filePath = path.join(tenantDir, filename);
+  await fs.writeFile(filePath, buffer);
+
+  const relativePath = path.join('aml-documents', tenantId, clientId, filename);
+  logger.info(`AML document saved: ${relativePath}`);
+
+  return {
+    relativePath,
+    fileName: originalFileName,
+    mimeType,
+    sizeBytes: buffer.length,
+    uploadedAt: new Date().toISOString(),
+  };
+}
+
 export default {
   saveSignaturePng,
   readSignature,
   deleteSignature,
   getFullPath,
+  saveAmlDocument,
 };

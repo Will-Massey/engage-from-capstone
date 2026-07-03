@@ -25,10 +25,12 @@
 
 #### Payment Processing (Choose one or both)
 
-**Option 1: Adfin (Recommended for UK accountants)**
+**Option 1: Revolut (Client proposal payments — recommended)**
 
-- [ ] `ADFIN_API_KEY` — Get from https://adfin.io
-- [ ] `ADFIN_WEBHOOK_SECRET` — From Adfin dashboard
+- [ ] `REVOLUT_API_SECRET_KEY` — Merchant API secret
+- [ ] `REVOLUT_API_PUBLIC_KEY` — Checkout public key
+- [ ] `REVOLUT_WEBHOOK_SECRET` — Webhook signing secret
+- [ ] `ENGAGE_PLATFORM_FEE_BPS` — Platform fee in basis points (default 250 = 2.5%)
 
 **Option 2: Stripe (For subscription billing)**
 
@@ -80,7 +82,7 @@
 
 #### Payment Processing
 
-- [ ] Adfin payment creation works
+- [ ] Revolut payment checkout works
 - [ ] Payment checkout URL generates correctly
 - [ ] Webhook handling works
 - [ ] Payment status updates correctly
@@ -138,7 +140,7 @@
 ### Emergency Contacts
 
 - Render Support: https://render.com/help
-- Adfin Support: support@adfin.io
+- Revolut Merchant API: https://developer.revolut.com/docs/merchant
 - Companies House API: https://forum.aws.chdev.org/
 
 ---
@@ -150,7 +152,7 @@
 3. Add service templates (or use defaults)
 4. Add first client
 5. Create first proposal
-6. Configure payment processing (Adfin/Stripe)
+6. Configure payment processing (Revolut/Stripe)
 7. Send first proposal to client
 
 ---

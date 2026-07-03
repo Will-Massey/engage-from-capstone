@@ -106,7 +106,7 @@ async function sendWithCustom(
   config: EmailConfig,
   message: TenantMailMessage,
   replyTo: string
-): Promise<{ success: boolean; messageId?: string; error?: string }> {
+): Promise<{ success: boolean; messageId?: string; error?: string; bounced?: string[] }> {
   const service = await getCustomEmailService(config);
   const payload: EmailMessage = {
     to: message.to,
@@ -126,12 +126,19 @@ async function sendWithCustom(
   return result;
 }
 
+function buildPlatformCustomArgs(
+  base: Record<string, string>,
+  proposalId?: string
+): Record<string, string> {
+  return proposalId ? { ...base, proposalId } : base;
+}
+
 async function sendWithPlatform(
   tenantName: string,
   message: TenantMailMessage,
   replyTo: string,
   customArgs?: Record<string, string>
-): Promise<{ success: boolean; messageId?: string; error?: string }> {
+): Promise<{ success: boolean; messageId?: string; error?: string; bounced?: string[] }> {
   const platformFrom = getPlatformFromAddress();
   const fromName = tenantName || platformFrom.name;
 
@@ -207,36 +214,58 @@ export async function tenantMailerSend(options: TenantMailSendOptions): Promise<
     },
   });
 
-  let result: { success: boolean; messageId?: string; error?: string };
+  let result: { success: boolean; messageId?: string; error?: string; bounced?: string[] };
   let provider: EmailProvider = useCustom ? mapNodemailerProvider(customConfig!.provider) : 'SENDGRID';
 
   if (useCustom && customConfig) {
     result = await sendWithCustom(customConfig, message, replyTo);
     if (!result.success && isSendGridConfigured()) {
       logger.warn(`Custom email failed for tenant ${tenantId}, falling back to platform email`);
-      result = await sendWithPlatform(ctx.tenantName, message, replyTo, {
-        tenantId,
-        emailLogId: log.id,
-        messageType,
-      });
+      result = await sendWithPlatform(
+        ctx.tenantName,
+        message,
+        replyTo,
+        buildPlatformCustomArgs(
+          {
+            tenantId,
+            emailLogId: log.id,
+            messageType,
+          },
+          relatedIds?.proposalId
+        )
+      );
       provider = 'SENDGRID';
     }
   } else if (isSendGridConfigured()) {
-    result = await sendWithPlatform(ctx.tenantName, message, replyTo, {
-      tenantId,
-      emailLogId: log.id,
-      messageType,
-    });
+    result = await sendWithPlatform(
+      ctx.tenantName,
+      message,
+      replyTo,
+      buildPlatformCustomArgs(
+        {
+          tenantId,
+          emailLogId: log.id,
+          messageType,
+        },
+        relatedIds?.proposalId
+      )
+    );
     provider = 'SENDGRID';
   } else {
     result = { success: false, error: 'No email transport configured (set EMAIL_WORKER_URL or tenant SMTP)' };
   }
 
+  const deliveryStatus: EmailDeliveryStatus = result.bounced?.length
+    ? 'BOUNCED'
+    : result.success
+      ? 'SENT'
+      : 'FAILED';
+
   await prisma.emailLog.update({
     where: { id: log.id },
     data: {
       provider,
-      status: result.success ? 'SENT' : 'FAILED',
+      status: deliveryStatus,
       externalId: result.messageId,
       error: result.error,
       sentAt: result.success ? new Date() : undefined,
@@ -276,41 +305,39 @@ export async function sendProposalEmailForTenant(
   },
   relatedIds?: { proposalId?: string; clientId?: string }
 ): Promise<TenantMailSendResult> {
-  let html: string;
-  let text: string;
-  let subject: string;
+  const { composeProposalSendEmail, prepareProposalPdfAttachment } = await import(
+    '../templates/proposalSendEmailComposer.js'
+  );
 
-  if (params.aiHtml || params.aiText || params.aiSubject) {
-    html = params.aiHtml || params.aiText || '';
-    text = params.aiText || '';
-    subject =
-      params.aiSubject || `Proposal: ${params.proposalTitle} - ${params.proposalReference}`;
-  } else {
-    const { generateProposalEmailTemplate } = await import('../templates/proposalEmail.js');
-    const emailTemplate = generateProposalEmailTemplate({
-      clientName: params.clientName,
-      tenantName: params.tenantName,
-      proposalReference: params.proposalReference,
-      proposalTitle: params.proposalTitle,
-      viewLink: params.viewLink,
-      senderName: params.senderName,
-      senderPosition: params.senderPosition,
-      senderEmail: params.senderEmail,
-      validUntil: params.validUntil,
-      totalAmount: params.totalAmount,
-      serviceCount: params.serviceCount,
-    });
-    html = emailTemplate.html;
-    text = emailTemplate.text;
-    subject = `Proposal: ${params.proposalTitle} - ${params.proposalReference}`;
+  const { html, text, subject } = composeProposalSendEmail({
+    clientName: params.clientName,
+    tenantName: params.tenantName,
+    proposalReference: params.proposalReference,
+    proposalTitle: params.proposalTitle,
+    viewLink: params.viewLink,
+    senderName: params.senderName,
+    senderPosition: params.senderPosition,
+    senderEmail: params.senderEmail,
+    validUntil: params.validUntil,
+    totalAmount: params.totalAmount,
+    serviceCount: params.serviceCount,
+    aiHtml: params.aiHtml,
+    aiText: params.aiText,
+    aiSubject: params.aiSubject,
+  });
+
+  const pdfAttachment = prepareProposalPdfAttachment(params.attachment, params.proposalReference);
+  if (params.attachment && !pdfAttachment) {
+    logger.warn(
+      `Proposal ${params.proposalReference}: PDF attachment omitted (invalid or empty PDF buffer)`
+    );
   }
-
-  const attachments = params.attachment
+  const attachments = pdfAttachment
     ? [
         {
-          filename: `Proposal_${params.proposalReference}.pdf`,
-          content: params.attachment,
-          contentType: 'application/pdf',
+          filename: pdfAttachment.filename,
+          content: pdfAttachment.content,
+          contentType: pdfAttachment.contentType,
         },
       ]
     : undefined;
@@ -345,11 +372,14 @@ export async function sendAcceptanceNotificationForTenant(
     proposalPdf: Buffer;
     signaturePng?: Buffer;
     replyTo?: string;
+    personalizedMessage?: string;
+    subject?: string;
+    proposalUrl?: string;
   },
   relatedIds?: { proposalId?: string; clientId?: string }
 ): Promise<TenantMailSendResult> {
   const { generateAcceptanceNotification } = await import('../templates/acceptanceNotification.js');
-  const { html, text, subject } = generateAcceptanceNotification({
+  const generated = generateAcceptanceNotification({
     clientName: params.clientName,
     proposalTitle: params.proposalTitle,
     proposalReference: params.proposalReference,
@@ -357,7 +387,12 @@ export async function sendAcceptanceNotificationForTenant(
     totalAmount: params.totalAmount,
     signedBy: params.signedBy,
     signedByRole: params.signedByRole,
+    personalizedMessage: params.personalizedMessage,
+    proposalUrl: params.proposalUrl,
   });
+  const html = generated.html;
+  const text = generated.text;
+  const subject = params.subject || generated.subject;
 
   const attachments: TenantMailAttachment[] = [
     {

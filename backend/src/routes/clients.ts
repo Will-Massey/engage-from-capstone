@@ -1,6 +1,11 @@
 import { Router } from 'express';
 import { z } from 'zod';
-import { CompanyType, MTDITSAStatus, ClientLifecycleStage } from '@prisma/client';
+import {
+  CompanyType,
+  MTDITSAStatus,
+  ClientLifecycleStage,
+  ClientRelationship,
+} from '@prisma/client';
 import { prisma } from '../config/database.js';
 import { authenticate, authorize } from '../middleware/auth.js';
 import { asyncHandler, ApiError } from '../middleware/errorHandler.js';
@@ -52,15 +57,59 @@ const createClientSchema = z.object({
   mtditsaIncome: z.number().min(0).optional(),
   notes: z.string().optional(),
   tags: z.array(z.string()).optional(),
+  clientRelationship: z.nativeEnum(ClientRelationship).default(ClientRelationship.NEW),
 });
 
 const updateClientSchema = createClientSchema.partial().extend({
+  contactName: z.string().nullish(),
+  contactPhone: z.string().nullish(),
+  companyNumber: z.string().nullish(),
+  utr: z.string().nullish(),
+  vatNumber: z.string().nullish(),
+  industry: z.string().nullish(),
+  yearEnd: z.string().nullish(),
+  notes: z.string().nullish(),
+  clientRelationship: z.nativeEnum(ClientRelationship).optional(),
   lifecycleStage: z.nativeEnum(ClientLifecycleStage).optional(),
   touchpointsPaused: z.boolean().optional(),
   marketingConsent: z.boolean().optional(),
   nextVatDueDate: z.string().datetime().optional().or(z.null()),
   nextAccountsDueDate: z.string().datetime().optional().or(z.null()),
 });
+
+/** Prisma stores address as a JSON string — normalise object or string input on write */
+function serialiseAddressForDb(address: unknown): string | null | undefined {
+  if (address === undefined) return undefined;
+  if (address === null) return null;
+  if (typeof address === 'string') {
+    const trimmed = address.trim();
+    if (!trimmed) return null;
+    try {
+      JSON.parse(trimmed);
+      return trimmed;
+    } catch {
+      return JSON.stringify({ line1: trimmed, country: 'United Kingdom' });
+    }
+  }
+  if (typeof address === 'object') {
+    const obj = address as Record<string, unknown>;
+    const hasContent = Object.values(obj).some(
+      (v) => v != null && String(v).trim() !== ''
+    );
+    return hasContent ? JSON.stringify(address) : null;
+  }
+  return undefined;
+}
+
+/** Parse stored JSON address for API responses */
+function formatClientForResponse<T extends { address?: string | null }>(client: T) {
+  if (!client?.address || typeof client.address !== 'string') return client;
+  try {
+    return { ...client, address: JSON.parse(client.address) };
+  } catch {
+    return client;
+  }
+}
 
 const incomeSourceSchema = z.object({
   type: z.enum(['SELF_EMPLOYMENT', 'PROPERTY', 'PARTNERSHIP', 'OTHER']),
@@ -184,7 +233,7 @@ router.get(
 
     res.json({
       success: true,
-      data: client,
+      data: formatClientForResponse(client),
     });
   })
 );
@@ -280,6 +329,69 @@ router.post(
     await scheduleDeadlineReminders(id, tenantId);
 
     res.json({ success: true });
+  })
+);
+
+/**
+ * GET /api/clients/:id/companies-house
+ * Read-only Companies House snapshot for a client
+ */
+router.get(
+  '/:id/companies-house',
+  authenticate,
+  asyncHandler(async (req, res) => {
+    const { id } = req.params;
+    const companyNumber = typeof req.query.companyNumber === 'string' ? req.query.companyNumber : undefined;
+    const { getClientCompaniesHouseSnapshot } = await import(
+      '../services/companiesHouseEnrichment.js'
+    );
+    const { createCompaniesHouseService } = await import('../services/companiesHouse.js');
+    const data = await getClientCompaniesHouseSnapshot(req.tenantId!, id, companyNumber);
+    res.json({
+      success: true,
+      data: data ?? null,
+      configured: !!createCompaniesHouseService(),
+    });
+  })
+);
+
+/**
+ * POST /api/clients/:id/enrich-companies-house
+ * Pull Companies House data into the client record and return snapshot for Clara
+ */
+router.post(
+  '/:id/enrich-companies-house',
+  authenticate,
+  authorize('ADMIN', 'PARTNER', 'MANAGER', 'SENIOR'),
+  asyncHandler(async (req, res) => {
+    const { id } = req.params;
+    const body = z
+      .object({
+        companyNumber: z.string().optional(),
+        searchByName: z.boolean().optional().default(true),
+        fillMissingOnly: z.boolean().optional().default(true),
+      })
+      .parse(req.body ?? {});
+
+    const { enrichClientFromCompaniesHouse } = await import(
+      '../services/companiesHouseEnrichment.js'
+    );
+    const result = await enrichClientFromCompaniesHouse(req.tenantId!, id, body);
+
+    if (result.enriched) {
+      await prisma.activityLog.create({
+        data: {
+          tenantId: req.tenantId!,
+          userId: req.user!.id,
+          action: 'CLIENT_CH_ENRICHED',
+          entityType: 'CLIENT',
+          entityId: id,
+          description: `Companies House data pulled for client (${result.matchedBy})`,
+        },
+      });
+    }
+
+    res.json({ success: true, data: result });
   })
 );
 
@@ -409,7 +521,7 @@ router.post(
 
     res.status(201).json({
       success: true,
-      data: client,
+      data: formatClientForResponse(client),
     });
   })
 );
@@ -478,12 +590,13 @@ router.put(
 
     // Update client
     const { tags: updateTags, address: updateAddress, ...updateData } = data as any;
+    const serialisedAddress = serialiseAddressForDb(updateAddress);
     const client = await prisma.client.update({
       where: { id },
       data: {
         ...updateData,
         ...mtditsaData,
-        address: updateAddress as any,
+        ...(serialisedAddress !== undefined ? { address: serialisedAddress } : {}),
         tags: updateTags ? updateTags.join(',') : undefined,
       },
     });
@@ -502,7 +615,7 @@ router.put(
 
     res.json({
       success: true,
-      data: client,
+      data: formatClientForResponse(client),
     });
   })
 );
@@ -614,6 +727,62 @@ router.get(
         isEligible: client.mtditsaEligible,
         quarterlyDeadlines: deadlines,
       },
+    });
+  })
+);
+
+/**
+ * POST /api/clients/:id/verify-identity
+ * ID verification stub — returns a verification link (W3.4)
+ */
+router.post(
+  '/:id/verify-identity',
+  authenticate,
+  authorize('ADMIN', 'PARTNER', 'MANAGER'),
+  asyncHandler(async (req, res) => {
+    const { id } = req.params;
+
+    const client = await prisma.client.findFirst({
+      where: { id, tenantId: req.tenantId, isActive: true },
+    });
+
+    if (!client) {
+      throw new ApiError('NOT_FOUND', 'Client not found', 404);
+    }
+
+    const { v4: uuidv4 } = await import('uuid');
+    const verificationRef = `idv_stub_${uuidv4().replace(/-/g, '').slice(0, 16)}`;
+
+    const frontendBase = (
+      process.env.FRONTEND_URL || 'http://localhost:5173'
+    ).replace(/\/$/, '');
+
+    const verificationLink = `${frontendBase}/verify-identity/${verificationRef}?clientId=${client.id}`;
+
+    await prisma.activityLog.create({
+      data: {
+        tenantId: req.tenantId!,
+        userId: req.user!.id,
+        action: 'ID_VERIFICATION_REQUESTED',
+        entityType: 'CLIENT',
+        entityId: client.id,
+        description: `ID verification link issued for ${client.name}`,
+        metadata: JSON.stringify({ verificationRef, isStub: true }),
+      },
+    });
+
+    res.json({
+      success: true,
+      data: {
+        clientId: client.id,
+        verificationRef,
+        verificationLink,
+        isStub: true,
+        expiresInHours: 72,
+        message:
+          'ID verification link generated (stub). Configure a live ID provider to enable automated checks.',
+      },
+      message: 'ID verification link created',
     });
   })
 );

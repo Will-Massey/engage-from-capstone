@@ -5,8 +5,11 @@ import { authenticate } from '../middleware/auth.js';
 import { authorize } from '../middleware/auth.js';
 import { ApiError, asyncHandler } from '../middleware/errorHandler.js';
 import { runEmailAutomation, testEmailAutomation } from '../jobs/emailAutomation.js';
+import { runProposalChaseJob } from '../jobs/proposalChaseJob.js';
 import migrateServicePricing from '../scripts/migrateServicePricing.js';
 import logger from '../config/logger.js';
+import { prisma } from '../config/database.js';
+import { getProposalSettings } from '../utils/tenantProposalSettings.js';
 
 const router = Router();
 
@@ -78,27 +81,54 @@ router.get(
   '/settings',
   authenticate,
   asyncHandler(async (req, res) => {
-    // Return default settings for now
-    // In the future, these could be stored in the database per tenant
+    const tenantId = req.tenantId!;
+    const tenant = await prisma.tenant.findUnique({
+      where: { id: tenantId },
+      select: { settings: true },
+    });
+    const proposalSettings = getProposalSettings(tenant?.settings);
+
     res.json({
       success: true,
       data: {
+        proposalChase: {
+          enabled: proposalSettings.chaseSequenceEnabled,
+          schedule: '0 9 * * *',
+          chaseSequenceDays: proposalSettings.chaseSequenceDays,
+        },
         emailFollowUp: {
-          enabled: true,
-          schedule: '0 9 * * *', // Daily at 9 AM
-          stages: [
-            { daysAfterSend: 3, template: 'gentle' },
-            { daysAfterSend: 7, template: 'gentle' },
-            { daysAfterSend: 14, template: 'urgent' },
-            { daysAfterSend: 30, template: 'final' },
-          ],
+          enabled: proposalSettings.chaseSequenceEnabled,
+          schedule: '0 9 * * *',
+          stages: proposalSettings.chaseSequenceDays.map((daysAfterSend) => ({
+            daysAfterSend,
+            template: daysAfterSend >= 14 ? 'urgent' : 'gentle',
+          })),
         },
         proposalExpiry: {
           enabled: true,
-          defaultExpiryDays: 30,
-          reminderDaysBefore: 7,
+          defaultExpiryDays: proposalSettings.defaultExpiryDays,
+          reminderDaysBefore: proposalSettings.renewalReminderDays,
         },
       },
+    });
+  })
+);
+
+/**
+ * POST /api/automation/proposal-chase/run
+ * Manually trigger the proposal chase job (admin/partner)
+ */
+router.post(
+  '/proposal-chase/run',
+  authenticate,
+  authorize('ADMIN', 'PARTNER'),
+  asyncHandler(async (req, res) => {
+    logger.info('Manual proposal chase triggered by user:', req.user!.id);
+    const result = await runProposalChaseJob();
+    res.json({
+      success: result.success,
+      data: { sent: result.sent, failed: result.failed, skipped: result.skipped },
+      message: `Proposal chase completed: ${result.sent} sent, ${result.failed} failed, ${result.skipped} skipped`,
     });
   })
 );

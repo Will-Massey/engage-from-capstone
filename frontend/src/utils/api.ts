@@ -1,6 +1,7 @@
 import axios, { AxiosInstance, AxiosError } from 'axios';
 import toast from 'react-hot-toast';
 import { useAuthStore } from '../stores/authStore';
+import { appPath, appRelativePath } from './appBase';
 
 // API base URL
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
@@ -8,14 +9,19 @@ const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
 /** Client-facing pages — no install prompts, no auth redirects, quieter errors */
 export function isPublicClientPage(): boolean {
   if (typeof window === 'undefined') return false;
-  const path = window.location.pathname;
-  return path.startsWith('/portal/') || path.startsWith('/proposals/view/') || path.startsWith('/onboarding/');
+  const path = appRelativePath();
+  return (
+    path.startsWith('/portal/') ||
+    path.startsWith('/proposals/view/') ||
+    path.startsWith('/onboarding/') ||
+    path === '/status'
+  );
 }
 
 /** Login/register pages — skip session refresh and suppress noisy auth errors */
 export function isAuthPage(): boolean {
   if (typeof window === 'undefined') return false;
-  const path = window.location.pathname;
+  const path = appRelativePath();
   return (
     path === '/login' ||
     path === '/register' ||
@@ -25,6 +31,17 @@ export function isAuthPage(): boolean {
 }
 
 // API URL is configured from environment
+
+/** Avoid stacking identical network/wakeup toasts when Render cold-starts or restarts. */
+let lastTransientToastAt = 0;
+const TRANSIENT_TOAST_COOLDOWN_MS = 20_000;
+
+function toastTransientError(message: string): void {
+  const now = Date.now();
+  if (now - lastTransientToastAt < TRANSIENT_TOAST_COOLDOWN_MS) return;
+  lastTransientToastAt = now;
+  toast.error(message, { id: 'transient-network' });
+}
 
 // Create axios instance
 const api: AxiosInstance = axios.create({
@@ -42,52 +59,167 @@ const getCsrfToken = (): string | null => {
   return match ? match[1] : null;
 };
 
+const CSRF_STORAGE_KEY = 'engage_csrf_token';
+
 // In-memory storage for CSRF token (cross-domain cookies don't work)
 let csrfTokenInMemory: string | null = null;
+
+function readCsrfFromSession(): string | null {
+  if (typeof sessionStorage === 'undefined') return null;
+  try {
+    const stored = sessionStorage.getItem(CSRF_STORAGE_KEY);
+    return stored && stored !== 'undefined' ? stored : null;
+  } catch {
+    return null;
+  }
+}
+
+function writeCsrfToSession(token: string | null): void {
+  if (typeof sessionStorage === 'undefined') return;
+  try {
+    if (token) sessionStorage.setItem(CSRF_STORAGE_KEY, token);
+    else sessionStorage.removeItem(CSRF_STORAGE_KEY);
+  } catch {
+    // ignore quota / private mode
+  }
+}
 
 /** Reset cached CSRF token (e.g. on login page after rate-limit or logout) */
 export function clearCsrfCache(): void {
   csrfTokenInMemory = null;
   csrfTokenPromise = null;
+  writeCsrfToSession(null);
+}
+
+/** Store CSRF from auth responses (cross-domain — cookie not readable by JS). */
+export function rememberCsrfToken(token: string | undefined | null): void {
+  if (token && token !== 'undefined') {
+    csrfTokenInMemory = token;
+    writeCsrfToSession(token);
+  }
+}
+
+/** Hydrate CSRF cache from sessionStorage on app load. */
+export function hydrateCsrfCache(): void {
+  const stored = readCsrfFromSession();
+  if (stored) csrfTokenInMemory = stored;
+}
+
+function captureCsrfFromPayload(payload: unknown): void {
+  if (!payload || typeof payload !== 'object') return;
+  const data = (payload as { data?: { csrfToken?: string }; csrfToken?: string }).data;
+  const token = data?.csrfToken ?? (payload as { csrfToken?: string }).csrfToken;
+  rememberCsrfToken(token);
+}
+
+/** Paths exempt from CSRF on the backend — login/register must work without a prior token. */
+function isCsrfExemptRequest(url?: string): boolean {
+  if (!url) return false;
+  const path = url.split('?')[0];
+  const exemptPrefixes = [
+    '/auth',
+    '/payments/webhook',
+    '/oauth/callback',
+    '/proposals/view',
+    '/proposals/portal',
+    '/onboarding',
+    '/webhooks/',
+    '/aml/webhook',
+    '/admin/seed-services',
+    '/automation/migrate-service-pricing',
+    '/setup',
+  ];
+  return exemptPrefixes.some((prefix) => path.startsWith(prefix));
 }
 
 // Fetch CSRF token from backend
 let csrfTokenPromise: Promise<string> | null = null;
-const fetchCsrfToken = async (): Promise<string> => {
-  // Check memory first (for cross-domain where cookies don't work)
+
+function resolveCachedCsrfToken(): string | null {
   if (csrfTokenInMemory) return csrfTokenInMemory;
-
-  // Then check cookie (for same-domain)
+  const stored = readCsrfFromSession();
+  if (stored) {
+    csrfTokenInMemory = stored;
+    return stored;
+  }
   const cookieToken = getCsrfToken();
-  if (cookieToken) return cookieToken;
+  if (cookieToken) {
+    csrfTokenInMemory = cookieToken;
+    return cookieToken;
+  }
+  return null;
+}
 
-  // Deduplicate concurrent requests
+const fetchCsrfToken = async (forceRefresh = false): Promise<string> => {
+  if (!forceRefresh) {
+    const cached = resolveCachedCsrfToken();
+    if (cached) return cached;
+  } else {
+    csrfTokenInMemory = null;
+    writeCsrfToSession(null);
+  }
+
   if (csrfTokenPromise) return csrfTokenPromise;
 
-  csrfTokenPromise = axios
-    .get(`${API_URL.endsWith('/api') ? API_URL : `${API_URL}/api`}/auth/csrf-token`, {
-      withCredentials: true,
-    })
-    .then((res: any) => {
-      csrfTokenPromise = null;
-      // Store in memory since cross-domain cookies don't work
-      const token = res.data?.data?.csrfToken;
+  csrfTokenPromise = (async () => {
+    try {
+      const meRes = (await api.get('/auth/me')) as { data?: { csrfToken?: string } };
+      const meToken = meRes?.data?.csrfToken;
+      if (meToken) {
+        rememberCsrfToken(meToken);
+        if (import.meta.env.DEV) console.log('[CSRF] Token fetched via /auth/me');
+        return meToken;
+      }
+    } catch {
+      // No session — use public csrf-token endpoint
+    }
+
+    try {
+      const csrfRes = (await api.get('/auth/csrf-token')) as { data?: { csrfToken?: string } };
+      const token = csrfRes?.data?.csrfToken;
       if (token) {
-        csrfTokenInMemory = token;
-        if (import.meta.env.DEV) console.log('[CSRF] Token fetched and stored in memory');
+        rememberCsrfToken(token);
+        if (import.meta.env.DEV) console.log('[CSRF] Token fetched via /auth/csrf-token');
         return token;
       }
-      console.warn('[CSRF] No token in response');
+      console.warn('[CSRF] No token in /auth/csrf-token response');
       return '';
-    })
-    .catch((err) => {
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : String(err);
+      console.error('[CSRF] Failed to fetch token:', message);
+      return '';
+    } finally {
       csrfTokenPromise = null;
-      console.error('[CSRF] Failed to fetch token:', err.message);
-      return '';
-    });
+    }
+  })();
 
   return csrfTokenPromise;
 };
+
+/** Ensure a CSRF token is available before state-changing requests (e.g. app bootstrap). */
+export async function ensureCsrfReady(): Promise<void> {
+  hydrateCsrfCache();
+  const token = await fetchCsrfToken();
+  if (!token) {
+    await fetchCsrfToken(true);
+  }
+}
+
+/** Headers for native fetch() calls that bypass the axios interceptor. */
+export async function buildAuthedFetchHeaders(
+  extra: Record<string, string> = {}
+): Promise<Record<string, string>> {
+  const token = useAuthStore.getState().token;
+  const tenant = useAuthStore.getState().tenant;
+  const csrfToken = await fetchCsrfToken();
+  return {
+    'Content-Type': 'application/json',
+    ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    ...(tenant ? { 'X-Tenant-Id': tenant.id } : {}),
+    ...(csrfToken ? { 'X-CSRF-Token': csrfToken } : {}),
+    ...extra,
+  };
+}
 
 // Request interceptor
 api.interceptors.request.use(
@@ -104,14 +236,25 @@ api.interceptors.request.use(
       config.headers['X-Tenant-Id'] = tenant.id;
     }
 
-    // Add CSRF token for state-changing requests
-    if (['POST', 'PUT', 'DELETE', 'PATCH'].includes(config.method?.toUpperCase() || '')) {
-      const csrfToken = await fetchCsrfToken();
+    // Add CSRF token for state-changing requests (skip auth/public routes — backend exempts them)
+    const method = config.method?.toUpperCase() || '';
+    const needsCsrf =
+      ['POST', 'PUT', 'DELETE', 'PATCH'].includes(method) && !isCsrfExemptRequest(config.url);
+
+    if (needsCsrf) {
+      let csrfToken = await fetchCsrfToken();
+      if (!csrfToken) {
+        csrfToken = await fetchCsrfToken(true);
+      }
       if (csrfToken && csrfToken !== 'undefined') {
-        config.headers['X-CSRF-Token'] = csrfToken;
+        config.headers.set('X-CSRF-Token', csrfToken);
         if (import.meta.env.DEV) console.log('[CSRF] Token added to request');
       } else {
-        console.warn('[CSRF] No token available for request');
+        console.error('[CSRF] No token available — blocking state-changing request');
+        return Promise.reject({
+          code: 'CSRF_UNAVAILABLE',
+          message: 'Security token unavailable. Please refresh the page or log in again.',
+        });
       }
     }
 
@@ -125,6 +268,7 @@ api.interceptors.request.use(
 // Response interceptor
 api.interceptors.response.use(
   (response) => {
+    captureCsrfFromPayload(response.data);
     return response.data;
   },
   async (error: AxiosError) => {
@@ -135,24 +279,16 @@ api.interceptors.response.use(
       const errorMessage = data?.error?.message || 'An error occurred';
       const errorCode = data?.error?.code;
 
-      // Handle CSRF errors with automatic retry
+      // Handle CSRF errors with automatic retry (once)
       if (errorCode === 'CSRF_MISSING' || errorCode === 'CSRF_INVALID') {
-        if (import.meta.env.DEV) console.log('[CSRF] Token invalid, fetching new token and retrying...');
-
-        // Clear the cached token to force a refresh
-        csrfTokenInMemory = null;
-
-        // Get the original request config
-        const originalRequest = error.config;
-        if (originalRequest) {
+        const originalRequest = error.config as typeof error.config & { _csrfRetry?: boolean };
+        if (originalRequest && !originalRequest._csrfRetry) {
+          originalRequest._csrfRetry = true;
+          clearCsrfCache();
           try {
-            // Fetch a new CSRF token
-            const newToken = await fetchCsrfToken();
+            const newToken = await fetchCsrfToken(true);
             if (newToken) {
-              // Update the request with the new token
-              originalRequest.headers['X-CSRF-Token'] = newToken;
-              if (import.meta.env.DEV) console.log('[CSRF] Retrying request with new token');
-              // Retry the request
+              originalRequest.headers.set('X-CSRF-Token', newToken);
               return api(originalRequest);
             }
           } catch (retryError) {
@@ -160,10 +296,12 @@ api.interceptors.response.use(
           }
         }
 
-        toast.error('Security token expired. Please try again.');
+        if (!isPublicClientPage() && !isAuthPage()) {
+          toast.error('Security token expired. Please refresh the page or log in again.');
+        }
         return Promise.reject({
           code: errorCode,
-          message: 'Security token expired. Please try again.',
+          message: 'Security token expired. Please refresh the page or log in again.',
           status: response.status,
         });
       }
@@ -179,6 +317,21 @@ api.interceptors.response.use(
           }
           break;
 
+        case 'INVALID_CREDENTIALS':
+        case 'NO_TENANT':
+          if (authPage) {
+            toast.error(errorMessage);
+          } else if (!publicPage) {
+            toast.error(errorMessage);
+          }
+          break;
+
+        case 'ACCOUNT_LOCKED':
+          if (authPage || !publicPage) {
+            toast.error(errorMessage);
+          }
+          break;
+
         case 'INVALID_REFRESH_TOKEN':
           if (authPage || publicPage) {
             useAuthStore.getState().clearAuth();
@@ -186,7 +339,7 @@ api.interceptors.response.use(
           }
           useAuthStore.getState().clearAuth();
           if (!authPage) {
-            window.location.href = '/login';
+            window.location.href = appPath('/login');
             toast.error('Your session has expired. Please log in again.');
           }
           break;
@@ -213,7 +366,7 @@ api.interceptors.response.use(
           }
 
           useAuthStore.getState().clearAuth();
-          window.location.href = '/login';
+          window.location.href = appPath('/login');
           toast.error('Your session has expired. Please log in again.');
           break;
         }
@@ -246,9 +399,6 @@ api.interceptors.response.use(
 
         default:
           if (!publicPage && !authPage) toast.error(errorMessage);
-          else if (authPage && errorCode === 'ACCOUNT_LOCKED') {
-            toast.error(errorMessage);
-          }
       }
 
       return Promise.reject({
@@ -267,7 +417,7 @@ api.interceptors.response.use(
         : publicPage
           ? 'Unable to reach the server. Please check your connection and try again.'
           : 'Network error. Please check your connection.';
-      if (!publicPage) toast.error(message);
+      if (!publicPage) toastTransientError(message);
       return Promise.reject({
         code: isTimeout ? 'TIMEOUT' : 'NETWORK_ERROR',
         message,
@@ -310,9 +460,39 @@ export const apiClient = {
   // Proposals
   getProposals: (params?: Record<string, any>) => api.get('/proposals', { params }),
 
+  getRenewalCandidates: (params?: { expiringBefore?: string; clientIds?: string[] }) =>
+    api.get('/proposals/renewal-candidates', { params }),
+
+  bulkCreateRenewalDrafts: (data: {
+    clientIds?: string[];
+    proposalIds?: string[];
+    expiringBefore?: string;
+    templateId?: string;
+    upliftPercent?: number;
+    upliftRules?: {
+      mode: 'percent' | 'cpi' | 'min_floor';
+      percent?: number;
+      cpiPercent?: number;
+      minFeeGbp?: number;
+      perServiceFloors?: Record<string, number>;
+    };
+    useAiCoverLetter?: boolean;
+  }) => api.post('/proposals/bulk-renewal', data),
+
   getProposal: (id: string) => api.get(`/proposals/${id}`),
 
   createProposal: (data: any) => api.post('/proposals', data),
+
+  createLoeOnlyProposal: (data: {
+    clientId: string;
+    serviceIds: string[];
+    title?: string;
+    validUntil?: string;
+    contractStartDate?: string | null;
+    notes?: string;
+  }) => api.post('/proposals/loe-only', data),
+  previewProposalTerms: (serviceIds: string[]) =>
+    api.post('/proposals/terms-preview', { serviceIds }),
 
   updateProposal: (id: string, data: any) => api.put(`/proposals/${id}`, data),
 
@@ -332,7 +512,26 @@ export const apiClient = {
         : {}),
     }),
 
+  getApprovalQueue: (params?: Record<string, unknown>) =>
+    api.get('/proposals/approval-queue', { params }),
+
+  submitProposalForApproval: (id: string) =>
+    api.post(`/proposals/${id}/submit-for-approval`, {}),
+
+  approveProposal: (id: string, data?: { approvalNotes?: string }) =>
+    api.post(`/proposals/${id}/approve`, data ?? {}),
+
+  rejectProposal: (id: string, data: { rejectionReason: string; approvalNotes?: string }) =>
+    api.post(`/proposals/${id}/reject`, data),
+
   acceptProposal: (id: string, data?: any) => api.post(`/proposals/${id}/accept`, data),
+
+  withdrawProposal: (id: string) => api.post(`/proposals/${id}/withdraw`, {}),
+
+  markProposalLost: (
+    id: string,
+    data: { declineReason: string; reason?: string }
+  ) => api.post(`/proposals/${id}/mark-lost`, data),
 
   // Response interceptor already returns `response.data`; for blobs that value IS the Blob.
   downloadProposalPDF: (id: string) =>
@@ -347,12 +546,51 @@ export const apiClient = {
 
   updateClient: (id: string, data: any) => api.put(`/clients/${id}`, data),
 
+  enrichClientFromCompaniesHouse: (
+    clientId: string,
+    options?: { companyNumber?: string; searchByName?: boolean; fillMissingOnly?: boolean }
+  ) => api.post(`/clients/${clientId}/enrich-companies-house`, options ?? {}),
+
+  getClientCompaniesHouse: (clientId: string, companyNumber?: string) =>
+    api.get(`/clients/${clientId}/companies-house`, {
+      params: companyNumber ? { companyNumber } : undefined,
+    }),
+
   deleteClient: (id: string) => api.delete(`/clients/${id}`),
 
   assessMTDITSA: (id: string, incomeSources?: any[]) =>
     api.post(`/clients/${id}/mtditsa-assessment`, { incomeSources }),
 
+  verifyClientIdentity: (id: string) => api.post(`/clients/${id}/verify-identity`),
+
+  initiateAmlCheck: (clientId: string, provider?: 'smartsearch' | 'creditsafe' | 'stub') =>
+    api.post('/aml/check', { clientId, provider }),
+
+  getAmlStatus: (clientId: string) => api.get(`/aml/status/${clientId}`),
+
+  getRegulatoryCheck: (clientId: string) => api.get(`/regulatory/check/${clientId}`),
+
   // Services
+  // Pricing methodology (W2.9 — rule engine)
+  pricingSuggestFees: (data: {
+    turnoverBand: string;
+    entityType: string;
+    employeeCount: number;
+    vatRegistered: boolean;
+    mtdStatus: string;
+    complexity: { hasPayroll: boolean; hasRd: boolean; multiSite: boolean };
+  }) => api.post('/pricing/suggest-fees', data),
+
+  pricingExplain: (data: { suggestion: { inputs: any; services: any[]; totals: any } }) =>
+    api.post('/pricing/explain', data),
+
+  pricingContingentFee: (data: {
+    estimatedSavingGbp: number;
+    percentOfSaving: number;
+    capGbp?: number;
+    floorGbp?: number;
+  }) => api.post('/pricing/contingent-fee', data),
+
   getServices: (params?: Record<string, any>) => api.get('/services', { params }),
 
   getServiceCategories: () => api.get('/services/categories'),
@@ -378,7 +616,13 @@ export const apiClient = {
 
   getTenantSettings: () => api.get('/tenants/settings'),
 
+  getDefaultProposalTerms: () => api.get('/tenants/settings/proposal-terms-default'),
+
   updateTenantSettings: (data: any) => api.put('/tenants/settings', data),
+
+  testIntegrationWebhook: (
+    format?: 'default' | 'hubspot' | 'zapier' | 'senta' | 'karbon'
+  ) => api.post('/tenants/settings/test-webhook', { format }),
 
   // Users
   updateMe: (data: any) => api.put('/auth/me', data),
@@ -424,6 +668,10 @@ export const apiClient = {
 
   // Client Touchpoints / Automated Lifecycle
   getTouchpointTemplates: () => api.get('/touchpoints/templates'),
+  seedTouchpointDefaults: (resetAll = false) =>
+    api.post('/touchpoints/templates/seed-defaults', { resetAll }),
+  restoreTouchpointDefault: (stage: string) =>
+    api.post(`/touchpoints/templates/${stage}/restore-default`, {}),
   upsertTouchpointTemplate: (stage: string, data: any) =>
     api.put(`/touchpoints/templates/${stage}`, data),
   getTouchpointApprovals: () => api.get('/touchpoints/approvals'),
@@ -433,6 +681,42 @@ export const apiClient = {
   runTouchpointEngine: () => api.post('/touchpoints/run', {}),
 
   getAutomationSettings: () => api.get('/automation/settings'),
+
+  // Xero integration (W1.1–W1.2)
+  getXeroStatus: () => api.get('/xero/status'),
+  connectXero: () => api.get('/xero/connect'),
+  disconnectXero: () => api.post('/xero/disconnect', {}),
+  importXeroClients: (dryRun = false) => api.post('/xero/import-clients', { dryRun }),
+  pushAcceptedProposalToXero: (proposalId: string) =>
+    api.post(`/xero/push-accepted/${proposalId}`, {}),
+
+  // QuickBooks integration (W4.7 scaffold)
+  getQuickBooksStatus: () => api.get('/quickbooks/status'),
+  connectQuickBooks: () => api.get('/quickbooks/connect'),
+  disconnectQuickBooks: () => api.post('/quickbooks/disconnect', {}),
+
+  // W4.1 fee benchmarks
+  getFeeBenchmarks: () => api.get('/analytics/fee-benchmarks'),
+
+  getProposalFunnel: (params?: { startDate?: string; endDate?: string }) =>
+    api.get('/analytics/proposal-funnel', { params }),
+
+  // W4.3 firm group
+  getFirmGroup: () => api.get('/tenants/firm-group'),
+  createFirmGroup: (data: { name: string; slug?: string }) =>
+    api.post('/tenants/firm-group', data),
+  updateFirmGroup: (data: { name: string }) => api.put('/tenants/firm-group', data),
+  dissolveFirmGroup: () => api.delete('/tenants/firm-group'),
+  addFirmGroupPractice: (subdomain: string) =>
+    api.post('/tenants/firm-group/practices', { subdomain }),
+  removeFirmGroupPractice: (practiceId: string) =>
+    api.delete(`/tenants/firm-group/practices/${practiceId}`),
+  leaveFirmGroup: () => api.post('/tenants/firm-group/leave', {}),
+
+  // W4.4 voice of practice
+  getVoiceOfPractice: () => api.get('/ai/voice-of-practice'),
+  saveVoiceOfPractice: (sampleText: string) =>
+    api.post('/ai/voice-of-practice', { sampleText }),
 
   // Lifecycle actions (wired to touchpoint engine)
   markAmlComplete: (clientId: string) => api.post(`/clients/${clientId}/aml-complete`, {}),
@@ -445,6 +729,17 @@ export const apiClient = {
   // Touchpoints per client (for Lifecycle panel upcoming + history)
   getClientTouchpoints: (clientId: string) => api.get(`/touchpoints/client/${clientId}`),
 
+  // Engagement clause library versioning
+  getEngagementLibraryVersions: () => api.get('/engagement-library/versions'),
+  getEngagementLibraryCurrent: () => api.get('/engagement-library/current'),
+  getEngagementLibraryTemplatesNeedingUpdate: () =>
+    api.get('/engagement-library/templates-needing-update'),
+  publishEngagementLibraryVersion: (data: { versionLabel: string; changelog?: string }) =>
+    api.post('/engagement-library/publish', data),
+  getEngagementLibraryQuarterlySchedule: () => api.get('/engagement-library/quarterly-schedule'),
+  publishQuarterlyEngagementLibrary: () => api.post('/engagement-library/publish-quarterly', {}),
+  simulateQuarterlyEngagementLibrary: () => api.post('/engagement-library/simulate-quarterly', {}),
+
   // Cover Letter Templates (tones: PROFESSIONAL | FRIENDLY | MODERN)
   getCoverLetterTemplates: () => api.get('/cover-letter-templates'),
   getDefaultCoverLetterTemplate: () => api.get('/cover-letter-templates/default'),
@@ -453,6 +748,56 @@ export const apiClient = {
     api.post(`/cover-letter-templates/${id}/preview`, previewData),
   previewCoverLetterRaw: (content: string, previewData: any) =>
     api.post('/cover-letter-templates/preview', { content, previewData }),
+
+  // Proposal templates — save and reuse proposal configurations
+  getProposalTemplates: () => api.get('/proposal-templates'),
+  getProposalTemplate: (id: string) => api.get(`/proposal-templates/${id}`),
+  createProposalTemplate: (data: {
+    name: string;
+    description?: string;
+    title: string;
+    coverLetter?: string;
+    coverLetterTone?: string;
+    serviceConfig: Array<{
+      serviceId: string;
+      name?: string;
+      billingFrequency: string;
+      displayPrice: number;
+      quantity?: number;
+      discountPercent?: number;
+    }>;
+    targetEntityType?: string;
+  }) => api.post('/proposal-templates', data),
+  updateProposalTemplate: (
+    id: string,
+    data: Partial<{
+      name: string;
+      description: string;
+      title: string;
+      coverLetter: string;
+      coverLetterTone: string;
+      serviceConfig: Array<{
+        serviceId: string;
+        name?: string;
+        billingFrequency: string;
+        displayPrice: number;
+        quantity?: number;
+        discountPercent?: number;
+      }>;
+      targetEntityType: string;
+    }>
+  ) => api.put(`/proposal-templates/${id}`, data),
+  saveProposalTemplateFromProposal: (proposalId: string, name: string, description?: string) =>
+    api.post('/proposal-templates/from-proposal', { proposalId, name, description }),
+  recordProposalTemplateUse: (id: string) => api.post(`/proposal-templates/${id}/record-use`, {}),
+  deleteProposalTemplate: (id: string) => api.delete(`/proposal-templates/${id}`),
+
+  // Companies House
+  getCompaniesHouseStatus: () => api.get('/companies-house/status'),
+  searchCompaniesHouse: (query: string, limit = 5) =>
+    api.get('/companies-house/search', { params: { q: query, limit } }),
+  getCompaniesHouseCompany: (companyNumber: string) =>
+    api.get(`/companies-house/company/${companyNumber}`),
   createCoverLetterTemplate: (data: any) => api.post('/cover-letter-templates', data),
   updateCoverLetterTemplate: (id: string, data: any) => api.put(`/cover-letter-templates/${id}`, data),
   deleteCoverLetterTemplate: (id: string) => api.delete(`/cover-letter-templates/${id}`),
@@ -460,6 +805,12 @@ export const apiClient = {
   // Proposal audit trail & compliance (views + signatures + key events)
   getProposalAuditTrail: (id: string) => api.get(`/proposals/${id}/audit-trail`),
   getProposalSignatures: (id: string) => api.get(`/proposals/${id}/signatures`),
+  getSignatureAudit: (proposalId: string, signatureId: string) =>
+    api.get(`/proposals/${proposalId}/signatures/${signatureId}/audit`),
+  downloadSignatureCertificate: (proposalId: string, signatureId: string) =>
+    api.get(`/proposals/${proposalId}/signatures/${signatureId}/certificate`, {
+      responseType: 'blob',
+    }) as Promise<Blob>,
 
   downloadProposalPdf: async (id: string, reference?: string) => {
     const base = API_URL.endsWith('/api') ? API_URL : `${API_URL}/api`;
@@ -499,6 +850,7 @@ export const apiClient = {
     title?: string;
     coverLetter?: string;
     validUntil?: string;
+    terms?: string;
     services: Array<{ name: string; billingFrequency?: string; displayPrice?: number }>;
   }) => api.post('/ai/draft-review', data),
   aiSuggestTitle: (
@@ -514,7 +866,8 @@ export const apiClient = {
   }) => api.post('/ai/cover-letter', data),
   aiFollowUp: (proposalId: string, tone?: string) =>
     api.post('/ai/follow-up', { proposalId, tone: tone || 'professional' }),
-  aiEngagementLetter: (proposalId: string) => api.post('/ai/engagement-letter', { proposalId }),
+  aiEngagementLetter: (proposalId: string, options?: { includeAiIntro?: boolean }) =>
+    api.post('/ai/engagement-letter', { proposalId, includeAiIntro: options?.includeAiIntro ?? false }),
   getProposalHealth: (proposalId: string) => api.get(`/ai/proposal-health/${proposalId}`),
   aiRenewalDraft: (proposalId: string, upliftPercent?: number) =>
     api.post('/ai/renewal-draft', { proposalId, upliftPercent: upliftPercent ?? 0 }),
@@ -548,6 +901,15 @@ export const apiClient = {
   aiCoverLetterRevise: (currentBody: string, instruction: string, context?: any) =>
     api.post('/ai/cover-letter-revise', { currentBody, instruction, context }),
 
+  aiProposalExplanation: (data: {
+    clientId: string;
+    title: string;
+    services: Array<{ name: string; description?: string; billingFrequency?: string; billingCycle?: string }>;
+    monthlyTotal?: number;
+    annualTotal?: number;
+    contractTotal?: number;
+  }) => api.post('/ai/proposal-explanation', data),
+
   aiSuggestEmailSubjects: (body: string, context?: any) =>
     api.post('/ai/suggest-email-subjects', { body, context }),
 
@@ -559,28 +921,47 @@ export const apiClient = {
 
   aiStreamProposalEmailDraft: async (
     payload: any,
-    onEvent: (event: { subject?: string; bodyChunk?: string; done?: boolean; error?: string }) => void
+    onEvent: (event: {
+      subject?: string;
+      bodyChunk?: string;
+      textBody?: string;
+      done?: boolean;
+      error?: string;
+    }) => void
   ): Promise<void> => {
-    const { token } = useAuthStore.getState();
     const base = API_URL.endsWith('/api') ? API_URL : `${API_URL}/api`;
+    const body =
+      payload && typeof payload === 'object' && 'proposalId' in payload && payload.proposalId
+        ? { proposalId: payload.proposalId }
+        : { draft: payload?.draft ?? payload };
+
     const res = await fetch(`${base}/ai/proposal-email-draft/stream`, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        ...(token ? { Authorization: `Bearer ${token}` } : {}),
-      },
-      body: JSON.stringify(payload),
+      headers: await buildAuthedFetchHeaders(),
+      credentials: 'include',
+      body: JSON.stringify(body),
     });
+
+    if (!res.ok) {
+      const err = (await res.json().catch(() => null)) as {
+        error?: { message?: string };
+        message?: string;
+      } | null;
+      throw new Error(err?.error?.message || err?.message || 'Email draft stream failed');
+    }
     if (!res.body) throw new Error('No stream body');
+
     const reader = res.body.getReader();
     const decoder = new TextDecoder();
     let buffer = '';
-    while (true) {
-      const { done, value } = await reader.read();
-      if (done) break;
-      buffer += decoder.decode(value, { stream: true });
+    let streamEnded = false;
+
+    const processBuffer = (flushAll = false) => {
+      if (flushAll && buffer.trim() && !buffer.endsWith('\n\n')) {
+        buffer += '\n\n';
+      }
       const parts = buffer.split('\n\n');
-      buffer = parts.pop() || '';
+      buffer = flushAll ? '' : parts.pop() || '';
       for (const part of parts) {
         const line = part.trim();
         if (!line.startsWith('data:')) continue;
@@ -588,9 +969,30 @@ export const apiClient = {
         try {
           const event = JSON.parse(jsonStr);
           onEvent(event);
-          if (event.done || event.error) return;
-        } catch {}
+          if (event.done || event.error) {
+            streamEnded = true;
+          }
+        } catch {
+          // ignore malformed SSE chunks
+        }
       }
+    };
+
+    while (true) {
+      const { done, value } = await reader.read();
+      if (value) {
+        buffer += decoder.decode(value, { stream: true });
+        processBuffer(false);
+      }
+      if (done) {
+        buffer += decoder.decode();
+        processBuffer(true);
+        break;
+      }
+    }
+
+    if (!streamEnded) {
+      onEvent({ done: true });
     }
   },
 
@@ -621,14 +1023,11 @@ export const apiClient = {
     },
     onChunk: (text: string) => void
   ): Promise<void> => {
-    const { token } = useAuthStore.getState();
     const base = API_URL.endsWith('/api') ? API_URL : `${API_URL}/api`;
     const res = await fetch(`${base}/ai/cover-letter/stream`, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        ...(token ? { Authorization: `Bearer ${token}` } : {}),
-      },
+      headers: await buildAuthedFetchHeaders(),
+      credentials: 'include',
       body: JSON.stringify(data),
     });
     if (!res.body) throw new Error('No stream body');
@@ -657,17 +1056,18 @@ export const apiClient = {
 
   aiStreamEngagementLetter: async (
     proposalId: string,
-    onChunk: (text: string) => void
+    onChunk: (text: string) => void,
+    options?: { includeAiIntro?: boolean }
   ): Promise<void> => {
-    const { token } = useAuthStore.getState();
     const base = API_URL.endsWith('/api') ? API_URL : `${API_URL}/api`;
     const res = await fetch(`${base}/ai/engagement-letter/stream`, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        ...(token ? { Authorization: `Bearer ${token}` } : {}),
-      },
-      body: JSON.stringify({ proposalId }),
+      headers: await buildAuthedFetchHeaders(),
+      credentials: 'include',
+      body: JSON.stringify({
+        proposalId,
+        includeAiIntro: options?.includeAiIntro ?? false,
+      }),
     });
     if (!res.body) throw new Error('No stream body');
     const reader = res.body.getReader();

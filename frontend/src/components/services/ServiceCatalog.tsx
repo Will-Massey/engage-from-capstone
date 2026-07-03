@@ -272,8 +272,6 @@ const ServiceCatalog = ({ onImport }: ServiceCatalogProps) => {
                         From <strong>£{service.basePrice.toLocaleString()}</strong>
                       </span>
                       <span className="text-gray-400">|</span>
-                      <span className="text-gray-600">{service.baseHours} hours</span>
-                      <span className="text-gray-400">|</span>
                       <span className="text-gray-600 capitalize">
                         {service.billingCycle.toLowerCase().replace('_', ' ')}
                       </span>

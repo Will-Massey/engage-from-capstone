@@ -9,7 +9,14 @@ const authFile = path.join(__dirname, '.auth', 'user.json');
  */
 export default defineConfig({
   testDir: './specs',
-  testMatch: ['build-smoke.spec.ts', 'ai-native.spec.ts'],
+  testMatch: [
+    'build-smoke.spec.ts',
+    'ai-native.spec.ts',
+    'templates-smoke.spec.ts',
+    'automation-smoke.spec.ts',
+    'market-leader-smoke.spec.ts',
+    'uat-smoke.spec.ts',
+  ],
   fullyParallel: false,
   forbidOnly: !!process.env.CI,
   // AI endpoints can transiently 502 / socket-hang-up on Render
@@ -25,7 +32,7 @@ export default defineConfig({
   ],
 
   use: {
-    baseURL: process.env.FRONTEND_URL || 'https://engage-frontend-0g6u.onrender.com',
+    baseURL: process.env.FRONTEND_URL || 'https://capstonesoftware.co.uk/engage',
     storageState: authFile,
     trace: 'retain-on-failure',
     screenshot: 'only-on-failure',

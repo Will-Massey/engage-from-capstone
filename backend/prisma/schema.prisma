@@ -29,6 +29,7 @@ enum VATRate {
 enum UserRole {
   ADMIN
   PARTNER
+  MD
   MANAGER
   SENIOR
   JUNIOR
@@ -61,6 +62,24 @@ enum ProposalStatus {
   ACCEPTED
   DECLINED
   EXPIRED
+  WITHDRAWN
+  ARCHIVED
+  LOST
+}
+
+enum ApprovalStatus {
+  NONE
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum DeclineReason {
+  PRICE
+  SCOPE
+  TIMING
+  COMPETITOR
+  OTHER
 }
 
 enum PricingFrequency {
@@ -110,7 +129,21 @@ enum CoverLetterTone {
 
 // ==================== CLIENT TOUCHPOINT / LIFECYCLE ====================
 
+enum ClientRelationship {
+  NEW
+  EXISTING
+}
+
+enum AmlStatus {
+  NOT_STARTED
+  PENDING
+  CLEAR
+  REFER
+  FAILED
+}
+
 enum ClientLifecycleStage {
+  PROSPECT
   PROPOSAL_ACCEPTED
   AML_PENDING
   AML_COMPLETE
@@ -179,6 +212,21 @@ enum EmailDeliveryStatus {
 
 // ==================== TENANT MODELS ====================
 
+model FirmGroup {
+  id            String   @id @default(uuid())
+  name          String
+  slug          String   @unique
+  ownerTenantId String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  ownerTenant Tenant?  @relation("FirmGroupOwner", fields: [ownerTenantId], references: [id], onDelete: SetNull)
+  tenants     Tenant[] @relation("FirmGroupMembers")
+
+  @@index([slug])
+  @@index([ownerTenantId])
+}
+
 model Tenant {
   id             String   @id @default(uuid())
   subdomain      String   @unique
@@ -189,6 +237,11 @@ model Tenant {
   isActive       Boolean  @default(true)
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
+
+  // Multi-firm workspace (W4.3)
+  firmGroupId     String?
+  firmGroup       FirmGroup?  @relation("FirmGroupMembers", fields: [firmGroupId], references: [id], onDelete: SetNull)
+  ownedFirmGroups FirmGroup[] @relation("FirmGroupOwner")
 
   // Settings stored as JSON string
   settings String @default("{}")
@@ -228,6 +281,7 @@ model Tenant {
   @@index([subdomain])
   @@index([isActive])
   @@index([stripeCustomerId])
+  @@index([firmGroupId])
 }
 
 // ==================== USER MODELS ====================
@@ -248,6 +302,11 @@ model User {
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
 
+  // Security
+  twoFactorEnabled Boolean @default(false)
+  twoFactorSecret  String? // Encrypted TOTP secret
+  deletedAt        DateTime?
+
   // Tenant relation
   tenantId String
   tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
@@ -261,6 +320,34 @@ model User {
   @@unique([email, tenantId])
   @@index([tenantId])
   @@index([role])
+  @@index([deletedAt])
+}
+
+model PasswordReset {
+  id        String    @id @default(uuid())
+  tokenHash String    @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([tokenHash])
+  @@index([expiresAt])
+}
+
+model TwoFactorBackupCode {
+  id        String    @id @default(uuid())
+  codeHash  String
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
 }
 
 model RefreshToken {
@@ -321,6 +408,9 @@ model Client {
   turnover      Float?
   yearEnd       String?
 
+  // New win vs existing client (renewal/upsell) — used by Clara
+  clientRelationship ClientRelationship @default(NEW)
+
   // Metadata
   notes    String?
   tags     String @default("") // Comma-separated tags
@@ -338,7 +428,7 @@ model Client {
   portalEnabled    Boolean @default(false)
 
   // Client Lifecycle & Touchpoints (automated onboarding workflow)
-  lifecycleStage     ClientLifecycleStage @default(PROPOSAL_ACCEPTED)
+  lifecycleStage     ClientLifecycleStage @default(PROSPECT)
   touchpointsPaused  Boolean              @default(false)
   marketingConsent   Boolean              @default(false)
 
@@ -349,6 +439,9 @@ model Client {
   amlCompletedAt                 DateTime?
   amlSubmittedAt                 DateTime?
   amlSubmissionData              String?  // JSON: client AML self-service form
+  amlStatus                      AmlStatus @default(NOT_STARTED)
+  amlCheckedAt                   DateTime?
+  amlProviderRef                 String?
   engagementLetterSentAt         DateTime?
   engagementLetterSignedAt       DateTime?
 
@@ -362,6 +455,9 @@ model Client {
   @@index([companyType])
   @@index([mtditsaStatus])
   @@index([lifecycleStage])
+  @@index([clientRelationship])
+  @@index([amlStatus])
+  @@index([amlProviderRef])
 }
 
 // ==================== PROPOSAL MODELS ====================
@@ -372,6 +468,15 @@ model Proposal {
   title           String
   status          ProposalStatus @default(DRAFT)
 
+  // Partner approval workflow (junior drafts → partner approves before send)
+  approvalStatus          ApprovalStatus @default(NONE)
+  submittedForApprovalAt  DateTime?
+  approvedAt              DateTime?
+  approvedById            String?
+  approvedBy              User?          @relation("ApprovedProposals", fields: [approvedById], references: [id], onDelete: SetNull)
+  approvalNotes           String?
+  rejectionReason         String?
+
   // Dates
   validUntil        DateTime  // Proposal expiry date
   contractStartDate DateTime? // When the contract/service begins
@@ -379,6 +484,11 @@ model Proposal {
   viewedAt          DateTime?
   acceptedAt        DateTime?
   declinedAt        DateTime?
+  declinedBy        String?
+  declineReason     DeclineReason?
+  declineReasonText String?
+  /// AI reclassification when declineReason=OTHER and free text provided
+  declineReasonAi   DeclineReason?
   expiredAt         DateTime?
   
   // Renewal tracking
@@ -387,6 +497,9 @@ model Proposal {
   renewalReminderSentAt DateTime?
   isRenewal            Boolean   @default(false)
   originalProposalId   String?
+  /// Renewal or replacement quote that superseded this proposal
+  supersededById       String?
+  archivedAt           DateTime?
   
   // Acceptance notification
   acceptanceNotifiedAt DateTime?
@@ -401,14 +514,16 @@ model Proposal {
   total          Float   @default(0)
 
   // Payment terms
-  paymentTerms     String           @default("30 days")
+  paymentTerms     String           @default("7 days")
   paymentFrequency PricingFrequency @default(MONTHLY)
 
   // Content
-  coverLetter  String?
-  terms        String?
-  notes        String?
-  customFields String @default("{}")
+  coverLetter      String?
+  /// Client-facing narrative — services, benefits, positive NLP (AI-generated, editable)
+  proposalSummary  String?
+  terms            String?
+  notes            String?
+  customFields     String @default("{}")
 
   // UK Compliant Engagement Letter
   engagementLetter String?
@@ -430,9 +545,11 @@ model Proposal {
   lastEmailedAt  DateTime?
   emailHistory   String @default("[]")
 
-  // Payment tracking (Adfin integration)
+  // Payment tracking (Revolut / GoCardless stub)
   paymentId            String?
-  paymentStatus        String?   // PENDING, COMPLETED, FAILED, CANCELLED
+  paymentMandateId     String?
+  paymentProvider      String?   // revolut, gocardless_stub
+  paymentStatus        String?   // NOT_STARTED, PENDING, ACTIVE, COMPLETED, PAID, FAILED, CANCELLED, SKIPPED
   paymentUrl           String?
   paymentMethod        String?   // card, open_banking, direct_debit
   paidAt               DateTime?
@@ -457,12 +574,15 @@ model Proposal {
   documents    ProposalDocument[]
   views        ProposalView[]
   signatures   ProposalSignature[]
+  paymentSplits PaymentSplit[]
   emailLogs    EmailLog[]
   paymentSplits PaymentSplit[]
 
   @@index([tenantId])
   @@index([clientId])
   @@index([status])
+  @@index([approvalStatus])
+  @@index([approvedById])
   @@index([reference])
   @@index([shareToken])
   @@index([paymentId])
@@ -656,6 +776,24 @@ model ServiceTemplate {
   @@index([isActive])
 }
 
+// ==================== ENGAGEMENT LIBRARY VERSIONING ====================
+
+model EngagementLibraryVersion {
+  id           String   @id @default(uuid())
+  versionLabel String   @unique // e.g. "2026.1"
+  publishedAt  DateTime @default(now())
+  changelog    String   @default("")
+  clausesJson  String   // JSON snapshot of EngagementClause[]
+  isCurrent    Boolean  @default(false)
+  createdAt    DateTime @default(now())
+
+  proposalTemplates    ProposalTemplate[]
+  coverLetterTemplates CoverLetterTemplate[]
+
+  @@index([isCurrent])
+  @@index([publishedAt])
+}
+
 // ==================== PROPOSAL TEMPLATE MODELS ====================
 
 model ProposalTemplate {
@@ -682,6 +820,11 @@ model ProposalTemplate {
   usageCount Int?
   lastUsedAt DateTime?
 
+  // Engagement library versioning (OverSuite-style)
+  engagementLibraryVersionId String?
+  engagementLibraryVersion   EngagementLibraryVersion? @relation(fields: [engagementLibraryVersionId], references: [id], onDelete: SetNull)
+  needsUpdate                Boolean @default(false)
+
   // Metadata
   isActive  Boolean  @default(true)
   isDefault Boolean  @default(false)
@@ -696,6 +839,8 @@ model ProposalTemplate {
   @@index([tenantId])
   @@index([isDefault])
   @@index([targetEntityType])
+  @@index([needsUpdate])
+  @@index([engagementLibraryVersionId])
 }
 
 model CoverLetterTemplate {
@@ -708,11 +853,19 @@ model CoverLetterTemplate {
   isDefault   Boolean         @default(false)
   isSystem    Boolean         @default(false)  // Pre-designed templates
   createdById String?
+
+  // Engagement library versioning (OverSuite-style)
+  engagementLibraryVersionId String?
+  engagementLibraryVersion   EngagementLibraryVersion? @relation(fields: [engagementLibraryVersionId], references: [id], onDelete: SetNull)
+  needsUpdate                Boolean @default(false)
+
   createdAt   DateTime        @default(now())
   updatedAt   DateTime        @updatedAt
 
   @@index([tenantId])
   @@index([isDefault])
+  @@index([needsUpdate])
+  @@index([engagementLibraryVersionId])
 }
 
 // ==================== PRICING RULE MODELS ====================

@@ -473,17 +473,31 @@ router.get(
   asyncHandler(async (req, res) => {
     const tenantId = req.tenantId!;
 
-    const [draftCount, sentCount, viewedCount, acceptedCount, declinedCount, expiredCount] =
-      await Promise.all([
-        prisma.proposal.count({ where: { tenantId, status: 'DRAFT' } }),
-        prisma.proposal.count({ where: { tenantId, status: 'SENT' } }),
-        prisma.proposal.count({ where: { tenantId, status: 'VIEWED' } }),
-        prisma.proposal.count({ where: { tenantId, status: 'ACCEPTED' } }),
-        prisma.proposal.count({ where: { tenantId, status: 'DECLINED' } }),
-        prisma.proposal.count({ where: { tenantId, status: 'EXPIRED' } }),
-      ]);
+    const [
+      draftCount,
+      sentCount,
+      viewedCount,
+      acceptedCount,
+      archivedWonCount,
+      declinedCount,
+      lostCount,
+      expiredCount,
+    ] = await Promise.all([
+      prisma.proposal.count({ where: { tenantId, status: 'DRAFT' } }),
+      prisma.proposal.count({ where: { tenantId, status: 'SENT' } }),
+      prisma.proposal.count({ where: { tenantId, status: 'VIEWED' } }),
+      prisma.proposal.count({ where: { tenantId, status: 'ACCEPTED' } }),
+      prisma.proposal.count({
+        where: { tenantId, status: 'ARCHIVED', acceptedAt: { not: null } },
+      }),
+      prisma.proposal.count({ where: { tenantId, status: 'DECLINED' } }),
+      prisma.proposal.count({ where: { tenantId, status: 'LOST' } }),
+      prisma.proposal.count({ where: { tenantId, status: 'EXPIRED' } }),
+    ]);
 
-    const actionable = sentCount + viewedCount + acceptedCount + declinedCount + expiredCount;
+    const wonCount = acceptedCount + archivedWonCount;
+    const lostTotal = declinedCount + lostCount;
+    const actionable = sentCount + viewedCount + wonCount + lostTotal + expiredCount;
 
     res.json({
       success: true,
@@ -492,17 +506,25 @@ router.get(
           { name: 'Draft', count: draftCount, color: 'bg-slate-400' },
           { name: 'Sent', count: sentCount, color: 'bg-blue-500' },
           { name: 'Viewed', count: viewedCount, color: 'bg-amber-500' },
-          { name: 'Accepted', count: acceptedCount, color: 'bg-green-500' },
+          { name: 'Accepted', count: wonCount, color: 'bg-green-500' },
         ],
         outcomes: [
-          { name: 'Accepted', count: acceptedCount, color: 'bg-green-500' },
-          { name: 'Declined', count: declinedCount, color: 'bg-red-500' },
+          { name: 'Accepted', count: wonCount, color: 'bg-green-500' },
+          { name: 'Declined', count: lostTotal, color: 'bg-red-500' },
           { name: 'Expired', count: expiredCount, color: 'bg-slate-400' },
         ],
         conversionRates: {
-          sentToViewed: actionable > 0 ? Math.round(((viewedCount + acceptedCount + declinedCount + expiredCount) / actionable) * 100) : 0,
-          viewedToAccepted: (viewedCount + acceptedCount) > 0 ? Math.round((acceptedCount / (viewedCount + acceptedCount)) * 100) : 0,
-          sentToAccepted: actionable > 0 ? Math.round((acceptedCount / actionable) * 100) : 0,
+          sentToViewed:
+            actionable > 0
+              ? Math.round(
+                  ((viewedCount + wonCount + lostTotal + expiredCount) / actionable) * 100
+                )
+              : 0,
+          viewedToAccepted:
+            viewedCount + wonCount > 0
+              ? Math.round((wonCount / (viewedCount + wonCount)) * 100)
+              : 0,
+          sentToAccepted: actionable > 0 ? Math.round((wonCount / actionable) * 100) : 0,
         },
       },
     });

@@ -3,7 +3,13 @@
  */
 import { ApiError } from '../../middleware/errorHandler.js';
 import { AI_COPILOT } from '../../config/aiCopilot.js';
-import { chatCompletion, parseJsonResponse, checkAiTokenBudget, isAiConfigured } from './aiClient.js';
+import {
+  chatCompletion,
+  parseJsonResponse,
+  checkAiTokenBudget,
+  isAiConfigured,
+  tokenMetaFromUsage,
+} from './aiClient.js';
 import { buildAiContext } from './aiContextBuilder.js';
 import { logAiUsage } from './proposalAiService.js';
 import { VALID_BILLING_FREQUENCIES } from '../../utils/proposalPricing.js';
@@ -13,6 +19,43 @@ const UK_SYSTEM =
   ' Use UK English spelling (organisation, specialised, favour). ' +
   'Be professional, concise, and accurate. Never invent statutory deadlines or fees. ' +
   'When unsure, say what information is missing.';
+
+const CLIENT_BRIEF_CACHE_TTL_MS = 24 * 60 * 60 * 1000;
+
+interface ClientBriefCacheEntry {
+  data: ClientBriefResult;
+  expiresAt: number;
+}
+
+/** In-memory 24h cache — keyed by tenant + company number or client id */
+const clientBriefCache = new Map<string, ClientBriefCacheEntry>();
+
+function clientBriefCacheKey(
+  tenantId: string,
+  clientId: string,
+  companyNumber?: string | null
+): string {
+  const co = companyNumber?.trim();
+  if (co) return `brief:${tenantId}:co:${co}`;
+  return `brief:${tenantId}:client:${clientId}`;
+}
+
+function getCachedClientBrief(key: string): ClientBriefResult | null {
+  const entry = clientBriefCache.get(key);
+  if (!entry) return null;
+  if (Date.now() > entry.expiresAt) {
+    clientBriefCache.delete(key);
+    return null;
+  }
+  return entry.data;
+}
+
+function setCachedClientBrief(key: string, data: ClientBriefResult): void {
+  clientBriefCache.set(key, {
+    data,
+    expiresAt: Date.now() + CLIENT_BRIEF_CACHE_TTL_MS,
+  });
+}
 
 export interface AutoFitServiceSuggestion {
   serviceId: string;
@@ -34,6 +77,7 @@ export interface AutoFitProposalResult {
 export interface ClientBriefResult {
   brief: string;
   highlights: string[];
+  companiesHouse?: import('./aiContextBuilder.js').AiCompaniesHouseContext;
   requiresApproval: true;
 }
 
@@ -57,25 +101,47 @@ export async function generateClientBrief(
   const ctx = await buildAiContext(tenantId, { clientId, userId });
   if (!ctx.client) throw new ApiError('CLIENT_NOT_FOUND', 'Client not found', 404);
 
+  const cacheKey = clientBriefCacheKey(tenantId, clientId, ctx.client.companyNumber);
+  const cached = getCachedClientBrief(cacheKey);
+  if (cached) {
+    return cached;
+  }
+
   if (!isAiConfigured()) {
+    const ch = ctx.companiesHouse;
     const lines = [
       `**${ctx.client.name}** (${ctx.client.companyType})`,
+      `Relationship: ${ctx.client.clientRelationship === 'EXISTING' ? 'Existing client (renewal/upsell)' : 'New client'}`,
       ctx.client.companyNumber ? `Companies House: ${ctx.client.companyNumber}` : '',
+      ch?.companyName ? `CH registered name: ${ch.companyName}` : '',
+      ch?.companyStatus ? `Status: ${ch.companyStatus}` : '',
+      ch?.dateOfCreation ? `Incorporated: ${ch.dateOfCreation}` : '',
+      ch?.accountsNextDue ? `Accounts due: ${ch.accountsNextDue}` : '',
+      ch?.registeredOfficeAddress ? `Registered office: ${ch.registeredOfficeAddress}` : '',
+      ctx.client.industry ? `Industry: ${ctx.client.industry}` : '',
       ctx.client.turnover ? `Turnover: £${ctx.client.turnover.toLocaleString('en-GB')}` : '',
       ctx.priorProposals.length
         ? `Prior proposals: ${ctx.priorProposals.map((p) => `${p.reference} (${p.status})`).join(', ')}`
         : 'No prior proposals on record.',
     ].filter(Boolean);
-    return {
+    const highlights = [
+      ...(ch?.sicCodes?.length ? [`SIC: ${ch.sicCodes.join(', ')}`] : []),
+      ...(ch?.accountsNextDue ? [`Accounts filing due ${ch.accountsNextDue}`] : []),
+      'Configure AI for a fuller narrative brief.',
+    ];
+    const fallback: ClientBriefResult = {
       brief: lines.join('\n'),
-      highlights: ['Limited context — configure AI for a fuller brief.'],
+      highlights,
+      companiesHouse: ch,
       requiresApproval: true,
     };
+    setCachedClientBrief(cacheKey, fallback);
+    return fallback;
   }
 
   await assertAiBudget(tenantId);
 
-  const raw = await chatCompletion(
+  const { content: raw, usage: aiUsage } = await chatCompletion(
     [
       { role: 'system', content: UK_SYSTEM },
       {
@@ -104,13 +170,20 @@ ${JSON.stringify(
   );
 
   const parsed = parseJsonResponse<{ brief: string; highlights: string[] }>(raw);
-  await logAiUsage(tenantId, userId, 'client_brief', { clientId });
+  await logAiUsage(tenantId, userId, 'client_brief', {
+    clientId,
+    cached: false,
+    ...tokenMetaFromUsage(aiUsage),
+  });
 
-  return {
+  const result: ClientBriefResult = {
     brief: parsed.brief?.trim() || 'Brief unavailable.',
     highlights: parsed.highlights || [],
+    companiesHouse: ctx.companiesHouse,
     requiresApproval: true,
   };
+  setCachedClientBrief(cacheKey, result);
+  return result;
 }
 
 /** Auto-fit a proposal bundle for a client */
@@ -157,7 +230,7 @@ export async function autoFitProposal(
 
   await assertAiBudget(tenantId);
 
-  const raw = await chatCompletion(
+  const { content: raw, usage: aiUsage } = await chatCompletion(
     [
       { role: 'system', content: UK_SYSTEM },
       {
@@ -174,6 +247,8 @@ export async function autoFitProposal(
   "validUntilDays": 30
 }
 Only use serviceId from catalog. Pick billingFrequency from each service's allowedBilling.
+If clientRelationship is EXISTING, frame as renewal — align with prior accepted services where sensible.
+If NEW, recommend a sensible onboarding bundle for the entity type.
 
 Context:
 ${JSON.stringify(
@@ -225,6 +300,7 @@ ${JSON.stringify(
   await logAiUsage(tenantId, userId, 'auto_fit_proposal', {
     clientId,
     serviceCount: services.length,
+    ...tokenMetaFromUsage(aiUsage),
   });
 
   return {

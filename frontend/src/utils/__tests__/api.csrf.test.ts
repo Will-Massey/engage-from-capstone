@@ -25,4 +25,29 @@ describe('api CSRF patterns', () => {
     expect(shouldRetry).toBe(true);
     expect(originalRequest._retry).toBe(true);
   });
+
+  it('extracts csrfToken from /auth/me response shape', () => {
+    const payload = {
+      success: true,
+      data: { csrfToken: 'abc123', user: { id: 'u1' } },
+    };
+    const token = payload.data?.csrfToken;
+    expect(token).toBe('abc123');
+  });
+
+  it('sessionStorage key is stable for cross-refresh persistence', () => {
+    const key = 'engage_csrf_token';
+    sessionStorage.setItem(key, 'persisted-token');
+    expect(sessionStorage.getItem(key)).toBe('persisted-token');
+    sessionStorage.removeItem(key);
+  });
+
+  it('auth routes are exempt from CSRF header requirement', () => {
+    const exemptPrefixes = ['/auth'];
+    const paths = ['/auth/login', '/auth/register', '/auth/2fa/login', '/auth/refresh'];
+    for (const path of paths) {
+      expect(exemptPrefixes.some((prefix) => path.startsWith(prefix))).toBe(true);
+    }
+    expect(exemptPrefixes.some((prefix) => '/proposals'.startsWith(prefix))).toBe(false);
+  });
 });

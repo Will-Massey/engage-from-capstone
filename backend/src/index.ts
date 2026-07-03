@@ -18,6 +18,8 @@ import cookieParser from 'cookie-parser';
 import { shouldSkipRateLimit } from './utils/securityFlags.js';
 import stripeWebhookRoutes from './routes/stripeWebhook.js';
 import { handleOAuthProviderCallback } from './handlers/oauthCallback.js';
+import { handleXeroOAuthCallback } from './handlers/xeroOAuthCallback.js';
+import { handleQuickBooksOAuthCallback } from './handlers/quickbooksOAuthCallback.js';
 
 // Import routes
 import authRoutes from './routes/auth.js';
@@ -33,14 +35,22 @@ import paymentRoutes from './routes/payments.js';
 import adfinRoutes from './routes/adfin.js';
 import billingRoutes from './routes/billing.js';
 import coverLetterTemplateRoutes from './routes/coverLetterTemplates.js';
+import proposalTemplateRoutes from './routes/proposalTemplates.js';
+import engagementLibraryRoutes from './routes/engagementLibrary.js';
 import analyticsRoutes from './routes/analytics.js';
 import touchpointRoutes from './routes/touchpoints.js';
 import onboardingRoutes from './routes/onboarding.js';
 import aiRoutes from './routes/ai.js';
+import pricingRoutes from './routes/pricing.js';
 import automationRoutes from './routes/automation.js';
 import uploadsRoutes from './routes/uploads.js';
 import integrationsRoutes from './routes/integrations.js';
 import diagnosticsRoutes from './routes/diagnostics.js';
+import xeroRoutes from './routes/xero.js';
+import amlRoutes from './routes/aml.js';
+import regulatoryRoutes from './routes/regulatory.js';
+import quickbooksRoutes from './routes/quickbooks.js';
+import statusRoutes from './routes/status.js';
 import { asyncHandler, ApiError } from './middleware/errorHandler.js';
 import { EmailService } from './services/emailService.js';
 
@@ -124,6 +134,8 @@ app.use(
 // CORS configuration - allow multiple origins
 const allowedOrigins = [
   process.env.FRONTEND_URL,
+  'https://capstonesoftware.co.uk',
+  'https://www.capstonesoftware.co.uk',
   'https://engage.capstonesoftware.co.uk',
   'https://engage-frontend-0g6u.onrender.com',
   'http://localhost:5173',
@@ -257,6 +269,12 @@ app.use('/api/auth/login', loginLimiter);
 app.use('/api/auth/csrf-token', csrfLimiter);
 app.use('/api/auth/register', authLimiter);
 app.use('/api/auth/refresh', authLimiter);
+app.use('/api/auth/forgot-password', authLimiter);
+app.use('/api/auth/reset-password', authLimiter);
+app.use('/api/auth/2fa/login', loginLimiter);
+app.use('/api/auth/2fa/setup', authLimiter);
+app.use('/api/auth/2fa/verify', authLimiter);
+app.use('/api/auth/2fa/disable', authLimiter);
 
 const privilegedLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
@@ -364,6 +382,9 @@ app.use('/api/webhooks/email-events', emailEventsWebhookRoutes);
 
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
+
+import cloudflareEmailWebhookRoutes from './routes/webhooks/cloudflare-email.js';
+app.use('/api/webhooks/cloudflare-email', cloudflareEmailWebhookRoutes);
 
 // Mount auth routes BEFORE CSRF protection
 app.use('/api/auth', extractTenant, authRoutes);
@@ -910,6 +931,15 @@ app.get('/api/oauth/callback/microsoft365', (req, res) => {
 app.get('/api/oauth/callback/gmail', (req, res) => {
   void handleOAuthProviderCallback(req, res, 'gmail');
 });
+app.get('/api/oauth/callback/xero', (req, res) => {
+  void handleXeroOAuthCallback(req, res);
+});
+app.get('/api/oauth/callback/quickbooks', (req, res) => {
+  void handleQuickBooksOAuthCallback(req, res);
+});
+app.get('/api/quickbooks/callback', (req, res) => {
+  void handleQuickBooksOAuthCallback(req, res);
+});
 
 // API routes (auth already mounted above)
 // Share/portal/public routes first (before authenticated /:id handlers)
@@ -926,6 +956,8 @@ app.use('/api/payments/adfin', extractTenant, adfinRoutes);
 app.use('/api/billing', extractTenant, billingRoutes);
 app.use('/api/companies-house', extractTenant, companiesHouseRoutes);
 app.use('/api/cover-letter-templates', extractTenant, coverLetterTemplateRoutes);
+app.use('/api/proposal-templates', extractTenant, proposalTemplateRoutes);
+app.use('/api/engagement-library', extractTenant, engagementLibraryRoutes);
 app.use('/api/analytics', extractTenant, analyticsRoutes);
 app.use('/api/proposal-templates', extractTenant, proposalTemplateRoutes);
 app.use('/api/touchpoints', extractTenant, touchpointRoutes);
@@ -934,22 +966,8 @@ app.use('/api/uploads', extractTenant, uploadsRoutes);
 app.use('/api/ai', extractTenant, aiRoutes);
 app.use('/api/integrations', extractTenant, integrationsRoutes);
 
-// API status endpoint
-app.get('/api/status', (req, res) => {
-  res.json({
-    success: true,
-    data: {
-      status: 'operational',
-      features: {
-        multiTenancy: true,
-        mtddigital: true,
-        pdfGeneration: true,
-        pricingEngine: true,
-      },
-      timestamp: new Date().toISOString(),
-    },
-  });
-});
+// W4.5 — Public status page API (no auth)
+app.use('/api/status', statusRoutes);
 
 // Uploads are served via authenticated /api/uploads routes only (no public static dir)
 
@@ -1002,6 +1020,7 @@ app.use(errorHandler);
 
 // Schedule renewal reminder job (daily at 9 AM)
 import { runRenewalReminders } from './jobs/renewalReminders.js';
+import { runProposalChaseJob } from './jobs/proposalChaseJob.js';
 
 // Client touchpoint / lifecycle automation engine
 import { runTouchpointEngine } from './jobs/touchpointEngine.js';
@@ -1028,6 +1047,24 @@ function scheduleRenewalReminders() {
   }, RENEWAL_CHECK_INTERVAL);
 
   logger.info('✅ Renewal reminder job scheduled (every 24 hours)');
+}
+
+function scheduleProposalChaseJob() {
+  logger.info('📅 Scheduling proposal chase job...');
+
+  setTimeout(() => {
+    runProposalChaseJob().catch((err) => {
+      logger.error('Initial proposal chase check failed:', err);
+    });
+  }, 120_000);
+
+  setInterval(() => {
+    runProposalChaseJob().catch((err) => {
+      logger.error('Scheduled proposal chase check failed:', err);
+    });
+  }, RENEWAL_CHECK_INTERVAL);
+
+  logger.info('✅ Proposal chase job scheduled (every 24 hours)');
 }
 
 function scheduleTouchpointEngine() {
@@ -1075,6 +1112,7 @@ if (shouldStartServer) {
     logger.info(`🔧 Admin endpoints available at /api/admin (requires ADMIN_SECRET_KEY)`);
 
     scheduleRenewalReminders();
+    scheduleProposalChaseJob();
     scheduleTouchpointEngine();
     scheduleEmailAutomation();
     initEngageSuperadmin();

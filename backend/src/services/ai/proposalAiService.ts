@@ -8,10 +8,18 @@ import {
   assembleEngagementLetterFromClauses,
   selectClausesForServices,
 } from '../../data/engagementClauseLibrary.js';
+import { regulatoryBodyLabel } from '../../utils/professionalBodyClauses.js';
 import { getProposalSettings, addDays } from '../../utils/tenantProposalSettings.js';
-import { chatCompletion, chatCompletionStream, isAiConfigured, parseJsonResponse } from './aiClient.js';
+import {
+  chatCompletion,
+  chatCompletionStream,
+  isAiConfigured,
+  parseJsonResponse,
+  tokenMetaFromUsage,
+} from './aiClient.js';
 import { VALID_BILLING_FREQUENCIES } from '../../utils/proposalPricing.js';
 import { AI_COPILOT } from '../../config/aiCopilot.js';
+import { getVoiceOfPracticePromptContext } from '../voiceOfPracticeService.js';
 
 const UK_SYSTEM =
   AI_COPILOT.systemPersona +
@@ -26,6 +34,16 @@ export async function logAiUsage(
   meta?: Record<string, unknown>
 ) {
   try {
+    if (typeof meta?.prompt_tokens === 'number') {
+      logger.info('AI feature token usage', {
+        feature,
+        prompt_tokens: meta.prompt_tokens,
+        completion_tokens: meta.completion_tokens,
+        total_tokens: meta.total_tokens,
+        tenantId,
+      });
+    }
+
     await prisma.activityLog.create({
       data: {
         tenantId,
@@ -47,6 +65,25 @@ async function loadClientContext(tenantId: string, clientId: string) {
   });
   if (!client) throw new ApiError('CLIENT_NOT_FOUND', 'Client not found', 404);
   return client;
+}
+
+function parseTenantSettingsJson(raw: unknown): Record<string, unknown> {
+  if (!raw) return {};
+  if (typeof raw === 'string') {
+    try {
+      return JSON.parse(raw) as Record<string, unknown>;
+    } catch {
+      return {};
+    }
+  }
+  return raw as Record<string, unknown>;
+}
+
+function professionalBodyFromTenantSettings(settingsRaw: unknown): string | undefined {
+  const settings = parseTenantSettingsJson(settingsRaw);
+  return regulatoryBodyLabel(
+    typeof settings.professionalBody === 'string' ? settings.professionalBody : undefined
+  );
 }
 
 async function loadCatalog(tenantId: string) {
@@ -111,6 +148,7 @@ export async function suggestProposalServices(
       vatNumber: client.vatNumber,
       mtditsaStatus: client.mtditsaStatus,
       companyNumber: client.companyNumber,
+      clientRelationship: client.clientRelationship,
     },
     catalog: catalogForPrompt(catalog),
     priorAcceptedServices: priorProposals.flatMap((p) =>
@@ -118,7 +156,7 @@ export async function suggestProposalServices(
     ),
   };
 
-  const raw = await chatCompletion(
+  const { content: raw, usage: aiUsage } = await chatCompletion(
     [
       { role: 'system', content: UK_SYSTEM },
       {
@@ -133,6 +171,8 @@ export async function suggestProposalServices(
   "summary": "2-3 sentence overview for the partner"
 }
 Only use serviceId values from the catalog. Pick billingFrequency from each service's allowedBilling.
+If client.clientRelationship is EXISTING, treat as renewal — prefer continuity with priorAcceptedServices.
+If NEW, suggest an appropriate first-engagement bundle for the entity type.
 
 Context:
 ${JSON.stringify(prompt, null, 2)}`,
@@ -165,7 +205,11 @@ ${JSON.stringify(prompt, null, 2)}`,
       };
     });
 
-  await logAiUsage(tenantId, userId, 'suggest_services', { clientId, count: suggestions.length });
+  await logAiUsage(tenantId, userId, 'suggest_services', {
+    clientId,
+    count: suggestions.length,
+    ...tokenMetaFromUsage(aiUsage),
+  });
 
   return {
     suggestions,
@@ -188,8 +232,9 @@ export async function generateAiCoverLetter(
   }
 ) {
   const client = await loadClientContext(tenantId, params.clientId);
+  const voiceContext = await getVoiceOfPracticePromptContext(tenantId);
 
-  const raw = await chatCompletion(
+  const { content: raw, usage: aiUsage } = await chatCompletion(
     [
       { role: 'system', content: UK_SYSTEM },
       {
@@ -198,16 +243,21 @@ export async function generateAiCoverLetter(
 Tone: ${params.tone.toLowerCase()}
 Practice: ${params.practiceName}
 Client: ${client.name} (${client.companyType})
+Relationship: ${client.clientRelationship === 'EXISTING' ? 'Existing client — renewal or scope change; warm continuity, not a cold pitch' : 'New client — welcoming onboarding tone'}
 Addressee: ${client.contactName || client.name}
 Sender: ${params.senderName || 'Partner'}
 Services: ${params.services.map((s) => `${s.name} (${s.billingFrequency || 'MONTHLY'})`).join('; ')}
-Use plain paragraphs (no markdown headers). 3-5 short paragraphs. End with a clear call to review and sign. UK English.`,
+${voiceContext}Use plain paragraphs (no markdown headers). 3-5 short paragraphs. End with a clear call to review and sign. UK English.`,
       },
     ],
     { temperature: 0.6, maxTokens: 1200 }
   );
 
-  await logAiUsage(tenantId, userId, 'cover_letter', { clientId: params.clientId, tone: params.tone });
+  await logAiUsage(tenantId, userId, 'cover_letter', {
+    clientId: params.clientId,
+    tone: params.tone,
+    ...tokenMetaFromUsage(aiUsage),
+  });
   return { content: raw, requiresApproval: true };
 }
 
@@ -224,15 +274,17 @@ export async function* generateAiCoverLetterStream(
   }
 ): AsyncGenerator<string, void, unknown> {
   const client = await loadClientContext(tenantId, params.clientId);
+  const voiceContext = await getVoiceOfPracticePromptContext(tenantId);
 
   const prompt = `Write a proposal cover letter for a UK accountancy practice.
 Tone: ${params.tone.toLowerCase()}
 Practice: ${params.practiceName}
 Client: ${client.name} (${client.companyType})
+Relationship: ${client.clientRelationship === 'EXISTING' ? 'Existing client — renewal or scope change; warm continuity, not a cold pitch' : 'New client — welcoming onboarding tone'}
 Addressee: ${client.contactName || client.name}
 Sender: ${params.senderName || 'Partner'}
 Services: ${params.services.map((s) => `${s.name} (${s.billingFrequency || 'MONTHLY'})`).join('; ')}
-Use plain paragraphs (no markdown headers). 3-5 short paragraphs. End with a clear call to review and sign. UK English.`;
+${voiceContext}Use plain paragraphs (no markdown headers). 3-5 short paragraphs. End with a clear call to review and sign. UK English.`;
 
   let full = '';
   for await (const chunk of chatCompletionStream(
@@ -270,7 +322,7 @@ export async function generateAiFollowUp(
   const viewCount = proposal.views.length;
   const lastView = proposal.views[0]?.viewedAt;
 
-  const raw = await chatCompletion(
+  const { content: raw, usage: aiUsage } = await chatCompletion(
     [
       { role: 'system', content: UK_SYSTEM },
       {
@@ -293,15 +345,25 @@ Do not send — draft only. UK English.`,
   const draft = parseJsonResponse<{ subject: string; body: string; suggestedSendInDays?: number }>(
     raw
   );
-  await logAiUsage(tenantId, userId, 'follow_up_draft', { proposalId, tone });
+  await logAiUsage(tenantId, userId, 'follow_up_draft', {
+    proposalId,
+    tone,
+    ...tokenMetaFromUsage(aiUsage),
+  });
   return { ...draft, requiresApproval: true, proposalId };
 }
 
-/** Phase 3 — Engagement letter from clause library + optional AI intro */
+export interface EngagementLetterOptions {
+  /** When true, prepend a short Clara introduction (extra tokens). Default: clause library only. */
+  includeAiIntro?: boolean;
+}
+
+/** Phase 3 — Engagement letter from clause library; AI intro is optional (W2.3) */
 export async function assembleAiEngagementLetter(
   tenantId: string,
   userId: string | undefined,
-  proposalId: string
+  proposalId: string,
+  options?: EngagementLetterOptions
 ) {
   const proposal = await prisma.proposal.findFirst({
     where: { id: proposalId, tenantId },
@@ -314,7 +376,8 @@ export async function assembleAiEngagementLetter(
     tags: '',
   }));
 
-  const clauses = selectClausesForServices(serviceRows);
+  const professionalBody = professionalBodyFromTenantSettings(proposal.tenant.settings);
+  const clauses = selectClausesForServices(serviceRows, { professionalBody });
   const feesSummary = proposal.services
     .map(
       (s) =>
@@ -337,8 +400,9 @@ export async function assembleAiEngagementLetter(
     `${periodStart} to ${periodEnd}`
   );
 
-  if (isAiConfigured()) {
-    const intro = await chatCompletion(
+  let aiUsage;
+  if (options?.includeAiIntro && isAiConfigured()) {
+    const introResult = await chatCompletion(
       [
         { role: 'system', content: UK_SYSTEM },
         {
@@ -348,12 +412,15 @@ export async function assembleAiEngagementLetter(
       ],
       { temperature: 0.4, maxTokens: 400 }
     );
-    letter = `${intro}\n\n---\n\n${letter}`;
+    aiUsage = introResult.usage;
+    letter = `${introResult.content}\n\n---\n\n${letter}`;
   }
 
   await logAiUsage(tenantId, userId, 'engagement_letter', {
     proposalId,
     clauseIds: clauses.map((c) => c.id),
+    includeAiIntro: !!options?.includeAiIntro,
+    ...tokenMetaFromUsage(aiUsage),
   });
 
   return {
@@ -363,11 +430,12 @@ export async function assembleAiEngagementLetter(
   };
 }
 
-/** Streaming version: yields the AI intro first (if enabled), then the assembled letter body in one final chunk. */
+/** Streaming version: yields optional AI intro, then the assembled clause-based body. */
 export async function* assembleAiEngagementLetterStream(
   tenantId: string,
   userId: string | undefined,
-  proposalId: string
+  proposalId: string,
+  options?: EngagementLetterOptions
 ): AsyncGenerator<string, void, unknown> {
   const proposal = await prisma.proposal.findFirst({
     where: { id: proposalId, tenantId },
@@ -376,7 +444,8 @@ export async function* assembleAiEngagementLetterStream(
   if (!proposal) throw new ApiError('NOT_FOUND', 'Proposal not found', 404);
 
   const serviceRows = proposal.services.map((s) => ({ name: s.name, tags: '' }));
-  const clauses = selectClausesForServices(serviceRows);
+  const professionalBody = professionalBodyFromTenantSettings(proposal.tenant.settings);
+  const clauses = selectClausesForServices(serviceRows, { professionalBody });
   const feesSummary = proposal.services
     .map(
       (s) =>
@@ -399,8 +468,7 @@ export async function* assembleAiEngagementLetterStream(
     `${periodStart} to ${periodEnd}`
   );
 
-  if (isAiConfigured()) {
-    // Stream the intro
+  if (options?.includeAiIntro && isAiConfigured()) {
     const introPrompt = `Write a 2-paragraph introduction for this engagement letter (plain text, no headers). Client: ${proposal.client.name}. Services: ${proposal.services.map((s) => s.name).join(', ')}.`;
     for await (const chunk of chatCompletionStream(
       [
@@ -414,12 +482,12 @@ export async function* assembleAiEngagementLetterStream(
     yield '\n\n---\n\n';
   }
 
-  // Yield the deterministic clause-based body
   yield baseLetter;
 
   await logAiUsage(tenantId, userId, 'engagement_letter_stream', {
     proposalId,
     clauseIds: clauses.map((c) => c.id),
+    includeAiIntro: !!options?.includeAiIntro,
   });
 }
 
@@ -432,6 +500,7 @@ export async function reviewProposalDraft(
     title?: string;
     coverLetter?: string;
     validUntil?: string;
+    terms?: string;
     services: Array<{ name: string; billingFrequency?: string; displayPrice?: number }>;
   }
 ) {
@@ -471,14 +540,19 @@ export async function reviewProposalDraft(
     ruleActions.push('One or more services have zero fees — confirm pricing before sending.');
     healthScore -= 10;
   }
+  if (!draft.terms?.trim()) {
+    ruleActions.push('Terms and conditions will be attached automatically when you create the proposal.');
+    healthScore -= 5;
+  }
 
   healthScore = Math.max(0, Math.min(100, healthScore));
 
   let summary = '';
   let aiActions: string[] = [];
+  let aiUsage;
 
   if (isAiConfigured()) {
-    const raw = await chatCompletion(
+    const completion = await chatCompletion(
       [
         { role: 'system', content: UK_SYSTEM },
         {
@@ -489,16 +563,19 @@ Client: ${client.name} (${client.companyType})
 Draft title: ${draft.title || '(none)'}
 Services: ${draft.services.map((s) => `${s.name} £${s.displayPrice ?? 0} ${s.billingFrequency || ''}`).join('; ') || '(none)'}
 Cover letter length: ${coverLen} chars
+Terms length: ${draft.terms?.trim().length ?? 0} chars
+Terms excerpt: ${draft.terms?.trim().slice(0, 1200) || '(will be generated on save)'}
 Rule flags already found: ${JSON.stringify(ruleActions)}`,
         },
       ],
       { jsonMode: true, temperature: 0.3, maxTokens: 500 }
     );
+    aiUsage = completion.usage;
     const parsed = parseJsonResponse<{
       summary: string;
       recommendedActions: string[];
       suggestedTitle?: string;
-    }>(raw);
+    }>(completion.content);
     summary = parsed.summary;
     aiActions = parsed.recommendedActions || [];
     if (parsed.suggestedTitle?.trim() && !draft.title?.trim()) {
@@ -514,6 +591,7 @@ Rule flags already found: ${JSON.stringify(ruleActions)}`,
     clientId: draft.clientId,
     healthScore,
     serviceCount: draft.services.length,
+    ...tokenMetaFromUsage(aiUsage),
   });
 
   return {
@@ -537,7 +615,7 @@ export async function suggestProposalTitle(
     return { title: names ? `${names} — ${client.name}` : `Proposal for ${client.name}` };
   }
 
-  const raw = await chatCompletion(
+  const { content: raw, usage: aiUsage } = await chatCompletion(
     [
       { role: 'system', content: UK_SYSTEM },
       {
@@ -550,7 +628,10 @@ Services: ${services.map((s) => s.name).join(', ') || 'general engagement'}`,
     { jsonMode: true, temperature: 0.4, maxTokens: 120 }
   );
   const parsed = parseJsonResponse<{ title: string }>(raw);
-  await logAiUsage(tenantId, userId, 'suggest_title', { clientId });
+  await logAiUsage(tenantId, userId, 'suggest_title', {
+    clientId,
+    ...tokenMetaFromUsage(aiUsage),
+  });
   return { title: parsed.title?.trim() || `Proposal for ${client.name}` };
 }
 
@@ -609,9 +690,10 @@ export async function getProposalHealth(
 
   let aiSummary = '';
   let aiActions: string[] = [];
+  let aiUsage;
 
   if (isAiConfigured()) {
-    const raw = await chatCompletion(
+    const completion = await chatCompletion(
       [
         { role: 'system', content: UK_SYSTEM },
         {
@@ -626,7 +708,10 @@ Total: £${proposal.total}`,
       ],
       { jsonMode: true, temperature: 0.3 }
     );
-    const parsed = parseJsonResponse<{ summary: string; recommendedActions: string[] }>(raw);
+    aiUsage = completion.usage;
+    const parsed = parseJsonResponse<{ summary: string; recommendedActions: string[] }>(
+      completion.content
+    );
     aiSummary = parsed.summary;
     aiActions = parsed.recommendedActions || [];
   } else {
@@ -635,7 +720,11 @@ Total: £${proposal.total}`,
       : 'Proposal is progressing normally.';
   }
 
-  await logAiUsage(tenantId, userId, 'proposal_health', { proposalId, healthScore });
+  await logAiUsage(tenantId, userId, 'proposal_health', {
+    proposalId,
+    healthScore,
+    ...tokenMetaFromUsage(aiUsage),
+  });
 
   return {
     healthScore,
@@ -670,36 +759,48 @@ export async function generateRenewalDraft(
     serviceId: s.serviceTemplateId,
     name: s.name,
     billingFrequency: s.billingFrequency,
-    displayPrice: Math.round((s.displayPrice || s.unitPrice) * multiplier * 100) / 100,
+    displayPrice: Math.max(
+      0,
+      Math.round((s.displayPrice || s.unitPrice) * multiplier * 100) / 100
+    ),
     quantity: s.quantity,
     discountPercent: s.discountPercent,
   }));
 
   let coverLetter = original.coverLetter || '';
   let renewalNarrative = '';
+  let aiUsage;
 
   if (isAiConfigured()) {
-    const raw = await chatCompletion(
+    const completion = await chatCompletion(
       [
         { role: 'system', content: UK_SYSTEM },
         {
           role: 'user',
           content: `Write a renewal cover letter for ${original.client.name}. 
 Prior proposal: ${original.title}, accepted ${original.acceptedAt?.toISOString().slice(0, 10)}.
-${upliftPercent > 0 ? `Fees increased by ${upliftPercent}% reflecting ongoing service and inflation.` : 'Fees unchanged from prior year.'}
+${upliftPercent > 0 ? `Fees increased by ${upliftPercent}% reflecting ongoing service and inflation.` : upliftPercent < 0 ? `Fees reduced by ${Math.abs(upliftPercent)}% — explain professionally (efficiency, scope alignment, or goodwill).` : 'Fees unchanged from prior year.'}
 Practice: ${original.tenant.name}
 3-4 paragraphs, warm professional UK tone, plain text.`,
         },
       ],
       { temperature: 0.55, maxTokens: 900 }
     );
-    coverLetter = raw;
-    renewalNarrative = upliftPercent
-      ? `Renewal with ${upliftPercent}% fee adjustment`
-      : 'Straight renewal at existing fees';
+    aiUsage = completion.usage;
+    coverLetter = completion.content;
+    renewalNarrative =
+      upliftPercent > 0
+        ? `Renewal with ${upliftPercent}% fee uplift`
+        : upliftPercent < 0
+          ? `Renewal with ${Math.abs(upliftPercent)}% fee reduction`
+          : 'Straight renewal at existing fees';
   }
 
-  await logAiUsage(tenantId, userId, 'renewal_draft', { proposalId, upliftPercent });
+  await logAiUsage(tenantId, userId, 'renewal_draft', {
+    proposalId,
+    upliftPercent,
+    ...tokenMetaFromUsage(aiUsage),
+  });
 
   return {
     title: `${original.title} (Renewal)`,
@@ -728,7 +829,7 @@ export async function executeAiCommand(
     take: 15,
   });
 
-  const raw = await chatCompletion(
+  const { content: raw, usage: aiUsage } = await chatCompletion(
     [
       { role: 'system', content: UK_SYSTEM },
       {
@@ -753,7 +854,11 @@ User query: "${query}"`,
     params?: Record<string, unknown>;
   }>(raw);
 
-  await logAiUsage(tenantId, userId, 'ai_command', { query, action: result.action });
+  await logAiUsage(tenantId, userId, 'ai_command', {
+    query,
+    action: result.action,
+    ...tokenMetaFromUsage(aiUsage),
+  });
 
   return result;
 }
@@ -765,7 +870,7 @@ export async function quickAsk(
   query: string,
   context?: { proposalId?: string; clientId?: string; page?: string }
 ) {
-  const raw = await chatCompletion(
+  const { content: raw, usage: aiUsage } = await chatCompletion(
     [
       {
         role: 'system',
@@ -781,7 +886,10 @@ export async function quickAsk(
     { temperature: 0.35, maxTokens: 180 }
   );
 
-  await logAiUsage(tenantId, userId, 'quick_ask', { query: query.slice(0, 80) });
+  await logAiUsage(tenantId, userId, 'quick_ask', {
+    query: query.slice(0, 80),
+    ...tokenMetaFromUsage(aiUsage),
+  });
   return { message: raw, action: 'answer' as const };
 }
 
@@ -943,8 +1051,9 @@ export async function getAiAttentionQueue(
   const top = scored.slice(0, 10);
 
   let narratives: string[] = [];
+  let aiUsage;
   if (isAiConfigured() && top.length) {
-    const raw = await chatCompletion(
+    const completion = await chatCompletion(
       [
         { role: 'system', content: UK_SYSTEM },
         {
@@ -967,7 +1076,8 @@ ${JSON.stringify(
       ],
       { jsonMode: true, temperature: 0.35, maxTokens: 800 }
     );
-    const parsed = parseJsonResponse<{ narratives: string[] }>(raw);
+    aiUsage = completion.usage;
+    const parsed = parseJsonResponse<{ narratives: string[] }>(completion.content);
     narratives = parsed.narratives || [];
   }
 
@@ -985,7 +1095,10 @@ ${JSON.stringify(
     recommendedAction: t.recommendedAction,
   }));
 
-  await logAiUsage(tenantId, userId, 'attention_queue', { count: items.length });
+  await logAiUsage(tenantId, userId, 'attention_queue', {
+    count: items.length,
+    ...tokenMetaFromUsage(aiUsage),
+  });
 
   return { items, generatedAt: new Date().toISOString() };
 }

@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
-import { SparklesIcon, ChatBubbleLeftRightIcon } from '@heroicons/react/24/outline';
+import { SparklesIcon, ChatBubbleLeftRightIcon, CheckIcon, XMarkIcon } from '@heroicons/react/24/outline';
+import ClaraServiceSuggestionCards, { type ClaraServiceSuggestion } from './ClaraServiceSuggestionCards';
 import { apiClient } from '../../utils/api';
 import { useAiAssistantStore } from '../../stores/aiAssistantStore';
 import { AiPanel, showAiError } from './AiPanel';
@@ -9,6 +10,40 @@ interface ServiceLine {
   name: string;
   billingFrequency?: string;
   displayPrice?: number;
+}
+
+interface ServiceSuggestion {
+  serviceId: string;
+  name: string;
+  rationale: string;
+  billingFrequency?: string;
+  displayPrice?: number;
+}
+
+type MappableAction =
+  | { type: 'title'; value: string }
+  | { type: 'coverLetter' }
+  | { type: 'suggestServices' };
+
+function parseMappableAction(action: string): MappableAction | null {
+  const titleMatch = action.match(/^Suggested title:\s*"(.+)"$/i);
+  if (titleMatch) return { type: 'title', value: titleMatch[1] };
+
+  const lower = action.toLowerCase();
+  if (
+    lower.includes('cover letter') &&
+    (lower.includes('missing') ||
+      lower.includes('short') ||
+      lower.includes('add') ||
+      lower.includes('personalised') ||
+      lower.includes('personalized'))
+  ) {
+    return { type: 'coverLetter' };
+  }
+  if (lower.includes('service') && (lower.includes('add') || lower.includes('suggest') || lower.includes('zero'))) {
+    return { type: 'suggestServices' };
+  }
+  return null;
 }
 
 interface ProposalBuilderClaraProps {
@@ -25,11 +60,16 @@ interface ProposalBuilderClaraProps {
   suggestLoading: boolean;
   suggestions: {
     summary?: string;
-    suggestions?: Array<{ serviceId: string; name: string; rationale: string }>;
+    suggestions?: ServiceSuggestion[];
   } | null;
-  onApplySuggestions: () => void;
+  onApplySingleSuggestion: (serviceId: string) => void;
+  onTweakSingleSuggestion?: (
+    serviceId: string,
+    tweaks: { billingFrequency: string; displayPrice: number }
+  ) => void;
   onDraftCoverLetter: () => void;
   coverLoading: boolean;
+  terms?: string;
 }
 
 export default function ProposalBuilderClara({
@@ -45,12 +85,15 @@ export default function ProposalBuilderClara({
   onSuggestServices,
   suggestLoading,
   suggestions,
-  onApplySuggestions,
+  onApplySingleSuggestion,
+  onTweakSingleSuggestion,
   onDraftCoverLetter,
   coverLoading,
+  terms = '',
 }: ProposalBuilderClaraProps) {
   const openClara = useAiAssistantStore((s) => s.open);
   const [titleLoading, setTitleLoading] = useState(false);
+  const [titleSuggestion, setTitleSuggestion] = useState<string | null>(null);
   const [reviewLoading, setReviewLoading] = useState(false);
   const [draftReview, setDraftReview] = useState<{
     healthScore: number;
@@ -58,17 +101,25 @@ export default function ProposalBuilderClara({
     recommendedActions: string[];
     readyToSend: boolean;
   } | null>(null);
+  const [dismissedServiceIds, setDismissedServiceIds] = useState<Set<string>>(new Set());
+  const [dismissedActionIndexes, setDismissedActionIndexes] = useState<Set<number>>(new Set());
 
   useEffect(() => {
     setDraftReview(null);
+    setDismissedActionIndexes(new Set());
   }, [step, clientId, proposalTitle, coverLetter, validUntil, services.length]);
+
+  useEffect(() => {
+    setDismissedServiceIds(new Set());
+  }, [suggestions]);
 
   const suggestTitle = async () => {
     setTitleLoading(true);
+    setTitleSuggestion(null);
     try {
       const res = (await apiClient.aiSuggestTitle(clientId, services)) as any;
       if (res.success && res.data?.title) {
-        onApplyTitle(res.data.title);
+        setTitleSuggestion(res.data.title);
       }
     } catch (e) {
       showAiError(e);
@@ -79,12 +130,14 @@ export default function ProposalBuilderClara({
 
   const runDraftReview = async () => {
     setReviewLoading(true);
+    setDismissedActionIndexes(new Set());
     try {
       const res = (await apiClient.aiDraftReview({
         clientId,
         title: proposalTitle,
         coverLetter,
         validUntil: validUntil || undefined,
+        terms: terms.trim() || undefined,
         services,
       })) as any;
       if (res.success) setDraftReview(res.data);
@@ -94,6 +147,43 @@ export default function ProposalBuilderClara({
       setReviewLoading(false);
     }
   };
+
+  const dismissService = (serviceId: string) => {
+    setDismissedServiceIds((prev) => new Set([...prev, serviceId]));
+  };
+
+  const dismissAction = (index: number) => {
+    setDismissedActionIndexes((prev) => new Set([...prev, index]));
+  };
+
+  const applyRecommendedAction = (action: string, index: number) => {
+    const mapped = parseMappableAction(action);
+    if (!mapped) return;
+
+    switch (mapped.type) {
+      case 'title':
+        onApplyTitle(mapped.value);
+        break;
+      case 'coverLetter':
+        onDraftCoverLetter();
+        break;
+      case 'suggestServices':
+        onSuggestServices();
+        break;
+    }
+    dismissAction(index);
+  };
+
+  const visibleSuggestions =
+    suggestions?.suggestions?.filter((s) => !dismissedServiceIds.has(s.serviceId)) ?? [];
+
+  const claraCards: ClaraServiceSuggestion[] = visibleSuggestions.map((s) => ({
+    serviceId: s.serviceId,
+    name: s.name,
+    billingFrequency: s.billingFrequency || 'MONTHLY',
+    displayPrice: s.displayPrice ?? 0,
+    rationale: s.rationale,
+  }));
 
   const scoreColor =
     !draftReview
@@ -130,16 +220,24 @@ export default function ProposalBuilderClara({
                 {suggestions.summary && (
                   <p className="text-sm text-slate-700 dark:text-slate-200">{suggestions.summary}</p>
                 )}
-                <ul className="text-xs space-y-1.5">
-                  {suggestions.suggestions?.map((s) => (
-                    <li key={s.serviceId} className="text-slate-600 dark:text-slate-300">
-                      <strong>{s.name}</strong> — {s.rationale}
-                    </li>
-                  ))}
-                </ul>
-                <button type="button" onClick={onApplySuggestions} className="btn-primary text-xs py-1.5 px-3 mt-1">
-                  Apply suggestions
-                </button>
+                <ClaraServiceSuggestionCards
+                  suggestions={claraCards}
+                  onAccept={(s) => onApplySingleSuggestion(s.serviceId)}
+                  onTweak={(s, tweaks) => {
+                    if (onTweakSingleSuggestion) {
+                      onTweakSingleSuggestion(s.serviceId, tweaks);
+                    } else {
+                      onApplySingleSuggestion(s.serviceId);
+                    }
+                    dismissService(s.serviceId);
+                  }}
+                  onReject={dismissService}
+                  onAcceptAll={() => {
+                    for (const s of visibleSuggestions) {
+                      onApplySingleSuggestion(s.serviceId);
+                    }
+                  }}
+                />
               </div>
             )}
           </AiPanel>
@@ -154,15 +252,48 @@ export default function ProposalBuilderClara({
               loading={titleLoading}
               onAction={suggestTitle}
               actionLabel={proposalTitle ? 'Refresh title' : 'Suggest title'}
-            />
+            >
+              {titleSuggestion && (
+                <div className="space-y-2">
+                  <p className="text-[10px] uppercase tracking-wide text-violet-600 dark:text-violet-400 font-medium">
+                    Suggested title — review before applying
+                  </p>
+                  <p className="text-sm font-medium text-slate-800 dark:text-slate-100 rounded-lg bg-white/80 dark:bg-slate-900/60 p-3 border border-violet-100 dark:border-violet-900">
+                    {titleSuggestion}
+                  </p>
+                  <div className="flex gap-2">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        onApplyTitle(titleSuggestion);
+                        setTitleSuggestion(null);
+                      }}
+                      className="btn-primary text-xs py-1.5 px-3 inline-flex items-center gap-1"
+                    >
+                      <CheckIcon className="h-4 w-4" />
+                      Accept
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setTitleSuggestion(null)}
+                      className="btn-secondary text-xs py-1.5 px-3 inline-flex items-center gap-1"
+                    >
+                      <XMarkIcon className="h-4 w-4" />
+                      Reject
+                    </button>
+                  </div>
+                </div>
+              )}
+            </AiPanel>
 
             <AiPanel
               title="Cover letter"
-              description="Personalised introduction using your selected services"
+              description="Template loads automatically — ask Clara only to revise your draft"
               configured={configured}
               loading={coverLoading}
               onAction={onDraftCoverLetter}
-              actionLabel={AI_COPILOT.draftWithLabel}
+              actionLabel={AI_COPILOT.reviseWithLabel}
+              actionDisabled={!coverLetter.trim()}
             />
 
             <AiPanel
@@ -188,13 +319,42 @@ export default function ProposalBuilderClara({
                   </div>
                   <p className="text-sm text-slate-700 dark:text-slate-200">{draftReview.summary}</p>
                   {draftReview.recommendedActions?.length > 0 && (
-                    <ul className="text-xs space-y-1 text-slate-600 dark:text-slate-300">
-                      {draftReview.recommendedActions.map((a, i) => (
-                        <li key={i} className="flex gap-2">
-                          <span className="text-violet-500 shrink-0">→</span>
-                          {a}
-                        </li>
-                      ))}
+                    <ul className="text-xs space-y-2 text-slate-600 dark:text-slate-300">
+                      {draftReview.recommendedActions.map((a, i) => {
+                        if (dismissedActionIndexes.has(i)) return null;
+                        const mapped = parseMappableAction(a);
+                        return (
+                          <li
+                            key={i}
+                            className="rounded-lg border border-violet-100 dark:border-violet-900/50 bg-white/70 dark:bg-slate-900/50 p-2.5"
+                          >
+                            <p className="flex gap-2">
+                              <span className="text-violet-500 shrink-0">→</span>
+                              {a}
+                            </p>
+                            <div className="flex flex-wrap gap-1.5 mt-2 ml-5">
+                              {mapped && (
+                                <button
+                                  type="button"
+                                  onClick={() => applyRecommendedAction(a, i)}
+                                  className="text-[10px] px-2 py-0.5 rounded-full bg-violet-100 dark:bg-violet-900/40 text-violet-700 dark:text-violet-200 hover:bg-violet-200 dark:hover:bg-violet-800/50 inline-flex items-center gap-1"
+                                >
+                                  <CheckIcon className="h-3 w-3" />
+                                  Accept
+                                </button>
+                              )}
+                              <button
+                                type="button"
+                                onClick={() => dismissAction(i)}
+                                className="text-[10px] px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800/60 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700/60 inline-flex items-center gap-1"
+                              >
+                                <XMarkIcon className="h-3 w-3" />
+                                Dismiss
+                              </button>
+                            </div>
+                          </li>
+                        );
+                      })}
                     </ul>
                   )}
                 </div>

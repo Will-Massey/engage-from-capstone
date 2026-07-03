@@ -21,6 +21,8 @@ import { useAuthStore } from '../../stores/authStore';
 import { format, formatDistanceToNow } from 'date-fns';
 import { motion } from 'framer-motion';
 import toast from 'react-hot-toast';
+import AmlPartnerPanel from '../../components/clients/AmlPartnerPanel';
+import LoeOnlyModal from '../../components/proposals/LoeOnlyModal';
 
 const ClientDetail = () => {
   const { id } = useParams<{ id: string }>();
@@ -30,6 +32,8 @@ const ClientDetail = () => {
   const [activeTab, setActiveTab] = useState('overview');
   const [showEditModal, setShowEditModal] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [isVerifyingId, setIsVerifyingId] = useState(false);
+  const [showLoeOnlyModal, setShowLoeOnlyModal] = useState(false);
 
   // Edit form state
   const [editForm, setEditForm] = useState({
@@ -48,6 +52,7 @@ const ClientDetail = () => {
     addressLine2: '',
     city: '',
     postcode: '',
+    clientRelationship: 'NEW' as 'NEW' | 'EXISTING',
   });
 
   useEffect(() => {
@@ -88,8 +93,28 @@ const ClientDetail = () => {
       addressLine2: client.address?.line2 || '',
       city: client.address?.city || '',
       postcode: client.address?.postcode || '',
+      clientRelationship: client.clientRelationship === 'EXISTING' ? 'EXISTING' : 'NEW',
     });
     setShowEditModal(true);
+  };
+
+  const handleRequestIdVerification = async () => {
+    if (!id) return;
+    try {
+      setIsVerifyingId(true);
+      const response = (await apiClient.verifyClientIdentity(id)) as any;
+      const link = response?.data?.verificationLink;
+      if (link) {
+        await navigator.clipboard.writeText(link);
+        toast.success('ID verification link copied to clipboard');
+      } else {
+        toast.success(response?.message || 'ID verification requested');
+      }
+    } catch {
+      // Error handled by API interceptor
+    } finally {
+      setIsVerifyingId(false);
+    }
   };
 
   const handleUpdateClient = async () => {
@@ -114,6 +139,7 @@ const ClientDetail = () => {
           postcode: editForm.postcode,
           country: 'United Kingdom',
         },
+        clientRelationship: editForm.clientRelationship,
       };
 
       await apiClient.updateClient(id!, updateData);
@@ -167,10 +193,15 @@ const ClientDetail = () => {
             <h1 className="text-2xl font-bold text-slate-900 dark:text-white">{client.name}</h1>
             <p className="text-sm text-slate-600">
               {client.companyType?.replace(/_/g, ' ')} • {client.industry || 'No industry set'}
+              {client.clientRelationship && (
+                <span className="ml-2 text-xs font-medium text-violet-700 dark:text-violet-300">
+                  • {client.clientRelationship === 'EXISTING' ? 'Existing client' : 'New client'}
+                </span>
+              )}
             </p>
           </div>
         </div>
-        <div className="flex space-x-3">
+        <div className="flex flex-wrap gap-3">
           <Link
             to={`/proposals/new?clientId=${client.id}`}
             className="btn-primary"
@@ -179,6 +210,22 @@ const ClientDetail = () => {
             <DocumentTextIcon className="h-4 w-4 mr-2" />
             New Proposal
           </Link>
+          <button
+            type="button"
+            onClick={() => setShowLoeOnlyModal(true)}
+            className="btn-secondary"
+          >
+            <DocumentTextIcon className="h-4 w-4 mr-2" />
+            Send engagement letter only
+          </button>
+          <button
+            onClick={handleRequestIdVerification}
+            disabled={isVerifyingId}
+            className="btn-secondary"
+          >
+            <UserIcon className="h-4 w-4 mr-2" />
+            {isVerifyingId ? 'Requesting…' : 'Request ID verification'}
+          </button>
           <button onClick={openEditModal} className="btn-secondary">
             <PencilIcon className="h-4 w-4 mr-2" />
             Edit
@@ -497,6 +544,28 @@ const ClientDetail = () => {
                 </div>
               </div>
 
+              <div>
+                <label className="block text-sm font-medium text-slate-800 mb-2">
+                  Relationship with your practice
+                </label>
+                <div className="flex flex-wrap gap-2">
+                  {(['NEW', 'EXISTING'] as const).map((value) => (
+                    <button
+                      key={value}
+                      type="button"
+                      onClick={() => setEditForm({ ...editForm, clientRelationship: value })}
+                      className={`text-sm px-3 py-2 rounded-lg border ${
+                        editForm.clientRelationship === value
+                          ? 'border-primary-500 bg-primary-50 text-primary-800'
+                          : 'border-slate-200'
+                      }`}
+                    >
+                      {value === 'NEW' ? 'New client' : 'Existing client'}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-slate-800">Email</label>
@@ -654,12 +723,21 @@ const ClientDetail = () => {
           </div>
         </div>
       )}
+
+      {showLoeOnlyModal && client && (
+        <LoeOnlyModal
+          clientId={client.id}
+          clientName={client.name}
+          onClose={() => setShowLoeOnlyModal(false)}
+        />
+      )}
     </div>
   );
 };
 
 // --- Lifecycle + Timeline Components ---
 const STAGE_COLORS: Record<string, string> = {
+  PROSPECT: 'bg-slate-100 text-slate-700',
   PROPOSAL_ACCEPTED: 'bg-emerald-100 text-emerald-700',
   AML_PENDING: 'bg-amber-100 text-amber-700',
   AML_COMPLETE: 'bg-emerald-100 text-emerald-700',
@@ -678,7 +756,7 @@ const STAGE_COLORS: Record<string, string> = {
 function LifecyclePanel({ client, onRefresh }: { client: any; onRefresh: () => void }) {
   const [busy, setBusy] = useState<string | null>(null);
   const [upcoming, setUpcoming] = useState<any[]>([]);
-  const stage = client.lifecycleStage || 'PROPOSAL_ACCEPTED';
+  const stage = client.lifecycleStage || 'PROSPECT';
 
   useEffect(() => {
     (async () => {
@@ -715,7 +793,8 @@ function LifecyclePanel({ client, onRefresh }: { client: any; onRefresh: () => v
 
   // Beautiful grouped journey for intuitiveness (main phases)
   const journeySteps = [
-    { key: 'PROPOSAL', label: 'Proposal', stages: ['PROPOSAL_ACCEPTED'] },
+    { key: 'PROSPECT', label: 'Prospect', stages: ['PROSPECT'] },
+    { key: 'PROPOSAL', label: 'Proposal signed', stages: ['PROPOSAL_ACCEPTED'] },
     { key: 'AML', label: 'AML & ID', stages: ['AML_PENDING', 'AML_COMPLETE'] },
     { key: 'ENGAGEMENT', label: 'Engagement', stages: ['ENGAGEMENT_LETTER_SENT', 'ENGAGEMENT_LETTER_SIGNED'] },
     { key: 'INFO', label: 'Info Gathering', stages: ['INFO_REQUESTED', 'INFO_RECEIVED'] },
@@ -726,6 +805,7 @@ function LifecyclePanel({ client, onRefresh }: { client: any; onRefresh: () => v
   const currentStepIndex = journeySteps.findIndex((s) => s.stages.some((st) => stage.includes(st.split('_')[0]) || stage === st));
 
   const guidance: Record<string, string> = {
+    PROSPECT: 'No signed proposal yet — send a quotation when you are ready to engage this client.',
     PROPOSAL_ACCEPTED: 'Welcome sent. Next: complete AML verification to unlock engagement letter.',
     AML_PENDING: client.amlSubmittedAt
       ? 'Client submitted AML details — review in client record, then mark complete when verified.'
@@ -837,6 +917,14 @@ function LifecyclePanel({ client, onRefresh }: { client: any; onRefresh: () => v
           . Review before marking complete.
         </div>
       )}
+
+      <AmlPartnerPanel
+        clientId={client.id}
+        clientName={client.name}
+        amlSubmittedAt={client.amlSubmittedAt}
+        amlCompletedAt={client.amlCompletedAt}
+        onUpdated={onRefresh}
+      />
 
       {/* Client controls - pause + marketing */}
       <div className="flex flex-wrap gap-2">

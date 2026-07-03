@@ -51,7 +51,7 @@ export async function draftProposalFromVoice(
 Client: ${ctx.client?.name || ''} (${ctx.client?.companyType || ''})
 Return JSON: { "title": "max 8 words", "coverLetterTone": "PROFESSIONAL", "coverLetter": "2 short UK paras", "suggestedServices": [{"name": "", "billingFrequency": "MONTHLY", "displayPrice": null, "rationale": ""}], "clarifyingQuestions": [] }`;
 
-  const raw = await chatCompletion(
+  const { content: raw } = await chatCompletion(
     [
       { role: 'system', content: AI_COPILOT.systemPersona + ' UK English. Valid JSON. Tiny.' },
       { role: 'user', content: prompt },

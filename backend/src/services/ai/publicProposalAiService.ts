@@ -24,8 +24,135 @@ type PublicProposalRecord = NonNullable<
   Awaited<ReturnType<typeof import('../proposalSharingService.js').getProposalByShareToken>>
 >;
 
+type ProposalServiceLine = PublicProposalRecord['services'][number];
+
+function lineBillingFrequency(service: ProposalServiceLine): string {
+  return String(service.billingFrequency || service.frequency || 'MONTHLY').toUpperCase();
+}
+
+function lineGrossTotal(service: ProposalServiceLine): number {
+  if (service.grossTotal > 0) return service.grossTotal;
+  const net = service.lineTotal ?? service.unitPrice * service.quantity;
+  return net + (service.vatAmount ?? 0);
+}
+
+export type SigningCostBreakdown = {
+  dueToday: { amount: number; vatAmount: number; label: string } | null;
+  recurring: {
+    label: string;
+    amount: number;
+    vatAmount: number;
+    periodPhrase: string;
+    frequency: string;
+  } | null;
+  primaryFrequency: string;
+};
+
+/** Fee breakdown for signing summary — due today vs recurring, never annualised monthly totals. */
+export function computeSigningCostSummary(proposal: PublicProposalRecord): SigningCostBreakdown {
+  const coreServices = proposal.services.filter((s) => !s.isOptional);
+  const byFrequency = new Map<string, { gross: number; vat: number }>();
+
+  for (const service of coreServices) {
+    const freq = lineBillingFrequency(service);
+    const bucket = byFrequency.get(freq) ?? { gross: 0, vat: 0 };
+    bucket.gross += lineGrossTotal(service);
+    bucket.vat += service.vatAmount ?? 0;
+    byFrequency.set(freq, bucket);
+  }
+
+  const oneTimeGross = byFrequency.get('ONE_TIME')?.gross ?? 0;
+  const oneTimeVat = byFrequency.get('ONE_TIME')?.vat ?? 0;
+  const monthlyGross =
+    (byFrequency.get('MONTHLY')?.gross ?? 0) + (byFrequency.get('WEEKLY')?.gross ?? 0);
+  const monthlyVat =
+    (byFrequency.get('MONTHLY')?.vat ?? 0) + (byFrequency.get('WEEKLY')?.vat ?? 0);
+  const quarterlyGross = byFrequency.get('QUARTERLY')?.gross ?? 0;
+  const quarterlyVat = byFrequency.get('QUARTERLY')?.vat ?? 0;
+  const annualGross = byFrequency.get('ANNUALLY')?.gross ?? 0;
+  const annualVat = byFrequency.get('ANNUALLY')?.vat ?? 0;
+
+  const dueToday =
+    oneTimeGross > 0
+      ? { amount: oneTimeGross, vatAmount: oneTimeVat, label: 'Due today (one-off fees)' }
+      : null;
+
+  let recurring: SigningCostBreakdown['recurring'] = null;
+  if (monthlyGross > 0) {
+    recurring = {
+      label: 'Monthly recurring fee',
+      amount: monthlyGross,
+      vatAmount: monthlyVat,
+      periodPhrase: 'per month',
+      frequency: 'MONTHLY',
+    };
+  } else if (quarterlyGross > 0) {
+    recurring = {
+      label: 'Quarterly recurring fee',
+      amount: quarterlyGross,
+      vatAmount: quarterlyVat,
+      periodPhrase: 'per quarter',
+      frequency: 'QUARTERLY',
+    };
+  } else if (annualGross > 0) {
+    recurring = {
+      label: 'Annual recurring fee',
+      amount: annualGross,
+      vatAmount: annualVat,
+      periodPhrase: 'per year',
+      frequency: 'ANNUALLY',
+    };
+  }
+
+  if (!dueToday && !recurring) {
+    const paymentFrequency = String(proposal.paymentFrequency || 'MONTHLY').toUpperCase();
+    if (paymentFrequency === 'ONE_TIME') {
+      return {
+        dueToday: {
+          amount: proposal.total,
+          vatAmount: proposal.vatAmount,
+          label: 'Due today (one-off fees)',
+        },
+        recurring: null,
+        primaryFrequency: 'ONE_TIME',
+      };
+    }
+    if (paymentFrequency === 'ANNUALLY') {
+      return {
+        dueToday: null,
+        recurring: {
+          label: 'Annual recurring fee',
+          amount: proposal.total,
+          vatAmount: proposal.vatAmount,
+          periodPhrase: 'per year',
+          frequency: 'ANNUALLY',
+        },
+        primaryFrequency: 'ANNUALLY',
+      };
+    }
+    return {
+      dueToday: null,
+      recurring: {
+        label: 'Monthly recurring fee',
+        amount: proposal.total,
+        vatAmount: proposal.vatAmount,
+        periodPhrase: 'per month',
+        frequency: 'MONTHLY',
+      },
+      primaryFrequency: 'MONTHLY',
+    };
+  }
+
+  return {
+    dueToday,
+    recurring,
+    primaryFrequency: recurring?.frequency ?? 'ONE_TIME',
+  };
+}
+
 /** Strip internal fields — only data already visible on the public proposal page */
 export function buildPublicProposalContext(proposal: PublicProposalRecord) {
+  const costSummary = computeSigningCostSummary(proposal);
   return {
     reference: proposal.reference,
     title: proposal.title,
@@ -34,6 +161,8 @@ export function buildPublicProposalContext(proposal: PublicProposalRecord) {
     subtotal: proposal.subtotal,
     vatAmount: proposal.vatAmount,
     total: proposal.total,
+    paymentFrequency: proposal.paymentFrequency,
+    costSummary,
     paymentTerms: proposal.paymentTerms,
     coverLetter: proposal.coverLetter || null,
     terms: proposal.terms || null,
@@ -51,6 +180,7 @@ export function buildPublicProposalContext(proposal: PublicProposalRecord) {
       quantity: s.quantity,
       unitPrice: s.unitPrice,
       lineTotal: s.lineTotal,
+      grossTotal: s.grossTotal,
       billingFrequency: s.billingFrequency || s.frequency,
       isOptional: s.isOptional,
       oneOffDueDate: s.oneOffDueDate
@@ -58,6 +188,23 @@ export function buildPublicProposalContext(proposal: PublicProposalRecord) {
         : null,
     })),
   };
+}
+
+export function formatSigningCostPhrase(cost: SigningCostBreakdown): string {
+  const parts: string[] = [];
+  if (cost.dueToday) {
+    parts.push(
+      `${cost.dueToday.label}: £${cost.dueToday.amount.toFixed(2)} (including VAT of £${cost.dueToday.vatAmount.toFixed(2)}).`
+    );
+  }
+  if (cost.recurring) {
+    const period =
+      cost.recurring.periodPhrase === 'in total' ? '' : ` ${cost.recurring.periodPhrase}`;
+    parts.push(
+      `${cost.recurring.label}: £${cost.recurring.amount.toFixed(2)}${period} (including VAT of £${cost.recurring.vatAmount.toFixed(2)}).`
+    );
+  }
+  return parts.join(' ');
 }
 
 function ruleBasedSigningSummary(proposal: PublicProposalRecord): string {
@@ -78,7 +225,7 @@ function ruleBasedSigningSummary(proposal: PublicProposalRecord): string {
     optionalCount
       ? `${optionalCount} optional service(s) are shown for information — only agreed core services are included unless stated otherwise in the terms.`
       : null,
-    `Total fees shown: £${ctx.total.toFixed(2)} (including VAT of £${ctx.vatAmount.toFixed(2)}). Payment terms: ${ctx.paymentTerms}.`,
+    `${formatSigningCostPhrase(ctx.costSummary)} Payment terms: ${ctx.paymentTerms}.`,
     `The proposal is valid until ${ctx.validUntil}. Your electronic signature confirms you accept the terms and conditions in this proposal.`,
   ].filter(Boolean);
 
@@ -88,7 +235,7 @@ function ruleBasedSigningSummary(proposal: PublicProposalRecord): string {
 export async function logPublicAiUsage(
   tenantId: string,
   proposalId: string,
-  feature: 'public_proposal_ask' | 'public_signing_summary'
+  feature: 'public_proposal_ask' | 'public_signing_summary' | 'public_decline_classify'
 ) {
   try {
     await prisma.activityLog.create({
@@ -141,7 +288,7 @@ export async function askPublicProposalQuestion(
     content: `Client question: ${trimmed.slice(0, 500)}`,
   });
 
-  const answer = await chatCompletion(messages, {
+  const { content: answer } = await chatCompletion(messages, {
     temperature: 0.2,
     maxTokens: 400,
   });
@@ -163,14 +310,17 @@ export async function getPublicSigningSummary(proposal: PublicProposalRecord) {
     return { summary, source: 'rules' as const };
   }
 
-  const raw = await chatCompletion(
+  const { content: raw } = await chatCompletion(
     [
       {
         role: 'system',
         content:
           PUBLIC_SYSTEM +
           ' Write a plain-English signing summary for the client (4–6 short sentences). ' +
-          'Explain what they are agreeing to, key services, total cost, payment terms, validity, and that signing accepts the terms. ' +
+          'Explain what they are agreeing to, key services, payment terms, validity, and that signing accepts the terms. ' +
+          'For fees, use costSummary.dueToday for any one-off amount payable today and costSummary.recurring for ongoing fees. ' +
+          'When both exist, state what is due today first, then the monthly (or quarterly/annual) recurring fee. ' +
+          'Do not describe an annual total when services are billed monthly. ' +
           'No bullet points — flowing prose. Do not add facts beyond the proposal JSON.',
       },
       {

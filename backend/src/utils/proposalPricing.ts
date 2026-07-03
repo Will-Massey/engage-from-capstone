@@ -14,6 +14,10 @@ export type { BillingFrequency };
 
 export interface ProposalServiceInput {
   serviceId: string;
+  /** Snapshot name — must not be overwritten from catalogue on save */
+  name?: string;
+  /** Snapshot description — preserved per proposal line */
+  description?: string | null;
   quantity?: number;
   discountPercent?: number;
   displayPrice?: number;
@@ -61,7 +65,7 @@ export interface BuiltProposalService {
   vatAmount: number;
   grossTotal: number;
   oneOffDueDate: Date | null;
-  serviceTemplateId: string;
+  serviceTemplateId: string | null;
 }
 
 export function buildProposalServiceRecord(
@@ -69,6 +73,12 @@ export function buildProposalServiceRecord(
   template: ServiceTemplateInfo | undefined,
   parseOneOffDueDate: (billingFrequency: string, raw: unknown) => Date | null
 ): BuiltProposalService {
+  const snapshotName = svc.name?.trim();
+  const snapshotDescription =
+    svc.description !== undefined && svc.description !== null
+      ? svc.description
+      : undefined;
+
   const displayPrice =
     svc.displayPrice !== undefined && svc.displayPrice >= 0
       ? svc.displayPrice
@@ -88,8 +98,9 @@ export function buildProposalServiceRecord(
   });
 
   return {
-    name: template?.name || 'Service',
-    description: template?.description,
+    name: snapshotName || template?.name || 'Service',
+    description:
+      snapshotDescription !== undefined ? snapshotDescription : template?.description,
     displayPrice: line.displayPrice,
     billingFrequency,
     priceDisplayMode: billingFrequencyToDisplayMode(billingFrequency),
@@ -103,7 +114,7 @@ export function buildProposalServiceRecord(
     vatAmount: line.vatAmount,
     grossTotal: line.grossTotal,
     oneOffDueDate: parseOneOffDueDate(billingFrequency, svc.oneOffDueDate),
-    serviceTemplateId: svc.serviceId,
+    serviceTemplateId: template?.id ?? null,
   };
 }
 

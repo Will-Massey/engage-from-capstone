@@ -1,11 +1,12 @@
 // Cache-bust: 2026-03-03T09:00:00Z - Force rebuild v6
 import { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import {
   PlusIcon,
   MagnifyingGlassIcon,
   FunnelIcon,
   ArrowDownTrayIcon,
+  ArrowPathIcon,
   EyeIcon,
   DocumentTextIcon,
   CheckCircleIcon,
@@ -18,6 +19,7 @@ import {
   PencilSquareIcon,
 } from '@heroicons/react/24/outline';
 import { apiClient } from '../../utils/api';
+import { appPath } from '../../utils/appBase';
 import { useAuthStore } from '../../stores/authStore';
 import { format, formatDistanceToNow } from 'date-fns';
 import toast from 'react-hot-toast';
@@ -35,6 +37,9 @@ const statusColors: Record<string, string> = {
   ACCEPTED: 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-200',
   DECLINED: 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-200',
   EXPIRED: 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-200',
+  WITHDRAWN: 'bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-200',
+  ARCHIVED: 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300',
+  LOST: 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-200',
 };
 
 const statusLabels: Record<string, string> = {
@@ -44,14 +49,18 @@ const statusLabels: Record<string, string> = {
   ACCEPTED: 'Signed',
   DECLINED: 'Declined',
   EXPIRED: 'Expired',
+  WITHDRAWN: 'Rescinded',
+  ARCHIVED: 'Archived',
+  LOST: 'Lost',
 };
 
 const Proposals = () => {
   const { tenant } = useAuthStore();
+  const [searchParams] = useSearchParams();
   const [proposals, setProposals] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
-  const [statusFilter, setStatusFilter] = useState('');
+  const [statusFilter, setStatusFilter] = useState(searchParams.get('status') || '');
   const [meta, setMeta] = useState({ page: 1, totalPages: 1, total: 0 });
 
   useEffect(() => {
@@ -65,7 +74,8 @@ const Proposals = () => {
       const response = (await apiClient.getProposals({
         page: meta.page,
         limit: 20,
-        status: statusFilter || undefined,
+        status: statusFilter && statusFilter !== 'AWAITING_APPROVAL' ? statusFilter : undefined,
+        approvalStatus: statusFilter === 'AWAITING_APPROVAL' ? 'PENDING' : undefined,
         search: searchQuery || undefined,
       })) as any;
 
@@ -105,18 +115,31 @@ const Proposals = () => {
     }
   };
 
-  const sendProposalEmail = async (id: string) => {
+  const sendProposalEmail = async (proposal: { id: string; client?: { contactEmail?: string } }) => {
+    const to = proposal.client?.contactEmail?.trim();
+    if (!to) {
+      toast.error('Add a contact email on the client record before sending');
+      return;
+    }
     try {
-      await apiClient.post(`/proposals/${id}/email`, {});
+      toast.loading('Sending proposal…');
+      await apiClient.post(`/proposals/${proposal.id}/email`, { to, includePdf: true });
+      toast.dismiss();
       toast.success('Proposal sent via email');
       loadProposals();
-    } catch (error) {
-      toast.error('Failed to send proposal');
+    } catch (error: any) {
+      toast.dismiss();
+      const message =
+        error?.response?.data?.error?.message ||
+        error?.response?.data?.message ||
+        error?.message ||
+        'Failed to send proposal';
+      toast.error(message);
     }
   };
 
   const copyProposalLink = (shareToken: string) => {
-    const link = `${window.location.origin}/proposals/view/${shareToken}`;
+    const link = `${window.location.origin}${appPath(`/proposals/view/${shareToken}`)}`;
     navigator.clipboard.writeText(link);
     toast.success('Proposal link copied to clipboard');
   };
@@ -232,6 +255,10 @@ const Proposals = () => {
   return (
     <div className="space-y-6 animate-fade-in">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-end gap-4 -mt-2">
+        <Link to="/proposals/renewals" className="btn-secondary text-sm">
+          <ArrowPathIcon className="h-4 w-4 mr-1.5" />
+          Bulk renew
+        </Link>
         {proposals.length > 0 && (
           <button type="button" onClick={exportCsv} className="btn-secondary text-sm">
             <ArrowDownTrayIcon className="h-4 w-4 mr-1.5" />
@@ -270,9 +297,13 @@ const Proposals = () => {
             >
               <option value="">All Status</option>
               <option value="DRAFT">Draft</option>
+              <option value="AWAITING_APPROVAL">Awaiting approval</option>
               <option value="SENT">Sent</option>
               <option value="ACCEPTED">Accepted</option>
               <option value="DECLINED">Declined</option>
+              <option value="WITHDRAWN">Rescinded</option>
+              <option value="LOST">Lost</option>
+              <option value="ARCHIVED">Archived</option>
               <option value="EXPIRED">Expired</option>
               <option value="RENEWALS_DUE">Renewals Due (30 days)</option>
             </select>
@@ -323,7 +354,10 @@ const Proposals = () => {
                 {proposals.map((proposal) => {
                   const isExpired = checkExpired(proposal.validUntil);
                   const displayStatus =
-                    isExpired && proposal.status !== 'ACCEPTED' && proposal.status !== 'DECLINED'
+                    isExpired &&
+                    proposal.status !== 'ACCEPTED' &&
+                    proposal.status !== 'DECLINED' &&
+                    proposal.status !== 'WITHDRAWN'
                       ? 'EXPIRED'
                       : proposal.status;
 
@@ -392,10 +426,20 @@ const Proposals = () => {
                             >
                               {statusLabels[displayStatus] || displayStatus}
                             </span>
-                            {proposal.signatures?.length > 0 && (
-                              <CheckCircleIcon className="h-4 w-4 text-green-500" title="Signed" />
+                            {proposal.status === 'ACCEPTED' && (
+                              <CheckCircleIcon className="h-4 w-4 text-green-500" title="Accepted & signed" />
                             )}
                           </div>
+                          {proposal.status === 'DRAFT' && proposal.approvalStatus === 'PENDING' && (
+                            <span className="inline-flex px-2 py-0.5 rounded text-xs font-medium bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-200">
+                              Awaiting partner approval
+                            </span>
+                          )}
+                          {proposal.status === 'DRAFT' && proposal.approvalStatus === 'REJECTED' && (
+                            <span className="inline-flex px-2 py-0.5 rounded text-xs font-medium bg-red-100 text-red-800 dark:bg-red-900/40 dark:text-red-200">
+                              Rejected
+                            </span>
+                          )}
                           {/* Renewal Badge */}
                           {proposal.status === 'ACCEPTED' &&
                             proposal.renewalDate &&
@@ -502,7 +546,7 @@ const Proposals = () => {
                             proposal.status !== 'DECLINED' &&
                             !isExpired && (
                               <button
-                                onClick={() => sendProposalEmail(proposal.id)}
+                                onClick={() => sendProposalEmail(proposal)}
                                 className="p-1 text-slate-500 hover:text-blue-600"
                                 title="Send Email"
                               >
@@ -521,8 +565,8 @@ const Proposals = () => {
                                     ? copyProposalLink(proposal.shareToken)
                                     : generateShareLink(proposal)
                                 }
-                                className={`p-1 ${proposal.shareToken ? 'text-green-600 hover:text-green-700' : 'text-slate-500 hover:text-green-600'}`}
-                                title={proposal.shareToken ? 'Copy Link' : 'Generate Share Link'}
+                                className={`p-1 ${proposal.shareToken ? 'text-primary-600 hover:text-primary-700' : 'text-slate-500 hover:text-primary-600'}`}
+                                title={proposal.shareToken ? 'Copy client link' : 'Generate share link'}
                               >
                                 <LinkIcon className="h-5 w-5" />
                               </button>

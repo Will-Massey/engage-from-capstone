@@ -35,7 +35,9 @@ services:
       - key: JWT_REFRESH_EXPIRES_IN
         value: 7d
       - key: FRONTEND_URL
-        value: https://engage-frontend-0g6u.onrender.com
+        value: https://capstonesoftware.co.uk/engage
+      - key: AUTH_COOKIE_PATH
+        value: /engage
       - key: DEFAULT_TENANT_SUBDOMAIN
         value: demo
       - key: API_URL
@@ -48,12 +50,14 @@ services:
         sync: false
       - key: CLOUDFLARE_EMAIL_API_TOKEN
         sync: false
+      - key: CLOUDFLARE_EMAIL_WEBHOOK_SECRET
+        sync: false
       - key: ENCRYPTION_KEY
         sync: false
       - key: OAUTH_STATE_SECRET
         sync: false
       - key: EMAIL_PLATFORM_FROM
-        value: notifications@engage.capstonesoftware.co.uk
+        value: proposals@capstonesoftware.co.uk
       - key: EMAIL_PLATFORM_FROM_NAME
         value: Engage by Capstone
       - key: EMAIL_DEFAULT_REPLY_TO_FALLBACK
@@ -110,6 +114,12 @@ services:
         sync: false
       - key: MICROSOFT_TENANT_ID
         sync: false
+      - key: XERO_CLIENT_ID
+        sync: false
+      - key: XERO_CLIENT_SECRET
+        sync: false
+      - key: XERO_REDIRECT_URI
+        value: https://capstonesoftware.co.uk/engage/api/oauth/callback/xero
     autoDeploy: true
 
   # Frontend Static Site
@@ -121,12 +131,14 @@ services:
     staticPublishPath: ./dist
     envVars:
       - key: VITE_API_URL
-        value: https://engage-backend-e1ue.onrender.com
+        value: https://engage.capstonesoftware.co.uk
+      - key: VITE_APP_BASE
+        value: /engage
     autoDeploy: true
     routes:
       - type: rewrite
-        source: /*
-        destination: /index.html
+        source: /engage/*
+        destination: /engage/index.html
 
 databases:
   - name: engage-db

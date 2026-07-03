@@ -1,7 +1,50 @@
 import { PrismaClient } from '@prisma/client';
 import bcrypt from 'bcryptjs';
+import { ENGAGEMENT_CLAUSE_LIBRARY } from '../src/data/engagementClauseLibrary.js';
 
 const prisma = new PrismaClient();
+
+const INITIAL_LIBRARY_VERSION = '2026.1';
+const INITIAL_LIBRARY_CHANGELOG =
+  'Initial firm-approved engagement clause library (UK GAAP, MTD, AML, fees & liability).';
+
+async function seedEngagementLibraryVersion() {
+  const existing = await prisma.engagementLibraryVersion.findFirst({
+    where: { versionLabel: INITIAL_LIBRARY_VERSION },
+  });
+
+  if (existing) {
+    console.log('ℹ️ Engagement library version already seeded:', existing.versionLabel);
+    return;
+  }
+
+  await prisma.engagementLibraryVersion.updateMany({
+    where: { isCurrent: true },
+    data: { isCurrent: false },
+  });
+
+  const version = await prisma.engagementLibraryVersion.create({
+    data: {
+      versionLabel: INITIAL_LIBRARY_VERSION,
+      changelog: INITIAL_LIBRARY_CHANGELOG,
+      clausesJson: JSON.stringify(ENGAGEMENT_CLAUSE_LIBRARY),
+      isCurrent: true,
+      publishedAt: new Date(),
+    },
+  });
+
+  console.log('✅ Seeded engagement library version:', version.versionLabel);
+
+  // Pin existing templates to the initial library version (no drift flags on first deploy)
+  await prisma.proposalTemplate.updateMany({
+    where: { engagementLibraryVersionId: null },
+    data: { engagementLibraryVersionId: version.id, needsUpdate: false },
+  });
+  await prisma.coverLetterTemplate.updateMany({
+    where: { engagementLibraryVersionId: null },
+    data: { engagementLibraryVersionId: version.id, needsUpdate: false },
+  });
+}
 
 async function main() {
   console.log('Starting seed...');

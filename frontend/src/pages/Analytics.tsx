@@ -12,11 +12,14 @@ import {
   ClockIcon,
   FunnelIcon,
   BoltIcon,
+  ScaleIcon,
 } from '@heroicons/react/24/outline';
+import { DECLINE_REASON_LABELS, type DeclineReason } from '../constants/declineReasons';
 import { apiClient } from '../utils/api';
 import { useAuthStore } from '../stores/authStore';
 import { format, parseISO } from 'date-fns';
 import { SkeletonStats } from '../components/skeleton';
+import FeeBenchmarkWidget from '../components/analytics/FeeBenchmarkWidget';
 
 interface AnalyticsData {
   proposals: {
@@ -76,6 +79,71 @@ interface TimeToDecisionData {
   avgDaysToDecline: number;
   avgDaysToView: number;
   sampleSize: { accepted: number; declined: number };
+}
+
+interface ProposalFunnelData {
+  dateRange: { start: string; end: string };
+  funnel: {
+    sent: number;
+    opened: number;
+    viewed: number;
+    signed: number;
+    paid: number;
+  };
+  conversionRates: {
+    sentToOpened: number;
+    openedToSigned: number;
+    sentToSigned: number;
+    signedToPaid: number;
+  };
+  stages: Array<{ key: string; label: string; count: number; color: string }>;
+}
+
+interface WinLossData {
+  summary: {
+    wins: number;
+    losses: number;
+    decided: number;
+    winRate: number;
+    untaggedDeclines: number;
+    taggedDeclines: number;
+  };
+  byReason: Array<{
+    reason: DeclineReason;
+    label: string;
+    declined: number;
+    shareOfLosses: number;
+  }>;
+  byServiceMix: Array<{
+    name: string;
+    accepted: number;
+    declined: number;
+    conversionRate: number;
+    acceptedValue: number;
+    declinedValue: number;
+  }>;
+  byClientType: Array<{
+    key: string;
+    label: string;
+    accepted: number;
+    declined: number;
+    conversionRate: number;
+  }>;
+  byClientRelationship: Array<{
+    key: string;
+    label: string;
+    accepted: number;
+    declined: number;
+    conversionRate: number;
+  }>;
+  recentLosses: Array<{
+    id: string;
+    reason: DeclineReason | null;
+    reasonLabel: string;
+    text: string | null;
+    total: number;
+    declinedAt: string | null;
+  }>;
 }
 
 const StatCard = ({
@@ -177,6 +245,96 @@ const SimpleBarChart = ({ data }: { data: AnalyticsData['monthlyTrend'] }) => {
         <div className="flex items-center">
           <div className="w-3 h-3 bg-green-500 rounded mr-2" />
           <span className="text-sm text-slate-600 dark:text-slate-300">Accepted</span>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+const ProposalFunnelChart = ({ data }: { data: ProposalFunnelData }) => {
+  const maxCount = Math.max(...data.stages.map((s) => s.count), 1);
+  const { funnel, conversionRates } = data;
+
+  return (
+    <div className="glass-tile p-6">
+      <h3 className="text-lg font-semibold text-slate-900 dark:text-white mb-1">
+        Proposal funnel
+      </h3>
+      <p className="text-xs text-slate-500 dark:text-slate-400 mb-4">
+        {format(parseISO(data.dateRange.start), 'd MMM yyyy')} –{' '}
+        {format(parseISO(data.dateRange.end), 'd MMM yyyy')}
+      </p>
+      <div className="space-y-3">
+        {data.stages.map((stage, index) => {
+          const prevCount = index > 0 ? data.stages[index - 1].count : stage.count;
+          const dropOff =
+            index > 0 && prevCount > 0
+              ? Math.round(((prevCount - stage.count) / prevCount) * 100)
+              : 0;
+
+          return (
+            <div key={stage.key}>
+              <div className="flex items-center justify-between mb-1">
+                <span className="text-sm font-medium text-slate-700 dark:text-slate-300">
+                  {stage.label}
+                </span>
+                <div className="flex items-center gap-2">
+                  {dropOff > 0 && index > 0 && stage.key !== 'viewed' && (
+                    <span className="text-xs text-red-500">-{dropOff}%</span>
+                  )}
+                  <span className="text-sm font-semibold text-slate-900 dark:text-white">
+                    {stage.count}
+                  </span>
+                </div>
+              </div>
+              <div className="h-7 bg-white/30 dark:bg-slate-700/30 rounded-lg overflow-hidden">
+                <motion.div
+                  initial={{ width: 0 }}
+                  animate={{ width: `${(stage.count / maxCount) * 100}%` }}
+                  transition={{ duration: 0.5, delay: index * 0.08 }}
+                  className={`h-full ${stage.color} rounded-lg`}
+                />
+              </div>
+            </div>
+          );
+        })}
+      </div>
+      <div className="mt-4 pt-4 border-t border-white/10 dark:border-slate-700/50 grid grid-cols-2 sm:grid-cols-4 gap-3">
+        <div className="text-center">
+          <p className="text-xs text-slate-500 dark:text-slate-400">Sent → Opened</p>
+          <p className="text-lg font-bold text-slate-900 dark:text-white">
+            {conversionRates.sentToOpened}%
+          </p>
+          <p className="text-xs text-slate-400">
+            {funnel.opened}/{funnel.sent}
+          </p>
+        </div>
+        <div className="text-center">
+          <p className="text-xs text-slate-500 dark:text-slate-400">Opened → Signed</p>
+          <p className="text-lg font-bold text-slate-900 dark:text-white">
+            {conversionRates.openedToSigned}%
+          </p>
+          <p className="text-xs text-slate-400">
+            {funnel.signed}/{funnel.opened}
+          </p>
+        </div>
+        <div className="text-center">
+          <p className="text-xs text-slate-500 dark:text-slate-400">Sent → Signed</p>
+          <p className="text-lg font-bold text-slate-900 dark:text-white">
+            {conversionRates.sentToSigned}%
+          </p>
+          <p className="text-xs text-slate-400">
+            {funnel.signed}/{funnel.sent}
+          </p>
+        </div>
+        <div className="text-center">
+          <p className="text-xs text-slate-500 dark:text-slate-400">Signed → Paid</p>
+          <p className="text-lg font-bold text-slate-900 dark:text-white">
+            {conversionRates.signedToPaid}%
+          </p>
+          <p className="text-xs text-slate-400">
+            {funnel.paid}/{funnel.signed}
+          </p>
         </div>
       </div>
     </div>
@@ -289,6 +447,218 @@ const TimeToDecision = ({ data }: { data: TimeToDecisionData }) => (
   </div>
 );
 
+const WinLossSection = ({
+  data,
+  formatCurrency,
+}: {
+  data: WinLossData;
+  formatCurrency: (n: number) => string;
+}) => {
+  const maxReasonCount = Math.max(...data.byReason.map((r) => r.declined), 1);
+
+  return (
+    <div className="space-y-6">
+      <div className="flex items-center gap-2">
+        <ScaleIcon className="h-6 w-6 text-slate-600 dark:text-slate-300" />
+        <h2 className="text-xl font-semibold text-slate-900 dark:text-white">Win / Loss</h2>
+      </div>
+
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <div className="glass-tile p-5">
+          <p className="text-sm text-slate-600 dark:text-slate-400">Win rate</p>
+          <p className="text-3xl font-bold text-green-600 mt-1">{data.summary.winRate}%</p>
+          <p className="text-xs text-slate-500 mt-1">
+            {data.summary.wins} won / {data.summary.decided} decided
+          </p>
+        </div>
+        <div className="glass-tile p-5">
+          <p className="text-sm text-slate-600 dark:text-slate-400">Losses tagged</p>
+          <p className="text-3xl font-bold text-red-600 mt-1">{data.summary.taggedDeclines}</p>
+          <p className="text-xs text-slate-500 mt-1">
+            {data.summary.untaggedDeclines} without a reason
+          </p>
+        </div>
+        <div className="glass-tile p-5">
+          <p className="text-sm text-slate-600 dark:text-slate-400">Top loss driver</p>
+          <p className="text-lg font-bold text-slate-900 dark:text-white mt-1">
+            {data.byReason[0]?.label || '—'}
+          </p>
+          <p className="text-xs text-slate-500 mt-1">
+            {data.byReason[0] ? `${data.byReason[0].declined} declines` : 'No tagged losses yet'}
+          </p>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div className="glass-tile p-6">
+          <h3 className="text-lg font-semibold text-slate-900 dark:text-white mb-4">
+            Losses by reason
+          </h3>
+          {data.byReason.length === 0 ? (
+            <p className="text-sm text-slate-500">
+              Loss reasons will appear here when clients decline on the portal or you mark quotations as lost.
+            </p>
+          ) : (
+            <div className="space-y-3">
+              {[...data.byReason]
+                .sort((a, b) => b.declined - a.declined)
+                .map((item) => (
+                  <div key={item.reason}>
+                    <div className="flex justify-between text-sm mb-1">
+                      <span className="font-medium text-slate-800 dark:text-slate-200">
+                        {item.label}
+                      </span>
+                      <span className="text-slate-600 dark:text-slate-400">
+                        {item.declined} ({item.shareOfLosses}%)
+                      </span>
+                    </div>
+                    <div className="h-2 bg-white/30 dark:bg-slate-700/30 rounded-full overflow-hidden">
+                      <motion.div
+                        initial={{ width: 0 }}
+                        animate={{ width: `${(item.declined / maxReasonCount) * 100}%` }}
+                        className="h-full bg-red-500 rounded-full"
+                      />
+                    </div>
+                  </div>
+                ))}
+            </div>
+          )}
+        </div>
+
+        <div className="glass-tile p-6">
+          <h3 className="text-lg font-semibold text-slate-900 dark:text-white mb-4">
+            Conversion by client type
+          </h3>
+          <div className="space-y-3">
+            {data.byClientType.map((item) => (
+              <div
+                key={item.key}
+                className="flex items-center justify-between p-3 bg-white/40 dark:bg-slate-700/40 rounded-lg"
+              >
+                <div>
+                  <p className="font-medium text-slate-900 dark:text-white">{item.label}</p>
+                  <p className="text-xs text-slate-500">
+                    {item.accepted} won · {item.declined} lost
+                  </p>
+                </div>
+                <span
+                  className={`text-lg font-bold ${
+                    item.conversionRate >= 50 ? 'text-green-600' : 'text-amber-600'
+                  }`}
+                >
+                  {item.conversionRate}%
+                </span>
+              </div>
+            ))}
+            {data.byClientRelationship.map((item) => (
+              <div
+                key={item.key}
+                className="flex items-center justify-between p-3 bg-white/40 dark:bg-slate-700/40 rounded-lg border border-dashed border-slate-200 dark:border-slate-600"
+              >
+                <div>
+                  <p className="font-medium text-slate-900 dark:text-white">{item.label}</p>
+                  <p className="text-xs text-slate-500">
+                    {item.accepted} won · {item.declined} lost
+                  </p>
+                </div>
+                <span
+                  className={`text-lg font-bold ${
+                    item.conversionRate >= 50 ? 'text-green-600' : 'text-amber-600'
+                  }`}
+                >
+                  {item.conversionRate}%
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div className="glass-tile p-6">
+          <h3 className="text-lg font-semibold text-slate-900 dark:text-white mb-4">
+            Conversion by service mix
+          </h3>
+          {data.byServiceMix.length === 0 ? (
+            <p className="text-sm text-slate-500">No service-level win/loss data yet.</p>
+          ) : (
+            <div className="space-y-3">
+              {data.byServiceMix.map((svc) => (
+                <div
+                  key={svc.name}
+                  className="flex items-center justify-between p-3 bg-white/40 dark:bg-slate-700/40 rounded-lg"
+                >
+                  <div className="min-w-0 flex-1 pr-3">
+                    <p className="font-medium text-slate-900 dark:text-white truncate">{svc.name}</p>
+                    <p className="text-xs text-slate-500">
+                      {svc.accepted} won · {svc.declined} lost
+                    </p>
+                  </div>
+                  <div className="text-right shrink-0">
+                    <p
+                      className={`text-sm font-bold ${
+                        svc.conversionRate >= 50 ? 'text-green-600' : 'text-red-600'
+                      }`}
+                    >
+                      {svc.conversionRate}%
+                    </p>
+                    <p className="text-[10px] text-slate-500">
+                      {formatCurrency(svc.declinedValue)} at risk
+                    </p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        <div className="glass-tile p-6">
+          <h3 className="text-lg font-semibold text-slate-900 dark:text-white mb-4">
+            Recent tagged losses
+          </h3>
+          {data.recentLosses.length === 0 ? (
+            <p className="text-sm text-slate-500">No tagged decline feedback yet.</p>
+          ) : (
+            <div className="space-y-3">
+              {data.recentLosses.map((loss) => (
+                <div
+                  key={loss.id}
+                  className="p-3 bg-white/40 dark:bg-slate-700/40 rounded-lg border-l-4 border-red-400"
+                >
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="min-w-0">
+                      <p className="text-sm font-medium text-slate-900 dark:text-white">
+                        {loss.reason
+                          ? DECLINE_REASON_LABELS[loss.reason] || loss.reasonLabel
+                          : loss.reasonLabel}
+                      </p>
+                      {loss.text && (
+                        <p className="text-xs text-slate-600 dark:text-slate-400 mt-1 line-clamp-2">
+                          {loss.text}
+                        </p>
+                      )}
+                    </div>
+                    <div className="text-right shrink-0">
+                      <p className="text-sm font-semibold text-slate-900 dark:text-white">
+                        {formatCurrency(loss.total)}
+                      </p>
+                      {loss.declinedAt && (
+                        <p className="text-[10px] text-slate-500">
+                          {format(parseISO(loss.declinedAt), 'd MMM yyyy')}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+};
+
 const TopServicesTable = ({ services }: { services: AnalyticsData['topServices'] }) => (
   <div className="glass-tile p-6">
     <h3 className="text-lg font-semibold text-slate-900 dark:text-white mb-4">Top Services</h3>
@@ -319,26 +689,39 @@ const Analytics = () => {
   const [funnel, setFunnel] = useState<FunnelData | null>(null);
   const [pipeline, setPipeline] = useState<PipelineData | null>(null);
   const [timeToDecision, setTimeToDecision] = useState<TimeToDecisionData | null>(null);
+  const [winLoss, setWinLoss] = useState<WinLossData | null>(null);
+  const [proposalFunnel, setProposalFunnel] = useState<ProposalFunnelData | null>(null);
+  const [funnelDateRange, setFunnelDateRange] = useState<'30' | '90' | '180' | '365'>('90');
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     loadAnalytics();
-  }, []);
+  }, [funnelDateRange]);
 
   const loadAnalytics = async () => {
     try {
       setIsLoading(true);
-      const [dashboardRes, funnelRes, pipelineRes, timeRes] = await Promise.all([
+      const endDate = new Date().toISOString();
+      const startDate = new Date(
+        Date.now() - Number(funnelDateRange) * 24 * 60 * 60 * 1000
+      ).toISOString();
+
+      const [dashboardRes, funnelRes, pipelineRes, timeRes, winLossRes, proposalFunnelRes] =
+        await Promise.all([
         apiClient.get('/analytics/dashboard') as any,
         apiClient.get('/analytics/funnel') as any,
         apiClient.get('/analytics/revenue-pipeline') as any,
         apiClient.get('/analytics/time-to-decision') as any,
+        apiClient.get('/analytics/win-loss') as any,
+        apiClient.getProposalFunnel({ startDate, endDate }) as any,
       ]);
 
       if (dashboardRes.success) setData(dashboardRes.data);
       if (funnelRes.success) setFunnel(funnelRes.data);
       if (pipelineRes.success) setPipeline(pipelineRes.data);
       if (timeRes.success) setTimeToDecision(timeRes.data);
+      if (winLossRes.success) setWinLoss(winLossRes.data);
+      if (proposalFunnelRes.success) setProposalFunnel(proposalFunnelRes.data);
     } catch (error) {
       console.error('Failed to load analytics:', error);
     } finally {
@@ -383,6 +766,17 @@ const Analytics = () => {
   return (
     <div className="space-y-6 animate-fade-in">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-end gap-4 -mt-2">
+        <select
+          value={funnelDateRange}
+          onChange={(e) => setFunnelDateRange(e.target.value as typeof funnelDateRange)}
+          className="input-field w-auto text-sm"
+          aria-label="Proposal funnel date range"
+        >
+          <option value="30">Last 30 days</option>
+          <option value="90">Last 90 days</option>
+          <option value="180">Last 6 months</option>
+          <option value="365">Last 12 months</option>
+        </select>
         <button onClick={loadAnalytics} className="btn-secondary">
           <BoltIcon className="h-4 w-4 mr-2" />
           Refresh Data
@@ -420,15 +814,27 @@ const Analytics = () => {
         </div>
       )}
 
+      {/* Proposal funnel (sent → paid) */}
+      {proposalFunnel && (
+        <div className="grid grid-cols-1 gap-6">
+          <ProposalFunnelChart data={proposalFunnel} />
+        </div>
+      )}
+
       {/* Charts Row */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <SimpleBarChart data={data.monthlyTrend} />
         {funnel && <ConversionFunnel data={funnel} />}
       </div>
 
+      {/* Win / Loss analytics (W3.6) */}
+      {winLoss && <WinLossSection data={winLoss} formatCurrency={formatCurrency} />}
+
       {/* Bottom Row */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <TopServicesTable services={data.topServices} />
+
+        <FeeBenchmarkWidget />
 
         {/* Status Breakdown */}
         <div className="glass-tile p-6">
@@ -448,15 +854,25 @@ const Analytics = () => {
                           ? 'bg-blue-500'
                           : status === 'DRAFT'
                             ? 'bg-slate-400'
-                            : status === 'DECLINED'
+                            : status === 'DECLINED' || status === 'LOST'
                               ? 'bg-red-500'
                               : status === 'VIEWED'
                                 ? 'bg-amber-500'
-                                : 'bg-slate-300'
+                                : status === 'WITHDRAWN'
+                                  ? 'bg-orange-500'
+                                  : status === 'ARCHIVED'
+                                    ? 'bg-slate-500'
+                                    : 'bg-slate-300'
                     }`}
                   />
                   <span className="font-medium text-slate-900 dark:text-white">
-                    {status.charAt(0) + status.slice(1).toLowerCase()}
+                    {status === 'LOST'
+                      ? 'Lost'
+                      : status === 'ARCHIVED'
+                        ? 'Archived'
+                        : status === 'WITHDRAWN'
+                          ? 'Rescinded'
+                          : status.charAt(0) + status.slice(1).toLowerCase()}
                   </span>
                 </div>
                 <span className="font-semibold text-slate-900 dark:text-white">{count}</span>

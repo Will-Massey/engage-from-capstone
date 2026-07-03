@@ -4,6 +4,7 @@
  */
 
 import logger from '../config/logger.js';
+import { processEmailDeliveryEvent } from './emailDeliveryService.js';
 
 export interface SendGridAttachment {
   filename: string;
@@ -28,6 +29,9 @@ export interface SendGridSendResult {
   success: boolean;
   messageId?: string;
   error?: string;
+  delivered?: string[];
+  bounced?: string[];
+  queued?: string[];
 }
 
 export function isSendGridConfigured(): boolean {
@@ -37,12 +41,18 @@ export function isSendGridConfigured(): boolean {
   );
 }
 
+/** Cloudflare Email Sending only has capstonesoftware.co.uk onboarded — not engage.* subdomain. */
+const PLATFORM_FROM_EMAIL =
+  process.env.EMAIL_PLATFORM_FROM ||
+  process.env.EMAIL_FROM_ADDRESS ||
+  'proposals@capstonesoftware.co.uk';
+
 export function getPlatformFromAddress(): { email: string; name: string } {
+  const email = PLATFORM_FROM_EMAIL.includes('@engage.capstonesoftware.co.uk')
+    ? 'proposals@capstonesoftware.co.uk'
+    : PLATFORM_FROM_EMAIL;
   return {
-    email:
-      process.env.EMAIL_PLATFORM_FROM ||
-      process.env.EMAIL_FROM_ADDRESS ||
-      'proposals@capstonesoftware.co.uk',
+    email,
     name:
       process.env.EMAIL_PLATFORM_FROM_NAME ||
       process.env.EMAIL_FROM_NAME ||
@@ -74,11 +84,53 @@ async function sendViaWorker(payload: Record<string, unknown>): Promise<SendGrid
   return { success: true, messageId: data.result?.messageId };
 }
 
-async function sendViaCloudflareApi(payload: Record<string, unknown>): Promise<SendGridSendResult> {
+function buildTrackingHeaders(customArgs?: Record<string, string>): Record<string, string> | undefined {
+  if (!customArgs) return undefined;
+
+  const headers: Record<string, string> = {};
+  if (customArgs.emailLogId) headers['X-Email-Log-Id'] = customArgs.emailLogId;
+  if (customArgs.tenantId) headers['X-Tenant-Id'] = customArgs.tenantId;
+  if (customArgs.proposalId) headers['X-Proposal-Id'] = customArgs.proposalId;
+  if (customArgs.messageType) headers['X-Message-Type'] = customArgs.messageType;
+
+  return Object.keys(headers).length ? headers : undefined;
+}
+
+async function processImmediateBounces(
+  bounced: string[],
+  customArgs?: Record<string, string>
+): Promise<void> {
+  for (const email of bounced) {
+    await processEmailDeliveryEvent({
+      emailLogId: customArgs?.emailLogId,
+      tenantId: customArgs?.tenantId,
+      proposalId: customArgs?.proposalId,
+      email,
+      event: 'bounce',
+      reason: 'Permanent bounce at send time',
+      metadata: { source: 'cloudflare-send-api' },
+    });
+  }
+}
+
+async function sendViaCloudflareApi(
+  payload: Record<string, unknown>,
+  customArgs?: Record<string, string>
+): Promise<SendGridSendResult> {
   const token = process.env.CLOUDFLARE_EMAIL_API_TOKEN;
   const accountId = process.env.CLOUDFLARE_ACCOUNT_ID;
   if (!token || !accountId) {
     return { success: false, error: 'CLOUDFLARE_ACCOUNT_ID/API_TOKEN not configured' };
+  }
+
+  const trackingHeaders = buildTrackingHeaders(customArgs);
+  if (trackingHeaders) {
+    payload.headers = {
+      ...(typeof payload.headers === 'object' && payload.headers !== null
+        ? (payload.headers as Record<string, string>)
+        : {}),
+      ...trackingHeaders,
+    };
   }
 
   const res = await fetch(
@@ -96,7 +148,11 @@ async function sendViaCloudflareApi(payload: Record<string, unknown>): Promise<S
   const data = (await res.json()) as {
     success?: boolean;
     errors?: Array<{ message?: string }>;
-    result?: { delivered?: string[] };
+    result?: {
+      delivered?: string[];
+      permanent_bounces?: string[];
+      queued?: string[];
+    };
   };
 
   if (!res.ok || !data.success) {
@@ -106,7 +162,24 @@ async function sendViaCloudflareApi(payload: Record<string, unknown>): Promise<S
     };
   }
 
-  return { success: true, messageId: data.result?.delivered?.[0] };
+  const delivered = data.result?.delivered || [];
+  const bounced = data.result?.permanent_bounces || [];
+  const queued = data.result?.queued || [];
+
+  if (bounced.length) {
+    await processImmediateBounces(bounced, customArgs);
+  }
+
+  const hasDelivery = delivered.length > 0 || queued.length > 0;
+
+  return {
+    success: hasDelivery,
+    messageId: customArgs?.emailLogId,
+    delivered,
+    bounced,
+    queued,
+    error: hasDelivery ? undefined : 'All recipients permanently bounced',
+  };
 }
 
 export async function sendViaSendGrid(params: SendGridSendParams): Promise<SendGridSendResult> {
@@ -131,17 +204,22 @@ export async function sendViaSendGrid(params: SendGridSendParams): Promise<SendG
     if (params.attachments?.length) {
       payload.attachments = params.attachments.map((a) => ({
         content:
-          typeof a.content === 'string' ? a.content : a.content.toString('base64'),
+          typeof a.content === 'string' ? a.content : Buffer.from(a.content).toString('base64'),
         filename: a.filename,
         type: a.contentType || 'application/octet-stream',
         disposition: 'attachment',
       }));
     }
 
+    if (params.customArgs) {
+      payload.custom_args = params.customArgs;
+      payload.metadata = params.customArgs;
+    }
+
     const viaWorker = process.env.EMAIL_WORKER_URL && process.env.EMAIL_WORKER_SECRET;
     const result = viaWorker
       ? await sendViaWorker(payload)
-      : await sendViaCloudflareApi(payload);
+      : await sendViaCloudflareApi(payload, params.customArgs);
 
     if (result.success) {
       logger.info(`Cloudflare platform email sent: ${result.messageId || 'ok'}`);

@@ -1,0 +1,20 @@
+[
+  {
+    "id": "scope-aml",
+    "title": "Anti-money laundering",
+    "tags": ["aml", "compliance", "kyc", "_icaew", "_acca"],
+    "body": "We will perform client due diligence in line with Money Laundering Regulations 2017, including identity verification and risk assessment, before commencing work."
+  },
+  {
+    "id": "scope-pep-sanctions",
+    "title": "PEP and sanctions screening",
+    "tags": ["aml", "pep", "sanctions", "kyc", "_icaew", "_acca"],
+    "body": "We will screen clients and beneficial owners against Politically Exposed Persons (PEP) and sanctions lists as part of our AML procedures, and document the outcome in your client risk file."
+  },
+  {
+    "id": "scope-source-of-funds",
+    "title": "Source of funds and wealth",
+    "tags": ["aml", "source-of-funds", "kyc", "_icaew"],
+    "body": "Where risk assessment requires, we will obtain and verify information regarding source of funds and source of wealth before accepting the engagement."
+  }
+]

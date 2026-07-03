@@ -1,6 +1,7 @@
 import { useLocation } from 'react-router-dom';
 import { XMarkIcon, ArrowRightOnRectangleIcon } from '@heroicons/react/24/outline';
 import { useAuthStore } from '../../stores/authStore';
+import { appPath } from '../../utils/appBase';
 import SidebarNavItems from './SidebarNavItems';
 
 interface SidebarProps {
@@ -88,7 +89,7 @@ const Sidebar = ({ isOpen, onClose }: SidebarProps) => {
 
   const handleLogout = () => {
     clearAuth();
-    window.location.href = '/login';
+    window.location.href = appPath('/login');
   };
 
   const shellClass =
