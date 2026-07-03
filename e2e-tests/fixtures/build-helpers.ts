@@ -19,12 +19,12 @@ export async function chooseProposalBuildMode(
   mode: ProposalBuildMode = 'manual'
 ): Promise<void> {
   const chooser = page.getByText(/how would you like to build this proposal/i);
-  const visible = await chooser.isVisible({ timeout: 3_000 }).catch(() => false);
+  const visible = await chooser.isVisible({ timeout: 10_000 }).catch(() => false);
   if (!visible) return;
 
   const testId = mode === 'clara' ? 'build-mode-clara' : 'build-mode-manual';
   const modeButton = page.locator(`[data-testid="${testId}"]`);
-  if (await modeButton.isVisible({ timeout: 5_000 }).catch(() => false)) {
+  if (await modeButton.isVisible({ timeout: 15_000 }).catch(() => false)) {
     await modeButton.click();
   } else if (mode === 'manual') {
     // AI not configured — fallback "Continue manually" button

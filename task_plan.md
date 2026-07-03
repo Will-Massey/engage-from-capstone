@@ -5,14 +5,13 @@
 **Market leader:** UK proposal-to-cash platform — CH lookup → priced proposal → signed engagement → collected fees, with Clara AI that saves 30+ min/proposal without token overspend. Full plan: `MARKET_LEADER_PLAN.md`.
 
 ## Current Phase
-**Build 3.2** — Full production e2e suite green (43 tests, 2 flaky)
+**Build 3.2** — Production e2e hardened; catalogue seeded (45 services)
 
 ## Next Up
 <!-- 3–5 bullets ONLY. Next fresh session starts here. Rewrite every checkpoint. -->
-1. Caroline quick browser sign-off (Automation + Templates Yours — e2e already green).
-2. Run `seed-expanded-uk-services.ts` on production DB if catalogue still thin (45 services today).
-3. Harden Clara sidebar + automation restore-default e2e (intermittent first-attempt flakes).
-4. **Deferred (post-sale):** Render Starter + disk, `XERO_*` / webhook secrets.
+1. Caroline quick browser sign-off (Automation + Templates Yours — e2e green, no retries).
+2. **Deferred (post-sale):** Render Starter + disk, `XERO_*` / webhook secrets.
+3. Next roadmap: Build 3.3 features per `MARKET_LEADER_PLAN.md` (William to prioritise).
 
 ## Phases
 <!-- Status: pending | in_progress | complete -->

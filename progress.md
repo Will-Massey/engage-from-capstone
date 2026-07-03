@@ -1,6 +1,15 @@
 # Build Progress Log
 <!-- Append-only session log. Latest deploy checkpoint is the resume entry point. -->
 
+## Session: 2026-07-03 — Flaky e2e hardening + catalogue check
+
+### Checkpoint
+- **Catalogue:** 45 active services on production — expanded seed already applied (skip re-run)
+- **E2E hardening:** API clean-slate before restore-default test; longer Clara chooser waits; card preview sync
+- **Verify:** automation + ai-native 6/6 pass with `--retries=0` (1.4m)
+
+---
+
 ## Session: 2026-07-03 — Full build e2e suite on production
 
 ### UAT checkpoint

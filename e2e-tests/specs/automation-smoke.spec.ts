@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { expectNoErrorToasts, gotoApp } from '../fixtures/build-helpers';
+import { apiPost, expectNoErrorToasts, expectOkApi, gotoApp } from '../fixtures/build-helpers';
 
 const STAGE_LABELS = [
   'Proposal accepted — welcome',
@@ -37,29 +37,41 @@ test.describe('Automation UAT — lifecycle touchpoints', () => {
     await expectNoErrorToasts(page);
   });
 
-  test('restore Engage default wording for a single stage', async ({ page }) => {
+  test('restore Engage default wording for a single stage', async ({ page, request }) => {
+    await expectOkApi(
+      'touchpoint restore-default (clean slate)',
+      await apiPost(request, '/touchpoints/templates/PROPOSAL_ACCEPTED/restore-default', {})
+    );
+
     await gotoApp(page, '/settings?tab=automation');
     await expect(page.getByRole('heading', { name: /Automated Client Touchpoints/i })).toBeVisible({
       timeout: 20_000,
     });
 
     const card = page.locator('div.rounded-2xl.border').filter({ hasText: 'Proposal accepted — welcome' });
+    const subjectPreview = card.locator('.line-clamp-2');
+    await expect(subjectPreview).not.toHaveText(/loading/i, { timeout: 20_000 });
+    await expect(subjectPreview).toContainText('Welcome to {{practice_name}}', { timeout: 10_000 });
+
     await card.getByRole('button', { name: /edit template/i }).click();
 
     const dialog = page.locator('.glass-tile').filter({ hasText: /Edit template — Proposal accepted/i });
     await expect(dialog).toBeVisible();
 
     const subjectInput = dialog.locator('input[placeholder="Subject"]');
-    await expect(subjectInput).not.toBeEmpty({ timeout: 15_000 });
+    await expect(subjectInput).not.toBeEmpty({ timeout: 20_000 });
     await expect(subjectInput).toHaveValue(DEFAULT_PROPOSAL_ACCEPTED_SUBJECT);
 
     const customisedSubject = `UAT custom subject ${Date.now()}`;
     await subjectInput.fill(customisedSubject);
     await dialog.getByRole('button', { name: /save template/i }).click();
     await expect(page.getByText(/template saved/i)).toBeVisible({ timeout: 10_000 });
+    await expect(dialog).not.toBeVisible({ timeout: 10_000 });
+    await expect(subjectPreview).toContainText(customisedSubject, { timeout: 15_000 });
 
     await card.getByRole('button', { name: /edit template/i }).click();
-    await expect(subjectInput).toHaveValue(customisedSubject);
+    await expect(dialog).toBeVisible();
+    await expect(subjectInput).toHaveValue(customisedSubject, { timeout: 10_000 });
 
     page.once('dialog', (dialog) => dialog.accept());
     await dialog.getByRole('button', { name: /restore engage default wording/i }).click();

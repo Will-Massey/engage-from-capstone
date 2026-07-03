@@ -28,6 +28,7 @@ test.describe('AI-native UI surfaces', () => {
 
   test('proposal builder Clara sidebar on step 2+', async ({ page }) => {
     await gotoApp(page, '/proposals/new');
+    await page.waitForSelector('[data-testid="client-card"]', { timeout: 30_000 });
     await advanceToProposalServicesStep(page, 'clara');
 
     await expect(page.getByRole('heading', { name: 'Client context' })).toBeVisible({ timeout: 15_000 });
