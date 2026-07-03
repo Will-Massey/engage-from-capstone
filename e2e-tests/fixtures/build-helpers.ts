@@ -2,9 +2,49 @@ import { type Page, type APIRequestContext, expect } from '@playwright/test';
 
 export type ProposalBuildMode = 'manual' | 'clara';
 
-/** Step 1: pick a client on /proposals/new */
+type ProposalBuilderStep = 'client' | 'chooser' | 'services';
+
+/** Wait until proposal builder shows client list, build-mode chooser, or services catalogue. */
+export async function waitForProposalBuilderStep(
+  page: Page,
+  timeoutMs = 45_000
+): Promise<ProposalBuilderStep> {
+  const deadline = Date.now() + timeoutMs;
+  while (Date.now() < deadline) {
+    if (
+      (await page
+        .locator('[data-testid="available-service-row"]')
+        .first()
+        .isVisible()
+        .catch(() => false)) ||
+      (await page
+        .getByRole('heading', { name: /^add services$/i })
+        .isVisible()
+        .catch(() => false))
+    ) {
+      return 'services';
+    }
+    if (await page.locator('[data-testid="client-card"]').first().isVisible().catch(() => false)) {
+      return 'client';
+    }
+    if (
+      await page
+        .getByText(/how would you like to build this proposal/i)
+        .isVisible()
+        .catch(() => false)
+    ) {
+      return 'chooser';
+    }
+    await page.waitForTimeout(400);
+  }
+  throw new Error('Proposal builder did not reach client, chooser, or services step');
+}
+
+/** Step 1: pick a client on /proposals/new (no-op if draft/template already on services or chooser). */
 export async function selectFirstProposalClient(page: Page): Promise<void> {
-  await page.waitForSelector('[data-testid="client-card"]', { timeout: 30_000 });
+  const step = await waitForProposalBuilderStep(page);
+  if (step !== 'client') return;
+
   const card = page.locator('[data-testid="client-card"]').first();
   await expect(card).toBeVisible();
   await card.click();
@@ -33,9 +73,16 @@ export async function chooseProposalBuildMode(
     throw new Error(`Build mode "${mode}" not available (Clara may be unconfigured)`);
   }
 
-  await expect(page.locator('[data-testid="client-continue-button"]')).toBeVisible({
-    timeout: 10_000,
-  });
+  const onServices = await page
+    .locator('[data-testid="available-service-row"]')
+    .first()
+    .isVisible({ timeout: 3_000 })
+    .catch(() => false);
+  if (!onServices) {
+    await expect(page.locator('[data-testid="client-continue-button"]')).toBeVisible({
+      timeout: 10_000,
+    });
+  }
 }
 
 /** Steps 1 → 2: client, build mode, continue to services catalogue */
@@ -43,9 +90,29 @@ export async function advanceToProposalServicesStep(
   page: Page,
   mode: ProposalBuildMode = 'manual'
 ): Promise<void> {
-  await selectFirstProposalClient(page);
+  const step = await waitForProposalBuilderStep(page);
+  if (step === 'services') {
+    await page.waitForSelector('[data-testid="available-service-row"]', { timeout: 30_000 });
+    return;
+  }
+
+  if (step === 'client') {
+    await page.locator('[data-testid="client-card"]').first().click();
+  }
+
   await chooseProposalBuildMode(page, mode);
-  await page.locator('[data-testid="client-continue-button"]').click();
+
+  const afterMode = await waitForProposalBuilderStep(page, 20_000);
+  if (afterMode === 'services') {
+    await page.waitForSelector('[data-testid="available-service-row"]', { timeout: 30_000 });
+    return;
+  }
+
+  const continueBtn = page.locator('[data-testid="client-continue-button"]');
+  if (await continueBtn.isVisible({ timeout: 5_000 }).catch(() => false)) {
+    await continueBtn.click();
+  }
+
   await page.waitForSelector('[data-testid="available-service-row"]', { timeout: 30_000 });
 }
 
