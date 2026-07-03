@@ -536,10 +536,10 @@ router.get(
       req.headers['user-agent'] || null
     );
 
-    // Auto-mark as VIEWED if currently SENT
+    // Auto-mark as VIEWED if currently SENT (conditional update avoids racing with sign → ACCEPTED)
     if (proposal.status === 'SENT') {
-      await prisma.proposal.update({
-        where: { id: proposal.id },
+      await prisma.proposal.updateMany({
+        where: { id: proposal.id, status: 'SENT' },
         data: { status: 'VIEWED' },
       });
     }
