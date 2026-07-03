@@ -2,25 +2,44 @@ import { Response } from 'express';
 import { generateCsrfToken } from '../middleware/auth.js';
 import { registerCsrfToken } from './csrfStore.js';
 
+function hostsDiffer(a: string, b: string): boolean {
+  try {
+    const hostA = new URL(a.startsWith('http') ? a : `https://${a}`).hostname;
+    const hostB = new URL(b.startsWith('http') ? b : `https://${b}`).hostname;
+    return hostA !== hostB;
+  } catch {
+    return false;
+  }
+}
+
 function cookieOptions(): {
   httpOnly: boolean;
   secure: boolean;
   sameSite: 'strict' | 'lax' | 'none';
   maxAge: number;
   path: string;
+  domain?: string;
 } {
   const isProduction = process.env.NODE_ENV === 'production';
   const cookiePath = process.env.AUTH_COOKIE_PATH || '/';
-  const sameOriginPath =
-    isProduction && (cookiePath !== '/' || process.env.FRONTEND_URL?.includes('/engage'));
+  const frontendUrl = process.env.FRONTEND_URL || '';
+  const apiUrl = process.env.API_URL || '';
+  const crossSite =
+    isProduction && frontendUrl && apiUrl && hostsDiffer(frontendUrl, apiUrl);
 
-  return {
+  const opts = {
     httpOnly: true,
     secure: isProduction,
-    sameSite: sameOriginPath ? 'lax' : isProduction ? 'none' : 'strict',
+    sameSite: (crossSite ? 'none' : isProduction ? 'lax' : 'strict') as 'strict' | 'lax' | 'none',
     maxAge: 24 * 60 * 60 * 1000,
     path: cookiePath,
   };
+
+  if (crossSite && frontendUrl.includes('capstonesoftware.co.uk')) {
+    return { ...opts, domain: '.capstonesoftware.co.uk' };
+  }
+
+  return opts;
 }
 
 function csrfCookieOptions() {
@@ -55,8 +74,9 @@ export function issueCsrfToken(res: Response): string {
 }
 
 export function clearAuthCookies(res: Response): void {
-  const path = process.env.AUTH_COOKIE_PATH || '/';
-  res.clearCookie('accessToken', { path });
-  res.clearCookie('refreshToken', { path });
-  res.clearCookie('csrfToken', { path });
+  const opts = cookieOptions();
+  const clearOpts = { path: opts.path, ...(opts.domain ? { domain: opts.domain } : {}) };
+  res.clearCookie('accessToken', clearOpts);
+  res.clearCookie('refreshToken', clearOpts);
+  res.clearCookie('csrfToken', { ...clearOpts, httpOnly: false });
 }

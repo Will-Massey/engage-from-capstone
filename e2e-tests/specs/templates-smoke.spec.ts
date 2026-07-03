@@ -1,5 +1,10 @@
 import { test, expect } from '@playwright/test';
-import { chooseProposalBuildMode, expectNoErrorToasts, selectFirstProposalClient } from '../fixtures/build-helpers';
+import {
+  chooseProposalBuildMode,
+  expectNoErrorToasts,
+  gotoApp,
+  selectFirstProposalClient,
+} from '../fixtures/build-helpers';
 
 const stamp = Date.now();
 const TEMPLATE_NAME = `Sendit smoke ${stamp}`;
@@ -8,7 +13,7 @@ const TEMPLATE_TITLE = `Engagement proposal — smoke ${stamp}`;
 test.describe('Build smoke — proposal templates', () => {
   test('Catalogue → Templates → create → Use template → client → pre-fills', async ({ page }) => {
     // Sidebar: Catalogue → Templates
-    await page.goto('/templates');
+    await gotoApp(page, '/templates');
     await expect(page).toHaveURL(/\/templates/);
     await expect(page.getByRole('heading', { name: /proposal templates/i })).toBeVisible();
     await expectNoErrorToasts(page);
@@ -63,7 +68,7 @@ test.describe('Build smoke — proposal templates', () => {
     }
 
     // Cleanup: delete smoke template
-    await page.goto('/templates');
+    await gotoApp(page, '/templates');
     const smokeCard = page.locator('article').filter({ hasText: TEMPLATE_NAME });
     page.once('dialog', (d) => d.accept());
     await smokeCard.getByLabel(/delete template/i).click();

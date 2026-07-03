@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { expectNoErrorToasts } from '../fixtures/build-helpers';
+import { expectNoErrorToasts, gotoApp } from '../fixtures/build-helpers';
 
 const STAGE_LABELS = [
   'Proposal accepted — welcome',
@@ -22,7 +22,7 @@ const DEFAULT_PROPOSAL_ACCEPTED_SUBJECT =
 
 test.describe('Automation UAT — lifecycle touchpoints', () => {
   test('Settings → Automation shows 13 populated stage subjects', async ({ page }) => {
-    await page.goto('/settings?tab=automation');
+    await gotoApp(page, '/settings?tab=automation');
     await expect(page.getByRole('heading', { name: /Automated Client Touchpoints/i })).toBeVisible({
       timeout: 20_000,
     });
@@ -38,7 +38,7 @@ test.describe('Automation UAT — lifecycle touchpoints', () => {
   });
 
   test('restore Engage default wording for a single stage', async ({ page }) => {
-    await page.goto('/settings?tab=automation');
+    await gotoApp(page, '/settings?tab=automation');
     await expect(page.getByRole('heading', { name: /Automated Client Touchpoints/i })).toBeVisible({
       timeout: 20_000,
     });

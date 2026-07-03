@@ -49,9 +49,19 @@ export async function advanceToProposalServicesStep(
   await page.waitForSelector('[data-testid="available-service-row"]', { timeout: 30_000 });
 }
 
+export const FRONTEND_ORIGIN = (
+  process.env.FRONTEND_URL || 'https://capstonesoftware.co.uk/engage'
+).replace(/\/$/, '');
+
 export const API_BASE =
   (process.env.API_URL || 'https://engage-backend-e1ue.onrender.com').replace(/\/$/, '') +
   (process.env.API_URL?.endsWith('/api') ? '' : '/api');
+
+/** Navigate under the /engage app base — Playwright baseURL strips path on leading-slash URLs. */
+export async function gotoApp(page: Page, path: string): Promise<void> {
+  const rel = path.startsWith('/') ? path : `/${path}`;
+  await page.goto(`${FRONTEND_ORIGIN}${rel}`);
+}
 
 const E2E_HEADERS = { 'X-Test-Mode': 'e2e-build' };
 
