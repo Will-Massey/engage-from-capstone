@@ -44,6 +44,7 @@ Set-RenderEnvVars $BackendServiceId @{
   FRONTEND_URL        = $canonical
   API_URL             = $canonical
   AUTH_COOKIE_PATH    = '/engage'
+  NODE_VERSION        = '20.18.0'
   XERO_REDIRECT_URI   = "$canonical/api/oauth/callback/xero"
   EMAIL_PLATFORM_FROM = 'proposals@capstonesoftware.co.uk'
 }

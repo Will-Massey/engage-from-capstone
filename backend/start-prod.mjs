@@ -59,30 +59,27 @@ try {
   console.log('🚀 Starting server despite migration warnings...');
 }
 
-// Seed UK accountancy services (non-blocking, ignore failures)
-console.log('🌱 Checking UK service catalog...');
-try {
-  run('node ./scripts/seed-uk-services.js', { timeout: 30000, stdio: 'pipe' });
-  console.log('✅ Seed check complete');
-} catch (error) {
-  console.warn('⚠️  Seed check warning:', error.message || error);
+function runDeferred(cmd, label) {
+  setImmediate(() => {
+    try {
+      run(cmd, { timeout: 30000, stdio: 'pipe' });
+      console.log(`✅ ${label}`);
+    } catch (error) {
+      console.warn(`⚠️  ${label} warning:`, error.message || error);
+    }
+  });
 }
 
-// Fix billingCycle for existing services (ignore failures)
-console.log('🔧 Checking billingCycle field...');
-try {
-  run('node ./scripts/fix-billing-cycle.js', { timeout: 30000, stdio: 'pipe' });
-  console.log('✅ Billing cycle fix complete');
-} catch (error) {
-  console.warn('⚠️  Billing cycle fix warning:', error.message || error);
-}
+console.log('🚀 Loading server (seed jobs deferred until after listen)...');
 
-console.log('🚀 Loading server...');
-
-// Import and start the server (ESM)
+// Import and start the server (ESM) — must listen before Render health checks pass
 try {
   await import('./dist/index.js');
 } catch (err) {
   console.error('❌ Server failed to start:', err.message);
   process.exit(1);
 }
+
+// Non-critical maintenance after HTTP is up
+runDeferred('node ./scripts/seed-uk-services.js', 'Seed check complete');
+runDeferred('node ./scripts/fix-billing-cycle.js', 'Billing cycle fix complete');
