@@ -1008,6 +1008,16 @@ router.post(
       },
     });
 
+    const submitterName = `${updated.createdBy?.firstName || ''} ${updated.createdBy?.lastName || ''}`.trim() || 'A team member';
+    const { notifyApproversOfSubmission } = await import('../services/partnerApprovalNotifyService.js');
+    notifyApproversOfSubmission({
+      tenantId: req.tenantId!,
+      proposalId: id,
+      proposalTitle: proposal.title,
+      clientName: proposal.client?.name || 'Client',
+      submittedByName: submitterName,
+    }).catch(() => undefined);
+
     res.json({
       success: true,
       data: updated,

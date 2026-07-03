@@ -5,43 +5,49 @@ const CONTROLS = [
     id: 'CC6.1',
     title: 'Logical and physical access',
     status: 'Implemented',
-    detail: 'JWT authentication, role-based authorisation, MFA/TOTP, tenant-scoped data access.',
+    detail:
+      'JWT + httpOnly cookies, RBAC, MFA/TOTP for privileged roles (configurable enforcement), 12-character password policy, session list/revoke, login lockout.',
   },
   {
     id: 'CC6.6',
     title: 'System boundaries',
     status: 'Implemented',
-    detail: 'Row-level tenant isolation, CSRF protection, cross-tenant header rejection, upload IDOR fixes.',
+    detail:
+      'Tenant row isolation, CSRF double-submit, cross-tenant header rejection, signature IDOR fixes, Helmet security headers with HSTS.',
   },
   {
     id: 'CC7.2',
     title: 'Security monitoring',
-    status: 'Partial',
-    detail: 'Structured application logging; Render log drains and alerting recommended at go-live.',
+    status: 'Implemented',
+    detail:
+      'Structured security event logging (login, MFA, session revoke) to application logs and ActivityLog; public /status page. SIEM integration recommended at go-live.',
   },
   {
     id: 'CC8.1',
     title: 'Change management',
     status: 'Implemented',
-    detail: 'Prisma migrations in deploy pipeline; production DDL via admin routes disabled.',
+    detail:
+      'Prisma migrations in deploy pipeline; setup/admin DDL endpoints disabled by default (ENABLE_SETUP_ENDPOINT=false).',
   },
   {
     id: 'A1.2',
     title: 'Availability',
     status: 'Partial',
-    detail: 'Public status page at /status; uptime monitoring and backup restore drills pending paid tier.',
+    detail:
+      'Public status page at /status; Render Starter tier and external uptime monitoring recommended for production SLA.',
   },
   {
     id: 'P1',
     title: 'Privacy & GDPR',
     status: 'Implemented',
-    detail: 'Privacy policy, AI disclosure, consent on e-sign; subject access export path documented.',
+    detail:
+      'Privacy policy, AI disclosure, subprocessor register, consent on e-sign; GDPR export/delete in Settings → Security.',
   },
 ];
 
 export default function Soc2Controls() {
   return (
-    <LegalPageLayout title="Security & SOC 2 Controls" lastUpdated="1 July 2026">
+    <LegalPageLayout title="Security & SOC 2 Controls" lastUpdated="3 July 2026">
       <section className="space-y-4">
         <p>
           This page summarises Engage by Capstone controls mapped to SOC 2 Trust Services Criteria. It supports
@@ -49,11 +55,16 @@ export default function Soc2Controls() {
           <a href="/status" className="text-primary-600 hover:underline dark:text-primary-400">
             system status
           </a>{' '}
-          page (W4.5).
+          and{' '}
+          <a href="/legal/subprocessors" className="text-primary-600 hover:underline dark:text-primary-400">
+            subprocessor register
+          </a>
+          .
         </p>
         <p className="text-sm text-slate-600 dark:text-slate-400">
-          Formal SOC 2 Type II certification is a post-revenue milestone. Controls below reflect the current
-          product implementation on the free-tier deployment.
+          Formal SOC 2 Type II certification requires an independent auditor. Controls below reflect the July 2026
+          product implementation. Enable <code className="text-xs">REQUIRE_MFA_FOR_PRIVILEGED=true</code> and Redis
+          for multi-instance deployments at go-live.
         </p>
       </section>
 

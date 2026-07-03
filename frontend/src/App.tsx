@@ -21,6 +21,7 @@ import Proposals from './pages/proposals/Proposals';
 import BulkRenewalWizard from './pages/proposals/BulkRenewalWizard';
 import FirstProposalWizardPage from './pages/proposals/FirstProposalWizardPage';
 import ProposalDetail from './pages/proposals/ProposalDetail';
+import ApprovalQueue from './pages/proposals/ApprovalQueue';
 import CreateProposal from './pages/proposals/CreateProposal';
 import EditProposal from './pages/proposals/EditProposal';
 import Clients from './pages/clients/Clients';
@@ -42,6 +43,7 @@ import TermsOfService from './pages/legal/TermsOfService';
 import PrivacyPolicy from './pages/legal/PrivacyPolicy';
 import AiDisclosure from './pages/legal/AiDisclosure';
 import Soc2Controls from './pages/legal/Soc2Controls';
+import Subprocessors from './pages/legal/Subprocessors';
 
 // World-class features
 import CommandPalette from './components/command-palette/CommandPalette';
@@ -237,6 +239,14 @@ const AnimatedRoutes = () => {
             }
           />
           <Route
+            path="proposals/approval-queue"
+            element={
+              <AnimatedPage>
+                <ApprovalQueue />
+              </AnimatedPage>
+            }
+          />
+          <Route
             path="proposals/:id/edit"
             element={
               <AnimatedPage>
@@ -412,6 +422,14 @@ const AnimatedRoutes = () => {
           element={
             <AnimatedPage>
               <Soc2Controls />
+            </AnimatedPage>
+          }
+        />
+        <Route
+          path="/legal/subprocessors"
+          element={
+            <AnimatedPage>
+              <Subprocessors />
             </AnimatedPage>
           }
         />

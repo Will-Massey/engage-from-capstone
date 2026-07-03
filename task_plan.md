@@ -5,13 +5,13 @@
 **Market leader:** UK proposal-to-cash platform — CH lookup → priced proposal → signed engagement → collected fees, with Clara AI that saves 30+ min/proposal without token overspend. Full plan: `MARKET_LEADER_PLAN.md`.
 
 ## Current Phase
-**Build 3.2** — complete (Automation + Templates e2e 4/4, `--retries=0`)
+**Build 3.3 + SOC 2** — W1.6/W2.10/W3.2/W3.3 polish + security hardening implemented; deploy + e2e verify pending
 
 ## Next Up
 <!-- 3–5 bullets ONLY. Next fresh session starts here. Rewrite every checkpoint. -->
-1. Caroline quick browser sign-off (Automation + Templates Yours — automated UAT green; human pass optional).
-2. **Build 3.3:** William to pick from `MARKET_LEADER_PLAN.md` — W1.6 partner approval, W2.10 preview pane, W3.2 template content, W3.3 AML scaffold.
-3. **Deferred (post-sale):** Render Starter + disk, `XERO_*` / webhook secrets.
+1. `/sendit` — deploy Build 3.3 + security batch to production; run full build e2e suite.
+2. Enable `REQUIRE_MFA_FOR_PRIVILEGED=true` + `REDIS_URL` at enterprise go-live.
+3. **Deferred (post-sale):** Render Starter + disk, `XERO_*` / webhook secrets, formal SOC 2 Type II audit.
 
 ## Phases
 <!-- Status: pending | in_progress | complete -->

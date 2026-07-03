@@ -39,7 +39,8 @@ const envSchema = z
     PUBLIC_SEED_KEY: z.string().optional(),
     MIGRATION_SECRET_KEY: z.string().optional(),
     ENABLE_PUBLIC_SEED: boolFromString.default(false),
-    ENABLE_SETUP_ENDPOINT: boolFromString.default(true),
+    ENABLE_SETUP_ENDPOINT: boolFromString.default(false),
+    REQUIRE_MFA_FOR_PRIVILEGED: boolFromString.default(false),
   })
   .superRefine((data, ctx) => {
     if (data.NODE_ENV === 'production') {

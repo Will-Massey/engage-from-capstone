@@ -361,6 +361,19 @@ export async function initiateAmlCheck(input: AmlCheckRequest): Promise<AmlCheck
 
   if (!isStub) {
     logger.info(`AML live check submitted for client ${client.id} via ${provider}: ${providerRef}`);
+  } else {
+    // Demo mode: simulate partner webhook after short delay so UAT can complete without live keys
+    const stubRef = providerRef;
+    setTimeout(() => {
+      processAmlWebhook({
+        providerRef: stubRef,
+        status: 'clear',
+        completedAt: new Date().toISOString(),
+        details: { mode: 'demo_auto_complete' },
+      })
+        .then(() => logger.info(`AML stub auto-completed for client ${client.id}`))
+        .catch((err) => logger.warn(`AML stub auto-complete failed for ${client.id}`, err));
+    }, 2500);
   }
 
   return {

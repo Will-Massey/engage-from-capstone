@@ -35,6 +35,8 @@ export interface ProposalClientPreviewProps {
   terms?: string;
   showCoverLetter?: boolean;
   showTerms?: boolean;
+  /** Step 2+: short engagement-terms preview before full T&amp;Cs on review step */
+  showEngagementSummary?: boolean;
   compact?: boolean;
 }
 
@@ -137,6 +139,7 @@ export default function ProposalClientPreview({
   terms = '',
   showCoverLetter = true,
   showTerms = false,
+  showEngagementSummary = false,
   compact = false,
 }: ProposalClientPreviewProps) {
   const contact = clientContactName?.trim();
@@ -268,6 +271,20 @@ export default function ProposalClientPreview({
                 {formatCurrency(summary.contractTotalIncVat)}
               </span>
             </div>
+          </div>
+        )}
+
+        {showEngagementSummary && terms.trim() && !showTerms && (
+          <div data-testid="engagement-terms-preview">
+            <h4 className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400 mb-2">
+              Engagement terms
+            </h4>
+            <p className="text-sm text-slate-600 dark:text-slate-300 line-clamp-4 whitespace-pre-wrap">
+              {terms}
+            </p>
+            <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+              Full terms appear on the review step and in the signed PDF.
+            </p>
           </div>
         )}
 

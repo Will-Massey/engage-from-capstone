@@ -25,8 +25,20 @@ import { passwordResetService } from '../services/passwordResetService.js';
 import { gdprService } from '../services/gdprService.js';
 import { createEmailService } from '../services/emailService.js';
 import { setAuthCookies, clearAuthCookies, issueCsrfToken } from '../utils/authCookies.js';
+import {
+  isMfaRequiredForRole,
+  logSecurityEvent,
+  securityEventFromRequest,
+} from '../services/securityAuditService.js';
 
 const router = Router();
+
+function assertPasswordStrength(password: string): void {
+  const { isValid, errors } = passwordResetService.validatePasswordStrength(password);
+  if (!isValid) {
+    throw new ApiError('WEAK_PASSWORD', errors.join('; '), 400);
+  }
+}
 const JWT_SECRET = process.env.JWT_SECRET!;
 
 type AuthUser = {
@@ -102,7 +114,7 @@ const loginSchema = z.object({
 
 const registerSchema = z.object({
   email: z.string().email('Invalid email address'),
-  password: z.string().min(8, 'Password must be at least 8 characters'),
+  password: z.string().min(12, 'Password must be at least 12 characters'),
   firstName: z.string().min(1, 'First name is required'),
   lastName: z.string().min(1, 'Last name is required'),
   tenantId: z.string(),
@@ -147,6 +159,13 @@ router.post(
     }
 
     if (await isLoginLocked(email, resolvedTenantId)) {
+      await logSecurityEvent(
+        securityEventFromRequest(req, {
+          type: 'LOGIN_LOCKED',
+          tenantId: resolvedTenantId,
+          email: email.toLowerCase(),
+        })
+      );
       throw new ApiError(
         'ACCOUNT_LOCKED',
         'Too many failed login attempts. Please try again in 30 minutes.',
@@ -168,6 +187,14 @@ router.post(
 
     if (!user) {
       logger.warn(`Login failed: User not found - ${email} in tenant ${resolvedTenantId}`);
+      await logSecurityEvent(
+        securityEventFromRequest(req, {
+          type: 'LOGIN_FAILED',
+          tenantId: resolvedTenantId,
+          email: email.toLowerCase(),
+          metadata: { reason: 'user_not_found' },
+        })
+      );
       throw new ApiError('INVALID_CREDENTIALS', 'Invalid email or password', 401);
     }
 
@@ -177,6 +204,15 @@ router.post(
     if (!isValidPassword) {
       logger.warn(`Login failed: Invalid password for ${email}`);
       const attempts = await recordFailedLogin(email, resolvedTenantId);
+      await logSecurityEvent(
+        securityEventFromRequest(req, {
+          type: 'LOGIN_FAILED',
+          userId: user.id,
+          tenantId: user.tenantId,
+          email: user.email,
+          metadata: { reason: 'invalid_password', attempts },
+        })
+      );
       const remaining = Math.max(0, LOGIN_LOCKOUT_MAX - attempts);
       throw new ApiError(
         'INVALID_CREDENTIALS',
@@ -188,6 +224,23 @@ router.post(
     }
 
     await clearLoginAttempts(email, resolvedTenantId);
+
+    if (isMfaRequiredForRole(user.role) && !user.twoFactorEnabled) {
+      await logSecurityEvent(
+        securityEventFromRequest(req, {
+          type: 'MFA_REQUIRED_BLOCKED',
+          userId: user.id,
+          tenantId: user.tenantId,
+          email: user.email,
+          metadata: { role: user.role },
+        })
+      );
+      throw new ApiError(
+        'MFA_REQUIRED',
+        'Two-factor authentication is required for your role. Enable it in Settings → Security, then sign in again.',
+        403
+      );
+    }
 
     if (user.twoFactorEnabled && user.twoFactorSecret) {
       const pendingToken = jwt.sign(
@@ -209,6 +262,15 @@ router.post(
     }
 
     logger.info(`Login successful: ${email} (${user.id})`);
+
+    await logSecurityEvent(
+      securityEventFromRequest(req, {
+        type: 'LOGIN_SUCCESS',
+        userId: user.id,
+        tenantId: user.tenantId,
+        email: user.email,
+      })
+    );
 
     await prisma.user.update({
       where: { id: user.id },
@@ -235,6 +297,7 @@ router.post(
     }
 
     const { email, password, firstName, lastName, tenantId } = registerSchema.parse(req.body);
+    assertPasswordStrength(password);
 
     // Check if user already exists
     const existingUser = await prisma.user.findFirst({
@@ -460,9 +523,11 @@ router.put(
     const { currentPassword, newPassword } = z
       .object({
         currentPassword: z.string(),
-        newPassword: z.string().min(8, 'Password must be at least 8 characters'),
+        newPassword: z.string().min(12, 'Password must be at least 12 characters'),
       })
       .parse(req.body);
+
+    assertPasswordStrength(newPassword);
 
     const user = await prisma.user.findUnique({
       where: { id: req.user!.id },
@@ -492,6 +557,15 @@ router.put(
     await prisma.refreshToken.deleteMany({
       where: { userId: user.id },
     });
+
+    await logSecurityEvent(
+      securityEventFromRequest(req, {
+        type: 'PASSWORD_CHANGED',
+        userId: user.id,
+        tenantId: user.tenantId,
+        email: user.email,
+      })
+    );
 
     res.json({
       success: true,
@@ -1125,6 +1199,15 @@ router.post(
 
     logger.info('2FA enabled', { userId: user.id });
 
+    await logSecurityEvent(
+      securityEventFromRequest(req, {
+        type: 'MFA_ENABLED',
+        userId: user.id,
+        tenantId: user.tenantId,
+        email: user.email,
+      })
+    );
+
     res.json({
       success: true,
       data: { message: 'Two-factor authentication enabled successfully', twoFactorEnabled: true },
@@ -1170,12 +1253,109 @@ router.post(
       }),
     ]);
 
+    if (isMfaRequiredForRole(user.role)) {
+      throw new ApiError(
+        'MFA_REQUIRED',
+        'Two-factor authentication cannot be disabled for your role while MFA enforcement is active.',
+        403
+      );
+    }
+
     logger.info('2FA disabled', { userId: user.id });
+
+    await logSecurityEvent(
+      securityEventFromRequest(req, {
+        type: 'MFA_DISABLED',
+        userId: user.id,
+        tenantId: user.tenantId,
+        email: user.email,
+      })
+    );
 
     res.json({
       success: true,
       data: { message: 'Two-factor authentication disabled', twoFactorEnabled: false },
     });
+  })
+);
+
+/**
+ * GET /api/auth/sessions
+ * List active refresh-token sessions for the current user
+ */
+router.get(
+  '/sessions',
+  authenticate,
+  asyncHandler(async (req, res) => {
+    const currentToken = req.cookies?.refreshToken as string | undefined;
+    const sessions = await prisma.refreshToken.findMany({
+      where: { userId: req.user!.id, expiresAt: { gt: new Date() } },
+      orderBy: { createdAt: 'desc' },
+      select: { id: true, createdAt: true, expiresAt: true, token: true },
+    });
+
+    res.json({
+      success: true,
+      data: sessions.map((s) => ({
+        id: s.id,
+        createdAt: s.createdAt,
+        expiresAt: s.expiresAt,
+        isCurrent: currentToken ? s.token === currentToken : false,
+      })),
+    });
+  })
+);
+
+/**
+ * DELETE /api/auth/sessions/:id
+ * Revoke a single session
+ */
+router.delete(
+  '/sessions/:id',
+  authenticate,
+  asyncHandler(async (req, res) => {
+    const deleted = await prisma.refreshToken.deleteMany({
+      where: { id: req.params.id, userId: req.user!.id },
+    });
+    if (deleted.count === 0) {
+      throw new ApiError('NOT_FOUND', 'Session not found', 404);
+    }
+    await logSecurityEvent(
+      securityEventFromRequest(req, {
+        type: 'SESSION_REVOKED',
+        userId: req.user!.id,
+        tenantId: req.tenantId,
+        metadata: { sessionId: req.params.id },
+      })
+    );
+    res.json({ success: true, data: { revoked: true } });
+  })
+);
+
+/**
+ * DELETE /api/auth/sessions
+ * Revoke all sessions except the current one
+ */
+router.delete(
+  '/sessions',
+  authenticate,
+  asyncHandler(async (req, res) => {
+    const currentToken = req.cookies?.refreshToken as string | undefined;
+    const result = await prisma.refreshToken.deleteMany({
+      where: {
+        userId: req.user!.id,
+        ...(currentToken ? { token: { not: currentToken } } : {}),
+      },
+    });
+    await logSecurityEvent(
+      securityEventFromRequest(req, {
+        type: 'SESSION_REVOKED',
+        userId: req.user!.id,
+        tenantId: req.tenantId,
+        metadata: { bulk: true, count: result.count },
+      })
+    );
+    res.json({ success: true, data: { revoked: result.count } });
   })
 );
 

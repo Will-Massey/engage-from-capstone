@@ -38,6 +38,20 @@ services:
         value: https://capstonesoftware.co.uk/engage
       - key: AUTH_COOKIE_PATH
         value: /engage
+      - key: ENABLE_SETUP_ENDPOINT
+        value: "false"
+      - key: REQUIRE_MFA_FOR_PRIVILEGED
+        value: "false"
+      - key: REDIS_URL
+        sync: false
+      - key: SENTRY_DSN
+        sync: false
+      - key: AML_WEBHOOK_SECRET
+        sync: false
+      - key: SMARTSEARCH_API_KEY
+        sync: false
+      - key: CREDITSAFE_API_KEY
+        sync: false
       - key: DEFAULT_TENANT_SUBDOMAIN
         value: demo
       - key: API_URL

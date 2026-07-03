@@ -467,6 +467,8 @@ export default function ProposalBuilder({ proposalId }: ProposalBuilderProps) {
     open: false,
     proposalId: '',
   });
+  const [submitAfterSave, setSubmitAfterSave] = useState(false);
+  const needsPartnerApproval = user?.role === 'JUNIOR' || user?.role === 'SENIOR';
   const [validationErrors, setValidationErrors] = useState<string[]>([]);
   const [autoFitLoading, setAutoFitLoading] = useState(false);
   const [autoFitResult, setAutoFitResult] = useState<AutoFitResult | null>(null);
@@ -1911,17 +1913,25 @@ export default function ProposalBuilder({ proposalId }: ProposalBuilderProps) {
           localStorage.removeItem(proposalDraftKey(undefined, selectedClient.id));
         }
         localStorage.removeItem(LEGACY_NEW_DRAFT_KEY);
-        toast.success(isEditMode ? 'Proposal updated successfully!' : 'Proposal created successfully!');
         const savedId = isEditMode ? proposalId! : response.data.id;
-        if (!isEditMode && buildMode === 'manual') {
-          setSaveTemplateDialog({ open: true, proposalId: savedId });
-        } else {
+        if (submitAfterSave) {
+          setSubmitAfterSave(false);
+          await apiClient.submitProposalForApproval(savedId);
+          toast.success('Proposal saved and submitted for partner approval');
           navigate(`/proposals/${savedId}`);
+        } else {
+          toast.success(isEditMode ? 'Proposal updated successfully!' : 'Proposal created successfully!');
+          if (!isEditMode && buildMode === 'manual') {
+            setSaveTemplateDialog({ open: true, proposalId: savedId });
+          } else {
+            navigate(`/proposals/${savedId}`);
+          }
         }
       } else {
         toast.error(response.error?.message || 'Failed to save proposal');
       }
     } catch (error: any) {
+      setSubmitAfterSave(false);
       toast.error(parseApiError(error));
     } finally {
       setIsLoading(false);
@@ -3049,6 +3059,20 @@ export default function ProposalBuilder({ proposalId }: ProposalBuilderProps) {
               Client preview
             </button>
           )}
+          {needsPartnerApproval && (
+            <button
+              type="button"
+              data-testid="submit-for-approval-button"
+              onClick={() => {
+                setSubmitAfterSave(true);
+                void saveProposal();
+              }}
+              disabled={isLoading}
+              className="btn-secondary text-sm"
+            >
+              {isLoading && submitAfterSave ? 'Submitting…' : 'Save & submit for approval'}
+            </button>
+          )}
           <button data-testid="create-proposal-button" onClick={saveProposal} disabled={isLoading} className="btn-primary">
             {isLoading ? 'Saving...' : isEditMode ? 'Save Changes' : 'Create Proposal'}
             <ArrowRightIcon className="w-5 h-5 ml-2" />
@@ -3162,8 +3186,9 @@ export default function ProposalBuilder({ proposalId }: ProposalBuilderProps) {
               summary={summary}
               validUntil={validUntil}
               terms={proposalTerms}
-              showCoverLetter={currentStep >= 3}
+              showCoverLetter={currentStep >= 2}
               showTerms={currentStep >= 3}
+              showEngagementSummary={currentStep >= 2}
             />
           </div>
         )}

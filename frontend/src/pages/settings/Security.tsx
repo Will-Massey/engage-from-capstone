@@ -3,7 +3,7 @@
  * Manage password, 2FA, and account security
  */
 
-import React, { useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
@@ -45,6 +45,57 @@ export const SecuritySettings: React.FC = () => {
   const [deletePassword, setDeletePassword] = useState('');
   const [deleteConfirm, setDeleteConfirm] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+
+  const [sessions, setSessions] = useState<
+    Array<{ id: string; createdAt: string; expiresAt: string; isCurrent: boolean }>
+  >([]);
+  const [sessionsLoading, setSessionsLoading] = useState(true);
+  const [revokingId, setRevokingId] = useState<string | null>(null);
+
+  const loadSessions = useCallback(async () => {
+    setSessionsLoading(true);
+    try {
+      const res = (await apiClient.getSessions()) as {
+        success: boolean;
+        data: Array<{ id: string; createdAt: string; expiresAt: string; isCurrent: boolean }>;
+      };
+      if (res.success) setSessions(res.data || []);
+    } catch {
+      setSessions([]);
+    } finally {
+      setSessionsLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    loadSessions();
+  }, [loadSessions]);
+
+  const handleRevokeSession = async (sessionId: string) => {
+    setRevokingId(sessionId);
+    try {
+      await apiClient.revokeSession(sessionId);
+      toast.success('Session revoked');
+      await loadSessions();
+    } catch {
+      toast.error('Could not revoke session');
+    } finally {
+      setRevokingId(null);
+    }
+  };
+
+  const handleRevokeOtherSessions = async () => {
+    setRevokingId('all');
+    try {
+      await apiClient.revokeOtherSessions();
+      toast.success('Other sessions signed out');
+      await loadSessions();
+    } catch {
+      toast.error('Could not revoke sessions');
+    } finally {
+      setRevokingId(null);
+    }
+  };
 
   const handleChangePassword = async () => {
     if (newPassword !== confirmPassword) {
@@ -173,6 +224,60 @@ export const SecuritySettings: React.FC = () => {
             <CheckCircleIcon className="w-4 h-4" />
             <span>2FA is enabled</span>
           </div>
+        )}
+      </Card>
+
+      {/* Active sessions */}
+      <Card>
+        <div className="flex items-center justify-between gap-4 mb-4">
+          <div>
+            <h3 className="font-semibold text-slate-900">Active sessions</h3>
+            <p className="text-sm text-slate-600 mt-1">
+              Sign out devices you no longer use (SOC 2 CC6.1 session control).
+            </p>
+          </div>
+          {sessions.length > 1 && (
+            <Button
+              variant="secondary"
+              onClick={handleRevokeOtherSessions}
+              isLoading={revokingId === 'all'}
+            >
+              Sign out other devices
+            </Button>
+          )}
+        </div>
+        {sessionsLoading ? (
+          <p className="text-sm text-slate-500">Loading sessions…</p>
+        ) : sessions.length === 0 ? (
+          <p className="text-sm text-slate-500">No active sessions found.</p>
+        ) : (
+          <ul className="divide-y divide-slate-100" data-testid="active-sessions-list">
+            {sessions.map((s) => (
+              <li key={s.id} className="py-3 flex items-center justify-between gap-3">
+                <div>
+                  <p className="text-sm font-medium text-slate-900">
+                    {s.isCurrent ? 'This device' : 'Signed in session'}
+                    {s.isCurrent && (
+                      <span className="ml-2 text-xs text-green-600 font-normal">Current</span>
+                    )}
+                  </p>
+                  <p className="text-xs text-slate-500">
+                    Started {new Date(s.createdAt).toLocaleString('en-GB')}
+                  </p>
+                </div>
+                {!s.isCurrent && (
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    onClick={() => handleRevokeSession(s.id)}
+                    isLoading={revokingId === s.id}
+                  >
+                    Revoke
+                  </Button>
+                )}
+              </li>
+            ))}
+          </ul>
         )}
       </Card>
 

@@ -524,6 +524,12 @@ export const apiClient = {
   rejectProposal: (id: string, data: { rejectionReason: string; approvalNotes?: string }) =>
     api.post(`/proposals/${id}/reject`, data),
 
+  getSessions: () => api.get('/auth/sessions'),
+
+  revokeSession: (sessionId: string) => api.delete(`/auth/sessions/${sessionId}`),
+
+  revokeOtherSessions: () => api.delete('/auth/sessions'),
+
   acceptProposal: (id: string, data?: any) => api.post(`/proposals/${id}/accept`, data),
 
   withdrawProposal: (id: string) => api.post(`/proposals/${id}/withdraw`, {}),
