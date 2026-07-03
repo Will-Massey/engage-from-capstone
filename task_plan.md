@@ -5,15 +5,15 @@
 Become the **premier UK accountancy proposal platform** — see `PREMIER_SERVICE_STRATEGY.md` and `PREMIER_SERVICE_TODO.md`.
 
 ## Current Phase
-Phase: **Premier Service — Deploy & verify** — `in_progress`
+Phase: **Premier Service — Deploy & verify** — `in_progress` (pushed fcee646)
 
 ## Next Up
 <!-- 3–5 bullets ONLY. Next fresh session starts here. Rewrite every checkpoint. -->
-1. `git commit` + push → Render deploy + run migration `20260703120000`
-2. Render Starter + disk + email env + Revolut live smoke
-3. Production smoke + E2E pricing parity (`proposal-pricing.spec.ts`)
-4. Publish `docs/ENGAGE_LANDING_COPY.md` to capstone-website `/engage`
-5. Superadmin 6/6 + `reportConversion` on checkout fulfilment
+1. Confirm Render deploy green for `fcee646` (7-day trial + backlog)
+2. William: finish Xero/QB mandate draft this evening (`backend/src/routes/xero.ts` scaffold exists)
+3. Deploy capstone-website `/engage` page (Engage.tsx ready locally)
+4. Render Starter + disk + Revolut live smoke + Superadmin 6/6
+5. Production smoke + E2E pricing parity
 
 ## Phases
 
