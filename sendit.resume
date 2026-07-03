@@ -1,12 +1,12 @@
 # sendit.resume - auto-generated checkpoint (keep in git)
 pending: false
-written: 2026-07-03 13:07:00 UTC
+written: 2026-07-03 13:13:30 UTC
 project_root: C:\Users\willi\Cline Workspace\engage-deploy
-commit: 89b96435
+commit: pending
 branch: integrate-deploy
-phase: **Build 3.1** — Automation + templates UAT passed on production
+phase: **Build 3.2** — Templates Yours filter UAT passed; Caroline browser sign-off pending
 goal: **Market leader:** UK proposal-to-cash platform — CH lookup → priced proposal → signed engagement → collected fees, with Clara AI that saves 30+ min/proposal without token overspend. Full plan: `MARKET_LEADER_PLAN.md`.
-next_up_1: Caroline browser sign-off on Settings → Automation; smoke custom template under Yours filter.
+next_up_1: Caroline browser pass on Automation + Templates Yours; then full build e2e suite on production.
 
 # Agent: on resume read ~/.grok/sendit.active OR project_root paths below.
 # NEVER glob search. Execute next_up_1 immediately. Set pending: false when done.

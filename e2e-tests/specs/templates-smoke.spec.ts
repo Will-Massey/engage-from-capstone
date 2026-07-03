@@ -74,4 +74,46 @@ test.describe('Build smoke — proposal templates', () => {
     await smokeCard.getByLabel(/delete template/i).click();
     await expect(page.getByText(TEMPLATE_NAME)).not.toBeVisible({ timeout: 10_000 });
   });
+
+  test('custom template appears under Yours filter, not Engage library', async ({ page }) => {
+    const stamp = Date.now();
+    const name = `Yours filter smoke ${stamp}`;
+
+    await gotoApp(page, '/templates');
+    await expect(page.getByRole('heading', { name: /proposal templates/i })).toBeVisible();
+    await expect(page.getByRole('button', { name: /Engage library \(\d+\)/i })).toBeVisible({
+      timeout: 30_000,
+    });
+
+    await page.getByRole('button', { name: /new custom template/i }).click();
+    const dialog = page.getByRole('dialog');
+    await expect(dialog).toBeVisible();
+    await dialog.getByPlaceholder(/standard limited company/i).fill(name);
+    await dialog.getByPlaceholder(/engagement proposal/i).fill(`Proposal — ${name}`);
+
+    const addServiceBtn = dialog
+      .locator('button')
+      .filter({ hasNotText: /added/i })
+      .filter({ hasText: /£/ })
+      .first();
+    await expect(addServiceBtn).toBeVisible({ timeout: 30_000 });
+    await addServiceBtn.click();
+    await dialog.getByRole('button', { name: /create template/i }).click();
+    const card = page.locator('article').filter({
+      has: page.getByRole('heading', { name, exact: true }),
+    });
+    await expect(card).toBeVisible({ timeout: 15_000 });
+    await expectNoErrorToasts(page);
+
+    await page.getByRole('button', { name: /Yours \(\d+\)/i }).click();
+    await expect(card).toBeVisible();
+
+    await page.getByRole('button', { name: /Engage library \(\d+\)/i }).click();
+    await expect(card).toHaveCount(0);
+
+    await page.getByRole('button', { name: /Yours \(\d+\)/i }).click();
+    page.once('dialog', (d) => d.accept());
+    await card.getByLabel(/delete template/i).click();
+    await expect(card).not.toBeVisible({ timeout: 10_000 });
+  });
 });

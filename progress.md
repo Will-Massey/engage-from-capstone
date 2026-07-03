@@ -1,6 +1,20 @@
 # Build Progress Log
 <!-- Append-only session log. Latest deploy checkpoint is the resume entry point. -->
 
+## Session: 2026-07-03 — Yours filter template smoke (templates-smoke 2/2)
+
+### UAT checkpoint
+- **API baseline:** 143 library / 0 custom on demo tenant
+- **E2E:** `custom template appears under Yours filter, not Engage library` — pass (10.1s)
+- **E2E:** full templates-smoke 2/2 pass (52.1s)
+
+#### Resume prompt
+```
+Caroline browser sign-off. Full build e2e suite. seed-expanded-uk-services if needed.
+```
+
+---
+
 ## Session: 2026-07-03 — Automation UAT + production routing/auth fixes (89b96435)
 
 ### Deploy checkpoint — 89b96435
