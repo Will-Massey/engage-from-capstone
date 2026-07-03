@@ -5,15 +5,15 @@
 **Market leader:** UK proposal-to-cash platform — CH lookup → priced proposal → signed engagement → collected fees, with Clara AI that saves 30+ min/proposal without token overspend. Full plan: `MARKET_LEADER_PLAN.md`.
 
 ## Current Phase
-**Build 3.1** — Templates library UAT passed (143 Engage library); Automation touchpoint UAT next
+**Build 3.1** — Automation API UAT passed; frontend asset-path fix deploying
 
 ## Next Up
 <!-- 3–5 bullets ONLY. Next fresh session starts here. Rewrite every checkpoint. -->
-1. Caroline UAT: **Settings → Automation** — all 13 stages show populated subjects; test restore-default wording.
-2. Smoke: create custom proposal template; verify it appears under **Yours** filter alongside library (demo tenant has 0 custom today).
-3. Run `templates-smoke.spec.ts` on production after button-label fix.
-4. Run `seed-expanded-uk-services.ts` on production DB if catalogue still thin after deploy.
-5. **Deferred (post-sale):** Render Starter + disk, custom domain, `XERO_*` / webhook secrets.
+1. After deploy: run `automation-smoke.spec.ts` + `templates-smoke.spec.ts` on capstonesoftware.co.uk/engage.
+2. Caroline UAT: confirm Settings → Automation UI — 13 stages + restore-default (browser).
+3. Smoke: create custom proposal template under **Yours** filter (demo tenant has 0 custom today).
+4. Run `seed-expanded-uk-services.ts` on production DB if catalogue still thin.
+5. **Deferred (post-sale):** Render Starter + disk, `XERO_*` / webhook secrets.
 
 ## Phases
 <!-- Status: pending | in_progress | complete -->

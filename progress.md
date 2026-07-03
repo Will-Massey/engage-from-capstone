@@ -1,6 +1,21 @@
 # Build Progress Log
 <!-- Append-only session log. Latest deploy checkpoint is the resume entry point. -->
 
+## Session: 2026-07-03 — Automation UAT + frontend asset-path fix (deploying)
+
+### Pre-deploy verification
+- **API UAT:** `/api/touchpoints/templates` — 13/13 stages with populated UK subjects on demo tenant ✓
+- **Restore-default API:** `POST .../PROPOSAL_ACCEPTED/restore-default` returns Engage wording ✓
+- **Bug found:** Production SPA blank — `index.html` referenced `/engage/assets/*` but static host only served `/assets/*` (404). Fixed via `prepare-static-engage.mjs` nesting dist under `/engage/`.
+- **E2E:** Added `automation-smoke.spec.ts`; build config base URL → `capstonesoftware.co.uk/engage`
+
+#### Resume prompt
+```
+Verify frontend deploy live. Run automation-smoke + templates-smoke on production. Caroline browser UAT on Settings → Automation.
+```
+
+---
+
 ## Session: 2026-07-02 — Caroline Templates UAT + library backfill (e2018d88)
 
 ### Deploy checkpoint — e2018d88

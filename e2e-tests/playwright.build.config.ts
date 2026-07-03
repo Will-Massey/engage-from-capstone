@@ -13,6 +13,7 @@ export default defineConfig({
     'build-smoke.spec.ts',
     'ai-native.spec.ts',
     'templates-smoke.spec.ts',
+    'automation-smoke.spec.ts',
     'market-leader-smoke.spec.ts',
     'uat-smoke.spec.ts',
   ],
@@ -31,7 +32,7 @@ export default defineConfig({
   ],
 
   use: {
-    baseURL: process.env.FRONTEND_URL || 'https://engage-frontend-0g6u.onrender.com',
+    baseURL: process.env.FRONTEND_URL || 'https://capstonesoftware.co.uk/engage',
     storageState: authFile,
     trace: 'retain-on-failure',
     screenshot: 'only-on-failure',

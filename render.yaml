@@ -121,8 +121,8 @@ services:
     autoDeploy: true
     routes:
       - type: rewrite
-        source: /*
-        destination: /index.html
+        source: /engage/*
+        destination: /engage/index.html
 
 databases:
   - name: engage-db
