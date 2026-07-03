@@ -5,13 +5,13 @@
 **Market leader:** UK proposal-to-cash platform — CH lookup → priced proposal → signed engagement → collected fees, with Clara AI that saves 30+ min/proposal without token overspend. Full plan: `MARKET_LEADER_PLAN.md`.
 
 ## Current Phase
-**Build 3.2** — Production e2e hardened; catalogue seeded (45 services)
+**Build 3.2** — complete (Automation + Templates e2e 4/4, `--retries=0`)
 
 ## Next Up
 <!-- 3–5 bullets ONLY. Next fresh session starts here. Rewrite every checkpoint. -->
-1. Caroline quick browser sign-off (Automation + Templates Yours — e2e green, no retries).
-2. **Deferred (post-sale):** Render Starter + disk, `XERO_*` / webhook secrets.
-3. Next roadmap: Build 3.3 features per `MARKET_LEADER_PLAN.md` (William to prioritise).
+1. Caroline quick browser sign-off (Automation + Templates Yours — automated UAT green; human pass optional).
+2. **Build 3.3:** William to pick from `MARKET_LEADER_PLAN.md` — W1.6 partner approval, W2.10 preview pane, W3.2 template content, W3.3 AML scaffold.
+3. **Deferred (post-sale):** Render Starter + disk, `XERO_*` / webhook secrets.
 
 ## Phases
 <!-- Status: pending | in_progress | complete -->

@@ -1,6 +1,20 @@
 # Build Progress Log
 <!-- Append-only session log. Latest deploy checkpoint is the resume entry point. -->
 
+## Session: 2026-07-03 — Build 3.2 sign-off (template e2e fix)
+
+### UAT checkpoint
+- **Fix:** `waitForProposalBuilderStep` handles template/draft resume landing on services without client cards
+- **Result:** automation-smoke 2/2 + templates-smoke 2/2 pass with `--retries=0` (1.2m)
+- **Build 3.2:** complete — Caroline browser pass is optional human confirmation
+
+#### Resume prompt
+```
+William: pick Build 3.3 priority from MARKET_LEADER_PLAN (W1.6 / W2.10 / W3.2 / W3.3).
+```
+
+---
+
 ## Session: 2026-07-03 — Flaky e2e hardening + catalogue check
 
 ### Checkpoint
