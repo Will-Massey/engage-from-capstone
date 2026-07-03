@@ -41,7 +41,7 @@ Phase: **Premier Service — Deploy & verify** — `in_progress` (sendit v3.5)
 | # | Date (UTC) | Commit | Branch | Render services | Status | Notes |
 |---|------------|--------|--------|-----------------|--------|-------|
 | 1 | 2026-06-30 | fdbc3e8 | master | engage-backend, engage-frontend | live | UI dark/light + Clara surfaces |
-| 2 | 2026-07-03 | (pending) | master | engage-backend, engage-frontend | deploying | sendit v3.5 — 7-day trial, backlog, schema/test fix, superadmin payment reporting |
+| 2 | 2026-07-03 | 6372c68 | master | engage-backend, engage-frontend | deploying | sendit v3.5 — 7-day trial, backlog, schema/test fix, superadmin payment reporting |
 
 ## Strategic docs (Jul 2026)
 | Doc | Purpose |
