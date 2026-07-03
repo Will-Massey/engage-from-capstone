@@ -4,11 +4,12 @@ import { EmailService } from '../services/emailService.js';
 import { encrypt } from '../utils/encryption.js';
 import { verifyOAuthState } from '../utils/oauthState.js';
 import logger from '../utils/logger.js';
+import { getApiUrl, getFrontendUrl } from '../config/urls.js';
 
-const frontendUrl = () => process.env.FRONTEND_URL || 'https://engagebycapstone.co.uk';
+const frontendUrl = () => getFrontendUrl();
 
 const apiBaseUrl = () =>
-  process.env.API_URL || process.env.BACKEND_URL || `http://localhost:${process.env.PORT || 3001}`;
+  process.env.NODE_ENV === 'production' ? getApiUrl() : process.env.API_URL || process.env.BACKEND_URL || `http://localhost:${process.env.PORT || 3001}`;
 
 const VALID_PROVIDERS = ['microsoft365', 'outlook', 'gmail'] as const;
 

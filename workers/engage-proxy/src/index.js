@@ -1,9 +1,10 @@
 /**
  * Routes capstonesoftware.co.uk/engage → Engage on Render (same-origin API + SPA).
  *
- * /engage/api/*  → engage-backend.onrender.com/api/*
- * /engage/assets/* → engage-frontend.onrender.com/assets/*
- * /engage/*      → engage-frontend SPA (index.html for client routes)
+ * /engage/api/*   → engage-backend.onrender.com/api/*
+ * /engage/ping    → engage-backend.onrender.com/ping
+ * /engage/assets/*, /engage/images/* → engage-frontend (nested under /engage on Render)
+ * /engage/*       → engage-frontend SPA (index.html for client routes)
  */
 
 const FRONTEND_UPSTREAM = 'https://engage-frontend-0g6u.onrender.com';
@@ -16,13 +17,13 @@ function stripPrefix(pathname) {
   return pathname;
 }
 
-function isAssetPath(pathname) {
-  const stripped = stripPrefix(pathname);
+function isStaticAsset(pathname) {
   return (
-    stripped.startsWith('/assets/') ||
-    stripped === '/favicon.ico' ||
-    stripped === '/robots.txt' ||
-    stripped === '/manifest.webmanifest'
+    pathname.startsWith(`${PREFIX}/assets/`) ||
+    pathname.startsWith(`${PREFIX}/images/`) ||
+    pathname === `${PREFIX}/favicon.ico` ||
+    pathname === `${PREFIX}/robots.txt` ||
+    pathname === `${PREFIX}/manifest.webmanifest`
   );
 }
 
@@ -70,20 +71,24 @@ export default {
       return Response.redirect(`${url.origin}${PREFIX}/`, 301);
     }
 
+    if (pathname === `${PREFIX}/ping`) {
+      return proxyRequest(request, BACKEND_UPSTREAM, '/ping');
+    }
+
     if (pathname.startsWith(`${PREFIX}/api/`)) {
-      const apiPath = stripPrefix(pathname);
-      return proxyRequest(request, BACKEND_UPSTREAM, apiPath);
+      return proxyRequest(request, BACKEND_UPSTREAM, stripPrefix(pathname));
     }
 
     if (pathname.startsWith(`${PREFIX}/api`)) {
       return proxyRequest(request, BACKEND_UPSTREAM, '/api');
     }
 
-    if (isAssetPath(pathname)) {
-      return proxyRequest(request, FRONTEND_UPSTREAM, stripPrefix(pathname));
+    // Render static publish nests assets under /engage/ — preserve full path
+    if (isStaticAsset(pathname)) {
+      return proxyRequest(request, FRONTEND_UPSTREAM, pathname);
     }
 
-    // SPA fallback — client-side routes under /engage/*
+    // SPA fallback — path-strip to root index.html on Render
     if (request.method === 'GET' || request.method === 'HEAD') {
       return proxyRequest(request, FRONTEND_UPSTREAM, '/index.html');
     }

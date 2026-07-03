@@ -3,6 +3,7 @@
  */
 
 import { prisma } from '../config/database.js';
+import { getFrontendUrl } from '../config/urls.js';
 import logger from '../config/logger.js';
 import { PDFGenerator } from './pdfGenerator.js';
 import { tenantMailer } from './tenantMailer.js';
@@ -130,7 +131,7 @@ export async function buildAcceptanceAdminContext(
     createdByName: proposal.createdBy
       ? `${proposal.createdBy.firstName} ${proposal.createdBy.lastName}`.trim()
       : null,
-    proposalUrl: `${(process.env.FRONTEND_URL || 'https://engage-frontend-0g6u.onrender.com').replace(/\/$/, '')}/proposals/${proposal.id}`,
+    proposalUrl: `${getFrontendUrl()}/proposals/${proposal.id}`,
   };
 }
 

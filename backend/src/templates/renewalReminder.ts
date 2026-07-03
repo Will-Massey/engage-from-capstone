@@ -3,6 +3,8 @@
  * Sent to practice 30 days before proposal renewal is due
  */
 
+import { getFrontendUrl } from '../config/urls.js';
+
 export interface RenewalReminderData {
   clientName: string;
   proposalTitle: string;
@@ -33,7 +35,7 @@ export function generateRenewalReminder(data: RenewalReminderData): {
 
   const subject = `⏰ Renewal Due in ${data.daysUntilRenewal} Days: ${data.clientName}`;
 
-  const frontendUrl = process.env.FRONTEND_URL || 'https://engage.capstone.co.uk';
+  const frontendUrl = getFrontendUrl();
 
   const html = `
 <!DOCTYPE html>

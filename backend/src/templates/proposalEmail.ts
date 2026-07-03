@@ -101,7 +101,7 @@ export function generateProposalEmailTemplate(data: ProposalEmailData): {
       <p>This proposal was sent via <strong>Engage by Capstone</strong></p>
       <p style="font-size: 12px; margin-top: 10px;">
         <a href="${data.viewLink}">View Proposal Online</a> | 
-        <a href="https://engagebycapstone.co.uk">Learn More</a>
+        <a href="https://capstonesoftware.co.uk/apps/engage">Learn More</a>
       </p>
     </div>
   </div>
@@ -137,7 +137,7 @@ ${data.senderEmail}
 
 ---
 Sent via Engage by Capstone
-https://engagebycapstone.co.uk
+https://capstonesoftware.co.uk/apps/engage
 `;
 
   return { html, text };

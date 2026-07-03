@@ -3,8 +3,9 @@ import { verifyOAuthState } from '../utils/oauthState.js';
 import { exchangeXeroCallbackUrl } from '../services/xeroService.js';
 import { saveTenantXeroSettings } from '../services/tenantXeroSettings.js';
 import logger from '../config/logger.js';
+import { getFrontendUrl } from '../config/urls.js';
 
-const frontendUrl = () => process.env.FRONTEND_URL || 'https://engagebycapstone.co.uk';
+const frontendUrl = () => getFrontendUrl();
 
 const settingsRedirect = (params: Record<string, string>) => {
   const qs = new URLSearchParams({ tab: 'integrations', ...params });

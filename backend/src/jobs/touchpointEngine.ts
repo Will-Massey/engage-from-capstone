@@ -14,6 +14,7 @@
  */
 
 import { prisma } from '../config/database.js';
+import { getFrontendUrl } from '../config/urls.js';
 import { tenantMailer } from '../services/tenantMailer.js';
 import logger from '../config/logger.js';
 import { PDFGenerator } from '../services/pdfGenerator.js';
@@ -574,7 +575,7 @@ export async function scheduleDeadlineReminders(clientId: string, tenantId: stri
    ===================== */
 
 function frontendBaseUrl(): string {
-  return (process.env.FRONTEND_URL || 'https://engage-frontend-0g6u.onrender.com').replace(/\/$/, '');
+  return getFrontendUrl();
 }
 
 async function ensureClientPortalToken(clientId: string): Promise<string> {

@@ -5,6 +5,7 @@ import {
   tryGenerateFollowUpEmail,
   type LifecycleEmailTone,
 } from '../services/ai/lifecycleAiEmailService.js';
+import { getFrontendUrl } from '../config/urls.js';
 
 /**
  * Email Automation Job
@@ -127,7 +128,7 @@ function getEmailTemplate(
   const senderPosition = proposal.createdBy.role;
   const practiceName = proposal.tenant.name;
 
-  const frontendUrl = process.env.FRONTEND_URL || 'https://engagebycapstone.co.uk';
+  const frontendUrl = getFrontendUrl();
   const viewLink = `${frontendUrl}/proposals/view/${proposal.shareToken || proposal.id}`;
 
   const totalAmount = new Intl.NumberFormat('en-GB', {

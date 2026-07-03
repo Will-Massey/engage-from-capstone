@@ -6,6 +6,7 @@ import path from 'path';
 // Use any for the document type to avoid TS2749 errors
 type PDFDoc = any;
 import { prisma } from '../config/database.js';
+import { getFrontendUrl } from '../config/urls.js';
 import { formatGeoLocationDisplay } from '../utils/signatureAudit.js';
 import { parseProposalCustomFields } from '../utils/proposalCustomFields.js';
 import {
@@ -945,7 +946,7 @@ ${senderPosition(proposal.createdBy) ? `${senderPosition(proposal.createdBy)}, `
     doc.moveDown(4);
     doc.fontSize(11).fillColor(primaryColor).text('Or accept online at:', { align: 'center' });
 
-    const acceptanceUrl = `https://engage-frontend-0g6u.onrender.com/proposals/view/${proposal.id}`;
+    const acceptanceUrl = `${getFrontendUrl()}/proposals/view/${proposal.id}`;
     doc
       .fontSize(10)
       .fillColor('#666666')

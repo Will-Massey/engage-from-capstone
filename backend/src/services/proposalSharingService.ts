@@ -5,6 +5,7 @@
 
 import { v4 as uuidv4 } from 'uuid';
 import { prisma } from '../config/database.js';
+import { getApiUrl, getFrontendUrl, tenantAppUrl } from '../config/urls.js';
 import logger from '../config/logger.js';
 import { saveSignaturePng, readSignature } from './fileStorage.js';
 import { calculateRenewalDate } from '../jobs/renewalReminders.js';
@@ -43,11 +44,10 @@ export async function createShareableLink(
       },
     });
 
-    const baseUrl = (
-      process.env.FRONTEND_URL ||
-      process.env.PUBLIC_PROPOSAL_URL ||
-      `https://${tenantSubdomain}.engage.capstone.co.uk`
-    ).replace(/\/$/, '');
+    const baseUrl = (process.env.PUBLIC_PROPOSAL_URL || tenantAppUrl(tenantSubdomain)).replace(
+      /\/$/,
+      ''
+    );
     const shareUrl = `${baseUrl}/proposals/view/${token}`;
 
     logger.info(`Created shareable link for proposal ${proposalId}`);
@@ -749,8 +749,7 @@ export function isShareTokenValid(
 
 // Generate proposal PDF URL for sharing
 export function generateProposalPdfUrl(token: string, tenantSubdomain: string): string {
-  const baseUrl =
-    process.env.PUBLIC_PROPOSAL_URL || `https://${tenantSubdomain}.engage.capstone.co.uk`;
+  const baseUrl = process.env.PUBLIC_PROPOSAL_URL || getApiUrl();
   return `${baseUrl}/api/proposals/view/${token}/pdf`;
 }
 
@@ -796,10 +795,7 @@ export async function createClientPortalLink(
     },
   });
 
-  const base =
-    frontendOrigin?.replace(/\/$/, '') ||
-    process.env.FRONTEND_URL?.replace(/\/$/, '') ||
-    'https://engage-frontend-0g6u.onrender.com';
+  const base = frontendOrigin?.replace(/\/$/, '') || getFrontendUrl();
   const portalUrl = `${base}/portal/${token}`;
   return { token, portalUrl, expiresAt };
 }

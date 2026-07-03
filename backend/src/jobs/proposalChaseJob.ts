@@ -11,6 +11,7 @@ import {
   type LifecycleEmailTone,
 } from '../services/ai/lifecycleAiEmailService.js';
 import { getProposalSettings } from '../utils/tenantProposalSettings.js';
+import { getFrontendUrl } from '../config/urls.js';
 
 export const PROPOSAL_CHASE_SENT_ACTION = 'PROPOSAL_CHASE_SENT';
 
@@ -40,10 +41,7 @@ function getFallbackChaseEmail(
         new Set([proposal.createdBy.firstName, proposal.createdBy.lastName].filter(Boolean))
       ).join(' ')
     : proposal.tenant.name;
-  const frontendUrl = (process.env.FRONTEND_URL || 'https://engagebycapstone.co.uk').replace(
-    /\/$/,
-    ''
-  );
+  const frontendUrl = getFrontendUrl();
   const viewLink = `${frontendUrl}/proposals/view/${proposal.shareToken || proposal.id}`;
   const totalAmount = new Intl.NumberFormat('en-GB', {
     style: 'currency',

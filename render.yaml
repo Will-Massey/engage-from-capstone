@@ -41,7 +41,7 @@ services:
       - key: DEFAULT_TENANT_SUBDOMAIN
         value: demo
       - key: API_URL
-        value: https://engage-backend-e1ue.onrender.com
+        value: https://capstonesoftware.co.uk/engage
       - key: EMAIL_WORKER_URL
         sync: false
       - key: EMAIL_WORKER_SECRET
@@ -131,7 +131,7 @@ services:
     staticPublishPath: ./dist
     envVars:
       - key: VITE_API_URL
-        value: https://engage.capstonesoftware.co.uk
+        value: https://capstonesoftware.co.uk/engage
       - key: VITE_APP_BASE
         value: /engage
     autoDeploy: true

@@ -1,3 +1,5 @@
+import { getFrontendUrl } from '../config/urls.js';
+
 /**
  * Acceptance Notification Email Template
  * Sent to practice when a client signs a proposal
@@ -112,7 +114,7 @@ export function generateAcceptanceNotification(data: AcceptanceNotificationData)
       </ul>
       
       <center>
-        <a href="${data.proposalUrl || `${process.env.FRONTEND_URL || 'https://engage.capstone.co.uk'}/proposals`}" class="button">View proposal in Engage</a>
+        <a href="${data.proposalUrl || `${getFrontendUrl()}/proposals`}" class="button">View proposal in Engage</a>
       </center>
     </div>
     
@@ -145,7 +147,7 @@ Next steps:
 - Set up the client onboarding process
 - Schedule a kick-off call if needed
 
-View in Engage: ${data.proposalUrl || `${process.env.FRONTEND_URL || 'https://engage.capstone.co.uk'}/proposals`}
+View in Engage: ${data.proposalUrl || `${getFrontendUrl()}/proposals`}
 
 Sent by Engage by Capstone
   `.trim();

@@ -42,6 +42,7 @@ $canonical = 'https://capstonesoftware.co.uk/engage'
 Write-Host "Updating backend $BackendServiceId..." -ForegroundColor Cyan
 Set-RenderEnvVars $BackendServiceId @{
   FRONTEND_URL        = $canonical
+  API_URL             = $canonical
   AUTH_COOKIE_PATH    = '/engage'
   XERO_REDIRECT_URI   = "$canonical/api/oauth/callback/xero"
   EMAIL_PLATFORM_FROM = 'proposals@capstonesoftware.co.uk'

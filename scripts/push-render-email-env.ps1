@@ -77,8 +77,12 @@ foreach ($envPath in $EnvSources) {
 }
 
 # Production defaults for Engage
-$existing['EMAIL_WORKER_URL'] = $existing['EMAIL_WORKER_URL'] ?? 'https://capstone-engage-email.william-19a.workers.dev'
-$existing['CLOUDFLARE_ACCOUNT_ID'] = $existing['CLOUDFLARE_ACCOUNT_ID'] ?? '19ad15686e6bd22ab2896661ac1976f1'
+if (-not $existing['EMAIL_WORKER_URL']) {
+  $existing['EMAIL_WORKER_URL'] = 'https://capstone-engage-email.william-19a.workers.dev'
+}
+if (-not $existing['CLOUDFLARE_ACCOUNT_ID']) {
+  $existing['CLOUDFLARE_ACCOUNT_ID'] = '19ad15686e6bd22ab2896661ac1976f1'
+}
 # Cloudflare Email Sending is onboarded for capstonesoftware.co.uk only (not engage.* subdomain)
 $existing['EMAIL_PLATFORM_FROM'] = 'proposals@capstonesoftware.co.uk'
 if (-not $existing['EMAIL_PLATFORM_FROM_NAME']) { $existing['EMAIL_PLATFORM_FROM_NAME'] = 'Engage by Capstone' }

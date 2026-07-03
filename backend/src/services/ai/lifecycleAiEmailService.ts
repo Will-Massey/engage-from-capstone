@@ -9,6 +9,7 @@ import { ApiError } from '../../middleware/errorHandler.js';
 import { AI_COPILOT } from '../../config/aiCopilot.js';
 import { chatCompletion, isAiConfigured, parseJsonResponse } from './aiClient.js';
 import { logAiUsage } from './proposalAiService.js';
+import { getFrontendUrl } from '../../config/urls.js';
 
 const UK_SYSTEM =
   AI_COPILOT.systemPersona +
@@ -45,7 +46,7 @@ function formatGbp(amount: number): string {
 }
 
 function frontendBaseUrl(): string {
-  return (process.env.FRONTEND_URL || 'https://engagebycapstone.co.uk').replace(/\/$/, '');
+  return getFrontendUrl();
 }
 
 async function loadProposalForLifecycle(tenantId: string, proposalId: string) {

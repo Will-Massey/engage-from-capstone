@@ -7,6 +7,7 @@ import rateLimit from 'express-rate-limit';
 import crypto from 'crypto';
 import { z } from 'zod';
 import { prisma } from '../config/database.js';
+import { getFrontendUrl, tenantAppUrl } from '../config/urls.js';
 import { asyncHandler, ApiError } from '../middleware/errorHandler.js';
 import { authenticate } from '../middleware/auth.js';
 import { requireActiveSubscriptionOrTrial } from '../middleware/tierLimits.js';
@@ -237,11 +238,10 @@ router.post(
       const result = await createShareableLink(id, 30, tenant.subdomain);
       shareUrl = result.shareUrl;
     } else {
-      const baseUrl = (
-        process.env.FRONTEND_URL ||
-        process.env.PUBLIC_PROPOSAL_URL ||
-        `https://${tenant.subdomain}.engage.capstone.co.uk`
-      ).replace(/\/$/, '');
+      const baseUrl = (process.env.PUBLIC_PROPOSAL_URL || tenantAppUrl(tenant.subdomain)).replace(
+        /\/$/,
+        ''
+      );
       shareUrl = `${baseUrl}/proposals/view/${proposal.shareToken}`;
     }
 
@@ -1038,7 +1038,7 @@ router.post(
           `Declined by: ${declinedBy || 'Client'}`,
           `Reason: ${reason}`,
           ``,
-          `View in Engage: ${(process.env.FRONTEND_URL || 'https://engagebycapstone.co.uk').replace(/\/$/, '')}/proposals/${proposal.id}`,
+          `View in Engage: ${getFrontendUrl()}/proposals/${proposal.id}`,
         ].join('\n');
 
         await tenantMailer.send({

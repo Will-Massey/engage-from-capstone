@@ -9,6 +9,7 @@ import { isRevolutConfigured } from '../lib/revolut/revolut-client.js';
 import { createProposalCheckoutOrder } from './proposalPayment.js';
 import { createMandateSetup, completeStubMandate } from './gocardlessStub.js';
 import { getPaymentSettings } from '../utils/tenantPaymentSettings.js';
+import { tenantAppUrl } from '../config/urls.js';
 
 export type PaymentProviderName = 'revolut' | 'gocardless_stub' | 'none';
 
@@ -41,11 +42,7 @@ export function isPaymentCollectionAvailable(): boolean {
 }
 
 function getFrontendBaseUrl(tenantSubdomain: string): string {
-  return (
-    process.env.FRONTEND_URL ||
-    process.env.PUBLIC_PROPOSAL_URL ||
-    `https://${tenantSubdomain}.engage.capstone.co.uk`
-  ).replace(/\/$/, '');
+  return (process.env.PUBLIC_PROPOSAL_URL || tenantAppUrl(tenantSubdomain)).replace(/\/$/, '');
 }
 
 /**
