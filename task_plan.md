@@ -5,15 +5,15 @@
 Become the **premier UK accountancy proposal platform** — see `PREMIER_SERVICE_STRATEGY.md` and `PREMIER_SERVICE_TODO.md`.
 
 ## Current Phase
-Phase: **Premier Service — Deploy & verify** — `in_progress` (pushed fcee646)
+Phase: **Premier Service — Deploy & verify** — `in_progress` (sendit v3.5)
 
 ## Next Up
 <!-- 3–5 bullets ONLY. Next fresh session starts here. Rewrite every checkpoint. -->
-1. Confirm Render deploy green for `fcee646` (7-day trial + backlog)
-2. William: finish Xero/QB mandate draft this evening (`backend/src/routes/xero.ts` scaffold exists)
-3. Deploy capstone-website `/engage` page (Engage.tsx ready locally)
-4. Render Starter + disk + Revolut live smoke + Superadmin 6/6
-5. Production smoke + E2E pricing parity
+1. Confirm Render deploy green for latest commit (7-day trial, 123 tests, schema fix)
+2. William: finish Xero/QB mandate draft (`backend/src/routes/xero.ts`)
+3. Revolut live checkout smoke + verify Superadmin `payment_succeeded` + `trial_converted` events
+4. Render Starter + 10 GB disk + production smoke (`VERIFICATION_ROADMAP_2026-06-30.md`)
+5. capstone-website `/engage` — confirm Cloudflare deploy live at capstonesoftware.co.uk/engage
 
 ## Phases
 
@@ -41,6 +41,7 @@ Phase: **Premier Service — Deploy & verify** — `in_progress` (pushed fcee646
 | # | Date (UTC) | Commit | Branch | Render services | Status | Notes |
 |---|------------|--------|--------|-----------------|--------|-------|
 | 1 | 2026-06-30 | fdbc3e8 | master | engage-backend, engage-frontend | live | UI dark/light + Clara surfaces |
+| 2 | 2026-07-03 | (pending) | master | engage-backend, engage-frontend | deploying | sendit v3.5 — 7-day trial, backlog, schema/test fix, superadmin payment reporting |
 
 ## Strategic docs (Jul 2026)
 | Doc | Purpose |

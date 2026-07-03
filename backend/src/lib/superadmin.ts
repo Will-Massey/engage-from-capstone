@@ -159,6 +159,15 @@ type Connector = {
     plan: string;
     mrr: number;
   }) => Promise<void>;
+  reportPaymentSucceeded: (opts: {
+    tenantId: string;
+    plan: string;
+    amount: number;
+    currency: string;
+    interval: 'month' | 'year';
+    paymentType: string;
+    orderId?: string;
+  }) => Promise<void>;
   reportDailyMetrics: (stats: DailyMetrics) => Promise<void>;
   syncAllTenants: (tenants: object[]) => Promise<unknown>;
   startCommandPoller: (
@@ -223,6 +232,23 @@ export function createConnector({
       ]);
       await client.pushMetrics([
         { metric: 'mrr', value: mrr, dimensions: { tenantId } },
+      ]);
+    },
+
+    async reportPaymentSucceeded({
+      tenantId,
+      plan,
+      amount,
+      currency,
+      interval,
+      paymentType,
+      orderId,
+    }) {
+      await client.pushEvents([
+        {
+          eventType: 'payment_succeeded',
+          payload: { tenantId, plan, amount, currency, interval, paymentType, orderId },
+        },
       ]);
     },
 

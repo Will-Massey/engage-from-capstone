@@ -88,16 +88,29 @@ async function fulfilPlatformSubscription(
       : plan.displayPrice;
 
   const superadmin = getEngageSuperadmin();
-  if (superadmin && tenantBefore?.subscriptionStatus === 'trial') {
+  if (superadmin) {
     try {
-      await superadmin.reportConversion({
+      const planKey = tier.replace(/_ANNUAL$/, '');
+      const orderAmount = Number(order.amount ?? 0) / 100;
+      await superadmin.reportPaymentSucceeded({
         tenantId,
-        plan: tier.replace(/_ANNUAL$/, ''),
-        mrr,
+        plan: planKey,
+        amount: orderAmount > 0 ? orderAmount : mrr,
+        currency: 'GBP',
+        interval: plan.billingInterval === 'annual' ? 'year' : 'month',
+        paymentType: 'subscription',
+        orderId: order.id,
       });
+      if (tenantBefore?.subscriptionStatus === 'trial') {
+        await superadmin.reportConversion({
+          tenantId,
+          plan: planKey,
+          mrr,
+        });
+      }
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
-      logger.warn('[billing] Superadmin conversion reporting failed:', message);
+      logger.warn('[billing] Superadmin payment reporting failed:', message);
     }
   }
 

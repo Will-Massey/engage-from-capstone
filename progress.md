@@ -1,6 +1,21 @@
 # Build Progress Log
 <!-- Append-only session log. Latest deploy checkpoint is the resume entry point. -->
 
+## Session: 2026-07-03 — sendit v3.5 deploy checkpoint
+
+### Deploy checkpoint
+- **7-day trial** + premier backlog cleared (Xero deferred to William)
+- **Tests:** 123/123 backend Jest pass after schema + pdfGenerator merge fix
+- **Superadmin:** `reportPaymentSucceeded` + `reportConversion` on Revolut subscription fulfilment
+- **Landing:** capstone-website `/engage` pushed separately
+
+#### Resume prompt
+```
+Confirm Render deploy green. Revolut live smoke + Superadmin events. William finishes Xero tonight.
+```
+
+---
+
 ## Session: 2026-07-03 — Flaky e2e hardening + catalogue check
 
 ### Checkpoint
