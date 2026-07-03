@@ -7,6 +7,13 @@ import path from 'path';
 type PDFDoc = any;
 import { prisma } from '../config/database.js';
 import { formatGeoLocationDisplay } from '../utils/signatureAudit.js';
+import { parseProposalCustomFields } from '../utils/proposalCustomFields.js';
+import {
+  parseClientAddress,
+  preparedForLines,
+  senderPosition,
+} from '../utils/proposalDisplay.js';
+import { TENANT_LOGO_MAX_BYTES } from '../utils/tenantLogoConstraints.js';
 
 interface ProposalData {
   id: string;

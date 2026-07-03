@@ -312,10 +312,12 @@ model User {
   tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
 
   // Relations
-  createdProposals Proposal[] @relation("CreatedProposals")
-  activityLogs     ActivityLog[]
-  refreshTokens    RefreshToken[]
-  passwordResets   PasswordReset[]
+  createdProposals   Proposal[]            @relation("CreatedProposals")
+  approvedProposals  Proposal[]            @relation("ApprovedProposals")
+  activityLogs       ActivityLog[]
+  refreshTokens      RefreshToken[]
+  passwordResets     PasswordReset[]
+  twoFactorBackupCodes TwoFactorBackupCode[]
 
   @@unique([email, tenantId])
   @@index([tenantId])
@@ -361,21 +363,6 @@ model RefreshToken {
 
   @@index([token])
   @@index([userId])
-}
-
-model PasswordReset {
-  id        String    @id @default(uuid())
-  tokenHash String
-  expiresAt DateTime
-  usedAt    DateTime?
-  createdAt DateTime  @default(now())
-
-  userId String
-  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@index([tokenHash])
-  @@index([userId])
-  @@index([expiresAt])
 }
 
 // ==================== CLIENT MODELS ====================
@@ -576,7 +563,6 @@ model Proposal {
   signatures   ProposalSignature[]
   paymentSplits PaymentSplit[]
   emailLogs    EmailLog[]
-  paymentSplits PaymentSplit[]
 
   @@index([tenantId])
   @@index([clientId])
