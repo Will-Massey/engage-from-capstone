@@ -1,8 +1,8 @@
 # sendit.resume - auto-generated checkpoint (keep in git)
 pending: false
-written: 2026-07-03 14:12:27 UTC
+written: 2026-07-03 17:17:27 UTC
 project_root: C:\Users\willi\engage-from-capstone
-commit: a8016eb
+commit: ef42fa3
 branch: master
 phase: Phase: **Premier Service â€” Deploy & verify** â€” `in_progress` (sendit v3.5)
 goal: Become the **premier UK accountancy proposal platform** â€” see `PREMIER_SERVICE_STRATEGY.md` and `PREMIER_SERVICE_TODO.md`.
