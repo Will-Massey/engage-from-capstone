@@ -56,7 +56,8 @@ export async function ensureTouchpointTemplatesForTenant(
     }
 
     if (fillMissingOnly) {
-      if (upgradePlaceholders && isPlaceholderOnly(current.body)) {
+      const subjectUnchanged = current.subject.trim() === def.subject.trim();
+      if (upgradePlaceholders && isPlaceholderOnly(current.body) && subjectUnchanged) {
         await prisma.touchpointTemplate.update({
           where: { id: current.id },
           data: {
