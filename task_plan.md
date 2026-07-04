@@ -5,13 +5,13 @@
 Become the **premier UK accountancy proposal platform** — see `PREMIER_SERVICE_STRATEGY.md` and `PREMIER_SERVICE_TODO.md`.
 
 ## Current Phase
-Phase: **Premier Service — Deploy & verify** — `in_progress` (Render superadmin wired)
+Phase: **Premier Service — Security P1/P2 done** — `in_progress` (JWT_REFRESH_SECRET on Render; login 200)
 
 ## Next Up
 <!-- 3–5 bullets ONLY. Next fresh session starts here. Rewrite every checkpoint. -->
-1. **Tomorrow UAT:** Settings → Billing payout opt-in → client sign → Revolut checkout
-2. **Tomorrow Xero:** Render env vars + Settings → Integrations connect smoke
-3. Verify backend redeploy + `node scripts/verify-superadmin-integration.mjs` after sync settles
+1. **UAT:** Settings → Billing payout opt-in → client sign → Revolut checkout (`TODO_TOMORROW.md`)
+2. **Xero:** Render `XERO_*` env + Settings → Integrations connect smoke
+3. **P0 security:** email-events webhook auth, portal shareToken leak, env.ts boot, validUntil, E2E rate-limit bypass (`SECURITY_TODO.md`)
 
 ## Phases
 
@@ -42,6 +42,7 @@ Phase: **Premier Service — Deploy & verify** — `in_progress` (Render superad
 | 2 | 2026-07-03 | 6372c68 | master | engage-backend, engage-frontend | live | sendit v3.5 — 7-day trial, backlog, schema/test fix, superadmin payment reporting; 123 tests pass; all endpoints 200 |
 | 3 | 2026-07-04 | 6338cf2 | master | engage-backend, engage-frontend | live | sendit v4.0 — Revolut payout collection, tenant payout settings, legal terms, UI fixes; TS build fix in splits.ts |
 | 4 | 2026-07-04 | 53f9d47 | master | engage-backend, engage-frontend | live | Analytics routes + win-loss normalise, regulatory mount, /2fa-setup, e2e auth hardening; prod smoke 11/11 |
+| 5 | 2026-07-04 | 6686892 | master | engage-backend, engage-frontend | live | sendit v4 — P1/P2 security hardening (items 7–35); JWT_REFRESH_SECRET wired; `/health` + login 200 |
 
 ## Strategic docs (Jul 2026)
 | Doc | Purpose |

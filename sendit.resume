@@ -1,22 +1,22 @@
 # Sendit Resume
 
-**Last Deploy:** 2026-07-04 15:38 UTC
+**Last Deploy:** 2026-07-04 20:20:26 UTC
 
 **Goal:**  
 Become the **premier UK accountancy proposal platform** — see `PREMIER_SERVICE_STRATEGY.md` and `PREMIER_SERVICE_TODO.md`.
 
 **Current Phase:**  
-Phase: **Premier Service — Deploy & verify** — `in_progress` (UI + Superadmin verified)
+Phase: **Premier Service — Security P1/P2 done** — `in_progress` (JWT_REFRESH_SECRET on Render; login 200)
 
 **Next Up:**
-- Tomorrow: UAT payout opt-in + Revolut checkout smoke (`TODO_TOMORROW.md`)
-- Tomorrow: Xero integration env + connect smoke
+- **UAT:** Settings → Billing payout opt-in → client sign → Revolut checkout (`TODO_TOMORROW.md`)
+- **Xero:** Render `XERO_*` env + Settings → Integrations connect smoke
+- **P0 security:** email-events webhook auth, portal shareToken leak, env.ts boot, validUntil, E2E rate-limit bypass (`SECURITY_TODO.md`)
 
 **Status:** pending = true
 
 <!-- Machine hints (do not expand on resume):
-project_root: C:\Users\willi\engage-from-capstone
-commit: 53f9d47
+project_root: C:/Users/willi/engage-from-capstone
+commit: 6686892
 branch: master
-prod_e2e: 11/11 pass (payout-smoke, market-leader-smoke, automation-smoke)
 -->
