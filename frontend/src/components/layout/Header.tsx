@@ -34,7 +34,10 @@ const Header = ({ onMenuClick }: HeaderProps) => {
   const fullName = [user?.firstName, user?.lastName].filter(Boolean).join(' ');
 
   return (
-    <div className="px-4 sm:px-6 lg:px-8 pr-[max(1rem,env(safe-area-inset-right))]">
+    <div
+      data-testid="app-header"
+      className="px-4 sm:px-6 lg:px-8 pr-[max(1rem,env(safe-area-inset-right))]"
+    >
       <div className="flex items-center justify-between h-16 min-w-0 gap-2">
         {/* Left side */}
         <div className="flex items-center min-w-0 flex-1">
@@ -124,7 +127,10 @@ const Header = ({ onMenuClick }: HeaderProps) => {
               >
                 {user?.firstName?.charAt(0)}
               </div>
-              <span className="hidden sm:block text-sm font-medium text-slate-700 dark:text-slate-300 truncate max-w-[6rem] md:max-w-[9rem] lg:max-w-[12rem] xl:max-w-none">
+              <span
+                data-testid="header-user-name"
+                className="hidden sm:block text-sm font-medium text-slate-700 dark:text-slate-300 truncate max-w-[6rem] md:max-w-[9rem] lg:max-w-[12rem] xl:max-w-none"
+              >
                 {fullName || user?.firstName}
               </span>
             </button>

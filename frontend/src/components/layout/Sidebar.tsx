@@ -65,6 +65,7 @@ const UserFooter = ({ onLogout }: { onLogout: () => void }) => {
         </div>
         <div className="min-w-0 flex-1">
           <p
+            data-testid="sidebar-user-name"
             className="text-sm font-semibold text-slate-900 dark:text-slate-100 leading-snug break-words"
             title={fullName || undefined}
           >
