@@ -1,5 +1,6 @@
 import { defineConfig, devices } from '@playwright/test';
 import path from 'path';
+import { e2eExtraHeaders } from './fixtures/e2e-headers';
 
 const authFile = path.join(__dirname, '.auth', 'user.json');
 
@@ -9,6 +10,14 @@ const authFile = path.join(__dirname, '.auth', 'user.json');
  */
 const canonicalFrontend =
   (process.env.FRONTEND_URL || 'https://capstonesoftware.co.uk/engage').replace(/\/$/, '');
+
+// Default production smoke to same-origin proxy (httpOnly cookies + /auth/me).
+if (!process.env.API_URL) {
+  process.env.API_URL = canonicalFrontend;
+}
+if (!process.env.FRONTEND_URL) {
+  process.env.FRONTEND_URL = canonicalFrontend;
+}
 
 export default defineConfig({
   testDir: './specs',
@@ -44,7 +53,7 @@ export default defineConfig({
     video: 'retain-on-failure',
     actionTimeout: 20_000,
     navigationTimeout: 45_000,
-    extraHTTPHeaders: { 'X-Test-Mode': 'e2e-build' },
+    extraHTTPHeaders: e2eExtraHeaders('e2e-build'),
   },
 
   projects: [

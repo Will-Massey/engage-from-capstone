@@ -12,7 +12,7 @@ Phase: **Premier Service — Payout UAT done** — `in_progress` (demo tenant pa
 1. **Revolut Business API:** Wire `REVOLUT_BUSINESS_*` on Render for real bank counterparty creation (demo uses placeholder counterparty)
 2. **Xero:** Render `XERO_*` env + Settings → Integrations connect smoke
 3. **P0 security:** email-events webhook auth, portal shareToken leak, env.ts boot, validUntil, E2E rate-limit bypass (`SECURITY_TODO.md`)
-4. **E2E:** Fix Playwright cookie restore for Settings UI smoke (`Origin` header fix landed; browser session still flaky)
+4. ~~**E2E:** Fix Playwright session restore for Settings UI smoke~~ — `Origin` in `extraHTTPHeaders`; payout-smoke 3/3 pass
 
 ## Phases
 

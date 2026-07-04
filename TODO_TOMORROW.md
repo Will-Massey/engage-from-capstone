@@ -16,8 +16,6 @@
 
 ```powershell
 cd e2e-tests
-$env:FRONTEND_URL='https://capstonesoftware.co.uk/engage'
-$env:API_URL='https://engage-backend-e1ue.onrender.com'
 npx playwright test --config=playwright.build.config.ts specs/layout-smoke.spec.ts specs/payout-smoke.spec.ts --retries=0
 node ../scripts/verify-superadmin-integration.mjs
 ```
