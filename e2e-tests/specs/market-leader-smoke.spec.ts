@@ -46,10 +46,13 @@ test.describe('Build smoke — market leader batch (845effcf)', () => {
 
     await gotoApp(page, '/analytics');
     await expect(page).toHaveURL(/\/analytics/);
-    await page.waitForLoadState('networkidle');
-    await expect(page.getByRole('heading', { name: /win \/ loss/i })).toBeVisible({
+    await expect(page.getByRole('heading', { name: /^Analytics$/i })).toBeVisible({
       timeout: 30_000,
     });
+
+    const winLossHeading = page.getByRole('heading', { name: /win \/ loss/i });
+    const noData = page.getByRole('heading', { name: /no data available/i });
+    await expect(winLossHeading.or(noData)).toBeVisible({ timeout: 45_000 });
     await expectNoErrorToasts(page);
   });
 

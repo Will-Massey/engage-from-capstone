@@ -958,6 +958,7 @@ app.use('/api/cover-letter-templates', extractTenant, coverLetterTemplateRoutes)
 app.use('/api/proposal-templates', extractTenant, proposalTemplateRoutes);
 app.use('/api/engagement-library', extractTenant, engagementLibraryRoutes);
 app.use('/api/analytics', extractTenant, analyticsRoutes);
+app.use('/api/regulatory', extractTenant, regulatoryRoutes);
 app.use('/api/touchpoints', extractTenant, touchpointRoutes);
 app.use('/api/automation', extractTenant, automationRoutes);
 app.use('/api/uploads', extractTenant, uploadsRoutes);

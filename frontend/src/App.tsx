@@ -15,6 +15,7 @@ import Register from './pages/auth/Register';
 import Onboarding from './pages/auth/Onboarding';
 import ForgotPassword from './pages/auth/ForgotPassword';
 import ResetPassword from './pages/auth/ResetPassword';
+import TwoFactorSetup from './pages/auth/TwoFactorSetup';
 import Dashboard from './pages/Dashboard';
 import Proposals from './pages/proposals/Proposals';
 import BulkRenewalWizard from './pages/proposals/BulkRenewalWizard';
@@ -326,6 +327,14 @@ const AnimatedRoutes = () => {
             element={
               <AnimatedPage>
                 <Settings />
+              </AnimatedPage>
+            }
+          />
+          <Route
+            path="2fa-setup"
+            element={
+              <AnimatedPage>
+                <TwoFactorSetup />
               </AnimatedPage>
             }
           />
