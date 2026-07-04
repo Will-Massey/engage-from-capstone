@@ -1,6 +1,21 @@
 # Build Progress Log
 <!-- Append-only session log. Latest deploy checkpoint is the resume entry point. -->
 
+## Session: 2026-07-04 — sendit v4.0 deploy fix + verify
+
+### Deploy checkpoint — 6338cf2
+- **Root cause:** Backend build failed on Render — `calculatePaymentSplit` returned `SplitResult` where `SplitAmounts` expected `totalPence`
+- **Fix:** Map `grossPence` → `totalPence` in deprecated helper (`splits.ts`)
+- **Deploy:** Backend `dep-d94hvhe7r5hc73cm2npg` → **live**
+- **Verify:** `GET /api/payout/settings` 200 on production; migration `tenant_payout_settings` applied; frontend bundle has Receive Payments UI
+
+#### Resume prompt
+```
+William: browser UAT Settings → Receive Payments. Smoke client sign → Revolut checkout. Revolut webhook + Superadmin events.
+```
+
+---
+
 ## Session: 2026-07-03 — sendit v3.5 deploy checkpoint
 
 ### Deploy checkpoint

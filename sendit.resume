@@ -1,22 +1,22 @@
 # Sendit Resume
 
-**Last Deploy:** 2026-07-04 13:52:11 UTC
+**Last Deploy:** 2026-07-04 15:01 UTC
 
 **Goal:**  
 Become the **premier UK accountancy proposal platform** — see `PREMIER_SERVICE_STRATEGY.md` and `PREMIER_SERVICE_TODO.md`.
 
 **Current Phase:**  
-Phase: **Premier Service — Deploy & verify** — `in_progress` (sendit v4.0)
+Phase: **Premier Service — Deploy & verify** — `in_progress` (sendit v4.0 live)
 
 **Next Up:**
-- Production smoke: Settings → Receive Payments (bank opt-in) + client sign → Revolut checkout at capstonesoftware.co.uk/engage
-- Run Prisma migration `20260704120000_tenant_payout_settings` on Render if not auto-applied
+- William: browser UAT — Settings → Billing → Receive Payments Through Engage (opt-in + bank details)
+- Production smoke: client sign → Revolut checkout flow at capstonesoftware.co.uk/engage
 - William: confirm UI fixes — sidebar full name, header safe-area, AI panel scales on resize
 
 **Status:** pending = true
 
 <!-- Machine hints (do not expand on resume):
 project_root: C:\Users\willi\engage-from-capstone
-commit: 8171f8a
+commit: 6338cf2
 branch: master
 -->
