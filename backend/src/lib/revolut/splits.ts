@@ -147,5 +147,12 @@ export function calculatePaymentSplit(totalPence: number, feeBps?: number): Spli
     processorFeePence: estimateProcessorCost('REVOLUT', totalPence),
     processorMarkupPence: estimateProcessorMarkup(totalPence),
   });
-  return split;
+  return {
+    totalPence: split.grossPence,
+    platformFeePence: split.platformFeePence,
+    processorFeePence: split.processorFeePence,
+    processorMarkupPence: split.processorMarkupPence,
+    agencySharePence: split.agencySharePence,
+    platformFeeBps: split.platformFeeBps,
+  };
 }
