@@ -802,6 +802,94 @@ router.get(
   })
 );
 
+/** GET /api/analytics/proposal-funnel — sent → opened → viewed → signed → paid */
+router.get(
+  '/proposal-funnel',
+  asyncHandler(async (req, res) => {
+    const tenantId = req.tenantId!;
+    const defaultEnd = new Date();
+    const defaultStart = new Date(defaultEnd.getTime() - 90 * 24 * 60 * 60 * 1000);
+
+    const start = req.query.startDate ? new Date(String(req.query.startDate)) : defaultStart;
+    const end = req.query.endDate ? new Date(String(req.query.endDate)) : defaultEnd;
+
+    if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) {
+      throw new ApiError('INVALID_DATE_RANGE', 'startDate and endDate must be valid ISO dates', 400);
+    }
+
+    const proposals = await prisma.proposal.findMany({
+      where: {
+        tenantId,
+        sentAt: { gte: start, lte: end },
+      },
+      select: {
+        viewedAt: true,
+        acceptedAt: true,
+        paidAt: true,
+        paymentStatus: true,
+        emailHistory: true,
+      },
+    });
+
+    const sent = proposals.length;
+    let opened = 0;
+    let viewed = 0;
+    let signed = 0;
+    let paid = 0;
+
+    for (const proposal of proposals) {
+      if (proposal.viewedAt) viewed += 1;
+      if (proposal.acceptedAt) signed += 1;
+      if (
+        proposal.paidAt ||
+        proposal.paymentStatus === 'PAID' ||
+        proposal.paymentStatus === 'COMPLETED'
+      ) {
+        paid += 1;
+      }
+
+      let emailOpened = false;
+      try {
+        const history = JSON.parse(proposal.emailHistory || '[]') as Array<Record<string, unknown>>;
+        emailOpened = history.some(
+          (entry) =>
+            entry.event === 'opened' ||
+            entry.deliveryStatus === 'opened' ||
+            entry.opened === true,
+        );
+      } catch {
+        emailOpened = false;
+      }
+
+      if (emailOpened || proposal.viewedAt) opened += 1;
+    }
+
+    const pct = (numerator: number, denominator: number) =>
+      denominator > 0 ? Math.round((numerator / denominator) * 100) : 0;
+
+    res.json({
+      success: true,
+      data: {
+        dateRange: { start: start.toISOString(), end: end.toISOString() },
+        funnel: { sent, opened, viewed, signed, paid },
+        conversionRates: {
+          sentToOpened: pct(opened, sent),
+          openedToSigned: pct(signed, opened),
+          sentToSigned: pct(signed, sent),
+          signedToPaid: pct(paid, signed),
+        },
+        stages: [
+          { key: 'sent', label: 'Sent', count: sent, color: 'bg-blue-500' },
+          { key: 'opened', label: 'Opened', count: opened, color: 'bg-indigo-500' },
+          { key: 'viewed', label: 'Viewed', count: viewed, color: 'bg-amber-500' },
+          { key: 'signed', label: 'Signed', count: signed, color: 'bg-green-500' },
+          { key: 'paid', label: 'Paid', count: paid, color: 'bg-emerald-600' },
+        ],
+      },
+    });
+  }),
+);
+
 /** GET /api/analytics/win-loss — monthly win/loss synthesis */
 router.get(
   '/win-loss',
