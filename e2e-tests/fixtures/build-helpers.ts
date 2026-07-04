@@ -87,10 +87,33 @@ export async function expectNoErrorToasts(page: Page, settleMs = 2500): Promise<
   }
 }
 
-async function csrfHeader(request: APIRequestContext): Promise<Record<string, string>> {
+async function authHeadersFromState(
+  request: APIRequestContext,
+): Promise<Record<string, string>> {
   const state = await request.storageState();
-  const token = state.cookies.find((c) => c.name === 'csrfToken')?.value;
-  return token ? { 'X-CSRF-Token': token } : {};
+  const headers: Record<string, string> = {};
+
+  const accessCookie = state.cookies.find((c) => c.name === 'accessToken')?.value;
+  const csrfCookie = state.cookies.find((c) => c.name === 'csrfToken')?.value;
+
+  let bearer = accessCookie;
+  if (!bearer) {
+    for (const origin of state.origins ?? []) {
+      const entry = origin.localStorage?.find((item) => item.name === 'auth-storage');
+      if (!entry?.value) continue;
+      try {
+        const parsed = JSON.parse(entry.value) as { state?: { token?: string | null } };
+        bearer = parsed.state?.token ?? undefined;
+        if (bearer) break;
+      } catch {
+        /* ignore malformed storage */
+      }
+    }
+  }
+
+  if (bearer) headers.Authorization = `Bearer ${bearer}`;
+  if (csrfCookie) headers['X-CSRF-Token'] = csrfCookie;
+  return headers;
 }
 
 function apiTimeout(path: string): number {
@@ -99,7 +122,7 @@ function apiTimeout(path: string): number {
 
 export async function apiGet(request: APIRequestContext, path: string): Promise<any> {
   const res = await request.get(`${API_BASE}${path}`, {
-    headers: E2E_HEADERS,
+    headers: { ...E2E_HEADERS, ...(await authHeadersFromState(request)) },
     timeout: apiTimeout(path),
   });
   const body = await res.json().catch(() => ({}));
@@ -109,7 +132,7 @@ export async function apiGet(request: APIRequestContext, path: string): Promise<
 export async function apiPost(request: APIRequestContext, path: string, data?: object): Promise<any> {
   const res = await request.post(`${API_BASE}${path}`, {
     data: data ?? {},
-    headers: { ...E2E_HEADERS, ...(await csrfHeader(request)) },
+    headers: { ...E2E_HEADERS, ...(await authHeadersFromState(request)) },
     timeout: apiTimeout(path),
   });
   const body = await res.json().catch(() => ({}));
@@ -118,7 +141,7 @@ export async function apiPost(request: APIRequestContext, path: string, data?: o
 
 export async function apiDelete(request: APIRequestContext, path: string): Promise<any> {
   const res = await request.delete(`${API_BASE}${path}`, {
-    headers: { ...E2E_HEADERS, ...(await csrfHeader(request)) },
+    headers: { ...E2E_HEADERS, ...(await authHeadersFromState(request)) },
     timeout: apiTimeout(path),
   });
   const body = await res.json().catch(() => ({}));
