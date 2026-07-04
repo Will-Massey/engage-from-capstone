@@ -5,10 +5,53 @@ import path from 'path';
 const AUTH_DIR = path.join(__dirname, '.auth');
 const AUTH_FILE = path.join(AUTH_DIR, 'user.json');
 
+function isAccessTokenValid(token: string, bufferMs = 5 * 60 * 1000): boolean {
+  try {
+    const segment = token.split('.')[1];
+    if (!segment) return false;
+    const payload = JSON.parse(Buffer.from(segment, 'base64url').toString('utf8')) as { exp?: number };
+    return typeof payload.exp === 'number' && payload.exp * 1000 > Date.now() + bufferMs;
+  } catch {
+    return false;
+  }
+}
+
+/** Reuse saved auth when the access token is still valid — avoids rate limits. */
+function hasFreshAuth(): boolean {
+  if (!fs.existsSync(AUTH_FILE)) return false;
+  try {
+    const state = JSON.parse(fs.readFileSync(AUTH_FILE, 'utf8')) as {
+      cookies?: Array<{ name: string; value: string }>;
+      origins?: Array<{ localStorage?: Array<{ name: string; value: string }> }>;
+    };
+    const cookieToken = state.cookies?.find((c) => c.name === 'accessToken')?.value;
+    if (cookieToken && isAccessTokenValid(cookieToken)) return true;
+
+    for (const origin of state.origins ?? []) {
+      const entry = origin.localStorage?.find((item) => item.name === 'auth-storage');
+      if (!entry?.value) continue;
+      const parsed = JSON.parse(entry.value) as { state?: { token?: string | null } };
+      const token = parsed.state?.token;
+      if (token && isAccessTokenValid(token)) return true;
+    }
+  } catch {
+    return false;
+  }
+  return false;
+}
+
 /**
  * Single login before the suite — avoids tripping auth rate limits.
  */
 async function globalSetup(config: FullConfig): Promise<void> {
+  if (hasFreshAuth()) {
+    console.log('[global-setup] Reusing fresh auth session');
+    return;
+  }
+
+  if (fs.existsSync(AUTH_FILE)) {
+    fs.unlinkSync(AUTH_FILE);
+  }
   const baseURL = (
     config.projects[0]?.use?.baseURL ||
     process.env.FRONTEND_URL ||

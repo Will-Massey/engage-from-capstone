@@ -87,6 +87,17 @@ export async function expectNoErrorToasts(page: Page, settleMs = 2500): Promise<
   }
 }
 
+function isAccessTokenValid(token: string, bufferMs = 60_000): boolean {
+  try {
+    const segment = token.split('.')[1];
+    if (!segment) return false;
+    const payload = JSON.parse(Buffer.from(segment, 'base64url').toString('utf8')) as { exp?: number };
+    return typeof payload.exp === 'number' && payload.exp * 1000 > Date.now() + bufferMs;
+  } catch {
+    return false;
+  }
+}
+
 async function authHeadersFromState(
   request: APIRequestContext,
 ): Promise<Record<string, string>> {
@@ -96,15 +107,20 @@ async function authHeadersFromState(
   const accessCookie = state.cookies.find((c) => c.name === 'accessToken')?.value;
   const csrfCookie = state.cookies.find((c) => c.name === 'csrfToken')?.value;
 
-  let bearer = accessCookie;
+  let bearer =
+    accessCookie && isAccessTokenValid(accessCookie) ? accessCookie : undefined;
+
   if (!bearer) {
     for (const origin of state.origins ?? []) {
       const entry = origin.localStorage?.find((item) => item.name === 'auth-storage');
       if (!entry?.value) continue;
       try {
         const parsed = JSON.parse(entry.value) as { state?: { token?: string | null } };
-        bearer = parsed.state?.token ?? undefined;
-        if (bearer) break;
+        const token = parsed.state?.token ?? undefined;
+        if (token && isAccessTokenValid(token)) {
+          bearer = token;
+          break;
+        }
       } catch {
         /* ignore malformed storage */
       }
