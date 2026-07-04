@@ -1,24 +1,27 @@
 /**
- * Post-sign payment collection (Ignition-style).
- * Uses Revolut when configured; falls back to GoCardless stub gracefully.
+ * Post-sign payment collection (Revolut-only until GoCardless is integrated).
  */
 
 import { prisma } from '../config/database.js';
 import logger from '../config/logger.js';
 import { isRevolutConfigured } from '../lib/revolut/revolut-client.js';
 import { createProposalCheckoutOrder } from './proposalPayment.js';
-import { createMandateSetup, completeStubMandate } from './gocardlessStub.js';
 import { getPaymentSettings } from '../utils/tenantPaymentSettings.js';
 import { tenantAppUrl } from '../config/urls.js';
+import { isPayoutCollectionEnabled } from './payoutSettingsService.js';
+import {
+  buildFeePreview,
+  resolvePlatformFeeBps,
+} from '../lib/payments/splitCalculator.js';
+import { CLIENT_PAYMENT_AUTH_VERSION } from '../constants/paymentAgreements.js';
 
-export type PaymentProviderName = 'revolut' | 'gocardless_stub' | 'none';
+export type PaymentProviderName = 'revolut' | 'none';
 
 const PAYMENT_COMPLETE_STATUSES = ['ACTIVE', 'PAID', 'COMPLETED', 'SKIPPED'];
 
 export interface MandateSetupOptions {
-  allowCard?: boolean;
-  allowDirectDebit?: boolean;
-  preferredMethod?: 'direct_debit' | 'card';
+  preferredMethod?: 'card' | 'revolut_pay';
+  paymentAuthAccepted?: boolean;
 }
 
 export interface MandateSetupResult {
@@ -34,7 +37,7 @@ export interface MandateSetupResult {
 
 export function resolvePaymentProvider(): PaymentProviderName {
   if (isRevolutConfigured()) return 'revolut';
-  return 'gocardless_stub';
+  return 'none';
 }
 
 export function isPaymentCollectionAvailable(): boolean {
@@ -47,28 +50,41 @@ function getFrontendBaseUrl(tenantSubdomain: string): string {
 
 /**
  * Whether this tenant should offer payment collection after sign.
+ * Requires payout opt-in AND collectPaymentAtSign AND Revolut configured.
  */
 export async function shouldCollectPaymentAtSign(tenantId: string): Promise<boolean> {
-  const tenant = await prisma.tenant.findUnique({
-    where: { id: tenantId },
-    select: { settings: true },
-  });
+  const [payoutEnabled, tenant] = await Promise.all([
+    isPayoutCollectionEnabled(tenantId),
+    prisma.tenant.findUnique({ where: { id: tenantId }, select: { settings: true } }),
+  ]);
   const settings = getPaymentSettings(tenant?.settings);
-  return settings.collectPaymentAtSign && isPaymentCollectionAvailable();
+  return (
+    payoutEnabled &&
+    settings.collectPaymentAtSign &&
+    isPaymentCollectionAvailable()
+  );
 }
 
 /**
- * Create a payment checkout / mandate session after proposal acceptance.
+ * Create a Revolut checkout session after proposal acceptance.
  */
 export async function createPostSignMandate(
   proposalId: string,
-  options: MandateSetupOptions = {}
+  options: MandateSetupOptions = {},
 ): Promise<MandateSetupResult> {
   const proposal = await prisma.proposal.findUnique({
     where: { id: proposalId },
     include: {
       client: true,
-      tenant: { select: { id: true, subdomain: true, settings: true } },
+      tenant: {
+        select: {
+          id: true,
+          subdomain: true,
+          settings: true,
+          subscriptionTier: true,
+          payoutSettings: true,
+        },
+      },
     },
   });
 
@@ -80,160 +96,86 @@ export async function createPostSignMandate(
     throw new Error('Proposal must be accepted before setting up payment');
   }
 
-  const paymentSettings = getPaymentSettings(proposal.tenant.settings);
+  const payoutEnabled = await isPayoutCollectionEnabled(proposal.tenantId);
+  if (!payoutEnabled) {
+    throw new Error('This practice has not enabled payment collection through Engage');
+  }
+
+  if (!options.paymentAuthAccepted) {
+    throw new Error('Client payment authorisation must be accepted before checkout');
+  }
+
   const provider = resolvePaymentProvider();
+  if (provider !== 'revolut') {
+    throw new Error('Revolut payment collection is not configured');
+  }
 
   const shareToken = proposal.shareToken;
-
   if (!shareToken) {
     throw new Error('Proposal share token missing — cannot create payment setup link');
   }
 
   const customerName = proposal.client.contactName || proposal.client.name;
   const customerEmail = proposal.client.contactEmail;
-
   if (!customerEmail) {
     throw new Error('Client email is required for payment setup');
   }
 
-  if (provider === 'revolut') {
-    const checkout = await createProposalCheckoutOrder(
-      {
-        id: proposal.id,
-        tenantId: proposal.tenantId,
-        reference: proposal.reference,
-        title: proposal.title,
-        total: proposal.total,
-        paymentStatus: proposal.paymentStatus,
-        client: {
-          name: proposal.client.name,
-          contactName: proposal.client.contactName,
-          contactEmail: proposal.client.contactEmail,
-        },
-      },
-      { email: customerEmail, name: customerName },
-      shareToken
-    );
+  await prisma.proposal.update({
+    where: { id: proposalId },
+    data: {
+      paymentAuthAccepted: true,
+      paymentAuthAcceptedAt: new Date(),
+      paymentAuthVersion: CLIENT_PAYMENT_AUTH_VERSION,
+    },
+  });
 
-    if (!checkout) {
-      throw new Error('Revolut checkout could not be created');
-    }
-
-    await prisma.proposal.update({
-      where: { id: proposalId },
-      data: {
-        paymentMandateId: checkout.orderId,
-        paymentProvider: 'revolut',
-        paymentMethod: options.preferredMethod || 'revolut',
-      },
-    });
-
-    await logPaymentActivity(proposal.tenantId, proposalId, 'PAYMENT_CHECKOUT_CREATED', {
-      provider: 'revolut',
-      orderId: checkout.orderId,
-    });
-
-    return {
-      provider: 'revolut',
-      mandateId: checkout.orderId,
-      paymentId: checkout.orderId,
-      checkoutUrl: checkout.checkoutUrl || '',
-      status: 'PENDING',
-      isStub: false,
-      token: checkout.token,
-      mode: checkout.mode,
-    };
-  }
-
-  // GoCardless stub fallback
-  const frontendBase = getFrontendBaseUrl(proposal.tenant.subdomain);
-  const stub = await createMandateSetup(
+  const checkout = await createProposalCheckoutOrder(
     {
-      proposalId: proposal.id,
+      id: proposal.id,
+      tenantId: proposal.tenantId,
       reference: proposal.reference,
-      customer: {
-        name: customerName,
-        email: customerEmail,
-        companyName: proposal.client.name,
-      },
-      metadata: {
-        proposalId: proposal.id,
-        tenantId: proposal.tenantId,
+      title: proposal.title,
+      total: proposal.total,
+      paymentStatus: proposal.paymentStatus,
+      client: {
+        name: proposal.client.name,
+        contactName: proposal.client.contactName,
+        contactEmail: proposal.client.contactEmail,
       },
     },
-    frontendBase,
-    shareToken
+    { email: customerEmail, name: customerName },
+    shareToken,
   );
+
+  if (!checkout) {
+    throw new Error('Revolut checkout could not be created');
+  }
 
   await prisma.proposal.update({
     where: { id: proposalId },
     data: {
-      paymentMandateId: stub.id,
-      paymentProvider: 'gocardless_stub',
-      paymentStatus: 'PENDING',
-      paymentUrl: stub.redirectUrl,
-      paymentMethod: options.preferredMethod || 'direct_debit',
+      paymentMandateId: checkout.orderId,
+      paymentProvider: 'revolut',
+      paymentMethod: options.preferredMethod || 'card',
     },
   });
 
-  await logPaymentActivity(proposal.tenantId, proposalId, 'PAYMENT_MANDATE_CREATED', {
-    provider: 'gocardless_stub',
-    mandateId: stub.id,
-    isStub: true,
+  await logPaymentActivity(proposal.tenantId, proposalId, 'PAYMENT_CHECKOUT_CREATED', {
+    provider: 'revolut',
+    orderId: checkout.orderId,
   });
 
   return {
-    provider: 'gocardless_stub',
-    mandateId: stub.id,
-    checkoutUrl: stub.redirectUrl,
-    status: stub.status,
-    isStub: true,
+    provider: 'revolut',
+    mandateId: checkout.orderId,
+    paymentId: checkout.orderId,
+    checkoutUrl: checkout.checkoutUrl || '',
+    status: 'PENDING',
+    isStub: false,
+    token: checkout.token,
+    mode: checkout.mode,
   };
-}
-
-/**
- * Complete a stub mandate (demo / dev flow when Revolut is not configured).
- */
-export async function completeStubMandateForProposal(
-  proposalId: string,
-  mandateId: string
-): Promise<{ status: string }> {
-  const proposal = await prisma.proposal.findUnique({
-    where: { id: proposalId },
-    select: { paymentMandateId: true, paymentProvider: true, tenantId: true },
-  });
-
-  if (!proposal) {
-    throw new Error('Proposal not found');
-  }
-
-  if (proposal.paymentProvider !== 'gocardless_stub') {
-    throw new Error('Stub completion is only available for demo payment flow');
-  }
-
-  if (proposal.paymentMandateId !== mandateId) {
-    throw new Error('Mandate ID does not match');
-  }
-
-  const result = completeStubMandate(mandateId);
-
-  await prisma.proposal.update({
-    where: { id: proposalId },
-    data: {
-      paymentStatus: 'ACTIVE',
-      paidAt: new Date(),
-    },
-  });
-
-  await logPaymentActivity(proposal.tenantId, proposalId, 'PAYMENT_MANDATE_ACTIVATED', {
-    provider: 'gocardless_stub',
-    mandateId,
-    isStub: true,
-  });
-
-  logger.info(`Stub mandate activated for proposal ${proposalId}: ${mandateId}`);
-
-  return { status: result.status };
 }
 
 /**
@@ -247,29 +189,42 @@ export async function skipPaymentSetup(proposalId: string): Promise<void> {
 }
 
 export interface PublicPaymentConfig {
+  payoutEnabled: boolean;
   collectPaymentAtSign: boolean;
   paymentRequired: boolean;
   provider: PaymentProviderName;
   providerConfigured: boolean;
-  isStub: boolean;
   methods: {
-    directDebit: boolean;
+    revolutPay: boolean;
     card: boolean;
   };
   paymentStatus: string | null;
   paymentMandateId: string | null;
   checkoutUrl: string | null;
+  feePreview: {
+    grossPence: number;
+    platformFeePence: number;
+    processingFeePence: number;
+    netToPracticePence: number;
+    platformFeeBps: number;
+  } | null;
+  clientPaymentAuthVersion: string;
 }
 
 export async function getPublicPaymentConfig(
   proposalId: string,
-  tenantId: string
+  tenantId: string,
 ): Promise<PublicPaymentConfig> {
-  const tenant = await prisma.tenant.findUnique({
-    where: { id: tenantId },
-    select: { settings: true },
-  });
+  const [tenant, payoutSettings] = await Promise.all([
+    prisma.tenant.findUnique({
+      where: { id: tenantId },
+      select: { settings: true, subscriptionTier: true },
+    }),
+    prisma.tenantPayoutSettings.findUnique({ where: { tenantId } }),
+  ]);
+
   const paymentSettings = getPaymentSettings(tenant?.settings);
+  const payoutEnabled = payoutSettings?.enabled === true;
   const provider = resolvePaymentProvider();
 
   const proposal = await prisma.proposal.findUnique({
@@ -284,25 +239,36 @@ export async function getPublicPaymentConfig(
     },
   });
 
+  const collectPaymentAtSign = payoutEnabled && paymentSettings.collectPaymentAtSign;
+
   const paymentRequired =
     proposal?.status === 'ACCEPTED' &&
-    paymentSettings.collectPaymentAtSign &&
+    collectPaymentAtSign &&
     (proposal.total ?? 0) > 0 &&
     !PAYMENT_COMPLETE_STATUSES.includes(proposal.paymentStatus || '');
 
+  const grossPence = Math.round((proposal?.total ?? 0) * 100);
+  const platformFeeBps = resolvePlatformFeeBps(
+    tenant?.subscriptionTier,
+    payoutSettings?.platformFeeBpsOverride,
+  );
+
   return {
-    collectPaymentAtSign: paymentSettings.collectPaymentAtSign,
+    payoutEnabled,
+    collectPaymentAtSign,
     paymentRequired: !!paymentRequired,
     provider,
     providerConfigured: provider === 'revolut',
-    isStub: provider === 'gocardless_stub',
     methods: {
-      directDebit: paymentSettings.allowDirectDebit,
-      card: paymentSettings.allowCard,
+      revolutPay: payoutSettings?.allowRevolutPay !== false,
+      card: payoutSettings?.allowCard !== false,
     },
     paymentStatus: proposal?.paymentStatus || null,
     paymentMandateId: proposal?.paymentMandateId || null,
     checkoutUrl: proposal?.paymentUrl || null,
+    feePreview:
+      payoutEnabled && grossPence > 0 ? buildFeePreview(grossPence, platformFeeBps) : null,
+    clientPaymentAuthVersion: CLIENT_PAYMENT_AUTH_VERSION,
   };
 }
 
@@ -310,7 +276,7 @@ async function logPaymentActivity(
   tenantId: string,
   proposalId: string,
   action: string,
-  metadata: Record<string, unknown>
+  metadata: Record<string, unknown>,
 ): Promise<void> {
   try {
     await prisma.activityLog.create({

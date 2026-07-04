@@ -8,6 +8,8 @@ interface LegalPageLayoutProps {
 
 const legalLinks = [
   { to: '/legal/terms', label: 'Terms of Service' },
+  { to: '/legal/payment-collection-terms', label: 'Payment Collection' },
+  { to: '/legal/client-payment-authorisation', label: 'Client Payment Auth' },
   { to: '/legal/privacy', label: 'Privacy Policy' },
   { to: '/legal/ai-disclosure', label: 'AI Disclosure' },
   { to: '/legal/soc2', label: 'Security & SOC 2' },

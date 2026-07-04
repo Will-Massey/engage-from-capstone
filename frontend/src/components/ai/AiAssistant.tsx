@@ -195,7 +195,7 @@ export default function AiAssistant() {
   return (
     <>
       {/* Floating launcher */}
-      <div className="fixed bottom-6 right-6 z-[60] flex flex-col items-end gap-2 print:hidden">
+      <div className="fixed bottom-6 right-[max(1.5rem,env(safe-area-inset-right))] z-[60] flex flex-col items-end gap-2 print:hidden">
         <AnimatePresence>
           {!isOpen && (
             <motion.span
@@ -247,7 +247,7 @@ export default function AiAssistant() {
               animate={{ opacity: 1, y: 0, scale: 1 }}
               exit={{ opacity: 0, y: 16, scale: 0.98 }}
               transition={{ type: 'spring', damping: 26, stiffness: 320 }}
-              className="fixed z-[59] bottom-0 right-0 sm:bottom-6 sm:right-6 w-full sm:w-[400px] sm:max-h-[min(640px,calc(100vh-3rem))] h-[min(85vh,640px)] flex flex-col rounded-t-2xl sm:rounded-2xl overflow-hidden border border-violet-300/50 dark:border-violet-700/60 shadow-2xl shadow-violet-900/20 bg-gradient-to-b from-slate-950 via-slate-900 to-slate-950 text-slate-100"
+              className="fixed z-[59] bottom-0 right-0 sm:bottom-6 sm:right-[max(1.5rem,env(safe-area-inset-right))] w-full sm:w-[min(520px,calc(100vw-3rem-env(safe-area-inset-right)))] max-w-[min(100vw,calc(520px+env(safe-area-inset-right)))] sm:max-h-[min(720px,calc(100dvh-3rem))] h-[min(85dvh,720px)] flex flex-col rounded-t-2xl sm:rounded-2xl overflow-hidden border border-violet-300/50 dark:border-violet-700/60 shadow-2xl shadow-violet-900/20 bg-gradient-to-b from-slate-950 via-slate-900 to-slate-950 text-slate-100 pb-[env(safe-area-inset-bottom)]"
             >
               {/* Header */}
               <div className="relative px-4 py-3 border-b border-white/10 bg-gradient-to-r from-violet-950/80 to-indigo-950/80">

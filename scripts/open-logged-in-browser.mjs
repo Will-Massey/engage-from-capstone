@@ -1,32 +1,50 @@
 #!/usr/bin/env node
 /**
- * Open a visible browser, log into Engage production, leave session open for manual testing.
+ * Verify API login and open Engage in the system browser.
  * Usage: node scripts/open-logged-in-browser.mjs
  */
-import { chromium } from 'playwright';
+import { execSync } from 'node:child_process';
 
 const BASE = (process.env.FRONTEND_URL || 'https://capstonesoftware.co.uk/engage').replace(/\/$/, '');
+const API = `${BASE}/api`;
 const EMAIL = process.env.SMOKE_EMAIL || 'william@capstonesoftware.co.uk';
 const PASSWORD = process.env.SMOKE_PASSWORD || 'Engage2026!';
 
-console.log(`Opening ${BASE}/login as ${EMAIL}…`);
+console.log(`Checking login for ${EMAIL}…`);
 
-const browser = await chromium.launch({
-  headless: false,
-  ...(process.env.PW_CHANNEL ? { channel: process.env.PW_CHANNEL } : {}),
-});
-const context = await browser.newContext();
-const page = await context.newPage();
-await page.goto(`${BASE}/login`, { waitUntil: 'domcontentloaded' });
-await page.waitForSelector('input[type="email"]', { timeout: 30_000 });
+const controller = new AbortController();
+const timer = setTimeout(() => controller.abort(), 60_000);
 
-await page.locator('input[type="email"]').fill(EMAIL);
-await page.locator('input[autocomplete="current-password"]').fill(PASSWORD);
-await page.getByRole('button', { name: /^sign in$/i }).click();
+let loginRes;
+try {
+  loginRes = await fetch(`${API}/auth/login`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email: EMAIL, password: PASSWORD }),
+    signal: controller.signal,
+  });
+} catch (err) {
+  console.error('API login request failed:', err.message || err);
+  process.exit(1);
+} finally {
+  clearTimeout(timer);
+}
 
-await page.waitForURL((url) => !url.pathname.endsWith('/login'), { timeout: 30_000 });
-console.log(`Logged in → ${page.url()}`);
-console.log('Browser left open for testing. Close the window or press Ctrl+C here to exit.');
+const body = await loginRes.json().catch(() => ({}));
+if (!loginRes.ok || !body?.success) {
+  console.error('Login rejected:', loginRes.status, body);
+  process.exit(1);
+}
 
-await page.waitForEvent('close', { timeout: 0 }).catch(() => {});
-await browser.close();
+console.log(`OK — signed in as ${body.data?.user?.email || EMAIL}`);
+console.log(`Opening ${BASE}/ in your browser…`);
+
+try {
+  execSync(`start msedge "${BASE}/"`, { shell: 'cmd.exe', stdio: 'ignore' });
+} catch {
+  execSync(`start "" "${BASE}/"`, { shell: 'cmd.exe', stdio: 'ignore' });
+}
+
+console.log('If you see the login page, sign in with:');
+console.log(`  Email:    ${EMAIL}`);
+console.log(`  Password: ${PASSWORD}`);

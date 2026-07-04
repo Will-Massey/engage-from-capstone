@@ -40,6 +40,8 @@ import Status from './pages/Status';
 import ClientPortal from './pages/public/ClientPortal';
 import AmlOnboarding from './pages/public/AmlOnboarding';
 import TermsOfService from './pages/legal/TermsOfService';
+import PaymentCollectionTerms from './pages/legal/PaymentCollectionTerms';
+import ClientPaymentAuthorisation from './pages/legal/ClientPaymentAuthorisation';
 import PrivacyPolicy from './pages/legal/PrivacyPolicy';
 import AiDisclosure from './pages/legal/AiDisclosure';
 import Soc2Controls from './pages/legal/Soc2Controls';
@@ -399,6 +401,22 @@ const AnimatedRoutes = () => {
           element={
             <AnimatedPage>
               <TermsOfService />
+            </AnimatedPage>
+          }
+        />
+        <Route
+          path="/legal/payment-collection-terms"
+          element={
+            <AnimatedPage>
+              <PaymentCollectionTerms />
+            </AnimatedPage>
+          }
+        />
+        <Route
+          path="/legal/client-payment-authorisation"
+          element={
+            <AnimatedPage>
+              <ClientPaymentAuthorisation />
             </AnimatedPage>
           }
         />

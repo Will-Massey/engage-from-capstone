@@ -31,11 +31,13 @@ const Header = ({ onMenuClick }: HeaderProps) => {
     navigate('/login');
   };
 
+  const fullName = [user?.firstName, user?.lastName].filter(Boolean).join(' ');
+
   return (
-    <div className="px-4 sm:px-6 lg:px-8">
-      <div className="flex items-center justify-between h-16">
+    <div className="px-4 sm:px-6 lg:px-8 pr-[max(1rem,env(safe-area-inset-right))]">
+      <div className="flex items-center justify-between h-16 min-w-0 gap-2">
         {/* Left side */}
-        <div className="flex items-center">
+        <div className="flex items-center min-w-0 flex-1">
           <button
             onClick={onMenuClick}
             className="p-2 -ml-2 text-slate-500 dark:text-slate-300 rounded-xl hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-100/80 dark:hover:bg-slate-800/80 lg:hidden transition-colors"
@@ -57,7 +59,7 @@ const Header = ({ onMenuClick }: HeaderProps) => {
         </div>
 
         {/* Right side */}
-        <div className="flex items-center space-x-2 sm:space-x-4">
+        <div className="flex items-center space-x-1.5 sm:space-x-3 shrink-0 min-w-0 max-w-[55%] sm:max-w-none">
           <div className="hidden md:block">
             <AiAssistantTrigger />
           </div>
@@ -78,7 +80,7 @@ const Header = ({ onMenuClick }: HeaderProps) => {
               <input
                 type="text"
                 placeholder="Search or jump to…"
-                className="search-input w-64 cursor-pointer"
+                className="search-input w-48 lg:w-64 cursor-pointer"
                 readOnly
                 onFocus={openCommandPalette}
                 onClick={openCommandPalette}
@@ -110,19 +112,20 @@ const Header = ({ onMenuClick }: HeaderProps) => {
           </button>
 
           {/* User menu */}
-          <div className="relative">
+          <div className="relative min-w-0">
             <button
               onClick={() => setShowUserMenu(!showUserMenu)}
-              className="flex items-center space-x-2 p-2 rounded-xl hover:bg-slate-100/80 dark:hover:bg-slate-800/80 transition-colors"
+              className="flex items-center gap-2 p-2 rounded-xl hover:bg-slate-100/80 dark:hover:bg-slate-800/80 transition-colors min-w-0 max-w-full"
+              title={fullName || undefined}
             >
               <div
-                className="w-8 h-8 rounded-full flex items-center justify-center text-white text-sm font-medium"
+                className="w-8 h-8 rounded-full flex items-center justify-center text-white text-sm font-medium shrink-0"
                 style={{ background: 'linear-gradient(135deg, #6366F1 0%, #8B5CF6 100%)' }}
               >
                 {user?.firstName?.charAt(0)}
               </div>
-              <span className="hidden sm:block text-sm font-medium text-slate-700 dark:text-slate-300">
-                {user?.firstName}
+              <span className="hidden sm:block text-sm font-medium text-slate-700 dark:text-slate-300 truncate max-w-[6rem] md:max-w-[9rem] lg:max-w-[12rem] xl:max-w-none">
+                {fullName || user?.firstName}
               </span>
             </button>
 

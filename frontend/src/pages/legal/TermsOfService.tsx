@@ -50,9 +50,25 @@ export default function TermsOfService() {
           file, or access may be restricted until you subscribe.
         </p>
         <p>
-          Fees are billed in advance via Stripe unless agreed otherwise. You authorise us to charge applicable
-          subscription fees and taxes. Cancellations take effect at the end of the current billing period unless
-          we agree otherwise.
+          Fees are billed in advance via Revolut (primary) or legacy Stripe where applicable. You authorise us
+          to charge applicable subscription fees and taxes. Cancellations take effect at the end of the current
+          billing period unless we agree otherwise.
+        </p>
+      </section>
+
+      <section className="space-y-4">
+        <h2 className="text-xl font-semibold text-slate-900 dark:text-white">4a. Client payment collection (optional)</h2>
+        <p>
+          If you opt in to <strong>Receive Payments Through Engage</strong>, additional{' '}
+          <a href="/legal/payment-collection-terms" className="text-primary-600 hover:underline">
+            Payment Collection Terms
+          </a>{' '}
+          apply. Client-facing{' '}
+          <a href="/legal/client-payment-authorisation" className="text-primary-600 hover:underline">
+            payment authorisation
+          </a>{' '}
+          is presented at checkout. Capstone collects client fees via Revolut, deducts disclosed fees, and pays
+          the net amount to your nominated account.
         </p>
       </section>
 

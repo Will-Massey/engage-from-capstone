@@ -277,6 +277,7 @@ model Tenant {
   emailLogs             EmailLog[]
   emailSuppressions     EmailSuppression[]
   paymentSplits         PaymentSplit[]
+  payoutSettings        TenantPayoutSettings?
 
   @@index([subdomain])
   @@index([isActive])
@@ -542,6 +543,13 @@ model Proposal {
   paidAt               DateTime?
   paymentFailureReason String?
 
+  // Client payment authorisation (Revolut checkout)
+  paymentAuthAccepted   Boolean   @default(false) @map("payment_auth_accepted")
+  paymentAuthAcceptedAt DateTime? @map("payment_auth_accepted_at")
+  paymentAuthVersion    String?   @map("payment_auth_version")
+  engagementLetterAccepted   Boolean   @default(false) @map("engagement_letter_accepted")
+  engagementLetterAcceptedAt DateTime? @map("engagement_letter_accepted_at")
+
   // Metadata
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -577,18 +585,22 @@ model Proposal {
 
 // Capstone platform fee + agency share ledger (client proposal payments)
 model PaymentSplit {
-  id                String   @id @default(uuid())
-  revolutOrderId    String   @unique @map("revolut_order_id")
-  totalPence        Int      @map("total_pence")
-  platformFeePence  Int      @map("platform_fee_pence")
-  agencySharePence  Int      @map("agency_share_pence")
-  platformFeeBps    Int      @map("platform_fee_bps")
-  currency          String   @default("GBP")
-  payoutStatus      String   @default("PENDING") // PENDING, TRANSFERRED, MANUAL, FAILED
-  payoutTransferId  String?  @map("payout_transfer_id")
-  paidAt            DateTime @default(now()) @map("paid_at")
-  createdAt         DateTime @default(now()) @map("created_at")
-  updatedAt         DateTime @updatedAt @map("updated_at")
+  id                   String   @id @default(uuid())
+  revolutOrderId       String   @unique @map("revolut_order_id")
+  idempotencyKey       String?  @unique @map("idempotency_key")
+  totalPence           Int      @map("total_pence")
+  platformFeePence     Int      @map("platform_fee_pence")
+  processorFeePence    Int      @default(0) @map("processor_fee_pence")
+  processorMarkupPence Int      @default(0) @map("processor_markup_pence")
+  agencySharePence     Int      @map("agency_share_pence")
+  platformFeeBps       Int      @map("platform_fee_bps")
+  currency             String   @default("GBP")
+  payoutStatus         String   @default("PENDING") // PENDING, SCHEDULED, TRANSFERRED, MANUAL, FAILED, HELD
+  payoutTransferId     String?  @map("payout_transfer_id")
+  payoutFailureReason  String?  @map("payout_failure_reason")
+  paidAt               DateTime @default(now()) @map("paid_at")
+  createdAt            DateTime @default(now()) @map("created_at")
+  updatedAt            DateTime @updatedAt @map("updated_at")
 
   proposalId String   @map("proposal_id")
   proposal   Proposal @relation(fields: [proposalId], references: [id], onDelete: Cascade)
@@ -599,6 +611,33 @@ model PaymentSplit {
   @@index([proposalId])
   @@index([tenantId])
   @@map("payment_splits")
+}
+
+model TenantPayoutSettings {
+  id                    String    @id @default(uuid())
+  tenantId              String    @unique @map("tenant_id")
+  tenant                Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  enabled               Boolean   @default(false)
+  enabledAt             DateTime? @map("enabled_at")
+  enabledByUserId       String?   @map("enabled_by_user_id")
+  consentVersion        String?   @map("consent_version")
+  consentAcceptedAt     DateTime? @map("consent_accepted_at")
+  consentIp             String?   @map("consent_ip")
+  allowRevolutPay       Boolean   @default(true) @map("allow_revolut_pay")
+  allowCard             Boolean   @default(true) @map("allow_card")
+  payoutMethod          String    @default("UK_BANK_TRANSFER") @map("payout_method")
+  accountHolderName     String?   @map("account_holder_name")
+  bankDetailsEncrypted  String?   @map("bank_details_encrypted")
+  bankDetailsLast4      String?   @map("bank_details_last4")
+  revolutCounterpartyId String?   @map("revolut_counterparty_id")
+  platformFeeBpsOverride Int?     @map("platform_fee_bps_override")
+  verificationStatus    String    @default("PENDING") @map("verification_status")
+  verifiedAt            DateTime? @map("verified_at")
+  firstPayoutHeldUntil  DateTime? @map("first_payout_held_until")
+  createdAt             DateTime  @default(now()) @map("created_at")
+  updatedAt             DateTime  @updatedAt @map("updated_at")
+
+  @@map("tenant_payout_settings")
 }
 
 model ProposalService {

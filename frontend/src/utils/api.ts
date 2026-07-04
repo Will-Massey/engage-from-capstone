@@ -620,6 +620,10 @@ export const apiClient = {
 
   updateTenantSettings: (data: any) => api.put('/tenants/settings', data),
 
+  getPayoutSettings: () => api.get('/payout/settings'),
+  updatePayoutSettings: (data: Record<string, unknown>) => api.put('/payout/settings', data),
+  getPayoutLedger: () => api.get('/payout/ledger'),
+
   testIntegrationWebhook: (
     format?: 'default' | 'hubspot' | 'zapier' | 'senta' | 'karbon'
   ) => api.post('/tenants/settings/test-webhook', { format }),

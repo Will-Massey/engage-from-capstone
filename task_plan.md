@@ -5,14 +5,14 @@
 Become the **premier UK accountancy proposal platform** — see `PREMIER_SERVICE_STRATEGY.md` and `PREMIER_SERVICE_TODO.md`.
 
 ## Current Phase
-Phase: **Premier Service — Deploy & verify** — `in_progress` (sendit v3.5)
+Phase: **Premier Service — Deploy & verify** — `in_progress` (sendit v4.0)
 
 ## Next Up
 <!-- 3–5 bullets ONLY. Next fresh session starts here. Rewrite every checkpoint. -->
-1. William: finish Xero/QB mandate draft (`backend/src/routes/xero.ts`)
-2. Revolut live checkout smoke + verify Superadmin `payment_succeeded` + `trial_converted` events
-3. Render Starter + 10 GB disk + production smoke (`VERIFICATION_ROADMAP_2026-06-30.md`)
-4. capstone-website `/engage` — confirm Cloudflare deploy live at capstonesoftware.co.uk/engage
+1. Production smoke: Settings → Receive Payments (bank opt-in) + client sign → Revolut checkout at capstonesoftware.co.uk/engage
+2. Run Prisma migration `20260704120000_tenant_payout_settings` on Render if not auto-applied
+3. William: confirm UI fixes — sidebar full name, header safe-area, AI panel scales on resize
+4. Revolut live webhook smoke + verify payout ledger + Superadmin payment events
 
 ## Phases
 
@@ -41,6 +41,7 @@ Phase: **Premier Service — Deploy & verify** — `in_progress` (sendit v3.5)
 |---|------------|--------|--------|-----------------|--------|-------|
 | 1 | 2026-06-30 | fdbc3e8 | master | engage-backend, engage-frontend | live | UI dark/light + Clara surfaces |
 | 2 | 2026-07-03 | 6372c68 | master | engage-backend, engage-frontend | live | sendit v3.5 — 7-day trial, backlog, schema/test fix, superadmin payment reporting; 123 tests pass; all endpoints 200 |
+| 3 | 2026-07-04 | TBD | master | engage-backend, engage-frontend | deploying | sendit v4.0 — Revolut-only payout collection, tenant payout settings, legal terms, UI layout/scaling fixes, TS repair |
 
 ## Strategic docs (Jul 2026)
 | Doc | Purpose |

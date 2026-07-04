@@ -1,5 +1,17 @@
 import { useState, useEffect, useRef } from 'react';
-import { useParams } from 'react-router-dom';
+import { Link, useParams } from 'react-router-dom';
+import type { PaymentConfig } from '../../types/payment';
+import {
+  calculateTierTotals,
+  findPricingTier,
+  type ProposalCustomFieldsView,
+  type PublicSigningState,
+} from '../../utils/proposalCustomFields';
+import {
+  DECLINE_REASONS,
+  DECLINE_REASON_LABELS,
+  type DeclineReason,
+} from '../../constants/declineReasons';
 import { apiClient } from '../../utils/api';
 import { appPath } from '../../utils/appBase';
 import { formatCurrency, formatDate } from '../../utils/formatters';
@@ -15,7 +27,7 @@ import {
   ChevronUpIcon,
   PaperAirplaneIcon,
   CreditCardIcon,
-  BuildingLibraryIcon,
+
   CheckCircleIcon,
 } from '@heroicons/react/24/outline';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -73,15 +85,29 @@ interface ProposalData {
 }
 
 type QaMessage = { role: 'user' | 'assistant'; content: string };
-type SigningStep = 'review' | 'terms' | 'identity' | 'sign' | 'confirmation';
+type SigningStep =
+  | 'review'
+  | 'terms'
+  | 'engagement'
+  | 'identity'
+  | 'sign'
+  | 'payment'
+  | 'confirmation';
 
-const SIGNING_STEPS: { id: SigningStep; label: string }[] = [
-  { id: 'review', label: 'Review' },
-  { id: 'terms', label: 'Terms' },
-  { id: 'identity', label: 'Identity' },
-  { id: 'sign', label: 'Sign' },
-  { id: 'confirmation', label: 'Done' },
-];
+function buildSigningSteps(proposal: ProposalData): { id: SigningStep; label: string }[] {
+  const steps: { id: SigningStep; label: string }[] = [
+    { id: 'review', label: 'Review' },
+    { id: 'terms', label: 'Terms' },
+  ];
+  if (proposal.engagementLetter?.trim()) {
+    steps.push({ id: 'engagement', label: 'Engagement' });
+  }
+  steps.push(
+    { id: 'identity', label: 'Identity' },
+    { id: 'sign', label: 'Sign' },
+  );
+  return steps;
+}
 
 type SigningCostSummary = {
   dueToday: { amount: number; vatAmount: number; label: string } | null;
@@ -158,6 +184,8 @@ const PublicProposalView = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [termsAccepted, setTermsAccepted] = useState(false);
+  const [engagementLetterAccepted, setEngagementLetterAccepted] = useState(false);
+  const [paymentAuthAccepted, setPaymentAuthAccepted] = useState(false);
   const [signingStep, setSigningStep] = useState<SigningStep | null>(null);
   const [signatureData, setSignatureData] = useState<string>('');
   const [signerName, setSignerName] = useState('');
@@ -181,15 +209,14 @@ const PublicProposalView = () => {
   const [signingSummaryLoading, setSigningSummaryLoading] = useState(false);
   const [paymentConfig, setPaymentConfig] = useState<PaymentConfig | null>(null);
   const [showPaymentStep, setShowPaymentStep] = useState(false);
-  const [paymentMethodChoice, setPaymentMethodChoice] = useState<'direct_debit' | 'card' | null>(null);
   const [isSettingUpPayment, setIsSettingUpPayment] = useState(false);
-  const [stubMandateId, setStubMandateId] = useState<string | null>(null);
-  const [isCompletingStub, setIsCompletingStub] = useState(false);
   const qaEndRef = useRef<HTMLDivElement>(null);
   const [isMobileSign, setIsMobileSign] = useState(false);
   const [selectedTierId, setSelectedTierId] = useState<string | null>(null);
   const [awaitingAdditionalSigner, setAwaitingAdditionalSigner] = useState(false);
   const [signingState, setSigningState] = useState<PublicSigningState | null>(null);
+  const [faqExpanded, setFaqExpanded] = useState(false);
+  const [openFaqIndex, setOpenFaqIndex] = useState<number | null>(null);
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -223,12 +250,30 @@ const PublicProposalView = () => {
         const response = (await apiClient.get(`/proposals/view/${token}`)) as any;
         if (response.success) {
           setProposal(response.data);
+          if (response.data.signing) {
+            setSigningState(response.data.signing);
+            setAwaitingAdditionalSigner(Boolean(response.data.signing.awaitingAdditionalSigner));
+          }
+          if (response.data.customFields?.selectedTierId) {
+            setSelectedTierId(response.data.customFields.selectedTierId);
+          }
           setIsAccepted(response.data.status === 'ACCEPTED');
-          setPaymentComplete(response.data.paymentStatus === 'COMPLETED');
-          setPaymentPending(
-            response.data.status === 'ACCEPTED' &&
-              response.data.paymentStatus === 'PENDING',
+          setPaymentComplete(
+            response.data.paymentStatus === 'COMPLETED' ||
+              response.data.paymentStatus === 'PAID',
           );
+          const payment = response.data.payment as PaymentConfig | null | undefined;
+          if (payment) {
+            setPaymentConfig(payment);
+            setPaymentPending(
+              response.data.status === 'ACCEPTED' && payment.paymentRequired,
+            );
+          } else {
+            setPaymentPending(
+              response.data.status === 'ACCEPTED' &&
+                response.data.paymentStatus === 'PENDING',
+            );
+          }
           if (response.data.client?.contactEmail) {
             setSignerEmail(response.data.client.contactEmail);
           }
@@ -312,11 +357,13 @@ const PublicProposalView = () => {
     setSigningStep('review');
   };
 
+  const signingSteps = proposal ? buildSigningSteps(proposal) : [];
+
   const goToNextStep = () => {
-    if (!signingStep) return;
-    const idx = SIGNING_STEPS.findIndex((s) => s.id === signingStep);
-    if (idx < SIGNING_STEPS.length - 2) {
-      setSigningStep(SIGNING_STEPS[idx + 1].id);
+    if (!signingStep || !proposal) return;
+    const idx = signingSteps.findIndex((s) => s.id === signingStep);
+    if (idx >= 0 && idx < signingSteps.length - 1) {
+      setSigningStep(signingSteps[idx + 1].id);
     }
   };
 
@@ -325,34 +372,41 @@ const PublicProposalView = () => {
       setSigningStep(null);
       return;
     }
-    const idx = SIGNING_STEPS.findIndex((s) => s.id === signingStep);
-    if (idx > 0) setSigningStep(SIGNING_STEPS[idx - 1].id);
+    const idx = signingSteps.findIndex((s) => s.id === signingStep);
+    if (idx > 0) setSigningStep(signingSteps[idx - 1].id);
   };
 
   const handleSignatureSave = (signature: string) => {
     setSignatureData(signature);
   };
 
-  const handleSetupPayment = async (method: 'direct_debit' | 'card') => {
+  const handleSetupPayment = async () => {
     if (!token) return;
-    setPaymentMethodChoice(method);
+    if (!paymentAuthAccepted) {
+      toast.error('Please accept the payment authorisation first');
+      return;
+    }
     setIsSettingUpPayment(true);
     try {
       const response = (await apiClient.post(`/proposals/view/${token}/payment/setup`, {
-        preferredMethod: method,
+        preferredMethod: 'card',
+        paymentAuthAccepted: true,
       })) as any;
 
       if (response.success) {
-        const { checkoutUrl, isStub, mandateId, provider, token, mode } = response.data;
+        const { checkoutUrl, provider, token: checkoutToken, mode } = response.data;
 
-        if (provider === 'revolut' && token) {
+        if (provider === 'revolut' && checkoutToken) {
           await openRevolutCheckout({
-            token,
+            token: checkoutToken,
             mode: mode || 'sandbox',
             onSuccess: () => {
               setPaymentComplete(true);
-              setShowPaymentStep(false);
-              setPaymentConfig((prev) => (prev ? { ...prev, paymentStatus: 'COMPLETED' } : prev));
+              setPaymentPending(false);
+              setSigningStep('confirmation');
+              setPaymentConfig((prev) =>
+                prev ? { ...prev, paymentStatus: 'COMPLETED', paymentRequired: false } : prev,
+              );
               toast.success('Payment received — thank you');
             },
             onError: (message) => toast.error(message || 'Payment failed'),
@@ -363,12 +417,6 @@ const PublicProposalView = () => {
 
         if (provider === 'revolut' && checkoutUrl) {
           window.location.href = checkoutUrl;
-          return;
-        }
-
-        if (isStub && mandateId) {
-          setStubMandateId(mandateId);
-          toast('Demo mode: complete the Direct Debit setup below', { icon: '🏦' });
         }
       }
     } catch (error: any) {
@@ -378,33 +426,16 @@ const PublicProposalView = () => {
     }
   };
 
-  const handleCompleteStubMandate = async () => {
-    if (!token || !stubMandateId) return;
-    setIsCompletingStub(true);
-    try {
-      const response = (await apiClient.post(`/proposals/view/${token}/payment/complete-stub`, {
-        mandateId: stubMandateId,
-      })) as any;
-      if (response.success) {
-        setPaymentComplete(true);
-        setShowPaymentStep(false);
-        setPaymentConfig((prev) => (prev ? { ...prev, paymentStatus: 'ACTIVE' } : prev));
-        toast.success('Direct Debit mandate set up successfully');
-      }
-    } catch (error: any) {
-      toast.error(error.response?.data?.error?.message || 'Failed to complete mandate setup');
-    } finally {
-      setIsCompletingStub(false);
-    }
-  };
-
   const handleSkipPayment = async () => {
     if (!token) return;
     try {
       await apiClient.post(`/proposals/view/${token}/payment/skip`);
       setPaymentComplete(true);
-      setShowPaymentStep(false);
-      setPaymentConfig((prev) => (prev ? { ...prev, paymentStatus: 'SKIPPED' } : prev));
+      setPaymentPending(false);
+      setSigningStep('confirmation');
+      setPaymentConfig((prev) =>
+        prev ? { ...prev, paymentStatus: 'SKIPPED', paymentRequired: false } : prev,
+      );
       toast('You can set up payment with your accountant later', { icon: 'ℹ️' });
     } catch (error: any) {
       toast.error(error.response?.data?.error?.message || 'Failed to skip payment setup');
@@ -446,6 +477,9 @@ const PublicProposalView = () => {
         signerEmail,
         signatureData,
         agreementAccepted: termsAccepted,
+        engagementLetterAccepted: proposal?.engagementLetter?.trim()
+          ? engagementLetterAccepted
+          : undefined,
         authorisedToSign,
         deviceInfo,
         consentText,
@@ -454,25 +488,17 @@ const PublicProposalView = () => {
 
       if (response.success) {
         setIsAccepted(true);
-        setSigningStep('confirmation');
+        const payment = response.data?.payment as PaymentConfig | undefined;
+        if (payment) {
+          setPaymentConfig(payment);
+        }
 
-        const checkout = response.data?.checkout;
-        if (checkout?.token) {
+        if (response.data?.paymentRequired && payment?.paymentRequired) {
           setPaymentPending(true);
-          toast.success('Proposal accepted — complete payment to confirm');
-          await openRevolutCheckout({
-            token: checkout.token,
-            mode: checkout.mode || 'sandbox',
-            onSuccess: () => {
-              setPaymentComplete(true);
-              setPaymentPending(false);
-              toast.success('Payment received — thank you');
-            },
-            onError: (message) => toast.error(message),
-            onCancel: () =>
-              toast('Payment cancelled — you can pay from the link in your confirmation email'),
-          });
+          setSigningStep('payment');
+          toast.success('Proposal accepted — please complete payment');
         } else {
+          setSigningStep('confirmation');
           toast.success('Proposal accepted successfully');
         }
       }
@@ -514,16 +540,44 @@ const PublicProposalView = () => {
 
   if (!proposal) return null;
 
+  const customFields: ProposalCustomFieldsView = proposal.customFields ?? {};
+  const tiersEnabled = Boolean(
+    customFields.offerThreePackages &&
+      customFields.pricingTiers &&
+      customFields.pricingTiers.length >= 2,
+  );
+  const lockedTierId = customFields.selectedTierId ?? selectedTierId;
+  const baseTotals = {
+    subtotal: proposal.baseSubtotal ?? proposal.subtotal,
+    vatAmount: proposal.baseVatAmount ?? proposal.vatAmount,
+    total: proposal.baseTotal ?? proposal.total,
+  };
+  const selectedTierForTotals = lockedTierId
+    ? findPricingTier(customFields, lockedTierId)
+    : undefined;
+  const displayTotals = selectedTierForTotals
+    ? calculateTierTotals(baseTotals, selectedTierForTotals)
+    : baseTotals;
+  const activeTierId = isAccepted ? customFields.selectedTierId : lockedTierId;
+  const activeTier = activeTierId
+    ? findPricingTier(customFields, activeTierId) ??
+      customFields.pricingTiers?.find((t) => t.id === activeTierId)
+    : undefined;
+
   const isExpired = new Date(proposal.validUntil) < new Date();
-  const inSigningFlow = !!signingStep && !isAccepted && !isExpired;
+  const inSigningFlow =
+    !!signingStep &&
+    signingStep !== 'confirmation' &&
+    (!isAccepted || signingStep === 'payment') &&
+    !isExpired;
   const currentStepIndex = signingStep
-    ? SIGNING_STEPS.findIndex((s) => s.id === signingStep)
+    ? signingSteps.findIndex((s) => s.id === signingStep)
     : -1;
 
   const StepIndicator = () => (
     <div className="mb-6" data-testid="signing-step-indicator">
       <div className="flex items-center justify-between gap-1">
-        {SIGNING_STEPS.slice(0, 4).map((step, i) => {
+        {signingSteps.map((step, i) => {
           const active = currentStepIndex === i;
           const done = currentStepIndex > i;
           return (
@@ -609,94 +663,46 @@ const PublicProposalView = () => {
                       them at any time.
                     </p>
 
-                    {paymentPending && !paymentComplete && paymentConfig && (
-                      <>
-                        <p className="mt-4 font-semibold text-emerald-900 dark:text-emerald-200 text-lg">
-                          Proposal accepted — payment pending
+                    {paymentPending && !paymentComplete && paymentConfig?.paymentRequired && (
+                      <div className="mt-4 space-y-3">
+                        <p className="font-semibold text-emerald-900 dark:text-emerald-200">
+                          Payment still pending
                         </p>
-                        <p className="mt-1 text-sm text-emerald-700 dark:text-emerald-300">
-                          Please complete your payment of {formatCurrency(proposal.total)} to confirm
-                          your engagement.
-                        </p>
-
-                        {!stubMandateId ? (
-                    <div className="mt-4 flex flex-col sm:flex-row gap-3">
-                      {paymentConfig.provider === 'revolut' ? (
+                        <label className="flex items-start gap-2 text-sm text-emerald-800 dark:text-emerald-200">
+                          <input
+                            type="checkbox"
+                            checked={paymentAuthAccepted}
+                            onChange={(e) => setPaymentAuthAccepted(e.target.checked)}
+                            className="mt-1 rounded"
+                          />
+                          <span>
+                            I accept the{' '}
+                            <Link
+                              to="/legal/client-payment-authorisation"
+                              className="underline"
+                            >
+                              Client Payment Authorisation
+                            </Link>
+                          </span>
+                        </label>
                         <button
                           type="button"
                           data-testid="setup-revolut-payment"
-                          onClick={() => handleSetupPayment('card')}
-                          disabled={isSettingUpPayment}
-                          className="flex-1 inline-flex items-center justify-center gap-2 rounded-xl border border-sky-300 bg-white px-4 py-3 text-sm font-medium text-sky-900 hover:bg-sky-50 disabled:opacity-50 dark:bg-slate-800 dark:border-sky-700 dark:text-sky-100"
+                          onClick={handleSetupPayment}
+                          disabled={isSettingUpPayment || !paymentAuthAccepted}
+                          className="inline-flex items-center gap-2 rounded-xl border border-sky-300 bg-white px-4 py-2.5 text-sm font-medium text-sky-900 hover:bg-sky-50 disabled:opacity-50"
                         >
                           <CreditCardIcon className="h-5 w-5" />
                           {isSettingUpPayment ? 'Opening checkout…' : 'Pay now'}
                         </button>
-                      ) : (
-                        <>
-                          {paymentConfig.methods.directDebit && (
-                            <button
-                              type="button"
-                              data-testid="setup-direct-debit"
-                              onClick={() => handleSetupPayment('direct_debit')}
-                              disabled={isSettingUpPayment}
-                              className="flex-1 inline-flex items-center justify-center gap-2 rounded-xl border border-sky-300 bg-white px-4 py-3 text-sm font-medium text-sky-900 hover:bg-sky-50 disabled:opacity-50 dark:bg-slate-800 dark:border-sky-700 dark:text-sky-100"
-                            >
-                              <BuildingLibraryIcon className="h-5 w-5" />
-                              {isSettingUpPayment && paymentMethodChoice === 'direct_debit'
-                                ? 'Setting up…'
-                                : 'Set up Direct Debit'}
-                            </button>
-                          )}
-                          {paymentConfig.methods.card && (
-                            <button
-                              type="button"
-                              data-testid="setup-card"
-                              onClick={() => handleSetupPayment('card')}
-                              disabled={isSettingUpPayment}
-                              className="flex-1 inline-flex items-center justify-center gap-2 rounded-xl border border-sky-300 bg-white px-4 py-3 text-sm font-medium text-sky-900 hover:bg-sky-50 disabled:opacity-50 dark:bg-slate-800 dark:border-sky-700 dark:text-sky-100"
-                            >
-                              <CreditCardIcon className="h-5 w-5" />
-                              {isSettingUpPayment && paymentMethodChoice === 'card'
-                                ? 'Setting up…'
-                                : 'Pay by card'}
-                            </button>
-                          )}
-                        </>
-                      )}
-                    </div>
-                  ) : (
-                    <div className="mt-4 rounded-xl border border-dashed border-sky-300 bg-white/80 p-5 dark:bg-slate-900/50 dark:border-sky-700">
-                      <p className="text-sm font-medium text-sky-900 dark:text-sky-100">
-                        Demo Direct Debit mandate
-                      </p>
-                      <p className="mt-2 text-sm text-sky-800 dark:text-sky-200/80">
-                        In production, you would be redirected to a secure bank authorisation page. For
-                        this demo, confirm below to simulate mandate activation.
-                      </p>
-                      <p className="mt-2 text-xs font-mono text-slate-500 dark:text-slate-400">
-                        Mandate ref: {stubMandateId}
-                      </p>
-                      <button
-                        type="button"
-                        data-testid="complete-stub-mandate"
-                        onClick={handleCompleteStubMandate}
-                        disabled={isCompletingStub}
-                        className="mt-4 btn-primary w-full sm:w-auto"
-                      >
-                        {isCompletingStub ? 'Activating…' : 'Confirm Direct Debit (demo)'}
-                      </button>
-                    </div>
-                  )}
-
-                  <button
-                    type="button"
-                    onClick={handleSkipPayment}
-                    className="mt-4 text-sm text-slate-600 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200 underline"
-                  >
-                    Set up payment later
-                  </button>
-                      </>
+                        <button
+                          type="button"
+                          onClick={handleSkipPayment}
+                          className="block text-sm text-slate-600 underline"
+                        >
+                          Set up payment later
+                        </button>
+                      </div>
                     )}
                   </div>
                 </div>
@@ -709,9 +715,7 @@ const PublicProposalView = () => {
                 >
                   <CheckCircleIcon className="h-5 w-5 text-emerald-600 shrink-0" />
                   <p className="text-sm text-emerald-800 dark:text-emerald-200">
-                    {paymentConfig.provider === 'revolut'
-                      ? 'Payment received — thank you for completing your engagement fees.'
-                      : 'Payment mandate active — your accountant can now collect fees as agreed.'}
+                    Payment received — thank you for completing your engagement fees.
                   </p>
                 </div>
               )}
@@ -927,7 +931,10 @@ const PublicProposalView = () => {
                 <button
                   type="button"
                   data-testid="additional-signatory-button"
-                  onClick={() => setShowSignature(true)}
+                  onClick={() => {
+                    setShowDecline(false);
+                    setSigningStep('identity');
+                  }}
                   className="btn-primary mt-4 w-full sm:w-auto"
                 >
                   Add second signature
@@ -1157,6 +1164,21 @@ const PublicProposalView = () => {
           )}
 
           {/* Signing step flow */}
+          {signingStep === 'confirmation' && (
+            <div className="border-t pt-6 space-y-4" data-testid="signing-flow">
+              <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-5 dark:border-emerald-800 dark:bg-emerald-950/30">
+                <p className="font-semibold text-emerald-900 dark:text-emerald-200">
+                  {paymentComplete || !paymentConfig?.paymentRequired
+                    ? 'All done — thank you!'
+                    : 'Proposal signed — payment still pending'}
+                </p>
+                <p className="mt-2 text-sm text-emerald-800 dark:text-emerald-300">
+                  Your accountant has been notified and your onboarding journey will begin shortly.
+                </p>
+              </div>
+            </div>
+          )}
+
           {inSigningFlow && (
             <div className="border-t pt-6 space-y-4" data-testid="signing-flow">
               <StepIndicator />
@@ -1216,6 +1238,42 @@ const PublicProposalView = () => {
                       type="button"
                       className="btn-primary flex-1"
                       disabled={!termsAccepted}
+                      onClick={goToNextStep}
+                    >
+                      Continue
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {signingStep === 'engagement' && (
+                <div className="space-y-4">
+                  <h3 className="text-lg font-semibold text-slate-900 dark:text-white">
+                    Engagement letter
+                  </h3>
+                  <div className="p-4 bg-slate-50 dark:bg-slate-900/50 rounded-lg max-h-64 overflow-y-auto">
+                    <pre className="text-sm text-slate-800 dark:text-slate-200 whitespace-pre-wrap font-sans">
+                      {proposal.engagementLetter || 'No engagement letter attached.'}
+                    </pre>
+                  </div>
+                  <label className="flex items-start gap-2 text-sm text-slate-800 dark:text-slate-200">
+                    <input
+                      data-testid="engagement-letter-checkbox"
+                      type="checkbox"
+                      checked={engagementLetterAccepted}
+                      onChange={(e) => setEngagementLetterAccepted(e.target.checked)}
+                      className="mt-1 h-4 w-4 rounded"
+                    />
+                    <span>I have read and accept the engagement letter.</span>
+                  </label>
+                  <div className="flex gap-3">
+                    <button type="button" className="btn-secondary flex-1" onClick={goToPrevStep}>
+                      Back
+                    </button>
+                    <button
+                      type="button"
+                      className="btn-primary flex-1"
+                      disabled={!engagementLetterAccepted}
                       onClick={goToNextStep}
                     >
                       Continue
@@ -1323,17 +1381,74 @@ const PublicProposalView = () => {
                 </div>
               )}
 
-              <button
-                type="button"
-                data-testid="decline-proposal-button"
-                className="w-full text-sm text-slate-500 hover:text-red-600 underline"
-                onClick={() => {
-                  setSigningStep(null);
-                  setShowDecline(true);
-                }}
-              >
-                Decline this proposal
-              </button>
+              {signingStep === 'payment' && paymentConfig?.paymentRequired && (
+                <div className="space-y-4" data-testid="payment-step">
+                  <h3 className="text-lg font-semibold text-slate-900 dark:text-white">
+                    Complete your payment
+                  </h3>
+                  <p className="text-sm text-slate-600 dark:text-slate-300">
+                    Pay {formatCurrency(proposal.total)} to confirm your engagement with{' '}
+                    {proposal.tenant.name}.
+                  </p>
+                  {paymentConfig.feePreview && (
+                    <p className="text-xs text-slate-500 dark:text-slate-400">
+                      Payment is processed securely by Revolut. Your accountant receives the agreed fee
+                      after platform and processing costs.
+                    </p>
+                  )}
+                  <label className="flex items-start gap-2 text-sm text-slate-800 dark:text-slate-200">
+                    <input
+                      data-testid="payment-auth-checkbox"
+                      type="checkbox"
+                      checked={paymentAuthAccepted}
+                      onChange={(e) => setPaymentAuthAccepted(e.target.checked)}
+                      className="mt-1 h-4 w-4 rounded"
+                    />
+                    <span>
+                      I authorise payment as described in the{' '}
+                      <Link
+                        to="/legal/client-payment-authorisation"
+                        target="_blank"
+                        className="text-primary-600 hover:underline"
+                      >
+                        Client Payment Authorisation
+                      </Link>
+                      .
+                    </span>
+                  </label>
+                  <button
+                    type="button"
+                    data-testid="setup-revolut-payment"
+                    onClick={handleSetupPayment}
+                    disabled={isSettingUpPayment || !paymentAuthAccepted}
+                    className="w-full inline-flex items-center justify-center gap-2 rounded-xl border border-sky-300 bg-white px-4 py-3 text-sm font-medium text-sky-900 hover:bg-sky-50 disabled:opacity-50 dark:bg-slate-800 dark:border-sky-700 dark:text-sky-100"
+                  >
+                    <CreditCardIcon className="h-5 w-5" />
+                    {isSettingUpPayment ? 'Opening secure checkout…' : 'Pay securely with Revolut'}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleSkipPayment}
+                    className="w-full text-sm text-slate-600 hover:text-slate-800 dark:text-slate-400 underline"
+                  >
+                    Set up payment later
+                  </button>
+                </div>
+              )}
+
+              {signingStep !== 'payment' && (
+                <button
+                  type="button"
+                  data-testid="decline-proposal-button"
+                  className="w-full text-sm text-slate-500 hover:text-red-600 underline"
+                  onClick={() => {
+                    setSigningStep(null);
+                    setShowDecline(true);
+                  }}
+                >
+                  Decline this proposal
+                </button>
+              )}
             </div>
           )}
 

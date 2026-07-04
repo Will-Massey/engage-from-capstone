@@ -57,13 +57,23 @@ export async function transferToAgency({
   if (!isBusinessApiConfigured() || amountPence <= 0) return null;
 
   const { prisma } = await import('../../config/database.js');
-  const tenant = await prisma.tenant.findUnique({
-    where: { id: tenantId },
-    select: { settings: true },
-  });
+  const [payoutSettings, tenant] = await Promise.all([
+    prisma.tenantPayoutSettings.findUnique({
+      where: { tenantId },
+      select: { revolutCounterpartyId: true },
+    }),
+    prisma.tenant.findUnique({
+      where: { id: tenantId },
+      select: { settings: true },
+    }),
+  ]);
 
-  let counterpartyId = process.env.ENGAGE_DEFAULT_AGENCY_COUNTERPARTY_ID || '';
-  if (tenant?.settings) {
+  let counterpartyId =
+    payoutSettings?.revolutCounterpartyId ||
+    process.env.ENGAGE_DEFAULT_AGENCY_COUNTERPARTY_ID ||
+    '';
+
+  if (!counterpartyId && tenant?.settings) {
     try {
       const settings = JSON.parse(tenant.settings) as { revolutCounterpartyId?: string };
       if (settings.revolutCounterpartyId) {
@@ -96,4 +106,36 @@ export async function transferToAgency({
   });
 
   return result;
+}
+
+/** Create a Revolut Business counterparty from UK bank details (payout destination). */
+export async function createCounterpartyFromBankDetails({
+  companyName,
+  sortCode,
+  accountNumber,
+}: {
+  companyName: string;
+  sortCode: string;
+  accountNumber: string;
+}): Promise<string> {
+  if (!isBusinessApiConfigured()) {
+    throw new Error('Revolut Business API is not configured');
+  }
+
+  const result = await businessFetch<{ id: string }>('/counterparty', {
+    method: 'POST',
+    body: {
+      company_name: companyName,
+      bank_country: 'GB',
+      currency: 'GBP',
+      account_no: accountNumber,
+      sort_code: sortCode,
+    },
+  });
+
+  if (!result?.id) {
+    throw new Error('Failed to create Revolut counterparty for payout');
+  }
+
+  return result.id;
 }

@@ -26,7 +26,7 @@ const DashboardLayout = () => {
   }, []);
 
   return (
-    <div className="min-h-screen bg-gradient-page">
+    <div className="min-h-screen bg-gradient-page overflow-x-clip">
       <a
         href="#main-content"
         className="sr-only focus:not-sr-only focus:absolute focus:top-2 focus:left-2 focus:z-50 btn-primary text-sm"
@@ -45,10 +45,10 @@ const DashboardLayout = () => {
       <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
 
       {/* Main content */}
-      <div className="lg:pl-72">
+      <div className="lg:pl-72 xl:pl-80 min-w-0">
         {/* Header with glass effect — single instance, full dark support */}
         <div
-          className={`fixed top-0 right-0 left-0 lg:left-72 z-30 transition-all duration-300 ${
+          className={`fixed top-0 right-0 left-0 lg:left-72 xl:left-80 z-30 transition-all duration-300 ${
             scrolled ? 'shadow-lg' : ''
           }`}
           style={{

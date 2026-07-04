@@ -19,6 +19,11 @@ export interface ProposalCustomFields {
   signaturesReceived?: number;
 }
 
+/** Public proposal view — tiers may include pre-calculated totals from the API */
+export type ProposalCustomFieldsView = Omit<ProposalCustomFields, 'pricingTiers'> & {
+  pricingTiers?: Array<PricingTier & { subtotal?: number; vatAmount?: number; total?: number }>;
+};
+
 export interface PublicSigningState {
   requiredSigners: number;
   signaturesReceived: number;

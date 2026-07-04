@@ -71,6 +71,17 @@ import { AI_COPILOT } from '../../config/aiCopilot';
 import { calculateLineItem, type BillingFrequency } from '@shared/pricingEngine';
 import { calculateProposalSummaryBands, type PricingSummaryBands } from '@shared/proposalSummary';
 import { resolveCatalogBillingCycle } from '@shared/serviceBilling';
+import FeeBenchmarkChips from '../pricing/FeeBenchmarkChips';
+import ContingentFeeCalculator from '../pricing/ContingentFeeCalculator';
+import {
+  type BuildMode,
+  type ProposalDraft,
+  type ProposalTemplateSummary,
+  LEGACY_NEW_DRAFT_KEY,
+  proposalDraftKey,
+  parseDecimalInput,
+  isValidDecimalDraft,
+} from './proposalBuilderDraft';
 
 // Types
 interface Client {
@@ -441,7 +452,9 @@ export default function ProposalBuilder({ proposalId }: ProposalBuilderProps) {
 
   const applyDraftSnapshot = useCallback((draft: ProposalDraft) => {
     isHydratingDraftRef.current = true;
-    setSelectedServices(draft.selectedServices?.length ? draft.selectedServices : []);
+    setSelectedServices(
+      draft.selectedServices?.length ? (draft.selectedServices as SelectedService[]) : [],
+    );
     setProposalTitle(draft.proposalTitle || '');
     setCoverLetter(draft.coverLetter || '');
     if (draft.coverLetterTone) setCoverLetterTone(draft.coverLetterTone);
@@ -2972,11 +2985,11 @@ export default function ProposalBuilder({ proposalId }: ProposalBuilderProps) {
         </div>
       )}
 
-      {showClientPreview && (
+      {showLivePreviewPane && (
         <div className="card p-5 border-2 border-slate-200 dark:border-slate-600">
           <div className="flex items-center justify-between mb-3">
             <h3 className="font-semibold text-slate-900 dark:text-white">Client preview</h3>
-            <button type="button" onClick={() => setShowClientPreview(false)} className="text-sm text-slate-500 dark:text-slate-300 hover:text-slate-700">
+            <button type="button" onClick={() => toggleLivePreviewPane(false)} className="text-sm text-slate-500 dark:text-slate-300 hover:text-slate-700">
               Close
             </button>
           </div>

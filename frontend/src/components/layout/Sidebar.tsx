@@ -43,7 +43,7 @@ const SidebarPanel = ({
       <SidebarNavItems pathname={pathname} onNavigate={onClose} />
     </nav>
 
-    <div className="p-4 border-t border-slate-200/80 dark:border-slate-700/80 shrink-0">
+    <div className="p-3 sm:p-4 border-t border-slate-200/80 dark:border-slate-700/80 shrink-0 min-w-0">
       <UserFooter onLogout={onLogout} />
     </div>
   </div>
@@ -51,10 +51,11 @@ const SidebarPanel = ({
 
 const UserFooter = ({ onLogout }: { onLogout: () => void }) => {
   const { user } = useAuthStore();
+  const fullName = [user?.firstName, user?.lastName].filter(Boolean).join(' ');
 
   return (
-    <div className="glass-tile p-4">
-      <div className="flex items-center">
+    <div className="glass-tile !p-3 min-w-0">
+      <div className="flex items-center gap-3 min-w-0">
         <div
           className="w-10 h-10 rounded-full flex items-center justify-center text-white font-medium shrink-0"
           style={{ background: 'linear-gradient(135deg, #6366F1 0%, #8B5CF6 100%)' }}
@@ -62,11 +63,14 @@ const UserFooter = ({ onLogout }: { onLogout: () => void }) => {
           {user?.firstName?.charAt(0)}
           {user?.lastName?.charAt(0)}
         </div>
-        <div className="ml-3 min-w-0">
-          <p className="text-sm font-semibold text-slate-900 dark:text-slate-100 truncate">
-            {user?.firstName} {user?.lastName}
+        <div className="min-w-0 flex-1">
+          <p
+            className="text-sm font-semibold text-slate-900 dark:text-slate-100 leading-snug break-words"
+            title={fullName || undefined}
+          >
+            {fullName || '—'}
           </p>
-          <p className="text-xs text-slate-500 capitalize">{user?.role?.toLowerCase()}</p>
+          <p className="text-xs text-slate-500 capitalize truncate">{user?.role?.toLowerCase()}</p>
         </div>
       </div>
       <button
@@ -98,7 +102,7 @@ const Sidebar = ({ isOpen, onClose }: SidebarProps) => {
   return (
     <>
       <div
-        className={`fixed inset-y-0 left-0 z-50 w-72 transform transition-transform duration-300 ease-in-out lg:hidden border-r shadow-xl ${shellClass} ${
+        className={`fixed inset-y-0 left-0 z-50 w-72 xl:w-80 transform transition-transform duration-300 ease-in-out lg:hidden border-r shadow-xl ${shellClass} ${
           isOpen ? 'translate-x-0' : '-translate-x-full'
         }`}
       >
@@ -113,7 +117,7 @@ const Sidebar = ({ isOpen, onClose }: SidebarProps) => {
       </div>
 
       <aside
-        className={`hidden lg:fixed lg:inset-y-0 lg:left-0 lg:z-40 lg:flex lg:w-72 lg:flex-col border-r ${shellClass}`}
+        className={`hidden lg:fixed lg:inset-y-0 lg:left-0 lg:z-40 lg:flex lg:w-72 xl:w-80 lg:flex-col border-r ${shellClass}`}
       >
         <SidebarPanel
           logoUrl={logoUrl}

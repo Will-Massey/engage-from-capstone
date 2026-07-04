@@ -52,8 +52,8 @@ import {
 import {
   createPostSignMandate,
   skipPaymentSetup,
-  completeStubMandateForProposal,
   getPublicPaymentConfig,
+  shouldCollectPaymentAtSign,
 } from '../services/paymentCollection.js';
 import {
   AGREEMENT_VERSION,
@@ -62,11 +62,7 @@ import {
   hashTerms,
   lookupGeoFromIp,
 } from '../utils/signatureAudit.js';
-import {
-  createProposalCheckoutOrder,
-  proposalRequiresPayment,
-} from '../services/proposalPayment.js';
-import { isRevolutConfigured } from '../lib/revolut/revolut-client.js';
+import { proposalRequiresPayment } from '../services/proposalPayment.js';
 
 const router = Router();
 
@@ -797,6 +793,7 @@ router.post(
       signerEmail: z.string().email(),
       signatureData: z.string().min(100),
       agreementAccepted: z.boolean(),
+      engagementLetterAccepted: z.boolean().optional(),
       authorisedToSign: z.boolean(),
       deviceInfo: z.string().optional(),
       consentText: z.string().optional(),
@@ -836,6 +833,19 @@ router.post(
 
     if (!parsed.agreementAccepted) {
       throw new ApiError('AGREEMENT_REQUIRED', 'You must accept the terms and conditions', 400);
+    }
+
+    const fullForHashEarly = await prisma.proposal.findUnique({
+      where: { id: proposal.id },
+      select: { engagementLetter: true },
+    });
+    const hasEngagementLetter = Boolean(fullForHashEarly?.engagementLetter?.trim());
+    if (hasEngagementLetter && !parsed.engagementLetterAccepted) {
+      throw new ApiError(
+        'ENGAGEMENT_LETTER_REQUIRED',
+        'You must accept the engagement letter',
+        400,
+      );
     }
 
     if (!parsed.authorisedToSign) {
@@ -897,34 +907,40 @@ router.post(
       }
     }
 
-    let checkout: Awaited<ReturnType<typeof createProposalCheckoutOrder>> = null;
-
-    if (proposalRequiresPayment(proposal.total)) {
-      const fullProposal = await prisma.proposal.findUnique({
+    if (result.fullyAccepted) {
+      await prisma.proposal.update({
         where: { id: proposal.id },
-        include: { client: true },
+        data: {
+          termsAccepted: true,
+          termsAcceptedAt: new Date(),
+          engagementLetterAccepted: hasEngagementLetter
+            ? parsed.engagementLetterAccepted === true
+            : false,
+          engagementLetterAcceptedAt: hasEngagementLetter ? new Date() : null,
+        },
       });
-
-      if (fullProposal) {
-        checkout = await createProposalCheckoutOrder(
-          fullProposal,
-          { email: parsed.signerEmail, name: parsed.signedBy },
-          token,
-        );
-      }
     }
+
+    const collectPayment =
+      result.fullyAccepted &&
+      proposalRequiresPayment(proposal.total) &&
+      (await shouldCollectPaymentAtSign(proposal.tenantId));
+
+    const paymentConfig = result.fullyAccepted
+      ? await getPublicPaymentConfig(proposal.id, proposal.tenantId)
+      : null;
 
     res.json({
       success: true,
-      message: checkout
-        ? 'Proposal accepted — please complete payment to confirm'
+      message: collectPayment
+        ? 'Proposal accepted — please complete payment to confirm your engagement'
         : 'Proposal accepted successfully',
       data: {
         acceptedAt: result.fullyAccepted ? new Date() : undefined,
         acceptedBy: result.fullyAccepted ? parsed.signedBy : undefined,
         signatureId: result.signatureId,
-        paymentRequired: proposalRequiresPayment(proposal.total) && isRevolutConfigured(),
-        checkout,
+        paymentRequired: collectPayment,
+        payment: paymentConfig,
       },
     });
   })
@@ -936,9 +952,18 @@ router.post(
   asyncHandler(async (req, res) => {
     const { token } = req.params;
     const schema = z.object({
-      preferredMethod: z.enum(['direct_debit', 'card']).optional(),
+      preferredMethod: z.enum(['card', 'revolut_pay']).optional(),
+      paymentAuthAccepted: z.boolean(),
     });
-    const { preferredMethod } = schema.parse(req.body ?? {});
+    const { preferredMethod, paymentAuthAccepted } = schema.parse(req.body ?? {});
+
+    if (!paymentAuthAccepted) {
+      throw new ApiError(
+        'PAYMENT_AUTH_REQUIRED',
+        'Client payment authorisation must be accepted',
+        400,
+      );
+    }
 
     const proposal = await getProposalByShareToken(token);
     if (!proposal) {
@@ -956,6 +981,7 @@ router.post(
     try {
       const result = await createPostSignMandate(proposal.id, {
         preferredMethod: preferredMethod || 'card',
+        paymentAuthAccepted,
       });
 
       res.json({
@@ -965,34 +991,6 @@ router.post(
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : 'Failed to set up payment';
       throw new ApiError('PAYMENT_SETUP_FAILED', message, 400);
-    }
-  })
-);
-
-// Complete demo GoCardless stub mandate (public — share token)
-router.post(
-  '/view/:token/payment/complete-stub',
-  asyncHandler(async (req, res) => {
-    const { token } = req.params;
-    const schema = z.object({
-      mandateId: z.string().min(1),
-    });
-    const { mandateId } = schema.parse(req.body ?? {});
-
-    const proposal = await getProposalByShareToken(token);
-    if (!proposal) {
-      throw new ApiError('PROPOSAL_NOT_FOUND', 'Proposal not found or link expired', 404);
-    }
-
-    try {
-      const result = await completeStubMandateForProposal(proposal.id, mandateId);
-      res.json({
-        success: true,
-        data: result,
-      });
-    } catch (error: unknown) {
-      const message = error instanceof Error ? error.message : 'Failed to complete mandate';
-      throw new ApiError('PAYMENT_STUB_FAILED', message, 400);
     }
   })
 );

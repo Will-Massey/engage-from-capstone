@@ -216,8 +216,24 @@ const Settings = () => {
 
   const [paymentForm, setPaymentForm] = useState({
     collectPaymentAtSign: false,
-    allowDirectDebit: true,
     allowCard: true,
+  });
+
+  const PAYMENT_COLLECTION_TERMS_VERSION = 'ENGAGE-PCT-2026-001';
+
+  const [payoutForm, setPayoutForm] = useState({
+    enabled: false,
+    consentAccepted: false,
+    allowRevolutPay: true,
+    allowCard: true,
+    payoutMethod: 'UK_BANK_TRANSFER' as 'UK_BANK_TRANSFER' | 'REVOLUT_COUNTERPARTY',
+    accountHolderName: '',
+    sortCode: '',
+    accountNumber: '',
+    revolutCounterpartyId: '',
+    bankDetailsLast4: null as string | null,
+    platformFeeBps: 250,
+    verificationStatus: 'PENDING',
   });
 
   // Clara & AI budget (fetched for visibility meter)
@@ -266,7 +282,37 @@ const Settings = () => {
   // Load tenant settings on mount
   useEffect(() => {
     loadTenantSettings();
+    loadPayoutSettings();
   }, []);
+
+  const loadPayoutSettings = async () => {
+    try {
+      const response = (await apiClient.getPayoutSettings()) as any;
+      if (response.success && response.data) {
+        const d = response.data;
+        setPayoutForm((prev) => ({
+          ...prev,
+          enabled: d.enabled ?? false,
+          allowRevolutPay: d.allowRevolutPay ?? true,
+          allowCard: d.allowCard ?? true,
+          payoutMethod: d.payoutMethod ?? 'UK_BANK_TRANSFER',
+          accountHolderName: d.accountHolderName || '',
+          revolutCounterpartyId: d.revolutCounterpartyId || '',
+          bankDetailsLast4: d.bankDetailsLast4,
+          platformFeeBps: d.platformFeeBps ?? 250,
+          verificationStatus: d.verificationStatus ?? 'PENDING',
+          consentAccepted: d.consentVersion === PAYMENT_COLLECTION_TERMS_VERSION,
+        }));
+        setPaymentForm((prev) => ({
+          ...prev,
+          collectPaymentAtSign: d.collectPaymentAtSign ?? prev.collectPaymentAtSign,
+          allowCard: d.allowCard ?? prev.allowCard,
+        }));
+      }
+    } catch {
+      // Payout settings optional until configured
+    }
+  };
 
   // Sync profile form (phone/jobTitle) from the auth user (populated by /auth/me)
   useEffect(() => {
@@ -513,7 +559,6 @@ const Settings = () => {
           setPaymentForm((prev) => ({
             ...prev,
             collectPaymentAtSign: data.payments.collectPaymentAtSign ?? prev.collectPaymentAtSign,
-            allowDirectDebit: data.payments.allowDirectDebit ?? prev.allowDirectDebit,
             allowCard: data.payments.allowCard ?? prev.allowCard,
           }));
         }
@@ -629,22 +674,49 @@ const Settings = () => {
   const handleSaveVat = async () => {
     setIsSaving('billing');
     try {
-      const response = (await apiClient.updateTenantSettings({
+      const vatResponse = (await apiClient.updateTenantSettings({
         vat: {
           vatRegistered: vatForm.vatRegistered,
           vatNumber: vatForm.vatNumber || undefined,
           defaultVatRate: vatForm.defaultVatRate,
           autoApplyVat: vatForm.autoApplyVat,
         },
-        payments: paymentForm,
+        payments: {
+          ...paymentForm,
+          allowDirectDebit: false,
+        },
       })) as any;
-      if (response.success) {
+
+      const payoutResponse = (await apiClient.updatePayoutSettings({
+        enabled: payoutForm.enabled,
+        consentAccepted: payoutForm.consentAccepted,
+        consentVersion: payoutForm.consentAccepted
+          ? PAYMENT_COLLECTION_TERMS_VERSION
+          : undefined,
+        allowRevolutPay: payoutForm.allowRevolutPay,
+        allowCard: payoutForm.allowCard,
+        payoutMethod: payoutForm.payoutMethod,
+        accountHolderName: payoutForm.accountHolderName || undefined,
+        sortCode: payoutForm.sortCode || undefined,
+        accountNumber: payoutForm.accountNumber || undefined,
+        revolutCounterpartyId: payoutForm.revolutCounterpartyId || undefined,
+        collectPaymentAtSign: payoutForm.enabled ? paymentForm.collectPaymentAtSign : false,
+      })) as any;
+
+      if (vatResponse.success && payoutResponse.success) {
         toast.success('Billing settings saved');
+        await loadPayoutSettings();
       } else {
-        toast.error(response.error?.message || 'Failed to save billing settings');
+        toast.error(
+          payoutResponse.error?.message ||
+            vatResponse.error?.message ||
+            'Failed to save billing settings',
+        );
       }
     } catch (error: any) {
-      toast.error(error.message || 'Failed to save billing settings');
+      toast.error(
+        error.response?.data?.error?.message || error.message || 'Failed to save billing settings',
+      );
     } finally {
       setIsSaving(null);
     }
@@ -1897,60 +1969,166 @@ const Settings = () => {
                     </select>
                   </div>
                 </div>
-                <div className="border-t border-slate-200 dark:border-slate-700 pt-8">
-                  <h3 className="text-base font-semibold text-slate-900 dark:text-white">
-                    Payment collection at sign
-                  </h3>
-                  <p className="mt-1 text-sm text-slate-500 dark:text-slate-300">
-                    Offer Direct Debit or card setup immediately after a client signs (Ignition-style).
-                    Uses Revolut when configured; otherwise a demo GoCardless stub is used.
-                  </p>
-                  <div className="mt-4 space-y-4">
-                    <label className="flex items-start gap-3">
+                <div className="border-t border-slate-200 dark:border-slate-700 pt-8 space-y-6">
+                  <div data-testid="receive-payments-through-engage">
+                    <h3 className="text-base font-semibold text-slate-900 dark:text-white">
+                      Receive Payments Through Engage
+                    </h3>
+                    <p className="mt-1 text-sm text-slate-500 dark:text-slate-300">
+                      Collect client fees via Revolut. We deduct a {(payoutForm.platformFeeBps / 100).toFixed(1)}%
+                      platform fee plus payment processing costs, then pay the remainder to your bank account.
+                    </p>
+                    <label className="mt-4 flex items-start gap-3">
+                      <input
+                        type="checkbox"
+                        data-testid="payout-enabled"
+                        checked={payoutForm.enabled}
+                        onChange={(e) =>
+                          setPayoutForm({ ...payoutForm, enabled: e.target.checked })
+                        }
+                        className="mt-1 rounded border-slate-300 dark:border-slate-500"
+                      />
+                      <span className="text-sm text-slate-700 dark:text-slate-100">
+                        Enable payment collection and automatic payouts
+                      </span>
+                    </label>
+
+                    {payoutForm.enabled && (
+                      <div className="mt-4 ml-7 space-y-4">
+                        <label className="flex items-start gap-2 text-sm">
+                          <input
+                            type="checkbox"
+                            data-testid="payout-consent"
+                            checked={payoutForm.consentAccepted}
+                            onChange={(e) =>
+                              setPayoutForm({ ...payoutForm, consentAccepted: e.target.checked })
+                            }
+                            className="mt-1 rounded"
+                          />
+                          <span>
+                            I agree to the{' '}
+                            <a
+                              href="/legal/payment-collection-terms"
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-primary-600 hover:underline"
+                            >
+                              Payment Collection Terms
+                            </a>{' '}
+                            (v{PAYMENT_COLLECTION_TERMS_VERSION})
+                          </span>
+                        </label>
+
+                        <div>
+                          <label className="block text-sm font-medium text-slate-700 dark:text-slate-200">
+                            Account holder name
+                          </label>
+                          <input
+                            type="text"
+                            value={payoutForm.accountHolderName}
+                            onChange={(e) =>
+                              setPayoutForm({ ...payoutForm, accountHolderName: e.target.value })
+                            }
+                            className="mt-1 input-field w-full max-w-md"
+                          />
+                        </div>
+
+                        <div className="grid sm:grid-cols-2 gap-4 max-w-md">
+                          <div>
+                            <label className="block text-sm font-medium text-slate-700 dark:text-slate-200">
+                              Sort code
+                            </label>
+                            <input
+                              type="text"
+                              inputMode="numeric"
+                              placeholder="00-00-00"
+                              value={payoutForm.sortCode}
+                              onChange={(e) =>
+                                setPayoutForm({ ...payoutForm, sortCode: e.target.value })
+                              }
+                              className="mt-1 input-field w-full"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-sm font-medium text-slate-700 dark:text-slate-200">
+                              Account number
+                            </label>
+                            <input
+                              type="text"
+                              inputMode="numeric"
+                              placeholder="12345678"
+                              value={payoutForm.accountNumber}
+                              onChange={(e) =>
+                                setPayoutForm({ ...payoutForm, accountNumber: e.target.value })
+                              }
+                              className="mt-1 input-field w-full"
+                            />
+                          </div>
+                        </div>
+                        {payoutForm.bankDetailsLast4 && !payoutForm.accountNumber && (
+                          <p className="text-xs text-slate-500">
+                            Saved account ending {payoutForm.bankDetailsLast4}
+                          </p>
+                        )}
+
+                        <div className="space-y-2">
+                          <label className="flex items-center gap-2 text-sm">
+                            <input
+                              type="checkbox"
+                              checked={payoutForm.allowCard}
+                              onChange={(e) =>
+                                setPayoutForm({ ...payoutForm, allowCard: e.target.checked })
+                              }
+                              className="rounded"
+                            />
+                            Card payments (Revolut checkout)
+                          </label>
+                          <label className="flex items-center gap-2 text-sm">
+                            <input
+                              type="checkbox"
+                              checked={payoutForm.allowRevolutPay}
+                              onChange={(e) =>
+                                setPayoutForm({ ...payoutForm, allowRevolutPay: e.target.checked })
+                              }
+                              className="rounded"
+                            />
+                            Revolut Pay
+                          </label>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  <div>
+                    <h3 className="text-base font-semibold text-slate-900 dark:text-white">
+                      Payment collection at sign
+                    </h3>
+                    <p className="mt-1 text-sm text-slate-500 dark:text-slate-300">
+                      After a client signs, offer secure Revolut checkout to collect engagement fees
+                      immediately.
+                    </p>
+                    <label className="mt-4 flex items-start gap-3">
                       <input
                         type="checkbox"
                         data-testid="collect-payment-at-sign"
                         checked={paymentForm.collectPaymentAtSign}
+                        disabled={!payoutForm.enabled}
                         onChange={(e) =>
                           setPaymentForm({ ...paymentForm, collectPaymentAtSign: e.target.checked })
                         }
-                        className="mt-1 rounded border-slate-300 dark:border-slate-500"
+                        className="mt-1 rounded border-slate-300 dark:border-slate-500 disabled:opacity-50"
                       />
                       <span>
                         <span className="text-sm font-semibold text-slate-700 dark:text-slate-100">
-                          Collect payment at sign
+                          Collect payment after signing
                         </span>
                         <span className="block text-xs text-slate-500 dark:text-slate-300 mt-0.5">
-                          Clients see a payment setup step after accepting the proposal
+                          {payoutForm.enabled
+                            ? 'Clients complete payment authorisation and Revolut checkout after acceptance'
+                            : 'Enable Receive Payments Through Engage first'}
                         </span>
                       </span>
                     </label>
-                    {paymentForm.collectPaymentAtSign && (
-                      <div className="ml-7 space-y-2">
-                        <label className="flex items-center gap-2 text-sm text-slate-700 dark:text-slate-200">
-                          <input
-                            type="checkbox"
-                            checked={paymentForm.allowDirectDebit}
-                            onChange={(e) =>
-                              setPaymentForm({ ...paymentForm, allowDirectDebit: e.target.checked })
-                            }
-                            className="rounded border-slate-300"
-                          />
-                          Direct Debit
-                        </label>
-                        <label className="flex items-center gap-2 text-sm text-slate-700 dark:text-slate-200">
-                          <input
-                            type="checkbox"
-                            checked={paymentForm.allowCard}
-                            onChange={(e) =>
-                              setPaymentForm({ ...paymentForm, allowCard: e.target.checked })
-                            }
-                            className="rounded border-slate-300"
-                          />
-                          Card
-                        </label>
-                      </div>
-                    )}
                   </div>
                 </div>
 
