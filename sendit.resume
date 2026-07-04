@@ -1,12 +1,22 @@
-# sendit.resume - auto-generated checkpoint (keep in git)
-pending: false
-written: 2026-07-03 17:17:27 UTC
-project_root: C:\Users\willi\engage-from-capstone
-commit: ef42fa3
-branch: master
-phase: Phase: **Premier Service â€” Deploy & verify** â€” `in_progress` (sendit v3.5)
-goal: Become the **premier UK accountancy proposal platform** â€” see `PREMIER_SERVICE_STRATEGY.md` and `PREMIER_SERVICE_TODO.md`.
-next_up_1: William: finish Xero/QB mandate draft (`backend/src/routes/xero.ts`)
+# Sendit Resume
 
-# Agent: on resume read ~/.grok/sendit.active OR project_root paths below.
-# NEVER glob search. Execute next_up_1 immediately. Set pending: false when done.
+**Last Deploy:** 2026-07-04 13:52:11 UTC
+
+**Goal:**  
+Become the **premier UK accountancy proposal platform** — see `PREMIER_SERVICE_STRATEGY.md` and `PREMIER_SERVICE_TODO.md`.
+
+**Current Phase:**  
+Phase: **Premier Service — Deploy & verify** — `in_progress` (sendit v4.0)
+
+**Next Up:**
+- Production smoke: Settings → Receive Payments (bank opt-in) + client sign → Revolut checkout at capstonesoftware.co.uk/engage
+- Run Prisma migration `20260704120000_tenant_payout_settings` on Render if not auto-applied
+- William: confirm UI fixes — sidebar full name, header safe-area, AI panel scales on resize
+
+**Status:** pending = true
+
+<!-- Machine hints (do not expand on resume):
+project_root: C:\Users\willi\engage-from-capstone
+commit: 8171f8a
+branch: master
+-->

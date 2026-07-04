@@ -41,7 +41,7 @@ Phase: **Premier Service — Deploy & verify** — `in_progress` (sendit v4.0)
 |---|------------|--------|--------|-----------------|--------|-------|
 | 1 | 2026-06-30 | fdbc3e8 | master | engage-backend, engage-frontend | live | UI dark/light + Clara surfaces |
 | 2 | 2026-07-03 | 6372c68 | master | engage-backend, engage-frontend | live | sendit v3.5 — 7-day trial, backlog, schema/test fix, superadmin payment reporting; 123 tests pass; all endpoints 200 |
-| 3 | 2026-07-04 | TBD | master | engage-backend, engage-frontend | deploying | sendit v4.0 — Revolut-only payout collection, tenant payout settings, legal terms, UI layout/scaling fixes, TS repair |
+| 3 | 2026-07-04 | 8171f8a | master | engage-backend, engage-frontend | deploying | sendit v4.0 — Revolut-only payout collection, tenant payout settings, legal terms, UI layout/scaling fixes, TS repair |
 
 ## Strategic docs (Jul 2026)
 | Doc | Purpose |
