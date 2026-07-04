@@ -1,6 +1,6 @@
 # Sendit Resume
 
-**Last Deploy:** 2026-07-04 20:40:51 UTC
+**Last Deploy:** 2026-07-04 20:58:08 UTC
 
 **Goal:**  
 Become the **premier UK accountancy proposal platform** — see `PREMIER_SERVICE_STRATEGY.md` and `PREMIER_SERVICE_TODO.md`.
@@ -17,6 +17,6 @@ Phase: **Premier Service — Payout UAT done** — `in_progress` (demo tenant pa
 
 <!-- Machine hints (do not expand on resume):
 project_root: C:\Users\willi\engage-from-capstone
-commit: 56d73e0
+commit: 631786b
 branch: master
 -->
