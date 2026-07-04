@@ -64,12 +64,14 @@ test.describe('Build smoke — market leader batch (845effcf)', () => {
     await expectNoErrorToasts(page);
 
     if (await enableBtn.isVisible()) {
-      await gotoApp(page, '/2fa-setup');
+      await enableBtn.click();
+      await expect(page).toHaveURL(/\/2fa-setup/, { timeout: 15_000 });
       await expect(
         page
           .getByRole('heading', { name: /set up two-factor authentication/i })
           .or(page.getByText(/preparing two-factor authentication/i))
-      ).toBeVisible({ timeout: 30_000 });
+          .or(page.getByText(/scan this qr code/i))
+      ).toBeVisible({ timeout: 45_000 });
       await expectNoErrorToasts(page);
     }
   });

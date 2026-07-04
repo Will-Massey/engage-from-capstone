@@ -5,6 +5,8 @@ import { authenticate } from '../middleware/auth.js';
 import { ApiError, asyncHandler } from '../middleware/errorHandler.js';
 import logger from '../config/logger.js';
 import { synthesiseWinLoss } from '../services/winLossSynthesisService.js';
+import { getFeeBenchmarks } from '../services/feeBenchmarkService.js';
+import { getProposalSettings } from '../utils/tenantProposalSettings.js';
 
 const router = Router();
 
@@ -807,6 +809,26 @@ router.get(
     const monthsBack = Math.min(12, Math.max(1, Number(req.query.months) || 1));
     const data = await synthesiseWinLoss(req.tenantId!, monthsBack);
     res.json({ success: true, data });
+  }),
+);
+
+/** GET /api/analytics/fee-benchmarks — anonymised cross-practice fee bands */
+router.get(
+  '/fee-benchmarks',
+  asyncHandler(async (req, res) => {
+    const tenant = await prisma.tenant.findUnique({
+      where: { id: req.tenantId! },
+      select: { settings: true },
+    });
+    const optedIn = getProposalSettings(tenant?.settings).benchmarksOptIn;
+    const data = await getFeeBenchmarks();
+    res.json({
+      success: true,
+      data: {
+        ...data,
+        optedIn,
+      },
+    });
   }),
 );
 
