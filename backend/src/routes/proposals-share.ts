@@ -518,6 +518,24 @@ const publicProposalAiLimiter = rateLimit({
   legacyHeaders: false,
 });
 
+/** 5 sign/decline attempts per share token per hour */
+const publicSignDeclineLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000,
+  max: 5,
+  skip: () => !rateLimitingEnabled,
+  keyGenerator: (req) =>
+    `public-proposal-action:${hashShareToken(req.params.token)}:${req.ip || 'unknown'}`,
+  message: {
+    success: false,
+    error: {
+      code: 'RATE_LIMIT_EXCEEDED',
+      message: 'Too many attempts. Please try again later.',
+    },
+  },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
 // View proposal by share token (public — possession of link is sufficient)
 router.get(
   '/view/:token',
@@ -786,6 +804,7 @@ router.get(
 // Submit electronic signature (public — link possession = access)
 router.post(
   '/view/:token/sign',
+  publicSignDeclineLimiter,
   asyncHandler(async (req, res) => {
     const schema = z.object({
       signedBy: z.string().min(2),
@@ -999,6 +1018,11 @@ router.post(
 router.post(
   '/view/:token/payment/skip',
   asyncHandler(async (req, res) => {
+    const skipSchema = z.object({
+      acknowledged: z.literal(true),
+      reason: z.string().max(500).optional(),
+    });
+    const { reason } = skipSchema.parse(req.body ?? {});
     const { token } = req.params;
 
     const proposal = await getProposalByShareToken(token);
@@ -1014,7 +1038,68 @@ router.post(
       );
     }
 
+    const paymentConfig = await getPublicPaymentConfig(proposal.id, proposal.tenantId);
+    if (!paymentConfig.paymentRequired) {
+      throw new ApiError(
+        'PAYMENT_SKIP_NOT_ALLOWED',
+        'Payment setup is not required for this proposal',
+        400
+      );
+    }
+
+    if (proposal.paymentStatus === 'COMPLETED' || proposal.paymentStatus === 'SKIPPED') {
+      throw new ApiError('ALREADY_RESOLVED', 'Payment status is already finalised', 400);
+    }
+
     await skipPaymentSetup(proposal.id);
+
+    logger.info('Payment setup skipped by client', {
+      proposalId: proposal.id,
+      tenantId: proposal.tenantId,
+      tokenHash: hashShareToken(token),
+      reason: reason?.trim() || null,
+      ip: req.ip,
+    });
+
+    try {
+      const fullProposal = await prisma.proposal.findUnique({
+        where: { id: proposal.id },
+        include: {
+          client: true,
+          createdBy: { select: { email: true, firstName: true, lastName: true } },
+        },
+      });
+
+      const notifyEmail = fullProposal?.createdBy?.email;
+      if (notifyEmail && fullProposal) {
+        const subject = `Payment setup skipped: ${fullProposal.reference}`;
+        const text = [
+          'A client signed your proposal but chose to set up payment later.',
+          '',
+          `Client: ${fullProposal.client.name}`,
+          `Proposal: ${fullProposal.title} (${fullProposal.reference})`,
+          reason?.trim() ? `Note: ${reason.trim()}` : '',
+          '',
+          `View in Engage: ${getFrontendUrl()}/proposals/${proposal.id}`,
+        ]
+          .filter(Boolean)
+          .join('\n');
+
+        await tenantMailer.send({
+          tenantId: proposal.tenantId,
+          messageType: 'OTHER',
+          message: {
+            to: notifyEmail,
+            subject,
+            text,
+            html: text.replace(/\n/g, '<br>'),
+          },
+          relatedIds: { proposalId: proposal.id, clientId: fullProposal.clientId },
+        });
+      }
+    } catch (error) {
+      logger.error('Failed to send payment skip notification:', error);
+    }
 
     res.json({
       success: true,
@@ -1050,6 +1135,7 @@ router.get(
 // Decline proposal (public)
 router.post(
   '/view/:token/decline',
+  publicSignDeclineLimiter,
   asyncHandler(async (req, res) => {
     const schema = z
       .object({

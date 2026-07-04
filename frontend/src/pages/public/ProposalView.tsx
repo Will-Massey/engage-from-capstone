@@ -219,15 +219,6 @@ const PublicProposalView = () => {
   const [openFaqIndex, setOpenFaqIndex] = useState<number | null>(null);
 
   useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    if (params.get('payment') === 'success') {
-      setPaymentComplete(true);
-      setShowPaymentStep(false);
-      setPaymentConfig((prev) => (prev ? { ...prev, paymentStatus: 'COMPLETED' } : prev));
-    }
-  }, []);
-
-  useEffect(() => {
     const mq = window.matchMedia('(max-width: 639px)');
     const update = () => setIsMobileSign(mq.matches);
     update();
@@ -237,10 +228,31 @@ const PublicProposalView = () => {
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
-    if (params.get('payment') === 'success') {
-      setPaymentComplete(true);
-    }
-  }, []);
+    if (params.get('payment') !== 'success' || !token) return;
+
+    const verifyPaymentReturn = async () => {
+      try {
+        const response = (await apiClient.get(`/proposals/view/${token}/payment-status`)) as any;
+        if (response.success && response.data?.paid) {
+          setPaymentComplete(true);
+          setShowPaymentStep(false);
+          setPaymentPending(false);
+          setPaymentConfig((prev) =>
+            prev ? { ...prev, paymentStatus: 'COMPLETED', paymentRequired: false } : prev,
+          );
+        }
+      } catch {
+        // Ignore — proposal load will show authoritative payment status
+      } finally {
+        params.delete('payment');
+        const query = params.toString();
+        const nextUrl = `${window.location.pathname}${query ? `?${query}` : ''}`;
+        window.history.replaceState({}, '', nextUrl);
+      }
+    };
+
+    void verifyPaymentReturn();
+  }, [token]);
 
   useEffect(() => {
     const loadProposal = async () => {
@@ -429,7 +441,7 @@ const PublicProposalView = () => {
   const handleSkipPayment = async () => {
     if (!token) return;
     try {
-      await apiClient.post(`/proposals/view/${token}/payment/skip`);
+      await apiClient.post(`/proposals/view/${token}/payment/skip`, { acknowledged: true });
       setPaymentComplete(true);
       setPaymentPending(false);
       setSigningStep('confirmation');

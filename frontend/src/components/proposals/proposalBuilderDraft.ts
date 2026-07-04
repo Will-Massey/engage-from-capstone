@@ -25,6 +25,24 @@ export interface ProposalDraft {
 
 export const LEGACY_NEW_DRAFT_KEY = 'engage_proposal_builder_draft';
 
+/** Remove all locally cached proposal builder drafts (call on logout). */
+export function clearAllProposalDrafts(): void {
+  if (typeof localStorage === 'undefined') return;
+  const keysToRemove: string[] = [];
+  for (let i = 0; i < localStorage.length; i++) {
+    const key = localStorage.key(i);
+    if (
+      key &&
+      (key === LEGACY_NEW_DRAFT_KEY ||
+        key.startsWith('engage_proposal_draft_') ||
+        key.startsWith('engage_proposal_edit_draft_'))
+    ) {
+      keysToRemove.push(key);
+    }
+  }
+  keysToRemove.forEach((key) => localStorage.removeItem(key));
+}
+
 export function proposalDraftKey(proposalId: string | undefined, clientId: string): string {
   if (proposalId) return `engage_proposal_edit_draft_${proposalId}`;
   return `engage_proposal_draft_${clientId}`;

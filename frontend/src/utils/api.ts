@@ -440,8 +440,17 @@ export const apiClient = {
   delete: (url: string, config?: any) => api.delete(url, config),
 
   // Auth
-  login: (email: string, password: string, tenantId?: string) =>
-    api.post('/auth/login', { email, password, tenantId }),
+  login: (
+    email: string,
+    password: string,
+    options?: { tenantId?: string; rememberMe?: boolean }
+  ) =>
+    api.post('/auth/login', {
+      email,
+      password,
+      tenantId: options?.tenantId,
+      rememberMe: options?.rememberMe,
+    }),
 
   register: (data: {
     email: string;

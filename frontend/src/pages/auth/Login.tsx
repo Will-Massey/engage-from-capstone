@@ -45,7 +45,9 @@ const Login = () => {
   const onSubmit = async (data: LoginForm) => {
     setIsLoading(true);
     try {
-      const response = (await apiClient.login(data.email, data.password)) as any;
+      const response = (await apiClient.login(data.email, data.password, {
+        rememberMe: data.rememberMe,
+      })) as any;
 
       if (response.success) {
         if (response.data.requires2FA && response.data.pendingToken) {

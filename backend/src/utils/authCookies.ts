@@ -50,13 +50,18 @@ function csrfCookieOptions() {
 export function setAuthCookies(
   res: Response,
   accessToken: string,
-  refreshToken: string
+  refreshToken: string,
+  options?: { rememberMe?: boolean }
 ): { csrfToken: string } {
   const opts = cookieOptions();
   const csrfOpts = csrfCookieOptions();
+  const refreshDays = options?.rememberMe ? 30 : 7;
 
   res.cookie('accessToken', accessToken, opts);
-  res.cookie('refreshToken', refreshToken, { ...opts, maxAge: 7 * 24 * 60 * 60 * 1000 });
+  res.cookie('refreshToken', refreshToken, {
+    ...opts,
+    maxAge: refreshDays * 24 * 60 * 60 * 1000,
+  });
 
   const csrfToken = generateCsrfToken();
   registerCsrfToken(csrfToken);

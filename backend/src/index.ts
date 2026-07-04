@@ -132,6 +132,11 @@ app.use(
 );
 
 // CORS configuration - allow multiple origins
+const corsExtraOrigins = (process.env.CORS_EXTRA_ORIGINS || '')
+  .split(',')
+  .map((o) => o.trim())
+  .filter(Boolean);
+
 const allowedOrigins = [
   process.env.FRONTEND_URL,
   'https://capstonesoftware.co.uk',
@@ -140,12 +145,11 @@ const allowedOrigins = [
   'https://engage-frontend-0g6u.onrender.com',
   'http://localhost:5173',
   'http://127.0.0.1:5173',
-  'http://192.168.1.86:5173',
-  'http://100.83.223.249:5173',
   'https://frontend-fawn-eta-13.vercel.app',
   'https://frontend-7bwwe5u7u-will-masseys-projects-b935486d.vercel.app',
   'https://frontend-o4blqd5z2-will-masseys-projects-b935486d.vercel.app',
   'https://frontend-go1ntbkne-will-masseys-projects-b935486d.vercel.app',
+  ...corsExtraOrigins,
 ].filter(Boolean);
 
 // Regex to match any Vercel preview URL from this project
@@ -161,13 +165,40 @@ const ALLOW_RENDER_WILDCARD_ORIGINS = process.env.ALLOW_RENDER_WILDCARD_ORIGINS 
 // In development, allow all localhost origins
 const isDevelopment = process.env.NODE_ENV !== 'production';
 
+const WEBHOOK_PATH_PREFIXES = [
+  '/api/payments/webhook',
+  '/api/billing/webhook',
+  '/api/webhooks/',
+  '/api/aml/webhook',
+];
+
+function isWebhookPath(path: string): boolean {
+  return WEBHOOK_PATH_PREFIXES.some((prefix) => path.startsWith(prefix));
+}
+
 const corsOptions = {
   origin: function (
     origin: string | undefined,
     callback: (err: Error | null, allow?: boolean) => void
   ) {
-    // Allow requests with no origin (like mobile apps or curl requests)
-    if (!origin) return callback(null, true);
+    const req = (this as { req?: express.Request } | undefined)?.req;
+    const requestPath = req?.path || '';
+
+    // Missing Origin: only webhooks and Capacitor native shells in production
+    if (!origin) {
+      if (isWebhookPath(requestPath)) {
+        return callback(null, true);
+      }
+      if (
+        isDevelopment ||
+        requestPath.startsWith('/api/health') ||
+        requestPath === '/health' ||
+        requestPath === '/api/health/ping'
+      ) {
+        return callback(null, true);
+      }
+      return callback(new Error('Origin header required'));
+    }
 
     // Capacitor iOS / Android WebView origins
     if (
@@ -218,10 +249,12 @@ const corsOptions = {
   allowedHeaders: ['Content-Type', 'Authorization', 'X-Tenant-Id', 'X-Request-Id', 'X-CSRF-Token', 'X-Test-Mode'],
 };
 
-app.use(cors(corsOptions));
+app.use((req, res, next) => cors({ ...corsOptions, origin: corsOptions.origin.bind({ req }) })(req, res, next));
 
 // Handle preflight requests explicitly
-app.options('*', cors(corsOptions));
+app.options('*', (req, res, next) =>
+  cors({ ...corsOptions, origin: corsOptions.origin.bind({ req }) })(req, res, next)
+);
 
 // Login: only count failed attempts (successful logins do not consume quota)
 const loginLimiter = rateLimit({
@@ -331,6 +364,43 @@ const publicProposalLimiter = rateLimit({
 
 app.use('/api/proposals/view', publicProposalLimiter);
 
+const portalLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 30,
+  skip: (req) => shouldSkipRateLimit(req.headers),
+  message: {
+    success: false,
+    error: {
+      code: 'RATE_LIMIT_EXCEEDED',
+      message: 'Too many requests. Please try again later.',
+    },
+  },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+app.use('/api/proposals/portal', portalLimiter);
+
+const amlSubmitLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000,
+  max: 5,
+  skip: (req) => shouldSkipRateLimit(req.headers),
+  message: {
+    success: false,
+    error: {
+      code: 'RATE_LIMIT_EXCEEDED',
+      message: 'Too many submissions. Please try again later.',
+    },
+  },
+});
+
+app.use('/api/onboarding', (req, res, next) => {
+  if (req.method === 'POST') {
+    return amlSubmitLimiter(req, res, next);
+  }
+  next();
+});
+
 // Logging
 app.use(
   morgan('combined', {
@@ -425,7 +495,8 @@ app.get('/api/seed-services-public', async (req, res) => {
     });
     return;
   }
-  if (secret !== expected) {
+  const { secureCompare } = await import('./utils/secureCompare.js');
+  if (!secureCompare(secret, expected)) {
     res.status(403).json({ success: false, error: { code: 'FORBIDDEN', message: 'Invalid key' } });
     return;
   }

@@ -24,7 +24,10 @@ function validateSignature({
 }): boolean {
   if (!originalSignature || !signingSecret) return false;
   const expected = `${signatureVersion}=` + calculateHmac(payloadToSign, signingSecret);
-  return originalSignature === expected;
+  if (originalSignature.length !== expected.length) {
+    return false;
+  }
+  return crypto.timingSafeEqual(Buffer.from(originalSignature), Buffer.from(expected));
 }
 
 function validateTimestamp(requestTimestamp: string): boolean {

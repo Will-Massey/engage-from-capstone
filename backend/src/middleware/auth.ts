@@ -7,9 +7,14 @@ import { hasFullAccess } from '../constants/roles.js';
 import { isCsrfTokenRegistered, isCsrfTokenRegisteredAsync, registerCsrfToken } from '../utils/csrfStore.js';
 
 const JWT_SECRET = process.env.JWT_SECRET;
+const JWT_REFRESH_SECRET = process.env.JWT_REFRESH_SECRET || JWT_SECRET;
 
 if (!JWT_SECRET) {
   throw new Error('JWT_SECRET environment variable is required');
+}
+
+if (process.env.NODE_ENV === 'production' && !process.env.JWT_REFRESH_SECRET) {
+  throw new Error('JWT_REFRESH_SECRET environment variable is required in production');
 }
 
 // Extended request type with user and tenant
@@ -64,9 +69,21 @@ export const generateToken = (user: {
   );
 };
 
+export function verifyRefreshToken(token: string): { userId: string } | null {
+  try {
+    const decoded = jwt.verify(token, JWT_REFRESH_SECRET) as { userId?: string; purpose?: string };
+    if (!decoded.userId || decoded.purpose !== 'refresh') {
+      return null;
+    }
+    return { userId: decoded.userId };
+  } catch {
+    return null;
+  }
+}
+
 // Generate refresh token
 export const generateRefreshToken = async (userId: string): Promise<string> => {
-  const refreshToken = jwt.sign({ userId }, JWT_SECRET, {
+  const refreshToken = jwt.sign({ userId, purpose: 'refresh' }, JWT_REFRESH_SECRET, {
     expiresIn: (process.env.JWT_REFRESH_EXPIRES_IN || '7d') as jwt.SignOptions['expiresIn'],
   });
 
@@ -292,10 +309,15 @@ export const csrfProtection = async (
     return;
   }
 
-  // Skip CSRF for auth routes and public endpoints
+  // Skip CSRF for unauthenticated auth routes and public endpoints
   // Note: paths are relative to where CSRF middleware is mounted (/api)
   const publicPaths = [
-    '/auth', // All auth routes (login, register, csrf-token, etc.)
+    '/auth/login',
+    '/auth/register',
+    '/auth/csrf-token',
+    '/auth/forgot-password',
+    '/auth/reset-password',
+    '/auth/2fa/login',
     '/payments/webhook',
     '/billing/webhook', // Revolut Merchant API (HMAC-verified)
     '/oauth/callback',

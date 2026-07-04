@@ -12,6 +12,7 @@ import {
   r2GetObject,
   r2PutObject,
 } from './r2Storage.js';
+import { bufferMatchesMime, isPngBuffer } from '../utils/magicBytes.js';
 
 function resolveUploadsDir(): string {
   if (process.env.UPLOADS_DIR) {
@@ -84,6 +85,9 @@ export async function saveSignaturePng(
     const filename = `${proposalId}_${timestamp}.png`;
     const relativePath = path.join('signatures', tenantId, filename);
     const buffer = Buffer.from(base64Content, 'base64');
+    if (!isPngBuffer(buffer)) {
+      throw new Error('Invalid signature image — PNG format required');
+    }
     await writeBytes(relativePath, buffer, 'image/png');
     logger.info(`Signature saved: ${relativePath}`);
     return relativePath;
@@ -166,6 +170,9 @@ export async function saveAmlDocument(
   }
   if (buffer.length > AML_MAX_FILE_BYTES) {
     throw new Error('File exceeds the 10 MB limit');
+  }
+  if (!bufferMatchesMime(buffer, mimeType)) {
+    throw new Error('File content does not match its declared type');
   }
 
   const safeBase = originalFileName.replace(/[^\w.-]+/g, '_').slice(0, 80) || documentType;

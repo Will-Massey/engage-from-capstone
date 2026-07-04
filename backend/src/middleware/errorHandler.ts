@@ -57,7 +57,6 @@ export const errorHandler = (err: Error, req: Request, res: Response, _next: Nex
       error: {
         code: 'VALIDATION_ERROR',
         message: 'Invalid request data',
-        details: err.message,
       },
     });
     return;

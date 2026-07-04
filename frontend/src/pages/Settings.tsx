@@ -1,4 +1,5 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
+import DOMPurify from 'dompurify';
 import { createPortal } from 'react-dom';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuthStore } from '../stores/authStore';
@@ -2815,6 +2816,19 @@ function AutomationTab() {
   const [form, setForm] = useState({ subject: '', body: '', tone: 'WARM', isMarketing: false, isActive: true });
   const [restoring, setRestoring] = useState(false);
 
+  const previewHtml = useMemo(() => {
+    const merged = (form.body || 'Your message body...')
+      .replace(/\{\{client_name\}\}/g, 'Acme Ltd')
+      .replace(/\{\{contact_name\}\}/g, 'Jane Smith')
+      .replace(/\{\{practice_name\}\}/g, 'Your Practice')
+      .replace(/\{\{next_step\}\}/g, 'Please upload your last 3 months of bank statements')
+      .replace(/\{\{due_date\}\}/g, '28 June 2026');
+    return DOMPurify.sanitize(merged, {
+      ALLOWED_TAGS: ['p', 'br', 'strong', 'em', 'b', 'i', 'u', 'ul', 'ol', 'li', 'a', 'span', 'div'],
+      ALLOWED_ATTR: ['href', 'target', 'rel', 'class'],
+    });
+  }, [form.body]);
+
   const loadData = async () => {
     setLoading(true);
     try {
@@ -3143,13 +3157,7 @@ function AutomationTab() {
                 <div className="text-xs font-medium text-slate-500 dark:text-slate-300 mb-1">Preview (example data)</div>
                 <div className="rounded-xl border border-slate-200 bg-white p-3 text-sm text-slate-700 dark:bg-slate-900 dark:text-slate-200">
                   <div className="font-medium mb-1">{form.subject || 'Subject line will appear here'}</div>
-                  <div dangerouslySetInnerHTML={{ 
-                    __html: (form.body || 'Your message body...').replace(/\{\{client_name\}\}/g, 'Acme Ltd')
-                      .replace(/\{\{contact_name\}\}/g, 'Jane Smith')
-                      .replace(/\{\{practice_name\}\}/g, 'Your Practice')
-                      .replace(/\{\{next_step\}\}/g, 'Please upload your last 3 months of bank statements')
-                      .replace(/\{\{due_date\}\}/g, '28 June 2026') 
-                  }} />
+                  <div dangerouslySetInnerHTML={{ __html: previewHtml }} />
                 </div>
               </div>
               <div className="lg:col-span-2">

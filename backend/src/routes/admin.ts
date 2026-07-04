@@ -4,15 +4,36 @@
  */
 
 import { Router } from 'express';
-import { execSync } from 'child_process';
+import { execFile } from 'child_process';
+import { promisify } from 'util';
 import { prisma } from '../config/database.js';
 import { asyncHandler } from '../middleware/errorHandler.js';
+import { secureCompare } from '../utils/secureCompare.js';
+import { logOpsAccess } from '../utils/opsAudit.js';
+import logger from '../utils/logger.js';
 
 const router = Router();
+const execFileAsync = promisify(execFile);
 
 const ADMIN_KEY = process.env.ADMIN_SECRET_KEY;
 
-// Middleware to check admin key
+async function runPrismaMigrateDeploy(): Promise<void> {
+  try {
+    await execFileAsync(
+      'npx',
+      ['prisma', 'migrate', 'resolve', '--rolled-back', '20260410_data_migration_v2_pricing'],
+      { cwd: process.cwd(), timeout: 120_000 }
+    );
+  } catch {
+    // Migration may already be resolved
+  }
+
+  await execFileAsync('npx', ['prisma', 'migrate', 'deploy'], {
+    cwd: process.cwd(),
+    timeout: 300_000,
+  });
+}
+
 const checkAdminKey = (req: any, res: any, next: any) => {
   if (!ADMIN_KEY) {
     return res.status(503).json({
@@ -27,7 +48,7 @@ const checkAdminKey = (req: any, res: any, next: any) => {
     });
   }
   const key = req.headers['x-admin-key'];
-  if (key !== ADMIN_KEY) {
+  if (!secureCompare(key, ADMIN_KEY)) {
     return res.status(403).json({ success: false, error: 'Invalid admin key' });
   }
   next();
@@ -41,37 +62,20 @@ router.post(
   '/migrate',
   checkAdminKey,
   asyncHandler(async (req, res) => {
+    logOpsAccess(req, 'admin.migrate');
     try {
-      // First, try to resolve the failed migration
-      try {
-        execSync('npx prisma migrate resolve --rolled-back "20260410_data_migration_v2_pricing"', {
-          cwd: process.cwd(),
-          stdio: 'pipe',
-        });
-      } catch (e: any) {
-        // Migration might already be resolved or not exist
-        console.log('Migration resolve note:', e.message);
-      }
-
-      // Deploy migrations
-      const output = execSync('npx prisma migrate deploy', {
-        cwd: process.cwd(),
-        stdio: 'pipe',
-        encoding: 'utf-8',
-      });
-
+      await runPrismaMigrateDeploy();
       res.json({
         success: true,
         message: 'Migrations applied successfully',
-        output: output.toString(),
       });
-    } catch (error: any) {
+    } catch (error) {
+      logger.error('Admin migration failed', {
+        error: error instanceof Error ? error.message : String(error),
+      });
       res.status(500).json({
         success: false,
         error: 'Migration failed',
-        details: error.message,
-        stdout: error.stdout?.toString(),
-        stderr: error.stderr?.toString(),
       });
     }
   })
@@ -85,10 +89,10 @@ router.post(
   '/fix-schema',
   checkAdminKey,
   asyncHandler(async (req, res) => {
+    logOpsAccess(req, 'admin.fix-schema');
     try {
       const fixes = [];
 
-      // Check and add billingCycle column
       try {
         const result = await prisma.$queryRaw`
           SELECT column_name 
@@ -107,7 +111,6 @@ router.post(
         fixes.push(`billingCycle check error: ${e.message}`);
       }
 
-      // Check and add priceDisplayMode column
       try {
         const result = await prisma.$queryRaw`
           SELECT column_name 
@@ -131,11 +134,13 @@ router.post(
         message: 'Schema fixes applied',
         fixes,
       });
-    } catch (error: any) {
+    } catch (error) {
+      logger.error('Admin schema fix failed', {
+        error: error instanceof Error ? error.message : String(error),
+      });
       res.status(500).json({
         success: false,
         error: 'Schema fix failed',
-        details: error.message,
       });
     }
   })
@@ -149,15 +154,14 @@ router.get(
   '/db-status',
   checkAdminKey,
   asyncHandler(async (req, res) => {
+    logOpsAccess(req, 'admin.db-status');
     try {
-      // Check ServiceTemplate columns
       const columns = await prisma.$queryRaw`
         SELECT column_name 
         FROM information_schema.columns 
         WHERE table_name = 'ServiceTemplate'
       `;
 
-      // Check migrations
       const migrations = await prisma.$queryRaw`
         SELECT migration_name, finished_at, applied_steps_count
         FROM _prisma_migrations
@@ -170,10 +174,13 @@ router.get(
         serviceTemplateColumns: (columns as any[]).map((c) => c.column_name),
         recentMigrations: migrations,
       });
-    } catch (error: any) {
+    } catch (error) {
+      logger.error('Admin db-status failed', {
+        error: error instanceof Error ? error.message : String(error),
+      });
       res.status(500).json({
         success: false,
-        error: error.message,
+        error: 'Database status check failed',
       });
     }
   })

@@ -5,6 +5,8 @@ import { z } from 'zod';
 import { asyncHandler } from '../middleware/errorHandler.js';
 import { clearLoginAttempts } from '../utils/loginLockout.js';
 import { provisionTenantEngageLibrary } from '../services/tenantLibraryProvisionService.js';
+import { secureCompare } from '../utils/secureCompare.js';
+import { logOpsAccess } from '../utils/opsAudit.js';
 
 const router = Router();
 const prisma = new PrismaClient();
@@ -15,14 +17,14 @@ const setupEnabled =
 const SETUP_SECRET = process.env.SETUP_SECRET_KEY;
 
 function checkSetupKey(req: any, res: any, next: any) {
+  if (process.env.NODE_ENV === 'production' && !SETUP_SECRET) {
+    return res.status(503).json({ success: false, error: 'Setup is not configured' });
+  }
   if (!SETUP_SECRET) {
-    if (process.env.NODE_ENV === 'production') {
-      return res.status(503).json({ success: false, error: 'Setup is not configured' });
-    }
     return next();
   }
   const key = req.headers['x-setup-key'];
-  if (key !== SETUP_SECRET) {
+  if (!secureCompare(key, SETUP_SECRET)) {
     return res.status(403).json({ success: false, error: 'Invalid setup key' });
   }
   next();
@@ -40,6 +42,7 @@ router.get(
       res.status(404).json({ success: false, error: 'Not found' });
       return;
     }
+    logOpsAccess(req, 'setup.root');
     // Check if setup already completed
     const existingUser = await prisma.user.findFirst({
       where: { email: 'admin@demo.practice' },
@@ -102,23 +105,25 @@ router.get(
  */
 router.post(
   '/migrate-pricing',
+  checkSetupKey,
   asyncHandler(async (req, res) => {
     if (!setupEnabled) {
       res.status(404).json({ success: false, error: 'Not found' });
       return;
     }
+    logOpsAccess(req, 'setup.migrate-pricing');
 
     const expected = process.env.MIGRATION_SECRET_KEY;
     if (!expected) {
       res.status(503).json({
         success: false,
-        error: 'Migration endpoint not configured (missing MIGRATION_SECRET_KEY)',
+        error: 'Migration endpoint not configured',
       });
       return;
     }
 
     const secret = req.headers['x-migration-key'];
-    if (secret !== expected) {
+    if (!secureCompare(secret, expected)) {
       return res.status(403).json({ success: false, error: 'Invalid key' });
     }
 
@@ -158,8 +163,8 @@ router.post(
         success: true,
         message: `Migration complete: ${updated}/${services.length} services updated`,
       });
-    } catch (error: any) {
-      res.status(500).json({ success: false, error: error.message });
+    } catch {
+      res.status(500).json({ success: false, error: 'Migration failed' });
     }
   })
 );
@@ -177,6 +182,7 @@ router.post(
       res.status(404).json({ success: false, error: 'Not found' });
       return;
     }
+    logOpsAccess(req, 'setup.clear-login-lockout');
 
     const { email, tenantId } = z
       .object({
@@ -215,23 +221,25 @@ router.post(
  */
 router.post(
   '/seed-tenant-library',
+  checkSetupKey,
   asyncHandler(async (req, res) => {
     if (!setupEnabled) {
       res.status(404).json({ success: false, error: 'Not found' });
       return;
     }
+    logOpsAccess(req, 'setup.seed-tenant-library');
 
     const expected = process.env.MIGRATION_SECRET_KEY;
     if (!expected) {
       res.status(503).json({
         success: false,
-        error: 'Migration endpoint not configured (missing MIGRATION_SECRET_KEY)',
+        error: 'Migration endpoint not configured',
       });
       return;
     }
 
     const secret = req.headers['x-migration-key'];
-    if (secret !== expected) {
+    if (!secureCompare(secret, expected)) {
       return res.status(403).json({ success: false, error: 'Invalid key' });
     }
 

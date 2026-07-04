@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
+import { clearAllProposalDrafts } from '../components/proposals/proposalBuilderDraft';
 
 export interface User {
   id: string;
@@ -69,23 +70,27 @@ export const useAuthStore = create<AuthState>()(
           isLoading: false,
         }),
 
-      clearAuth: () =>
+      clearAuth: () => {
+        clearAllProposalDrafts();
         set({
           user: null,
           tenant: null,
           token: null,
           isAuthenticated: false,
           isLoading: false,
-        }),
+        });
+      },
 
-      logout: () =>
+      logout: () => {
+        clearAllProposalDrafts();
         set({
           user: null,
           tenant: null,
           token: null,
           isAuthenticated: false,
           isLoading: false,
-        }),
+        });
+      },
 
       setLoading: (loading) => set({ isLoading: loading }),
 
@@ -96,10 +101,7 @@ export const useAuthStore = create<AuthState>()(
     }),
     {
       name: 'auth-storage',
-      partialize: (state) => ({
-        user: state.user,
-        tenant: state.tenant,
-      }),
+      partialize: () => ({}),
     }
   )
 );

@@ -39,7 +39,9 @@ const envSchema = z
     PUBLIC_SEED_KEY: z.string().optional(),
     MIGRATION_SECRET_KEY: z.string().optional(),
     ENABLE_PUBLIC_SEED: boolFromString.default(false),
-    ENABLE_SETUP_ENDPOINT: boolFromString.default(true),
+    ENABLE_SETUP_ENDPOINT: boolFromString.default(false),
+    JWT_REFRESH_SECRET: z.string().min(32).optional(),
+    CORS_EXTRA_ORIGINS: z.string().optional(),
   })
   .superRefine((data, ctx) => {
     if (data.NODE_ENV === 'production') {

@@ -9,6 +9,7 @@ import { Router } from 'express';
 import { z } from 'zod';
 import { authenticate, authorize } from '../middleware/auth.js';
 import { asyncHandler, ApiError } from '../middleware/errorHandler.js';
+import { secureCompare } from '../utils/secureCompare.js';
 import {
   getAmlPartnerConfig,
   getAmlStatusForClient,
@@ -104,7 +105,7 @@ router.post(
     const secret = process.env.AML_WEBHOOK_SECRET;
     if (secret) {
       const provided = req.headers['x-aml-webhook-secret'];
-      if (provided !== secret) {
+      if (!secureCompare(provided, secret)) {
         throw new ApiError('FORBIDDEN', 'Invalid AML webhook secret', 403);
       }
     }

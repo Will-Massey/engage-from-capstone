@@ -4,7 +4,8 @@
 
 import { Router } from 'express';
 import { PrismaClient } from '@prisma/client';
-import { createClient } from 'redis';
+import { secureCompare } from '../utils/secureCompare.js';
+import { logOpsAccess } from '../utils/opsAudit.js';
 
 const router = Router();
 const prisma = new PrismaClient();
@@ -13,36 +14,14 @@ const prisma = new PrismaClient();
 router.get('/', async (_req, res) => {
   try {
     await prisma.$queryRaw`SELECT 1`;
-
-    // Check tenant configuration
-    const tenant = await prisma.tenant.findFirst({
-      where: { subdomain: 'demo' },
-    });
-
-    if (!tenant) {
-      res.status(503).json({
-        status: 'unhealthy',
-        timestamp: new Date().toISOString(),
-        error: 'Tenant not configured',
-      });
-      return;
-    }
-
     res.status(200).json({
       status: 'healthy',
       timestamp: new Date().toISOString(),
-      version: process.env.npm_package_version || 'unknown',
-      tenant: {
-        id: tenant.id,
-        name: tenant.name,
-        subdomain: tenant.subdomain,
-      },
     });
-  } catch (error) {
+  } catch {
     res.status(503).json({
       status: 'unhealthy',
       timestamp: new Date().toISOString(),
-      error: 'Database connection failed',
     });
   }
 });
@@ -59,13 +38,11 @@ router.get('/health', async (_req, res) => {
     res.status(200).json({
       status: 'healthy',
       timestamp: new Date().toISOString(),
-      version: process.env.npm_package_version || 'unknown',
     });
-  } catch (error) {
+  } catch {
     res.status(503).json({
       status: 'unhealthy',
       timestamp: new Date().toISOString(),
-      error: 'Database connection failed',
     });
   }
 });
@@ -75,8 +52,8 @@ router.get('/ready', async (_req, res) => {
   try {
     await prisma.$queryRaw`SELECT 1`;
     res.status(200).json({ ready: true });
-  } catch (error) {
-    res.status(503).json({ ready: false, reason: 'Database not ready' });
+  } catch {
+    res.status(503).json({ ready: false });
   }
 });
 
@@ -97,17 +74,18 @@ router.post('/migrate-data', async (req, res) => {
   if (!expected) {
     return res.status(503).json({
       success: false,
-      error: 'Migration endpoint not configured (missing MIGRATION_SECRET_KEY)',
+      error: 'Migration endpoint not configured',
     });
   }
 
   const secret = req.headers['x-migration-key'];
-  if (secret !== expected) {
+  if (!secureCompare(secret, expected)) {
     return res.status(403).json({ success: false, error: 'Invalid key' });
   }
 
+  logOpsAccess(req, 'health.migrate-data');
+
   try {
-    // Get services that need updating
     const services = await prisma.serviceTemplate.findMany({
       where: {
         OR: [{ priceAmount: 0 }, { priceAmount: null }],
@@ -135,8 +113,8 @@ router.post('/migrate-data', async (req, res) => {
           },
         });
         updated++;
-      } catch (e) {
-        console.error(`Failed to update ${service.name}:`, e);
+      } catch {
+        // continue with remaining services
       }
     }
 
@@ -144,10 +122,10 @@ router.post('/migrate-data', async (req, res) => {
       success: true,
       message: `Migration complete: ${updated}/${services.length} services updated`,
     });
-  } catch (error: any) {
+  } catch {
     res.status(500).json({
       success: false,
-      error: error.message,
+      error: 'Migration failed',
     });
   }
 });

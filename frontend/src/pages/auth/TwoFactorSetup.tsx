@@ -23,7 +23,6 @@ export const TwoFactorSetup: React.FC = () => {
   const { user, updateUser } = useAuthStore();
   const [step, setStep] = useState<SetupStep>('loading');
   const [qrCodeUrl, setQrCodeUrl] = useState('');
-  const [secret, setSecret] = useState('');
   const [backupCodes, setBackupCodes] = useState<string[]>([]);
   const [verificationCode, setVerificationCode] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -41,7 +40,6 @@ export const TwoFactorSetup: React.FC = () => {
         const response = (await apiClient.post('/auth/2fa/setup')) as any;
         if (response.success) {
           setQrCodeUrl(response.data.qrCodeUrl);
-          setSecret(response.data.secret);
           setBackupCodes(response.data.backupCodes);
           setStep('scan');
         }
@@ -146,11 +144,6 @@ export const TwoFactorSetup: React.FC = () => {
                   className="mx-auto w-48 h-48 border border-slate-200 rounded-lg"
                 />
               )}
-            </div>
-
-            <div className="bg-slate-50 rounded-lg p-4">
-              <p className="text-xs text-slate-500 mb-1">Cannot scan? Enter this key manually:</p>
-              <code className="text-sm font-mono text-slate-800 break-all">{secret}</code>
             </div>
 
             <div className="border-t border-slate-200 pt-6">

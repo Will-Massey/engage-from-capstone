@@ -9,6 +9,7 @@ import {
   generateToken,
   generateRefreshToken,
   generateCsrfToken,
+  verifyRefreshToken,
 } from '../middleware/auth.js';
 import { registerCsrfToken } from '../utils/csrfStore.js';
 import { asyncHandler, ApiError } from '../middleware/errorHandler.js';
@@ -51,7 +52,8 @@ type AuthUser = {
 
 async function issueAuthSession(
   res: import('express').Response,
-  user: AuthUser
+  user: AuthUser,
+  options?: { rememberMe?: boolean }
 ): Promise<void> {
   const accessToken = generateToken({
     id: user.id,
@@ -63,7 +65,7 @@ async function issueAuthSession(
   });
 
   const refreshToken = await generateRefreshToken(user.id);
-  const { csrfToken } = setAuthCookies(res, accessToken, refreshToken);
+  const { csrfToken } = setAuthCookies(res, accessToken, refreshToken, options);
 
   res.json({
     success: true,
@@ -99,6 +101,7 @@ const loginSchema = z.object({
   email: z.string().email('Invalid email address'),
   password: z.string().min(1, 'Password is required'),
   tenantId: z.string().optional(), // Optional if using subdomain
+  rememberMe: z.boolean().optional(),
 });
 
 const registerSchema = z.object({
@@ -120,7 +123,7 @@ const refreshTokenSchema = z.object({
 router.post(
   '/login',
   asyncHandler(async (req, res) => {
-    const { email, password, tenantId } = loginSchema.parse(req.body);
+    const { email, password, tenantId, rememberMe } = loginSchema.parse(req.body);
 
     logger.info(`Login attempt for: ${email}`, { tenantId, hasReqTenantId: !!req.tenantId });
 
@@ -216,7 +219,7 @@ router.post(
       data: { lastLoginAt: new Date() },
     });
 
-    await issueAuthSession(res, user);
+    await issueAuthSession(res, user, { rememberMe: rememberMe === true });
   })
 );
 
@@ -320,9 +323,15 @@ router.post(
       throw new ApiError('INVALID_REFRESH_TOKEN', 'Refresh token is required', 401);
     }
 
+    const refreshPayload = verifyRefreshToken(refreshToken);
+    if (!refreshPayload) {
+      throw new ApiError('INVALID_REFRESH_TOKEN', 'Invalid or expired refresh token', 401);
+    }
+
     const tokenRecord = await prisma.refreshToken.findFirst({
       where: {
         token: refreshToken,
+        userId: refreshPayload.userId,
         expiresAt: { gt: new Date() },
       },
       include: {
@@ -1069,7 +1078,6 @@ router.post(
       success: true,
       data: {
         qrCodeUrl: setup.qrCodeUrl,
-        secret: setup.secret,
         backupCodes: setup.backupCodes,
       },
     });

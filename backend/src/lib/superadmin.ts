@@ -9,6 +9,17 @@ import logger from '../utils/logger.js';
 
 const APP_ID = 'engage';
 
+/** Commands the Engage connector will execute — reject anything else. */
+const ALLOWED_SUPERADMIN_COMMANDS = new Set([
+  'ping',
+  'health_check',
+  'sync_tenants',
+  'suspend_tenant',
+  'unsuspend_tenant',
+  'broadcast_message',
+  'set_feature_flag',
+]);
+
 // --- HMAC signing (from capstone-superadmin/shared/verify-signature.js) ---
 
 function buildCanonicalString(
@@ -318,10 +329,15 @@ export function initEngageSuperadmin(): Connector | null {
 
   connector
     .startCommandPoller(async (cmd) => {
-      logger.info('[engage] superadmin command:', {
-        command: cmd.command,
-        payload: cmd.payload,
-      });
+      if (!ALLOWED_SUPERADMIN_COMMANDS.has(cmd.command)) {
+        logger.warn('[engage] rejected superadmin command', { command: cmd.command });
+        throw new Error(`Command not allowed: ${cmd.command}`);
+      }
+      if (process.env.NODE_ENV === 'production') {
+        logger.info('[engage] superadmin command accepted', { command: cmd.command, id: cmd.id });
+      } else {
+        logger.info('[engage] superadmin command', { command: cmd.command, id: cmd.id });
+      }
       // Wire to tenant suspension, broadcasts, feature flags, etc.
     })
     .catch((err) => {
