@@ -43,7 +43,7 @@
 - [x] Forgot-password flow (auth routes + ForgotPassword + ResetPassword + App routes)
 - [x] `/proposals/:id/edit` route (`EditProposal.tsx`)
 - [x] Superadmin 6/6 integration checks — HMAC ingest verified Jul 2026 (`scripts/verify-superadmin-integration.mjs`)
-- [ ] Render: remove stale `SUPERADMIN_API_KEY` or rotate via `npm run setup:engage` (stale key blocks tenant sync)
+- [x] Render: removed stale `SUPERADMIN_API_KEY`; wired `SUPERADMIN_WEBHOOK_SECRET` (Jul 2026)
 - [ ] Production smoke per `VERIFICATION_ROADMAP_2026-06-30.md` — **manual**
 
 ---

@@ -5,13 +5,13 @@
 Become the **premier UK accountancy proposal platform** — see `PREMIER_SERVICE_STRATEGY.md` and `PREMIER_SERVICE_TODO.md`.
 
 ## Current Phase
-Phase: **Premier Service — Deploy & verify** — `in_progress` (UI + Superadmin verified)
+Phase: **Premier Service — Deploy & verify** — `in_progress` (Render superadmin wired)
 
 ## Next Up
 <!-- 3–5 bullets ONLY. Next fresh session starts here. Rewrite every checkpoint. -->
-1. Render: remove stale `SUPERADMIN_API_KEY` on engage-backend (blocks scheduled tenant sync)
-2. Deploy frontend safe-area header fix (`DashboardLayout.tsx`)
-3. William: Xero integration (deferred — finish when ready)
+1. **Tomorrow UAT:** Settings → Billing payout opt-in → client sign → Revolut checkout
+2. **Tomorrow Xero:** Render env vars + Settings → Integrations connect smoke
+3. Verify backend redeploy + `node scripts/verify-superadmin-integration.mjs` after sync settles
 
 ## Phases
 

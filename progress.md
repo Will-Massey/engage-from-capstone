@@ -1,6 +1,21 @@
 # Build Progress Log
 <!-- Append-only session log. Latest deploy checkpoint is the resume entry point. -->
 
+## Session: 2026-07-04 — Render superadmin cleanup
+
+### Checkpoint
+- **Removed** stale `SUPERADMIN_API_KEY` from engage-backend (`scripts/remove-render-superadmin-api-key.ps1`)
+- **Wired** `SUPERADMIN_URL` + `SUPERADMIN_WEBHOOK_SECRET` (HMAC-only ingest; no API key)
+- **Redeploy** triggered twice (env cleanup + webhook wire)
+- **Tomorrow:** `TODO_TOMORROW.md` — UAT payout + Xero
+
+#### Resume prompt
+```
+Tomorrow: UAT payout + Revolut checkout. Xero env + connect. verify-superadmin-integration.mjs after redeploy.
+```
+
+---
+
 ## Session: 2026-07-04 — UI sign-off + Superadmin 6/6
 
 ### Checkpoint

@@ -9,9 +9,8 @@ Become the **premier UK accountancy proposal platform** — see `PREMIER_SERVICE
 Phase: **Premier Service — Deploy & verify** — `in_progress` (UI + Superadmin verified)
 
 **Next Up:**
-- Render: remove stale `SUPERADMIN_API_KEY` on engage-backend
-- Deploy frontend safe-area header fix
-- William: Xero integration (deferred)
+- Tomorrow: UAT payout opt-in + Revolut checkout smoke (`TODO_TOMORROW.md`)
+- Tomorrow: Xero integration env + connect smoke
 
 **Status:** pending = true
 
