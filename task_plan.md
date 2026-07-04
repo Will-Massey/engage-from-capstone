@@ -5,14 +5,13 @@
 Become the **premier UK accountancy proposal platform** — see `PREMIER_SERVICE_STRATEGY.md` and `PREMIER_SERVICE_TODO.md`.
 
 ## Current Phase
-Phase: **Premier Service — Deploy & verify** — `in_progress` (sendit v4.0 live)
+Phase: **Premier Service — Deploy & verify** — `in_progress` (UI + Superadmin verified)
 
 ## Next Up
 <!-- 3–5 bullets ONLY. Next fresh session starts here. Rewrite every checkpoint. -->
-1. William: browser UAT — Settings → Billing → Receive Payments Through Engage (opt-in + bank details)
-2. Production smoke: client sign → Revolut checkout flow at capstonesoftware.co.uk/engage
-3. William: confirm UI fixes — sidebar full name, header safe-area, AI panel scales on resize
-4. Revolut live webhook smoke + verify payout ledger + Superadmin payment events
+1. Render: remove stale `SUPERADMIN_API_KEY` on engage-backend (blocks scheduled tenant sync)
+2. Deploy frontend safe-area header fix (`DashboardLayout.tsx`)
+3. William: Xero integration (deferred — finish when ready)
 
 ## Phases
 
@@ -42,6 +41,7 @@ Phase: **Premier Service — Deploy & verify** — `in_progress` (sendit v4.0 li
 | 1 | 2026-06-30 | fdbc3e8 | master | engage-backend, engage-frontend | live | UI dark/light + Clara surfaces |
 | 2 | 2026-07-03 | 6372c68 | master | engage-backend, engage-frontend | live | sendit v3.5 — 7-day trial, backlog, schema/test fix, superadmin payment reporting; 123 tests pass; all endpoints 200 |
 | 3 | 2026-07-04 | 6338cf2 | master | engage-backend, engage-frontend | live | sendit v4.0 — Revolut payout collection, tenant payout settings, legal terms, UI fixes; TS build fix in splits.ts |
+| 4 | 2026-07-04 | 53f9d47 | master | engage-backend, engage-frontend | live | Analytics routes + win-loss normalise, regulatory mount, /2fa-setup, e2e auth hardening; prod smoke 11/11 |
 
 ## Strategic docs (Jul 2026)
 | Doc | Purpose |

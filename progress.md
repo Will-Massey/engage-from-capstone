@@ -1,6 +1,49 @@
 # Build Progress Log
 <!-- Append-only session log. Latest deploy checkpoint is the resume entry point. -->
 
+## Session: 2026-07-04 — UI sign-off + Superadmin 6/6
+
+### Checkpoint
+- **UI e2e:** `layout-smoke` 3/3 pass — sidebar full name, header safe-area class, AI panel resize
+- **UI fix:** `pt-[env(safe-area-inset-top)]` on fixed header (needs frontend deploy)
+- **Superadmin:** `verify-superadmin-integration.mjs` 6/6 — health, tenant/metrics/events ingest, command poll
+- **Action needed:** Remove stale `SUPERADMIN_API_KEY` from Render engage-backend (HMAC works without it; stale key causes 401 on sync)
+
+#### Resume prompt
+```
+Remove SUPERADMIN_API_KEY on Render. Deploy frontend safe-area fix. Xero when ready.
+```
+
+---
+
+## Session: 2026-07-04 — Revolut live testing confirmed
+
+### Checkpoint — William
+- **Revolut:** Live APIs and functions tested (Merchant checkout, `payment/setup`, webhook fulfilment, payout split)
+- **Prod config:** `GET /api/payments/config` → `provider: revolut`, `mode: prod`, `isEnabled: true`
+- **Prod e2e:** 11/11 pass (payout UI, market-leader, automation)
+- **Note:** Demo tenant payout opt-in still `enabled: false` — not blocking; tested on live tenant
+
+#### Resume prompt
+```
+UI sign-off. Superadmin 6/6 checks. Xero when ready.
+```
+
+---
+
+## Session: 2026-07-04 — resume verify (53f9d47)
+
+### Verification checkpoint
+- **Prod e2e:** 11/11 pass — `payout-smoke` (3), `market-leader-smoke` (6), `automation-smoke` (2)
+- **Backend:** `/ping` 200; payout API live; auth rejects invalid tokens correctly
+
+#### Resume prompt
+```
+William: Settings → Billing → enable Receive Payments + bank details + collect at sign. Then smoke client sign → Revolut checkout.
+```
+
+---
+
 ## Session: 2026-07-04 — sendit v4.0 deploy fix + verify
 
 ### Deploy checkpoint — 6338cf2

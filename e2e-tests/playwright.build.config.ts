@@ -17,6 +17,7 @@ export default defineConfig({
     'market-leader-smoke.spec.ts',
     'uat-smoke.spec.ts',
     'payout-smoke.spec.ts',
+    'layout-smoke.spec.ts',
   ],
   fullyParallel: false,
   forbidOnly: !!process.env.CI,

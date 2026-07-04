@@ -31,7 +31,7 @@
 
 ### SaaS billing go-live
 - [ ] Render **Starter** + 10 GB disk at `/var/data` — **manual Render dashboard**
-- [ ] Revolut sandbox → live checkout smoke — **manual + env vars**
+- [x] Revolut sandbox → live checkout smoke — **tested Jul 2026** (Merchant checkout, payment/setup, webhook fulfilment)
 - [x] Stripe + Revolut tier config; annual plans (−15%) in `stripe.ts` / `revolut/plans.ts`
 - [x] **7-day** trial on tenant signup + `trialEndsAt` + Superadmin `reportTrialStarted`
 - [x] Tier limits middleware (users/clients/proposals) — 402 when over limit
@@ -42,7 +42,8 @@
 ### Production reliability
 - [x] Forgot-password flow (auth routes + ForgotPassword + ResetPassword + App routes)
 - [x] `/proposals/:id/edit` route (`EditProposal.tsx`)
-- [ ] Superadmin 6/6 integration checks on Render — **manual post-deploy**
+- [x] Superadmin 6/6 integration checks — HMAC ingest verified Jul 2026 (`scripts/verify-superadmin-integration.mjs`)
+- [ ] Render: remove stale `SUPERADMIN_API_KEY` or rotate via `npm run setup:engage` (stale key blocks tenant sync)
 - [ ] Production smoke per `VERIFICATION_ROADMAP_2026-06-30.md` — **manual**
 
 ---

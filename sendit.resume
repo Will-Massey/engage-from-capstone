@@ -1,22 +1,23 @@
 # Sendit Resume
 
-**Last Deploy:** 2026-07-04 15:01 UTC
+**Last Deploy:** 2026-07-04 15:38 UTC
 
 **Goal:**  
 Become the **premier UK accountancy proposal platform** — see `PREMIER_SERVICE_STRATEGY.md` and `PREMIER_SERVICE_TODO.md`.
 
 **Current Phase:**  
-Phase: **Premier Service — Deploy & verify** — `in_progress` (sendit v4.0 live)
+Phase: **Premier Service — Deploy & verify** — `in_progress` (UI + Superadmin verified)
 
 **Next Up:**
-- William: browser UAT — Settings → Billing → Receive Payments Through Engage (opt-in + bank details)
-- Production smoke: client sign → Revolut checkout flow at capstonesoftware.co.uk/engage
-- William: confirm UI fixes — sidebar full name, header safe-area, AI panel scales on resize
+- Render: remove stale `SUPERADMIN_API_KEY` on engage-backend
+- Deploy frontend safe-area header fix
+- William: Xero integration (deferred)
 
 **Status:** pending = true
 
 <!-- Machine hints (do not expand on resume):
 project_root: C:\Users\willi\engage-from-capstone
-commit: 6338cf2
+commit: 53f9d47
 branch: master
+prod_e2e: 11/11 pass (payout-smoke, market-leader-smoke, automation-smoke)
 -->
