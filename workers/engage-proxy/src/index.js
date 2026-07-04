@@ -7,7 +7,7 @@
  * /engage/*       → engage-frontend SPA (index.html for client routes)
  */
 
-const FRONTEND_UPSTREAM = 'https://engage-web.pages.dev';
+const FRONTEND_UPSTREAM = 'https://engage-frontend-0g6u.onrender.com';
 const BACKEND_UPSTREAM = 'https://engage-backend-e1ue.onrender.com';
 const PREFIX = '/engage';
 
