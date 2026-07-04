@@ -683,6 +683,49 @@ const TopServicesTable = ({ services }: { services: AnalyticsData['topServices']
   </div>
 );
 
+/** Map synthesiseWinLoss API shape to WinLossSection props (full analytics adds byReason etc.). */
+function normalizeWinLoss(raw: unknown): WinLossData | null {
+  if (!raw || typeof raw !== 'object') return null;
+  const data = raw as Record<string, unknown>;
+  if (Array.isArray(data.byReason)) {
+    return data as WinLossData;
+  }
+
+  const summary = (data.summary ?? {}) as Record<string, number>;
+  const wins = summary.wins ?? summary.won ?? 0;
+  const losses = summary.losses ?? summary.lost ?? 0;
+  const decided = wins + losses;
+  const stallReasons = Array.isArray(data.stallReasons)
+    ? (data.stallReasons as Array<{ reason: string; count: number }>)
+    : [];
+
+  return {
+    summary: {
+      wins,
+      losses,
+      decided,
+      winRate:
+        typeof summary.winRate === 'number'
+          ? summary.winRate
+          : decided > 0
+            ? Math.round((wins / decided) * 100)
+            : 0,
+      untaggedDeclines: losses,
+      taggedDeclines: 0,
+    },
+    byReason: stallReasons.map((row) => ({
+      reason: 'OTHER' as DeclineReason,
+      label: row.reason,
+      declined: row.count,
+      shareOfLosses: losses > 0 ? Math.round((row.count / losses) * 100) : 0,
+    })),
+    byServiceMix: [],
+    byClientType: [],
+    byClientRelationship: [],
+    recentLosses: [],
+  };
+}
+
 const Analytics = () => {
   const { tenant } = useAuthStore();
   const [data, setData] = useState<AnalyticsData | null>(null);
@@ -720,7 +763,7 @@ const Analytics = () => {
       if (funnelRes.success) setFunnel(funnelRes.data);
       if (pipelineRes.success) setPipeline(pipelineRes.data);
       if (timeRes.success) setTimeToDecision(timeRes.data);
-      if (winLossRes.success) setWinLoss(winLossRes.data);
+      if (winLossRes.success) setWinLoss(normalizeWinLoss(winLossRes.data));
       if (proposalFunnelRes.success) setProposalFunnel(proposalFunnelRes.data);
     } catch (error) {
       console.error('Failed to load analytics:', error);
