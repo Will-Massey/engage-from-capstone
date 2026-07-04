@@ -1,9 +1,15 @@
 import { test, expect } from '@playwright/test';
-import { apiGet, expectNoErrorToasts, expectOkApi, gotoApp } from '../fixtures/build-helpers';
+import {
+  apiGet,
+  expectNoErrorToasts,
+  expectOkApi,
+  gotoApp,
+  gotoAppAuthenticated,
+} from '../fixtures/build-helpers';
 
 test.describe('Payout collection UAT — sendit v4.0', () => {
   test('Settings → Billing shows Receive Payments Through Engage', async ({ page }) => {
-    await gotoApp(page, '/settings?tab=billing');
+    await gotoAppAuthenticated(page, '/settings?tab=billing');
     await expect(page.getByRole('heading', { name: /VAT & Billing Settings/i })).toBeVisible({
       timeout: 20_000,
     });

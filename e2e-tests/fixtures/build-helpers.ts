@@ -63,7 +63,28 @@ export async function gotoApp(page: Page, path: string): Promise<void> {
   await page.goto(`${FRONTEND_ORIGIN}${rel}`);
 }
 
-const E2E_HEADERS = { 'X-Test-Mode': 'e2e-build' };
+/** Navigate and wait for cookie session bootstrap via /auth/me. */
+export async function gotoAppAuthenticated(page: Page, path: string, timeout = 45_000): Promise<void> {
+  const mePromise = page.waitForResponse(
+    (r) => r.url().includes('/auth/me') && r.status() === 200,
+    { timeout },
+  );
+  await gotoApp(page, path);
+  const me = await mePromise.catch(() => null);
+  if (!me) {
+    const onLogin = page.url().includes('/login');
+    throw new Error(
+      onLogin
+        ? 'Session bootstrap failed — redirected to login (cookies not applied?)'
+        : 'Session bootstrap failed — /auth/me did not return 200',
+    );
+  }
+}
+
+const E2E_HEADERS = {
+  'X-Test-Mode': 'e2e-build',
+  Origin: new URL(FRONTEND_ORIGIN).origin,
+};
 
 const ERROR_TOAST_PATTERNS = [
   /couldn't complete that request/i,

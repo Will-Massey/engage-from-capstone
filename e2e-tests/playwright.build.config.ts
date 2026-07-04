@@ -7,6 +7,9 @@ const authFile = path.join(__dirname, '.auth', 'user.json');
  * Build verification — run against Render (or local) before manual QA continues.
  * Single chromium worker + global login to avoid auth rate limits.
  */
+const canonicalFrontend =
+  (process.env.FRONTEND_URL || 'https://capstonesoftware.co.uk/engage').replace(/\/$/, '');
+
 export default defineConfig({
   testDir: './specs',
   testMatch: [
@@ -34,7 +37,7 @@ export default defineConfig({
   ],
 
   use: {
-    baseURL: process.env.FRONTEND_URL || 'https://capstonesoftware.co.uk/engage',
+    baseURL: canonicalFrontend,
     storageState: authFile,
     trace: 'retain-on-failure',
     screenshot: 'only-on-failure',

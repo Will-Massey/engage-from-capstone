@@ -5,13 +5,14 @@
 Become the **premier UK accountancy proposal platform** — see `PREMIER_SERVICE_STRATEGY.md` and `PREMIER_SERVICE_TODO.md`.
 
 ## Current Phase
-Phase: **Premier Service — Security P1/P2 done** — `in_progress` (JWT_REFRESH_SECRET on Render; login 200)
+Phase: **Premier Service — Payout UAT done** — `in_progress` (demo tenant payout enabled; sign → Revolut checkout PASS)
 
 ## Next Up
 <!-- 3–5 bullets ONLY. Next fresh session starts here. Rewrite every checkpoint. -->
-1. **UAT:** Settings → Billing payout opt-in → client sign → Revolut checkout (`TODO_TOMORROW.md`)
+1. **Revolut Business API:** Wire `REVOLUT_BUSINESS_*` on Render for real bank counterparty creation (demo uses placeholder counterparty)
 2. **Xero:** Render `XERO_*` env + Settings → Integrations connect smoke
 3. **P0 security:** email-events webhook auth, portal shareToken leak, env.ts boot, validUntil, E2E rate-limit bypass (`SECURITY_TODO.md`)
+4. **E2E:** Fix Playwright cookie restore for Settings UI smoke (`Origin` header fix landed; browser session still flaky)
 
 ## Phases
 

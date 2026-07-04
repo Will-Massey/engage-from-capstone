@@ -2,10 +2,8 @@
 
 ## Must do — UAT (browser)
 
-1. **Settings → Billing → Receive Payments Through Engage**
-   - Enable payout collection, enter bank details, accept terms
-   - Tick **Collect payment after signing** → Save
-2. **Client sign → Revolut checkout** smoke on `capstonesoftware.co.uk/engage`
+1. ~~**Settings → Billing → Receive Payments Through Engage**~~ — demo tenant enabled via API (placeholder counterparty; needs `REVOLUT_BUSINESS_*` for real bank)
+2. ~~**Client sign → Revolut checkout**~~ — `scripts/uat-payout-checkout-smoke.mjs` PASS (PROP-MQZ94TYF-0AO, prod Revolut)
 3. **Revolut webhook** — confirm payout ledger + Superadmin payment events after live payment
 
 ## Must do — Xero integration
