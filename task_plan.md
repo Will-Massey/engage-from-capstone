@@ -9,7 +9,7 @@ Phase: **Premier Service — Payout UAT done** — `in_progress` (demo tenant pa
 
 ## Next Up
 <!-- 3–5 bullets ONLY. Next fresh session starts here. Rewrite every checkpoint. -->
-1. **Revolut Business API:** Wire `REVOLUT_BUSINESS_*` on Render for real bank counterparty creation (demo uses placeholder counterparty)
+1. **Revolut Business API:** Run `revolut-business-setup.mjs` + `wire-revolut-business-render.ps1` (OAuth cert from Revolut Business → Settings → APIs) — code + wire scripts ready; credentials not on disk yet
 2. **Xero:** Render `XERO_*` env + Settings → Integrations connect smoke
 3. **P0 security:** email-events webhook auth, portal shareToken leak, env.ts boot, validUntil, E2E rate-limit bypass (`SECURITY_TODO.md`)
 4. ~~**E2E:** Fix Playwright session restore for Settings UI smoke~~ — `Origin` in `extraHTTPHeaders`; payout-smoke 3/3 pass

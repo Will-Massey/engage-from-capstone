@@ -3,27 +3,25 @@
  * @see https://developer.revolut.com/docs/api/business
  */
 
+import { getBusinessAccessToken, getBusinessApiUrl, isBusinessAuthConfigured } from './business-auth.js';
+
 const BUSINESS_API_VERSION = '2024-05-01';
 
 export function isBusinessApiConfigured(): boolean {
-  return Boolean(process.env.REVOLUT_BUSINESS_API_KEY && process.env.REVOLUT_BUSINESS_API_URL);
-}
-
-function getBusinessBaseUrl(): string {
-  return (process.env.REVOLUT_BUSINESS_API_URL || 'https://sandbox-b2b.revolut.com').replace(/\/$/, '');
+  return isBusinessAuthConfigured() && Boolean(getBusinessApiUrl());
 }
 
 async function businessFetch<T = Record<string, unknown>>(
   path: string,
   { method = 'GET', body }: { method?: string; body?: unknown } = {},
 ): Promise<T> {
-  const key = process.env.REVOLUT_BUSINESS_API_KEY;
-  if (!key) throw new Error('REVOLUT_BUSINESS_API_KEY not configured');
+  const token = await getBusinessAccessToken();
+  const base = getBusinessApiUrl();
 
-  const res = await fetch(`${getBusinessBaseUrl()}${path}`, {
+  const res = await fetch(`${base}${path}`, {
     method,
     headers: {
-      Authorization: `Bearer ${key}`,
+      Authorization: `Bearer ${token}`,
       'Content-Type': 'application/json',
       Accept: 'application/json',
       'Revolut-Api-Version': BUSINESS_API_VERSION,
@@ -40,8 +38,6 @@ async function businessFetch<T = Record<string, unknown>>(
 
 /**
  * Transfer agency share to the tenant's configured Revolut counterparty.
- * Set ENGAGE_AGENCY_COUNTERPARTY_ID per tenant in settings JSON, or use
- * ENGAGE_DEFAULT_AGENCY_COUNTERPARTY_ID as a global fallback for sandbox.
  */
 export async function transferToAgency({
   tenantId,
@@ -138,4 +134,14 @@ export async function createCounterpartyFromBankDetails({
   }
 
   return result.id;
+}
+
+/** List Business accounts (setup / diagnostics). */
+export async function listBusinessAccounts(): Promise<
+  Array<{ id: string; name?: string; currency?: string; balance?: number }>
+> {
+  const data = await businessFetch<Array<{ id: string; name?: string; currency?: string; balance?: number }>>(
+    '/accounts',
+  );
+  return Array.isArray(data) ? data : [];
 }

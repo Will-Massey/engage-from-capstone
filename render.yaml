@@ -101,6 +101,12 @@ services:
       - key: REVOLUT_BUSINESS_API_KEY
         sync: false
       - key: REVOLUT_BUSINESS_API_URL
+        value: https://b2b.revolut.com
+      - key: REVOLUT_BUSINESS_CLIENT_ID
+        sync: false
+      - key: REVOLUT_BUSINESS_REFRESH_TOKEN
+        sync: false
+      - key: REVOLUT_BUSINESS_PRIVATE_KEY
         sync: false
       - key: REVOLUT_BUSINESS_ACCOUNT_ID
         sync: false
