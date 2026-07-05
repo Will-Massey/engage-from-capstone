@@ -1,22 +1,26 @@
 # Sendit Resume
 
-**Last Deploy:** 2026-07-04 20:58:08 UTC
+**Last Deploy:** 2026-07-05 18:31 UTC (checkpoint 6 — ea0a593 live)
 
-**Goal:**  
+**Goal:**
 Become the **premier UK accountancy proposal platform** — see `PREMIER_SERVICE_STRATEGY.md` and `PREMIER_SERVICE_TODO.md`.
 
-**Current Phase:**  
-Phase: **Premier Service — Payout UAT done** — `in_progress` (demo tenant payout enabled; sign → Revolut checkout PASS)
+**Current Phase:**
+Phase: **Premier Service — P0 security live** — `in_progress` (audit 1–6 deployed; payout smoke PASS on hardened build)
 
 **Next Up:**
-- **Revolut Business API:** Wire `REVOLUT_BUSINESS_*` on Render for real bank counterparty creation (demo uses placeholder counterparty)
+- **AML mount fix:** `/api/aml` never mounted (404 in prod) — fixed locally, push + verify webhook returns 403
+- **Revolut Business API:** Run `revolut-business-setup.mjs` + `wire-revolut-business-render.ps1` (needs OAuth cert from Revolut Business dashboard)
 - **Xero:** Render `XERO_*` env + Settings → Integrations connect smoke
-- **P0 security:** email-events webhook auth, portal shareToken leak, env.ts boot, validUntil, E2E rate-limit bypass (`SECURITY_TODO.md`)
+
+**Ops notes:**
+- Smoke scripts: set `API_URL=https://engage-backend-e1ue.onrender.com` + `E2E_BYPASS_SECRET` (from `boardroom/deploy/.engage-p0-secrets.env`)
+- JWT_REFRESH_SECRET was lost from Render 4–5 Jul (every deploy failed until rotated) — if deploys fail exit-1 again, check it first
 
 **Status:** pending = false
 
 <!-- Machine hints (do not expand on resume):
 project_root: C:\Users\willi\engage-from-capstone
-commit: 631786b
+commit: ea0a593
 branch: master
 -->

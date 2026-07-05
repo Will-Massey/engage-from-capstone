@@ -1018,6 +1018,7 @@ app.get('/api/quickbooks/callback', (req, res) => {
 // Share/portal/public routes first (before authenticated /:id handlers)
 app.use('/api/proposals', proposalShareRoutes);
 app.use('/api/onboarding', onboardingRoutes);
+app.use('/api/aml', amlRoutes); // authenticate sets req.tenantId; /webhook is public + secret-gated
 app.use('/api/proposals', extractTenant, proposalRoutes);
 app.use('/api/clients', extractTenant, clientRoutes);
 app.use('/api/services', extractTenant, serviceRoutes);
