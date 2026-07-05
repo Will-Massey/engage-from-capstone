@@ -84,6 +84,9 @@ export async function gotoAppAuthenticated(page: Page, path: string, timeout = 4
 const E2E_HEADERS = {
   'X-Test-Mode': 'e2e-build',
   Origin: new URL(FRONTEND_ORIGIN).origin,
+  ...(process.env.E2E_BYPASS_SECRET
+    ? { 'X-Test-Mode-Secret': process.env.E2E_BYPASS_SECRET }
+    : {}),
 };
 
 const ERROR_TOAST_PATTERNS = [

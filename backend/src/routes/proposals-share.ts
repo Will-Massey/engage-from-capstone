@@ -836,6 +836,14 @@ router.post(
       );
     }
 
+    if (proposal.validUntil && new Date() > proposal.validUntil) {
+      throw new ApiError(
+        'PROPOSAL_EXPIRED',
+        'This proposal has expired and can no longer be signed',
+        410
+      );
+    }
+
     const customFields = parseProposalCustomFields(proposal.customFields);
     const requiredSigners = getRequiredSigners(customFields);
     const existingSignatures = await prisma.proposalSignature.count({
@@ -1167,6 +1175,13 @@ router.post(
     if (proposal.status === 'ACCEPTED') {
       throw new ApiError('INVALID_STATUS', 'Proposal already accepted', 400);
     }
+    if (proposal.validUntil && new Date() > proposal.validUntil) {
+      throw new ApiError(
+        'PROPOSAL_EXPIRED',
+        'This proposal has expired and can no longer be declined',
+        410
+      );
+    }
 
     let declineReasonAi: (typeof DECLINE_REASONS)[number] | null = null;
     if (declineReason === 'OTHER' && reasonText) {
@@ -1376,6 +1391,44 @@ router.delete(
   })
 );
 
+// Resolve a single proposal's view path (public — portal token scoped).
+// Keeps share tokens out of the bulk portal payload; issued on demand per proposal.
+router.get(
+  '/portal/:token/proposals/:proposalId/view-link',
+  asyncHandler(async (req, res) => {
+    const { token, proposalId } = req.params;
+
+    const client = await getClientByPortalToken(token);
+    if (!client) {
+      throw new ApiError('PORTAL_NOT_FOUND', 'Portal link not found or expired', 404);
+    }
+
+    const proposal = await prisma.proposal.findFirst({
+      where: { id: proposalId, clientId: client.id },
+      select: { shareToken: true, shareTokenExpiry: true, publicAccessEnabled: true },
+    });
+
+    if (
+      !proposal ||
+      !proposal.shareToken ||
+      !proposal.publicAccessEnabled ||
+      !proposal.shareTokenExpiry ||
+      proposal.shareTokenExpiry <= new Date()
+    ) {
+      throw new ApiError(
+        'PROPOSAL_LINK_UNAVAILABLE',
+        'Proposal link not available or expired',
+        404
+      );
+    }
+
+    res.json({
+      success: true,
+      data: { viewPath: `/proposals/view/${proposal.shareToken}` },
+    });
+  })
+);
+
 // Get client portal data (public — link possession = access)
 router.get(
   '/portal/:token',
@@ -1420,9 +1473,14 @@ router.get(
           declinedAt: p.declinedAt,
           createdAt: p.createdAt,
           services: p.services,
-          shareToken: p.shareToken,
-          shareTokenExpiry: p.shareTokenExpiry,
-          publicAccessEnabled: p.publicAccessEnabled,
+          // shareToken is intentionally NOT exposed here — resolve per-proposal
+          // via GET /portal/:token/proposals/:proposalId/view-link
+          canView: Boolean(
+            p.publicAccessEnabled &&
+              p.shareToken &&
+              p.shareTokenExpiry &&
+              p.shareTokenExpiry > new Date()
+          ),
         })),
       },
     });

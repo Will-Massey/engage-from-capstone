@@ -10,6 +10,7 @@ import { z } from 'zod';
 import { authenticate, authorize } from '../middleware/auth.js';
 import { asyncHandler, ApiError } from '../middleware/errorHandler.js';
 import { secureCompare } from '../utils/secureCompare.js';
+import { isProduction } from '../utils/securityFlags.js';
 import {
   getAmlPartnerConfig,
   getAmlStatusForClient,
@@ -103,7 +104,15 @@ router.post(
   '/webhook',
   asyncHandler(async (req, res) => {
     const secret = process.env.AML_WEBHOOK_SECRET;
-    if (secret) {
+    if (!secret) {
+      if (isProduction) {
+        throw new ApiError(
+          'WEBHOOK_NOT_CONFIGURED',
+          'AML webhook is not configured',
+          503
+        );
+      }
+    } else {
       const provided = req.headers['x-aml-webhook-secret'];
       if (!secureCompare(provided, secret)) {
         throw new ApiError('FORBIDDEN', 'Invalid AML webhook secret', 403);

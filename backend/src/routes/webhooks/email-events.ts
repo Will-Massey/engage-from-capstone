@@ -6,9 +6,40 @@ import { Router } from 'express';
 import { z } from 'zod';
 import { prisma } from '../../config/database.js';
 import logger from '../../config/logger.js';
-import { asyncHandler } from '../../middleware/errorHandler.js';
+import { asyncHandler, ApiError } from '../../middleware/errorHandler.js';
+import { secureCompare } from '../../utils/secureCompare.js';
+import { isProduction } from '../../utils/securityFlags.js';
 
 const router = Router();
+
+/** Accepts `Authorization: Bearer <secret>` or `X-Webhook-Secret: <secret>`. */
+function requireWebhookAuth(headers: {
+  [key: string]: string | string[] | undefined;
+}): void {
+  const secret =
+    process.env.EMAIL_WEBHOOK_SECRET || process.env.CLOUDFLARE_EMAIL_WEBHOOK_SECRET;
+
+  if (!secret) {
+    if (isProduction) {
+      throw new ApiError(
+        'WEBHOOK_NOT_CONFIGURED',
+        'Email webhook is not configured',
+        503
+      );
+    }
+    return; // dev/test without a secret — allow (local stub)
+  }
+
+  const auth = headers.authorization;
+  const bearer =
+    typeof auth === 'string' && auth.startsWith('Bearer ') ? auth.slice(7) : undefined;
+  const headerRaw = headers['x-webhook-secret'];
+  const provided = bearer ?? (Array.isArray(headerRaw) ? headerRaw[0] : headerRaw);
+
+  if (!secureCompare(provided, secret)) {
+    throw new ApiError('UNAUTHORIZED', 'Invalid email webhook credentials', 401);
+  }
+}
 
 const eventSchema = z.object({
   messageId: z.string().optional(),
@@ -83,6 +114,8 @@ async function updateProposalEmailHistory(
 router.post(
   '/',
   asyncHandler(async (req, res) => {
+    requireWebhookAuth(req.headers);
+
     const events = Array.isArray(req.body) ? req.body : [req.body];
     const processed: string[] = [];
 

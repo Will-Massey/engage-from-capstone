@@ -9,6 +9,9 @@ dotenv.config({ path: path.join(repoRoot, '.env.development') });
 dotenv.config({ path: path.join(repoRoot, '.env') });
 dotenv.config({ path: path.join(backendRoot, '.env'), override: true });
 
+// Validate environment immediately after dotenv — fails boot on invalid prod config
+import './config/env.js';
+
 import express from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
@@ -246,7 +249,7 @@ const corsOptions = {
   },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'X-Tenant-Id', 'X-Request-Id', 'X-CSRF-Token', 'X-Test-Mode'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Tenant-Id', 'X-Request-Id', 'X-CSRF-Token', 'X-Test-Mode', 'X-Test-Mode-Secret'],
 };
 
 app.use((req, res, next) => cors({ ...corsOptions, origin: corsOptions.origin.bind({ req }) })(req, res, next));

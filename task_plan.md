@@ -9,10 +9,10 @@ Phase: **Premier Service — Payout UAT done** — `in_progress` (demo tenant pa
 
 ## Next Up
 <!-- 3–5 bullets ONLY. Next fresh session starts here. Rewrite every checkpoint. -->
-1. **Revolut Business API:** Run `revolut-business-setup.mjs` + `wire-revolut-business-render.ps1` (OAuth cert from Revolut Business → Settings → APIs) — code + wire scripts ready; credentials not on disk yet
-2. **Xero:** Render `XERO_*` env + Settings → Integrations connect smoke
-3. **P0 security:** email-events webhook auth, portal shareToken leak, env.ts boot, validUntil, E2E rate-limit bypass (`SECURITY_TODO.md`)
-4. ~~**E2E:** Fix Playwright session restore for Settings UI smoke~~ — `Origin` in `extraHTTPHeaders`; payout-smoke 3/3 pass
+1. **Deploy P0 security** (code done 5 Jul, 137 tests pass): push + set `EMAIL_WEBHOOK_SECRET`, `AML_WEBHOOK_SECRET`, `E2E_BYPASS_SECRET` on Render — without the webhook secrets those two webhooks 503 in prod (intended); without `E2E_BYPASS_SECRET` prod smokes lose rate-limit bypass
+2. **Revolut Business API:** Run `revolut-business-setup.mjs` + `wire-revolut-business-render.ps1` (OAuth cert from Revolut Business → Settings → APIs) — code + wire scripts ready; credentials not on disk yet
+3. **Xero:** Render `XERO_*` env + Settings → Integrations connect smoke
+4. ~~**P0 security code:** email-events webhook auth, portal shareToken leak, env.ts boot, validUntil, AML secret, E2E bypass~~ — all six implemented (`SECURITY_TODO.md`)
 
 ## Phases
 

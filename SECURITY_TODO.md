@@ -2,7 +2,7 @@
 
 **Audit date:** 4 July 2026  
 **Scope:** `engage-from-capstone` backend + frontend + Render production  
-**Status:** P1 + P2 implemented 4 Jul 2026 — P0 still open
+**Status:** P0 + P1 + P2 implemented (P0 code done 5 Jul 2026 — pending deploy; set `EMAIL_WEBHOOK_SECRET`, `AML_WEBHOOK_SECRET`, and optionally `E2E_BYPASS_SECRET` on Render)
 
 ---
 
@@ -39,14 +39,14 @@ Engage has **strong foundations**: httpOnly cookie auth, CSRF on protected route
 
 ## P0 — Critical (this week)
 
-| # | Item | Severity | Location | Fix |
-|---|------|----------|----------|-----|
-| 1 | **Authenticate email-events webhook** | Critical | `backend/src/routes/webhooks/email-events.ts` | Require `EMAIL_WEBHOOK_SECRET` (Bearer or `X-Webhook-Secret`); reject unsigned in production; set secret on Render |
-| 2 | **Stop exposing `shareToken` in client portal** | High | `backend/src/routes/proposals-share.ts` ~1337 | Remove `shareToken` from portal response; use portal-scoped opaque action URLs or server-side redirect to sign flow |
-| 3 | **Enforce production env at startup** | High | `backend/src/config/env.ts`, `index.ts` | `import './config/env.js'` immediately after dotenv; fail boot if `ENCRYPTION_KEY` / `OAUTH_STATE_SECRET` missing in prod |
-| 4 | **Enforce `validUntil` on sign/decline API** | High | `proposalSharingService.ts` / `proposals-share.ts` | Reject sign/decline when `new Date() > proposal.validUntil` (not just share-token expiry) |
-| 5 | **Require `AML_WEBHOOK_SECRET` in production** | High | `backend/src/routes/aml.ts` | Return 503 if secret unset when `NODE_ENV=production` |
-| 6 | **Disable E2E rate-limit bypass in production** | High | `backend/src/utils/securityFlags.ts` | `isE2eTestRequest()` must return false when `isProduction` regardless of `X-Test-Mode` header |
+| # | Item | Severity | Location | Fix | Done |
+|---|------|----------|----------|-----|------|
+| 1 | **Authenticate email-events webhook** | Critical | `backend/src/routes/webhooks/email-events.ts` | Requires `EMAIL_WEBHOOK_SECRET` (or `CLOUDFLARE_EMAIL_WEBHOOK_SECRET`) via Bearer or `X-Webhook-Secret`; 503 in production when unset — **set secret on Render** | [x] |
+| 2 | **Stop exposing `shareToken` in client portal** | High | `backend/src/routes/proposals-share.ts` | Portal response returns `canView` only; per-proposal `GET /portal/:token/proposals/:proposalId/view-link` resolves the sign URL on demand | [x] |
+| 3 | **Enforce production env at startup** | High | `backend/src/config/env.ts`, `index.ts` | `import './config/env.js'` immediately after dotenv; boot fails if `ENCRYPTION_KEY` / `OAUTH_STATE_SECRET` missing in prod | [x] |
+| 4 | **Enforce `validUntil` on sign/decline API** | High | `proposals-share.ts` | Sign + decline return 410 `PROPOSAL_EXPIRED` when `now > proposal.validUntil` | [x] |
+| 5 | **Require `AML_WEBHOOK_SECRET` in production** | High | `backend/src/routes/aml.ts` | 503 `WEBHOOK_NOT_CONFIGURED` if secret unset when `NODE_ENV=production` — **set secret on Render** | [x] |
+| 6 | **Disable E2E rate-limit bypass in production** | High | `backend/src/utils/securityFlags.ts` | Plain `X-Test-Mode` ignored in production; bypass only when `X-Test-Mode-Secret` matches `E2E_BYPASS_SECRET` (unset = no bypass). Unit-tested; e2e fixtures + smoke scripts send the secret when env var present | [x] |
 
 ---
 

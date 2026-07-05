@@ -34,6 +34,9 @@ async function api(path, { method = 'GET', body, jar } = {}) {
     'Content-Type': 'application/json',
     Origin: ORIGIN,
     'X-Test-Mode': 'e2e-build',
+    ...(process.env.E2E_BYPASS_SECRET
+      ? { 'X-Test-Mode-Secret': process.env.E2E_BYPASS_SECRET }
+      : {}),
   };
   if (jar?.csrfToken) headers['X-CSRF-Token'] = jar.csrfToken;
   if (jar && Object.keys(jar).length) headers.Cookie = cookieHeader(jar);

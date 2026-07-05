@@ -26,6 +26,9 @@ export default defineConfig({
     // API configuration for backend tests
     extraHTTPHeaders: {
       'X-Test-Mode': 'e2e',
+      ...(process.env.E2E_BYPASS_SECRET
+        ? { 'X-Test-Mode-Secret': process.env.E2E_BYPASS_SECRET }
+        : {}),
     },
   },
 

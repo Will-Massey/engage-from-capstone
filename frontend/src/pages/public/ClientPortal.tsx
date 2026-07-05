@@ -44,9 +44,7 @@ interface PortalProposal {
     billingFrequency: string;
     priceDisplayMode: string;
   }>;
-  shareToken: string;
-  shareTokenExpiry: string;
-  publicAccessEnabled: boolean;
+  canView: boolean;
 }
 
 interface PortalData {
@@ -128,10 +126,19 @@ function StatusBadge({ status }: { status: string }) {
   );
 }
 
-function ProposalCard({ proposal, practiceName }: { proposal: PortalProposal; practiceName: string }) {
+function ProposalCard({
+  proposal,
+  practiceName,
+  portalToken,
+}: {
+  proposal: PortalProposal;
+  practiceName: string;
+  portalToken: string;
+}) {
   const navigate = useNavigate();
+  const [isOpening, setIsOpening] = useState(false);
 
-  const canView = proposal.publicAccessEnabled && proposal.shareToken;
+  const canView = proposal.canView;
   const isActionable = proposal.status === 'SENT' || proposal.status === 'VIEWED';
 
   // Calculate monthly equivalent
@@ -152,9 +159,20 @@ function ProposalCard({ proposal, practiceName }: { proposal: PortalProposal; pr
     return freq === 'ONE_TIME' ? sum + gross : sum;
   }, 0);
 
-  const handleView = () => {
-    if (canView) {
-      navigate(`/proposals/view/${proposal.shareToken}`);
+  const handleView = async () => {
+    if (!canView || isOpening) return;
+    setIsOpening(true);
+    try {
+      const response = (await apiClient.get(
+        `/proposals/portal/${portalToken}/proposals/${proposal.id}/view-link`
+      )) as any;
+      if (response.success && response.data?.viewPath) {
+        navigate(response.data.viewPath);
+      }
+    } catch {
+      // Link unavailable or expired — leave the card as-is
+    } finally {
+      setIsOpening(false);
     }
   };
 
@@ -379,6 +397,7 @@ export default function ClientPortal() {
                 key={proposal.id}
                 proposal={proposal}
                 practiceName={practice.name}
+                portalToken={token!}
               />
             ))
           )}

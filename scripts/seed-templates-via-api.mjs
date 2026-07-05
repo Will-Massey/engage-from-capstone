@@ -42,6 +42,9 @@ async function api(method, path, { jar, body, headers = {} } = {}) {
       headers: {
         'Content-Type': 'application/json',
         'X-Test-Mode': 'e2e-build',
+        ...(process.env.E2E_BYPASS_SECRET
+          ? { 'X-Test-Mode-Secret': process.env.E2E_BYPASS_SECRET }
+          : {}),
         ...(jar?.size ? { Cookie: cookieHeader(jar) } : {}),
         ...headers,
       },
