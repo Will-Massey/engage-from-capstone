@@ -80,7 +80,9 @@ for (const envVar of ENV_VARS) {
 }
 
 if (errors > 0) {
-  console.error(`\n✗ ${errors} price(s) could not be checked (see above) — nothing was verified. Fix the key/ID/mode and re-run.`);
+  console.error(
+    `\n✗ ${errors} price(s) could not be checked (see above) — nothing was verified. Fix the key/ID/mode and re-run.`
+  );
   process.exit(1);
 }
 if (checked === 0) {
