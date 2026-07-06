@@ -68,9 +68,7 @@ const QuickBooksConnect = () => {
         toast.error('Failed to get QuickBooks authorisation URL');
       }
     } catch (error: any) {
-      toast.error(
-        error.response?.data?.error?.message || 'Failed to start QuickBooks connection'
-      );
+      toast.error(error.response?.data?.error?.message || 'Failed to start QuickBooks connection');
     } finally {
       setIsConnecting(false);
     }
@@ -114,8 +112,8 @@ const QuickBooksConnect = () => {
 
           {!serverConfigured && (
             <p className="mt-2 text-sm text-amber-700 dark:text-amber-300">
-              Server credentials not configured. Set QUICKBOOKS_CLIENT_ID,
-              QUICKBOOKS_CLIENT_SECRET, and QUICKBOOKS_REDIRECT_URI on the API.
+              Server credentials not configured. Set QUICKBOOKS_CLIENT_ID, QUICKBOOKS_CLIENT_SECRET,
+              and QUICKBOOKS_REDIRECT_URI on the API.
             </p>
           )}
 
@@ -159,9 +157,7 @@ const QuickBooksConnect = () => {
             </button>
           )}
 
-          {status?.note && (
-            <p className="mt-3 text-xs opacity-70">{status.note}</p>
-          )}
+          {status?.note && <p className="mt-3 text-xs opacity-70">{status.note}</p>}
         </div>
       </div>
     </div>

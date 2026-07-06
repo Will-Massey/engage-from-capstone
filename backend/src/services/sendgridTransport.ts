@@ -53,10 +53,7 @@ export function getPlatformFromAddress(): { email: string; name: string } {
     : PLATFORM_FROM_EMAIL;
   return {
     email,
-    name:
-      process.env.EMAIL_PLATFORM_FROM_NAME ||
-      process.env.EMAIL_FROM_NAME ||
-      'Capstone Engage',
+    name: process.env.EMAIL_PLATFORM_FROM_NAME || process.env.EMAIL_FROM_NAME || 'Capstone Engage',
   };
 }
 
@@ -84,7 +81,9 @@ async function sendViaWorker(payload: Record<string, unknown>): Promise<SendGrid
   return { success: true, messageId: data.result?.messageId };
 }
 
-function buildTrackingHeaders(customArgs?: Record<string, string>): Record<string, string> | undefined {
+function buildTrackingHeaders(
+  customArgs?: Record<string, string>
+): Record<string, string> | undefined {
   if (!customArgs) return undefined;
 
   const headers: Record<string, string> = {};

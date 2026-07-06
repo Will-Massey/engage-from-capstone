@@ -48,7 +48,7 @@ export async function listAgencySubAccounts(parentTenantId: string): Promise<Age
         subdomain: tenant?.subdomain || sub.subdomain,
         isActive: tenant?.isActive ?? false,
       };
-    }),
+    })
   );
 
   return enriched;
@@ -56,11 +56,17 @@ export async function listAgencySubAccounts(parentTenantId: string): Promise<Age
 
 export async function linkAgencySubAccount(
   parentTenantId: string,
-  childTenantId: string,
+  childTenantId: string
 ): Promise<AgencySubAccount> {
   const [parent, child] = await Promise.all([
-    prisma.tenant.findUnique({ where: { id: parentTenantId }, select: { settings: true, subscriptionTier: true } }),
-    prisma.tenant.findUnique({ where: { id: childTenantId }, select: { id: true, name: true, subdomain: true, settings: true } }),
+    prisma.tenant.findUnique({
+      where: { id: parentTenantId },
+      select: { settings: true, subscriptionTier: true },
+    }),
+    prisma.tenant.findUnique({
+      where: { id: childTenantId },
+      select: { id: true, name: true, subdomain: true, settings: true },
+    }),
   ]);
 
   if (!parent || !child) throw new ApiError('NOT_FOUND', 'Tenant not found', 404);

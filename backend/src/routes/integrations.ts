@@ -23,7 +23,7 @@ router.get(
           'AccountFlow handoff will activate automatically once the AccountFlow service is available. Your accepted proposals are ready when integration goes live.',
       },
     });
-  }),
+  })
 );
 
 /** Xero/QB mandate draft — placeholder; full implementation in progress */
@@ -38,7 +38,7 @@ router.get(
         message: 'Xero mandate draft integration is being finalised.',
       },
     });
-  }),
+  })
 );
 
 export default router;

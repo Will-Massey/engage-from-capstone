@@ -1,7 +1,4 @@
-import {
-  calculateLineItem,
-  calculateProposalTotals,
-} from '../pricingEngine_v2';
+import { calculateLineItem, calculateProposalTotals } from '../pricingEngine_v2';
 import type { BillingFrequency } from '@shared/pricingEngine';
 
 const BILLING_CYCLES: BillingFrequency[] = [

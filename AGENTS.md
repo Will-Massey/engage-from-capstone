@@ -30,7 +30,7 @@
 
 | Layer                | Technology                                                                                                                      |
 | -------------------- | ------------------------------------------------------------------------------------------------------------------------------- |
-| **Monorepo**         | npm workspaces (`package.json` `workspaces`). Optional: `pnpm-workspace.yaml` / `turbo.json` for tooling compatibility only      |
+| **Monorepo**         | npm workspaces (`package.json` `workspaces`). Optional: `pnpm-workspace.yaml` / `turbo.json` for tooling compatibility only     |
 | **Backend**          | Node.js 20+, Express.js 4.18, TypeScript 5.9+, Prisma 5.22, PostgreSQL 15                                                       |
 | **Frontend**         | React 18, TypeScript 5.2, Vite 6.4, Tailwind CSS 3.4, Zustand 4.4                                                               |
 | **Shared**           | TypeScript package (`@uk-proposal-platform/shared`) exposing enums, interfaces, validation, pricing engine, MTD ITSA calculator |
@@ -139,8 +139,8 @@ engage/
 | `frontend/tailwind.config.js`  | Custom colours, glass utilities, animations, dark mode via `class`                                                           |
 | `shared/tsconfig.json`         | `strict: true`. Outputs CommonJS to `dist/` with declarations.                                                               |
 | `.github/workflows/ci-cd.yml`  | Main pipeline: lint, typecheck, test (against PG+Redis), build/push Docker images, deploy to dev/staging/prod                |
-| `docker-compose.yml`           | **Local dev (hot reload)** — Node containers + Postgres + Redis + Adminer + Redis Commander                                    |
-| `docker-compose.prod.yml`      | **Production-like** stack — builds `Dockerfile.*.optimized` images                                                               |
+| `docker-compose.yml`           | **Local dev (hot reload)** — Node containers + Postgres + Redis + Adminer + Redis Commander                                  |
+| `docker-compose.prod.yml`      | **Production-like** stack — builds `Dockerfile.*.optimized` images                                                           |
 | `render.yaml`                  | Render Infrastructure-as-Code (primary target)                                                                               |
 
 ---
@@ -539,11 +539,11 @@ The `.github/workflows/ci-cd.yml` **test** job spins up PostgreSQL 15 and Redis 
 
 ### Git branches & what they trigger
 
-| Branch / action | Typical outcome |
-| ---------------- | ---------------- |
-| **`main`** | **Staging path** in `ci-cd.yml` (Railway backend staging + Vercel staging) when that workflow's deploy jobs run; **`deploy-render.yml`** also runs on push to **`main` or `master`** and triggers **Render** backend then frontend deploy via the Render API |
-| **`develop`** | **Development** deploy job in `ci-cd.yml` (Railway dev + Vercel dev), when enabled |
-| **`workflow_dispatch`** | **Production** deploy in `ci-cd.yml` is **manual only** (includes DB backup, migrations, Slack) |
+| Branch / action         | Typical outcome                                                                                                                                                                                                                                              |
+| ----------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| **`main`**              | **Staging path** in `ci-cd.yml` (Railway backend staging + Vercel staging) when that workflow's deploy jobs run; **`deploy-render.yml`** also runs on push to **`main` or `master`** and triggers **Render** backend then frontend deploy via the Render API |
+| **`develop`**           | **Development** deploy job in `ci-cd.yml` (Railway dev + Vercel dev), when enabled                                                                                                                                                                           |
+| **`workflow_dispatch`** | **Production** deploy in `ci-cd.yml` is **manual only** (includes DB backup, migrations, Slack)                                                                                                                                                              |
 
 **Render auto-deploy:** If each Render service is connected to the same GitHub repo, pushing the linked branch can start a deploy **without** the GitHub Action — check the service's **Auto-Deploy** branch in the Render dashboard.
 
@@ -709,7 +709,7 @@ Three Dockerfiles exist:
 | Service               | Purpose                        | Key Files                                                        |
 | --------------------- | ------------------------------ | ---------------------------------------------------------------- |
 | **Stripe**            | Subscription billing, payments | `backend/src/routes/payments.ts`, `backend/src/config/stripe.ts` |
-| **Revolut**           | Client proposal payments       | `backend/src/lib/revolut/`, `backend/src/routes/billing.ts`       |
+| **Revolut**           | Client proposal payments       | `backend/src/lib/revolut/`, `backend/src/routes/billing.ts`      |
 | **Companies House**   | UK company lookup              | `backend/src/services/companiesHouse.ts`                         |
 | **SMTP (Nodemailer)** | Email delivery                 | `backend/src/services/emailService.ts`                           |
 | **Redis**             | Caching, session storage       | `backend/src/config/redis.ts`                                    |

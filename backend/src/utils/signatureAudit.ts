@@ -45,7 +45,10 @@ export function hashProposalDocument(proposal: {
 }
 
 export function hashTerms(terms: string | null | undefined): string {
-  return crypto.createHash('sha256').update(terms || '').digest('hex');
+  return crypto
+    .createHash('sha256')
+    .update(terms || '')
+    .digest('hex');
 }
 
 export type GeoLocationPayload = {

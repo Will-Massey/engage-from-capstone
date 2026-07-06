@@ -89,8 +89,8 @@ export default function LoeOnlyModal({ clientId, clientName, onClose }: LoeOnlyM
 
         <div className="p-6 space-y-4 overflow-y-auto flex-1">
           <p className="text-sm text-slate-600 dark:text-slate-300">
-            Create a letter of engagement for <strong>{clientName}</strong> without a fee
-            schedule. Select services to drive clause selection from your firm&apos;s library.
+            Create a letter of engagement for <strong>{clientName}</strong> without a fee schedule.
+            Select services to drive clause selection from your firm&apos;s library.
           </p>
 
           <div>

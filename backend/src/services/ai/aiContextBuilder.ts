@@ -109,20 +109,18 @@ export interface BuildAiContextResult {
   companiesHouse?: AiCompaniesHouseContext;
 }
 
-function mapCatalogItem(
-  s: {
-    id: string;
-    name: string;
-    category: string;
-    description: string;
-    priceAmount: number;
-    basePrice: number;
-    billingCycle: string;
-    defaultFrequency: string;
-    frequencyOptions: string | null;
-    tags: string;
-  }
-): AiCatalogSnippetItem {
+function mapCatalogItem(s: {
+  id: string;
+  name: string;
+  category: string;
+  description: string;
+  priceAmount: number;
+  basePrice: number;
+  billingCycle: string;
+  defaultFrequency: string;
+  frequencyOptions: string | null;
+  tags: string;
+}): AiCatalogSnippetItem {
   return {
     id: s.id,
     name: s.name,
@@ -181,7 +179,9 @@ function mapClient(client: {
   };
 }
 
-async function loadCompaniesHouse(companyNumber: string): Promise<AiCompaniesHouseContext | undefined> {
+async function loadCompaniesHouse(
+  companyNumber: string
+): Promise<AiCompaniesHouseContext | undefined> {
   const ch = createCompaniesHouseService();
   if (!ch) return undefined;
 
@@ -291,7 +291,11 @@ export async function buildAiContext(
   if (resolvedClientId) {
     const rows = await prisma.proposal.findMany({
       where: { tenantId, clientId: resolvedClientId },
-      include: { services: { select: { name: true, billingFrequency: true, displayPrice: true, unitPrice: true } } },
+      include: {
+        services: {
+          select: { name: true, billingFrequency: true, displayPrice: true, unitPrice: true },
+        },
+      },
       orderBy: { updatedAt: 'desc' },
       take: 5,
     });

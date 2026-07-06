@@ -76,18 +76,50 @@ We're confident this gets you {{keyOutcome}}. If you want to move forward, the n
  * These are autofilled where possible in the proposal builder and when rendering.
  */
 export const coverLetterMergeFields = [
-  { key: 'clientName', description: 'Addressee / contact name (preferred for salutation)', example: 'Alex Rivera' },
+  {
+    key: 'clientName',
+    description: 'Addressee / contact name (preferred for salutation)',
+    example: 'Alex Rivera',
+  },
   { key: 'companyName', description: 'Client company or trading name', example: 'Rivera & Co Ltd' },
-  { key: 'servicesSummary', description: 'Short natural language list of services', example: 'monthly bookkeeping, VAT compliance and annual accounts' },
-  { key: 'discussionDate', description: 'Date or reference to your conversation', example: '12 June 2026' },
+  {
+    key: 'servicesSummary',
+    description: 'Short natural language list of services',
+    example: 'monthly bookkeeping, VAT compliance and annual accounts',
+  },
+  {
+    key: 'discussionDate',
+    description: 'Date or reference to your conversation',
+    example: '12 June 2026',
+  },
   { key: 'tenantName', description: 'Your practice / firm name', example: 'Capstone Accounting' },
-  { key: 'firmExperience', description: 'Years of experience (from Settings — only included if set)', example: '15 years' },
-  { key: 'sectorOrRegion', description: 'Sector or region you serve (from Settings if set)', example: 'the Midlands' },
-  { key: 'firmCredentials', description: 'Professional body from Settings (e.g. CPAA-regulated practice)', example: 'CPAA-regulated practice' },
-  { key: 'keyOutcome', description: 'Primary benefit / outcome (for direct tone)', example: 'compliant and ahead of MTD ITSA deadlines' },
+  {
+    key: 'firmExperience',
+    description: 'Years of experience (from Settings — only included if set)',
+    example: '15 years',
+  },
+  {
+    key: 'sectorOrRegion',
+    description: 'Sector or region you serve (from Settings if set)',
+    example: 'the Midlands',
+  },
+  {
+    key: 'firmCredentials',
+    description: 'Professional body from Settings (e.g. CPAA-regulated practice)',
+    example: 'CPAA-regulated practice',
+  },
+  {
+    key: 'keyOutcome',
+    description: 'Primary benefit / outcome (for direct tone)',
+    example: 'compliant and ahead of MTD ITSA deadlines',
+  },
   { key: 'senderName', description: 'Sender full name', example: 'Jordan Hale' },
   { key: 'senderPosition', description: 'Sender job title', example: 'Partner' },
-  { key: 'monthlyTotal', description: 'Recurring monthly cost (inc VAT) if relevant', example: '£712' },
+  {
+    key: 'monthlyTotal',
+    description: 'Recurring monthly cost (inc VAT) if relevant',
+    example: '£712',
+  },
   { key: 'serviceCount', description: 'Number of services', example: '4' },
   { key: 'proposalReference', description: 'Proposal reference', example: 'PROP-2026-0842' },
   { key: 'proposalTitle', description: 'Proposal title', example: 'Annual Compliance & Advisory' },
@@ -143,7 +175,10 @@ export function renderTemplate(template: string, data: Record<string, string | u
   });
 
   // Clean up any double spaces or awkward punctuation left by empties
-  rendered = rendered.replace(/[ \t]{2,}/g, ' ').replace(/\n{3,}/g, '\n\n').trim();
+  rendered = rendered
+    .replace(/[ \t]{2,}/g, ' ')
+    .replace(/\n{3,}/g, '\n\n')
+    .trim();
   return rendered;
 }
 

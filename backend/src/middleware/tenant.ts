@@ -13,11 +13,7 @@ const RESERVED_SUBDOMAINS = new Set([
   'engage-frontend',
 ]);
 
-const PLATFORM_HOST_SUFFIXES = [
-  '.onrender.com',
-  '.up.railway.app',
-  '.vercel.app',
-];
+const PLATFORM_HOST_SUFFIXES = ['.onrender.com', '.up.railway.app', '.vercel.app'];
 
 /**
  * Parse tenant subdomain from Host header (without port).
@@ -168,11 +164,7 @@ export const tenantHeader = async (
   }
 };
 
-export const validateTenantMembership = (
-  req: Request,
-  res: Response,
-  next: NextFunction
-): void => {
+export const validateTenantMembership = (req: Request, res: Response, next: NextFunction): void => {
   if (!req.user) {
     res.status(401).json({
       success: false,
@@ -210,4 +202,10 @@ export const authenticateTenantMember = async (
   });
 };
 
-export default { extractTenant, tenantHeader, validateTenantMembership, parseSubdomainFromHost, resolveTenantForRequest };
+export default {
+  extractTenant,
+  tenantHeader,
+  validateTenantMembership,
+  parseSubdomainFromHost,
+  resolveTenantForRequest,
+};

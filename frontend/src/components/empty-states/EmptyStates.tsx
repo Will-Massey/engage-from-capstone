@@ -58,9 +58,7 @@ export const EmptyState = ({
         <h3 className="text-xl font-semibold text-slate-900 dark:text-white mb-2">{title}</h3>
         <p className="text-slate-600 dark:text-slate-400 mb-6">{description}</p>
 
-        {context && (
-          <ClaraEmptyTip context={context} fallback={claraTip} className="mb-6" />
-        )}
+        {context && <ClaraEmptyTip context={context} fallback={claraTip} className="mb-6" />}
         {!context && claraTip && (
           <ClaraEmptyTip context="general" fallback={claraTip} className="mb-6" />
         )}

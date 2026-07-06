@@ -65,10 +65,14 @@ export function decryptTenantEmailSettings(raw: TenantEmailSettings): TenantEmai
     copy.smtp = { ...copy.smtp, pass: decrypt(copy.smtp.pass) };
   }
   if (copy.gmail) {
-    copy.gmail = decryptObject(copy.gmail as Record<string, string>) as TenantEmailSettings['gmail'];
+    copy.gmail = decryptObject(
+      copy.gmail as Record<string, string>
+    ) as TenantEmailSettings['gmail'];
   }
   if (copy.outlook) {
-    copy.outlook = decryptObject(copy.outlook as Record<string, string>) as TenantEmailSettings['outlook'];
+    copy.outlook = decryptObject(
+      copy.outlook as Record<string, string>
+    ) as TenantEmailSettings['outlook'];
   }
   return copy;
 }
@@ -95,16 +99,22 @@ export function encryptTenantEmailSettingsForSave(
     }
   }
   if (merged.gmail) {
-    merged.gmail = encryptObject(merged.gmail as Record<string, string>) as TenantEmailSettings['gmail'];
+    merged.gmail = encryptObject(
+      merged.gmail as Record<string, string>
+    ) as TenantEmailSettings['gmail'];
   }
   if (merged.outlook) {
-    merged.outlook = encryptObject(merged.outlook as Record<string, string>) as TenantEmailSettings['outlook'];
+    merged.outlook = encryptObject(
+      merged.outlook as Record<string, string>
+    ) as TenantEmailSettings['outlook'];
   }
 
   return merged;
 }
 
-export async function loadTenantEmailContext(tenantId: string): Promise<LoadedTenantEmailContext | null> {
+export async function loadTenantEmailContext(
+  tenantId: string
+): Promise<LoadedTenantEmailContext | null> {
   const tenant = await prisma.tenant.findUnique({
     where: { id: tenantId },
     select: { id: true, name: true, settings: true },

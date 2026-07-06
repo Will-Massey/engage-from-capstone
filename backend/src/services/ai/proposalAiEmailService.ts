@@ -4,7 +4,12 @@
 import { prisma } from '../../config/database.js';
 import { ApiError } from '../../middleware/errorHandler.js';
 import { AI_COPILOT } from '../../config/aiCopilot.js';
-import { chatCompletion, chatCompletionStream, parseJsonResponse, checkAiTokenBudget } from './aiClient.js';
+import {
+  chatCompletion,
+  chatCompletionStream,
+  parseJsonResponse,
+  checkAiTokenBudget,
+} from './aiClient.js';
 import { buildAiContext } from './aiContextBuilder.js';
 import { logAiUsage } from './proposalAiService.js';
 
@@ -246,9 +251,8 @@ Return JSON only:
     .map((p) => `<p>${escapeHtml(p)}</p>`)
     .join('\n');
 
-  const nextStepsHtml =
-    parsed.nextSteps?.length ?
-      `<p><strong>Next steps:</strong></p><ul>${parsed.nextSteps.map((s) => `<li>${escapeHtml(s)}</li>`).join('')}</ul>`
+  const nextStepsHtml = parsed.nextSteps?.length
+    ? `<p><strong>Next steps:</strong></p><ul>${parsed.nextSteps.map((s) => `<li>${escapeHtml(s)}</li>`).join('')}</ul>`
     : '';
 
   const bodyHtml = `${bodyParagraphsHtml}\n${servicesToHtmlTable(payload.services)}\n${nextStepsHtml}`;
@@ -264,7 +268,9 @@ Return JSON only:
     '',
     `Total: ${totalFormatted}`,
     '',
-    parsed.nextSteps?.length ? `Next steps:\n${parsed.nextSteps.map((s) => `• ${s}`).join('\n')}` : '',
+    parsed.nextSteps?.length
+      ? `Next steps:\n${parsed.nextSteps.map((s) => `• ${s}`).join('\n')}`
+      : '',
     '',
     `Valid until: ${validUntilFormatted}`,
     payload.viewLink ? `\nView proposal: ${payload.viewLink}` : '',
@@ -297,7 +303,8 @@ Return JSON only:
   await logAiUsage(tenantId, userId, 'proposal_send_email', logMeta);
 
   return {
-    subject: parsed.subject?.trim() || `Proposal: ${payload.proposalTitle} — ${payload.proposalReference}`,
+    subject:
+      parsed.subject?.trim() || `Proposal: ${payload.proposalTitle} — ${payload.proposalReference}`,
     htmlBody,
     textBody,
     requiresApproval: true,
@@ -352,7 +359,9 @@ Do not add quotes or extra text.`,
     { temperature: 0.4, maxTokens: 60 }
   );
 
-  const subject = subjectRaw.trim().replace(/^["']|["']$/g, '') || `Proposal: ${payload.proposalTitle} — ${payload.proposalReference}`;
+  const subject =
+    subjectRaw.trim().replace(/^["']|["']$/g, '') ||
+    `Proposal: ${payload.proposalTitle} — ${payload.proposalReference}`;
   yield { subject };
 
   // Now stream the body paragraphs
@@ -483,17 +492,15 @@ export async function generateProposalSendEmail(
     viewLink = `${frontendUrl}/proposals/view/${proposal.shareToken}`;
   } else if (proposal.status === 'DRAFT') {
     const { createShareableLink } = await import('../proposalSharingService.js');
-    const link = await createShareableLink(
-      proposalId,
-      30,
-      proposal.tenant?.subdomain || 'demo'
-    );
+    const link = await createShareableLink(proposalId, 30, proposal.tenant?.subdomain || 'demo');
     viewLink = link.shareUrl;
   }
 
   const senderName = ctx.user
     ? Array.from(new Set([ctx.user.firstName, ctx.user.lastName].filter(Boolean))).join(' ')
-    : Array.from(new Set([proposal.createdBy.firstName, proposal.createdBy.lastName].filter(Boolean))).join(' ');
+    : Array.from(
+        new Set([proposal.createdBy.firstName, proposal.createdBy.lastName].filter(Boolean))
+      ).join(' ');
   const senderEmail = ctx.user?.email ?? proposal.createdBy.email;
 
   return generateEmailContent(
@@ -531,7 +538,9 @@ export async function generateProposalSendEmailFromDraft(
   const total = services.reduce((sum, s) => sum + (s.displayPrice ?? 0), 0);
   const senderName =
     draft.senderName ||
-    (ctx.user ? Array.from(new Set([ctx.user.firstName, ctx.user.lastName].filter(Boolean))).join(' ') : 'Partner');
+    (ctx.user
+      ? Array.from(new Set([ctx.user.firstName, ctx.user.lastName].filter(Boolean))).join(' ')
+      : 'Partner');
   const senderEmail = draft.senderEmail || ctx.user?.email || '';
 
   return generateEmailContent(
@@ -543,7 +552,8 @@ export async function generateProposalSendEmailFromDraft(
       tenantName: draft.practiceName || ctx.tenant.name,
       proposalTitle: draft.title || `Proposal for ${ctx.client.name}`,
       proposalReference: draft.reference || 'Draft',
-      validUntil: draft.validUntil || new Date(Date.now() + 30 * 86400000).toISOString().slice(0, 10),
+      validUntil:
+        draft.validUntil || new Date(Date.now() + 30 * 86400000).toISOString().slice(0, 10),
       services,
       total,
       senderName,

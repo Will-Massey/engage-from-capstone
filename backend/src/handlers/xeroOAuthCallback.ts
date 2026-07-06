@@ -56,7 +56,9 @@ export async function handleXeroOAuthCallback(req: Request, res: Response): Prom
           ? new Date(Date.now() + Number(tokenObj.expires_in) * 1000).toISOString()
           : undefined,
       scope: tokenObj.scope
-        ? String(tokenObj.scope).split(/[\s,]+/).filter(Boolean)
+        ? String(tokenObj.scope)
+            .split(/[\s,]+/)
+            .filter(Boolean)
         : undefined,
       connectedAt: new Date().toISOString(),
       connectedByUserId: payload.userId,

@@ -46,7 +46,10 @@ export function injectBuildTime(): Plugin {
           `<meta name="build-time" content="${buildTime}" />`
         );
       } else {
-        result = html.replace('</head>', `    <meta name="build-time" content="${buildTime}" />\n  </head>`);
+        result = html.replace(
+          '</head>',
+          `    <meta name="build-time" content="${buildTime}" />\n  </head>`
+        );
       }
 
       if (!ctx.server) {

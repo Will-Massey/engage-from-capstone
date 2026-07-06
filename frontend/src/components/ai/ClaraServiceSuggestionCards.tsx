@@ -1,6 +1,10 @@
 import { useState } from 'react';
 import { CheckIcon, XMarkIcon, PencilIcon } from '@heroicons/react/24/outline';
-import { BILLING_CADENCE_OPTIONS, parseFrequencyOptions, type BillingCadence } from '../../utils/billingCadence';
+import {
+  BILLING_CADENCE_OPTIONS,
+  parseFrequencyOptions,
+  type BillingCadence,
+} from '../../utils/billingCadence';
 
 export interface ClaraServiceSuggestion {
   serviceId: string;
@@ -52,9 +56,9 @@ export default function ClaraServiceSuggestionCards({
     setTweakingId(s.serviceId);
     setTweakPrice(String(s.displayPrice));
     const allowed = parseFrequencyOptions(s.frequencyOptions);
-    const initial = (allowed.includes(s.billingFrequency as BillingCadence)
-      ? s.billingFrequency
-      : allowed[0]) as BillingCadence;
+    const initial = (
+      allowed.includes(s.billingFrequency as BillingCadence) ? s.billingFrequency : allowed[0]
+    ) as BillingCadence;
     setTweakCadence(initial);
   };
 
@@ -180,7 +184,11 @@ export default function ClaraServiceSuggestionCards({
       </ul>
 
       {onAcceptAll && suggestions.length > 1 && (
-        <button type="button" onClick={onAcceptAll} className="btn-primary text-xs py-1.5 px-3 mt-1">
+        <button
+          type="button"
+          onClick={onAcceptAll}
+          className="btn-primary text-xs py-1.5 px-3 mt-1"
+        >
           Accept all remaining
         </button>
       )}

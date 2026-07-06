@@ -14,7 +14,12 @@ export default function CoverLetterTemplatesManager() {
   const [mergeFields, setMergeFields] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
   const [editing, setEditing] = useState<any | null>(null);
-  const [form, setForm] = useState({ name: '', tone: 'PROFESSIONAL', content: '', isDefault: false });
+  const [form, setForm] = useState({
+    name: '',
+    tone: 'PROFESSIONAL',
+    content: '',
+    isDefault: false,
+  });
 
   const load = async () => {
     setLoading(true);
@@ -101,17 +106,27 @@ export default function CoverLetterTemplatesManager() {
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <div>
-          <h3 className="text-sm font-semibold text-slate-900 dark:text-white">Cover letter templates</h3>
-          <p className="text-xs text-slate-500 mt-0.5">Reusable templates with merge fields for proposals</p>
+          <h3 className="text-sm font-semibold text-slate-900 dark:text-white">
+            Cover letter templates
+          </h3>
+          <p className="text-xs text-slate-500 mt-0.5">
+            Reusable templates with merge fields for proposals
+          </p>
         </div>
-        <button type="button" onClick={openNew} className="btn-secondary text-sm inline-flex items-center gap-1">
+        <button
+          type="button"
+          onClick={openNew}
+          className="btn-secondary text-sm inline-flex items-center gap-1"
+        >
           <PlusIcon className="h-4 w-4" />
           New template
         </button>
       </div>
 
       {templates.length === 0 ? (
-        <p className="text-sm text-slate-500 py-4">No custom templates yet — create one or use tones in the proposal builder.</p>
+        <p className="text-sm text-slate-500 py-4">
+          No custom templates yet — create one or use tones in the proposal builder.
+        </p>
       ) : (
         <ul className="divide-y divide-slate-200 dark:divide-slate-700 rounded-xl border border-slate-200 dark:border-slate-700 overflow-hidden">
           {templates.map((t) => (
@@ -119,8 +134,14 @@ export default function CoverLetterTemplatesManager() {
               key={t.id}
               className="flex items-center justify-between gap-3 px-4 py-3 bg-white/50 dark:bg-slate-900/30 hover:bg-slate-50 dark:hover:bg-slate-800/50"
             >
-              <button type="button" onClick={() => openEdit(t)} className="text-left flex-1 min-w-0">
-                <div className="font-medium text-sm text-slate-900 dark:text-white truncate">{t.name}</div>
+              <button
+                type="button"
+                onClick={() => openEdit(t)}
+                className="text-left flex-1 min-w-0"
+              >
+                <div className="font-medium text-sm text-slate-900 dark:text-white truncate">
+                  {t.name}
+                </div>
                 <div className="text-xs text-slate-500">
                   {TONE_LABELS[t.tone] || t.tone}
                   {t.isDefault ? ' · Default' : ''}
@@ -143,7 +164,9 @@ export default function CoverLetterTemplatesManager() {
         <div className="rounded-xl border border-primary-200 dark:border-primary-800 bg-primary-50/30 dark:bg-primary-950/20 p-4 space-y-3">
           <div className="flex items-center gap-2 text-primary-700 dark:text-primary-300">
             <DocumentTextIcon className="h-5 w-5" />
-            <span className="font-medium text-sm">{editing.id ? 'Edit template' : 'New template'}</span>
+            <span className="font-medium text-sm">
+              {editing.id ? 'Edit template' : 'New template'}
+            </span>
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <input
@@ -196,7 +219,11 @@ export default function CoverLetterTemplatesManager() {
             <button type="button" onClick={save} className="btn-primary text-sm">
               Save template
             </button>
-            <button type="button" onClick={() => setEditing(null)} className="btn-secondary text-sm">
+            <button
+              type="button"
+              onClick={() => setEditing(null)}
+              className="btn-secondary text-sm"
+            >
               Cancel
             </button>
           </div>

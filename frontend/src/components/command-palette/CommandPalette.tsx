@@ -146,7 +146,10 @@ const CommandPalette = ({ isOpen, onClose }: CommandPaletteProps) => {
 
   const commands = getCommands();
 
-  const aiQuery = search.trim().replace(/^ai\s+/i, '').trim();
+  const aiQuery = search
+    .trim()
+    .replace(/^ai\s+/i, '')
+    .trim();
   const entityQuery = search.trim().toLowerCase();
 
   useEffect(() => {
@@ -234,7 +237,11 @@ const CommandPalette = ({ isOpen, onClose }: CommandPaletteProps) => {
       if (code === 'AI_NOT_CONFIGURED') {
         toast.error(copilotUnavailableToast());
       } else {
-        toast.error(err?.message || err?.response?.data?.error?.message || `${AI_COPILOT.name} couldn't complete that request`);
+        toast.error(
+          err?.message ||
+            err?.response?.data?.error?.message ||
+            `${AI_COPILOT.name} couldn't complete that request`
+        );
       }
     } finally {
       setAiLoading(false);

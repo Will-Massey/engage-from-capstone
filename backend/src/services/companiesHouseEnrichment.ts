@@ -157,7 +157,11 @@ async function resolveCompanyNumber(
   clientName: string,
   existingNumber: string | null | undefined,
   options: EnrichCompaniesHouseOptions
-): Promise<{ number: string; matchedBy: 'number' | 'search' | 'provided'; matches?: CompaniesHouseMatch[] }> {
+): Promise<{
+  number: string;
+  matchedBy: 'number' | 'search' | 'provided';
+  matches?: CompaniesHouseMatch[];
+}> {
   if (options.companyNumber?.trim()) {
     return { number: options.companyNumber.trim().toUpperCase(), matchedBy: 'provided' };
   }

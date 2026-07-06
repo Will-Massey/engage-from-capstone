@@ -41,9 +41,7 @@ function cookieHeader(jar) {
 }
 
 async function pressurePing(n = 20) {
-  const results = await Promise.all(
-    Array.from({ length: n }, () => request('/ping'))
-  );
+  const results = await Promise.all(Array.from({ length: n }, () => request('/ping')));
   const ok = results.filter((r) => r.status === 200).length;
   return { total: n, ok, failed: n - ok };
 }

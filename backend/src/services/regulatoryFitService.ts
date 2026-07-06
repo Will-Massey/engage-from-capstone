@@ -93,11 +93,7 @@ function hasAmlCoverage(terms: string, engagementLetter: string, serviceNames: s
   return serviceNames.some((n) => AML_SERVICE_PATTERNS.test(n));
 }
 
-function isNewClient(
-  proposalCount: number,
-  amlCompletedAt: Date | null,
-  createdAt: Date
-): boolean {
+function isNewClient(proposalCount: number, amlCompletedAt: Date | null, createdAt: Date): boolean {
   const daysSinceCreated = (Date.now() - createdAt.getTime()) / (1000 * 60 * 60 * 24);
   return proposalCount <= 1 && !amlCompletedAt && daysSinceCreated <= 90;
 }
@@ -119,7 +115,9 @@ export interface ProposalRegulatoryInput {
 }
 
 /** Evaluate regulatory fit for a single proposal (saved or draft-shaped). */
-export function evaluateProposalRegulatoryFit(input: ProposalRegulatoryInput): RegulatoryFitAlert[] {
+export function evaluateProposalRegulatoryFit(
+  input: ProposalRegulatoryInput
+): RegulatoryFitAlert[] {
   const alerts: RegulatoryFitAlert[] = [];
   const terms = input.terms || '';
   const engagementLetter = input.engagementLetter || '';
@@ -142,9 +140,7 @@ export function evaluateProposalRegulatoryFit(input: ProposalRegulatoryInput): R
     }
   }
 
-  if (
-    isNewClient(proposalCount, input.client.amlCompletedAt ?? null, input.client.createdAt)
-  ) {
+  if (isNewClient(proposalCount, input.client.amlCompletedAt ?? null, input.client.createdAt)) {
     if (!hasAmlCoverage(terms, engagementLetter, serviceNames)) {
       alerts.push({
         id: 'aml-block-suggested',

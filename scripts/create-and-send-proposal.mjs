@@ -16,13 +16,19 @@ function parseSetCookies(headers) {
 }
 
 function cookieHeader(jar) {
-  return Object.entries(jar).map(([k, v]) => `${k}=${v}`).join('; ');
+  return Object.entries(jar)
+    .map(([k, v]) => `${k}=${v}`)
+    .join('; ');
 }
 
 async function api(path, { method = 'GET', body, cookies = {}, csrf } = {}) {
   const headers = { 'Content-Type': 'application/json', Cookie: cookieHeader(cookies) };
   if (csrf) headers['X-CSRF-Token'] = csrf;
-  const res = await fetch(`${BASE}${path}`, { method, headers, body: body ? JSON.stringify(body) : undefined });
+  const res = await fetch(`${BASE}${path}`, {
+    method,
+    headers,
+    body: body ? JSON.stringify(body) : undefined,
+  });
   const data = await res.json().catch(() => ({}));
   Object.assign(cookies, parseSetCookies(res.headers));
   return { status: res.status, data, cookies };
@@ -41,9 +47,7 @@ async function main() {
 
   const clients = await api('/api/clients?limit=50', { cookies });
   const clientList = Array.isArray(clients.data?.data) ? clients.data.data : [];
-  let client = clientList.find(
-    (c) => c.contactEmail?.toLowerCase() === TARGET_EMAIL.toLowerCase()
-  );
+  let client = clientList.find((c) => c.contactEmail?.toLowerCase() === TARGET_EMAIL.toLowerCase());
   if (!client) {
     client = clientList[0];
     if (client) {

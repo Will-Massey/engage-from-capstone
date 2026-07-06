@@ -1,9 +1,9 @@
-import {
-  computeSigningCostSummary,
-  formatSigningCostPhrase,
-} from '../publicProposalAiService.js';
+import { computeSigningCostSummary, formatSigningCostPhrase } from '../publicProposalAiService.js';
 
-function mockProposal(services: Array<Record<string, unknown>>, overrides: Record<string, unknown> = {}) {
+function mockProposal(
+  services: Array<Record<string, unknown>>,
+  overrides: Record<string, unknown> = {}
+) {
   return {
     paymentFrequency: 'MONTHLY',
     total: 1200,

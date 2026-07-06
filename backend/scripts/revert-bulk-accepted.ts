@@ -98,12 +98,10 @@ async function main() {
 
   await prisma.activityLog.create({
     data: {
-      tenantId: (
-        await prisma.proposal.findFirst({
-          where: { id: plan[0]?.id },
-          select: { tenantId: true },
-        })
-      )!.tenantId,
+      tenantId: (await prisma.proposal.findFirst({
+        where: { id: plan[0]?.id },
+        select: { tenantId: true },
+      }))!.tenantId,
       action: 'PROPOSAL_BULK_REVERT_ACCEPTED',
       entityType: 'PROPOSAL',
       entityId: plan[0]?.id ?? 'bulk',

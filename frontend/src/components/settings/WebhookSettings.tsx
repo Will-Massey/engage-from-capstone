@@ -103,7 +103,10 @@ export default function WebhookSettings() {
       </div>
 
       <div>
-        <label htmlFor="webhook-url" className="block text-sm font-medium text-slate-800 dark:text-slate-200">
+        <label
+          htmlFor="webhook-url"
+          className="block text-sm font-medium text-slate-800 dark:text-slate-200"
+        >
           HTTPS webhook URL
         </label>
         <input

@@ -104,9 +104,7 @@ async function loadCatalog(tenantId: string) {
   });
 }
 
-function catalogForPrompt(
-  catalog: Awaited<ReturnType<typeof loadCatalog>>
-) {
+function catalogForPrompt(catalog: Awaited<ReturnType<typeof loadCatalog>>) {
   return catalog.map((s) => ({
     id: s.id,
     name: s.name,
@@ -298,7 +296,10 @@ ${voiceContext}Use plain paragraphs (no markdown headers). 3-5 short paragraphs.
     yield chunk;
   }
 
-  await logAiUsage(tenantId, userId, 'cover_letter_stream', { clientId: params.clientId, tone: params.tone });
+  await logAiUsage(tenantId, userId, 'cover_letter_stream', {
+    clientId: params.clientId,
+    tone: params.tone,
+  });
   // consumer may want the full at end; we yielded incrementally
 }
 
@@ -518,7 +519,9 @@ export async function reviewProposalDraft(
   }
   const coverLen = draft.coverLetter?.trim().length ?? 0;
   if (coverLen < 40) {
-    ruleActions.push('Cover letter is missing or very short — clients respond better with a personalised introduction.');
+    ruleActions.push(
+      'Cover letter is missing or very short — clients respond better with a personalised introduction.'
+    );
     healthScore -= 12;
   }
   if (draft.validUntil) {
@@ -529,7 +532,9 @@ export async function reviewProposalDraft(
         ruleActions.push('Valid until date is in the past.');
         healthScore -= 25;
       } else if (days <= 7) {
-        ruleActions.push('Valid until date is within 7 days — consider a longer window for new clients.');
+        ruleActions.push(
+          'Valid until date is within 7 days — consider a longer window for new clients.'
+        );
         healthScore -= 8;
       }
     }
@@ -541,7 +546,9 @@ export async function reviewProposalDraft(
     healthScore -= 10;
   }
   if (!draft.terms?.trim()) {
-    ruleActions.push('Terms and conditions will be attached automatically when you create the proposal.');
+    ruleActions.push(
+      'Terms and conditions will be attached automatically when you create the proposal.'
+    );
     healthScore -= 5;
   }
 
@@ -611,7 +618,10 @@ export async function suggestProposalTitle(
 ) {
   const client = await loadClientContext(tenantId, clientId);
   if (!isAiConfigured()) {
-    const names = services.map((s) => s.name).slice(0, 2).join(' & ');
+    const names = services
+      .map((s) => s.name)
+      .slice(0, 2)
+      .join(' & ');
     return { title: names ? `${names} — ${client.name}` : `Proposal for ${client.name}` };
   }
 
@@ -681,12 +691,16 @@ export async function getProposalHealth(
   else if (viewCount > 0) healthScore = 60;
 
   const ruleActions: string[] = [];
-  if (signals.expired) ruleActions.push('Proposal has expired — create a revised proposal or extend valid until date.');
+  if (signals.expired)
+    ruleActions.push(
+      'Proposal has expired — create a revised proposal or extend valid until date.'
+    );
   if (signals.expiringSoon && proposal.status !== 'ACCEPTED')
     ruleActions.push('Valid until date is within 7 days — follow up with the client.');
   if (signals.noViews && proposal.status === 'SENT')
     ruleActions.push('Client has not opened the proposal — consider a phone call or resend.');
-  if (signals.stuck) ruleActions.push('No signature after 14+ days — send a follow-up or review pricing.');
+  if (signals.stuck)
+    ruleActions.push('No signature after 14+ days — send a follow-up or review pricing.');
 
   let aiSummary = '';
   let aiActions: string[] = [];
@@ -759,10 +773,7 @@ export async function generateRenewalDraft(
     serviceId: s.serviceTemplateId,
     name: s.name,
     billingFrequency: s.billingFrequency,
-    displayPrice: Math.max(
-      0,
-      Math.round((s.displayPrice || s.unitPrice) * multiplier * 100) / 100
-    ),
+    displayPrice: Math.max(0, Math.round((s.displayPrice || s.unitPrice) * multiplier * 100) / 100),
     quantity: s.quantity,
     discountPercent: s.discountPercent,
   }));
@@ -824,7 +835,13 @@ export async function executeAiCommand(
 ) {
   const recentProposals = await prisma.proposal.findMany({
     where: { tenantId },
-    select: { id: true, reference: true, title: true, status: true, client: { select: { name: true } } },
+    select: {
+      id: true,
+      reference: true,
+      title: true,
+      status: true,
+      client: { select: { name: true } },
+    },
     orderBy: { updatedAt: 'desc' },
     take: 15,
   });
@@ -931,7 +948,8 @@ export async function executeQuickAction(
   if (action === 'suggest_services') {
     if (!context.clientId) {
       return {
-        message: 'Open a client or start a new proposal with a client selected — then I can suggest services.',
+        message:
+          'Open a client or start a new proposal with a client selected — then I can suggest services.',
         action: 'answer',
       };
     }
@@ -993,9 +1011,7 @@ export async function getAiAttentionQueue(
 
   for (const p of proposals) {
     const daysUntilExpiry = Math.floor((p.validUntil.getTime() - now) / 86400000);
-    const daysSinceSent = p.sentAt
-      ? Math.floor((now - p.sentAt.getTime()) / 86400000)
-      : null;
+    const daysSinceSent = p.sentAt ? Math.floor((now - p.sentAt.getTime()) / 86400000) : null;
     const viewCount = p.views.length;
     const daysSinceUpdate = Math.floor((now - p.updatedAt.getTime()) / 86400000);
 
@@ -1032,7 +1048,12 @@ export async function getAiAttentionQueue(
       priorityScore = 70;
       reason = 'Valid until date within 7 days';
       recommendedAction = 'Follow up before the proposal expires.';
-    } else if (p.status === 'VIEWED' && viewCount > 0 && daysSinceSent !== null && daysSinceSent >= 3) {
+    } else if (
+      p.status === 'VIEWED' &&
+      viewCount > 0 &&
+      daysSinceSent !== null &&
+      daysSinceSent >= 3
+    ) {
       priorityScore = 60;
       reason = 'Client viewed but has not signed';
       recommendedAction = 'A gentle nudge may help — draft a follow-up.';

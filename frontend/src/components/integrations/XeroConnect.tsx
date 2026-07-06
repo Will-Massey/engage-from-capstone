@@ -71,9 +71,7 @@ const XeroConnect = () => {
         toast.error('Failed to get Xero authorization URL');
       }
     } catch (error: any) {
-      toast.error(
-        error.response?.data?.error?.message || 'Failed to start Xero connection'
-      );
+      toast.error(error.response?.data?.error?.message || 'Failed to start Xero connection');
     } finally {
       setIsConnecting(false);
     }
@@ -137,8 +135,8 @@ const XeroConnect = () => {
 
           {!serverConfigured && (
             <p className="mt-2 text-sm text-amber-700 dark:text-amber-300">
-              Server Xero credentials are not configured. Set XERO_CLIENT_ID and
-              XERO_CLIENT_SECRET on the API.
+              Server Xero credentials are not configured. Set XERO_CLIENT_ID and XERO_CLIENT_SECRET
+              on the API.
             </p>
           )}
 

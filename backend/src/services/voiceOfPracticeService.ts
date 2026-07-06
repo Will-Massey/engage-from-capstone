@@ -21,7 +21,9 @@ export async function getTenantSettingsJson(tenantId: string): Promise<Record<st
   return JSON.parse(tenant?.settings || '{}') as Record<string, unknown>;
 }
 
-export async function getVoiceOfPractice(tenantId: string): Promise<VoiceOfPracticeSettings | null> {
+export async function getVoiceOfPractice(
+  tenantId: string
+): Promise<VoiceOfPracticeSettings | null> {
   const settings = await getTenantSettingsJson(tenantId);
   const vop = settings.voiceOfPractice as VoiceOfPracticeSettings | undefined;
   if (!vop?.styleHints && !vop?.sampleText) return null;

@@ -48,14 +48,18 @@ test.describe('Automation UAT — lifecycle touchpoints', () => {
       timeout: 20_000,
     });
 
-    const card = page.locator('div.rounded-2xl.border').filter({ hasText: 'Proposal accepted — welcome' });
+    const card = page
+      .locator('div.rounded-2xl.border')
+      .filter({ hasText: 'Proposal accepted — welcome' });
     const subjectPreview = card.locator('.line-clamp-2');
     await expect(subjectPreview).not.toHaveText(/loading/i, { timeout: 20_000 });
     await expect(subjectPreview).toContainText('Welcome to {{practice_name}}', { timeout: 10_000 });
 
     await card.getByRole('button', { name: /edit template/i }).click();
 
-    const dialog = page.locator('.glass-tile').filter({ hasText: /Edit template — Proposal accepted/i });
+    const dialog = page
+      .locator('.glass-tile')
+      .filter({ hasText: /Edit template — Proposal accepted/i });
     await expect(dialog).toBeVisible();
 
     const subjectInput = dialog.locator('input[placeholder="Subject"]');
@@ -75,7 +79,9 @@ test.describe('Automation UAT — lifecycle touchpoints', () => {
 
     page.once('dialog', (dialog) => dialog.accept());
     await dialog.getByRole('button', { name: /restore engage default wording/i }).click();
-    await expect(page.getByText(/restored engage default wording/i)).toBeVisible({ timeout: 10_000 });
+    await expect(page.getByText(/restored engage default wording/i)).toBeVisible({
+      timeout: 10_000,
+    });
     await expect(subjectInput).toHaveValue(DEFAULT_PROPOSAL_ACCEPTED_SUBJECT);
 
     await dialog.getByRole('button', { name: /cancel/i }).click();

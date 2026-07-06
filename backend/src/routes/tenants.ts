@@ -13,10 +13,7 @@ import { allowPublicTenantSignup } from '../utils/securityFlags.js';
 import { setAuthCookies } from '../utils/authCookies.js';
 import { getEngageSuperadmin } from '../lib/superadmin.js';
 import { trialEndsAtFromNow } from '../config/trial.js';
-import {
-  linkAgencySubAccount,
-  listAgencySubAccounts,
-} from '../services/agencyAccountService.js';
+import { linkAgencySubAccount, listAgencySubAccounts } from '../services/agencyAccountService.js';
 import logger from '../config/logger.js';
 import { scheduleTenantLibraryProvision } from '../services/tenantLibraryProvisionService.js';
 import {
@@ -52,7 +49,9 @@ const createTenantSchema = z.object({
     .object({
       defaultCurrency: z.string().default('GBP'),
       vatRegistered: z.boolean().default(true),
-      professionalBody: z.enum(['ACCA', 'ICAEW', 'AAT', 'CIMA', 'ICAS', 'ATT', 'CIOT', 'CTA', 'CPAA']).optional(),
+      professionalBody: z
+        .enum(['ACCA', 'ICAEW', 'AAT', 'CIMA', 'ICAS', 'ATT', 'CIOT', 'CTA', 'CPAA'])
+        .optional(),
       companyRegistration: z.string().optional(),
       vatNumber: z.string().optional(),
       address: z
@@ -84,7 +83,9 @@ const updateTenantSchema = z.object({
       defaultCurrency: z.string().optional(),
       defaultPaymentTerms: z.number().optional(),
       vatRegistered: z.boolean().optional(),
-      professionalBody: z.enum(['ACCA', 'ICAEW', 'AAT', 'CIMA', 'ICAS', 'ATT', 'CIOT', 'CTA', 'CPAA']).optional(),
+      professionalBody: z
+        .enum(['ACCA', 'ICAEW', 'AAT', 'CIMA', 'ICAS', 'ATT', 'CIOT', 'CTA', 'CPAA'])
+        .optional(),
       companyRegistration: z.string().optional(),
       vatNumber: z.string().optional(),
       address: z
@@ -865,8 +866,7 @@ router.put(
       whiteLabel: data.whiteLabel
         ? { ...(currentSettings.whiteLabel || {}), ...data.whiteLabel }
         : currentSettings.whiteLabel,
-      benchmarkPricingOptIn:
-        data.benchmarkPricingOptIn ?? currentSettings.benchmarkPricingOptIn,
+      benchmarkPricingOptIn: data.benchmarkPricingOptIn ?? currentSettings.benchmarkPricingOptIn,
     };
 
     // Update tenant
@@ -929,7 +929,7 @@ router.get(
   asyncHandler(async (req, res) => {
     const accounts = await listAgencySubAccounts(req.tenantId!);
     res.json({ success: true, data: accounts });
-  }),
+  })
 );
 
 /**
@@ -943,7 +943,7 @@ router.post(
     const { childTenantId } = z.object({ childTenantId: z.string().uuid() }).parse(req.body);
     const account = await linkAgencySubAccount(req.tenantId!, childTenantId);
     res.status(201).json({ success: true, data: account });
-  }),
+  })
 );
 
 export default router;

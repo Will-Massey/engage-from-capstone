@@ -115,7 +115,10 @@ const Proposals = () => {
     }
   };
 
-  const sendProposalEmail = async (proposal: { id: string; client?: { contactEmail?: string } }) => {
+  const sendProposalEmail = async (proposal: {
+    id: string;
+    client?: { contactEmail?: string };
+  }) => {
     const to = proposal.client?.contactEmail?.trim();
     if (!to) {
       toast.error('Add a contact email on the client record before sending');
@@ -265,7 +268,10 @@ const Proposals = () => {
             Export CSV
           </button>
         )}
-        <Link to="/proposals/wizard" className="btn-primary bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-700 hover:to-indigo-700">
+        <Link
+          to="/proposals/wizard"
+          className="btn-primary bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-700 hover:to-indigo-700"
+        >
           <PlusIcon className="h-5 w-5 mr-2" />
           Create proposal in 5 minutes
         </Link>
@@ -390,14 +396,16 @@ const Proposals = () => {
                               {(proposal._count?.views || 0) > 0 && (
                                 <span className="inline-flex items-center gap-0.5 rounded px-1.5 py-0.5 text-[10px] font-medium bg-purple-100 text-purple-800 dark:bg-purple-900/40 dark:text-purple-200">
                                   <EyeIcon className="h-3 w-3" />
-                                  {proposal._count.views} {proposal._count.views === 1 ? 'open' : 'opens'}
+                                  {proposal._count.views}{' '}
+                                  {proposal._count.views === 1 ? 'open' : 'opens'}
                                 </span>
                               )}
-                              {proposal.status === 'SENT' && (proposal._count?.views || 0) === 0 && (
-                                <span className="inline-flex items-center rounded px-1.5 py-0.5 text-[10px] font-medium bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-200">
-                                  Awaiting client
-                                </span>
-                              )}
+                              {proposal.status === 'SENT' &&
+                                (proposal._count?.views || 0) === 0 && (
+                                  <span className="inline-flex items-center rounded px-1.5 py-0.5 text-[10px] font-medium bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-200">
+                                    Awaiting client
+                                  </span>
+                                )}
                               {((proposal._count?.views || 0) > 0 || proposal.acceptedAt) && (
                                 <Link
                                   to={`/proposals/${proposal.id}?tab=audit`}
@@ -427,7 +435,10 @@ const Proposals = () => {
                               {statusLabels[displayStatus] || displayStatus}
                             </span>
                             {proposal.status === 'ACCEPTED' && (
-                              <CheckCircleIcon className="h-4 w-4 text-green-500" title="Accepted & signed" />
+                              <CheckCircleIcon
+                                className="h-4 w-4 text-green-500"
+                                title="Accepted & signed"
+                              />
                             )}
                           </div>
                           {proposal.status === 'DRAFT' && proposal.approvalStatus === 'PENDING' && (
@@ -435,11 +446,12 @@ const Proposals = () => {
                               Awaiting partner approval
                             </span>
                           )}
-                          {proposal.status === 'DRAFT' && proposal.approvalStatus === 'REJECTED' && (
-                            <span className="inline-flex px-2 py-0.5 rounded text-xs font-medium bg-red-100 text-red-800 dark:bg-red-900/40 dark:text-red-200">
-                              Rejected
-                            </span>
-                          )}
+                          {proposal.status === 'DRAFT' &&
+                            proposal.approvalStatus === 'REJECTED' && (
+                              <span className="inline-flex px-2 py-0.5 rounded text-xs font-medium bg-red-100 text-red-800 dark:bg-red-900/40 dark:text-red-200">
+                                Rejected
+                              </span>
+                            )}
                           {/* Renewal Badge */}
                           {proposal.status === 'ACCEPTED' &&
                             proposal.renewalDate &&
@@ -485,7 +497,10 @@ const Proposals = () => {
                           </div>
                           {proposal.viewedAt && (
                             <span className="text-xs text-slate-500 dark:text-slate-400">
-                              Last: {formatDistanceToNow(new Date(proposal.viewedAt), { addSuffix: true })}
+                              Last:{' '}
+                              {formatDistanceToNow(new Date(proposal.viewedAt), {
+                                addSuffix: true,
+                              })}
                             </span>
                           )}
                           {proposal.acceptedAt && (
@@ -566,7 +581,9 @@ const Proposals = () => {
                                     : generateShareLink(proposal)
                                 }
                                 className={`p-1 ${proposal.shareToken ? 'text-primary-600 hover:text-primary-700' : 'text-slate-500 hover:text-primary-600'}`}
-                                title={proposal.shareToken ? 'Copy client link' : 'Generate share link'}
+                                title={
+                                  proposal.shareToken ? 'Copy client link' : 'Generate share link'
+                                }
                               >
                                 <LinkIcon className="h-5 w-5" />
                               </button>

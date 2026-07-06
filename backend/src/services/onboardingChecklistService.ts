@@ -25,7 +25,7 @@ export interface OnboardingChecklist {
 
 function ruleBasedChecklist(
   services: Array<{ name: string; billingFrequency?: string | null }>,
-  clientName: string,
+  clientName: string
 ): OnboardingChecklistItem[] {
   const items: OnboardingChecklistItem[] = [
     {
@@ -99,7 +99,7 @@ async function aiChecklist(
   proposalId: string,
   services: Array<{ name: string; description?: string | null }>,
   clientName: string,
-  practiceName: string,
+  practiceName: string
 ): Promise<OnboardingChecklistItem[] | null> {
   if (!isAiConfigured()) return null;
 
@@ -109,7 +109,9 @@ async function aiChecklist(
   });
   if (!tenantUseAiEmails(tenant?.settings)) return null;
 
-  const serviceList = services.map((s) => `- ${s.name}${s.description ? `: ${s.description}` : ''}`).join('\n');
+  const serviceList = services
+    .map((s) => `- ${s.name}${s.description ? `: ${s.description}` : ''}`)
+    .join('\n');
 
   const prompt = `Generate a concise UK accountancy client onboarding checklist after a proposal was signed.
 
@@ -133,17 +135,21 @@ Return JSON only:
         { role: 'system', content: AI_COPILOT.systemPersona },
         { role: 'user', content: prompt },
       ],
-      { jsonMode: true, temperature: 0.4, maxTokens: 1200 },
+      { jsonMode: true, temperature: 0.4, maxTokens: 1200 }
     );
 
-    const parsed = parseJsonResponse<{ items: Array<{ title: string; description?: string; category?: string; dueInDays?: number }> }>(raw.content);
+    const parsed = parseJsonResponse<{
+      items: Array<{ title: string; description?: string; category?: string; dueInDays?: number }>;
+    }>(raw.content);
     if (!parsed?.items?.length) return null;
 
     return parsed.items.map((item, i) => ({
       id: `ai-${i + 1}`,
       title: item.title,
       description: item.description,
-      category: (['aml', 'documents', 'systems', 'engagement', 'other'].includes(item.category || '')
+      category: (['aml', 'documents', 'systems', 'engagement', 'other'].includes(
+        item.category || ''
+      )
         ? item.category
         : 'other') as OnboardingChecklistItem['category'],
       dueInDays: item.dueInDays ?? 7,
@@ -157,7 +163,7 @@ Return JSON only:
 
 export async function generateAndStoreOnboardingChecklist(
   proposalId: string,
-  tenantId: string,
+  tenantId: string
 ): Promise<OnboardingChecklist | null> {
   const proposal = await prisma.proposal.findFirst({
     where: { id: proposalId, tenantId },
@@ -175,7 +181,7 @@ export async function generateAndStoreOnboardingChecklist(
     proposalId,
     proposal.services,
     proposal.client.name,
-    proposal.tenant.name,
+    proposal.tenant.name
   );
 
   const source: OnboardingChecklist['source'] = items ? 'ai' : 'rules';
@@ -214,6 +220,8 @@ export async function generateAndStoreOnboardingChecklist(
     },
   });
 
-  logger.info(`Onboarding checklist stored for proposal ${proposalId} (${source}, ${items.length} items)`);
+  logger.info(
+    `Onboarding checklist stored for proposal ${proposalId} (${source}, ${items.length} items)`
+  );
   return checklist;
 }

@@ -40,7 +40,7 @@ export async function getPayoutSettingsPublic(tenantId: string): Promise<PayoutS
   const paymentPrefs = getPaymentSettings(tenant?.settings);
   const platformFeeBps = resolvePlatformFeeBps(
     tenant?.subscriptionTier,
-    settings.platformFeeBpsOverride,
+    settings.platformFeeBpsOverride
   );
 
   return {
@@ -131,7 +131,7 @@ export async function savePayoutSettings({
         JSON.stringify({
           sortCode: sortCode.replace(/\D/g, ''),
           accountNumber: accountNumber.replace(/\D/g, ''),
-        }),
+        })
       );
 
       counterpartyId = await createCounterpartyFromBankDetails({

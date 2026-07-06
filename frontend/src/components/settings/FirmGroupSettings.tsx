@@ -200,12 +200,8 @@ export default function FirmGroupSettings() {
               <div>
                 <p className="font-medium text-slate-900 dark:text-white text-sm">
                   {p.name}
-                  {p.isCurrent && (
-                    <span className="ml-2 text-xs text-primary-600">(you)</span>
-                  )}
-                  {p.isOwner && (
-                    <span className="ml-2 text-xs text-slate-500">owner</span>
-                  )}
+                  {p.isCurrent && <span className="ml-2 text-xs text-primary-600">(you)</span>}
+                  {p.isOwner && <span className="ml-2 text-xs text-slate-500">owner</span>}
                 </p>
                 <p className="text-xs text-slate-500">
                   {p.subdomain} · {p.userCount} users · {p.clientCount} clients
@@ -241,8 +237,8 @@ export default function FirmGroupSettings() {
             Add a practice
           </h4>
           <p className="text-xs text-slate-500">
-            Enter the subdomain of another Engage practice (e.g. <code>demo-practice</code>). It must
-            not already belong to another group.
+            Enter the subdomain of another Engage practice (e.g. <code>demo-practice</code>). It
+            must not already belong to another group.
           </p>
           <div className="flex gap-2">
             <input
@@ -259,10 +255,9 @@ export default function FirmGroupSettings() {
               disabled={busy || addSubdomain.trim().length < 2}
               onClick={() => {
                 const sub = addSubdomain.trim();
-                void run(
-                  () => apiClient.addFirmGroupPractice(sub),
-                  'Practice added to group'
-                ).then(() => setAddSubdomain(''));
+                void run(() => apiClient.addFirmGroupPractice(sub), 'Practice added to group').then(
+                  () => setAddSubdomain('')
+                );
               }}
               className="btn-primary text-sm shrink-0"
             >

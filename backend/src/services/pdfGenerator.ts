@@ -9,11 +9,7 @@ import { prisma } from '../config/database.js';
 import { getFrontendUrl } from '../config/urls.js';
 import { formatGeoLocationDisplay } from '../utils/signatureAudit.js';
 import { parseProposalCustomFields } from '../utils/proposalCustomFields.js';
-import {
-  parseClientAddress,
-  preparedForLines,
-  senderPosition,
-} from '../utils/proposalDisplay.js';
+import { parseClientAddress, preparedForLines, senderPosition } from '../utils/proposalDisplay.js';
 import { TENANT_LOGO_MAX_BYTES } from '../utils/tenantLogoConstraints.js';
 
 interface ProposalData {
@@ -416,8 +412,14 @@ export class PDFGenerator {
     const rightX = 320;
     const colWidth = 240;
 
-    doc.fontSize(10).fillColor(primaryColor).text('PREPARED FOR', leftX, startY, { width: colWidth });
-    doc.fontSize(10).fillColor(primaryColor).text('PREPARED BY', rightX, startY, { width: colWidth });
+    doc
+      .fontSize(10)
+      .fillColor(primaryColor)
+      .text('PREPARED FOR', leftX, startY, { width: colWidth });
+    doc
+      .fontSize(10)
+      .fillColor(primaryColor)
+      .text('PREPARED BY', rightX, startY, { width: colWidth });
 
     doc.fontSize(11).fillColor('#444444');
     let leftY = startY + 18;
@@ -438,12 +440,9 @@ export class PDFGenerator {
       leftY += 13;
     }
     if (addr?.city || addr?.postcode) {
-      doc.text(
-        [addr.city, addr.postcode].filter(Boolean).join(', '),
-        leftX,
-        leftY,
-        { width: colWidth }
-      );
+      doc.text([addr.city, addr.postcode].filter(Boolean).join(', '), leftX, leftY, {
+        width: colWidth,
+      });
       leftY += 13;
     }
 
@@ -832,7 +831,10 @@ ${senderPosition(proposal.createdBy) ? `${senderPosition(proposal.createdBy)}, `
 
     signatures.forEach((sig, index) => {
       if (index > 0) doc.moveDown(1.5);
-      doc.fontSize(12).fillColor('#333333').text(`Signatory ${index + 1}`, { underline: true });
+      doc
+        .fontSize(12)
+        .fillColor('#333333')
+        .text(`Signatory ${index + 1}`, { underline: true });
       doc.moveDown(0.5);
       doc.fontSize(11).fillColor('#444444');
       doc.text(`Signed by: ${sig.signedBy}`);
@@ -856,10 +858,12 @@ ${senderPosition(proposal.createdBy) ? `${senderPosition(proposal.createdBy)}, `
     });
 
     doc.moveDown(2);
-    doc.fontSize(9).fillColor('#666666').text(
-      'This document was accepted using simple electronic signature(s) under UK law.',
-      { align: 'center' }
-    );
+    doc
+      .fontSize(9)
+      .fillColor('#666666')
+      .text('This document was accepted using simple electronic signature(s) under UK law.', {
+        align: 'center',
+      });
   }
 
   private static drawSignatureCertificate(

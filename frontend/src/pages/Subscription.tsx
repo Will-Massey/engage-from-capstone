@@ -172,7 +172,11 @@ const Subscription = () => {
                   className="mt-6 w-full btn-primary flex items-center justify-center gap-2 disabled:opacity-50"
                 >
                   <CreditCardIcon className="h-5 w-5" />
-                  {isActive ? 'Current plan' : checkoutTier === key ? 'Opening checkout…' : 'Subscribe'}
+                  {isActive
+                    ? 'Current plan'
+                    : checkoutTier === key
+                      ? 'Opening checkout…'
+                      : 'Subscribe'}
                 </button>
               )}
 

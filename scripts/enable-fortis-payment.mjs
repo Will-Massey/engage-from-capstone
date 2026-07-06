@@ -13,7 +13,9 @@ function parseSetCookies(headers) {
 }
 
 function cookieHeader(jar) {
-  return Object.entries(jar).map(([k, v]) => `${k}=${v}`).join('; ');
+  return Object.entries(jar)
+    .map(([k, v]) => `${k}=${v}`)
+    .join('; ');
 }
 
 async function api(path, { method = 'GET', body, cookies = {}, csrf } = {}) {

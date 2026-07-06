@@ -58,7 +58,9 @@ const ThemeToggle = () => {
               >
                 <Icon className="h-4 w-4 mr-3" />
                 {t.label}
-                {isActive && <span className="ml-auto w-2 h-2 rounded-full bg-primary-500 dark:bg-primary-400" />}
+                {isActive && (
+                  <span className="ml-auto w-2 h-2 rounded-full bg-primary-500 dark:bg-primary-400" />
+                )}
               </button>
             );
           })}

@@ -12,8 +12,7 @@ if (!ENCRYPTION_KEY) {
 }
 
 const effectiveKey =
-  ENCRYPTION_KEY ||
-  crypto.createHash('sha256').update('engage-dev-encryption-key').digest('hex');
+  ENCRYPTION_KEY || crypto.createHash('sha256').update('engage-dev-encryption-key').digest('hex');
 
 // Ensure key is 32 bytes (256 bits) for AES-256-GCM
 const deriveKey = (key: string): Buffer => {

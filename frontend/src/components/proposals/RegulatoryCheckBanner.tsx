@@ -99,7 +99,11 @@ export default function RegulatoryCheckBanner({ clientId, compact }: RegulatoryC
   }
 
   const topRules = result.rules.filter((r) => r.severity !== 'info');
-  const displayRules = expanded ? result.rules : topRules.length ? topRules : result.rules.slice(0, 2);
+  const displayRules = expanded
+    ? result.rules
+    : topRules.length
+      ? topRules
+      : result.rules.slice(0, 2);
 
   return (
     <div className="space-y-2" data-testid="regulatory-check-banner">

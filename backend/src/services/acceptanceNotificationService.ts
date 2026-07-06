@@ -186,7 +186,9 @@ function buildFallbackPersonalMessage(ctx: AcceptanceAdminContext): string {
   } else if (ctx.viewCount === 1) {
     highlights.push('They viewed the proposal once before signing.');
   } else if (ctx.viewCount === 0) {
-    highlights.push('They signed without a recorded prior view — they may have read the email PDF directly.');
+    highlights.push(
+      'They signed without a recorded prior view — they may have read the email PDF directly.'
+    );
   }
 
   if (ctx.hoursFromFirstViewToSign !== null && ctx.hoursFromFirstViewToSign < 24) {
@@ -237,10 +239,7 @@ export async function sendPracticeAcceptanceNotifications(
 
   if (!proposal) return { sent: 0, failed: 0 };
 
-  const recipients = await resolvePracticeAcceptanceRecipients(
-    tenantId,
-    proposal.createdBy?.email
-  );
+  const recipients = await resolvePracticeAcceptanceRecipients(tenantId, proposal.createdBy?.email);
 
   if (!recipients.length) {
     logger.warn(`No acceptance notification recipients for tenant ${tenantId}`);
@@ -281,9 +280,10 @@ export async function sendPracticeAcceptanceNotifications(
   let failed = 0;
 
   for (const recipient of recipients) {
-    const greeting = recipient.firstName && recipient.firstName !== 'there'
-      ? `Hi ${recipient.firstName},`
-      : 'Hi there,';
+    const greeting =
+      recipient.firstName && recipient.firstName !== 'there'
+        ? `Hi ${recipient.firstName},`
+        : 'Hi there,';
 
     const messageWithGreeting = `${greeting}\n\n${personalizedMessage}`;
 
@@ -335,7 +335,9 @@ export async function sendPracticeAcceptanceNotifications(
         }),
       },
     });
-    logger.info(`Acceptance notifications sent for proposal ${proposalId} (${sent}/${recipients.length})`);
+    logger.info(
+      `Acceptance notifications sent for proposal ${proposalId} (${sent}/${recipients.length})`
+    );
   }
 
   return { sent, failed };

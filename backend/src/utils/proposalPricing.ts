@@ -42,7 +42,11 @@ export function resolveBillingFrequency(
   template?: ServiceTemplateInfo
 ): BillingFrequency {
   let billingFrequency =
-    svc.billingFrequency || svc.frequency || template?.billingCycle || template?.defaultFrequency || 'MONTHLY';
+    svc.billingFrequency ||
+    svc.frequency ||
+    template?.billingCycle ||
+    template?.defaultFrequency ||
+    'MONTHLY';
   if (!VALID_BILLING_FREQUENCIES.includes(billingFrequency as BillingFrequency)) {
     billingFrequency = 'MONTHLY';
   }
@@ -75,9 +79,7 @@ export function buildProposalServiceRecord(
 ): BuiltProposalService {
   const snapshotName = svc.name?.trim();
   const snapshotDescription =
-    svc.description !== undefined && svc.description !== null
-      ? svc.description
-      : undefined;
+    svc.description !== undefined && svc.description !== null ? svc.description : undefined;
 
   const displayPrice =
     svc.displayPrice !== undefined && svc.displayPrice >= 0
@@ -99,8 +101,7 @@ export function buildProposalServiceRecord(
 
   return {
     name: snapshotName || template?.name || 'Service',
-    description:
-      snapshotDescription !== undefined ? snapshotDescription : template?.description,
+    description: snapshotDescription !== undefined ? snapshotDescription : template?.description,
     displayPrice: line.displayPrice,
     billingFrequency,
     priceDisplayMode: billingFrequencyToDisplayMode(billingFrequency),

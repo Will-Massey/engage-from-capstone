@@ -8,28 +8,32 @@ import logger from '../config/logger.js';
 
 async function checkDeployment() {
   logger.info('=== Deployment Health Check ===');
-  
+
   const checks: { name: string; status: 'pass' | 'fail' | 'warning'; message: string }[] = [];
-  
+
   try {
     // 1. Check database connection
     try {
       await prisma.$queryRaw`SELECT 1`;
-      checks.push({ name: 'Database Connection', status: 'pass', message: 'Connected successfully' });
+      checks.push({
+        name: 'Database Connection',
+        status: 'pass',
+        message: 'Connected successfully',
+      });
     } catch (error: any) {
       checks.push({ name: 'Database Connection', status: 'fail', message: error.message });
     }
-    
+
     // 2. Check required tables exist
     const requiredTables = [
       'Tenant',
-      'User', 
+      'User',
       'RefreshToken',
       'Client',
       'Proposal',
-      'ServiceTemplate'
+      'ServiceTemplate',
     ];
-    
+
     for (const table of requiredTables) {
       try {
         // Try to count records in each table
@@ -40,26 +44,34 @@ async function checkDeployment() {
         checks.push({ name: `Table: ${table}`, status: 'fail', message: error.message });
       }
     }
-    
+
     // 3. Check for demo tenant
     try {
       const tenant = await prisma.tenant.findFirst({
-        where: { OR: [{ subdomain: 'demo' }, { subdomain: 'demo-practice' }] }
+        where: { OR: [{ subdomain: 'demo' }, { subdomain: 'demo-practice' }] },
       });
       if (tenant) {
-        checks.push({ name: 'Demo Tenant', status: 'pass', message: `Found: ${tenant.name} (${tenant.subdomain})` });
+        checks.push({
+          name: 'Demo Tenant',
+          status: 'pass',
+          message: `Found: ${tenant.name} (${tenant.subdomain})`,
+        });
       } else {
-        checks.push({ name: 'Demo Tenant', status: 'fail', message: 'No demo or demo-practice tenant found' });
+        checks.push({
+          name: 'Demo Tenant',
+          status: 'fail',
+          message: 'No demo or demo-practice tenant found',
+        });
       }
     } catch (error: any) {
       checks.push({ name: 'Demo Tenant', status: 'fail', message: error.message });
     }
-    
+
     // 4. Check for admin user
     try {
       const adminUser = await prisma.user.findFirst({
         where: { email: { contains: 'admin', mode: 'insensitive' } },
-        include: { tenant: true }
+        include: { tenant: true },
       });
       if (adminUser) {
         checks.push({ name: 'Admin User', status: 'pass', message: `Found: ${adminUser.email}` });
@@ -69,7 +81,7 @@ async function checkDeployment() {
     } catch (error: any) {
       checks.push({ name: 'Admin User', status: 'fail', message: error.message });
     }
-    
+
     // 5. Check environment variables
     const requiredEnvVars = ['DATABASE_URL', 'JWT_SECRET', 'FRONTEND_URL'];
     for (const envVar of requiredEnvVars) {
@@ -79,7 +91,7 @@ async function checkDeployment() {
         checks.push({ name: `Env: ${envVar}`, status: 'fail', message: 'Not set' });
       }
     }
-    
+
     // 6. Check enum values
     try {
       const enumResult = await prisma.$queryRaw`
@@ -88,35 +100,36 @@ async function checkDeployment() {
         JOIN pg_type t ON e.enumtypid = t.oid
         WHERE t.typname = 'UserRole'
       `;
-      const values = (enumResult as any[]).map(r => r.value).join(', ');
+      const values = (enumResult as any[]).map((r) => r.value).join(', ');
       checks.push({ name: 'UserRole Enum', status: 'pass', message: values });
     } catch (error: any) {
       checks.push({ name: 'UserRole Enum', status: 'fail', message: error.message });
     }
-    
   } catch (error: any) {
     logger.error('Health check failed:', error);
   }
-  
+
   // Print results
   logger.info('\n=== Check Results ===');
-  checks.forEach(check => {
+  checks.forEach((check) => {
     const icon = check.status === 'pass' ? '✅' : check.status === 'warning' ? '⚠️' : '❌';
     logger.info(`${icon} ${check.name}: ${check.message}`);
   });
-  
-  const failures = checks.filter(c => c.status === 'fail');
-  const warnings = checks.filter(c => c.status === 'warning');
-  
+
+  const failures = checks.filter((c) => c.status === 'fail');
+  const warnings = checks.filter((c) => c.status === 'warning');
+
   logger.info(`\n=== Summary ===`);
-  logger.info(`Total: ${checks.length}, Passed: ${checks.length - failures.length - warnings.length}, Warnings: ${warnings.length}, Failed: ${failures.length}`);
-  
+  logger.info(
+    `Total: ${checks.length}, Passed: ${checks.length - failures.length - warnings.length}, Warnings: ${warnings.length}, Failed: ${failures.length}`
+  );
+
   if (failures.length > 0) {
     logger.error('\n❌ CRITICAL ISSUES FOUND:');
-    failures.forEach(f => logger.error(`  - ${f.name}: ${f.message}`));
+    failures.forEach((f) => logger.error(`  - ${f.name}: ${f.message}`));
     process.exit(1);
   }
-  
+
   await prisma.$disconnect();
 }
 

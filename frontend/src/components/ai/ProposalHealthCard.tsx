@@ -33,8 +33,13 @@ export default function ProposalHealthCard({ proposalId }: ProposalHealthCardPro
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [proposalId]);
 
-  const scoreColor =
-    !health ? 'text-slate-500' : health.healthScore >= 75 ? 'text-green-600' : health.healthScore >= 50 ? 'text-amber-600' : 'text-red-600';
+  const scoreColor = !health
+    ? 'text-slate-500'
+    : health.healthScore >= 75
+      ? 'text-green-600'
+      : health.healthScore >= 50
+        ? 'text-amber-600'
+        : 'text-red-600';
 
   return (
     <AiPanel
@@ -48,7 +53,9 @@ export default function ProposalHealthCard({ proposalId }: ProposalHealthCardPro
       {health && (
         <div className="space-y-3">
           <div className="flex items-baseline gap-2">
-            <span className={`text-2xl font-bold tabular-nums ${scoreColor}`}>{health.healthScore}</span>
+            <span className={`text-2xl font-bold tabular-nums ${scoreColor}`}>
+              {health.healthScore}
+            </span>
             <span className="text-xs text-slate-500">/ 100 health score</span>
           </div>
           <p className="text-sm text-slate-700 dark:text-slate-200">{health.summary}</p>

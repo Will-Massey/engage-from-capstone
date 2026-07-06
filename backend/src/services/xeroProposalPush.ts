@@ -112,9 +112,7 @@ export async function pushProposalToXero(
       proposalId,
       reference: proposal.reference,
       xero: stub,
-      warnings: [
-        'Xero OAuth is not configured on the server. A draft payload was returned only.',
-      ],
+      warnings: ['Xero OAuth is not configured on the server. A draft payload was returned only.'],
     };
   }
 
@@ -126,7 +124,9 @@ export async function pushProposalToXero(
       proposalId,
       reference: proposal.reference,
       xero: stub,
-      warnings: ['Xero is not connected for this practice. Connect Xero in Settings → Integrations.'],
+      warnings: [
+        'Xero is not connected for this practice. Connect Xero in Settings → Integrations.',
+      ],
     };
   }
 
@@ -142,9 +142,7 @@ export async function pushProposalToXero(
         proposalId,
         reference: proposal.reference,
         xero: stub,
-        warnings: [
-          'Could not establish a Xero session. Please reconnect Xero and try again.',
-        ],
+        warnings: ['Could not establish a Xero session. Please reconnect Xero and try again.'],
       };
     }
   }
@@ -190,9 +188,7 @@ export async function triggerXeroPushOnAcceptance(
     if (result.warnings.length) {
       logger.warn(`Xero push warnings for proposal ${proposalId}:`, result.warnings);
     } else {
-      logger.info(
-        `Xero push completed for proposal ${proposalId} (${result.mode})`
-      );
+      logger.info(`Xero push completed for proposal ${proposalId} (${result.mode})`);
     }
   } catch (err) {
     logger.warn(`Xero push skipped after acceptance for proposal ${proposalId}:`, err);

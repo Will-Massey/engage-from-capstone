@@ -15,12 +15,16 @@ export async function handleQuickBooksOAuthCallback(req: Request, res: Response)
   const { code, error, state, realmId } = req.query;
 
   if (error) {
-    res.redirect(settingsRedirect({ oauth: 'error', provider: 'quickbooks', error: String(error) }));
+    res.redirect(
+      settingsRedirect({ oauth: 'error', provider: 'quickbooks', error: String(error) })
+    );
     return;
   }
 
   if (!code || !state) {
-    res.redirect(settingsRedirect({ oauth: 'error', provider: 'quickbooks', error: 'no_code_received' }));
+    res.redirect(
+      settingsRedirect({ oauth: 'error', provider: 'quickbooks', error: 'no_code_received' })
+    );
     return;
   }
 
@@ -33,7 +37,9 @@ export async function handleQuickBooksOAuthCallback(req: Request, res: Response)
 
   const payload = verifyOAuthState(String(state));
   if (!payload || payload.provider !== 'quickbooks') {
-    res.redirect(settingsRedirect({ oauth: 'error', provider: 'quickbooks', error: 'invalid_state' }));
+    res.redirect(
+      settingsRedirect({ oauth: 'error', provider: 'quickbooks', error: 'invalid_state' })
+    );
     return;
   }
 
@@ -48,6 +54,8 @@ export async function handleQuickBooksOAuthCallback(req: Request, res: Response)
     res.redirect(settingsRedirect({ oauth: 'success', provider: 'quickbooks' }));
   } catch (err) {
     logger.error('QuickBooks OAuth callback failed', err);
-    res.redirect(settingsRedirect({ oauth: 'error', provider: 'quickbooks', error: 'token_exchange_failed' }));
+    res.redirect(
+      settingsRedirect({ oauth: 'error', provider: 'quickbooks', error: 'token_exchange_failed' })
+    );
   }
 }

@@ -103,8 +103,7 @@ async function loadGroupContext(tenantId: string, userRole: UserRole): Promise<F
 
   const group = tenant.firmGroup;
   const isOwnerPractice = Boolean(group?.ownerTenantId && group.ownerTenantId === tenantId);
-  const canAdmin =
-    Boolean(group) && isOwnerPractice && GROUP_ADMIN_ROLES.includes(userRole);
+  const canAdmin = Boolean(group) && isOwnerPractice && GROUP_ADMIN_ROLES.includes(userRole);
 
   return {
     assigned: Boolean(group),
@@ -230,7 +229,11 @@ export async function addPracticeToFirmGroup(
     if (target.firmGroupId === ctx.firmGroup.id) {
       throw new ApiError('VALIDATION_ERROR', 'That practice is already in this firm group', 400);
     }
-    throw new ApiError('VALIDATION_ERROR', 'That practice already belongs to another firm group', 400);
+    throw new ApiError(
+      'VALIDATION_ERROR',
+      'That practice already belongs to another firm group',
+      400
+    );
   }
 
   await prisma.tenant.update({

@@ -7,12 +7,7 @@
  * 3. VAT calculated per line on discounted net
  */
 
-export type BillingFrequency =
-  | 'ONE_TIME'
-  | 'WEEKLY'
-  | 'MONTHLY'
-  | 'QUARTERLY'
-  | 'ANNUALLY';
+export type BillingFrequency = 'ONE_TIME' | 'WEEKLY' | 'MONTHLY' | 'QUARTERLY' | 'ANNUALLY';
 
 export type PriceDisplayMode = 'PER_MONTH' | 'PER_QUARTER' | 'PER_YEAR' | 'ONE_TIME';
 

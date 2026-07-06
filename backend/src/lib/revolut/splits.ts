@@ -45,7 +45,7 @@ export async function recordProposalPaymentSplit({
 
   const platformFeeBps = resolvePlatformFeeBps(
     tenant?.subscriptionTier,
-    payoutSettings?.platformFeeBpsOverride,
+    payoutSettings?.platformFeeBpsOverride
   );
 
   const split = calculateSplit({

@@ -49,7 +49,10 @@ const aiLimiter = rateLimit({
   skip: (req) => shouldSkipRateLimit(req.headers),
   message: {
     success: false,
-    error: { code: 'RATE_LIMIT', message: `Too many requests for ${AI_COPILOT.name}. Please wait a few minutes.` },
+    error: {
+      code: 'RATE_LIMIT',
+      message: `Too many requests for ${AI_COPILOT.name}. Please wait a few minutes.`,
+    },
   },
   standardHeaders: true,
   legacyHeaders: false,
@@ -119,12 +122,22 @@ router.get(
     // Tiny prompt only — low token cost, UK English, encouraging + actionable
     const { content: raw } = await chatCompletion(
       [
-        { role: 'system', content: 'You are Clara, concise helpful UK accountancy AI. Output 1-2 sentences only. Use UK spelling.' },
-        { role: 'user', content: `Empty ${context} list. Give 1 encouraging actionable tip (max 35 words) for a UK accountant user starting with Engage app. No intro, no quotes.` },
+        {
+          role: 'system',
+          content:
+            'You are Clara, concise helpful UK accountancy AI. Output 1-2 sentences only. Use UK spelling.',
+        },
+        {
+          role: 'user',
+          content: `Empty ${context} list. Give 1 encouraging actionable tip (max 35 words) for a UK accountant user starting with Engage app. No intro, no quotes.`,
+        },
       ],
       { temperature: 0.55, maxTokens: 55 }
     );
-    const tip = (raw || '').trim().replace(/^["']|["']$/g, '').slice(0, 220);
+    const tip = (raw || '')
+      .trim()
+      .replace(/^["']|["']$/g, '')
+      .slice(0, 220);
     res.json({ success: true, data: { tip } });
   })
 );
@@ -259,12 +272,7 @@ router.post(
       })
       .parse(req.body);
 
-    const data = await generateRenewalDraft(
-      req.tenantId!,
-      req.user?.id,
-      proposalId,
-      upliftPercent
-    );
+    const data = await generateRenewalDraft(req.tenantId!, req.user?.id, proposalId, upliftPercent);
     res.json({ success: true, data });
   })
 );
@@ -339,14 +347,21 @@ router.post(
     const { content: raw } = await chatCompletion(
       [
         { role: 'system', content: 'You are concise. Output only the JSON requested.' },
-        { role: 'user', content: `Suggest a professional UK accountancy proposal title (max 8 words). Return JSON: { "title": "..." }
+        {
+          role: 'user',
+          content: `Suggest a professional UK accountancy proposal title (max 8 words). Return JSON: { "title": "..." }
 Client: ${nameForTitle}
-Services: ${svcNames}` },
+Services: ${svcNames}`,
+        },
       ],
       { temperature: 0.4, maxTokens: 80 }
     );
     let title = `Proposal for ${nameForTitle}`;
-    try { title = JSON.parse(raw).title?.trim() || title; } catch { /* keep default title */ }
+    try {
+      title = JSON.parse(raw).title?.trim() || title;
+    } catch {
+      /* keep default title */
+    }
     res.json({ success: true, data: { title } });
   })
 );
@@ -392,7 +407,10 @@ Return ONLY JSON { "revised": [same shape], "notes": "short UK English advice" }
       notes = raw.trim().slice(0, 200);
     }
 
-    res.json({ success: true, data: { revisedServices: revised.slice(0, services.length), notes } });
+    res.json({
+      success: true,
+      data: { revisedServices: revised.slice(0, services.length), notes },
+    });
   })
 );
 
@@ -422,7 +440,12 @@ router.post(
       return res.json({ success: true, data });
     }
 
-    const data = await executeQuickAction(req.tenantId!, req.user?.id, body.mode, body.context || {});
+    const data = await executeQuickAction(
+      req.tenantId!,
+      req.user?.id,
+      body.mode,
+      body.context || {}
+    );
     res.json({ success: true, data });
   })
 );
@@ -524,7 +547,9 @@ Context (client + proposal summary): ${JSON.stringify(context || {}).slice(0, 60
 
 Return ONLY the revised plain text body (no subject, no extra commentary). Keep professional UK tone.`;
 
-    const { content: revised } = await (await import('../services/ai/aiClient.js')).chatCompletion(
+    const { content: revised } = await (
+      await import('../services/ai/aiClient.js')
+    ).chatCompletion(
       [
         { role: 'system', content: 'You are concise and precise.' },
         { role: 'user', content: prompt },
@@ -644,10 +669,17 @@ No extra text.`;
     try {
       subjects = JSON.parse(raw);
       if (!Array.isArray(subjects)) subjects = [];
-      subjects = subjects.slice(0, 3).map(s => String(s).trim()).filter(Boolean);
+      subjects = subjects
+        .slice(0, 3)
+        .map((s) => String(s).trim())
+        .filter(Boolean);
     } catch {
       // fallback: split lines
-      subjects = raw.split(/\n/).map(s => s.replace(/^[-•\s"]+|["\s]+$/g, '').trim()).filter(Boolean).slice(0, 3);
+      subjects = raw
+        .split(/\n/)
+        .map((s) => s.replace(/^[-•\s"]+|["\s]+$/g, '').trim())
+        .filter(Boolean)
+        .slice(0, 3);
     }
 
     if (subjects.length === 0) {
@@ -693,13 +725,23 @@ No extra text.`;
     try {
       ctas = JSON.parse(raw);
       if (!Array.isArray(ctas)) ctas = [];
-      ctas = ctas.slice(0, 3).map(s => String(s).trim()).filter(Boolean);
+      ctas = ctas
+        .slice(0, 3)
+        .map((s) => String(s).trim())
+        .filter(Boolean);
     } catch {
-      ctas = raw.split(/\n/).map(s => s.replace(/^[-•\s"]+|["\s]+$/g, '').trim()).filter(Boolean).slice(0, 3);
+      ctas = raw
+        .split(/\n/)
+        .map((s) => s.replace(/^[-•\s"]+|["\s]+$/g, '').trim())
+        .filter(Boolean)
+        .slice(0, 3);
     }
 
     if (ctas.length === 0) {
-      ctas = ['Please review and sign the attached proposal.', 'Let me know if you have any questions.'];
+      ctas = [
+        'Please review and sign the attached proposal.',
+        'Let me know if you have any questions.',
+      ];
     }
 
     res.json({ success: true, data: { ctas } });
@@ -735,11 +777,16 @@ Return tiny JSON: { "issues": ["short bullet"], "score": 85, "missing": ["fees"]
     try {
       const parsed = JSON.parse(raw);
       issues = Array.isArray(parsed.issues) ? parsed.issues.slice(0, 3) : [];
-      score = typeof parsed.score === 'number' ? Math.max(0, Math.min(100, parsed.score)) : undefined;
+      score =
+        typeof parsed.score === 'number' ? Math.max(0, Math.min(100, parsed.score)) : undefined;
       missing = Array.isArray(parsed.missing) ? parsed.missing.slice(0, 3) : [];
     } catch {
       // fallback simple parse
-      issues = raw.split(/\n|•|-/).map(s => s.trim()).filter(s => s.length > 5 && s.length < 120).slice(0, 3);
+      issues = raw
+        .split(/\n|•|-/)
+        .map((s) => s.trim())
+        .filter((s) => s.length > 5 && s.length < 120)
+        .slice(0, 3);
     }
 
     res.json({ success: true, data: { issues, score, missing } });
@@ -761,7 +808,9 @@ router.post(
       let payloadForStream: any;
 
       if (proposalId) {
-        const ctx = await (await import('../services/ai/aiContextBuilder.js')).buildAiContext(req.tenantId!, { proposalId, userId: req.user?.id });
+        const ctx = await (
+          await import('../services/ai/aiContextBuilder.js')
+        ).buildAiContext(req.tenantId!, { proposalId, userId: req.user?.id });
         if (!ctx.proposal || !ctx.client) throw new Error('Proposal or client not found');
         payloadForStream = {
           clientName: ctx.client.name,
@@ -772,13 +821,18 @@ router.post(
           validUntil: ctx.proposal.validUntil,
           services: ctx.proposal.services,
           total: ctx.proposal.total,
-          senderName: Array.from(new Set([ctx.user?.firstName, ctx.user?.lastName].filter(Boolean))).join(' ') || 'Partner',
+          senderName:
+            Array.from(new Set([ctx.user?.firstName, ctx.user?.lastName].filter(Boolean))).join(
+              ' '
+            ) || 'Partner',
           senderEmail: ctx.user?.email || '',
           coverLetter: ctx.proposal.coverLetter,
         };
       } else {
         const draft = proposalEmailDraftInputSchema.parse(req.body.draft ?? req.body);
-        const ctx = await (await import('../services/ai/aiContextBuilder.js')).buildAiContext(req.tenantId!, { clientId: draft.clientId, userId: req.user?.id });
+        const ctx = await (
+          await import('../services/ai/aiContextBuilder.js')
+        ).buildAiContext(req.tenantId!, { clientId: draft.clientId, userId: req.user?.id });
         const services = draft.services || [];
         const total = services.reduce((sum, s) => sum + (s.displayPrice ?? 0), 0);
         payloadForStream = {
@@ -787,17 +841,28 @@ router.post(
           tenantName: draft.practiceName || ctx.tenant.name,
           proposalTitle: draft.title || `Proposal for ${ctx.client!.name}`,
           proposalReference: draft.reference || 'Draft',
-          validUntil: draft.validUntil || new Date(Date.now() + 30 * 86400000).toISOString().slice(0, 10),
+          validUntil:
+            draft.validUntil || new Date(Date.now() + 30 * 86400000).toISOString().slice(0, 10),
           services,
           total,
-          senderName: draft.senderName || Array.from(new Set([ctx.user?.firstName, ctx.user?.lastName].filter(Boolean))).join(' ') || 'Partner',
+          senderName:
+            draft.senderName ||
+            Array.from(new Set([ctx.user?.firstName, ctx.user?.lastName].filter(Boolean))).join(
+              ' '
+            ) ||
+            'Partner',
           senderEmail: draft.senderEmail || ctx.user?.email || '',
           coverLetter: draft.coverLetter,
           contextNote: 'This is a draft proposal not yet saved in Engage.',
         };
       }
 
-      for await (const event of generateEmailContentStream(req.tenantId!, req.user?.id, payloadForStream, { streamed: true })) {
+      for await (const event of generateEmailContentStream(
+        req.tenantId!,
+        req.user?.id,
+        payloadForStream,
+        { streamed: true }
+      )) {
         res.write(`data: ${JSON.stringify(event)}\n\n`);
       }
     } catch (e: any) {
@@ -891,7 +956,12 @@ router.get(
       .string()
       .optional()
       .parse(req.query.services as string | undefined);
-    const serviceNames = services ? services.split(',').map((s) => s.trim()).filter(Boolean) : undefined;
+    const serviceNames = services
+      ? services
+          .split(',')
+          .map((s) => s.trim())
+          .filter(Boolean)
+      : undefined;
     const data = await getBenchmarkPricing(req.tenantId!, req.user?.id, serviceNames);
     res.json({ success: true, data });
   })
@@ -907,7 +977,10 @@ router.post(
         transcript: z.string().min(20).max(8000),
       })
       .parse(req.body);
-    const data = await draftProposalFromVoice(req.tenantId!, req.user?.id, { clientId, transcript });
+    const data = await draftProposalFromVoice(req.tenantId!, req.user?.id, {
+      clientId,
+      transcript,
+    });
     res.json({ success: true, data });
   })
 );
@@ -922,7 +995,9 @@ router.post(
     try {
       if (messageId) {
         // Could look up via EmailLog or proposal emailHistory in future
-        await (await import('../config/database.js')).prisma.activityLog.create({
+        await (
+          await import('../config/database.js')
+        ).prisma.activityLog.create({
           data: {
             tenantId: req.tenantId || 'unknown',
             action: 'EMAIL_WEBHOOK',
@@ -1038,7 +1113,7 @@ router.post(
 
     const data = await triageClientReply(req.tenantId!, req.user?.id, body as ReplyTriageInput);
     res.json({ success: true, data });
-  }),
+  })
 );
 
 /** POST /api/ai/voice-of-practice — store practice tone samples for Clara personalisation */
@@ -1052,7 +1127,7 @@ router.post(
             z.object({
               label: z.string().min(1).max(100),
               content: z.string().min(20).max(4000),
-            }),
+            })
           )
           .min(1)
           .max(10),
@@ -1078,7 +1153,7 @@ router.post(
     });
 
     res.json({ success: true, data: { sampleCount: samples.length } });
-  }),
+  })
 );
 
 export default router;

@@ -45,10 +45,7 @@ import {
 } from '@heroicons/react/24/outline';
 import ProposalClientPreview from './ProposalClientPreview';
 import RegulatoryCheckBanner from './RegulatoryCheckBanner';
-import {
-  getBuilderPreviewPreference,
-  setBuilderPreviewPreference,
-} from './builderPreviewStorage';
+import { getBuilderPreviewPreference, setBuilderPreviewPreference } from './builderPreviewStorage';
 import {
   DEFAULT_PRICING_TIERS,
   buildCustomFieldsPayload,
@@ -61,7 +58,9 @@ import ProposalHealthCard from '../ai/ProposalHealthCard';
 import ProposalBuilderClara from '../ai/ProposalBuilderClara';
 import ClientContextCard from '../ai/ClientContextCard';
 import AutoFitBanner, { type AutoFitResult } from '../ai/AutoFitBanner';
-import ProposalEmailPreviewDialog, { type ProposalEmailDraftInput } from '../ai/ProposalEmailPreviewDialog';
+import ProposalEmailPreviewDialog, {
+  type ProposalEmailDraftInput,
+} from '../ai/ProposalEmailPreviewDialog';
 import SaveProposalTemplateDialog from './SaveProposalTemplateDialog';
 import {
   loadPricingSuggestion,
@@ -174,7 +173,9 @@ function InvestmentSummaryBands({ summary }: { summary: PricingSummary }) {
           <span className="text-sm font-medium text-slate-800 dark:text-slate-100">Monthly</span>
           <span className="text-lg font-semibold text-slate-900 dark:text-white tabular-nums">
             {formatCurrency(summary.monthly.total)}
-            <span className="text-xs font-normal text-slate-500 dark:text-slate-300 ml-1">/month</span>
+            <span className="text-xs font-normal text-slate-500 dark:text-slate-300 ml-1">
+              /month
+            </span>
           </span>
         </div>
       )}
@@ -183,7 +184,9 @@ function InvestmentSummaryBands({ summary }: { summary: PricingSummary }) {
           <span className="text-sm font-medium text-slate-800 dark:text-slate-100">Annual</span>
           <span className="text-lg font-semibold text-slate-900 dark:text-white tabular-nums">
             {formatCurrency(summary.annually.total)}
-            <span className="text-xs font-normal text-slate-500 dark:text-slate-300 ml-1">/year</span>
+            <span className="text-xs font-normal text-slate-500 dark:text-slate-300 ml-1">
+              /year
+            </span>
           </span>
         </div>
       )}
@@ -192,7 +195,9 @@ function InvestmentSummaryBands({ summary }: { summary: PricingSummary }) {
           <span className="text-sm font-medium text-slate-800 dark:text-slate-100">Quarterly</span>
           <span className="text-lg font-semibold text-slate-900 dark:text-white tabular-nums">
             {formatCurrency(summary.quarterly.total)}
-            <span className="text-xs font-normal text-slate-500 dark:text-slate-300 ml-1">/quarter</span>
+            <span className="text-xs font-normal text-slate-500 dark:text-slate-300 ml-1">
+              /quarter
+            </span>
           </span>
         </div>
       )}
@@ -201,7 +206,9 @@ function InvestmentSummaryBands({ summary }: { summary: PricingSummary }) {
           <span className="text-sm font-medium text-slate-800 dark:text-slate-100">Weekly</span>
           <span className="text-lg font-semibold text-slate-900 dark:text-white tabular-nums">
             {formatCurrency(summary.weekly.total)}
-            <span className="text-xs font-normal text-slate-500 dark:text-slate-300 ml-1">/week</span>
+            <span className="text-xs font-normal text-slate-500 dark:text-slate-300 ml-1">
+              /week
+            </span>
           </span>
         </div>
       )}
@@ -386,7 +393,9 @@ export default function ProposalBuilder({ proposalId }: ProposalBuilderProps) {
   const [aiSuggestions, setAiSuggestions] = useState<any>(null);
   const [aiCoverLoading, setAiCoverLoading] = useState(false);
   const [aiCoverDraft, setAiCoverDraft] = useState<string | null>(null);
-  const [showLivePreviewPane, setShowLivePreviewPane] = useState(() => getBuilderPreviewPreference());
+  const [showLivePreviewPane, setShowLivePreviewPane] = useState(() =>
+    getBuilderPreviewPreference()
+  );
 
   const toggleLivePreviewPane = useCallback((next?: boolean) => {
     setShowLivePreviewPane((prev) => {
@@ -405,7 +414,10 @@ export default function ProposalBuilder({ proposalId }: ProposalBuilderProps) {
   const [templatesLoading, setTemplatesLoading] = useState(false);
   const [selectedTemplateId, setSelectedTemplateId] = useState<string | null>(null);
   const [applyingTemplateId, setApplyingTemplateId] = useState<string | null>(null);
-  const [saveTemplateDialog, setSaveTemplateDialog] = useState<{ open: boolean; proposalId: string }>({
+  const [saveTemplateDialog, setSaveTemplateDialog] = useState<{
+    open: boolean;
+    proposalId: string;
+  }>({
     open: false,
     proposalId: '',
   });
@@ -453,7 +465,7 @@ export default function ProposalBuilder({ proposalId }: ProposalBuilderProps) {
   const applyDraftSnapshot = useCallback((draft: ProposalDraft) => {
     isHydratingDraftRef.current = true;
     setSelectedServices(
-      draft.selectedServices?.length ? (draft.selectedServices as SelectedService[]) : [],
+      draft.selectedServices?.length ? (draft.selectedServices as SelectedService[]) : []
     );
     setProposalTitle(draft.proposalTitle || '');
     setCoverLetter(draft.coverLetter || '');
@@ -699,7 +711,14 @@ export default function ProposalBuilder({ proposalId }: ProposalBuilderProps) {
 
     clearPricingSuggestion();
     // eslint-disable-next-line react-hooks/exhaustive-deps -- services.length is the intended trigger; the full array would refire on every edit
-  }, [isEditMode, fromPricingParam, services.length, preselectedClientId, includeVat, proposalTitle]);
+  }, [
+    isEditMode,
+    fromPricingParam,
+    services.length,
+    preselectedClientId,
+    includeVat,
+    proposalTitle,
+  ]);
 
   // Deep-link from Templates page: ?template=<id>
   useEffect(() => {
@@ -756,7 +775,8 @@ export default function ProposalBuilder({ proposalId }: ProposalBuilderProps) {
 
   // Auto-generate verbose client proposal letter when entering review step
   useEffect(() => {
-    if (currentStep !== 3 || !selectedClient || selectedServices.length === 0 || !aiConfigured) return;
+    if (currentStep !== 3 || !selectedClient || selectedServices.length === 0 || !aiConfigured)
+      return;
     void runGenerateClientCoverLetter(false);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentStep, selectedClient?.id, selectedServices.length, aiConfigured, proposalTitle]);
@@ -919,37 +939,40 @@ export default function ProposalBuilder({ proposalId }: ProposalBuilderProps) {
   }, [services, selectedCategory, serviceSearch]);
 
   // Helper to compute live preview values for a service being edited
-  const getEditingPreview = useCallback((original: SelectedService): SelectedService => {
-    const quantity = editForm.quantity || 1;
-    const discount = editForm.discountPercent || 0;
-    const price = editForm.displayPrice || 0;
-    const vatRate = editForm.vatRate || 0;
+  const getEditingPreview = useCallback(
+    (original: SelectedService): SelectedService => {
+      const quantity = editForm.quantity || 1;
+      const discount = editForm.discountPercent || 0;
+      const price = editForm.displayPrice || 0;
+      const vatRate = editForm.vatRate || 0;
 
-    const line = calculateLineItem({
-      basePrice: price,
-      billingFrequency: editForm.billingCycle as BillingFrequency,
-      quantity,
-      discountPercent: discount,
-      vatRate: includeVat ? vatRate : 0,
-    });
+      const line = calculateLineItem({
+        basePrice: price,
+        billingFrequency: editForm.billingCycle as BillingFrequency,
+        quantity,
+        discountPercent: discount,
+        vatRate: includeVat ? vatRate : 0,
+      });
 
-    return {
-      ...original,
-      displayPrice: price,
-      quantity,
-      discountPercent: discount,
-      vatRate,
-      billingCycle: editForm.billingCycle,
-      lineTotal: line.netTotal,
-      vatAmount: line.vatAmount,
-      grossTotal: line.grossTotal,
-      annualEquivalent: line.annualEquivalent,
-      oneOffDueDate:
-        editForm.billingCycle === 'ONE_TIME' && editForm.oneOffDueDate.trim()
-          ? editForm.oneOffDueDate.trim()
-          : undefined,
-    };
-  }, [editForm, includeVat]);
+      return {
+        ...original,
+        displayPrice: price,
+        quantity,
+        discountPercent: discount,
+        vatRate,
+        billingCycle: editForm.billingCycle,
+        lineTotal: line.netTotal,
+        vatAmount: line.vatAmount,
+        grossTotal: line.grossTotal,
+        annualEquivalent: line.annualEquivalent,
+        oneOffDueDate:
+          editForm.billingCycle === 'ONE_TIME' && editForm.oneOffDueDate.trim()
+            ? editForm.oneOffDueDate.trim()
+            : undefined,
+      };
+    },
+    [editForm, includeVat]
+  );
 
   // Calculate summary (includes live preview of editing service)
   // Totals are per billing period (no blending annual into "monthly investment")
@@ -1017,7 +1040,11 @@ export default function ProposalBuilder({ proposalId }: ProposalBuilderProps) {
     if (editingService === id) {
       const svc = selectedServices.find((s) => s.id === id);
       if (svc) {
-        const newPrice = convertPriceBetweenCadences(svc.displayPrice, svc.billingCycle, newCadence);
+        const newPrice = convertPriceBetweenCadences(
+          svc.displayPrice,
+          svc.billingCycle,
+          newCadence
+        );
         setEditForm((f) => ({
           ...f,
           billingCycle: newCadence,
@@ -1030,13 +1057,7 @@ export default function ProposalBuilder({ proposalId }: ProposalBuilderProps) {
 
   const goToReviewStep = () => {
     setCurrentStep(3);
-    if (
-      !coverLetter.trim() &&
-      selectedClient &&
-      !isEditMode &&
-      !proposalId &&
-      !aiConfigured
-    ) {
+    if (!coverLetter.trim() && selectedClient && !isEditMode && !proposalId && !aiConfigured) {
       void loadCoverLetterFromTemplate(selectedClient, selectedServices.length);
     }
   };
@@ -1077,7 +1098,8 @@ export default function ProposalBuilder({ proposalId }: ProposalBuilderProps) {
     }
 
     const price = overridePrice ?? service.priceAmount ?? 0;
-    const frequency = billingFrequency || service.billingCycle || service.defaultFrequency || 'MONTHLY';
+    const frequency =
+      billingFrequency || service.billingCycle || service.defaultFrequency || 'MONTHLY';
 
     const vatPercent =
       service.isVatApplicable !== false
@@ -1152,7 +1174,9 @@ export default function ProposalBuilder({ proposalId }: ProposalBuilderProps) {
 
   const applySingleAiSuggestion = (serviceId: string) => {
     if (!aiSuggestions?.suggestions?.length) return;
-    const sug = aiSuggestions.suggestions.find((s: { serviceId: string }) => s.serviceId === serviceId);
+    const sug = aiSuggestions.suggestions.find(
+      (s: { serviceId: string }) => s.serviceId === serviceId
+    );
     if (!sug) return;
     const catalogService = services.find((s) => s.id === sug.serviceId);
     if (!catalogService) return;
@@ -1163,7 +1187,9 @@ export default function ProposalBuilder({ proposalId }: ProposalBuilderProps) {
     }
     setAiSuggestions((prev: typeof aiSuggestions) => {
       if (!prev?.suggestions?.length) return prev;
-      const remaining = prev.suggestions.filter((s: { serviceId: string }) => s.serviceId !== serviceId);
+      const remaining = prev.suggestions.filter(
+        (s: { serviceId: string }) => s.serviceId !== serviceId
+      );
       if (!remaining.length) return null;
       return { ...prev, suggestions: remaining };
     });
@@ -1176,18 +1202,27 @@ export default function ProposalBuilder({ proposalId }: ProposalBuilderProps) {
     const catalogService = services.find((s) => s.id === serviceId);
     if (!catalogService) return;
     if (addServiceWithCadence(catalogService, tweaks.billingFrequency, tweaks.displayPrice)) {
-      const name = aiSuggestions?.suggestions?.find((s: { serviceId: string }) => s.serviceId === serviceId)?.name;
+      const name = aiSuggestions?.suggestions?.find(
+        (s: { serviceId: string }) => s.serviceId === serviceId
+      )?.name;
       toast.success(name ? `${name} added with your tweaks` : 'Service added with your tweaks');
     }
     setAiSuggestions((prev: typeof aiSuggestions) => {
       if (!prev?.suggestions?.length) return prev;
-      const remaining = prev.suggestions.filter((s: { serviceId: string }) => s.serviceId !== serviceId);
+      const remaining = prev.suggestions.filter(
+        (s: { serviceId: string }) => s.serviceId !== serviceId
+      );
       if (!remaining.length) return null;
       return { ...prev, suggestions: remaining };
     });
   };
 
-  const applyAutoFitService = (sug: { serviceId: string; name: string; billingFrequency: string; displayPrice: number }) => {
+  const applyAutoFitService = (sug: {
+    serviceId: string;
+    name: string;
+    billingFrequency: string;
+    displayPrice: number;
+  }) => {
     const catalogService = services.find((s) => s.id === sug.serviceId);
     if (!catalogService) return;
     if (addServiceWithCadence(catalogService, sug.billingFrequency, sug.displayPrice)) {
@@ -1216,7 +1251,11 @@ export default function ProposalBuilder({ proposalId }: ProposalBuilderProps) {
         added++;
       }
     }
-    toast.success(added ? `Added ${added} suggested service${added === 1 ? '' : 's'}` : 'Services already selected');
+    toast.success(
+      added
+        ? `Added ${added} suggested service${added === 1 ? '' : 's'}`
+        : 'Services already selected'
+    );
     setAiSuggestions(null);
   };
 
@@ -1226,12 +1265,15 @@ export default function ProposalBuilder({ proposalId }: ProposalBuilderProps) {
       return;
     }
     if (!coverLetter.trim()) {
-      toast.error('Add or load a cover letter first — Clara revises your template, she does not draft from scratch');
+      toast.error(
+        'Add or load a cover letter first — Clara revises your template, she does not draft from scratch'
+      );
       return;
     }
     setAiCoverLoading(true);
     try {
-      const serviceSummary = selectedServices.map((s) => s.name).join(', ') || 'your selected services';
+      const serviceSummary =
+        selectedServices.map((s) => s.name).join(', ') || 'your selected services';
       const res = (await apiClient.aiCoverLetterRevise(
         coverLetter,
         `Personalise and polish this cover letter for ${selectedClient.name}. Keep UK English and a ${coverLetterTone.toLowerCase()} tone. Reflect these services: ${serviceSummary}.`,
@@ -1252,7 +1294,9 @@ export default function ProposalBuilder({ proposalId }: ProposalBuilderProps) {
     if (!coverLetter.trim()) return;
     setApplyingCoverLetterTweak(true);
     try {
-      const res = (await apiClient.aiCoverLetterRevise(coverLetter, instruction, { clientId: selectedClient?.id })) as any;
+      const res = (await apiClient.aiCoverLetterRevise(coverLetter, instruction, {
+        clientId: selectedClient?.id,
+      })) as any;
       if (res.success && res.data?.revisedBody) {
         setCoverLetter(res.data.revisedBody);
         toast.success('Clara updated the cover letter');
@@ -1270,7 +1314,11 @@ export default function ProposalBuilder({ proposalId }: ProposalBuilderProps) {
       return;
     }
     const servicesKey = selectedServices.map((s) => `${s.id}:${s.billingCycle}`).join('|');
-    if (!force && coverLetter.trim().length >= 120 && coverLetterServicesKeyRef.current === servicesKey) {
+    if (
+      !force &&
+      coverLetter.trim().length >= 120 &&
+      coverLetterServicesKeyRef.current === servicesKey
+    ) {
       return;
     }
 
@@ -1365,7 +1413,15 @@ export default function ProposalBuilder({ proposalId }: ProposalBuilderProps) {
         displayPrice: s.displayPrice,
       })),
     };
-  }, [selectedClient, proposalTitle, coverLetter, validUntil, tenant?.name, user, selectedServices]);
+  }, [
+    selectedClient,
+    proposalTitle,
+    coverLetter,
+    validUntil,
+    tenant?.name,
+    user,
+    selectedServices,
+  ]);
 
   // Start editing service
   const startEdit = (service: SelectedService) => {
@@ -1445,9 +1501,7 @@ export default function ProposalBuilder({ proposalId }: ProposalBuilderProps) {
 
   const taxServiceLines = useMemo(
     () =>
-      selectedServices
-        .filter((s) => s.category === 'TAX')
-        .map((s) => ({ id: s.id, name: s.name })),
+      selectedServices.filter((s) => s.category === 'TAX').map((s) => ({ id: s.id, name: s.name })),
     [selectedServices]
   );
 
@@ -1462,9 +1516,7 @@ export default function ProposalBuilder({ proposalId }: ProposalBuilderProps) {
         const discount = 0;
         const grossLineTotal = price * quantity;
         const lineTotal = grossLineTotal;
-        const vatAmount = includeVat
-          ? Math.round(lineTotal * (s.vatRate / 100) * 100) / 100
-          : 0;
+        const vatAmount = includeVat ? Math.round(lineTotal * (s.vatRate / 100) * 100) / 100 : 0;
 
         return {
           ...s,
@@ -1591,9 +1643,7 @@ export default function ProposalBuilder({ proposalId }: ProposalBuilderProps) {
       setProposalTitle(t.title || '');
       if (t.coverLetter) setCoverLetter(t.coverLetter);
       const pricing =
-        typeof t.defaultPricing === 'object' && t.defaultPricing
-          ? t.defaultPricing
-          : {};
+        typeof t.defaultPricing === 'object' && t.defaultPricing ? t.defaultPricing : {};
       if (pricing.coverLetterTone) {
         setCoverLetterTone(pricing.coverLetterTone as CoverLetterTone);
       }
@@ -1676,7 +1726,9 @@ export default function ProposalBuilder({ proposalId }: ProposalBuilderProps) {
       setProposalTitle(p.title || '');
       const legacySummary = (p.proposalSummary || '').trim();
       const letter = (p.coverLetter || '').trim();
-      setCoverLetter(legacySummary && letter ? `${letter}\n\n${legacySummary}` : letter || legacySummary);
+      setCoverLetter(
+        legacySummary && letter ? `${letter}\n\n${legacySummary}` : letter || legacySummary
+      );
       setProposalTerms((p.terms || '').trim());
       coverLetterServicesKeyRef.current = 'loaded';
       if (p.validUntil) {
@@ -1729,9 +1781,7 @@ export default function ProposalBuilder({ proposalId }: ProposalBuilderProps) {
           allowedCadences: parseFrequencyOptions(
             svc.serviceTemplate?.frequencyOptions || svc.frequencyOptions
           ),
-          oneOffDueDate: svc.oneOffDueDate
-            ? String(svc.oneOffDueDate).slice(0, 10)
-            : undefined,
+          oneOffDueDate: svc.oneOffDueDate ? String(svc.oneOffDueDate).slice(0, 10) : undefined,
         };
       });
       setSelectedServices(lines);
@@ -1772,7 +1822,8 @@ export default function ProposalBuilder({ proposalId }: ProposalBuilderProps) {
     }
     if (!proposalTitle.trim()) errors.push('Enter a proposal title');
     if (!validUntil) errors.push('Set a proposal expiry date');
-    if (validUntil && validUntil < todayIso) errors.push('Expiry date must be today or in the future');
+    if (validUntil && validUntil < todayIso)
+      errors.push('Expiry date must be today or in the future');
     if (coverLetter.trim().length > 0 && coverLetter.trim().length < 80) {
       errors.push('Proposal letter is very short — regenerate with Clara or expand it');
     }
@@ -1835,7 +1886,9 @@ export default function ProposalBuilder({ proposalId }: ProposalBuilderProps) {
           localStorage.removeItem(proposalDraftKey(undefined, selectedClient.id));
         }
         localStorage.removeItem(LEGACY_NEW_DRAFT_KEY);
-        toast.success(isEditMode ? 'Proposal updated successfully!' : 'Proposal created successfully!');
+        toast.success(
+          isEditMode ? 'Proposal updated successfully!' : 'Proposal created successfully!'
+        );
         const savedId = isEditMode ? proposalId! : response.data.id;
         if (!isEditMode && buildMode === 'manual') {
           setSaveTemplateDialog({ open: true, proposalId: savedId });
@@ -1886,38 +1939,38 @@ export default function ProposalBuilder({ proposalId }: ProposalBuilderProps) {
   const renderStepIndicator = () => (
     <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-8">
       <div className="flex items-center justify-center flex-1">
-      {STEPS.map((step, index) => (
-        <div key={step.id} className="flex items-center">
-          <div
-            className={`flex flex-col items-center ${currentStep >= step.id ? 'cursor-pointer' : ''}`}
-            onClick={() => {
-              if (currentStep > step.id) setCurrentStep(step.id);
-            }}
-          >
+        {STEPS.map((step, index) => (
+          <div key={step.id} className="flex items-center">
             <div
-              className={`w-10 h-10 rounded-full flex items-center justify-center font-semibold transition-colors ${
-                currentStep === step.id
-                  ? 'bg-primary-600 text-white'
-                  : currentStep > step.id
-                    ? 'bg-green-500 text-white'
-                    : 'bg-slate-200 text-slate-500 dark:text-slate-300'
-              }`}
+              className={`flex flex-col items-center ${currentStep >= step.id ? 'cursor-pointer' : ''}`}
+              onClick={() => {
+                if (currentStep > step.id) setCurrentStep(step.id);
+              }}
             >
-              {currentStep > step.id ? <CheckIcon className="w-5 h-5" /> : step.id}
+              <div
+                className={`w-10 h-10 rounded-full flex items-center justify-center font-semibold transition-colors ${
+                  currentStep === step.id
+                    ? 'bg-primary-600 text-white'
+                    : currentStep > step.id
+                      ? 'bg-green-500 text-white'
+                      : 'bg-slate-200 text-slate-500 dark:text-slate-300'
+                }`}
+              >
+                {currentStep > step.id ? <CheckIcon className="w-5 h-5" /> : step.id}
+              </div>
+              <span
+                className={`text-xs mt-2 ${currentStep === step.id ? 'text-primary-600 font-medium' : 'text-slate-500 dark:text-slate-300'}`}
+              >
+                {step.name}
+              </span>
             </div>
-            <span
-              className={`text-xs mt-2 ${currentStep === step.id ? 'text-primary-600 font-medium' : 'text-slate-500 dark:text-slate-300'}`}
-            >
-              {step.name}
-            </span>
+            {index < STEPS.length - 1 && (
+              <div
+                className={`w-16 h-0.5 mx-2 ${currentStep > step.id ? 'bg-green-500' : 'bg-slate-200'}`}
+              />
+            )}
           </div>
-          {index < STEPS.length - 1 && (
-            <div
-              className={`w-16 h-0.5 mx-2 ${currentStep > step.id ? 'bg-green-500' : 'bg-slate-200'}`}
-            />
-          )}
-        </div>
-      ))}
+        ))}
       </div>
       <div className="flex flex-wrap items-center gap-2 shrink-0">
         {!isEditMode && selectedClient && currentStep > 1 && (
@@ -1946,7 +1999,9 @@ export default function ProposalBuilder({ proposalId }: ProposalBuilderProps) {
             data-testid="toggle-client-preview-pane"
             onClick={() => toggleLivePreviewPane()}
             className={`btn-secondary text-sm inline-flex items-center gap-2 ${
-              showLivePreviewPane ? 'border-primary-300 dark:border-primary-700 text-primary-700 dark:text-primary-300' : ''
+              showLivePreviewPane
+                ? 'border-primary-300 dark:border-primary-700 text-primary-700 dark:text-primary-300'
+                : ''
             }`}
           >
             {showLivePreviewPane ? (
@@ -1972,8 +2027,8 @@ export default function ProposalBuilder({ proposalId }: ProposalBuilderProps) {
           className="rounded-xl border border-amber-200 dark:border-amber-800 bg-amber-50/80 dark:bg-amber-950/30 p-4 flex flex-wrap items-center justify-between gap-3"
         >
           <p className="text-sm text-amber-900 dark:text-amber-100">
-            You have a draft in progress for <strong>{selectedClient.name}</strong>. Continue where you
-            left off, go back to change the build approach, or restart from scratch.
+            You have a draft in progress for <strong>{selectedClient.name}</strong>. Continue where
+            you left off, go back to change the build approach, or restart from scratch.
           </p>
           <div className="flex flex-wrap gap-2">
             <button
@@ -1987,7 +2042,11 @@ export default function ProposalBuilder({ proposalId }: ProposalBuilderProps) {
             >
               Continue draft
             </button>
-            <button type="button" className="btn-secondary text-sm" onClick={() => restartProposal(true)}>
+            <button
+              type="button"
+              className="btn-secondary text-sm"
+              onClick={() => restartProposal(true)}
+            >
               Restart
             </button>
           </div>
@@ -2022,10 +2081,16 @@ export default function ProposalBuilder({ proposalId }: ProposalBuilderProps) {
             >
               <h3 className="font-semibold text-slate-900 dark:text-white">{client.name}</h3>
               {client.contactName?.trim() && (
-                <p className="text-sm text-slate-600 dark:text-slate-300">{client.contactName.trim()}</p>
+                <p className="text-sm text-slate-600 dark:text-slate-300">
+                  {client.contactName.trim()}
+                </p>
               )}
-              <p className="text-sm text-slate-500 dark:text-slate-300 dark:text-slate-300">{client.companyType}</p>
-              <p className="text-sm text-slate-400 dark:text-slate-500 dark:text-slate-300">{client.contactEmail}</p>
+              <p className="text-sm text-slate-500 dark:text-slate-300 dark:text-slate-300">
+                {client.companyType}
+              </p>
+              <p className="text-sm text-slate-400 dark:text-slate-500 dark:text-slate-300">
+                {client.contactEmail}
+              </p>
             </div>
           ))}
       </div>
@@ -2093,13 +2158,18 @@ export default function ProposalBuilder({ proposalId }: ProposalBuilderProps) {
 
       {selectedClient && buildMode === 'template' && (
         <div className="rounded-2xl border border-emerald-200 dark:border-emerald-800 bg-emerald-50/30 dark:bg-emerald-950/20 p-4 space-y-3">
-          <h4 className="text-sm font-semibold text-slate-900 dark:text-white">Choose a template</h4>
+          <h4 className="text-sm font-semibold text-slate-900 dark:text-white">
+            Choose a template
+          </h4>
           {templatesLoading ? (
             <p className="text-xs text-slate-500">Loading templates…</p>
           ) : proposalTemplates.length === 0 ? (
             <p className="text-xs text-slate-500">
               No saved templates yet —{' '}
-              <Link to="/templates" className="text-emerald-700 dark:text-emerald-400 hover:underline">
+              <Link
+                to="/templates"
+                className="text-emerald-700 dark:text-emerald-400 hover:underline"
+              >
                 create one in Templates
               </Link>{' '}
               or build from scratch and {AI_COPILOT.name} will offer to save when you finish.
@@ -2189,7 +2259,9 @@ export default function ProposalBuilder({ proposalId }: ProposalBuilderProps) {
             <h3 className="font-medium text-slate-900 dark:text-white truncate">{service.name}</h3>
             {isSelected && <CheckIcon className="w-4 h-4 text-green-600 flex-shrink-0" />}
           </div>
-          <p className="text-xs text-slate-500 dark:text-slate-300 dark:text-slate-300 truncate">{service.category}</p>
+          <p className="text-xs text-slate-500 dark:text-slate-300 dark:text-slate-300 truncate">
+            {service.category}
+          </p>
         </div>
         <div className="flex items-center gap-2 flex-shrink-0">
           <span className="font-semibold text-primary-600 text-sm">
@@ -2237,7 +2309,11 @@ export default function ProposalBuilder({ proposalId }: ProposalBuilderProps) {
               >
                 <CheckIcon className="w-4 h-4" />
               </button>
-              <button data-testid="cancel-edit-button" onClick={cancelEdit} className="p-1 text-red-600 hover:bg-red-100 rounded">
+              <button
+                data-testid="cancel-edit-button"
+                onClick={cancelEdit}
+                className="p-1 text-red-600 hover:bg-red-100 rounded"
+              >
                 <XMarkIcon className="w-4 h-4" />
               </button>
             </div>
@@ -2246,7 +2322,9 @@ export default function ProposalBuilder({ proposalId }: ProposalBuilderProps) {
           <div className="flex flex-wrap items-end gap-3">
             {/* Price */}
             <div>
-              <label className="block text-[10px] uppercase tracking-wide text-slate-500 dark:text-slate-300 mb-0.5">Price (£)</label>
+              <label className="block text-[10px] uppercase tracking-wide text-slate-500 dark:text-slate-300 mb-0.5">
+                Price (£)
+              </label>
               <input
                 data-testid="edit-price-input"
                 type="text"
@@ -2256,7 +2334,10 @@ export default function ProposalBuilder({ proposalId }: ProposalBuilderProps) {
                   const next = e.target.value;
                   if (!isValidDecimalDraft(next)) return;
                   setEditPriceText(next);
-                  setEditForm({ ...editForm, displayPrice: parseDecimalInput(next, editForm.displayPrice) });
+                  setEditForm({
+                    ...editForm,
+                    displayPrice: parseDecimalInput(next, editForm.displayPrice),
+                  });
                 }}
                 className="w-full px-2 py-1 text-sm border rounded dark:bg-slate-800 dark:border-slate-600"
               />
@@ -2264,7 +2345,9 @@ export default function ProposalBuilder({ proposalId }: ProposalBuilderProps) {
 
             {/* Quantity */}
             <div>
-              <label className="block text-[10px] uppercase tracking-wide text-slate-500 dark:text-slate-300 mb-0.5">Qty</label>
+              <label className="block text-[10px] uppercase tracking-wide text-slate-500 dark:text-slate-300 mb-0.5">
+                Qty
+              </label>
               <input
                 type="number"
                 min={1}
@@ -2276,7 +2359,9 @@ export default function ProposalBuilder({ proposalId }: ProposalBuilderProps) {
 
             {/* Discount */}
             <div>
-              <label className="block text-[10px] uppercase tracking-wide text-slate-500 dark:text-slate-300 mb-0.5">Disc %</label>
+              <label className="block text-[10px] uppercase tracking-wide text-slate-500 dark:text-slate-300 mb-0.5">
+                Disc %
+              </label>
               <input
                 type="number"
                 min={0}
@@ -2291,7 +2376,9 @@ export default function ProposalBuilder({ proposalId }: ProposalBuilderProps) {
 
             {/* VAT Rate */}
             <div>
-              <label className="block text-[10px] uppercase tracking-wide text-slate-500 dark:text-slate-300 mb-0.5">VAT %</label>
+              <label className="block text-[10px] uppercase tracking-wide text-slate-500 dark:text-slate-300 mb-0.5">
+                VAT %
+              </label>
               <select
                 data-testid="edit-vat-select"
                 value={editForm.vatRate}
@@ -2315,9 +2402,7 @@ export default function ProposalBuilder({ proposalId }: ProposalBuilderProps) {
                 size="sm"
                 className="w-full max-w-full"
                 value={editForm.billingCycle}
-                allowedCadences={
-                  selectedServices.find((s) => s.id === service.id)?.allowedCadences
-                }
+                allowedCadences={selectedServices.find((s) => s.id === service.id)?.allowedCadences}
                 onChange={(cadence) => {
                   const newPrice = convertPriceBetweenCadences(
                     editForm.displayPrice,
@@ -2372,7 +2457,8 @@ export default function ProposalBuilder({ proposalId }: ProposalBuilderProps) {
     }
 
     // Compact view mode
-    const dueLabel = service.billingCycle === 'ONE_TIME' ? formatDueDateLabel(service.oneOffDueDate) : null;
+    const dueLabel =
+      service.billingCycle === 'ONE_TIME' ? formatDueDateLabel(service.oneOffDueDate) : null;
 
     return (
       <div
@@ -2381,71 +2467,77 @@ export default function ProposalBuilder({ proposalId }: ProposalBuilderProps) {
         className="p-3 bg-slate-50 dark:bg-slate-800/50 rounded-lg group hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors space-y-2"
       >
         <div className="flex items-center justify-between">
-        <div className="flex-1 min-w-0">
-          <h4 className="font-medium text-slate-900 dark:text-white text-sm truncate">
-            {service.name}
-          </h4>
-          <p className="text-xs text-slate-500 dark:text-slate-300 dark:text-slate-300">
-            {service.quantity} × {formatCurrency(service.displayPrice)}
-            {service.discountPercent > 0 && (
-              <span className="text-amber-600"> · −{service.discountPercent}%</span>
+          <div className="flex-1 min-w-0">
+            <h4 className="font-medium text-slate-900 dark:text-white text-sm truncate">
+              {service.name}
+            </h4>
+            <p className="text-xs text-slate-500 dark:text-slate-300 dark:text-slate-300">
+              {service.quantity} × {formatCurrency(service.displayPrice)}
+              {service.discountPercent > 0 && (
+                <span className="text-amber-600"> · −{service.discountPercent}%</span>
+              )}
+              {service.vatRate !== 20 && (
+                <span className="text-blue-600"> · VAT {service.vatRate}%</span>
+              )}
+            </p>
+            {dueLabel && (
+              <p className="text-xs text-primary-600 dark:text-primary-400 mt-0.5">
+                Due {dueLabel}
+              </p>
             )}
-            {service.vatRate !== 20 && <span className="text-blue-600"> · VAT {service.vatRate}%</span>}
-          </p>
-          {dueLabel && (
-            <p className="text-xs text-primary-600 dark:text-primary-400 mt-0.5">Due {dueLabel}</p>
-          )}
-        </div>
-
-        <div className="flex items-center gap-3 flex-shrink-0 ml-4">
-          <div className="text-right">
-            <span className="font-semibold text-slate-900 dark:text-white text-sm block tabular-nums">
-              {formatCurrency(service.grossTotal)}
-            </span>
-            <span className="text-xs text-slate-500 dark:text-slate-300 dark:text-slate-300">
-              {formatPriceWithFrequency(service.displayPrice, service.billingCycle)} inc VAT
-            </span>
           </div>
 
-          <div className="flex gap-1">
-            <button
-              type="button"
-              onClick={() => moveService(service.id, 'up')}
-              className="p-1.5 text-slate-500 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 rounded"
-              title="Move up"
-            >
-              <ArrowUpIcon className="w-4 h-4" />
-            </button>
-            <button
-              type="button"
-              onClick={() => moveService(service.id, 'down')}
-              className="p-1.5 text-slate-500 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 rounded"
-              title="Move down"
-            >
-              <ArrowDownIcon className="w-4 h-4" />
-            </button>
-            <button
-              data-testid="edit-service-button"
-              onClick={() => startEdit(service)}
-              className="p-1.5 text-blue-600 hover:bg-blue-100 dark:hover:bg-blue-900/30 rounded"
-              title="Edit"
-            >
-              <PencilIcon className="w-4 h-4" />
-            </button>
-            <button
-              data-testid="remove-service-button"
-              onClick={() => removeService(service.id)}
-              className="p-1.5 text-red-600 hover:bg-red-100 dark:hover:bg-red-900/30 rounded"
-              title="Remove"
-            >
-              <TrashIcon className="w-4 h-4" />
-            </button>
+          <div className="flex items-center gap-3 flex-shrink-0 ml-4">
+            <div className="text-right">
+              <span className="font-semibold text-slate-900 dark:text-white text-sm block tabular-nums">
+                {formatCurrency(service.grossTotal)}
+              </span>
+              <span className="text-xs text-slate-500 dark:text-slate-300 dark:text-slate-300">
+                {formatPriceWithFrequency(service.displayPrice, service.billingCycle)} inc VAT
+              </span>
+            </div>
+
+            <div className="flex gap-1">
+              <button
+                type="button"
+                onClick={() => moveService(service.id, 'up')}
+                className="p-1.5 text-slate-500 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 rounded"
+                title="Move up"
+              >
+                <ArrowUpIcon className="w-4 h-4" />
+              </button>
+              <button
+                type="button"
+                onClick={() => moveService(service.id, 'down')}
+                className="p-1.5 text-slate-500 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 rounded"
+                title="Move down"
+              >
+                <ArrowDownIcon className="w-4 h-4" />
+              </button>
+              <button
+                data-testid="edit-service-button"
+                onClick={() => startEdit(service)}
+                className="p-1.5 text-blue-600 hover:bg-blue-100 dark:hover:bg-blue-900/30 rounded"
+                title="Edit"
+              >
+                <PencilIcon className="w-4 h-4" />
+              </button>
+              <button
+                data-testid="remove-service-button"
+                onClick={() => removeService(service.id)}
+                className="p-1.5 text-red-600 hover:bg-red-100 dark:hover:bg-red-900/30 rounded"
+                title="Remove"
+              >
+                <TrashIcon className="w-4 h-4" />
+              </button>
+            </div>
           </div>
-        </div>
         </div>
 
         <div className="flex flex-wrap items-center gap-2 pt-1 border-t border-slate-200/80 dark:border-slate-700/80">
-          <span className="text-[10px] uppercase tracking-wide text-slate-400 shrink-0">Bill every</span>
+          <span className="text-[10px] uppercase tracking-wide text-slate-400 shrink-0">
+            Bill every
+          </span>
           <BillingCadenceSelector
             size="sm"
             value={service.billingCycle}
@@ -2570,7 +2662,9 @@ export default function ProposalBuilder({ proposalId }: ProposalBuilderProps) {
                   </div>
                 )}
                 <div className="flex justify-between items-baseline pt-1">
-                  <span className="font-semibold text-slate-900 dark:text-white">Combined total</span>
+                  <span className="font-semibold text-slate-900 dark:text-white">
+                    Combined total
+                  </span>
                   <span className="text-lg font-bold text-primary-600 tabular-nums">
                     {formatCurrency(summary.contractTotalIncVat)}
                   </span>
@@ -2583,12 +2677,20 @@ export default function ProposalBuilder({ proposalId }: ProposalBuilderProps) {
 
       {/* Navigation */}
       <div className="flex justify-between pt-4 border-t border-slate-200 dark:border-slate-700">
-        <button data-testid="services-back-button" onClick={() => setCurrentStep(1)} className="btn-secondary">
+        <button
+          data-testid="services-back-button"
+          onClick={() => setCurrentStep(1)}
+          className="btn-secondary"
+        >
           <ArrowLeftIcon className="w-5 h-5 mr-2" />
           Back
         </button>
         {selectedServices.length > 0 && (
-          <button data-testid="services-continue-button" onClick={goToReviewStep} className="btn-primary">
+          <button
+            data-testid="services-continue-button"
+            onClick={goToReviewStep}
+            className="btn-primary"
+          >
             Continue
             <ArrowRightIcon className="w-5 h-5 ml-2" />
           </button>
@@ -2621,7 +2723,9 @@ export default function ProposalBuilder({ proposalId }: ProposalBuilderProps) {
               onChange={(e) => setContractStartDate(e.target.value)}
               className="input-field w-full"
             />
-            <p className="mt-1 text-xs text-slate-500 dark:text-slate-300">Optional — use for future-dated engagements</p>
+            <p className="mt-1 text-xs text-slate-500 dark:text-slate-300">
+              Optional — use for future-dated engagements
+            </p>
           </div>
           <div>
             <label className="block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1">
@@ -2662,9 +2766,13 @@ export default function ProposalBuilder({ proposalId }: ProposalBuilderProps) {
         <h3 className="font-semibold text-slate-900 dark:text-white mb-2">Client</h3>
         <p className="text-slate-700 dark:text-slate-200">{selectedClient?.name}</p>
         {selectedClient?.contactName?.trim() && (
-          <p className="text-sm text-slate-600 dark:text-slate-300 mt-1">{selectedClient.contactName.trim()}</p>
+          <p className="text-sm text-slate-600 dark:text-slate-300 mt-1">
+            {selectedClient.contactName.trim()}
+          </p>
         )}
-        <p className="text-sm text-slate-500 dark:text-slate-300 dark:text-slate-300">{selectedClient?.contactEmail}</p>
+        <p className="text-sm text-slate-500 dark:text-slate-300 dark:text-slate-300">
+          {selectedClient?.contactEmail}
+        </p>
       </div>
 
       {/* Services — editable rows, grouped for clarity */}
@@ -2675,9 +2783,7 @@ export default function ProposalBuilder({ proposalId }: ProposalBuilderProps) {
           change cadence. Use edit for price, quantity, VAT, or one-off due dates.
         </p>
 
-        <div className="space-y-2">
-          {selectedServices.map(renderSelectedServiceRow)}
-        </div>
+        <div className="space-y-2">{selectedServices.map(renderSelectedServiceRow)}</div>
 
         <div className="mt-6 p-4 rounded-lg bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-600 space-y-3">
           <InvestmentSummaryBands summary={summary} />
@@ -2711,8 +2817,8 @@ export default function ProposalBuilder({ proposalId }: ProposalBuilderProps) {
               Proposal letter for your client
             </label>
             <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 max-w-xl">
-              Persuasive, personal sales prose — introduces each service and its benefits before the fee
-              schedule. This is your key differentiator; edit freely after Clara drafts it.
+              Persuasive, personal sales prose — introduces each service and its benefits before the
+              fee schedule. This is your key differentiator; edit freely after Clara drafts it.
             </p>
           </div>
           <div className="flex items-center gap-2">
@@ -2768,16 +2874,23 @@ export default function ProposalBuilder({ proposalId }: ProposalBuilderProps) {
                   type="button"
                   onClick={() => applyCoverLetterStyle(style.tone)}
                   className={`group text-left rounded-2xl border p-3 transition-all hover:shadow-sm focus:outline-none focus:ring-2 focus:ring-primary-500/40
-                    ${active
-                      ? 'border-primary-400 bg-primary-50/70 dark:bg-primary-950/30 shadow-sm'
-                      : 'border-slate-200 dark:border-slate-700 bg-white/60 dark:bg-slate-900/40 hover:border-slate-300 dark:hover:border-slate-600'
+                    ${
+                      active
+                        ? 'border-primary-400 bg-primary-50/70 dark:bg-primary-950/30 shadow-sm'
+                        : 'border-slate-200 dark:border-slate-700 bg-white/60 dark:bg-slate-900/40 hover:border-slate-300 dark:hover:border-slate-600'
                     }`}
                 >
                   <div className="flex items-center gap-2">
-                    <div className={`text-sm font-semibold ${active ? 'text-primary-700 dark:text-primary-300' : 'text-slate-800 dark:text-slate-100'}`}>
+                    <div
+                      className={`text-sm font-semibold ${active ? 'text-primary-700 dark:text-primary-300' : 'text-slate-800 dark:text-slate-100'}`}
+                    >
                       {style.name}
                     </div>
-                    {active && <span className="text-[10px] px-1.5 py-px rounded bg-primary-200 dark:bg-primary-900/50 text-primary-700 dark:text-primary-300">Active</span>}
+                    {active && (
+                      <span className="text-[10px] px-1.5 py-px rounded bg-primary-200 dark:bg-primary-900/50 text-primary-700 dark:text-primary-300">
+                        Active
+                      </span>
+                    )}
                   </div>
                   <div className="mt-1 text-xs text-slate-500 dark:text-slate-300 dark:text-slate-300 leading-snug">
                     {style.description}
@@ -2792,11 +2905,15 @@ export default function ProposalBuilder({ proposalId }: ProposalBuilderProps) {
         </div>
 
         <p className="text-xs text-slate-500 dark:text-slate-300 dark:text-slate-300 mb-2">
-          Personalised for {selectedClient ? coverLetterAddressee(selectedClient) : 'your client'}. You can edit the text freely after choosing a tone.
+          Personalised for {selectedClient ? coverLetterAddressee(selectedClient) : 'your client'}.
+          You can edit the text freely after choosing a tone.
         </p>
 
         {coverLetterLoading && !coverLetter.trim() && (
-          <div className="py-8 text-center text-sm text-slate-500 dark:text-slate-400" aria-busy="true">
+          <div
+            className="py-8 text-center text-sm text-slate-500 dark:text-slate-400"
+            aria-busy="true"
+          >
             <SparklesIcon className="h-6 w-6 text-primary-500 mx-auto animate-pulse mb-2" />
             {AI_COPILOT.name} is writing your client proposal letter…
           </div>
@@ -2821,20 +2938,24 @@ export default function ProposalBuilder({ proposalId }: ProposalBuilderProps) {
           <div className="mt-3">
             <div className="flex items-center gap-2 mb-1.5">
               <SparklesIcon className="h-3.5 w-3.5 text-violet-600" />
-              <span className="text-[10px] uppercase tracking-wider text-slate-500 dark:text-slate-300 dark:text-slate-300">Clara quick tweaks (low cost)</span>
+              <span className="text-[10px] uppercase tracking-wider text-slate-500 dark:text-slate-300 dark:text-slate-300">
+                Clara quick tweaks (low cost)
+              </span>
             </div>
             <div className="flex flex-wrap gap-2 mb-2">
-              {['Make warmer', 'Shorter & punchier', 'More formal', 'Add urgency on deadline'].map((label, i) => (
-                <button
-                  key={i}
-                  type="button"
-                  onClick={() => applyCoverLetterTweak(label)}
-                  disabled={applyingCoverLetterTweak}
-                  className="text-xs px-2 py-0.5 rounded border border-violet-200 dark:border-violet-800 text-violet-700 dark:text-violet-300 hover:bg-violet-50 dark:hover:bg-violet-950/30 disabled:opacity-50"
-                >
-                  {label}
-                </button>
-              ))}
+              {['Make warmer', 'Shorter & punchier', 'More formal', 'Add urgency on deadline'].map(
+                (label, i) => (
+                  <button
+                    key={i}
+                    type="button"
+                    onClick={() => applyCoverLetterTweak(label)}
+                    disabled={applyingCoverLetterTweak}
+                    className="text-xs px-2 py-0.5 rounded border border-violet-200 dark:border-violet-800 text-violet-700 dark:text-violet-300 hover:bg-violet-50 dark:hover:bg-violet-950/30 disabled:opacity-50"
+                  >
+                    {label}
+                  </button>
+                )
+              )}
             </div>
             <div className="flex gap-2">
               <input
@@ -2870,7 +2991,10 @@ export default function ProposalBuilder({ proposalId }: ProposalBuilderProps) {
       </div>
 
       {/* Package options — Bronze / Silver / Gold / Platinum */}
-      <div className="card p-4 border border-violet-100 dark:border-violet-900/40" data-testid="package-options-card">
+      <div
+        className="card p-4 border border-violet-100 dark:border-violet-900/40"
+        data-testid="package-options-card"
+      >
         <h3 className="font-semibold text-slate-900 dark:text-white mb-1">Package options</h3>
         <p className="text-xs text-slate-500 dark:text-slate-400 mb-4">
           Offer your client a choice of Bronze, Silver, Gold, or Platinum packages on the sign page.
@@ -2947,19 +3071,22 @@ export default function ProposalBuilder({ proposalId }: ProposalBuilderProps) {
       </div>
 
       <div className="card p-4">
-        <h3 className="font-semibold text-slate-900 dark:text-white mb-1">Terms &amp; conditions</h3>
+        <h3 className="font-semibold text-slate-900 dark:text-white mb-1">
+          Terms &amp; conditions
+        </h3>
         <p className="text-xs text-slate-500 dark:text-slate-400 mb-3">
-          Included in the proposal PDF and client view. Clara can answer questions about these terms.
+          Included in the proposal PDF and client view. Clara can answer questions about these
+          terms.
         </p>
-        <div
-          className="rounded-xl border border-slate-200 dark:border-slate-700 p-4 max-h-48 overflow-y-auto text-sm text-slate-700 dark:text-slate-200 whitespace-pre-wrap font-sans proposal-watermark-panel"
-        >
+        <div className="rounded-xl border border-slate-200 dark:border-slate-700 p-4 max-h-48 overflow-y-auto text-sm text-slate-700 dark:text-slate-200 whitespace-pre-wrap font-sans proposal-watermark-panel">
           {termsLoading ? (
             <p className="text-slate-500 italic">Preparing terms…</p>
           ) : proposalTerms.trim() ? (
             proposalTerms
           ) : (
-            <p className="text-slate-500 italic">Add services to generate terms from your engagement library.</p>
+            <p className="text-slate-500 italic">
+              Add services to generate terms from your engagement library.
+            </p>
           )}
         </div>
       </div>
@@ -2975,15 +3102,14 @@ export default function ProposalBuilder({ proposalId }: ProposalBuilderProps) {
         </div>
       )}
 
-      {isEditMode && proposalId && aiConfigured && (
-        <ProposalHealthCard proposalId={proposalId} />
-      )}
+      {isEditMode && proposalId && aiConfigured && <ProposalHealthCard proposalId={proposalId} />}
 
       {!isEditMode && aiConfigured && (
         <div className="glass-tile p-4 border border-violet-200 dark:border-violet-800/50">
           <p className="text-sm text-slate-700 dark:text-slate-200">
             <SparklesIcon className="inline h-4 w-4 text-violet-500 mr-1" />
-            {AI_COPILOT.name} tip: After creating the proposal, open it to get a health score and follow-up suggestions.
+            {AI_COPILOT.name} tip: After creating the proposal, open it to get a health score and
+            follow-up suggestions.
           </p>
         </div>
       )}
@@ -2992,13 +3118,20 @@ export default function ProposalBuilder({ proposalId }: ProposalBuilderProps) {
         <div className="card p-5 border-2 border-slate-200 dark:border-slate-600">
           <div className="flex items-center justify-between mb-3">
             <h3 className="font-semibold text-slate-900 dark:text-white">Client preview</h3>
-            <button type="button" onClick={() => toggleLivePreviewPane(false)} className="text-sm text-slate-500 dark:text-slate-300 hover:text-slate-700">
+            <button
+              type="button"
+              onClick={() => toggleLivePreviewPane(false)}
+              className="text-sm text-slate-500 dark:text-slate-300 hover:text-slate-700"
+            >
               Close
             </button>
           </div>
           <p className="text-xs text-slate-500 dark:text-slate-300 mb-2">From {tenant?.name}</p>
           <h4 className="text-lg font-bold">{proposalTitle || 'Proposal title'}</h4>
-          <p className="text-sm text-slate-600 mt-2 whitespace-pre-wrap">{coverLetter.slice(0, 600)}{coverLetter.length > 600 ? '…' : ''}</p>
+          <p className="text-sm text-slate-600 mt-2 whitespace-pre-wrap">
+            {coverLetter.slice(0, 600)}
+            {coverLetter.length > 600 ? '…' : ''}
+          </p>
           <div className="mt-4 pt-4 border-t border-slate-200 dark:border-slate-600">
             <InvestmentSummaryBands summary={summary} />
           </div>
@@ -3007,12 +3140,20 @@ export default function ProposalBuilder({ proposalId }: ProposalBuilderProps) {
 
       {/* Actions */}
       <div className="flex flex-wrap justify-between gap-3">
-        <button data-testid="review-back-button" onClick={() => setCurrentStep(2)} className="btn-secondary">
+        <button
+          data-testid="review-back-button"
+          onClick={() => setCurrentStep(2)}
+          className="btn-secondary"
+        >
           <ArrowLeftIcon className="w-5 h-5 mr-2" />
           Back
         </button>
         <div className="flex flex-wrap gap-2">
-          <button type="button" onClick={() => toggleLivePreviewPane()} className="btn-secondary text-sm lg:hidden">
+          <button
+            type="button"
+            onClick={() => toggleLivePreviewPane()}
+            className="btn-secondary text-sm lg:hidden"
+          >
             {showLivePreviewPane ? 'Hide preview' : 'Preview for client'}
           </button>
           {aiConfigured && selectedClient && (
@@ -3034,7 +3175,12 @@ export default function ProposalBuilder({ proposalId }: ProposalBuilderProps) {
               Client preview
             </button>
           )}
-          <button data-testid="create-proposal-button" onClick={saveProposal} disabled={isLoading} className="btn-primary">
+          <button
+            data-testid="create-proposal-button"
+            onClick={saveProposal}
+            disabled={isLoading}
+            className="btn-primary"
+          >
             {isLoading ? 'Saving...' : isEditMode ? 'Save Changes' : 'Create Proposal'}
             <ArrowRightIcon className="w-5 h-5 ml-2" />
           </button>
@@ -3077,23 +3223,26 @@ export default function ProposalBuilder({ proposalId }: ProposalBuilderProps) {
           </div>
         )}
 
-      {selectedClient && buildMode === 'clara' && !autoFitDismissed && (autoFitLoading || autoFitResult) && (
-        <AutoFitBanner
-          clientName={selectedClient.name}
-          result={autoFitResult}
-          loading={autoFitLoading}
-          configured={aiConfigured}
-          onAcceptAll={applyAllAutoFit}
-          onAcceptSection={applyAutoFitSection}
-          onDismiss={() => {
-            setAutoFitDismissed(true);
-            setAutoFitResult(null);
-          }}
-          onAcceptService={applyAutoFitService}
-          onTweakService={applyTweakedAutoFitService}
-          onRejectService={() => {}}
-        />
-      )}
+      {selectedClient &&
+        buildMode === 'clara' &&
+        !autoFitDismissed &&
+        (autoFitLoading || autoFitResult) && (
+          <AutoFitBanner
+            clientName={selectedClient.name}
+            result={autoFitResult}
+            loading={autoFitLoading}
+            configured={aiConfigured}
+            onAcceptAll={applyAllAutoFit}
+            onAcceptSection={applyAutoFitSection}
+            onDismiss={() => {
+              setAutoFitDismissed(true);
+              setAutoFitResult(null);
+            }}
+            onAcceptService={applyAutoFitService}
+            onTweakService={applyTweakedAutoFitService}
+            onRejectService={() => {}}
+          />
+        )}
 
       <div
         className={
@@ -3139,7 +3288,9 @@ export default function ProposalBuilder({ proposalId }: ProposalBuilderProps) {
               primaryColor={tenant?.primaryColor}
               clientName={selectedClient.name}
               clientContactName={coverLetterAddressee(selectedClient)}
-              preparedByName={`${user?.firstName || ''} ${user?.lastName || ''}`.trim() || undefined}
+              preparedByName={
+                `${user?.firstName || ''} ${user?.lastName || ''}`.trim() || undefined
+              }
               preparedByTitle={user?.jobTitle?.trim() || undefined}
               proposalTitle={proposalTitle}
               coverLetter={coverLetter}

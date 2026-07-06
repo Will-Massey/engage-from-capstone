@@ -13,10 +13,7 @@ import {
   createShareableLink,
   revokeShareableLink,
 } from '../services/proposalSharingService.js';
-import {
-  buildProposalServiceRecord,
-  calculateHeaderTotals,
-} from '../utils/proposalPricing.js';
+import { buildProposalServiceRecord, calculateHeaderTotals } from '../utils/proposalPricing.js';
 import { serializeProposalServicesForApi } from '../utils/proposalServiceSnapshot.js';
 import {
   mergeProposalCustomFields,
@@ -355,9 +352,8 @@ router.get(
       })
       .parse(req.query);
 
-    const { findRenewalCandidates, parseExpiringBeforeInput } = await import(
-      '../services/renewalProposalService.js'
-    );
+    const { findRenewalCandidates, parseExpiringBeforeInput } =
+      await import('../services/renewalProposalService.js');
 
     const expiringBefore = query.expiringBefore
       ? parseExpiringBeforeInput(query.expiringBefore)
@@ -412,11 +408,7 @@ router.post(
       })
       .parse(req.body);
 
-    if (
-      !body.clientIds?.length &&
-      !body.proposalIds?.length &&
-      !body.expiringBefore
-    ) {
+    if (!body.clientIds?.length && !body.proposalIds?.length && !body.expiringBefore) {
       throw new ApiError(
         'INVALID_REQUEST',
         'Provide clientIds, proposalIds, or expiringBefore',
@@ -424,9 +416,8 @@ router.post(
       );
     }
 
-    const { bulkCreateRenewalDrafts, parseExpiringBeforeInput } = await import(
-      '../services/renewalProposalService.js'
-    );
+    const { bulkCreateRenewalDrafts, parseExpiringBeforeInput } =
+      await import('../services/renewalProposalService.js');
 
     const result = await bulkCreateRenewalDrafts({
       tenantId: req.tenantId!,
@@ -591,8 +582,11 @@ router.post(
     });
     const proposalSettings = getProposalSettings(tenantRecord?.settings);
 
-    const { subtotal, vatAmount: totalVat, total: grandTotal } =
-      calculateHeaderTotals(servicesWithClearPricing);
+    const {
+      subtotal,
+      vatAmount: totalVat,
+      total: grandTotal,
+    } = calculateHeaderTotals(servicesWithClearPricing);
 
     // Generate reference
     const reference = generateReference('PROP');
@@ -604,9 +598,7 @@ router.post(
         : addDays(new Date(), proposalSettings.defaultExpiryDays);
 
     const contractStartDate =
-      data.contractStartDate !== undefined
-        ? parseProposalDateInput(data.contractStartDate)
-        : null;
+      data.contractStartDate !== undefined ? parseProposalDateInput(data.contractStartDate) : null;
 
     logger.info(
       `Creating proposal for tenant: ${req.tenantId}, user: ${req.user!.id}, client: ${data.clientId}`
@@ -630,8 +622,7 @@ router.post(
         vatAmount: totalVat,
         total: grandTotal,
         paymentTerms:
-          data.paymentTerms ||
-          formatPaymentTerms(proposalSettings.defaultPaymentTermsDays),
+          data.paymentTerms || formatPaymentTerms(proposalSettings.defaultPaymentTermsDays),
         paymentFrequency: data.paymentFrequency || 'MONTHLY',
         coverLetter: data.coverLetter,
         proposalSummary: data.proposalSummary,
@@ -644,7 +635,9 @@ router.post(
           )),
         notes: data.notes,
         customFields: data.customFields
-          ? serializeProposalCustomFields(data.customFields as import('../utils/proposalCustomFields.js').ProposalCustomFields)
+          ? serializeProposalCustomFields(
+              data.customFields as import('../utils/proposalCustomFields.js').ProposalCustomFields
+            )
           : '{}',
         services: {
           create: servicesWithClearPricing as any,
@@ -741,9 +734,14 @@ router.put(
 
     if (data.customFields !== undefined) {
       const existingFields = parseProposalCustomFields(existingProposal.customFields);
-      const incoming = data.customFields as import('../utils/proposalCustomFields.js').ProposalCustomFields;
-      const { selectedTierId: _st, selectedTierLabel: _stl, signaturesReceived: _sr, ...builderFields } =
-        incoming;
+      const incoming =
+        data.customFields as import('../utils/proposalCustomFields.js').ProposalCustomFields;
+      const {
+        selectedTierId: _st,
+        selectedTierLabel: _stl,
+        signaturesReceived: _sr,
+        ...builderFields
+      } = incoming;
       const merged = mergeProposalCustomFields(existingFields, builderFields);
       updateData.customFields = serializeProposalCustomFields(merged);
     }
@@ -807,14 +805,12 @@ router.put(
             ...svc,
             serviceId: svc.serviceId,
             name: svc.name ?? prior?.name,
-            description:
-              svc.description !== undefined ? svc.description : prior?.description,
+            description: svc.description !== undefined ? svc.description : prior?.description,
             displayPrice:
               svc.displayPrice !== undefined
                 ? svc.displayPrice
-                : prior?.displayPrice ?? prior?.unitPrice,
-            billingFrequency:
-              svc.billingFrequency ?? prior?.billingFrequency ?? prior?.frequency,
+                : (prior?.displayPrice ?? prior?.unitPrice),
+            billingFrequency: svc.billingFrequency ?? prior?.billingFrequency ?? prior?.frequency,
             vatRate: svc.vatRate ?? prior?.vatRate,
           },
           template,
@@ -906,7 +902,11 @@ router.post(
     }
 
     if (proposal.status !== 'DRAFT') {
-      throw new ApiError('INVALID_STATUS', 'Only draft proposals can be submitted for approval', 400);
+      throw new ApiError(
+        'INVALID_STATUS',
+        'Only draft proposals can be submitted for approval',
+        400
+      );
     }
 
     if (!['NONE', 'REJECTED'].includes(proposal.approvalStatus)) {
@@ -1168,13 +1168,14 @@ router.post(
     const pdfBuffer = await PDFGenerator.generateProposal(id);
     const pdfHeader = pdfBuffer.subarray(0, 5).toString('ascii');
     if (!pdfHeader.startsWith('%PDF')) {
-      logger.warn(`Proposal ${id} PDF generation returned invalid header — attachment will be omitted`);
+      logger.warn(
+        `Proposal ${id} PDF generation returned invalid header — attachment will be omitted`
+      );
     }
 
-    const frontendUrl = (process.env.FRONTEND_URL || 'https://capstonesoftware.co.uk/engage').replace(
-      /\/$/,
-      ''
-    );
+    const frontendUrl = (
+      process.env.FRONTEND_URL || 'https://capstonesoftware.co.uk/engage'
+    ).replace(/\/$/, '');
     let viewToken = proposal.shareToken;
     const tokenExpiry = proposal.shareTokenExpiry;
     if (
@@ -1201,7 +1202,9 @@ router.post(
         proposalTitle: proposal.title,
         proposalReference: proposal.reference,
         viewLink,
-        senderName: Array.from(new Set([req.user!.firstName, req.user!.lastName].filter(Boolean))).join(' '),
+        senderName: Array.from(
+          new Set([req.user!.firstName, req.user!.lastName].filter(Boolean))
+        ).join(' '),
         senderPosition: await resolveSenderPosition(req.user!.id, req.user!.role),
         senderEmail: req.user!.email,
         validUntil: new Date(proposal.validUntil).toLocaleDateString('en-GB', {
@@ -1239,10 +1242,7 @@ router.post(
       sendUpdateData.status = 'SENT';
     }
 
-    if (
-      overrideApproval &&
-      proposal.approvalStatus !== 'APPROVED'
-    ) {
+    if (overrideApproval && proposal.approvalStatus !== 'APPROVED') {
       sendUpdateData.approvalStatus = 'APPROVED';
       sendUpdateData.approvedAt = new Date();
       sendUpdateData.approvedById = req.user!.id;
@@ -1301,7 +1301,10 @@ router.post(
     }
 
     const signerName =
-      acceptedBy || Array.from(new Set([req.user?.firstName, req.user?.lastName].filter(Boolean))).join(' ').trim();
+      acceptedBy ||
+      Array.from(new Set([req.user?.firstName, req.user?.lastName].filter(Boolean)))
+        .join(' ')
+        .trim();
 
     if (!signature || String(signature).length < 100) {
       throw new ApiError('SIGNATURE_REQUIRED', 'Electronic signature is required', 400);
@@ -1341,9 +1344,8 @@ router.post(
     }
 
     try {
-      const { sendPracticeAcceptanceNotifications } = await import(
-        '../services/acceptanceNotificationService.js'
-      );
+      const { sendPracticeAcceptanceNotifications } =
+        await import('../services/acceptanceNotificationService.js');
       await sendPracticeAcceptanceNotifications({
         proposalId: proposal.id,
         tenantId: req.tenantId!,
@@ -1390,11 +1392,7 @@ router.post(
     }
 
     if (proposal.status !== 'SENT' && proposal.status !== 'VIEWED') {
-      throw new ApiError(
-        'INVALID_STATUS',
-        'Only sent or viewed proposals can be withdrawn',
-        400
-      );
+      throw new ApiError('INVALID_STATUS', 'Only sent or viewed proposals can be withdrawn', 400);
     }
 
     if (proposal.shareToken || proposal.publicAccessEnabled) {

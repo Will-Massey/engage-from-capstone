@@ -30,7 +30,10 @@ export function getProcessorMarkupFixedPence(): number {
 }
 
 /** Estimated processor cost to Engage (pass-through), not client-facing label */
-export function estimateProcessorCost(provider: 'REVOLUT' | 'GOCARDLESS', grossPence: number): number {
+export function estimateProcessorCost(
+  provider: 'REVOLUT' | 'GOCARDLESS',
+  grossPence: number
+): number {
   if (provider === 'GOCARDLESS') {
     const percent = Math.round((grossPence * 100) / 10000); // ~1%
     return Math.min(percent + 20, 220);
@@ -41,13 +44,12 @@ export function estimateProcessorCost(provider: 'REVOLUT' | 'GOCARDLESS', grossP
 }
 
 export function estimateProcessorMarkup(grossPence: number): number {
-  return Math.round((grossPence * getProcessorMarkupBps()) / 10000) + getProcessorMarkupFixedPence();
+  return (
+    Math.round((grossPence * getProcessorMarkupBps()) / 10000) + getProcessorMarkupFixedPence()
+  );
 }
 
-export function resolvePlatformFeeBps(
-  tier?: string | null,
-  override?: number | null,
-): number {
+export function resolvePlatformFeeBps(tier?: string | null, override?: number | null): number {
   if (override != null && Number.isFinite(override)) return Math.round(override);
   const tierDefaults: Record<string, number> = {
     STARTER: 250,

@@ -5,9 +5,10 @@
  *
  * Env: API_URL, TEST_USER_EMAIL, TEST_USER_PASSWORD
  */
-const API_BASE = (
-  process.env.API_URL || 'https://engage-backend-e1ue.onrender.com'
-).replace(/\/$/, '');
+const API_BASE = (process.env.API_URL || 'https://engage-backend-e1ue.onrender.com').replace(
+  /\/$/,
+  ''
+);
 const API = API_BASE.endsWith('/api') ? API_BASE : `${API_BASE}/api`;
 
 const EMAIL = process.env.TEST_USER_EMAIL || 'admin@demo.practice';
@@ -59,7 +60,9 @@ async function api(method, path, { jar, body, headers = {} } = {}) {
       json = { raw: text };
     }
 
-    const newCookies = parseCookies(res.headers.getSetCookie?.() || res.headers.raw?.()['set-cookie']);
+    const newCookies = parseCookies(
+      res.headers.getSetCookie?.() || res.headers.raw?.()['set-cookie']
+    );
     if (jar) {
       for (const [k, v] of newCookies) jar.set(k, v);
     }

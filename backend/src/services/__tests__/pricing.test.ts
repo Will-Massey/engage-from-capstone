@@ -78,7 +78,10 @@ describe('Shared Pricing Engine', () => {
       const result = calculatePrice(100, [], 1, 'LONDON', 30);
       expect(result.breakdown.targetMargin).toBe(30);
       // direct (50%) + indirect (30%) + overhead (20%) = 100% of costs
-      const totalCosts = result.breakdown.directCosts + result.breakdown.indirectCosts + result.breakdown.overheadAllocation;
+      const totalCosts =
+        result.breakdown.directCosts +
+        result.breakdown.indirectCosts +
+        result.breakdown.overheadAllocation;
       const expectedCosts = 100 * 0.6; // basePrice * 0.6 cost ratio for London (no complexity)
       expect(totalCosts).toBeCloseTo(expectedCosts, 1);
     });

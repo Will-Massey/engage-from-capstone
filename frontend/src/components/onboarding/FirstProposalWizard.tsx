@@ -420,7 +420,9 @@ export default function FirstProposalWizard({ open, onClose, onSent }: FirstProp
     toast.success('Remaining suggestions added — review fees before sending');
   };
 
-  const applyAutoFitSection = (section: 'title' | 'services' | 'coverLetter' | 'pricing' | 'validUntil') => {
+  const applyAutoFitSection = (
+    section: 'title' | 'services' | 'coverLetter' | 'pricing' | 'validUntil'
+  ) => {
     if (!autoFitResult) return;
     switch (section) {
       case 'title':
@@ -653,11 +655,14 @@ export default function FirstProposalWizard({ open, onClose, onSent }: FirstProp
                 {step === 1 && (
                   <div className="space-y-4">
                     <p className="text-sm text-slate-600 dark:text-slate-400">
-                      Choose an existing client or add one first. Enriching from Companies House helps{' '}
-                      {AI_COPILOT.name} suggest the right services.
+                      Choose an existing client or add one first. Enriching from Companies House
+                      helps {AI_COPILOT.name} suggest the right services.
                     </p>
                     <div className="flex flex-wrap gap-2">
-                      <Link to="/clients/new" className="btn-secondary text-sm inline-flex items-center gap-1.5">
+                      <Link
+                        to="/clients/new"
+                        className="btn-secondary text-sm inline-flex items-center gap-1.5"
+                      >
                         <UserPlusIcon className="h-4 w-4" />
                         Add new client
                       </Link>
@@ -681,7 +686,9 @@ export default function FirstProposalWizard({ open, onClose, onSent }: FirstProp
                                 : 'border-slate-200 dark:border-slate-700 hover:border-violet-300'
                             }`}
                           >
-                            <p className="font-semibold text-slate-900 dark:text-white">{client.name}</p>
+                            <p className="font-semibold text-slate-900 dark:text-white">
+                              {client.name}
+                            </p>
                             <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
                               {client.companyType} · {client.contactEmail}
                             </p>
@@ -698,7 +705,8 @@ export default function FirstProposalWizard({ open, onClose, onSent }: FirstProp
                               Enrich from Companies House
                             </p>
                             <p className="text-xs text-slate-600 dark:text-slate-400 mt-0.5">
-                              Pull registered office, SIC codes, and filing dates for better AI suggestions.
+                              Pull registered office, SIC codes, and filing dates for better AI
+                              suggestions.
                             </p>
                           </div>
                         </div>
@@ -719,7 +727,10 @@ export default function FirstProposalWizard({ open, onClose, onSent }: FirstProp
                   <div className="space-y-4">
                     <p className="text-sm text-slate-600 dark:text-slate-400">
                       How would you like to build the proposal for{' '}
-                      <span className="font-medium text-slate-800 dark:text-slate-200">{selectedClient.name}</span>?
+                      <span className="font-medium text-slate-800 dark:text-slate-200">
+                        {selectedClient.name}
+                      </span>
+                      ?
                     </p>
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                       <button
@@ -732,7 +743,9 @@ export default function FirstProposalWizard({ open, onClose, onSent }: FirstProp
                         }`}
                       >
                         <DocumentTextIcon className="h-6 w-6 text-primary-600 mb-2" />
-                        <p className="font-semibold text-slate-900 dark:text-white">Build manually</p>
+                        <p className="font-semibold text-slate-900 dark:text-white">
+                          Build manually
+                        </p>
                         <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
                           Pick services from your catalogue and set fees yourself.
                         </p>
@@ -748,7 +761,9 @@ export default function FirstProposalWizard({ open, onClose, onSent }: FirstProp
                           }`}
                         >
                           <DocumentTextIcon className="h-6 w-6 text-emerald-600 mb-2" />
-                          <p className="font-semibold text-slate-900 dark:text-white">Use a template</p>
+                          <p className="font-semibold text-slate-900 dark:text-white">
+                            Use a template
+                          </p>
                           <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
                             Start from a saved bundle — adjust anything before sending.
                           </p>
@@ -788,7 +803,9 @@ export default function FirstProposalWizard({ open, onClose, onSent }: FirstProp
                                 : 'border-slate-200 dark:border-slate-700'
                             }`}
                           >
-                            <p className="font-medium text-sm text-slate-900 dark:text-white">{tpl.name}</p>
+                            <p className="font-medium text-sm text-slate-900 dark:text-white">
+                              {tpl.name}
+                            </p>
                             <p className="text-xs text-emerald-700 dark:text-emerald-400 mt-1">
                               {tpl.serviceCount} service{tpl.serviceCount === 1 ? '' : 's'}
                             </p>
@@ -801,30 +818,33 @@ export default function FirstProposalWizard({ open, onClose, onSent }: FirstProp
 
                 {step === 3 && (
                   <div className="space-y-5">
-                    {buildMode === 'clara' && selectedClient && !autoFitDismissed && (autoFitLoading || autoFitResult) && (
-                      <AutoFitBanner
-                        clientName={selectedClient.name}
-                        result={autoFitResult}
-                        loading={autoFitLoading}
-                        configured={aiConfigured}
-                        onAcceptAll={() => {
-                          applyAutoFitSection('title');
-                          applyAutoFitSection('services');
-                          applyAutoFitSection('coverLetter');
-                          applyAutoFitSection('validUntil');
-                          setAutoFitDismissed(true);
-                          setAutoFitResult(null);
-                        }}
-                        onAcceptSection={applyAutoFitSection}
-                        onDismiss={() => {
-                          setAutoFitDismissed(true);
-                          setAutoFitResult(null);
-                        }}
-                        onAcceptService={(s) => acceptSuggestion(s)}
-                        onTweakService={(s, tweaks) => tweakSuggestion(s, tweaks)}
-                        onRejectService={rejectSuggestion}
-                      />
-                    )}
+                    {buildMode === 'clara' &&
+                      selectedClient &&
+                      !autoFitDismissed &&
+                      (autoFitLoading || autoFitResult) && (
+                        <AutoFitBanner
+                          clientName={selectedClient.name}
+                          result={autoFitResult}
+                          loading={autoFitLoading}
+                          configured={aiConfigured}
+                          onAcceptAll={() => {
+                            applyAutoFitSection('title');
+                            applyAutoFitSection('services');
+                            applyAutoFitSection('coverLetter');
+                            applyAutoFitSection('validUntil');
+                            setAutoFitDismissed(true);
+                            setAutoFitResult(null);
+                          }}
+                          onAcceptSection={applyAutoFitSection}
+                          onDismiss={() => {
+                            setAutoFitDismissed(true);
+                            setAutoFitResult(null);
+                          }}
+                          onAcceptService={(s) => acceptSuggestion(s)}
+                          onTweakService={(s, tweaks) => tweakSuggestion(s, tweaks)}
+                          onRejectService={rejectSuggestion}
+                        />
+                      )}
 
                     {(visibleSuggestions.length > 0 || suggestLoading) && (
                       <div className="rounded-2xl border border-violet-200 dark:border-violet-800 bg-violet-50/40 dark:bg-violet-950/20 p-4">
@@ -844,7 +864,9 @@ export default function FirstProposalWizard({ open, onClose, onSent }: FirstProp
                           )}
                         </div>
                         {aiSuggestions?.summary && (
-                          <p className="text-sm text-slate-700 dark:text-slate-200 mb-3">{aiSuggestions.summary}</p>
+                          <p className="text-sm text-slate-700 dark:text-slate-200 mb-3">
+                            {aiSuggestions.summary}
+                          </p>
                         )}
                         <ClaraServiceSuggestionCards
                           suggestions={visibleSuggestions}
@@ -878,9 +900,12 @@ export default function FirstProposalWizard({ open, onClose, onSent }: FirstProp
                                   : 'border-slate-200 dark:border-slate-700 hover:border-violet-300'
                               }`}
                             >
-                              <span className="font-medium text-slate-900 dark:text-white">{service.name}</span>
+                              <span className="font-medium text-slate-900 dark:text-white">
+                                {service.name}
+                              </span>
                               <span className="block text-xs text-slate-500 mt-0.5">
-                                £{service.priceAmount.toLocaleString('en-GB')} · {service.billingCycle.replace(/_/g, ' ').toLowerCase()}
+                                £{service.priceAmount.toLocaleString('en-GB')} ·{' '}
+                                {service.billingCycle.replace(/_/g, ' ').toLowerCase()}
                               </span>
                             </button>
                           );
@@ -895,7 +920,10 @@ export default function FirstProposalWizard({ open, onClose, onSent }: FirstProp
                         </p>
                         <ul className="text-sm space-y-1">
                           {selectedLines.map((l) => (
-                            <li key={l.templateId} className="flex justify-between gap-2 text-slate-700 dark:text-slate-200">
+                            <li
+                              key={l.templateId}
+                              className="flex justify-between gap-2 text-slate-700 dark:text-slate-200"
+                            >
                               <span>{l.name}</span>
                               <span className="text-slate-500 shrink-0">
                                 £{l.displayPrice.toLocaleString('en-GB')}
@@ -911,7 +939,9 @@ export default function FirstProposalWizard({ open, onClose, onSent }: FirstProp
                 {step === 4 && selectedClient && (
                   <div className="space-y-4">
                     <label className="block">
-                      <span className="text-sm font-medium text-slate-700 dark:text-slate-200">Proposal title</span>
+                      <span className="text-sm font-medium text-slate-700 dark:text-slate-200">
+                        Proposal title
+                      </span>
                       <input
                         type="text"
                         value={proposalTitle}
@@ -921,7 +951,9 @@ export default function FirstProposalWizard({ open, onClose, onSent }: FirstProp
                       />
                     </label>
                     <div>
-                      <span className="text-sm font-medium text-slate-700 dark:text-slate-200">Cover letter tone</span>
+                      <span className="text-sm font-medium text-slate-700 dark:text-slate-200">
+                        Cover letter tone
+                      </span>
                       <div className="flex flex-wrap gap-2 mt-2">
                         {COVER_LETTER_STYLES.map((style) => (
                           <button
@@ -935,7 +967,9 @@ export default function FirstProposalWizard({ open, onClose, onSent }: FirstProp
                                   addresseeName: coverLetterAddressee(selectedClient),
                                   companyName: selectedClient.name,
                                   practiceName: tenant?.name || 'Our practice',
-                                  senderName: `${user?.firstName || ''} ${user?.lastName || ''}`.trim() || undefined,
+                                  senderName:
+                                    `${user?.firstName || ''} ${user?.lastName || ''}`.trim() ||
+                                    undefined,
                                   services: selectedLines,
                                 })
                               );
@@ -952,7 +986,9 @@ export default function FirstProposalWizard({ open, onClose, onSent }: FirstProp
                       </div>
                     </div>
                     <label className="block">
-                      <span className="text-sm font-medium text-slate-700 dark:text-slate-200">Cover letter</span>
+                      <span className="text-sm font-medium text-slate-700 dark:text-slate-200">
+                        Cover letter
+                      </span>
                       <textarea
                         value={coverLetter}
                         onChange={(e) => setCoverLetter(e.target.value)}
@@ -962,7 +998,9 @@ export default function FirstProposalWizard({ open, onClose, onSent }: FirstProp
                       />
                     </label>
                     <label className="block">
-                      <span className="text-sm font-medium text-slate-700 dark:text-slate-200">Valid until</span>
+                      <span className="text-sm font-medium text-slate-700 dark:text-slate-200">
+                        Valid until
+                      </span>
                       <input
                         type="date"
                         value={validUntil}
@@ -976,7 +1014,9 @@ export default function FirstProposalWizard({ open, onClose, onSent }: FirstProp
                 {step === 5 && (
                   <div className="space-y-4">
                     <div className="rounded-2xl border border-slate-200 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-900/40 p-5">
-                      <h3 className="text-lg font-semibold text-slate-900 dark:text-white">{proposalTitle}</h3>
+                      <h3 className="text-lg font-semibold text-slate-900 dark:text-white">
+                        {proposalTitle}
+                      </h3>
                       <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">
                         For {selectedClient?.name} · {selectedLines.length} service
                         {selectedLines.length === 1 ? '' : 's'}
@@ -986,7 +1026,8 @@ export default function FirstProposalWizard({ open, onClose, onSent }: FirstProp
                           <li key={l.templateId} className="flex justify-between gap-3">
                             <span>{l.name}</span>
                             <span className="text-slate-500">
-                              £{l.displayPrice.toLocaleString('en-GB')} / {l.billingCycle.replace(/_/g, ' ').toLowerCase()}
+                              £{l.displayPrice.toLocaleString('en-GB')} /{' '}
+                              {l.billingCycle.replace(/_/g, ' ').toLowerCase()}
                             </span>
                           </li>
                         ))}
@@ -996,7 +1037,8 @@ export default function FirstProposalWizard({ open, onClose, onSent }: FirstProp
                       )}
                     </div>
                     <p className="text-sm text-slate-600 dark:text-slate-400">
-                      We&apos;ll save the proposal as a draft, then open the email preview so you can review and send.
+                      We&apos;ll save the proposal as a draft, then open the email preview so you
+                      can review and send.
                     </p>
                     <button
                       type="button"
@@ -1014,7 +1056,11 @@ export default function FirstProposalWizard({ open, onClose, onSent }: FirstProp
           </div>
 
           <div className="flex flex-wrap items-center justify-between gap-3 px-5 sm:px-6 py-4 border-t border-slate-200/70 dark:border-slate-700/70 bg-white/40 dark:bg-slate-900/40">
-            <button type="button" onClick={handleDismiss} className="text-sm text-slate-500 hover:text-slate-700">
+            <button
+              type="button"
+              onClick={handleDismiss}
+              className="text-sm text-slate-500 hover:text-slate-700"
+            >
               Dismiss wizard
             </button>
             <div className="flex gap-2">

@@ -106,11 +106,7 @@ router.post(
     const secret = process.env.AML_WEBHOOK_SECRET;
     if (!secret) {
       if (isProduction) {
-        throw new ApiError(
-          'WEBHOOK_NOT_CONFIGURED',
-          'AML webhook is not configured',
-          503
-        );
+        throw new ApiError('WEBHOOK_NOT_CONFIGURED', 'AML webhook is not configured', 503);
       }
     } else {
       const provided = req.headers['x-aml-webhook-secret'];

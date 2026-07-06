@@ -64,10 +64,14 @@ export async function gotoApp(page: Page, path: string): Promise<void> {
 }
 
 /** Navigate and wait for cookie session bootstrap via /auth/me. */
-export async function gotoAppAuthenticated(page: Page, path: string, timeout = 45_000): Promise<void> {
+export async function gotoAppAuthenticated(
+  page: Page,
+  path: string,
+  timeout = 45_000
+): Promise<void> {
   const mePromise = page.waitForResponse(
     (r) => r.url().includes('/auth/me') && r.status() === 200,
-    { timeout },
+    { timeout }
   );
   await gotoApp(page, path);
   const me = await mePromise.catch(() => null);
@@ -76,7 +80,7 @@ export async function gotoAppAuthenticated(page: Page, path: string, timeout = 4
     throw new Error(
       onLogin
         ? 'Session bootstrap failed — redirected to login (cookies not applied?)'
-        : 'Session bootstrap failed — /auth/me did not return 200',
+        : 'Session bootstrap failed — /auth/me did not return 200'
     );
   }
 }
@@ -84,9 +88,7 @@ export async function gotoAppAuthenticated(page: Page, path: string, timeout = 4
 const E2E_HEADERS = {
   'X-Test-Mode': 'e2e-build',
   Origin: new URL(FRONTEND_ORIGIN).origin,
-  ...(process.env.E2E_BYPASS_SECRET
-    ? { 'X-Test-Mode-Secret': process.env.E2E_BYPASS_SECRET }
-    : {}),
+  ...(process.env.E2E_BYPASS_SECRET ? { 'X-Test-Mode-Secret': process.env.E2E_BYPASS_SECRET } : {}),
 };
 
 const ERROR_TOAST_PATTERNS = [
@@ -115,24 +117,23 @@ function isAccessTokenValid(token: string, bufferMs = 60_000): boolean {
   try {
     const segment = token.split('.')[1];
     if (!segment) return false;
-    const payload = JSON.parse(Buffer.from(segment, 'base64url').toString('utf8')) as { exp?: number };
+    const payload = JSON.parse(Buffer.from(segment, 'base64url').toString('utf8')) as {
+      exp?: number;
+    };
     return typeof payload.exp === 'number' && payload.exp * 1000 > Date.now() + bufferMs;
   } catch {
     return false;
   }
 }
 
-async function authHeadersFromState(
-  request: APIRequestContext,
-): Promise<Record<string, string>> {
+async function authHeadersFromState(request: APIRequestContext): Promise<Record<string, string>> {
   const state = await request.storageState();
   const headers: Record<string, string> = {};
 
   const accessCookie = state.cookies.find((c) => c.name === 'accessToken')?.value;
   const csrfCookie = state.cookies.find((c) => c.name === 'csrfToken')?.value;
 
-  let bearer =
-    accessCookie && isAccessTokenValid(accessCookie) ? accessCookie : undefined;
+  let bearer = accessCookie && isAccessTokenValid(accessCookie) ? accessCookie : undefined;
 
   if (!bearer) {
     for (const origin of state.origins ?? []) {
@@ -169,7 +170,11 @@ export async function apiGet(request: APIRequestContext, path: string): Promise<
   return { status: res.status(), body };
 }
 
-export async function apiPost(request: APIRequestContext, path: string, data?: object): Promise<any> {
+export async function apiPost(
+  request: APIRequestContext,
+  path: string,
+  data?: object
+): Promise<any> {
   const res = await request.post(`${API_BASE}${path}`, {
     data: data ?? {},
     headers: { ...E2E_HEADERS, ...(await authHeadersFromState(request)) },

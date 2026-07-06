@@ -49,7 +49,12 @@ export interface TemplatePricingSanityResult {
   servicesChecked: number;
   mismatches: TemplatePricingMismatch[];
   missingServiceIds: Array<{ templateId: string; templateName: string; serviceId: string }>;
-  zeroOrNegativePrices: Array<{ templateId: string; templateName: string; serviceName: string; price: number }>;
+  zeroOrNegativePrices: Array<{
+    templateId: string;
+    templateName: string;
+    serviceName: string;
+    price: number;
+  }>;
   outOfBandPrices: Array<{
     templateId: string;
     templateName: string;
@@ -300,9 +305,7 @@ export async function sanityCheckTemplatePricing(
         : sorted[Math.floor(sorted.length / 2)];
 
   const passed =
-    mismatches.length === 0 &&
-    missingServiceIds.length === 0 &&
-    zeroOrNegativePrices.length === 0;
+    mismatches.length === 0 && missingServiceIds.length === 0 && zeroOrNegativePrices.length === 0;
 
   return {
     templatesChecked: templates.length,

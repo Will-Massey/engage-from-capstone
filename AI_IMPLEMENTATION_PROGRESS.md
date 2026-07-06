@@ -4,14 +4,14 @@
 
 ## Agent workstreams
 
-| Agent | Scope | Status |
-|-------|-------|--------|
-| Backend Core | aiContextBuilder, AI proposal emails, auto-fit, client brief | ✅ done |
-| Backend Lifecycle | follow-ups, touchpoints, attention queue | ✅ done |
-| Frontend Clara | email preview, auto-fit UI, dashboard queue, onboarding | ✅ done |
-| Public/Signing | client Q&A, signing summary, context card | ✅ done |
-| Phase 5 Moat | regulatory watcher, benchmark pricing, voice proposal stubs | ✅ done |
-| Send flow wiring | Approved Clara email → POST /send with aiSubject/aiHtml | ✅ done |
+| Agent             | Scope                                                        | Status  |
+| ----------------- | ------------------------------------------------------------ | ------- |
+| Backend Core      | aiContextBuilder, AI proposal emails, auto-fit, client brief | ✅ done |
+| Backend Lifecycle | follow-ups, touchpoints, attention queue                     | ✅ done |
+| Frontend Clara    | email preview, auto-fit UI, dashboard queue, onboarding      | ✅ done |
+| Public/Signing    | client Q&A, signing summary, context card                    | ✅ done |
+| Phase 5 Moat      | regulatory watcher, benchmark pricing, voice proposal stubs  | ✅ done |
+| Send flow wiring  | Approved Clara email → POST /send with aiSubject/aiHtml      | ✅ done |
 
 ## Phase checklist
 
@@ -29,14 +29,14 @@
 
 ## Key files added
 
-| Area | Files |
-|------|-------|
-| Context | `backend/src/services/ai/aiContextBuilder.ts` |
-| Client fit | `clientFitService.ts`, `ClientContextCard.tsx`, `AutoFitBanner.tsx` |
-| Emails | `proposalAiEmailService.ts`, `lifecycleAiEmailService.ts`, `ProposalEmailPreviewDialog.tsx` |
-| Public | `publicProposalAiService.ts`, `ProposalView.tsx` Q&A + signing summary |
-| Dashboard | `ClaraAttentionQueue.tsx`, `analytics.ts` attention-summary |
-| Phase 5 | `regulatoryWatcherService.ts`, `benchmarkPricingService.ts`, `voiceProposalService.ts` |
+| Area       | Files                                                                                       |
+| ---------- | ------------------------------------------------------------------------------------------- |
+| Context    | `backend/src/services/ai/aiContextBuilder.ts`                                               |
+| Client fit | `clientFitService.ts`, `ClientContextCard.tsx`, `AutoFitBanner.tsx`                         |
+| Emails     | `proposalAiEmailService.ts`, `lifecycleAiEmailService.ts`, `ProposalEmailPreviewDialog.tsx` |
+| Public     | `publicProposalAiService.ts`, `ProposalView.tsx` Q&A + signing summary                      |
+| Dashboard  | `ClaraAttentionQueue.tsx`, `analytics.ts` attention-summary                                 |
+| Phase 5    | `regulatoryWatcherService.ts`, `benchmarkPricingService.ts`, `voiceProposalService.ts`      |
 
 ## Remaining (post-ship)
 
@@ -48,11 +48,13 @@
 - [ ] Accept/Edit/Reject per streamed section (partial: drafts appear live)
 
 ## UX Polish (dark/light mode full support)
+
 - Full dark/light mode consistency pass (2026-06-30): reactive Appearance tab in Settings, no-FOUC init script in index.html, improved DashboardLayout header, enhanced ui/Card+Input+Button primitives with dark variants, added missing dark: classes to ShareProposalDialog, ClientDetail, ProposalView, AiPanel, ProposalEmailPreviewDialog, toast import standardisation in key dialogs.
 - Theme store listener + early apply reinforced.
 - Typecheck clean; patterns kept (glass, Tailwind class strategy, UK English).
 
 ## 2026-06-30 Push to Render + Roadmap Swarm
+
 - Initial push af3b4aa (Clara email streaming + cheap revise/CTA/subject/analysis + cover revise + global theme + profile fixes + dedup).
 - Second push a0b67bb: **ALL suggested roadmap items completed** via 4 parallel subagents + main edits (services/ pricing /title revise, full analysis checklist + per-issue fix buttons, CTA picker list+insert, dynamic Clara empty-state tips + cache, budget meter in Settings, voice UI+fn, webhook stub, accept visuals, auto re-analyze, etc.).
 - 12 files changed. Global typecheck clean (exit 0).

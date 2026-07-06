@@ -35,7 +35,9 @@ async function main() {
   });
 
   if (existingCount > 0) {
-    console.log(`✅ Tenant already has ${existingCount} services. Updating prices & frequencies...`);
+    console.log(
+      `✅ Tenant already has ${existingCount} services. Updating prices & frequencies...`
+    );
 
     // Update existing services when prices/frequencies have changed
     const updates = [

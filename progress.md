@@ -1,15 +1,18 @@
 # Build Progress Log
+
 <!-- Append-only session log. Latest deploy checkpoint is the resume entry point. -->
 
 ## Session: 2026-07-04 — Render superadmin cleanup
 
 ### Checkpoint
+
 - **Removed** stale `SUPERADMIN_API_KEY` from engage-backend (`scripts/remove-render-superadmin-api-key.ps1`)
 - **Wired** `SUPERADMIN_URL` + `SUPERADMIN_WEBHOOK_SECRET` (HMAC-only ingest; no API key)
 - **Redeploy** triggered twice (env cleanup + webhook wire)
 - **Tomorrow:** `TODO_TOMORROW.md` — UAT payout + Xero
 
 #### Resume prompt
+
 ```
 Tomorrow: UAT payout + Revolut checkout. Xero env + connect. verify-superadmin-integration.mjs after redeploy.
 ```
@@ -19,12 +22,14 @@ Tomorrow: UAT payout + Revolut checkout. Xero env + connect. verify-superadmin-i
 ## Session: 2026-07-04 — UI sign-off + Superadmin 6/6
 
 ### Checkpoint
+
 - **UI e2e:** `layout-smoke` 3/3 pass — sidebar full name, header safe-area class, AI panel resize
 - **UI fix:** `pt-[env(safe-area-inset-top)]` on fixed header (needs frontend deploy)
 - **Superadmin:** `verify-superadmin-integration.mjs` 6/6 — health, tenant/metrics/events ingest, command poll
 - **Action needed:** Remove stale `SUPERADMIN_API_KEY` from Render engage-backend (HMAC works without it; stale key causes 401 on sync)
 
 #### Resume prompt
+
 ```
 Remove SUPERADMIN_API_KEY on Render. Deploy frontend safe-area fix. Xero when ready.
 ```
@@ -34,12 +39,14 @@ Remove SUPERADMIN_API_KEY on Render. Deploy frontend safe-area fix. Xero when re
 ## Session: 2026-07-04 — Revolut live testing confirmed
 
 ### Checkpoint — William
+
 - **Revolut:** Live APIs and functions tested (Merchant checkout, `payment/setup`, webhook fulfilment, payout split)
 - **Prod config:** `GET /api/payments/config` → `provider: revolut`, `mode: prod`, `isEnabled: true`
 - **Prod e2e:** 11/11 pass (payout UI, market-leader, automation)
 - **Note:** Demo tenant payout opt-in still `enabled: false` — not blocking; tested on live tenant
 
 #### Resume prompt
+
 ```
 UI sign-off. Superadmin 6/6 checks. Xero when ready.
 ```
@@ -49,10 +56,12 @@ UI sign-off. Superadmin 6/6 checks. Xero when ready.
 ## Session: 2026-07-04 — resume verify (53f9d47)
 
 ### Verification checkpoint
+
 - **Prod e2e:** 11/11 pass — `payout-smoke` (3), `market-leader-smoke` (6), `automation-smoke` (2)
 - **Backend:** `/ping` 200; payout API live; auth rejects invalid tokens correctly
 
 #### Resume prompt
+
 ```
 William: Settings → Billing → enable Receive Payments + bank details + collect at sign. Then smoke client sign → Revolut checkout.
 ```
@@ -62,12 +71,14 @@ William: Settings → Billing → enable Receive Payments + bank details + colle
 ## Session: 2026-07-04 — sendit v4.0 deploy fix + verify
 
 ### Deploy checkpoint — 6338cf2
+
 - **Root cause:** Backend build failed on Render — `calculatePaymentSplit` returned `SplitResult` where `SplitAmounts` expected `totalPence`
 - **Fix:** Map `grossPence` → `totalPence` in deprecated helper (`splits.ts`)
 - **Deploy:** Backend `dep-d94hvhe7r5hc73cm2npg` → **live**
 - **Verify:** `GET /api/payout/settings` 200 on production; migration `tenant_payout_settings` applied; frontend bundle has Receive Payments UI
 
 #### Resume prompt
+
 ```
 William: browser UAT Settings → Receive Payments. Smoke client sign → Revolut checkout. Revolut webhook + Superadmin events.
 ```
@@ -77,12 +88,14 @@ William: browser UAT Settings → Receive Payments. Smoke client sign → Revolu
 ## Session: 2026-07-03 — sendit v3.5 deploy checkpoint
 
 ### Deploy checkpoint
+
 - **7-day trial** + premier backlog cleared (Xero deferred to William)
 - **Tests:** 123/123 backend Jest pass after schema + pdfGenerator merge fix
 - **Superadmin:** `reportPaymentSucceeded` + `reportConversion` on Revolut subscription fulfilment
 - **Landing:** capstone-website `/engage` pushed separately
 
 #### Resume prompt
+
 ```
 Confirm Render deploy green. Revolut live smoke + Superadmin events. William finishes Xero tonight.
 ```
@@ -92,6 +105,7 @@ Confirm Render deploy green. Revolut live smoke + Superadmin events. William fin
 ## Session: 2026-07-03 — Flaky e2e hardening + catalogue check
 
 ### Checkpoint
+
 - **Catalogue:** 45 active services on production — expanded seed already applied (skip re-run)
 - **E2E hardening:** API clean-slate before restore-default test; longer Clara chooser waits; card preview sync
 - **Verify:** automation + ai-native 6/6 pass with `--retries=0` (1.4m)
@@ -101,10 +115,12 @@ Confirm Render deploy green. Revolut live smoke + Superadmin events. William fin
 ## Session: 2026-07-03 — Full build e2e suite on production
 
 ### UAT checkpoint
+
 - **gotoApp()** rolled across all `playwright.build.config.ts` specs; API default → `engage.capstonesoftware.co.uk`
 - **Result:** 43 tests — **41 passed**, 2 flaky (Clara sidebar step 2+, automation restore-default) — all green after retry (4.4m)
 
 #### Resume prompt
+
 ```
 Caroline browser sign-off. seed-expanded-uk-services if needed. Harden 2 flaky e2e tests.
 ```
@@ -114,11 +130,13 @@ Caroline browser sign-off. seed-expanded-uk-services if needed. Harden 2 flaky e
 ## Session: 2026-07-03 — Yours filter template smoke (templates-smoke 2/2)
 
 ### UAT checkpoint
+
 - **API baseline:** 143 library / 0 custom on demo tenant
 - **E2E:** `custom template appears under Yours filter, not Engage library` — pass (10.1s)
 - **E2E:** full templates-smoke 2/2 pass (52.1s)
 
 #### Resume prompt
+
 ```
 Caroline browser sign-off. Full build e2e suite. seed-expanded-uk-services if needed.
 ```
@@ -128,12 +146,14 @@ Caroline browser sign-off. Full build e2e suite. seed-expanded-uk-services if ne
 ## Session: 2026-07-03 — Automation UAT + production routing/auth fixes (89b96435)
 
 ### Deploy checkpoint — 89b96435
+
 - **Frontend:** SPA at root for capstonesoftware path-strip proxy; `_redirects` for `/engage/*`
 - **Auth:** `SameSite=None` + `.capstonesoftware.co.uk` cookie domain for cross-subdomain SPA
 - **E2E:** `gotoApp()` helper; global-setup full `/engage` URLs
 - **UAT:** `automation-smoke` 2/2 pass — 13 stages + restore-default; `templates-smoke` 1/1 pass (1.0m total)
 
 #### Resume prompt
+
 ```
 Caroline browser sign-off on Settings → Automation. Smoke custom template under Yours filter.
 ```
@@ -143,12 +163,14 @@ Caroline browser sign-off on Settings → Automation. Smoke custom template unde
 ## Session: 2026-07-03 — Automation UAT + frontend asset-path fix (deploying)
 
 ### Pre-deploy verification
+
 - **API UAT:** `/api/touchpoints/templates` — 13/13 stages with populated UK subjects on demo tenant ✓
 - **Restore-default API:** `POST .../PROPOSAL_ACCEPTED/restore-default` returns Engage wording ✓
 - **Bug found:** Production SPA blank — `index.html` referenced `/engage/assets/*` but static host only served `/assets/*` (404). Fixed via `prepare-static-engage.mjs` nesting dist under `/engage/`.
 - **E2E:** Added `automation-smoke.spec.ts`; build config base URL → `capstonesoftware.co.uk/engage`
 
 #### Resume prompt
+
 ```
 Verify frontend deploy live. Run automation-smoke + templates-smoke on production. Caroline browser UAT on Settings → Automation.
 ```
@@ -158,6 +180,7 @@ Verify frontend deploy live. Run automation-smoke + templates-smoke on productio
 ## Session: 2026-07-02 — Caroline Templates UAT + library backfill (e2018d88)
 
 ### Deploy checkpoint — e2018d88
+
 - **Label:** Library backfill fix
 - **Commit:** `fix: backfill isDefault flags for Engage library templates on GET`
 - **Branch:** master (from integrate-deploy)
@@ -166,6 +189,7 @@ Verify frontend deploy live. Run automation-smoke + templates-smoke on productio
 - **Also:** `templates-smoke.spec.ts` button selector → `New custom template`
 
 #### Resume prompt
+
 ```
 Verify e2018d88 live. Caroline: Settings → Automation — 13 stages with subjects + restore-default. Smoke create custom template under Yours filter.
 ```
@@ -175,6 +199,7 @@ Verify e2018d88 live. Caroline: Settings → Automation — 13 stages with subje
 ## Session: 2026-07-02 — Template build deploy (e814c9cf)
 
 ### Deploy checkpoint — e814c9cf
+
 - **Label:** Template build
 - **Commit:** `Auto-seed Engage template library and populate lifecycle touchpoints`
 - **Branch:** master (from integrate-deploy)
@@ -183,6 +208,7 @@ Verify e2018d88 live. Caroline: Settings → Automation — 13 stages with subje
 - **Pre-deploy verification:** backend `tsc` ✓ frontend `tsc` ✓
 
 #### Resume prompt
+
 ```
 Verify e814c9cf live. Caroline: Templates page shows full library + custom template. Settings → Automation shows populated stage subjects. Smoke custom template create under Yours filter.
 ```
@@ -192,6 +218,7 @@ Verify e814c9cf live. Caroline: Templates page shows full library + custom templ
 ## Session: 2026-07-01 — Build 2.0 deploy (c28d9216)
 
 ### Deploy checkpoint — c28d9216
+
 - **Label:** Build 2.0
 - **Commit:** `fix(e2e): handle build-mode chooser in proposal builder smoke tests`
 - **Branch:** master (from integrate-deploy)
@@ -200,6 +227,7 @@ Verify e814c9cf live. Caroline: Templates page shows full library + custom templ
 - **Pre-deploy verification:** 3/3 targeted tests passed on production (~47s)
 
 #### Resume prompt
+
 ```
 Verify c28d9216 live. Run full e2e suite. Caroline UAT: partner approval + MFA + pricing.
 ```
@@ -209,6 +237,7 @@ Verify c28d9216 live. Run full e2e suite. Caroline UAT: partner approval + MFA +
 ## Session: 2026-07-01 — W0–W4 parallel agent batch + deploy (a14a7371)
 
 ### Build checkpoint — a14a7371
+
 - **5 parallel agents:** smoke e2e, W1.6 approval, W0/W2 UX, W1/W3 integrations, W4 enterprise
 - **77 files, +5444 lines**
 - **Builds:** backend ✓ frontend ✓
@@ -217,6 +246,7 @@ Verify c28d9216 live. Run full e2e suite. Caroline UAT: partner approval + MFA +
 - **Pushed:** `integrate-deploy:master` → Render auto-deploy
 
 #### Resume prompt
+
 ```
 Verify 3 migrations on production. Caroline UAT: partner approval + MFA + pricing. Set XERO_* env vars.
 ```
@@ -226,6 +256,7 @@ Verify 3 migrations on production. Caroline UAT: partner approval + MFA + pricin
 ## Session: 2026-07-01 — sendit resume: deploy + migration verification
 
 ### Verification checkpoint — 845effcf live
+
 - **Backend:** `/ping` + `/health` healthy; DB connected
 - **New routes live:** `/api/auth/2fa/login`, `/api/auth/forgot-password`, `/api/xero/connect`, `/api/proposals/bulk-renewal`, `/api/analytics/win-loss`, `/api/engagement-library/*`
 - **Migrations (inferred):** `PasswordReset` + 2FA tables/columns working (`forgot-password` 200, `2fa/login` 401 not 500); engagement-library + decline-reason routes registered
@@ -237,6 +268,7 @@ Verify 3 migrations on production. Caroline UAT: partner approval + MFA + pricin
 ## Session: 2026-07-01 — build upgrade deploy (845effcf)
 
 ### Deploy checkpoint — 845effcf
+
 - **Commit:** 845effcf build upgrade: market leader batch — MFA, Xero, payments, wizard, renewals, pricing, compliance
 - **Branch:** master (from integrate-deploy)
 - **Render services:** engage-backend, engage-frontend
@@ -244,12 +276,14 @@ Verify 3 migrations on production. Caroline UAT: partner approval + MFA + pricin
 - **Scope:** 83 files, +10k lines — see `MARKET_LEADER_PLAN.md`
 
 #### Migrations to verify on production
+
 - `20260701120000_add_security_2fa_password_reset`
 - `20260701120000_add_payment_mandate`
 - `20260701120000_engagement_library_versioning`
 - `20260701120000_add_decline_reason`
 
 #### Resume prompt
+
 ```
 Continue per task_plan.md. Last deploy: 845effcf. Verify migrations + smoke wizard, bulk renew, sign payment on production.
 ```
@@ -259,21 +293,25 @@ Continue per task_plan.md. Last deploy: 845effcf. Verify migrations + smoke wiza
 ## Session: 2026-07-01 — Market Leader plan + 9 parallel agent tracks
 
 ### Planning
+
 - Created `MARKET_LEADER_PLAN.md` (phases W0–W4)
 - Spawned 9 subagents; ~49 files changed, +3494 lines
 
 ### Implemented (not yet deployed)
+
 - W0.1–W0.2: MFA + password reset
 - W1.1–W1.5: Xero scaffold, post-sign payments, bulk renewals
 - W2.1–W2.9: AI cost refactor, first proposal wizard, pricing calculator
 - W3.1, W3.6: Engagement library versioning, win/loss analytics
 
 ### Before deploy
+
 1. Run all Prisma migrations (`20260701120000_*` × 4)
-2. Set XERO_* env vars if testing integrations
+2. Set XERO\_\* env vars if testing integrations
 3. Full build + e2e smoke
 
 #### Resume prompt
+
 ```
 Deploy market-leader batch: migrate DB → build → smoke wizard + bulk renew + sign payment → /sendit
 ```
@@ -283,6 +321,7 @@ Deploy market-leader batch: migrate DB → build → smoke wizard + bulk renew +
 ## Session: 2026-07-01 — per-client draft isolation deploy
 
 ### Deploy checkpoint — 7cc735bb
+
 - **Commit:** 7cc735bb fix: isolate per-client proposal drafts when switching clients mid-build
 - **Branch:** master (pushed from integrate-deploy)
 - **Render services:** engage-backend, engage-frontend
@@ -290,6 +329,7 @@ Deploy market-leader batch: migrate DB → build → smoke wizard + bulk renew +
 - **Fix:** `engage-draft-new-{clientId}` localStorage keys; flush on client switch; legacy key migration
 
 #### Resume prompt
+
 ```
 Continue per task_plan.md. Last deploy: 7cc735bb on master. Start Next Up #1 — Caroline multi-client draft smoke-test on production.
 ```
@@ -299,11 +339,13 @@ Continue per task_plan.md. Last deploy: 7cc735bb on master. Start Next Up #1 —
 ## Session: 2026-06-30 — templates smoke-test (sendit resume)
 
 ### Smoke-test checkpoint — templates flow
+
 - **Test:** `e2e-tests/specs/templates-smoke.spec.ts` against production
 - **Result:** pass (18.9s) — Catalogue → Templates → create → Use template → client → proposal pre-fills
 - **Deploy:** fbed4b5f live on engage-frontend-0g6u / engage-backend-e1ue
 
 #### Resume prompt
+
 ```
 Continue per task_plan.md. Templates smoke-test passed. Start Next Up #1 — proposal snapshot isolation smoke-test on production.
 ```
@@ -313,6 +355,7 @@ Continue per task_plan.md. Templates smoke-test passed. Start Next Up #1 — pro
 ## Session: 2026-06-30 — templates in play
 
 ### Deploy checkpoint — fbed4b5f
+
 - **Commit:** fbed4b5f feat: add Templates section to sidebar with proposal template management
 - **Also includes:** 48457d71 proposal/template snapshot isolation fix
 - **Branch:** master (integrate-deploy)
@@ -321,6 +364,7 @@ Continue per task_plan.md. Templates smoke-test passed. Start Next Up #1 — pro
 - **Phase completed this session:** Templates catalogue + snapshot hardening
 
 #### Built this session
+
 - Sidebar **Templates** under Catalogue (next to Services)
 - `/templates` management page: create, edit, delete, use template
 - `PUT /api/proposal-templates/:id` for edits
@@ -328,13 +372,15 @@ Continue per task_plan.md. Templates smoke-test passed. Start Next Up #1 — pro
 - Backend: line-item snapshots preserved on save; templates deep-clone serviceConfig
 
 #### Tests
-| Test | Expected | Actual | Status |
-|------|----------|--------|--------|
-| frontend build | pass | pass | ok |
-| backend build | pass | pass | ok |
-| proposalSnapshot.test.ts | pass | pass | ok |
+
+| Test                     | Expected | Actual | Status |
+| ------------------------ | -------- | ------ | ------ |
+| frontend build           | pass     | pass   | ok     |
+| backend build            | pass     | pass   | ok     |
+| proposalSnapshot.test.ts | pass     | pass   | ok     |
 
 #### Resume prompt
+
 ```
 Continue per task_plan.md. Last deploy: fbed4b5f on master. Templates in play. Start Next Up #1 — smoke-test Templates → Use template on production.
 ```
@@ -344,6 +390,7 @@ Continue per task_plan.md. Last deploy: fbed4b5f on master. Templates in play. S
 ## Session: 2026-06-30 — manual proposal deploy
 
 ### Deploy checkpoint — 121574bc
+
 - **Commit:** 121574bc feat(proposals): add manual new proposal shortcut on list
 - **Branch:** master (integrate-deploy)
 - **Render services:** engage-backend, engage-frontend
@@ -351,6 +398,7 @@ Continue per task_plan.md. Last deploy: fbed4b5f on master. Templates in play. S
 - **Phase completed this session:** Manual Proposal Builder
 
 #### Built this session
+
 - Build mode picker: scratch vs Clara on step 1
 - Service catalogue toggle add/remove + clear all
 - Catalogue price field typing fix; base hours removed from UI
@@ -359,6 +407,7 @@ Continue per task_plan.md. Last deploy: fbed4b5f on master. Templates in play. S
 - **New proposal (manual)** button on proposals list
 
 #### Files touched
+
 - `frontend/src/components/proposals/ProposalBuilder.tsx`
 - `frontend/src/pages/proposals/Proposals.tsx`
 - `frontend/src/pages/services/Services.tsx`
@@ -366,15 +415,18 @@ Continue per task_plan.md. Last deploy: fbed4b5f on master. Templates in play. S
 - (see commits eff1b326 → 121574bc)
 
 #### Tests
-| Test | Expected | Actual | Status |
-|------|----------|--------|--------|
-| frontend build | pass | pass | ok |
-| backend build | pass | pass | ok |
+
+| Test           | Expected | Actual | Status |
+| -------------- | -------- | ------ | ------ |
+| frontend build | pass     | pass   | ok     |
+| backend build  | pass     | pass   | ok     |
 
 #### Open issues
+
 - Live smoke-test manual flow not yet run post-deploy
 
 #### Resume prompt
+
 ```
 Continue build per task_plan.md. Last deploy: 121574bc on master. Phase: Manual Proposal Builder complete. Start with Next Up item 1 — smoke-test New proposal (manual) on production.
 ```
@@ -384,6 +436,7 @@ Continue build per task_plan.md. Last deploy: 121574bc on master. Phase: Manual 
 ## Earlier sessions
 
 ### Deploy checkpoint — fdbc3e8 (ui fixes dark/light)
+
 - **Commit:** fdbc3e8 fix(ui): dark/light theme contrast, spacing, pale glassmorphism enhancements in Settings
 - **Branch:** master
 - **Render services:** engage-backend, engage-frontend

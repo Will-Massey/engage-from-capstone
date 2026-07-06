@@ -22,7 +22,7 @@ export function proposalRequiresPayment(total: number): boolean {
 export async function createProposalCheckoutOrder(
   proposal: ProposalForCheckout,
   signer: { email: string; name: string },
-  shareToken: string,
+  shareToken: string
 ) {
   if (!isRevolutConfigured()) {
     return null;

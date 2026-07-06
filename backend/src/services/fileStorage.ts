@@ -6,12 +6,7 @@
 import { promises as fs } from 'fs';
 import path from 'path';
 import logger from '../config/logger.js';
-import {
-  r2DeleteObject,
-  r2Enabled,
-  r2GetObject,
-  r2PutObject,
-} from './r2Storage.js';
+import { r2DeleteObject, r2Enabled, r2GetObject, r2PutObject } from './r2Storage.js';
 import { bufferMatchesMime, isPngBuffer } from '../utils/magicBytes.js';
 
 function resolveUploadsDir(): string {
@@ -45,7 +40,11 @@ async function ensureDir(dir: string): Promise<void> {
   }
 }
 
-async function writeBytes(relativePath: string, buffer: Buffer, contentType: string): Promise<void> {
+async function writeBytes(
+  relativePath: string,
+  buffer: Buffer,
+  contentType: string
+): Promise<void> {
   if (r2Enabled()) {
     await r2PutObject(relativePath.replace(/\\/g, '/'), buffer, contentType);
     return;

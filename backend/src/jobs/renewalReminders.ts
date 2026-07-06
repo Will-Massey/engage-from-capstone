@@ -83,9 +83,7 @@ async function findValidUntilRemindersDue() {
     });
 
     results.push(
-      ...proposals.filter(
-        (p) => p.activityLogs.length === 0 && proposalHasRecurringEngagement(p)
-      )
+      ...proposals.filter((p) => p.activityLogs.length === 0 && proposalHasRecurringEngagement(p))
     );
   }
 
@@ -329,7 +327,9 @@ export async function runRenewalReminders(): Promise<{
     const renewalsDue = await findRenewalsDue();
     stats.checked = renewalsDue.length;
 
-    logger.info(`Found ${renewalsDue.length} proposals with renewals due (per-tenant reminder window)`);
+    logger.info(
+      `Found ${renewalsDue.length} proposals with renewals due (per-tenant reminder window)`
+    );
 
     // Send reminders
     for (const proposal of renewalsDue) {

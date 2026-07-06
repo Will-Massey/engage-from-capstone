@@ -17,7 +17,9 @@ async function createShareLink(page: any, proposalTitle: string): Promise<string
   );
 
   // Find the proposal row and click share
-  const rowByTitle = page.locator('[data-testid="proposal-row"]').filter({ hasText: proposalTitle });
+  const rowByTitle = page
+    .locator('[data-testid="proposal-row"]')
+    .filter({ hasText: proposalTitle });
   await expect(rowByTitle).toBeVisible({ timeout: 10000 });
   await rowByTitle.locator('[data-testid="share-proposal-button"]').click();
 
@@ -47,7 +49,9 @@ test.describe('Proposal Sharing', () => {
     await page.waitForSelector('[data-testid="proposal-row"]');
 
     // Find the proposal and click share (use title which is in the first column)
-    const rowByTitle = page.locator('[data-testid="proposal-row"]').filter({ hasText: uniqueTitle });
+    const rowByTitle = page
+      .locator('[data-testid="proposal-row"]')
+      .filter({ hasText: uniqueTitle });
     await expect(rowByTitle).toBeVisible({ timeout: 10000 });
     await rowByTitle.locator('[data-testid="share-proposal-button"]').click();
 

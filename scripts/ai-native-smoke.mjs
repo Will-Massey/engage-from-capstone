@@ -91,16 +91,22 @@ async function main() {
   ok(
     'ai/attention-queue',
     queue,
-    (r) =>
-      r.body?.success &&
-      (Array.isArray(r.body?.data) || Array.isArray(r.body?.data?.items))
+    (r) => r.body?.success && (Array.isArray(r.body?.data) || Array.isArray(r.body?.data?.items))
   );
 
   const regulatory = await request('/ai/regulatory-alerts', { headers: authHeaders });
-  ok('ai/regulatory-alerts', regulatory, (r) => r.body?.success && Array.isArray(r.body?.data?.alerts));
+  ok(
+    'ai/regulatory-alerts',
+    regulatory,
+    (r) => r.body?.success && Array.isArray(r.body?.data?.alerts)
+  );
 
   const benchmark = await request('/ai/benchmark-pricing', { headers: authHeaders });
-  ok('ai/benchmark-pricing', benchmark, (r) => r.body?.success && Array.isArray(r.body?.data?.bands));
+  ok(
+    'ai/benchmark-pricing',
+    benchmark,
+    (r) => r.body?.success && Array.isArray(r.body?.data?.bands)
+  );
 
   const proposals = await request('/proposals?limit=1&status=DRAFT', { headers: authHeaders });
   const draft = proposals.body?.data?.[0] || proposals.body?.data?.proposals?.[0];

@@ -37,7 +37,10 @@ export const useAiAssistantStore = create<AiAssistantState>((set) => ({
   toggle: () => set((s) => ({ isOpen: !s.isOpen })),
   addMessage: (msg) =>
     set((s) => ({
-      messages: [...s.messages, { ...msg, id: `${Date.now()}-${Math.random().toString(36).slice(2, 7)}` }],
+      messages: [
+        ...s.messages,
+        { ...msg, id: `${Date.now()}-${Math.random().toString(36).slice(2, 7)}` },
+      ],
     })),
   clearMessages: () => set({ messages: [welcomeMessage()] }),
 }));

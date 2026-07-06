@@ -12,7 +12,9 @@ function useRedis(): boolean {
   return process.env.REDIS_URL !== undefined && process.env.CSRF_REDIS !== 'false';
 }
 
-async function redisOp<T>(fn: (client: typeof import('../config/redis.js').default) => Promise<T>): Promise<T | null> {
+async function redisOp<T>(
+  fn: (client: typeof import('../config/redis.js').default) => Promise<T>
+): Promise<T | null> {
   if (!useRedis()) return null;
   try {
     const { default: redis } = await import('../config/redis.js');

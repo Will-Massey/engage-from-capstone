@@ -41,9 +41,7 @@ describe('proposal summary bands', () => {
     expect(summary.oneTime.total).toBe(apiTotals.oneTime.total);
     expect(summary.contractTotalIncVat).toBe(apiTotals.grandTotal);
     expect(summary.totalSubtotalExVat).toBe(
-      apiTotals.monthly.subtotal +
-        apiTotals.annually.subtotal +
-        apiTotals.oneTime.subtotal
+      apiTotals.monthly.subtotal + apiTotals.annually.subtotal + apiTotals.oneTime.subtotal
     );
     expect(summary.totalVat).toBe(
       apiTotals.monthly.vatAmount + apiTotals.annually.vatAmount + apiTotals.oneTime.vatAmount

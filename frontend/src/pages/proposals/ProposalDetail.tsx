@@ -108,10 +108,7 @@ const frequencyLabels: Record<string, string> = {
   ANNUALLY: 'Annually',
 };
 
-const approvalStatusConfig: Record<
-  string,
-  { label: string; color: string; bg: string }
-> = {
+const approvalStatusConfig: Record<string, { label: string; color: string; bg: string }> = {
   NONE: { label: 'Not submitted', color: 'text-slate-700', bg: 'bg-slate-100' },
   PENDING: { label: 'Awaiting partner approval', color: 'text-amber-800', bg: 'bg-amber-100' },
   APPROVED: { label: 'Partner approved', color: 'text-emerald-800', bg: 'bg-emerald-100' },
@@ -122,10 +119,7 @@ const APPROVER_ROLES = new Set(['ADMIN', 'PARTNER', 'MD', 'MANAGER']);
 const PARTNER_OVERRIDE_ROLES = new Set(['ADMIN', 'PARTNER', 'MD']);
 const SUBMITTER_ROLES = new Set(['JUNIOR', 'SENIOR']);
 
-const paymentStatusConfig: Record<
-  string,
-  { label: string; color: string; bg: string }
-> = {
+const paymentStatusConfig: Record<string, { label: string; color: string; bg: string }> = {
   NOT_STARTED: { label: 'Not started', color: 'text-slate-700', bg: 'bg-slate-100' },
   PENDING: { label: 'Pending setup', color: 'text-amber-800', bg: 'bg-amber-100' },
   ACTIVE: { label: 'Mandate active', color: 'text-emerald-800', bg: 'bg-emerald-100' },
@@ -353,9 +347,7 @@ const ProposalDetail = () => {
     } catch (error: any) {
       toast.dismiss();
       const message =
-        error?.response?.data?.error?.message ||
-        error?.response?.data?.message ||
-        error?.message;
+        error?.response?.data?.error?.message || error?.response?.data?.message || error?.message;
       if (message?.toLowerCase().includes('email')) {
         toast.error(
           message.includes('transport') || message.includes('configured')
@@ -573,10 +565,9 @@ const ProposalDetail = () => {
         if (ok) {
           toast.success('Client link copied to clipboard');
         } else {
-          toast.error(
-            'Link created but not copied. Copy manually: ' + response.data.shareUrl,
-            { duration: 10000 }
-          );
+          toast.error('Link created but not copied. Copy manually: ' + response.data.shareUrl, {
+            duration: 10000,
+          });
         }
         loadProposal();
       } else {
@@ -644,7 +635,11 @@ const ProposalDetail = () => {
     if (!proposal) return;
     setCoverLetterDraft(
       generateDefaultCoverLetter({
-        addresseeName: (proposal.client?.contactName?.trim() || proposal.client?.name || 'Client').trim(),
+        addresseeName: (
+          proposal.client?.contactName?.trim() ||
+          proposal.client?.name ||
+          'Client'
+        ).trim(),
         practiceName: tenant?.name || 'Our practice',
         clientBusinessName: proposal.client?.name || undefined,
       })
@@ -680,7 +675,14 @@ const ProposalDetail = () => {
   // Calculate monthly equivalent and one-off totals cleanly
   const pricingBreakdown = useMemo(() => {
     if (!proposal?.services) {
-      return { monthlyExVat: 0, monthlyVat: 0, monthlyIncVat: 0, oneOffExVat: 0, oneOffVat: 0, oneOffIncVat: 0 };
+      return {
+        monthlyExVat: 0,
+        monthlyVat: 0,
+        monthlyIncVat: 0,
+        oneOffExVat: 0,
+        oneOffVat: 0,
+        oneOffIncVat: 0,
+      };
     }
 
     return proposal.services.reduce(
@@ -707,7 +709,14 @@ const ProposalDetail = () => {
         }
         return acc;
       },
-      { monthlyExVat: 0, monthlyVat: 0, monthlyIncVat: 0, oneOffExVat: 0, oneOffVat: 0, oneOffIncVat: 0 }
+      {
+        monthlyExVat: 0,
+        monthlyVat: 0,
+        monthlyIncVat: 0,
+        oneOffExVat: 0,
+        oneOffVat: 0,
+        oneOffIncVat: 0,
+      }
     );
   }, [proposal]);
 
@@ -745,8 +754,7 @@ const ProposalDetail = () => {
   const status = statusConfig[proposal.status] || statusConfig.DRAFT;
   const StatusIcon = status.icon;
   const approvalStatus = proposal.approvalStatus || 'NONE';
-  const approvalStatusUi =
-    approvalStatusConfig[approvalStatus] || approvalStatusConfig.NONE;
+  const approvalStatusUi = approvalStatusConfig[approvalStatus] || approvalStatusConfig.NONE;
   const userRole = user?.role;
   const isApprover = userRole ? APPROVER_ROLES.has(userRole) : false;
   const canOverrideApproval = userRole ? PARTNER_OVERRIDE_ROLES.has(userRole) : false;
@@ -759,13 +767,11 @@ const ProposalDetail = () => {
   const showClientLinkButton = !['DECLINED', 'EXPIRED', 'WITHDRAWN', 'ARCHIVED', 'LOST'].includes(
     proposal.status
   );
-  const canWithdrawProposal =
-    proposal.status === 'SENT' || proposal.status === 'VIEWED';
+  const canWithdrawProposal = proposal.status === 'SENT' || proposal.status === 'VIEWED';
   const canMarkAsLost = ['DRAFT', 'SENT', 'VIEWED', 'EXPIRED', 'WITHDRAWN'].includes(
     proposal.status
   );
-  const canDeleteProposal =
-    proposal.status !== 'ACCEPTED' && proposal.status !== 'ARCHIVED';
+  const canDeleteProposal = proposal.status !== 'ACCEPTED' && proposal.status !== 'ARCHIVED';
   const deleteManageRoles = new Set(['ADMIN', 'PARTNER', 'MD', 'MANAGER']);
   const canManageProposal = userRole ? deleteManageRoles.has(userRole) : false;
   const clientOpenCount = typeof proposal.viewCount === 'number' ? proposal.viewCount : 0;
@@ -797,8 +803,8 @@ const ProposalDetail = () => {
           <div className="flex items-start gap-2 text-sm text-amber-900 dark:text-amber-100">
             <ArchiveBoxIcon className="h-5 w-5 shrink-0 mt-0.5" />
             <span>
-              This quotation was rescinded — your client cannot sign it. Edit the proposal, then send
-              again when you are ready.
+              This quotation was rescinded — your client cannot sign it. Edit the proposal, then
+              send again when you are ready.
             </span>
           </div>
           {canEditCoverLetter && (
@@ -839,7 +845,12 @@ const ProposalDetail = () => {
             <span>
               Marked as lost
               {proposal.declineReason && (
-                <> — {DECLINE_REASON_LABELS[proposal.declineReason as DeclineReason] || proposal.declineReason}</>
+                <>
+                  {' '}
+                  —{' '}
+                  {DECLINE_REASON_LABELS[proposal.declineReason as DeclineReason] ||
+                    proposal.declineReason}
+                </>
               )}
               {proposal.declineReasonText ? `: ${proposal.declineReasonText}` : ''}.
             </span>
@@ -860,7 +871,9 @@ const ProposalDetail = () => {
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <div className="flex items-center space-x-3">
-            <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100">{proposal.title}</h1>
+            <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100">
+              {proposal.title}
+            </h1>
             <span
               className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${status.bg} ${status.color}`}
             >
@@ -881,7 +894,8 @@ const ProposalDetail = () => {
           </p>
           {approvalStatus === 'PENDING' && proposal.submittedForApprovalAt && (
             <p className="mt-1 text-xs text-amber-700 dark:text-amber-300">
-              Submitted {formatDistanceToNow(new Date(proposal.submittedForApprovalAt), { addSuffix: true })}
+              Submitted{' '}
+              {formatDistanceToNow(new Date(proposal.submittedForApprovalAt), { addSuffix: true })}
               {proposal.createdBy
                 ? ` by ${proposal.createdBy.firstName} ${proposal.createdBy.lastName}`
                 : ''}
@@ -1039,10 +1053,7 @@ const ProposalDetail = () => {
 
       {/* Payment collection status (post-sign mandate) */}
       {proposal.status === 'ACCEPTED' && (
-        <div
-          data-testid="payment-collection-status"
-          className="glass-tile p-5 print:hidden"
-        >
+        <div data-testid="payment-collection-status" className="glass-tile p-5 print:hidden">
           <div className="flex items-start justify-between gap-4">
             <div className="flex items-start gap-3">
               <div className="rounded-lg bg-sky-100 dark:bg-sky-900/40 p-2">
@@ -1065,8 +1076,7 @@ const ProposalDetail = () => {
                 'text-slate-700'
               }`}
             >
-              {paymentStatusConfig[proposal.paymentStatus || 'NOT_STARTED']?.label ||
-                'Not started'}
+              {paymentStatusConfig[proposal.paymentStatus || 'NOT_STARTED']?.label || 'Not started'}
             </span>
           </div>
 
@@ -1197,599 +1207,657 @@ const ProposalDetail = () => {
         <div className="lg:col-span-2 space-y-6">
           {activeTab === 'overview' && (
             <>
-          {/* Client info */}
-          <div className="glass-tile p-6">
-            <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-100 mb-4">Client</h2>
-            <div className="flex items-center">
-              <div className="p-3 bg-white/50 dark:bg-slate-800/70 rounded-lg border border-white/10 dark:border-slate-600/40">
-                <BuildingOfficeIcon className="h-6 w-6 text-slate-600 dark:text-slate-400" />
-              </div>
-              <div className="ml-4">
-                <p className="font-medium text-slate-900 dark:text-slate-100">{proposal.client?.name}</p>
-                <p className="text-sm text-slate-600 dark:text-slate-400">{proposal.client?.contactEmail}</p>
-                {proposal.client?.companyType && (
-                  <p className="text-xs text-slate-500 dark:text-slate-500 mt-0.5">
-                    {proposal.client.companyType.replace(/_/g, ' ')}
-                  </p>
-                )}
-              </div>
-            </div>
-          </div>
-
-          {/* Services — flat list, user decides frequency per service */}
-          <div className="glass-tile p-6">
-            <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-100 mb-4">Services</h2>
-
-            <div className="space-y-3">
-              {proposal.services?.map((service: any) => {
-                const serviceFreq = service.billingFrequency || service.frequency || 'MONTHLY';
-                return (
-                  <div
-                    key={service.id}
-                    className="flex items-start justify-between p-4 bg-white/40 dark:bg-slate-800/70 rounded-lg border border-white/20 dark:border-slate-600/50"
-                  >
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2">
-                        <p className="font-medium text-slate-900 dark:text-slate-100">{service.name}</p>
-                        {service.vatRate !== 20 && hasMixedVatRates && (
-                          <span className="text-xs px-1.5 py-0.5 bg-amber-100 dark:bg-amber-900/40 text-amber-800 dark:text-amber-200 rounded">
-                            VAT {service.vatRate}%
-                          </span>
-                        )}
-                      </div>
-                      {service.description && (
-                        <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">
-                          {service.description}
-                        </p>
-                      )}
-                      {service.discountPercent > 0 && (
-                        <p className="text-sm text-green-600 dark:text-green-400 mt-1">
-                          {service.discountPercent}% off
-                        </p>
-                      )}
-                      {serviceFreq === 'ONE_TIME' && service.oneOffDueDate && (
-                        <p className="text-sm text-primary-600 dark:text-primary-400 mt-1">
-                          Due: {format(new Date(service.oneOffDueDate), 'd MMMM yyyy')}
-                        </p>
-                      )}
-                    </div>
-                    <div className="text-right ml-4">
-                      <p className="font-semibold text-slate-900 dark:text-white">
-                        {formatCurrency(service.lineTotal || service.total || 0)}
-                        <span className="block text-xs font-normal text-slate-500 dark:text-slate-400">
-                          ex VAT
-                        </span>
-                      </p>
-                      {(service.vatAmount > 0 || hasMixedVatRates) && (
-                        <p className="text-xs text-slate-500 dark:text-slate-300">
-                          + {formatCurrency(service.vatAmount || 0)} VAT
-                        </p>
-                      )}
-                      <p className="text-sm font-medium text-slate-900 dark:text-white">
-                        {formatCurrency(
-                          service.grossTotal ?? (service.total || 0) + (service.vatAmount || 0)
-                        )}
-                        <span className="block text-xs font-normal text-slate-500 dark:text-slate-400">
-                          inc VAT
-                        </span>
-                      </p>
-                    </div>
+              {/* Client info */}
+              <div className="glass-tile p-6">
+                <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-100 mb-4">
+                  Client
+                </h2>
+                <div className="flex items-center">
+                  <div className="p-3 bg-white/50 dark:bg-slate-800/70 rounded-lg border border-white/10 dark:border-slate-600/40">
+                    <BuildingOfficeIcon className="h-6 w-6 text-slate-600 dark:text-slate-400" />
                   </div>
-                );
-              })}
-            </div>
-          </div>
-
-          {/* Cover Letter */}
-          {(proposal.coverLetter || canEditCoverLetter) && (
-            <div className="glass-tile p-6">
-              <div className="flex flex-wrap items-center justify-between gap-2 mb-4">
-                <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-100">Cover letter</h2>
-                {canEditCoverLetter && !editingCoverLetter && (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setCoverLetterDraft(proposal.coverLetter || '');
-                      setEditingCoverLetter(true);
-                    }}
-                    className="btn-secondary text-sm print:hidden"
-                  >
-                    <PencilIcon className="h-4 w-4 mr-1.5 inline" />
-                    Edit
-                  </button>
-                )}
+                  <div className="ml-4">
+                    <p className="font-medium text-slate-900 dark:text-slate-100">
+                      {proposal.client?.name}
+                    </p>
+                    <p className="text-sm text-slate-600 dark:text-slate-400">
+                      {proposal.client?.contactEmail}
+                    </p>
+                    {proposal.client?.companyType && (
+                      <p className="text-xs text-slate-500 dark:text-slate-500 mt-0.5">
+                        {proposal.client.companyType.replace(/_/g, ' ')}
+                      </p>
+                    )}
+                  </div>
+                </div>
               </div>
-              {editingCoverLetter ? (
+
+              {/* Services — flat list, user decides frequency per service */}
+              <div className="glass-tile p-6">
+                <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-100 mb-4">
+                  Services
+                </h2>
+
                 <div className="space-y-3">
-                  <textarea
-                    value={coverLetterDraft}
-                    onChange={(e) => setCoverLetterDraft(e.target.value)}
-                    className="input-field w-full min-h-[220px] text-sm font-sans text-slate-900 dark:text-slate-100"
-                    placeholder="Write your cover letter to the client…"
-                    aria-label="Cover letter"
-                  />
-                  <div className="flex flex-wrap gap-2">
-                    <button
-                      type="button"
-                      onClick={handleSaveCoverLetter}
-                      disabled={savingCoverLetter}
-                      className="btn-primary text-sm"
-                    >
-                      {savingCoverLetter ? 'Saving…' : 'Save'}
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setEditingCoverLetter(false);
-                        setCoverLetterDraft(proposal.coverLetter || '');
-                      }}
-                      className="btn-secondary text-sm"
-                    >
-                      Cancel
-                    </button>
-                    <button
-                      type="button"
-                      onClick={handleInsertDefaultCoverLetter}
-                      className="btn-secondary text-sm"
-                    >
-                      Use template
-                    </button>
-                  </div>
-                </div>
-              ) : proposal.coverLetter ? (
-                <div className="prose prose-sm dark:prose-invert max-w-none text-slate-700 dark:text-slate-300 whitespace-pre-wrap">
-                  {proposal.coverLetter}
-                </div>
-              ) : (
-                <div className="prose prose-sm dark:prose-invert max-w-none text-slate-700 dark:text-slate-300 whitespace-pre-wrap">
-                  {generateDefaultCoverLetter({
-                    addresseeName: (proposal.client?.contactName?.trim() || proposal.client?.name || 'Client').trim(),
-                    practiceName: tenant?.name || 'Our practice',
-                    clientBusinessName: proposal.client?.name || undefined,
+                  {proposal.services?.map((service: any) => {
+                    const serviceFreq = service.billingFrequency || service.frequency || 'MONTHLY';
+                    return (
+                      <div
+                        key={service.id}
+                        className="flex items-start justify-between p-4 bg-white/40 dark:bg-slate-800/70 rounded-lg border border-white/20 dark:border-slate-600/50"
+                      >
+                        <div className="flex-1">
+                          <div className="flex items-center gap-2">
+                            <p className="font-medium text-slate-900 dark:text-slate-100">
+                              {service.name}
+                            </p>
+                            {service.vatRate !== 20 && hasMixedVatRates && (
+                              <span className="text-xs px-1.5 py-0.5 bg-amber-100 dark:bg-amber-900/40 text-amber-800 dark:text-amber-200 rounded">
+                                VAT {service.vatRate}%
+                              </span>
+                            )}
+                          </div>
+                          {service.description && (
+                            <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">
+                              {service.description}
+                            </p>
+                          )}
+                          {service.discountPercent > 0 && (
+                            <p className="text-sm text-green-600 dark:text-green-400 mt-1">
+                              {service.discountPercent}% off
+                            </p>
+                          )}
+                          {serviceFreq === 'ONE_TIME' && service.oneOffDueDate && (
+                            <p className="text-sm text-primary-600 dark:text-primary-400 mt-1">
+                              Due: {format(new Date(service.oneOffDueDate), 'd MMMM yyyy')}
+                            </p>
+                          )}
+                        </div>
+                        <div className="text-right ml-4">
+                          <p className="font-semibold text-slate-900 dark:text-white">
+                            {formatCurrency(service.lineTotal || service.total || 0)}
+                            <span className="block text-xs font-normal text-slate-500 dark:text-slate-400">
+                              ex VAT
+                            </span>
+                          </p>
+                          {(service.vatAmount > 0 || hasMixedVatRates) && (
+                            <p className="text-xs text-slate-500 dark:text-slate-300">
+                              + {formatCurrency(service.vatAmount || 0)} VAT
+                            </p>
+                          )}
+                          <p className="text-sm font-medium text-slate-900 dark:text-white">
+                            {formatCurrency(
+                              service.grossTotal ?? (service.total || 0) + (service.vatAmount || 0)
+                            )}
+                            <span className="block text-xs font-normal text-slate-500 dark:text-slate-400">
+                              inc VAT
+                            </span>
+                          </p>
+                        </div>
+                      </div>
+                    );
                   })}
                 </div>
-              )}
-            </div>
-          )}
+              </div>
 
-          {/* Full Terms & Conditions */}
-          <div className="glass-tile p-6 print:break-before-page">
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-100">
-                Terms & Conditions
-              </h2>
-              <button onClick={() => void handlePrint()} className="btn-secondary text-sm print:hidden">
-                <PrinterIcon className="h-4 w-4 mr-2" />
-                Print proposal PDF
-              </button>
-            </div>
-            <div className="prose prose-sm dark:prose-invert max-w-none text-slate-800 dark:text-slate-200 whitespace-pre-wrap text-sm max-h-96 overflow-y-auto print:max-h-none print:overflow-visible bg-white/40 dark:bg-slate-900/50 border border-white/20 dark:border-slate-600/50 p-4 rounded">
-              {generateFullTerms()}
-            </div>
-          </div>
-
-          {/* Signature Section */}
-          {(proposal.status === 'SENT' || proposal.status === 'VIEWED') && (
-            <div id="electronic-signature-section" className="glass-tile p-6 print:hidden">
-              <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-100 mb-4">
-                Electronic Signature
-              </h2>
-
-              {!showSignaturePad ? (
-                <div className="space-y-4">
-                  <p className="text-sm text-slate-700 dark:text-slate-300">
-                    By signing below, you confirm acceptance of the Terms & Conditions and the
-                    services outlined in this proposal.
-                  </p>
-
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-sm font-medium text-slate-800 dark:text-slate-200">
-                        Signatory Name
-                      </label>
-                      <input
-                        type="text"
-                        value={signatoryName}
-                        onChange={(e) => setSignatoryName(e.target.value)}
-                        className="mt-1 input-field w-full"
-                        placeholder="Full name"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-slate-800 dark:text-slate-200">
-                        Position
-                      </label>
-                      <input
-                        type="text"
-                        value={signatoryPosition}
-                        onChange={(e) => setSignatoryPosition(e.target.value)}
-                        className="mt-1 input-field w-full"
-                        placeholder="e.g., Director"
-                      />
-                    </div>
+              {/* Cover Letter */}
+              {(proposal.coverLetter || canEditCoverLetter) && (
+                <div className="glass-tile p-6">
+                  <div className="flex flex-wrap items-center justify-between gap-2 mb-4">
+                    <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-100">
+                      Cover letter
+                    </h2>
+                    {canEditCoverLetter && !editingCoverLetter && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setCoverLetterDraft(proposal.coverLetter || '');
+                          setEditingCoverLetter(true);
+                        }}
+                        className="btn-secondary text-sm print:hidden"
+                      >
+                        <PencilIcon className="h-4 w-4 mr-1.5 inline" />
+                        Edit
+                      </button>
+                    )}
                   </div>
-
-                  <button
-                    onClick={() => setShowSignaturePad(true)}
-                    disabled={!signatoryName || !signatoryPosition}
-                    className="btn-primary w-full"
-                  >
-                    <DocumentTextIcon className="h-4 w-4 mr-2 inline" />
-                    Sign Proposal Electronically
-                  </button>
-
-                  {(!signatoryName || !signatoryPosition) && (
-                    <p className="text-xs text-slate-600 dark:text-slate-400">
-                      Please enter your name and position to enable signing
-                    </p>
+                  {editingCoverLetter ? (
+                    <div className="space-y-3">
+                      <textarea
+                        value={coverLetterDraft}
+                        onChange={(e) => setCoverLetterDraft(e.target.value)}
+                        className="input-field w-full min-h-[220px] text-sm font-sans text-slate-900 dark:text-slate-100"
+                        placeholder="Write your cover letter to the client…"
+                        aria-label="Cover letter"
+                      />
+                      <div className="flex flex-wrap gap-2">
+                        <button
+                          type="button"
+                          onClick={handleSaveCoverLetter}
+                          disabled={savingCoverLetter}
+                          className="btn-primary text-sm"
+                        >
+                          {savingCoverLetter ? 'Saving…' : 'Save'}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setEditingCoverLetter(false);
+                            setCoverLetterDraft(proposal.coverLetter || '');
+                          }}
+                          className="btn-secondary text-sm"
+                        >
+                          Cancel
+                        </button>
+                        <button
+                          type="button"
+                          onClick={handleInsertDefaultCoverLetter}
+                          className="btn-secondary text-sm"
+                        >
+                          Use template
+                        </button>
+                      </div>
+                    </div>
+                  ) : proposal.coverLetter ? (
+                    <div className="prose prose-sm dark:prose-invert max-w-none text-slate-700 dark:text-slate-300 whitespace-pre-wrap">
+                      {proposal.coverLetter}
+                    </div>
+                  ) : (
+                    <div className="prose prose-sm dark:prose-invert max-w-none text-slate-700 dark:text-slate-300 whitespace-pre-wrap">
+                      {generateDefaultCoverLetter({
+                        addresseeName: (
+                          proposal.client?.contactName?.trim() ||
+                          proposal.client?.name ||
+                          'Client'
+                        ).trim(),
+                        practiceName: tenant?.name || 'Our practice',
+                        clientBusinessName: proposal.client?.name || undefined,
+                      })}
+                    </div>
                   )}
                 </div>
-              ) : (
-                <div className="space-y-4">
-                  <SignaturePad
-                    onSignature={handleSignature}
-                    onClear={() => setSignatureData(null)}
-                  />
+              )}
+
+              {/* Full Terms & Conditions */}
+              <div className="glass-tile p-6 print:break-before-page">
+                <div className="flex items-center justify-between mb-4">
+                  <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-100">
+                    Terms & Conditions
+                  </h2>
                   <button
-                    onClick={() => setShowSignaturePad(false)}
-                    className="btn-secondary text-sm"
+                    onClick={() => void handlePrint()}
+                    className="btn-secondary text-sm print:hidden"
                   >
-                    Cancel
+                    <PrinterIcon className="h-4 w-4 mr-2" />
+                    Print proposal PDF
                   </button>
                 </div>
-              )}
-            </div>
-          )}
-
-          {proposal.status === 'ACCEPTED' && activeTab === 'overview' && (
-            <div className="glass-tile p-4 border border-emerald-200 dark:border-emerald-900/50 bg-emerald-50/50 dark:bg-emerald-950/20">
-              <div className="flex flex-wrap items-center justify-between gap-3">
-                <div className="flex items-center gap-2 text-sm text-emerald-800 dark:text-emerald-200">
-                  <CheckIcon className="h-5 w-5" />
-                  <span>
-                    Signed by <strong>{proposal.acceptedBy}</strong>
-                    {signedAt && <> on {format(signedAt, 'dd MMM yyyy, HH:mm')}</>}
-                  </span>
+                <div className="prose prose-sm dark:prose-invert max-w-none text-slate-800 dark:text-slate-200 whitespace-pre-wrap text-sm max-h-96 overflow-y-auto print:max-h-none print:overflow-visible bg-white/40 dark:bg-slate-900/50 border border-white/20 dark:border-slate-600/50 p-4 rounded">
+                  {generateFullTerms()}
                 </div>
-                <button type="button" onClick={() => setActiveTab('audit')} className="btn-secondary text-xs">
-                  View signature &amp; access history
-                </button>
               </div>
-            </div>
-          )}
 
-          {proposal.notes && (
-            <div className="glass-tile p-6">
-              <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-100 mb-4">Notes</h2>
-              <p className="text-slate-700 dark:text-slate-300 whitespace-pre-wrap">{proposal.notes}</p>
-            </div>
-          )}
+              {/* Signature Section */}
+              {(proposal.status === 'SENT' || proposal.status === 'VIEWED') && (
+                <div id="electronic-signature-section" className="glass-tile p-6 print:hidden">
+                  <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-100 mb-4">
+                    Electronic Signature
+                  </h2>
+
+                  {!showSignaturePad ? (
+                    <div className="space-y-4">
+                      <p className="text-sm text-slate-700 dark:text-slate-300">
+                        By signing below, you confirm acceptance of the Terms & Conditions and the
+                        services outlined in this proposal.
+                      </p>
+
+                      <div className="grid grid-cols-2 gap-4">
+                        <div>
+                          <label className="block text-sm font-medium text-slate-800 dark:text-slate-200">
+                            Signatory Name
+                          </label>
+                          <input
+                            type="text"
+                            value={signatoryName}
+                            onChange={(e) => setSignatoryName(e.target.value)}
+                            className="mt-1 input-field w-full"
+                            placeholder="Full name"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium text-slate-800 dark:text-slate-200">
+                            Position
+                          </label>
+                          <input
+                            type="text"
+                            value={signatoryPosition}
+                            onChange={(e) => setSignatoryPosition(e.target.value)}
+                            className="mt-1 input-field w-full"
+                            placeholder="e.g., Director"
+                          />
+                        </div>
+                      </div>
+
+                      <button
+                        onClick={() => setShowSignaturePad(true)}
+                        disabled={!signatoryName || !signatoryPosition}
+                        className="btn-primary w-full"
+                      >
+                        <DocumentTextIcon className="h-4 w-4 mr-2 inline" />
+                        Sign Proposal Electronically
+                      </button>
+
+                      {(!signatoryName || !signatoryPosition) && (
+                        <p className="text-xs text-slate-600 dark:text-slate-400">
+                          Please enter your name and position to enable signing
+                        </p>
+                      )}
+                    </div>
+                  ) : (
+                    <div className="space-y-4">
+                      <SignaturePad
+                        onSignature={handleSignature}
+                        onClear={() => setSignatureData(null)}
+                      />
+                      <button
+                        onClick={() => setShowSignaturePad(false)}
+                        className="btn-secondary text-sm"
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {proposal.status === 'ACCEPTED' && activeTab === 'overview' && (
+                <div className="glass-tile p-4 border border-emerald-200 dark:border-emerald-900/50 bg-emerald-50/50 dark:bg-emerald-950/20">
+                  <div className="flex flex-wrap items-center justify-between gap-3">
+                    <div className="flex items-center gap-2 text-sm text-emerald-800 dark:text-emerald-200">
+                      <CheckIcon className="h-5 w-5" />
+                      <span>
+                        Signed by <strong>{proposal.acceptedBy}</strong>
+                        {signedAt && <> on {format(signedAt, 'dd MMM yyyy, HH:mm')}</>}
+                      </span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setActiveTab('audit')}
+                      className="btn-secondary text-xs"
+                    >
+                      View signature &amp; access history
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {proposal.notes && (
+                <div className="glass-tile p-6">
+                  <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-100 mb-4">
+                    Notes
+                  </h2>
+                  <p className="text-slate-700 dark:text-slate-300 whitespace-pre-wrap">
+                    {proposal.notes}
+                  </p>
+                </div>
+              )}
             </>
           )}
 
           {activeTab === 'audit' && (
             <>
-          {/* Summary stats */}
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-            <div className="glass-tile p-4 text-center">
-              <p className="text-2xl font-bold text-purple-600 tabular-nums">{clientOpenCount}</p>
-              <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">Client opens</p>
-            </div>
-            <div className="glass-tile p-4 text-center">
-              <p className="text-sm font-semibold text-slate-800 dark:text-slate-200">
-                {firstViewedAt ? format(firstViewedAt, 'dd MMM HH:mm') : '—'}
-              </p>
-              <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">First opened</p>
-            </div>
-            <div className="glass-tile p-4 text-center">
-              <p className="text-sm font-semibold text-slate-800 dark:text-slate-200">
-                {lastViewedAt ? formatDistanceToNow(lastViewedAt, { addSuffix: true }) : '—'}
-              </p>
-              <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">Last activity</p>
-            </div>
-            <div className="glass-tile p-4 text-center">
-              <p className="text-sm font-semibold text-emerald-700 dark:text-emerald-300">
-                {signedAt ? format(signedAt, 'dd MMM HH:mm') : '—'}
-              </p>
-              <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">Signed</p>
-            </div>
-          </div>
-
-          {/* Display Signature if accepted */}
-          {(proposal.status === 'ACCEPTED' || proposal.signature) && (
-            <div className="glass-tile p-6 print:break-inside-avoid">
-              <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-100 mb-4">
-                Signed by
-              </h2>
-              <div className="space-y-2">
-                {proposal.signature && (
-                  <div className="border border-white/20 dark:border-slate-600/50 rounded p-2 bg-white/40 dark:bg-slate-900/50 inline-block">
-                    <img
-                      src={proposal.signature}
-                      alt="Electronic Signature"
-                      className="h-16 object-contain"
-                    />
-                  </div>
-                )}
-                <p className="text-sm text-slate-800 dark:text-slate-200">
-                  <span className="font-medium">Name:</span> {proposal.acceptedBy || signatoryName}
-                </p>
-                {proposal.signatoryPosition && (
-                  <p className="text-sm text-slate-800 dark:text-slate-200">
-                    <span className="font-medium">Position:</span> {proposal.signatoryPosition}
+              {/* Summary stats */}
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                <div className="glass-tile p-4 text-center">
+                  <p className="text-2xl font-bold text-purple-600 tabular-nums">
+                    {clientOpenCount}
                   </p>
-                )}
-                {proposal.acceptedAt && (
-                  <p className="text-sm text-slate-800 dark:text-slate-200">
-                    <span className="font-medium">Date:</span>{' '}
-                    {format(new Date(proposal.acceptedAt), 'dd MMMM yyyy HH:mm')}
-                  </p>
-                )}
-              </div>
-            </div>
-          )}
-
-          {proposal.signatures?.length > 0 && (
-            <div className="glass-tile p-6 print:break-inside-avoid">
-              <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-100 mb-4">
-                Signature audit
-              </h2>
-              <div className="space-y-6">
-                {proposal.signatures.map((sig: any) => (
-                  <div
-                    key={sig.id}
-                    className="rounded-2xl border border-slate-200/80 dark:border-slate-700/80 p-4 space-y-3"
-                  >
-                    <dl className="text-sm space-y-2 text-slate-800 dark:text-slate-200">
-                      <div className="flex justify-between gap-4">
-                        <dt className="text-slate-500 dark:text-slate-400">Type</dt>
-                        <dd>{sig.signatureType || 'SIMPLE_ELECTRONIC'}</dd>
-                      </div>
-                      {sig.agreementVersion && (
-                        <div className="flex justify-between gap-4">
-                          <dt className="text-slate-500 dark:text-slate-400">Agreement version</dt>
-                          <dd className="font-mono text-xs">{sig.agreementVersion}</dd>
-                        </div>
-                      )}
-                      {sig.signerEmail && (
-                        <div className="flex justify-between gap-4">
-                          <dt className="text-slate-500 dark:text-slate-400">Email</dt>
-                          <dd className="text-right break-all">{sig.signerEmail}</dd>
-                        </div>
-                      )}
-                      <div className="flex justify-between gap-4">
-                        <dt className="text-slate-500 dark:text-slate-400">Signed at (UTC)</dt>
-                        <dd>{format(new Date(sig.signedAt), 'dd MMM yyyy HH:mm:ss')}</dd>
-                      </div>
-                      {sig.ipAddress && (
-                        <div className="flex justify-between gap-4">
-                          <dt className="text-slate-500 dark:text-slate-400">IP address</dt>
-                          <dd className="font-mono text-xs">{sig.ipAddress}</dd>
-                        </div>
-                      )}
-                      {sig.geoLocation && (
-                        <div className="flex justify-between gap-4">
-                          <dt className="text-slate-500 dark:text-slate-400">Location</dt>
-                          <dd>{sig.geoLocation}</dd>
-                        </div>
-                      )}
-                      {sig.userAgent && (
-                        <div>
-                          <dt className="text-slate-500 dark:text-slate-400 mb-1">User agent</dt>
-                          <dd className="font-mono text-xs break-all bg-slate-100 dark:bg-slate-900/50 p-2 rounded">
-                            {sig.userAgent}
-                          </dd>
-                        </div>
-                      )}
-                      {sig.deviceInfo && (
-                        <div>
-                          <dt className="text-slate-500 dark:text-slate-400 mb-1">Device info</dt>
-                          <dd className="font-mono text-xs break-all bg-slate-100 dark:bg-slate-900/50 p-2 rounded">
-                            {sig.deviceInfo}
-                          </dd>
-                        </div>
-                      )}
-                      {sig.documentHash && (
-                        <div>
-                          <dt className="text-slate-500 dark:text-slate-400 mb-1">Document hash</dt>
-                          <dd className="font-mono text-xs break-all bg-slate-100 dark:bg-slate-900/50 p-2 rounded">
-                            {sig.documentHash}
-                          </dd>
-                        </div>
-                      )}
-                      {sig.termsHash && (
-                        <div>
-                          <dt className="text-slate-500 dark:text-slate-400 mb-1">Terms hash</dt>
-                          <dd className="font-mono text-xs break-all bg-slate-100 dark:bg-slate-900/50 p-2 rounded">
-                            {sig.termsHash}
-                          </dd>
-                        </div>
-                      )}
-                      {sig.consentText && (
-                        <div>
-                          <dt className="text-slate-500 dark:text-slate-400 mb-1">Consent</dt>
-                          <dd className="text-xs italic">{sig.consentText}</dd>
-                        </div>
-                      )}
-                    </dl>
-                    <div className="flex flex-wrap gap-2 print:hidden">
-                      <button
-                        type="button"
-                        onClick={() => downloadSignatureCertificate(sig.id)}
-                        className="btn-secondary text-xs flex items-center gap-1.5"
-                      >
-                        <ArrowDownTrayIcon className="h-3.5 w-3.5" />
-                        Download certificate PDF
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => downloadSignatureAuditJson(sig.id)}
-                        className="btn-secondary text-xs flex items-center gap-1.5"
-                      >
-                        <ArrowDownTrayIcon className="h-3.5 w-3.5" />
-                        Download audit JSON
-                      </button>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* Dedicated Access & Signature History — prominent compliance view */}
-          <div className="glass-tile p-6">
-            <div className="flex items-start justify-between gap-3 mb-3">
-              <div>
-                <div className="flex items-center gap-2">
-                  <ShieldCheckIcon className="h-5 w-5 text-primary-600" />
-                  <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-100">Access &amp; Signature History</h2>
+                  <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">Client opens</p>
                 </div>
-                <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-                  Chronological record of client access via the secure link and electronic signing events. Use for compliance and audit.
-                </p>
+                <div className="glass-tile p-4 text-center">
+                  <p className="text-sm font-semibold text-slate-800 dark:text-slate-200">
+                    {firstViewedAt ? format(firstViewedAt, 'dd MMM HH:mm') : '—'}
+                  </p>
+                  <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">First opened</p>
+                </div>
+                <div className="glass-tile p-4 text-center">
+                  <p className="text-sm font-semibold text-slate-800 dark:text-slate-200">
+                    {lastViewedAt ? formatDistanceToNow(lastViewedAt, { addSuffix: true }) : '—'}
+                  </p>
+                  <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">Last activity</p>
+                </div>
+                <div className="glass-tile p-4 text-center">
+                  <p className="text-sm font-semibold text-emerald-700 dark:text-emerald-300">
+                    {signedAt ? format(signedAt, 'dd MMM HH:mm') : '—'}
+                  </p>
+                  <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">Signed</p>
+                </div>
               </div>
-              <div className="flex items-center gap-1.5 print:hidden">
-                <button
-                  onClick={loadAuditTrail}
-                  disabled={loadingAudit}
-                  className="btn-secondary text-xs flex items-center gap-1.5"
-                  title="Refresh audit trail"
-                >
-                  <ArrowPathIcon className={`h-3.5 w-3.5 ${loadingAudit ? 'animate-spin' : ''}`} />
-                  Refresh
-                </button>
-                <button
-                  onClick={() => {
-                    if (auditTrail.length === 0) return;
-                    downloadAuditTrailCsv(auditTrail, proposal.reference);
-                    toast.success('Audit trail downloaded as CSV');
-                  }}
-                  disabled={auditTrail.length === 0}
-                  className="btn-secondary text-xs flex items-center gap-1.5"
-                  title="Download CSV for compliance records"
-                >
-                  <ArrowDownTrayIcon className="h-3.5 w-3.5" />
-                  CSV
-                </button>
-                <button
-                  onClick={async () => {
-                    if (auditTrail.length === 0) return;
-                    const text = auditTrail
-                      .map((e: any) => {
-                        const t = new Date(e.timestamp).toISOString();
-                        const d = e.details ? JSON.stringify(e.details) : '';
-                        return `${t} | ${e.action} | ${e.actor || ''} | IP:${e.ipAddress || ''} ${d}`;
-                      })
-                      .join('\n');
-                    const ok = await copyTextToClipboard(text);
-                    if (ok) toast.success('Audit trail copied to clipboard');
-                  }}
-                  disabled={auditTrail.length === 0}
-                  className="btn-secondary text-xs"
-                  title="Copy audit trail for compliance records"
-                >
-                  Copy
-                </button>
-              </div>
-            </div>
 
-            {auditTrail.length === 0 && !loadingAudit ? (
-              <div className="rounded-2xl border border-dashed border-slate-200 dark:border-slate-700 p-6 text-center">
-                <EyeIcon className="h-8 w-8 mx-auto text-slate-300 dark:text-slate-600" />
-                <p className="mt-2 text-sm text-slate-600 dark:text-slate-300">No client access recorded yet.</p>
-                <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-                  Send the proposal link. Views and signatures will appear here automatically.
-                </p>
-              </div>
-            ) : (
-              <div className="space-y-2 text-sm">
-                {auditTrail.map((entry: any, index: number) => {
-                  const ts = new Date(entry.timestamp);
-                  const action = (entry.action || '').toUpperCase();
-                  const isView = action.includes('VIEW');
-                  const isSigned = action.includes('ACCEPT') || action.includes('SIGN');
-                  const isSent = action.includes('SENT');
+              {/* Display Signature if accepted */}
+              {(proposal.status === 'ACCEPTED' || proposal.signature) && (
+                <div className="glass-tile p-6 print:break-inside-avoid">
+                  <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-100 mb-4">
+                    Signed by
+                  </h2>
+                  <div className="space-y-2">
+                    {proposal.signature && (
+                      <div className="border border-white/20 dark:border-slate-600/50 rounded p-2 bg-white/40 dark:bg-slate-900/50 inline-block">
+                        <img
+                          src={proposal.signature}
+                          alt="Electronic Signature"
+                          className="h-16 object-contain"
+                        />
+                      </div>
+                    )}
+                    <p className="text-sm text-slate-800 dark:text-slate-200">
+                      <span className="font-medium">Name:</span>{' '}
+                      {proposal.acceptedBy || signatoryName}
+                    </p>
+                    {proposal.signatoryPosition && (
+                      <p className="text-sm text-slate-800 dark:text-slate-200">
+                        <span className="font-medium">Position:</span> {proposal.signatoryPosition}
+                      </p>
+                    )}
+                    {proposal.acceptedAt && (
+                      <p className="text-sm text-slate-800 dark:text-slate-200">
+                        <span className="font-medium">Date:</span>{' '}
+                        {format(new Date(proposal.acceptedAt), 'dd MMMM yyyy HH:mm')}
+                      </p>
+                    )}
+                  </div>
+                </div>
+              )}
 
-                  let icon = <ClockIcon className="h-4 w-4 text-slate-400" />;
-                  let label = entry.action || 'Event';
-                  let highlight = '';
-
-                  if (isView) {
-                    icon = <EyeIcon className="h-4 w-4 text-purple-600" />;
-                    label = 'Client viewed the proposal';
-                    highlight = 'text-purple-700 dark:text-purple-300';
-                  } else if (isSigned) {
-                    icon = <PencilSquareIcon className="h-4 w-4 text-emerald-600" />;
-                    const who = entry.details?.signedByRole || entry.actor || entry.details?.signedBy || 'Client';
-                    label = `Electronically signed by ${who}`;
-                    highlight = 'text-emerald-700 dark:text-emerald-300';
-                  } else if (isSent) {
-                    icon = <EnvelopeIcon className="h-4 w-4 text-blue-600" />;
-                    label = 'Proposal sent to client';
-                    highlight = 'text-blue-700 dark:text-blue-300';
-                  } else if (action.includes('WITHDRAW')) {
-                    icon = <NoSymbolIcon className="h-4 w-4 text-amber-600" />;
-                    label = 'Proposal rescinded by practice';
-                    highlight = 'text-amber-700 dark:text-amber-300';
-                  }
-
-                  return (
-                    <div
-                      key={index}
-                      className="flex gap-3 rounded-xl border border-slate-100 dark:border-slate-800 bg-white/50 dark:bg-slate-900/40 px-3 py-2.5"
-                    >
-                      <div className="mt-0.5 shrink-0">{icon}</div>
-                      <div className="min-w-0 flex-1">
-                        <div className={`font-medium ${highlight}`}>{label}</div>
-
-                        <div className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 flex flex-wrap items-center gap-x-2">
-                          <span title={ts.toISOString()}>
-                            {formatDistanceToNow(ts, { addSuffix: true })}
-                          </span>
-                          <span className="text-slate-400">·</span>
-                          <span>{format(ts, 'dd MMM yyyy, HH:mm')}</span>
-
-                          {entry.ipAddress && (
-                            <>
-                              <span className="text-slate-400">·</span>
-                              <span className="font-mono text-[10px]">{entry.ipAddress}</span>
-                            </>
+              {proposal.signatures?.length > 0 && (
+                <div className="glass-tile p-6 print:break-inside-avoid">
+                  <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-100 mb-4">
+                    Signature audit
+                  </h2>
+                  <div className="space-y-6">
+                    {proposal.signatures.map((sig: any) => (
+                      <div
+                        key={sig.id}
+                        className="rounded-2xl border border-slate-200/80 dark:border-slate-700/80 p-4 space-y-3"
+                      >
+                        <dl className="text-sm space-y-2 text-slate-800 dark:text-slate-200">
+                          <div className="flex justify-between gap-4">
+                            <dt className="text-slate-500 dark:text-slate-400">Type</dt>
+                            <dd>{sig.signatureType || 'SIMPLE_ELECTRONIC'}</dd>
+                          </div>
+                          {sig.agreementVersion && (
+                            <div className="flex justify-between gap-4">
+                              <dt className="text-slate-500 dark:text-slate-400">
+                                Agreement version
+                              </dt>
+                              <dd className="font-mono text-xs">{sig.agreementVersion}</dd>
+                            </div>
                           )}
-                          {entry.details?.viewDuration != null && (
-                            <>
-                              <span className="text-slate-400">·</span>
-                              <span>{Math.round(entry.details.viewDuration / 1000 / 60)} min viewed</span>
-                            </>
+                          {sig.signerEmail && (
+                            <div className="flex justify-between gap-4">
+                              <dt className="text-slate-500 dark:text-slate-400">Email</dt>
+                              <dd className="text-right break-all">{sig.signerEmail}</dd>
+                            </div>
                           )}
+                          <div className="flex justify-between gap-4">
+                            <dt className="text-slate-500 dark:text-slate-400">Signed at (UTC)</dt>
+                            <dd>{format(new Date(sig.signedAt), 'dd MMM yyyy HH:mm:ss')}</dd>
+                          </div>
+                          {sig.ipAddress && (
+                            <div className="flex justify-between gap-4">
+                              <dt className="text-slate-500 dark:text-slate-400">IP address</dt>
+                              <dd className="font-mono text-xs">{sig.ipAddress}</dd>
+                            </div>
+                          )}
+                          {sig.geoLocation && (
+                            <div className="flex justify-between gap-4">
+                              <dt className="text-slate-500 dark:text-slate-400">Location</dt>
+                              <dd>{sig.geoLocation}</dd>
+                            </div>
+                          )}
+                          {sig.userAgent && (
+                            <div>
+                              <dt className="text-slate-500 dark:text-slate-400 mb-1">
+                                User agent
+                              </dt>
+                              <dd className="font-mono text-xs break-all bg-slate-100 dark:bg-slate-900/50 p-2 rounded">
+                                {sig.userAgent}
+                              </dd>
+                            </div>
+                          )}
+                          {sig.deviceInfo && (
+                            <div>
+                              <dt className="text-slate-500 dark:text-slate-400 mb-1">
+                                Device info
+                              </dt>
+                              <dd className="font-mono text-xs break-all bg-slate-100 dark:bg-slate-900/50 p-2 rounded">
+                                {sig.deviceInfo}
+                              </dd>
+                            </div>
+                          )}
+                          {sig.documentHash && (
+                            <div>
+                              <dt className="text-slate-500 dark:text-slate-400 mb-1">
+                                Document hash
+                              </dt>
+                              <dd className="font-mono text-xs break-all bg-slate-100 dark:bg-slate-900/50 p-2 rounded">
+                                {sig.documentHash}
+                              </dd>
+                            </div>
+                          )}
+                          {sig.termsHash && (
+                            <div>
+                              <dt className="text-slate-500 dark:text-slate-400 mb-1">
+                                Terms hash
+                              </dt>
+                              <dd className="font-mono text-xs break-all bg-slate-100 dark:bg-slate-900/50 p-2 rounded">
+                                {sig.termsHash}
+                              </dd>
+                            </div>
+                          )}
+                          {sig.consentText && (
+                            <div>
+                              <dt className="text-slate-500 dark:text-slate-400 mb-1">Consent</dt>
+                              <dd className="text-xs italic">{sig.consentText}</dd>
+                            </div>
+                          )}
+                        </dl>
+                        <div className="flex flex-wrap gap-2 print:hidden">
+                          <button
+                            type="button"
+                            onClick={() => downloadSignatureCertificate(sig.id)}
+                            className="btn-secondary text-xs flex items-center gap-1.5"
+                          >
+                            <ArrowDownTrayIcon className="h-3.5 w-3.5" />
+                            Download certificate PDF
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => downloadSignatureAuditJson(sig.id)}
+                            className="btn-secondary text-xs flex items-center gap-1.5"
+                          >
+                            <ArrowDownTrayIcon className="h-3.5 w-3.5" />
+                            Download audit JSON
+                          </button>
                         </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
 
-                        {/* Extra forensic / useful details */}
-                        {isSigned && (
-                          <div className="mt-1 text-xs text-slate-600 dark:text-slate-300 space-y-0.5">
-                            {entry.details?.signedByRole && <div>Role: {entry.details.signedByRole}</div>}
-                            {entry.details?.agreementAccepted && <div>Terms accepted: Yes</div>}
-                            {entry.details?.documentHash && (
-                              <div className="font-mono text-[10px] break-all opacity-70">
-                                Doc hash: {String(entry.details.documentHash).slice(0, 20)}…
+              {/* Dedicated Access & Signature History — prominent compliance view */}
+              <div className="glass-tile p-6">
+                <div className="flex items-start justify-between gap-3 mb-3">
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <ShieldCheckIcon className="h-5 w-5 text-primary-600" />
+                      <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-100">
+                        Access &amp; Signature History
+                      </h2>
+                    </div>
+                    <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                      Chronological record of client access via the secure link and electronic
+                      signing events. Use for compliance and audit.
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-1.5 print:hidden">
+                    <button
+                      onClick={loadAuditTrail}
+                      disabled={loadingAudit}
+                      className="btn-secondary text-xs flex items-center gap-1.5"
+                      title="Refresh audit trail"
+                    >
+                      <ArrowPathIcon
+                        className={`h-3.5 w-3.5 ${loadingAudit ? 'animate-spin' : ''}`}
+                      />
+                      Refresh
+                    </button>
+                    <button
+                      onClick={() => {
+                        if (auditTrail.length === 0) return;
+                        downloadAuditTrailCsv(auditTrail, proposal.reference);
+                        toast.success('Audit trail downloaded as CSV');
+                      }}
+                      disabled={auditTrail.length === 0}
+                      className="btn-secondary text-xs flex items-center gap-1.5"
+                      title="Download CSV for compliance records"
+                    >
+                      <ArrowDownTrayIcon className="h-3.5 w-3.5" />
+                      CSV
+                    </button>
+                    <button
+                      onClick={async () => {
+                        if (auditTrail.length === 0) return;
+                        const text = auditTrail
+                          .map((e: any) => {
+                            const t = new Date(e.timestamp).toISOString();
+                            const d = e.details ? JSON.stringify(e.details) : '';
+                            return `${t} | ${e.action} | ${e.actor || ''} | IP:${e.ipAddress || ''} ${d}`;
+                          })
+                          .join('\n');
+                        const ok = await copyTextToClipboard(text);
+                        if (ok) toast.success('Audit trail copied to clipboard');
+                      }}
+                      disabled={auditTrail.length === 0}
+                      className="btn-secondary text-xs"
+                      title="Copy audit trail for compliance records"
+                    >
+                      Copy
+                    </button>
+                  </div>
+                </div>
+
+                {auditTrail.length === 0 && !loadingAudit ? (
+                  <div className="rounded-2xl border border-dashed border-slate-200 dark:border-slate-700 p-6 text-center">
+                    <EyeIcon className="h-8 w-8 mx-auto text-slate-300 dark:text-slate-600" />
+                    <p className="mt-2 text-sm text-slate-600 dark:text-slate-300">
+                      No client access recorded yet.
+                    </p>
+                    <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                      Send the proposal link. Views and signatures will appear here automatically.
+                    </p>
+                  </div>
+                ) : (
+                  <div className="space-y-2 text-sm">
+                    {auditTrail.map((entry: any, index: number) => {
+                      const ts = new Date(entry.timestamp);
+                      const action = (entry.action || '').toUpperCase();
+                      const isView = action.includes('VIEW');
+                      const isSigned = action.includes('ACCEPT') || action.includes('SIGN');
+                      const isSent = action.includes('SENT');
+
+                      let icon = <ClockIcon className="h-4 w-4 text-slate-400" />;
+                      let label = entry.action || 'Event';
+                      let highlight = '';
+
+                      if (isView) {
+                        icon = <EyeIcon className="h-4 w-4 text-purple-600" />;
+                        label = 'Client viewed the proposal';
+                        highlight = 'text-purple-700 dark:text-purple-300';
+                      } else if (isSigned) {
+                        icon = <PencilSquareIcon className="h-4 w-4 text-emerald-600" />;
+                        const who =
+                          entry.details?.signedByRole ||
+                          entry.actor ||
+                          entry.details?.signedBy ||
+                          'Client';
+                        label = `Electronically signed by ${who}`;
+                        highlight = 'text-emerald-700 dark:text-emerald-300';
+                      } else if (isSent) {
+                        icon = <EnvelopeIcon className="h-4 w-4 text-blue-600" />;
+                        label = 'Proposal sent to client';
+                        highlight = 'text-blue-700 dark:text-blue-300';
+                      } else if (action.includes('WITHDRAW')) {
+                        icon = <NoSymbolIcon className="h-4 w-4 text-amber-600" />;
+                        label = 'Proposal rescinded by practice';
+                        highlight = 'text-amber-700 dark:text-amber-300';
+                      }
+
+                      return (
+                        <div
+                          key={index}
+                          className="flex gap-3 rounded-xl border border-slate-100 dark:border-slate-800 bg-white/50 dark:bg-slate-900/40 px-3 py-2.5"
+                        >
+                          <div className="mt-0.5 shrink-0">{icon}</div>
+                          <div className="min-w-0 flex-1">
+                            <div className={`font-medium ${highlight}`}>{label}</div>
+
+                            <div className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 flex flex-wrap items-center gap-x-2">
+                              <span title={ts.toISOString()}>
+                                {formatDistanceToNow(ts, { addSuffix: true })}
+                              </span>
+                              <span className="text-slate-400">·</span>
+                              <span>{format(ts, 'dd MMM yyyy, HH:mm')}</span>
+
+                              {entry.ipAddress && (
+                                <>
+                                  <span className="text-slate-400">·</span>
+                                  <span className="font-mono text-[10px]">{entry.ipAddress}</span>
+                                </>
+                              )}
+                              {entry.details?.viewDuration != null && (
+                                <>
+                                  <span className="text-slate-400">·</span>
+                                  <span>
+                                    {Math.round(entry.details.viewDuration / 1000 / 60)} min viewed
+                                  </span>
+                                </>
+                              )}
+                            </div>
+
+                            {/* Extra forensic / useful details */}
+                            {isSigned && (
+                              <div className="mt-1 text-xs text-slate-600 dark:text-slate-300 space-y-0.5">
+                                {entry.details?.signedByRole && (
+                                  <div>Role: {entry.details.signedByRole}</div>
+                                )}
+                                {entry.details?.agreementAccepted && <div>Terms accepted: Yes</div>}
+                                {entry.details?.documentHash && (
+                                  <div className="font-mono text-[10px] break-all opacity-70">
+                                    Doc hash: {String(entry.details.documentHash).slice(0, 20)}…
+                                  </div>
+                                )}
+                              </div>
+                            )}
+
+                            {isView && entry.details?.completed && (
+                              <div className="text-[10px] text-emerald-600 mt-0.5">
+                                Marked complete by client
                               </div>
                             )}
                           </div>
-                        )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
 
-                        {isView && entry.details?.completed && (
-                          <div className="text-[10px] text-emerald-600 mt-0.5">Marked complete by client</div>
-                        )}
-                      </div>
-                    </div>
-                  );
-                })}
+                <p className="mt-3 text-[10px] text-slate-400 leading-snug">
+                  This trail is generated from secure link access logs and signature records. It is
+                  intended for your compliance files.
+                </p>
               </div>
-            )}
-
-            <p className="mt-3 text-[10px] text-slate-400 leading-snug">
-              This trail is generated from secure link access logs and signature records. It is intended for your compliance files.
-            </p>
-          </div>
             </>
           )}
         </div>
@@ -1838,62 +1906,70 @@ const ProposalDetail = () => {
               )}
 
               {(pricingBreakdown.monthlyIncVat > 0 || pricingBreakdown.oneOffIncVat > 0) && (
-              <div className="border-t border-white/20 dark:border-slate-600/50 pt-3 space-y-2">
-                {pricingBreakdown.monthlyIncVat > 0 && (
-                  <>
+                <div className="border-t border-white/20 dark:border-slate-600/50 pt-3 space-y-2">
+                  {pricingBreakdown.monthlyIncVat > 0 && (
+                    <>
+                      <div className="flex justify-between text-sm">
+                        <span className="text-slate-600 dark:text-slate-300">
+                          Recurring subtotal (ex VAT)
+                        </span>
+                        <span className="font-medium text-slate-900 dark:text-white tabular-nums">
+                          {formatCurrency(pricingBreakdown.monthlyExVat)}
+                        </span>
+                      </div>
+                      <div className="flex justify-between text-sm">
+                        <span className="text-slate-600 dark:text-slate-300">
+                          Recurring VAT{' '}
+                          {hasMixedVatRates ? '(mixed)' : `(${proposal.vatRate || 20}%)`}
+                        </span>
+                        <span className="font-medium text-slate-900 dark:text-white tabular-nums">
+                          {formatCurrency(pricingBreakdown.monthlyVat)}
+                        </span>
+                      </div>
+                    </>
+                  )}
+
+                  {pricingBreakdown.oneOffIncVat > 0 && (
+                    <>
+                      <div className="flex justify-between text-sm pt-1 border-t border-dashed border-white/10 dark:border-slate-600/30">
+                        <span className="text-slate-600 dark:text-slate-300">
+                          One-time subtotal (ex VAT)
+                        </span>
+                        <span className="font-medium text-slate-900 dark:text-white tabular-nums">
+                          {formatCurrency(pricingBreakdown.oneOffExVat)}
+                        </span>
+                      </div>
+                      <div className="flex justify-between text-sm">
+                        <span className="text-slate-600 dark:text-slate-300">One-time VAT</span>
+                        <span className="font-medium text-slate-900 dark:text-white tabular-nums">
+                          {formatCurrency(pricingBreakdown.oneOffVat)}
+                        </span>
+                      </div>
+                    </>
+                  )}
+
+                  {proposal.discountAmount > 0 && (
                     <div className="flex justify-between text-sm">
-                      <span className="text-slate-600 dark:text-slate-300">Recurring subtotal (ex VAT)</span>
-                      <span className="font-medium text-slate-900 dark:text-white tabular-nums">
-                        {formatCurrency(pricingBreakdown.monthlyExVat)}
+                      <span className="text-slate-600 dark:text-slate-300">Discount</span>
+                      <span className="font-medium text-red-600 dark:text-red-400 tabular-nums">
+                        -{formatCurrency(proposal.discountAmount)}
                       </span>
                     </div>
-                    <div className="flex justify-between text-sm">
-                      <span className="text-slate-600 dark:text-slate-300">
-                        Recurring VAT {hasMixedVatRates ? '(mixed)' : `(${proposal.vatRate || 20}%)`}
-                      </span>
-                      <span className="font-medium text-slate-900 dark:text-white tabular-nums">
-                        {formatCurrency(pricingBreakdown.monthlyVat)}
-                      </span>
-                    </div>
-                  </>
-                )}
+                  )}
 
-                {pricingBreakdown.oneOffIncVat > 0 && (
-                  <>
-                    <div className="flex justify-between text-sm pt-1 border-t border-dashed border-white/10 dark:border-slate-600/30">
-                      <span className="text-slate-600 dark:text-slate-300">One-time subtotal (ex VAT)</span>
-                      <span className="font-medium text-slate-900 dark:text-white tabular-nums">
-                        {formatCurrency(pricingBreakdown.oneOffExVat)}
+                  {pricingBreakdown.oneOffIncVat > 0 && pricingBreakdown.monthlyIncVat > 0 && (
+                    <div className="flex justify-between items-baseline pt-2 border-t border-dashed border-white/30 dark:border-slate-500/50">
+                      <span className="font-semibold text-slate-900 dark:text-white">
+                        First payment
+                      </span>
+                      <span className="font-bold text-xl text-slate-900 dark:text-white tabular-nums tracking-tight">
+                        {formatCurrency(
+                          pricingBreakdown.monthlyIncVat + pricingBreakdown.oneOffIncVat
+                        )}
                       </span>
                     </div>
-                    <div className="flex justify-between text-sm">
-                      <span className="text-slate-600 dark:text-slate-300">One-time VAT</span>
-                      <span className="font-medium text-slate-900 dark:text-white tabular-nums">
-                        {formatCurrency(pricingBreakdown.oneOffVat)}
-                      </span>
-                    </div>
-                  </>
-                )}
-
-                {proposal.discountAmount > 0 && (
-                  <div className="flex justify-between text-sm">
-                    <span className="text-slate-600 dark:text-slate-300">Discount</span>
-                    <span className="font-medium text-red-600 dark:text-red-400 tabular-nums">
-                      -{formatCurrency(proposal.discountAmount)}
-                    </span>
-                  </div>
-                )}
-
-                {pricingBreakdown.oneOffIncVat > 0 && pricingBreakdown.monthlyIncVat > 0 && (
-                  <div className="flex justify-between items-baseline pt-2 border-t border-dashed border-white/30 dark:border-slate-500/50">
-                    <span className="font-semibold text-slate-900 dark:text-white">First payment</span>
-                    <span className="font-bold text-xl text-slate-900 dark:text-white tabular-nums tracking-tight">
-                      {formatCurrency(pricingBreakdown.monthlyIncVat + pricingBreakdown.oneOffIncVat)}
-                    </span>
-                  </div>
-                )}
-
-              </div>
+                  )}
+                </div>
               )}
 
               <p className="text-xs text-slate-500 dark:text-slate-400 text-center">
@@ -1910,7 +1986,9 @@ const ProposalDetail = () => {
           <div className="glass-tile p-6">
             <div className="flex items-center gap-2 mb-2">
               <CalendarIcon className="h-4 w-4 text-slate-400 dark:text-slate-500" />
-              <h2 className="text-sm font-semibold text-slate-900 dark:text-slate-100">Valid Until</h2>
+              <h2 className="text-sm font-semibold text-slate-900 dark:text-slate-100">
+                Valid Until
+              </h2>
             </div>
             <p className="text-slate-700 dark:text-slate-300">
               {format(new Date(proposal.validUntil), 'dd MMMM yyyy')}
@@ -1935,12 +2013,16 @@ const ProposalDetail = () => {
           <div className="glass-tile p-6">
             <div className="flex items-center gap-2 mb-2">
               <UserIcon className="h-4 w-4 text-slate-400 dark:text-slate-500" />
-              <h2 className="text-sm font-semibold text-slate-900 dark:text-slate-100">Created By</h2>
+              <h2 className="text-sm font-semibold text-slate-900 dark:text-slate-100">
+                Created By
+              </h2>
             </div>
             <p className="text-slate-700 dark:text-slate-300">
               {proposal.createdBy?.firstName} {proposal.createdBy?.lastName}
             </p>
-            <p className="text-sm text-slate-600 dark:text-slate-400">{proposal.createdBy?.email}</p>
+            <p className="text-sm text-slate-600 dark:text-slate-400">
+              {proposal.createdBy?.email}
+            </p>
           </div>
 
           {proposal.activityLogs?.length > 0 && (
@@ -1951,7 +2033,9 @@ const ProposalDetail = () => {
               <ul className="space-y-3 max-h-64 overflow-y-auto">
                 {proposal.activityLogs.map((log: any) => (
                   <li key={log.id} className="text-sm border-l-2 border-primary-500/40 pl-3">
-                    <p className="text-slate-800 dark:text-slate-200">{log.description || log.action}</p>
+                    <p className="text-slate-800 dark:text-slate-200">
+                      {log.description || log.action}
+                    </p>
                     <p className="text-xs text-slate-500 dark:text-slate-400">
                       {format(new Date(log.createdAt), 'dd MMM yyyy, HH:mm')}
                       {log.user
@@ -1972,7 +2056,9 @@ const ProposalDetail = () => {
               </h2>
               <p className="text-sm text-slate-600 dark:text-slate-400">
                 Client opened the shared proposal{' '}
-                <span className="font-medium text-slate-900 dark:text-slate-100">{clientOpenCount}</span>{' '}
+                <span className="font-medium text-slate-900 dark:text-slate-100">
+                  {clientOpenCount}
+                </span>{' '}
                 {clientOpenCount === 1 ? 'time' : 'times'}
                 {proposal.lastViewedAt && (
                   <>
@@ -1985,7 +2071,11 @@ const ProposalDetail = () => {
                 .
               </p>
               <p className="text-[10px] text-primary-600 dark:text-primary-400 mt-2">
-                <button type="button" onClick={() => setActiveTab('audit')} className="hover:underline">
+                <button
+                  type="button"
+                  onClick={() => setActiveTab('audit')}
+                  className="hover:underline"
+                >
                   Open Access &amp; Signature History
                 </button>{' '}
                 for IP addresses, timestamps, and signature forensics.
@@ -2016,7 +2106,11 @@ const ProposalDetail = () => {
               still has a live link, rescind first instead.
             </p>
             <div className="mt-4 flex justify-end gap-2">
-              <button type="button" onClick={() => setShowDeleteModal(false)} className="btn-secondary">
+              <button
+                type="button"
+                onClick={() => setShowDeleteModal(false)}
+                className="btn-secondary"
+              >
                 Cancel
               </button>
               <button

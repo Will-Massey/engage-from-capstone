@@ -9,8 +9,9 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const require = createRequire(import.meta.url);
 const jwt = require(path.join(__dirname, '..', 'backend', 'node_modules', 'jsonwebtoken'));
 
-const envFile = process.env.REVOLUT_BUSINESS_ENV_FILE
-  || 'C:\\Users\\willi\\boardroom\\deploy\\.revolut-business.env';
+const envFile =
+  process.env.REVOLUT_BUSINESS_ENV_FILE ||
+  'C:\\Users\\willi\\boardroom\\deploy\\.revolut-business.env';
 
 if (fs.existsSync(envFile)) {
   for (const line of fs.readFileSync(envFile, 'utf8').split('\n')) {
@@ -30,7 +31,7 @@ if (refresh && clientId && privateKey) {
   const assertion = jwt.sign(
     { iss: clientId, sub: clientId, aud: 'https://revolut.com', iat: now, exp: now + 300 },
     privateKey,
-    { algorithm: 'RS256' },
+    { algorithm: 'RS256' }
   );
   const tr = await fetch(`${base}/auth/token`, {
     method: 'POST',

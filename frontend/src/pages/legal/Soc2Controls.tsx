@@ -11,13 +11,15 @@ const CONTROLS = [
     id: 'CC6.6',
     title: 'System boundaries',
     status: 'Implemented',
-    detail: 'Row-level tenant isolation, CSRF protection, cross-tenant header rejection, upload IDOR fixes.',
+    detail:
+      'Row-level tenant isolation, CSRF protection, cross-tenant header rejection, upload IDOR fixes.',
   },
   {
     id: 'CC7.2',
     title: 'Security monitoring',
     status: 'Partial',
-    detail: 'Structured application logging; Render log drains and alerting recommended at go-live.',
+    detail:
+      'Structured application logging; Render log drains and alerting recommended at go-live.',
   },
   {
     id: 'CC8.1',
@@ -29,13 +31,15 @@ const CONTROLS = [
     id: 'A1.2',
     title: 'Availability',
     status: 'Partial',
-    detail: 'Public status page at /status; uptime monitoring and backup restore drills pending paid tier.',
+    detail:
+      'Public status page at /status; uptime monitoring and backup restore drills pending paid tier.',
   },
   {
     id: 'P1',
     title: 'Privacy & GDPR',
     status: 'Implemented',
-    detail: 'Privacy policy, AI disclosure, consent on e-sign; subject access export path documented.',
+    detail:
+      'Privacy policy, AI disclosure, consent on e-sign; subject access export path documented.',
   },
 ];
 
@@ -44,16 +48,16 @@ export default function Soc2Controls() {
     <LegalPageLayout title="Security & SOC 2 Controls" lastUpdated="1 July 2026">
       <section className="space-y-4">
         <p>
-          This page summarises Engage by Capstone controls mapped to SOC 2 Trust Services Criteria. It supports
-          enterprise due diligence and aligns with our public{' '}
+          This page summarises Engage by Capstone controls mapped to SOC 2 Trust Services Criteria.
+          It supports enterprise due diligence and aligns with our public{' '}
           <a href="/status" className="text-primary-600 hover:underline dark:text-primary-400">
             system status
           </a>{' '}
           page (W4.5).
         </p>
         <p className="text-sm text-slate-600 dark:text-slate-400">
-          Formal SOC 2 Type II certification is a post-revenue milestone. Controls below reflect the current
-          product implementation on the free-tier deployment.
+          Formal SOC 2 Type II certification is a post-revenue milestone. Controls below reflect the
+          current product implementation on the free-tier deployment.
         </p>
       </section>
 

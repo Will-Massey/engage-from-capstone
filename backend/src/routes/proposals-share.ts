@@ -253,7 +253,9 @@ router.post(
     }
 
     // Send email via tenant mailer (platform SendGrid or custom SMTP/OAuth)
-    const senderName = Array.from(new Set([proposal.createdBy.firstName, proposal.createdBy.lastName].filter(Boolean))).join(' ');
+    const senderName = Array.from(
+      new Set([proposal.createdBy.firstName, proposal.createdBy.lastName].filter(Boolean))
+    ).join(' ');
     const result = await tenantMailer.sendProposalEmail(
       tenant.id,
       {
@@ -549,11 +551,7 @@ router.get(
     }
 
     // Track view (anonymous — link possession is the access control)
-    await trackProposalView(
-      proposal.id,
-      req.ip || null,
-      req.headers['user-agent'] || null
-    );
+    await trackProposalView(proposal.id, req.ip || null, req.headers['user-agent'] || null);
 
     // Auto-mark as VIEWED if currently SENT (conditional update avoids racing with sign → ACCEPTED)
     if (proposal.status === 'SENT') {
@@ -700,7 +698,11 @@ router.get(
     }
 
     if (proposal.status === 'ACCEPTED') {
-      throw new ApiError('PROPOSAL_ALREADY_ACCEPTED', 'This proposal has already been accepted', 400);
+      throw new ApiError(
+        'PROPOSAL_ALREADY_ACCEPTED',
+        'This proposal has already been accepted',
+        400
+      );
     }
 
     const result = await getPublicSigningSummary(proposal);
@@ -753,7 +755,11 @@ router.post(
     }
 
     if (proposal.status === 'ACCEPTED') {
-      throw new ApiError('PROPOSAL_ALREADY_ACCEPTED', 'This proposal has already been accepted', 400);
+      throw new ApiError(
+        'PROPOSAL_ALREADY_ACCEPTED',
+        'This proposal has already been accepted',
+        400
+      );
     }
 
     const result = await askPublicProposalQuestion(
@@ -871,7 +877,7 @@ router.post(
       throw new ApiError(
         'ENGAGEMENT_LETTER_REQUIRED',
         'You must accept the engagement letter',
-        400,
+        400
       );
     }
 
@@ -918,9 +924,8 @@ router.post(
     // Notify practice only when all required signatories have signed
     if (result.fullyAccepted) {
       try {
-        const { sendPracticeAcceptanceNotifications } = await import(
-          '../services/acceptanceNotificationService.js'
-        );
+        const { sendPracticeAcceptanceNotifications } =
+          await import('../services/acceptanceNotificationService.js');
         await sendPracticeAcceptanceNotifications({
           proposalId: proposal.id,
           tenantId: proposal.tenantId,
@@ -988,7 +993,7 @@ router.post(
       throw new ApiError(
         'PAYMENT_AUTH_REQUIRED',
         'Client payment authorisation must be accepted',
-        400,
+        400
       );
     }
 
@@ -1039,11 +1044,7 @@ router.post(
     }
 
     if (proposal.status !== 'ACCEPTED') {
-      throw new ApiError(
-        'INVALID_STATUS',
-        'Only accepted proposals can skip payment setup',
-        400
-      );
+      throw new ApiError('INVALID_STATUS', 'Only accepted proposals can skip payment setup', 400);
     }
 
     const paymentConfig = await getPublicPaymentConfig(proposal.id, proposal.tenantId);
@@ -1354,8 +1355,7 @@ router.post(
     }
 
     const origin =
-      frontendOrigin ||
-      (typeof req.headers.origin === 'string' ? req.headers.origin : undefined);
+      frontendOrigin || (typeof req.headers.origin === 'string' ? req.headers.origin : undefined);
 
     const result = await createClientPortalLink(clientId, expiryDays || 90, origin);
 
@@ -1477,9 +1477,9 @@ router.get(
           // via GET /portal/:token/proposals/:proposalId/view-link
           canView: Boolean(
             p.publicAccessEnabled &&
-              p.shareToken &&
-              p.shareTokenExpiry &&
-              p.shareTokenExpiry > new Date()
+            p.shareToken &&
+            p.shareTokenExpiry &&
+            p.shareTokenExpiry > new Date()
           ),
         })),
       },

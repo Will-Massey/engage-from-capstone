@@ -4,7 +4,10 @@ function cleanDigits(value: string): string {
   return value.replace(/\D/g, '');
 }
 
-export function validateUkBankDetails(sortCode: string, accountNumber: string): {
+export function validateUkBankDetails(
+  sortCode: string,
+  accountNumber: string
+): {
   ok: boolean;
   message?: string;
 } {

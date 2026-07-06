@@ -28,7 +28,9 @@ export interface TenantSettingsJson {
   [key: string]: unknown;
 }
 
-export function decryptTenantXeroSettings(raw?: TenantXeroSettings | null): TenantXeroSettings | null {
+export function decryptTenantXeroSettings(
+  raw?: TenantXeroSettings | null
+): TenantXeroSettings | null {
   if (!raw?.connected || !raw.refreshToken) return null;
 
   const copy = { ...raw };
@@ -69,9 +71,7 @@ export async function getTenantSettings(tenantId: string): Promise<TenantSetting
   return JSON.parse(tenant?.settings || '{}') as TenantSettingsJson;
 }
 
-export async function getTenantXeroSettings(
-  tenantId: string
-): Promise<TenantXeroSettings | null> {
+export async function getTenantXeroSettings(tenantId: string): Promise<TenantXeroSettings | null> {
   const settings = await getTenantSettings(tenantId);
   return decryptTenantXeroSettings(settings.xero ?? null);
 }

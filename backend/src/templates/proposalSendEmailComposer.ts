@@ -28,7 +28,10 @@ function escapeHtml(text: string): string {
 }
 
 /** Prominent signing portal block — injected into every proposal send email. */
-export function buildSigningPortalSection(viewLink: string, clientName: string): { html: string; text: string } {
+export function buildSigningPortalSection(
+  viewLink: string,
+  clientName: string
+): { html: string; text: string } {
   const html = `
       <div style="background: #eff6ff; border: 2px solid #0ea5e9; border-radius: 8px; padding: 24px; margin: 28px 0; text-align: center;">
         <p style="margin: 0 0 8px; font-size: 18px; font-weight: bold; color: #0f172a;">Review and sign electronically</p>
@@ -66,7 +69,10 @@ A PDF copy is attached for your records — you do not need to print or return i
 function textToHtmlParagraphs(text: string): string {
   return text
     .split(/\n{2,}/)
-    .map((p) => `<p style="margin: 0 0 16px; font-size: 15px; line-height: 1.65; color: #334155;">${escapeHtml(p.trim()).replace(/\n/g, '<br>')}</p>`)
+    .map(
+      (p) =>
+        `<p style="margin: 0 0 16px; font-size: 15px; line-height: 1.65; color: #334155;">${escapeHtml(p.trim()).replace(/\n/g, '<br>')}</p>`
+    )
     .join('\n');
 }
 

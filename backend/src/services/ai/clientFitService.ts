@@ -281,7 +281,9 @@ ${JSON.stringify(
     .map((s) => {
       const template = ctx.catalog.find((c) => c.id === s.serviceId)!;
       let billing = s.billingFrequency?.toUpperCase() || template.defaultBilling;
-      if (!VALID_BILLING_FREQUENCIES.includes(billing as (typeof VALID_BILLING_FREQUENCIES)[number])) {
+      if (
+        !VALID_BILLING_FREQUENCIES.includes(billing as (typeof VALID_BILLING_FREQUENCIES)[number])
+      ) {
         billing = template.defaultBilling;
       }
       return {

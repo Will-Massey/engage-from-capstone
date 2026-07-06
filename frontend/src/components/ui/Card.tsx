@@ -16,7 +16,8 @@ export const Card: React.FC<CardProps> = ({
   className = '',
   ...props
 }) => {
-  const baseClasses = 'bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 overflow-hidden';
+  const baseClasses =
+    'bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 overflow-hidden';
 
   const variantClasses = {
     default: 'shadow-sm',
@@ -70,7 +71,9 @@ export const StatCard: React.FC<StatCardProps> = ({
       <div className="flex items-start justify-between">
         <div>
           <p className="text-sm font-medium text-slate-500 dark:text-slate-400">{title}</p>
-          <p className="mt-2 text-3xl font-bold font-mono text-slate-800 dark:text-slate-100">{value}</p>
+          <p className="mt-2 text-3xl font-bold font-mono text-slate-800 dark:text-slate-100">
+            {value}
+          </p>
           {change && (
             <div className="mt-2 flex items-center text-sm">
               <span className={`font-medium ${changeColors[changeType]}`}>{change}</span>

@@ -73,8 +73,7 @@ function normalizeServiceConfigItem(raw: unknown): ParsedServiceConfigItem | nul
       typeof item.description === 'string' || item.description === null
         ? (item.description as string | null)
         : undefined,
-    billingFrequency:
-      typeof item.billingFrequency === 'string' ? item.billingFrequency : undefined,
+    billingFrequency: typeof item.billingFrequency === 'string' ? item.billingFrequency : undefined,
     displayPrice: typeof item.displayPrice === 'number' ? item.displayPrice : undefined,
     quantity: typeof item.quantity === 'number' ? item.quantity : undefined,
     discountPercent: typeof item.discountPercent === 'number' ? item.discountPercent : undefined,
@@ -280,7 +279,11 @@ router.post(
     );
 
     if (!serviceConfig.length) {
-      throw new ApiError('VALIDATION_ERROR', 'Proposal has no catalogue services to save as a template', 400);
+      throw new ApiError(
+        'VALIDATION_ERROR',
+        'Proposal has no catalogue services to save as a template',
+        400
+      );
     }
 
     const libraryVersionId = await getCurrentVersionId();
@@ -350,13 +353,11 @@ router.post(
   })
 );
 
-const updateTemplateSchema = createTemplateSchema.partial().refine(
-  (data) =>
-    Object.keys(data).some(
-      (k) => data[k as keyof typeof data] !== undefined
-    ),
-  { message: 'At least one field is required' }
-);
+const updateTemplateSchema = createTemplateSchema
+  .partial()
+  .refine((data) => Object.keys(data).some((k) => data[k as keyof typeof data] !== undefined), {
+    message: 'At least one field is required',
+  });
 
 /** PUT /api/proposal-templates/:id */
 router.put(

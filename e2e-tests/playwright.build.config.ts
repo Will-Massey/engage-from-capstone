@@ -8,8 +8,9 @@ const authFile = path.join(__dirname, '.auth', 'user.json');
  * Build verification — run against Render (or local) before manual QA continues.
  * Single chromium worker + global login to avoid auth rate limits.
  */
-const canonicalFrontend =
-  (process.env.FRONTEND_URL || 'https://capstonesoftware.co.uk/engage').replace(/\/$/, '');
+const canonicalFrontend = (
+  process.env.FRONTEND_URL || 'https://capstonesoftware.co.uk/engage'
+).replace(/\/$/, '');
 
 // Default production smoke to same-origin proxy (httpOnly cookies + /auth/me).
 if (!process.env.API_URL) {

@@ -10,7 +10,9 @@ function isAccessTokenValid(token: string, bufferMs = 5 * 60 * 1000): boolean {
   try {
     const segment = token.split('.')[1];
     if (!segment) return false;
-    const payload = JSON.parse(Buffer.from(segment, 'base64url').toString('utf8')) as { exp?: number };
+    const payload = JSON.parse(Buffer.from(segment, 'base64url').toString('utf8')) as {
+      exp?: number;
+    };
     return typeof payload.exp === 'number' && payload.exp * 1000 > Date.now() + bufferMs;
   } catch {
     return false;
@@ -21,7 +23,10 @@ type StorageState = {
   cookies?: Array<{ name: string; value: string }>;
 };
 
-async function verifySessionReplay(baseURL: string, headers: Record<string, string>): Promise<void> {
+async function verifySessionReplay(
+  baseURL: string,
+  headers: Record<string, string>
+): Promise<void> {
   const browser = await chromium.launch();
   const context = await browser.newContext({
     baseURL,
@@ -31,7 +36,7 @@ async function verifySessionReplay(baseURL: string, headers: Record<string, stri
   const page = await context.newPage();
   const mePromise = page.waitForResponse(
     (r) => r.url().includes('/auth/me') && r.status() === 200,
-    { timeout: 45_000 },
+    { timeout: 45_000 }
   );
   await page.goto(`${baseURL}/`, { waitUntil: 'domcontentloaded', timeout: 90_000 });
   const me = await mePromise.catch(() => null);

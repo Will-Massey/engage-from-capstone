@@ -253,10 +253,7 @@ export default function ClientPortal() {
         }
         setIsLoading(false);
       } catch (err: any) {
-        if (
-          attempt === 0 &&
-          (err?.code === 'NETWORK_ERROR' || err?.code === 'TIMEOUT')
-        ) {
+        if (attempt === 0 && (err?.code === 'NETWORK_ERROR' || err?.code === 'TIMEOUT')) {
           await new Promise((r) => setTimeout(r, 2500));
           return loadPortal(1);
         }
@@ -291,7 +288,9 @@ export default function ClientPortal() {
           <h1 className="text-xl font-semibold text-slate-900 dark:text-white mb-2">
             Portal Not Available
           </h1>
-          <p className="text-slate-600 dark:text-slate-400">{error || 'This portal link is invalid or has expired.'}</p>
+          <p className="text-slate-600 dark:text-slate-400">
+            {error || 'This portal link is invalid or has expired.'}
+          </p>
         </div>
       </div>
     );
@@ -359,7 +358,7 @@ export default function ClientPortal() {
         </div>
 
         {/* Onboarding Journey teaser — ties the new automated touchpoint workflow into the client portal */}
-        <motion.div 
+        <motion.div
           initial={{ opacity: 0, y: 6 }}
           animate={{ opacity: 1, y: 0 }}
           className="glass-tile mb-8 p-5 border border-primary-100 dark:border-primary-900/50"
@@ -368,18 +367,19 @@ export default function ClientPortal() {
             <SparklesIcon className="h-5 w-5 text-primary-500" />
             <div>
               <span className="font-medium">Automated updates are enabled for your account.</span>
-              <span className="ml-2 text-xs text-primary-600 dark:text-primary-400">Welcome • AML • Engagement • Reviews</span>
+              <span className="ml-2 text-xs text-primary-600 dark:text-primary-400">
+                Welcome • AML • Engagement • Reviews
+              </span>
             </div>
           </div>
           <p className="mt-2 text-sm text-slate-600 dark:text-slate-400">
-            You’ll receive timely emails at each stage of working with {practice.name}. No need to chase — we’ll guide you.
+            You’ll receive timely emails at each stage of working with {practice.name}. No need to
+            chase — we’ll guide you.
           </p>
         </motion.div>
 
         <div className="space-y-4">
-          <h2 className="text-lg font-semibold text-slate-900 dark:text-white">
-            Your Proposals
-          </h2>
+          <h2 className="text-lg font-semibold text-slate-900 dark:text-white">Your Proposals</h2>
 
           {proposals.length === 0 ? (
             <div className="glass-card p-8 text-center">
@@ -408,8 +408,7 @@ export default function ClientPortal() {
       <footer className="border-t border-slate-200 dark:border-slate-700 mt-12">
         <div className="max-w-5xl mx-auto px-4 sm:px-6 py-6">
           <p className="text-center text-xs text-slate-500 dark:text-slate-400">
-            Powered by{' '}
-            <span className="font-medium text-primary-600">Engage by Capstone</span>
+            Powered by <span className="font-medium text-primary-600">Engage by Capstone</span>
           </p>
         </div>
       </footer>

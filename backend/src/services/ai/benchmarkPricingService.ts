@@ -135,7 +135,11 @@ async function aggregateBenchmarks(
   if (serviceNames?.length) {
     const lower = serviceNames.map((s) => s.toLowerCase());
     const filtered = bands.filter((b) =>
-      lower.some((name) => categoriseServiceName(name) === b.serviceCategory || name.includes(b.serviceCategory.split(' ')[0].toLowerCase()))
+      lower.some(
+        (name) =>
+          categoriseServiceName(name) === b.serviceCategory ||
+          name.includes(b.serviceCategory.split(' ')[0].toLowerCase())
+      )
     );
     if (filtered.length) return filtered;
   }

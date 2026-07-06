@@ -97,7 +97,11 @@ router.post(
       .parse(req.body);
 
     if (!isAiConfigured()) {
-      throw new ApiError('AI_NOT_CONFIGURED', `${AI_COPILOT.name} is not configured on this server`, 503);
+      throw new ApiError(
+        'AI_NOT_CONFIGURED',
+        `${AI_COPILOT.name} is not configured on this server`,
+        503
+      );
     }
 
     const budget = await checkAiTokenBudget(req.tenantId!);
@@ -157,8 +161,9 @@ const contingentFeeSchema = z.object({
 router.post(
   '/contingent-fee',
   asyncHandler(async (req, res) => {
-    const { estimatedSavingGbp, percentOfSaving, capGbp, floorGbp } =
-      contingentFeeSchema.parse(req.body);
+    const { estimatedSavingGbp, percentOfSaving, capGbp, floorGbp } = contingentFeeSchema.parse(
+      req.body
+    );
 
     try {
       const result = calculateContingentFee({

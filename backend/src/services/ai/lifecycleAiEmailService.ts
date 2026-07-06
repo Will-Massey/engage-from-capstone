@@ -120,7 +120,9 @@ export async function generateFollowUpEmail(
   const daysUntilExpiry = Math.floor((proposal.validUntil.getTime() - now) / 86400000);
   const viewLink = `${frontendBaseUrl()}/proposals/view/${proposal.shareToken || proposal.id}`;
   const senderName = proposal.createdBy
-    ? Array.from(new Set([proposal.createdBy.firstName, proposal.createdBy.lastName].filter(Boolean))).join(' ')
+    ? Array.from(
+        new Set([proposal.createdBy.firstName, proposal.createdBy.lastName].filter(Boolean))
+      ).join(' ')
     : 'Partner';
 
   const { content: raw } = await chatCompletion(
@@ -344,7 +346,10 @@ Include merge placeholders only if links were provided above. UK English.`,
     touchpointType,
   });
 
-  const textBody = draft.body.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
+  const textBody = draft.body
+    .replace(/<[^>]+>/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
 
   return {
     subject: draft.subject,

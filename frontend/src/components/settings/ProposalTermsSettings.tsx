@@ -57,12 +57,7 @@ export default function ProposalTermsSettings({
       return;
     }
     setEditorText(engageDefaultText);
-  }, [
-    proposals.termsSource,
-    proposals.customTerms,
-    engageDefaultText,
-    loadingDefaults,
-  ]);
+  }, [proposals.termsSource, proposals.customTerms, engageDefaultText, loadingDefaults]);
 
   const handleEditorChange = (value: string) => {
     setEditorText(value);
@@ -117,8 +112,7 @@ export default function ProposalTermsSettings({
             placeholder="Paste your firm's terms and conditions here…"
           />
           <p className="mt-2 text-xs text-slate-500 dark:text-slate-400">
-            Optional placeholders:{' '}
-            <code className="text-xs">{'{{PRACTICE_NAME}}'}</code>,{' '}
+            Optional placeholders: <code className="text-xs">{'{{PRACTICE_NAME}}'}</code>,{' '}
             <code className="text-xs">{'{{PAYMENT_TERMS}}'}</code>,{' '}
             <code className="text-xs">{'{{CANCELLATION_NOTICE}}'}</code>,{' '}
             <code className="text-xs">{'{{GOVERNING_LAW}}'}</code>

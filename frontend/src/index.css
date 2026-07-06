@@ -133,7 +133,11 @@
   /* Glass morphism cards */
   .card {
     @apply rounded-2xl transition-all duration-300;
-    background: linear-gradient(135deg, rgba(245, 248, 255, 0.92) 0%, rgba(240, 245, 255, 0.85) 100%);
+    background: linear-gradient(
+      135deg,
+      rgba(245, 248, 255, 0.92) 0%,
+      rgba(240, 245, 255, 0.85) 100%
+    );
     backdrop-filter: blur(20px);
     -webkit-backdrop-filter: blur(20px);
     border: 1px solid rgba(199, 210, 254, 0.5);
@@ -170,7 +174,11 @@
   /* Glass tiles */
   .glass-tile {
     @apply rounded-2xl p-6 transition-all duration-300;
-    background: linear-gradient(135deg, rgba(248, 250, 255, 0.82) 0%, rgba(240, 245, 255, 0.72) 100%);
+    background: linear-gradient(
+      135deg,
+      rgba(248, 250, 255, 0.82) 0%,
+      rgba(240, 245, 255, 0.72) 100%
+    );
     backdrop-filter: blur(14px);
     -webkit-backdrop-filter: blur(14px);
     border: 1px solid rgba(199, 210, 254, 0.45);
@@ -189,7 +197,11 @@
 
   .glass-tile:hover {
     transform: translateY(-2px);
-    background: linear-gradient(135deg, rgba(248, 250, 255, 0.9) 0%, rgba(240, 245, 255, 0.82) 100%);
+    background: linear-gradient(
+      135deg,
+      rgba(248, 250, 255, 0.9) 0%,
+      rgba(240, 245, 255, 0.82) 100%
+    );
     border-color: rgba(165, 180, 252, 0.5);
   }
 
@@ -431,15 +443,25 @@
 
   /* Toast override for dark mode (used by react-hot-toast) */
   .glass-toast {
-    background: linear-gradient(135deg, rgba(255, 255, 255, 0.95) 0%, rgba(255, 255, 255, 0.9) 100%) !important;
+    background: linear-gradient(
+      135deg,
+      rgba(255, 255, 255, 0.95) 0%,
+      rgba(255, 255, 255, 0.9) 100%
+    ) !important;
     border: 1px solid rgba(255, 255, 255, 0.6) !important;
     color: #0f172a !important;
   }
   .dark .glass-toast {
-    background: linear-gradient(135deg, rgba(30, 41, 59, 0.95) 0%, rgba(15, 23, 42, 0.9) 100%) !important;
+    background: linear-gradient(
+      135deg,
+      rgba(30, 41, 59, 0.95) 0%,
+      rgba(15, 23, 42, 0.9) 100%
+    ) !important;
     border: 1px solid rgba(255, 255, 255, 0.1) !important;
     color: #e2e8f0 !important;
-    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.05) !important;
+    box-shadow:
+      0 8px 32px rgba(0, 0, 0, 0.4),
+      inset 0 1px 0 rgba(255, 255, 255, 0.05) !important;
   }
 }
 

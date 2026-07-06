@@ -46,9 +46,7 @@ describe('contingentFeeCalculator', () => {
   });
 
   it('rejects invalid inputs', () => {
-    expect(() =>
-      calculateContingentFee({ estimatedSavingGbp: 0, percentOfSaving: 25 })
-    ).toThrow();
+    expect(() => calculateContingentFee({ estimatedSavingGbp: 0, percentOfSaving: 25 })).toThrow();
     expect(() =>
       calculateContingentFee({ estimatedSavingGbp: 10_000, percentOfSaving: 0 })
     ).toThrow();

@@ -5,7 +5,10 @@
  */
 import { execSync } from 'node:child_process';
 
-const BASE = (process.env.FRONTEND_URL || 'https://capstonesoftware.co.uk/engage').replace(/\/$/, '');
+const BASE = (process.env.FRONTEND_URL || 'https://capstonesoftware.co.uk/engage').replace(
+  /\/$/,
+  ''
+);
 const API = `${BASE}/api`;
 const EMAIL = process.env.SMOKE_EMAIL || 'william@capstonesoftware.co.uk';
 const PASSWORD = process.env.SMOKE_PASSWORD || 'Engage2026!';

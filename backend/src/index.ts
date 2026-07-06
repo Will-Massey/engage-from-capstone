@@ -67,7 +67,10 @@ import healthRouter from './routes/health.js';
 import setupRouter from './routes/setup.js';
 import adminRouter from './routes/admin.js';
 import { initEngageSuperadmin } from './lib/superadmin.js';
-import { syncEngageToSuperadmin, isSuperadminSyncConfigured } from './services/superadminSyncService.js';
+import {
+  syncEngageToSuperadmin,
+  isSuperadminSyncConfigured,
+} from './services/superadminSyncService.js';
 
 // Dynamic import for auto-migration to handle cases where module might not be built
 let autoMigrateOnStartup: any = null;
@@ -249,10 +252,20 @@ const corsOptions = {
   },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'X-Tenant-Id', 'X-Request-Id', 'X-CSRF-Token', 'X-Test-Mode', 'X-Test-Mode-Secret'],
+  allowedHeaders: [
+    'Content-Type',
+    'Authorization',
+    'X-Tenant-Id',
+    'X-Request-Id',
+    'X-CSRF-Token',
+    'X-Test-Mode',
+    'X-Test-Mode-Secret',
+  ],
 };
 
-app.use((req, res, next) => cors({ ...corsOptions, origin: corsOptions.origin.bind({ req }) })(req, res, next));
+app.use((req, res, next) =>
+  cors({ ...corsOptions, origin: corsOptions.origin.bind({ req }) })(req, res, next)
+);
 
 // Handle preflight requests explicitly
 app.options('*', (req, res, next) =>
@@ -427,7 +440,7 @@ app.use(
     verify: (req, _res, buf) => {
       (req as express.Request & { rawBody?: Buffer }).rawBody = buf;
     },
-  }),
+  })
 );
 
 // Body parsing — SendGrid webhook needs raw body for signature verification
@@ -517,10 +530,13 @@ app.get('/api/seed-services-public', async (req, res) => {
     // Check if services already exist - fix billingCycle/priceAmount if needed
     const existingCount = await prisma.serviceTemplate.count({ where: { tenantId: tenant.id } });
     if (existingCount > 0) {
-      const servicesToFix = await prisma.serviceTemplate.findMany({ where: { tenantId: tenant.id } });
+      const servicesToFix = await prisma.serviceTemplate.findMany({
+        where: { tenantId: tenant.id },
+      });
       let fixed = 0;
       for (const s of servicesToFix) {
-        const correctBillingCycle = s.defaultFrequency === 'ONE_TIME' ? 'MONTHLY' : (s.defaultFrequency || 'MONTHLY');
+        const correctBillingCycle =
+          s.defaultFrequency === 'ONE_TIME' ? 'MONTHLY' : s.defaultFrequency || 'MONTHLY';
         const correctPrice = s.basePrice || s.priceAmount || 0;
         if (s.billingCycle !== correctBillingCycle || s.priceAmount !== correctPrice) {
           await prisma.serviceTemplate.update({
@@ -533,7 +549,10 @@ app.get('/api/seed-services-public', async (req, res) => {
       res.json({
         success: true,
         data: {
-          message: fixed > 0 ? `Fixed ${fixed} services.` : `Tenant already has ${existingCount} services. No changes made.`,
+          message:
+            fixed > 0
+              ? `Fixed ${fixed} services.`
+              : `Tenant already has ${existingCount} services. No changes made.`,
           servicesCount: existingCount,
           fixed,
         },
@@ -602,8 +621,7 @@ app.get('/api/seed-services-public', async (req, res) => {
       {
         category: 'COMPLIANCE',
         name: 'Confirmation Statement (CS01)',
-        description:
-          'Annual Confirmation Statement filing with Companies House.',
+        description: 'Annual Confirmation Statement filing with Companies House.',
         longDescription:
           "We prepare and file your annual Confirmation Statement (previously the Annual Return), confirming that your company's registered details are accurate and up to date. This includes verification of: registered office address, directors and secretary details, shareholders and share capital, SIC codes, and Persons with Significant Control (PSC) register. If changes are required, we will advise on the necessary filings (e.g., CH01 for director changes, SH01 for allotment of shares) and ensure the Confirmation Statement is submitted within the 14-day filing window.",
         basePrice: 8,
@@ -670,8 +688,7 @@ app.get('/api/seed-services-public', async (req, res) => {
       {
         category: 'TAX',
         name: 'Self Assessment Tax Return',
-        description:
-          'Annual preparation and submission of personal Self Assessment tax returns.',
+        description: 'Annual preparation and submission of personal Self Assessment tax returns.',
         longDescription:
           'We prepare your Self Assessment tax return accurately and on time, ensuring you claim all allowable reliefs and expenses while remaining fully compliant with HMRC. Our service covers: employment income (P60, P11D, P45), self-employment income and expenses, property rental income and capital gains, dividends and investment income, pension contributions and tax relief, student loan repayments, and child benefit charge calculations. We file your return online before the 31 January deadline, calculate your tax liability, and advise on payment on account requirements and any tax planning opportunities.',
         basePrice: 25,
@@ -741,8 +758,7 @@ app.get('/api/seed-services-public', async (req, res) => {
       {
         category: 'TAX',
         name: 'P11D Benefits in Kind',
-        description:
-          'Annual P11D forms preparation and submission for directors and employees.',
+        description: 'Annual P11D forms preparation and submission for directors and employees.',
         longDescription:
           'We prepare and submit P11D forms for each employee or director who has received taxable benefits or reimbursed expenses during the tax year. Our service covers: company cars and fuel benefit calculations, private medical insurance, interest-free and low-interest loans, accommodation benefits, asset transfers, and mileage payments above HMRC approved rates. We also prepare the P11D(b) return, calculate Class 1A National Insurance Contributions, and advise on payrolling of benefits as an alternative to P11D reporting.',
         basePrice: 5,
@@ -1148,18 +1164,24 @@ function scheduleTouchpointEngine() {
 
   // Run once after startup
   setTimeout(() => {
-    runTouchpointEngine().catch((err) => logger.error('Initial touchpoint engine run failed:', err));
+    runTouchpointEngine().catch((err) =>
+      logger.error('Initial touchpoint engine run failed:', err)
+    );
   }, 90_000);
 
   setInterval(() => {
-    runTouchpointEngine().catch((err) => logger.error('Scheduled touchpoint engine run failed:', err));
+    runTouchpointEngine().catch((err) =>
+      logger.error('Scheduled touchpoint engine run failed:', err)
+    );
   }, INTERVAL);
 
   logger.info('✅ Touchpoint engine scheduled (every 15 minutes)');
 }
 
 function scheduleEmailAutomation() {
-  logger.info('📅 Scheduling proposal email automation (unopened 3d, unsigned 7d, expiring 30d)...');
+  logger.info(
+    '📅 Scheduling proposal email automation (unopened 3d, unsigned 7d, expiring 30d)...'
+  );
 
   const INTERVAL = 24 * 60 * 60 * 1000; // daily
 
@@ -1175,8 +1197,7 @@ function scheduleEmailAutomation() {
 }
 
 // Start server (skipped in Jest so supertest can import the app)
-const shouldStartServer =
-  process.env.NODE_ENV !== 'test' && !process.env.JEST_WORKER_ID;
+const shouldStartServer = process.env.NODE_ENV !== 'test' && !process.env.JEST_WORKER_ID;
 
 if (shouldStartServer) {
   app.listen(PORT, () => {

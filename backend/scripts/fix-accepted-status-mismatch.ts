@@ -56,12 +56,10 @@ async function main() {
     });
   }
 
-  const tenantId = (
-    await prisma.proposal.findFirst({
-      where: { id: mismatched[0]!.id },
-      select: { tenantId: true },
-    })
-  )!.tenantId;
+  const tenantId = (await prisma.proposal.findFirst({
+    where: { id: mismatched[0]!.id },
+    select: { tenantId: true },
+  }))!.tenantId;
 
   await prisma.activityLog.create({
     data: {

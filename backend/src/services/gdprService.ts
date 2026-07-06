@@ -268,9 +268,13 @@ export class GDPRService {
     ]);
 
     const accessEvents = activityLogs.filter((l: { action: string }) =>
-      ['USER_LOGIN', 'USER_LOGOUT', 'PROPOSAL_SENT', 'PROPOSAL_ACCEPTED', 'EMAIL_WEBHOOK_EVENT'].includes(
-        l.action,
-      ),
+      [
+        'USER_LOGIN',
+        'USER_LOGOUT',
+        'PROPOSAL_SENT',
+        'PROPOSAL_ACCEPTED',
+        'EMAIL_WEBHOOK_EVENT',
+      ].includes(l.action)
     );
 
     return {

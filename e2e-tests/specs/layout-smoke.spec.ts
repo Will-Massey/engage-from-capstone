@@ -40,7 +40,9 @@ test.describe('Layout UAT — sendit v4.0 UI fixes', () => {
 
     await expect(headerUserName(page)).toHaveText('Admin User');
     await expect(
-      page.locator('[data-testid="app-header"]').or(page.locator('.pr-\\[max\\(1rem\\,env\\(safe-area-inset-right\\)\\)\\]').first())
+      page
+        .locator('[data-testid="app-header"]')
+        .or(page.locator('.pr-\\[max\\(1rem\\,env\\(safe-area-inset-right\\)\\)\\]').first())
     ).toBeVisible();
   });
 
@@ -48,9 +50,7 @@ test.describe('Layout UAT — sendit v4.0 UI fixes', () => {
     await page.setViewportSize({ width: 1280, height: 800 });
     await waitForDashboard(page);
 
-    await page
-      .getByRole('button', { name: /open clara, your engage proposal co-pilot/i })
-      .click();
+    await page.getByRole('button', { name: /open clara, your engage proposal co-pilot/i }).click();
     const panel = aiPanel(page);
     await expect(panel).toBeVisible({ timeout: 15_000 });
 

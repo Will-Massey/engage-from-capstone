@@ -21,7 +21,9 @@ test.describe('AI-native UI surfaces', () => {
     const claraBtn = page.getByRole('button', { name: /clara|assistant|ai/i }).first();
     if (await claraBtn.isVisible().catch(() => false)) {
       await claraBtn.click();
-      await expect(page.getByText(/clara|how can i help/i).first()).toBeVisible({ timeout: 10_000 });
+      await expect(page.getByText(/clara|how can i help/i).first()).toBeVisible({
+        timeout: 10_000,
+      });
     }
     await expectNoErrorToasts(page);
   });
@@ -31,7 +33,9 @@ test.describe('AI-native UI surfaces', () => {
     await page.waitForSelector('[data-testid="client-card"]', { timeout: 30_000 });
     await advanceToProposalServicesStep(page, 'clara');
 
-    await expect(page.getByRole('heading', { name: 'Client context' })).toBeVisible({ timeout: 15_000 });
+    await expect(page.getByRole('heading', { name: 'Client context' })).toBeVisible({
+      timeout: 15_000,
+    });
     await expectNoErrorToasts(page, 3000);
   });
 });

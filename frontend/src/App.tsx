@@ -470,8 +470,11 @@ const AnimatedRoutes = () => {
 
 function App() {
   const { isAuthenticated, setSession, clearAuth, setLoading } = useAuthStore();
-  const { isOpen: isCommandPaletteOpen, close: closeCommandPalette, toggle: toggleCommandPalette } =
-    useCommandPalette();
+  const {
+    isOpen: isCommandPaletteOpen,
+    close: closeCommandPalette,
+    toggle: toggleCommandPalette,
+  } = useCommandPalette();
   const [isShortcutsOpen, setIsShortcutsOpen] = useState(false);
 
   // Restore session from httpOnly cookies via /me (skip on login/register to avoid refresh noise)

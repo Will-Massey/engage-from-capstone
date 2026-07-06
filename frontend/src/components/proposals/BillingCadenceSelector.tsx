@@ -29,9 +29,7 @@ export default function BillingCadenceSelector({
   );
 
   const btnClass =
-    size === 'sm'
-      ? 'px-2 py-0.5 text-[10px] rounded-md'
-      : 'px-2.5 py-1 text-xs rounded-lg';
+    size === 'sm' ? 'px-2 py-0.5 text-[10px] rounded-md' : 'px-2.5 py-1 text-xs rounded-lg';
 
   return (
     <div

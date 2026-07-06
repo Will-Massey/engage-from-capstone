@@ -15,9 +15,7 @@ const CLASSIFY_SYSTEM =
  * Classify free-text decline feedback. Returns null if AI unavailable or parse fails.
  * Never throws — decline flow must succeed without AI.
  */
-export async function classifyDeclineReasonText(
-  freeText: string
-): Promise<DeclineReason | null> {
+export async function classifyDeclineReasonText(freeText: string): Promise<DeclineReason | null> {
   const trimmed = freeText.trim();
   if (!trimmed || !isAiConfigured()) return null;
 

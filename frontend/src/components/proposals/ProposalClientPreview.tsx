@@ -167,15 +167,22 @@ export default function ProposalClientPreview({
           )}
           <div className="min-w-0">
             <p className="text-xs text-slate-500 dark:text-slate-400">On-screen preview</p>
-            <p className="text-sm font-semibold text-slate-900 dark:text-white truncate">{practiceName}</p>
+            <p className="text-sm font-semibold text-slate-900 dark:text-white truncate">
+              {practiceName}
+            </p>
           </div>
         </div>
       </div>
 
-      <div className={`p-4 sm:p-5 space-y-4 ${compact ? '' : 'max-h-[calc(100vh-12rem)] overflow-y-auto'}`}>
+      <div
+        className={`p-4 sm:p-5 space-y-4 ${compact ? '' : 'max-h-[calc(100vh-12rem)] overflow-y-auto'}`}
+      >
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
-            <p className="text-xs uppercase tracking-wide font-semibold" style={{ color: primaryColor }}>
+            <p
+              className="text-xs uppercase tracking-wide font-semibold"
+              style={{ color: primaryColor }}
+            >
               Prepared for
             </p>
             {contact && (
@@ -185,15 +192,22 @@ export default function ProposalClientPreview({
               <p className="text-sm text-slate-700 dark:text-slate-300">{clientName}</p>
             )}
             {!contact && (
-              <p className="text-sm font-medium text-slate-800 dark:text-slate-200 mt-1">{clientName}</p>
+              <p className="text-sm font-medium text-slate-800 dark:text-slate-200 mt-1">
+                {clientName}
+              </p>
             )}
           </div>
           {preparedByName && (
             <div>
-              <p className="text-xs uppercase tracking-wide font-semibold" style={{ color: primaryColor }}>
+              <p
+                className="text-xs uppercase tracking-wide font-semibold"
+                style={{ color: primaryColor }}
+              >
                 Prepared by
               </p>
-              <p className="text-sm font-semibold text-slate-900 dark:text-white mt-1">{preparedByName}</p>
+              <p className="text-sm font-semibold text-slate-900 dark:text-white mt-1">
+                {preparedByName}
+              </p>
               {preparedByTitle && (
                 <p className="text-sm text-slate-600 dark:text-slate-400">{preparedByTitle}</p>
               )}
@@ -207,7 +221,9 @@ export default function ProposalClientPreview({
             {proposalTitle.trim() || 'Proposal title'}
           </h3>
           {validUntilLabel && (
-            <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">Valid until {validUntilLabel}</p>
+            <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+              Valid until {validUntilLabel}
+            </p>
           )}
         </div>
 
@@ -230,7 +246,9 @@ export default function ProposalClientPreview({
             Services
           </h4>
           {services.length === 0 ? (
-            <p className="text-sm text-slate-500 dark:text-slate-400 italic">No services selected yet.</p>
+            <p className="text-sm text-slate-500 dark:text-slate-400 italic">
+              No services selected yet.
+            </p>
           ) : (
             <div className="space-y-2">
               {services.map((service, index) => (
@@ -239,7 +257,9 @@ export default function ProposalClientPreview({
                   className="flex justify-between gap-3 p-3 rounded-lg bg-slate-50 dark:bg-slate-800/40 border border-slate-100 dark:border-slate-700"
                 >
                   <div className="min-w-0 flex-1">
-                    <p className="text-sm font-medium text-slate-900 dark:text-white">{service.name}</p>
+                    <p className="text-sm font-medium text-slate-900 dark:text-white">
+                      {service.name}
+                    </p>
                     {service.description && (
                       <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 line-clamp-2">
                         {service.description}
@@ -263,7 +283,9 @@ export default function ProposalClientPreview({
           <div className="pt-3 border-t border-slate-200 dark:border-slate-700 space-y-2">
             <InvestmentSummaryBands summary={summary} />
             <div className="flex justify-between items-baseline pt-2 border-t border-slate-200 dark:border-slate-600">
-              <span className="text-sm font-medium text-slate-800 dark:text-slate-100">Total (inc. VAT)</span>
+              <span className="text-sm font-medium text-slate-800 dark:text-slate-100">
+                Total (inc. VAT)
+              </span>
               <span className="text-lg font-bold text-slate-900 dark:text-white tabular-nums">
                 {formatCurrency(summary.contractTotalIncVat)}
               </span>

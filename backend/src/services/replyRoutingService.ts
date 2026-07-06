@@ -23,7 +23,7 @@ export interface ReplyTriageResult {
 export async function triageClientReply(
   tenantId: string,
   userId: string | undefined,
-  input: ReplyTriageInput,
+  input: ReplyTriageInput
 ): Promise<ReplyTriageResult> {
   const prompt = `You are Clara, an AI assistant for a UK accountancy practice using Engage proposals.
 
@@ -45,10 +45,13 @@ Return JSON only:
 
   const raw = await chatCompletion(
     [
-      { role: 'system', content: 'You help UK accountants respond to client proposal replies. Use UK English.' },
+      {
+        role: 'system',
+        content: 'You help UK accountants respond to client proposal replies. Use UK English.',
+      },
       { role: 'user', content: prompt },
     ],
-    { temperature: 0.4, maxTokens: 1200 },
+    { temperature: 0.4, maxTokens: 1200 }
   );
 
   const parsed = parseJsonResponse<ReplyTriageResult>(raw.content);

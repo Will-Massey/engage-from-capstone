@@ -6,15 +6,18 @@ const TOKEN_BUFFER_MS = 60_000;
 let cached: { accessToken: string; expiresAt: number } | null = null;
 
 export function getBusinessApiUrl(): string {
-  return (process.env.REVOLUT_BUSINESS_API_URL || 'https://sandbox-b2b.revolut.com').replace(/\/$/, '');
+  return (process.env.REVOLUT_BUSINESS_API_URL || 'https://sandbox-b2b.revolut.com').replace(
+    /\/$/,
+    ''
+  );
 }
 
 export function isBusinessAuthConfigured(): boolean {
   if (process.env.REVOLUT_BUSINESS_API_KEY) return true;
   return Boolean(
     process.env.REVOLUT_BUSINESS_CLIENT_ID &&
-      process.env.REVOLUT_BUSINESS_REFRESH_TOKEN &&
-      resolvePrivateKey(),
+    process.env.REVOLUT_BUSINESS_REFRESH_TOKEN &&
+    resolvePrivateKey()
   );
 }
 
@@ -37,7 +40,7 @@ function signClientAssertion(clientId: string, privateKey: string): string {
       exp: now + 300,
     },
     privateKey,
-    { algorithm: 'RS256' },
+    { algorithm: 'RS256' }
   );
 }
 

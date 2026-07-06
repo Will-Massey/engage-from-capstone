@@ -18,13 +18,15 @@ export const COVER_LETTER_STYLES: CoverLetterStyle[] = [
   {
     tone: 'PROFESSIONAL',
     name: 'Traditional & Formal',
-    description: 'Serious, established practice tone. Ideal for audit, corporate, regulated clients.',
+    description:
+      'Serious, established practice tone. Ideal for audit, corporate, regulated clients.',
     preview: 'Dear … — measured, precise, credentials-first',
   },
   {
     tone: 'FRIENDLY',
     name: 'Warm & Personable',
-    description: 'Relationship-led and conversational. Perfect for owner-managed businesses and SMEs.',
+    description:
+      'Relationship-led and conversational. Perfect for owner-managed businesses and SMEs.',
     preview: 'Hi … — friendly, reassuring, conversation-first',
   },
   {
@@ -101,7 +103,9 @@ export function generateCoverLetterForTone(params: {
   const company = companyName?.trim() || clientName;
   const servicesSummary = buildServicesSummary(services);
   const when = formatDiscussionDate(discussionDate);
-  const senderLine = senderPosition ? `${senderName}\n\n${senderPosition}, ${practiceName}` : `${senderName}\n\n${practiceName}`;
+  const senderLine = senderPosition
+    ? `${senderName}\n\n${senderPosition}, ${practiceName}`
+    : `${senderName}\n\n${practiceName}`;
 
   if (tone === 'PROFESSIONAL') {
     return `Dear ${clientName},
@@ -170,4 +174,3 @@ export function generateDefaultCoverLetter(params: {
 export function getStyleByTone(tone: CoverLetterTone): CoverLetterStyle | undefined {
   return COVER_LETTER_STYLES.find((s) => s.tone === tone);
 }
-

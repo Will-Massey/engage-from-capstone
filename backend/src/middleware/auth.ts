@@ -4,7 +4,11 @@ import crypto from 'crypto';
 import { prisma } from '../config/database.js';
 import { UserRole } from '@prisma/client';
 import { hasFullAccess } from '../constants/roles.js';
-import { isCsrfTokenRegistered, isCsrfTokenRegisteredAsync, registerCsrfToken } from '../utils/csrfStore.js';
+import {
+  isCsrfTokenRegistered,
+  isCsrfTokenRegisteredAsync,
+  registerCsrfToken,
+} from '../utils/csrfStore.js';
 
 const JWT_SECRET = process.env.JWT_SECRET;
 const JWT_REFRESH_SECRET = process.env.JWT_REFRESH_SECRET || JWT_SECRET;

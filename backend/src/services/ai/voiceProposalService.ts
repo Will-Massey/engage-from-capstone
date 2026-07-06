@@ -34,13 +34,27 @@ export async function draftProposalFromVoice(
 
   // cheap basic structured draft for simple input (or when not configured)
   if (!isAiConfigured() || transcript.length < 40) {
-    const basicTitle = transcript.split(/[.,\n]/)[0].slice(0, 55).trim() || 'Proposal from voice';
-    await logAiUsage(tenantId, userId, 'voice_proposal', { clientId: params.clientId, cheap: true });
+    const basicTitle =
+      transcript
+        .split(/[.,\n]/)[0]
+        .slice(0, 55)
+        .trim() || 'Proposal from voice';
+    await logAiUsage(tenantId, userId, 'voice_proposal', {
+      clientId: params.clientId,
+      cheap: true,
+    });
     return {
       title: basicTitle,
       coverLetterTone: 'PROFESSIONAL',
       coverLetter: `Thank you. We outline the proposed ${basicTitle.toLowerCase()} below.`,
-      suggestedServices: [{ name: 'Core accountancy services', billingFrequency: 'MONTHLY', displayPrice: undefined, rationale: 'Derived from voice input' }],
+      suggestedServices: [
+        {
+          name: 'Core accountancy services',
+          billingFrequency: 'MONTHLY',
+          displayPrice: undefined,
+          rationale: 'Derived from voice input',
+        },
+      ],
       clarifyingQuestions: ['Please confirm key details or billing?'],
     };
   }

@@ -133,14 +133,20 @@ const ShareProposalDialog = ({
     <div className="fixed inset-0 z-50 overflow-y-auto">
       <div className="flex items-center justify-center min-h-screen px-4">
         {/* Backdrop */}
-        <div className="fixed inset-0 bg-slate-900/60 dark:bg-slate-950/70 backdrop-blur-sm" onClick={onClose} />
+        <div
+          className="fixed inset-0 bg-slate-900/60 dark:bg-slate-950/70 backdrop-blur-sm"
+          onClick={onClose}
+        />
 
         {/* Dialog */}
         <div className="relative bg-white dark:bg-slate-800 rounded-xl shadow-xl max-w-lg w-full border border-slate-200 dark:border-slate-700">
           {/* Header */}
           <div className="flex items-center justify-between p-6 border-b border-slate-200 dark:border-slate-700">
             <h3 className="text-lg font-semibold text-slate-900 dark:text-white">Share Proposal</h3>
-            <button onClick={onClose} className="text-slate-400 dark:text-slate-500 hover:text-slate-500 dark:hover:text-slate-300">
+            <button
+              onClick={onClose}
+              className="text-slate-400 dark:text-slate-500 hover:text-slate-500 dark:hover:text-slate-300"
+            >
               <XMarkIcon className="h-6 w-6" />
             </button>
           </div>
@@ -177,14 +183,27 @@ const ShareProposalDialog = ({
               <div className="space-y-4">
                 {showPreview && proposalPreview && !shareData && (
                   <div className="rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/60 p-4 text-left">
-                    <p className="text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wide">Preview before sharing</p>
-                    <h4 className="mt-2 font-semibold text-slate-900 dark:text-white">{proposalPreview.title}</h4>
-                    <p className="text-sm text-slate-600 dark:text-slate-300">Ref: {proposalPreview.reference}</p>
-                    <p className="text-sm text-slate-600 dark:text-slate-300">Client: {proposalPreview.clientName}</p>
-                    <p className="text-sm text-slate-600 dark:text-slate-300 mt-1">
-                      Total: £{Number(proposalPreview.total).toLocaleString('en-GB', { minimumFractionDigits: 2 })}
+                    <p className="text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wide">
+                      Preview before sharing
                     </p>
-                    <p className="text-xs text-slate-500 dark:text-slate-400 mt-2">Status: {proposalPreview.status}</p>
+                    <h4 className="mt-2 font-semibold text-slate-900 dark:text-white">
+                      {proposalPreview.title}
+                    </h4>
+                    <p className="text-sm text-slate-600 dark:text-slate-300">
+                      Ref: {proposalPreview.reference}
+                    </p>
+                    <p className="text-sm text-slate-600 dark:text-slate-300">
+                      Client: {proposalPreview.clientName}
+                    </p>
+                    <p className="text-sm text-slate-600 dark:text-slate-300 mt-1">
+                      Total: £
+                      {Number(proposalPreview.total).toLocaleString('en-GB', {
+                        minimumFractionDigits: 2,
+                      })}
+                    </p>
+                    <p className="text-xs text-slate-500 dark:text-slate-400 mt-2">
+                      Status: {proposalPreview.status}
+                    </p>
                   </div>
                 )}
                 {!shareData ? (
@@ -252,7 +271,9 @@ const ShareProposalDialog = ({
             ) : (
               <div className="space-y-4">
                 <div>
-                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">To</label>
+                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">
+                    To
+                  </label>
                   <input
                     type="email"
                     value={emailData.to}
@@ -262,7 +283,9 @@ const ShareProposalDialog = ({
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">CC (optional)</label>
+                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">
+                    CC (optional)
+                  </label>
                   <input
                     type="text"
                     value={emailData.cc}
@@ -273,7 +296,9 @@ const ShareProposalDialog = ({
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">Subject</label>
+                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">
+                    Subject
+                  </label>
                   <input
                     type="text"
                     value={emailData.subject}
@@ -303,7 +328,10 @@ const ShareProposalDialog = ({
                     onChange={(e) => setEmailData({ ...emailData, includePdf: e.target.checked })}
                     className="h-4 w-4 text-primary-600 rounded"
                   />
-                  <label htmlFor="includePdf" className="ml-2 text-sm text-slate-700 dark:text-slate-300">
+                  <label
+                    htmlFor="includePdf"
+                    className="ml-2 text-sm text-slate-700 dark:text-slate-300"
+                  >
                     Include PDF attachment
                   </label>
                 </div>

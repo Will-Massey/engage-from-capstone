@@ -81,23 +81,24 @@ const Clients = () => {
   const getLifecycleBadge = (stage?: string) => {
     if (!stage) return null;
     const label = stage.replace(/_/g, ' ');
-    const cls =
-      /AML|RECEIVED|COMPLETE|PROPOSAL_ACCEPTED/.test(stage)
-        ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300'
-        : stage === 'PROSPECT'
+    const cls = /AML|RECEIVED|COMPLETE|PROPOSAL_ACCEPTED/.test(stage)
+      ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300'
+      : stage === 'PROSPECT'
         ? 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300'
         : /INFO/.test(stage)
-        ? 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300'
-        : /ENGAGEMENT/.test(stage)
-        ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300'
-        : /ONBOARD|KICKOFF/.test(stage)
-        ? 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300'
-        : /MILESTONE|REVIEW/.test(stage)
-        ? 'bg-indigo-100 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-300'
-        : 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300';
+          ? 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300'
+          : /ENGAGEMENT/.test(stage)
+            ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300'
+            : /ONBOARD|KICKOFF/.test(stage)
+              ? 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300'
+              : /MILESTONE|REVIEW/.test(stage)
+                ? 'bg-indigo-100 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-300'
+                : 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300';
 
     return (
-      <span className={`ml-2 inline-flex items-center px-2 py-px rounded-full text-[10px] font-medium ${cls}`}>
+      <span
+        className={`ml-2 inline-flex items-center px-2 py-px rounded-full text-[10px] font-medium ${cls}`}
+      >
         {label}
       </span>
     );
@@ -157,21 +158,30 @@ const Clients = () => {
           { label: 'Onboarding', value: 'KICKOFF_SENT' },
           { label: 'Live', value: 'ONGOING' },
         ].map((opt) => {
-          const isActive = opt.value === '' ? !selectedStage : selectedStage === opt.value || (opt.value === 'ATTENTION' && ['AML_PENDING','INFO_REQUESTED'].includes(selectedStage));
+          const isActive =
+            opt.value === ''
+              ? !selectedStage
+              : selectedStage === opt.value ||
+                (opt.value === 'ATTENTION' &&
+                  ['AML_PENDING', 'INFO_REQUESTED'].includes(selectedStage));
           return (
             <button
               key={opt.value || 'all'}
               onClick={() => {
                 if (opt.value === 'ATTENTION') {
                   // toggle attention group - pick first or clear
-                  setStageFilter(selectedStage && ['AML_PENDING','INFO_REQUESTED'].includes(selectedStage) ? '' : 'AML_PENDING');
+                  setStageFilter(
+                    selectedStage && ['AML_PENDING', 'INFO_REQUESTED'].includes(selectedStage)
+                      ? ''
+                      : 'AML_PENDING'
+                  );
                 } else {
                   setStageFilter(opt.value);
                 }
               }}
               className={`px-3 py-1 rounded-full text-xs font-medium border transition-all ${
-                isActive 
-                  ? 'bg-primary-600 text-white border-primary-600 shadow-sm' 
+                isActive
+                  ? 'bg-primary-600 text-white border-primary-600 shadow-sm'
                   : 'bg-white/70 dark:bg-slate-800 border-slate-200 dark:border-slate-700 hover:border-primary-300 text-slate-600 dark:text-slate-300'
               }`}
             >
@@ -180,7 +190,12 @@ const Clients = () => {
           );
         })}
         {selectedStage && (
-          <button onClick={() => setStageFilter('')} className="text-xs px-2 py-1 text-slate-500 hover:text-slate-700">Clear filter</button>
+          <button
+            onClick={() => setStageFilter('')}
+            className="text-xs px-2 py-1 text-slate-500 hover:text-slate-700"
+          >
+            Clear filter
+          </button>
         )}
       </div>
 
@@ -204,7 +219,9 @@ const Clients = () => {
                   </div>
                   <div className="ml-3">
                     <div className="flex items-center">
-                      <h3 className="text-sm font-semibold text-slate-900 dark:text-white">{client.name}</h3>
+                      <h3 className="text-sm font-semibold text-slate-900 dark:text-white">
+                        {client.name}
+                      </h3>
                       {getLifecycleBadge(client.lifecycleStage)}
                     </div>
                     <p className="text-xs text-slate-500">

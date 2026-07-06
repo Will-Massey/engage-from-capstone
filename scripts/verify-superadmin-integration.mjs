@@ -11,8 +11,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const ENGAGE_HEALTH =
-  process.env.ENGAGE_HEALTH_URL || 'https://capstonesoftware.co.uk/engage/ping';
+const ENGAGE_HEALTH = process.env.ENGAGE_HEALTH_URL || 'https://capstonesoftware.co.uk/engage/ping';
 
 function loadEngageEnv() {
   const jsonPath = path.resolve(__dirname, '../../capstone-superadmin/scripts/engage-env.json');

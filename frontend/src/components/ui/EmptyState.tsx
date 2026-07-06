@@ -30,7 +30,9 @@ export default function EmptyState({
         </div>
       )}
       <h3 className="text-lg font-semibold text-slate-900 dark:text-white">{title}</h3>
-      <p className="mt-2 text-sm text-slate-600 dark:text-slate-400 leading-relaxed">{description}</p>
+      <p className="mt-2 text-sm text-slate-600 dark:text-slate-400 leading-relaxed">
+        {description}
+      </p>
       <div className="mt-6 flex flex-col sm:flex-row gap-3 justify-center">
         {actionLabel && actionTo && (
           <Link to={actionTo} className="btn-primary text-sm">

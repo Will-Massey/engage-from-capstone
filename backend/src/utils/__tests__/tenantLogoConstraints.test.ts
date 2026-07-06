@@ -1,7 +1,4 @@
-import {
-  TENANT_LOGO_MAX_BYTES,
-  validateTenantLogoForStorage,
-} from '../tenantLogoConstraints.js';
+import { TENANT_LOGO_MAX_BYTES, validateTenantLogoForStorage } from '../tenantLogoConstraints.js';
 
 describe('tenantLogoConstraints', () => {
   it('accepts empty logo', () => {

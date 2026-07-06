@@ -12,43 +12,44 @@ Engage already has a foundation for electronic signatures. This section document
 
 ### ✅ Already implemented
 
-| Capability | Location |
-|------------|----------|
-| Canvas signature pad (mouse + touch) | `frontend/src/components/signature/SignaturePad.tsx` |
-| Public signing flow | `frontend/src/pages/public/ProposalView.tsx` |
-| Signer name + role capture | `ProposalView.tsx` → `signedBy`, `signedByRole` |
-| Device fingerprint (client-side) | platform, screen, timezone, language, cores, touch |
-| Server-side IP + User-Agent | `proposals-share.ts` → `recordElectronicSignature` |
-| Persistent signature record | `ProposalSignature` model in Prisma |
-| PNG file storage + base64 fallback | `proposalSharingService.ts` → `saveSignaturePng` |
-| Proposal status → ACCEPTED on sign | Updates `signature`, `acceptedBy`, `acceptedByIp`, `signatoryPosition` |
-| Acceptance email to practice | `emailService.sendAcceptanceNotification` with signed PDF |
-| View tracking (opens, IP, duration) | `ProposalView` model + public view endpoint |
+| Capability                           | Location                                                               |
+| ------------------------------------ | ---------------------------------------------------------------------- |
+| Canvas signature pad (mouse + touch) | `frontend/src/components/signature/SignaturePad.tsx`                   |
+| Public signing flow                  | `frontend/src/pages/public/ProposalView.tsx`                           |
+| Signer name + role capture           | `ProposalView.tsx` → `signedBy`, `signedByRole`                        |
+| Device fingerprint (client-side)     | platform, screen, timezone, language, cores, touch                     |
+| Server-side IP + User-Agent          | `proposals-share.ts` → `recordElectronicSignature`                     |
+| Persistent signature record          | `ProposalSignature` model in Prisma                                    |
+| PNG file storage + base64 fallback   | `proposalSharingService.ts` → `saveSignaturePng`                       |
+| Proposal status → ACCEPTED on sign   | Updates `signature`, `acceptedBy`, `acceptedByIp`, `signatoryPosition` |
+| Acceptance email to practice         | `emailService.sendAcceptanceNotification` with signed PDF              |
+| View tracking (opens, IP, duration)  | `ProposalView` model + public view endpoint                            |
 
 ### ❌ Gaps for world-class authenticity
 
-| Gap | Risk | Priority |
-|-----|------|----------|
-| `geoLocation` always `null` | Weak location proof | P1 |
-| No signer **email** captured or verified | Identity not tied to a contact | P1 |
-| No **document hash** at signing time | Cannot prove proposal wasn't altered post-sign | P1 |
-| No **signature certificate / audit PDF** | Hard to defend in dispute | P1 |
-| Staff in-app accept bypasses forensic flow | Inconsistent evidence | P1 |
-| `agreementVersion` hardcoded (`PRO-2024-001`) | Terms drift not tracked | P2 |
-| Forensic data not shown to practice in UI | Staff can't verify authenticity | P1 |
-| PDF does not embed signature image + audit block | Incomplete signed artefact | P1 |
-| No explicit **consent statement** with timestamp | Weaker e-sign validity | P2 |
-| No signature **type** label (simple electronic) | UK transparency gap | P2 |
-| No tamper-evident **audit log export** | Compliance / ICO requests | P2 |
-| Signatures stored on local filesystem | Lost on Render redeploy | P1 |
+| Gap                                              | Risk                                           | Priority |
+| ------------------------------------------------ | ---------------------------------------------- | -------- |
+| `geoLocation` always `null`                      | Weak location proof                            | P1       |
+| No signer **email** captured or verified         | Identity not tied to a contact                 | P1       |
+| No **document hash** at signing time             | Cannot prove proposal wasn't altered post-sign | P1       |
+| No **signature certificate / audit PDF**         | Hard to defend in dispute                      | P1       |
+| Staff in-app accept bypasses forensic flow       | Inconsistent evidence                          | P1       |
+| `agreementVersion` hardcoded (`PRO-2024-001`)    | Terms drift not tracked                        | P2       |
+| Forensic data not shown to practice in UI        | Staff can't verify authenticity                | P1       |
+| PDF does not embed signature image + audit block | Incomplete signed artefact                     | P1       |
+| No explicit **consent statement** with timestamp | Weaker e-sign validity                         | P2       |
+| No signature **type** label (simple electronic)  | UK transparency gap                            | P2       |
+| No tamper-evident **audit log export**           | Compliance / ICO requests                      | P2       |
+| Signatures stored on local filesystem            | Lost on Render redeploy                        | P1       |
 
 ---
 
 ## Phase 1 — Core Reliability (P0)
 
-*Fix what's broken before adding polish. Users must trust numbers and saves.*
+_Fix what's broken before adding polish. Users must trust numbers and saves._
 
 ### 1.1 Pricing engine unification
+
 - [ ] Fix `loadServices` ONE_TIME → MONTHLY bug in `ProposalBuilder.tsx`
 - [ ] Fix POST `lineTotal` to use `netTotal` (discount applied) in `proposals.ts`
 - [ ] Wire `pricingEngine_v2.ts` as single backend source of truth; remove v1 from PUT
@@ -57,6 +58,7 @@ Engage already has a foundation for electronic signatures. This section document
 - [ ] Add Vitest tests for `ProposalBuilder` summary bands
 
 ### 1.2 Proposal save & edit
+
 - [ ] Implement `/proposals/:id/edit` route (or remove dead link in `Proposals.tsx`)
 - [ ] Full line-item edit on existing proposals (services, pricing, VAT, frequency)
 - [ ] PUT schema accepts all v2 line fields; validate with Zod
@@ -64,6 +66,7 @@ Engage already has a foundation for electronic signatures. This section document
 - [ ] E2E: create → save → reload → totals match
 
 ### 1.3 Totals & display clarity
+
 - [ ] Format all currency to 2dp via `formatCurrency` everywhere
 - [ ] Split "Total investment" into labelled bands (Monthly / Quarterly / Annual / One-off)
 - [ ] Show **annual equivalent** as secondary figure where helpful
@@ -73,9 +76,10 @@ Engage already has a foundation for electronic signatures. This section document
 
 ## Phase 2 — Proposal Builder Excellence (P1)
 
-*Make building a proposal feel as fast as sending an email.*
+_Make building a proposal feel as fast as sending an email._
 
 ### 2.1 Builder UX
+
 - [ ] Keyboard-first service search (type to filter catalog)
 - [ ] Drag-to-reorder selected services
 - [ ] Inline edit without modal where possible
@@ -86,12 +90,14 @@ Engage already has a foundation for electronic signatures. This section document
 - [ ] Unsaved changes warning on navigate away
 
 ### 2.2 Cover letter & terms
+
 - [ ] Rich cover letter editor (variables: `{clientName}`, `{directorFirstName}`, `{practiceName}`, `{validUntil}`)
 - [ ] Per-tenant default cover letters (already seeded — expose in Settings)
 - [ ] UK engagement letter blocks (AML, professional indemnity, complaints, GDPR)
 - [ ] Terms version tracking linked to `agreementVersion` on sign
 
 ### 2.3 Service catalog
+
 - [ ] ServiceDetail page (currently placeholder)
 - [ ] Bulk import services from CSV
 - [ ] Service categories with icons
@@ -101,9 +107,10 @@ Engage already has a foundation for electronic signatures. This section document
 
 ## Phase 3 — E-Signature & Legal Authenticity (P1) ⭐
 
-*Recipient signature with identifying data to prove authenticity — your explicit requirement.*
+_Recipient signature with identifying data to prove authenticity — your explicit requirement._
 
 ### 3.1 Signer identity capture
+
 - [ ] Require signer **email** on public sign form (pre-fill from `client.contactEmail`, editable with reason if different)
 - [ ] Optional: email OTP verification before signature is accepted
 - [ ] Capture signer **legal name** vs display name (Companies House director name match hint)
@@ -111,6 +118,7 @@ Engage already has a foundation for electronic signatures. This section document
 - [ ] Checkbox: "I confirm I am authorised to sign on behalf of {client.name}"
 
 ### 3.2 Forensic evidence (expand)
+
 - [ ] IP geolocation enrichment (city, country — MaxMind or ip-api; store on `geoLocation`)
 - [ ] Server timestamp (UTC) + client clock offset if detectable
 - [ ] `documentHash` — SHA-256 of proposal content JSON at moment of signing
@@ -120,6 +128,7 @@ Engage already has a foundation for electronic signatures. This section document
 - [ ] Add `signatureType: SIMPLE_ELECTRONIC` enum for UK transparency
 
 ### 3.3 Signature certificate & audit artefact
+
 - [ ] Generate **Signature Certificate PDF** page appended to signed proposal:
   - Signer name, role, email
   - Signed at (UTC + Europe/London)
@@ -135,18 +144,21 @@ Engage already has a foundation for electronic signatures. This section document
   - Download raw audit JSON (for legal hold)
 
 ### 3.4 Storage & integrity
+
 - [ ] Move signature PNGs to durable storage (S3 / Render disk / Cloudflare R2) — not ephemeral container FS
 - [ ] Immutable audit log entry on sign (`ActivityLog` type `PROPOSAL_SIGNED` with full payload hash)
 - [ ] Prevent re-signing after ACCEPTED (already enforced — add idempotency key)
 - [ ] Staff in-app sign must use same `recordElectronicSignature` path (not lightweight `acceptProposal`)
 
 ### 3.5 Client signing UX
+
 - [ ] Mobile-optimised signature pad (full-width, larger touch targets)
 - [ ] Clear step flow: Review → Terms → Identity → Sign → Confirmation
 - [ ] Post-sign success page with reference number + "copy for your records" PDF download
 - [ ] Decline option with reason (status → DECLINED, notify practice)
 
 ### 3.6 UK compliance notes (implementation targets)
+
 - [ ] Label as "Simple electronic signature" per UK eIDAS / Electronic Communications Act 2000
 - [ ] GDPR: retention policy for IP/device data documented in privacy notice
 - [ ] ICO-ready data export includes signature audit for subject access requests
@@ -157,6 +169,7 @@ Engage already has a foundation for electronic signatures. This section document
 ## Phase 4 — Send, Track & Client Journey (P1)
 
 ### 4.1 Distribution
+
 - [ ] Copy client link (fixed — verify across browsers) ✅ mostly done
 - [ ] Send via practice email (SMTP/OAuth) with branded template
 - [ ] Send via link only (no email) — manual paste workflow
@@ -164,6 +177,7 @@ Engage already has a foundation for electronic signatures. This section document
 - [ ] Password-protect sensitive proposals (optional PIN)
 
 ### 4.2 Status & tracking
+
 - [ ] Status pipeline visible: Draft → Sent → Viewed → Signed / Declined / Expired
 - [ ] Open count + last opened timestamp on ProposalDetail ✅ mostly done
 - [ ] Email open tracking (pixel or link) — optional
@@ -171,6 +185,7 @@ Engage already has a foundation for electronic signatures. This section document
 - [ ] Activity timeline on ProposalDetail (all events chronologically)
 
 ### 4.3 Client portal
+
 - [ ] Client portal polish (`/portal/:token`) — match main app theme
 - [ ] List all proposals for client with status badges
 - [ ] Download signed PDF from portal
@@ -252,12 +267,12 @@ Week 5+    Phase 5–8 as capacity allows
 
 ## Quick reference — key files
 
-| Area | Path |
-|------|------|
-| Public sign UI | `frontend/src/pages/public/ProposalView.tsx` |
-| Signature pad | `frontend/src/components/signature/SignaturePad.tsx` |
-| Sign API | `backend/src/routes/proposals-share.ts` |
-| Record signature | `backend/src/services/proposalSharingService.ts` |
-| Signature model | `backend/prisma/schema.prisma` → `ProposalSignature` |
-| Staff detail / audit display | `frontend/src/pages/proposals/ProposalDetail.tsx` |
-| Signed PDF | `backend/src/services/pdfGenerator.ts` |
+| Area                         | Path                                                 |
+| ---------------------------- | ---------------------------------------------------- |
+| Public sign UI               | `frontend/src/pages/public/ProposalView.tsx`         |
+| Signature pad                | `frontend/src/components/signature/SignaturePad.tsx` |
+| Sign API                     | `backend/src/routes/proposals-share.ts`              |
+| Record signature             | `backend/src/services/proposalSharingService.ts`     |
+| Signature model              | `backend/prisma/schema.prisma` → `ProposalSignature` |
+| Staff detail / audit display | `frontend/src/pages/proposals/ProposalDetail.tsx`    |
+| Signed PDF                   | `backend/src/services/pdfGenerator.ts`               |

@@ -24,8 +24,7 @@ function cookieOptions(): {
   const cookiePath = process.env.AUTH_COOKIE_PATH || '/';
   const frontendUrl = process.env.FRONTEND_URL || '';
   const apiUrl = process.env.API_URL || '';
-  const crossSite =
-    isProduction && frontendUrl && apiUrl && hostsDiffer(frontendUrl, apiUrl);
+  const crossSite = isProduction && frontendUrl && apiUrl && hostsDiffer(frontendUrl, apiUrl);
 
   const opts = {
     httpOnly: true,

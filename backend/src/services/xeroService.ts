@@ -119,7 +119,9 @@ export async function getAuthenticatedXeroSession(tenantId: string): Promise<Xer
         ? new Date(refreshedObj.expires_at * 1000).toISOString()
         : new Date(Date.now() + (refreshedObj.expires_in || 1800) * 1000).toISOString(),
       scope: refreshedObj.scope
-        ? String(refreshedObj.scope).split(/[\s,]+/).filter(Boolean)
+        ? String(refreshedObj.scope)
+            .split(/[\s,]+/)
+            .filter(Boolean)
         : settings.scope,
     });
     await xero.setTokenSet(refreshed);
@@ -215,9 +217,7 @@ export function buildProposalSummaryNote(proposal: {
     )
     .join('\n');
 
-  const accepted = proposal.acceptedAt
-    ? proposal.acceptedAt.toISOString().slice(0, 10)
-    : 'n/a';
+  const accepted = proposal.acceptedAt ? proposal.acceptedAt.toISOString().slice(0, 10) : 'n/a';
 
   return [
     `[Engage] Accepted proposal ${proposal.reference}`,
@@ -352,10 +352,7 @@ async function resolveOrCreateContact(
         },
       ],
     };
-    const created = await xeroClient.accountingApi.updateOrCreateContacts(
-      xeroTenantId,
-      contacts
-    );
+    const created = await xeroClient.accountingApi.updateOrCreateContacts(xeroTenantId, contacts);
     contactId = created.body.contacts?.[0]?.contactID;
   }
 
@@ -430,8 +427,7 @@ export async function pushAcceptedProposalToXero(
     message: string;
   };
 }> {
-  const revenueAccount =
-    session?.settings.defaultRevenueAccountCode || DEFAULT_REVENUE_ACCOUNT;
+  const revenueAccount = session?.settings.defaultRevenueAccountCode || DEFAULT_REVENUE_ACCOUNT;
   const { groups, oneTime } = groupRecurringServices(proposal.services);
 
   if (!session) {
@@ -551,7 +547,7 @@ export async function pushAcceptedProposalToXero(
       implemented: true,
       contactId,
       updated: contactUpdated,
-      error: contactUpdated ? undefined : errors.find((e) => e.includes('Contact note')) ,
+      error: contactUpdated ? undefined : errors.find((e) => e.includes('Contact note')),
     },
     repeatingInvoice: {
       implemented: true,

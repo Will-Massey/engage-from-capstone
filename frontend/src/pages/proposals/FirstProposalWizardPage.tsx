@@ -9,10 +9,6 @@ export default function FirstProposalWizardPage() {
   const navigate = useNavigate();
 
   return (
-    <FirstProposalWizard
-      open
-      onClose={() => navigate('/')}
-      onSent={() => navigate('/proposals')}
-    />
+    <FirstProposalWizard open onClose={() => navigate('/')} onSent={() => navigate('/proposals')} />
   );
 }

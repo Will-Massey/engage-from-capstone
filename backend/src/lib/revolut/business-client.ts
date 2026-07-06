@@ -3,7 +3,11 @@
  * @see https://developer.revolut.com/docs/api/business
  */
 
-import { getBusinessAccessToken, getBusinessApiUrl, isBusinessAuthConfigured } from './business-auth.js';
+import {
+  getBusinessAccessToken,
+  getBusinessApiUrl,
+  isBusinessAuthConfigured,
+} from './business-auth.js';
 
 const BUSINESS_API_VERSION = '2024-05-01';
 
@@ -13,7 +17,7 @@ export function isBusinessApiConfigured(): boolean {
 
 async function businessFetch<T = Record<string, unknown>>(
   path: string,
-  { method = 'GET', body }: { method?: string; body?: unknown } = {},
+  { method = 'GET', body }: { method?: string; body?: unknown } = {}
 ): Promise<T> {
   const token = await getBusinessAccessToken();
   const base = getBusinessApiUrl();
@@ -140,8 +144,9 @@ export async function createCounterpartyFromBankDetails({
 export async function listBusinessAccounts(): Promise<
   Array<{ id: string; name?: string; currency?: string; balance?: number }>
 > {
-  const data = await businessFetch<Array<{ id: string; name?: string; currency?: string; balance?: number }>>(
-    '/accounts',
-  );
+  const data =
+    await businessFetch<Array<{ id: string; name?: string; currency?: string; balance?: number }>>(
+      '/accounts'
+    );
   return Array.isArray(data) ? data : [];
 }

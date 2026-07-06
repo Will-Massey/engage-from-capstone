@@ -7,7 +7,10 @@
 import { loadEngagementClausePackages } from './loadEngagementClauses.js';
 import { clauseMatchesRegulatoryBody } from '../utils/professionalBodyClauses.js';
 
-export { REGULATORY_BODY_CLAUSE_TAGS, professionalBodyToClauseTag } from '../utils/professionalBodyClauses.js';
+export {
+  REGULATORY_BODY_CLAUSE_TAGS,
+  professionalBodyToClauseTag,
+} from '../utils/professionalBodyClauses.js';
 
 export interface EngagementClause {
   id: string;

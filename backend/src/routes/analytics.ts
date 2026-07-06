@@ -23,8 +23,18 @@ router.get(
     const ninetyDaysAgo = new Date(now.getTime() - 90 * 24 * 60 * 60 * 1000);
 
     const monthNames = [
-      'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
-      'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
+      'Jan',
+      'Feb',
+      'Mar',
+      'Apr',
+      'May',
+      'Jun',
+      'Jul',
+      'Aug',
+      'Sep',
+      'Oct',
+      'Nov',
+      'Dec',
     ];
     const sixMonthsAgo = new Date(now.getFullYear(), now.getMonth() - 5, 1);
     const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
@@ -210,7 +220,8 @@ router.get(
     }));
 
     const [funnelSent, acceptedCount] = conversionRate;
-    const conversionRatePercent = funnelSent > 0 ? Math.round((acceptedCount / funnelSent) * 100) : 0;
+    const conversionRatePercent =
+      funnelSent > 0 ? Math.round((acceptedCount / funnelSent) * 100) : 0;
     const viewRate = sentCount > 0 ? Math.round((viewedCount / sentCount) * 100) : 0;
     const signRate = viewedCount > 0 ? Math.round((signedCount / viewedCount) * 100) : 0;
 
@@ -518,9 +529,7 @@ router.get(
         conversionRates: {
           sentToViewed:
             actionable > 0
-              ? Math.round(
-                  ((viewedCount + wonCount + lostTotal + expiredCount) / actionable) * 100
-                )
+              ? Math.round(((viewedCount + wonCount + lostTotal + expiredCount) / actionable) * 100)
               : 0,
           viewedToAccepted:
             viewedCount + wonCount > 0
@@ -656,14 +665,15 @@ router.get(
       acceptedProposals.filter((p) => p.viewedAt).length > 0
         ? Math.round(
             acceptedProposals
-              .filter((p): p is typeof p & { viewedAt: Date; sentAt: Date } => !!p.viewedAt && !!p.sentAt)
+              .filter(
+                (p): p is typeof p & { viewedAt: Date; sentAt: Date } => !!p.viewedAt && !!p.sentAt
+              )
               .reduce((sum, p) => {
                 const days =
                   (new Date(p.viewedAt).getTime() - new Date(p.sentAt).getTime()) /
                   (1000 * 60 * 60 * 24);
                 return sum + days;
-              }, 0) /
-              acceptedProposals.filter((p) => p.viewedAt).length
+              }, 0) / acceptedProposals.filter((p) => p.viewedAt).length
           )
         : 0;
 
@@ -725,18 +735,13 @@ router.get(
     const expiring: AttentionItem[] = [];
 
     for (const p of proposals) {
-      const daysSinceSent = Math.floor(
-        (now - new Date(p.sentAt!).getTime()) / 86400000
-      );
-      const daysUntilExpiry = Math.floor(
-        (new Date(p.validUntil).getTime() - now) / 86400000
-      );
+      const daysSinceSent = Math.floor((now - new Date(p.sentAt!).getTime()) / 86400000);
+      const daysUntilExpiry = Math.floor((new Date(p.validUntil).getTime() - now) / 86400000);
       const viewCount = p.views.length;
 
       const isStuck = daysSinceSent > 14 && p.status === 'SENT';
       const isNoViews = viewCount === 0 && p.status === 'SENT' && daysSinceSent > 3;
-      const isExpiring =
-        daysUntilExpiry >= 0 && daysUntilExpiry <= 7 && p.status !== 'ACCEPTED';
+      const isExpiring = daysUntilExpiry >= 0 && daysUntilExpiry <= 7 && p.status !== 'ACCEPTED';
 
       if (!isStuck && !isNoViews && !isExpiring) continue;
 
@@ -814,7 +819,11 @@ router.get(
     const end = req.query.endDate ? new Date(String(req.query.endDate)) : defaultEnd;
 
     if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) {
-      throw new ApiError('INVALID_DATE_RANGE', 'startDate and endDate must be valid ISO dates', 400);
+      throw new ApiError(
+        'INVALID_DATE_RANGE',
+        'startDate and endDate must be valid ISO dates',
+        400
+      );
     }
 
     const proposals = await prisma.proposal.findMany({
@@ -853,9 +862,7 @@ router.get(
         const history = JSON.parse(proposal.emailHistory || '[]') as Array<Record<string, unknown>>;
         emailOpened = history.some(
           (entry) =>
-            entry.event === 'opened' ||
-            entry.deliveryStatus === 'opened' ||
-            entry.opened === true,
+            entry.event === 'opened' || entry.deliveryStatus === 'opened' || entry.opened === true
         );
       } catch {
         emailOpened = false;
@@ -887,7 +894,7 @@ router.get(
         ],
       },
     });
-  }),
+  })
 );
 
 /** GET /api/analytics/win-loss — monthly win/loss synthesis */
@@ -897,7 +904,7 @@ router.get(
     const monthsBack = Math.min(12, Math.max(1, Number(req.query.months) || 1));
     const data = await synthesiseWinLoss(req.tenantId!, monthsBack);
     res.json({ success: true, data });
-  }),
+  })
 );
 
 /** GET /api/analytics/fee-benchmarks — anonymised cross-practice fee bands */
@@ -917,7 +924,7 @@ router.get(
         optedIn,
       },
     });
-  }),
+  })
 );
 
 export default router;

@@ -188,7 +188,9 @@ async function sendChaseEmail(
       return false;
     }
 
-    const emailHistory = JSON.parse(proposal.emailHistory || '[]') as Array<Record<string, unknown>>;
+    const emailHistory = JSON.parse(proposal.emailHistory || '[]') as Array<
+      Record<string, unknown>
+    >;
     emailHistory.push({
       type: 'CHASE',
       chaseDay,

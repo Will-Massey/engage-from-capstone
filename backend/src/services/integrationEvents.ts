@@ -154,8 +154,7 @@ function parseWebhookConfig(settingsJson: string): {
     };
     const url = settings.webhookUrl || settings.integrations?.webhookUrl;
     const rawFormat = settings.integrations?.webhookFormat;
-    const format =
-      rawFormat && WEBHOOK_FORMATS.includes(rawFormat) ? rawFormat : 'default';
+    const format = rawFormat && WEBHOOK_FORMATS.includes(rawFormat) ? rawFormat : 'default';
     if (typeof url === 'string' && url.trim().startsWith('https://')) {
       return { webhookUrl: url.trim(), format };
     }
@@ -311,7 +310,9 @@ function webhookEventHeader(body: FormattedWebhookPayload): string {
   return 'unknown';
 }
 
-async function loadProposalEventContext(proposalId: string): Promise<IntegrationEventPayload | null> {
+async function loadProposalEventContext(
+  proposalId: string
+): Promise<IntegrationEventPayload | null> {
   const proposal = await prisma.proposal.findUnique({
     where: { id: proposalId },
     include: {

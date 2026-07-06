@@ -382,9 +382,7 @@ export function AiAssistantTrigger({ className = '' }: { className?: string }) {
     >
       <SparklesIcon className="h-4 w-4" />
       <span>{AI_COPILOT.name}</span>
-      <span
-        className={`h-2 w-2 rounded-full ${configured ? 'bg-emerald-500' : 'bg-amber-500'}`}
-      />
+      <span className={`h-2 w-2 rounded-full ${configured ? 'bg-emerald-500' : 'bg-amber-500'}`} />
     </button>
   );
 }

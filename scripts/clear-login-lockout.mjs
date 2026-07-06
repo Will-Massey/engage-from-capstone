@@ -10,7 +10,9 @@ const SETUP_KEY = process.env.SETUP_SECRET_KEY || '';
 
 async function main() {
   if (!SETUP_KEY) {
-    console.log('No SETUP_SECRET_KEY — restart the backend service to clear in-memory rate limits.');
+    console.log(
+      'No SETUP_SECRET_KEY — restart the backend service to clear in-memory rate limits.'
+    );
     console.log('Render: https://dashboard.render.com/web/srv-d6qkjlua2pns73a2r1fg');
     console.log('Or wait 15–30 minutes for limits to expire.');
     process.exit(0);

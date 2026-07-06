@@ -7,7 +7,9 @@ import {
   ChevronUpIcon,
 } from '@heroicons/react/24/outline';
 import { AI_COPILOT } from '../../config/aiCopilot';
-import ClaraServiceSuggestionCards, { type ClaraServiceSuggestion } from './ClaraServiceSuggestionCards';
+import ClaraServiceSuggestionCards, {
+  type ClaraServiceSuggestion,
+} from './ClaraServiceSuggestionCards';
 
 export interface AutoFitServiceSuggestion {
   serviceId: string;
@@ -133,7 +135,11 @@ export default function AutoFitBanner({
     if (!result) return null;
     switch (key) {
       case 'title':
-        return <p className="text-sm font-medium text-slate-800 dark:text-slate-100">{result.suggestedTitle}</p>;
+        return (
+          <p className="text-sm font-medium text-slate-800 dark:text-slate-100">
+            {result.suggestedTitle}
+          </p>
+        );
       case 'services':
         if (perServiceMode && pendingServiceSuggestions.length > 0) {
           return (
@@ -169,7 +175,8 @@ export default function AutoFitBanner({
           <ul className="text-xs space-y-1.5 text-slate-600 dark:text-slate-300">
             {result.services.map((s) => (
               <li key={s.serviceId}>
-                <strong>{s.name}</strong> — £{s.displayPrice.toLocaleString('en-GB')} ({s.billingFrequency.replace(/_/g, ' ').toLowerCase()})
+                <strong>{s.name}</strong> — £{s.displayPrice.toLocaleString('en-GB')} (
+                {s.billingFrequency.replace(/_/g, ' ').toLowerCase()})
                 <span className="block text-slate-500">{s.rationale}</span>
               </li>
             ))}
@@ -204,7 +211,9 @@ export default function AutoFitBanner({
       <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
         <div className="flex items-start gap-3 min-w-0">
           <div className="p-2 rounded-xl bg-violet-500/15 border border-violet-400/25 shrink-0">
-            <SparklesIcon className={`h-5 w-5 text-violet-600 dark:text-violet-400 ${loading ? 'animate-pulse' : ''}`} />
+            <SparklesIcon
+              className={`h-5 w-5 text-violet-600 dark:text-violet-400 ${loading ? 'animate-pulse' : ''}`}
+            />
           </div>
           <div className="min-w-0">
             <h3 className="text-sm font-semibold text-slate-900 dark:text-white">
@@ -220,7 +229,11 @@ export default function AutoFitBanner({
         <div className="flex flex-wrap items-center gap-2 shrink-0">
           {!loading && result && visibleSections.length > 0 && (
             <>
-              <button type="button" onClick={onAcceptAll} className="btn-primary text-xs py-1.5 px-3 inline-flex items-center gap-1">
+              <button
+                type="button"
+                onClick={onAcceptAll}
+                className="btn-primary text-xs py-1.5 px-3 inline-flex items-center gap-1"
+              >
                 <CheckIcon className="h-4 w-4" />
                 Accept all
               </button>
@@ -247,7 +260,11 @@ export default function AutoFitBanner({
             className="p-1.5 rounded-lg text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800"
             aria-label={expanded ? 'Collapse suggestions' : 'Expand suggestions'}
           >
-            {expanded ? <ChevronUpIcon className="h-4 w-4" /> : <ChevronDownIcon className="h-4 w-4" />}
+            {expanded ? (
+              <ChevronUpIcon className="h-4 w-4" />
+            ) : (
+              <ChevronDownIcon className="h-4 w-4" />
+            )}
           </button>
           <button
             type="button"
@@ -304,9 +321,14 @@ export default function AutoFitBanner({
         <div className="mt-4 rounded-xl border border-violet-200 dark:border-violet-800 bg-white/80 dark:bg-slate-900/60 p-4">
           <div className="flex items-center justify-between mb-3">
             <p className="text-xs font-medium text-violet-700 dark:text-violet-300">
-              Section {reviewIndex + 1} of {visibleSections.length}: {SECTION_LABELS[currentSection]}
+              Section {reviewIndex + 1} of {visibleSections.length}:{' '}
+              {SECTION_LABELS[currentSection]}
             </p>
-            <button type="button" onClick={() => setReviewMode(false)} className="text-xs text-slate-500 hover:text-slate-700">
+            <button
+              type="button"
+              onClick={() => setReviewMode(false)}
+              className="text-xs text-slate-500 hover:text-slate-700"
+            >
               Exit review
             </button>
           </div>

@@ -48,7 +48,6 @@ function ensureXeroConfigured() {
 }
 
 async function handlePushProposal(tenantId: string, proposalId: string) {
-
   try {
     const result = await pushProposalToXero(tenantId, proposalId);
 
@@ -229,7 +228,10 @@ router.post(
       }
 
       if (dryRun) {
-        created.push({ name: name || email, contactEmail: email || `${xeroContactId}@import.local` });
+        created.push({
+          name: name || email,
+          contactEmail: email || `${xeroContactId}@import.local`,
+        });
         continue;
       }
 

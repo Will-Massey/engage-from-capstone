@@ -20,7 +20,7 @@ export interface WinLossSynthesis {
 
 export async function synthesiseWinLoss(
   tenantId: string,
-  monthsBack = 1,
+  monthsBack = 1
 ): Promise<WinLossSynthesis> {
   const now = new Date();
   const from = new Date(now.getFullYear(), now.getMonth() - monthsBack, 1);
@@ -40,17 +40,13 @@ export async function synthesiseWinLoss(
 
   const won = proposals.filter((p) => p.status === 'ACCEPTED');
   const lost = proposals.filter((p) => p.status === 'DECLINED');
-  const stalled = proposals.filter((p) =>
-    ['SENT', 'VIEWED', 'EXPIRED'].includes(p.status),
-  );
+  const stalled = proposals.filter((p) => ['SENT', 'VIEWED', 'EXPIRED'].includes(p.status));
 
   const decided = won.length + lost.length;
   const winRate = decided > 0 ? Math.round((won.length / decided) * 100) : 0;
 
   const avg = (items: typeof proposals) =>
-    items.length
-      ? items.reduce((s, p) => s + (p.total || 0), 0) / items.length
-      : 0;
+    items.length ? items.reduce((s, p) => s + (p.total || 0), 0) / items.length : 0;
 
   const serviceCounts = new Map<string, number>();
   for (const p of won) {
@@ -94,13 +90,17 @@ export async function synthesiseWinLoss(
   if (winRate >= 60) {
     insights.push(`Strong month — ${winRate}% win rate across decided proposals.`);
   } else if (winRate > 0 && winRate < 40) {
-    insights.push(`Win rate at ${winRate}% — review pricing and follow-up timing on stalled deals.`);
+    insights.push(
+      `Win rate at ${winRate}% — review pricing and follow-up timing on stalled deals.`
+    );
   }
   if (stalled.length > won.length) {
     insights.push(`${stalled.length} proposals still open — consider Clara reminder automation.`);
   }
   if (topWonServices[0]) {
-    insights.push(`Top winning service: ${topWonServices[0].name} (${topWonServices[0].count} accepted).`);
+    insights.push(
+      `Top winning service: ${topWonServices[0].name} (${topWonServices[0].count} accepted).`
+    );
   }
   if (!insights.length) {
     insights.push('Not enough proposal activity this period for detailed insights yet.');

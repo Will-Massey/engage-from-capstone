@@ -43,7 +43,10 @@ const STATUS_META: Record<
 };
 
 const OVERALL_LABELS = {
-  operational: { text: 'All systems operational', colour: 'text-emerald-700 bg-emerald-50 border-emerald-200' },
+  operational: {
+    text: 'All systems operational',
+    colour: 'text-emerald-700 bg-emerald-50 border-emerald-200',
+  },
   degraded: { text: 'Partial degradation', colour: 'text-amber-800 bg-amber-50 border-amber-200' },
   major_outage: { text: 'Major outage', colour: 'text-red-800 bg-red-50 border-red-200' },
 };
@@ -107,7 +110,9 @@ export default function Status() {
           </div>
         ) : data ? (
           <div className="space-y-4">
-            <div className={`rounded-xl border px-5 py-4 text-center font-medium ${overallStyle.colour}`}>
+            <div
+              className={`rounded-xl border px-5 py-4 text-center font-medium ${overallStyle.colour}`}
+            >
               {overallStyle.text}
             </div>
 
@@ -122,7 +127,9 @@ export default function Status() {
                       <p className="font-medium text-slate-900 dark:text-white capitalize">
                         {name.replace(/([A-Z])/g, ' $1').trim()}
                       </p>
-                      <p className="text-sm text-slate-600 dark:text-slate-400">{component.detail}</p>
+                      <p className="text-sm text-slate-600 dark:text-slate-400">
+                        {component.detail}
+                      </p>
                     </div>
                     <span className="text-xs font-medium text-slate-500 uppercase tracking-wide">
                       {meta.label}

@@ -52,9 +52,7 @@ const DashboardLayout = () => {
             scrolled ? 'shadow-lg' : ''
           }`}
           style={{
-            background: scrolled
-              ? undefined
-              : 'transparent',
+            background: scrolled ? undefined : 'transparent',
             backdropFilter: scrolled ? 'blur(20px)' : 'none',
             WebkitBackdropFilter: scrolled ? 'blur(20px)' : 'none',
           }}

@@ -54,9 +54,12 @@ test.describe('Build smoke — proposal templates', () => {
     }
 
     // Template applies after client selected — services step should show pre-filled line
-    await page.waitForSelector('[data-testid="available-service-row"], [data-testid="proposal-title-input"]', {
-      timeout: 45_000,
-    });
+    await page.waitForSelector(
+      '[data-testid="available-service-row"], [data-testid="proposal-title-input"]',
+      {
+        timeout: 45_000,
+      }
+    );
     await expectNoErrorToasts(page, 4000);
 
     const titleInput = page.locator('[data-testid="proposal-title-input"]');

@@ -141,7 +141,10 @@ const CreateClient = ({ onSuccess, onCancel }: CreateClientProps = {}) => {
   }, [watchCompanyType]);
 
   const chErrorMessage = (error: unknown): string => {
-    const err = error as { response?: { data?: { error?: { message?: string; code?: string } } }; message?: string };
+    const err = error as {
+      response?: { data?: { error?: { message?: string; code?: string } } };
+      message?: string;
+    };
     const code = err.response?.data?.error?.code;
     const message = err.response?.data?.error?.message;
     if (code === 'NOT_CONFIGURED') {

@@ -63,9 +63,7 @@ export const DEFAULT_PRICING_TIERS: PricingTier[] = [
   },
 ];
 
-export function parseProposalCustomFields(
-  raw: string | null | undefined
-): ProposalCustomFields {
+export function parseProposalCustomFields(raw: string | null | undefined): ProposalCustomFields {
   if (!raw || raw === '{}') return {};
   try {
     const parsed = JSON.parse(raw) as ProposalCustomFields;

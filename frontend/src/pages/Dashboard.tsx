@@ -135,9 +135,7 @@ const Dashboard = () => {
       const timeout = (promise: Promise<any>, ms: number) =>
         Promise.race([
           promise,
-          new Promise((_, reject) =>
-            setTimeout(() => reject(new Error('Request timed out')), ms)
-          ),
+          new Promise((_, reject) => setTimeout(() => reject(new Error('Request timed out')), ms)),
         ]);
 
       const [proposalsRes, clientsRes, dashboardRes] = await Promise.all([
@@ -169,8 +167,7 @@ const Dashboard = () => {
 
       if (dash) {
         setChartData({
-          revenueData:
-            dash.revenueData?.length > 0 ? dash.revenueData : defaultRevenueData,
+          revenueData: dash.revenueData?.length > 0 ? dash.revenueData : defaultRevenueData,
           proposalStatusData:
             dash.proposalStatusData?.length > 0
               ? dash.proposalStatusData
@@ -183,11 +180,18 @@ const Dashboard = () => {
 
       // Fetch clients needing attention (new automated lifecycle feature)
       try {
-        const clientsRes = (await timeout(apiClient.getClients({ limit: 100 }) as Promise<any>, 10000)) as any;
+        const clientsRes = (await timeout(
+          apiClient.getClients({ limit: 100 }) as Promise<any>,
+          10000
+        )) as any;
         const attentionStages = ['AML_PENDING', 'INFO_REQUESTED', 'ENGAGEMENT_LETTER_SENT'];
-        const needing = (clientsRes.data || []).filter((c: any) => attentionStages.includes(c.lifecycleStage));
+        const needing = (clientsRes.data || []).filter((c: any) =>
+          attentionStages.includes(c.lifecycleStage)
+        );
         setAttentionClients(needing.slice(0, 8));
-      } catch { /* non-critical dashboard widget — ignore */ }
+      } catch {
+        /* non-critical dashboard widget — ignore */
+      }
 
       try {
         const sentCountRes = (await timeout(
@@ -244,7 +248,9 @@ const Dashboard = () => {
           })
           .slice(0, 8);
         setRenewalProposals(expiring);
-      } catch { /* non-critical dashboard widget — ignore */ }
+      } catch {
+        /* non-critical dashboard widget — ignore */
+      }
     } catch (error) {
       // Error handled by UI - will use default empty data
     } finally {
@@ -313,7 +319,9 @@ const Dashboard = () => {
       {sentProposalCount === 0 && (
         <div className="rounded-2xl border border-violet-200/80 dark:border-violet-800/60 bg-gradient-to-r from-violet-50/90 via-white to-indigo-50/70 dark:from-violet-950/40 dark:via-slate-900/50 dark:to-indigo-950/30 p-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
           <div>
-            <p className="text-sm font-semibold text-slate-900 dark:text-white">Ready to send your first proposal?</p>
+            <p className="text-sm font-semibold text-slate-900 dark:text-white">
+              Ready to send your first proposal?
+            </p>
             <p className="text-xs text-slate-600 dark:text-slate-400 mt-0.5">
               The guided wizard walks you from client to sent email in five steps.
             </p>
@@ -424,13 +432,19 @@ const Dashboard = () => {
             <div>
               <div className="font-semibold">Automated client journeys are running</div>
               <p className="text-sm text-slate-600 dark:text-slate-400 mt-0.5">
-                Proposals that get signed now trigger a beautiful sequence of emails and reminders. Visit any client’s <span className="font-medium">Lifecycle</span> tab to see progress and take action.
+                Proposals that get signed now trigger a beautiful sequence of emails and reminders.
+                Visit any client’s <span className="font-medium">Lifecycle</span> tab to see
+                progress and take action.
               </p>
             </div>
           </div>
           <div className="flex gap-2">
-            <Link to="/clients" className="btn-secondary text-sm">View clients</Link>
-            <Link to="/settings?tab=automation" className="btn-primary text-sm">Manage automation</Link>
+            <Link to="/clients" className="btn-secondary text-sm">
+              View clients
+            </Link>
+            <Link to="/settings?tab=automation" className="btn-primary text-sm">
+              Manage automation
+            </Link>
           </div>
         </div>
       </div>
@@ -442,9 +456,13 @@ const Dashboard = () => {
             <div className="flex items-center gap-2">
               <BellIcon className="h-5 w-5 text-amber-500" />
               <h2 className="font-semibold text-lg">Clients needing attention</h2>
-              <span className="text-xs px-2 py-0.5 rounded-full bg-amber-100 text-amber-700 dark:bg-amber-900/40">{attentionClients.length}</span>
+              <span className="text-xs px-2 py-0.5 rounded-full bg-amber-100 text-amber-700 dark:bg-amber-900/40">
+                {attentionClients.length}
+              </span>
             </div>
-            <Link to="/clients" className="text-sm text-primary-600 hover:underline">View all clients</Link>
+            <Link to="/clients" className="text-sm text-primary-600 hover:underline">
+              View all clients
+            </Link>
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
             {attentionClients.map((client: any) => (
@@ -454,14 +472,23 @@ const Dashboard = () => {
                 className="group flex items-center justify-between rounded-2xl border border-slate-200 dark:border-slate-700 p-4 hover:border-amber-300 hover:bg-amber-50/40 dark:hover:bg-amber-950/10 transition-all"
               >
                 <div>
-                  <div className="font-medium text-sm group-hover:text-primary-600">{client.name}</div>
-                  <div className="text-xs text-slate-500 mt-0.5">{client.lifecycleStage?.replace(/_/g, ' ')}</div>
+                  <div className="font-medium text-sm group-hover:text-primary-600">
+                    {client.name}
+                  </div>
+                  <div className="text-xs text-slate-500 mt-0.5">
+                    {client.lifecycleStage?.replace(/_/g, ' ')}
+                  </div>
                 </div>
-                <div className="text-amber-600 opacity-70 group-hover:opacity-100 transition">→</div>
+                <div className="text-amber-600 opacity-70 group-hover:opacity-100 transition">
+                  →
+                </div>
               </Link>
             ))}
           </div>
-          <p className="mt-3 text-xs text-slate-500">These clients are in stages that usually require action or have pending automated touchpoints.</p>
+          <p className="mt-3 text-xs text-slate-500">
+            These clients are in stages that usually require action or have pending automated
+            touchpoints.
+          </p>
         </div>
       )}
 
@@ -511,8 +538,8 @@ const Dashboard = () => {
             <div className="ml-4">
               <h3 className="text-lg font-semibold">MTD ITSA Compliance</h3>
               <p className="mt-1 text-blue-100">
-                You have <strong>{stats.mtditsaClients} clients</strong> who need to maintain
-                Making Tax Digital compliance. Review your clients and ensure they're up to date.
+                You have <strong>{stats.mtditsaClients} clients</strong> who need to maintain Making
+                Tax Digital compliance. Review your clients and ensure they're up to date.
               </p>
               <Link
                 to="/clients"

@@ -44,7 +44,10 @@ export default function ClaraAttentionQueue() {
 
   if (loading) {
     return (
-      <div className="glass-tile p-6 border border-violet-200 dark:border-violet-900/50 animate-pulse" aria-busy="true">
+      <div
+        className="glass-tile p-6 border border-violet-200 dark:border-violet-900/50 animate-pulse"
+        aria-busy="true"
+      >
         <div className="flex items-center gap-2 mb-4">
           <div className="h-5 w-5 rounded bg-violet-200 dark:bg-violet-800" />
           <div className="h-5 w-48 rounded bg-violet-100 dark:bg-violet-900/40" />
@@ -81,7 +84,14 @@ export default function ClaraAttentionQueue() {
             <p className="text-xs text-slate-500 dark:text-slate-400">
               {items.length} proposal{items.length === 1 ? '' : 's'} need your attention
               {generatedAt && (
-                <span> · updated {new Date(generatedAt).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}</span>
+                <span>
+                  {' '}
+                  · updated{' '}
+                  {new Date(generatedAt).toLocaleTimeString('en-GB', {
+                    hour: '2-digit',
+                    minute: '2-digit',
+                  })}
+                </span>
               )}
             </p>
           </div>
@@ -109,19 +119,25 @@ export default function ClaraAttentionQueue() {
             className="group flex flex-col sm:flex-row sm:items-center gap-3 rounded-xl border border-slate-200 dark:border-slate-700 p-4 hover:border-violet-300 hover:bg-violet-50/40 dark:hover:bg-violet-950/20 transition-all"
           >
             <div className="flex items-start gap-3 flex-1 min-w-0">
-              <ExclamationTriangleIcon className={`h-5 w-5 shrink-0 mt-0.5 ${scoreColour(item.priorityScore)}`} />
+              <ExclamationTriangleIcon
+                className={`h-5 w-5 shrink-0 mt-0.5 ${scoreColour(item.priorityScore)}`}
+              />
               <div className="min-w-0">
                 <div className="flex flex-wrap items-center gap-2">
                   <span className="font-medium text-sm text-slate-900 dark:text-white group-hover:text-violet-700 dark:group-hover:text-violet-300">
                     {item.clientName}
                   </span>
                   <span className="text-xs text-slate-500">{item.reference}</span>
-                  <span className={`text-xs font-bold tabular-nums ${scoreColour(item.priorityScore)}`}>
+                  <span
+                    className={`text-xs font-bold tabular-nums ${scoreColour(item.priorityScore)}`}
+                  >
                     {item.priorityScore}
                   </span>
                 </div>
                 <p className="text-sm text-slate-700 dark:text-slate-200 mt-1">{item.narrative}</p>
-                <p className="text-xs text-violet-600 dark:text-violet-400 mt-1">{item.recommendedAction}</p>
+                <p className="text-xs text-violet-600 dark:text-violet-400 mt-1">
+                  {item.recommendedAction}
+                </p>
               </div>
             </div>
             <span className="text-violet-600 opacity-70 group-hover:opacity-100 transition shrink-0 text-sm">

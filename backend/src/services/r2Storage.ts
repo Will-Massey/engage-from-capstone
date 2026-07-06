@@ -43,15 +43,13 @@ export async function r2PutObject(key: string, body: Buffer, contentType: string
       Key: key,
       Body: body,
       ContentType: contentType,
-    }),
+    })
   );
   logger.info(`R2 object saved: ${key}`);
 }
 
 export async function r2GetObject(key: string): Promise<Buffer> {
-  const res = await getClient().send(
-    new GetObjectCommand({ Bucket: bucket(), Key: key }),
-  );
+  const res = await getClient().send(new GetObjectCommand({ Bucket: bucket(), Key: key }));
   if (!res.Body) throw new Error('Empty R2 response');
   const chunks: Uint8Array[] = [];
   for await (const chunk of res.Body as AsyncIterable<Uint8Array>) {
@@ -62,9 +60,7 @@ export async function r2GetObject(key: string): Promise<Buffer> {
 
 export async function r2DeleteObject(key: string): Promise<void> {
   try {
-    await getClient().send(
-      new DeleteObjectCommand({ Bucket: bucket(), Key: key }),
-    );
+    await getClient().send(new DeleteObjectCommand({ Bucket: bucket(), Key: key }));
     logger.info(`R2 object deleted: ${key}`);
   } catch (err) {
     logger.warn(`R2 delete failed for ${key}:`, err);

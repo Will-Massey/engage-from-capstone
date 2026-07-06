@@ -127,7 +127,9 @@ export const TwoFactorSetup: React.FC = () => {
       <div className="max-w-lg mx-auto space-y-8">
         <div className="text-center">
           <ShieldCheckIcon className="mx-auto h-12 w-12 text-primary-600" />
-          <h1 className="mt-4 text-2xl font-bold text-slate-900">Set up two-factor authentication</h1>
+          <h1 className="mt-4 text-2xl font-bold text-slate-900">
+            Set up two-factor authentication
+          </h1>
           <p className="mt-2 text-slate-600">
             Use an authenticator app such as Google Authenticator or Microsoft Authenticator.
           </p>
@@ -136,7 +138,9 @@ export const TwoFactorSetup: React.FC = () => {
         {step === 'scan' && (
           <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6 space-y-6">
             <div className="text-center">
-              <p className="text-sm text-slate-600 mb-4">Scan this QR code with your authenticator app:</p>
+              <p className="text-sm text-slate-600 mb-4">
+                Scan this QR code with your authenticator app:
+              </p>
               {qrCodeUrl && (
                 <img
                   src={qrCodeUrl}
@@ -159,11 +163,7 @@ export const TwoFactorSetup: React.FC = () => {
                   </span>
                 ))}
               </div>
-              <Button
-                variant="secondary"
-                onClick={handleCopyBackupCodes}
-                className="mt-4 w-full"
-              >
+              <Button variant="secondary" onClick={handleCopyBackupCodes} className="mt-4 w-full">
                 <ClipboardDocumentIcon className="w-4 h-4 mr-2" />
                 {codesCopied ? 'Copied!' : 'Copy backup codes'}
               </Button>

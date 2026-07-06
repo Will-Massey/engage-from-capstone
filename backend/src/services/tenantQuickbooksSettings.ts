@@ -25,8 +25,8 @@ export interface TenantSettingsJson {
 export function isQuickBooksOAuthConfigured(): boolean {
   return Boolean(
     process.env.QUICKBOOKS_CLIENT_ID &&
-      process.env.QUICKBOOKS_CLIENT_SECRET &&
-      process.env.QUICKBOOKS_REDIRECT_URI
+    process.env.QUICKBOOKS_CLIENT_SECRET &&
+    process.env.QUICKBOOKS_REDIRECT_URI
   );
 }
 
@@ -107,9 +107,7 @@ export async function clearTenantQuickBooksSettings(tenantId: string): Promise<v
   });
 }
 
-export function quickbooksStatusFromSettings(
-  raw: TenantQuickBooksSettings | null
-): {
+export function quickbooksStatusFromSettings(raw: TenantQuickBooksSettings | null): {
   connected: boolean;
   configured: boolean;
   realmId?: string;

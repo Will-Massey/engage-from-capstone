@@ -14,15 +14,15 @@ Engage is **feature-rich and differentiated on AI + UK compliance**, but **not y
 
 ## 1. Current product snapshot
 
-| Dimension | State (Jul 2026) |
-|-----------|------------------|
-| **Core loop** | Client → services → pricing → PDF → share → e-sign → acceptance email |
-| **AI (Clara)** | Streaming cover/engagement/send emails, auto-fit, CH brief, onboarding, analysis/tweaks, follow-ups — **production xAI configured** |
-| **UK moat** | MTD ITSA assessment, engagement clause library, Companies House, VAT/frequency pricing |
-| **Billing (SaaS)** | Tiers defined: Starter £49 / Professional £99 / Enterprise £249 — Revolut + Stripe scaffold |
-| **Platform fee** | 2.5% on client proposal payments (configurable via `ENGAGE_PLATFORM_FEE_BPS`) |
-| **Deploy** | `engage.capstonesoftware.co.uk` — backend on Render; superadmin wiring in progress |
-| **Known weaknesses** | Pricing v1/v2 drift, signature storage ephemeral, forgot-password missing, proposal edit gaps, dashboard metrics partly mock |
+| Dimension            | State (Jul 2026)                                                                                                                    |
+| -------------------- | ----------------------------------------------------------------------------------------------------------------------------------- |
+| **Core loop**        | Client → services → pricing → PDF → share → e-sign → acceptance email                                                               |
+| **AI (Clara)**       | Streaming cover/engagement/send emails, auto-fit, CH brief, onboarding, analysis/tweaks, follow-ups — **production xAI configured** |
+| **UK moat**          | MTD ITSA assessment, engagement clause library, Companies House, VAT/frequency pricing                                              |
+| **Billing (SaaS)**   | Tiers defined: Starter £49 / Professional £99 / Enterprise £249 — Revolut + Stripe scaffold                                         |
+| **Platform fee**     | 2.5% on client proposal payments (configurable via `ENGAGE_PLATFORM_FEE_BPS`)                                                       |
+| **Deploy**           | `engage.capstonesoftware.co.uk` — backend on Render; superadmin wiring in progress                                                  |
+| **Known weaknesses** | Pricing v1/v2 drift, signature storage ephemeral, forgot-password missing, proposal edit gaps, dashboard metrics partly mock        |
 
 ---
 
@@ -30,11 +30,11 @@ Engage is **feature-rich and differentiated on AI + UK compliance**, but **not y
 
 ### 2.1 Engage current pricing (configured in codebase)
 
-| Tier | Monthly (GBP) | Users | Clients | Proposals | Positioning |
-|------|---------------|-------|---------|-----------|-------------|
-| **Starter** | £49 | 3 | 50 | 100/mo | Small practice |
-| **Professional** | £99 | 10 | 500 | Unlimited | Growing practice — **Clara should live here** |
-| **Enterprise** | £249 | Unlimited | Unlimited | Unlimited | Large firm / white-label |
+| Tier             | Monthly (GBP) | Users     | Clients   | Proposals | Positioning                                   |
+| ---------------- | ------------- | --------- | --------- | --------- | --------------------------------------------- |
+| **Starter**      | £49           | 3         | 50        | 100/mo    | Small practice                                |
+| **Professional** | £99           | 10        | 500       | Unlimited | Growing practice — **Clara should live here** |
+| **Enterprise**   | £249          | Unlimited | Unlimited | Unlimited | Large firm / white-label                      |
 
 - **Trial:** Not codified as a fixed day count in tiers — recommend **14 days, no card** (match Ignition/TaxClarity family).
 - **Annual:** Not implemented — recommend **15% discount** (2 months free).
@@ -44,45 +44,45 @@ Engage is **feature-rich and differentiated on AI + UK compliance**, but **not y
 
 > Figures are indicative from public positioning and industry reports (2025–2026). **Verify live before publishing marketing pages** — several competitor sites block automated price extraction.
 
-| Product | Type | Indicative pricing | What you get |
-|---------|------|-------------------|--------------|
-| **Ignition** | Proposal + **billing + payments** | ~£79–£250+/mo (tiered; enterprise custom) | Proposals, recurring billing, client payments, workflows — market leader globally |
-| **GoProposal** | UK proposal specialist | ~£39–£79/mo | Fast UK engagement letters, pricing tools — **less AI** |
-| **TaxDome** | Full practice OS | ~£40–£75 **per user**/mo | Proposals one module among PM, docs, billing |
-| **PandaDoc / Proposify** | Generic proposals | ~£15–£49 **per user**/mo | Templates, e-sign — **not UK compliance-native** |
-| **Pitchly** | Enterprise content | Contact sales | Data-driven proposals for large firms |
-| **Capstone TaxClarity** (sibling) | AI research SaaS | £49 / £99 / £249 | Same tier ladder — family consistency |
+| Product                           | Type                              | Indicative pricing                        | What you get                                                                      |
+| --------------------------------- | --------------------------------- | ----------------------------------------- | --------------------------------------------------------------------------------- |
+| **Ignition**                      | Proposal + **billing + payments** | ~£79–£250+/mo (tiered; enterprise custom) | Proposals, recurring billing, client payments, workflows — market leader globally |
+| **GoProposal**                    | UK proposal specialist            | ~£39–£79/mo                               | Fast UK engagement letters, pricing tools — **less AI**                           |
+| **TaxDome**                       | Full practice OS                  | ~£40–£75 **per user**/mo                  | Proposals one module among PM, docs, billing                                      |
+| **PandaDoc / Proposify**          | Generic proposals                 | ~£15–£49 **per user**/mo                  | Templates, e-sign — **not UK compliance-native**                                  |
+| **Pitchly**                       | Enterprise content                | Contact sales                             | Data-driven proposals for large firms                                             |
+| **Capstone TaxClarity** (sibling) | AI research SaaS                  | £49 / £99 / £249                          | Same tier ladder — family consistency                                             |
 
 ### 2.3 Value comparison
 
-| Capability | Engage | Ignition | GoProposal |
-|------------|--------|----------|------------|
-| Sub-5-min proposal build | ✅ Claim + AI path | ✅ Mature | ✅ Core |
-| UK engagement letter clauses | ✅ Library | ✅ | ✅ Strong |
-| MTD ITSA automation | ✅ **Differentiator** | Partial | Partial |
-| AI-written client emails | ✅ **Clara — differentiator** | Limited | ❌ |
-| Companies House client brief | ✅ | ❌ | ❌ |
-| Post-sign recurring billing | ❌ Gap | ✅ Core | Limited |
-| E-sign legal forensics | ⚠️ Partial | ✅ Mature | ✅ |
-| Practice management | ❌ (AccountFlow sibling) | ❌ | ❌ |
+| Capability                   | Engage                        | Ignition  | GoProposal |
+| ---------------------------- | ----------------------------- | --------- | ---------- |
+| Sub-5-min proposal build     | ✅ Claim + AI path            | ✅ Mature | ✅ Core    |
+| UK engagement letter clauses | ✅ Library                    | ✅        | ✅ Strong  |
+| MTD ITSA automation          | ✅ **Differentiator**         | Partial   | Partial    |
+| AI-written client emails     | ✅ **Clara — differentiator** | Limited   | ❌         |
+| Companies House client brief | ✅                            | ❌        | ❌         |
+| Post-sign recurring billing  | ❌ Gap                        | ✅ Core   | Limited    |
+| E-sign legal forensics       | ⚠️ Partial                    | ✅ Mature | ✅         |
+| Practice management          | ❌ (AccountFlow sibling)      | ❌        | ❌         |
 
 ### 2.4 Pricing recommendations
 
 **Keep the £49 / £99 / £249 ladder** — it matches Capstone Clarity products and is defensible vs GoProposal (premium for AI) and below Ignition all-in-one (which includes billing).
 
-| Change | Rationale |
-|--------|-----------|
-| **14-day free trial** on all tiers | Industry standard; lowers friction vs Ignition |
-| **Clara included from Professional** | AI is the moat — don't nickel-and-dime tokens on £99+ |
-| **Starter: 5 Clara drafts/mo** or token cap | Protects margin; upgrade path clear |
-| **Annual billing −15%** | Improves retention and cash flow |
-| **Founding Practice** (first 20 firms): Professional @ £79 for 12 months | Case studies + benchmark data |
-| **MTD ITSA Pack** marketing | Justify £10–15 premium vs generic proposal tools |
-| **Platform fee 2.5%** | Disclose transparently; optional waive for Enterprise |
-| **Per-seat add-on** above tier limits | £15/user/mo — simpler than forcing Enterprise jump |
+| Change                                                                   | Rationale                                             |
+| ------------------------------------------------------------------------ | ----------------------------------------------------- |
+| **14-day free trial** on all tiers                                       | Industry standard; lowers friction vs Ignition        |
+| **Clara included from Professional**                                     | AI is the moat — don't nickel-and-dime tokens on £99+ |
+| **Starter: 5 Clara drafts/mo** or token cap                              | Protects margin; upgrade path clear                   |
+| **Annual billing −15%**                                                  | Improves retention and cash flow                      |
+| **Founding Practice** (first 20 firms): Professional @ £79 for 12 months | Case studies + benchmark data                         |
+| **MTD ITSA Pack** marketing                                              | Justify £10–15 premium vs generic proposal tools      |
+| **Platform fee 2.5%**                                                    | Disclose transparently; optional waive for Enterprise |
+| **Per-seat add-on** above tier limits                                    | £15/user/mo — simpler than forcing Enterprise jump    |
 
 **Price positioning statement:**  
-*"Less than one hour of partner time per month — with AI that writes the emails your clients actually read."*
+_"Less than one hour of partner time per month — with AI that writes the emails your clients actually read."_
 
 ---
 
@@ -128,21 +128,21 @@ Engage is **feature-rich and differentiated on AI + UK compliance**, but **not y
 
 ## 4. Gap analysis — current vs premier
 
-| Area | Premier bar | Current | Gap severity |
-|------|-------------|---------|--------------|
-| **Pricing accuracy** | Single source of truth; tested all cycles | v1/v2 drift, known bugs | 🔴 Critical |
-| **E-sign defensibility** | Certificate PDF, hashes, durable storage | Partial canvas sign; FS ephemeral | 🔴 Critical |
-| **Time-to-first-proposal** | Clara wizard < 5 min, zero training | Sidebar AI; wizard incomplete | 🟠 High |
-| **Client email quality** | Partner approves; streams; personalised | ✅ Largely done | 🟢 Low |
-| **MTD compliance** | Clauses auto-inserted per client | Logic exists; regulatory fit engine incomplete | 🟠 High |
-| **Pricing intelligence** | Clara flags under/over fee vs catalog | Advisor not shipped | 🟠 High |
-| **Post-sign workflow** | Onboarding checklist, AML prompt, Xero mandate | Partial acceptance email | 🟠 High |
-| **Analytics** | Real conversion funnel, pipeline £ | Dashboard partly mock | 🟠 High |
-| **SaaS billing** | Live checkout, trial → paid | Scaffold only | 🔴 Critical |
-| **Integrations** | CH live, AccountFlow, email webhooks | CH needs Render key; AF 503 | 🟠 High |
-| **Mobile signing** | Thumb-friendly client sign | Basic responsive | 🟡 Medium |
-| **Support & docs** | Help centre, onboarding videos | Sparse | 🟡 Medium |
-| **Performance** | No cold-start on free Render | 15-min sleep on free tier | 🟠 High |
+| Area                       | Premier bar                                    | Current                                        | Gap severity |
+| -------------------------- | ---------------------------------------------- | ---------------------------------------------- | ------------ |
+| **Pricing accuracy**       | Single source of truth; tested all cycles      | v1/v2 drift, known bugs                        | 🔴 Critical  |
+| **E-sign defensibility**   | Certificate PDF, hashes, durable storage       | Partial canvas sign; FS ephemeral              | 🔴 Critical  |
+| **Time-to-first-proposal** | Clara wizard < 5 min, zero training            | Sidebar AI; wizard incomplete                  | 🟠 High      |
+| **Client email quality**   | Partner approves; streams; personalised        | ✅ Largely done                                | 🟢 Low       |
+| **MTD compliance**         | Clauses auto-inserted per client               | Logic exists; regulatory fit engine incomplete | 🟠 High      |
+| **Pricing intelligence**   | Clara flags under/over fee vs catalog          | Advisor not shipped                            | 🟠 High      |
+| **Post-sign workflow**     | Onboarding checklist, AML prompt, Xero mandate | Partial acceptance email                       | 🟠 High      |
+| **Analytics**              | Real conversion funnel, pipeline £             | Dashboard partly mock                          | 🟠 High      |
+| **SaaS billing**           | Live checkout, trial → paid                    | Scaffold only                                  | 🔴 Critical  |
+| **Integrations**           | CH live, AccountFlow, email webhooks           | CH needs Render key; AF 503                    | 🟠 High      |
+| **Mobile signing**         | Thumb-friendly client sign                     | Basic responsive                               | 🟡 Medium    |
+| **Support & docs**         | Help centre, onboarding videos                 | Sparse                                         | 🟡 Medium    |
+| **Performance**            | No cold-start on free Render                   | 15-min sleep on free tier                      | 🟠 High      |
 
 **Premier definition (measurable):**
 
@@ -150,7 +150,7 @@ Engage is **feature-rich and differentiated on AI + UK compliance**, but **not y
 2. **Zero pricing disputes** — client total always matches PDF and email.
 3. **Signed PDF** withstands a client challenge (audit certificate).
 4. **Trial → paid** conversion path works end-to-end.
-5. NPS-style internal target: *"I'd recommend this over GoProposal"* from 3+ pilot practices.
+5. NPS-style internal target: _"I'd recommend this over GoProposal"_ from 3+ pilot practices.
 
 ---
 

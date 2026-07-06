@@ -175,9 +175,7 @@ export default function ProposalTemplates() {
 
   const seedingLibrary =
     loading ||
-    (meta != null &&
-      meta.expectedLibraryCount > 0 &&
-      libraryCount < meta.expectedLibraryCount);
+    (meta != null && meta.expectedLibraryCount > 0 && libraryCount < meta.expectedLibraryCount);
 
   return (
     <div className="space-y-6 animate-fade-in">
@@ -192,7 +190,11 @@ export default function ProposalTemplates() {
             templates alongside them — nothing is replaced when you create something custom.
           </p>
         </div>
-        <button type="button" onClick={openCreate} className="btn-primary inline-flex items-center gap-2">
+        <button
+          type="button"
+          onClick={openCreate}
+          className="btn-primary inline-flex items-center gap-2"
+        >
           <PlusIcon className="h-4 w-4" />
           New custom template
         </button>
@@ -271,7 +273,11 @@ export default function ProposalTemplates() {
         <div className="card p-10 text-center max-w-lg mx-auto">
           <RectangleStackIcon className="mx-auto h-14 w-14 text-slate-300 dark:text-slate-600 mb-4" />
           <h2 className="text-lg font-semibold text-slate-900 dark:text-white mb-2">
-            {search ? 'No templates match your search' : filter === 'custom' ? 'No custom templates yet' : 'No templates yet'}
+            {search
+              ? 'No templates match your search'
+              : filter === 'custom'
+                ? 'No custom templates yet'
+                : 'No templates yet'}
           </h2>
           <p className="text-sm text-slate-600 dark:text-slate-400 mb-6">
             {search
@@ -281,7 +287,11 @@ export default function ProposalTemplates() {
                 : `Create a custom template, or visit again in a moment while the Engage library finishes loading.`}
           </p>
           {(!search || filter === 'custom') && (
-            <button type="button" onClick={openCreate} className="btn-primary inline-flex items-center gap-2">
+            <button
+              type="button"
+              onClick={openCreate}
+              className="btn-primary inline-flex items-center gap-2"
+            >
               <PlusIcon className="h-4 w-4" />
               Create a custom template
             </button>
@@ -315,7 +325,8 @@ export default function ProposalTemplates() {
                   </p>
                 )}
                 <p className="text-xs text-slate-500 dark:text-slate-500 mt-2">
-                  Default title: <span className="text-slate-700 dark:text-slate-300">{template.title}</span>
+                  Default title:{' '}
+                  <span className="text-slate-700 dark:text-slate-300">{template.title}</span>
                 </p>
                 <div className="flex flex-wrap gap-2 mt-3 text-xs">
                   <span className="px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-200">
@@ -330,7 +341,8 @@ export default function ProposalTemplates() {
                 {template.lastUsedAt && (
                   <p className="text-xs text-slate-400 mt-2 flex items-center gap-1">
                     <ClockIcon className="h-3.5 w-3.5" />
-                    Last used {formatDistanceToNow(new Date(template.lastUsedAt), { addSuffix: true })}
+                    Last used{' '}
+                    {formatDistanceToNow(new Date(template.lastUsedAt), { addSuffix: true })}
                   </p>
                 )}
               </div>

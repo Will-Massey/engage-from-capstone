@@ -24,8 +24,7 @@ const STANDARD_SERVICES = [
   },
   {
     name: 'End of Year Accounts',
-    description:
-      'Annual statutory accounts preparation, review, and filing with Companies House.',
+    description: 'Annual statutory accounts preparation, review, and filing with Companies House.',
     longDescription:
       'Year-end financial statements prepared in accordance with applicable reporting standards, partner review, and submission to Companies House.',
     category: 'COMPLIANCE' as const,

@@ -48,7 +48,10 @@ function servicesForEntity(entityType: string): typeof allServices {
 }
 
 function entityLabel(entity: string): string {
-  return entity.replace(/_/g, ' ').toLowerCase().replace(/\b\w/g, (c) => c.toUpperCase());
+  return entity
+    .replace(/_/g, ' ')
+    .toLowerCase()
+    .replace(/\b\w/g, (c) => c.toUpperCase());
 }
 
 /** Single-service templates per entity (where applicable). */
@@ -82,7 +85,16 @@ function buildBundleTemplates(): ProposalTemplatePackageDef[] {
       if (inCat.length < 2) continue;
 
       for (const tier of TIERS) {
-        const count = tier === 'Micro' ? 2 : tier === 'Small' ? 3 : tier === 'Standard' ? 4 : tier === 'Growth' ? 5 : 6;
+        const count =
+          tier === 'Micro'
+            ? 2
+            : tier === 'Small'
+              ? 3
+              : tier === 'Standard'
+                ? 4
+                : tier === 'Growth'
+                  ? 5
+                  : 6;
         const picked = inCat.slice(0, Math.min(count, inCat.length));
         out.push({
           name: `${entityLabel(entity)} ${category.replace('_', ' ')} — ${tier}`,

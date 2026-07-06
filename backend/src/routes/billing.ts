@@ -6,11 +6,7 @@ import { z } from 'zod';
 import { authenticate, authorize } from '../middleware/auth.js';
 import { asyncHandler, ApiError } from '../middleware/errorHandler.js';
 import { prisma } from '../config/database.js';
-import {
-  createOrder,
-  isRevolutConfigured,
-  getRevolutMode,
-} from '../lib/revolut/revolut-client.js';
+import { createOrder, isRevolutConfigured, getRevolutMode } from '../lib/revolut/revolut-client.js';
 import { verifyRevolutWebhook } from '../lib/revolut/webhook.js';
 import {
   PLATFORM_PLANS,
@@ -38,7 +34,7 @@ router.get(
         plans: Object.values(PLATFORM_PLANS),
       },
     });
-  }),
+  })
 );
 
 router.get('/plans', (_req, res) => {
@@ -60,7 +56,7 @@ router.post(
       throw new ApiError(
         'REVOLUT_NOT_CONFIGURED',
         'Revolut billing is not configured. Contact support.',
-        503,
+        503
       );
     }
 
@@ -120,7 +116,7 @@ router.post(
         amount: plan.displayPrice,
       },
     });
-  }),
+  })
 );
 
 router.get(
@@ -155,36 +151,41 @@ router.get(
         lastPaymentDate: tenant.lastPaymentDate,
       },
     });
-  }),
+  })
 );
 
-router.post('/webhook', asyncHandler(async (req, res) => {
-  if (!isRevolutBillingEnabled()) {
-    throw new ApiError('BILLING_DISABLED', 'Billing not configured', 503);
-  }
-
-  const verified = verifyRevolutWebhook(req);
-  if (!verified.ok) {
-    const status = verified.error?.includes('signature') ? 401 : 403;
-    res.status(status).send(verified.error);
-    return;
-  }
-
-  const event = verified.event!;
-  const eventType = event.event as string | undefined;
-
-  try {
-    if (eventType === 'ORDER_COMPLETED' || eventType === 'ORDER_AUTHORISED') {
-      const order = (event.order || (event.data as Record<string, unknown>)?.order) as
-        | Record<string, unknown>
-        | undefined;
-      await fulfilEngageOrder({ order: order as Parameters<typeof fulfilEngageOrder>[0]['order'] });
+router.post(
+  '/webhook',
+  asyncHandler(async (req, res) => {
+    if (!isRevolutBillingEnabled()) {
+      throw new ApiError('BILLING_DISABLED', 'Billing not configured', 503);
     }
-    res.sendStatus(200);
-  } catch (err) {
-    console.error('[billing] Engage webhook handler error:', err);
-    res.sendStatus(500);
-  }
-}));
+
+    const verified = verifyRevolutWebhook(req);
+    if (!verified.ok) {
+      const status = verified.error?.includes('signature') ? 401 : 403;
+      res.status(status).send(verified.error);
+      return;
+    }
+
+    const event = verified.event!;
+    const eventType = event.event as string | undefined;
+
+    try {
+      if (eventType === 'ORDER_COMPLETED' || eventType === 'ORDER_AUTHORISED') {
+        const order = (event.order || (event.data as Record<string, unknown>)?.order) as
+          | Record<string, unknown>
+          | undefined;
+        await fulfilEngageOrder({
+          order: order as Parameters<typeof fulfilEngageOrder>[0]['order'],
+        });
+      }
+      res.sendStatus(200);
+    } catch (err) {
+      console.error('[billing] Engage webhook handler error:', err);
+      res.sendStatus(500);
+    }
+  })
+);
 
 export default router;

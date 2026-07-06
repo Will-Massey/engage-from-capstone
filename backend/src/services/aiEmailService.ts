@@ -1,10 +1,7 @@
 /**
  * AI Email Assistant — delegates to proposal AI service for follow-ups.
  */
-import {
-  generateAiFollowUp,
-  isAiConfigured,
-} from './ai/proposalAiService.js';
+import { generateAiFollowUp, isAiConfigured } from './ai/proposalAiService.js';
 
 export interface Proposal {
   id?: string;
@@ -49,7 +46,8 @@ export class AIEmailService {
       [
         {
           role: 'system',
-          content: 'Improve this UK business email. Keep UK English. Return only the improved email.',
+          content:
+            'Improve this UK business email. Keep UK English. Return only the improved email.',
         },
         { role: 'user', content: emailText },
       ],

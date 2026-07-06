@@ -93,9 +93,7 @@ function serialiseAddressForDb(address: unknown): string | null | undefined {
   }
   if (typeof address === 'object') {
     const obj = address as Record<string, unknown>;
-    const hasContent = Object.values(obj).some(
-      (v) => v != null && String(v).trim() !== ''
-    );
+    const hasContent = Object.values(obj).some((v) => v != null && String(v).trim() !== '');
     return hasContent ? JSON.stringify(address) : null;
   }
   return undefined;
@@ -341,10 +339,10 @@ router.get(
   authenticate,
   asyncHandler(async (req, res) => {
     const { id } = req.params;
-    const companyNumber = typeof req.query.companyNumber === 'string' ? req.query.companyNumber : undefined;
-    const { getClientCompaniesHouseSnapshot } = await import(
-      '../services/companiesHouseEnrichment.js'
-    );
+    const companyNumber =
+      typeof req.query.companyNumber === 'string' ? req.query.companyNumber : undefined;
+    const { getClientCompaniesHouseSnapshot } =
+      await import('../services/companiesHouseEnrichment.js');
     const { createCompaniesHouseService } = await import('../services/companiesHouse.js');
     const data = await getClientCompaniesHouseSnapshot(req.tenantId!, id, companyNumber);
     res.json({
@@ -373,9 +371,8 @@ router.post(
       })
       .parse(req.body ?? {});
 
-    const { enrichClientFromCompaniesHouse } = await import(
-      '../services/companiesHouseEnrichment.js'
-    );
+    const { enrichClientFromCompaniesHouse } =
+      await import('../services/companiesHouseEnrichment.js');
     const result = await enrichClientFromCompaniesHouse(req.tenantId!, id, body);
 
     if (result.enriched) {
@@ -753,9 +750,7 @@ router.post(
     const { v4: uuidv4 } = await import('uuid');
     const verificationRef = `idv_stub_${uuidv4().replace(/-/g, '').slice(0, 16)}`;
 
-    const frontendBase = (
-      process.env.FRONTEND_URL || 'http://localhost:5173'
-    ).replace(/\/$/, '');
+    const frontendBase = (process.env.FRONTEND_URL || 'http://localhost:5173').replace(/\/$/, '');
 
     const verificationLink = `${frontendBase}/verify-identity/${verificationRef}?clientId=${client.id}`;
 

@@ -76,9 +76,7 @@ export function getProposalSettings(tenantSettingsJson?: string | null): Proposa
           ? p.cancellationNoticeDays
           : DEFAULT_PROPOSAL_SETTINGS.cancellationNoticeDays,
       termsSource:
-        p.termsSource === 'custom' || p.useCustomTerms === true
-          ? 'custom'
-          : 'engage_default',
+        p.termsSource === 'custom' || p.useCustomTerms === true ? 'custom' : 'engage_default',
       customTerms: typeof p.customTerms === 'string' ? p.customTerms : null,
       benchmarksOptIn: p.benchmarksOptIn === true,
     };
@@ -99,9 +97,7 @@ export function parseProposalDateInput(raw: unknown): Date | null | undefined {
   if (raw === null || raw === '') return null;
   const s = String(raw).trim();
   if (!s) return null;
-  const d = /^\d{4}-\d{2}-\d{2}$/.test(s)
-    ? new Date(`${s}T12:00:00.000Z`)
-    : new Date(s);
+  const d = /^\d{4}-\d{2}-\d{2}$/.test(s) ? new Date(`${s}T12:00:00.000Z`) : new Date(s);
   return Number.isNaN(d.getTime()) ? null : d;
 }
 

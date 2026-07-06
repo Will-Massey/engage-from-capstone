@@ -223,7 +223,10 @@ export default function ProposalTemplateEditor({
       >
         <div className="flex items-start justify-between gap-3 p-5 border-b border-slate-200 dark:border-slate-700 shrink-0">
           <div>
-            <h2 id="template-editor-title" className="text-lg font-semibold text-slate-900 dark:text-white">
+            <h2
+              id="template-editor-title"
+              className="text-lg font-semibold text-slate-900 dark:text-white"
+            >
               {mode === 'edit' ? 'Edit template' : 'New proposal template'}
             </h2>
             <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">
@@ -298,7 +301,9 @@ export default function ProposalTemplateEditor({
 
           <div className="rounded-xl border border-slate-200 dark:border-slate-700 p-4 space-y-3">
             <div className="flex flex-wrap items-center justify-between gap-2">
-              <h3 className="text-sm font-semibold text-slate-900 dark:text-white">Services in template</h3>
+              <h3 className="text-sm font-semibold text-slate-900 dark:text-white">
+                Services in template
+              </h3>
               {form.serviceConfig.length > 0 && (
                 <p className="text-xs text-slate-500">
                   ~{formatCurrency(estimatedMonthly)}/month equivalent (ex VAT)
@@ -314,7 +319,9 @@ export default function ProposalTemplateEditor({
                     className="flex flex-wrap items-end gap-2 p-3 rounded-lg bg-slate-50 dark:bg-slate-800/50"
                   >
                     <div className="flex-1 min-w-[140px]">
-                      <p className="text-sm font-medium text-slate-900 dark:text-white">{line.name}</p>
+                      <p className="text-sm font-medium text-slate-900 dark:text-white">
+                        {line.name}
+                      </p>
                     </div>
                     <div className="w-24">
                       <label className="text-xs text-slate-500">Price (£)</label>
@@ -354,7 +361,9 @@ export default function ProposalTemplateEditor({
                         min={1}
                         value={line.quantity}
                         onChange={(e) =>
-                          updateLine(line.serviceId, { quantity: parseInt(e.target.value, 10) || 1 })
+                          updateLine(line.serviceId, {
+                            quantity: parseInt(e.target.value, 10) || 1,
+                          })
                         }
                         className="w-full px-2 py-1 text-sm rounded border border-slate-200 dark:border-slate-600 dark:bg-slate-800"
                       />
@@ -409,7 +418,9 @@ export default function ProposalTemplateEditor({
                             : 'hover:bg-emerald-50 dark:hover:bg-emerald-900/20 border border-transparent hover:border-emerald-200'
                         }`}
                       >
-                        <span className="font-medium text-slate-800 dark:text-slate-200">{s.name}</span>
+                        <span className="font-medium text-slate-800 dark:text-slate-200">
+                          {s.name}
+                        </span>
                         <span className="text-xs text-slate-500 shrink-0">
                           {added ? 'Added' : formatCurrency(s.priceAmount ?? 0)}
                         </span>
@@ -423,7 +434,12 @@ export default function ProposalTemplateEditor({
         </div>
 
         <div className="flex flex-wrap items-center justify-end gap-2 p-5 border-t border-slate-200 dark:border-slate-700 shrink-0">
-          <button type="button" onClick={onClose} className="btn-secondary text-sm" disabled={saving}>
+          <button
+            type="button"
+            onClick={onClose}
+            className="btn-secondary text-sm"
+            disabled={saving}
+          >
             Cancel
           </button>
           <button

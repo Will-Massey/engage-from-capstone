@@ -65,8 +65,7 @@ export function computeSigningCostSummary(proposal: PublicProposalRecord): Signi
   const oneTimeVat = byFrequency.get('ONE_TIME')?.vat ?? 0;
   const monthlyGross =
     (byFrequency.get('MONTHLY')?.gross ?? 0) + (byFrequency.get('WEEKLY')?.gross ?? 0);
-  const monthlyVat =
-    (byFrequency.get('MONTHLY')?.vat ?? 0) + (byFrequency.get('WEEKLY')?.vat ?? 0);
+  const monthlyVat = (byFrequency.get('MONTHLY')?.vat ?? 0) + (byFrequency.get('WEEKLY')?.vat ?? 0);
   const quarterlyGross = byFrequency.get('QUARTERLY')?.gross ?? 0;
   const quarterlyVat = byFrequency.get('QUARTERLY')?.vat ?? 0;
   const annualGross = byFrequency.get('ANNUALLY')?.gross ?? 0;
@@ -183,9 +182,7 @@ export function buildPublicProposalContext(proposal: PublicProposalRecord) {
       grossTotal: s.grossTotal,
       billingFrequency: s.billingFrequency || s.frequency,
       isOptional: s.isOptional,
-      oneOffDueDate: s.oneOffDueDate
-        ? new Date(s.oneOffDueDate).toISOString().slice(0, 10)
-        : null,
+      oneOffDueDate: s.oneOffDueDate ? new Date(s.oneOffDueDate).toISOString().slice(0, 10) : null,
     })),
   };
 }
@@ -265,8 +262,7 @@ export async function askPublicProposalQuestion(
 
   if (!isAiConfigured()) {
     return {
-      answer:
-        `${AI_COPILOT.name} isn't available right now. Please contact ${ctx.practice.name} directly with your question.`,
+      answer: `${AI_COPILOT.name} isn't available right now. Please contact ${ctx.practice.name} directly with your question.`,
       source: 'unavailable' as const,
     };
   }

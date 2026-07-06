@@ -407,33 +407,30 @@ export const calculatePrice = (
 ): PricingCalculation => {
   const complexityMultiplier = complexityFactors.reduce((acc, f) => acc * f, 1);
   const volumeDiscount = volume > 10 ? 0.9 : volume > 5 ? 0.95 : 1;
-  
+
   const geographicMultipliers: Record<string, number> = {
-    'LONDON': 1.25,
-    'SOUTH_EAST': 1.15,
-    'SOUTH_WEST': 1.05,
-    'EAST': 1.1,
-    'WEST_MIDLANDS': 0.95,
-    'EAST_MIDLANDS': 0.9,
-    'YORKSHIRE': 0.9,
-    'NORTH_WEST': 0.95,
-    'NORTH_EAST': 0.85,
-    'WALES': 0.9,
-    'SCOTLAND': 0.95,
-    'NORTHERN_IRELAND': 0.85,
+    LONDON: 1.25,
+    SOUTH_EAST: 1.15,
+    SOUTH_WEST: 1.05,
+    EAST: 1.1,
+    WEST_MIDLANDS: 0.95,
+    EAST_MIDLANDS: 0.9,
+    YORKSHIRE: 0.9,
+    NORTH_WEST: 0.95,
+    NORTH_EAST: 0.85,
+    WALES: 0.9,
+    SCOTLAND: 0.95,
+    NORTHERN_IRELAND: 0.85,
   };
-  
+
   const geographicAdjustment = geographicMultipliers[region] || 1;
-  
+
   const adjustedBase = basePrice * complexityMultiplier;
   const costs = adjustedBase * 0.6;
-  const minimumPrice = costs / (1 - (targetMargin / 100));
-  
-  const finalPrice = Math.max(
-    minimumPrice,
-    adjustedBase * volumeDiscount * geographicAdjustment
-  );
-  
+  const minimumPrice = costs / (1 - targetMargin / 100);
+
+  const finalPrice = Math.max(minimumPrice, adjustedBase * volumeDiscount * geographicAdjustment);
+
   return {
     basePrice,
     complexityMultiplier,
@@ -454,14 +451,14 @@ export const calculatePrice = (
 // MTD ITSA Calculator
 export const mtditsaCalculator: MTDITSACalculator = {
   calculateStatus: (annualIncome: number, incomeSources: IncomeSource[]): MTDITSAStatus => {
-    const hasExemptSource = incomeSources.some(source => 
-      source.type === 'PARTNERSHIP' && source.amount < 10000
+    const hasExemptSource = incomeSources.some(
+      (source) => source.type === 'PARTNERSHIP' && source.amount < 10000
     );
-    
+
     if (hasExemptSource) {
       return MTDITSAStatus.EXEMPT;
     }
-    
+
     if (annualIncome >= 50000) {
       return MTDITSAStatus.REQUIRED_2026;
     } else if (annualIncome >= 30000) {
@@ -469,10 +466,10 @@ export const mtditsaCalculator: MTDITSACalculator = {
     } else if (annualIncome >= 20000) {
       return MTDITSAStatus.REQUIRED_2028;
     }
-    
+
     return MTDITSAStatus.NOT_REQUIRED;
   },
-  
+
   calculateQuarterlyDeadlines: (taxYear: number): QuarterlyDeadline[] => {
     const year = taxYear;
     return [
@@ -506,7 +503,7 @@ export const mtditsaCalculator: MTDITSACalculator = {
       },
     ];
   },
-  
+
   getEligibilityCriteria: (): EligibilityCriteria => ({
     threshold2026: 50000,
     threshold2027: 30000,
@@ -515,7 +512,7 @@ export const mtditsaCalculator: MTDITSACalculator = {
       'Trustees of registered pension schemes',
       'Non-resident companies',
       'Partnerships with turnover below £10,000',
-      'Estate administrators'
+      'Estate administrators',
     ],
   }),
 };

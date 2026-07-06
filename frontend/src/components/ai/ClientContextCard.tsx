@@ -78,7 +78,8 @@ function formatChDate(iso: string): string {
 
 function statusColour(status: string): string {
   const s = status.toLowerCase();
-  if (s === 'active') return 'text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/40';
+  if (s === 'active')
+    return 'text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/40';
   if (s === 'dissolved') return 'text-red-700 dark:text-red-400 bg-red-50 dark:bg-red-950/40';
   return 'text-amber-700 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/40';
 }
@@ -194,7 +195,9 @@ export default function ClientContextCard({
         } else if (code === 'NOT_FOUND') {
           toast.error('No Companies House match for this client');
         } else {
-          toast.error(e?.response?.data?.error?.message || e.message || 'Companies House lookup failed');
+          toast.error(
+            e?.response?.data?.error?.message || e.message || 'Companies House lookup failed'
+          );
         }
       } finally {
         setChPulling(false);
@@ -228,10 +231,7 @@ export default function ClientContextCard({
     if (!chConfigured || !clientId || chPulling) return;
     if (autoPullAttempted.current === clientId) return;
 
-    const isLtd =
-      companyType === 'LIMITED_COMPANY' ||
-      companyType === 'LLP' ||
-      !companyType;
+    const isLtd = companyType === 'LIMITED_COMPANY' || companyType === 'LLP' || !companyType;
 
     if (!isLtd) return;
 
@@ -317,7 +317,9 @@ export default function ClientContextCard({
             <p className="text-xs text-slate-600 dark:text-slate-400 mt-0.5">
               {clientName ? `Brief for ${clientName}` : 'Companies House & engagement history'}
               {chConfigured && (
-                <span className="ml-1.5 text-emerald-600 dark:text-emerald-400">· CH connected</span>
+                <span className="ml-1.5 text-emerald-600 dark:text-emerald-400">
+                  · CH connected
+                </span>
               )}
             </p>
           </div>
@@ -431,8 +433,8 @@ export default function ClientContextCard({
       {editing && (
         <div className="mb-4 p-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-white/80 dark:bg-slate-900/60 space-y-3">
           <p className="text-xs text-slate-600 dark:text-slate-400">
-            These details feed {AI_COPILOT.name}&apos;s brief. Use <strong>Pull CH</strong> to import
-            registered name, year end, industry (from SIC), and address from Companies House.
+            These details feed {AI_COPILOT.name}&apos;s brief. Use <strong>Pull CH</strong> to
+            import registered name, year end, industry (from SIC), and address from Companies House.
           </p>
           <div>
             <label className="block text-xs font-medium text-slate-600 dark:text-slate-400 mb-1">
@@ -529,7 +531,11 @@ export default function ClientContextCard({
             />
           </div>
           <div className="flex justify-end gap-2">
-            <button type="button" onClick={() => setEditing(false)} className="text-xs btn-secondary">
+            <button
+              type="button"
+              onClick={() => setEditing(false)}
+              className="text-xs btn-secondary"
+            >
               Cancel
             </button>
             <button

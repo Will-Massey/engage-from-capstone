@@ -148,23 +148,23 @@ async function processDueTouchpoint(tp: Awaited<ReturnType<typeof findDueTouchpo
   // Send it
   const result = await sendTouchpoint(tp);
 
-    if (result.success) {
-      await prisma.touchpoint.update({
-        where: { id: tp.id },
-        data: {
-          status: 'SENT',
-          sentAt: new Date(),
-        },
+  if (result.success) {
+    await prisma.touchpoint.update({
+      where: { id: tp.id },
+      data: {
+        status: 'SENT',
+        sentAt: new Date(),
+      },
+    });
+
+    if (tp.stage === 'ENGAGEMENT_LETTER_SENT') {
+      await prisma.client.update({
+        where: { id: client.id },
+        data: { engagementLetterSentAt: new Date() },
       });
+    }
 
-      if (tp.stage === 'ENGAGEMENT_LETTER_SENT') {
-        await prisma.client.update({
-          where: { id: client.id },
-          data: { engagementLetterSentAt: new Date() },
-        });
-      }
-
-      await logActivity({
+    await logActivity({
       tenantId: tp.tenantId,
       action: `${TOUCHPOINT_ACTION_PREFIX}SENT`,
       entityType: 'TOUCHPOINT',
@@ -212,7 +212,10 @@ async function sendTouchpoint(tp: any): Promise<SendResult> {
 
   let subject = renderTouchpointSubject(template.subject, context);
   let htmlBody = renderTouchpointTemplate(template.body, context);
-  let textBody = htmlBody.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
+  let textBody = htmlBody
+    .replace(/<[^>]+>/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
 
   if (channel === 'EMAIL') {
     const aiDraft = await tryGenerateTouchpointEmail(
@@ -263,7 +266,10 @@ async function sendTouchpoint(tp: any): Promise<SendResult> {
   if (channel === 'SMS') {
     const { sendTwilioSms } = await import('../utils/twilioSms.js');
     if (client.contactPhone) {
-      const sent = await sendTwilioSms(client.contactPhone, `${subject}\n\n${textBody}`.slice(0, 1600));
+      const sent = await sendTwilioSms(
+        client.contactPhone,
+        `${subject}\n\n${textBody}`.slice(0, 1600)
+      );
       if (sent) {
         logger.info(`[SMS] Sent touchpoint to ${client.contactPhone}`);
         return { success: true };
@@ -365,7 +371,10 @@ export async function triggerAmlComplete(clientId: string, tenantId: string): Pr
 /**
  * When client signs the engagement letter.
  */
-export async function triggerEngagementLetterSigned(clientId: string, tenantId: string): Promise<void> {
+export async function triggerEngagementLetterSigned(
+  clientId: string,
+  tenantId: string
+): Promise<void> {
   await prisma.client.update({
     where: { id: clientId },
     data: {
@@ -442,7 +451,10 @@ export async function triggerInfoReceived(clientId: string, tenantId: string): P
    ===================== */
 
 async function createInfoRequestSequence(clientId: string): Promise<void> {
-  const client = await prisma.client.findUnique({ where: { id: clientId }, include: { tenant: true } });
+  const client = await prisma.client.findUnique({
+    where: { id: clientId },
+    include: { tenant: true },
+  });
   if (!client) return;
 
   const tenantId = client.tenantId;
@@ -532,9 +544,21 @@ export async function scheduleDeadlineReminders(clientId: string, tenantId: stri
   if (!client) return;
 
   const dates = [
-    { stage: 'MILESTONE_CHECK_IN' as ClientLifecycleStage, date: client.nextVatDueDate, label: 'VAT' },
-    { stage: 'MILESTONE_CHECK_IN' as ClientLifecycleStage, date: client.nextAccountsDueDate, label: 'Accounts' },
-    { stage: 'MILESTONE_CHECK_IN' as ClientLifecycleStage, date: client.nextConfirmationStatementDue, label: 'Confirmation Statement' },
+    {
+      stage: 'MILESTONE_CHECK_IN' as ClientLifecycleStage,
+      date: client.nextVatDueDate,
+      label: 'VAT',
+    },
+    {
+      stage: 'MILESTONE_CHECK_IN' as ClientLifecycleStage,
+      date: client.nextAccountsDueDate,
+      label: 'Accounts',
+    },
+    {
+      stage: 'MILESTONE_CHECK_IN' as ClientLifecycleStage,
+      date: client.nextConfirmationStatementDue,
+      label: 'Confirmation Statement',
+    },
   ];
 
   for (const d of dates) {
@@ -684,9 +708,8 @@ async function createTouchpoint(params: {
 }
 
 async function ensureDefaultTemplate(tenantId: string, stage: ClientLifecycleStage) {
-  const { getDefaultTouchpointForStage } = await import(
-    '../services/touchpointTemplateSeedService.js'
-  );
+  const { getDefaultTouchpointForStage } =
+    await import('../services/touchpointTemplateSeedService.js');
   const def = getDefaultTouchpointForStage(stage);
   if (!def) return null;
 
@@ -709,7 +732,8 @@ async function markSkipped(id: string, reason: string) {
     data: { status: 'SKIPPED' },
   });
   await logActivity({
-    tenantId: (await prisma.touchpoint.findUnique({ where: { id }, select: { tenantId: true } }))!.tenantId,
+    tenantId: (await prisma.touchpoint.findUnique({ where: { id }, select: { tenantId: true } }))!
+      .tenantId,
     action: `${TOUCHPOINT_ACTION_PREFIX}SKIPPED`,
     entityType: 'TOUCHPOINT',
     entityId: id,
@@ -717,7 +741,10 @@ async function markSkipped(id: string, reason: string) {
   });
 }
 
-async function maybeAdvanceLifecycle(clientId: string, stage: ClientLifecycleStage): Promise<ClientLifecycleStage | undefined> {
+async function maybeAdvanceLifecycle(
+  clientId: string,
+  stage: ClientLifecycleStage
+): Promise<ClientLifecycleStage | undefined> {
   const nextStageMap: Partial<Record<ClientLifecycleStage, ClientLifecycleStage>> = {
     PROPOSAL_ACCEPTED: 'AML_PENDING',
     ENGAGEMENT_LETTER_SENT: 'ENGAGEMENT_LETTER_SENT',

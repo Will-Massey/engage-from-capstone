@@ -90,7 +90,8 @@ const EXPANDED_SERVICES: SeedSvc[] = [
   },
   {
     name: 'HMRC Enquiry & Investigation Support',
-    description: 'Professional support during HMRC enquiries, including correspondence and meetings.',
+    description:
+      'Professional support during HMRC enquiries, including correspondence and meetings.',
     category: 'ADVISORY',
     basePrice: 950,
     baseHours: 8,
@@ -116,7 +117,8 @@ const EXPANDED_SERVICES: SeedSvc[] = [
   },
   {
     name: 'Payroll Initial Setup',
-    description: 'One-time payroll setup including HMRC registration, pension scheme, and first-run configuration.',
+    description:
+      'One-time payroll setup including HMRC registration, pension scheme, and first-run configuration.',
     category: 'PAYROLL',
     basePrice: 175,
     baseHours: 2,
@@ -165,7 +167,8 @@ const EXPANDED_SERVICES: SeedSvc[] = [
   },
   {
     name: 'Catch-up Bookkeeping',
-    description: 'One-time catch-up bookkeeping to bring records up to date before ongoing services begin.',
+    description:
+      'One-time catch-up bookkeeping to bring records up to date before ongoing services begin.',
     category: 'BOOKKEEPING',
     basePrice: 450,
     baseHours: 6,
@@ -178,7 +181,8 @@ const EXPANDED_SERVICES: SeedSvc[] = [
   },
   {
     name: 'QuickBooks Setup & Integration',
-    description: 'QuickBooks Online implementation, bank feeds, chart of accounts, and staff training.',
+    description:
+      'QuickBooks Online implementation, bank feeds, chart of accounts, and staff training.',
     category: 'TECHNICAL',
     basePrice: 450,
     baseHours: 5,
@@ -214,7 +218,8 @@ const EXPANDED_SERVICES: SeedSvc[] = [
   },
   {
     name: 'R&D Tax Credit Claim',
-    description: 'Research and Development tax relief claim including technical narrative and CT600 amendment.',
+    description:
+      'Research and Development tax relief claim including technical narrative and CT600 amendment.',
     category: 'TECHNICAL',
     basePrice: 2500,
     baseHours: 15,
@@ -226,7 +231,8 @@ const EXPANDED_SERVICES: SeedSvc[] = [
   },
   {
     name: 'EIS / SEIS Advance Assurance',
-    description: 'Advance assurance application to HMRC for Enterprise Investment Scheme or SEIS qualifying companies.',
+    description:
+      'Advance assurance application to HMRC for Enterprise Investment Scheme or SEIS qualifying companies.',
     category: 'TECHNICAL',
     basePrice: 1800,
     baseHours: 12,
@@ -274,7 +280,8 @@ const EXPANDED_SERVICES: SeedSvc[] = [
   },
   {
     name: 'Company Secretarial Services',
-    description: 'Director appointments, share allotments, PSC updates, and Companies House filings.',
+    description:
+      'Director appointments, share allotments, PSC updates, and Companies House filings.',
     category: 'SPECIALIZED',
     basePrice: 95,
     baseHours: 1,
@@ -286,7 +293,8 @@ const EXPANDED_SERVICES: SeedSvc[] = [
   },
   {
     name: 'Director Service Address',
-    description: 'Professional service address for company directors — mail scanning and forwarding.',
+    description:
+      'Professional service address for company directors — mail scanning and forwarding.',
     category: 'SPECIALIZED',
     basePrice: 15,
     baseHours: 0.1,

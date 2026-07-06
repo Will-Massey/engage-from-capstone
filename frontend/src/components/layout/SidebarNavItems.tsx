@@ -1,7 +1,12 @@
 import { useEffect, useState } from 'react';
 import { Link, NavLink } from 'react-router-dom';
 import { PlusIcon, SparklesIcon } from '@heroicons/react/24/outline';
-import { NAV_SECTIONS, PRIMARY_CREATE, isNavItemActive, type NavItem } from '../../config/navigation';
+import {
+  NAV_SECTIONS,
+  PRIMARY_CREATE,
+  isNavItemActive,
+  type NavItem,
+} from '../../config/navigation';
 import { useAiAssistantStore } from '../../stores/aiAssistantStore';
 import { useAuthStore } from '../../stores/authStore';
 import { apiClient } from '../../utils/api';

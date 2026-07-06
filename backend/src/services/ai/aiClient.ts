@@ -41,7 +41,11 @@ export function getAiModel(): string {
   return process.env.OPENAI_MODEL?.trim() || 'gpt-4o-mini';
 }
 
-export function getAiStatusMeta(): { provider: AiProvider | null; model: string; configured: boolean } {
+export function getAiStatusMeta(): {
+  provider: AiProvider | null;
+  model: string;
+  configured: boolean;
+} {
   const provider = getAiProvider();
   return {
     provider,
@@ -96,7 +100,10 @@ function providerConfig(provider: AiProvider): { apiKey: string; baseUrl: string
   }
   return {
     apiKey: process.env.OPENAI_API_KEY!.trim(),
-    baseUrl: (process.env.OPENAI_BASE_URL?.trim() || 'https://api.openai.com/v1').replace(/\/$/, ''),
+    baseUrl: (process.env.OPENAI_BASE_URL?.trim() || 'https://api.openai.com/v1').replace(
+      /\/$/,
+      ''
+    ),
     label: 'OpenAI',
   };
 }
@@ -244,7 +251,11 @@ export async function* chatCompletionStream(
       }
     }
   } finally {
-    try { reader.releaseLock(); } catch { /* already released */ }
+    try {
+      reader.releaseLock();
+    } catch {
+      /* already released */
+    }
   }
 }
 

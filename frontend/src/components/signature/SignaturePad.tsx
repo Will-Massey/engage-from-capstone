@@ -90,7 +90,7 @@ const SignaturePad = ({
       context.moveTo(x, y);
       setIsDrawing(true);
     },
-    [disabled, context, getCoordinates],
+    [disabled, context, getCoordinates]
   );
 
   const draw = useCallback(
@@ -102,7 +102,7 @@ const SignaturePad = ({
       context.lineTo(x, y);
       context.stroke();
     },
-    [isDrawing, context, getCoordinates],
+    [isDrawing, context, getCoordinates]
   );
 
   const stopDrawing = useCallback(() => {

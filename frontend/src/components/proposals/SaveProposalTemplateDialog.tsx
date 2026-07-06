@@ -65,12 +65,15 @@ export default function SaveProposalTemplateDialog({
               <SparklesIcon className="h-5 w-5 text-violet-600 dark:text-violet-400" />
             </div>
             <div className="min-w-0">
-              <h2 id="save-template-title" className="text-lg font-semibold text-slate-900 dark:text-white">
+              <h2
+                id="save-template-title"
+                className="text-lg font-semibold text-slate-900 dark:text-white"
+              >
                 Save as template?
               </h2>
               <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">
-                {AI_COPILOT.name} can reuse this service bundle and cover letter next time you start a
-                proposal.
+                {AI_COPILOT.name} can reuse this service bundle and cover letter next time you start
+                a proposal.
               </p>
             </div>
           </div>
@@ -86,7 +89,10 @@ export default function SaveProposalTemplateDialog({
 
         <div className="p-5 space-y-4">
           <div>
-            <label htmlFor="template-name" className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
+            <label
+              htmlFor="template-name"
+              className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1"
+            >
               Template name
             </label>
             <input
@@ -120,7 +126,12 @@ export default function SaveProposalTemplateDialog({
         </div>
 
         <div className="flex flex-wrap items-center justify-end gap-2 p-5 border-t border-slate-200 dark:border-slate-700">
-          <button type="button" onClick={onClose} className="btn-secondary text-sm" disabled={saving}>
+          <button
+            type="button"
+            onClick={onClose}
+            className="btn-secondary text-sm"
+            disabled={saving}
+          >
             Not now
           </button>
           <button

@@ -1,8 +1,8 @@
 # Engage by Capstone — AI-Native World-Class TODO
 
-> **North star:** Clara is not a chat sidebar — she is the intelligence layer that makes every proposal feel bespoke, every email feel written by the partner, and every client think *this practice really understands us*. AI permeates the product; nothing is bolted on.
+> **North star:** Clara is not a chat sidebar — she is the intelligence layer that makes every proposal feel bespoke, every email feel written by the partner, and every client think _this practice really understands us_. AI permeates the product; nothing is bolted on.
 
-**Principle:** If a feature could work without AI, ask *what would AI add that changes the outcome?* (higher win rate, less partner time, clearer client understanding). If the answer is nothing, simplify the UI — don't add AI for show.
+**Principle:** If a feature could work without AI, ask _what would AI add that changes the outcome?_ (higher win rate, less partner time, clearer client understanding). If the answer is nothing, simplify the UI — don't add AI for show.
 
 **Stack:** xAI Grok (`grok-3-mini` copilot, `grok-3` deep research) · Cloudflare email · UK English throughout
 
@@ -10,7 +10,7 @@
 
 ## Phase 0 — Foundation (this week)
 
-*Unblock wow — infra + security so AI and email can run reliably*
+_Unblock wow — infra + security so AI and email can run reliably_
 
 - [ ] Upgrade **engage-backend** to Render **Starter** + 10 GB disk at `/var/data` ([dashboard](https://dashboard.render.com/web/srv-d6qkjlua2pns73a2r1fg/settings)) — **manual step pending**
 - [ ] Custom domain: `engage.capstonesoftware.co.uk` (tenant subdomains later)
@@ -22,7 +22,7 @@
 
 ## Phase 1 — Wow from the first minute (2–3 weeks)
 
-*First login → first sent proposal should feel like magic, not a blank form*
+_First login → first sent proposal should feel like magic, not a blank form_
 
 ### Onboarding that thinks
 
@@ -50,7 +50,7 @@
 
 ## Phase 2 — Emails that explain, persuade, and wow (2–4 weeks)
 
-*Emails are the product's shop window — generic templates kill differentiation*
+_Emails are the product's shop window — generic templates kill differentiation_
 
 ### Proposal send email (highest impact)
 
@@ -62,7 +62,7 @@
   - Valid until date and how to get in touch
 - [x] **Partner approval gate** — show full email preview in app before send; "Edit with Clara" inline
 - [ ] **Personalisation inputs** — client name, contact, company CH data, proposal JSON, partner sign-off — all in prompt context
-- [x] **A/B subject lines** — cheap `/suggest-email-subjects` + UI chips in the email preview (one tiny call, high impact)  [2026-06-30]
+- [x] **A/B subject lines** — cheap `/suggest-email-subjects` + UI chips in the email preview (one tiny call, high impact) [2026-06-30]
 
 ### Follow-up & lifecycle emails
 
@@ -80,18 +80,18 @@
 
 ## Phase 3 — Clara everywhere (permeate the app) (4–6 weeks)
 
-*Every screen knows context; Clara is one intelligence, many surfaces*
+_Every screen knows context; Clara is one intelligence, many surfaces_
 
-| Surface | AI behaviour |
-|---------|----------------|
-| **Dashboard** | "3 proposals need attention" — Clara prioritises by revenue × likelihood to close |
-| **Clients list** | Per-client "engagement readiness" score; suggest next proposal type |
-| **Client detail** | Research brief, proposal history synthesis, "what to propose next" |
-| **Proposal list** | Sort by Clara health score; bulk "draft follow-ups" |
-| **Proposal detail** | Health, follow-up, engagement letter, renewal — already partial |
+| Surface                  | AI behaviour                                                                           |
+| ------------------------ | -------------------------------------------------------------------------------------- |
+| **Dashboard**            | "3 proposals need attention" — Clara prioritises by revenue × likelihood to close      |
+| **Clients list**         | Per-client "engagement readiness" score; suggest next proposal type                    |
+| **Client detail**        | Research brief, proposal history synthesis, "what to propose next"                     |
+| **Proposal list**        | Sort by Clara health score; bulk "draft follow-ups"                                    |
+| **Proposal detail**      | Health, follow-up, engagement letter, renewal — already partial                        |
 | **Public proposal view** | Client Q&A: questions answered from proposal content only (no hallucinated HMRC dates) |
-| **Signing flow** | Plain-English summary of what they're agreeing to before signature |
-| **Settings** | Clara explains MTD settings impact on generated clauses |
+| **Signing flow**         | Plain-English summary of what they're agreeing to before signature                     |
+| **Settings**             | Clara explains MTD settings impact on generated clauses                                |
 
 ### Proactive agent (not reactive chat)
 
@@ -115,7 +115,7 @@ User action → gather tenant-scoped context (client, proposal, CH, catalog, his
 
 ## Phase 4 — World-class polish (6–10 weeks)
 
-*Stand out visually, emotionally, and operationally*
+_Stand out visually, emotionally, and operationally_
 
 ### UX & trust
 
@@ -140,7 +140,7 @@ User action → gather tenant-scoped context (client, proposal, CH, catalog, his
 
 ## Phase 5 — Moat (10–16 weeks)
 
-*Things competitors cannot copy quickly*
+_Things competitors cannot copy quickly_
 
 - [x] **Regulatory watcher** — MTD / Companies Act changes → flag affected live proposals (stub API `/api/ai/regulatory-alerts`)
 - [x] **Benchmark pricing** (opt-in, anonymised) — placeholder bands via `/api/ai/benchmark-pricing`
@@ -162,6 +162,7 @@ User action → gather tenant-scoped context (client, proposal, CH, catalog, his
 ## Current Roadmap — Post-Push 2026-06-30 (af3b4aa on master → Render deploying)
 
 **Just shipped (this push):**
+
 - Proposal email **streaming** (live body) + cheap `/email-revise`, `/suggest-email-subjects`, `/suggest-email-ctas`, `/analyze-email`
 - Cover letter cheap revise (inline "Warmer", "Shorter", custom + Apply)
 - Final tweaked email wired into send confirmation/approved version
@@ -171,11 +172,13 @@ User action → gather tenant-scoped context (client, proposal, CH, catalog, his
 - All typechecks clean; low-token Clara pattern established (edit existing + tiny maxTokens)
 
 **Immediate (verify + unblock deploy):**
+
 - [ ] Smoke test on Render: create proposal → Clara email preview (stream + tweak CTA + analyse) → send; toggle theme; update profile phone/jobTitle; no "X X" dup
 - [ ] Upgrade engage-backend to Starter + 10 GB disk (manual dashboard: https://dashboard.render.com/web/srv-d6qkjlua2pns73a2r1fg/settings) — required for disk uploads/signatures
 - [ ] Confirm custom domain or note current onrender URLs in docs
 
 **Next high-ROI / low-token Clara (max wow, tiny spend):**
+
 - [x] More revise surfaces: services suggestions tweak (POST /revise-services), pricing notes, title suggestions (generalized /suggest-title) — backend complete
 - [x] Subject chips + "Use this" + auto re-analyze in email dialog; auto-fetch after tweaks
 - [x] Email analysis results surfaced as prominent checklist with per-issue "Fix this with Clara"
@@ -186,6 +189,7 @@ User action → gather tenant-scoped context (client, proposal, CH, catalog, his
 - [ ] Dashboard empty / attention Clara tips (partial, lists covered)
 
 **Phase polish & infra:**
+
 - [ ] Cloudflare Email webhooks → update emailHistory, bounces, suppression
 - [ ] E2E tests for streaming + revise flows (build gate)
 - [ ] Settings: AI token budget UI + "Clara voice" samples upload (style prompt)
@@ -193,32 +197,33 @@ User action → gather tenant-scoped context (client, proposal, CH, catalog, his
 - [ ] Full WCAG + contrast audit (leverage existing theme primitives)
 
 **Later (moat / scale):**
+
 - [ ] Client sentiment from replies
 - [ ] Daily brief email (Clara prioritises actions)
 - [ ] SOC2 prep, AI disclosure in terms
 - [ ] Xero/Stripe deep integrations with Clara explanations
 
-| Sprint | Focus | Outcome |
-|--------|-------|---------|
-| 0 (now) | Verify + Starter plan | Live Clara email on prod |
-| 1 | Cheap Clara everywhere + empty states | 70% auto-draft feel |
-| 2 | Lifecycle + attention + webhooks | Proactive partner tool |
-| 3 | Polish + mobile + compliance | Production grade |
+| Sprint  | Focus                                 | Outcome                  |
+| ------- | ------------------------------------- | ------------------------ |
+| 0 (now) | Verify + Starter plan                 | Live Clara email on prod |
+| 1       | Cheap Clara everywhere + empty states | 70% auto-draft feel      |
+| 2       | Lifecycle + attention + webhooks      | Proactive partner tool   |
+| 3       | Polish + mobile + compliance          | Production grade         |
 
 ---
 
 ## Success metrics (how you'll know it's world-class)
 
-| Metric | Target |
-|--------|--------|
-| Time to first sent proposal (new tenant) | < 15 minutes |
-| Partner edits per Clara draft | < 20% of words changed (good fit) |
-| Proposal open → sign rate | +25% vs static template baseline |
-| Follow-up emails using Clara | 80%+ of chases (not generic templates) |
-| Client "wow" feedback | Qualitative — "felt written for us" |
+| Metric                                   | Target                                 |
+| ---------------------------------------- | -------------------------------------- |
+| Time to first sent proposal (new tenant) | < 15 minutes                           |
+| Partner edits per Clara draft            | < 20% of words changed (good fit)      |
+| Proposal open → sign rate                | +25% vs static template baseline       |
+| Follow-up emails using Clara             | 80%+ of chases (not generic templates) |
+| Client "wow" feedback                    | Qualitative — "felt written for us"    |
 
 ---
 
-*Last updated: 2026-06-30 · Owner: William · Repo: `engage-from-capstone` master*
-*Streaming drafts implemented (live for cover + engagement + proposal send email). Cheap revise/CTA/subject/analysis wired. Global dark/light theme + contrast fixes complete. Profile phone/jobTitle persist. Name dedup fixed. Pushed to Render via GitHub (af3b4aa).*
-*Typecheck clean. Next: verify deploy, manual Render Starter upgrade.*
+_Last updated: 2026-06-30 · Owner: William · Repo: `engage-from-capstone` master_
+_Streaming drafts implemented (live for cover + engagement + proposal send email). Cheap revise/CTA/subject/analysis wired. Global dark/light theme + contrast fixes complete. Profile phone/jobTitle persist. Name dedup fixed. Pushed to Render via GitHub (af3b4aa)._
+_Typecheck clean. Next: verify deploy, manual Render Starter upgrade._

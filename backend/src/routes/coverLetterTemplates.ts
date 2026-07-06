@@ -63,7 +63,10 @@ async function resolvePreviewMergeData(
   tenantId: string,
   previewData: z.infer<typeof previewSchema>
 ) {
-  const fromSettings = await buildCoverLetterMergeFields(tenantId, previewData as CoverLetterMergeInput);
+  const fromSettings = await buildCoverLetterMergeFields(
+    tenantId,
+    previewData as CoverLetterMergeInput
+  );
   return {
     ...fromSettings,
     ...previewData,

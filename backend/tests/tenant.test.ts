@@ -1,7 +1,4 @@
-import {
-  parseSubdomainFromHost,
-  resolveTenantForRequest,
-} from '../src/middleware/tenant.js';
+import { parseSubdomainFromHost, resolveTenantForRequest } from '../src/middleware/tenant.js';
 import type { Request } from 'express';
 
 describe('parseSubdomainFromHost', () => {
@@ -13,12 +10,8 @@ describe('parseSubdomainFromHost', () => {
   });
 
   it('extracts subdomain from custom domains', () => {
-    expect(parseSubdomainFromHost('smith.engage.capstonesoftware.co.uk')).toBe(
-      'smith'
-    );
-    expect(parseSubdomainFromHost('demo.engage.capstonesoftware.co.uk')).toBe(
-      'demo'
-    );
+    expect(parseSubdomainFromHost('smith.engage.capstonesoftware.co.uk')).toBe('smith');
+    expect(parseSubdomainFromHost('demo.engage.capstonesoftware.co.uk')).toBe('demo');
   });
 
   it('ignores reserved first labels', () => {
@@ -30,14 +23,12 @@ describe('parseSubdomainFromHost', () => {
 describe('resolveTenantForRequest', () => {
   it('prefers X-Tenant-Id header over subdomain', async () => {
     const { prisma } = await import('../src/config/database.js');
-    const findSpy = jest
-      .spyOn(prisma.tenant, 'findFirst')
-      .mockResolvedValueOnce({
-        id: 'tenant-uuid',
-        subdomain: 'acme',
-        name: 'Acme',
-        isActive: true,
-      } as any);
+    const findSpy = jest.spyOn(prisma.tenant, 'findFirst').mockResolvedValueOnce({
+      id: 'tenant-uuid',
+      subdomain: 'acme',
+      name: 'Acme',
+      isActive: true,
+    } as any);
 
     const req = {
       headers: {

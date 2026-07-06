@@ -3,9 +3,10 @@
  * Production ops: bulk-import service catalogue → seed templates → pricing sanity.
  * Usage: node scripts/seed-production-catalog-and-templates.mjs
  */
-const API_BASE = (
-  process.env.API_URL || 'https://engage-backend-e1ue.onrender.com'
-).replace(/\/$/, '');
+const API_BASE = (process.env.API_URL || 'https://engage-backend-e1ue.onrender.com').replace(
+  /\/$/,
+  ''
+);
 const API = API_BASE.endsWith('/api') ? API_BASE : `${API_BASE}/api`;
 
 const EMAIL = process.env.TEST_USER_EMAIL || 'admin@demo.practice';
@@ -54,7 +55,9 @@ async function api(method, path, { jar, body, headers = {} } = {}) {
     } catch {
       json = { raw: text };
     }
-    const newCookies = parseCookies(res.headers.getSetCookie?.() || res.headers.raw?.()['set-cookie']);
+    const newCookies = parseCookies(
+      res.headers.getSetCookie?.() || res.headers.raw?.()['set-cookie']
+    );
     if (jar) for (const [k, v] of newCookies) jar.set(k, v);
     return { status: res.status, json, jar };
   } finally {
@@ -87,7 +90,10 @@ async function main() {
   console.log('✅ Logged in\n');
 
   // 1 — catalogue count before
-  const before = await api('GET', '/services', { jar, headers: { Authorization: auth.Authorization } });
+  const before = await api('GET', '/services', {
+    jar,
+    headers: { Authorization: auth.Authorization },
+  });
   const beforeCount = before.json?.data?.length ?? before.json?.data?.services?.length ?? '?';
   console.log(`📋 Services before import: ${beforeCount}`);
 
@@ -103,12 +109,17 @@ async function main() {
     process.exit(1);
   }
   const r = imp.json.data;
-  console.log(`   Imported: ${r.imported}, skipped: ${r.skipped}, errors: ${r.errors?.length ?? 0}`);
+  console.log(
+    `   Imported: ${r.imported}, skipped: ${r.skipped}, errors: ${r.errors?.length ?? 0}`
+  );
   if (r.errors?.length) {
     for (const e of r.errors.slice(0, 5)) console.log(`   ⚠️  ${e}`);
   }
 
-  const after = await api('GET', '/services', { jar, headers: { Authorization: auth.Authorization } });
+  const after = await api('GET', '/services', {
+    jar,
+    headers: { Authorization: auth.Authorization },
+  });
   const afterCount = after.json?.data?.length ?? after.json?.data?.services?.length ?? '?';
   console.log(`📋 Services after import: ${afterCount}\n`);
 
@@ -132,7 +143,9 @@ async function main() {
     expectedPackages = seed.json.data.expectedPackages;
     totalCreated += s.created;
     totalSkipped += s.skipped;
-    console.log(`   created=${s.created} skipped=${s.skipped} active=${s.totalActive} hasMore=${s.hasMore}`);
+    console.log(
+      `   created=${s.created} skipped=${s.skipped} active=${s.totalActive} hasMore=${s.hasMore}`
+    );
     if (!s.hasMore) break;
     offset += s.processed;
   }

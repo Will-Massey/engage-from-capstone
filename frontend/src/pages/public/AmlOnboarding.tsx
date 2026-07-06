@@ -112,13 +112,17 @@ function FileUploadField({
 
   return (
     <div>
-      <label className="block text-sm font-medium text-slate-800 dark:text-slate-200 mb-1">{label}</label>
+      <label className="block text-sm font-medium text-slate-800 dark:text-slate-200 mb-1">
+        {label}
+      </label>
       <p className="text-xs text-slate-500 dark:text-slate-400 mb-2">{hint}</p>
 
       {displayName ? (
         <div className="flex items-center justify-between gap-3 rounded-xl border border-emerald-200 dark:border-emerald-900/50 bg-emerald-50/50 dark:bg-emerald-950/20 px-4 py-3">
           <div className="min-w-0">
-            <p className="text-sm font-medium text-slate-800 dark:text-slate-200 truncate">{displayName}</p>
+            <p className="text-sm font-medium text-slate-800 dark:text-slate-200 truncate">
+              {displayName}
+            </p>
             {displaySize ? (
               <p className="text-xs text-slate-500">{formatFileSize(displaySize)}</p>
             ) : (
@@ -316,17 +320,23 @@ export default function AmlOnboarding() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-primary-50/30 dark:from-slate-950 dark:via-slate-900 dark:to-primary-950/20 py-10 px-4">
       <div className="max-w-2xl mx-auto">
-        <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="text-center mb-8">
+        <motion.div
+          initial={{ opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="text-center mb-8"
+        >
           <div
             className="inline-flex items-center justify-center w-14 h-14 rounded-2xl mb-4 text-white shadow-lg"
             style={{ background: `linear-gradient(135deg, ${primary}, ${primary}dd)` }}
           >
             <ShieldCheckIcon className="h-7 w-7" />
           </div>
-          <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100">ID &amp; AML verification</h1>
+          <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100">
+            ID &amp; AML verification
+          </h1>
           <p className="mt-2 text-sm text-slate-600 dark:text-slate-400 max-w-md mx-auto">
-            {context?.practice?.name} needs a few details to complete your anti-money laundering checks. This
-            secure form takes about 5 minutes.
+            {context?.practice?.name} needs a few details to complete your anti-money laundering
+            checks. This secure form takes about 5 minutes.
           </p>
           <div className="mt-3 inline-flex items-center gap-2 text-xs text-slate-500">
             <BuildingOfficeIcon className="h-4 w-4" />
@@ -336,7 +346,9 @@ export default function AmlOnboarding() {
 
         <form onSubmit={handleSubmit} className="glass-tile p-6 sm:p-8 space-y-5">
           <div className="rounded-xl border border-slate-200 dark:border-slate-700 p-4 space-y-4 bg-slate-50/50 dark:bg-slate-900/30">
-            <h2 className="text-sm font-semibold text-slate-900 dark:text-slate-100">Identity documents</h2>
+            <h2 className="text-sm font-semibold text-slate-900 dark:text-slate-100">
+              Identity documents
+            </h2>
             <p className="text-xs text-slate-500 dark:text-slate-400 -mt-2">
               Please upload clear colour copies. We only use these for compliance purposes.
             </p>
@@ -349,7 +361,10 @@ export default function AmlOnboarding() {
                 className="input-field w-full"
                 value={form.idDocumentType}
                 onChange={(e) =>
-                  setForm({ ...form, idDocumentType: e.target.value as FormState['idDocumentType'] })
+                  setForm({
+                    ...form,
+                    idDocumentType: e.target.value as FormState['idDocumentType'],
+                  })
                 }
               >
                 <option value="PASSPORT">Passport</option>
@@ -428,7 +443,9 @@ export default function AmlOnboarding() {
           </div>
 
           <div>
-            <label className="block text-sm font-medium mb-1">Source of funds / wealth (brief)</label>
+            <label className="block text-sm font-medium mb-1">
+              Source of funds / wealth (brief)
+            </label>
             <textarea
               required
               rows={2}
@@ -448,7 +465,8 @@ export default function AmlOnboarding() {
                 className="mt-1 accent-primary-600"
               />
               <span className="text-sm text-slate-700 dark:text-slate-300">
-                I am a Politically Exposed Person (PEP), or a close associate or family member of a PEP
+                I am a Politically Exposed Person (PEP), or a close associate or family member of a
+                PEP
               </span>
             </label>
             {form.isPep && (
@@ -470,8 +488,8 @@ export default function AmlOnboarding() {
               onChange={(e) => setForm({ ...form, confirmAccurate: e.target.checked })}
               className="mt-0.5 accent-primary-600"
             />
-            I confirm the information provided is accurate and I understand this is used for AML compliance
-            purposes under UK regulations.
+            I confirm the information provided is accurate and I understand this is used for AML
+            compliance purposes under UK regulations.
           </label>
 
           <button
@@ -484,7 +502,8 @@ export default function AmlOnboarding() {
           </button>
 
           <p className="text-[10px] text-center text-slate-400 leading-snug">
-            Your data is transmitted securely and stored only for compliance purposes by {context?.practice?.name}.
+            Your data is transmitted securely and stored only for compliance purposes by{' '}
+            {context?.practice?.name}.
           </p>
         </form>
       </div>

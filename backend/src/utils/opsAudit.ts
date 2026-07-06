@@ -14,7 +14,11 @@ export type OpsAuditAction =
 /**
  * Audit log for break-glass admin/setup endpoints (IP + action, never log secrets).
  */
-export function logOpsAccess(req: Request, action: OpsAuditAction, meta?: Record<string, unknown>): void {
+export function logOpsAccess(
+  req: Request,
+  action: OpsAuditAction,
+  meta?: Record<string, unknown>
+): void {
   const ip =
     (typeof req.headers['x-forwarded-for'] === 'string'
       ? req.headers['x-forwarded-for'].split(',')[0]?.trim()

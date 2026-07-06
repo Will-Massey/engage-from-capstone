@@ -9,10 +9,6 @@ export {
   resolveTenantForRequest,
 } from './tenant.js';
 
-import {
-  extractTenant,
-  tenantHeader,
-  validateTenantMembership,
-} from './tenant.js';
+import { extractTenant, tenantHeader, validateTenantMembership } from './tenant.js';
 
 export default { extractTenant, tenantHeader, validateTenantMembership };

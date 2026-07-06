@@ -95,13 +95,21 @@ export function AiDraftPreview({
     <div className="mt-3 space-y-2">
       <p className="text-[10px] uppercase tracking-wide text-violet-600 dark:text-violet-400 font-medium flex items-center gap-1">
         {isStreaming ? (
-          <>Clara drafting live <span className="inline-block w-1 h-3 bg-violet-600 animate-pulse ml-0.5" /></>
+          <>
+            Clara drafting live{' '}
+            <span className="inline-block w-1 h-3 bg-violet-600 animate-pulse ml-0.5" />
+          </>
         ) : (
           'Draft from Clara — review before using'
         )}
       </p>
       <div className="text-sm text-slate-700 dark:text-slate-200 whitespace-pre-wrap max-h-48 overflow-y-auto rounded-lg bg-white/80 dark:bg-slate-900/60 p-3 border border-violet-100 dark:border-violet-900">
-        {content}{isStreaming && <span className="inline-block w-1.5 h-3.5 bg-current align-middle ml-0.5 animate-pulse">|</span>}
+        {content}
+        {isStreaming && (
+          <span className="inline-block w-1.5 h-3.5 bg-current align-middle ml-0.5 animate-pulse">
+            |
+          </span>
+        )}
       </div>
 
       {showActions && (
@@ -120,7 +128,11 @@ export function AiDraftPreview({
             </button>
           )}
           {onRegenerate && (
-            <button type="button" onClick={onRegenerate} className="btn-secondary text-xs py-1.5 px-3">
+            <button
+              type="button"
+              onClick={onRegenerate}
+              className="btn-secondary text-xs py-1.5 px-3"
+            >
               Regenerate
             </button>
           )}
@@ -133,10 +145,14 @@ export function AiDraftPreview({
       )}
 
       {isStreaming && (
-        <p className="text-[10px] text-violet-500 dark:text-violet-400">Live preview — you can Apply at any time or wait for Clara to finish.</p>
+        <p className="text-[10px] text-violet-500 dark:text-violet-400">
+          Live preview — you can Apply at any time or wait for Clara to finish.
+        </p>
       )}
       {showActions && onDiscard && (
-        <p className="text-[10px] text-slate-500 dark:text-slate-300">Accept · Edit · Regenerate · Reject (never overwrites without your action)</p>
+        <p className="text-[10px] text-slate-500 dark:text-slate-300">
+          Accept · Edit · Regenerate · Reject (never overwrites without your action)
+        </p>
       )}
     </div>
   );

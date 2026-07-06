@@ -353,7 +353,11 @@ api.interceptors.response.use(
           }
 
           const originalRequest = error.config as typeof error.config & { _retry?: boolean };
-          if (originalRequest && !originalRequest._retry && originalRequest.url !== '/auth/refresh') {
+          if (
+            originalRequest &&
+            !originalRequest._retry &&
+            originalRequest.url !== '/auth/refresh'
+          ) {
             originalRequest._retry = true;
             try {
               const refreshResponse = (await api.post('/auth/refresh', {})) as any;
@@ -440,11 +444,7 @@ export const apiClient = {
   delete: (url: string, config?: any) => api.delete(url, config),
 
   // Auth
-  login: (
-    email: string,
-    password: string,
-    options?: { tenantId?: string; rememberMe?: boolean }
-  ) =>
+  login: (email: string, password: string, options?: { tenantId?: string; rememberMe?: boolean }) =>
     api.post('/auth/login', {
       email,
       password,
@@ -507,10 +507,7 @@ export const apiClient = {
 
   deleteProposal: (id: string) => api.delete(`/proposals/${id}`),
 
-  sendProposal: (
-    id: string,
-    email?: { subject: string; textBody: string; htmlBody?: string }
-  ) =>
+  sendProposal: (id: string, email?: { subject: string; textBody: string; htmlBody?: string }) =>
     api.post(`/proposals/${id}/send`, {
       ...(email
         ? {
@@ -524,8 +521,7 @@ export const apiClient = {
   getApprovalQueue: (params?: Record<string, unknown>) =>
     api.get('/proposals/approval-queue', { params }),
 
-  submitProposalForApproval: (id: string) =>
-    api.post(`/proposals/${id}/submit-for-approval`, {}),
+  submitProposalForApproval: (id: string) => api.post(`/proposals/${id}/submit-for-approval`, {}),
 
   approveProposal: (id: string, data?: { approvalNotes?: string }) =>
     api.post(`/proposals/${id}/approve`, data ?? {}),
@@ -537,10 +533,8 @@ export const apiClient = {
 
   withdrawProposal: (id: string) => api.post(`/proposals/${id}/withdraw`, {}),
 
-  markProposalLost: (
-    id: string,
-    data: { declineReason: string; reason?: string }
-  ) => api.post(`/proposals/${id}/mark-lost`, data),
+  markProposalLost: (id: string, data: { declineReason: string; reason?: string }) =>
+    api.post(`/proposals/${id}/mark-lost`, data),
 
   // Response interceptor already returns `response.data`; for blobs that value IS the Blob.
   downloadProposalPDF: (id: string) =>
@@ -633,9 +627,8 @@ export const apiClient = {
   updatePayoutSettings: (data: Record<string, unknown>) => api.put('/payout/settings', data),
   getPayoutLedger: () => api.get('/payout/ledger'),
 
-  testIntegrationWebhook: (
-    format?: 'default' | 'hubspot' | 'zapier' | 'senta' | 'karbon'
-  ) => api.post('/tenants/settings/test-webhook', { format }),
+  testIntegrationWebhook: (format?: 'default' | 'hubspot' | 'zapier' | 'senta' | 'karbon') =>
+    api.post('/tenants/settings/test-webhook', { format }),
 
   // Users
   updateMe: (data: any) => api.put('/auth/me', data),
@@ -716,8 +709,7 @@ export const apiClient = {
 
   // W4.3 firm group
   getFirmGroup: () => api.get('/tenants/firm-group'),
-  createFirmGroup: (data: { name: string; slug?: string }) =>
-    api.post('/tenants/firm-group', data),
+  createFirmGroup: (data: { name: string; slug?: string }) => api.post('/tenants/firm-group', data),
   updateFirmGroup: (data: { name: string }) => api.put('/tenants/firm-group', data),
   dissolveFirmGroup: () => api.delete('/tenants/firm-group'),
   addFirmGroupPractice: (subdomain: string) =>
@@ -728,15 +720,15 @@ export const apiClient = {
 
   // W4.4 voice of practice
   getVoiceOfPractice: () => api.get('/ai/voice-of-practice'),
-  saveVoiceOfPractice: (sampleText: string) =>
-    api.post('/ai/voice-of-practice', { sampleText }),
+  saveVoiceOfPractice: (sampleText: string) => api.post('/ai/voice-of-practice', { sampleText }),
 
   // Lifecycle actions (wired to touchpoint engine)
   markAmlComplete: (clientId: string) => api.post(`/clients/${clientId}/aml-complete`, {}),
   markEngagementLetterSigned: (clientId: string) =>
     api.post(`/clients/${clientId}/engagement-letter-signed`, {}),
   markInfoReceived: (clientId: string) => api.post(`/clients/${clientId}/info-received`, {}),
-  scheduleDeadlineReminders: (clientId: string) => api.post(`/clients/${clientId}/schedule-deadline-reminders`, {}),
+  scheduleDeadlineReminders: (clientId: string) =>
+    api.post(`/clients/${clientId}/schedule-deadline-reminders`, {}),
   getClientActivity: (clientId: string) => api.get(`/clients/${clientId}/activity`),
 
   // Touchpoints per client (for Lifecycle panel upcoming + history)
@@ -812,7 +804,8 @@ export const apiClient = {
   getCompaniesHouseCompany: (companyNumber: string) =>
     api.get(`/companies-house/company/${companyNumber}`),
   createCoverLetterTemplate: (data: any) => api.post('/cover-letter-templates', data),
-  updateCoverLetterTemplate: (id: string, data: any) => api.put(`/cover-letter-templates/${id}`, data),
+  updateCoverLetterTemplate: (id: string, data: any) =>
+    api.put(`/cover-letter-templates/${id}`, data),
   deleteCoverLetterTemplate: (id: string) => api.delete(`/cover-letter-templates/${id}`),
 
   // Proposal audit trail & compliance (views + signatures + key events)
@@ -856,7 +849,8 @@ export const apiClient = {
   // Engage assistant (Clara) — configured on the server via environment variables
   getAiStatus: () => api.get('/ai/status'),
   aiStatus: () => api.get('/ai/status'),
-  aiEmptySuggestion: (context: string) => api.get(`/ai/empty-suggestion?context=${encodeURIComponent(context)}`),
+  aiEmptySuggestion: (context: string) =>
+    api.get(`/ai/empty-suggestion?context=${encodeURIComponent(context)}`),
   aiSuggestServices: (clientId: string) => api.post('/ai/suggest-services', { clientId }),
   aiDraftReview: (data: {
     clientId: string;
@@ -880,7 +874,10 @@ export const apiClient = {
   aiFollowUp: (proposalId: string, tone?: string) =>
     api.post('/ai/follow-up', { proposalId, tone: tone || 'professional' }),
   aiEngagementLetter: (proposalId: string, options?: { includeAiIntro?: boolean }) =>
-    api.post('/ai/engagement-letter', { proposalId, includeAiIntro: options?.includeAiIntro ?? false }),
+    api.post('/ai/engagement-letter', {
+      proposalId,
+      includeAiIntro: options?.includeAiIntro ?? false,
+    }),
   getProposalHealth: (proposalId: string) => api.get(`/ai/proposal-health/${proposalId}`),
   aiRenewalDraft: (proposalId: string, upliftPercent?: number) =>
     api.post('/ai/renewal-draft', { proposalId, upliftPercent: upliftPercent ?? 0 }),
@@ -891,8 +888,12 @@ export const apiClient = {
     query?: string;
     context?: { proposalId?: string; clientId?: string; page?: string };
   }) => api.post('/ai/quick', data),
-  aiFeedback: (data: { feature: string; helpful: boolean; comment?: string; proposalId?: string }) =>
-    api.post('/ai/feedback', data),
+  aiFeedback: (data: {
+    feature: string;
+    helpful: boolean;
+    comment?: string;
+    proposalId?: string;
+  }) => api.post('/ai/feedback', data),
 
   aiProposalEmailDraft: (data: {
     proposalId?: string;
@@ -917,7 +918,12 @@ export const apiClient = {
   aiProposalExplanation: (data: {
     clientId: string;
     title: string;
-    services: Array<{ name: string; description?: string; billingFrequency?: string; billingCycle?: string }>;
+    services: Array<{
+      name: string;
+      description?: string;
+      billingFrequency?: string;
+      billingCycle?: string;
+    }>;
     monthlyTotal?: number;
     annualTotal?: number;
     contractTotal?: number;
@@ -929,8 +935,7 @@ export const apiClient = {
   aiSuggestEmailCtas: (body: string, context?: any) =>
     api.post('/ai/suggest-email-ctas', { body, context }),
 
-  aiAnalyzeEmail: (body: string, context?: any) =>
-    api.post('/ai/analyze-email', { body, context }),
+  aiAnalyzeEmail: (body: string, context?: any) => api.post('/ai/analyze-email', { body, context }),
 
   aiStreamProposalEmailDraft: async (
     payload: any,
@@ -1062,7 +1067,9 @@ export const apiClient = {
           if (payload.chunk) onChunk(payload.chunk);
           if (payload.done) return;
           if (payload.error) throw new Error(payload.error);
-        } catch { /* ignore malformed SSE chunks */ }
+        } catch {
+          /* ignore malformed SSE chunks */
+        }
       }
     }
   },
@@ -1101,7 +1108,9 @@ export const apiClient = {
           if (payload.chunk) onChunk(payload.chunk);
           if (payload.done) return;
           if (payload.error) throw new Error(payload.error);
-        } catch { /* ignore malformed SSE chunks */ }
+        } catch {
+          /* ignore malformed SSE chunks */
+        }
       }
     }
   },

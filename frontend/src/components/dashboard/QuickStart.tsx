@@ -17,7 +17,10 @@ const QuickStart = () => {
     >
       <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4 mb-5">
         <div>
-          <h2 id="quick-start-heading" className="text-lg font-semibold text-slate-900 dark:text-slate-100">
+          <h2
+            id="quick-start-heading"
+            className="text-lg font-semibold text-slate-900 dark:text-slate-100"
+          >
             Get your first proposal out the door
           </h2>
           <p className="mt-1 text-sm text-slate-600 dark:text-slate-300">

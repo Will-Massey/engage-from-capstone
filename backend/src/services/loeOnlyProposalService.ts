@@ -114,14 +114,14 @@ export async function createLoeOnlyProposal(input: CreateLoeOnlyProposalInput) {
       : addDays(new Date(), proposalSettings.defaultExpiryDays);
 
   const contractStartDate =
-    input.contractStartDate !== undefined
-      ? parseProposalDateInput(input.contractStartDate)
-      : null;
+    input.contractStartDate !== undefined ? parseProposalDateInput(input.contractStartDate) : null;
 
   const periodStart = contractStartDate
     ? contractStartDate.toISOString().slice(0, 10)
     : 'On acceptance';
-  const periodEnd = addDays(contractStartDate || new Date(), 365).toISOString().slice(0, 10);
+  const periodEnd = addDays(contractStartDate || new Date(), 365)
+    .toISOString()
+    .slice(0, 10);
 
   const engagementLetter = assembleEngagementLetterFromClauses(
     practiceName,
@@ -132,9 +132,7 @@ export async function createLoeOnlyProposal(input: CreateLoeOnlyProposalInput) {
   );
 
   const terms = await resolveProposalTerms(input.tenantId, serviceRows);
-  const title =
-    input.title?.trim() ||
-    `Letter of engagement — ${client.name}`;
+  const title = input.title?.trim() || `Letter of engagement — ${client.name}`;
 
   const builtServices = input.serviceIds.map((serviceId) => {
     const template = serviceTemplates.find((t) => t.id === serviceId);

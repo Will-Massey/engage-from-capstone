@@ -8,7 +8,10 @@ const MIME_MAGIC: Record<string, Buffer[]> = {
 };
 
 export function isPngBuffer(buffer: Buffer): boolean {
-  return buffer.length >= PNG_SIGNATURE.length && buffer.subarray(0, PNG_SIGNATURE.length).equals(PNG_SIGNATURE);
+  return (
+    buffer.length >= PNG_SIGNATURE.length &&
+    buffer.subarray(0, PNG_SIGNATURE.length).equals(PNG_SIGNATURE)
+  );
 }
 
 export function bufferMatchesMime(buffer: Buffer, mimeType: string): boolean {

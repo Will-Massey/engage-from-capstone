@@ -27,7 +27,6 @@ import {
   ChevronUpIcon,
   PaperAirplaneIcon,
   CreditCardIcon,
-
   CheckCircleIcon,
 } from '@heroicons/react/24/outline';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -102,10 +101,7 @@ function buildSigningSteps(proposal: ProposalData): { id: SigningStep; label: st
   if (proposal.engagementLetter?.trim()) {
     steps.push({ id: 'engagement', label: 'Engagement' });
   }
-  steps.push(
-    { id: 'identity', label: 'Identity' },
-    { id: 'sign', label: 'Sign' },
-  );
+  steps.push({ id: 'identity', label: 'Identity' }, { id: 'sign', label: 'Sign' });
   return steps;
 }
 
@@ -238,7 +234,7 @@ const PublicProposalView = () => {
           setShowPaymentStep(false);
           setPaymentPending(false);
           setPaymentConfig((prev) =>
-            prev ? { ...prev, paymentStatus: 'COMPLETED', paymentRequired: false } : prev,
+            prev ? { ...prev, paymentStatus: 'COMPLETED', paymentRequired: false } : prev
           );
         }
       } catch {
@@ -271,19 +267,15 @@ const PublicProposalView = () => {
           }
           setIsAccepted(response.data.status === 'ACCEPTED');
           setPaymentComplete(
-            response.data.paymentStatus === 'COMPLETED' ||
-              response.data.paymentStatus === 'PAID',
+            response.data.paymentStatus === 'COMPLETED' || response.data.paymentStatus === 'PAID'
           );
           const payment = response.data.payment as PaymentConfig | null | undefined;
           if (payment) {
             setPaymentConfig(payment);
-            setPaymentPending(
-              response.data.status === 'ACCEPTED' && payment.paymentRequired,
-            );
+            setPaymentPending(response.data.status === 'ACCEPTED' && payment.paymentRequired);
           } else {
             setPaymentPending(
-              response.data.status === 'ACCEPTED' &&
-                response.data.paymentStatus === 'PENDING',
+              response.data.status === 'ACCEPTED' && response.data.paymentStatus === 'PENDING'
             );
           }
           if (response.data.client?.contactEmail) {
@@ -349,10 +341,7 @@ const PublicProposalView = () => {
       })) as any;
 
       if (response.success) {
-        setQaMessages((prev) => [
-          ...prev,
-          { role: 'assistant', content: response.data.answer },
-        ]);
+        setQaMessages((prev) => [...prev, { role: 'assistant', content: response.data.answer }]);
       }
     } catch (error: any) {
       const message =
@@ -417,7 +406,7 @@ const PublicProposalView = () => {
               setPaymentPending(false);
               setSigningStep('confirmation');
               setPaymentConfig((prev) =>
-                prev ? { ...prev, paymentStatus: 'COMPLETED', paymentRequired: false } : prev,
+                prev ? { ...prev, paymentStatus: 'COMPLETED', paymentRequired: false } : prev
               );
               toast.success('Payment received — thank you');
             },
@@ -446,7 +435,7 @@ const PublicProposalView = () => {
       setPaymentPending(false);
       setSigningStep('confirmation');
       setPaymentConfig((prev) =>
-        prev ? { ...prev, paymentStatus: 'SKIPPED', paymentRequired: false } : prev,
+        prev ? { ...prev, paymentStatus: 'SKIPPED', paymentRequired: false } : prev
       );
       toast('You can set up payment with your accountant later', { icon: 'ℹ️' });
     } catch (error: any) {
@@ -480,8 +469,7 @@ const PublicProposalView = () => {
       const consentText = `I confirm I am authorised to sign on behalf of ${proposal?.client?.name || 'the client'} and agree to the terms of this proposal.`;
 
       const isFirstSigner = !awaitingAdditionalSigner;
-      const tierToSubmit =
-        isFirstSigner && tiersEnabled ? lockedTierId || undefined : undefined;
+      const tierToSubmit = isFirstSigner && tiersEnabled ? lockedTierId || undefined : undefined;
 
       const response = (await apiClient.post(`/proposals/view/${token}/sign`, {
         signedBy: signerName,
@@ -521,8 +509,6 @@ const PublicProposalView = () => {
     }
   };
 
-
-
   if (isLoading) {
     return (
       <div className="min-h-screen bg-slate-50 dark:bg-slate-900 py-8 px-4">
@@ -540,7 +526,9 @@ const PublicProposalView = () => {
       <div className="min-h-screen flex items-center justify-center bg-slate-50 px-4">
         <div className="max-w-md w-full bg-white rounded-xl shadow-lg p-8 text-center">
           <ExclamationCircleIcon className="mx-auto h-16 w-16 text-red-500" />
-          <h2 className="mt-4 text-xl font-semibold text-slate-900 dark:text-white">Proposal Not Available</h2>
+          <h2 className="mt-4 text-xl font-semibold text-slate-900 dark:text-white">
+            Proposal Not Available
+          </h2>
           <p className="mt-2 text-slate-700">{error}</p>
           <p className="mt-4 text-sm text-slate-600">
             Please contact the sender if you believe this is an error.
@@ -555,8 +543,8 @@ const PublicProposalView = () => {
   const customFields: ProposalCustomFieldsView = proposal.customFields ?? {};
   const tiersEnabled = Boolean(
     customFields.offerThreePackages &&
-      customFields.pricingTiers &&
-      customFields.pricingTiers.length >= 2,
+    customFields.pricingTiers &&
+    customFields.pricingTiers.length >= 2
   );
   const lockedTierId = customFields.selectedTierId ?? selectedTierId;
   const baseTotals = {
@@ -572,8 +560,8 @@ const PublicProposalView = () => {
     : baseTotals;
   const activeTierId = isAccepted ? customFields.selectedTierId : lockedTierId;
   const activeTier = activeTierId
-    ? findPricingTier(customFields, activeTierId) ??
-      customFields.pricingTiers?.find((t) => t.id === activeTierId)
+    ? (findPricingTier(customFields, activeTierId) ??
+      customFields.pricingTiers?.find((t) => t.id === activeTierId))
     : undefined;
 
   const isExpired = new Date(proposal.validUntil) < new Date();
@@ -582,9 +570,7 @@ const PublicProposalView = () => {
     signingStep !== 'confirmation' &&
     (!isAccepted || signingStep === 'payment') &&
     !isExpired;
-  const currentStepIndex = signingStep
-    ? signingSteps.findIndex((s) => s.id === signingStep)
-    : -1;
+  const currentStepIndex = signingStep ? signingSteps.findIndex((s) => s.id === signingStep) : -1;
 
   const StepIndicator = () => (
     <div className="mb-6" data-testid="signing-step-indicator">
@@ -625,7 +611,9 @@ const PublicProposalView = () => {
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm text-slate-600 dark:text-slate-400">Proposal from</p>
-              <h1 className="text-2xl font-bold text-slate-900 dark:text-white">{proposal.tenant.name}</h1>
+              <h1 className="text-2xl font-bold text-slate-900 dark:text-white">
+                {proposal.tenant.name}
+              </h1>
             </div>
             {proposal.tenant.logo && <img src={proposal.tenant.logo} alt="Logo" className="h-12" />}
           </div>
@@ -650,8 +638,9 @@ const PublicProposalView = () => {
                       Thank you — Proposal accepted!
                     </p>
                     <p className="mt-1 text-sm text-emerald-700 dark:text-emerald-300">
-                      Your automated client onboarding journey has started. Expect a warm welcome email
-                      shortly, followed by secure requests for ID/AML verification and next steps.
+                      Your automated client onboarding journey has started. Expect a warm welcome
+                      email shortly, followed by secure requests for ID/AML verification and next
+                      steps.
                     </p>
 
                     <div className="mt-4 grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs">
@@ -665,14 +654,18 @@ const PublicProposalView = () => {
                           key={i}
                           className="rounded-xl border border-emerald-100 bg-white/70 px-3 py-2 dark:border-emerald-900/50 dark:bg-emerald-950/20"
                         >
-                          <div className="font-medium text-emerald-800 dark:text-emerald-200">{s.label}</div>
-                          <div className="text-emerald-600/70 dark:text-emerald-400/70">{s.desc}</div>
+                          <div className="font-medium text-emerald-800 dark:text-emerald-200">
+                            {s.label}
+                          </div>
+                          <div className="text-emerald-600/70 dark:text-emerald-400/70">
+                            {s.desc}
+                          </div>
                         </div>
                       ))}
                     </div>
                     <p className="mt-3 text-[11px] text-emerald-600/80 dark:text-emerald-400/70">
-                      All communications are automated and tailored. Your accountant can pause or customise
-                      them at any time.
+                      All communications are automated and tailored. Your accountant can pause or
+                      customise them at any time.
                     </p>
 
                     {paymentPending && !paymentComplete && paymentConfig?.paymentRequired && (
@@ -689,10 +682,7 @@ const PublicProposalView = () => {
                           />
                           <span>
                             I accept the{' '}
-                            <Link
-                              to="/legal/client-payment-authorisation"
-                              className="underline"
-                            >
+                            <Link to="/legal/client-payment-authorisation" className="underline">
                               Client Payment Authorisation
                             </Link>
                           </span>
@@ -746,7 +736,9 @@ const PublicProposalView = () => {
 
           {/* Proposal Details */}
           <div>
-            <h2 className="text-xl font-semibold text-slate-900 dark:text-white">{proposal.title}</h2>
+            <h2 className="text-xl font-semibold text-slate-900 dark:text-white">
+              {proposal.title}
+            </h2>
             <p className="text-sm text-slate-600 mt-1">Reference: {proposal.reference}</p>
             <p className="text-sm text-slate-600">Valid until: {formatDate(proposal.validUntil)}</p>
           </div>
@@ -764,7 +756,9 @@ const PublicProposalView = () => {
               )}
               <p
                 className={`${
-                  proposal.client.contactName?.trim() ? 'text-base text-slate-700' : 'mt-1 text-lg font-medium text-slate-900 dark:text-white'
+                  proposal.client.contactName?.trim()
+                    ? 'text-base text-slate-700'
+                    : 'mt-1 text-lg font-medium text-slate-900 dark:text-white'
                 }`}
               >
                 {proposal.client.name}
@@ -779,7 +773,9 @@ const PublicProposalView = () => {
                   Prepared By
                 </h3>
                 <p className="mt-1 text-lg font-semibold text-slate-900 dark:text-white">
-                  {[proposal.createdBy.firstName, proposal.createdBy.lastName].filter(Boolean).join(' ')}
+                  {[proposal.createdBy.firstName, proposal.createdBy.lastName]
+                    .filter(Boolean)
+                    .join(' ')}
                 </p>
                 {proposal.createdBy.jobTitle && (
                   <p className="text-sm text-slate-600">{proposal.createdBy.jobTitle}</p>
@@ -791,8 +787,7 @@ const PublicProposalView = () => {
             )}
           </div>
 
-          {(proposal.coverLetter ||
-            (proposal as { proposalSummary?: string }).proposalSummary) && (
+          {(proposal.coverLetter || (proposal as { proposalSummary?: string }).proposalSummary) && (
             <div className="border-t border-slate-200 dark:border-slate-600 pt-6">
               <h3 className="text-sm font-medium text-slate-600 dark:text-slate-300 uppercase tracking-wide">
                 Cover letter
@@ -824,7 +819,9 @@ const PublicProposalView = () => {
                 >
                   <div className="flex-1">
                     <div className="flex items-center">
-                      <h4 className="font-medium text-slate-900 dark:text-slate-100">{service.name}</h4>
+                      <h4 className="font-medium text-slate-900 dark:text-slate-100">
+                        {service.name}
+                      </h4>
                       {service.isOptional && (
                         <span className="ml-2 px-2 py-0.5 text-xs bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-200 rounded-full">
                           Optional
@@ -832,11 +829,15 @@ const PublicProposalView = () => {
                       )}
                     </div>
                     {service.description && (
-                      <p className="text-sm text-slate-600 dark:text-slate-300 mt-1">{service.description}</p>
+                      <p className="text-sm text-slate-600 dark:text-slate-300 mt-1">
+                        {service.description}
+                      </p>
                     )}
                     <p className="text-sm text-slate-600 dark:text-slate-300 mt-1">
                       {service.quantity} x {formatCurrency(service.unitPrice)} /{' '}
-                      {(service.billingFrequency || service.frequency).toLowerCase().replace(/_/g, ' ')}
+                      {(service.billingFrequency || service.frequency)
+                        .toLowerCase()
+                        .replace(/_/g, ' ')}
                     </p>
                     {(service.billingFrequency || service.frequency) === 'ONE_TIME' &&
                       service.oneOffDueDate && (
@@ -923,10 +924,7 @@ const PublicProposalView = () => {
 
           {/* Additional signatory required */}
           {awaitingAdditionalSigner && !isAccepted && (
-            <div
-              className="border-t pt-6"
-              data-testid="additional-signatory-banner"
-            >
+            <div className="border-t pt-6" data-testid="additional-signatory-banner">
               <div className="rounded-xl border border-amber-200 dark:border-amber-800 bg-amber-50/70 dark:bg-amber-950/20 p-5">
                 <h3 className="text-sm font-semibold text-amber-900 dark:text-amber-200">
                   Additional signatory required
@@ -1212,7 +1210,9 @@ const PublicProposalView = () => {
                     {proposal.services.map((s) => (
                       <li key={s.id} className="flex justify-between gap-2">
                         <span>{s.name}</span>
-                        <span className="font-medium">{formatCurrency(s.lineTotal || s.total || 0)}</span>
+                        <span className="font-medium">
+                          {formatCurrency(s.lineTotal || s.total || 0)}
+                        </span>
                       </li>
                     ))}
                   </ul>
@@ -1317,7 +1317,9 @@ const PublicProposalView = () => {
                       />
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-slate-800">Role / title</label>
+                      <label className="block text-sm font-medium text-slate-800">
+                        Role / title
+                      </label>
                       <input
                         data-testid="signer-role-input"
                         type="text"
@@ -1328,7 +1330,9 @@ const PublicProposalView = () => {
                       />
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-slate-800">Email address</label>
+                      <label className="block text-sm font-medium text-slate-800">
+                        Email address
+                      </label>
                       <input
                         data-testid="signer-email-input"
                         type="email"
@@ -1404,8 +1408,8 @@ const PublicProposalView = () => {
                   </p>
                   {paymentConfig.feePreview && (
                     <p className="text-xs text-slate-500 dark:text-slate-400">
-                      Payment is processed securely by Revolut. Your accountant receives the agreed fee
-                      after platform and processing costs.
+                      Payment is processed securely by Revolut. Your accountant receives the agreed
+                      fee after platform and processing costs.
                     </p>
                   )}
                   <label className="flex items-start gap-2 text-sm text-slate-800 dark:text-slate-200">
@@ -1493,10 +1497,7 @@ const PublicProposalView = () => {
                   onChange={(e) => setTermsAccepted(e.target.checked)}
                   className="mt-1 h-4 w-4 text-primary-600 rounded"
                 />
-                <label
-                  htmlFor="terms"
-                  className="ml-2 text-sm text-slate-800 dark:text-slate-100"
-                >
+                <label htmlFor="terms" className="ml-2 text-sm text-slate-800 dark:text-slate-100">
                   I have read and agree to the terms and conditions outlined above.
                 </label>
               </div>
@@ -1505,10 +1506,7 @@ const PublicProposalView = () => {
 
           {/* Signing summary — browse mode helper */}
           {!isAccepted && !isExpired && !inSigningFlow && termsAccepted && (
-            <div
-              data-testid="signing-summary-card"
-              className="border-t pt-6"
-            >
+            <div data-testid="signing-summary-card" className="border-t pt-6">
               <div className="rounded-xl border border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-900/70 p-5">
                 <div className="flex items-start gap-3">
                   <DocumentTextIcon className="h-6 w-6 text-primary-600 dark:text-primary-400 shrink-0 mt-0.5" />
@@ -1616,7 +1614,9 @@ const PublicProposalView = () => {
           {showDecline && !isAccepted && (
             <div className="border-t pt-6 space-y-4">
               <div>
-                <h3 className="text-lg font-medium text-slate-900 dark:text-white">Decline proposal</h3>
+                <h3 className="text-lg font-medium text-slate-900 dark:text-white">
+                  Decline proposal
+                </h3>
                 <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">
                   Help us improve — let us know why this proposal isn&apos;t right for you.
                 </p>
@@ -1723,7 +1723,6 @@ const PublicProposalView = () => {
               </div>
             </div>
           )}
-
         </div>
 
         {/* Mobile sticky accept bar */}

@@ -118,7 +118,9 @@ export async function createTestProposal(
 
   // Step 1: Select client
   await page.waitForSelector('[data-testid="client-card"]');
-  const clientCard = page.locator('[data-testid="client-card"]').filter({ hasText: config.clientName });
+  const clientCard = page
+    .locator('[data-testid="client-card"]')
+    .filter({ hasText: config.clientName });
   await expect(clientCard).toBeVisible();
   await clientCard.click();
   await page.locator('[data-testid="client-continue-button"]').click();
@@ -126,7 +128,9 @@ export async function createTestProposal(
   // Step 2: Add services
   await page.waitForSelector('[data-testid="available-service-row"]');
   for (const service of config.services) {
-    const serviceRow = page.locator('[data-testid="available-service-row"]').filter({ hasText: service });
+    const serviceRow = page
+      .locator('[data-testid="available-service-row"]')
+      .filter({ hasText: service });
     await expect(serviceRow).toBeVisible();
     await serviceRow.click();
   }
@@ -141,11 +145,15 @@ export async function createTestProposal(
 
   // Wait for navigation to proposal detail page as success indicator
   // Must match /proposals/<uuid> but not /proposals/new or /proposals/new/edit
-  await expect(page).toHaveURL(/\/proposals\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/i);
+  await expect(page).toHaveURL(
+    /\/proposals\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/i
+  );
 
   // Extract proposal ID from URL
   const url = page.url();
-  const idMatch = url.match(/\/proposals\/([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})/i);
+  const idMatch = url.match(
+    /\/proposals\/([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})/i
+  );
   const id = idMatch ? idMatch[1] : 'unknown';
 
   return {

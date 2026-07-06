@@ -97,18 +97,17 @@ export default function AmlPartnerPanel({
   const amlStatus = status?.amlStatus ?? 'NOT_STARTED';
 
   return (
-    <div
-      className="glass-tile p-5 space-y-3"
-      data-testid="aml-partner-panel"
-    >
+    <div className="glass-tile p-5 space-y-3" data-testid="aml-partner-panel">
       <div className="flex items-start justify-between gap-3">
         <div className="flex items-start gap-3 min-w-0">
           <ShieldCheckIcon className="h-6 w-6 text-emerald-600 shrink-0" />
           <div>
-            <h3 className="text-sm font-semibold text-slate-900 dark:text-white">AML &amp; ID verification</h3>
+            <h3 className="text-sm font-semibold text-slate-900 dark:text-white">
+              AML &amp; ID verification
+            </h3>
             <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">
-              Initiate a partner AML check for {clientName}. SmartSearch and Creditsafe webhooks update the
-              client record when configured on the server.
+              Initiate a partner AML check for {clientName}. SmartSearch and Creditsafe webhooks
+              update the client record when configured on the server.
             </p>
           </div>
         </div>
@@ -139,7 +138,11 @@ export default function AmlPartnerPanel({
         <div className="rounded-lg border border-slate-200/80 dark:border-slate-700/80 bg-slate-50/60 dark:bg-slate-900/40 px-3 py-2 text-xs text-slate-600 dark:text-slate-400 space-y-1">
           <p>
             <span className="font-medium text-slate-700 dark:text-slate-300">Provider:</span>{' '}
-            {provider ? PROVIDER_LABELS[provider] ?? provider : mode === 'live' ? 'Configured (no check yet)' : 'Demo stub'}
+            {provider
+              ? (PROVIDER_LABELS[provider] ?? provider)
+              : mode === 'live'
+                ? 'Configured (no check yet)'
+                : 'Demo stub'}
           </p>
           {status?.lastCheckMessage && <p>{status.lastCheckMessage}</p>}
           {status?.amlCheckedAt && (
@@ -187,7 +190,11 @@ export default function AmlPartnerPanel({
           onClick={() => runCheck('smartsearch')}
           disabled={running}
           className="btn-secondary text-sm"
-          title={status?.config?.smartsearchConfigured ? 'Submit to SmartSearch' : 'Falls back to demo if API key not set'}
+          title={
+            status?.config?.smartsearchConfigured
+              ? 'Submit to SmartSearch'
+              : 'Falls back to demo if API key not set'
+          }
         >
           SmartSearch
         </button>
@@ -196,7 +203,11 @@ export default function AmlPartnerPanel({
           onClick={() => runCheck('creditsafe')}
           disabled={running}
           className="btn-secondary text-sm"
-          title={status?.config?.creditsafeConfigured ? 'Submit to Creditsafe' : 'Falls back to demo if API key not set'}
+          title={
+            status?.config?.creditsafeConfigured
+              ? 'Submit to Creditsafe'
+              : 'Falls back to demo if API key not set'
+          }
         >
           Creditsafe
         </button>

@@ -93,9 +93,7 @@ export function buildProposalTermsText(
   const serviceSpecific = clauses.filter((c) => !c.tags.includes('_always'));
   if (!serviceSpecific.length) return base;
 
-  const appendix = serviceSpecific
-    .map((c) => `${c.title}\n\n${c.body}`)
-    .join('\n\n');
+  const appendix = serviceSpecific.map((c) => `${c.title}\n\n${c.body}`).join('\n\n');
 
   return `${base}\n\n---\n\nSERVICE-SPECIFIC TERMS\n\n${appendix}`;
 }
@@ -129,8 +127,7 @@ export async function resolveProposalTerms(
 
   const settings = parseTenantSettings(tenant?.settings);
   const proposalSettings = getProposalSettings(tenant?.settings);
-  const governingLaw =
-    (settings.governingLaw as string | undefined)?.trim() || 'England and Wales';
+  const governingLaw = (settings.governingLaw as string | undefined)?.trim() || 'England and Wales';
   const practiceName = tenant?.name || 'Your practice';
   const professionalBody = regulatoryBodyLabel(
     typeof settings.professionalBody === 'string' ? settings.professionalBody : undefined
@@ -163,8 +160,7 @@ export async function previewEngageDefaultTermsForTenant(tenantId: string): Prom
   });
   const settings = parseTenantSettings(tenant?.settings);
   const proposalSettings = getProposalSettings(tenant?.settings);
-  const governingLaw =
-    (settings.governingLaw as string | undefined)?.trim() || 'England and Wales';
+  const governingLaw = (settings.governingLaw as string | undefined)?.trim() || 'England and Wales';
 
   return buildProposalTermsText(
     tenant?.name || 'Your practice',

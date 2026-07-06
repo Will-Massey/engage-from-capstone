@@ -218,8 +218,7 @@ export default function PricingCalculator({ compact = false }: PricingCalculator
                   setInputs({
                     ...inputs,
                     entityType,
-                    mtdStatus:
-                      entityType === 'SOLE_TRADER' ? inputs.mtdStatus : 'NOT_APPLICABLE',
+                    mtdStatus: entityType === 'SOLE_TRADER' ? inputs.mtdStatus : 'NOT_APPLICABLE',
                   });
                 }}
                 className="input-field w-full"
@@ -329,12 +328,16 @@ export default function PricingCalculator({ compact = false }: PricingCalculator
           {!result ? (
             <div className="text-center py-12 text-slate-500 dark:text-slate-400">
               <CurrencyPoundIcon className="h-12 w-12 mx-auto mb-3 opacity-40" />
-              <p className="text-sm">Enter client details and calculate to see fee ranges per service.</p>
+              <p className="text-sm">
+                Enter client details and calculate to see fee ranges per service.
+              </p>
             </div>
           ) : (
             <>
               <div className="p-4 rounded-lg bg-primary-50 dark:bg-primary-900/20 border border-primary-100 dark:border-primary-800/40">
-                <div className="text-sm text-slate-600 dark:text-slate-300">Estimated monthly total</div>
+                <div className="text-sm text-slate-600 dark:text-slate-300">
+                  Estimated monthly total
+                </div>
                 <div className="text-2xl font-bold text-slate-900 dark:text-white mt-1">
                   {formatGbp(result.totals.monthlyLow)} – {formatGbp(result.totals.monthlyHigh)}
                 </div>

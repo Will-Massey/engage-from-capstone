@@ -61,7 +61,9 @@ export const Input: React.FC<InputProps> = ({
           </button>
         ) : null}
       </div>
-      {helperText && !error && <p className="text-xs text-slate-500 dark:text-slate-400">{helperText}</p>}
+      {helperText && !error && (
+        <p className="text-xs text-slate-500 dark:text-slate-400">{helperText}</p>
+      )}
       {error && <p className="text-xs text-red-600 dark:text-red-400">{error}</p>}
     </div>
   );

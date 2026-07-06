@@ -65,7 +65,12 @@ const tabs = [
   },
   { id: 'team', name: 'Team', icon: UsersIcon, description: 'Users & permissions' },
   { id: 'security', name: 'Security', icon: ShieldCheckIcon, description: 'Password & access' },
-  { id: 'automation', name: 'Automation', icon: BellIcon, description: 'Client touchpoints & onboarding workflow' },
+  {
+    id: 'automation',
+    name: 'Automation',
+    icon: BellIcon,
+    description: 'Client touchpoints & onboarding workflow',
+  },
   {
     id: 'integrations',
     name: 'Integrations',
@@ -691,9 +696,7 @@ const Settings = () => {
       const payoutResponse = (await apiClient.updatePayoutSettings({
         enabled: payoutForm.enabled,
         consentAccepted: payoutForm.consentAccepted,
-        consentVersion: payoutForm.consentAccepted
-          ? PAYMENT_COLLECTION_TERMS_VERSION
-          : undefined,
+        consentVersion: payoutForm.consentAccepted ? PAYMENT_COLLECTION_TERMS_VERSION : undefined,
         allowRevolutPay: payoutForm.allowRevolutPay,
         allowCard: payoutForm.allowCard,
         payoutMethod: payoutForm.payoutMethod,
@@ -711,12 +714,12 @@ const Settings = () => {
         toast.error(
           payoutResponse.error?.message ||
             vatResponse.error?.message ||
-            'Failed to save billing settings',
+            'Failed to save billing settings'
         );
       }
     } catch (error: any) {
       toast.error(
-        error.response?.data?.error?.message || error.message || 'Failed to save billing settings',
+        error.response?.data?.error?.message || error.message || 'Failed to save billing settings'
       );
     } finally {
       setIsSaving(null);
@@ -867,7 +870,15 @@ const Settings = () => {
       if (response.success) {
         toast.success('User created successfully');
         setShowAddUserModal(false);
-        setNewUserForm({ email: '', firstName: '', lastName: '', phone: '', jobTitle: '', role: 'JUNIOR', password: '' });
+        setNewUserForm({
+          email: '',
+          firstName: '',
+          lastName: '',
+          phone: '',
+          jobTitle: '',
+          role: 'JUNIOR',
+          password: '',
+        });
         loadUsers();
       } else {
         toast.error(response.error?.message || 'Failed to create user');
@@ -902,7 +913,11 @@ const Settings = () => {
 
   const handleUpdateUser = async () => {
     if (!editingUserId) return;
-    if (!editUserForm.firstName.trim() || !editUserForm.lastName.trim() || !editUserForm.email.trim()) {
+    if (
+      !editUserForm.firstName.trim() ||
+      !editUserForm.lastName.trim() ||
+      !editUserForm.email.trim()
+    ) {
       toast.error('First name, last name, and email are required');
       return;
     }
@@ -974,7 +989,9 @@ const Settings = () => {
               >
                 <tab.icon
                   className={`h-5 w-5 mt-0.5 flex-shrink-0 ${
-                    activeTab === tab.id ? 'text-primary-500 dark:text-primary-400' : 'text-slate-400 dark:text-slate-400'
+                    activeTab === tab.id
+                      ? 'text-primary-500 dark:text-primary-400'
+                      : 'text-slate-400 dark:text-slate-400'
                   }`}
                 />
                 <div className="ml-3">
@@ -1009,12 +1026,16 @@ const Settings = () => {
             <div className="glass-tile overflow-hidden">
               <div className="px-8 py-5 border-b border-slate-200 dark:border-slate-700 bg-white/40 dark:bg-slate-800/30">
                 <h2 className="text-lg font-semibold text-slate-900 dark:text-white">My Profile</h2>
-                <p className="text-sm text-slate-500 dark:text-slate-300">Update your personal information</p>
+                <p className="text-sm text-slate-500 dark:text-slate-300">
+                  Update your personal information
+                </p>
               </div>
               <div className="p-8 space-y-8">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                   <div>
-                    <label className="block text-sm font-semibold text-slate-700 dark:text-slate-100">First Name</label>
+                    <label className="block text-sm font-semibold text-slate-700 dark:text-slate-100">
+                      First Name
+                    </label>
                     <input
                       type="text"
                       value={profileForm.firstName}
@@ -1025,7 +1046,9 @@ const Settings = () => {
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-semibold text-slate-700 dark:text-slate-100">Last Name</label>
+                    <label className="block text-sm font-semibold text-slate-700 dark:text-slate-100">
+                      Last Name
+                    </label>
                     <input
                       type="text"
                       value={profileForm.lastName}
@@ -1035,7 +1058,9 @@ const Settings = () => {
                   </div>
                 </div>
                 <div>
-                  <label className="block text-sm font-semibold text-slate-700 dark:text-slate-100">Email</label>
+                  <label className="block text-sm font-semibold text-slate-700 dark:text-slate-100">
+                    Email
+                  </label>
                   <input
                     type="email"
                     value={profileForm.email}
@@ -1045,7 +1070,9 @@ const Settings = () => {
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                   <div>
-                    <label className="block text-sm font-semibold text-slate-700 dark:text-slate-100">Phone</label>
+                    <label className="block text-sm font-semibold text-slate-700 dark:text-slate-100">
+                      Phone
+                    </label>
                     <input
                       type="tel"
                       value={profileForm.phone}
@@ -1060,7 +1087,9 @@ const Settings = () => {
                     </label>
                     <select
                       value={
-                        JOB_TITLE_PRESETS.includes(profileForm.jobTitle as (typeof JOB_TITLE_PRESETS)[number])
+                        JOB_TITLE_PRESETS.includes(
+                          profileForm.jobTitle as (typeof JOB_TITLE_PRESETS)[number]
+                        )
                           ? profileForm.jobTitle
                           : profileForm.jobTitle
                             ? '__custom__'
@@ -1118,8 +1147,12 @@ const Settings = () => {
               {/* Company Details */}
               <div className="glass-tile overflow-hidden">
                 <div className="px-8 py-5 border-b border-slate-200 dark:border-slate-700 bg-white/40 dark:bg-slate-800/30">
-                  <h2 className="text-lg font-semibold text-slate-900 dark:text-white">Practice Details</h2>
-                  <p className="text-sm text-slate-500 dark:text-slate-300">Your company information</p>
+                  <h2 className="text-lg font-semibold text-slate-900 dark:text-white">
+                    Practice Details
+                  </h2>
+                  <p className="text-sm text-slate-500 dark:text-slate-300">
+                    Your company information
+                  </p>
                 </div>
                 <div className="p-8 space-y-8">
                   <div>
@@ -1170,8 +1203,8 @@ const Settings = () => {
                         <option value="Other">Other</option>
                       </select>
                       <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
-                        Engagement letter clauses are filtered to match your regulatory body
-                        (ACCA, ICAEW, ICAS, CIMA, AAT, ATT, CIOT).
+                        Engagement letter clauses are filtered to match your regulatory body (ACCA,
+                        ICAEW, ICAS, CIMA, AAT, ATT, CIOT).
                       </p>
                     </div>
                   </div>
@@ -1204,7 +1237,9 @@ const Settings = () => {
                       />
                     </div>
                     <div>
-                      <label className="block text-sm font-semibold text-slate-700 dark:text-slate-100">Website</label>
+                      <label className="block text-sm font-semibold text-slate-700 dark:text-slate-100">
+                        Website
+                      </label>
                       <input
                         type="url"
                         value={practiceForm.website}
@@ -1222,7 +1257,9 @@ const Settings = () => {
               {/* Legal & Compliance */}
               <div className="glass-tile overflow-hidden">
                 <div className="px-8 py-5 border-b border-slate-200 dark:border-slate-700 bg-white/40 dark:bg-slate-800/30">
-                  <h2 className="text-lg font-semibold text-slate-900 dark:text-white">Legal & Compliance</h2>
+                  <h2 className="text-lg font-semibold text-slate-900 dark:text-white">
+                    Legal & Compliance
+                  </h2>
                   <p className="text-sm text-slate-500 dark:text-slate-300">
                     Professional indemnity and regulatory information
                   </p>
@@ -1270,7 +1307,10 @@ const Settings = () => {
                       }
                       className="h-4 w-4 text-primary-600 dark:text-primary-400 rounded border-slate-300 dark:border-slate-500"
                     />
-                    <label htmlFor="fcaAuthorised" className="ml-2 text-sm text-slate-800 dark:text-slate-200">
+                    <label
+                      htmlFor="fcaAuthorised"
+                      className="ml-2 text-sm text-slate-800 dark:text-slate-200"
+                    >
                       FCA Authorised (for regulated activities)
                     </label>
                   </div>
@@ -1307,7 +1347,9 @@ const Settings = () => {
             <div className="glass-tile overflow-hidden">
               <div className="px-8 py-5 border-b border-slate-200 dark:border-slate-700 bg-white/40 dark:bg-slate-800/30">
                 <h2 className="text-lg font-semibold text-slate-900 dark:text-white">Branding</h2>
-                <p className="text-sm text-slate-500 dark:text-slate-300">Customise your proposal appearance</p>
+                <p className="text-sm text-slate-500 dark:text-slate-300">
+                  Customise your proposal appearance
+                </p>
               </div>
               <div className="p-6 space-y-8">
                 {/* Logo Upload */}
@@ -1383,7 +1425,9 @@ const Settings = () => {
 
                 {/* Preview */}
                 <div>
-                  <label className="block text-sm font-semibold text-slate-700 dark:text-slate-100 mb-3">Preview</label>
+                  <label className="block text-sm font-semibold text-slate-700 dark:text-slate-100 mb-3">
+                    Preview
+                  </label>
                   <div
                     className="border rounded-lg p-6"
                     style={{ borderColor: brandingForm.primaryColor }}
@@ -1429,8 +1473,12 @@ const Settings = () => {
                 <div className="flex items-center gap-3 mb-4">
                   <SunIcon className="h-6 w-6 text-primary-600 dark:text-primary-400" />
                   <div>
-                    <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-100">Theme</h2>
-                    <p className="text-sm text-slate-500 dark:text-slate-300">Choose how Engage looks for you</p>
+                    <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-100">
+                      Theme
+                    </h2>
+                    <p className="text-sm text-slate-500 dark:text-slate-300">
+                      Choose how Engage looks for you
+                    </p>
                   </div>
                 </div>
 
@@ -1438,7 +1486,12 @@ const Settings = () => {
                   {[
                     { value: 'light', label: 'Light', icon: SunIcon, desc: 'Always light' },
                     { value: 'dark', label: 'Dark', icon: MoonIcon, desc: 'Always dark' },
-                    { value: 'system', label: 'System', icon: ComputerDesktopIcon, desc: 'Match your device' },
+                    {
+                      value: 'system',
+                      label: 'System',
+                      icon: ComputerDesktopIcon,
+                      desc: 'Match your device',
+                    },
                   ].map((option) => {
                     const Icon = option.icon;
                     const isActive = currentTheme === option.value;
@@ -1453,8 +1506,12 @@ const Settings = () => {
                         }`}
                       >
                         <Icon className="h-8 w-8 mb-2 text-primary-500 dark:text-primary-300" />
-                        <div className="font-semibold text-slate-900 dark:text-white">{option.label}</div>
-                        <div className="text-xs text-slate-500 dark:text-slate-300 mt-0.5">{option.desc}</div>
+                        <div className="font-semibold text-slate-900 dark:text-white">
+                          {option.label}
+                        </div>
+                        <div className="text-xs text-slate-500 dark:text-slate-300 mt-0.5">
+                          {option.desc}
+                        </div>
                       </button>
                     );
                   })}
@@ -1470,13 +1527,19 @@ const Settings = () => {
                 <div className="flex items-center gap-3 mb-5">
                   <SparklesIcon className="h-6 w-6 text-violet-600 dark:text-violet-400" />
                   <div>
-                    <h2 className="text-lg font-semibold text-slate-900 dark:text-white">Clara &amp; AI</h2>
-                    <p className="text-sm text-slate-500 dark:text-slate-300">Monthly usage and budget for Clara AI features</p>
+                    <h2 className="text-lg font-semibold text-slate-900 dark:text-white">
+                      Clara &amp; AI
+                    </h2>
+                    <p className="text-sm text-slate-500 dark:text-slate-300">
+                      Monthly usage and budget for Clara AI features
+                    </p>
                   </div>
                 </div>
 
                 {aiBudgetLoading ? (
-                  <div className="text-sm text-slate-500 dark:text-slate-300">Loading Clara budget…</div>
+                  <div className="text-sm text-slate-500 dark:text-slate-300">
+                    Loading Clara budget…
+                  </div>
                 ) : aiBudgetError || !aiBudget ? (
                   <div className="text-sm text-amber-600 dark:text-amber-400">
                     {aiBudgetError || 'AI budget data unavailable.'}
@@ -1484,7 +1547,11 @@ const Settings = () => {
                 ) : (
                   <div>
                     <div className="text-sm text-slate-700 dark:text-slate-200 mb-2">
-                      Clara budget this month: {aiBudget.usedThisMonth?.toLocaleString?.() ?? aiBudget.usedThisMonth} / {aiBudget.budgetMonthly?.toLocaleString?.() ?? aiBudget.budgetMonthly} tokens used (remaining {aiBudget.remaining?.toLocaleString?.() ?? aiBudget.remaining}). Calls: {aiBudget.aiCallsThisMonth ?? '—'}
+                      Clara budget this month:{' '}
+                      {aiBudget.usedThisMonth?.toLocaleString?.() ?? aiBudget.usedThisMonth} /{' '}
+                      {aiBudget.budgetMonthly?.toLocaleString?.() ?? aiBudget.budgetMonthly} tokens
+                      used (remaining {aiBudget.remaining?.toLocaleString?.() ?? aiBudget.remaining}
+                      ). Calls: {aiBudget.aiCallsThisMonth ?? '—'}
                       {typeof aiBudget.callsWithLoggedTokens === 'number' && (
                         <span className="block text-xs text-slate-500 dark:text-slate-400 mt-1">
                           {aiBudget.callsWithLoggedTokens} with logged provider tokens
@@ -1501,7 +1568,13 @@ const Settings = () => {
                       const total = Number(aiBudget.budgetMonthly) || 1;
                       const pct = Math.max(0, Math.min(100, Math.round((used / total) * 100)));
                       return (
-                        <div className="w-full bg-slate-200 dark:bg-slate-700 rounded-full h-2.5 overflow-hidden" role="progressbar" aria-valuenow={pct} aria-valuemin={0} aria-valuemax={100}>
+                        <div
+                          className="w-full bg-slate-200 dark:bg-slate-700 rounded-full h-2.5 overflow-hidden"
+                          role="progressbar"
+                          aria-valuenow={pct}
+                          aria-valuemin={0}
+                          aria-valuemax={100}
+                        >
                           <div
                             className="h-2.5 rounded-full transition-all bg-violet-600 dark:bg-violet-500"
                             style={{ width: `${pct}%` }}
@@ -1511,7 +1584,8 @@ const Settings = () => {
                     })()}
 
                     <p className="mt-2 text-xs text-slate-500 dark:text-slate-300">
-                      Budget resets monthly. Usage is based on provider token counts where available.
+                      Budget resets monthly. Usage is based on provider token counts where
+                      available.
                     </p>
                   </div>
                 )}
@@ -1525,7 +1599,9 @@ const Settings = () => {
               {/* Email Settings */}
               <div className="glass-tile overflow-hidden">
                 <div className="px-8 py-5 border-b border-slate-200 dark:border-slate-700 bg-white/40 dark:bg-slate-800/30">
-                  <h2 className="text-lg font-semibold text-slate-900 dark:text-white">Email Configuration</h2>
+                  <h2 className="text-lg font-semibold text-slate-900 dark:text-white">
+                    Email Configuration
+                  </h2>
                   <p className="text-sm text-slate-500 dark:text-slate-300">
                     Configure how emails are sent from the platform
                   </p>
@@ -1540,7 +1616,9 @@ const Settings = () => {
 
               <div className="glass-tile overflow-hidden">
                 <div className="px-8 py-5 border-b border-slate-200 dark:border-slate-700 bg-white/40 dark:bg-slate-800/30">
-                  <h2 className="text-lg font-semibold text-slate-900 dark:text-white">Voice of practice</h2>
+                  <h2 className="text-lg font-semibold text-slate-900 dark:text-white">
+                    Voice of practice
+                  </h2>
                   <p className="text-sm text-slate-500 dark:text-slate-300">
                     Train Clara to match your firm&apos;s letter style (W4.4)
                   </p>
@@ -1553,7 +1631,9 @@ const Settings = () => {
               {/* Proposal defaults */}
               <div className="glass-tile overflow-hidden">
                 <div className="px-8 py-5 border-b border-slate-200 dark:border-slate-700 bg-white/40 dark:bg-slate-800/30">
-                  <h2 className="text-lg font-semibold text-slate-900 dark:text-white">Proposal defaults</h2>
+                  <h2 className="text-lg font-semibold text-slate-900 dark:text-white">
+                    Proposal defaults
+                  </h2>
                   <p className="text-sm text-slate-500 dark:text-slate-300">
                     Default expiry and renewal reminder timing for new proposals
                   </p>
@@ -1605,7 +1685,8 @@ const Settings = () => {
                         className="mt-1 input-field w-full"
                       />
                       <p className="mt-1 text-xs text-slate-500 dark:text-slate-300">
-                        Invoices are payable within this many days (shown on proposals and engagement letters)
+                        Invoices are payable within this many days (shown on proposals and
+                        engagement letters)
                       </p>
                     </div>
                     <div>
@@ -1679,9 +1760,10 @@ const Settings = () => {
                           Share anonymised fee data to see benchmarks
                         </span>
                         <span className="block text-xs text-slate-500 dark:text-slate-300 mt-1">
-                          Contribute anonymised proposal line fees to cross-practice percentile bands
-                          shown in the proposal builder. No client or firm identifiers are shared.
-                          Categories with fewer than five contributing practices are withheld.
+                          Contribute anonymised proposal line fees to cross-practice percentile
+                          bands shown in the proposal builder. No client or firm identifiers are
+                          shared. Categories with fewer than five contributing practices are
+                          withheld.
                         </span>
                       </span>
                     </label>
@@ -1827,7 +1909,9 @@ const Settings = () => {
               {/* Notifications */}
               <div className="glass-tile overflow-hidden">
                 <div className="px-8 py-5 border-b border-slate-200 dark:border-slate-700 bg-white/40 dark:bg-slate-800/30">
-                  <h2 className="text-lg font-semibold text-slate-900 dark:text-white">Notification Preferences</h2>
+                  <h2 className="text-lg font-semibold text-slate-900 dark:text-white">
+                    Notification Preferences
+                  </h2>
                   <p className="text-sm text-slate-500 dark:text-slate-300">
                     Choose when you receive email notifications
                   </p>
@@ -1876,10 +1960,15 @@ const Settings = () => {
                         className="h-4 w-4 mt-1 text-primary-600 dark:text-primary-400 rounded border-slate-300 dark:border-slate-500 focus:ring-2 focus:ring-primary-200"
                       />
                       <div className="ml-3">
-                        <label htmlFor={item.key} className="text-sm font-semibold text-slate-700 dark:text-slate-100">
+                        <label
+                          htmlFor={item.key}
+                          className="text-sm font-semibold text-slate-700 dark:text-slate-100"
+                        >
                           {item.label}
                         </label>
-                        <p className="text-xs text-slate-500 dark:text-slate-300 mt-0.5">{item.description}</p>
+                        <p className="text-xs text-slate-500 dark:text-slate-300 mt-0.5">
+                          {item.description}
+                        </p>
                       </div>
                     </div>
                   ))}
@@ -1901,8 +1990,12 @@ const Settings = () => {
           {activeTab === 'billing' && (
             <div className="glass-tile overflow-hidden">
               <div className="px-8 py-5 border-b border-slate-200 dark:border-slate-700 bg-white/40 dark:bg-slate-800/30">
-                <h2 className="text-lg font-semibold text-slate-900 dark:text-white">VAT & Billing Settings</h2>
-                <p className="text-sm text-slate-500 dark:text-slate-300">Configure tax and billing preferences</p>
+                <h2 className="text-lg font-semibold text-slate-900 dark:text-white">
+                  VAT & Billing Settings
+                </h2>
+                <p className="text-sm text-slate-500 dark:text-slate-300">
+                  Configure tax and billing preferences
+                </p>
               </div>
               <div className="p-8 space-y-8">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
@@ -1918,16 +2011,16 @@ const Settings = () => {
                       />
                       VAT registered
                     </label>
-                    <p className="mt-1 text-xs text-slate-500 dark:text-slate-300">Show VAT on proposals and apply default rates</p>
+                    <p className="mt-1 text-xs text-slate-500 dark:text-slate-300">
+                      Show VAT on proposals and apply default rates
+                    </p>
                   </div>
                   <div>
                     <label className="flex items-center gap-2 text-sm font-semibold text-slate-700 dark:text-slate-100">
                       <input
                         type="checkbox"
                         checked={vatForm.autoApplyVat}
-                        onChange={(e) =>
-                          setVatForm({ ...vatForm, autoApplyVat: e.target.checked })
-                        }
+                        onChange={(e) => setVatForm({ ...vatForm, autoApplyVat: e.target.checked })}
                         className="rounded border-slate-300 dark:border-slate-500 focus:ring-2 focus:ring-primary-200"
                       />
                       Auto-apply VAT to new services
@@ -1976,8 +2069,9 @@ const Settings = () => {
                       Receive Payments Through Engage
                     </h3>
                     <p className="mt-1 text-sm text-slate-500 dark:text-slate-300">
-                      Collect client fees via Revolut. We deduct a {(payoutForm.platformFeeBps / 100).toFixed(1)}%
-                      platform fee plus payment processing costs, then pay the remainder to your bank account.
+                      Collect client fees via Revolut. We deduct a{' '}
+                      {(payoutForm.platformFeeBps / 100).toFixed(1)}% platform fee plus payment
+                      processing costs, then pay the remainder to your bank account.
                     </p>
                     <label className="mt-4 flex items-start gap-3">
                       <input
@@ -2170,7 +2264,9 @@ const Settings = () => {
                         </p>
                         <p className="text-xs text-slate-500 dark:text-slate-400">
                           Regulatory alerts for live proposals appear on the dashboard and via{' '}
-                          <code className="text-violet-600 dark:text-violet-400">/api/ai/regulatory-alerts</code>
+                          <code className="text-violet-600 dark:text-violet-400">
+                            /api/ai/regulatory-alerts
+                          </code>
                           .
                         </p>
                       </div>
@@ -2199,8 +2295,8 @@ const Settings = () => {
                     Open proposal templates
                   </Link>
                   <p className="mt-3 text-xs text-slate-500 dark:text-slate-400">
-                    Create, edit, and use templates from the Templates page in the left sidebar under
-                    Catalogue.
+                    Create, edit, and use templates from the Templates page in the left sidebar
+                    under Catalogue.
                   </p>
                 </div>
               </div>
@@ -2215,8 +2311,7 @@ const Settings = () => {
                 proposals={{
                   defaultPaymentTermsDays:
                     communicationsForm.proposals.defaultPaymentTermsDays ?? 7,
-                  cancellationNoticeDays:
-                    communicationsForm.proposals.cancellationNoticeDays ?? 30,
+                  cancellationNoticeDays: communicationsForm.proposals.cancellationNoticeDays ?? 30,
                   termsSource: communicationsForm.proposals.termsSource ?? 'engage_default',
                   customTerms: communicationsForm.proposals.customTerms ?? null,
                 }}
@@ -2237,8 +2332,12 @@ const Settings = () => {
             <div className="glass-tile">
               <div className="px-8 py-5 border-b border-slate-200 dark:border-slate-700 bg-white/40 dark:bg-slate-800/30 flex items-center justify-between">
                 <div>
-                  <h2 className="text-lg font-semibold text-slate-900 dark:text-white">Team Members</h2>
-                  <p className="text-sm text-slate-500 dark:text-slate-300">Manage users and their permissions</p>
+                  <h2 className="text-lg font-semibold text-slate-900 dark:text-white">
+                    Team Members
+                  </h2>
+                  <p className="text-sm text-slate-500 dark:text-slate-300">
+                    Manage users and their permissions
+                  </p>
                 </div>
                 <button onClick={() => setShowAddUserModal(true)} className="btn-primary text-sm">
                   Add User
@@ -2246,9 +2345,13 @@ const Settings = () => {
               </div>
               <div className="divide-y divide-slate-200">
                 {isLoading ? (
-                  <div className="p-8 text-center text-slate-500 dark:text-slate-300">Loading...</div>
+                  <div className="p-8 text-center text-slate-500 dark:text-slate-300">
+                    Loading...
+                  </div>
                 ) : users.length === 0 ? (
-                  <div className="p-8 text-center text-slate-500 dark:text-slate-300">No users found</div>
+                  <div className="p-8 text-center text-slate-500 dark:text-slate-300">
+                    No users found
+                  </div>
                 ) : (
                   users.map((u) => (
                     <div
@@ -2266,7 +2369,9 @@ const Settings = () => {
                           <p className="text-sm font-medium text-slate-900">
                             {u.firstName} {u.lastName}
                             {u.id === user?.id && (
-                              <span className="ml-2 text-xs text-primary-600 dark:text-primary-400">(You)</span>
+                              <span className="ml-2 text-xs text-primary-600 dark:text-primary-400">
+                                (You)
+                              </span>
                             )}
                           </p>
                           <p className="text-sm text-slate-500 dark:text-slate-300">{u.email}</p>
@@ -2275,7 +2380,9 @@ const Settings = () => {
                               {formatTeamRole(u.role)}
                             </span>
                             {u.jobTitle?.trim() && (
-                              <span className="text-xs text-slate-500 dark:text-slate-400">{u.jobTitle}</span>
+                              <span className="text-xs text-slate-500 dark:text-slate-400">
+                                {u.jobTitle}
+                              </span>
                             )}
                           </div>
                         </div>
@@ -2300,7 +2407,6 @@ const Settings = () => {
                   ))
                 )}
               </div>
-
             </div>
           )}
 
@@ -2309,7 +2415,9 @@ const Settings = () => {
             <div className="glass-tile overflow-hidden">
               <div className="px-8 py-5 border-b border-slate-200 dark:border-slate-700 bg-white/40 dark:bg-slate-800/30">
                 <h2 className="text-lg font-semibold text-slate-900 dark:text-white">Security</h2>
-                <p className="text-sm text-slate-500 dark:text-slate-300">Manage your password and account security</p>
+                <p className="text-sm text-slate-500 dark:text-slate-300">
+                  Manage your password and account security
+                </p>
               </div>
               <div className="p-8 space-y-8">
                 <div>
@@ -2342,7 +2450,9 @@ const Settings = () => {
                       />
                       {/* Password Requirements */}
                       <div className="mt-2 space-y-1">
-                        <p className="text-xs text-slate-500 dark:text-slate-300 font-medium">Password requirements:</p>
+                        <p className="text-xs text-slate-500 dark:text-slate-300 font-medium">
+                          Password requirements:
+                        </p>
                         {[
                           {
                             test: passwordForm.newPassword.length >= 8,
@@ -2368,7 +2478,11 @@ const Settings = () => {
                             >
                               {req.test ? '✓' : '○'}
                             </span>
-                            <span className={req.test ? 'text-green-700' : 'text-slate-500 dark:text-slate-300'}>
+                            <span
+                              className={
+                                req.test ? 'text-green-700' : 'text-slate-500 dark:text-slate-300'
+                              }
+                            >
                               {req.label}
                             </span>
                           </div>
@@ -2446,9 +2560,7 @@ const Settings = () => {
           )}
 
           {/* AUTOMATION / TOUCHPOINTS TAB */}
-          {activeTab === 'automation' && (
-            <AutomationTab />
-          )}
+          {activeTab === 'automation' && <AutomationTab />}
 
           {/* INTEGRATIONS TAB */}
           {activeTab === 'firm-group' && (
@@ -2553,9 +2665,7 @@ const Settings = () => {
                     <input
                       type="text"
                       value={newUserForm.lastName}
-                      onChange={(e) =>
-                        setNewUserForm({ ...newUserForm, lastName: e.target.value })
-                      }
+                      onChange={(e) => setNewUserForm({ ...newUserForm, lastName: e.target.value })}
                       className="mt-1 input-field w-full"
                     />
                   </div>
@@ -2579,9 +2689,7 @@ const Settings = () => {
                     <input
                       type="text"
                       value={newUserForm.jobTitle}
-                      onChange={(e) =>
-                        setNewUserForm({ ...newUserForm, jobTitle: e.target.value })
-                      }
+                      onChange={(e) => setNewUserForm({ ...newUserForm, jobTitle: e.target.value })}
                       className="mt-1 input-field w-full"
                     />
                   </div>
@@ -2634,7 +2742,9 @@ const Settings = () => {
                       { test: /[^A-Za-z0-9]/.test(newUserForm.password), label: 'Special char' },
                     ].map((req, i) => (
                       <div key={i} className="flex items-center text-xs">
-                        <span className={`mr-1.5 ${req.test ? 'text-green-500' : 'text-slate-400'}`}>
+                        <span
+                          className={`mr-1.5 ${req.test ? 'text-green-500' : 'text-slate-400'}`}
+                        >
                           {req.test ? '✓' : '○'}
                         </span>
                         <span className={req.test ? 'text-green-700' : 'text-slate-500'}>
@@ -2646,7 +2756,10 @@ const Settings = () => {
                 </div>
               </div>
               <div className="mt-8 flex flex-col-reverse sm:flex-row gap-3 sm:justify-end border-t border-slate-200 dark:border-slate-700 pt-6">
-                <button onClick={() => setShowAddUserModal(false)} className="btn-secondary sm:min-w-[120px]">
+                <button
+                  onClick={() => setShowAddUserModal(false)}
+                  className="btn-secondary sm:min-w-[120px]"
+                >
                   Cancel
                 </button>
                 <button
@@ -2786,9 +2899,19 @@ const Settings = () => {
 
 // --- Automation / Touchpoint Admin UI ---
 const LIFECYCLE_STAGES = [
-  'PROPOSAL_ACCEPTED', 'AML_PENDING', 'AML_COMPLETE', 'ENGAGEMENT_LETTER_SENT',
-  'ENGAGEMENT_LETTER_SIGNED', 'INFO_REQUESTED', 'INFO_RECEIVED', 'ONBOARDING_SETUP',
-  'KICKOFF_SENT', 'MILESTONE_CHECK_IN', 'SATISFACTION_CHECK', 'ONGOING', 'ANNUAL_REVIEW',
+  'PROPOSAL_ACCEPTED',
+  'AML_PENDING',
+  'AML_COMPLETE',
+  'ENGAGEMENT_LETTER_SENT',
+  'ENGAGEMENT_LETTER_SIGNED',
+  'INFO_REQUESTED',
+  'INFO_RECEIVED',
+  'ONBOARDING_SETUP',
+  'KICKOFF_SENT',
+  'MILESTONE_CHECK_IN',
+  'SATISFACTION_CHECK',
+  'ONGOING',
+  'ANNUAL_REVIEW',
 ] as const;
 
 const STAGE_LABELS: Record<(typeof LIFECYCLE_STAGES)[number], string> = {
@@ -2813,7 +2936,13 @@ function AutomationTab() {
   const [automationSettings, setAutomationSettings] = useState<any>(null);
   const [loading, setLoading] = useState(false);
   const [editing, setEditing] = useState<any>(null);
-  const [form, setForm] = useState({ subject: '', body: '', tone: 'WARM', isMarketing: false, isActive: true });
+  const [form, setForm] = useState({
+    subject: '',
+    body: '',
+    tone: 'WARM',
+    isMarketing: false,
+    isActive: true,
+  });
   const [restoring, setRestoring] = useState(false);
 
   const previewHtml = useMemo(() => {
@@ -2824,7 +2953,21 @@ function AutomationTab() {
       .replace(/\{\{next_step\}\}/g, 'Please upload your last 3 months of bank statements')
       .replace(/\{\{due_date\}\}/g, '28 June 2026');
     return DOMPurify.sanitize(merged, {
-      ALLOWED_TAGS: ['p', 'br', 'strong', 'em', 'b', 'i', 'u', 'ul', 'ol', 'li', 'a', 'span', 'div'],
+      ALLOWED_TAGS: [
+        'p',
+        'br',
+        'strong',
+        'em',
+        'b',
+        'i',
+        'u',
+        'ul',
+        'ol',
+        'li',
+        'a',
+        'span',
+        'div',
+      ],
       ALLOWED_ATTR: ['href', 'target', 'rel', 'class'],
     });
   }, [form.body]);
@@ -2847,7 +2990,9 @@ function AutomationTab() {
     }
   };
 
-  useEffect(() => { loadData(); }, []);
+  useEffect(() => {
+    loadData();
+  }, []);
 
   const openEditor = (stage: string) => {
     const existing = templates.find((t: any) => t.stage === stage);
@@ -2895,7 +3040,9 @@ function AutomationTab() {
 
   const restoreStageDefault = async () => {
     if (!editing?.stage) return;
-    if (!confirm('Restore Engage default wording for this stage? Your current text will be replaced.')) {
+    if (
+      !confirm('Restore Engage default wording for this stage? Your current text will be replaced.')
+    ) {
       return;
     }
     setRestoring(true);
@@ -2951,11 +3098,15 @@ function AutomationTab() {
           <div className="flex-1">
             <h2 className="text-xl font-semibold">Automated Client Touchpoints</h2>
             <p className="mt-1 text-sm text-slate-500 dark:text-slate-300 max-w-prose">
-              Once a proposal is accepted, Engage automatically sends warm, timely messages at every stage — welcome, AML chase, engagement letters, info requests, milestone reminders, and annual reviews.
-              You stay in control with per-stage templates, human approval gates, and the ability to pause any client.
+              Once a proposal is accepted, Engage automatically sends warm, timely messages at every
+              stage — welcome, AML chase, engagement letters, info requests, milestone reminders,
+              and annual reviews. You stay in control with per-stage templates, human approval
+              gates, and the ability to pause any client.
             </p>
             <div className="mt-3 flex flex-wrap gap-2">
-              <button onClick={runEngine} className="btn-primary text-sm px-4 py-1.5">Run engine now</button>
+              <button onClick={runEngine} className="btn-primary text-sm px-4 py-1.5">
+                Run engine now
+              </button>
             </div>
             {automationSettings?.emailFollowUp && (
               <p className="mt-3 text-xs text-slate-500 dark:text-slate-300">
@@ -2974,7 +3125,8 @@ function AutomationTab() {
           <div>
             <h3 className="text-lg font-semibold">Stage Templates &amp; Controls</h3>
             <p className="text-sm text-slate-500 dark:text-slate-300">
-              Every lifecycle stage ships with warm, UK English copy designed to reassure clients. Toggle stages on or off and customise wording to match your voice.
+              Every lifecycle stage ships with warm, UK English copy designed to reassure clients.
+              Toggle stages on or off and customise wording to match your voice.
             </p>
           </div>
           <div className="flex flex-wrap gap-2 shrink-0">
@@ -2986,7 +3138,11 @@ function AutomationTab() {
             >
               Restore all Engage defaults
             </button>
-            <button type="button" onClick={runEngine} className="btn-secondary text-sm hidden sm:block">
+            <button
+              type="button"
+              onClick={runEngine}
+              className="btn-secondary text-sm hidden sm:block"
+            >
               Run engine now
             </button>
           </div>
@@ -3003,16 +3159,20 @@ function AutomationTab() {
                 <div
                   key={stage}
                   className={`group rounded-2xl border p-4 transition-all hover:shadow-sm flex flex-col justify-between
-                    ${isOn 
-                      ? 'border-emerald-200 bg-white dark:bg-slate-900/60 dark:border-emerald-900' 
-                      : 'border-slate-200 bg-slate-50/60 dark:bg-slate-900/40 opacity-90'}`}
+                    ${
+                      isOn
+                        ? 'border-emerald-200 bg-white dark:bg-slate-900/60 dark:border-emerald-900'
+                        : 'border-slate-200 bg-slate-50/60 dark:bg-slate-900/40 opacity-90'
+                    }`}
                 >
                   <div>
                     <div className="flex items-start justify-between gap-2">
                       <div className="font-semibold text-sm tracking-tight leading-snug">
                         {STAGE_LABELS[stage]}
                       </div>
-                      <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium shrink-0 ${isOn ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40' : 'bg-slate-200 text-slate-600 dark:bg-slate-800'}`}>
+                      <span
+                        className={`text-[10px] px-2 py-0.5 rounded-full font-medium shrink-0 ${isOn ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40' : 'bg-slate-200 text-slate-600 dark:bg-slate-800'}`}
+                      >
                         {isOn ? 'ON' : 'PAUSED'}
                       </span>
                     </div>
@@ -3054,10 +3214,14 @@ function AutomationTab() {
         <div className="flex items-center justify-between mb-3">
           <div>
             <h3 className="font-semibold">Human Approval Queue</h3>
-            <p className="text-xs text-slate-500 dark:text-slate-300">Touchpoints that require your sign-off before sending</p>
+            <p className="text-xs text-slate-500 dark:text-slate-300">
+              Touchpoints that require your sign-off before sending
+            </p>
           </div>
           {approvals.length > 0 && (
-            <span className="text-xs px-2 py-0.5 rounded-full bg-amber-100 text-amber-700 dark:bg-amber-900/40">{approvals.length} pending</span>
+            <span className="text-xs px-2 py-0.5 rounded-full bg-amber-100 text-amber-700 dark:bg-amber-900/40">
+              {approvals.length} pending
+            </span>
           )}
         </div>
 
@@ -3069,18 +3233,27 @@ function AutomationTab() {
 
         <div className="space-y-3">
           {approvals.map((a: any) => (
-            <div key={a.id} className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-2xl border border-slate-200 dark:border-slate-700 p-4 hover:bg-slate-50/50 dark:hover:bg-slate-800/40 transition">
+            <div
+              key={a.id}
+              className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-2xl border border-slate-200 dark:border-slate-700 p-4 hover:bg-slate-50/50 dark:hover:bg-slate-800/40 transition"
+            >
               <div className="min-w-0">
                 <div className="flex items-center gap-2">
                   <span className="font-medium text-sm">{a.stage?.replace(/_/g, ' ')}</span>
                   <span className="text-xs text-slate-400 dark:text-slate-500">•</span>
-                  <span className="text-sm text-slate-700 dark:text-slate-200 truncate">{a.client?.name}</span>
+                  <span className="text-sm text-slate-700 dark:text-slate-200 truncate">
+                    {a.client?.name}
+                  </span>
                 </div>
                 {a.template?.subject && (
-                  <div className="text-xs text-slate-500 dark:text-slate-300 mt-0.5 truncate">“{a.template.subject}”</div>
+                  <div className="text-xs text-slate-500 dark:text-slate-300 mt-0.5 truncate">
+                    “{a.template.subject}”
+                  </div>
                 )}
                 {a.scheduledFor && (
-                  <div className="text-[10px] text-slate-400 dark:text-slate-500 mt-1">Scheduled: {new Date(a.scheduledFor).toLocaleDateString('en-GB')}</div>
+                  <div className="text-[10px] text-slate-400 dark:text-slate-500 mt-1">
+                    Scheduled: {new Date(a.scheduledFor).toLocaleDateString('en-GB')}
+                  </div>
                 )}
               </div>
               <button
@@ -3099,7 +3272,8 @@ function AutomationTab() {
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
           <div className="glass-tile w-full max-w-2xl p-6 rounded-2xl">
             <h3 className="text-lg font-semibold mb-1">
-              Edit template — {STAGE_LABELS[editing.stage as (typeof LIFECYCLE_STAGES)[number]] || editing.stage}
+              Edit template —{' '}
+              {STAGE_LABELS[editing.stage as (typeof LIFECYCLE_STAGES)[number]] || editing.stage}
             </h3>
             <p className="text-sm text-slate-500 dark:text-slate-400 mb-4">
               Clients receive this email when they reach this stage. Keep the tone warm and clear.
@@ -3119,16 +3293,30 @@ function AutomationTab() {
                 onChange={(e) => setForm({ ...form, body: e.target.value })}
               />
               <div className="flex gap-4">
-                <select className="input-field" value={form.tone} onChange={(e) => setForm({ ...form, tone: e.target.value })}>
+                <select
+                  className="input-field"
+                  value={form.tone}
+                  onChange={(e) => setForm({ ...form, tone: e.target.value })}
+                >
                   <option value="WARM">Warm</option>
                   <option value="NEUTRAL">Neutral</option>
                   <option value="URGENT">Urgent</option>
                 </select>
                 <label className="flex items-center gap-2 text-sm">
-                  <input type="checkbox" checked={form.isMarketing} onChange={(e) => setForm({ ...form, isMarketing: e.target.checked })} /> Marketing (requires consent)
+                  <input
+                    type="checkbox"
+                    checked={form.isMarketing}
+                    onChange={(e) => setForm({ ...form, isMarketing: e.target.checked })}
+                  />{' '}
+                  Marketing (requires consent)
                 </label>
                 <label className="flex items-center gap-2 text-sm">
-                  <input type="checkbox" checked={form.isActive} onChange={(e) => setForm({ ...form, isActive: e.target.checked })} /> Active
+                  <input
+                    type="checkbox"
+                    checked={form.isActive}
+                    onChange={(e) => setForm({ ...form, isActive: e.target.checked })}
+                  />{' '}
+                  Active
                 </label>
               </div>
             </div>
@@ -3154,20 +3342,36 @@ function AutomationTab() {
             {/* Live-ish preview + merge tags */}
             <div className="mt-4 grid grid-cols-1 lg:grid-cols-5 gap-4">
               <div className="lg:col-span-3">
-                <div className="text-xs font-medium text-slate-500 dark:text-slate-300 mb-1">Preview (example data)</div>
+                <div className="text-xs font-medium text-slate-500 dark:text-slate-300 mb-1">
+                  Preview (example data)
+                </div>
                 <div className="rounded-xl border border-slate-200 bg-white p-3 text-sm text-slate-700 dark:bg-slate-900 dark:text-slate-200">
-                  <div className="font-medium mb-1">{form.subject || 'Subject line will appear here'}</div>
+                  <div className="font-medium mb-1">
+                    {form.subject || 'Subject line will appear here'}
+                  </div>
                   <div dangerouslySetInnerHTML={{ __html: previewHtml }} />
                 </div>
               </div>
               <div className="lg:col-span-2">
-                <div className="text-xs font-medium text-slate-500 dark:text-slate-300 mb-1">Merge tags</div>
+                <div className="text-xs font-medium text-slate-500 dark:text-slate-300 mb-1">
+                  Merge tags
+                </div>
                 <div className="text-[11px] leading-relaxed text-slate-500 dark:text-slate-300 bg-slate-50 dark:bg-slate-800/60 border border-slate-200 rounded-xl p-3">
-                  <div><code>{'{{client_name}}'}</code> — company</div>
-                  <div><code>{'{{contact_name}}'}</code> — person</div>
-                  <div><code>{'{{practice_name}}'}</code> — your firm</div>
-                  <div><code>{'{{next_step}}'}</code> — recommended action</div>
-                  <div><code>{'{{due_date}}'}</code> — when relevant</div>
+                  <div>
+                    <code>{'{{client_name}}'}</code> — company
+                  </div>
+                  <div>
+                    <code>{'{{contact_name}}'}</code> — person
+                  </div>
+                  <div>
+                    <code>{'{{practice_name}}'}</code> — your firm
+                  </div>
+                  <div>
+                    <code>{'{{next_step}}'}</code> — recommended action
+                  </div>
+                  <div>
+                    <code>{'{{due_date}}'}</code> — when relevant
+                  </div>
                 </div>
               </div>
             </div>

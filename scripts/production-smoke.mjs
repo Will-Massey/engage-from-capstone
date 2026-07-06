@@ -3,10 +3,11 @@
  * Production smoke test — ping, login (cookie session), list proposals.
  * Usage: node scripts/production-smoke.mjs [API_URL]
  */
-const API = (process.argv[2] || process.env.API_URL || 'https://engage-backend-e1ue.onrender.com').replace(
-  /\/$/,
-  ''
-);
+const API = (
+  process.argv[2] ||
+  process.env.API_URL ||
+  'https://engage-backend-e1ue.onrender.com'
+).replace(/\/$/, '');
 const EMAIL = process.env.SMOKE_EMAIL || 'admin@demo.practice';
 const PASSWORD = process.env.SMOKE_PASSWORD || 'DemoPass123!';
 

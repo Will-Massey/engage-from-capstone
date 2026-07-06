@@ -217,10 +217,19 @@ export default function ProposalEmailPreviewDialog({
   };
 
   const claraTweaks = [
-    { label: 'Warmer', instruction: 'Make the tone warmer and more friendly while staying professional.' },
+    {
+      label: 'Warmer',
+      instruction: 'Make the tone warmer and more friendly while staying professional.',
+    },
     { label: 'Shorter', instruction: 'Make this 25-30% shorter and punchier. Keep all key info.' },
-    { label: 'Add urgency', instruction: 'Add gentle urgency and a clear next step without being pushy.' },
-    { label: 'More formal', instruction: 'Make the language slightly more formal and authoritative.' },
+    {
+      label: 'Add urgency',
+      instruction: 'Add gentle urgency and a clear next step without being pushy.',
+    },
+    {
+      label: 'More formal',
+      instruction: 'Make the language slightly more formal and authoritative.',
+    },
   ];
 
   const applyClaraTweak = async (instruction: string) => {
@@ -355,7 +364,9 @@ export default function ProposalEmailPreviewDialog({
       await onSend({
         subject: subject.trim(),
         textBody: trimmedBody,
-        htmlBody: editing ? textToSimpleHtml(trimmedBody) : emailDraft?.htmlBody || textToSimpleHtml(trimmedBody),
+        htmlBody: editing
+          ? textToSimpleHtml(trimmedBody)
+          : emailDraft?.htmlBody || textToSimpleHtml(trimmedBody),
       });
       onClose();
     } catch {
@@ -370,7 +381,11 @@ export default function ProposalEmailPreviewDialog({
   return (
     <div className="fixed inset-0 z-[70] overflow-y-auto print:hidden">
       <div className="flex items-center justify-center min-h-screen px-4 py-8">
-        <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm" onClick={onClose} aria-hidden />
+        <div
+          className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm"
+          onClick={onClose}
+          aria-hidden
+        />
 
         <div className="relative w-full max-w-2xl rounded-2xl border border-violet-200 dark:border-violet-800 shadow-2xl bg-white dark:bg-slate-900 overflow-hidden">
           <div className="px-5 py-4 border-b border-violet-100 dark:border-violet-900/50 bg-gradient-to-r from-violet-50 to-indigo-50/80 dark:from-violet-950/60 dark:to-indigo-950/40">
@@ -410,7 +425,8 @@ export default function ProposalEmailPreviewDialog({
               <>
                 {!body.trim() && (
                   <div className="rounded-lg border border-amber-200 dark:border-amber-800 bg-amber-50/70 dark:bg-amber-950/30 px-3 py-2 text-sm text-amber-800 dark:text-amber-200">
-                    {AI_COPILOT.name} did not return email content. Use &quot;Redraft with {AI_COPILOT.shortName}&quot; below, or edit manually after approving.
+                    {AI_COPILOT.name} did not return email content. Use &quot;Redraft with{' '}
+                    {AI_COPILOT.shortName}&quot; below, or edit manually after approving.
                   </div>
                 )}
                 <div>
@@ -463,15 +479,23 @@ export default function ProposalEmailPreviewDialog({
                   <div className="rounded-lg border border-amber-200 dark:border-amber-800 bg-amber-50/60 dark:bg-amber-950/30 p-3">
                     <div className="flex items-center gap-1.5 mb-1.5">
                       <ExclamationTriangleIcon className="h-4 w-4 text-amber-600 dark:text-amber-400" />
-                      <span className="text-xs font-semibold text-amber-700 dark:text-amber-300">Clara email analysis</span>
-                      {analyzingEmail && <span className="text-[10px] text-amber-500 dark:text-amber-400">analysing…</span>}
+                      <span className="text-xs font-semibold text-amber-700 dark:text-amber-300">
+                        Clara email analysis
+                      </span>
+                      {analyzingEmail && (
+                        <span className="text-[10px] text-amber-500 dark:text-amber-400">
+                          analysing…
+                        </span>
+                      )}
                     </div>
                     {emailIssues.length > 0 ? (
                       <ul className="space-y-1">
                         {emailIssues.map((issue, idx) => (
                           <li key={idx} className="flex items-start gap-2 text-xs">
                             <ExclamationTriangleIcon className="h-3.5 w-3.5 text-amber-500 dark:text-amber-400 mt-0.5 shrink-0" />
-                            <span className="flex-1 text-slate-700 dark:text-slate-300 leading-snug">{issue}</span>
+                            <span className="flex-1 text-slate-700 dark:text-slate-300 leading-snug">
+                              {issue}
+                            </span>
                             <button
                               onClick={() => fixIssueWithClara(issue)}
                               className="shrink-0 text-[10px] font-medium px-2 py-0.5 rounded border border-amber-300 dark:border-amber-700 text-amber-700 dark:text-amber-300 hover:bg-amber-100 dark:hover:bg-amber-900/30 transition"
@@ -493,7 +517,9 @@ export default function ProposalEmailPreviewDialog({
                   <div>
                     <div className="flex items-center gap-2 mb-2">
                       <SparklesIcon className="h-4 w-4 text-primary-600" />
-                      <span className="text-xs font-medium text-slate-500 dark:text-slate-400">Clara quick tweaks (low cost)</span>
+                      <span className="text-xs font-medium text-slate-500 dark:text-slate-400">
+                        Clara quick tweaks (low cost)
+                      </span>
                     </div>
                     <div className="flex flex-wrap gap-2">
                       {claraTweaks.map((t, i) => (
@@ -513,12 +539,22 @@ export default function ProposalEmailPreviewDialog({
                         type="text"
                         value={customInstruction}
                         onChange={(e) => setCustomInstruction(e.target.value)}
-                        onKeyDown={(e) => { if (e.key === 'Enter' && customInstruction.trim()) { applyClaraTweak(customInstruction.trim()); setCustomInstruction(''); } }}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter' && customInstruction.trim()) {
+                            applyClaraTweak(customInstruction.trim());
+                            setCustomInstruction('');
+                          }
+                        }}
                         placeholder="Or tell Clara exactly what to tweak..."
                         className="input-field flex-1 text-sm py-1.5"
                       />
                       <button
-                        onClick={() => { if (customInstruction.trim()) { applyClaraTweak(customInstruction.trim()); setCustomInstruction(''); } }}
+                        onClick={() => {
+                          if (customInstruction.trim()) {
+                            applyClaraTweak(customInstruction.trim());
+                            setCustomInstruction('');
+                          }
+                        }}
                         disabled={!customInstruction.trim()}
                         className="btn-secondary text-xs px-3 disabled:opacity-50"
                       >
@@ -533,16 +569,28 @@ export default function ProposalEmailPreviewDialog({
                   <div className="mt-2">
                     <div className="flex items-center gap-2 mb-1">
                       <SparklesIcon className="h-3.5 w-3.5 text-violet-500" />
-                      <span className="text-xs font-medium text-slate-500 dark:text-slate-400">Clara suggested CTAs (tiny cost)</span>
+                      <span className="text-xs font-medium text-slate-500 dark:text-slate-400">
+                        Clara suggested CTAs (tiny cost)
+                      </span>
                     </div>
                     {suggestingCtas && (
-                      <div className="text-xs text-slate-500 dark:text-slate-400">Clara thinking…</div>
+                      <div className="text-xs text-slate-500 dark:text-slate-400">
+                        Clara thinking…
+                      </div>
                     )}
                     {ctaSuggestions.length > 0 ? (
                       <div className="flex flex-wrap gap-2">
                         {ctaSuggestions.map((c, idx) => (
-                          <div key={idx} className="inline-flex items-center gap-1 rounded-md border border-violet-200 dark:border-violet-700 bg-white dark:bg-slate-800 px-2 py-0.5 text-xs">
-                            <span className="max-w-[220px] truncate text-violet-800 dark:text-violet-200" title={c}>{c}</span>
+                          <div
+                            key={idx}
+                            className="inline-flex items-center gap-1 rounded-md border border-violet-200 dark:border-violet-700 bg-white dark:bg-slate-800 px-2 py-0.5 text-xs"
+                          >
+                            <span
+                              className="max-w-[220px] truncate text-violet-800 dark:text-violet-200"
+                              title={c}
+                            >
+                              {c}
+                            </span>
                             <button
                               onClick={() => insertCta(c, 'end')}
                               className="ml-1 rounded bg-violet-600 px-1.5 py-0.5 text-[10px] font-medium text-white hover:bg-violet-700 dark:bg-violet-500 dark:hover:bg-violet-600 transition"
@@ -580,7 +628,9 @@ export default function ProposalEmailPreviewDialog({
                       className="text-xs text-primary-600 dark:text-primary-400 hover:underline disabled:opacity-50 flex items-center gap-1"
                     >
                       <SparklesIcon className="h-3.5 w-3.5" />
-                      {suggestingSubjects ? 'Clara thinking…' : 'Clara suggest subject options (tiny cost)'}
+                      {suggestingSubjects
+                        ? 'Clara thinking…'
+                        : 'Clara suggest subject options (tiny cost)'}
                     </button>
                     {subjectSuggestions.length > 0 && (
                       <div className="mt-1 flex flex-wrap gap-2">
@@ -640,7 +690,11 @@ export default function ProposalEmailPreviewDialog({
                     {editing ? 'Done editing' : 'Edit'}
                   </button>
                   {!approved && (
-                    <button type="button" onClick={handleApprove} className="btn-primary text-sm inline-flex items-center gap-1.5">
+                    <button
+                      type="button"
+                      onClick={handleApprove}
+                      className="btn-primary text-sm inline-flex items-center gap-1.5"
+                    >
                       <CheckIcon className="h-4 w-4" />
                       Approve
                     </button>

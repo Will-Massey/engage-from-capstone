@@ -4,11 +4,7 @@ import { apiClient } from '../../utils/api';
 import { useAuthStore } from '../../stores/authStore';
 import { hasFullAccess } from '../../constants/roles';
 import toast from 'react-hot-toast';
-import {
-  BookOpenIcon,
-  ExclamationTriangleIcon,
-  ArrowPathIcon,
-} from '@heroicons/react/24/outline';
+import { BookOpenIcon, ExclamationTriangleIcon, ArrowPathIcon } from '@heroicons/react/24/outline';
 
 interface LibraryVersion {
   id: string;
@@ -85,8 +81,7 @@ export default function EngagementLibrarySettings() {
       })) as any;
 
       const flagged =
-        (res.data?.proposalTemplatesFlagged || 0) +
-        (res.data?.coverLetterTemplatesFlagged || 0);
+        (res.data?.proposalTemplatesFlagged || 0) + (res.data?.coverLetterTemplatesFlagged || 0);
 
       toast.success(
         `Published ${res.data?.version?.versionLabel}. ${flagged} template(s) flagged for review.`
@@ -108,8 +103,7 @@ export default function EngagementLibrarySettings() {
         toast(res.data.reason || 'Quarterly version already published', { icon: 'ℹ️' });
       } else {
         const flagged =
-          (res.data?.proposalTemplatesFlagged || 0) +
-          (res.data?.coverLetterTemplatesFlagged || 0);
+          (res.data?.proposalTemplatesFlagged || 0) + (res.data?.coverLetterTemplatesFlagged || 0);
         toast.success(
           `Simulated quarterly release ${res.data?.versionLabel}. ${flagged} template(s) flagged.`
         );
@@ -153,12 +147,15 @@ export default function EngagementLibrarySettings() {
                   </p>
                   <p className="mt-1 text-sm font-semibold text-slate-900 dark:text-white">
                     {quarterlySchedule.nextQuarterlyReview
-                      ? new Date(quarterlySchedule.nextQuarterlyReview).toLocaleDateString('en-GB', {
-                          weekday: 'long',
-                          day: 'numeric',
-                          month: 'long',
-                          year: 'numeric',
-                        })
+                      ? new Date(quarterlySchedule.nextQuarterlyReview).toLocaleDateString(
+                          'en-GB',
+                          {
+                            weekday: 'long',
+                            day: 'numeric',
+                            month: 'long',
+                            year: 'numeric',
+                          }
+                        )
                       : '—'}
                   </p>
                   <p className="mt-1 text-xs text-slate-500 dark:text-slate-300">
@@ -235,8 +232,8 @@ export default function EngagementLibrarySettings() {
                   <ExclamationTriangleIcon className="h-5 w-5 text-amber-600 dark:text-amber-400 mt-0.5" />
                   <div className="flex-1 space-y-3">
                     <p className="text-sm font-medium text-amber-900 dark:text-amber-100">
-                      {totalNeedingUpdate} template{totalNeedingUpdate === 1 ? '' : 's'} may be
-                      out of date with the current engagement library
+                      {totalNeedingUpdate} template{totalNeedingUpdate === 1 ? '' : 's'} may be out
+                      of date with the current engagement library
                     </p>
 
                     {proposalTemplates.length > 0 && (
@@ -323,9 +320,7 @@ export default function EngagementLibrarySettings() {
                       type="text"
                       placeholder="Updated MTD VAT clause wording"
                       value={publishForm.changelog}
-                      onChange={(e) =>
-                        setPublishForm((f) => ({ ...f, changelog: e.target.value }))
-                      }
+                      onChange={(e) => setPublishForm((f) => ({ ...f, changelog: e.target.value }))}
                       className="mt-1 input-field w-full"
                     />
                   </div>

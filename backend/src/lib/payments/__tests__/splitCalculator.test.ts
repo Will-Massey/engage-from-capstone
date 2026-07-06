@@ -27,7 +27,7 @@ describe('splitCalculator', () => {
         platformFeeBps: 9000,
         processorFeePence: 50,
         processorMarkupPence: 50,
-      }),
+      })
     ).toThrow(/negative/);
   });
 

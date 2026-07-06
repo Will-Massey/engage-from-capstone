@@ -27,7 +27,9 @@ async function main() {
     process.exit(1);
   }
 
-  console.log(`📦 Seeding up to ${getExpectedPackageCount()} proposal templates for ${tenant.name}…\n`);
+  console.log(
+    `📦 Seeding up to ${getExpectedPackageCount()} proposal templates for ${tenant.name}…\n`
+  );
 
   const seed = await seedProposalTemplatesForTenant(tenant.id, admin.id);
   const sanity = await sanityCheckTemplatePricing(tenant.id);
@@ -48,7 +50,9 @@ async function main() {
   if (sanity.mismatches.length) {
     console.log('\nSample mismatches:');
     for (const m of sanity.mismatches.slice(0, 5)) {
-      console.log(`  - ${m.templateName} / ${m.serviceName}: template £${m.templatePrice} vs catalogue £${m.cataloguePrice}`);
+      console.log(
+        `  - ${m.templateName} / ${m.serviceName}: template £${m.templatePrice} vs catalogue £${m.cataloguePrice}`
+      );
     }
   }
 

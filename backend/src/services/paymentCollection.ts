@@ -9,10 +9,7 @@ import { createProposalCheckoutOrder } from './proposalPayment.js';
 import { getPaymentSettings } from '../utils/tenantPaymentSettings.js';
 import { tenantAppUrl } from '../config/urls.js';
 import { isPayoutCollectionEnabled } from './payoutSettingsService.js';
-import {
-  buildFeePreview,
-  resolvePlatformFeeBps,
-} from '../lib/payments/splitCalculator.js';
+import { buildFeePreview, resolvePlatformFeeBps } from '../lib/payments/splitCalculator.js';
 import { CLIENT_PAYMENT_AUTH_VERSION } from '../constants/paymentAgreements.js';
 
 export type PaymentProviderName = 'revolut' | 'none';
@@ -58,11 +55,7 @@ export async function shouldCollectPaymentAtSign(tenantId: string): Promise<bool
     prisma.tenant.findUnique({ where: { id: tenantId }, select: { settings: true } }),
   ]);
   const settings = getPaymentSettings(tenant?.settings);
-  return (
-    payoutEnabled &&
-    settings.collectPaymentAtSign &&
-    isPaymentCollectionAvailable()
-  );
+  return payoutEnabled && settings.collectPaymentAtSign && isPaymentCollectionAvailable();
 }
 
 /**
@@ -70,7 +63,7 @@ export async function shouldCollectPaymentAtSign(tenantId: string): Promise<bool
  */
 export async function createPostSignMandate(
   proposalId: string,
-  options: MandateSetupOptions = {},
+  options: MandateSetupOptions = {}
 ): Promise<MandateSetupResult> {
   const proposal = await prisma.proposal.findUnique({
     where: { id: proposalId },
@@ -145,7 +138,7 @@ export async function createPostSignMandate(
       },
     },
     { email: customerEmail, name: customerName },
-    shareToken,
+    shareToken
   );
 
   if (!checkout) {
@@ -213,7 +206,7 @@ export interface PublicPaymentConfig {
 
 export async function getPublicPaymentConfig(
   proposalId: string,
-  tenantId: string,
+  tenantId: string
 ): Promise<PublicPaymentConfig> {
   const [tenant, payoutSettings] = await Promise.all([
     prisma.tenant.findUnique({
@@ -250,7 +243,7 @@ export async function getPublicPaymentConfig(
   const grossPence = Math.round((proposal?.total ?? 0) * 100);
   const platformFeeBps = resolvePlatformFeeBps(
     tenant?.subscriptionTier,
-    payoutSettings?.platformFeeBpsOverride,
+    payoutSettings?.platformFeeBpsOverride
   );
 
   return {
@@ -276,7 +269,7 @@ async function logPaymentActivity(
   tenantId: string,
   proposalId: string,
   action: string,
-  metadata: Record<string, unknown>,
+  metadata: Record<string, unknown>
 ): Promise<void> {
   try {
     await prisma.activityLog.create({

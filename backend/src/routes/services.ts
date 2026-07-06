@@ -51,10 +51,7 @@ function mapFrequencyToBillingCycle(
   return frequency as import('@prisma/client').BillingCycle;
 }
 
-function buildServiceWriteData(
-  data: z.infer<typeof createServiceSchema>,
-  tenantId: string
-) {
+function buildServiceWriteData(data: z.infer<typeof createServiceSchema>, tenantId: string) {
   const billingCycle =
     mapFrequencyToBillingCycle(data.billingCycle as PricingFrequency | undefined) ??
     mapFrequencyToBillingCycle(data.defaultFrequency);
@@ -273,13 +270,25 @@ router.put(
 
     // Pre-process JSON string fields that may come from the API as strings
     if (typeof req.body.complexityFactors === 'string') {
-      try { req.body.complexityFactors = JSON.parse(req.body.complexityFactors); } catch { req.body.complexityFactors = []; }
+      try {
+        req.body.complexityFactors = JSON.parse(req.body.complexityFactors);
+      } catch {
+        req.body.complexityFactors = [];
+      }
     }
     if (typeof req.body.requirements === 'string') {
-      try { req.body.requirements = JSON.parse(req.body.requirements); } catch { req.body.requirements = []; }
+      try {
+        req.body.requirements = JSON.parse(req.body.requirements);
+      } catch {
+        req.body.requirements = [];
+      }
     }
     if (typeof req.body.deliverables === 'string') {
-      try { req.body.deliverables = JSON.parse(req.body.deliverables); } catch { req.body.deliverables = []; }
+      try {
+        req.body.deliverables = JSON.parse(req.body.deliverables);
+      } catch {
+        req.body.deliverables = [];
+      }
     }
     if (typeof req.body.tags === 'string') {
       req.body.tags = req.body.tags.split(',').filter(Boolean);
@@ -318,9 +327,7 @@ router.put(
       frequencyOptions:
         data.frequencyOptions !== undefined ? data.frequencyOptions.join(',') : undefined,
       applicableEntityTypes:
-        data.applicableEntityTypes !== undefined
-          ? data.applicableEntityTypes.join(',')
-          : undefined,
+        data.applicableEntityTypes !== undefined ? data.applicableEntityTypes.join(',') : undefined,
       tags: data.tags !== undefined ? data.tags.join(',') : undefined,
     };
 
@@ -547,7 +554,9 @@ router.post(
       }
 
       const freq = (billingCycle || 'MONTHLY').toUpperCase() as PricingFrequency;
-      const validFreq = Object.values(PricingFrequency).includes(freq) ? freq : PricingFrequency.MONTHLY;
+      const validFreq = Object.values(PricingFrequency).includes(freq)
+        ? freq
+        : PricingFrequency.MONTHLY;
 
       try {
         const service = await prisma.serviceTemplate.create({
@@ -593,7 +602,7 @@ router.post(
         serviceIds: created,
       },
     });
-  }),
+  })
 );
 
 /**

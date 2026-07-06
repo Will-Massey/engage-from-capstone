@@ -6,7 +6,6 @@ import {
   TrashIcon,
   DocumentDuplicateIcon,
   BuildingOfficeIcon,
-
   CurrencyPoundIcon,
   TagIcon,
   StarIcon,

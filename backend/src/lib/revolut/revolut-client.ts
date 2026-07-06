@@ -20,7 +20,7 @@ export function getRevolutBaseUrl(): string {
 
 async function revolutFetch<T = Record<string, unknown>>(
   path: string,
-  { method = 'GET', body }: { method?: string; body?: unknown } = {},
+  { method = 'GET', body }: { method?: string; body?: unknown } = {}
 ): Promise<T> {
   const secret = process.env.REVOLUT_API_SECRET_KEY;
   if (!secret) throw new Error('REVOLUT_API_SECRET_KEY not configured');

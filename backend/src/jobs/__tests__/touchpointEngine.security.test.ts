@@ -19,9 +19,9 @@ describe('approveAndSendTouchpoint tenant isolation', () => {
   });
 
   it('returns false when touchpoint belongs to another tenant', async () => {
-    (prisma.touchpoint.findFirst as jest.MockedFunction<typeof prisma.touchpoint.findFirst>).mockResolvedValue(
-      null as any
-    );
+    (
+      prisma.touchpoint.findFirst as jest.MockedFunction<typeof prisma.touchpoint.findFirst>
+    ).mockResolvedValue(null as any);
 
     const ok = await approveAndSendTouchpoint('tp-1', 'tenant-a', 'user-1');
     expect(ok).toBe(false);

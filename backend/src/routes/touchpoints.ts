@@ -17,9 +17,19 @@ router.use(authenticate);
 router.use(validateTenantMembership);
 
 const StageEnum = z.enum([
-  'PROPOSAL_ACCEPTED', 'AML_PENDING', 'AML_COMPLETE', 'ENGAGEMENT_LETTER_SENT',
-  'ENGAGEMENT_LETTER_SIGNED', 'INFO_REQUESTED', 'INFO_RECEIVED', 'ONBOARDING_SETUP',
-  'KICKOFF_SENT', 'MILESTONE_CHECK_IN', 'SATISFACTION_CHECK', 'ONGOING', 'ANNUAL_REVIEW',
+  'PROPOSAL_ACCEPTED',
+  'AML_PENDING',
+  'AML_COMPLETE',
+  'ENGAGEMENT_LETTER_SENT',
+  'ENGAGEMENT_LETTER_SIGNED',
+  'INFO_REQUESTED',
+  'INFO_RECEIVED',
+  'ONBOARDING_SETUP',
+  'KICKOFF_SENT',
+  'MILESTONE_CHECK_IN',
+  'SATISFACTION_CHECK',
+  'ONGOING',
+  'ANNUAL_REVIEW',
 ]);
 
 const ToneEnum = z.enum(['WARM', 'NEUTRAL', 'URGENT']);
@@ -51,9 +61,7 @@ router.post(
   '/templates/seed-defaults',
   authorize('ADMIN', 'PARTNER', 'MD', 'MANAGER'),
   asyncHandler(async (req, res) => {
-    const body = z
-      .object({ resetAll: z.boolean().optional() })
-      .parse(req.body ?? {});
+    const body = z.object({ resetAll: z.boolean().optional() }).parse(req.body ?? {});
 
     const result = await ensureTouchpointTemplatesForTenant(req.tenantId!, {
       fillMissingOnly: !body.resetAll,
@@ -148,7 +156,11 @@ router.post(
     const ok = await approveAndSendTouchpoint(id, tenantId, userId);
 
     if (!ok) {
-      throw new ApiError('BAD_REQUEST', 'Could not approve touchpoint (not pending or not gated)', 400);
+      throw new ApiError(
+        'BAD_REQUEST',
+        'Could not approve touchpoint (not pending or not gated)',
+        400
+      );
     }
 
     res.json({ success: true });

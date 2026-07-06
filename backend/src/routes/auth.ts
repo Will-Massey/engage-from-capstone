@@ -194,11 +194,9 @@ router.post(
     await clearLoginAttempts(email, resolvedTenantId);
 
     if (user.twoFactorEnabled && user.twoFactorSecret) {
-      const pendingToken = jwt.sign(
-        { userId: user.id, purpose: '2fa_pending' },
-        JWT_SECRET,
-        { expiresIn: '5m' }
-      );
+      const pendingToken = jwt.sign({ userId: user.id, purpose: '2fa_pending' }, JWT_SECRET, {
+        expiresIn: '5m',
+      });
 
       logger.info(`Login requires 2FA: ${email} (${user.id})`);
 
@@ -1049,7 +1047,11 @@ router.post(
     }
 
     if (user.twoFactorEnabled) {
-      throw new ApiError('2FA_ALREADY_ENABLED', 'Two-factor authentication is already enabled', 400);
+      throw new ApiError(
+        '2FA_ALREADY_ENABLED',
+        'Two-factor authentication is already enabled',
+        400
+      );
     }
 
     const setup = await twoFactorService.generateSecret(user.id, user.email);
@@ -1103,7 +1105,11 @@ router.post(
     }
 
     if (user.twoFactorEnabled) {
-      throw new ApiError('2FA_ALREADY_ENABLED', 'Two-factor authentication is already enabled', 400);
+      throw new ApiError(
+        '2FA_ALREADY_ENABLED',
+        'Two-factor authentication is already enabled',
+        400
+      );
     }
 
     if (!user.twoFactorSecret) {
@@ -1214,7 +1220,7 @@ router.get(
     res.setHeader('Content-Type', 'application/json');
     res.setHeader('Content-Disposition', 'attachment; filename="engage-audit-export.json"');
     res.json({ success: true, data: exportData });
-  }),
+  })
 );
 
 /**

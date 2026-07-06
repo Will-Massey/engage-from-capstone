@@ -52,7 +52,7 @@ router.get(
         defaultPricing: safeJson(t.defaultPricing, {}),
       })),
     });
-  }),
+  })
 );
 
 function safeJson<T>(raw: string, fallback: T): T {

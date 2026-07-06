@@ -16,7 +16,10 @@ import {
   isQuickBooksOAuthConfigured,
   getQuickBooksPublicConfig,
 } from '../services/tenantQuickbooksSettings.js';
-import { buildQuickBooksConsentUrl, revokeQuickBooksConnection } from '../services/quickbooksService.js';
+import {
+  buildQuickBooksConsentUrl,
+  revokeQuickBooksConnection,
+} from '../services/quickbooksService.js';
 
 const router = Router();
 

@@ -16,7 +16,9 @@ function parseSetCookies(headers) {
 }
 
 function cookieHeader(jar) {
-  return Object.entries(jar).map(([k, v]) => `${k}=${v}`).join('; ');
+  return Object.entries(jar)
+    .map(([k, v]) => `${k}=${v}`)
+    .join('; ');
 }
 
 async function api(path, { method = 'GET', body, cookies = {}, csrf } = {}) {
@@ -48,7 +50,8 @@ async function main() {
   if (!source?.id) throw new Error('No source proposal found');
 
   const detail = await api(`/api/proposals/${source.id}`, { cookies });
-  if (detail.status !== 200) throw new Error('Failed to load proposal: ' + JSON.stringify(detail.data));
+  if (detail.status !== 200)
+    throw new Error('Failed to load proposal: ' + JSON.stringify(detail.data));
   const full = detail.data?.data || detail.data;
 
   const services = (full.services || [])
@@ -93,7 +96,8 @@ async function main() {
     csrf,
     body: { proposalId: proposal.id },
   });
-  if (emailDraft.status !== 200) throw new Error('Email draft failed: ' + JSON.stringify(emailDraft.data));
+  if (emailDraft.status !== 200)
+    throw new Error('Email draft failed: ' + JSON.stringify(emailDraft.data));
 
   const { subject, textBody, htmlBody } = emailDraft.data.data;
   const send = await api(`/api/proposals/${proposal.id}/send`, {
@@ -102,7 +106,12 @@ async function main() {
     csrf,
     body: { aiSubject: subject, aiText: textBody, aiHtml: htmlBody },
   });
-  console.log('Send', send.status, send.data?.data?.reference, send.data?.error || send.data?.message);
+  console.log(
+    'Send',
+    send.status,
+    send.data?.data?.reference,
+    send.data?.error || send.data?.message
+  );
   if (send.status !== 200) process.exit(1);
 }
 

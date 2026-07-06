@@ -1,4 +1,9 @@
-import { LOGIN_LOCKOUT_MAX, recordFailedLogin, isLoginLocked, clearLoginAttempts } from '../loginLockout.js';
+import {
+  LOGIN_LOCKOUT_MAX,
+  recordFailedLogin,
+  isLoginLocked,
+  clearLoginAttempts,
+} from '../loginLockout.js';
 
 describe('loginLockout (memory)', () => {
   const email = 'lockout-test@example.com';

@@ -220,9 +220,7 @@ export default function BulkRenewalWizard() {
       try {
         const parsed = JSON.parse(perServiceFloorsJson);
         if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
-          parsedFloors = Object.fromEntries(
-            Object.entries(parsed).map(([k, v]) => [k, Number(v)])
-          );
+          parsedFloors = Object.fromEntries(Object.entries(parsed).map(([k, v]) => [k, Number(v)]));
         } else {
           toast.error('Per-service floors must be a JSON object');
           return;
@@ -392,11 +390,8 @@ export default function BulkRenewalWizard() {
                           {c.proposalReference} — {c.proposalTitle}
                         </p>
                         <p className="text-xs text-slate-500 mt-0.5">
-                          Renews{' '}
-                          {format(new Date(c.renewalDate), 'dd MMM yyyy')}
-                          {c.daysUntilRenewal <= 0
-                            ? ' (overdue)'
-                            : ` (${c.daysUntilRenewal} days)`}
+                          Renews {format(new Date(c.renewalDate), 'dd MMM yyyy')}
+                          {c.daysUntilRenewal <= 0 ? ' (overdue)' : ` (${c.daysUntilRenewal} days)`}
                           {' · '}
                           {formatCurrency(c.total)}
                         </p>
@@ -462,9 +457,9 @@ export default function BulkRenewalWizard() {
                   const mode = e.target.value as UpliftRuleMode;
                   setUpliftRules({
                     mode,
-                    percent: mode === 'percent' ? upliftRules.percent ?? 0 : undefined,
-                    cpiPercent: mode === 'cpi' ? upliftRules.cpiPercent ?? 3 : undefined,
-                    minFeeGbp: mode === 'min_floor' ? upliftRules.minFeeGbp ?? 0 : undefined,
+                    percent: mode === 'percent' ? (upliftRules.percent ?? 0) : undefined,
+                    cpiPercent: mode === 'cpi' ? (upliftRules.cpiPercent ?? 3) : undefined,
+                    minFeeGbp: mode === 'min_floor' ? (upliftRules.minFeeGbp ?? 0) : undefined,
                   });
                 }}
                 className="input-field w-full max-w-xs"
@@ -543,7 +538,8 @@ export default function BulkRenewalWizard() {
                   <span className="text-sm text-slate-600">%</span>
                 </div>
                 <p className="text-xs text-slate-500 mt-1">
-                  Typical UK CPI for accountancy renewals is 2–4%. Adjust to your firm&apos;s policy.
+                  Typical UK CPI for accountancy renewals is 2–4%. Adjust to your firm&apos;s
+                  policy.
                 </p>
               </div>
             )}
@@ -626,8 +622,8 @@ export default function BulkRenewalWizard() {
             <div className="rounded-xl bg-slate-50 dark:bg-slate-800/50 p-4 text-sm">
               <p>
                 <strong>{eligibleSelected.length}</strong> renewal draft
-                {eligibleSelected.length === 1 ? '' : 's'} will be created as{' '}
-                <strong>DRAFT</strong> — review and send each one when ready.
+                {eligibleSelected.length === 1 ? '' : 's'} will be created as <strong>DRAFT</strong>{' '}
+                — review and send each one when ready.
               </p>
               {templateId && (
                 <p className="mt-1 text-slate-600 dark:text-slate-400">
@@ -640,7 +636,9 @@ export default function BulkRenewalWizard() {
                 </p>
               )}
               {useAiCoverLetter && (
-                <p className="mt-1 text-purple-700 dark:text-purple-300">AI cover letters enabled</p>
+                <p className="mt-1 text-purple-700 dark:text-purple-300">
+                  AI cover letters enabled
+                </p>
               )}
             </div>
 
@@ -698,7 +696,9 @@ export default function BulkRenewalWizard() {
                 disabled={creating || eligibleSelected.length === 0}
                 className="btn-primary disabled:opacity-50"
               >
-                {creating ? 'Creating drafts…' : `Create ${eligibleSelected.length} draft renewal${eligibleSelected.length === 1 ? '' : 's'}`}
+                {creating
+                  ? 'Creating drafts…'
+                  : `Create ${eligibleSelected.length} draft renewal${eligibleSelected.length === 1 ? '' : 's'}`}
               </button>
             </div>
           </div>

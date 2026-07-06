@@ -7,8 +7,7 @@ export function getFrontendUrl(): string {
 }
 
 export function getApiUrl(): string {
-  const raw =
-    process.env.API_URL || process.env.BACKEND_URL || CANONICAL_API_URL;
+  const raw = process.env.API_URL || process.env.BACKEND_URL || CANONICAL_API_URL;
   return raw.replace(/\/$/, '');
 }
 

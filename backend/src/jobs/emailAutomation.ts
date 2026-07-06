@@ -58,10 +58,7 @@ async function shouldSendFollowUp(proposalId: string, actionTag: string): Promis
       entityType: 'PROPOSAL',
       entityId: proposalId,
       action: 'FOLLOW_UP_SENT',
-      OR: [
-        { description: { contains: actionTag } },
-        { metadata: { contains: actionTag } },
-      ],
+      OR: [{ description: { contains: actionTag } }, { metadata: { contains: actionTag } }],
     },
   });
 
@@ -74,18 +71,14 @@ function daysBetween(from: Date, to: Date): number {
 
 function resolveReminderConfig(
   proposal: { status: string; sentAt: Date | null; viewedAt: Date | null; validUntil: Date },
-  now: Date,
+  now: Date
 ): FollowUpConfig | null {
   if (!proposal.sentAt) return null;
 
   const daysSinceSent = daysBetween(proposal.sentAt, now);
 
   // Unopened: SENT status, never viewed, 3+ days
-  if (
-    proposal.status === 'SENT' &&
-    !proposal.viewedAt &&
-    daysSinceSent >= 3
-  ) {
+  if (proposal.status === 'SENT' && !proposal.viewedAt && daysSinceSent >= 3) {
     return REMINDER_SEQUENCE.find((c) => c.kind === 'unopened') || null;
   }
 
@@ -124,7 +117,9 @@ function getEmailTemplate(
   const clientName = proposal.client.name;
   const proposalTitle = proposal.title;
   const proposalRef = proposal.reference;
-  const senderName = Array.from(new Set([proposal.createdBy.firstName, proposal.createdBy.lastName].filter(Boolean))).join(' ');
+  const senderName = Array.from(
+    new Set([proposal.createdBy.firstName, proposal.createdBy.lastName].filter(Boolean))
+  ).join(' ');
   const senderPosition = proposal.createdBy.role;
   const practiceName = proposal.tenant.name;
 
@@ -234,10 +229,7 @@ function toneForTemplate(template: FollowUpConfig['template']): LifecycleEmailTo
 /**
  * Send follow-up email for a single proposal
  */
-async function sendFollowUp(
-  proposal: any,
-  config: FollowUpConfig
-): Promise<boolean> {
+async function sendFollowUp(proposal: any, config: FollowUpConfig): Promise<boolean> {
   try {
     let subject: string;
     let body: string;
@@ -291,9 +283,7 @@ async function sendFollowUp(
         },
       });
 
-      logger.info(
-        `Follow-up email sent for proposal ${proposal.id} (${config.actionTag})`
-      );
+      logger.info(`Follow-up email sent for proposal ${proposal.id} (${config.actionTag})`);
       return true;
     } else {
       logger.error(`Failed to send follow-up for proposal ${proposal.id}: ${result.error}`);
@@ -361,7 +351,7 @@ export async function runEmailAutomation(): Promise<{
           viewedAt: proposal.viewedAt,
           validUntil: proposal.validUntil,
         },
-        now,
+        now
       );
 
       if (!followUpConfig) {
@@ -402,10 +392,7 @@ export async function runEmailAutomation(): Promise<{
 /**
  * Manual trigger for testing
  */
-export async function testEmailAutomation(
-  proposalId: string,
-  tenantId: string
-): Promise<boolean> {
+export async function testEmailAutomation(proposalId: string, tenantId: string): Promise<boolean> {
   try {
     const proposal = await prisma.proposal.findFirst({
       where: { id: proposalId, tenantId },

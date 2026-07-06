@@ -26,10 +26,10 @@ Direct Debit (GoCardless) is planned — not enabled in this release.
 
 ## Fees
 
-| Component | Default |
-|-----------|---------|
-| Platform fee | 2.5% (1.0% Enterprise) |
-| Processor cost | Estimated Revolut merchant rate |
+| Component         | Default                                      |
+| ----------------- | -------------------------------------------- |
+| Platform fee      | 2.5% (1.0% Enterprise)                       |
+| Processor cost    | Estimated Revolut merchant rate              |
 | Processing markup | `ENGAGE_PROCESSOR_MARKUP_BPS` (default 0.5%) |
 
 Configure via environment:
@@ -40,13 +40,13 @@ Configure via environment:
 
 ## API
 
-| Endpoint | Auth | Purpose |
-|----------|------|---------|
-| `GET /api/payout/settings` | Practice user | Masked payout settings |
-| `PUT /api/payout/settings` | ADMIN/PARTNER | Opt-in, bank details, methods |
-| `GET /api/payout/ledger` | ADMIN/PARTNER/MD | Split history |
-| `POST /api/proposals/view/:token/payment/setup` | Public (share token) | Create Revolut checkout |
-| `POST /api/billing/webhook` | Revolut HMAC | Fulfilment + split |
+| Endpoint                                        | Auth                 | Purpose                       |
+| ----------------------------------------------- | -------------------- | ----------------------------- |
+| `GET /api/payout/settings`                      | Practice user        | Masked payout settings        |
+| `PUT /api/payout/settings`                      | ADMIN/PARTNER        | Opt-in, bank details, methods |
+| `GET /api/payout/ledger`                        | ADMIN/PARTNER/MD     | Split history                 |
+| `POST /api/proposals/view/:token/payment/setup` | Public (share token) | Create Revolut checkout       |
+| `POST /api/billing/webhook`                     | Revolut HMAC         | Fulfilment + split            |
 
 ## Legal documents
 

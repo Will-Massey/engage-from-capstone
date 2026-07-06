@@ -16,12 +16,12 @@ export function parseLogoDataUrl(logo: string): { mime: string; base64: string }
   return { mime: match[1].toLowerCase(), base64: match[2] };
 }
 
-export type TenantLogoValidation =
-  | { ok: true; logo: string }
-  | { ok: false; message: string };
+export type TenantLogoValidation = { ok: true; logo: string } | { ok: false; message: string };
 
 /** Validate logo before persisting on tenant settings. */
-export function validateTenantLogoForStorage(logo: string | undefined | null): TenantLogoValidation {
+export function validateTenantLogoForStorage(
+  logo: string | undefined | null
+): TenantLogoValidation {
   if (logo === undefined || logo === null || logo.trim() === '') {
     return { ok: true, logo: '' };
   }
@@ -36,15 +36,15 @@ export function validateTenantLogoForStorage(logo: string | undefined | null): T
   if (!parsed) {
     return {
       ok: false,
-      message:
-        'Logo must be a PNG, JPEG, or WebP image under 512 KB, or a public image URL.',
+      message: 'Logo must be a PNG, JPEG, or WebP image under 512 KB, or a public image URL.',
     };
   }
 
   if (!TENANT_LOGO_ALLOWED_MIME.has(parsed.mime)) {
     return {
       ok: false,
-      message: 'Logo must be PNG, JPEG, or WebP. SVG and other formats are not supported for proposal PDFs.',
+      message:
+        'Logo must be PNG, JPEG, or WebP. SVG and other formats are not supported for proposal PDFs.',
     };
   }
 

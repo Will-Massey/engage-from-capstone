@@ -131,7 +131,9 @@ const Onboarding = () => {
         if (claraProfile.practiceSize && claraProfile.mtdStatus) {
           await persistClaraProfile(claraProfile);
         }
-        toast.success(`Welcome to Engage! ${AI_COPILOT.name} will tailor proposals to your practice.`);
+        toast.success(
+          `Welcome to Engage! ${AI_COPILOT.name} will tailor proposals to your practice.`
+        );
         navigate('/');
       }
     } catch (error) {
@@ -267,14 +269,17 @@ const Onboarding = () => {
                 <div>
                   <h3 className="font-semibold text-slate-900">Hi, I&apos;m {AI_COPILOT.name}</h3>
                   <p className="text-sm text-slate-600 mt-1">
-                    Three quick questions help me suggest the right services, tone, and MTD wording for your practice.
+                    Three quick questions help me suggest the right services, tone, and MTD wording
+                    for your practice.
                   </p>
                 </div>
               </div>
 
               <div className="space-y-5">
                 <div>
-                  <p className="text-sm font-medium text-slate-800 mb-2">How large is your practice?</p>
+                  <p className="text-sm font-medium text-slate-800 mb-2">
+                    How large is your practice?
+                  </p>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                     {PRACTICE_SIZES.map((opt) => (
                       <button
@@ -294,7 +299,9 @@ const Onboarding = () => {
                 </div>
 
                 <div>
-                  <p className="text-sm font-medium text-slate-800 mb-2">Who are your typical clients?</p>
+                  <p className="text-sm font-medium text-slate-800 mb-2">
+                    Who are your typical clients?
+                  </p>
                   <p className="text-xs text-slate-500 mb-2">Select all that apply</p>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                     {CLIENT_TYPES.map((opt) => (
@@ -315,7 +322,9 @@ const Onboarding = () => {
                 </div>
 
                 <div>
-                  <p className="text-sm font-medium text-slate-800 mb-2">Making Tax Digital (MTD) for ITSA</p>
+                  <p className="text-sm font-medium text-slate-800 mb-2">
+                    Making Tax Digital (MTD) for ITSA
+                  </p>
                   <div className="space-y-2">
                     {MTD_OPTIONS.map((opt) => (
                       <button
@@ -340,7 +349,11 @@ const Onboarding = () => {
               <button type="button" onClick={prevStep} className="flex-1 btn-secondary py-2.5">
                 Back
               </button>
-              <button type="button" onClick={nextStep} className="flex-1 btn-primary py-2.5 bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-700 hover:to-indigo-700">
+              <button
+                type="button"
+                onClick={nextStep}
+                className="flex-1 btn-primary py-2.5 bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-700 hover:to-indigo-700"
+              >
                 Continue with {AI_COPILOT.shortName}
               </button>
             </div>

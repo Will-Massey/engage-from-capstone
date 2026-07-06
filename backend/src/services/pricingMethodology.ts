@@ -23,12 +23,7 @@ export const TURNOVER_BANDS = [
 
 export type TurnoverBand = (typeof TURNOVER_BANDS)[number];
 
-export const ENTITY_TYPES = [
-  'LIMITED_COMPANY',
-  'SOLE_TRADER',
-  'LLP',
-  'PARTNERSHIP',
-] as const;
+export const ENTITY_TYPES = ['LIMITED_COMPANY', 'SOLE_TRADER', 'LLP', 'PARTNERSHIP'] as const;
 
 export type EntityType = (typeof ENTITY_TYPES)[number];
 
@@ -238,7 +233,8 @@ function buildPricingContext(input: PricingMethodologyInput): Record<string, unk
     multiSite: input.complexity.multiSite,
     vatRegistered: input.vatRegistered,
     mtdStatus: input.mtdStatus,
-    transactionCount: input.turnoverBand === 'OVER_1M' ? 600 : input.turnoverBand === 'BAND_500K_1M' ? 400 : 200,
+    transactionCount:
+      input.turnoverBand === 'OVER_1M' ? 600 : input.turnoverBand === 'BAND_500K_1M' ? 400 : 200,
   };
 }
 
@@ -383,8 +379,7 @@ function calculateServiceFee(
   );
 
   // Payroll annual includes employee adjustments
-  const finalAnnual =
-    service.name === 'Monthly Payroll Processing' ? rounded * 12 : adjustedAnnual;
+  const finalAnnual = service.name === 'Monthly Payroll Processing' ? rounded * 12 : adjustedAnnual;
 
   return {
     catalogName: service.name,
@@ -409,9 +404,7 @@ function buildRationale(
 ): string {
   const parts = [`Baseline £${service.basePrice} (${service.billingCycle.toLowerCase()})`];
   if (multipliers.length) {
-    parts.push(
-      multipliers.map((m) => m.description).join('; ')
-    );
+    parts.push(multipliers.map((m) => m.description).join('; '));
   }
   return parts.join(' → ');
 }
@@ -503,7 +496,13 @@ export function suggestFees(
       acc.annualSuggested += svc.annualEquivalent;
       return acc;
     },
-    { monthlyLow: 0, monthlyHigh: 0, monthlySuggested: 0, annualSuggested: 0, currency: 'GBP' as const }
+    {
+      monthlyLow: 0,
+      monthlyHigh: 0,
+      monthlySuggested: 0,
+      annualSuggested: 0,
+      currency: 'GBP' as const,
+    }
   );
 
   return {
@@ -527,9 +526,7 @@ export function attachTenantServiceIds(
   result: PricingMethodologyResult,
   tenantServices: Array<{ id: string; name: string; priceAmount?: number | null }>
 ): PricingMethodologyResult {
-  const byName = new Map(
-    tenantServices.map((s) => [normaliseName(s.name), s])
-  );
+  const byName = new Map(tenantServices.map((s) => [normaliseName(s.name), s]));
 
   const services = result.services.map((svc) => {
     const match = byName.get(normaliseName(svc.catalogName));

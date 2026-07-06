@@ -9,10 +9,7 @@ import {
   getProposalSettings,
   parseProposalDateInput,
 } from '../utils/tenantProposalSettings.js';
-import {
-  buildProposalServiceRecord,
-  calculateHeaderTotals,
-} from '../utils/proposalPricing.js';
+import { buildProposalServiceRecord, calculateHeaderTotals } from '../utils/proposalPricing.js';
 import { calculateRenewalDate } from '../jobs/renewalReminders.js';
 import { revokeShareableLink } from './proposalSharingService.js';
 
@@ -179,7 +176,9 @@ export async function findRenewalCandidates(
     });
   }
 
-  candidates.sort((a, b) => a.daysUntilRenewal - b.daysUntilRenewal || a.clientName.localeCompare(b.clientName));
+  candidates.sort(
+    (a, b) => a.daysUntilRenewal - b.daysUntilRenewal || a.clientName.localeCompare(b.clientName)
+  );
   return candidates;
 }
 
@@ -200,10 +199,7 @@ type RenewalServiceInput = {
   oneOffDueDate: Date | null;
 };
 
-export function resolveUpliftRules(
-  upliftRules?: UpliftRules,
-  upliftPercent?: number
-): UpliftRules {
+export function resolveUpliftRules(upliftRules?: UpliftRules, upliftPercent?: number): UpliftRules {
   if (upliftRules) return upliftRules;
   return {
     mode: 'percent',
@@ -228,10 +224,9 @@ export function computeUpliftedUnitPrice(
     candidates.push(Math.round(basePrice * (1 + rules.cpiPercent / 100) * 100) / 100);
   }
 
-  const serviceKeys = [
-    service.serviceTemplateId,
-    service.name,
-  ].filter((k): k is string => Boolean(k));
+  const serviceKeys = [service.serviceTemplateId, service.name].filter((k): k is string =>
+    Boolean(k)
+  );
 
   let floor: number | undefined;
   if (rules.perServiceFloors) {
@@ -373,7 +368,8 @@ export async function createRenewalDraft(
 
   if (options.templateId) {
     const { template } = await loadProposalTemplate(options.templateId, tenantId);
-    if (template.title) title = template.title.replace(/\[Client Name\]/gi, originalProposal.client.name);
+    if (template.title)
+      title = template.title.replace(/\[Client Name\]/gi, originalProposal.client.name);
     if (template.coverLetter) coverLetter = template.coverLetter;
     if (template.terms) terms = template.terms;
     await prisma.proposalTemplate.update({
@@ -426,7 +422,8 @@ export async function createRenewalDraft(
       paymentFrequency,
       coverLetter,
       terms,
-      notes: `Renewal of proposal ${originalProposal.reference}.${describeUpliftRules(upliftRules)} ${originalProposal.notes || ''}`.trim(),
+      notes:
+        `Renewal of proposal ${originalProposal.reference}.${describeUpliftRules(upliftRules)} ${originalProposal.notes || ''}`.trim(),
       isRenewal: true,
       originalProposalId: originalProposal.id,
       renewalDate,

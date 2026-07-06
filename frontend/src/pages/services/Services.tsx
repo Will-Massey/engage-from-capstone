@@ -106,7 +106,9 @@ const ServiceModal = ({
       <div className="p-6 space-y-4">
         <div className="grid grid-cols-2 gap-4">
           <div>
-            <label className="block text-sm font-medium text-slate-800 dark:text-slate-200">Service Name</label>
+            <label className="block text-sm font-medium text-slate-800 dark:text-slate-200">
+              Service Name
+            </label>
             <input
               type="text"
               value={formData.name}
@@ -116,7 +118,9 @@ const ServiceModal = ({
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-slate-800 dark:text-slate-200">Category</label>
+            <label className="block text-sm font-medium text-slate-800 dark:text-slate-200">
+              Category
+            </label>
             <select
               value={formData.category}
               onChange={(e) => setFormData({ ...formData, category: e.target.value })}
@@ -132,7 +136,9 @@ const ServiceModal = ({
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-slate-800 dark:text-slate-200">Short Description</label>
+          <label className="block text-sm font-medium text-slate-800 dark:text-slate-200">
+            Short Description
+          </label>
           <input
             type="text"
             value={formData.description}
@@ -143,7 +149,9 @@ const ServiceModal = ({
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-slate-800 dark:text-slate-200">Long Description</label>
+          <label className="block text-sm font-medium text-slate-800 dark:text-slate-200">
+            Long Description
+          </label>
           <textarea
             rows={3}
             value={formData.longDescription}
@@ -155,7 +163,9 @@ const ServiceModal = ({
 
         <div className="grid grid-cols-2 gap-4">
           <div>
-            <label className="block text-sm font-medium text-slate-800 dark:text-slate-200">Price (£)</label>
+            <label className="block text-sm font-medium text-slate-800 dark:text-slate-200">
+              Price (£)
+            </label>
             <input
               type="text"
               inputMode="decimal"
@@ -171,7 +181,9 @@ const ServiceModal = ({
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-slate-800 dark:text-slate-200">Frequency</label>
+            <label className="block text-sm font-medium text-slate-800 dark:text-slate-200">
+              Frequency
+            </label>
             <select
               value={formData.defaultFrequency}
               onChange={(e) => setFormData({ ...formData, defaultFrequency: e.target.value })}
@@ -188,7 +200,9 @@ const ServiceModal = ({
 
         <div className="grid grid-cols-2 gap-4">
           <div>
-            <label className="block text-sm font-medium text-slate-800 dark:text-slate-200">Pricing Model</label>
+            <label className="block text-sm font-medium text-slate-800 dark:text-slate-200">
+              Pricing Model
+            </label>
             <select
               value={formData.pricingModel}
               onChange={(e) => setFormData({ ...formData, pricingModel: e.target.value })}
@@ -359,7 +373,11 @@ const Services = () => {
   const parseJsonField = (value: any): any[] => {
     if (Array.isArray(value)) return value;
     if (typeof value === 'string') {
-      try { return JSON.parse(value); } catch { return []; }
+      try {
+        return JSON.parse(value);
+      } catch {
+        return [];
+      }
     }
     return [];
   };
@@ -451,7 +469,10 @@ const Services = () => {
           <h1 className="text-2xl font-bold text-slate-900 dark:text-white">Services catalogue</h1>
           <p className="text-sm text-slate-600 dark:text-slate-300 mt-1">
             Manage fees and service lines for proposals. Use the{' '}
-            <Link to="/pricing-calculator" className="text-primary-600 dark:text-primary-400 hover:underline">
+            <Link
+              to="/pricing-calculator"
+              className="text-primary-600 dark:text-primary-400 hover:underline"
+            >
               pricing calculator
             </Link>{' '}
             from the sidebar when you need turnover-based fee suggestions.
@@ -518,7 +539,9 @@ const Services = () => {
               </div>
 
               <h3 className="font-semibold text-slate-900 dark:text-white mb-2">{service.name}</h3>
-              <p className="text-sm text-slate-600 dark:text-slate-300 line-clamp-2 mb-4">{service.description}</p>
+              <p className="text-sm text-slate-600 dark:text-slate-300 line-clamp-2 mb-4">
+                {service.description}
+              </p>
 
               <div className="flex items-center justify-between pt-4 border-t border-slate-100 dark:border-slate-700">
                 <div>

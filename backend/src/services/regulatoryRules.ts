@@ -42,10 +42,7 @@ const MTD_ITSA_THRESHOLD_2026 = 50_000;
 const MTD_ITSA_THRESHOLD_2027 = 30_000;
 const VAT_REGISTRATION_THRESHOLD = 90_000;
 
-const MTD_APPLICABLE_TYPES: CompanyType[] = [
-  CompanyType.SOLE_TRADER,
-  CompanyType.PARTNERSHIP,
-];
+const MTD_APPLICABLE_TYPES: CompanyType[] = [CompanyType.SOLE_TRADER, CompanyType.PARTNERSHIP];
 
 function effectiveIncome(input: RegulatoryCheckInput): number {
   return input.mtditsaIncome ?? input.turnover ?? 0;

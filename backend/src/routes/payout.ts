@@ -6,10 +6,7 @@ import { z } from 'zod';
 import { authenticate, authorize } from '../middleware/auth.js';
 import { asyncHandler, ApiError } from '../middleware/errorHandler.js';
 import { prisma } from '../config/database.js';
-import {
-  getPayoutSettingsPublic,
-  savePayoutSettings,
-} from '../services/payoutSettingsService.js';
+import { getPayoutSettingsPublic, savePayoutSettings } from '../services/payoutSettingsService.js';
 import { PAYMENT_COLLECTION_TERMS_VERSION } from '../constants/paymentAgreements.js';
 
 const router = Router();
@@ -20,7 +17,7 @@ router.get(
   asyncHandler(async (req, res) => {
     const data = await getPayoutSettingsPublic(req.tenantId!);
     res.json({ success: true, data });
-  }),
+  })
 );
 
 router.put(
@@ -86,7 +83,7 @@ router.put(
 
     const data = await getPayoutSettingsPublic(tenantId);
     res.json({ success: true, data });
-  }),
+  })
 );
 
 router.get(
@@ -118,7 +115,7 @@ router.get(
         payoutTransferId: s.payoutTransferId,
       })),
     });
-  }),
+  })
 );
 
 router.get('/agreements', (_req, res) => {

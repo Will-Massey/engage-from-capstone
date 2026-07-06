@@ -177,7 +177,9 @@ export default function ContingentFeeCalculator({
             <span className="font-semibold text-slate-900 dark:text-white">
               {formatGbp(result.feeGbp)}
             </span>
-            <p className="text-xs text-slate-600 dark:text-slate-400 mt-0.5">{result.explanation}</p>
+            <p className="text-xs text-slate-600 dark:text-slate-400 mt-0.5">
+              {result.explanation}
+            </p>
           </div>
         )}
       </div>

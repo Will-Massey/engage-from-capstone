@@ -56,8 +56,8 @@ export default function VoiceOfPracticeSettings() {
         <div>
           <h4 className="font-medium text-slate-900 dark:text-white">Voice of practice</h4>
           <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">
-            Upload a sample engagement or proposal letter. Clara extracts style hints and applies them
-            when drafting cover letters for your practice.
+            Upload a sample engagement or proposal letter. Clara extracts style hints and applies
+            them when drafting cover letters for your practice.
           </p>
         </div>
       </div>

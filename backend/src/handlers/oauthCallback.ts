@@ -9,7 +9,11 @@ import { getApiUrl, getFrontendUrl } from '../config/urls.js';
 const frontendUrl = () => getFrontendUrl();
 
 const apiBaseUrl = () =>
-  process.env.NODE_ENV === 'production' ? getApiUrl() : process.env.API_URL || process.env.BACKEND_URL || `http://localhost:${process.env.PORT || 3001}`;
+  process.env.NODE_ENV === 'production'
+    ? getApiUrl()
+    : process.env.API_URL ||
+      process.env.BACKEND_URL ||
+      `http://localhost:${process.env.PORT || 3001}`;
 
 const VALID_PROVIDERS = ['microsoft365', 'outlook', 'gmail'] as const;
 
@@ -64,9 +68,7 @@ export async function handleOAuthProviderCallback(
   const { code, error, state } = req.query;
 
   if (error) {
-    res.redirect(
-      `${frontendUrl()}/settings?error=${encodeURIComponent(String(error))}`
-    );
+    res.redirect(`${frontendUrl()}/settings?error=${encodeURIComponent(String(error))}`);
     return;
   }
 

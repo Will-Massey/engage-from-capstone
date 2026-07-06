@@ -9,30 +9,35 @@
 ## Hero
 
 ### Headline
+
 **Send winning proposals in minutes — not hours.**
 
 ### Subheadline
+
 Engage is the proposal platform built for UK accountants. Companies House lookup, Clara AI co-pilot, MTD-ready engagement letters, and legally defensible e-sign — all in one place.
 
 ### Primary CTA
+
 **Start 7-day free trial**
 
 ### Secondary CTA
+
 **Book a 15-minute demo**
 
 ### Trust line
+
 Trusted by forward-thinking UK practices · MTD ITSA ready · UK English throughout
 
 ---
 
 ## Value pillars
 
-| Pillar | Copy |
-|--------|------|
-| **Speed** | Create a client-ready proposal in under 8 minutes with Clara's guided wizard. |
-| **Accuracy** | One pricing engine — no more mismatched totals between builder, PDF, and client view. |
+| Pillar            | Copy                                                                                         |
+| ----------------- | -------------------------------------------------------------------------------------------- |
+| **Speed**         | Create a client-ready proposal in under 8 minutes with Clara's guided wizard.                |
+| **Accuracy**      | One pricing engine — no more mismatched totals between builder, PDF, and client view.        |
 | **Defensibility** | Forensic e-sign with document hash, consent text, IP geolocation, and signature certificate. |
-| **UK fit** | MTD clauses, AML blocks, and regulatory watcher built for UK accountancy. |
+| **UK fit**        | MTD clauses, AML blocks, and regulatory watcher built for UK accountancy.                    |
 
 ---
 
@@ -46,20 +51,20 @@ Trusted by forward-thinking UK practices · MTD ITSA ready · UK English through
 
 ## Pricing table
 
-| | **Starter** | **Professional** | **Enterprise** |
-|---|:---:|:---:|:---:|
-| **Price** | **£49**/month | **£99**/month | **£249**/month |
-| **Billed annually** | £499/year (−15%) | £999/year (−15%) | £2,499/year (−15%) |
-| Users | 3 | 10 | Unlimited |
-| Clients | 50 | 250 | Unlimited |
-| Proposals / month | 20 | 100 | Unlimited |
-| Clara AI co-pilot | ✓ | ✓ | ✓ |
-| Companies House lookup | ✓ | ✓ | ✓ |
-| E-sign + audit trail | ✓ | ✓ | ✓ |
-| Client journey automation | — | ✓ | ✓ |
-| Custom branding | Basic | Full | White-label |
-| API access | — | — | ✓ |
-| Priority support | — | Email | Dedicated |
+|                           |   **Starter**    | **Professional** |   **Enterprise**   |
+| ------------------------- | :--------------: | :--------------: | :----------------: |
+| **Price**                 |  **£49**/month   |  **£99**/month   |   **£249**/month   |
+| **Billed annually**       | £499/year (−15%) | £999/year (−15%) | £2,499/year (−15%) |
+| Users                     |        3         |        10        |     Unlimited      |
+| Clients                   |        50        |       250        |     Unlimited      |
+| Proposals / month         |        20        |       100        |     Unlimited      |
+| Clara AI co-pilot         |        ✓         |        ✓         |         ✓          |
+| Companies House lookup    |        ✓         |        ✓         |         ✓          |
+| E-sign + audit trail      |        ✓         |        ✓         |         ✓          |
+| Client journey automation |        —         |        ✓         |         ✓          |
+| Custom branding           |      Basic       |       Full       |    White-label     |
+| API access                |        —         |        —         |         ✓          |
+| Priority support          |        —         |      Email       |     Dedicated      |
 
 **All plans include:** 7-day free trial · UK VAT-ready pricing · GDPR-compliant data handling · No card required to start
 
@@ -68,15 +73,19 @@ Trusted by forward-thinking UK practices · MTD ITSA ready · UK English through
 ## Founding Practice offer
 
 ### Badge
+
 **Limited — first 20 practices**
 
 ### Offer headline
+
 **Founding Practice: Professional at £79/month for 12 months**
 
 ### Body
+
 Join Engage as a Founding Practice and lock in **£79/month** on the **Professional** tier (normally £99) for your first **12 months**.
 
 **What you get:**
+
 - 20 user seats
 - Unlimited proposals during the offer period
 - Direct line to the product team for feature input
@@ -84,9 +93,11 @@ Join Engage as a Founding Practice and lock in **£79/month** on the **Professio
 - Free onboarding session with your team
 
 ### CTA
+
 **Claim your Founding Practice seat →**
 
 ### Fine print
+
 Offer limited to the first 20 UK accountancy practices. Standard Professional limits apply after month 13. Annual billing available at £799/year (−15% on founding rate).
 
 ---
@@ -94,6 +105,7 @@ Offer limited to the first 20 UK accountancy practices. Standard Professional li
 ## Feature bullets (full list)
 
 ### Proposal creation
+
 - Clara-first wizard: client → services → pricing → email → send
 - Live split-pane preview (editor + client view)
 - Sector template packs: contractor, landlord, SME Ltd
@@ -101,6 +113,7 @@ Offer limited to the first 20 UK accountancy practices. Standard Professional li
 - Command palette (⌘K) for quick navigation
 
 ### Pricing & compliance
+
 - Unified pricing engine (all billing cycles, discounts, VAT)
 - MTD ITSA clause auto-insertion
 - AML / new-client engagement blocks
@@ -108,6 +121,7 @@ Offer limited to the first 20 UK accountancy practices. Standard Professional li
 - Regulatory watcher for live proposals
 
 ### Client journey
+
 - Mobile-optimised signing (step flow: Review → Terms → Identity → Sign)
 - Decline with reason → practice notified instantly
 - Post-sign Clara onboarding checklist
@@ -115,6 +129,7 @@ Offer limited to the first 20 UK accountancy practices. Standard Professional li
 - Branded client portal per practice
 
 ### E-sign & legal
+
 - SHA-256 document + terms hash at sign time
 - Signer email + authorisation checkbox required
 - IP geolocation enrichment
@@ -122,12 +137,14 @@ Offer limited to the first 20 UK accountancy practices. Standard Professional li
 - Full audit trail export
 
 ### Intelligence
+
 - Real dashboard metrics: sent, viewed, signed, pipeline £
 - Conversion funnel per tenant
 - Clara attention queue (revenue × close likelihood)
 - Win/loss monthly synthesis
 
 ### Integrations (roadmap / tier-dependent)
+
 - Companies House live enrichment
 - AccountFlow handoff on acceptance
 - Xero / QuickBooks mandate draft
@@ -139,7 +156,7 @@ Offer limited to the first 20 UK accountancy practices. Standard Professional li
 ## Social proof placeholder
 
 > "We sent our first proposal in six minutes. The client signed on their phone the same afternoon."
-> — *Pilot practice, South East England*
+> — _Pilot practice, South East England_
 
 ---
 
@@ -167,4 +184,4 @@ Yes — CSV bulk import is available on all tiers.
 
 ---
 
-*Engage by Capstone · A Capstone Software product · capstonesoftware.co.uk/engage*
+_Engage by Capstone · A Capstone Software product · capstonesoftware.co.uk/engage_

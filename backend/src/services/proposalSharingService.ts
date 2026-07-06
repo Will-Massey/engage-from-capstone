@@ -292,8 +292,7 @@ export async function recordElectronicSignature(
     }
 
     const isFirstSigner = existingCount === 0;
-    const tierIdForAccept =
-      data.selectedTierId || customFields.selectedTierId || null;
+    const tierIdForAccept = data.selectedTierId || customFields.selectedTierId || null;
 
     if (isFirstSigner && hasPricingTiers(customFields) && !tierIdForAccept) {
       return { success: false, error: 'Please select a package before signing' };
@@ -439,7 +438,8 @@ export async function recordElectronicSignature(
 
     // Clara post-sign onboarding checklist (stored on proposal customFields + activity log)
     try {
-      const { generateAndStoreOnboardingChecklist } = await import('./onboardingChecklistService.js');
+      const { generateAndStoreOnboardingChecklist } =
+        await import('./onboardingChecklistService.js');
       await generateAndStoreOnboardingChecklist(data.proposalId, data.tenantId);
     } catch (e) {
       logger.warn('Failed to generate post-sign onboarding checklist', e);

@@ -30,7 +30,10 @@ export interface ProposalLineForSummary {
   grossTotal: number;
 }
 
-const BAND_KEYS: Record<BillingFrequency, keyof Pick<PricingSummaryBands, 'weekly' | 'monthly' | 'quarterly' | 'annually' | 'oneTime'>> = {
+const BAND_KEYS: Record<
+  BillingFrequency,
+  keyof Pick<PricingSummaryBands, 'weekly' | 'monthly' | 'quarterly' | 'annually' | 'oneTime'>
+> = {
   WEEKLY: 'weekly',
   MONTHLY: 'monthly',
   QUARTERLY: 'quarterly',
@@ -93,7 +96,11 @@ export function calculateProposalSummaryBands(
     bands.annually.subtotal +
     bands.oneTime.subtotal;
   bands.totalVat =
-    bands.weekly.vat + bands.monthly.vat + bands.quarterly.vat + bands.annually.vat + bands.oneTime.vat;
+    bands.weekly.vat +
+    bands.monthly.vat +
+    bands.quarterly.vat +
+    bands.annually.vat +
+    bands.oneTime.vat;
 
   return bands;
 }

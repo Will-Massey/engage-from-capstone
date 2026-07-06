@@ -72,20 +72,10 @@ export class CapstoneSuperadminClient {
     this.apiKey = apiKey;
   }
 
-  private async _request<T = unknown>(
-    method: string,
-    path: string,
-    body?: object
-  ): Promise<T> {
+  private async _request<T = unknown>(method: string, path: string, body?: object): Promise<T> {
     const timestamp = String(Date.now());
     const bodyStr = body ? JSON.stringify(body) : '';
-    const signature = signRequest(
-      this.webhookSecret,
-      method,
-      path,
-      timestamp,
-      bodyStr
-    );
+    const signature = signRequest(this.webhookSecret, method, path, timestamp, bodyStr);
 
     const headers: Record<string, string> = {
       'Content-Type': 'application/json',
@@ -122,10 +112,7 @@ export class CapstoneSuperadminClient {
   }
 
   pollCommands() {
-    return this._request<{ commands?: PendingCommand[] }>(
-      'GET',
-      '/api/v1/commands/pending'
-    );
+    return this._request<{ commands?: PendingCommand[] }>('GET', '/api/v1/commands/pending');
   }
 
   ackCommand(id: string, status = 'ACKNOWLEDGED', error?: string) {
@@ -165,11 +152,7 @@ type Connector = {
     name?: string;
     trialEndsAt?: string;
   }) => Promise<void>;
-  reportConversion: (opts: {
-    tenantId: string;
-    plan: string;
-    mrr: number;
-  }) => Promise<void>;
+  reportConversion: (opts: { tenantId: string; plan: string; mrr: number }) => Promise<void>;
   reportPaymentSucceeded: (opts: {
     tenantId: string;
     plan: string;
@@ -204,9 +187,7 @@ export function createConnector({
     client,
 
     async reportSignup({ tenantId, name, email, plan = 'trial' }) {
-      await client.pushEvents([
-        { eventType: 'signup', payload: { tenantId, name, email, plan } },
-      ]);
+      await client.pushEvents([{ eventType: 'signup', payload: { tenantId, name, email, plan } }]);
       if (tenantId) {
         await client.syncTenants([
           {
@@ -220,9 +201,7 @@ export function createConnector({
     },
 
     async reportTrialStarted({ tenantId, name, trialEndsAt }) {
-      await client.pushEvents([
-        { eventType: 'trial_started', payload: { tenantId } },
-      ]);
+      await client.pushEvents([{ eventType: 'trial_started', payload: { tenantId } }]);
       await client.syncTenants([
         {
           externalTenantId: tenantId,
@@ -235,15 +214,9 @@ export function createConnector({
     },
 
     async reportConversion({ tenantId, plan, mrr }) {
-      await client.pushEvents([
-        { eventType: 'trial_converted', payload: { tenantId, plan, mrr } },
-      ]);
-      await client.syncTenants([
-        { externalTenantId: tenantId, plan, planStatus: 'active', mrr },
-      ]);
-      await client.pushMetrics([
-        { metric: 'mrr', value: mrr, dimensions: { tenantId } },
-      ]);
+      await client.pushEvents([{ eventType: 'trial_converted', payload: { tenantId, plan, mrr } }]);
+      await client.syncTenants([{ externalTenantId: tenantId, plan, planStatus: 'active', mrr }]);
+      await client.pushMetrics([{ metric: 'mrr', value: mrr, dimensions: { tenantId } }]);
     },
 
     async reportPaymentSucceeded({
@@ -366,7 +339,5 @@ export async function engageReportProposalSent({
   await c.client.pushEvents([
     { eventType: 'proposal.sent', payload: { tenantId, proposalId, value } },
   ]);
-  await c.client.pushMetrics([
-    { metric: 'proposal_value', value, dimensions: { tenantId } },
-  ]);
+  await c.client.pushMetrics([{ metric: 'proposal_value', value, dimensions: { tenantId } }]);
 }

@@ -78,9 +78,7 @@ class AmlPartnerApiError extends Error {
 
 function getApiBase(): string {
   return (
-    process.env.API_URL ||
-    process.env.BACKEND_URL ||
-    `http://localhost:${process.env.PORT || 3001}`
+    process.env.API_URL || process.env.BACKEND_URL || `http://localhost:${process.env.PORT || 3001}`
   );
 }
 
@@ -129,7 +127,11 @@ function splitName(fullName: string): { forename: string; surname: string } {
   return { forename: parts[0], surname: parts.slice(1).join(' ') };
 }
 
-function parseAmlSubmission(client: { amlSubmissionData: string | null; contactName: string | null; name: string }) {
+function parseAmlSubmission(client: {
+  amlSubmissionData: string | null;
+  contactName: string | null;
+  name: string;
+}) {
   if (!client.amlSubmissionData) {
     return {
       fullLegalName: client.contactName || client.name,
@@ -343,7 +345,8 @@ export async function initiateAmlCheck(input: AmlCheckRequest): Promise<AmlCheck
       amlStatus: AmlStatus.PENDING,
       amlCheckedAt: new Date(),
       amlProviderRef: providerRef,
-      lifecycleStage: client.lifecycleStage === 'PROPOSAL_ACCEPTED' ? 'AML_PENDING' : client.lifecycleStage,
+      lifecycleStage:
+        client.lifecycleStage === 'PROPOSAL_ACCEPTED' ? 'AML_PENDING' : client.lifecycleStage,
     },
   });
 
@@ -417,7 +420,9 @@ export async function getAmlStatusForClient(
       lastCheckMessage = client.amlProviderRef ? 'Last check: Pending partner response' : null;
       break;
     default:
-      lastCheckMessage = client.amlSubmittedAt ? 'Client submitted ID details — check not yet run' : null;
+      lastCheckMessage = client.amlSubmittedAt
+        ? 'Client submitted ID details — check not yet run'
+        : null;
   }
 
   return {

@@ -85,7 +85,6 @@ export default function ProposalWizard() {
   const [selectedClient, setSelectedClient] = useState<ClientRow | null>(null);
   const [showCreateClient, setShowCreateClient] = useState(false);
 
-
   const [autoFitLoading, setAutoFitLoading] = useState(false);
   const [autoFitResult, setAutoFitResult] = useState<AutoFitResult | null>(null);
   const [sectionDecisions, setSectionDecisions] = useState<Record<FitSection, SectionDecision>>({
@@ -269,7 +268,8 @@ export default function ProposalWizard() {
             title: 'MTD clause required',
             message: `${selectedClient.name} requires MTD ITSA compliance. Add an MTD service or clause.`,
             severity: 'warning',
-            suggestion: 'Accept the MTD ITSA service from your catalog or ask Clara to add MTD wording.',
+            suggestion:
+              'Accept the MTD ITSA service from your catalog or ask Clara to add MTD wording.',
           },
         ]);
       }
@@ -770,7 +770,9 @@ export default function ProposalWizard() {
                       className="flex flex-wrap items-center gap-3 p-3 rounded-lg border border-slate-200 dark:border-slate-700"
                     >
                       <div className="flex-1 min-w-[140px]">
-                        <p className="font-medium text-sm text-slate-900 dark:text-white">{s.name}</p>
+                        <p className="font-medium text-sm text-slate-900 dark:text-white">
+                          {s.name}
+                        </p>
                         <p className="text-xs text-slate-500">
                           {s.billingFrequency.replace(/_/g, ' ').toLowerCase()}
                         </p>
@@ -819,7 +821,9 @@ export default function ProposalWizard() {
                       >
                         <ExclamationTriangleIcon className="h-5 w-5 text-amber-500 shrink-0" />
                         <div>
-                          <p className="font-medium text-amber-900 dark:text-amber-100">{a.title}</p>
+                          <p className="font-medium text-amber-900 dark:text-amber-100">
+                            {a.title}
+                          </p>
                           <p className="text-amber-800/80 dark:text-amber-200/80 text-xs mt-0.5">
                             {a.message}
                           </p>
@@ -840,9 +844,7 @@ export default function ProposalWizard() {
                         <p className="text-red-800 dark:text-red-200 text-xs">{f.message}</p>
                       </div>
                     ))}
-                    {pricingSummary && (
-                      <p className="text-xs text-slate-500">{pricingSummary}</p>
-                    )}
+                    {pricingSummary && <p className="text-xs text-slate-500">{pricingSummary}</p>}
                   </div>
                 )}
               </>

@@ -1,6 +1,7 @@
 # Engage Roadmap Verification & Smoke Checklist (Post 2026-06-30 Push)
 
 ## Just Completed (all "suggested" items actioned via main + 4 spawned subagents)
+
 - ✅ Backend cheap extensions: /revise-services, generalized /suggest-title, richer /analyze-email (issues + missing + score), voice cheap path hardened.
 - ✅ Email dialog: subject chips now "apply + re-analyze", full CTA list + insert/replace buttons, prominent "Clara email analysis" checklist with per-issue "Fix this with Clara", auto re-analyze (debounced), green "accepted version" badge on body.
 - ✅ Empty states + AI meter: new cheap /ai/empty-suggestion, live Clara tips on Clients / Proposals / Services lists (with cache + fallback), full "Clara & AI" budget meter (used/remaining/calls + progress bar) in Settings > Appearance.
@@ -10,6 +11,7 @@
 - ✅ Low token throughout, UK English, glass/dark preserved.
 
 ## Smoke / Verify on Render (after deploy)
+
 1. Login → open/create proposal with client.
 2. Clara email preview:
    - Streams live.
@@ -28,11 +30,13 @@
 10. No "X X" name dups.
 
 ## Manual Ops
+
 - [ ] Upgrade backend on Render dashboard to Starter + ensure 10GB disk mounted at /var/data.
 - [ ] Check deploy logs for the new routes (/revise-services, /empty-suggestion, /webhooks/email).
 - [ ] Optional: hit /api/ai/status and confirm tokenBudget + features include the new ones.
 
 ## Next (carry over)
+
 - Dashboard Clara attention / empty tips.
 - Real mic voice (Web Speech or Cloudflare).
 - Full E2E coverage for new flows (agent started additions).

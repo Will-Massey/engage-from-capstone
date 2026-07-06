@@ -210,11 +210,7 @@ const ClientDetail = () => {
             <DocumentTextIcon className="h-4 w-4 mr-2" />
             New Proposal
           </Link>
-          <button
-            type="button"
-            onClick={() => setShowLoeOnlyModal(true)}
-            className="btn-secondary"
-          >
+          <button type="button" onClick={() => setShowLoeOnlyModal(true)} className="btn-secondary">
             <DocumentTextIcon className="h-4 w-4 mr-2" />
             Send engagement letter only
           </button>
@@ -271,22 +267,30 @@ const ClientDetail = () => {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Contact Info */}
           <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm p-6">
-            <h2 className="text-lg font-semibold text-slate-900 dark:text-white mb-4">Contact Information</h2>
+            <h2 className="text-lg font-semibold text-slate-900 dark:text-white mb-4">
+              Contact Information
+            </h2>
             <div className="space-y-3">
               {client.contactName && (
                 <div className="flex items-center">
                   <UserIcon className="h-5 w-5 text-slate-400 mr-3" />
-                  <span className="text-sm text-slate-900 dark:text-slate-100">{client.contactName}</span>
+                  <span className="text-sm text-slate-900 dark:text-slate-100">
+                    {client.contactName}
+                  </span>
                 </div>
               )}
               <div className="flex items-center">
                 <EnvelopeIcon className="h-5 w-5 text-slate-400 mr-3" />
-                <span className="text-sm text-slate-900 dark:text-slate-100">{client.contactEmail}</span>
+                <span className="text-sm text-slate-900 dark:text-slate-100">
+                  {client.contactEmail}
+                </span>
               </div>
               {client.contactPhone && (
                 <div className="flex items-center">
                   <PhoneIcon className="h-5 w-5 text-slate-400 mr-3" />
-                  <span className="text-sm text-slate-900 dark:text-slate-100">{client.contactPhone}</span>
+                  <span className="text-sm text-slate-900 dark:text-slate-100">
+                    {client.contactPhone}
+                  </span>
                 </div>
               )}
               {client.address && (
@@ -305,12 +309,16 @@ const ClientDetail = () => {
 
           {/* Company Details */}
           <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm p-6">
-            <h2 className="text-lg font-semibold text-slate-900 dark:text-white mb-4">Company Details</h2>
+            <h2 className="text-lg font-semibold text-slate-900 dark:text-white mb-4">
+              Company Details
+            </h2>
             <div className="space-y-3">
               {client.companyNumber && (
                 <div className="flex justify-between">
                   <span className="text-sm text-slate-600">Company Number</span>
-                  <span className="text-sm text-slate-900 dark:text-slate-100">{client.companyNumber}</span>
+                  <span className="text-sm text-slate-900 dark:text-slate-100">
+                    {client.companyNumber}
+                  </span>
                 </div>
               )}
               {client.utr && (
@@ -322,13 +330,17 @@ const ClientDetail = () => {
               {client.vatNumber && (
                 <div className="flex justify-between">
                   <span className="text-sm text-slate-600">VAT Number</span>
-                  <span className="text-sm text-slate-900 dark:text-slate-100">{client.vatNumber}</span>
+                  <span className="text-sm text-slate-900 dark:text-slate-100">
+                    {client.vatNumber}
+                  </span>
                 </div>
               )}
               {client.employeeCount && (
                 <div className="flex justify-between">
                   <span className="text-sm text-slate-600">Employees</span>
-                  <span className="text-sm text-slate-900 dark:text-slate-100">{client.employeeCount}</span>
+                  <span className="text-sm text-slate-900 dark:text-slate-100">
+                    {client.employeeCount}
+                  </span>
                 </div>
               )}
               {client.turnover && (
@@ -344,10 +356,14 @@ const ClientDetail = () => {
 
           {/* Stats */}
           <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm p-6">
-            <h2 className="text-lg font-semibold text-slate-900 dark:text-white mb-4">Statistics</h2>
+            <h2 className="text-lg font-semibold text-slate-900 dark:text-white mb-4">
+              Statistics
+            </h2>
             <div className="grid grid-cols-2 gap-4">
               <div className="text-center p-4 bg-slate-50 rounded-lg">
-                <p className="text-2xl font-bold text-slate-900 dark:text-white">{client.proposals?.length || 0}</p>
+                <p className="text-2xl font-bold text-slate-900 dark:text-white">
+                  {client.proposals?.length || 0}
+                </p>
                 <p className="text-xs text-slate-600">Total Proposals</p>
               </div>
               <div className="text-center p-4 bg-slate-50 rounded-lg">
@@ -383,7 +399,9 @@ const ClientDetail = () => {
                   className="flex items-center justify-between px-6 py-4 hover:bg-slate-50"
                 >
                   <div>
-                    <p className="text-sm font-medium text-slate-900 dark:text-white">{proposal.title}</p>
+                    <p className="text-sm font-medium text-slate-900 dark:text-white">
+                      {proposal.title}
+                    </p>
                     <p className="text-xs text-slate-600">
                       {proposal.reference} • {format(new Date(proposal.createdAt), 'dd MMM yyyy')}
                     </p>
@@ -588,7 +606,9 @@ const ClientDetail = () => {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-slate-800">Main contact name</label>
+                <label className="block text-sm font-medium text-slate-800">
+                  Main contact name
+                </label>
                 <input
                   type="text"
                   value={editForm.contactName}
@@ -763,7 +783,9 @@ function LifecyclePanel({ client, onRefresh }: { client: any; onRefresh: () => v
       try {
         const res = await apiClient.getClientTouchpoints(client.id);
         setUpcoming((res as any).data || []);
-      } catch { /* touchpoints are optional — ignore */ }
+      } catch {
+        /* touchpoints are optional — ignore */
+      }
     })();
   }, [client.id]);
 
@@ -796,13 +818,23 @@ function LifecyclePanel({ client, onRefresh }: { client: any; onRefresh: () => v
     { key: 'PROSPECT', label: 'Prospect', stages: ['PROSPECT'] },
     { key: 'PROPOSAL', label: 'Proposal signed', stages: ['PROPOSAL_ACCEPTED'] },
     { key: 'AML', label: 'AML & ID', stages: ['AML_PENDING', 'AML_COMPLETE'] },
-    { key: 'ENGAGEMENT', label: 'Engagement', stages: ['ENGAGEMENT_LETTER_SENT', 'ENGAGEMENT_LETTER_SIGNED'] },
+    {
+      key: 'ENGAGEMENT',
+      label: 'Engagement',
+      stages: ['ENGAGEMENT_LETTER_SENT', 'ENGAGEMENT_LETTER_SIGNED'],
+    },
     { key: 'INFO', label: 'Info Gathering', stages: ['INFO_REQUESTED', 'INFO_RECEIVED'] },
     { key: 'ONBOARD', label: 'Onboard & Kickoff', stages: ['ONBOARDING_SETUP', 'KICKOFF_SENT'] },
-    { key: 'LIVE', label: 'Live & Review', stages: ['MILESTONE_CHECK_IN', 'ONGOING', 'SATISFACTION_CHECK', 'ANNUAL_REVIEW'] },
+    {
+      key: 'LIVE',
+      label: 'Live & Review',
+      stages: ['MILESTONE_CHECK_IN', 'ONGOING', 'SATISFACTION_CHECK', 'ANNUAL_REVIEW'],
+    },
   ];
 
-  const currentStepIndex = journeySteps.findIndex((s) => s.stages.some((st) => stage.includes(st.split('_')[0]) || stage === st));
+  const currentStepIndex = journeySteps.findIndex((s) =>
+    s.stages.some((st) => stage.includes(st.split('_')[0]) || stage === st)
+  );
 
   const guidance: Record<string, string> = {
     PROSPECT: 'No signed proposal yet — send a quotation when you are ready to engage this client.',
@@ -811,10 +843,14 @@ function LifecyclePanel({ client, onRefresh }: { client: any; onRefresh: () => v
       ? 'Client submitted AML details — review in client record, then mark complete when verified.'
       : 'AML email sent with secure form link. Chase if needed, then mark complete when verified.',
     AML_COMPLETE: 'Engagement letter is queued — approve and send in Settings → Automation.',
-    ENGAGEMENT_LETTER_SENT: 'Engagement letter sent (PDF attached). Mark signed once the client has returned it.',
-    ENGAGEMENT_LETTER_SIGNED: 'Contract signed. Information requests and reminders will send automatically.',
-    INFO_REQUESTED: 'Chase outstanding info. After 3 automated reminders, you will get a human review flag.',
-    INFO_RECEIVED: 'Onboarding and kick-off emails are scheduled. Client moves to live care after kick-off.',
+    ENGAGEMENT_LETTER_SENT:
+      'Engagement letter sent (PDF attached). Mark signed once the client has returned it.',
+    ENGAGEMENT_LETTER_SIGNED:
+      'Contract signed. Information requests and reminders will send automatically.',
+    INFO_REQUESTED:
+      'Chase outstanding info. After 3 automated reminders, you will get a human review flag.',
+    INFO_RECEIVED:
+      'Onboarding and kick-off emails are scheduled. Client moves to live care after kick-off.',
     ONBOARDING_SETUP: 'Onboarding email sent or pending. Kick-off follows within 24 hours.',
     KICKOFF_SENT: 'Client is live. Schedule milestone reminders from actual due dates.',
     default: 'Automation is running in the background. Check Settings for templates.',
@@ -831,7 +867,9 @@ function LifecyclePanel({ client, onRefresh }: { client: any; onRefresh: () => v
             <div className="text-xs uppercase tracking-[1px] text-slate-500">Client Journey</div>
             <div className="text-xl font-semibold flex items-center gap-2">
               {stage.replace(/_/g, ' ')}
-              <span className={`px-2.5 py-0.5 text-xs rounded-full ${STAGE_COLORS[stage] || 'bg-slate-100 text-slate-600'}`}>
+              <span
+                className={`px-2.5 py-0.5 text-xs rounded-full ${STAGE_COLORS[stage] || 'bg-slate-100 text-slate-600'}`}
+              >
                 Step {Math.max(1, currentStepIndex + 1)} of {journeySteps.length}
               </span>
             </div>
@@ -851,11 +889,13 @@ function LifecyclePanel({ client, onRefresh }: { client: any; onRefresh: () => v
                 key={idx}
                 whileHover={{ scale: 1.02 }}
                 className={`flex-1 min-w-[92px] rounded-2xl border px-3 py-2 text-center text-xs transition-all cursor-default
-                  ${isActive 
-                    ? 'bg-primary-50 border-primary-300 text-primary-700 shadow-sm dark:bg-primary-950/40 dark:border-primary-800' 
-                    : isPast 
-                    ? 'bg-emerald-50 border-emerald-200 text-emerald-700 dark:bg-emerald-950/30 dark:border-emerald-900' 
-                    : 'bg-white/60 border-slate-200 text-slate-500 dark:bg-slate-800/60 dark:border-slate-700'}`}
+                  ${
+                    isActive
+                      ? 'bg-primary-50 border-primary-300 text-primary-700 shadow-sm dark:bg-primary-950/40 dark:border-primary-800'
+                      : isPast
+                        ? 'bg-emerald-50 border-emerald-200 text-emerald-700 dark:bg-emerald-950/30 dark:border-emerald-900'
+                        : 'bg-white/60 border-slate-200 text-slate-500 dark:bg-slate-800/60 dark:border-slate-700'
+                  }`}
                 animate={isActive ? { scale: [1, 1.03, 1] } : {}}
                 transition={{ duration: 0.4 }}
               >
@@ -877,28 +917,46 @@ function LifecyclePanel({ client, onRefresh }: { client: any; onRefresh: () => v
             <SparklesIcon className="h-5 w-5" />
           </div>
           <div className="flex-1">
-            <div className="text-sm font-medium text-slate-700 dark:text-slate-200">What happens next</div>
+            <div className="text-sm font-medium text-slate-700 dark:text-slate-200">
+              What happens next
+            </div>
             <p className="text-sm text-slate-600 dark:text-slate-400 mt-0.5">{currentGuidance}</p>
           </div>
         </div>
 
         <div className="mt-4 flex flex-wrap gap-2">
           {stage === 'AML_PENDING' && (
-            <button onClick={() => handleAction('aml')} disabled={!!busy} className="btn-primary text-sm px-5 py-2.5">
+            <button
+              onClick={() => handleAction('aml')}
+              disabled={!!busy}
+              className="btn-primary text-sm px-5 py-2.5"
+            >
               {busy === 'aml' ? 'Marking AML complete…' : '✓ Mark AML / ID Complete'}
             </button>
           )}
           {(stage === 'ENGAGEMENT_LETTER_SENT' || stage === 'AML_COMPLETE') && (
-            <button onClick={() => handleAction('engagement')} disabled={!!busy} className="btn-primary text-sm px-5 py-2.5">
+            <button
+              onClick={() => handleAction('engagement')}
+              disabled={!!busy}
+              className="btn-primary text-sm px-5 py-2.5"
+            >
               {busy === 'engagement' ? 'Updating…' : '✓ Mark Engagement Letter Signed'}
             </button>
           )}
           {stage === 'INFO_REQUESTED' && (
-            <button onClick={() => handleAction('info')} disabled={!!busy} className="btn-primary text-sm px-5 py-2.5">
+            <button
+              onClick={() => handleAction('info')}
+              disabled={!!busy}
+              className="btn-primary text-sm px-5 py-2.5"
+            >
               {busy === 'info' ? 'Updating…' : '✓ Mark Information Received'}
             </button>
           )}
-          <button onClick={() => handleAction('deadlines')} disabled={!!busy} className="btn-secondary text-sm px-5 py-2.5">
+          <button
+            onClick={() => handleAction('deadlines')}
+            disabled={!!busy}
+            className="btn-secondary text-sm px-5 py-2.5"
+          >
             {busy === 'deadlines' ? 'Scheduling…' : 'Schedule deadline reminders'}
           </button>
         </div>
@@ -931,26 +989,42 @@ function LifecyclePanel({ client, onRefresh }: { client: any; onRefresh: () => v
         <button
           onClick={async () => {
             try {
-              await apiClient.updateClient(client.id, { touchpointsPaused: !client.touchpointsPaused });
-              toast.success(client.touchpointsPaused ? 'Automation resumed' : 'Automation paused for this client');
+              await apiClient.updateClient(client.id, {
+                touchpointsPaused: !client.touchpointsPaused,
+              });
+              toast.success(
+                client.touchpointsPaused
+                  ? 'Automation resumed'
+                  : 'Automation paused for this client'
+              );
               onRefresh();
-            } catch { toast.error('Update failed'); }
+            } catch {
+              toast.error('Update failed');
+            }
           }}
           className="btn-secondary text-sm"
         >
-          {client.touchpointsPaused ? '▶ Resume automated touchpoints' : '⏸ Pause all automated touchpoints'}
+          {client.touchpointsPaused
+            ? '▶ Resume automated touchpoints'
+            : '⏸ Pause all automated touchpoints'}
         </button>
         <button
           onClick={async () => {
             try {
-              await apiClient.updateClient(client.id, { marketingConsent: !client.marketingConsent });
+              await apiClient.updateClient(client.id, {
+                marketingConsent: !client.marketingConsent,
+              });
               toast.success('Marketing consent updated');
               onRefresh();
-            } catch { toast.error('Failed'); }
+            } catch {
+              toast.error('Failed');
+            }
           }}
           className="btn-secondary text-sm"
         >
-          {client.marketingConsent ? 'Revoke marketing consent' : 'Grant marketing consent (reviews & check-ins)'}
+          {client.marketingConsent
+            ? 'Revoke marketing consent'
+            : 'Grant marketing consent (reviews & check-ins)'}
         </button>
       </div>
 
@@ -962,30 +1036,43 @@ function LifecyclePanel({ client, onRefresh }: { client: any; onRefresh: () => v
             <div className="font-semibold text-sm">Upcoming automated touchpoints</div>
           </div>
           <div className="space-y-2 text-sm">
-            {upcoming.filter((t: any) => t.status === 'PENDING').slice(0, 4).map((tp: any, i: number) => (
-              <motion.div 
-                key={i} 
-                initial={{ opacity: 0, x: -6 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ delay: i * 0.03 }}
-                className="flex justify-between items-center rounded-xl border border-slate-100 dark:border-slate-800 px-3 py-2 bg-white/50 dark:bg-slate-900/40"
-              >
-                <div>
-                  <span className="font-medium">{tp.stage?.replace(/_/g, ' ')}</span>
-                  {tp.template?.subject && <span className="text-xs text-slate-500 ml-2">“{tp.template.subject}”</span>}
-                </div>
-                <div className="text-xs text-slate-500">{new Date(tp.scheduledFor).toLocaleDateString('en-GB', { month: 'short', day: 'numeric' })}</div>
-              </motion.div>
-            ))}
+            {upcoming
+              .filter((t: any) => t.status === 'PENDING')
+              .slice(0, 4)
+              .map((tp: any, i: number) => (
+                <motion.div
+                  key={i}
+                  initial={{ opacity: 0, x: -6 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ delay: i * 0.03 }}
+                  className="flex justify-between items-center rounded-xl border border-slate-100 dark:border-slate-800 px-3 py-2 bg-white/50 dark:bg-slate-900/40"
+                >
+                  <div>
+                    <span className="font-medium">{tp.stage?.replace(/_/g, ' ')}</span>
+                    {tp.template?.subject && (
+                      <span className="text-xs text-slate-500 ml-2">“{tp.template.subject}”</span>
+                    )}
+                  </div>
+                  <div className="text-xs text-slate-500">
+                    {new Date(tp.scheduledFor).toLocaleDateString('en-GB', {
+                      month: 'short',
+                      day: 'numeric',
+                    })}
+                  </div>
+                </motion.div>
+              ))}
           </div>
-          <div className="mt-2 text-[10px] text-slate-500">These will send automatically unless paused or awaiting your approval.</div>
+          <div className="mt-2 text-[10px] text-slate-500">
+            These will send automatically unless paused or awaiting your approval.
+          </div>
         </div>
       )}
 
       <ClientTimeline clientId={client.id} />
 
       <p className="text-xs text-slate-500">
-        Manage templates globally in <span className="font-medium">Settings → Automation</span>. Touchpoints respect marketing consent and human approval gates.
+        Manage templates globally in <span className="font-medium">Settings → Automation</span>.
+        Touchpoints respect marketing consent and human approval gates.
       </p>
     </div>
   );
@@ -1012,11 +1099,12 @@ function ClientTimeline({ clientId }: { clientId: string }) {
     return <div className="text-sm text-slate-500 py-4">Loading client timeline…</div>;
   }
 
-  const relevant = logs.filter((l: any) =>
-    l.action?.startsWith('TOUCHPOINT') ||
-    l.action?.includes('AML') ||
-    l.action?.includes('LIFECYCLE') ||
-    l.action?.includes('INFO')
+  const relevant = logs.filter(
+    (l: any) =>
+      l.action?.startsWith('TOUCHPOINT') ||
+      l.action?.includes('AML') ||
+      l.action?.includes('LIFECYCLE') ||
+      l.action?.includes('INFO')
   );
 
   if (!relevant.length) {
@@ -1027,7 +1115,8 @@ function ClientTimeline({ clientId }: { clientId: string }) {
         </div>
         <div className="font-medium">Automation is ready</div>
         <p className="mt-1 max-w-xs mx-auto text-sm text-slate-500">
-          When this client accepts a proposal, the welcome, AML, and follow-up sequence will start automatically. You’ll see every step here.
+          When this client accepts a proposal, the welcome, AML, and follow-up sequence will start
+          automatically. You’ll see every step here.
         </p>
       </div>
     );
@@ -1057,7 +1146,7 @@ function ClientTimeline({ clientId }: { clientId: string }) {
       key = 'LIFECYCLE';
     } else {
       const descMatch = log.description?.match(/([A-Z_]{5,})/);
-      key = descMatch ? descMatch[1] : (log.action || 'GENERAL');
+      key = descMatch ? descMatch[1] : log.action || 'GENERAL';
     }
     if (!groups[key]) groups[key] = [];
     groups[key].push(log);
@@ -1079,7 +1168,9 @@ function ClientTimeline({ clientId }: { clientId: string }) {
           return (
             <div key={groupIdx} className="relative pl-6">
               {/* Stage header */}
-              <div className={`inline-flex items-center gap-2 text-xs font-medium px-3 py-1 rounded-full mb-3 ${color}`}>
+              <div
+                className={`inline-flex items-center gap-2 text-xs font-medium px-3 py-1 rounded-full mb-3 ${color}`}
+              >
                 {stageKey.replace(/_/g, ' ')}
                 <span className="opacity-60">({items.length})</span>
               </div>
@@ -1102,7 +1193,10 @@ function ClientTimeline({ clientId }: { clientId: string }) {
                         <div className="text-[10px] text-slate-400 whitespace-nowrap ml-2 text-right">
                           {formatDistanceToNow(new Date(log.createdAt), { addSuffix: true })}
                           <div className="text-[9px] opacity-70">
-                            {new Date(log.createdAt).toLocaleDateString('en-GB', { month: 'short', day: 'numeric' })}
+                            {new Date(log.createdAt).toLocaleDateString('en-GB', {
+                              month: 'short',
+                              day: 'numeric',
+                            })}
                           </div>
                         </div>
                       </div>

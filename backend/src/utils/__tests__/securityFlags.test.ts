@@ -42,9 +42,9 @@ describe('isE2eTestRequest', () => {
   it('rejects missing or wrong secret in production', () => {
     const flags = loadFlags({ NODE_ENV: 'production', E2E_BYPASS_SECRET: 'top-secret-value' });
     expect(flags.isE2eTestRequest({ 'x-test-mode': 'e2e' })).toBe(false);
-    expect(
-      flags.isE2eTestRequest({ 'x-test-mode': 'e2e', 'x-test-mode-secret': 'wrong' })
-    ).toBe(false);
+    expect(flags.isE2eTestRequest({ 'x-test-mode': 'e2e', 'x-test-mode-secret': 'wrong' })).toBe(
+      false
+    );
   });
 
   it('allows bypass in production only with the matching secret', () => {

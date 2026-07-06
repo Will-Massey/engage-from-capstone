@@ -1,11 +1,7 @@
 import { useState, useEffect } from 'react';
 import { apiClient } from '../../utils/api';
 import toast from 'react-hot-toast';
-import {
-  CheckCircleIcon,
-  ExclamationCircleIcon,
-  CloudIcon,
-} from '@heroicons/react/24/outline';
+import { CheckCircleIcon, ExclamationCircleIcon, CloudIcon } from '@heroicons/react/24/outline';
 import OAuthConnect from './OAuthConnect';
 
 type EmailProvider = 'smtp' | 'gmail' | 'outlook' | 'microsoft365';
@@ -231,7 +227,9 @@ const EmailSettings = () => {
   return (
     <div className="space-y-6">
       <div>
-        <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100">Email Configuration</h3>
+        <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100">
+          Email Configuration
+        </h3>
         <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
           Client emails send automatically via Capstone. Replies go to your practice inbox.
         </p>
@@ -337,7 +335,11 @@ const EmailSettings = () => {
       <div className="space-y-3">
         <div className="flex items-center justify-between">
           <h4 className="font-medium text-gray-900 dark:text-gray-100">Recent delivery log</h4>
-          <button type="button" onClick={loadLogs} className="text-sm text-primary-600 hover:underline">
+          <button
+            type="button"
+            onClick={loadLogs}
+            className="text-sm text-primary-600 hover:underline"
+          >
             Refresh
           </button>
         </div>
@@ -414,7 +416,9 @@ const EmailSettings = () => {
                 <button
                   key={provider.value}
                   type="button"
-                  onClick={() => setConfig({ ...config, provider: provider.value as EmailProvider })}
+                  onClick={() =>
+                    setConfig({ ...config, provider: provider.value as EmailProvider })
+                  }
                   className={`p-3 rounded-lg border-2 text-left transition-colors ${
                     config.provider === provider.value
                       ? 'border-primary-600 bg-primary-50 dark:bg-primary-900/20'

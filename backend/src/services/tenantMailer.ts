@@ -4,11 +4,7 @@
 
 import { prisma } from '../config/database.js';
 import logger from '../config/logger.js';
-import {
-  EmailService,
-  type EmailMessage,
-  type EmailConfig,
-} from './emailService.js';
+import { EmailService, type EmailMessage, type EmailConfig } from './emailService.js';
 import {
   getPlatformFromAddress,
   isSendGridConfigured,
@@ -161,7 +157,9 @@ async function sendWithPlatform(
   });
 }
 
-export async function tenantMailerSend(options: TenantMailSendOptions): Promise<TenantMailSendResult> {
+export async function tenantMailerSend(
+  options: TenantMailSendOptions
+): Promise<TenantMailSendResult> {
   const { tenantId, messageType, message, relatedIds, forcePlatform } = options;
 
   const ctx = await loadTenantEmailContext(tenantId);
@@ -189,7 +187,12 @@ export async function tenantMailerSend(options: TenantMailSendOptions): Promise<
         error: 'Recipient is on suppression list',
       },
     });
-    return { success: false, error: 'Recipient suppressed', emailLogId: log.id, provider: 'SENDGRID' };
+    return {
+      success: false,
+      error: 'Recipient suppressed',
+      emailLogId: log.id,
+      provider: 'SENDGRID',
+    };
   }
 
   const useCustom = !forcePlatform && isCustomEmailConfigured(ctx.email);
@@ -215,7 +218,9 @@ export async function tenantMailerSend(options: TenantMailSendOptions): Promise<
   });
 
   let result: { success: boolean; messageId?: string; error?: string; bounced?: string[] };
-  let provider: EmailProvider = useCustom ? mapNodemailerProvider(customConfig!.provider) : 'SENDGRID';
+  let provider: EmailProvider = useCustom
+    ? mapNodemailerProvider(customConfig!.provider)
+    : 'SENDGRID';
 
   if (useCustom && customConfig) {
     result = await sendWithCustom(customConfig, message, replyTo);
@@ -252,7 +257,10 @@ export async function tenantMailerSend(options: TenantMailSendOptions): Promise<
     );
     provider = 'SENDGRID';
   } else {
-    result = { success: false, error: 'No email transport configured (set EMAIL_WORKER_URL or tenant SMTP)' };
+    result = {
+      success: false,
+      error: 'No email transport configured (set EMAIL_WORKER_URL or tenant SMTP)',
+    };
   }
 
   const deliveryStatus: EmailDeliveryStatus = result.bounced?.length
@@ -305,9 +313,8 @@ export async function sendProposalEmailForTenant(
   },
   relatedIds?: { proposalId?: string; clientId?: string }
 ): Promise<TenantMailSendResult> {
-  const { composeProposalSendEmail, prepareProposalPdfAttachment } = await import(
-    '../templates/proposalSendEmailComposer.js'
-  );
+  const { composeProposalSendEmail, prepareProposalPdfAttachment } =
+    await import('../templates/proposalSendEmailComposer.js');
 
   const { html, text, subject } = composeProposalSendEmail({
     clientName: params.clientName,

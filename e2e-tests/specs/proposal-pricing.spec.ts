@@ -15,7 +15,9 @@ test.describe('Proposal Pricing Frequency', () => {
     await cleanupTestData();
   });
 
-  test('annual service shows full-year amount in selection (not blended into monthly)', async ({ page }) => {
+  test('annual service shows full-year amount in selection (not blended into monthly)', async ({
+    page,
+  }) => {
     const client = await createTestClient(page, {
       name: 'Test Annual Client',
       email: 'test-annual@example.com',
@@ -30,11 +32,15 @@ test.describe('Proposal Pricing Frequency', () => {
     await page.locator('[data-testid="client-continue-button"]').click();
 
     // Step 2: Add an annual service
-    const serviceRow = page.locator('[data-testid="available-service-row"]').filter({ hasText: 'Annual Accounts Preparation & Filing' });
+    const serviceRow = page
+      .locator('[data-testid="available-service-row"]')
+      .filter({ hasText: 'Annual Accounts Preparation & Filing' });
     await serviceRow.click();
 
     // Left column still hints at monthly equivalent; selected row shows full-period inc VAT
-    const selectedRow = page.locator('[data-testid="selected-service-row"]').filter({ hasText: 'Annual Accounts Preparation & Filing' });
+    const selectedRow = page
+      .locator('[data-testid="selected-service-row"]')
+      .filter({ hasText: 'Annual Accounts Preparation & Filing' });
     await expect(selectedRow).toBeVisible();
     await expect(selectedRow).toContainText('Annual');
     await expect(selectedRow).toContainText(/£1,020/);
@@ -65,10 +71,15 @@ test.describe('Proposal Pricing Frequency', () => {
     await page.locator('[data-testid="client-continue-button"]').click();
 
     // Add monthly service
-    await page.locator('[data-testid="available-service-row"]').filter({ hasText: 'Comprehensive Bookkeeping' }).click();
+    await page
+      .locator('[data-testid="available-service-row"]')
+      .filter({ hasText: 'Comprehensive Bookkeeping' })
+      .click();
 
     // Edit selected service
-    const selectedRow = page.locator('[data-testid="selected-service-row"]').filter({ hasText: 'Comprehensive Bookkeeping' });
+    const selectedRow = page
+      .locator('[data-testid="selected-service-row"]')
+      .filter({ hasText: 'Comprehensive Bookkeeping' });
     await selectedRow.hover();
     await selectedRow.locator('[data-testid="edit-service-button"]').click();
 
@@ -80,7 +91,9 @@ test.describe('Proposal Pricing Frequency', () => {
     await page.locator('[data-testid="save-edit-button"]').click();
 
     // Full annual charge inc VAT: £1020 × 1.2 = £1224
-    const updatedRow = page.locator('[data-testid="selected-service-row"]').filter({ hasText: 'Comprehensive Bookkeeping' });
+    const updatedRow = page
+      .locator('[data-testid="selected-service-row"]')
+      .filter({ hasText: 'Comprehensive Bookkeeping' });
     await expect(updatedRow).toContainText('Annual');
     await expect(updatedRow).toContainText(/£1,224/);
   });
@@ -93,9 +106,18 @@ test.describe('Proposal Pricing Frequency', () => {
     await page.locator('[data-testid="client-continue-button"]').click();
 
     // Add multiple services with different frequencies
-    await page.locator('[data-testid="available-service-row"]').filter({ hasText: 'Annual Accounts Preparation & Filing' }).click();
-    await page.locator('[data-testid="available-service-row"]').filter({ hasText: 'Comprehensive Bookkeeping' }).click();
-    await page.locator('[data-testid="available-service-row"]').filter({ hasText: 'MTD ITSA 2026/27 Transition & Quarterly Filing' }).click();
+    await page
+      .locator('[data-testid="available-service-row"]')
+      .filter({ hasText: 'Annual Accounts Preparation & Filing' })
+      .click();
+    await page
+      .locator('[data-testid="available-service-row"]')
+      .filter({ hasText: 'Comprehensive Bookkeeping' })
+      .click();
+    await page
+      .locator('[data-testid="available-service-row"]')
+      .filter({ hasText: 'MTD ITSA 2026/27 Transition & Quarterly Filing' })
+      .click();
 
     // Go to review step
     await page.locator('[data-testid="services-continue-button"]').click();
@@ -127,10 +149,15 @@ test.describe('VAT Calculation', () => {
     await page.locator('[data-testid="client-continue-button"]').click();
 
     // Add service
-    await page.locator('[data-testid="available-service-row"]').filter({ hasText: 'Comprehensive Bookkeeping' }).click();
+    await page
+      .locator('[data-testid="available-service-row"]')
+      .filter({ hasText: 'Comprehensive Bookkeeping' })
+      .click();
 
     // Edit selected service
-    const selectedRow = page.locator('[data-testid="selected-service-row"]').filter({ hasText: 'Comprehensive Bookkeeping' });
+    const selectedRow = page
+      .locator('[data-testid="selected-service-row"]')
+      .filter({ hasText: 'Comprehensive Bookkeeping' });
     await selectedRow.hover();
     await selectedRow.locator('[data-testid="edit-service-button"]').click();
 
@@ -152,18 +179,28 @@ test.describe('VAT Calculation', () => {
     await page.locator('[data-testid="client-continue-button"]').click();
 
     // Add first service
-    await page.locator('[data-testid="available-service-row"]').filter({ hasText: 'Comprehensive Bookkeeping' }).click();
+    await page
+      .locator('[data-testid="available-service-row"]')
+      .filter({ hasText: 'Comprehensive Bookkeeping' })
+      .click();
 
     // Edit first service to 20% VAT (default)
-    let selectedRow = page.locator('[data-testid="selected-service-row"]').filter({ hasText: 'Comprehensive Bookkeeping' });
+    let selectedRow = page
+      .locator('[data-testid="selected-service-row"]')
+      .filter({ hasText: 'Comprehensive Bookkeeping' });
     await selectedRow.hover();
     await selectedRow.locator('[data-testid="edit-service-button"]').click();
     await page.selectOption('[data-testid="edit-vat-select"]', '20');
     await page.locator('[data-testid="save-edit-button"]').click();
 
     // Add second service and set to 0% VAT
-    await page.locator('[data-testid="available-service-row"]').filter({ hasText: 'Confirmation Statement (CS01)' }).click();
-    selectedRow = page.locator('[data-testid="selected-service-row"]').filter({ hasText: 'Confirmation Statement (CS01)' });
+    await page
+      .locator('[data-testid="available-service-row"]')
+      .filter({ hasText: 'Confirmation Statement (CS01)' })
+      .click();
+    selectedRow = page
+      .locator('[data-testid="selected-service-row"]')
+      .filter({ hasText: 'Confirmation Statement (CS01)' });
     await selectedRow.hover();
     await selectedRow.locator('[data-testid="edit-service-button"]').click();
     await page.selectOption('[data-testid="edit-vat-select"]', '0');
@@ -173,8 +210,16 @@ test.describe('VAT Calculation', () => {
     await page.locator('[data-testid="services-continue-button"]').click();
 
     // Verify both services are in review
-    await expect(page.locator('[data-testid="selected-service-row"]').filter({ hasText: 'Comprehensive Bookkeeping' })).toBeVisible();
-    await expect(page.locator('[data-testid="selected-service-row"]').filter({ hasText: 'Confirmation Statement (CS01)' })).toBeVisible();
+    await expect(
+      page
+        .locator('[data-testid="selected-service-row"]')
+        .filter({ hasText: 'Comprehensive Bookkeeping' })
+    ).toBeVisible();
+    await expect(
+      page
+        .locator('[data-testid="selected-service-row"]')
+        .filter({ hasText: 'Confirmation Statement (CS01)' })
+    ).toBeVisible();
   });
 
   test('VAT calculation is correct for each line', async ({ page }) => {
@@ -185,10 +230,15 @@ test.describe('VAT Calculation', () => {
     await page.locator('[data-testid="client-continue-button"]').click();
 
     // Add service with known price (£85 bookkeeping)
-    await page.locator('[data-testid="available-service-row"]').filter({ hasText: 'Comprehensive Bookkeeping' }).click();
+    await page
+      .locator('[data-testid="available-service-row"]')
+      .filter({ hasText: 'Comprehensive Bookkeeping' })
+      .click();
 
     // Edit to ensure 20% VAT
-    const selectedRow = page.locator('[data-testid="selected-service-row"]').filter({ hasText: 'Comprehensive Bookkeeping' });
+    const selectedRow = page
+      .locator('[data-testid="selected-service-row"]')
+      .filter({ hasText: 'Comprehensive Bookkeeping' });
     await selectedRow.hover();
     await selectedRow.locator('[data-testid="edit-service-button"]').click();
     await page.selectOption('[data-testid="edit-vat-select"]', '20');
@@ -198,7 +248,9 @@ test.describe('VAT Calculation', () => {
     await page.locator('[data-testid="services-continue-button"]').click();
 
     // Verify total includes VAT: £85 + 20% = £102 (shown on the line and in the monthly band footer)
-    const reviewRow = page.locator('[data-testid="selected-service-row"]').filter({ hasText: 'Comprehensive Bookkeeping' });
+    const reviewRow = page
+      .locator('[data-testid="selected-service-row"]')
+      .filter({ hasText: 'Comprehensive Bookkeeping' });
     await expect(reviewRow).toContainText(/£102/);
   });
 });
@@ -217,7 +269,10 @@ test.describe('Pricing parity', () => {
     await page.goto('/proposals/new');
     await page.locator('[data-testid="client-card"]').filter({ hasText: client.name }).click();
     await page.locator('[data-testid="client-continue-button"]').click();
-    await page.locator('[data-testid="available-service-row"]').filter({ hasText: 'Comprehensive Bookkeeping' }).click();
+    await page
+      .locator('[data-testid="available-service-row"]')
+      .filter({ hasText: 'Comprehensive Bookkeeping' })
+      .click();
     await page.locator('[data-testid="services-continue-button"]').click();
 
     const reviewTotal = page
@@ -233,7 +288,11 @@ test.describe('Pricing parity', () => {
     await page.locator('[data-testid="create-proposal-button"]').click();
     await expect(page).toHaveURL(/\/proposals\/.+/);
 
-    const detailMonthly = page.getByText('Monthly cost').locator('..').locator('..').locator('span.text-xl');
+    const detailMonthly = page
+      .getByText('Monthly cost')
+      .locator('..')
+      .locator('..')
+      .locator('span.text-xl');
     if (await detailMonthly.count()) {
       const detailText = (await detailMonthly.first().textContent())!.replace(/[^0-9.]/g, '');
       const detailValue = parseFloat(detailText);
@@ -259,7 +318,10 @@ test.describe('CSRF Handling', () => {
     await page.goto('/proposals/new');
     await page.locator('[data-testid="client-card"]').filter({ hasText: client.name }).click();
     await page.locator('[data-testid="client-continue-button"]').click();
-    await page.locator('[data-testid="available-service-row"]').filter({ hasText: 'Comprehensive Bookkeeping' }).click();
+    await page
+      .locator('[data-testid="available-service-row"]')
+      .filter({ hasText: 'Comprehensive Bookkeeping' })
+      .click();
     await page.locator('[data-testid="services-continue-button"]').click();
 
     // Fill proposal title
@@ -281,7 +343,10 @@ test.describe('CSRF Handling', () => {
     await page.goto('/proposals/new');
     await page.locator('[data-testid="client-card"]').filter({ hasText: client.name }).click();
     await page.locator('[data-testid="client-continue-button"]').click();
-    await page.locator('[data-testid="available-service-row"]').filter({ hasText: 'Comprehensive Bookkeeping' }).click();
+    await page
+      .locator('[data-testid="available-service-row"]')
+      .filter({ hasText: 'Comprehensive Bookkeeping' })
+      .click();
     await page.locator('[data-testid="services-continue-button"]').click();
 
     await page.fill('[data-testid="proposal-title-input"]', 'Test Auto-Retry');

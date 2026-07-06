@@ -24,8 +24,9 @@ const require = createRequire(import.meta.url);
 const jwt = require(path.join(__dirname, '..', 'backend', 'node_modules', 'jsonwebtoken'));
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const ENV_FILE = process.env.REVOLUT_BUSINESS_ENV_FILE
-  || 'C:\\Users\\willi\\boardroom\\deploy\\.revolut-business.env';
+const ENV_FILE =
+  process.env.REVOLUT_BUSINESS_ENV_FILE ||
+  'C:\\Users\\willi\\boardroom\\deploy\\.revolut-business.env';
 
 function arg(name, fallback = '') {
   const i = process.argv.indexOf(`--${name}`);
@@ -34,8 +35,14 @@ function arg(name, fallback = '') {
 
 const clientId = arg('client-id', process.env.REVOLUT_BUSINESS_CLIENT_ID || '');
 const privateKeyPath = arg('private-key', process.env.REVOLUT_BUSINESS_PRIVATE_KEY_PATH || '');
-const apiUrl = (arg('api-url', process.env.REVOLUT_BUSINESS_API_URL || 'https://b2b.revolut.com')).replace(/\/$/, '');
-const redirectUri = arg('redirect-uri', 'https://capstonesoftware.co.uk/engage/oauth/revolut-business');
+const apiUrl = arg(
+  'api-url',
+  process.env.REVOLUT_BUSINESS_API_URL || 'https://b2b.revolut.com'
+).replace(/\/$/, '');
+const redirectUri = arg(
+  'redirect-uri',
+  'https://capstonesoftware.co.uk/engage/oauth/revolut-business'
+);
 const headed = process.argv.includes('--headed');
 const port = Number(arg('port', '9876'));
 const localRedirect = `http://127.0.0.1:${port}/callback`;
@@ -55,7 +62,7 @@ function signAssertion() {
   return jwt.sign(
     { iss: clientId, sub: clientId, aud: 'https://revolut.com', iat: now, exp: now + 300 },
     privateKey,
-    { algorithm: 'RS256' },
+    { algorithm: 'RS256' }
   );
 }
 
@@ -169,7 +176,9 @@ async function main() {
     const stdin = await new Promise((r) => {
       process.stdin.setEncoding('utf8');
       let buf = '';
-      process.stdin.on('data', (c) => { buf += c; });
+      process.stdin.on('data', (c) => {
+        buf += c;
+      });
       process.stdin.on('end', () => r(buf.trim()));
       if (process.stdin.isTTY) {
         process.stdin.resume();
@@ -181,7 +190,9 @@ async function main() {
     let code = stdin;
     try {
       if (code.includes('code=')) code = new URL(code).searchParams.get('code') || code;
-    } catch { /* raw code */ }
+    } catch {
+      /* raw code */
+    }
 
     if (!code) throw new Error('Authorization code required');
     const tokens = await exchangeCode(code);

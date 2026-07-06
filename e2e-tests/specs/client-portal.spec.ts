@@ -1,5 +1,10 @@
 import { test, expect } from '@playwright/test';
-import { loginAsPartner, createTestClient, createTestProposal, cleanupTestData } from '../fixtures/helpers';
+import {
+  loginAsPartner,
+  createTestClient,
+  createTestProposal,
+  cleanupTestData,
+} from '../fixtures/helpers';
 
 /**
  * Client Portal E2E Tests

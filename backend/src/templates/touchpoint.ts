@@ -22,20 +22,14 @@ export interface TouchpointMergeContext {
   [key: string]: string | undefined;
 }
 
-export function renderTouchpointTemplate(
-  body: string,
-  context: TouchpointMergeContext
-): string {
+export function renderTouchpointTemplate(body: string, context: TouchpointMergeContext): string {
   return body.replace(/\{\{(\w+)\}\}/g, (_match, key: string) => {
     const value = context[key];
     return value !== undefined ? String(value) : '';
   });
 }
 
-export function renderTouchpointSubject(
-  subject: string,
-  context: TouchpointMergeContext
-): string {
+export function renderTouchpointSubject(subject: string, context: TouchpointMergeContext): string {
   return renderTouchpointTemplate(subject, context);
 }
 

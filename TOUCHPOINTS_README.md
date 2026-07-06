@@ -59,7 +59,7 @@ Manual trigger: POST /api/touchpoints/run (auth required)
 - GET/PUT /api/touchpoints/templates/:stage
 - GET /api/touchpoints/approvals
 - POST /api/touchpoints/:id/approve
-- PATCH /api/touchpoints/clients/:clientId  (pause, consent)
+- PATCH /api/touchpoints/clients/:clientId (pause, consent)
 - POST /api/clients/:id/aml-complete
 - POST /api/clients/:id/engagement-letter-signed
 - POST /api/clients/:id/info-received

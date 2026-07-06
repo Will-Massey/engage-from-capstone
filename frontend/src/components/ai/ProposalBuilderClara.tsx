@@ -1,6 +1,13 @@
 import { useEffect, useState } from 'react';
-import { SparklesIcon, ChatBubbleLeftRightIcon, CheckIcon, XMarkIcon } from '@heroicons/react/24/outline';
-import ClaraServiceSuggestionCards, { type ClaraServiceSuggestion } from './ClaraServiceSuggestionCards';
+import {
+  SparklesIcon,
+  ChatBubbleLeftRightIcon,
+  CheckIcon,
+  XMarkIcon,
+} from '@heroicons/react/24/outline';
+import ClaraServiceSuggestionCards, {
+  type ClaraServiceSuggestion,
+} from './ClaraServiceSuggestionCards';
 import { apiClient } from '../../utils/api';
 import { useAiAssistantStore } from '../../stores/aiAssistantStore';
 import { AiPanel, showAiError } from './AiPanel';
@@ -40,7 +47,10 @@ function parseMappableAction(action: string): MappableAction | null {
   ) {
     return { type: 'coverLetter' };
   }
-  if (lower.includes('service') && (lower.includes('add') || lower.includes('suggest') || lower.includes('zero'))) {
+  if (
+    lower.includes('service') &&
+    (lower.includes('add') || lower.includes('suggest') || lower.includes('zero'))
+  ) {
     return { type: 'suggestServices' };
   }
   return null;
@@ -185,14 +195,13 @@ export default function ProposalBuilderClara({
     rationale: s.rationale,
   }));
 
-  const scoreColor =
-    !draftReview
-      ? 'text-slate-500'
-      : draftReview.healthScore >= 75
-        ? 'text-green-600'
-        : draftReview.healthScore >= 50
-          ? 'text-amber-600'
-          : 'text-red-600';
+  const scoreColor = !draftReview
+    ? 'text-slate-500'
+    : draftReview.healthScore >= 75
+      ? 'text-green-600'
+      : draftReview.healthScore >= 50
+        ? 'text-amber-600'
+        : 'text-red-600';
 
   return (
     <aside className="lg:sticky lg:top-6 h-fit space-y-4 print:hidden">
@@ -218,7 +227,9 @@ export default function ProposalBuilderClara({
             {suggestions && (
               <div className="space-y-2">
                 {suggestions.summary && (
-                  <p className="text-sm text-slate-700 dark:text-slate-200">{suggestions.summary}</p>
+                  <p className="text-sm text-slate-700 dark:text-slate-200">
+                    {suggestions.summary}
+                  </p>
                 )}
                 <ClaraServiceSuggestionCards
                   suggestions={claraCards}
@@ -317,7 +328,9 @@ export default function ProposalBuilderClara({
                       </span>
                     )}
                   </div>
-                  <p className="text-sm text-slate-700 dark:text-slate-200">{draftReview.summary}</p>
+                  <p className="text-sm text-slate-700 dark:text-slate-200">
+                    {draftReview.summary}
+                  </p>
                   {draftReview.recommendedActions?.length > 0 && (
                     <ul className="text-xs space-y-2 text-slate-600 dark:text-slate-300">
                       {draftReview.recommendedActions.map((a, i) => {

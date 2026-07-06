@@ -28,7 +28,9 @@ export interface TenantBillingSnapshot {
   stripeSubscriptionId: string | null;
 }
 
-export function parseTenantSettings(settings: string | Record<string, unknown>): Record<string, unknown> {
+export function parseTenantSettings(
+  settings: string | Record<string, unknown>
+): Record<string, unknown> {
   if (typeof settings === 'object' && settings !== null && !Array.isArray(settings)) {
     return settings;
   }
@@ -42,7 +44,9 @@ export function parseTenantSettings(settings: string | Record<string, unknown>):
   return {};
 }
 
-export function getTrialEndsAt(tenant: Pick<TenantBillingSnapshot, 'createdAt' | 'settings'>): Date {
+export function getTrialEndsAt(
+  tenant: Pick<TenantBillingSnapshot, 'createdAt' | 'settings'>
+): Date {
   const settings = parseTenantSettings(tenant.settings);
   if (typeof settings.trialEndsAt === 'string') {
     const parsed = new Date(settings.trialEndsAt);
@@ -117,13 +121,18 @@ export async function assertTenantCanSendProposals(tenantId: string): Promise<vo
 
   const result = evaluateTenantBilling(tenant);
   if (!result.allowed) {
-    throw new ApiError(result.code || 'SUBSCRIPTION_REQUIRED', result.message || TRIAL_EXPIRED_MESSAGE, 402);
+    throw new ApiError(
+      result.code || 'SUBSCRIPTION_REQUIRED',
+      result.message || TRIAL_EXPIRED_MESSAGE,
+      402
+    );
   }
 }
 
-export function buildTrialSettings(
-  existingSettings?: Record<string, unknown> | string
-): { settingsJson: string; subscriptionStatus: string } {
+export function buildTrialSettings(existingSettings?: Record<string, unknown> | string): {
+  settingsJson: string;
+  subscriptionStatus: string;
+} {
   const parsed =
     typeof existingSettings === 'string'
       ? parseTenantSettings(existingSettings)

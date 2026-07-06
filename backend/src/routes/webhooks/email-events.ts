@@ -13,26 +13,18 @@ import { isProduction } from '../../utils/securityFlags.js';
 const router = Router();
 
 /** Accepts `Authorization: Bearer <secret>` or `X-Webhook-Secret: <secret>`. */
-function requireWebhookAuth(headers: {
-  [key: string]: string | string[] | undefined;
-}): void {
-  const secret =
-    process.env.EMAIL_WEBHOOK_SECRET || process.env.CLOUDFLARE_EMAIL_WEBHOOK_SECRET;
+function requireWebhookAuth(headers: { [key: string]: string | string[] | undefined }): void {
+  const secret = process.env.EMAIL_WEBHOOK_SECRET || process.env.CLOUDFLARE_EMAIL_WEBHOOK_SECRET;
 
   if (!secret) {
     if (isProduction) {
-      throw new ApiError(
-        'WEBHOOK_NOT_CONFIGURED',
-        'Email webhook is not configured',
-        503
-      );
+      throw new ApiError('WEBHOOK_NOT_CONFIGURED', 'Email webhook is not configured', 503);
     }
     return; // dev/test without a secret — allow (local stub)
   }
 
   const auth = headers.authorization;
-  const bearer =
-    typeof auth === 'string' && auth.startsWith('Bearer ') ? auth.slice(7) : undefined;
+  const bearer = typeof auth === 'string' && auth.startsWith('Bearer ') ? auth.slice(7) : undefined;
   const headerRaw = headers['x-webhook-secret'];
   const provided = bearer ?? (Array.isArray(headerRaw) ? headerRaw[0] : headerRaw);
 
@@ -73,7 +65,7 @@ function normaliseEvent(body: z.infer<typeof eventSchema>): {
 
 async function updateProposalEmailHistory(
   proposalId: string,
-  patch: Record<string, unknown>,
+  patch: Record<string, unknown>
 ): Promise<void> {
   const proposal = await prisma.proposal.findUnique({
     where: { id: proposalId },
@@ -151,10 +143,10 @@ router.post(
             lastEvent: evt.eventType,
             lastEventAt: new Date().toISOString(),
             to: evt.to,
-            ...(evt.eventType === 'bounce' || evt.eventType === 'spam'
-              ? { bounced: true }
+            ...(evt.eventType === 'bounce' || evt.eventType === 'spam' ? { bounced: true } : {}),
+            ...(evt.eventType === 'open'
+              ? { opened: true, openedAt: new Date().toISOString() }
               : {}),
-            ...(evt.eventType === 'open' ? { opened: true, openedAt: new Date().toISOString() } : {}),
           });
         } catch (e) {
           logger.warn('Failed to update proposal emailHistory', e);
@@ -179,7 +171,7 @@ router.post(
     }
 
     res.json({ success: true, received: true, processed: processed.length });
-  }),
+  })
 );
 
 export default router;

@@ -9,7 +9,10 @@ test.describe('Settings VAT', () => {
 
     const vatToggle = page.getByLabel(/VAT registered/i).or(page.locator('#vat-registered'));
     if (await vatToggle.count()) {
-      await vatToggle.first().check({ force: true }).catch(() => {});
+      await vatToggle
+        .first()
+        .check({ force: true })
+        .catch(() => {});
     }
 
     const saveBtn = page.getByRole('button', { name: /Save VAT/i });

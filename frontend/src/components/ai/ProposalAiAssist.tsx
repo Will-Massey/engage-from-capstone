@@ -21,8 +21,12 @@ export default function ProposalAiAssist({ proposal, onUpdated }: ProposalAiAssi
   const [configured, setConfigured] = useState(true);
 
   const [followUpLoading, setFollowUpLoading] = useState(false);
-  const [followUpDraft, setFollowUpDraft] = useState<{ subject: string; body: string } | null>(null);
-  const [followUpTone, setFollowUpTone] = useState<'professional' | 'friendly' | 'urgent'>('professional');
+  const [followUpDraft, setFollowUpDraft] = useState<{ subject: string; body: string } | null>(
+    null
+  );
+  const [followUpTone, setFollowUpTone] = useState<'professional' | 'friendly' | 'urgent'>(
+    'professional'
+  );
 
   const [engagementLoading, setEngagementLoading] = useState(false);
   const [engagementDraft, setEngagementDraft] = useState<string | null>(null);
@@ -215,7 +219,8 @@ export default function ProposalAiAssist({ proposal, onUpdated }: ProposalAiAssi
             className="mt-0.5 rounded border-slate-300"
           />
           <span>
-            Add a short introduction from {AI_COPILOT.name} (uses extra tokens — clause body stays from your library)
+            Add a short introduction from {AI_COPILOT.name} (uses extra tokens — clause body stays
+            from your library)
           </span>
         </label>
         {engagementIncludeAiIntro && (
@@ -275,9 +280,13 @@ export default function ProposalAiAssist({ proposal, onUpdated }: ProposalAiAssi
           {renewalDraft && (
             <div className="mt-2 space-y-2">
               {renewalDraft.renewalNarrative && (
-                <p className="text-xs text-violet-600 dark:text-violet-400">{renewalDraft.renewalNarrative}</p>
+                <p className="text-xs text-violet-600 dark:text-violet-400">
+                  {renewalDraft.renewalNarrative}
+                </p>
               )}
-              <p className="text-sm font-medium text-slate-800 dark:text-slate-100">{renewalDraft.title}</p>
+              <p className="text-sm font-medium text-slate-800 dark:text-slate-100">
+                {renewalDraft.title}
+              </p>
               <AiDraftPreview
                 content={renewalDraft.coverLetter}
                 onApply={createRenewalProposal}

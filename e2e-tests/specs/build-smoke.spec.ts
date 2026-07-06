@@ -115,7 +115,9 @@ test.describe('Build smoke — new proposal (no error popups)', () => {
 
     await expectNoErrorToasts(page, 3000);
 
-    await expect(page.getByRole('heading', { name: 'Client context' })).toBeVisible({ timeout: 15_000 });
+    await expect(page.getByRole('heading', { name: 'Client context' })).toBeVisible({
+      timeout: 15_000,
+    });
   });
 
   test('can add a service and reach review step', async ({ page }) => {
@@ -133,7 +135,9 @@ test.describe('Build smoke — new proposal (no error popups)', () => {
     await gotoApp(page, '/proposals/new');
     await advanceToProposalServicesStep(page, 'manual');
 
-    await expect(page.getByTestId('regulatory-check-banner').or(page.getByTestId('regulatory-check-clear'))).toBeVisible({
+    await expect(
+      page.getByTestId('regulatory-check-banner').or(page.getByTestId('regulatory-check-clear'))
+    ).toBeVisible({
       timeout: 30_000,
     });
 
