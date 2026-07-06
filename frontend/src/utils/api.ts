@@ -991,7 +991,7 @@ export const apiClient = {
       }
     };
 
-    while (true) {
+    for (;;) {
       const { done, value } = await reader.read();
       if (value) {
         buffer += decoder.decode(value, { stream: true });
@@ -1047,7 +1047,7 @@ export const apiClient = {
     const reader = res.body.getReader();
     const decoder = new TextDecoder();
     let buffer = '';
-    while (true) {
+    for (;;) {
       const { done, value } = await reader.read();
       if (done) break;
       buffer += decoder.decode(value, { stream: true });
@@ -1062,7 +1062,7 @@ export const apiClient = {
           if (payload.chunk) onChunk(payload.chunk);
           if (payload.done) return;
           if (payload.error) throw new Error(payload.error);
-        } catch {}
+        } catch { /* ignore malformed SSE chunks */ }
       }
     }
   },
@@ -1086,7 +1086,7 @@ export const apiClient = {
     const reader = res.body.getReader();
     const decoder = new TextDecoder();
     let buffer = '';
-    while (true) {
+    for (;;) {
       const { done, value } = await reader.read();
       if (done) break;
       buffer += decoder.decode(value, { stream: true });
@@ -1101,7 +1101,7 @@ export const apiClient = {
           if (payload.chunk) onChunk(payload.chunk);
           if (payload.done) return;
           if (payload.error) throw new Error(payload.error);
-        } catch {}
+        } catch { /* ignore malformed SSE chunks */ }
       }
     }
   },

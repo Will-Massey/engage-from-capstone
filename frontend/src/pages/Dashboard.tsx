@@ -187,7 +187,7 @@ const Dashboard = () => {
         const attentionStages = ['AML_PENDING', 'INFO_REQUESTED', 'ENGAGEMENT_LETTER_SENT'];
         const needing = (clientsRes.data || []).filter((c: any) => attentionStages.includes(c.lifecycleStage));
         setAttentionClients(needing.slice(0, 8));
-      } catch {}
+      } catch { /* non-critical dashboard widget — ignore */ }
 
       try {
         const sentCountRes = (await timeout(
@@ -244,7 +244,7 @@ const Dashboard = () => {
           })
           .slice(0, 8);
         setRenewalProposals(expiring);
-      } catch {}
+      } catch { /* non-critical dashboard widget — ignore */ }
     } catch (error) {
       // Error handled by UI - will use default empty data
     } finally {

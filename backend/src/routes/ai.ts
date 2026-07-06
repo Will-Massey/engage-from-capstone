@@ -346,7 +346,7 @@ Services: ${svcNames}` },
       { temperature: 0.4, maxTokens: 80 }
     );
     let title = `Proposal for ${nameForTitle}`;
-    try { title = JSON.parse(raw).title?.trim() || title; } catch {}
+    try { title = JSON.parse(raw).title?.trim() || title; } catch { /* keep default title */ }
     res.json({ success: true, data: { title } });
   })
 );

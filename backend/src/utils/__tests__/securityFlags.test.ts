@@ -11,7 +11,8 @@ function loadFlags(overrides: Record<string, string | undefined>) {
   for (const [key, value] of Object.entries(overrides)) {
     if (value === undefined) delete process.env[key];
   }
-  // eslint-disable-next-line @typescript-eslint/no-var-requires
+  // require() (not import) so jest.resetModules() re-evaluates env-dependent flags
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
   return require('../securityFlags.js') as typeof import('../securityFlags.js');
 }
 

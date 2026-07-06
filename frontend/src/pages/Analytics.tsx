@@ -688,7 +688,7 @@ function normalizeWinLoss(raw: unknown): WinLossData | null {
   if (!raw || typeof raw !== 'object') return null;
   const data = raw as Record<string, unknown>;
   if (Array.isArray(data.byReason)) {
-    return data as WinLossData;
+    return data as unknown as WinLossData;
   }
 
   const summary = (data.summary ?? {}) as Record<string, number>;
@@ -739,6 +739,7 @@ const Analytics = () => {
 
   useEffect(() => {
     loadAnalytics();
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- loadAnalytics is recreated each render; funnelDateRange is its only real input
   }, [funnelDateRange]);
 
   const loadAnalytics = async () => {

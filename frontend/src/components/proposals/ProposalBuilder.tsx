@@ -494,6 +494,7 @@ export default function ProposalBuilder({ proposalId }: ProposalBuilderProps) {
         isHydratingDraftRef.current = false;
       });
     },
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- resolveInitialBuildMode reads the same params already listed
     [defaultExpiryDays, preselectedClientId, preselectedTemplateId, manualParam, guidedParam]
   );
 
@@ -697,6 +698,7 @@ export default function ProposalBuilder({ proposalId }: ProposalBuilderProps) {
     }
 
     clearPricingSuggestion();
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- services.length is the intended trigger; the full array would refire on every edit
   }, [isEditMode, fromPricingParam, services.length, preselectedClientId, includeVat, proposalTitle]);
 
   // Deep-link from Templates page: ?template=<id>
@@ -814,6 +816,7 @@ export default function ProposalBuilder({ proposalId }: ProposalBuilderProps) {
       localStorage.setItem(key, JSON.stringify(captureDraftSnapshot()));
     }, 1500);
     return () => clearTimeout(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- captureDraftSnapshot is recreated each render; deps below cover its inputs
   }, [
     selectedClient,
     selectedServices,

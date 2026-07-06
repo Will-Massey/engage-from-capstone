@@ -763,7 +763,7 @@ function LifecyclePanel({ client, onRefresh }: { client: any; onRefresh: () => v
       try {
         const res = await apiClient.getClientTouchpoints(client.id);
         setUpcoming((res as any).data || []);
-      } catch {}
+      } catch { /* touchpoints are optional — ignore */ }
     })();
   }, [client.id]);
 

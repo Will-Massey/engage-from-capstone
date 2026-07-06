@@ -142,6 +142,7 @@ export function AiDraftPreview({
   );
 }
 
+// eslint-disable-next-line react-refresh/only-export-components -- shared helper co-located with the panel by design
 export function showAiError(error: any) {
   const code = error?.code ?? error?.response?.data?.error?.code;
   const message = error?.message ?? error?.response?.data?.error?.message;

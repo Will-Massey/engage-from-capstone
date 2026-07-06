@@ -73,6 +73,7 @@ export default function AmlPartnerPanel({
 
   useEffect(() => {
     void loadStatus();
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- loadStatus is recreated each render; clientId is its only real input
   }, [clientId]);
 
   const runCheck = async (provider: 'stub' | 'smartsearch' | 'creditsafe' = 'stub') => {

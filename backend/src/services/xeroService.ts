@@ -170,7 +170,7 @@ export async function fetchAllXeroContacts(session: XeroSession): Promise<Contac
   let page = 1;
   const pageSize = 100;
 
-  while (true) {
+  for (;;) {
     const response = await client.accountingApi.getContacts(
       xeroTenantId,
       undefined,

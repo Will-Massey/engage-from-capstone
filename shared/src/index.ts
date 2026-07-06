@@ -71,6 +71,7 @@ export enum PricingFrequency {
   QUARTERLY = 'QUARTERLY',
   ANNUALLY = 'ANNUALLY',
   /** @deprecated Use ONE_TIME — matches Prisma PricingFrequency */
+  // eslint-disable-next-line @typescript-eslint/no-duplicate-enum-values -- intentional back-compat alias
   ONE_OFF = 'ONE_TIME',
 }
 

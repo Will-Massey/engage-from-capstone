@@ -262,6 +262,7 @@ const CommandPalette = ({ isOpen, onClose }: CommandPaletteProps) => {
       ? [...searchResults, ...filteredCommands.filter((c) => c.category === 'Actions')]
       : filteredCommands;
 
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- rebuilt each render intentionally; the keydown effect re-binds cheaply
   const displayItems = showAiFallback
     ? [
         ...baseItems,

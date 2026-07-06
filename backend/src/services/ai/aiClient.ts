@@ -244,7 +244,7 @@ export async function* chatCompletionStream(
       }
     }
   } finally {
-    try { reader.releaseLock(); } catch {}
+    try { reader.releaseLock(); } catch { /* already released */ }
   }
 }
 

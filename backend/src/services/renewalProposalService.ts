@@ -368,8 +368,8 @@ export async function createRenewalDraft(
   let title = `${originalProposal.title} (Renewal)`;
   let coverLetter = originalProposal.coverLetter;
   let terms = originalProposal.terms;
-  let paymentTerms = originalProposal.paymentTerms;
-  let paymentFrequency = originalProposal.paymentFrequency;
+  const paymentTerms = originalProposal.paymentTerms;
+  const paymentFrequency = originalProposal.paymentFrequency;
 
   if (options.templateId) {
     const { template } = await loadProposalTemplate(options.templateId, tenantId);
@@ -385,7 +385,7 @@ export async function createRenewalDraft(
     });
   }
 
-  let builtServices = applyUpliftRulesToServices(originalProposal.services, upliftRules);
+  const builtServices = applyUpliftRulesToServices(originalProposal.services, upliftRules);
 
   if (options.useAiCoverLetter) {
     try {

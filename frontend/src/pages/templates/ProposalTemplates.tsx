@@ -169,7 +169,7 @@ export default function ProposalTemplates() {
     }
   };
 
-  const useTemplate = (id: string) => {
+  const applyTemplate = (id: string) => {
     navigate(`/proposals/new?template=${id}`);
   };
 
@@ -338,7 +338,7 @@ export default function ProposalTemplates() {
               <div className="flex flex-wrap gap-2 pt-2 border-t border-slate-100 dark:border-slate-800">
                 <button
                   type="button"
-                  onClick={() => useTemplate(template.id)}
+                  onClick={() => applyTemplate(template.id)}
                   className="btn-primary text-xs flex-1 inline-flex items-center justify-center gap-1"
                 >
                   <RocketLaunchIcon className="h-4 w-4" />

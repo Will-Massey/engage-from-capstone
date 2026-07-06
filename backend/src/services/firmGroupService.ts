@@ -44,9 +44,9 @@ function slugify(name: string): string {
 }
 
 async function uniqueSlug(base: string): Promise<string> {
-  let slug = base || 'firm-group';
+  const slug = base || 'firm-group';
   let n = 0;
-  while (true) {
+  for (;;) {
     const candidate = n === 0 ? slug : `${slug}-${n}`;
     const exists = await prisma.firmGroup.findUnique({ where: { slug: candidate } });
     if (!exists) return candidate;
