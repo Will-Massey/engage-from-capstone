@@ -1,7 +1,10 @@
-import axios, { AxiosInstance, AxiosError } from 'axios';
+import axios, { AxiosInstance, AxiosError, AxiosRequestConfig } from 'axios';
 import toast from 'react-hot-toast';
 import { useAuthStore } from '../stores/authStore';
 import { appPath, appRelativePath } from './appBase';
+import type { ApiResponse } from '@uk-proposal-platform/shared';
+
+export type { ApiResponse };
 
 // API base URL
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
@@ -437,11 +440,17 @@ api.interceptors.response.use(
 
 // API helper functions
 export const apiClient = {
-  // Generic HTTP methods
-  get: (url: string, config?: any) => api.get(url, config),
-  post: (url: string, data?: any, config?: any) => api.post(url, data, config),
-  put: (url: string, data?: any, config?: any) => api.put(url, data, config),
-  delete: (url: string, config?: any) => api.delete(url, config),
+  // Generic HTTP methods. The response interceptor unwraps to the body, which
+  // for JSON endpoints is always the { success, data, error, meta } envelope —
+  // pass T to type `data` (defaults to `any` until call sites are migrated).
+  get: <T = any>(url: string, config?: AxiosRequestConfig) =>
+    api.get(url, config) as Promise<ApiResponse<T>>,
+  post: <T = any>(url: string, data?: unknown, config?: AxiosRequestConfig) =>
+    api.post(url, data, config) as Promise<ApiResponse<T>>,
+  put: <T = any>(url: string, data?: unknown, config?: AxiosRequestConfig) =>
+    api.put(url, data, config) as Promise<ApiResponse<T>>,
+  delete: <T = any>(url: string, config?: AxiosRequestConfig) =>
+    api.delete(url, config) as Promise<ApiResponse<T>>,
 
   // Auth
   login: (email: string, password: string, options?: { tenantId?: string; rememberMe?: boolean }) =>
