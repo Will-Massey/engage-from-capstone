@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
+import { strongPasswordSchema } from '../../utils/passwordPolicy';
 import { CheckIcon } from '@heroicons/react/24/solid';
 import { SparklesIcon } from '@heroicons/react/24/outline';
 import { apiClient } from '../../utils/api';
@@ -28,7 +29,7 @@ const onboardingSchema = z.object({
   adminEmail: z.string().email('Please enter a valid email'),
   adminFirstName: z.string().min(1, 'First name is required'),
   adminLastName: z.string().min(1, 'Last name is required'),
-  adminPassword: z.string().min(8, 'Password must be at least 8 characters'),
+  adminPassword: strongPasswordSchema,
 });
 
 type OnboardingForm = z.infer<typeof onboardingSchema>;

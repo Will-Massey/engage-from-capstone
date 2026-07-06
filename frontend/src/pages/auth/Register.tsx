@@ -7,16 +7,11 @@ import { EyeIcon, EyeSlashIcon, CheckCircleIcon, XCircleIcon } from '@heroicons/
 import { apiClient } from '../../utils/api';
 import { useAuthStore } from '../../stores/authStore';
 import toast from 'react-hot-toast';
+import { PASSWORD_RULES, strongPasswordSchema } from '../../utils/passwordPolicy';
 
 const registerSchema = z.object({
   email: z.string().email('Please enter a valid email'),
-  password: z
-    .string()
-    .min(8, 'Password must be at least 8 characters')
-    .regex(/[A-Z]/, 'Password must contain at least one uppercase letter')
-    .regex(/[a-z]/, 'Password must contain at least one lowercase letter')
-    .regex(/[0-9]/, 'Password must contain at least one number')
-    .regex(/[^A-Za-z0-9]/, 'Password must contain at least one special character'),
+  password: strongPasswordSchema,
   firstName: z.string().min(1, 'First name is required'),
   lastName: z.string().min(1, 'Last name is required'),
   tenantId: z.string().min(1, 'Tenant is required'),
@@ -41,14 +36,11 @@ const Register = () => {
 
   const password = watch('password', '');
 
-  // Password requirements check
-  const passwordRequirements = [
-    { label: 'At least 8 characters', met: password.length >= 8 },
-    { label: 'One uppercase letter', met: /[A-Z]/.test(password) },
-    { label: 'One lowercase letter', met: /[a-z]/.test(password) },
-    { label: 'One number', met: /[0-9]/.test(password) },
-    { label: 'One special character', met: /[^A-Za-z0-9]/.test(password) },
-  ];
+  // Password requirements check (shares the rules used by validation)
+  const passwordRequirements = PASSWORD_RULES.map((rule) => ({
+    label: rule.label,
+    met: rule.met(password),
+  }));
 
   const onSubmit = async (data: RegisterForm) => {
     setIsLoading(true);

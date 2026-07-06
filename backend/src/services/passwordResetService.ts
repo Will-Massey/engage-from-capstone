@@ -4,6 +4,7 @@
  */
 
 import crypto from 'crypto';
+import { validatePasswordStrength } from '../utils/passwordPolicy.js';
 
 export interface PasswordResetToken {
   token: string;
@@ -55,38 +56,14 @@ export class PasswordResetService {
   }
 
   /**
-   * Validate password strength
+   * Validate password strength — delegates to the shared policy so all flows
+   * (registration, invite, change, reset) enforce the same rules.
    */
   validatePasswordStrength(password: string): {
     isValid: boolean;
     errors: string[];
   } {
-    const errors: string[] = [];
-
-    if (password.length < 12) {
-      errors.push('Password must be at least 12 characters');
-    }
-
-    if (!/[A-Z]/.test(password)) {
-      errors.push('Password must contain at least one uppercase letter');
-    }
-
-    if (!/[a-z]/.test(password)) {
-      errors.push('Password must contain at least one lowercase letter');
-    }
-
-    if (!/[0-9]/.test(password)) {
-      errors.push('Password must contain at least one number');
-    }
-
-    if (!/[^A-Za-z0-9]/.test(password)) {
-      errors.push('Password must contain at least one special character');
-    }
-
-    return {
-      isValid: errors.length === 0,
-      errors,
-    };
+    return validatePasswordStrength(password);
   }
 }
 

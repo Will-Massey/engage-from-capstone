@@ -3,6 +3,7 @@ import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import { z } from 'zod';
 import { prisma } from '../config/database.js';
+import { strongPasswordSchema } from '../utils/passwordPolicy.js';
 import {
   authenticate,
   authorize,
@@ -106,7 +107,7 @@ const loginSchema = z.object({
 
 const registerSchema = z.object({
   email: z.string().email('Invalid email address'),
-  password: z.string().min(8, 'Password must be at least 8 characters'),
+  password: strongPasswordSchema,
   firstName: z.string().min(1, 'First name is required'),
   lastName: z.string().min(1, 'Last name is required'),
   tenantId: z.string(),
@@ -468,7 +469,7 @@ router.put(
     const { currentPassword, newPassword } = z
       .object({
         currentPassword: z.string(),
-        newPassword: z.string().min(8, 'Password must be at least 8 characters'),
+        newPassword: strongPasswordSchema,
       })
       .parse(req.body);
 
@@ -635,7 +636,7 @@ router.post(
       phone: z.string().optional(),
       jobTitle: z.string().optional(),
       role: z.enum(['PARTNER', 'MD', 'MANAGER', 'SENIOR', 'JUNIOR']),
-      password: z.string().min(8, 'Password must be at least 8 characters'),
+      password: strongPasswordSchema,
     });
 
     const data = createUserSchema.parse(req.body);
@@ -815,7 +816,7 @@ const forgotPasswordSchema = z.object({
 
 const resetPasswordSchema = z.object({
   token: z.string().min(1, 'Reset token is required'),
-  newPassword: z.string().min(8, 'Password must be at least 8 characters'),
+  newPassword: strongPasswordSchema,
 });
 
 /**

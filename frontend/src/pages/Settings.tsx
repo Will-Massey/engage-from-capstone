@@ -5,6 +5,7 @@ import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuthStore } from '../stores/authStore';
 import { useThemeStore } from '../stores/themeStore';
 import { apiClient } from '../utils/api';
+import { PASSWORD_RULES } from '../utils/passwordPolicy';
 import { prepareTenantLogoUpload } from '../utils/tenantLogo';
 import toast from 'react-hot-toast';
 import {
@@ -778,26 +779,10 @@ const Settings = () => {
       return;
     }
 
-    // Password complexity validation
-    const pwd = passwordForm.newPassword;
-    if (pwd.length < 8) {
-      toast.error('Password must be at least 8 characters');
-      return;
-    }
-    if (!/[A-Z]/.test(pwd)) {
-      toast.error('Password must contain at least one uppercase letter');
-      return;
-    }
-    if (!/[a-z]/.test(pwd)) {
-      toast.error('Password must contain at least one lowercase letter');
-      return;
-    }
-    if (!/[0-9]/.test(pwd)) {
-      toast.error('Password must contain at least one number');
-      return;
-    }
-    if (!/[^A-Za-z0-9]/.test(pwd)) {
-      toast.error('Password must contain at least one special character');
+    // Password complexity validation (shared policy)
+    const pwdRule = PASSWORD_RULES.find((r) => !r.met(passwordForm.newPassword));
+    if (pwdRule) {
+      toast.error(`Password needs: ${pwdRule.label.toLowerCase()}`);
       return;
     }
 
@@ -841,26 +826,10 @@ const Settings = () => {
   };
 
   const handleCreateUser = async () => {
-    // Validate password complexity
-    const pwd = newUserForm.password;
-    if (pwd.length < 8) {
-      toast.error('Password must be at least 8 characters');
-      return;
-    }
-    if (!/[A-Z]/.test(pwd)) {
-      toast.error('Password must contain at least one uppercase letter');
-      return;
-    }
-    if (!/[a-z]/.test(pwd)) {
-      toast.error('Password must contain at least one lowercase letter');
-      return;
-    }
-    if (!/[0-9]/.test(pwd)) {
-      toast.error('Password must contain at least one number');
-      return;
-    }
-    if (!/[^A-Za-z0-9]/.test(pwd)) {
-      toast.error('Password must contain at least one special character');
+    // Validate password complexity (shared policy)
+    const pwdRule = PASSWORD_RULES.find((r) => !r.met(newUserForm.password));
+    if (pwdRule) {
+      toast.error(`Password needs: ${pwdRule.label.toLowerCase()}`);
       return;
     }
 
@@ -2455,8 +2424,8 @@ const Settings = () => {
                         </p>
                         {[
                           {
-                            test: passwordForm.newPassword.length >= 8,
-                            label: 'At least 8 characters',
+                            test: passwordForm.newPassword.length >= 12,
+                            label: 'At least 12 characters',
                           },
                           {
                             test: /[A-Z]/.test(passwordForm.newPassword),
@@ -2731,11 +2700,11 @@ const Settings = () => {
                     value={newUserForm.password}
                     onChange={(e) => setNewUserForm({ ...newUserForm, password: e.target.value })}
                     className="mt-1 input-field w-full"
-                    placeholder="Min 8 characters with complexity"
+                    placeholder="Min 12 characters with complexity"
                   />
                   <div className="mt-2 grid grid-cols-2 sm:grid-cols-3 gap-2">
                     {[
-                      { test: newUserForm.password.length >= 8, label: '8+ characters' },
+                      { test: newUserForm.password.length >= 12, label: '12+ characters' },
                       { test: /[A-Z]/.test(newUserForm.password), label: 'Uppercase' },
                       { test: /[a-z]/.test(newUserForm.password), label: 'Lowercase' },
                       { test: /[0-9]/.test(newUserForm.password), label: 'Number' },
