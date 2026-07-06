@@ -5,6 +5,7 @@
   "main": "dist/index.js",
   "scripts": {
     "dev": "tsx watch src/index.ts",
+    "postinstall": "prisma generate",
     "prebuild": "npx prisma generate",
     "build": "npx tsc --project tsconfig.json",
     "postbuild": "node -e \"const fs=require('fs');const p=require('path');const copyDir=(s,d)=>{if(!fs.existsSync(s))return;fs.mkdirSync(d,{recursive:true});for(const f of fs.readdirSync(s)){const a=p.join(s,f),b=p.join(d,f);fs.statSync(a).isDirectory()?copyDir(a,b):fs.copyFileSync(a,b);}};copyDir('src/scripts','dist/scripts');copyDir('src/assets','dist/assets');\"",
