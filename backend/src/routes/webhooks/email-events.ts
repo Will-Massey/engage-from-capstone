@@ -50,7 +50,6 @@ function normaliseEvent(body: z.infer<typeof eventSchema>): {
   to?: string;
   timestamp?: string;
   proposalId?: string;
-  tenantId?: string;
 } {
   const eventType = (body.type || body.event || body.status || 'unknown').toLowerCase();
   return {
@@ -59,19 +58,24 @@ function normaliseEvent(body: z.infer<typeof eventSchema>): {
     to: body.to,
     timestamp: body.timestamp != null ? String(body.timestamp) : undefined,
     proposalId: body.proposalId,
-    tenantId: body.tenantId,
+    // tenantId is intentionally NOT surfaced — attribution derives from the proposal.
   };
 }
 
+/**
+ * Applies the event to the proposal's email history and returns the proposal's
+ * OWN tenantId (authoritative) — so callers attribute activity to the real
+ * owning tenant rather than a tenantId supplied in the webhook body.
+ */
 async function updateProposalEmailHistory(
   proposalId: string,
   patch: Record<string, unknown>
-): Promise<void> {
+): Promise<string | null> {
   const proposal = await prisma.proposal.findUnique({
     where: { id: proposalId },
-    select: { emailHistory: true },
+    select: { tenantId: true, emailHistory: true },
   });
-  if (!proposal) return;
+  if (!proposal) return null;
 
   let history: Array<Record<string, unknown>> = [];
   try {
@@ -101,6 +105,8 @@ async function updateProposalEmailHistory(
     where: { id: proposalId },
     data: { emailHistory: JSON.stringify(history) },
   });
+
+  return proposal.tenantId;
 }
 
 router.post(
@@ -118,27 +124,14 @@ router.post(
       const evt = normaliseEvent(parsed.data);
       logger.info('Email webhook event received', evt);
 
-      const tenantId = evt.tenantId || 'unknown';
-
-      try {
-        await prisma.activityLog.create({
-          data: {
-            tenantId,
-            action: 'EMAIL_WEBHOOK_EVENT',
-            entityType: 'EMAIL',
-            entityId: evt.proposalId,
-            proposalId: evt.proposalId,
-            description: `${evt.eventType} for ${evt.to || evt.messageId || 'unknown recipient'}`,
-            metadata: JSON.stringify(evt),
-          },
-        });
-      } catch (e) {
-        logger.warn('Failed to log email webhook activity', e);
-      }
+      // Attribute the event to the proposal's real owner — never the body's
+      // tenantId. If no proposal matches, we cannot safely attribute a tenant,
+      // so we skip the DB activity log (the event is still logged above).
+      let authoritativeTenantId: string | null = null;
 
       if (evt.proposalId) {
         try {
-          await updateProposalEmailHistory(evt.proposalId, {
+          authoritativeTenantId = await updateProposalEmailHistory(evt.proposalId, {
             messageId: evt.messageId,
             lastEvent: evt.eventType,
             lastEventAt: new Date().toISOString(),
@@ -150,6 +143,24 @@ router.post(
           });
         } catch (e) {
           logger.warn('Failed to update proposal emailHistory', e);
+        }
+      }
+
+      if (authoritativeTenantId) {
+        try {
+          await prisma.activityLog.create({
+            data: {
+              tenantId: authoritativeTenantId,
+              action: 'EMAIL_WEBHOOK_EVENT',
+              entityType: 'EMAIL',
+              entityId: evt.proposalId,
+              proposalId: evt.proposalId,
+              description: `${evt.eventType} for ${evt.to || evt.messageId || 'unknown recipient'}`,
+              metadata: JSON.stringify(evt),
+            },
+          });
+        } catch (e) {
+          logger.warn('Failed to log email webhook activity', e);
         }
       }
 

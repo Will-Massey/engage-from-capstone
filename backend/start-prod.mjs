@@ -49,14 +49,17 @@ try {
   console.log('ℹ️  Migration resolve: already resolved or not needed');
 }
 
-// Run database migrations
+// Run database migrations — fail closed. A failed migration must abort the
+// deploy (Render keeps the previous healthy instance running) rather than boot
+// a server against a drifted/half-migrated schema.
 console.log('🗄️  Running database migrations...');
 try {
   run(`${prismaCmd} migrate deploy`, { timeout: 60000 });
   console.log('✅ Migrations complete');
 } catch (error) {
-  console.warn('⚠️  Migration issue (continuing anyway):', error.message);
-  console.log('🚀 Starting server despite migration warnings...');
+  console.error('❌ Migration failed — aborting startup to avoid a drifted schema.');
+  console.error(error.message || error);
+  process.exit(1);
 }
 
 function runDeferred(cmd, label) {
