@@ -381,6 +381,35 @@ router.get(
  * POST /api/proposals/bulk-renewal
  * Batch-create DRAFT renewal proposals (does not send)
  */
+/**
+ * POST /api/proposals/terms-preview
+ * Preview the engagement terms for a set of services (used live by the proposal
+ * builder). Returns the resolved terms text for the caller's tenant.
+ */
+router.post(
+  '/terms-preview',
+  authenticate,
+  asyncHandler(async (req, res) => {
+    const { serviceIds } = z
+      .object({ serviceIds: z.array(z.string()).default([]) })
+      .parse(req.body);
+
+    const templates = serviceIds.length
+      ? await prisma.serviceTemplate.findMany({
+          where: { id: { in: serviceIds }, tenantId: req.tenantId },
+          select: { name: true, tags: true },
+        })
+      : [];
+
+    const terms = await resolveProposalTerms(
+      req.tenantId!,
+      templates.map((t) => ({ name: t.name, tags: t.tags }))
+    );
+
+    res.json({ success: true, data: { terms } });
+  })
+);
+
 router.post(
   '/bulk-renewal',
   authenticate,
