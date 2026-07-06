@@ -1,7 +1,6 @@
 import { prisma } from '../config/database.js';
 import { ApiError } from '../middleware/errorHandler.js';
-
-const TRIAL_DAYS = parseInt(process.env.STRIPE_TRIAL_DAYS || '14', 10);
+import { TRIAL_DAYS } from '../config/trial.js';
 
 const PAID_ACTIVE_STATUSES = new Set(['active']);
 
@@ -14,8 +13,7 @@ const BLOCKED_STATUSES = new Set([
   'canceled',
 ]);
 
-export const TRIAL_EXPIRED_MESSAGE =
-  'Your 14-day free trial has ended. To continue sending proposals to clients, please subscribe to a plan in Settings → Subscription.';
+export const TRIAL_EXPIRED_MESSAGE = `Your ${TRIAL_DAYS}-day free trial has ended. To continue sending proposals to clients, please subscribe to a plan in Settings → Subscription.`;
 
 export const SUBSCRIPTION_INACTIVE_MESSAGE =
   'Your subscription is not active. Please update your billing details in Settings → Subscription before sending proposals.';
@@ -26,6 +24,7 @@ export interface TenantBillingSnapshot {
   settings: string;
   subscriptionStatus: string | null;
   stripeSubscriptionId: string | null;
+  trialEndsAt?: Date | null;
 }
 
 export function parseTenantSettings(
@@ -45,8 +44,14 @@ export function parseTenantSettings(
 }
 
 export function getTrialEndsAt(
-  tenant: Pick<TenantBillingSnapshot, 'createdAt' | 'settings'>
+  tenant: Pick<TenantBillingSnapshot, 'createdAt' | 'settings' | 'trialEndsAt'>
 ): Date {
+  // Canonical source is the trialEndsAt column; fall back to legacy
+  // settings.trialEndsAt, then to createdAt + TRIAL_DAYS.
+  if (tenant.trialEndsAt) {
+    const col = new Date(tenant.trialEndsAt);
+    if (!Number.isNaN(col.getTime())) return col;
+  }
   const settings = parseTenantSettings(tenant.settings);
   if (typeof settings.trialEndsAt === 'string') {
     const parsed = new Date(settings.trialEndsAt);
@@ -75,6 +80,12 @@ export function evaluateTenantBilling(tenant: TenantBillingSnapshot): {
   const now = new Date();
   const msRemaining = trialEndsAt.getTime() - now.getTime();
   const daysRemaining = Math.max(0, Math.ceil(msRemaining / (1000 * 60 * 60 * 24)));
+
+  // An active Stripe subscription is authoritative — never block a paying
+  // customer on a stale/blank status (e.g. Stripe "trialing" with a card).
+  if (tenant.stripeSubscriptionId && !BLOCKED_STATUSES.has(status)) {
+    return { allowed: true, trialEndsAt, daysRemaining: 0 };
+  }
 
   if (PAID_ACTIVE_STATUSES.has(status)) {
     return { allowed: true, trialEndsAt, daysRemaining: 0 };
@@ -112,6 +123,7 @@ export async function assertTenantCanSendProposals(tenantId: string): Promise<vo
       settings: true,
       subscriptionStatus: true,
       stripeSubscriptionId: true,
+      trialEndsAt: true,
     },
   });
 

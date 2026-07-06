@@ -1,18 +1,15 @@
 /**
- * Engage Revolut billing — agency platform subscriptions + unified webhook.
+ * Engage platform billing config + Revolut proposal-payment webhook.
+ * Platform subscriptions are billed via Stripe (see routes/payments.ts); this
+ * module now only exposes billing config and the Revolut payout webhook.
  */
 import { Router } from 'express';
-import { z } from 'zod';
-import { authenticate, authorize } from '../middleware/auth.js';
+import { authenticate } from '../middleware/auth.js';
 import { asyncHandler, ApiError } from '../middleware/errorHandler.js';
 import { prisma } from '../config/database.js';
-import { createOrder, isRevolutConfigured, getRevolutMode } from '../lib/revolut/revolut-client.js';
+import { isRevolutConfigured } from '../lib/revolut/revolut-client.js';
 import { verifyRevolutWebhook } from '../lib/revolut/webhook.js';
-import {
-  PLATFORM_PLANS,
-  isRevolutBillingEnabled,
-  type SubscriptionTierKey,
-} from '../lib/revolut/plans.js';
+import { PLATFORM_PLANS, isRevolutBillingEnabled } from '../lib/revolut/plans.js';
 import { fulfilEngageOrder } from '../lib/revolut/fulfilment.js';
 import { SUBSCRIPTION_TIERS } from '../config/stripe.js';
 
@@ -22,13 +19,17 @@ router.get(
   '/config',
   authenticate,
   asyncHandler(async (_req, res) => {
+    // Platform subscriptions bill through Stripe (recurring, with dunning).
+    // Revolut is used only for proposal-payment payouts, never platform billing.
+    const stripeReady = Boolean(
+      process.env.STRIPE_SECRET_KEY && process.env.STRIPE_PUBLISHABLE_KEY
+    );
     res.json({
       success: true,
       data: {
-        provider: isRevolutConfigured() ? 'revolut' : 'stripe',
-        revolutPublicKey: process.env.REVOLUT_API_PUBLIC_KEY || null,
-        mode: getRevolutMode(),
-        billingEnabled: isRevolutBillingEnabled() || Boolean(process.env.STRIPE_SECRET_KEY),
+        provider: stripeReady ? 'stripe' : null,
+        mode: null,
+        billingEnabled: stripeReady,
         publishableKey: process.env.STRIPE_PUBLISHABLE_KEY || null,
         tiers: SUBSCRIPTION_TIERS,
         plans: Object.values(PLATFORM_PLANS),
@@ -50,72 +51,15 @@ router.get('/plans', (_req, res) => {
 router.post(
   '/checkout',
   authenticate,
-  authorize('ADMIN', 'PARTNER'),
-  asyncHandler(async (req, res) => {
-    if (!isRevolutConfigured()) {
-      throw new ApiError(
-        'REVOLUT_NOT_CONFIGURED',
-        'Revolut billing is not configured. Contact support.',
-        503
-      );
-    }
-
-    const schema = z.object({
-      tier: z.enum([
-        'STARTER',
-        'PROFESSIONAL',
-        'ENTERPRISE',
-        'STARTER_ANNUAL',
-        'PROFESSIONAL_ANNUAL',
-        'ENTERPRISE_ANNUAL',
-      ]),
-    });
-    const { tier } = schema.parse(req.body);
-    const plan = PLATFORM_PLANS[tier as SubscriptionTierKey];
-    const tenantId = req.tenantId!;
-
-    const tenant = await prisma.tenant.findUnique({ where: { id: tenantId } });
-    if (!tenant) {
-      throw new ApiError('TENANT_NOT_FOUND', 'Tenant not found', 404);
-    }
-
-    const frontendUrl = (process.env.FRONTEND_URL || 'http://localhost:5173').replace(/\/$/, '');
-    const extRef = `engage:platform:${tenantId}:${tier}`;
-
-    const order = await createOrder({
-      amount: plan.amount,
-      currency: plan.currency,
-      description: plan.description,
-      customer: {
-        email: req.user!.email,
-        full_name: `${req.user!.firstName} ${req.user!.lastName}`.trim(),
-      },
-      merchantOrderExtRef: extRef,
-      redirectUrl: `${frontendUrl}/subscription?billing=success`,
-      metadata: {
-        product: 'engage',
-        type: 'platform_subscription',
-        tenantId,
-        tier,
-      },
-    });
-
-    await prisma.tenant.update({
-      where: { id: tenantId },
-      data: { revolutOrderId: order.id },
-    });
-
-    res.json({
-      success: true,
-      data: {
-        provider: 'revolut',
-        token: order.token,
-        orderId: order.id,
-        mode: getRevolutMode(),
-        tier,
-        amount: plan.displayPrice,
-      },
-    });
+  asyncHandler(async (_req, _res) => {
+    // Platform billing moved to Stripe (recurring). The Revolut one-time order
+    // never renewed, so it is no longer offered for platform subscriptions.
+    // Proposal-payment payouts still run through Revolut via /webhook.
+    throw new ApiError(
+      'PLATFORM_BILLING_MOVED',
+      'Platform subscriptions are billed via Stripe. Please subscribe with a card in Settings → Subscription.',
+      410
+    );
   })
 );
 

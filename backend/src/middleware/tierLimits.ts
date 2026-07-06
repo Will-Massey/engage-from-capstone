@@ -11,7 +11,11 @@ import { ApiError, asyncHandler } from './errorHandler.js';
 export type SubscriptionTierKey = keyof typeof SUBSCRIPTION_TIERS;
 export type TierLimitResource = 'users' | 'clients' | 'proposals';
 
-const PAID_STATUSES = new Set(['active', 'ACTIVE', 'trialing', 'TRIALING']);
+// Only genuinely-paid statuses. 'trialing' is a TRIAL state, not paid — it must
+// go through the trial-expiry check, otherwise a trialing tenant would be
+// treated as a permanent paid subscriber and never expire.
+const PAID_STATUSES = new Set(['active', 'ACTIVE']);
+const TRIAL_STATUSES = new Set(['trial', 'trialing']);
 
 function resolveTierKey(tier: string | null | undefined): SubscriptionTierKey {
   const normalised = (tier || 'STARTER').toUpperCase().replace(/_ANNUAL$/, '');
@@ -46,7 +50,8 @@ export function tenantTrialIsActive(tenant: {
   subscriptionStatus: string | null;
   trialEndsAt?: Date | null;
 }): boolean {
-  if (tenant.subscriptionStatus !== 'trial') return false;
+  if (!tenant.subscriptionStatus || !TRIAL_STATUSES.has(tenant.subscriptionStatus.toLowerCase()))
+    return false;
   if (!tenant.trialEndsAt) return true;
   return tenant.trialEndsAt > new Date();
 }
@@ -82,7 +87,7 @@ export const requireActiveSubscriptionOrTrial = asyncHandler(
       return next();
     }
 
-    if (tenant.subscriptionStatus === 'trial') {
+    if (tenant.subscriptionStatus && TRIAL_STATUSES.has(tenant.subscriptionStatus.toLowerCase())) {
       throw new ApiError(
         'TRIAL_EXPIRED',
         `Your ${TRIAL_DAYS}-day trial has ended. Please subscribe to continue sending proposals.`,
