@@ -39,6 +39,16 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      # backend/frontend typecheck resolve @uk-proposal-platform/shared types
+      # from shared/dist and @prisma/client from the generated client — build
+      # them explicitly (a postinstall tsc used to do this, but running tsc
+      # mid-install breaks Render's production npm ci).
+      - name: Build shared
+        run: npm run build:shared
+
+      - name: Generate Prisma Client
+        run: cd backend && npx prisma generate
+
       - name: Lint
         run: npm run lint
 
@@ -78,6 +88,9 @@ jobs:
 
       - name: Install dependencies
         run: npm ci
+
+      - name: Build shared
+        run: npm run build:shared
 
       - name: Generate Prisma Client
         run: cd backend && npx prisma generate
