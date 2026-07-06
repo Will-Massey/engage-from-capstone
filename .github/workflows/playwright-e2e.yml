@@ -68,7 +68,8 @@ jobs:
         env:
           DATABASE_URL: postgresql://test:test@localhost:5432/engage_test
           REDIS_URL: redis://localhost:6379
-          JWT_SECRET: test-jwt-secret-for-ci-only
+          # Must be >=32 chars — the env schema enforces this since the P0 hardening
+          JWT_SECRET: test-jwt-secret-for-ci-only-0123456789abcdef
           FRONTEND_URL: http://localhost:5173
           NODE_ENV: development
 

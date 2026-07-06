@@ -725,7 +725,8 @@ async function main() {
             name: svc.name,
             quantity: svc.qty,
             unitPrice: svc.price,
-            total: svc.qty * svc.price,
+            displayPrice: svc.price,
+            lineTotal: svc.qty * svc.price,
             frequency: 'MONTHLY',
           },
         })
