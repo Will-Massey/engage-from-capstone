@@ -20,7 +20,12 @@ let prefixCounter = 0;
 const REDIS_URL = process.env.REDIS_URL;
 if (REDIS_URL) {
   try {
-    client = createClient({ url: REDIS_URL });
+    // disableOfflineQueue: when Redis is down, commands must REJECT immediately
+    // rather than queue awaiting a reconnect — a queued increment left every
+    // rate-limited request hanging forever (prod outage 2026-07-06). Combined
+    // with passOnStoreError on the limiters, a dead Redis degrades to
+    // fail-open rate limiting instead of taking the API down.
+    client = createClient({ url: REDIS_URL, disableOfflineQueue: true });
     client.on('error', (err) => logger.error('rate-limit Redis error:', err));
     client.connect().catch((err) => logger.error('rate-limit Redis connect failed:', err));
     logger.info('Rate limiting backed by Redis (cluster-wide).');
