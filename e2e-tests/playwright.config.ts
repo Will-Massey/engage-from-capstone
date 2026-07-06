@@ -7,6 +7,18 @@ import { defineConfig, devices } from '@playwright/test';
 
 export default defineConfig({
   testDir: './specs',
+  // These specs need the authenticated storageState + global login from
+  // playwright.build.config.ts — running them here means a 401 cascade.
+  testIgnore: [
+    'build-smoke.spec.ts',
+    'ai-native.spec.ts',
+    'templates-smoke.spec.ts',
+    'automation-smoke.spec.ts',
+    'market-leader-smoke.spec.ts',
+    'uat-smoke.spec.ts',
+    'payout-smoke.spec.ts',
+    'layout-smoke.spec.ts',
+  ],
   fullyParallel: true,
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 2 : 1,
