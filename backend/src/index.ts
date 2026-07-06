@@ -96,9 +96,10 @@ app.use(
     contentSecurityPolicy: {
       directives: {
         defaultSrc: ["'self'"],
+        // No 'unsafe-inline' — the API serves no inline scripts, so this keeps
+        // CSP's XSS protection intact for any HTML the backend renders.
         scriptSrc: [
           "'self'",
-          "'unsafe-inline'",
           'https://sandbox-checkout.revolut.com',
           'https://checkout.revolut.com',
         ],

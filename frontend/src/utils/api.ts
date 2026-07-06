@@ -1062,14 +1062,17 @@ export const apiClient = {
         const line = part.trim();
         if (!line.startsWith('data:')) continue;
         const jsonStr = line.slice(5).trim();
+        let payload;
         try {
-          const payload = JSON.parse(jsonStr);
-          if (payload.chunk) onChunk(payload.chunk);
-          if (payload.done) return;
-          if (payload.error) throw new Error(payload.error);
+          payload = JSON.parse(jsonStr);
         } catch {
-          /* ignore malformed SSE chunks */
+          continue; // ignore malformed SSE chunks
         }
+        if (payload.chunk) onChunk(payload.chunk);
+        if (payload.done) return;
+        // A server-signalled error must surface to the caller, not be swallowed
+        // alongside parse errors as it was before.
+        if (payload.error) throw new Error(payload.error);
       }
     }
   },
@@ -1103,14 +1106,17 @@ export const apiClient = {
         const line = part.trim();
         if (!line.startsWith('data:')) continue;
         const jsonStr = line.slice(5).trim();
+        let payload;
         try {
-          const payload = JSON.parse(jsonStr);
-          if (payload.chunk) onChunk(payload.chunk);
-          if (payload.done) return;
-          if (payload.error) throw new Error(payload.error);
+          payload = JSON.parse(jsonStr);
         } catch {
-          /* ignore malformed SSE chunks */
+          continue; // ignore malformed SSE chunks
         }
+        if (payload.chunk) onChunk(payload.chunk);
+        if (payload.done) return;
+        // A server-signalled error must surface to the caller, not be swallowed
+        // alongside parse errors as it was before.
+        if (payload.error) throw new Error(payload.error);
       }
     }
   },
