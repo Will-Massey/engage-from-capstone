@@ -7,6 +7,7 @@ import { clearLoginAttempts } from '../utils/loginLockout.js';
 import { provisionTenantEngageLibrary } from '../services/tenantLibraryProvisionService.js';
 import { secureCompare } from '../utils/secureCompare.js';
 import { logOpsAccess } from '../utils/opsAudit.js';
+import { validatePasswordStrength } from '../utils/passwordPolicy.js';
 
 const router = Router();
 const prisma = new PrismaClient();
@@ -15,6 +16,19 @@ const setupEnabled =
   process.env.NODE_ENV !== 'production' || process.env.ENABLE_SETUP_ENDPOINT === 'true';
 
 const SETUP_SECRET = process.env.SETUP_SECRET_KEY;
+
+/**
+ * Resolve the demo admin password. The well-known 'DemoPass123!' is only used
+ * outside production; in production a strong SETUP_ADMIN_PASSWORD must be
+ * provided, so a publicly-documented credential is never created live.
+ */
+function resolveSetupAdminPassword(): string | null {
+  if (process.env.NODE_ENV === 'production') {
+    const pwd = process.env.SETUP_ADMIN_PASSWORD;
+    return pwd && validatePasswordStrength(pwd).isValid ? pwd : null;
+  }
+  return process.env.SETUP_ADMIN_PASSWORD || 'DemoPass123!';
+}
 
 function checkSetupKey(req: any, res: any, next: any) {
   if (process.env.NODE_ENV === 'production' && !SETUP_SECRET) {
@@ -76,10 +90,19 @@ router.get(
     }
 
     // Create demo admin user
+    const adminPassword = resolveSetupAdminPassword();
+    if (!adminPassword) {
+      res.status(400).json({
+        success: false,
+        error:
+          'Set SETUP_ADMIN_PASSWORD (min 12 chars with complexity) to run setup in production.',
+      });
+      return;
+    }
     const user = await prisma.user.create({
       data: {
         email: 'admin@demo.practice',
-        passwordHash: await bcrypt.hash('DemoPass123!', 12),
+        passwordHash: await bcrypt.hash(adminPassword, 12),
         firstName: 'Admin',
         lastName: 'User',
         role: 'ADMIN',
