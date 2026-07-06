@@ -9,11 +9,11 @@ Postgres. Deploys are triggered **only** by the `deploy` job in
 
 ## 1. Decide what actually broke
 
-| Symptom | Likely rollback |
-|---|---|
-| Bad code/UI behaviour, 500s after a deploy | App rollback (§2) — fastest, no data risk |
+| Symptom                                     | Likely rollback                                       |
+| ------------------------------------------- | ----------------------------------------------------- |
+| Bad code/UI behaviour, 500s after a deploy  | App rollback (§2) — fastest, no data risk             |
 | Migration broke the schema / data corrupted | DB restore (§3) + app rollback to the matching commit |
-| Only the frontend is wrong | Rollback just `engage-frontend-0g6u` (§2) |
+| Only the frontend is wrong                  | Rollback just `engage-frontend-0g6u` (§2)             |
 
 App rollback is safe by default. DB restore **loses writes made after the
 restore point** — treat it as the last resort and check §3 first.
@@ -84,7 +84,7 @@ Then log in at https://capstonesoftware.co.uk/engage/login and open a proposal
 
 ## 5. Required secrets (GitHub → repo → Settings → Secrets)
 
-| Secret | Used for |
-|---|---|
-| `RENDER_API_KEY`, `RENDER_BACKEND_SERVICE_ID`, `RENDER_FRONTEND_SERVICE_ID` | CI-gated deploys + API rollback |
-| `NEON_API_KEY`, `NEON_PROJECT_ID` | Pre-deploy backup branch (deploy job skips backup with a warning until these are set) |
+| Secret                                                                      | Used for                                                                              |
+| --------------------------------------------------------------------------- | ------------------------------------------------------------------------------------- |
+| `RENDER_API_KEY`, `RENDER_BACKEND_SERVICE_ID`, `RENDER_FRONTEND_SERVICE_ID` | CI-gated deploys + API rollback                                                       |
+| `NEON_API_KEY`, `NEON_PROJECT_ID`                                           | Pre-deploy backup branch (deploy job skips backup with a warning until these are set) |
