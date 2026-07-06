@@ -122,7 +122,8 @@ router.get(
       where.OR = [
         { name: { contains: search as string, mode: 'insensitive' } },
         { description: { contains: search as string, mode: 'insensitive' } },
-        { tags: { has: search as string } },
+        // tags is a comma-separated String column, not a list — `has` throws
+        { tags: { contains: search as string, mode: 'insensitive' } },
       ];
     }
 

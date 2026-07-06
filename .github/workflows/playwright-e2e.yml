@@ -79,6 +79,8 @@ jobs:
           JWT_SECRET: test-jwt-secret-for-ci-only-0123456789abcdef
           FRONTEND_URL: http://localhost:5173
           NODE_ENV: development
+          # No SMTP in CI — log emails instead of failing email-gated flows
+          EMAIL_DEV_LOG: 'true'
 
       - name: Start frontend
         # VITE_* vars are baked in at build time above; nothing to set here.

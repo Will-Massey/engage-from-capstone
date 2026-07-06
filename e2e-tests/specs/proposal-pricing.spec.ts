@@ -1,14 +1,37 @@
 import { test, expect } from '@playwright/test';
-import { loginAsPartner, createTestClient, cleanupTestData } from '../fixtures/helpers';
+import {
+  loginAsPartner,
+  createTestClient,
+  cleanupTestData,
+  ensureTestService,
+} from '../fixtures/helpers';
 
 /**
  * Proposal Pricing E2E Tests
  * Validates pricing frequency handling and calculations with the proposal builder (Create Proposal).
+ *
+ * The prices below are load-bearing: the assertions check inc-VAT amounts
+ * (£850 annual → £1,020; £85 monthly → £102; £120 quarterly → £48/month).
  */
 
 test.describe('Proposal Pricing Frequency', () => {
   test.beforeEach(async ({ page }) => {
     await loginAsPartner(page);
+    await ensureTestService(page, {
+      name: 'Annual Accounts Preparation & Filing',
+      basePrice: 850,
+      defaultFrequency: 'ANNUALLY',
+    });
+    await ensureTestService(page, {
+      name: 'Comprehensive Bookkeeping',
+      basePrice: 85,
+      defaultFrequency: 'MONTHLY',
+    });
+    await ensureTestService(page, {
+      name: 'MTD ITSA 2026/27 Transition & Quarterly Filing',
+      basePrice: 120,
+      defaultFrequency: 'QUARTERLY',
+    });
   });
 
   test.afterEach(async () => {
@@ -29,6 +52,7 @@ test.describe('Proposal Pricing Frequency', () => {
     await page.waitForSelector('[data-testid="client-card"]');
     const clientCard = page.locator('[data-testid="client-card"]').filter({ hasText: client.name });
     await clientCard.click();
+    await page.locator('[data-testid="build-mode-manual"]').click();
     await page.locator('[data-testid="client-continue-button"]').click();
 
     // Step 2: Add an annual service
@@ -42,16 +66,17 @@ test.describe('Proposal Pricing Frequency', () => {
       .locator('[data-testid="selected-service-row"]')
       .filter({ hasText: 'Annual Accounts Preparation & Filing' });
     await expect(selectedRow).toBeVisible();
-    await expect(selectedRow).toContainText('Annual');
+    await expect(selectedRow).toContainText(/year/);
     await expect(selectedRow).toContainText(/£1,020/);
 
     // Go to review
     await page.locator('[data-testid="services-continue-button"]').click();
 
-    await expect(page.getByText('Annual services')).toBeVisible();
-    await expect(page.getByText('Monthly cost')).toBeVisible();
+    // Annual band shows the full-year figure; the cash-flow footer averages it
+    await expect(page.getByText('/year').first()).toBeVisible();
+    await expect(page.getByText('Typical monthly cash flow')).toBeVisible();
     const totalElement = page
-      .getByText('Monthly cost')
+      .getByText('Typical monthly cash flow')
       .locator('..')
       .locator('..')
       .locator('span.text-xl');
@@ -68,6 +93,7 @@ test.describe('Proposal Pricing Frequency', () => {
 
     await page.goto('/proposals/new');
     await page.locator('[data-testid="client-card"]').filter({ hasText: client.name }).click();
+    await page.locator('[data-testid="build-mode-manual"]').click();
     await page.locator('[data-testid="client-continue-button"]').click();
 
     // Add monthly service
@@ -76,26 +102,16 @@ test.describe('Proposal Pricing Frequency', () => {
       .filter({ hasText: 'Comprehensive Bookkeeping' })
       .click();
 
-    // Edit selected service
+    // Switch the row's billing period to annual — the price converts to the
+    // new cadence automatically (£85/month → £1,020/year ex VAT).
     const selectedRow = page
       .locator('[data-testid="selected-service-row"]')
       .filter({ hasText: 'Comprehensive Bookkeeping' });
-    await selectedRow.hover();
-    await selectedRow.locator('[data-testid="edit-service-button"]').click();
+    await selectedRow.locator('[data-testid="cadence-annually"]').click();
 
-    // Change to annual billing and update price to annual equivalent
-    await page.fill('[data-testid="edit-price-input"]', '1020');
-    await page.selectOption('[data-testid="edit-frequency-select"]', 'ANNUALLY');
-
-    // Save edit
-    await page.locator('[data-testid="save-edit-button"]').click();
-
-    // Full annual charge inc VAT: £1020 × 1.2 = £1224
-    const updatedRow = page
-      .locator('[data-testid="selected-service-row"]')
-      .filter({ hasText: 'Comprehensive Bookkeeping' });
-    await expect(updatedRow).toContainText('Annual');
-    await expect(updatedRow).toContainText(/£1,224/);
+    // Full annual charge inc VAT: £1,020 × 1.2 = £1,224
+    await expect(selectedRow).toContainText(/year/);
+    await expect(selectedRow).toContainText(/£1,224/);
   });
 
   test('proposal total includes all services correctly', async ({ page }) => {
@@ -103,6 +119,7 @@ test.describe('Proposal Pricing Frequency', () => {
 
     await page.goto('/proposals/new');
     await page.locator('[data-testid="client-card"]').filter({ hasText: client.name }).click();
+    await page.locator('[data-testid="build-mode-manual"]').click();
     await page.locator('[data-testid="client-continue-button"]').click();
 
     // Add multiple services with different frequencies
@@ -124,7 +141,7 @@ test.describe('Proposal Pricing Frequency', () => {
 
     // Monthly cost = average monthly equivalent: annual/12 + monthly + quarterly/3 (all inc VAT)
     const totalElement = page
-      .getByText('Monthly cost')
+      .getByText('Typical monthly cash flow')
       .locator('..')
       .locator('..')
       .locator('span.text-xl');
@@ -139,6 +156,16 @@ test.describe('Proposal Pricing Frequency', () => {
 test.describe('VAT Calculation', () => {
   test.beforeEach(async ({ page }) => {
     await loginAsPartner(page);
+    await ensureTestService(page, {
+      name: 'Comprehensive Bookkeeping',
+      basePrice: 85,
+      defaultFrequency: 'MONTHLY',
+    });
+    await ensureTestService(page, {
+      name: 'Confirmation Statement (CS01)',
+      basePrice: 75,
+      defaultFrequency: 'ANNUALLY',
+    });
   });
 
   test('line-level VAT can be set per service', async ({ page }) => {
@@ -146,6 +173,7 @@ test.describe('VAT Calculation', () => {
 
     await page.goto('/proposals/new');
     await page.locator('[data-testid="client-card"]').filter({ hasText: client.name }).click();
+    await page.locator('[data-testid="build-mode-manual"]').click();
     await page.locator('[data-testid="client-continue-button"]').click();
 
     // Add service
@@ -167,8 +195,8 @@ test.describe('VAT Calculation', () => {
     // Save edit
     await page.locator('[data-testid="save-edit-button"]').click();
 
-    // Verify VAT info updated
-    await expect(page.locator('text=(5% VAT)')).toBeVisible();
+    // Verify VAT info updated (row shows "· VAT 5%" for non-default rates)
+    await expect(selectedRow).toContainText('VAT 5%');
   });
 
   test('mixed VAT rates show in selected services', async ({ page }) => {
@@ -176,6 +204,7 @@ test.describe('VAT Calculation', () => {
 
     await page.goto('/proposals/new');
     await page.locator('[data-testid="client-card"]').filter({ hasText: client.name }).click();
+    await page.locator('[data-testid="build-mode-manual"]').click();
     await page.locator('[data-testid="client-continue-button"]').click();
 
     // Add first service
@@ -227,6 +256,7 @@ test.describe('VAT Calculation', () => {
 
     await page.goto('/proposals/new');
     await page.locator('[data-testid="client-card"]').filter({ hasText: client.name }).click();
+    await page.locator('[data-testid="build-mode-manual"]').click();
     await page.locator('[data-testid="client-continue-button"]').click();
 
     // Add service with known price (£85 bookkeeping)
@@ -258,6 +288,11 @@ test.describe('VAT Calculation', () => {
 test.describe('Pricing parity', () => {
   test.beforeEach(async ({ page }) => {
     await loginAsPartner(page);
+    await ensureTestService(page, {
+      name: 'Comprehensive Bookkeeping',
+      basePrice: 85,
+      defaultFrequency: 'MONTHLY',
+    });
   });
 
   test('create → save → detail view shows same monthly cost band', async ({ page }) => {
@@ -268,6 +303,7 @@ test.describe('Pricing parity', () => {
 
     await page.goto('/proposals/new');
     await page.locator('[data-testid="client-card"]').filter({ hasText: client.name }).click();
+    await page.locator('[data-testid="build-mode-manual"]').click();
     await page.locator('[data-testid="client-continue-button"]').click();
     await page
       .locator('[data-testid="available-service-row"]')
@@ -276,7 +312,7 @@ test.describe('Pricing parity', () => {
     await page.locator('[data-testid="services-continue-button"]').click();
 
     const reviewTotal = page
-      .getByText('Monthly cost')
+      .getByText('Typical monthly cash flow')
       .locator('..')
       .locator('..')
       .locator('span.text-xl');
@@ -286,10 +322,16 @@ test.describe('Pricing parity', () => {
 
     await page.fill('[data-testid="proposal-title-input"]', 'Pricing Parity Test');
     await page.locator('[data-testid="create-proposal-button"]').click();
+
+    // Dismiss the "save as template?" prompt — the redirect fires on close
+    await page
+      .getByRole('button', { name: 'Not now' })
+      .click({ timeout: 15000 })
+      .catch(() => {});
     await expect(page).toHaveURL(/\/proposals\/.+/);
 
     const detailMonthly = page
-      .getByText('Monthly cost')
+      .getByText('Typical monthly cash flow')
       .locator('..')
       .locator('..')
       .locator('span.text-xl');
@@ -310,6 +352,11 @@ test.describe('Pricing parity', () => {
 test.describe('CSRF Handling', () => {
   test.beforeEach(async ({ page }) => {
     await loginAsPartner(page);
+    await ensureTestService(page, {
+      name: 'Comprehensive Bookkeeping',
+      basePrice: 85,
+      defaultFrequency: 'MONTHLY',
+    });
   });
 
   test('proposal creation works with valid CSRF token', async ({ page }) => {
@@ -317,6 +364,7 @@ test.describe('CSRF Handling', () => {
 
     await page.goto('/proposals/new');
     await page.locator('[data-testid="client-card"]').filter({ hasText: client.name }).click();
+    await page.locator('[data-testid="build-mode-manual"]').click();
     await page.locator('[data-testid="client-continue-button"]').click();
     await page
       .locator('[data-testid="available-service-row"]')
@@ -330,6 +378,12 @@ test.describe('CSRF Handling', () => {
     // Submit should succeed
     await page.locator('[data-testid="create-proposal-button"]').click();
 
+    // Dismiss the "save as template?" prompt — the redirect fires on close
+    await page
+      .getByRole('button', { name: 'Not now' })
+      .click({ timeout: 15000 })
+      .catch(() => {});
+
     // Verify success by navigation to proposal detail
     await expect(page).toHaveURL(/\/proposals\/.+/);
   });
@@ -342,6 +396,7 @@ test.describe('CSRF Handling', () => {
 
     await page.goto('/proposals/new');
     await page.locator('[data-testid="client-card"]').filter({ hasText: client.name }).click();
+    await page.locator('[data-testid="build-mode-manual"]').click();
     await page.locator('[data-testid="client-continue-button"]').click();
     await page
       .locator('[data-testid="available-service-row"]')
@@ -353,6 +408,12 @@ test.describe('CSRF Handling', () => {
 
     // Should auto-retry and succeed
     await page.locator('[data-testid="create-proposal-button"]').click();
+
+    // Dismiss the "save as template?" prompt — the redirect fires on close
+    await page
+      .getByRole('button', { name: 'Not now' })
+      .click({ timeout: 15000 })
+      .catch(() => {});
 
     // Verify success by navigation to proposal detail
     await expect(page).toHaveURL(/\/proposals\/.+/);

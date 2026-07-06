@@ -256,6 +256,11 @@ export async function tenantMailerSend(
       )
     );
     provider = 'SENDGRID';
+  } else if (process.env.EMAIL_DEV_LOG === 'true') {
+    // Explicit opt-in for local/e2e stacks with no transport: log instead of
+    // sending so email-gated flows (send → sign) stay testable end-to-end.
+    logger.info(`[EMAIL_DEV_LOG] Would send "${message.subject}" to ${toStr}`);
+    result = { success: true, messageId: `dev-log-${log.id}` };
   } else {
     result = {
       success: false,

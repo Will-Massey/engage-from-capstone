@@ -32,6 +32,15 @@ export async function loginAsPartner(page: Page): Promise<void> {
     page.waitForURL(/\/$|\/dashboard|\/proposals/, { timeout: 15000, waitUntil: 'networkidle' }),
     submitButton.click(),
   ]);
+
+  // Login fires window.location.assign('/') and can navigate again in quick
+  // succession — waitForURL resolves on the first hit, so anything the test
+  // does next races a document swap ("Execution context was destroyed"). The
+  // main nav only renders once the final document booted and /auth/me passed.
+  // Two "Main" navs exist (hidden mobile drawer first, visible desktop second),
+  // so wait for whichever is actually visible.
+  await page.locator('nav[aria-label="Main"]:visible').first().waitFor({ timeout: 15000 });
+  await page.waitForLoadState('networkidle');
 }
 
 /**
@@ -104,6 +113,48 @@ export async function createTestService(
 }
 
 /**
+ * Ensure a service template with this exact name exists (idempotent).
+ * The seeded catalogue drifts over time, so specs create exactly the
+ * services they assert on instead of assuming seed names/prices.
+ */
+export async function ensureTestService(
+  page: Page,
+  config: {
+    name: string;
+    basePrice: number;
+    defaultFrequency?: 'MONTHLY' | 'QUARTERLY' | 'ANNUALLY' | 'ONE_TIME';
+    category?: string;
+  }
+): Promise<void> {
+  const list = await page.request.get(`${API_BASE}/services`, {
+    params: { search: config.name },
+  });
+  if (!list.ok()) {
+    // Failing open here would create a duplicate on every test — fail loud.
+    throw new Error(`ensureTestService list failed (${list.status()}): ${await list.text()}`);
+  }
+  const body = (await list.json()) as { data?: Array<{ name: string }> };
+  if (body.data?.some((s) => s.name === config.name)) return;
+
+  const csrf = await getCSRFToken(page);
+  const res = await page.request.post(`${API_BASE}/services`, {
+    headers: csrf ? { 'X-CSRF-Token': csrf } : {},
+    data: {
+      category: config.category || 'COMPLIANCE',
+      name: config.name,
+      description: `${config.name} (e2e fixture)`,
+      basePrice: config.basePrice,
+      defaultFrequency: config.defaultFrequency || 'MONTHLY',
+    },
+  });
+  if (!res.ok()) {
+    throw new Error(
+      `ensureTestService(${config.name}) failed (${res.status()}): ${await res.text()}`
+    );
+  }
+}
+
+/**
  * Create a proposal with services using the proposal builder (Create Proposal flow).
  */
 export async function createTestProposal(
@@ -123,6 +174,9 @@ export async function createTestProposal(
     .filter({ hasText: config.clientName });
   await expect(clientCard).toBeVisible();
   await clientCard.click();
+  // The builder asks how to build (manual / template / Clara) after picking a
+  // client; the continue button only renders once a mode is chosen.
+  await page.locator('[data-testid="build-mode-manual"]').click();
   await page.locator('[data-testid="client-continue-button"]').click();
 
   // Step 2: Add services
@@ -142,6 +196,13 @@ export async function createTestProposal(
   await page.fill('[data-testid="proposal-title-input"]', title);
 
   await page.locator('[data-testid="create-proposal-button"]').click();
+
+  // Successful creation opens a "save as template?" prompt; the redirect to
+  // the new proposal only fires when it's dismissed.
+  await page
+    .getByRole('button', { name: 'Not now' })
+    .click({ timeout: 15000 })
+    .catch(() => {});
 
   // Wait for navigation to proposal detail page as success indicator
   // Must match /proposals/<uuid> but not /proposals/new or /proposals/new/edit
