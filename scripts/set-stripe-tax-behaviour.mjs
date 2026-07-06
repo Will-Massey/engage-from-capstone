@@ -52,6 +52,8 @@ async function stripe(path, method = 'GET', body) {
 console.log(`Mode: ${LIVE ? 'LIVE' : 'test'} · ${APPLY ? 'APPLY (will create prices)' : 'audit only'}\n`);
 
 const fixes = [];
+let errors = 0;
+let checked = 0;
 for (const envVar of ENV_VARS) {
   const id = process.env[envVar];
   if (!id) {
@@ -63,18 +65,28 @@ for (const envVar of ENV_VARS) {
     price = await stripe(`prices/${id}`);
   } catch (e) {
     console.log(`✗  ${envVar}=${id}: ${e.message}`);
+    errors++;
     continue;
   }
   const amount = price.unit_amount != null ? `£${(price.unit_amount / 100).toFixed(2)}` : '(n/a)';
   const interval = price.recurring?.interval || 'one-off';
   const tb = price.tax_behavior; // 'exclusive' | 'inclusive' | 'unspecified'
   const ok = tb === 'exclusive';
+  checked++;
   console.log(`${ok ? '✓' : '✗'}  ${envVar}=${id}  ${amount}/${interval}  tax_behavior=${tb}`);
   if (!ok) fixes.push({ envVar, price });
 }
 
+if (errors > 0) {
+  console.error(`\n✗ ${errors} price(s) could not be checked (see above) — nothing was verified. Fix the key/ID/mode and re-run.`);
+  process.exit(1);
+}
+if (checked === 0) {
+  console.error('\n✗ No price IDs were set — nothing checked.');
+  process.exit(1);
+}
 if (fixes.length === 0) {
-  console.log('\n✓ All set prices are tax_behavior=exclusive. Nothing to fix.');
+  console.log(`\n✓ All ${checked} checked price(s) are tax_behavior=exclusive. Nothing to fix.`);
   process.exit(0);
 }
 
