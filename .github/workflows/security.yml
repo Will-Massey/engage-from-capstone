@@ -43,11 +43,12 @@ jobs:
         env:
           SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
         with:
-          args: --severity-threshold=high
+          args: --severity-threshold=high --sarif-file-output=snyk.sarif
 
+      # Skips cleanly when Snyk produced no SARIF (e.g. SNYK_TOKEN not set)
       - name: Upload Snyk results to GitHub Security
         uses: github/codeql-action/upload-sarif@v3
-        if: always()
+        if: always() && hashFiles('snyk.sarif') != ''
         with:
           sarif_file: snyk.sarif
 
@@ -168,17 +169,19 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
+      # No terraform in this repo — auto-detect IaC (Dockerfiles, workflows,
+      # docker-compose). soft_fail reports findings without failing the build.
       - name: Run Checkov
         uses: bridgecrewio/checkov-action@master
         with:
-          directory: ./terraform
-          framework: terraform
+          directory: .
           output_format: sarif
           output_file_path: checkov-results.sarif
+          soft_fail: true
 
       - name: Upload Checkov scan results
         uses: github/codeql-action/upload-sarif@v3
-        if: always()
+        if: always() && hashFiles('checkov-results.sarif') != ''
         with:
           sarif_file: checkov-results.sarif
           category: checkov

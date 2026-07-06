@@ -25,6 +25,10 @@ COPY shared/package.json ./shared/
 RUN --mount=type=cache,target=/root/.npm \
     npm ci
 
+# npm workspaces hoists to the root; ensure per-workspace dirs exist so the
+# COPY --from=deps lines below never fail on a missing path
+RUN mkdir -p backend/node_modules shared/node_modules
+
 # ---------------------------------------------------------------------------
 # Stage 2: Builder with Prisma cache
 # ---------------------------------------------------------------------------
@@ -32,6 +36,9 @@ FROM node:20-alpine AS builder
 WORKDIR /app
 
 RUN apk add --no-cache libc6-compat openssl
+
+# tsc needs >1GB heap; don't let Node cap it at half the container's memory
+ENV NODE_OPTIONS=--max-old-space-size=4096
 
 # Copy dependencies from deps stage
 COPY --from=deps /app/node_modules ./node_modules
@@ -41,9 +48,9 @@ COPY --from=deps /app/shared/node_modules ./shared/node_modules
 # Copy source
 COPY . .
 
-# Generate Prisma with cache mount
-RUN --mount=type=cache,target=/app/backend/node_modules/.prisma \
-    cd backend && npx prisma generate
+# Generate Prisma client (emits into the hoisted root node_modules/.prisma;
+# no cache mount — the generated client must persist in the image layer)
+RUN cd backend && npx prisma generate
 
 # Build (uses existing root scripts)
 RUN npm run build:shared && npm run build:backend
@@ -77,11 +84,12 @@ COPY --from=builder --chown=engage:nodejs /app/shared/dist ./shared/dist
 COPY --from=builder --chown=engage:nodejs /app/backend/prisma ./backend/prisma
 COPY --from=builder --chown=engage:nodejs /app/backend/start-prod.mjs ./backend/start-prod.mjs
 COPY --from=builder --chown=engage:nodejs /app/backend/package.json ./backend/
+COPY --from=builder --chown=engage:nodejs /app/shared/package.json ./shared/
 COPY --from=builder --chown=engage:nodejs /app/package.json ./
 
-# Copy Prisma generated client
-COPY --from=builder --chown=engage:nodejs /app/backend/node_modules/.prisma ./backend/node_modules/.prisma
-COPY --from=builder --chown=engage:nodejs /app/backend/node_modules/@prisma ./backend/node_modules/@prisma
+# Copy Prisma generated client (hoisted to the root node_modules by workspaces)
+COPY --from=builder --chown=engage:nodejs /app/node_modules/.prisma ./node_modules/.prisma
+COPY --from=builder --chown=engage:nodejs /app/node_modules/@prisma ./node_modules/@prisma
 
 USER engage
 

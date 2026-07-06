@@ -16,11 +16,18 @@ COPY shared/package.json ./shared/
 RUN --mount=type=cache,target=/root/.npm \
     npm ci
 
+# npm workspaces hoists to the root; ensure per-workspace dirs exist so the
+# COPY --from=deps lines below never fail on a missing path
+RUN mkdir -p frontend/node_modules shared/node_modules
+
 # ---------------------------------------------------------------------------
 # Stage 2: Builder
 # ---------------------------------------------------------------------------
 FROM node:20-alpine AS builder
 WORKDIR /app
+
+# vite/tsc need >1GB heap; don't let Node cap it at half the container's memory
+ENV NODE_OPTIONS=--max-old-space-size=4096
 
 COPY --from=deps /app/node_modules ./node_modules
 COPY --from=deps /app/frontend/node_modules ./frontend/node_modules
