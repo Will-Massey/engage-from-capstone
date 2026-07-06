@@ -74,6 +74,7 @@ test.describe('Build smoke — market leader batch (845effcf)', () => {
           .getByRole('heading', { name: /set up two-factor authentication/i })
           .or(page.getByText(/preparing two-factor authentication/i))
           .or(page.getByText(/scan this qr code/i))
+          .first()
       ).toBeVisible({ timeout: 45_000 });
       await expectNoErrorToasts(page);
     }

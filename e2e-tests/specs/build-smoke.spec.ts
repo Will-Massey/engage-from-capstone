@@ -115,7 +115,7 @@ test.describe('Build smoke — new proposal (no error popups)', () => {
 
     await expectNoErrorToasts(page, 3000);
 
-    await expect(page.getByRole('heading', { name: 'Client context' })).toBeVisible({
+    await expect(page.getByRole('heading', { name: 'Add Services' })).toBeVisible({
       timeout: 15_000,
     });
   });
