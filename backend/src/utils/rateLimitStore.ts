@@ -1,0 +1,41 @@
+import { RedisStore } from 'rate-limit-redis';
+import { createClient, type RedisClientType } from 'redis';
+import type { Store } from 'express-rate-limit';
+import logger from '../config/logger.js';
+
+/**
+ * Shared rate-limit store factory. When REDIS_URL is set, limits are enforced
+ * in Redis so they hold across multiple backend instances. Without Redis this
+ * returns undefined and express-rate-limit falls back to its per-instance
+ * MemoryStore (correct for a single instance). Provision Redis + set REDIS_URL
+ * to make rate limiting cluster-wide.
+ *
+ * express-rate-limit requires a DISTINCT Store instance per limiter, so this is
+ * a factory: call it once per limiter. The Redis client is shared; only the
+ * store wrapper (and its key prefix) is unique per call.
+ */
+let client: RedisClientType | undefined;
+let prefixCounter = 0;
+
+const REDIS_URL = process.env.REDIS_URL;
+if (REDIS_URL) {
+  try {
+    client = createClient({ url: REDIS_URL });
+    client.on('error', (err) => logger.error('rate-limit Redis error:', err));
+    client.connect().catch((err) => logger.error('rate-limit Redis connect failed:', err));
+    logger.info('Rate limiting backed by Redis (cluster-wide).');
+  } catch (err) {
+    logger.error('Failed to init Redis rate-limit store; using in-memory:', err);
+    client = undefined;
+  }
+}
+
+export function rateLimitStore(): Store | undefined {
+  if (!client) return undefined;
+  prefixCounter += 1;
+  return new RedisStore({
+    // node-redis v4 takes a variadic command; rate-limit-redis passes an array.
+    sendCommand: (...args: string[]) => client!.sendCommand(args) as Promise<never>,
+    prefix: `rl:${prefixCounter}:`,
+  });
+}

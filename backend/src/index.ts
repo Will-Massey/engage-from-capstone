@@ -67,6 +67,8 @@ import { errorHandler, notFoundHandler } from './middleware/errorHandler.js';
 import logger, { requestLogger } from './utils/logger.js';
 import { checkDatabaseHealth } from './config/database.js';
 import { cache } from './utils/cache.js';
+import { withJobLock, JOB_LOCKS } from './utils/jobLock.js';
+import { rateLimitStore } from './utils/rateLimitStore.js';
 import healthRouter from './routes/health.js';
 import setupRouter from './routes/setup.js';
 import adminRouter from './routes/admin.js';
@@ -279,6 +281,7 @@ app.options('*', (req, res, next) =>
 
 // Login: only count failed attempts (successful logins do not consume quota)
 const loginLimiter = rateLimit({
+  store: rateLimitStore(),
   windowMs: 15 * 60 * 1000,
   max: 20,
   skipSuccessfulRequests: true,
@@ -294,6 +297,7 @@ const loginLimiter = rateLimit({
 
 // CSRF token fetch is high-volume during normal use — separate generous limit
 const csrfLimiter = rateLimit({
+  store: rateLimitStore(),
   windowMs: 15 * 60 * 1000,
   max: 200,
   skip: (req) => shouldSkipRateLimit(req.headers),
@@ -307,6 +311,7 @@ const csrfLimiter = rateLimit({
 });
 
 const authLimiter = rateLimit({
+  store: rateLimitStore(),
   windowMs: 15 * 60 * 1000,
   max: 40,
   skip: (req) => shouldSkipRateLimit(req.headers),
@@ -331,6 +336,7 @@ app.use('/api/auth/2fa/verify', authLimiter);
 app.use('/api/auth/2fa/disable', authLimiter);
 
 const privilegedLimiter = rateLimit({
+  store: rateLimitStore(),
   windowMs: 15 * 60 * 1000,
   max: 20,
   skip: (req) => shouldSkipRateLimit(req.headers),
@@ -348,6 +354,7 @@ app.use('/api/seed-services-public', privilegedLimiter);
 app.use('/api/setup', privilegedLimiter);
 
 const tenantSignupLimiter = rateLimit({
+  store: rateLimitStore(),
   windowMs: 60 * 60 * 1000,
   max: 5,
   skip: (req) => shouldSkipRateLimit(req.headers),
@@ -369,6 +376,7 @@ app.use('/api/tenants', (req, res, next) => {
 
 // Stricter rate limiting for public proposal endpoints (viewing/signing)
 const publicProposalLimiter = rateLimit({
+  store: rateLimitStore(),
   windowMs: 15 * 60 * 1000,
   max: 30,
   skip: (req) => shouldSkipRateLimit(req.headers),
@@ -386,6 +394,7 @@ const publicProposalLimiter = rateLimit({
 app.use('/api/proposals/view', publicProposalLimiter);
 
 const portalLimiter = rateLimit({
+  store: rateLimitStore(),
   windowMs: 15 * 60 * 1000,
   max: 30,
   skip: (req) => shouldSkipRateLimit(req.headers),
@@ -403,6 +412,7 @@ const portalLimiter = rateLimit({
 app.use('/api/proposals/portal', portalLimiter);
 
 const amlSubmitLimiter = rateLimit({
+  store: rateLimitStore(),
   windowMs: 60 * 60 * 1000,
   max: 5,
   skip: (req) => shouldSkipRateLimit(req.headers),
@@ -997,6 +1007,7 @@ cache.connect().catch((err) => {
 
 // Rate limiting - skip health + CSRF (has its own limiter) when disabled via env
 const limiter = rateLimit({
+  store: rateLimitStore(),
   windowMs: 15 * 60 * 1000,
   max: 500,
   skip: (req) => {
@@ -1127,19 +1138,14 @@ const RENEWAL_CHECK_INTERVAL = 24 * 60 * 60 * 1000; // 24 hours
 function scheduleRenewalReminders() {
   logger.info('📅 Scheduling renewal reminder job...');
 
-  // Run once at startup (with delay to let server fully start)
-  setTimeout(() => {
-    runRenewalReminders().catch((err) => {
-      logger.error('Initial renewal reminder check failed:', err);
-    });
-  }, 60000); // 1 minute delay
+  const tick = () =>
+    withJobLock(JOB_LOCKS.renewalReminders, 'renewal reminders', runRenewalReminders).catch((err) =>
+      logger.error('Renewal reminder check failed:', err)
+    );
 
-  // Then run every 24 hours
-  setInterval(() => {
-    runRenewalReminders().catch((err) => {
-      logger.error('Scheduled renewal reminder check failed:', err);
-    });
-  }, RENEWAL_CHECK_INTERVAL);
+  // Run once at startup (with delay to let server fully start), then every 24h
+  setTimeout(tick, 60000);
+  setInterval(tick, RENEWAL_CHECK_INTERVAL);
 
   logger.info('✅ Renewal reminder job scheduled (every 24 hours)');
 }
@@ -1147,17 +1153,13 @@ function scheduleRenewalReminders() {
 function scheduleProposalChaseJob() {
   logger.info('📅 Scheduling proposal chase job...');
 
-  setTimeout(() => {
-    runProposalChaseJob().catch((err) => {
-      logger.error('Initial proposal chase check failed:', err);
-    });
-  }, 120_000);
+  const tick = () =>
+    withJobLock(JOB_LOCKS.proposalChase, 'proposal chase', runProposalChaseJob).catch((err) =>
+      logger.error('Proposal chase check failed:', err)
+    );
 
-  setInterval(() => {
-    runProposalChaseJob().catch((err) => {
-      logger.error('Scheduled proposal chase check failed:', err);
-    });
-  }, RENEWAL_CHECK_INTERVAL);
+  setTimeout(tick, 120_000);
+  setInterval(tick, RENEWAL_CHECK_INTERVAL);
 
   logger.info('✅ Proposal chase job scheduled (every 24 hours)');
 }
@@ -1167,18 +1169,13 @@ function scheduleTouchpointEngine() {
 
   const INTERVAL = 15 * 60 * 1000; // every 15 minutes
 
-  // Run once after startup
-  setTimeout(() => {
-    runTouchpointEngine().catch((err) =>
-      logger.error('Initial touchpoint engine run failed:', err)
+  const tick = () =>
+    withJobLock(JOB_LOCKS.touchpointEngine, 'touchpoint engine', runTouchpointEngine).catch((err) =>
+      logger.error('Touchpoint engine run failed:', err)
     );
-  }, 90_000);
 
-  setInterval(() => {
-    runTouchpointEngine().catch((err) =>
-      logger.error('Scheduled touchpoint engine run failed:', err)
-    );
-  }, INTERVAL);
+  setTimeout(tick, 90_000);
+  setInterval(tick, INTERVAL);
 
   logger.info('✅ Touchpoint engine scheduled (every 15 minutes)');
 }
@@ -1190,13 +1187,13 @@ function scheduleEmailAutomation() {
 
   const INTERVAL = 24 * 60 * 60 * 1000; // daily
 
-  setTimeout(() => {
-    runEmailAutomation().catch((err) => logger.error('Initial email automation run failed:', err));
-  }, 120_000);
+  const tick = () =>
+    withJobLock(JOB_LOCKS.emailAutomation, 'email automation', runEmailAutomation).catch((err) =>
+      logger.error('Email automation run failed:', err)
+    );
 
-  setInterval(() => {
-    runEmailAutomation().catch((err) => logger.error('Scheduled email automation failed:', err));
-  }, INTERVAL);
+  setTimeout(tick, 120_000);
+  setInterval(tick, INTERVAL);
 
   logger.info('✅ Email automation scheduled (every 24 hours)');
 }
