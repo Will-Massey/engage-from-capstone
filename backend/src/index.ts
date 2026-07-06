@@ -180,39 +180,20 @@ const ALLOW_RENDER_WILDCARD_ORIGINS = process.env.ALLOW_RENDER_WILDCARD_ORIGINS 
 // In development, allow all localhost origins
 const isDevelopment = process.env.NODE_ENV !== 'production';
 
-const WEBHOOK_PATH_PREFIXES = [
-  '/api/payments/webhook',
-  '/api/billing/webhook',
-  '/api/webhooks/',
-  '/api/aml/webhook',
-];
-
-function isWebhookPath(path: string): boolean {
-  return WEBHOOK_PATH_PREFIXES.some((prefix) => path.startsWith(prefix));
-}
-
 const corsOptions = {
   origin: function (
     origin: string | undefined,
     callback: (err: Error | null, allow?: boolean) => void
   ) {
-    const req = (this as { req?: express.Request } | undefined)?.req;
-    const requestPath = req?.path || '';
-
-    // Missing Origin: only webhooks and Capacitor native shells in production
+    // Missing Origin = not a CORS request: same-origin GETs (browsers omit
+    // Origin on those — all app traffic behind the engage-proxy worker),
+    // webhooks, curl, server-to-server. Allowing it grants nothing (CORS only
+    // gates browser cross-origin reads, and browsers always send Origin
+    // cross-origin); rejecting it 500'd the whole API behind the worker.
+    // Cross-origin abuse is still blocked below; CSRF is handled by the
+    // custom-header + token checks, not by requiring Origin.
     if (!origin) {
-      if (isWebhookPath(requestPath)) {
-        return callback(null, true);
-      }
-      if (
-        isDevelopment ||
-        requestPath.startsWith('/api/health') ||
-        requestPath === '/health' ||
-        requestPath === '/api/health/ping'
-      ) {
-        return callback(null, true);
-      }
-      return callback(new Error('Origin header required'));
+      return callback(null, true);
     }
 
     // Capacitor iOS / Android WebView origins
