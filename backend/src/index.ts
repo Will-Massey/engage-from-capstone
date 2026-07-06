@@ -5,9 +5,15 @@ import path from 'path';
 // backend/.env wins over repo-root dev files (override on last load)
 const backendRoot = path.resolve(process.cwd());
 const repoRoot = path.resolve(backendRoot, '..');
-dotenv.config({ path: path.join(repoRoot, '.env.development') });
-dotenv.config({ path: path.join(repoRoot, '.env') });
-dotenv.config({ path: path.join(backendRoot, '.env'), override: true });
+if (process.env.NODE_ENV !== 'production') {
+  // Dev-only: .env.development is COMMITTED, so in production it silently
+  // backfilled any var the platform didn't set (its localhost REDIS_URL
+  // caused the 2026-07-06 outage; it also leaked dev API keys into prod).
+  // Production must run on platform-provided env alone.
+  dotenv.config({ path: path.join(repoRoot, '.env.development') });
+  dotenv.config({ path: path.join(repoRoot, '.env') });
+  dotenv.config({ path: path.join(backendRoot, '.env'), override: true });
+}
 
 // Validate environment immediately after dotenv — fails boot on invalid prod config
 import './config/env.js';
