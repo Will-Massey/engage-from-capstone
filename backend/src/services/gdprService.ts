@@ -290,6 +290,218 @@ export class GDPRService {
   }
 
   /**
+   * Full tenant data export for portability when a practice offboards
+   * (GDPR Article 20). Broader than exportTenantAudit — includes the working
+   * data (clients, proposals, templates), not just the audit trail.
+   */
+  async exportTenantData(tenantId: string, prisma: any): Promise<Record<string, unknown>> {
+    const [
+      tenant,
+      users,
+      clients,
+      proposals,
+      serviceTemplates,
+      proposalTemplates,
+      coverLetterTemplates,
+      activityLogs,
+      emailLogs,
+      paymentSplits,
+    ] = await Promise.all([
+      prisma.tenant.findUnique({ where: { id: tenantId } }),
+      prisma.user.findMany({ where: { tenantId } }),
+      prisma.client.findMany({ where: { tenantId } }),
+      prisma.proposal.findMany({
+        where: { tenantId },
+        include: { services: true, signatures: true, views: true },
+      }),
+      prisma.serviceTemplate.findMany({ where: { tenantId } }),
+      prisma.proposalTemplate.findMany({ where: { tenantId } }),
+      prisma.coverLetterTemplate.findMany({ where: { tenantId } }),
+      prisma.activityLog.findMany({
+        where: { tenantId },
+        orderBy: { createdAt: 'desc' },
+        take: 10000,
+      }),
+      prisma.emailLog.findMany({
+        where: { tenantId },
+        orderBy: { createdAt: 'desc' },
+        take: 10000,
+      }),
+      prisma.paymentSplit.findMany({ where: { tenantId } }),
+    ]);
+
+    if (!tenant) {
+      throw new Error('Tenant not found');
+    }
+
+    return {
+      exportDate: new Date(),
+      exportType: 'tenant_full',
+      tenant,
+      users: users.map((u: any) => this.sanitizeExport(u)),
+      clients,
+      proposals,
+      serviceTemplates,
+      proposalTemplates,
+      coverLetterTemplates,
+      activityLogs,
+      emailLogs,
+      paymentSplits,
+    };
+  }
+
+  /**
+   * Close a practice account: deactivate the tenant and anonymize personal
+   * data across its users and clients, while RETAINING proposal signatures and
+   * financial records for the legal retention window (HMRC ~6 years). Mirrors
+   * the per-user erasure philosophy at tenant scope. Reversible only via
+   * restore-from-backup; a later hard purge can run after the retention window.
+   */
+  async closeTenantAccount(
+    tenantId: string,
+    prisma: any,
+    context: { actorUserId?: string; reason?: string } = {}
+  ): Promise<{
+    success: boolean;
+    closedAt: Date;
+    usersAnonymized: number;
+    clientsAnonymized: number;
+    retainedFields: string[];
+  }> {
+    const closedAt = new Date();
+    const retainedFields = [
+      'proposal_signatures', // legal audit trail
+      'proposal_financials', // HMRC 6-year retention (totals, payment splits)
+      'vat_submissions',
+    ];
+
+    const tenant = await prisma.tenant.findUnique({
+      where: { id: tenantId },
+      select: { id: true, settings: true, isActive: true },
+    });
+    if (!tenant) throw new Error('Tenant not found');
+
+    const settings = (() => {
+      try {
+        return JSON.parse(tenant.settings || '{}');
+      } catch {
+        return {};
+      }
+    })();
+    if (settings.closedAt) {
+      throw new Error('Account is already closed');
+    }
+
+    const [users, clients] = await Promise.all([
+      prisma.user.findMany({ where: { tenantId }, select: { id: true } }),
+      prisma.client.findMany({ where: { tenantId }, select: { id: true } }),
+    ]);
+
+    const ops: unknown[] = [];
+
+    // Anonymize each user (unique anonymized email per row: email is unique per tenant).
+    for (const u of users) {
+      const anon = `deleted_${crypto.randomUUID()}`;
+      ops.push(
+        prisma.user.update({
+          where: { id: u.id },
+          data: {
+            email: `${anon}@deleted.local`,
+            firstName: 'Deleted',
+            lastName: 'User',
+            phone: null,
+            jobTitle: null,
+            avatar: null,
+            passwordHash: 'DELETED',
+            twoFactorSecret: null,
+            twoFactorEnabled: false,
+            isActive: false,
+            deletedAt: closedAt,
+          },
+        })
+      );
+    }
+
+    // Anonymize client PII (retain the record so financial/signature links hold).
+    for (const c of clients) {
+      const anon = `deleted_${crypto.randomUUID()}`;
+      ops.push(
+        prisma.client.update({
+          where: { id: c.id },
+          data: {
+            name: 'Closed Practice Client',
+            contactEmail: `${anon}@deleted.local`,
+            contactPhone: null,
+            contactName: null,
+            notes: null,
+            amlSubmissionData: null,
+            portalToken: null,
+            portalTokenExpiry: null,
+          },
+        })
+      );
+    }
+
+    // Revoke any live public/share access to proposals (client portal tokens
+    // are revoked on the client update above).
+    ops.push(
+      prisma.proposal.updateMany({
+        where: { tenantId },
+        data: { publicAccessEnabled: false, shareToken: null },
+      })
+    );
+
+    // Invalidate all sessions for the tenant's users.
+    ops.push(prisma.refreshToken.deleteMany({ where: { user: { tenantId } } }));
+
+    // Mark the tenant closed and stop billing enforcement.
+    ops.push(
+      prisma.tenant.update({
+        where: { id: tenantId },
+        data: {
+          isActive: false,
+          subscriptionStatus: 'cancelled',
+          settings: JSON.stringify({
+            ...settings,
+            closedAt: closedAt.toISOString(),
+            closedReason: context.reason || 'account_closed',
+          }),
+        },
+      })
+    );
+
+    ops.push(
+      prisma.activityLog.create({
+        data: {
+          tenantId,
+          userId: context.actorUserId,
+          action: 'TENANT_ACCOUNT_CLOSED',
+          entityType: 'TENANT',
+          entityId: tenantId,
+          description: 'Practice account closed; personal data anonymized under GDPR Article 17',
+          metadata: JSON.stringify({
+            usersAnonymized: users.length,
+            clientsAnonymized: clients.length,
+            retainedFields,
+          }),
+          ipAddress: 'system',
+          createdAt: closedAt,
+        },
+      })
+    );
+
+    await prisma.$transaction(ops);
+
+    return {
+      success: true,
+      closedAt,
+      usersAnonymized: users.length,
+      clientsAnonymized: clients.length,
+      retainedFields,
+    };
+  }
+
+  /**
    * Check if user has requested data deletion
    */
   async hasDeletionRequest(userId: string, prisma: any): Promise<boolean> {

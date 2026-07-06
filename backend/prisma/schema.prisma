@@ -595,7 +595,7 @@ model PaymentSplit {
   agencySharePence     Int      @map("agency_share_pence")
   platformFeeBps       Int      @map("platform_fee_bps")
   currency             String   @default("GBP")
-  payoutStatus         String   @default("PENDING") // PENDING, SCHEDULED, TRANSFERRED, MANUAL, FAILED, HELD
+  payoutStatus         String   @default("PENDING") @map("payout_status") // PENDING, SCHEDULED, TRANSFERRED, MANUAL, FAILED, HELD
   payoutTransferId     String?  @map("payout_transfer_id")
   payoutFailureReason  String?  @map("payout_failure_reason")
   paidAt               DateTime @default(now()) @map("paid_at")
