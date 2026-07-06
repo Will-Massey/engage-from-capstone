@@ -12,6 +12,10 @@ dotenv.config({ path: path.join(backendRoot, '.env'), override: true });
 // Validate environment immediately after dotenv — fails boot on invalid prod config
 import './config/env.js';
 
+// Initialise error monitoring early (no-op unless SENTRY_DSN is set)
+import { initSentry, captureException, Sentry } from './config/sentry.js';
+initSentry();
+
 import express from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
@@ -1236,6 +1240,21 @@ if (shouldStartServer) {
         });
       }, 5000);
     }
+  });
+
+  // Background jobs run via setInterval and never reach the Express error
+  // handler, so their failures would otherwise be invisible. Capture them.
+  process.on('unhandledRejection', (reason) => {
+    const err = reason instanceof Error ? reason : new Error(String(reason));
+    logger.error('Unhandled promise rejection', { error: err.message, stack: err.stack });
+    captureException(err, { kind: 'unhandledRejection' });
+  });
+
+  process.on('uncaughtException', async (err) => {
+    logger.error('Uncaught exception', { error: err.message, stack: err.stack });
+    captureException(err, { kind: 'uncaughtException' });
+    await Sentry.flush(2000).catch(() => {});
+    process.exit(1); // preserve crash semantics; Render restarts the instance
   });
 
   process.on('SIGTERM', async () => {

@@ -1,5 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
 import logger from '../utils/logger';
+import { captureException } from '../config/sentry.js';
 
 // Async handler wrapper to catch errors in async routes
 export const asyncHandler = (
@@ -69,6 +70,9 @@ export const errorHandler = (err: Error, req: Request, res: Response, _next: Nex
     path: req.path,
     method: req.method,
   });
+
+  // Report genuine server faults (not client 4xx) to Sentry when configured.
+  captureException(err, { path: req.path, method: req.method });
 
   // Return generic error in production, detailed in development
   const isDevelopment = process.env.NODE_ENV !== 'production';
