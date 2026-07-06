@@ -51,35 +51,73 @@ export interface ProposalTotals {
   primaryBillingFrequency: BillingFrequency;
 }
 
+/** Round to whole pence (2dp) — the single money-rounding rule for the app. */
+export function roundMoney(amount: number): number {
+  return Math.round(amount * 100) / 100;
+}
+
+export const DEFAULT_VAT_RATE = 20;
+
+/** VAT on a (discounted) net amount, rounded to pence. */
+export function vatAmountFor(netAmount: number, vatRate: number = DEFAULT_VAT_RATE): number {
+  return roundMoney(netAmount * (vatRate / 100));
+}
+
+export interface EquivalentOptions {
+  /**
+   * How ONE_TIME amounts contribute to a recurring equivalent:
+   * - 'excluded' (default): 0 — one-offs are not recurring value
+   * - 'amortised': spread across one year (÷12 monthly, ×1 annual)
+   * Callers MUST pick deliberately — historically different corners of the
+   * app disagreed on this, which is why it is explicit here.
+   */
+  oneTime?: 'excluded' | 'amortised';
+}
+
+/**
+ * Annualised value of a recurring amount. Unknown/blank frequencies are
+ * treated as MONTHLY (matches the engine's historical default). Unrounded —
+ * round at the display/persistence edge.
+ */
+export function annualEquivalentFor(
+  amount: number,
+  frequency: BillingFrequency | string,
+  options?: EquivalentOptions
+): number {
+  switch (frequency) {
+    case 'WEEKLY':
+      return amount * 52;
+    case 'QUARTERLY':
+      return amount * 4;
+    case 'ANNUALLY':
+      return amount;
+    case 'ONE_TIME':
+      return options?.oneTime === 'amortised' ? amount : 0;
+    case 'MONTHLY':
+    default:
+      return amount * 12;
+  }
+}
+
+/** Monthly-average value of a recurring amount. Same conventions as annualEquivalentFor. */
+export function monthlyEquivalentFor(
+  amount: number,
+  frequency: BillingFrequency | string,
+  options?: EquivalentOptions
+): number {
+  return annualEquivalentFor(amount, frequency, options) / 12;
+}
+
 export function calculateLineItem(input: ServicePricingInput): LineItemResult {
   const { basePrice, billingFrequency, quantity = 1, discountPercent = 0, vatRate = 20 } = input;
 
   const lineTotal = basePrice * quantity;
   const discountAmount = lineTotal * (discountPercent / 100);
   const netTotal = lineTotal - discountAmount;
-  const vatAmount = Math.round(netTotal * (vatRate / 100) * 100) / 100;
+  const vatAmount = vatAmountFor(netTotal, vatRate);
   const grossTotal = netTotal + vatAmount;
 
-  let annualEquivalent = 0;
-  switch (billingFrequency) {
-    case 'MONTHLY':
-      annualEquivalent = basePrice * 12;
-      break;
-    case 'QUARTERLY':
-      annualEquivalent = basePrice * 4;
-      break;
-    case 'ANNUALLY':
-      annualEquivalent = basePrice;
-      break;
-    case 'ONE_TIME':
-      annualEquivalent = 0;
-      break;
-    case 'WEEKLY':
-      annualEquivalent = basePrice * 52;
-      break;
-    default:
-      annualEquivalent = basePrice * 12;
-  }
+  const annualEquivalent = annualEquivalentFor(basePrice, billingFrequency);
 
   let priceDisplayMode: PriceDisplayMode;
   switch (billingFrequency) {

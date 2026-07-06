@@ -1,5 +1,7 @@
 // Shared types and utilities for Engage by Capstone
 
+import { vatAmountFor } from './pricingEngine';
+
 export { TRIAL_DAYS } from './constants.js';
 
 // ==================== ENUMS (aligned with backend/prisma/schema.prisma) ====================
@@ -320,8 +322,9 @@ export const generateReference = (prefix: string = 'PROP'): string => {
   return `${prefix}-${timestamp}-${random}`;
 };
 
+/** @deprecated Use vatAmountFor from the pricing engine — identical behavior. */
 export const calculateVAT = (amount: number, vatRate: number = 20): number => {
-  return Math.round(amount * (vatRate / 100) * 100) / 100;
+  return vatAmountFor(amount, vatRate);
 };
 
 // ==================== PROPOSAL PRICING ENGINE V2 ====================
@@ -332,7 +335,13 @@ export {
   formatPricingCurrency,
   getBillingFrequencyLabel,
   getBillingFrequencyShort,
+  roundMoney,
+  vatAmountFor,
+  annualEquivalentFor,
+  monthlyEquivalentFor,
+  DEFAULT_VAT_RATE,
   type BillingFrequency,
+  type EquivalentOptions,
   type FrequencyBandTotals,
   type LineItemResult,
   type PriceDisplayMode,

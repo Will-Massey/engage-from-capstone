@@ -1,6 +1,7 @@
 /**
  * W4.1 — Anonymised fee benchmarks from accepted proposals (tenant + opt-in cross-practice).
  */
+import { annualEquivalentFor } from '@uk-proposal-platform/shared';
 import { prisma } from '../../config/database.js';
 import { logAiUsage } from './proposalAiService.js';
 
@@ -97,16 +98,11 @@ async function aggregateBenchmarks(
 
   const buckets = new Map<string, number[]>();
   for (const line of lines) {
+    // One-offs count at face value for benchmarking (amortised, not excluded)
     const annual =
       line.annualEquivalent > 0
         ? line.annualEquivalent
-        : line.billingFrequency === 'MONTHLY'
-          ? line.displayPrice * 12
-          : line.billingFrequency === 'QUARTERLY'
-            ? line.displayPrice * 4
-            : line.billingFrequency === 'WEEKLY'
-              ? line.displayPrice * 52
-              : line.displayPrice;
+        : annualEquivalentFor(line.displayPrice, line.billingFrequency, { oneTime: 'amortised' });
     if (annual <= 0) continue;
     const cat = categoriseServiceName(line.name);
     const arr = buckets.get(cat) ?? [];

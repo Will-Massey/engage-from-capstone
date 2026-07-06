@@ -49,7 +49,9 @@ async function stripe(path, method = 'GET', body) {
   return json;
 }
 
-console.log(`Mode: ${LIVE ? 'LIVE' : 'test'} · ${APPLY ? 'APPLY (will create prices)' : 'audit only'}\n`);
+console.log(
+  `Mode: ${LIVE ? 'LIVE' : 'test'} · ${APPLY ? 'APPLY (will create prices)' : 'audit only'}\n`
+);
 
 const fixes = [];
 let errors = 0;
@@ -78,7 +80,9 @@ for (const envVar of ENV_VARS) {
 }
 
 if (errors > 0) {
-  console.error(`\n✗ ${errors} price(s) could not be checked (see above) — nothing was verified. Fix the key/ID/mode and re-run.`);
+  console.error(
+    `\n✗ ${errors} price(s) could not be checked (see above) — nothing was verified. Fix the key/ID/mode and re-run.`
+  );
   process.exit(1);
 }
 if (checked === 0) {
@@ -92,7 +96,9 @@ if (fixes.length === 0) {
 
 console.log(`\n${fixes.length} price(s) need an Exclusive replacement.`);
 if (!APPLY) {
-  console.log('Re-run with --apply to create them. (Existing prices are never modified or deleted.)');
+  console.log(
+    'Re-run with --apply to create them. (Existing prices are never modified or deleted.)'
+  );
   process.exit(0);
 }
 

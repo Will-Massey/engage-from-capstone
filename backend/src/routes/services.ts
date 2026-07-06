@@ -4,7 +4,6 @@ import { ServiceCategory, PricingModel, PricingFrequency, CompanyType } from '@p
 import { prisma } from '../config/database.js';
 import { authenticate, authorize } from '../middleware/auth.js';
 import { asyncHandler, ApiError } from '../middleware/errorHandler.js';
-import { PricingEngine } from '../services/pricingEngine.js';
 
 const router = Router();
 
@@ -463,42 +462,6 @@ router.post(
     res.status(201).json({
       success: true,
       data: rule,
-    });
-  })
-);
-
-/**
- * POST /api/services/calculate-price
- * Calculate price for a service
- */
-router.post(
-  '/calculate-price',
-  authenticate,
-  asyncHandler(async (req, res) => {
-    const {
-      serviceId,
-      clientData,
-      quantity = 1,
-    } = z
-      .object({
-        serviceId: z.string(),
-        clientData: z.object({
-          turnover: z.number().optional(),
-          employeeCount: z.number().optional(),
-          transactionVolume: z.number().optional(),
-          region: z.string().optional(),
-          recordQuality: z.enum(['GOOD', 'AVERAGE', 'POOR']).optional(),
-        }),
-        quantity: z.number().min(1).optional(),
-      })
-      .parse(req.body);
-
-    const pricingEngine = new PricingEngine(req.tenantId);
-    const calculation = await pricingEngine.calculatePrice(serviceId, clientData, { quantity });
-
-    res.json({
-      success: true,
-      data: calculation,
     });
   })
 );

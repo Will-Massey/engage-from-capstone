@@ -78,3 +78,4 @@ temp/
 
 # Redis dumps from local dev
 dump.rdb
+.claude/settings.local.json
