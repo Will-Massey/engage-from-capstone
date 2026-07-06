@@ -792,11 +792,6 @@ router.put(
           .map((s) => [s.serviceTemplateId!, s])
       );
 
-      // Delete existing lines for THIS proposal only, then recreate snapshots
-      await prisma.proposalService.deleteMany({
-        where: { proposalId: id },
-      });
-
       const built = data.services.map((svc) => {
         const template = serviceTemplates.find((t) => t.id === svc.serviceId);
         const prior = existingByTemplateId.get(svc.serviceId);
@@ -823,20 +818,23 @@ router.put(
         ...line,
       }));
 
-      await prisma.proposalService.createMany({
-        data: servicesToCreate as any,
-      });
-
       const totals = calculateHeaderTotals(built);
 
-      await prisma.proposal.update({
-        where: { id },
-        data: {
-          subtotal: totals.subtotal,
-          vatAmount: totals.vatAmount,
-          total: totals.total,
-        },
-      });
+      // Atomic line-item swap: delete the old lines, recreate the snapshots, and
+      // rewrite the header totals in one transaction so a mid-way failure can
+      // never leave the proposal with missing lines or totals out of sync.
+      await prisma.$transaction([
+        prisma.proposalService.deleteMany({ where: { proposalId: id } }),
+        prisma.proposalService.createMany({ data: servicesToCreate as any }),
+        prisma.proposal.update({
+          where: { id },
+          data: {
+            subtotal: totals.subtotal,
+            vatAmount: totals.vatAmount,
+            total: totals.total,
+          },
+        }),
+      ]);
     }
 
     // Log activity

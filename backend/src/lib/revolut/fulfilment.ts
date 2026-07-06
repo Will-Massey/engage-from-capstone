@@ -141,6 +141,18 @@ async function fulfilProposalPayment(order: OrderPayload, metadata: Record<strin
 
   const totalPence = Math.round(proposal.total * 100);
 
+  // Record the accounting split BEFORE flipping the proposal to COMPLETED.
+  // The split is idempotent on revolutOrderId (@unique), so if this throws the
+  // proposal stays un-paid and the webhook retry re-runs both steps cleanly.
+  // Doing it in this order guarantees a paid proposal can never be missing its
+  // split row — the failure mode that would otherwise lose money-accounting.
+  await recordProposalPaymentSplit({
+    proposalId,
+    tenantId,
+    revolutOrderId: order.id || '',
+    totalPence,
+  });
+
   await prisma.proposal.update({
     where: { id: proposalId },
     data: {
@@ -149,13 +161,6 @@ async function fulfilProposalPayment(order: OrderPayload, metadata: Record<strin
       paymentMethod: 'revolut',
       paidAt: new Date(),
     },
-  });
-
-  await recordProposalPaymentSplit({
-    proposalId,
-    tenantId,
-    revolutOrderId: order.id || '',
-    totalPence,
   });
 
   logger.info(`[billing] Engage proposal payment completed: ${proposalId}`);

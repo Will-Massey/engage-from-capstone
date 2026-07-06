@@ -13,7 +13,11 @@ import { allowPublicTenantSignup } from '../utils/securityFlags.js';
 import { setAuthCookies } from '../utils/authCookies.js';
 import { getEngageSuperadmin } from '../lib/superadmin.js';
 import { trialEndsAtFromNow } from '../config/trial.js';
-import { linkAgencySubAccount, listAgencySubAccounts } from '../services/agencyAccountService.js';
+import {
+  createAgencyLinkInvite,
+  linkAgencySubAccount,
+  listAgencySubAccounts,
+} from '../services/agencyAccountService.js';
 import logger from '../config/logger.js';
 import { scheduleTenantLibraryProvision } from '../services/tenantLibraryProvisionService.js';
 import {
@@ -926,6 +930,7 @@ router.put(
 router.get(
   '/agency/sub-accounts',
   authenticate,
+  authorize('ADMIN', 'PARTNER'),
   asyncHandler(async (req, res) => {
     const accounts = await listAgencySubAccounts(req.tenantId!);
     res.json({ success: true, data: accounts });
@@ -933,15 +938,34 @@ router.get(
 );
 
 /**
+ * POST /api/tenants/agency/link-invite
+ * The caller's own practice issues a single-use code to hand to a managing
+ * agency. This is the consent step that authorises being linked as a sub-account.
+ */
+router.post(
+  '/agency/link-invite',
+  authenticate,
+  authorize('ADMIN', 'PARTNER'),
+  asyncHandler(async (req, res) => {
+    const invite = await createAgencyLinkInvite(req.tenantId!);
+    res.status(201).json({ success: true, data: invite });
+  })
+);
+
+/**
  * POST /api/tenants/agency/sub-accounts
- * Link an existing tenant as agency sub-account
+ * Link an existing tenant as agency sub-account. Requires a valid invite code
+ * issued by the child practice (see /agency/link-invite).
  */
 router.post(
   '/agency/sub-accounts',
   authenticate,
+  authorize('ADMIN', 'PARTNER'),
   asyncHandler(async (req, res) => {
-    const { childTenantId } = z.object({ childTenantId: z.string().uuid() }).parse(req.body);
-    const account = await linkAgencySubAccount(req.tenantId!, childTenantId);
+    const { childTenantId, inviteCode } = z
+      .object({ childTenantId: z.string().uuid(), inviteCode: z.string().min(1) })
+      .parse(req.body);
+    const account = await linkAgencySubAccount(req.tenantId!, childTenantId, inviteCode);
     res.status(201).json({ success: true, data: account });
   })
 );
