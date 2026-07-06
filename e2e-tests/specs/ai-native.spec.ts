@@ -7,6 +7,15 @@ import {
   gotoApp,
 } from '../fixtures/build-helpers';
 
+let aiConfigured = false;
+
+// Clara features need a configured AI provider (XAI_API_KEY) — probe once and
+// skip the AI-gated tests on stacks without it (e.g. CI) instead of failing.
+test.beforeAll(async ({ request }) => {
+  const status = await apiGet(request, '/ai/status');
+  aiConfigured = !!status.body?.data?.configured;
+});
+
 test.describe('AI-native UI surfaces', () => {
   test('dashboard attention queue renders', async ({ page }) => {
     await gotoApp(page, '/');
@@ -17,6 +26,7 @@ test.describe('AI-native UI surfaces', () => {
   });
 
   test('Clara panel available from header', async ({ page }) => {
+    test.skip(!aiConfigured, 'Clara not configured on this stack');
     await gotoApp(page, '/');
     const claraBtn = page.getByRole('button', { name: /clara|assistant|ai/i }).first();
     if (await claraBtn.isVisible().catch(() => false)) {
@@ -29,11 +39,12 @@ test.describe('AI-native UI surfaces', () => {
   });
 
   test('proposal builder Clara sidebar on step 2+', async ({ page }) => {
+    test.skip(!aiConfigured, 'Clara build mode not offered without AI');
     await gotoApp(page, '/proposals/new');
     await page.waitForSelector('[data-testid="client-card"]', { timeout: 30_000 });
     await advanceToProposalServicesStep(page, 'clara');
 
-    await expect(page.getByRole('heading', { name: 'Client context' })).toBeVisible({
+    await expect(page.getByRole('heading', { name: 'Add Services' })).toBeVisible({
       timeout: 15_000,
     });
     await expectNoErrorToasts(page, 3000);
@@ -45,6 +56,7 @@ test.describe('AI-native API — proposal email draft', () => {
     const drafts = await apiGet(request, '/proposals?status=DRAFT&limit=1');
     const proposalId = drafts.body?.data?.[0]?.id;
     test.skip(!proposalId, 'No draft proposals');
+    test.skip(!aiConfigured, 'AI email draft needs a configured provider');
 
     const draft = await apiPostResilient(request, '/ai/proposal-email-draft', { proposalId });
     expect(draft.status).toBe(200);

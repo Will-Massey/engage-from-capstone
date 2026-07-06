@@ -59,6 +59,13 @@ jobs:
 
       - name: Build frontend
         run: npm run build:frontend
+        env:
+          # Build-time vars (Vite inlines them): serve at root in CI — the
+          # /engage base only applies behind the production proxy — and use a
+          # relative /api base so vite preview's proxy forwards to the backend
+          # same-origin (httpOnly cookies stay first-party).
+          VITE_APP_BASE: /
+          VITE_API_URL: /api
 
       - name: Install Playwright browsers
         run: cd e2e-tests && npx playwright install --with-deps chromium
@@ -72,11 +79,12 @@ jobs:
           JWT_SECRET: test-jwt-secret-for-ci-only-0123456789abcdef
           FRONTEND_URL: http://localhost:5173
           NODE_ENV: development
+          # No SMTP in CI — log emails instead of failing email-gated flows
+          EMAIL_DEV_LOG: 'true'
 
       - name: Start frontend
+        # VITE_* vars are baked in at build time above; nothing to set here.
         run: cd frontend && nohup npx vite preview --port 5173 > frontend-ci.log 2>&1 &
-        env:
-          VITE_API_URL: http://localhost:3001
 
       - name: Wait for services
         run: |
@@ -89,10 +97,20 @@ jobs:
             sleep 1
           done
 
-      - name: Run E2E tests
+      - name: Run E2E tests (core specs)
         run: cd e2e-tests && npx playwright test --project=chromium
         env:
+          FRONTEND_URL: http://localhost:5173
           API_URL: http://localhost:3001/api
+          TEST_USER_EMAIL: admin@demo.practice
+          TEST_USER_PASSWORD: DemoPass123!
+
+      - name: Run E2E tests (authenticated smoke suite)
+        # The build config does a single global login and reuses the saved
+        # storage state — the 8 smoke specs 401-cascade under the default config.
+        run: cd e2e-tests && npx playwright test --config=playwright.build.config.ts --project=chromium
+        env:
+          FRONTEND_URL: http://localhost:5173
           TEST_USER_EMAIL: admin@demo.practice
           TEST_USER_PASSWORD: DemoPass123!
 
@@ -101,5 +119,17 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: playwright-report
-          path: e2e-tests/playwright-report/
+          path: |
+            e2e-tests/playwright-report/
+            e2e-tests/playwright-report-build/
+          retention-days: 7
+
+      - name: Upload server logs
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: server-logs
+          path: |
+            backend/backend-ci.log
+            frontend/frontend-ci.log
           retention-days: 7

@@ -1,35 +1,30 @@
 # =============================================================================
 # Unified CI/CD Pipeline for Engage
+#
+# The ONLY deploy path: lint → test → e2e must be green on master, then this
+# workflow triggers the Render deploys via API (autoDeploy is off in
+# render.yaml). Red CI never deploys.
 # =============================================================================
 name: CI/CD
 
 on:
   push:
-    branches: [main, master, develop]
+    branches: [master]
     paths-ignore:
       - '**.md'
       - 'docs/**'
   pull_request:
-    branches: [main, master, develop]
+    branches: [master]
   workflow_dispatch:
-    inputs:
-      environment:
-        description: 'Deploy to environment'
-        required: true
-        type: choice
-        options: [development, staging, production]
 
 env:
   NODE_VERSION: '20'
-  ACTIONS_ALLOW_USE_UNSECURE_NODE_VERSION: true
-  REGISTRY: ghcr.io
-  IMAGE_NAME: ${{ github.repository }}
 
 jobs:
   # ==========================================================================
   # CI JOBS
   # ==========================================================================
-  
+
   lint:
     name: Lint & Type Check
     runs-on: ubuntu-latest
@@ -40,16 +35,16 @@ jobs:
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: 'npm'
-      
+
       - name: Install dependencies
         run: npm ci
-      
+
       - name: Lint
         run: npm run lint
-      
+
       - name: Type check
         run: npm run typecheck
-      
+
       - name: Format check
         run: npm run format:check
 
@@ -80,18 +75,18 @@ jobs:
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: 'npm'
-      
+
       - name: Install dependencies
         run: npm ci
-      
+
       - name: Generate Prisma Client
         run: cd backend && npx prisma generate
-      
+
       - name: Run migrations
         run: cd backend && npx prisma migrate deploy
         env:
           DATABASE_URL: postgresql://test:test@localhost:5432/engage_test
-      
+
       - name: Run tests
         # --forceExit: with REDIS_URL/DATABASE_URL set the singleton cache and
         # Prisma clients hold open sockets after the suite passes, so Jest can't
@@ -103,7 +98,7 @@ jobs:
 
       - name: Frontend unit tests
         run: cd frontend && npx vitest run
-      
+
       - name: Upload coverage
         uses: codecov/codecov-action@v4
         with:
@@ -117,180 +112,99 @@ jobs:
     uses: ./.github/workflows/playwright-e2e.yml
     secrets: inherit
 
-  build:
-    name: Build & Push Images
+  # ==========================================================================
+  # CD — single deploy path, gated on green CI
+  # ==========================================================================
+
+  deploy:
+    name: Deploy to Render
     runs-on: ubuntu-latest
     needs: [lint, test, e2e]
-    if: github.event_name == 'push'
-    permissions:
-      contents: read
-      packages: write
-    outputs:
-      backend_tag: ${{ steps.tags.outputs.backend }}
-      frontend_tag: ${{ steps.tags.outputs.frontend }}
-    steps:
-      - uses: actions/checkout@v4
-      
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
-      
-      - name: Log in to GHCR
-        uses: docker/login-action@v3
-        with:
-          registry: ${{ env.REGISTRY }}
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-      
-      - name: Generate tags
-        id: tags
-        run: |
-          SHA=${{ github.sha }}
-          BRANCH=${{ github.ref_name }}
-          echo "backend=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-backend:${SHA:0:7}" >> $GITHUB_OUTPUT
-          echo "frontend=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-frontend:${SHA:0:7}" >> $GITHUB_OUTPUT
-      
-      - name: Build & push backend
-        uses: docker/build-push-action@v5
-        with:
-          context: .
-          file: ./Dockerfile.backend.optimized
-          push: true
-          tags: |
-            ${{ steps.tags.outputs.backend }}
-            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-backend:${{ github.ref_name }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
-      
-      - name: Build & push frontend
-        uses: docker/build-push-action@v5
-        with:
-          context: .
-          file: ./Dockerfile.frontend.optimized
-          push: true
-          tags: |
-            ${{ steps.tags.outputs.frontend }}
-            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-frontend:${{ github.ref_name }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
-          build-args: |
-            VITE_API_URL=${{ vars.VITE_API_URL }}
-            VITE_APP_ENV=${{ github.ref_name }}
-
-  # ==========================================================================
-  # CD JOBS
-  # ==========================================================================
-  
-  deploy-dev:
-    name: Deploy to Development
-    runs-on: ubuntu-latest
-    needs: build
-    if: github.ref == 'refs/heads/develop'
-    environment:
-      name: development
-      url: https://dev.engage.capstonesoftware.co.uk
-    steps:
-      - name: Deploy to Railway
-        uses: bencgreenberg/railway-deploy@v1
-        with:
-          railway_token: ${{ secrets.RAILWAY_TOKEN }}
-          service: engage-backend-dev
-          image: ${{ needs.build.outputs.backend_tag }}
-      
-      - name: Deploy to Vercel
-        uses: amondnet/vercel-action@v25
-        with:
-          vercel-token: ${{ secrets.VERCEL_TOKEN }}
-          vercel-org-id: ${{ secrets.VERCEL_ORG_ID }}
-          vercel-project-id: ${{ secrets.VERCEL_PROJECT_ID_DEV }}
-
-  deploy-staging:
-    name: Deploy to Staging
-    runs-on: ubuntu-latest
-    needs: build
-    if: github.ref == 'refs/heads/main'
-    environment:
-      name: staging
-      url: https://staging.engage.capstonesoftware.co.uk
-    steps:
-      - uses: actions/checkout@v4
-      
-      - name: Deploy to Railway
-        uses: bencgreenberg/railway-deploy@v1
-        with:
-          railway_token: ${{ secrets.RAILWAY_TOKEN }}
-          service: engage-backend-staging
-          image: ${{ needs.build.outputs.backend_tag }}
-      
-      - name: Run migrations
-        run: |
-          echo "DATABASE_URL=${{ secrets.STAGING_DATABASE_URL }}" > .env
-          npm ci
-          cd backend && npx prisma migrate deploy
-      
-      - name: Deploy to Vercel
-        uses: amondnet/vercel-action@v25
-        with:
-          vercel-token: ${{ secrets.VERCEL_TOKEN }}
-          vercel-org-id: ${{ secrets.VERCEL_ORG_ID }}
-          vercel-project-id: ${{ secrets.VERCEL_PROJECT_ID_STAGING }}
-      
-      - name: Health check
-        run: |
-          sleep 30
-          curl -f https://staging.engage.capstonesoftware.co.uk/health || exit 1
-
-  deploy-production:
-    name: Deploy to Production
-    runs-on: ubuntu-latest
-    needs: build
-    if: github.event.inputs.environment == 'production'
+    if: github.event_name != 'pull_request' && github.ref == 'refs/heads/master'
+    concurrency:
+      group: production-deploy
+      cancel-in-progress: false
     environment:
       name: production
-      url: https://engage.capstonesoftware.co.uk
+      url: https://capstonesoftware.co.uk/engage
     steps:
-      - uses: actions/checkout@v4
-      
-      - name: Backup database
+      - name: Pre-deploy Neon backup branch
+        # Point-in-time safety net: snapshot the prod DB as a Neon branch
+        # before the deploy (boot runs prisma migrate deploy). Skips with a
+        # warning until NEON_API_KEY/NEON_PROJECT_ID secrets are set; once
+        # configured, a failed backup blocks the deploy.
+        env:
+          NEON_API_KEY: ${{ secrets.NEON_API_KEY }}
+          NEON_PROJECT_ID: ${{ secrets.NEON_PROJECT_ID }}
         run: |
-          pg_dump ${{ secrets.PROD_DATABASE_URL }} > backup-$(date +%Y%m%d-%H%M%S).sql
-      
-      - name: Deploy to Railway
-        id: deploy
-        uses: bencgreenberg/railway-deploy@v1
-        with:
-          railway_token: ${{ secrets.RAILWAY_TOKEN }}
-          service: engage-backend-prod
-          image: ${{ needs.build.outputs.backend_tag }}
-      
-      - name: Run migrations
+          if [ -z "$NEON_API_KEY" ] || [ -z "$NEON_PROJECT_ID" ]; then
+            echo "::warning::NEON_API_KEY/NEON_PROJECT_ID not set — skipping pre-deploy DB backup branch"
+            exit 0
+          fi
+          NAME="pre-deploy-$(date -u +%Y%m%d-%H%M%S)-${GITHUB_SHA:0:7}"
+          curl -sf -X POST "https://console.neon.tech/api/v2/projects/$NEON_PROJECT_ID/branches" \
+            -H "Authorization: Bearer $NEON_API_KEY" \
+            -H "Content-Type: application/json" \
+            -d "{\"branch\": {\"name\": \"$NAME\"}}" > /dev/null
+          echo "Created Neon backup branch: $NAME"
+          # Prune: keep the 5 newest pre-deploy branches
+          curl -sf "https://console.neon.tech/api/v2/projects/$NEON_PROJECT_ID/branches" \
+            -H "Authorization: Bearer $NEON_API_KEY" \
+          | jq -r '[.branches[] | select(.name | startswith("pre-deploy-"))] | sort_by(.created_at) | reverse | .[5:] | .[].id' \
+          | while read -r BRANCH_ID; do
+              echo "Pruning old backup branch $BRANCH_ID"
+              curl -sf -X DELETE "https://console.neon.tech/api/v2/projects/$NEON_PROJECT_ID/branches/$BRANCH_ID" \
+                -H "Authorization: Bearer $NEON_API_KEY" > /dev/null || echo "::warning::Failed to prune $BRANCH_ID"
+            done
+
+      - name: Deploy backend and wait until live
+        env:
+          RENDER_API_KEY: ${{ secrets.RENDER_API_KEY }}
+          SERVICE_ID: ${{ secrets.RENDER_BACKEND_SERVICE_ID }}
         run: |
-          echo "DATABASE_URL=${{ secrets.PROD_DATABASE_URL }}" > .env
-          npm ci
-          cd backend && npx prisma migrate deploy
-      
-      - name: Deploy to Vercel
-        uses: amondnet/vercel-action@v25
-        with:
-          vercel-token: ${{ secrets.VERCEL_TOKEN }}
-          vercel-org-id: ${{ secrets.VERCEL_ORG_ID }}
-          vercel-project-id: ${{ secrets.VERCEL_PROJECT_ID_PROD }}
-          vercel-args: '--prod'
-      
+          DEPLOY_ID=$(curl -sf -X POST "https://api.render.com/v1/services/$SERVICE_ID/deploys" \
+            -H "Authorization: Bearer $RENDER_API_KEY" \
+            -H "Content-Type: application/json" \
+            -d '{"clearCache": "do_not_clear"}' | jq -r '.id')
+          echo "Backend deploy: $DEPLOY_ID"
+          for i in $(seq 1 60); do
+            STATUS=$(curl -sf "https://api.render.com/v1/services/$SERVICE_ID/deploys/$DEPLOY_ID" \
+              -H "Authorization: Bearer $RENDER_API_KEY" | jq -r '.status')
+            echo "[$i] status: $STATUS"
+            case "$STATUS" in
+              live) exit 0 ;;
+              build_failed|update_failed|canceled|deactivated) exit 1 ;;
+            esac
+            sleep 15
+          done
+          echo "Timed out waiting for backend deploy"; exit 1
+
+      - name: Deploy frontend and wait until live
+        env:
+          RENDER_API_KEY: ${{ secrets.RENDER_API_KEY }}
+          SERVICE_ID: ${{ secrets.RENDER_FRONTEND_SERVICE_ID }}
+        run: |
+          DEPLOY_ID=$(curl -sf -X POST "https://api.render.com/v1/services/$SERVICE_ID/deploys" \
+            -H "Authorization: Bearer $RENDER_API_KEY" \
+            -H "Content-Type: application/json" \
+            -d '{"clearCache": "clear"}' | jq -r '.id')
+          echo "Frontend deploy: $DEPLOY_ID"
+          for i in $(seq 1 60); do
+            STATUS=$(curl -sf "https://api.render.com/v1/services/$SERVICE_ID/deploys/$DEPLOY_ID" \
+              -H "Authorization: Bearer $RENDER_API_KEY" | jq -r '.status')
+            echo "[$i] status: $STATUS"
+            case "$STATUS" in
+              live) exit 0 ;;
+              build_failed|update_failed|canceled|deactivated) exit 1 ;;
+            esac
+            sleep 15
+          done
+          echo "Timed out waiting for frontend deploy"; exit 1
+
       - name: Health check
         run: |
-          for i in {1..12}; do
-            curl -f https://engage.capstonesoftware.co.uk/health && exit 0
+          for i in $(seq 1 12); do
+            curl -sf https://engage-backend-e1ue.onrender.com/health && exit 0
             sleep 10
           done
-          exit 1
-      
-      - name: Notify Slack
-        if: always()
-        uses: slackapi/slack-github-action@v1
-        with:
-          payload: |
-            {
-              "text": "${{ job.status == 'success' && '✅' || '❌' }} Production Deploy: ${{ job.status }}"
-            }
-        env:
-          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+          echo "Backend health check failed after deploy"; exit 1

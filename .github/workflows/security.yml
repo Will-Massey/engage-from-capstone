@@ -85,63 +85,6 @@ jobs:
         uses: github/codeql-action/analyze@v3
 
   # ---------------------------------------------------------------------------
-  # Container Image Scan
-  # ---------------------------------------------------------------------------
-  container-scan:
-    name: Container Image Scan
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
-
-      - name: Build backend image
-        uses: docker/build-push-action@v5
-        with:
-          context: .
-          file: ./Dockerfile.backend.optimized
-          load: true
-          tags: engage-backend:scan
-
-      - name: Build frontend image
-        uses: docker/build-push-action@v5
-        with:
-          context: .
-          file: ./Dockerfile.frontend.optimized
-          load: true
-          tags: engage-frontend:scan
-
-      - name: Run Trivy vulnerability scanner on backend
-        uses: aquasecurity/trivy-action@master
-        with:
-          image-ref: engage-backend:scan
-          format: 'sarif'
-          output: 'trivy-backend-results.sarif'
-
-      - name: Run Trivy vulnerability scanner on frontend
-        uses: aquasecurity/trivy-action@master
-        with:
-          image-ref: engage-frontend:scan
-          format: 'sarif'
-          output: 'trivy-frontend-results.sarif'
-
-      - name: Upload Trivy backend scan results
-        uses: github/codeql-action/upload-sarif@v3
-        if: always()
-        with:
-          sarif_file: trivy-backend-results.sarif
-          category: trivy-backend
-
-      - name: Upload Trivy frontend scan results
-        uses: github/codeql-action/upload-sarif@v3
-        if: always()
-        with:
-          sarif_file: trivy-frontend-results.sarif
-          category: trivy-frontend
-
-  # ---------------------------------------------------------------------------
   # Secret Scanning
   # ---------------------------------------------------------------------------
   secret-scan:

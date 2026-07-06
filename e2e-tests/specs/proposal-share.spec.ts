@@ -1,5 +1,11 @@
 import { test, expect } from '@playwright/test';
-import { loginAsPartner, createTestClient, createTestProposal } from '../fixtures/helpers';
+import {
+  loginAsPartner,
+  createTestClient,
+  createTestProposal,
+  ensureTestService,
+  getCSRFToken,
+} from '../fixtures/helpers';
 
 /**
  * Proposal Sharing & E-Signature E2E Tests
@@ -32,6 +38,11 @@ async function createShareLink(page: any, proposalTitle: string): Promise<string
 test.describe('Proposal Sharing', () => {
   test.beforeEach(async ({ page }) => {
     await loginAsPartner(page);
+    await ensureTestService(page, {
+      name: 'Comprehensive Bookkeeping',
+      basePrice: 85,
+      defaultFrequency: 'MONTHLY',
+    });
   });
 
   test('can generate a shareable link for a proposal', async ({ page }) => {
@@ -79,7 +90,8 @@ test.describe('Proposal Sharing', () => {
 
     // Verify proposal content is visible
     await expect(publicPage.locator(`text=${uniqueTitle}`)).toBeVisible();
-    await expect(publicPage.locator('text=Comprehensive Bookkeeping')).toBeVisible();
+    // .first(): the service name appears in both the letter and the fee table
+    await expect(publicPage.locator('text=Comprehensive Bookkeeping').first()).toBeVisible();
     await expect(publicPage.locator('text=Terms & Conditions')).toBeVisible();
   });
 });
@@ -87,9 +99,16 @@ test.describe('Proposal Sharing', () => {
 test.describe('Electronic Signature', () => {
   test.beforeEach(async ({ page }) => {
     await loginAsPartner(page);
+    await ensureTestService(page, {
+      name: 'Comprehensive Bookkeeping',
+      basePrice: 85,
+      defaultFrequency: 'MONTHLY',
+    });
   });
 
   test('client can accept and sign a shared proposal', async ({ page, context }) => {
+    // The /sign endpoint generates the signed PDF + audit evidence — slow
+    test.slow();
     const client = await createTestClient(page, {
       name: 'Signature Test Client',
       email: 'signature-test@example.com',
@@ -101,15 +120,28 @@ test.describe('Electronic Signature', () => {
       title: uniqueTitle,
     });
 
-    // Send the proposal first (required for SENT status)
+    // Send the proposal first (required for SENT status). The UI send flow
+    // needs a configured AI drafter (the email preview dialog closes on AI
+    // errors), so hit the send API directly — signing is what this test
+    // exercises. Requires EMAIL_DEV_LOG=true when no SMTP is configured.
     await page.goto(`/proposals/${proposal.id}`);
     await page.waitForLoadState('networkidle');
-    await expect(page.locator('button:has-text("Send")')).toBeVisible();
-    await page.click('button:has-text("Send")');
-    await expect(page.locator('text=Proposal sent successfully')).toBeVisible();
+    const csrf = await getCSRFToken(page);
+    const sendRes = await page.request.post(
+      `${process.env.API_URL || 'http://localhost:3001/api'}/proposals/${proposal.id}/send`,
+      { headers: csrf ? { 'X-CSRF-Token': csrf } : {}, data: {} }
+    );
+    expect(sendRes.ok()).toBeTruthy();
 
-    // Generate share link via UI
-    const shareUrl = await createShareLink(page, uniqueTitle);
+    // Sending already created the share link, so the row's share button just
+    // copies it (no /share request for createShareLink to await) — fetch the
+    // link via the API instead. The UI share path is covered by the tests above.
+    const shareRes = await page.request.post(
+      `${process.env.API_URL || 'http://localhost:3001/api'}/proposals/${proposal.id}/share`,
+      { headers: csrf ? { 'X-CSRF-Token': csrf } : {}, data: {} }
+    );
+    expect(shareRes.ok()).toBeTruthy();
+    const shareUrl = (await shareRes.json()).data.shareUrl as string;
 
     // Open public view
     const publicPage = await context.newPage();
@@ -117,14 +149,24 @@ test.describe('Electronic Signature', () => {
     await publicPage.waitForLoadState('networkidle');
     await expect(publicPage.locator(`text=${uniqueTitle}`)).toBeVisible();
 
-    // Accept terms and click Accept Proposal
+    // Signing is a wizard: review → terms → (engagement) → identity → sign
+    await publicPage.click('[data-testid="accept-proposal-button"]'); // "Review & sign proposal"
+    await publicPage.click('button:has-text("Continue to terms")');
     await publicPage.check('[data-testid="terms-checkbox"]');
-    await publicPage.click('[data-testid="accept-proposal-button"]');
+    await publicPage.click('button:has-text("Continue")');
+
+    // Engagement-letter step only renders when the proposal has one
+    const engagement = publicPage.locator('[data-testid="engagement-letter-checkbox"]');
+    if (await engagement.isVisible().catch(() => false)) {
+      await engagement.check();
+      await publicPage.click('button:has-text("Continue")');
+    }
 
     await publicPage.fill('[data-testid="signer-name-input"]', 'John Smith');
     await publicPage.fill('[data-testid="signer-role-input"]', 'Director');
     await publicPage.fill('[data-testid="signer-email-input"]', 'signature-test@example.com');
     await publicPage.check('[data-testid="authorised-checkbox"]');
+    await publicPage.click('button:has-text("Continue to sign")');
 
     const signResponsePromise = publicPage.waitForResponse(
       (resp: any) => resp.url().includes('/sign') && resp.request().method() === 'POST'
@@ -154,10 +196,19 @@ test.describe('Electronic Signature', () => {
     expect(signBody.data.signatureId).toBeTruthy();
 
     await expect(publicPage.locator('text=Proposal accepted successfully')).toBeVisible();
-    await expect(publicPage.locator('text=Proposal Accepted').first()).toBeVisible();
+    // Post-sign banner: "All done — thank you!" or "Proposal signed — payment still pending"
+    await expect(
+      publicPage.getByText(/All done — thank you!|Proposal signed/).first()
+    ).toBeVisible();
 
     await page.goto(`/proposals/${proposal.id}`);
     await page.waitForLoadState('networkidle');
+    // The audit trail is inside the collapsed "Access & Signature" section
+    // .first(): the tab button, not the "Open Access & Signature History" link
+    await page
+      .getByRole('button', { name: /Access & Signature/ })
+      .first()
+      .click();
     await expect(page.locator('text=Signature audit')).toBeVisible();
     await expect(page.locator('text=SIMPLE_ELECTRONIC')).toBeVisible();
     await expect(page.locator('text=signature-test@example.com')).toBeVisible();

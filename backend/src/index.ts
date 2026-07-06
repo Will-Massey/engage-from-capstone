@@ -42,7 +42,9 @@ import paymentRoutes from './routes/payments.js';
 import billingRoutes from './routes/billing.js';
 import payoutRoutes from './routes/payout.js';
 import coverLetterTemplateRoutes from './routes/coverLetterTemplates.js';
-import proposalTemplateRoutes from './routes/proposal-templates.js';
+// NB: routes/proposalTemplates.ts (full CRUD + library provisioning), not the
+// GET-only routes/proposal-templates.ts that shadowed it — see its deletion.
+import proposalTemplateRoutes from './routes/proposalTemplates.js';
 import engagementLibraryRoutes from './routes/engagementLibrary.js';
 import analyticsRoutes from './routes/analytics.js';
 import touchpointRoutes from './routes/touchpoints.js';
@@ -1071,6 +1073,10 @@ app.use('/api/automation', extractTenant, automationRoutes);
 app.use('/api/uploads', extractTenant, uploadsRoutes);
 app.use('/api/ai', extractTenant, aiRoutes);
 app.use('/api/integrations', extractTenant, integrationsRoutes);
+// xeroRoutes/quickbooksRoutes were imported but never mounted — the settings
+// pages call /api/xero/* and /api/quickbooks/* directly (404 until now).
+app.use('/api/xero', extractTenant, xeroRoutes);
+app.use('/api/quickbooks', extractTenant, quickbooksRoutes);
 
 // W4.5 — Public status page API (no auth)
 app.use('/api/status', statusRoutes);

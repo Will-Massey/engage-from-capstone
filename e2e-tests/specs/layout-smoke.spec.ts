@@ -1,16 +1,24 @@
 import { test, expect } from '@playwright/test';
-import { expectNoErrorToasts, gotoApp } from '../fixtures/build-helpers';
+import { apiGet, expectNoErrorToasts, gotoApp } from '../fixtures/build-helpers';
+
+// The display name depends on the stack's seed (CI seeds "Sarah Johnson") —
+// resolve it from /auth/me rather than hard-coding one seed's value.
+let fullName = '';
+
+test.beforeAll(async ({ request }) => {
+  const me = await apiGet(request, '/auth/me');
+  const user = me.body?.data?.user ?? {};
+  fullName = [user.firstName, user.lastName].filter(Boolean).join(' ');
+  expect(fullName, '/auth/me should identify the logged-in user').not.toBe('');
+});
 
 function sidebarUserName(page: import('@playwright/test').Page) {
-  return page
-    .locator('[data-testid="sidebar-user-name"]')
-    .or(page.locator('aside.lg\\:flex').getByText('Admin User', { exact: true }));
+  // The name renders in both the mobile and desktop sidebars — only one is visible
+  return page.locator('[data-testid="sidebar-user-name"]').filter({ visible: true }).first();
 }
 
 function headerUserName(page: import('@playwright/test').Page) {
-  return page
-    .locator('[data-testid="header-user-name"]')
-    .or(page.locator('span.truncate', { hasText: 'Admin User' }));
+  return page.locator('[data-testid="header-user-name"]').filter({ visible: true }).first();
 }
 
 function aiPanel(page: import('@playwright/test').Page) {
@@ -30,7 +38,7 @@ test.describe('Layout UAT — sendit v4.0 UI fixes', () => {
     await page.setViewportSize({ width: 1280, height: 800 });
     await waitForDashboard(page);
 
-    await expect(sidebarUserName(page)).toHaveText('Admin User');
+    await expect(sidebarUserName(page)).toHaveText(fullName);
     await expectNoErrorToasts(page);
   });
 
@@ -38,7 +46,7 @@ test.describe('Layout UAT — sendit v4.0 UI fixes', () => {
     await page.setViewportSize({ width: 1440, height: 900 });
     await waitForDashboard(page);
 
-    await expect(headerUserName(page)).toHaveText('Admin User');
+    await expect(headerUserName(page)).toHaveText(fullName);
     await expect(
       page
         .locator('[data-testid="app-header"]')

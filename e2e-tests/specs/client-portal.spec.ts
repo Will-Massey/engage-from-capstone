@@ -4,6 +4,7 @@ import {
   createTestClient,
   createTestProposal,
   cleanupTestData,
+  ensureTestService,
 } from '../fixtures/helpers';
 
 /**
@@ -14,6 +15,11 @@ import {
 test.describe('Client Portal', () => {
   test.beforeEach(async ({ page }) => {
     await loginAsPartner(page);
+    await ensureTestService(page, {
+      name: 'Comprehensive Bookkeeping',
+      basePrice: 85,
+      defaultFrequency: 'MONTHLY',
+    });
   });
 
   test.afterEach(async () => {

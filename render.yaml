@@ -122,7 +122,7 @@ services:
         sync: false
       - key: XERO_REDIRECT_URI
         value: https://capstonesoftware.co.uk/engage/api/oauth/callback/xero
-    autoDeploy: true
+    autoDeploy: false # deploys are triggered by CI (ci-cd.yml) after green lint+test+e2e
 
   # Frontend Static Site
   - type: web
@@ -136,7 +136,7 @@ services:
         value: https://capstonesoftware.co.uk/engage
       - key: VITE_APP_BASE
         value: /engage
-    autoDeploy: true
+    autoDeploy: false # deploys are triggered by CI (ci-cd.yml) after green lint+test+e2e
     routes:
       - type: rewrite
         source: /engage/*

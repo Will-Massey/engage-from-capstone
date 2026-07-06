@@ -75,3 +75,6 @@ prisma/migrations/*/migration_lock.toml
 tmp/
 temp/
 *.tmp
+
+# Redis dumps from local dev
+dump.rdb
