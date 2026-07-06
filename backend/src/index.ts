@@ -5,9 +5,15 @@ import path from 'path';
 // backend/.env wins over repo-root dev files (override on last load)
 const backendRoot = path.resolve(process.cwd());
 const repoRoot = path.resolve(backendRoot, '..');
-dotenv.config({ path: path.join(repoRoot, '.env.development') });
-dotenv.config({ path: path.join(repoRoot, '.env') });
-dotenv.config({ path: path.join(backendRoot, '.env'), override: true });
+if (process.env.NODE_ENV !== 'production') {
+  // Dev-only: .env.development is COMMITTED, so in production it silently
+  // backfilled any var the platform didn't set (its localhost REDIS_URL
+  // caused the 2026-07-06 outage; it also leaked dev API keys into prod).
+  // Production must run on platform-provided env alone.
+  dotenv.config({ path: path.join(repoRoot, '.env.development') });
+  dotenv.config({ path: path.join(repoRoot, '.env') });
+  dotenv.config({ path: path.join(backendRoot, '.env'), override: true });
+}
 
 // Validate environment immediately after dotenv — fails boot on invalid prod config
 import './config/env.js';
@@ -265,6 +271,9 @@ app.options('*', (req, res, next) =>
 // Login: only count failed attempts (successful logins do not consume quota)
 const loginLimiter = rateLimit({
   store: rateLimitStore(),
+  // Fail open if the store errors (e.g. Redis unreachable) — losing rate
+  // limiting beats every request hanging/500ing (prod outage 2026-07-06)
+  passOnStoreError: true,
   windowMs: 15 * 60 * 1000,
   max: 20,
   skipSuccessfulRequests: true,
@@ -281,6 +290,9 @@ const loginLimiter = rateLimit({
 // CSRF token fetch is high-volume during normal use — separate generous limit
 const csrfLimiter = rateLimit({
   store: rateLimitStore(),
+  // Fail open if the store errors (e.g. Redis unreachable) — losing rate
+  // limiting beats every request hanging/500ing (prod outage 2026-07-06)
+  passOnStoreError: true,
   windowMs: 15 * 60 * 1000,
   max: 200,
   skip: (req) => shouldSkipRateLimit(req.headers),
@@ -295,6 +307,9 @@ const csrfLimiter = rateLimit({
 
 const authLimiter = rateLimit({
   store: rateLimitStore(),
+  // Fail open if the store errors (e.g. Redis unreachable) — losing rate
+  // limiting beats every request hanging/500ing (prod outage 2026-07-06)
+  passOnStoreError: true,
   windowMs: 15 * 60 * 1000,
   max: 40,
   skip: (req) => shouldSkipRateLimit(req.headers),
@@ -320,6 +335,9 @@ app.use('/api/auth/2fa/disable', authLimiter);
 
 const privilegedLimiter = rateLimit({
   store: rateLimitStore(),
+  // Fail open if the store errors (e.g. Redis unreachable) — losing rate
+  // limiting beats every request hanging/500ing (prod outage 2026-07-06)
+  passOnStoreError: true,
   windowMs: 15 * 60 * 1000,
   max: 20,
   skip: (req) => shouldSkipRateLimit(req.headers),
@@ -338,6 +356,9 @@ app.use('/api/setup', privilegedLimiter);
 
 const tenantSignupLimiter = rateLimit({
   store: rateLimitStore(),
+  // Fail open if the store errors (e.g. Redis unreachable) — losing rate
+  // limiting beats every request hanging/500ing (prod outage 2026-07-06)
+  passOnStoreError: true,
   windowMs: 60 * 60 * 1000,
   max: 5,
   skip: (req) => shouldSkipRateLimit(req.headers),
@@ -360,6 +381,9 @@ app.use('/api/tenants', (req, res, next) => {
 // Stricter rate limiting for public proposal endpoints (viewing/signing)
 const publicProposalLimiter = rateLimit({
   store: rateLimitStore(),
+  // Fail open if the store errors (e.g. Redis unreachable) — losing rate
+  // limiting beats every request hanging/500ing (prod outage 2026-07-06)
+  passOnStoreError: true,
   windowMs: 15 * 60 * 1000,
   max: 30,
   skip: (req) => shouldSkipRateLimit(req.headers),
@@ -378,6 +402,9 @@ app.use('/api/proposals/view', publicProposalLimiter);
 
 const portalLimiter = rateLimit({
   store: rateLimitStore(),
+  // Fail open if the store errors (e.g. Redis unreachable) — losing rate
+  // limiting beats every request hanging/500ing (prod outage 2026-07-06)
+  passOnStoreError: true,
   windowMs: 15 * 60 * 1000,
   max: 30,
   skip: (req) => shouldSkipRateLimit(req.headers),
@@ -396,6 +423,9 @@ app.use('/api/proposals/portal', portalLimiter);
 
 const amlSubmitLimiter = rateLimit({
   store: rateLimitStore(),
+  // Fail open if the store errors (e.g. Redis unreachable) — losing rate
+  // limiting beats every request hanging/500ing (prod outage 2026-07-06)
+  passOnStoreError: true,
   windowMs: 60 * 60 * 1000,
   max: 5,
   skip: (req) => shouldSkipRateLimit(req.headers),
@@ -991,6 +1021,9 @@ cache.connect().catch((err) => {
 // Rate limiting - skip health + CSRF (has its own limiter) when disabled via env
 const limiter = rateLimit({
   store: rateLimitStore(),
+  // Fail open if the store errors (e.g. Redis unreachable) — losing rate
+  // limiting beats every request hanging/500ing (prod outage 2026-07-06)
+  passOnStoreError: true,
   windowMs: 15 * 60 * 1000,
   max: 500,
   skip: (req) => {

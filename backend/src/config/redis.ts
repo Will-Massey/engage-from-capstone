@@ -1,6 +1,10 @@
 import Redis from 'ioredis';
 
-const redisUrl = process.env.REDIS_URL || 'redis://localhost:6379';
+// No localhost fallback: all importers (csrfStore, loginLockout) gate on
+// REDIS_URL being set before dynamically importing this module, so a
+// missing/removed REDIS_URL can't silently spin against localhost. The
+// non-null assertion is safe under that contract.
+const redisUrl = process.env.REDIS_URL!;
 
 export const redis = new Redis(redisUrl, {
   retryStrategy: (times) => {
@@ -8,6 +12,10 @@ export const redis = new Redis(redisUrl, {
     return delay;
   },
   maxRetriesPerRequest: 3,
+  // Reject commands immediately while disconnected instead of queueing —
+  // an unreachable Redis must degrade (importers fall back to memory),
+  // not stall callers (prod outage 2026-07-06).
+  enableOfflineQueue: false,
 });
 
 redis.on('error', (err) => {
