@@ -1,4 +1,5 @@
 import { Router } from 'express';
+import type Stripe from 'stripe';
 import { z } from 'zod';
 import { stripe, SUBSCRIPTION_TIERS } from '../config/stripe.js';
 import { prisma } from '../config/database.js';
@@ -91,21 +92,26 @@ router.post(
     }
 
     // Attach payment method to customer
-    await stripe.paymentMethods.attach(paymentMethodId, {
+    const paymentMethod = await stripe.paymentMethods.attach(paymentMethodId, {
       customer: customerId,
     });
 
-    // Set as default payment method
+    // Set as default payment method, and copy the billing address onto the
+    // customer so Stripe Tax can determine the jurisdiction and add UK VAT.
+    const billingAddress = paymentMethod.billing_details?.address;
     await stripe.customers.update(customerId, {
       invoice_settings: {
         default_payment_method: paymentMethodId,
       },
+      ...(billingAddress ? { address: billingAddress as Stripe.AddressParam } : {}),
     });
 
-    // Create subscription
+    // Create subscription. Prices are net; Stripe Tax adds VAT automatically
+    // once a UK registration is active (Dashboard → Tax → Registrations).
     const subscription = await stripe.subscriptions.create({
       customer: customerId,
       items: [{ price: priceId }],
+      automatic_tax: { enabled: true },
       payment_settings: {
         payment_method_options: {
           card: {

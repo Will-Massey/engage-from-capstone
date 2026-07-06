@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { PaymentElement, useStripe, useElements } from '@stripe/react-stripe-js';
+import { PaymentElement, AddressElement, useStripe, useElements } from '@stripe/react-stripe-js';
 import { apiClient } from '../../utils/api';
 import toast from 'react-hot-toast';
 
@@ -76,7 +76,8 @@ const StripePaymentForm = ({ priceId, onSuccess, onCancel }: StripePaymentFormPr
 
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
-      <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
+      <div className="bg-gray-50 p-4 rounded-lg border border-gray-200 space-y-4">
+        <AddressElement options={{ mode: 'billing' }} />
         <PaymentElement />
       </div>
 

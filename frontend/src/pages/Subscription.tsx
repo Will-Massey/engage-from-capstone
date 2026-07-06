@@ -153,7 +153,7 @@ const Subscription = () => {
               <p className="text-sm text-gray-500 mt-1">{tier.description}</p>
               <p className="mt-4 text-3xl font-bold text-gray-900">
                 £{tier.price}
-                <span className="text-base font-normal text-gray-500">/month</span>
+                <span className="text-base font-normal text-gray-500">/month + VAT</span>
               </p>
               <ul className="mt-4 space-y-2 text-sm text-gray-600">
                 {tier.features.map((feature) => (
