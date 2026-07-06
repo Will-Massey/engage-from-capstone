@@ -1,6 +1,7 @@
 import PDFDocument from 'pdfkit';
 import fs from 'fs';
 import path from 'path';
+import { DEFAULT_VAT_RATE, vatAmountFor } from '@uk-proposal-platform/shared';
 
 // pdfkit types export the constructor as a value, not a type
 // Use any for the document type to avoid TS2749 errors
@@ -59,6 +60,8 @@ interface ProposalData {
     displayPrice?: number;
     billingFrequency?: string;
     total: number;
+    /** Net line total after discount (present on all DB rows) */
+    lineTotal?: number;
     vatRate?: number;
     vatAmount?: number;
     grossTotal?: number;
@@ -583,7 +586,11 @@ ${senderPosition(proposal.createdBy) ? `${senderPosition(proposal.createdBy)}, `
       const displayPrice = service.displayPrice || service.unitPrice;
       const billingFreq = service.billingFrequency || service.frequency;
       const priceLabel = this.formatPriceWithFrequency(displayPrice, billingFreq);
-      const lineTotal = (service.displayPrice || service.unitPrice) * service.quantity;
+      // Stored lineTotal is net-of-discount; only recompute for legacy rows without it
+      const lineTotal =
+        typeof service.lineTotal === 'number'
+          ? service.lineTotal
+          : (service.displayPrice || service.unitPrice) * service.quantity;
 
       doc.text(service.name, colX.name, y, { width: 250 });
 
@@ -696,9 +703,11 @@ ${senderPosition(proposal.createdBy) ? `${senderPosition(proposal.createdBy)}, `
 
     const lineIncVat = (s: (typeof proposal.services)[0]) => {
       if (typeof s.grossTotal === 'number') return s.grossTotal;
-      const net = (s.displayPrice || s.unitPrice || 0) * (s.quantity || 1);
-      const vatR = s.vatRate ?? 20;
-      return Math.round(net * (1 + vatR / 100) * 100) / 100;
+      const net =
+        typeof s.lineTotal === 'number'
+          ? s.lineTotal
+          : (s.displayPrice || s.unitPrice || 0) * (s.quantity || 1);
+      return net + vatAmountFor(net, s.vatRate ?? DEFAULT_VAT_RATE);
     };
 
     const rightX = 350;

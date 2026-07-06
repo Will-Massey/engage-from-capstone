@@ -3,6 +3,7 @@
  */
 
 import { ServiceCategory } from '@prisma/client';
+import { monthlyEquivalentFor } from '@uk-proposal-platform/shared';
 import { prisma } from '../config/database.js';
 import { getProposalSettings } from '../utils/tenantProposalSettings.js';
 
@@ -20,22 +21,12 @@ const CATEGORY_LABELS: Record<ServiceCategory, string> = {
   SPECIALIZED: 'Specialised',
 };
 
-/** Normalise line fees to a monthly GBP equivalent for comparison */
+/**
+ * Normalise line fees to a monthly GBP equivalent for comparison.
+ * One-offs are amortised over a year — a £600 one-off benchmarks like £50/mo.
+ */
 export function toMonthlyEquivalent(displayPrice: number, billingFrequency: string): number {
-  switch (billingFrequency) {
-    case 'WEEKLY':
-      return (displayPrice * 52) / 12;
-    case 'MONTHLY':
-      return displayPrice;
-    case 'QUARTERLY':
-      return displayPrice / 3;
-    case 'ANNUALLY':
-      return displayPrice / 12;
-    case 'ONE_TIME':
-      return displayPrice / 12;
-    default:
-      return displayPrice;
-  }
+  return monthlyEquivalentFor(displayPrice, billingFrequency, { oneTime: 'amortised' });
 }
 
 function percentile(sorted: number[], p: number): number {

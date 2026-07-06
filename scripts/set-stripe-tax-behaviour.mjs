@@ -49,7 +49,9 @@ async function stripe(path, method = 'GET', body) {
   return json;
 }
 
-console.log(`Mode: ${LIVE ? 'LIVE' : 'test'} · ${APPLY ? 'APPLY (will create prices)' : 'audit only'}\n`);
+console.log(
+  `Mode: ${LIVE ? 'LIVE' : 'test'} · ${APPLY ? 'APPLY (will create prices)' : 'audit only'}\n`
+);
 
 const fixes = [];
 for (const envVar of ENV_VARS) {
@@ -80,7 +82,9 @@ if (fixes.length === 0) {
 
 console.log(`\n${fixes.length} price(s) need an Exclusive replacement.`);
 if (!APPLY) {
-  console.log('Re-run with --apply to create them. (Existing prices are never modified or deleted.)');
+  console.log(
+    'Re-run with --apply to create them. (Existing prices are never modified or deleted.)'
+  );
   process.exit(0);
 }
 

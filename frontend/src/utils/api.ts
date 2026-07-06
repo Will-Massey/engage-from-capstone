@@ -606,8 +606,6 @@ export const apiClient = {
 
   duplicateService: (id: string) => api.post(`/services/${id}/duplicate`, {}),
 
-  calculatePrice: (data: any) => api.post('/services/calculate-price', data),
-
   deleteService: (id: string) => api.delete(`/services/${id}`),
 
   // Tenants

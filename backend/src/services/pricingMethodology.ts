@@ -4,6 +4,7 @@
  * Baseline fees from ukAccountancyServices.ts with turnover/complexity multipliers.
  */
 
+import { annualEquivalentFor } from '@uk-proposal-platform/shared';
 import {
   allServices,
   type ServiceTemplate,
@@ -142,19 +143,8 @@ const FEE_BAND_TOLERANCE = 0.1; // ±10%
 // ─── Helpers ───────────────────────────────────────────────────────────────
 
 function annualFromBilling(basePrice: number, billingCycle: string): number {
-  switch (billingCycle) {
-    case 'WEEKLY':
-      return basePrice * 52;
-    case 'MONTHLY':
-      return basePrice * 12;
-    case 'QUARTERLY':
-      return basePrice * 4;
-    case 'ANNUALLY':
-    case 'ONE_TIME':
-      return basePrice;
-    default:
-      return basePrice * 12;
-  }
+  // One-offs count at face value in fee methodology (amortised, not excluded)
+  return annualEquivalentFor(basePrice, billingCycle, { oneTime: 'amortised' });
 }
 
 function monthlyEquivalent(annual: number): number {

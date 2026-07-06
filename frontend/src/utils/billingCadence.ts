@@ -3,6 +3,8 @@
  * Prices are stored per billing period; switching cadence converts via annual equivalent.
  */
 
+import { annualEquivalentFor, roundMoney } from '@shared/pricingEngine';
+
 export const ALL_BILLING_CADENCES = [
   'WEEKLY',
   'MONTHLY',
@@ -39,21 +41,15 @@ export function parseFrequencyOptions(raw?: string | string[] | null): BillingCa
 }
 
 export function annualValueForCadence(price: number, cadence: string): number {
-  switch (cadence) {
-    case 'WEEKLY':
-      return price * 52;
-    case 'MONTHLY':
-      return price * 12;
-    case 'QUARTERLY':
-      return price * 4;
-    case 'ANNUALLY':
-      return price;
-    case 'ONE_TIME':
-      return 0;
-    default:
-      return price * 12;
-  }
+  return annualEquivalentFor(price, cadence);
 }
+
+const PERIODS_PER_YEAR: Record<string, number> = {
+  WEEKLY: 52,
+  MONTHLY: 12,
+  QUARTERLY: 4,
+  ANNUALLY: 1,
+};
 
 /** Convert a per-period price when the billing cadence changes */
 export function convertPriceBetweenCadences(
@@ -63,25 +59,9 @@ export function convertPriceBetweenCadences(
 ): number {
   if (fromCadence === toCadence) return price;
   if (toCadence === 'ONE_TIME' || fromCadence === 'ONE_TIME') return price;
-  const annual = annualValueForCadence(price, fromCadence);
-  let converted: number;
-  switch (toCadence) {
-    case 'WEEKLY':
-      converted = annual / 52;
-      break;
-    case 'MONTHLY':
-      converted = annual / 12;
-      break;
-    case 'QUARTERLY':
-      converted = annual / 4;
-      break;
-    case 'ANNUALLY':
-      converted = annual;
-      break;
-    default:
-      converted = price;
-  }
-  return Math.round(converted * 100) / 100;
+  const annual = annualEquivalentFor(price, fromCadence);
+  const periods = PERIODS_PER_YEAR[toCadence];
+  return roundMoney(periods ? annual / periods : price);
 }
 
 export function cadencePeriodLabel(cadence: string): string {

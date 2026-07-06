@@ -67,7 +67,13 @@ import {
   clearPricingSuggestion,
 } from '../../utils/pricingSuggestionStorage';
 import { AI_COPILOT } from '../../config/aiCopilot';
-import { calculateLineItem, type BillingFrequency } from '@shared/pricingEngine';
+import {
+  annualEquivalentFor,
+  calculateLineItem,
+  monthlyEquivalentFor,
+  vatAmountFor,
+  type BillingFrequency,
+} from '@shared/pricingEngine';
 import { calculateProposalSummaryBands, type PricingSummaryBands } from '@shared/proposalSummary';
 import { resolveCatalogBillingCycle } from '@shared/serviceBilling';
 import FeeBenchmarkChips from '../pricing/FeeBenchmarkChips';
@@ -226,19 +232,7 @@ function InvestmentSummaryBands({ summary }: { summary: PricingSummary }) {
 
 /** Average monthly cash flow (inc VAT) for a recurring line; one-off → 0 */
 function recurringMonthlyEquivalentIncVat(s: SelectedService): number {
-  if (s.billingCycle === 'ONE_TIME') return 0;
-  switch (s.billingCycle) {
-    case 'WEEKLY':
-      return s.grossTotal * (52 / 12);
-    case 'MONTHLY':
-      return s.grossTotal;
-    case 'QUARTERLY':
-      return s.grossTotal / 3;
-    case 'ANNUALLY':
-      return s.grossTotal / 12;
-    default:
-      return s.grossTotal;
-  }
+  return monthlyEquivalentFor(s.grossTotal, s.billingCycle);
 }
 
 function coverLetterAddressee(client: Client): string {
@@ -284,30 +278,11 @@ const formatCurrency = (amount: number): string => {
 };
 
 const calculateAnnualEquivalent = (price: number, frequency: string): number =>
-  calculateLineItem({
-    basePrice: price,
-    billingFrequency: (frequency as BillingFrequency) || 'MONTHLY',
-    quantity: 1,
-    vatRate: 0,
-  }).annualEquivalent;
+  annualEquivalentFor(price, frequency || 'MONTHLY');
 
 // Approximate monthly cash flow (catalog list only — not mixed into proposal totals)
-const calculateMonthlyEquivalent = (price: number, frequency: string): number => {
-  switch (frequency) {
-    case 'MONTHLY':
-      return price;
-    case 'QUARTERLY':
-      return price / 4;
-    case 'ANNUALLY':
-      return price / 12;
-    case 'ONE_TIME':
-      return price;
-    case 'WEEKLY':
-      return (price * 52) / 12;
-    default:
-      return price;
-  }
-};
+const calculateMonthlyEquivalent = (price: number, frequency: string): number =>
+  monthlyEquivalentFor(price, frequency || 'MONTHLY');
 
 // Format price for available services list (shows monthly equivalent for recurring)
 const formatPriceForDisplay = (price: number, frequency: string): string => {
@@ -669,7 +644,7 @@ export default function ProposalBuilder({ proposalId }: ProposalBuilderProps) {
               : 20
           : 0;
       const lineTotal = price;
-      const vatAmount = includeVat ? Math.round(lineTotal * (vatPercent / 100) * 100) / 100 : 0;
+      const vatAmount = includeVat ? vatAmountFor(lineTotal, vatPercent) : 0;
 
       lines.push({
         ...catalogue,
@@ -1516,7 +1491,7 @@ export default function ProposalBuilder({ proposalId }: ProposalBuilderProps) {
         const discount = 0;
         const grossLineTotal = price * quantity;
         const lineTotal = grossLineTotal;
-        const vatAmount = includeVat ? Math.round(lineTotal * (s.vatRate / 100) * 100) / 100 : 0;
+        const vatAmount = includeVat ? vatAmountFor(lineTotal, s.vatRate) : 0;
 
         return {
           ...s,
@@ -1589,7 +1564,7 @@ export default function ProposalBuilder({ proposalId }: ProposalBuilderProps) {
             ? 0
             : 20
         : 0;
-    const vatAmount = includeVat ? Math.round(lineTotal * (vatPercent / 100) * 100) / 100 : 0;
+    const vatAmount = includeVat ? vatAmountFor(lineTotal, vatPercent) : 0;
     const allowedCadences = parseFrequencyOptions(service.frequencyOptions);
 
     return {
@@ -1759,7 +1734,7 @@ export default function ProposalBuilder({ proposalId }: ProposalBuilderProps) {
         const grossLine = displayPrice * qty;
         const net = grossLine - grossLine * (discount / 100);
         const vatRate = svc.vatRate ?? 20;
-        const vatAmount = svc.vatAmount ?? Math.round(net * (vatRate / 100) * 100) / 100;
+        const vatAmount = svc.vatAmount ?? vatAmountFor(net, vatRate);
         const catalogId = svc.serviceTemplateId || svc.catalogServiceId || null;
         return {
           id: svc.id || `line-${i}`,

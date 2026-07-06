@@ -2,6 +2,8 @@
  * Proposal customFields helpers — pricing tiers & multi-signer config (mirrors backend).
  */
 
+import { roundMoney } from '@shared/pricingEngine';
+
 export interface PricingTier {
   id: string;
   label: string;
@@ -101,11 +103,10 @@ export function calculateTierTotals(
   tier: PricingTier
 ): { subtotal: number; vatAmount: number; total: number } {
   const mult = tier.feeMultiplier ?? 1;
-  const round = (n: number) => Math.round(n * 100) / 100;
   return {
-    subtotal: round(base.subtotal * mult),
-    vatAmount: round(base.vatAmount * mult),
-    total: round(base.total * mult),
+    subtotal: roundMoney(base.subtotal * mult),
+    vatAmount: roundMoney(base.vatAmount * mult),
+    total: roundMoney(base.total * mult),
   };
 }
 

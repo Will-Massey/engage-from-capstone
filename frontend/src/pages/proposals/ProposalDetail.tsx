@@ -42,6 +42,7 @@ import {
   DECLINE_REASON_LABELS,
   type DeclineReason,
 } from '../../constants/declineReasons';
+import { monthlyEquivalentFor } from '@shared/pricingEngine';
 
 const statusConfig: Record<string, { color: string; bg: string; icon: any; label: string }> = {
   DRAFT: {
@@ -697,15 +698,9 @@ const ProposalDetail = () => {
           acc.oneOffVat += vatAmt;
           acc.oneOffIncVat += gross;
         } else {
-          // Convert to monthly equivalent
-          let monthlyFactor = 1;
-          if (freq === 'WEEKLY') monthlyFactor = 52 / 12;
-          else if (freq === 'QUARTERLY') monthlyFactor = 1 / 3;
-          else if (freq === 'ANNUALLY') monthlyFactor = 1 / 12;
-
-          acc.monthlyExVat += lineTotal * monthlyFactor;
-          acc.monthlyVat += vatAmt * monthlyFactor;
-          acc.monthlyIncVat += gross * monthlyFactor;
+          acc.monthlyExVat += monthlyEquivalentFor(lineTotal, freq);
+          acc.monthlyVat += monthlyEquivalentFor(vatAmt, freq);
+          acc.monthlyIncVat += monthlyEquivalentFor(gross, freq);
         }
         return acc;
       },

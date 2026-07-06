@@ -15,6 +15,7 @@ import {
   SparklesIcon,
 } from '@heroicons/react/24/outline';
 import { motion } from 'framer-motion';
+import { monthlyEquivalentFor } from '@shared/pricingEngine';
 
 interface PortalProposal {
   id: string;
@@ -141,17 +142,12 @@ function ProposalCard({
   const canView = proposal.canView;
   const isActionable = proposal.status === 'SENT' || proposal.status === 'VIEWED';
 
-  // Calculate monthly equivalent
-  const monthlyEquivalent = proposal.services.reduce((sum: number, s) => {
-    const freq = s.billingFrequency || 'MONTHLY';
-    const gross = s.grossTotal || 0;
-    if (freq === 'ONE_TIME') return sum;
-    if (freq === 'WEEKLY') return sum + gross * (52 / 12);
-    if (freq === 'MONTHLY') return sum + gross;
-    if (freq === 'QUARTERLY') return sum + gross / 3;
-    if (freq === 'ANNUALLY') return sum + gross / 12;
-    return sum + gross;
-  }, 0);
+  // Calculate monthly equivalent (one-offs excluded — shown separately below)
+  const monthlyEquivalent = proposal.services.reduce(
+    (sum: number, s) =>
+      sum + monthlyEquivalentFor(s.grossTotal || 0, s.billingFrequency || 'MONTHLY'),
+    0
+  );
 
   const oneOffTotal = proposal.services.reduce((sum: number, s) => {
     const freq = s.billingFrequency || 'MONTHLY';
