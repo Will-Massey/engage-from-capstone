@@ -13,14 +13,14 @@ pin `gross = net + vat` today, but the storage type still permits drift.
 
 ## Columns in scope (all currently Float)
 
-| Model | Fields → pence | Stays as-is (not money) |
-|---|---|---|
-| `Proposal` | subtotal, discountAmount, vatAmount, total, discountValue* | vatRate |
+| Model             | Fields → pence                                                              | Stays as-is (not money)            |
+| ----------------- | --------------------------------------------------------------------------- | ---------------------------------- |
+| `Proposal`        | subtotal, discountAmount, vatAmount, total, discountValue\*                 | vatRate                            |
 | `ProposalService` | displayPrice, unitPrice, lineTotal, vatAmount, grossTotal, annualEquivalent | quantity, discountPercent, vatRate |
-| `ServiceTemplate` | priceAmount, basePrice, annualEquivalent | baseHours |
-| `PricingRule` | — (adjustmentValue can be a percentage; excluded) | adjustmentValue |
+| `ServiceTemplate` | priceAmount, basePrice, annualEquivalent                                    | baseHours                          |
+| `PricingRule`     | — (adjustmentValue can be a percentage; excluded)                           | adjustmentValue                    |
 
-*`discountValue` is a percentage when `discountType=PERCENT` — needs a data
+\*`discountValue` is a percentage when `discountType=PERCENT` — needs a data
 audit before conversion; may follow adjustmentValue out of scope.
 
 ## Approach: staged, boundary-converted
@@ -30,6 +30,7 @@ Follow the payments convention: **new `*Pence Int` column names** (e.g.
 ~530 references through the compiler — no silent pounds/pence confusion.
 
 ### Stage 1 — storage + backend (one PR, one deploy)
+
 1. Schema: add `*Pence Int` columns alongside the Float ones.
 2. Migration SQL: backfill `pence = ROUND(pounds * 100)` (single statement per
    table, inside the migration transaction). Keep old columns for one release
@@ -46,10 +47,12 @@ Follow the payments convention: **new `*Pence Int` column names** (e.g.
    round-trips are lossless for 2dp values; header pence = Σ line pence.
 
 ### Stage 2 — cleanup (separate PR, after Stage 1 soaks)
+
 - Drop the Float columns.
 - Optionally move the wire format to pence (frontend change) — evaluate then.
 
 ### Deploy safety
+
 - Pre-deploy Neon backup branch already automated in CI.
 - Migration runs at boot via `start-prod.mjs` (fail-closed).
 - Backfill is idempotent (`WHERE "lineTotalPence" IS NULL` guard) in case of
@@ -58,6 +61,7 @@ Follow the payments convention: **new `*Pence Int` column names** (e.g.
   columns. (Writes made after cutover would need the backup branch.)
 
 ## Open questions for review
+
 1. `discountValue` semantics audit (percent vs absolute) — needs a prod data query.
 2. `ServiceTemplate.annualEquivalent` is derived — recompute instead of backfill?
 3. Should e2e get a dedicated migration-verification spec (create proposal
