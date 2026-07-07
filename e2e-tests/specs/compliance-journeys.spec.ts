@@ -139,6 +139,10 @@ test.describe('Tenant signup to first proposal', () => {
 
     await page.fill('input[name="name"]', `Signup Practice ${stamp}`);
     await page.fill('input[name="subdomain"]', subdomain);
+    await page.locator('input[name="subdomain"]').blur();
+    await page
+      .waitForResponse((r) => r.url().includes('check-subdomain') && r.ok(), { timeout: 15_000 })
+      .catch(() => undefined);
     await page.click('button:has-text("Continue")');
 
     await page.getByRole('button', { name: /solo practitioner/i }).click();
@@ -153,6 +157,10 @@ test.describe('Tenant signup to first proposal', () => {
     await page.click('button:has-text("Continue")');
 
     await page.getByRole('checkbox').check();
+    // Register skips session bootstrap — prime CSRF cookie before tenant POST
+    await page.evaluate(async () => {
+      await fetch('/api/auth/me', { credentials: 'include' });
+    });
     await page.click('button:has-text("Create Account")');
 
     await page.waitForURL(/\/(dashboard)?$|\/proposals/, { timeout: 45_000 });

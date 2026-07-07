@@ -85,11 +85,24 @@ export async function gotoAppAuthenticated(
   }
 }
 
-const E2E_HEADERS = {
+export const E2E_HEADERS = {
   'X-Test-Mode': 'e2e-build',
   Origin: new URL(FRONTEND_ORIGIN).origin,
   ...(process.env.E2E_BYPASS_SECRET ? { 'X-Test-Mode-Secret': process.env.E2E_BYPASS_SECRET } : {}),
 };
+
+/** Prime double-submit CSRF cookie on a fresh APIRequestContext (POST /tenants requires it). */
+export async function bootstrapCsrfHeaders(
+  request: APIRequestContext
+): Promise<Record<string, string>> {
+  await request.get(`${API_BASE}/auth/me`, { headers: E2E_HEADERS });
+  const state = await request.storageState();
+  const csrf = state.cookies.find((c) => c.name === 'csrfToken')?.value;
+  return {
+    ...E2E_HEADERS,
+    ...(csrf ? { 'X-CSRF-Token': csrf } : {}),
+  };
+}
 
 const ERROR_TOAST_PATTERNS = [
   /couldn't complete that request/i,

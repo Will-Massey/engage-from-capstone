@@ -1,5 +1,5 @@
 import { type APIRequestContext } from '@playwright/test';
-import { API_BASE, apiDelete, apiGet, apiPost } from './build-helpers';
+import { API_BASE, apiDelete, apiGet, apiPost, bootstrapCsrfHeaders } from './build-helpers';
 
 /** 1×1 PNG — valid for AML document upload validation */
 export const TINY_PNG_DATA_URL =
@@ -30,6 +30,8 @@ export async function signupDisposableTenant(
   const email = `e2e-signup-${stamp}@example.com`;
   const password = 'DemoPass123!';
 
+  const headers = await bootstrapCsrfHeaders(request);
+
   const res = await request.post(`${API_BASE}/tenants`, {
     data: {
       subdomain,
@@ -40,7 +42,7 @@ export async function signupDisposableTenant(
       adminPassword: password,
     },
     headers: {
-      'X-Test-Mode': 'e2e-build',
+      ...headers,
       'Content-Type': 'application/json',
     },
   });
