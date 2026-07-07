@@ -36,7 +36,9 @@ if (REDIS_URL) {
 }
 
 export function rateLimitStore(): Store | undefined {
-  if (!client) return undefined;
+  // Limiters are created at module import; if Redis is still connecting (or
+  // offline after a prior jest suite), fall back to per-process MemoryStore.
+  if (!client?.isReady) return undefined;
   prefixCounter += 1;
   return new RedisStore({
     // node-redis v4 takes a variadic command; rate-limit-redis passes an array.

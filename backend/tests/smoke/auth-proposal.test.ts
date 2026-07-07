@@ -83,6 +83,12 @@ describe('API smoke — auth & proposals', () => {
     expect(res.body.success).toBe(true);
     accessToken = getAccessTokenFromLogin(res);
     expect(accessToken).toBeTruthy();
+    csrfToken = getCsrfFromLogin(res);
+    if (!csrfToken) {
+      const statusRes = await agent.get('/api/status');
+      csrfToken = getCookieValue(statusRes, 'csrfToken');
+    }
+    expect(csrfToken.length).toBeGreaterThan(0);
   });
 
   it('POST /api/proposals creates a draft proposal', async () => {
@@ -91,16 +97,7 @@ describe('API smoke — auth & proposals', () => {
       return;
     }
 
-    const loginRes = await agent.post('/api/auth/login').send({
-      email: 'admin@demo.practice',
-      password: 'DemoPass123!',
-    });
-    accessToken = getAccessTokenFromLogin(loginRes);
-    csrfToken = getCsrfFromLogin(loginRes);
-    if (!csrfToken) {
-      const statusRes = await agent.get('/api/status');
-      csrfToken = getCookieValue(statusRes, 'csrfToken');
-    }
+    expect(accessToken).toBeTruthy();
     expect(csrfToken.length).toBeGreaterThan(0);
 
     const res = await agent

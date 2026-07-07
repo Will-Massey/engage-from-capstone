@@ -127,7 +127,8 @@ jobs:
           done
         env:
           DATABASE_URL: postgresql://test:test@localhost:5432/engage_test
-          REDIS_URL: redis://localhost:6379
+          # Omit REDIS_URL — after the coverage suite the service container is
+          # often slow/offline; smoke only needs MemoryStore rate limiting.
           NODE_OPTIONS: --max-old-space-size=6144
 
       - name: Frontend unit tests
