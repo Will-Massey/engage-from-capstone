@@ -47,7 +47,6 @@ import {
 import { getBuilderPreviewPreference, setBuilderPreviewPreference } from '../builderPreviewStorage';
 import {
   DEFAULT_PRICING_TIERS,
-  buildCustomFieldsPayload,
   parseProposalCustomFields,
   type PricingTier,
 } from '../../../utils/proposalCustomFields';
@@ -85,13 +84,13 @@ import {
   type SelectedService,
   type Service,
 } from './shared';
-
-function newLineId(): string {
-  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
-    return crypto.randomUUID();
-  }
-  return `line-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
-}
+import {
+  buildProposalSavePayload,
+  buildSelectedServiceLine,
+  collectProposalValidationErrors,
+  isServiceLineAlreadySelected,
+  newSelectedLineId,
+} from './proposalBuilderActions';
 
 const BILLING_FREQUENCY_LABELS: Record<string, string> = {
   WEEKLY: 'week',
@@ -675,7 +674,7 @@ export function ProposalBuilderProvider({ proposalId, children }: ProposalBuilde
 
       lines.push({
         ...catalogue,
-        id: newLineId(),
+        id: newSelectedLineId(),
         templateId: catalogue.id,
         quantity: 1,
         discountPercent: 0,
@@ -1095,49 +1094,15 @@ export function ProposalBuilderProvider({ proposalId, children }: ProposalBuilde
     billingFrequency?: string,
     overridePrice?: number
   ) => {
-    if (selectedServices.find((s) => s.templateId === service.id)) {
+    if (isServiceLineAlreadySelected(selectedServices, service.id)) {
       return false;
     }
 
-    const price = overridePrice ?? service.priceAmount ?? 0;
-    const frequency =
-      billingFrequency || service.billingCycle || service.defaultFrequency || 'MONTHLY';
-
-    const vatPercent =
-      service.isVatApplicable !== false
-        ? service.vatRate === 'REDUCED_5'
-          ? 5
-          : service.vatRate === 'ZERO' || service.vatRate === 'EXEMPT'
-            ? 0
-            : 20
-        : 0;
-    const line = calculateLineItem({
-      basePrice: price,
-      billingFrequency: frequency as BillingFrequency,
-      quantity: 1,
-      discountPercent: 0,
-      vatRate: includeVat ? vatPercent : 0,
+    const newService = buildSelectedServiceLine(service, {
+      billingFrequency,
+      overridePrice,
+      includeVat,
     });
-
-    const allowedCadences = parseFrequencyOptions(service.frequencyOptions);
-
-    const newService: SelectedService = {
-      ...service,
-      id: newLineId(),
-      templateId: service.id,
-      quantity: 1,
-      discountPercent: 0,
-      displayPrice: price,
-      billingCycle: frequency,
-      priceAmount: price,
-      annualEquivalent: line.annualEquivalent,
-      lineTotal: line.netTotal,
-      vatRate: vatPercent,
-      vatAmount: line.vatAmount,
-      grossTotal: line.grossTotal,
-      allowedCadences,
-      oneOffDueDate: frequency === 'ONE_TIME' ? '' : undefined,
-    };
 
     setSelectedServices((prev) => [...prev, newService]);
     return true;
@@ -1596,7 +1561,7 @@ export function ProposalBuilderProvider({ proposalId, children }: ProposalBuilde
 
     return {
       ...service,
-      id: newLineId(),
+      id: newSelectedLineId(),
       templateId: service.id,
       name: snapshot?.name?.trim() || service.name,
       description:
@@ -1812,28 +1777,15 @@ export function ProposalBuilderProvider({ proposalId, children }: ProposalBuilde
     return error?.response?.data?.error?.message || error.message || 'Request failed';
   };
 
-  const collectValidationErrors = (): string[] => {
-    const errors: string[] = [];
-    if (!selectedClient) errors.push('Select a client');
-    if (selectedServices.length === 0) errors.push('Add at least one service');
-    const missingCatalogue = selectedServices.filter((s) => !s.templateId);
-    if (missingCatalogue.length > 0) {
-      errors.push(
-        `${missingCatalogue.length} service line(s) are not linked to your catalogue — remove and re-add them`
-      );
-    }
-    if (!proposalTitle.trim()) errors.push('Enter a proposal title');
-    if (!validUntil) errors.push('Set a proposal expiry date');
-    if (validUntil && validUntil < todayIso)
-      errors.push('Expiry date must be today or in the future');
-    if (coverLetter.trim().length > 0 && coverLetter.trim().length < 80) {
-      errors.push('Proposal letter is very short — regenerate with Clara or expand it');
-    }
-    if (!coverLetter.trim()) {
-      errors.push('Generate the client proposal letter before saving');
-    }
-    return errors;
-  };
+  const collectValidationErrors = (): string[] =>
+    collectProposalValidationErrors({
+      selectedClient,
+      selectedServices,
+      proposalTitle,
+      validUntil,
+      todayIso,
+      coverLetter,
+    });
 
   const saveProposal = async () => {
     const errors = collectValidationErrors();
@@ -1845,43 +1797,24 @@ export function ProposalBuilderProvider({ proposalId, children }: ProposalBuilde
 
     setIsLoading(true);
     try {
-      const servicesData = selectedServices
-        .filter((s) => s.templateId)
-        .map((s) => ({
-          serviceId: s.templateId,
-          name: s.name,
-          description: s.description ?? null,
-          displayPrice: s.displayPrice,
-          billingFrequency: s.billingCycle,
-          quantity: s.quantity,
-          discountPercent: s.discountPercent,
-          vatRate: includeVat ? s.vatRate : 0,
-          ...(s.billingCycle === 'ONE_TIME' && s.oneOffDueDate?.trim()
-            ? { oneOffDueDate: s.oneOffDueDate.trim() }
-            : {}),
-        }));
-
-      const proposalData = {
-        clientId: selectedClient!.id,
-        title: proposalTitle,
-        services: servicesData,
-        ...(validUntil ? { validUntil: `${validUntil}T12:00:00.000Z` } : {}),
-        contractStartDate: contractStartDate.trim()
-          ? `${contractStartDate.trim()}T12:00:00.000Z`
-          : null,
-        coverLetter: coverLetter.trim(),
-        paymentTerms: `${defaultPaymentTermsDays} day${defaultPaymentTermsDays === 1 ? '' : 's'}`,
-        ...(proposalTerms.trim() ? { terms: proposalTerms.trim() } : {}),
-        customFields: buildCustomFieldsPayload({
-          offerThreePackages,
-          pricingTiers,
-          requireTwoSigners,
-        }),
-      };
+      const proposalData = buildProposalSavePayload({
+        selectedClient: selectedClient!,
+        selectedServices,
+        proposalTitle,
+        validUntil,
+        contractStartDate,
+        coverLetter,
+        proposalTerms,
+        defaultPaymentTermsDays,
+        includeVat,
+        offerThreePackages,
+        pricingTiers,
+        requireTwoSigners,
+      });
 
       const response = isEditMode
-        ? ((await apiClient.updateProposal(proposalId!, proposalData)) as any)
-        : ((await apiClient.createProposal(proposalData)) as any);
+        ? await apiClient.updateProposal(proposalId!, proposalData)
+        : await apiClient.createProposal(proposalData);
 
       if (response.success) {
         if (selectedClient) {

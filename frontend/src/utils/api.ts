@@ -4,6 +4,13 @@ import { useAuthStore } from '../stores/authStore';
 import { appPath, appRelativePath } from './appBase';
 import type { ApiResponse } from '@uk-proposal-platform/shared';
 import type { AuthMePayload, AuthUserListItem, LoginPayload, RegisterPayload } from '../types/auth';
+import type {
+  AcceptProposalPayload,
+  CreateProposalPayload,
+  ProposalListParams,
+  ProposalRecord,
+  UpdateProposalPayload,
+} from '../types/proposals';
 
 export type { ApiResponse };
 
@@ -478,7 +485,8 @@ export const apiClient = {
     api.post<{ token: string; csrfToken?: string }>('/auth/refresh', { refreshToken }),
 
   // Proposals
-  getProposals: (params?: Record<string, any>) => api.get('/proposals', { params }),
+  getProposals: (params?: ProposalListParams) =>
+    api.get('/proposals', { params }) as Promise<ApiResponse<ProposalRecord[]>>,
 
   getRenewalCandidates: (params?: { expiringBefore?: string; clientIds?: string[] }) =>
     api.get('/proposals/renewal-candidates', { params }),
@@ -499,9 +507,10 @@ export const apiClient = {
     useAiCoverLetter?: boolean;
   }) => api.post('/proposals/bulk-renewal', data),
 
-  getProposal: (id: string) => api.get(`/proposals/${id}`),
+  getProposal: (id: string) => api.get(`/proposals/${id}`) as Promise<ApiResponse<ProposalRecord>>,
 
-  createProposal: (data: any) => api.post('/proposals', data),
+  createProposal: (data: CreateProposalPayload) =>
+    api.post('/proposals', data) as Promise<ApiResponse<ProposalRecord>>,
 
   createLoeOnlyProposal: (data: {
     clientId: string;
@@ -514,7 +523,8 @@ export const apiClient = {
   previewProposalTerms: (serviceIds: string[]) =>
     api.post('/proposals/terms-preview', { serviceIds }),
 
-  updateProposal: (id: string, data: any) => api.put(`/proposals/${id}`, data),
+  updateProposal: (id: string, data: UpdateProposalPayload) =>
+    api.put(`/proposals/${id}`, data) as Promise<ApiResponse<ProposalRecord>>,
 
   deleteProposal: (id: string) => api.delete(`/proposals/${id}`),
 
@@ -540,7 +550,8 @@ export const apiClient = {
   rejectProposal: (id: string, data: { rejectionReason: string; approvalNotes?: string }) =>
     api.post(`/proposals/${id}/reject`, data),
 
-  acceptProposal: (id: string, data?: any) => api.post(`/proposals/${id}/accept`, data),
+  acceptProposal: (id: string, data: AcceptProposalPayload) =>
+    api.post(`/proposals/${id}/accept`, data) as Promise<ApiResponse<ProposalRecord>>,
 
   withdrawProposal: (id: string) => api.post(`/proposals/${id}/withdraw`, {}),
 
