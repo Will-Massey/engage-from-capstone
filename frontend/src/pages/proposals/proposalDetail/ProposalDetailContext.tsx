@@ -326,7 +326,6 @@ export function ProposalDetailProvider({ children }: ProposalDetailProviderProps
         acceptedBy: signatoryName,
         signatoryPosition,
         deviceInfo,
-        acceptedAt: new Date().toISOString(),
       });
       toast.success('Proposal accepted with electronic signature');
       setShowSignaturePad(false);
