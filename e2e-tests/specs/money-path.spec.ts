@@ -227,32 +227,34 @@ test.describe('Money path — decline and share revocation', () => {
   });
 
   test('revoked share token returns not found on public view', async ({ page, context }) => {
+    const runId = Date.now();
     const client = await createTestClient(page, {
-      name: 'Revoked Share Client',
-      email: `revoke-${Date.now()}@example.com`,
+      name: `Revoked Share Client ${runId}`,
+      email: `revoke-${runId}@example.com`,
     });
     const proposal = await createTestProposal(page, {
       clientName: client.name,
       services: ['Comprehensive Bookkeeping'],
-      title: `Revoked Share ${Date.now()}`,
+      title: `Revoked Share ${runId}`,
     });
 
     await apiPost(page.request, `/proposals/${proposal.id}/send`);
     const share = await apiPost(page.request, `/proposals/${proposal.id}/share`);
     await expectOkApi('share proposal', share);
     const shareUrl = share.body.data.shareUrl as string;
+    const token = shareUrl.split('/').pop()!;
 
     const withdraw = await apiPost(page.request, `/proposals/${proposal.id}/withdraw`);
     await expectOkApi('withdraw proposal', withdraw);
 
+    const apiView = await page.request.get(`${API_BASE}/proposals/view/${token}`);
+    expect(apiView.status()).toBe(404);
+
     const publicPage = await context.newPage();
-    const viewRes = await publicPage.goto(shareUrl);
-    expect(viewRes?.status()).toBeGreaterThanOrEqual(400);
-
-    const token = shareUrl.split('/').pop()!;
-    const apiView = await publicPage.request.get(`${API_BASE}/proposals/view/${token}`);
-    expect(apiView.status()).toBeGreaterThanOrEqual(400);
-
+    await publicPage.goto(shareUrl);
+    await expect(publicPage.getByText(/not found|expired|unavailable/i).first()).toBeVisible({
+      timeout: 15_000,
+    });
     await publicPage.close();
   });
 });

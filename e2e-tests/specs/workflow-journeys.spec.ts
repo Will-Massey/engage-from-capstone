@@ -34,16 +34,26 @@ test.describe('Agency sub-accounts', () => {
   test('agency sub-accounts list is tenant-scoped and does not leak foreign ids', async ({
     request,
   }) => {
+    const me = await apiGet(request, '/auth/me');
+    await expectOkApi('auth me', me);
+    const tenantId = me.body.data.user.tenant.id as string;
+    const tier = String(me.body.data.user.tenant.subscriptionTier || '').toUpperCase();
+
     const res = await apiGet(request, '/tenants/agency/sub-accounts');
+    if (!['ENTERPRISE', 'ENTERPRISE_ANNUAL'].includes(tier)) {
+      expect(res.status).toBe(402);
+      expect(res.body.error?.code).toBe('TIER_REQUIRED');
+      return;
+    }
+
     await expectOkApi('agency sub-accounts', res);
-    const accounts = res.body.data as Array<{ childTenantId?: string; name?: string }>;
+    const accounts = res.body.data as Array<{ tenantId?: string; childTenantId?: string }>;
     expect(Array.isArray(accounts)).toBe(true);
 
-    const me = await apiGet(request, '/auth/me');
-    const tenantId = me.body.data.user.tenant.id as string;
     for (const row of accounts) {
-      if (row.childTenantId) {
-        expect(row.childTenantId).not.toBe(tenantId);
+      const childId = row.tenantId ?? row.childTenantId;
+      if (childId) {
+        expect(childId).not.toBe(tenantId);
       }
     }
   });
@@ -53,7 +63,7 @@ test.describe('Agency sub-accounts', () => {
     expect(invite.status).toBeLessThan(500);
     if (invite.status === 201) {
       expect(invite.body.success).toBe(true);
-      expect(invite.body.data.inviteCode).toBeTruthy();
+      expect(invite.body.data.code).toBeTruthy();
     }
   });
 });
