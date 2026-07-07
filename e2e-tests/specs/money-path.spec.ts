@@ -179,3 +179,155 @@ test.describe('Money path — sign and collect payment', () => {
     await publicPage.close();
   });
 });
+
+test.describe('Money path — decline and share revocation', () => {
+  test.beforeEach(async ({ page }) => {
+    await ensurePartnerSession(page);
+    await ensureTestService(page, {
+      name: 'Comprehensive Bookkeeping',
+      basePrice: 85,
+      defaultFrequency: 'MONTHLY',
+    });
+  });
+
+  test('client declines a shared proposal via public link', async ({ page, context }) => {
+    const client = await createTestClient(page, {
+      name: 'Decline Path Client',
+      email: `decline-${Date.now()}@example.com`,
+    });
+    const uniqueTitle = `Decline Proposal ${Date.now()}`;
+    const proposal = await createTestProposal(page, {
+      clientName: client.name,
+      services: ['Comprehensive Bookkeeping'],
+      title: uniqueTitle,
+    });
+
+    await apiPost(page.request, `/proposals/${proposal.id}/send`);
+    const share = await apiPost(page.request, `/proposals/${proposal.id}/share`);
+    await expectOkApi('share proposal', share);
+    const shareUrl = share.body.data.shareUrl as string;
+
+    const publicPage = await context.newPage();
+    await publicPage.goto(shareUrl);
+    await expect(publicPage.locator(`text=${uniqueTitle}`)).toBeVisible({ timeout: 30_000 });
+
+    await publicPage.locator('[data-testid="decline-proposal-button"]').first().click();
+    await publicPage.locator('[data-testid="decline-reason-price"]').click();
+    await publicPage.click('[data-testid="confirm-decline-button"]');
+
+    await expect(publicPage.getByText(/declined|thank you/i).first()).toBeVisible({
+      timeout: 15_000,
+    });
+
+    const detail = await apiGet(page.request, `/proposals/${proposal.id}`);
+    await expectOkApi('proposal after decline', detail);
+    expect(detail.body.data.status).toBe('DECLINED');
+
+    await publicPage.close();
+  });
+
+  test('revoked share token returns not found on public view', async ({ page, context }) => {
+    const runId = Date.now();
+    const client = await createTestClient(page, {
+      name: `Revoked Share Client ${runId}`,
+      email: `revoke-${runId}@example.com`,
+    });
+    const proposal = await createTestProposal(page, {
+      clientName: client.name,
+      services: ['Comprehensive Bookkeeping'],
+      title: `Revoked Share ${runId}`,
+    });
+
+    await apiPost(page.request, `/proposals/${proposal.id}/send`);
+    const share = await apiPost(page.request, `/proposals/${proposal.id}/share`);
+    await expectOkApi('share proposal', share);
+    const shareUrl = share.body.data.shareUrl as string;
+    const token = shareUrl.split('/').pop()!;
+
+    const withdraw = await apiPost(page.request, `/proposals/${proposal.id}/withdraw`);
+    await expectOkApi('withdraw proposal', withdraw);
+
+    const apiView = await page.request.get(`${API_BASE}/proposals/view/${token}`);
+    expect(apiView.status()).toBe(404);
+
+    const publicPage = await context.newPage();
+    await publicPage.goto(shareUrl);
+    await expect(publicPage.getByRole('heading', { name: /proposal not available/i })).toBeVisible({
+      timeout: 15_000,
+    });
+    await publicPage.close();
+  });
+});
+
+test.describe('Money path — approval reject and role denial', () => {
+  test.beforeEach(async ({ page }) => {
+    await ensurePartnerSession(page);
+    await ensureTestService(page, {
+      name: 'Comprehensive Bookkeeping',
+      basePrice: 85,
+      defaultFrequency: 'MONTHLY',
+    });
+  });
+
+  test('partner rejects a proposal pending approval', async ({ page, request }) => {
+    const clients = await apiGet(request, '/clients?limit=1');
+    const clientId = clients.body?.data?.[0]?.id as string | undefined;
+    test.skip(!clientId, 'No clients in demo tenant');
+
+    const services = await apiGet(request, '/services?limit=1');
+    const serviceId = services.body?.data?.[0]?.id as string | undefined;
+    test.skip(!serviceId, 'No services in demo tenant');
+
+    const created = await apiPost(request, '/proposals', {
+      clientId,
+      title: `Reject approval ${Date.now()}`,
+      services: [{ serviceId, quantity: 1 }],
+    });
+    await expectOkApi('create proposal', created);
+    const proposalId = created.body.data.id as string;
+
+    const submitted = await apiPost(request, `/proposals/${proposalId}/submit-for-approval`);
+    await expectOkApi('submit for approval', submitted);
+    expect(submitted.body.data.approvalStatus).toBe('PENDING');
+
+    const rejected = await apiPost(request, `/proposals/${proposalId}/reject`, {
+      rejectionReason: 'Pricing needs partner review before send',
+    });
+    await expectOkApi('reject proposal', rejected);
+    expect(rejected.body.data.approvalStatus).toBe('REJECTED');
+    expect(rejected.body.data.rejectionReason).toContain('Pricing');
+  });
+
+  test('senior cannot reject a proposal awaiting approval', async ({ page, browser }) => {
+    const partnerRequest = page.request;
+
+    const clients = await apiGet(partnerRequest, '/clients?limit=1');
+    const clientId = clients.body?.data?.[0]?.id as string | undefined;
+    test.skip(!clientId, 'No clients in demo tenant');
+
+    const services = await apiGet(partnerRequest, '/services?limit=1');
+    const serviceId = services.body?.data?.[0]?.id as string | undefined;
+    test.skip(!serviceId, 'No services in demo tenant');
+
+    const created = await apiPost(partnerRequest, '/proposals', {
+      clientId,
+      title: `Senior reject denial ${Date.now()}`,
+      services: [{ serviceId, quantity: 1 }],
+    });
+    const proposalId = created.body.data.id as string;
+    await apiPost(partnerRequest, `/proposals/${proposalId}/submit-for-approval`);
+
+    const seniorPage = await browser.newPage();
+    const { loginAsUser } = await import('../fixtures/helpers');
+    await loginAsUser(seniorPage, 'senior@demo.practice');
+    const seniorRequest = seniorPage.request;
+
+    const denied = await apiPost(seniorRequest, `/proposals/${proposalId}/reject`, {
+      rejectionReason: 'Should not be allowed',
+    });
+    expect(denied.status).toBe(403);
+    expect(denied.body?.error?.code).toBe('FORBIDDEN');
+
+    await seniorPage.close();
+  });
+});

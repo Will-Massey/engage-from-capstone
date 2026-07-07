@@ -3,6 +3,7 @@ import toast from 'react-hot-toast';
 import { useAuthStore } from '../stores/authStore';
 import { appPath, appRelativePath } from './appBase';
 import type { ApiResponse } from '@uk-proposal-platform/shared';
+import type { AuthMePayload, AuthUserListItem, LoginPayload, RegisterPayload } from '../types/auth';
 
 export type { ApiResponse };
 
@@ -454,7 +455,7 @@ export const apiClient = {
 
   // Auth
   login: (email: string, password: string, options?: { tenantId?: string; rememberMe?: boolean }) =>
-    api.post('/auth/login', {
+    api.post<LoginPayload>('/auth/login', {
       email,
       password,
       tenantId: options?.tenantId,
@@ -467,13 +468,14 @@ export const apiClient = {
     firstName: string;
     lastName: string;
     tenantId: string;
-  }) => api.post('/auth/register', data),
+  }) => api.post<RegisterPayload>('/auth/register', data),
 
-  logout: () => api.post('/auth/logout', {}),
+  logout: () => api.post<{ message?: string }>('/auth/logout', {}),
 
-  getMe: () => api.get('/auth/me'),
+  getMe: () => api.get<AuthMePayload>('/auth/me'),
 
-  refreshToken: (refreshToken: string) => api.post('/auth/refresh', { refreshToken }),
+  refreshToken: (refreshToken: string) =>
+    api.post<{ token: string; csrfToken?: string }>('/auth/refresh', { refreshToken }),
 
   // Proposals
   getProposals: (params?: Record<string, any>) => api.get('/proposals', { params }),
@@ -638,21 +640,45 @@ export const apiClient = {
     api.post('/tenants/settings/test-webhook', { format }),
 
   // Users
-  updateMe: (data: any) => api.put('/auth/me', data),
+  updateMe: (
+    data: Partial<{
+      firstName: string;
+      lastName: string;
+      email: string;
+      phone: string;
+      jobTitle: string | null;
+    }>
+  ) => api.put<AuthMePayload['user']>('/auth/me', data),
 
-  getUsers: () => api.get('/auth/users'),
+  getUsers: () => api.get<AuthUserListItem[]>('/auth/users'),
 
   // Dashboard
   getDashboardStats: () => api.get('/analytics/dashboard'),
 
-  createUser: (data: any) => api.post('/auth/users', data),
+  createUser: (data: {
+    email: string;
+    firstName: string;
+    lastName: string;
+    role: string;
+    password: string;
+  }) => api.post<AuthUserListItem>('/auth/users', data),
 
-  updateUser: (id: string, data: any) => api.put(`/auth/users/${id}`, data),
+  updateUser: (
+    id: string,
+    data: Partial<{
+      firstName: string;
+      lastName: string;
+      email: string;
+      phone: string;
+      jobTitle: string | null;
+      role: string;
+    }>
+  ) => api.put<AuthUserListItem>(`/auth/users/${id}`, data),
 
-  deleteUser: (id: string) => api.delete(`/auth/users/${id}`),
+  deleteUser: (id: string) => api.delete<{ message?: string }>(`/auth/users/${id}`),
 
   changePassword: (data: { currentPassword: string; newPassword: string }) =>
-    api.put('/auth/change-password', data),
+    api.put<{ message?: string }>('/auth/change-password', data),
 
   // Proposal Activity
   recordProposalView: (id: string) => api.post(`/proposals/${id}/view`, {}),

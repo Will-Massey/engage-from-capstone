@@ -18,9 +18,13 @@ const API_BASE =
   (process.env.API_URL?.endsWith('/api') ? '' : '/api');
 
 /**
- * Login as partner user
+ * Login with explicit credentials (e.g. senior@demo.practice for role-gate tests).
  */
-export async function loginAsPartner(page: Page): Promise<void> {
+export async function loginAsUser(
+  page: Page,
+  email: string,
+  password: string = TEST_USER.password
+): Promise<void> {
   await page.goto('/login');
   await page.waitForLoadState('networkidle');
 
@@ -28,24 +32,24 @@ export async function loginAsPartner(page: Page): Promise<void> {
   const passwordInput = page.locator('input[name="password"]');
   const submitButton = page.locator('button[type="submit"]');
 
-  await emailInput.fill(TEST_USER.email);
-  await passwordInput.fill(TEST_USER.password);
+  await emailInput.fill(email);
+  await passwordInput.fill(password);
   await expect(submitButton).toBeEnabled();
 
-  // Click and wait for navigation to complete
   await Promise.all([
     page.waitForURL(/\/$|\/dashboard|\/proposals/, { timeout: 15000, waitUntil: 'networkidle' }),
     submitButton.click(),
   ]);
 
-  // Login fires window.location.assign('/') and can navigate again in quick
-  // succession — waitForURL resolves on the first hit, so anything the test
-  // does next races a document swap ("Execution context was destroyed"). The
-  // main nav only renders once the final document booted and /auth/me passed.
-  // Two "Main" navs exist (hidden mobile drawer first, visible desktop second),
-  // so wait for whichever is actually visible.
   await page.locator('nav[aria-label="Main"]:visible').first().waitFor({ timeout: 15000 });
   await page.waitForLoadState('networkidle');
+}
+
+/**
+ * Login as partner user
+ */
+export async function loginAsPartner(page: Page): Promise<void> {
+  await loginAsUser(page, TEST_USER.email, TEST_USER.password);
 }
 
 /**
