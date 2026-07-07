@@ -72,7 +72,9 @@ if (lazyOnly.length > 0) {
 }
 
 if (publicRouteKb > BUDGET_KB) {
-  console.error(`FAIL: public route baseline ${publicRouteKb.toFixed(1)} KB exceeds ${BUDGET_KB} KB`);
+  console.error(
+    `FAIL: public route baseline ${publicRouteKb.toFixed(1)} KB exceeds ${BUDGET_KB} KB`
+  );
   process.exit(1);
 }
 

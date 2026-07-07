@@ -26,7 +26,9 @@ export const Status = lazy(() => import('../pages/Status'));
 
 /** Proposal builder cluster */
 export const BulkRenewalWizard = lazy(() => import('../pages/proposals/BulkRenewalWizard'));
-export const FirstProposalWizardPage = lazy(() => import('../pages/proposals/FirstProposalWizardPage'));
+export const FirstProposalWizardPage = lazy(
+  () => import('../pages/proposals/FirstProposalWizardPage')
+);
 export const CreateProposal = lazy(() => import('../pages/proposals/CreateProposal'));
 export const WizardProposal = lazy(() => import('../pages/proposals/WizardProposal'));
 export const EditProposal = lazy(() => import('../pages/proposals/EditProposal'));
