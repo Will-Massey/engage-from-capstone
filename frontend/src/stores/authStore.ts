@@ -1,31 +1,10 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { clearAllProposalDrafts } from '../components/proposals/proposalBuilderDraft';
+import type { AuthTenant, AuthUser } from '../types/auth';
 
-export interface User {
-  id: string;
-  email: string;
-  firstName: string;
-  lastName: string;
-  phone?: string;
-  jobTitle?: string;
-  role: 'ADMIN' | 'PARTNER' | 'MD' | 'MANAGER' | 'SENIOR' | 'JUNIOR' | 'CLIENT';
-  createdAt?: string;
-  twoFactorEnabled?: boolean;
-}
-
-export interface Tenant {
-  id: string;
-  name: string;
-  subdomain: string;
-  primaryColor: string;
-  logo?: string;
-  settings: {
-    defaultCurrency: string;
-    professionalBody?: string;
-    [key: string]: any;
-  };
-}
+export type User = AuthUser & { createdAt?: string };
+export type Tenant = AuthTenant;
 
 interface AuthState {
   user: User | null;

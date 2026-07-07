@@ -38,6 +38,11 @@ import tenantSettingsRouter from '../src/routes/tenants/settings.js';
 import emailRouter from '../src/routes/email.js';
 import servicesNewRouter from '../src/routes/services-new.js';
 import lifecycleRouter from '../src/routes/proposals/lifecycle.js';
+import approvalsRouter from '../src/routes/proposals/approvals.js';
+import amlRouter from '../src/routes/aml.js';
+
+import firmGroupRouter from '../src/routes/tenants/firmGroup.js';
+import agencyRouter from '../src/routes/tenants/agency.js';
 import { errorHandler } from '../src/middleware/errorHandler.js';
 
 function buildApp(router: express.Router): express.Express {
@@ -52,6 +57,11 @@ const settingsApp = buildApp(tenantSettingsRouter);
 const emailApp = buildApp(emailRouter);
 const servicesApp = buildApp(servicesNewRouter);
 const lifecycleApp = buildApp(lifecycleRouter);
+const approvalsApp = buildApp(approvalsRouter);
+const amlApp = buildApp(amlRouter);
+
+const firmGroupApp = buildApp(firmGroupRouter);
+const agencyApp = buildApp(agencyRouter);
 
 interface RouteCase {
   name: string;
@@ -171,18 +181,65 @@ const cases: RouteCase[] = [
     deniedRoles: ['JUNIOR'],
     allowedRole: 'SENIOR',
   },
+  {
+    name: 'POST /api/proposals/:id/reject',
+    app: approvalsApp,
+    method: 'post',
+    path: '/proposal-1/reject',
+    body: { rejectionReason: 'Needs revision' },
+    deniedRoles: ['JUNIOR', 'SENIOR'],
+    allowedRole: 'PARTNER',
+  },
+  {
+    name: 'POST /api/proposals/:id/submit-for-approval',
+    app: approvalsApp,
+    method: 'post',
+    path: '/proposal-1/submit-for-approval',
+    body: {},
+    deniedRoles: [],
+    allowedRole: 'SENIOR',
+  },
+  {
+    name: 'POST /api/aml/check',
+    app: amlApp,
+    method: 'post',
+    path: '/check',
+    body: { clientId: '00000000-0000-4000-8000-000000000001', provider: 'stub' },
+    deniedRoles: ['JUNIOR', 'SENIOR'],
+    allowedRole: 'MANAGER',
+  },
+  {
+    name: 'POST /api/tenants/firm-group',
+    app: firmGroupApp,
+    method: 'post',
+    path: '/firm-group',
+    body: { name: 'Test Group' },
+    deniedRoles: ['JUNIOR', 'SENIOR'],
+    allowedRole: 'PARTNER',
+  },
+  {
+    name: 'POST /api/tenants/agency/link-invite',
+    app: agencyApp,
+    method: 'post',
+    path: '/agency/link-invite',
+    body: {},
+    deniedRoles: ['JUNIOR', 'SENIOR', 'MANAGER'],
+    allowedRole: 'PARTNER',
+  },
 ];
 
 describe('security hardening — role gates (M1/M3)', () => {
   describe.each(cases)('$name', ({ app, method, path, body, deniedRoles, allowedRole }) => {
-    it.each(deniedRoles)('rejects %s with 403', async (role) => {
-      const res = await (request(app) as any)
-        [method](path)
-        .set('X-Test-Role', role)
-        .send(body ?? {});
-      expect(res.status).toBe(403);
-      expect(res.body.error.code).toBe('FORBIDDEN');
-    });
+    if (deniedRoles.length > 0) {
+      it.each(deniedRoles)('rejects %s with 403', async (role) => {
+        const res = await (request(app) as any)
+          [method](path)
+          .set('X-Test-Role', role)
+          .send(body ?? {});
+        expect(res.status).toBe(403);
+        expect(res.body.error.code).toBe('FORBIDDEN');
+      });
+    }
 
     it(`does not 401/403 for ${allowedRole}`, async () => {
       const res = await (request(app) as any)

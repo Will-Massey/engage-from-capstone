@@ -32,6 +32,7 @@ export default defineConfig({
     'payout-smoke.spec.ts',
     'money-path.spec.ts',
     'compliance-journeys.spec.ts',
+    'workflow-journeys.spec.ts',
     'layout-smoke.spec.ts',
   ],
   fullyParallel: false,
