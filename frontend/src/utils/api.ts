@@ -11,6 +11,14 @@ import type {
   ProposalRecord,
   UpdateProposalPayload,
 } from '../types/proposals';
+import type {
+  ClientListParams,
+  ClientRecord,
+  CreateClientPayload,
+  MtdIncomeSource,
+  MtdItsaAssessmentResult,
+  UpdateClientPayload,
+} from '../types/clients';
 
 export type { ApiResponse };
 
@@ -563,13 +571,16 @@ export const apiClient = {
     api.get(`/proposals/${id}/pdf`, { responseType: 'blob' }) as Promise<Blob>,
 
   // Clients
-  getClients: (params?: Record<string, any>) => api.get('/clients', { params }),
+  getClients: (params?: ClientListParams) =>
+    api.get('/clients', { params }) as Promise<ApiResponse<ClientRecord[]>>,
 
-  getClient: (id: string) => api.get(`/clients/${id}`),
+  getClient: (id: string) => api.get(`/clients/${id}`) as Promise<ApiResponse<ClientRecord>>,
 
-  createClient: (data: any) => api.post('/clients', data),
+  createClient: (data: CreateClientPayload) =>
+    api.post('/clients', data) as Promise<ApiResponse<ClientRecord>>,
 
-  updateClient: (id: string, data: any) => api.put(`/clients/${id}`, data),
+  updateClient: (id: string, data: UpdateClientPayload) =>
+    api.put(`/clients/${id}`, data) as Promise<ApiResponse<ClientRecord>>,
 
   enrichClientFromCompaniesHouse: (
     clientId: string,
@@ -583,8 +594,10 @@ export const apiClient = {
 
   deleteClient: (id: string) => api.delete(`/clients/${id}`),
 
-  assessMTDITSA: (id: string, incomeSources?: any[]) =>
-    api.post(`/clients/${id}/mtditsa-assessment`, { incomeSources }),
+  assessMTDITSA: (id: string, incomeSources?: MtdIncomeSource[]) =>
+    api.post(`/clients/${id}/mtditsa-assessment`, { incomeSources }) as Promise<
+      ApiResponse<MtdItsaAssessmentResult>
+    >,
 
   verifyClientIdentity: (id: string) => api.post(`/clients/${id}/verify-identity`),
 
