@@ -205,12 +205,22 @@ router.post(
  * POST /api/proposals/:id/accept
  * Mark proposal as accepted
  */
+export const acceptSchema = z.object({
+  signature: z.string().min(100).max(500_000),
+  acceptedBy: z.string().max(200).optional(),
+  signatoryPosition: z.string().max(200).optional(),
+  deviceInfo: z.string().max(2000).optional(),
+});
+
 router.post(
   '/:id/accept',
   authenticate,
+  authorize('ADMIN', 'PARTNER', 'MANAGER', 'SENIOR'),
   asyncHandler(async (req, res) => {
     const { id } = req.params;
-    const { acceptedBy, signature, signatoryPosition, deviceInfo } = req.body;
+    const { acceptedBy, signature, signatoryPosition, deviceInfo } = acceptSchema.parse(
+      req.body ?? {}
+    );
 
     const proposal = await prisma.proposal.findFirst({
       where: { id, tenantId: req.tenantId },
@@ -230,10 +240,6 @@ router.post(
       Array.from(new Set([req.user?.firstName, req.user?.lastName].filter(Boolean)))
         .join(' ')
         .trim();
-
-    if (!signature || String(signature).length < 100) {
-      throw new ApiError('SIGNATURE_REQUIRED', 'Electronic signature is required', 400);
-    }
 
     const { recordElectronicSignature } = await import('../../services/proposalSharingService.js');
     const {

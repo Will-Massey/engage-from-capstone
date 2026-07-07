@@ -11,4 +11,9 @@ module.exports = {
   },
   setupFiles: ['<rootDir>/tests/env.ts'],
   maxWorkers: 1,
+  // Coverage memory control: babel-instrumented coverage maps accumulate in
+  // the single worker across 30+ suites and OOM'd CI. V8 coverage is native
+  // and far lighter; the idle-memory limit recycles the worker if it bloats.
+  coverageProvider: 'v8',
+  workerIdleMemoryLimit: '1.5GB',
 };

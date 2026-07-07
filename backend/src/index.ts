@@ -44,7 +44,6 @@ import { registerProcessHandlers } from './app/shutdown.js';
 // Imported (unmounted) in the original bootstrap; kept verbatim — TypeScript
 // elides unused imports, so these do not load at runtime, exactly as before.
 import pricingRoutes from './routes/pricing.js';
-import diagnosticsRoutes from './routes/diagnostics.js';
 import { asyncHandler, ApiError } from './middleware/errorHandler.js';
 import { EmailService } from './services/emailService.js';
 

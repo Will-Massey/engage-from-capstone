@@ -31,6 +31,7 @@ import {
   lookupGeoFromIp,
 } from '../../utils/signatureAudit.js';
 import { proposalRequiresPayment } from '../../services/proposalPayment.js';
+import { escapeHtml } from '../../utils/escapeHtml.js';
 import { hashShareToken, publicSignDeclineLimiter } from './shared.js';
 
 const router = Router();
@@ -249,8 +250,8 @@ router.post(
         data: result,
       });
     } catch (error: unknown) {
-      const message = error instanceof Error ? error.message : 'Failed to set up payment';
-      throw new ApiError('PAYMENT_SETUP_FAILED', message, 400);
+      logger.error('Post-sign payment setup failed:', error);
+      throw new ApiError('PAYMENT_SETUP_FAILED', 'Failed to set up payment', 400);
     }
   })
 );
@@ -329,7 +330,8 @@ router.post(
             to: notifyEmail,
             subject,
             text,
-            html: text.replace(/\n/g, '<br>'),
+            // Escape share-token-holder input (reason, names) before building HTML
+            html: escapeHtml(text).replace(/\n/g, '<br>'),
           },
           relatedIds: { proposalId: proposal.id, clientId: fullProposal.clientId },
         });
@@ -487,7 +489,8 @@ router.post(
             to: notifyEmail,
             subject,
             text,
-            html: text.replace(/\n/g, '<br>'),
+            // Escape share-token-holder input (reason, names) before building HTML
+            html: escapeHtml(text).replace(/\n/g, '<br>'),
           },
           relatedIds: { proposalId: proposal.id, clientId: fullProposal.clientId },
         });

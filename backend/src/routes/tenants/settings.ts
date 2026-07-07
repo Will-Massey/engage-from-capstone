@@ -2,7 +2,7 @@ import { Router } from 'express';
 import { z } from 'zod';
 import { prisma } from '../../config/database.js';
 import { asyncHandler, ApiError } from '../../middleware/errorHandler.js';
-import { authenticate } from '../../middleware/auth.js';
+import { authenticate, authorize } from '../../middleware/auth.js';
 import { validateTenantLogoForStorage } from '../../utils/tenantLogoConstraints.js';
 
 const router = Router();
@@ -67,6 +67,7 @@ router.get(
 router.put(
   '/settings',
   authenticate,
+  authorize('ADMIN', 'PARTNER', 'MANAGER'),
   asyncHandler(async (req, res) => {
     const tenantId = req.tenantId!;
 
