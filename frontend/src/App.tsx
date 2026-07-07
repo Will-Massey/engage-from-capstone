@@ -5,47 +5,12 @@ import { useAuthStore } from './stores/authStore';
 import { apiClient, ensureCsrfReady, hydrateCsrfCache, rememberCsrfToken } from './utils/api';
 import { appRelativePath } from './utils/appBase';
 
-// Layouts
+// Layouts (kept eager — lightweight shells shared across routes)
 import DashboardLayout from './components/layout/DashboardLayout';
 import AuthLayout from './components/layout/AuthLayout';
+import { PageSuspense } from './components/layout/PageSuspense';
 
-// Pages
-import Login from './pages/auth/Login';
-import Register from './pages/auth/Register';
-import Onboarding from './pages/auth/Onboarding';
-import ForgotPassword from './pages/auth/ForgotPassword';
-import ResetPassword from './pages/auth/ResetPassword';
-import TwoFactorSetup from './pages/auth/TwoFactorSetup';
-import Dashboard from './pages/Dashboard';
-import Proposals from './pages/proposals/Proposals';
-import BulkRenewalWizard from './pages/proposals/BulkRenewalWizard';
-import FirstProposalWizardPage from './pages/proposals/FirstProposalWizardPage';
-import ProposalDetail from './pages/proposals/ProposalDetail';
-import CreateProposal from './pages/proposals/CreateProposal';
-import WizardProposal from './pages/proposals/WizardProposal';
-import EditProposal from './pages/proposals/EditProposal';
-import Clients from './pages/clients/Clients';
-import ClientDetail from './pages/clients/ClientDetail';
-import CreateClient from './pages/clients/CreateClient';
-import Services from './pages/services/Services';
-import ServiceDetail from './pages/services/ServiceDetail';
-import PricingCalculatorPage from './pages/pricing/PricingCalculatorPage';
-import ProposalTemplates from './pages/templates/ProposalTemplates';
-import Settings from './pages/Settings';
-import Subscription from './pages/Subscription';
-import Analytics from './pages/Analytics';
-import PartnerProgramme from './pages/PartnerProgramme';
-import NotFound from './pages/NotFound';
-import PublicProposalView from './pages/public/ProposalView';
-import Status from './pages/Status';
-import ClientPortal from './pages/public/ClientPortal';
-import AmlOnboarding from './pages/public/AmlOnboarding';
-import TermsOfService from './pages/legal/TermsOfService';
-import PaymentCollectionTerms from './pages/legal/PaymentCollectionTerms';
-import ClientPaymentAuthorisation from './pages/legal/ClientPaymentAuthorisation';
-import PrivacyPolicy from './pages/legal/PrivacyPolicy';
-import AiDisclosure from './pages/legal/AiDisclosure';
-import Soc2Controls from './pages/legal/Soc2Controls';
+import * as Pages from './routes/lazyPages';
 
 // World-class features
 import CommandPalette from './components/command-palette/CommandPalette';
@@ -140,7 +105,9 @@ const AnimatedRoutes = () => {
             <PublicRoute>
               <AuthLayout>
                 <AnimatedPage>
-                  <Login />
+                  <PageSuspense>
+                    <Pages.Login />
+                  </PageSuspense>
                 </AnimatedPage>
               </AuthLayout>
             </PublicRoute>
@@ -152,7 +119,9 @@ const AnimatedRoutes = () => {
             <PublicRoute>
               <AuthLayout>
                 <AnimatedPage>
-                  <Onboarding />
+                  <PageSuspense>
+                    <Pages.Onboarding />
+                  </PageSuspense>
                 </AnimatedPage>
               </AuthLayout>
             </PublicRoute>
@@ -164,7 +133,9 @@ const AnimatedRoutes = () => {
             <PublicRoute>
               <AuthLayout>
                 <AnimatedPage>
-                  <ForgotPassword />
+                  <PageSuspense>
+                    <Pages.ForgotPassword />
+                  </PageSuspense>
                 </AnimatedPage>
               </AuthLayout>
             </PublicRoute>
@@ -176,7 +147,9 @@ const AnimatedRoutes = () => {
             <PublicRoute>
               <AuthLayout>
                 <AnimatedPage>
-                  <ResetPassword />
+                  <PageSuspense>
+                    <Pages.ResetPassword />
+                  </PageSuspense>
                 </AnimatedPage>
               </AuthLayout>
             </PublicRoute>
@@ -196,7 +169,9 @@ const AnimatedRoutes = () => {
             index
             element={
               <AnimatedPage>
-                <Dashboard />
+                <PageSuspense>
+                  <Pages.Dashboard />
+                </PageSuspense>
               </AnimatedPage>
             }
           />
@@ -206,7 +181,9 @@ const AnimatedRoutes = () => {
             path="proposals"
             element={
               <AnimatedPage>
-                <Proposals />
+                <PageSuspense>
+                  <Pages.Proposals />
+                </PageSuspense>
               </AnimatedPage>
             }
           />
@@ -214,7 +191,9 @@ const AnimatedRoutes = () => {
             path="proposals/wizard"
             element={
               <AnimatedPage>
-                <WizardProposal />
+                <PageSuspense>
+                  <Pages.WizardProposal />
+                </PageSuspense>
               </AnimatedPage>
             }
           />
@@ -222,7 +201,9 @@ const AnimatedRoutes = () => {
             path="proposals/new"
             element={
               <AnimatedPage>
-                <CreateProposal />
+                <PageSuspense>
+                  <Pages.CreateProposal />
+                </PageSuspense>
               </AnimatedPage>
             }
           />
@@ -230,7 +211,9 @@ const AnimatedRoutes = () => {
             path="proposals/renewals"
             element={
               <AnimatedPage>
-                <BulkRenewalWizard />
+                <PageSuspense>
+                  <Pages.BulkRenewalWizard />
+                </PageSuspense>
               </AnimatedPage>
             }
           />
@@ -238,7 +221,9 @@ const AnimatedRoutes = () => {
             path="proposals/first-wizard"
             element={
               <AnimatedPage>
-                <FirstProposalWizardPage />
+                <PageSuspense>
+                  <Pages.FirstProposalWizardPage />
+                </PageSuspense>
               </AnimatedPage>
             }
           />
@@ -246,7 +231,9 @@ const AnimatedRoutes = () => {
             path="proposals/:id/edit"
             element={
               <AnimatedPage>
-                <EditProposal />
+                <PageSuspense>
+                  <Pages.EditProposal />
+                </PageSuspense>
               </AnimatedPage>
             }
           />
@@ -254,7 +241,9 @@ const AnimatedRoutes = () => {
             path="proposals/:id"
             element={
               <AnimatedPage>
-                <ProposalDetail />
+                <PageSuspense>
+                  <Pages.ProposalDetail />
+                </PageSuspense>
               </AnimatedPage>
             }
           />
@@ -264,7 +253,9 @@ const AnimatedRoutes = () => {
             path="clients"
             element={
               <AnimatedPage>
-                <Clients />
+                <PageSuspense>
+                  <Pages.Clients />
+                </PageSuspense>
               </AnimatedPage>
             }
           />
@@ -272,7 +263,9 @@ const AnimatedRoutes = () => {
             path="clients/new"
             element={
               <AnimatedPage>
-                <CreateClient />
+                <PageSuspense>
+                  <Pages.CreateClient />
+                </PageSuspense>
               </AnimatedPage>
             }
           />
@@ -280,7 +273,9 @@ const AnimatedRoutes = () => {
             path="clients/:id"
             element={
               <AnimatedPage>
-                <ClientDetail />
+                <PageSuspense>
+                  <Pages.ClientDetail />
+                </PageSuspense>
               </AnimatedPage>
             }
           />
@@ -290,7 +285,9 @@ const AnimatedRoutes = () => {
             path="templates"
             element={
               <AnimatedPage>
-                <ProposalTemplates />
+                <PageSuspense>
+                  <Pages.ProposalTemplates />
+                </PageSuspense>
               </AnimatedPage>
             }
           />
@@ -300,7 +297,9 @@ const AnimatedRoutes = () => {
             path="services"
             element={
               <AnimatedPage>
-                <Services />
+                <PageSuspense>
+                  <Pages.Services />
+                </PageSuspense>
               </AnimatedPage>
             }
           />
@@ -308,7 +307,9 @@ const AnimatedRoutes = () => {
             path="services/:id"
             element={
               <AnimatedPage>
-                <ServiceDetail />
+                <PageSuspense>
+                  <Pages.ServiceDetail />
+                </PageSuspense>
               </AnimatedPage>
             }
           />
@@ -316,7 +317,9 @@ const AnimatedRoutes = () => {
             path="pricing-calculator"
             element={
               <AnimatedPage>
-                <PricingCalculatorPage />
+                <PageSuspense>
+                  <Pages.PricingCalculatorPage />
+                </PageSuspense>
               </AnimatedPage>
             }
           />
@@ -326,7 +329,9 @@ const AnimatedRoutes = () => {
             path="settings"
             element={
               <AnimatedPage>
-                <Settings />
+                <PageSuspense>
+                  <Pages.Settings />
+                </PageSuspense>
               </AnimatedPage>
             }
           />
@@ -334,7 +339,9 @@ const AnimatedRoutes = () => {
             path="2fa-setup"
             element={
               <AnimatedPage>
-                <TwoFactorSetup />
+                <PageSuspense>
+                  <Pages.TwoFactorSetup />
+                </PageSuspense>
               </AnimatedPage>
             }
           />
@@ -342,7 +349,9 @@ const AnimatedRoutes = () => {
             path="subscription"
             element={
               <AnimatedPage>
-                <Subscription />
+                <PageSuspense>
+                  <Pages.Subscription />
+                </PageSuspense>
               </AnimatedPage>
             }
           />
@@ -350,7 +359,9 @@ const AnimatedRoutes = () => {
             path="analytics"
             element={
               <AnimatedPage>
-                <Analytics />
+                <PageSuspense>
+                  <Pages.Analytics />
+                </PageSuspense>
               </AnimatedPage>
             }
           />
@@ -358,7 +369,9 @@ const AnimatedRoutes = () => {
             path="partners"
             element={
               <AnimatedPage>
-                <PartnerProgramme />
+                <PageSuspense>
+                  <Pages.PartnerProgramme />
+                </PageSuspense>
               </AnimatedPage>
             }
           />
@@ -369,7 +382,9 @@ const AnimatedRoutes = () => {
           path="/status"
           element={
             <AnimatedPage>
-              <Status />
+              <PageSuspense>
+                <Pages.Status />
+              </PageSuspense>
             </AnimatedPage>
           }
         />
@@ -379,7 +394,9 @@ const AnimatedRoutes = () => {
           path="/proposals/view/:token"
           element={
             <AnimatedPage>
-              <PublicProposalView />
+              <PageSuspense>
+                <Pages.PublicProposalView />
+              </PageSuspense>
             </AnimatedPage>
           }
         />
@@ -389,7 +406,9 @@ const AnimatedRoutes = () => {
           path="/portal/:token"
           element={
             <AnimatedPage>
-              <ClientPortal />
+              <PageSuspense>
+                <Pages.ClientPortal />
+              </PageSuspense>
             </AnimatedPage>
           }
         />
@@ -399,7 +418,9 @@ const AnimatedRoutes = () => {
           path="/onboarding/aml/:token"
           element={
             <AnimatedPage>
-              <AmlOnboarding />
+              <PageSuspense>
+                <Pages.AmlOnboarding />
+              </PageSuspense>
             </AnimatedPage>
           }
         />
@@ -409,7 +430,9 @@ const AnimatedRoutes = () => {
           path="/legal/terms"
           element={
             <AnimatedPage>
-              <TermsOfService />
+              <PageSuspense>
+                <Pages.TermsOfService />
+              </PageSuspense>
             </AnimatedPage>
           }
         />
@@ -417,7 +440,9 @@ const AnimatedRoutes = () => {
           path="/legal/payment-collection-terms"
           element={
             <AnimatedPage>
-              <PaymentCollectionTerms />
+              <PageSuspense>
+                <Pages.PaymentCollectionTerms />
+              </PageSuspense>
             </AnimatedPage>
           }
         />
@@ -425,7 +450,9 @@ const AnimatedRoutes = () => {
           path="/legal/client-payment-authorisation"
           element={
             <AnimatedPage>
-              <ClientPaymentAuthorisation />
+              <PageSuspense>
+                <Pages.ClientPaymentAuthorisation />
+              </PageSuspense>
             </AnimatedPage>
           }
         />
@@ -433,7 +460,9 @@ const AnimatedRoutes = () => {
           path="/legal/privacy"
           element={
             <AnimatedPage>
-              <PrivacyPolicy />
+              <PageSuspense>
+                <Pages.PrivacyPolicy />
+              </PageSuspense>
             </AnimatedPage>
           }
         />
@@ -441,7 +470,9 @@ const AnimatedRoutes = () => {
           path="/legal/ai-disclosure"
           element={
             <AnimatedPage>
-              <AiDisclosure />
+              <PageSuspense>
+                <Pages.AiDisclosure />
+              </PageSuspense>
             </AnimatedPage>
           }
         />
@@ -449,7 +480,9 @@ const AnimatedRoutes = () => {
           path="/legal/soc2"
           element={
             <AnimatedPage>
-              <Soc2Controls />
+              <PageSuspense>
+                <Pages.Soc2Controls />
+              </PageSuspense>
             </AnimatedPage>
           }
         />
@@ -459,7 +492,9 @@ const AnimatedRoutes = () => {
           path="*"
           element={
             <AnimatedPage>
-              <NotFound />
+              <PageSuspense>
+                <Pages.NotFound />
+              </PageSuspense>
             </AnimatedPage>
           }
         />

@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite --host",
-    "build": "vite build && node scripts/prepare-static-engage.mjs",
+    "build": "vite build && node scripts/check-public-bundle-budget.mjs && node scripts/prepare-static-engage.mjs",
     "build:capacitor": "cross-env CAPACITOR=true vite build --mode capacitor",
     "cap:sync": "npm run build:capacitor && npx cap sync",
     "cap:sync:ios": "npm run build:capacitor && npx cap sync ios",
