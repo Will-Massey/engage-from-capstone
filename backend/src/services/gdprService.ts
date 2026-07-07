@@ -125,14 +125,13 @@ export class GDPRService {
             subdomain: true,
           },
         },
-        proposals: {
+        createdProposals: {
           include: {
             services: true,
             signatures: true,
             views: true,
           },
         },
-        createdProposals: true,
         activityLogs: {
           orderBy: { createdAt: 'desc' },
           take: 1000,
@@ -150,7 +149,7 @@ export class GDPRService {
     return {
       exportDate: new Date(),
       user: sanitizedUser,
-      proposals: user.proposals || [],
+      proposals: user.createdProposals || [],
       clients: await this.getUserClients(userId, prisma),
       activityLogs: user.activityLogs || [],
     };

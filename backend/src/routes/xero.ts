@@ -34,8 +34,19 @@ import {
 } from '../services/xeroService.js';
 import { pushProposalToXero } from '../services/xeroProposalPush.js';
 import logger from '../config/logger.js';
+import { isE2eTestRequest } from '../utils/securityFlags.js';
 
 const router = Router();
+
+function ensureE2eMockAllowed(req: { headers: Record<string, string | string[] | undefined> }) {
+  if (!isE2eTestRequest(req.headers)) {
+    throw new ApiError(
+      'FORBIDDEN',
+      'Xero mock connect is only available when X-Test-Mode is set',
+      403
+    );
+  }
+}
 
 function ensureXeroConfigured() {
   if (!isXeroOAuthConfigured()) {
@@ -315,6 +326,55 @@ router.post(
   asyncHandler(async (req, res) => {
     const payload = await handlePushProposal(req.tenantId!, req.params.proposalId);
     res.json(payload);
+  })
+);
+
+/**
+ * POST /api/xero/mock-connect
+ * E2e-only — persist a stub Xero connection without OAuth (CI has no Xero creds).
+ */
+router.post(
+  '/mock-connect',
+  authenticate,
+  authorize('ADMIN', 'PARTNER', 'MANAGER'),
+  asyncHandler(async (req, res) => {
+    ensureE2eMockAllowed(req);
+
+    const tenantId = req.tenantId!;
+    await saveTenantXeroSettings(tenantId, {
+      connected: true,
+      xeroTenantId: 'e2e-xero-tenant',
+      xeroTenantName: 'E2E Demo Organisation',
+      refreshToken: 'e2e-stub-refresh-token',
+      accessToken: 'e2e-stub-access-token',
+      connectedAt: new Date().toISOString(),
+      connectedByUserId: req.user!.id,
+      scope: ['accounting.contacts', 'accounting.transactions'],
+    });
+
+    res.json({
+      success: true,
+      data: {
+        connected: true,
+        xeroTenantId: 'e2e-xero-tenant',
+        xeroTenantName: 'E2E Demo Organisation',
+      },
+      message: 'Xero mock connection saved (e2e stub)',
+    });
+  })
+);
+
+/**
+ * POST /api/xero/mock-disconnect — e2e cleanup for mock-connect.
+ */
+router.post(
+  '/mock-disconnect',
+  authenticate,
+  authorize('ADMIN', 'PARTNER', 'MANAGER'),
+  asyncHandler(async (req, res) => {
+    ensureE2eMockAllowed(req);
+    await clearTenantXeroSettings(req.tenantId!);
+    res.json({ success: true, message: 'Xero mock connection cleared' });
   })
 );
 

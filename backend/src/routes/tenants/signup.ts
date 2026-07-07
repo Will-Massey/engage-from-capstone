@@ -501,14 +501,40 @@ async function createDefaultServices(tx: any, tenantId: string) {
   ];
 
   for (const service of defaultServices) {
+    const row = service as {
+      category: string;
+      name: string;
+      description: string;
+      longDescription?: string;
+      basePrice: number;
+      baseHours: number;
+      frequencyOptions: string[];
+      defaultFrequency: string;
+      applicableEntityTypes: string[];
+      complexityFactors?: unknown[];
+      requirements?: unknown[];
+      deliverables?: unknown[];
+      tags?: string[];
+      regulatoryNotes?: string;
+    };
+
     await tx.serviceTemplate.create({
       data: {
-        ...service,
+        category: row.category,
+        name: row.name,
+        description: row.description,
+        longDescription: row.longDescription,
+        basePrice: row.basePrice,
+        baseHours: row.baseHours,
+        frequencyOptions: row.frequencyOptions.join(','),
+        defaultFrequency: row.defaultFrequency,
+        applicableEntityTypes: row.applicableEntityTypes.join(','),
+        complexityFactors: JSON.stringify(row.complexityFactors ?? []),
+        requirements: JSON.stringify(row.requirements ?? []),
+        deliverables: JSON.stringify(row.deliverables ?? []),
+        tags: (row.tags ?? []).join(','),
+        regulatoryNotes: row.regulatoryNotes,
         tenantId,
-        complexityFactors: (service as any).complexityFactors || [],
-        requirements: (service as any).requirements || [],
-        deliverables: (service as any).deliverables || [],
-        tags: (service as any).tags || [],
         isActive: true,
       },
     });
