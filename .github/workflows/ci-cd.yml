@@ -123,7 +123,7 @@ jobs:
           cd backend
           for spec in tests/smoke/*.test.ts; do
             echo "Smoke: $spec"
-            npx jest "$spec" --forceExit --coverage=false --maxWorkers=1 --runInBand
+            npx jest "$spec" --forceExit --coverage=false --runInBand
           done
         env:
           DATABASE_URL: postgresql://test:test@localhost:5432/engage_test
