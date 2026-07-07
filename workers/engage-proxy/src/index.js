@@ -5,7 +5,11 @@
  * /engage/ping    → engage-backend.onrender.com/ping
  * /engage/assets/*, /engage/images/* → engage-frontend (nested under /engage on Render)
  * /engage/*       → engage-frontend SPA (index.html for client routes)
+ *
+ * Edge cache: hashed /engage/assets/* (immutable) + SPA index.html shell (60s).
  */
+
+import { cachePolicyForPath, spaIndexCacheKey, withCacheControl } from './cachePolicy.js';
 
 const FRONTEND_UPSTREAM = 'https://engage-frontend-0g6u.onrender.com';
 const BACKEND_UPSTREAM = 'https://engage-backend-e1ue.onrender.com';
@@ -58,8 +62,44 @@ async function proxyRequest(request, upstreamBase, upstreamPath) {
   });
 }
 
+/**
+ * @param {Request} request
+ * @param {ExecutionContext} ctx
+ * @param {() => Promise<Response>} fetchUpstream
+ * @param {{ cacheControl: string, cacheKey?: Request }} policy
+ */
+async function serveCached(request, ctx, fetchUpstream, policy) {
+  const cache = caches.default;
+  const cacheKey = policy.cacheKey ?? request;
+
+  if (request.method === 'GET') {
+    const hit = await cache.match(cacheKey);
+    if (hit) {
+      const headers = new Headers(hit.headers);
+      headers.set('X-Engage-Cache', 'HIT');
+      return new Response(hit.body, { status: hit.status, headers });
+    }
+  }
+
+  const upstream = await fetchUpstream();
+  const headers = withCacheControl(upstream.headers, policy.cacheControl);
+  headers.set('X-Engage-Cache', 'MISS');
+
+  const response = new Response(upstream.body, {
+    status: upstream.status,
+    statusText: upstream.statusText,
+    headers,
+  });
+
+  if (request.method === 'GET' && upstream.ok) {
+    ctx.waitUntil(cache.put(cacheKey, response.clone()));
+  }
+
+  return response;
+}
+
 export default {
-  async fetch(request) {
+  async fetch(request, _env, ctx) {
     const url = new URL(request.url);
     const { pathname } = url;
 
@@ -83,6 +123,13 @@ export default {
       return proxyRequest(request, BACKEND_UPSTREAM, '/api');
     }
 
+    const assetPolicy = cachePolicyForPath(pathname);
+    if (assetPolicy.edge && pathname.startsWith(`${PREFIX}/assets/`)) {
+      return serveCached(request, ctx, () => proxyRequest(request, FRONTEND_UPSTREAM, pathname), {
+        cacheControl: assetPolicy.cacheControl,
+      });
+    }
+
     // Render static publish nests assets under /engage/ — preserve full path
     if (isStaticAsset(pathname)) {
       return proxyRequest(request, FRONTEND_UPSTREAM, pathname);
@@ -90,7 +137,33 @@ export default {
 
     // SPA fallback — nested /engage/index.html on Cloudflare Pages
     if (request.method === 'GET' || request.method === 'HEAD') {
-      return proxyRequest(request, FRONTEND_UPSTREAM, `${PREFIX}/index.html` + url.search);
+      const spaPolicy = cachePolicyForPath(pathname, { spaFallback: true });
+      if (spaPolicy.edge && request.method === 'GET') {
+        return serveCached(
+          request,
+          ctx,
+          () => proxyRequest(request, FRONTEND_UPSTREAM, `${PREFIX}/index.html` + url.search),
+          {
+            cacheControl: spaPolicy.cacheControl,
+            cacheKey: spaIndexCacheKey(request),
+          }
+        );
+      }
+
+      const upstream = await proxyRequest(
+        request,
+        FRONTEND_UPSTREAM,
+        `${PREFIX}/index.html` + url.search
+      );
+      if (spaPolicy.cacheControl) {
+        const headers = withCacheControl(upstream.headers, spaPolicy.cacheControl);
+        return new Response(upstream.body, {
+          status: upstream.status,
+          statusText: upstream.statusText,
+          headers,
+        });
+      }
+      return upstream;
     }
 
     return proxyRequest(request, FRONTEND_UPSTREAM, stripPrefix(pathname));
