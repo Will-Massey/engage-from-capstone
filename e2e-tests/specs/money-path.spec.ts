@@ -6,13 +6,12 @@ import {
   ensureTestService,
   getCSRFToken,
 } from '../fixtures/helpers';
+import { API_BASE } from '../fixtures/build-helpers';
 import {
   enablePayoutCollectionForE2e,
   simulateRevolutOrderCompleted,
   totalToPence,
 } from '../fixtures/payment-helpers';
-
-const API_BASE = process.env.API_URL || 'http://localhost:3001/api';
 
 async function ensurePartnerSession(page: Page): Promise<void> {
   const nav = page.locator('nav[aria-label="Main"]:visible').first();

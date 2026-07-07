@@ -10,7 +10,12 @@ const TEST_USER = {
   password: process.env.TEST_USER_PASSWORD || 'DemoPass123!',
 };
 
-const API_BASE = process.env.API_URL || 'http://localhost:3001/api';
+const FRONTEND_ORIGIN = (process.env.FRONTEND_URL || 'http://localhost:5173').replace(/\/$/, '');
+
+/** Match build-helpers: honour same-origin /api when API_URL is the frontend origin. */
+const API_BASE =
+  (process.env.API_URL || FRONTEND_ORIGIN).replace(/\/$/, '') +
+  (process.env.API_URL?.endsWith('/api') ? '' : '/api');
 
 /**
  * Login as partner user

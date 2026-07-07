@@ -114,6 +114,8 @@ jobs:
         run: cd e2e-tests && npx playwright test --config=playwright.build.config.ts --project=chromium
         env:
           FRONTEND_URL: http://localhost:5173
+          # Direct backend for page.request helpers (vite preview /api proxy is flaky in CI)
+          API_URL: http://localhost:3001/api
           TEST_USER_EMAIL: admin@demo.practice
           TEST_USER_PASSWORD: DemoPass123!
 
