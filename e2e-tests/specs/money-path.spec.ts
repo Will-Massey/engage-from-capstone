@@ -252,9 +252,9 @@ test.describe('Money path — decline and share revocation', () => {
 
     const publicPage = await context.newPage();
     await publicPage.goto(shareUrl);
-    await expect(publicPage.getByText(/not found|expired|unavailable/i).first()).toBeVisible({
-      timeout: 15_000,
-    });
+    await expect(
+      publicPage.getByRole('heading', { name: /proposal not available/i })
+    ).toBeVisible({ timeout: 15_000 });
     await publicPage.close();
   });
 });
