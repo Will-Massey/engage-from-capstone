@@ -137,7 +137,7 @@ mountHealthStaticAndErrors(app);
 const shouldStartServer = process.env.NODE_ENV !== 'test' && !process.env.JEST_WORKER_ID;
 
 if (shouldStartServer) {
-  app.listen(PORT, () => {
+  const server = app.listen(PORT, () => {
     logger.info(`🚀 Engage by Capstone API running on port ${PORT}`);
     logger.info(`📊 Environment: ${process.env.NODE_ENV || 'development'}`);
     logger.info(`🔗 API URL: http://localhost:${PORT}`);
@@ -175,7 +175,7 @@ if (shouldStartServer) {
     }
   });
 
-  registerProcessHandlers();
+  registerProcessHandlers(server);
 }
 
 export default app;

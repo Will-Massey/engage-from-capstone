@@ -581,6 +581,11 @@ model Proposal {
   @@index([shareToken])
   @@index([paymentId])
   @@index([createdAt])
+  @@index([tenantId, status])
+  @@index([tenantId, createdAt])
+  @@index([tenantId, sentAt])
+  @@index([tenantId, status, renewalDate])
+  @@index([tenantId, validUntil])
 }
 
 // Capstone platform fee + agency share ledger (client proposal payments)
@@ -960,6 +965,8 @@ model ActivityLog {
   @@index([proposalId])
   @@index([entityType, entityId])
   @@index([createdAt])
+  @@index([tenantId, createdAt])
+  @@index([tenantId, entityType, entityId])
 }
 
 // ==================== CLIENT TOUCHPOINT WORKFLOW ====================
@@ -1022,6 +1029,7 @@ model Touchpoint {
   @@index([status])
   @@index([scheduledFor])
   @@index([requiresHumanApproval])
+  @@index([status, scheduledFor])
 }
 
 // ==================== EMAIL DELIVERY ====================
@@ -1060,6 +1068,7 @@ model EmailLog {
   @@index([status])
   @@index([createdAt])
   @@index([externalId])
+  @@index([tenantId, createdAt])
 }
 
 model EmailSuppression {
