@@ -100,6 +100,11 @@ jobs:
         env:
           DATABASE_URL: postgresql://test:test@localhost:5432/engage_test
 
+      - name: Seed test database
+        run: cd backend && npx tsx prisma/seed-enhanced.ts
+        env:
+          DATABASE_URL: postgresql://test:test@localhost:5432/engage_test
+
       - name: Run tests
         # --forceExit: with REDIS_URL/DATABASE_URL set the singleton cache and
         # Prisma clients hold open sockets after the suite passes, so Jest can't
