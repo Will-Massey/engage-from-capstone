@@ -4,9 +4,8 @@ import {
   createTestClient,
   createTestProposal,
   ensureTestService,
-  getCSRFToken,
 } from '../fixtures/helpers';
-import { API_BASE } from '../fixtures/build-helpers';
+import { API_BASE, apiGet, apiPost, expectOkApi } from '../fixtures/build-helpers';
 import {
   enablePayoutCollectionForE2e,
   simulateRevolutOrderCompleted,
@@ -44,10 +43,9 @@ test.describe('Money path — sign and collect payment', () => {
   }) => {
     test.slow();
 
-    const meRes = await page.request.get(`${API_BASE}/auth/me`);
-    expect(meRes.ok()).toBeTruthy();
-    const me = await meRes.json();
-    const tenantId = me.data.tenant.id as string;
+    const me = await apiGet(page.request, '/auth/me');
+    await expectOkApi('/auth/me', me);
+    const tenantId = me.body.data.user.tenant.id as string;
 
     const client = await createTestClient(page, {
       name: 'Money Path Client',
@@ -60,29 +58,21 @@ test.describe('Money path — sign and collect payment', () => {
       title: uniqueTitle,
     });
 
-    const detailRes = await page.request.get(`${API_BASE}/proposals/${proposal.id}`);
-    expect(detailRes.ok()).toBeTruthy();
-    const detail = await detailRes.json();
-    const storedTotal = detail.data.total as number;
+    const detail = await apiGet(page.request, `/proposals/${proposal.id}`);
+    await expectOkApi('proposal detail', detail);
+    const storedTotal = detail.body.data.total as number;
     const expectedPence = totalToPence(storedTotal);
     expect(expectedPence).toBeGreaterThan(0);
 
     await page.goto(`/proposals/${proposal.id}`);
     await page.waitForLoadState('networkidle');
-    const csrf = await getCSRFToken(page);
 
-    const sendRes = await page.request.post(`${API_BASE}/proposals/${proposal.id}/send`, {
-      headers: csrf ? { 'X-CSRF-Token': csrf } : {},
-      data: {},
-    });
-    expect(sendRes.ok()).toBeTruthy();
+    const send = await apiPost(page.request, `/proposals/${proposal.id}/send`);
+    await expectOkApi('send proposal', send);
 
-    const shareRes = await page.request.post(`${API_BASE}/proposals/${proposal.id}/share`, {
-      headers: csrf ? { 'X-CSRF-Token': csrf } : {},
-      data: {},
-    });
-    expect(shareRes.ok()).toBeTruthy();
-    const shareUrl = (await shareRes.json()).data.shareUrl as string;
+    const share = await apiPost(page.request, `/proposals/${proposal.id}/share`);
+    await expectOkApi('share proposal', share);
+    const shareUrl = share.body.data.shareUrl as string;
     const shareToken = shareUrl.split('/').pop()!;
 
     const publicPage = await context.newPage();
@@ -167,15 +157,14 @@ test.describe('Money path — sign and collect payment', () => {
       timeout: 15_000,
     });
 
-    const afterDetailRes = await page.request.get(`${API_BASE}/proposals/${proposal.id}`);
-    const afterDetail = await afterDetailRes.json();
-    expect(afterDetail.data.paymentStatus).toBe('COMPLETED');
-    expect(afterDetail.data.total).toBe(storedTotal);
+    const afterDetail = await apiGet(page.request, `/proposals/${proposal.id}`);
+    await expectOkApi('proposal after payment', afterDetail);
+    expect(afterDetail.body.data.paymentStatus).toBe('COMPLETED');
+    expect(afterDetail.body.data.total).toBe(storedTotal);
 
-    const ledgerRes = await page.request.get(`${API_BASE}/payout/ledger`);
-    expect(ledgerRes.ok()).toBeTruthy();
-    const ledger = await ledgerRes.json();
-    const split = (ledger.data as Array<{ title: string; grossPence: number }>).find(
+    const ledger = await apiGet(page.request, '/payout/ledger');
+    await expectOkApi('payout ledger', ledger);
+    const split = (ledger.body.data as Array<{ title: string; grossPence: number }>).find(
       (row) => row.title === uniqueTitle
     );
     expect(split, 'payment split row for proposal').toBeTruthy();
