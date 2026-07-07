@@ -32,6 +32,15 @@ import {
 import { motion, AnimatePresence } from 'framer-motion';
 import { AI_COPILOT } from '../../config/aiCopilot';
 import { openRevolutCheckout } from '../../lib/revolut-checkout';
+import {
+  buildPublicSignPayload,
+  buildSignatureDeviceInfo,
+  buildSigningSteps,
+  collectSignatureValidationErrors,
+  readBrowserDeviceInfo,
+  splitCoverLetterParagraphs,
+  type SigningStep,
+} from './publicSigning';
 
 interface ProposalData {
   id: string;
@@ -84,26 +93,6 @@ interface ProposalData {
 }
 
 type QaMessage = { role: 'user' | 'assistant'; content: string };
-type SigningStep =
-  | 'review'
-  | 'terms'
-  | 'engagement'
-  | 'identity'
-  | 'sign'
-  | 'payment'
-  | 'confirmation';
-
-function buildSigningSteps(proposal: ProposalData): { id: SigningStep; label: string }[] {
-  const steps: { id: SigningStep; label: string }[] = [
-    { id: 'review', label: 'Review' },
-    { id: 'terms', label: 'Terms' },
-  ];
-  if (proposal.engagementLetter?.trim()) {
-    steps.push({ id: 'engagement', label: 'Engagement' });
-  }
-  steps.push({ id: 'identity', label: 'Identity' }, { id: 'sign', label: 'Sign' });
-  return steps;
-}
 
 type SigningCostSummary = {
   dueToday: { amount: number; vatAmount: number; label: string } | null;
@@ -150,14 +139,6 @@ const SIGN_PAGE_FAQS: Array<{ question: string; answer: string }> = [
       'For questions about fees, scope, or timing, contact your accountant directly. You can also ask Clara below — answers are based only on this proposal.',
   },
 ];
-
-function splitCoverLetterParagraphs(...parts: Array<string | undefined>): string[] {
-  const text = parts.filter(Boolean).join('\n\n');
-  return text
-    .split(/\n\s*\n+/)
-    .map((paragraph) => paragraph.trim())
-    .filter(Boolean);
-}
 
 function QaTypingIndicator() {
   return (
@@ -444,47 +425,40 @@ const PublicProposalView = () => {
   };
 
   const handleSubmitSignature = async () => {
-    if (!signatureData || !signerName || !signerRole || !signerEmail) {
-      toast.error('Please provide your name, role, email, and signature');
-      return;
-    }
-    if (!authorisedToSign) {
-      toast.error('Please confirm you are authorised to sign on behalf of the client');
-      return;
-    }
-
-    // Collect forensic device evidence for signature proof
-    const deviceInfo = JSON.stringify({
-      platform: navigator.platform,
-      screen: `${window.screen.width}x${window.screen.height}`,
-      colorDepth: window.screen.colorDepth,
-      timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
-      language: navigator.language,
-      cores: navigator.hardwareConcurrency || 'unknown',
-      touch: 'ontouchstart' in window,
+    const validationErrors = collectSignatureValidationErrors({
+      signatureData,
+      signerName,
+      signerRole,
+      signerEmail,
+      authorisedToSign,
     });
+    if (validationErrors.length > 0) {
+      toast.error(validationErrors[0]);
+      return;
+    }
 
     setIsSubmitting(true);
     try {
-      const consentText = `I confirm I am authorised to sign on behalf of ${proposal?.client?.name || 'the client'} and agree to the terms of this proposal.`;
-
       const isFirstSigner = !awaitingAdditionalSigner;
       const tierToSubmit = isFirstSigner && tiersEnabled ? lockedTierId || undefined : undefined;
+      const hasEngagementLetter = Boolean(proposal?.engagementLetter?.trim());
 
-      const response = (await apiClient.post(`/proposals/view/${token}/sign`, {
-        signedBy: signerName,
-        signedByRole: signerRole,
-        signerEmail,
-        signatureData,
-        agreementAccepted: termsAccepted,
-        engagementLetterAccepted: proposal?.engagementLetter?.trim()
-          ? engagementLetterAccepted
-          : undefined,
-        authorisedToSign,
-        deviceInfo,
-        consentText,
-        ...(tierToSubmit ? { selectedTierId: tierToSubmit } : {}),
-      })) as any;
+      const response = (await apiClient.post(
+        `/proposals/view/${token}/sign`,
+        buildPublicSignPayload({
+          signatureData,
+          signerName,
+          signerRole,
+          signerEmail,
+          authorisedToSign,
+          termsAccepted,
+          engagementLetterAccepted,
+          hasEngagementLetter,
+          clientName: proposal?.client?.name,
+          deviceInfo: buildSignatureDeviceInfo(readBrowserDeviceInfo()),
+          selectedTierId: tierToSubmit,
+        })
+      )) as any;
 
       if (response.success) {
         setIsAccepted(true);
