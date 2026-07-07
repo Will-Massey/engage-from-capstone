@@ -7,7 +7,7 @@ import { Router } from 'express';
 import { z } from 'zod';
 import { prisma } from '../config/database.js';
 import { asyncHandler, ApiError } from '../middleware/errorHandler.js';
-import { authenticate } from '../middleware/auth.js';
+import { authenticate, authorize } from '../middleware/auth.js';
 import {
   billingCycles,
   vatRates,
@@ -85,6 +85,7 @@ router.get(
 router.post(
   '/import-from-catalog',
   authenticate,
+  authorize('ADMIN', 'PARTNER', 'MANAGER'),
   asyncHandler(async (req, res) => {
     const schema = z.object({
       serviceName: z.string(),
@@ -152,6 +153,7 @@ router.post(
 router.post(
   '/bulk-import-catalog',
   authenticate,
+  authorize('ADMIN', 'PARTNER', 'MANAGER'),
   asyncHandler(async (req, res) => {
     const schema = z.object({
       category: z.string().optional(),
@@ -178,6 +180,7 @@ router.post(
 router.put(
   '/:id/billing-vat',
   authenticate,
+  authorize('ADMIN', 'PARTNER', 'MANAGER'),
   asyncHandler(async (req, res) => {
     const schema = z.object({
       billingCycle: z.enum(['FIXED_DATE', 'WEEKLY', 'MONTHLY', 'QUARTERLY', 'ANNUALLY']),

@@ -5,6 +5,7 @@
 import { Router, Request, Response } from 'express';
 import { asyncHandler } from '../../middleware/errorHandler.js';
 import logger from '../../config/logger.js';
+import { secureCompare } from '../../utils/secureCompare.js';
 import { processEmailDeliveryEvent } from '../../services/emailDeliveryService.js';
 
 const router = Router();
@@ -28,7 +29,7 @@ interface CloudflareEmailWebhookEvent {
   custom_args?: Record<string, string>;
 }
 
-function verifyCloudflareWebhookSecret(req: Request): boolean {
+export function verifyCloudflareWebhookSecret(req: Request): boolean {
   const secret = process.env.CLOUDFLARE_EMAIL_WEBHOOK_SECRET;
   if (!secret) {
     return process.env.NODE_ENV !== 'production';
@@ -37,7 +38,7 @@ function verifyCloudflareWebhookSecret(req: Request): boolean {
   const authHeader = req.get('Authorization') || '';
   const bearer = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : '';
   const headerSecret = req.get('X-Webhook-Secret') || '';
-  return bearer === secret || headerSecret === secret;
+  return secureCompare(bearer, secret) || secureCompare(headerSecret, secret);
 }
 
 function pickString(...values: Array<string | undefined>): string | undefined {

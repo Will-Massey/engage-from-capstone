@@ -61,7 +61,8 @@ router.post(
       if (msg.includes('not found')) {
         throw new ApiError('CLIENT_NOT_FOUND', 'Client not found', 404);
       }
-      throw new ApiError('AML_CHECK_FAILED', msg, 500);
+      logger.error('AML check failed', err);
+      throw new ApiError('AML_CHECK_FAILED', 'AML check failed', 500);
     }
   })
 );
@@ -91,7 +92,8 @@ router.get(
       if (msg.includes('not found')) {
         throw new ApiError('CLIENT_NOT_FOUND', 'Client not found', 404);
       }
-      throw new ApiError('AML_STATUS_FAILED', msg, 500);
+      logger.error('AML status lookup failed', err);
+      throw new ApiError('AML_STATUS_FAILED', 'Failed to load AML status', 500);
     }
   })
 );
@@ -140,11 +142,7 @@ router.post(
       });
     } catch (err) {
       logger.error('AML webhook processing failed', err);
-      throw new ApiError(
-        'AML_WEBHOOK_FAILED',
-        err instanceof Error ? err.message : 'Webhook processing failed',
-        500
-      );
+      throw new ApiError('AML_WEBHOOK_FAILED', 'Webhook processing failed', 500);
     }
   })
 );

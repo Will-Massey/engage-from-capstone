@@ -6,7 +6,7 @@ import { Router } from 'express';
 import { z } from 'zod';
 import { prisma } from '../config/database.js';
 import { asyncHandler, ApiError } from '../middleware/errorHandler.js';
-import { authenticate } from '../middleware/auth.js';
+import { authenticate, authorize } from '../middleware/auth.js';
 import { EmailService } from '../services/emailService.js';
 import { tenantMailer, getEmailStatusForTenant } from '../services/tenantMailer.js';
 import {
@@ -81,6 +81,7 @@ router.get(
 router.put(
   '/reply-to',
   authenticate,
+  authorize('ADMIN', 'PARTNER', 'MANAGER'),
   asyncHandler(async (req, res) => {
     const schema = z.object({ replyToEmail: z.string().email() });
     const { replyToEmail } = schema.parse(req.body);
@@ -110,6 +111,7 @@ router.put(
 router.put(
   '/config',
   authenticate,
+  authorize('ADMIN', 'PARTNER', 'MANAGER'),
   asyncHandler(async (req, res) => {
     const schema = z.object({
       provider: z.enum(['smtp', 'gmail', 'outlook', 'microsoft365']),
@@ -352,6 +354,7 @@ router.get(
 router.post(
   '/auth/gmail/exchange',
   authenticate,
+  authorize('ADMIN', 'PARTNER', 'MANAGER'),
   asyncHandler(async (req, res) => {
     const schema = z.object({
       clientId: z.string(),
@@ -398,6 +401,7 @@ router.get(
 router.post(
   '/auth/microsoft/exchange',
   authenticate,
+  authorize('ADMIN', 'PARTNER', 'MANAGER'),
   asyncHandler(async (req, res) => {
     const schema = z.object({
       clientId: z.string(),
@@ -426,6 +430,7 @@ router.post(
 router.delete(
   '/config',
   authenticate,
+  authorize('ADMIN', 'PARTNER', 'MANAGER'),
   asyncHandler(async (req, res) => {
     const tenantId = req.tenantId!;
 
@@ -569,6 +574,7 @@ router.get(
 router.post(
   '/auth/:provider/callback',
   authenticate,
+  authorize('ADMIN', 'PARTNER', 'MANAGER'),
   asyncHandler(async (req, res) => {
     const { provider } = req.params;
 
@@ -666,6 +672,7 @@ router.post(
 router.post(
   '/auth/:provider/disconnect',
   authenticate,
+  authorize('ADMIN', 'PARTNER', 'MANAGER'),
   asyncHandler(async (req, res) => {
     const { provider } = req.params;
 
