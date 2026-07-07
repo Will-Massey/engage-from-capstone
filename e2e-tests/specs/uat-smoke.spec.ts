@@ -171,7 +171,7 @@ test.describe('UAT smoke — Caroline checklist (automated)', () => {
 
   test('firm group settings UI loads', async ({ page }) => {
     await gotoApp(page, '/settings?tab=firm-group');
-    await expect(page.getByRole('heading', { name: /firm group/i })).toBeVisible();
+    await expect(page.getByRole('heading', { name: /^firm group$/i })).toBeVisible();
     await expect(
       page.getByText(/create a firm group|practices in this group/i).first()
     ).toBeVisible({ timeout: 15_000 });
