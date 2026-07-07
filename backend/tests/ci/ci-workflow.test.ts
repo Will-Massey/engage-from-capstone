@@ -19,7 +19,16 @@ describe('CI workflow guards', () => {
     expect(workflow).toContain('test:integration');
   });
 
-  it('raises Node heap for coverage instrumentation', () => {
-    expect(workflow).toMatch(/NODE_OPTIONS:.*max-old-space-size/);
+  it('raises Node heap for unit coverage instrumentation', () => {
+    const unitSection =
+      workflow.split('Run unit tests with coverage')[1]?.split('Run smoke tests')[0] ?? '';
+    expect(unitSection).toMatch(/NODE_OPTIONS:.*max-old-space-size/);
+  });
+
+  it('raises Node heap for full-app smoke suites', () => {
+    const smokeSection =
+      workflow.split('Run smoke tests')[1]?.split('Frontend unit tests')[0] ?? '';
+    expect(smokeSection).toMatch(/NODE_OPTIONS:.*max-old-space-size/);
+    expect(smokeSection).toContain('--coverage=false');
   });
 });

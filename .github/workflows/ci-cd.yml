@@ -116,10 +116,12 @@ jobs:
           NODE_OPTIONS: --max-old-space-size=6144
 
       - name: Run smoke tests
-        run: cd backend && npm run test:integration -- --forceExit
+        # Each smoke file imports the full Express app; default heap OOMs here too.
+        run: cd backend && npm run test:integration -- --forceExit --coverage=false
         env:
           DATABASE_URL: postgresql://test:test@localhost:5432/engage_test
           REDIS_URL: redis://localhost:6379
+          NODE_OPTIONS: --max-old-space-size=8192
 
       - name: Frontend unit tests
         run: cd frontend && npx vitest run
