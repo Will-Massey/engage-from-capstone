@@ -3,7 +3,16 @@
  * @see https://developer.revolut.com/docs/api/merchant
  */
 
+import { randomUUID } from 'crypto';
+
 const API_VERSION = '2024-09-01';
+
+/** CI / local e2e only — never use a real merchant secret. */
+export const REVOLUT_E2E_STUB_KEY = 'e2e-stub';
+
+export function isRevolutE2eStub(): boolean {
+  return process.env.REVOLUT_API_SECRET_KEY === REVOLUT_E2E_STUB_KEY;
+}
 
 export function isRevolutConfigured(): boolean {
   return Boolean(process.env.REVOLUT_API_SECRET_KEY);
@@ -77,6 +86,17 @@ export async function createOrder({
   redirectUrl: string;
   metadata?: Record<string, string>;
 }): Promise<RevolutOrder> {
+  if (isRevolutE2eStub()) {
+    const id = `e2e-order-${randomUUID()}`;
+    return {
+      id,
+      token: `e2e-checkout-${id}`,
+      checkout_url: `https://sandbox-checkout.revolut.com/payment-link/${id}`,
+      merchant_order_ext_ref: merchantOrderExtRef,
+      metadata,
+    };
+  }
+
   return revolutFetch<RevolutOrder>('/api/orders', {
     method: 'POST',
     body: {

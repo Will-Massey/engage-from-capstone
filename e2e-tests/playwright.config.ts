@@ -17,6 +17,7 @@ export default defineConfig({
     'market-leader-smoke.spec.ts',
     'uat-smoke.spec.ts',
     'payout-smoke.spec.ts',
+    'money-path.spec.ts',
     'layout-smoke.spec.ts',
   ],
   fullyParallel: true,

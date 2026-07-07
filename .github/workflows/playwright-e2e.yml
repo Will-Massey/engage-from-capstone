@@ -81,6 +81,9 @@ jobs:
           NODE_ENV: development
           # No SMTP in CI — log emails instead of failing email-gated flows
           EMAIL_DEV_LOG: 'true'
+          # Stub Revolut merchant + webhook for money-path e2e (never use real secrets in CI)
+          REVOLUT_API_SECRET_KEY: e2e-stub
+          REVOLUT_WEBHOOK_SECRET: e2e-webhook-stub
 
       - name: Start frontend
         # VITE_* vars are baked in at build time above; nothing to set here.
