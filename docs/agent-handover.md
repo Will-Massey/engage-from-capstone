@@ -31,13 +31,16 @@ in this repo — they are your roadmap and evidence base.
 - **Migrations** run at container boot via `backend/start-prod.mjs`
   (fail-closed). Every migration must be additive/idempotent-safe.
 - **Prod env var names** (values in Render dashboard; never commit values):
-  DATABASE*URL, JWT_SECRET, JWT_REFRESH_SECRET, ENCRYPTION_KEY,
-  OAUTH_STATE_SECRET, FRONTEND_URL, NODE_ENV=production, SMTP*_, EMAIL\__,
-  REVOLUT*\*, XERO_REDIRECT_URI, XAI_MODEL, XAI_API_KEY, COMPANIES_HOUSE_API_KEY,
-  SUPERADMIN*_, E2E*BYPASS_SECRET, AML_WEBHOOK_SECRET. NOT yet set: SENTRY_DSN,
-  STRIPE*_ (user actions). GitHub Actions secrets: RENDER_API_KEY,
-  RENDER_BACKEND_SERVICE_ID, RENDER_FRONTEND_SERVICE_ID, NEON_API_KEY,
-  NEON_PROJECT_ID.
+
+  ```text
+  DATABASE_URL, JWT_SECRET, JWT_REFRESH_SECRET, ENCRYPTION_KEY,
+  OAUTH_STATE_SECRET, FRONTEND_URL, NODE_ENV=production, SMTP_*, EMAIL_*,
+  REVOLUT_*, XERO_REDIRECT_URI, XAI_MODEL, XAI_API_KEY,
+  COMPANIES_HOUSE_API_KEY, SUPERADMIN_*, E2E_BYPASS_SECRET, AML_WEBHOOK_SECRET
+  NOT yet set (user actions): SENTRY_DSN, STRIPE_*
+  GitHub Actions secrets: RENDER_API_KEY, RENDER_BACKEND_SERVICE_ID,
+  RENDER_FRONTEND_SERVICE_ID, NEON_API_KEY, NEON_PROJECT_ID
+  ```
 
 ## 2. Working agreement (non-negotiable)
 
