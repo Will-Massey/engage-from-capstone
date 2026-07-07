@@ -36,11 +36,22 @@ if (REDIS_URL) {
 }
 
 export function rateLimitStore(): Store | undefined {
-  if (!client) return undefined;
+  // Limiters are created at module import; if Redis is still connecting (or
+  // offline after a prior jest suite), fall back to per-process MemoryStore.
+  if (!client?.isReady) return undefined;
   prefixCounter += 1;
   return new RedisStore({
     // node-redis v4 takes a variadic command; rate-limit-redis passes an array.
-    sendCommand: (...args: string[]) => client!.sendCommand(args) as Promise<never>,
+    // Fail open when Redis is offline (matches passOnStoreError on limiters) so
+    // jest smoke teardown does not mark the suite failed after tests pass.
+    sendCommand: async (...args: string[]) => {
+      try {
+        return (await client!.sendCommand(args)) as never;
+      } catch (err) {
+        logger.error('rate-limit Redis sendCommand error:', err);
+        return undefined as never;
+      }
+    },
     prefix: `rl:${prefixCounter}:`,
   });
 }

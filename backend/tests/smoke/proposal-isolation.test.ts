@@ -1,17 +1,7 @@
-import request, { type Response } from 'supertest';
+import request from 'supertest';
 import app from '../../src/index.js';
 import { prisma } from '../../src/config/database.js';
-
-function getCookieValue(res: Response, name: string): string {
-  const raw = res.headers['set-cookie'];
-  if (!raw) return '';
-  const lines = Array.isArray(raw) ? raw : [String(raw)];
-  for (const line of lines) {
-    const match = line.match(new RegExp(`${name}=([^;]+)`));
-    if (match) return match[1];
-  }
-  return '';
-}
+import { getAccessTokenFromLogin, getCookieValue, getCsrfFromLogin } from './helpers.js';
 
 describe('Proposal isolation smoke', () => {
   const agent = request.agent(app);
@@ -72,8 +62,8 @@ describe('Proposal isolation smoke', () => {
       email: 'admin@demo.practice',
       password: 'DemoPass123!',
     });
-    accessToken = loginRes.body.data.tokens.accessToken;
-    csrfToken = getCookieValue(loginRes, 'csrfToken');
+    accessToken = getAccessTokenFromLogin(loginRes);
+    csrfToken = getCsrfFromLogin(loginRes);
     if (!csrfToken) {
       const statusRes = await agent.get('/api/status');
       csrfToken = getCookieValue(statusRes, 'csrfToken');
@@ -156,5 +146,70 @@ describe('Proposal isolation smoke', () => {
     expect(refreshedB?.services[0]?.displayPrice).toBe(999);
 
     await prisma.proposal.deleteMany({ where: { id: { in: [idA, idB] } } });
+  });
+
+  it('cannot read another tenant proposal by id', async () => {
+    if (skipReason) {
+      throw new Error(`[smoke] Prerequisites missing: ${skipReason}`);
+    }
+
+    const otherTenant = await prisma.tenant.create({
+      data: {
+        subdomain: `iso-${Date.now()}`,
+        name: 'Isolation Other Practice',
+      },
+    });
+
+    const otherUser = await prisma.user.create({
+      data: {
+        tenantId: otherTenant.id,
+        email: `iso-${Date.now()}@other.practice`,
+        passwordHash: 'not-used',
+        firstName: 'Other',
+        lastName: 'Tenant',
+        role: 'ADMIN',
+        isActive: true,
+      },
+    });
+
+    const otherClient = await prisma.client.create({
+      data: {
+        tenantId: otherTenant.id,
+        name: 'Other Client Ltd',
+        contactEmail: 'client@other.test',
+        isActive: true,
+      },
+    });
+
+    const foreignProposal = await prisma.proposal.create({
+      data: {
+        reference: `ISO-FOREIGN-${Date.now()}`,
+        title: 'Foreign tenant proposal',
+        status: 'DRAFT',
+        validUntil: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+        tenantId: otherTenant.id,
+        clientId: otherClient.id,
+        createdById: otherUser.id,
+      },
+    });
+
+    const loginRes = await agent.post('/api/auth/login').send({
+      email: 'admin@demo.practice',
+      password: 'DemoPass123!',
+    });
+    const token = getAccessTokenFromLogin(loginRes);
+    const csrf = getCsrfFromLogin(loginRes);
+
+    const peek = await agent
+      .get(`/api/proposals/${foreignProposal.id}`)
+      .set('Authorization', `Bearer ${token}`)
+      .set('X-CSRF-Token', csrf);
+
+    expect([403, 404]).toContain(peek.status);
+
+    await prisma.proposal.delete({ where: { id: foreignProposal.id } });
+    await prisma.client.delete({ where: { id: otherClient.id } });
+    await prisma.user.delete({ where: { id: otherUser.id } });
+    await prisma.tenant.delete({ where: { id: otherTenant.id } });
   });
 });

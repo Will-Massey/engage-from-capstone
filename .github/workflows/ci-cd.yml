@@ -100,17 +100,36 @@ jobs:
         env:
           DATABASE_URL: postgresql://test:test@localhost:5432/engage_test
 
-      - name: Run tests
-        # --forceExit: with REDIS_URL/DATABASE_URL set the singleton cache and
-        # Prisma clients hold open sockets after the suite passes, so Jest can't
-        # drain the event loop and the step hangs. Coverage is written first.
-        # max-old-space-size: 30+ suites under coverage instrumentation exceed
-        # the default heap (observed V8 OOM at ~2GB on the runner).
-        run: cd backend && npm test -- --coverage --forceExit
+      - name: Seed test database
+        run: cd backend && npx tsx prisma/seed-enhanced.ts
+        env:
+          DATABASE_URL: postgresql://test:test@localhost:5432/engage_test
+
+      - name: Run unit tests with coverage
+        # Smoke suites import the full app; collecting coverage on all src/**/*.ts
+        # alongside them OOMs on the default ~4GB heap. Run smoke separately below.
+        # --forceExit: singleton cache + Prisma hold open sockets after the suite.
+        run: cd backend && npm test -- --coverage --forceExit --testPathIgnorePatterns=/smoke/
         env:
           DATABASE_URL: postgresql://test:test@localhost:5432/engage_test
           REDIS_URL: redis://localhost:6379
-          NODE_OPTIONS: --max-old-space-size=4096
+          NODE_OPTIONS: --max-old-space-size=6144
+
+      - name: Run smoke tests
+        # Each smoke file boots the full Express app. Run one file per jest process
+        # (not test:integration + testPathPattern — that still discovers all smoke
+        # files and OOM'd at 4GB). Cap heap at 6GB — 8192 exceeds the 7GB runner.
+        run: |
+          cd backend
+          for spec in tests/smoke/*.test.ts; do
+            echo "Smoke: $spec"
+            npx jest "$spec" --forceExit --coverage=false --runInBand
+          done
+        env:
+          DATABASE_URL: postgresql://test:test@localhost:5432/engage_test
+          # Omit REDIS_URL — after the coverage suite the service container is
+          # often slow/offline; smoke only needs MemoryStore rate limiting.
+          NODE_OPTIONS: --max-old-space-size=6144
 
       - name: Frontend unit tests
         run: cd frontend && npx vitest run
