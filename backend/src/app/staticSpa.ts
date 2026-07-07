@@ -35,11 +35,15 @@ export function mountHealthStaticAndErrors(app: express.Express): void {
     })
   );
 
-  // Everything else (index.html, sw.js, manifest, images) must revalidate
+  // Shell + unhashed files — short TTL so deploys propagate quickly (worker uses 60s too)
   app.use(
     express.static(publicPath, {
-      setHeaders: (res) => {
-        res.setHeader('Cache-Control', 'no-cache');
+      setHeaders: (res, filePath) => {
+        if (filePath.endsWith('index.html')) {
+          res.setHeader('Cache-Control', 'public, max-age=60');
+        } else {
+          res.setHeader('Cache-Control', 'no-cache');
+        }
       },
     })
   );
@@ -50,7 +54,7 @@ export function mountHealthStaticAndErrors(app: express.Express): void {
     if (req.path.startsWith('/api/') || req.path.startsWith('/uploads/')) {
       return next();
     }
-    res.setHeader('Cache-Control', 'no-cache');
+    res.setHeader('Cache-Control', 'public, max-age=60');
     res.sendFile(path.join(publicPath, 'index.html'), (err) => {
       if (err) {
         // If index.html doesn't exist, return a message
