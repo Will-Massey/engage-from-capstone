@@ -1,17 +1,7 @@
-import request, { type Response } from 'supertest';
+import request from 'supertest';
 import app from '../../src/index.js';
 import { prisma } from '../../src/config/database.js';
-
-function getCookieValue(res: Response, name: string): string {
-  const raw = res.headers['set-cookie'];
-  if (!raw) return '';
-  const lines = Array.isArray(raw) ? raw : [String(raw)];
-  for (const line of lines) {
-    const match = line.match(new RegExp(`${name}=([^;]+)`));
-    if (match) return match[1];
-  }
-  return '';
-}
+import { getAccessTokenFromLogin, getCookieValue, getCsrfFromLogin } from './helpers.js';
 
 /**
  * Integration smoke tests — require a reachable DATABASE_URL and seeded demo data.
@@ -91,8 +81,8 @@ describe('API smoke — auth & proposals', () => {
 
     expect(res.status).toBe(200);
     expect(res.body.success).toBe(true);
-    expect(res.body.data?.tokens?.accessToken).toBeDefined();
-    accessToken = res.body.data.tokens.accessToken;
+    accessToken = getAccessTokenFromLogin(res);
+    expect(accessToken).toBeTruthy();
   });
 
   it('POST /api/proposals creates a draft proposal', async () => {
@@ -105,8 +95,8 @@ describe('API smoke — auth & proposals', () => {
       email: 'admin@demo.practice',
       password: 'DemoPass123!',
     });
-    accessToken = loginRes.body.data.tokens.accessToken;
-    csrfToken = getCookieValue(loginRes, 'csrfToken');
+    accessToken = getAccessTokenFromLogin(loginRes);
+    csrfToken = getCsrfFromLogin(loginRes);
     if (!csrfToken) {
       const statusRes = await agent.get('/api/status');
       csrfToken = getCookieValue(statusRes, 'csrfToken');

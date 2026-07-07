@@ -1,17 +1,7 @@
-import request, { type Response } from 'supertest';
+import request from 'supertest';
 import app from '../../src/index.js';
 import { prisma } from '../../src/config/database.js';
-
-function getCookieValue(res: Response, name: string): string {
-  const raw = res.headers['set-cookie'];
-  if (!raw) return '';
-  const lines = Array.isArray(raw) ? raw : [String(raw)];
-  for (const line of lines) {
-    const match = line.match(new RegExp(`${name}=([^;]+)`));
-    if (match) return match[1];
-  }
-  return '';
-}
+import { getAccessTokenFromLogin, getCookieValue, getCsrfFromLogin } from './helpers.js';
 
 describe('Proposal isolation smoke', () => {
   const agent = request.agent(app);
@@ -72,8 +62,8 @@ describe('Proposal isolation smoke', () => {
       email: 'admin@demo.practice',
       password: 'DemoPass123!',
     });
-    accessToken = loginRes.body.data.tokens.accessToken;
-    csrfToken = getCookieValue(loginRes, 'csrfToken');
+    accessToken = getAccessTokenFromLogin(loginRes);
+    csrfToken = getCsrfFromLogin(loginRes);
     if (!csrfToken) {
       const statusRes = await agent.get('/api/status');
       csrfToken = getCookieValue(statusRes, 'csrfToken');
@@ -207,8 +197,8 @@ describe('Proposal isolation smoke', () => {
       email: 'admin@demo.practice',
       password: 'DemoPass123!',
     });
-    const token = loginRes.body.data.tokens.accessToken;
-    const csrf = getCookieValue(loginRes, 'csrfToken');
+    const token = getAccessTokenFromLogin(loginRes);
+    const csrf = getCsrfFromLogin(loginRes);
 
     const peek = await agent
       .get(`/api/proposals/${foreignProposal.id}`)
