@@ -4,6 +4,7 @@
 
 import { Router } from 'express';
 import { checkDatabaseHealth } from '../config/database.js';
+import { getJobHealth } from '../app/jobHealth.js';
 import { isXeroOAuthConfigured } from '../services/tenantXeroSettings.js';
 import { isQuickBooksOAuthConfigured } from '../services/tenantQuickbooksSettings.js';
 import { asyncHandler } from '../middleware/errorHandler.js';
@@ -72,11 +73,20 @@ router.get(
 
     const httpStatus = overall === 'major_outage' ? 503 : 200;
 
+    // Background job health (names + last success/error only — no internals)
+    const jobs = Object.fromEntries(
+      Object.entries(getJobHealth()).map(([name, entry]) => [
+        name,
+        { lastSuccessAt: entry.lastSuccessAt, lastError: entry.lastError },
+      ])
+    );
+
     res.status(httpStatus).json({
       success: true,
       data: {
         status: overall,
         components,
+        jobs,
         version: process.env.npm_package_version || 'unknown',
         environment: process.env.NODE_ENV || 'development',
         timestamp: new Date().toISOString(),

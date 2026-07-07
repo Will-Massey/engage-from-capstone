@@ -3,12 +3,11 @@
  */
 
 import { Router } from 'express';
-import { PrismaClient } from '@prisma/client';
+import { prisma } from '../config/database.js';
 import { secureCompare } from '../utils/secureCompare.js';
 import { logOpsAccess } from '../utils/opsAudit.js';
 
 const router = Router();
-const prisma = new PrismaClient();
 
 // Root health endpoint (for Render and load balancers)
 router.get('/', async (_req, res) => {

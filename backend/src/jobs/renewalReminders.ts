@@ -211,26 +211,15 @@ export function calculateRenewalDate(acceptedAt: Date): Date {
  * (migration for existing proposals)
  */
 async function updateMissingRenewalDates(): Promise<number> {
-  const proposals = await prisma.proposal.findMany({
-    where: {
-      status: 'ACCEPTED',
-      renewalDate: null,
-      acceptedAt: { not: null },
-    },
-    select: { id: true, acceptedAt: true },
-  });
-
-  let updated = 0;
-  for (const proposal of proposals) {
-    if (proposal.acceptedAt) {
-      const renewalDate = calculateRenewalDate(proposal.acceptedAt);
-      await prisma.proposal.update({
-        where: { id: proposal.id },
-        data: { renewalDate },
-      });
-      updated++;
-    }
-  }
+  // Single set-based UPDATE (was a findMany + per-row update loop).
+  // Renewal is 12 months from acceptance, matching calculateRenewalDate().
+  const updated = await prisma.$executeRaw`
+    UPDATE "Proposal"
+    SET "renewalDate" = "acceptedAt" + interval '1 year'
+    WHERE "status" = 'ACCEPTED'
+      AND "renewalDate" IS NULL
+      AND "acceptedAt" IS NOT NULL
+  `;
 
   if (updated > 0) {
     logger.info(`Updated ${updated} proposals with missing renewal dates`);

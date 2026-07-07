@@ -24,7 +24,25 @@ export function mountHealthStaticAndErrors(app: express.Express): void {
 
   // Serve static frontend files
   const publicPath = path.join(process.cwd(), 'public');
-  app.use(express.static(publicPath));
+
+  // Hashed build assets (assets/[name]-[hash].*) are content-addressed — cache forever
+  app.use(
+    '/assets',
+    express.static(path.join(publicPath, 'assets'), {
+      maxAge: '1y',
+      immutable: true,
+      index: false,
+    })
+  );
+
+  // Everything else (index.html, sw.js, manifest, images) must revalidate
+  app.use(
+    express.static(publicPath, {
+      setHeaders: (res) => {
+        res.setHeader('Cache-Control', 'no-cache');
+      },
+    })
+  );
 
   // Serve index.html for all non-API routes (SPA support)
   app.get('*', (req, res, next) => {
@@ -32,6 +50,7 @@ export function mountHealthStaticAndErrors(app: express.Express): void {
     if (req.path.startsWith('/api/') || req.path.startsWith('/uploads/')) {
       return next();
     }
+    res.setHeader('Cache-Control', 'no-cache');
     res.sendFile(path.join(publicPath, 'index.html'), (err) => {
       if (err) {
         // If index.html doesn't exist, return a message
