@@ -184,6 +184,20 @@ export async function apiPost(
   return { status: res.status(), body };
 }
 
+export async function apiPut(
+  request: APIRequestContext,
+  path: string,
+  data?: object
+): Promise<any> {
+  const res = await request.put(`${API_BASE}${path}`, {
+    data: data ?? {},
+    headers: { ...E2E_HEADERS, ...(await authHeadersFromState(request)) },
+    timeout: apiTimeout(path),
+  });
+  const body = await res.json().catch(() => ({}));
+  return { status: res.status(), body };
+}
+
 export async function apiDelete(request: APIRequestContext, path: string): Promise<any> {
   const res = await request.delete(`${API_BASE}${path}`, {
     headers: { ...E2E_HEADERS, ...(await authHeadersFromState(request)) },
