@@ -843,6 +843,22 @@ export async function approveAndSendTouchpoint(
 }
 
 /**
+ * Resolve the stage-change webhook URL: the TOUCHPOINT_WEBHOOK_URL env var
+ * takes precedence, falling back to the tenant's settings JSON.
+ */
+export function resolveStageWebhookUrl(
+  envUrl: string | undefined,
+  tenantSettings: string | null | undefined
+): string | null {
+  if (envUrl) return envUrl;
+  try {
+    return JSON.parse(tenantSettings || '{}').touchpointWebhookUrl || null;
+  } catch {
+    return null;
+  }
+}
+
+/**
  * Fire a webhook when a lifecycle stage advances.
  * Configure via TENANT settings or env var TOUCHPOINT_WEBHOOK_URL for simplicity.
  */
@@ -853,13 +869,9 @@ async function fireStageWebhook(
   toStage: ClientLifecycleStage
 ) {
   try {
-    const webhookUrl =
-      process.env.TOUCHPOINT_WEBHOOK_URL ||
-      (await prisma.tenant.findUnique({ where: { id: tenantId } }))?.settings
-        ? JSON.parse(
-            (await prisma.tenant.findUnique({ where: { id: tenantId } }))!.settings || '{}'
-          ).touchpointWebhookUrl
-        : null;
+    const envUrl = process.env.TOUCHPOINT_WEBHOOK_URL;
+    const tenant = envUrl ? null : await prisma.tenant.findUnique({ where: { id: tenantId } });
+    const webhookUrl = resolveStageWebhookUrl(envUrl, tenant?.settings);
 
     if (!webhookUrl) return;
 

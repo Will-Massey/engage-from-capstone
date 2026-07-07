@@ -44,7 +44,6 @@ import { registerProcessHandlers } from './app/shutdown.js';
 // Imported (unmounted) in the original bootstrap; kept verbatim — TypeScript
 // elides unused imports, so these do not load at runtime, exactly as before.
 import pricingRoutes from './routes/pricing.js';
-import diagnosticsRoutes from './routes/diagnostics.js';
 import { asyncHandler, ApiError } from './middleware/errorHandler.js';
 import { EmailService } from './services/emailService.js';
 
@@ -137,7 +136,7 @@ mountHealthStaticAndErrors(app);
 const shouldStartServer = process.env.NODE_ENV !== 'test' && !process.env.JEST_WORKER_ID;
 
 if (shouldStartServer) {
-  app.listen(PORT, () => {
+  const server = app.listen(PORT, () => {
     logger.info(`🚀 Engage by Capstone API running on port ${PORT}`);
     logger.info(`📊 Environment: ${process.env.NODE_ENV || 'development'}`);
     logger.info(`🔗 API URL: http://localhost:${PORT}`);
@@ -175,7 +174,7 @@ if (shouldStartServer) {
     }
   });
 
-  registerProcessHandlers();
+  registerProcessHandlers(server);
 }
 
 export default app;

@@ -1,5 +1,7 @@
 import logger from '../utils/logger.js';
+import { captureException } from '../config/sentry.js';
 import { withJobLock, JOB_LOCKS } from '../utils/jobLock.js';
+import { trackJobRun } from './jobHealth.js';
 
 // Schedule renewal reminder job (daily at 9 AM)
 import { runRenewalReminders } from '../jobs/renewalReminders.js';
@@ -16,9 +18,12 @@ export function scheduleRenewalReminders() {
   logger.info('📅 Scheduling renewal reminder job...');
 
   const tick = () =>
-    withJobLock(JOB_LOCKS.renewalReminders, 'renewal reminders', runRenewalReminders).catch((err) =>
-      logger.error('Renewal reminder check failed:', err)
-    );
+    trackJobRun('renewalReminders', () =>
+      withJobLock(JOB_LOCKS.renewalReminders, 'renewal reminders', runRenewalReminders)
+    ).catch((err) => {
+      logger.error('Renewal reminder check failed:', err);
+      captureException(err, { job: 'renewalReminders' });
+    });
 
   // Run once at startup (with delay to let server fully start), then every 24h
   setTimeout(tick, 60000);
@@ -31,9 +36,12 @@ export function scheduleProposalChaseJob() {
   logger.info('📅 Scheduling proposal chase job...');
 
   const tick = () =>
-    withJobLock(JOB_LOCKS.proposalChase, 'proposal chase', runProposalChaseJob).catch((err) =>
-      logger.error('Proposal chase check failed:', err)
-    );
+    trackJobRun('proposalChase', () =>
+      withJobLock(JOB_LOCKS.proposalChase, 'proposal chase', runProposalChaseJob)
+    ).catch((err) => {
+      logger.error('Proposal chase check failed:', err);
+      captureException(err, { job: 'proposalChase' });
+    });
 
   setTimeout(tick, 120_000);
   setInterval(tick, RENEWAL_CHECK_INTERVAL);
@@ -47,9 +55,12 @@ export function scheduleTouchpointEngine() {
   const INTERVAL = 15 * 60 * 1000; // every 15 minutes
 
   const tick = () =>
-    withJobLock(JOB_LOCKS.touchpointEngine, 'touchpoint engine', runTouchpointEngine).catch((err) =>
-      logger.error('Touchpoint engine run failed:', err)
-    );
+    trackJobRun('touchpointEngine', () =>
+      withJobLock(JOB_LOCKS.touchpointEngine, 'touchpoint engine', runTouchpointEngine)
+    ).catch((err) => {
+      logger.error('Touchpoint engine run failed:', err);
+      captureException(err, { job: 'touchpointEngine' });
+    });
 
   setTimeout(tick, 90_000);
   setInterval(tick, INTERVAL);
@@ -65,9 +76,12 @@ export function scheduleEmailAutomation() {
   const INTERVAL = 24 * 60 * 60 * 1000; // daily
 
   const tick = () =>
-    withJobLock(JOB_LOCKS.emailAutomation, 'email automation', runEmailAutomation).catch((err) =>
-      logger.error('Email automation run failed:', err)
-    );
+    trackJobRun('emailAutomation', () =>
+      withJobLock(JOB_LOCKS.emailAutomation, 'email automation', runEmailAutomation)
+    ).catch((err) => {
+      logger.error('Email automation run failed:', err);
+      captureException(err, { job: 'emailAutomation' });
+    });
 
   setTimeout(tick, 120_000);
   setInterval(tick, INTERVAL);
