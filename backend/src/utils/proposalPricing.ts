@@ -8,6 +8,7 @@ import {
   billingFrequencyToDisplayMode,
   type BillingFrequency,
 } from '../services/pricingEngine_v2.js';
+import { roundMoney } from '@uk-proposal-platform/shared';
 
 export { VALID_BILLING_FREQUENCIES };
 export type { BillingFrequency };
@@ -99,21 +100,30 @@ export function buildProposalServiceRecord(
     vatRate,
   });
 
+  // Persisted money is always whole pence (2dp): quantities like 1.5 ×
+  // £33.33 would otherwise store float dust that drifts from the pence
+  // amounts charged at the payment boundary. Gross is derived from the
+  // ROUNDED net so the gross === lineTotal + vatAmount invariant holds
+  // exactly on what we store. (Stage 0 of the Int-pence migration — see
+  // docs/money-int-pence-migration.md.)
+  const netTotal = roundMoney(line.netTotal);
+  const grossTotal = roundMoney(netTotal + line.vatAmount);
+
   return {
     name: snapshotName || template?.name || 'Service',
     description: snapshotDescription !== undefined ? snapshotDescription : template?.description,
-    displayPrice: line.displayPrice,
+    displayPrice: roundMoney(line.displayPrice),
     billingFrequency,
     priceDisplayMode: billingFrequencyToDisplayMode(billingFrequency),
-    annualEquivalent: line.annualEquivalent,
+    annualEquivalent: roundMoney(line.annualEquivalent),
     quantity: line.quantity,
-    lineTotal: line.netTotal,
-    unitPrice: line.displayPrice,
+    lineTotal: netTotal,
+    unitPrice: roundMoney(line.displayPrice),
     discountPercent,
     frequency: billingFrequency,
     vatRate,
     vatAmount: line.vatAmount,
-    grossTotal: line.grossTotal,
+    grossTotal,
     oneOffDueDate: parseOneOffDueDate(billingFrequency, svc.oneOffDueDate),
     serviceTemplateId: template?.id ?? null,
   };
@@ -121,8 +131,8 @@ export function buildProposalServiceRecord(
 
 export function calculateHeaderTotals(services: BuiltProposalService[]) {
   return {
-    subtotal: services.reduce((sum, s) => sum + s.lineTotal, 0),
-    vatAmount: services.reduce((sum, s) => sum + s.vatAmount, 0),
-    total: services.reduce((sum, s) => sum + s.grossTotal, 0),
+    subtotal: roundMoney(services.reduce((sum, s) => sum + s.lineTotal, 0)),
+    vatAmount: roundMoney(services.reduce((sum, s) => sum + s.vatAmount, 0)),
+    total: roundMoney(services.reduce((sum, s) => sum + s.grossTotal, 0)),
   };
 }

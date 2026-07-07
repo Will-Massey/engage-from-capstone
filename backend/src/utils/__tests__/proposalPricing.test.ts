@@ -61,7 +61,34 @@ describe('proposalPricing', () => {
       build(0.1, 9, 0, 20),
     ];
     for (const l of lines) {
-      expect(l.grossTotal).toBeCloseTo(l.lineTotal + l.vatAmount, 6);
+      // Exact identity, not toBeCloseTo — stored money is rounded to pence
+      expect(l.grossTotal).toBe(pence(l.lineTotal + l.vatAmount) / 100);
+    }
+  });
+
+  it('persists every money field as whole pence (Stage 0 of the Int-pence migration)', () => {
+    const awkward = [
+      build(33.333, 3, 0, 20), // 99.999 raw net
+      build(0.115, 2, 0, 20), // sub-penny display price
+      build(19.99, 1.5, 7.77, 5), // fractional quantity + odd discount
+    ];
+    for (const l of awkward) {
+      for (const field of [
+        'displayPrice',
+        'unitPrice',
+        'lineTotal',
+        'vatAmount',
+        'grossTotal',
+        'annualEquivalent',
+      ] as const) {
+        const v = l[field];
+        expect(pence(v) / 100).toBeCloseTo(v, 10); // v IS a whole-pence value
+      }
+      expect(l.grossTotal).toBe(pence(l.lineTotal + l.vatAmount) / 100);
+    }
+    const totals = calculateHeaderTotals(awkward);
+    for (const v of [totals.subtotal, totals.vatAmount, totals.total]) {
+      expect(pence(v) / 100).toBeCloseTo(v, 10);
     }
   });
 
