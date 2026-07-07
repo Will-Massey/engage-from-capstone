@@ -116,12 +116,18 @@ jobs:
           NODE_OPTIONS: --max-old-space-size=6144
 
       - name: Run smoke tests
-        # Each smoke file imports the full Express app; default heap OOMs here too.
-        run: cd backend && npm run test:integration -- --forceExit --coverage=false
+        # Each smoke file boots the full Express app; one process per file avoids
+        # cumulative heap pressure on the 7GB GitHub runner (8192 NODE_OPTIONS OOMs).
+        run: |
+          cd backend
+          for spec in tests/smoke/*.test.ts; do
+            echo "Smoke: $spec"
+            npm run test:integration -- --forceExit --coverage=false --testPathPattern="$(basename "$spec" .test.ts)"
+          done
         env:
           DATABASE_URL: postgresql://test:test@localhost:5432/engage_test
           REDIS_URL: redis://localhost:6379
-          NODE_OPTIONS: --max-old-space-size=8192
+          NODE_OPTIONS: --max-old-space-size=4096
 
       - name: Frontend unit tests
         run: cd frontend && npx vitest run
