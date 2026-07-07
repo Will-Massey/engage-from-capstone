@@ -10,7 +10,8 @@ module.exports = {
     '^@shared/(.*)$': '<rootDir>/../shared/src/$1',
   },
   setupFiles: ['<rootDir>/tests/env.ts'],
-  collectCoverageFrom: ['src/**/*.ts'],
-  coveragePathIgnorePatterns: ['/node_modules/', '/dist/'],
+  collectCoverageFrom: ['src/**/*.ts', '!src/**/*.d.ts'],
+  coveragePathIgnorePatterns: ['/node_modules/', '/dist/', '/__tests__/'],
+  coverageProvider: 'v8',
   maxWorkers: 1,
 };
