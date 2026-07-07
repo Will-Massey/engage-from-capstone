@@ -198,8 +198,13 @@ export async function apiPut(
   return { status: res.status(), body };
 }
 
-export async function apiDelete(request: APIRequestContext, path: string): Promise<any> {
+export async function apiDelete(
+  request: APIRequestContext,
+  path: string,
+  data?: object
+): Promise<any> {
   const res = await request.delete(`${API_BASE}${path}`, {
+    data: data ?? {},
     headers: { ...E2E_HEADERS, ...(await authHeadersFromState(request)) },
     timeout: apiTimeout(path),
   });
