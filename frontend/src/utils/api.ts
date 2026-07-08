@@ -88,6 +88,14 @@ import type {
   UpdatePayoutSettingsPayload,
 } from '../types/payment';
 import type {
+  CompaniesHouseCompanyResult,
+  CompaniesHouseSearchResult,
+  CompaniesHouseStatusResult,
+  EnrichCompaniesHousePayload,
+  EnrichCompaniesHouseResult,
+  CompaniesHouseSnapshot,
+} from '../types/companiesHouse';
+import type {
   EngagementLibraryCurrentVersion,
   EngagementLibraryQuarterlySchedule,
   EngagementLibraryTemplatesNeedingUpdateResult,
@@ -714,15 +722,15 @@ export const apiClient = {
   updateClient: (id: string, data: UpdateClientPayload) =>
     api.put(`/clients/${id}`, data) as Promise<ApiResponse<ClientRecord>>,
 
-  enrichClientFromCompaniesHouse: (
-    clientId: string,
-    options?: { companyNumber?: string; searchByName?: boolean; fillMissingOnly?: boolean }
-  ) => api.post(`/clients/${clientId}/enrich-companies-house`, options ?? {}),
+  enrichClientFromCompaniesHouse: (clientId: string, options?: EnrichCompaniesHousePayload) =>
+    api.post(`/clients/${clientId}/enrich-companies-house`, options ?? {}) as Promise<
+      ApiResponse<EnrichCompaniesHouseResult>
+    >,
 
   getClientCompaniesHouse: (clientId: string, companyNumber?: string) =>
     api.get(`/clients/${clientId}/companies-house`, {
       params: companyNumber ? { companyNumber } : undefined,
-    }),
+    }) as Promise<ApiResponse<CompaniesHouseSnapshot | null> & { configured: boolean }>,
 
   deleteClient: (id: string) => api.delete(`/clients/${id}`),
 
@@ -1059,11 +1067,18 @@ export const apiClient = {
     api.delete(`/proposal-templates/${id}`) as Promise<ApiResponse<undefined>>,
 
   // Companies House
-  getCompaniesHouseStatus: () => api.get('/companies-house/status'),
+  getCompaniesHouseStatus: () =>
+    api.get('/companies-house/status') as Promise<ApiResponse<CompaniesHouseStatusResult>>,
+
   searchCompaniesHouse: (query: string, limit = 5) =>
-    api.get('/companies-house/search', { params: { q: query, limit } }),
+    api.get('/companies-house/search', { params: { q: query, limit } }) as Promise<
+      ApiResponse<CompaniesHouseSearchResult[]> & { query?: string }
+    >,
+
   getCompaniesHouseCompany: (companyNumber: string) =>
-    api.get(`/companies-house/company/${companyNumber}`),
+    api.get(`/companies-house/company/${companyNumber}`) as Promise<
+      ApiResponse<CompaniesHouseCompanyResult>
+    >,
   createCoverLetterTemplate: (data: CreateCoverLetterTemplatePayload) =>
     api.post('/cover-letter-templates', data) as Promise<ApiResponse<CoverLetterTemplateRecord>>,
 
