@@ -1,47 +1,25 @@
 /** Session storage for pricing calculator → proposal builder handoff (Phase W2.9). */
 
+import type {
+  PricingComplexityFlags,
+  PricingMethodologyTotals,
+  PricingSuggestFeesPayload,
+  PricingSuggestionPayload,
+  SuggestedServiceFee,
+} from '../types/pricing';
+
 export const PRICING_SUGGESTION_KEY = 'engage-pricing-suggestion';
 
-export interface PricingComplexityFlags {
-  hasPayroll: boolean;
-  hasRd: boolean;
-  multiSite: boolean;
-}
+export type {
+  PricingComplexityFlags,
+  PricingMethodologyTotals,
+  PricingSuggestFeesPayload,
+  PricingSuggestionPayload,
+  SuggestedServiceFee,
+};
 
-export interface PricingCalculatorInputs {
-  turnoverBand: string;
-  entityType: string;
-  employeeCount: number;
-  vatRegistered: boolean;
-  mtdStatus: string;
-  complexity: PricingComplexityFlags;
-}
-
-export interface SuggestedServiceFee {
-  catalogName: string;
-  category: string;
-  description: string;
-  billingCycle: string;
-  suggestedPrice: number;
-  feeLow: number;
-  feeHigh: number;
-  annualEquivalent: number;
-  serviceTemplateId?: string;
-  rationale?: string;
-}
-
-export interface PricingSuggestionPayload {
-  inputs: PricingCalculatorInputs;
-  services: SuggestedServiceFee[];
-  totals: {
-    monthlyLow: number;
-    monthlyHigh: number;
-    monthlySuggested: number;
-    annualSuggested: number;
-    currency: string;
-  };
-  savedAt: string;
-}
+/** @deprecated Use PricingSuggestFeesPayload */
+export type PricingCalculatorInputs = PricingSuggestFeesPayload;
 
 export function savePricingSuggestion(payload: Omit<PricingSuggestionPayload, 'savedAt'>): void {
   const data: PricingSuggestionPayload = { ...payload, savedAt: new Date().toISOString() };
