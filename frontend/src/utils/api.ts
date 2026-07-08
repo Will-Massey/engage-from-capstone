@@ -67,6 +67,43 @@ import type {
   TouchpointTemplateRecord,
   UpsertTouchpointTemplatePayload,
 } from '../types/touchpoints';
+import type {
+  AiAnalyzeEmailResult,
+  AiAttentionQueueResult,
+  AiAutoFitResult,
+  AiClientBriefResult,
+  AiCommandContext,
+  AiCommandResult,
+  AiCoverLetterPayload,
+  AiCoverLetterResult,
+  AiDraftReviewPayload,
+  AiDraftReviewResult,
+  AiEmailContext,
+  AiEmptySuggestionResult,
+  AiEngagementLetterResult,
+  AiFeedbackPayload,
+  AiFeedbackResult,
+  AiFollowUpResult,
+  AiFollowUpTone,
+  AiProposalEmailDraftPayload,
+  AiProposalEmailStreamEvent,
+  AiProposalExplanationPayload,
+  AiProposalExplanationResult,
+  AiProposalSendEmailResult,
+  AiQuickPayload,
+  AiQuickResult,
+  AiRegulatoryAlertsResult,
+  AiRenewalDraftResult,
+  AiReviseResult,
+  AiStatusResult,
+  AiSuggestEmailCtasResult,
+  AiSuggestEmailSubjectsResult,
+  AiSuggestServicesResult,
+  AiSuggestTitleResult,
+  AiVoiceProposalResult,
+  ProposalHealthResult,
+  VoiceOfPracticeSettings,
+} from '../types/ai';
 
 export type { ApiResponse };
 
@@ -858,8 +895,12 @@ export const apiClient = {
   leaveFirmGroup: () => api.post('/tenants/firm-group/leave', {}),
 
   // W4.4 voice of practice
-  getVoiceOfPractice: () => api.get('/ai/voice-of-practice'),
-  saveVoiceOfPractice: (sampleText: string) => api.post('/ai/voice-of-practice', { sampleText }),
+  getVoiceOfPractice: () =>
+    api.get('/ai/voice-of-practice') as Promise<ApiResponse<VoiceOfPracticeSettings>>,
+  saveVoiceOfPractice: (sampleText: string) =>
+    api.post('/ai/voice-of-practice', { sampleText }) as Promise<
+      ApiResponse<VoiceOfPracticeSettings>
+    >,
 
   // Lifecycle actions (wired to touchpoint engine)
   markAmlComplete: (clientId: string) => api.post(`/clients/${clientId}/aml-complete`, {}),
@@ -987,111 +1028,85 @@ export const apiClient = {
     api.post(`/onboarding/aml/${token}`, data),
 
   // Engage assistant (Clara) — configured on the server via environment variables
-  getAiStatus: () => api.get('/ai/status'),
-  aiStatus: () => api.get('/ai/status'),
+  getAiStatus: () => api.get('/ai/status') as Promise<ApiResponse<AiStatusResult>>,
+  aiStatus: () => api.get('/ai/status') as Promise<ApiResponse<AiStatusResult>>,
   aiEmptySuggestion: (context: string) =>
-    api.get(`/ai/empty-suggestion?context=${encodeURIComponent(context)}`),
-  aiSuggestServices: (clientId: string) => api.post('/ai/suggest-services', { clientId }),
-  aiDraftReview: (data: {
-    clientId: string;
-    title?: string;
-    coverLetter?: string;
-    validUntil?: string;
-    terms?: string;
-    services: Array<{ name: string; billingFrequency?: string; displayPrice?: number }>;
-  }) => api.post('/ai/draft-review', data),
+    api.get(`/ai/empty-suggestion?context=${encodeURIComponent(context)}`) as Promise<
+      ApiResponse<AiEmptySuggestionResult>
+    >,
+  aiSuggestServices: (clientId: string) =>
+    api.post('/ai/suggest-services', { clientId }) as Promise<ApiResponse<AiSuggestServicesResult>>,
+  aiDraftReview: (data: AiDraftReviewPayload) =>
+    api.post('/ai/draft-review', data) as Promise<ApiResponse<AiDraftReviewResult>>,
   aiSuggestTitle: (
     clientId: string,
     services: Array<{ name: string; billingFrequency?: string }>
-  ) => api.post('/ai/suggest-title', { clientId, services }),
-  aiCoverLetter: (data: {
-    clientId: string;
-    tone: string;
-    practiceName: string;
-    senderName?: string;
-    services: Array<{ name: string; billingFrequency?: string; displayPrice?: number }>;
-  }) => api.post('/ai/cover-letter', data),
-  aiFollowUp: (proposalId: string, tone?: string) =>
-    api.post('/ai/follow-up', { proposalId, tone: tone || 'professional' }),
+  ) =>
+    api.post('/ai/suggest-title', { clientId, services }) as Promise<
+      ApiResponse<AiSuggestTitleResult>
+    >,
+  aiCoverLetter: (data: AiCoverLetterPayload) =>
+    api.post('/ai/cover-letter', data) as Promise<ApiResponse<AiCoverLetterResult>>,
+  aiFollowUp: (proposalId: string, tone?: AiFollowUpTone) =>
+    api.post('/ai/follow-up', { proposalId, tone: tone || 'professional' }) as Promise<
+      ApiResponse<AiFollowUpResult>
+    >,
   aiEngagementLetter: (proposalId: string, options?: { includeAiIntro?: boolean }) =>
     api.post('/ai/engagement-letter', {
       proposalId,
       includeAiIntro: options?.includeAiIntro ?? false,
-    }),
-  getProposalHealth: (proposalId: string) => api.get(`/ai/proposal-health/${proposalId}`),
+    }) as Promise<ApiResponse<AiEngagementLetterResult>>,
+  getProposalHealth: (proposalId: string) =>
+    api.get(`/ai/proposal-health/${proposalId}`) as Promise<ApiResponse<ProposalHealthResult>>,
   aiRenewalDraft: (proposalId: string, upliftPercent?: number) =>
-    api.post('/ai/renewal-draft', { proposalId, upliftPercent: upliftPercent ?? 0 }),
-  aiCommand: (query: string, context?: { proposalId?: string; clientId?: string }) =>
-    api.post('/ai/command', { query, context }),
-  aiQuick: (data: {
-    mode: 'ask' | 'health' | 'follow_up' | 'suggest_services';
-    query?: string;
-    context?: { proposalId?: string; clientId?: string; page?: string };
-  }) => api.post('/ai/quick', data),
-  aiFeedback: (data: {
-    feature: string;
-    helpful: boolean;
-    comment?: string;
-    proposalId?: string;
-  }) => api.post('/ai/feedback', data),
+    api.post('/ai/renewal-draft', { proposalId, upliftPercent: upliftPercent ?? 0 }) as Promise<
+      ApiResponse<AiRenewalDraftResult>
+    >,
+  aiCommand: (query: string, context?: AiCommandContext) =>
+    api.post('/ai/command', { query, context }) as Promise<ApiResponse<AiCommandResult>>,
+  aiQuick: (data: AiQuickPayload) =>
+    api.post('/ai/quick', data) as Promise<ApiResponse<AiQuickResult>>,
+  aiFeedback: (data: AiFeedbackPayload) =>
+    api.post('/ai/feedback', data) as Promise<ApiResponse<AiFeedbackResult>>,
 
-  aiProposalEmailDraft: (data: {
-    proposalId?: string;
-    clientId?: string;
-    title?: string;
-    reference?: string;
-    coverLetter?: string;
-    validUntil?: string;
-    viewLink?: string;
-    practiceName?: string;
-    senderName?: string;
-    senderEmail?: string;
-    services?: Array<{ name: string; billingFrequency?: string; displayPrice?: number }>;
-  }) => api.post('/ai/proposal-email-draft', data),
+  aiProposalEmailDraft: (data: AiProposalEmailDraftPayload) =>
+    api.post('/ai/proposal-email-draft', data) as Promise<ApiResponse<AiProposalSendEmailResult>>,
 
-  aiEmailRevise: (currentBody: string, instruction: string, context?: any) =>
-    api.post('/ai/email-revise', { currentBody, instruction, context }),
+  aiEmailRevise: (currentBody: string, instruction: string, context?: AiEmailContext) =>
+    api.post('/ai/email-revise', { currentBody, instruction, context }) as Promise<
+      ApiResponse<AiReviseResult>
+    >,
 
-  aiCoverLetterRevise: (currentBody: string, instruction: string, context?: any) =>
-    api.post('/ai/cover-letter-revise', { currentBody, instruction, context }),
+  aiCoverLetterRevise: (currentBody: string, instruction: string, context?: AiEmailContext) =>
+    api.post('/ai/cover-letter-revise', { currentBody, instruction, context }) as Promise<
+      ApiResponse<AiReviseResult>
+    >,
 
-  aiProposalExplanation: (data: {
-    clientId: string;
-    title: string;
-    services: Array<{
-      name: string;
-      description?: string;
-      billingFrequency?: string;
-      billingCycle?: string;
-    }>;
-    monthlyTotal?: number;
-    annualTotal?: number;
-    contractTotal?: number;
-  }) => api.post('/ai/proposal-explanation', data),
+  aiProposalExplanation: (data: AiProposalExplanationPayload) =>
+    api.post('/ai/proposal-explanation', data) as Promise<ApiResponse<AiProposalExplanationResult>>,
 
-  aiSuggestEmailSubjects: (body: string, context?: any) =>
-    api.post('/ai/suggest-email-subjects', { body, context }),
+  aiSuggestEmailSubjects: (body: string, context?: AiEmailContext) =>
+    api.post('/ai/suggest-email-subjects', { body, context }) as Promise<
+      ApiResponse<AiSuggestEmailSubjectsResult>
+    >,
 
-  aiSuggestEmailCtas: (body: string, context?: any) =>
-    api.post('/ai/suggest-email-ctas', { body, context }),
+  aiSuggestEmailCtas: (body: string, context?: AiEmailContext) =>
+    api.post('/ai/suggest-email-ctas', { body, context }) as Promise<
+      ApiResponse<AiSuggestEmailCtasResult>
+    >,
 
-  aiAnalyzeEmail: (body: string, context?: any) => api.post('/ai/analyze-email', { body, context }),
+  aiAnalyzeEmail: (body: string, context?: AiEmailContext) =>
+    api.post('/ai/analyze-email', { body, context }) as Promise<ApiResponse<AiAnalyzeEmailResult>>,
 
   aiStreamProposalEmailDraft: async (
-    payload: any,
-    onEvent: (event: {
-      subject?: string;
-      bodyChunk?: string;
-      textBody?: string;
-      done?: boolean;
-      error?: string;
-    }) => void
+    payload: AiProposalEmailDraftPayload,
+    onEvent: (event: AiProposalEmailStreamEvent) => void
   ): Promise<void> => {
     const base = API_URL.endsWith('/api') ? API_URL : `${API_URL}/api`;
     const body =
-      payload && typeof payload === 'object' && 'proposalId' in payload && payload.proposalId
+      'proposalId' in payload && payload.proposalId
         ? { proposalId: payload.proposalId }
-        : { draft: payload?.draft ?? payload };
+        : { draft: payload };
 
     const res = await fetch(`${base}/ai/proposal-email-draft/stream`, {
       method: 'POST',
@@ -1154,9 +1169,11 @@ export const apiClient = {
     }
   },
 
-  aiClientBrief: (clientId: string) => api.post(`/ai/client-brief/${clientId}`, {}),
+  aiClientBrief: (clientId: string) =>
+    api.post(`/ai/client-brief/${clientId}`, {}) as Promise<ApiResponse<AiClientBriefResult>>,
 
-  aiAutoFit: (clientId: string) => api.post('/ai/auto-fit', { clientId }),
+  aiAutoFit: (clientId: string) =>
+    api.post('/ai/auto-fit', { clientId }) as Promise<ApiResponse<AiAutoFitResult>>,
 
   aiPricingAdvisor: (data: PricingAdvisorPayload) =>
     api.post('/ai/pricing-advisor', data) as Promise<ApiResponse<PricingAdvisorResult>>,
@@ -1164,19 +1181,15 @@ export const apiClient = {
   getProposalRegulatoryFit: (proposalId: string) =>
     api.get(`/proposals/${proposalId}/regulatory-fit`),
 
-  aiRegulatoryAlerts: () => api.get('/ai/regulatory-alerts'),
+  aiRegulatoryAlerts: () =>
+    api.get('/ai/regulatory-alerts') as Promise<ApiResponse<AiRegulatoryAlertsResult>>,
 
-  aiAttentionQueue: () => api.get('/ai/attention-queue'),
+  aiAttentionQueue: () =>
+    api.get('/ai/attention-queue') as Promise<ApiResponse<AiAttentionQueueResult>>,
 
   // Streaming (SSE) for live drafts — uses native fetch + token from auth store
   aiStreamCoverLetter: async (
-    data: {
-      clientId: string;
-      tone: string;
-      practiceName: string;
-      senderName?: string;
-      services: Array<{ name: string; billingFrequency?: string; displayPrice?: number }>;
-    },
+    data: AiCoverLetterPayload,
     onChunk: (text: string) => void
   ): Promise<void> => {
     const base = API_URL.endsWith('/api') ? API_URL : `${API_URL}/api`;
@@ -1260,7 +1273,9 @@ export const apiClient = {
   },
 
   aiVoiceProposal: (clientId: string, transcript: string) =>
-    api.post('/ai/voice-proposal', { clientId, transcript }),
+    api.post('/ai/voice-proposal', { clientId, transcript }) as Promise<
+      ApiResponse<AiVoiceProposalResult>
+    >,
 };
 
 export default api;
