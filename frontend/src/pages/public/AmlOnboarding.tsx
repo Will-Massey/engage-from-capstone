@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { apiClient } from '../../utils/api';
+import type { AmlOnboardingFileUpload, SubmitAmlOnboardingPayload } from '../../types/aml';
 import toast from 'react-hot-toast';
 import { motion } from 'framer-motion';
 import {
@@ -18,6 +19,14 @@ type UploadedFileMeta = {
   data: string;
   sizeBytes: number;
 };
+
+function toAmlFileUpload(file: UploadedFileMeta): AmlOnboardingFileUpload {
+  return {
+    fileName: file.fileName,
+    mimeType: file.mimeType as AmlOnboardingFileUpload['mimeType'],
+    data: file.data,
+  };
+}
 
 type FormState = {
   idDocumentType: 'PASSPORT' | 'DRIVING_LICENCE' | 'OTHER';
@@ -247,20 +256,13 @@ export default function AmlOnboarding() {
 
     setSubmitting(true);
     try {
-      const res = (await apiClient.submitAmlOnboarding(token, {
+      const payload: SubmitAmlOnboardingPayload = {
         ...form,
         confirmAccurate: true,
-        photoIdDocument: {
-          fileName: photoIdFile.fileName,
-          mimeType: photoIdFile.mimeType,
-          data: photoIdFile.data,
-        },
-        proofOfAddressDocument: {
-          fileName: proofOfAddressFile.fileName,
-          mimeType: proofOfAddressFile.mimeType,
-          data: proofOfAddressFile.data,
-        },
-      })) as any;
+        photoIdDocument: toAmlFileUpload(photoIdFile),
+        proofOfAddressDocument: toAmlFileUpload(proofOfAddressFile),
+      };
+      const res = await apiClient.submitAmlOnboarding(token, payload);
       if (res.success) {
         setDone(true);
         toast.success('Details submitted — thank you');
