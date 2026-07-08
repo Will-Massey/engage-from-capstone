@@ -104,6 +104,41 @@ import type {
   PublishEngagementLibraryVersionResult,
   QuarterlyEngagementLibraryReleaseResult,
 } from '../types/engagementLibrary';
+import type {
+  AmlCheckResult,
+  AmlClientStatus,
+  AmlOnboardingContext,
+  InitiateAmlCheckPayload,
+  RegulatoryCheckResult,
+  SubmitAmlOnboardingPayload,
+  SubmitAmlOnboardingResult,
+} from '../types/aml';
+import type {
+  ClientActivityLogEntry,
+  DeleteClientResult,
+  VerifyClientIdentityResult,
+} from '../types/clientLifecycle';
+import type {
+  DashboardStats,
+  FeeBenchmarksResult,
+  ProposalFunnelParams,
+  ProposalFunnelResult,
+} from '../types/analytics';
+import type {
+  AddFirmGroupPracticePayload,
+  CreateFirmGroupPayload,
+  FirmGroupContext,
+  UpdateFirmGroupPayload,
+} from '../types/firmGroup';
+import type {
+  DisconnectIntegrationResult,
+  ImportXeroClientsPayload,
+  ImportXeroClientsResult,
+  OAuthConnectResult,
+  QuickBooksStatusResult,
+  XeroProposalPushResult,
+  XeroStatusResult,
+} from '../types/integrations';
 import type { AutomationSettings } from '../types/automation';
 import type {
   ClientTouchpointRecord,
@@ -732,21 +767,27 @@ export const apiClient = {
       params: companyNumber ? { companyNumber } : undefined,
     }) as Promise<ApiResponse<CompaniesHouseSnapshot | null> & { configured: boolean }>,
 
-  deleteClient: (id: string) => api.delete(`/clients/${id}`),
+  deleteClient: (id: string) =>
+    api.delete(`/clients/${id}`) as Promise<ApiResponse<DeleteClientResult>>,
 
   assessMTDITSA: (id: string, incomeSources?: MtdIncomeSource[]) =>
     api.post(`/clients/${id}/mtditsa-assessment`, { incomeSources }) as Promise<
       ApiResponse<MtdItsaAssessmentResult>
     >,
 
-  verifyClientIdentity: (id: string) => api.post(`/clients/${id}/verify-identity`),
+  verifyClientIdentity: (id: string) =>
+    api.post(`/clients/${id}/verify-identity`) as Promise<ApiResponse<VerifyClientIdentityResult>>,
 
-  initiateAmlCheck: (clientId: string, provider?: 'smartsearch' | 'creditsafe' | 'stub') =>
-    api.post('/aml/check', { clientId, provider }),
+  initiateAmlCheck: (clientId: string, provider?: InitiateAmlCheckPayload['provider']) => {
+    const payload: InitiateAmlCheckPayload = { clientId, provider };
+    return api.post('/aml/check', payload) as Promise<ApiResponse<AmlCheckResult>>;
+  },
 
-  getAmlStatus: (clientId: string) => api.get(`/aml/status/${clientId}`),
+  getAmlStatus: (clientId: string) =>
+    api.get(`/aml/status/${clientId}`) as Promise<ApiResponse<AmlClientStatus>>,
 
-  getRegulatoryCheck: (clientId: string) => api.get(`/regulatory/check/${clientId}`),
+  getRegulatoryCheck: (clientId: string) =>
+    api.get(`/regulatory/check/${clientId}`) as Promise<ApiResponse<RegulatoryCheckResult>>,
 
   // Services
   // Pricing methodology (W2.9 — rule engine)
@@ -831,7 +872,7 @@ export const apiClient = {
   getUsers: () => api.get<AuthUserListItem[]>('/auth/users'),
 
   // Dashboard
-  getDashboardStats: () => api.get('/analytics/dashboard'),
+  getDashboardStats: () => api.get('/analytics/dashboard') as Promise<ApiResponse<DashboardStats>>,
 
   createUser: (data: {
     email: string;
@@ -932,34 +973,67 @@ export const apiClient = {
     api.get('/automation/settings') as Promise<ApiResponse<AutomationSettings>>,
 
   // Xero integration (W1.1–W1.2)
-  getXeroStatus: () => api.get('/xero/status'),
-  connectXero: () => api.get('/xero/connect'),
-  disconnectXero: () => api.post('/xero/disconnect', {}),
-  importXeroClients: (dryRun = false) => api.post('/xero/import-clients', { dryRun }),
+  getXeroStatus: () => api.get('/xero/status') as Promise<ApiResponse<XeroStatusResult>>,
+
+  connectXero: () => api.get('/xero/connect') as Promise<ApiResponse<OAuthConnectResult>>,
+
+  disconnectXero: () => api.post('/xero/disconnect', {}) as Promise<DisconnectIntegrationResult>,
+
+  importXeroClients: (dryRun = false) => {
+    const payload: ImportXeroClientsPayload = { dryRun };
+    return api.post('/xero/import-clients', payload) as Promise<
+      ApiResponse<ImportXeroClientsResult>
+    >;
+  },
+
   pushAcceptedProposalToXero: (proposalId: string) =>
-    api.post(`/xero/push-accepted/${proposalId}`, {}),
+    api.post(`/xero/push-accepted/${proposalId}`, {}) as Promise<
+      ApiResponse<XeroProposalPushResult>
+    >,
 
   // QuickBooks integration (W4.7 scaffold)
-  getQuickBooksStatus: () => api.get('/quickbooks/status'),
-  connectQuickBooks: () => api.get('/quickbooks/connect'),
-  disconnectQuickBooks: () => api.post('/quickbooks/disconnect', {}),
+  getQuickBooksStatus: () =>
+    api.get('/quickbooks/status') as Promise<ApiResponse<QuickBooksStatusResult>>,
+
+  connectQuickBooks: () =>
+    api.get('/quickbooks/connect') as Promise<ApiResponse<OAuthConnectResult>>,
+
+  disconnectQuickBooks: () =>
+    api.post('/quickbooks/disconnect', {}) as Promise<DisconnectIntegrationResult>,
 
   // W4.1 fee benchmarks
-  getFeeBenchmarks: () => api.get('/analytics/fee-benchmarks'),
+  getFeeBenchmarks: () =>
+    api.get('/analytics/fee-benchmarks') as Promise<ApiResponse<FeeBenchmarksResult>>,
 
-  getProposalFunnel: (params?: { startDate?: string; endDate?: string }) =>
-    api.get('/analytics/proposal-funnel', { params }),
+  getProposalFunnel: (params?: ProposalFunnelParams) =>
+    api.get('/analytics/proposal-funnel', { params }) as Promise<ApiResponse<ProposalFunnelResult>>,
 
   // W4.3 firm group
-  getFirmGroup: () => api.get('/tenants/firm-group'),
-  createFirmGroup: (data: { name: string; slug?: string }) => api.post('/tenants/firm-group', data),
-  updateFirmGroup: (data: { name: string }) => api.put('/tenants/firm-group', data),
-  dissolveFirmGroup: () => api.delete('/tenants/firm-group'),
-  addFirmGroupPractice: (subdomain: string) =>
-    api.post('/tenants/firm-group/practices', { subdomain }),
+  getFirmGroup: () => api.get('/tenants/firm-group') as Promise<ApiResponse<FirmGroupContext>>,
+
+  createFirmGroup: (data: CreateFirmGroupPayload) =>
+    api.post('/tenants/firm-group', data) as Promise<ApiResponse<FirmGroupContext>>,
+
+  updateFirmGroup: (data: UpdateFirmGroupPayload) =>
+    api.put('/tenants/firm-group', data) as Promise<ApiResponse<FirmGroupContext>>,
+
+  dissolveFirmGroup: () =>
+    api.delete('/tenants/firm-group') as Promise<ApiResponse<FirmGroupContext>>,
+
+  addFirmGroupPractice: (subdomain: string) => {
+    const payload: AddFirmGroupPracticePayload = { subdomain };
+    return api.post('/tenants/firm-group/practices', payload) as Promise<
+      ApiResponse<FirmGroupContext>
+    >;
+  },
+
   removeFirmGroupPractice: (practiceId: string) =>
-    api.delete(`/tenants/firm-group/practices/${practiceId}`),
-  leaveFirmGroup: () => api.post('/tenants/firm-group/leave', {}),
+    api.delete(`/tenants/firm-group/practices/${practiceId}`) as Promise<
+      ApiResponse<FirmGroupContext>
+    >,
+
+  leaveFirmGroup: () =>
+    api.post('/tenants/firm-group/leave', {}) as Promise<ApiResponse<FirmGroupContext>>,
 
   // W4.4 voice of practice
   getVoiceOfPractice: () =>
@@ -970,13 +1044,24 @@ export const apiClient = {
     >,
 
   // Lifecycle actions (wired to touchpoint engine)
-  markAmlComplete: (clientId: string) => api.post(`/clients/${clientId}/aml-complete`, {}),
+  markAmlComplete: (clientId: string) =>
+    api.post(`/clients/${clientId}/aml-complete`, {}) as Promise<ApiResponse<undefined>>,
+
   markEngagementLetterSigned: (clientId: string) =>
-    api.post(`/clients/${clientId}/engagement-letter-signed`, {}),
-  markInfoReceived: (clientId: string) => api.post(`/clients/${clientId}/info-received`, {}),
+    api.post(`/clients/${clientId}/engagement-letter-signed`, {}) as Promise<
+      ApiResponse<undefined>
+    >,
+
+  markInfoReceived: (clientId: string) =>
+    api.post(`/clients/${clientId}/info-received`, {}) as Promise<ApiResponse<undefined>>,
+
   scheduleDeadlineReminders: (clientId: string) =>
-    api.post(`/clients/${clientId}/schedule-deadline-reminders`, {}),
-  getClientActivity: (clientId: string) => api.get(`/clients/${clientId}/activity`),
+    api.post(`/clients/${clientId}/schedule-deadline-reminders`, {}) as Promise<
+      ApiResponse<undefined>
+    >,
+
+  getClientActivity: (clientId: string) =>
+    api.get(`/clients/${clientId}/activity`) as Promise<ApiResponse<ClientActivityLogEntry[]>>,
 
   // Touchpoints per client (for Lifecycle panel upcoming + history)
   getClientTouchpoints: (clientId: string) =>
@@ -1130,9 +1215,11 @@ export const apiClient = {
   },
 
   // Public AML onboarding (portal token — no auth)
-  getAmlOnboarding: (token: string) => api.get(`/onboarding/aml/${token}`),
-  submitAmlOnboarding: (token: string, data: Record<string, unknown>) =>
-    api.post(`/onboarding/aml/${token}`, data),
+  getAmlOnboarding: (token: string) =>
+    api.get(`/onboarding/aml/${token}`) as Promise<ApiResponse<AmlOnboardingContext>>,
+
+  submitAmlOnboarding: (token: string, data: SubmitAmlOnboardingPayload) =>
+    api.post(`/onboarding/aml/${token}`, data) as Promise<ApiResponse<SubmitAmlOnboardingResult>>,
 
   // Engage assistant (Clara) — configured on the server via environment variables
   getAiStatus: () => api.get('/ai/status') as Promise<ApiResponse<AiStatusResult>>,
