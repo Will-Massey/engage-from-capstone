@@ -19,6 +19,13 @@ import type {
   MtdItsaAssessmentResult,
   UpdateClientPayload,
 } from '../types/clients';
+import type {
+  CreateServicePayload,
+  ServiceCategoryOption,
+  ServiceListParams,
+  ServiceRecord,
+  UpdateServicePayload,
+} from '../types/services';
 
 export type { ApiResponse };
 
@@ -629,19 +636,25 @@ export const apiClient = {
     floorGbp?: number;
   }) => api.post('/pricing/contingent-fee', data),
 
-  getServices: (params?: Record<string, any>) => api.get('/services', { params }),
+  getServices: (params?: ServiceListParams) =>
+    api.get('/services', { params }) as Promise<ApiResponse<ServiceRecord[]>>,
 
-  getServiceCategories: () => api.get('/services/categories'),
+  getServiceCategories: () =>
+    api.get('/services/categories') as Promise<ApiResponse<ServiceCategoryOption[]>>,
 
-  getService: (id: string) => api.get(`/services/${id}`),
+  getService: (id: string) => api.get(`/services/${id}`) as Promise<ApiResponse<ServiceRecord>>,
 
-  createService: (data: any) => api.post('/services', data),
+  createService: (data: CreateServicePayload) =>
+    api.post('/services', data) as Promise<ApiResponse<ServiceRecord>>,
 
-  updateService: (id: string, data: any) => api.put(`/services/${id}`, data),
+  updateService: (id: string, data: UpdateServicePayload) =>
+    api.put(`/services/${id}`, data) as Promise<ApiResponse<ServiceRecord>>,
 
-  duplicateService: (id: string) => api.post(`/services/${id}/duplicate`, {}),
+  duplicateService: (id: string) =>
+    api.post(`/services/${id}/duplicate`, {}) as Promise<ApiResponse<ServiceRecord>>,
 
-  deleteService: (id: string) => api.delete(`/services/${id}`),
+  deleteService: (id: string) =>
+    api.delete(`/services/${id}`) as Promise<ApiResponse<{ message?: string }>>,
 
   // Tenants
   createTenant: (data: any) => api.post('/tenants', data),
