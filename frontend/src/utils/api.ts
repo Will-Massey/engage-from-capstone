@@ -984,7 +984,9 @@ export const apiClient = {
     api.get('/cover-letter-templates/default') as Promise<ApiResponse<CoverLetterTemplateRecord>>,
 
   getCoverLetterMergeFields: () =>
-    api.get('/cover-letter-templates/merge-fields') as Promise<ApiResponse<CoverLetterMergeField[]>>,
+    api.get('/cover-letter-templates/merge-fields') as Promise<
+      ApiResponse<CoverLetterMergeField[]>
+    >,
 
   previewCoverLetter: (id: string, previewData: CoverLetterPreviewPayload) =>
     api.post(`/cover-letter-templates/${id}/preview`, previewData) as Promise<
@@ -1011,11 +1013,7 @@ export const apiClient = {
   updateProposalTemplate: (id: string, data: UpdateProposalTemplatePayload) =>
     api.put(`/proposal-templates/${id}`, data) as Promise<ApiResponse<ProposalTemplateRecord>>,
 
-  saveProposalTemplateFromProposal: (
-    proposalId: string,
-    name: string,
-    description?: string
-  ) => {
+  saveProposalTemplateFromProposal: (proposalId: string, name: string, description?: string) => {
     const payload: SaveProposalTemplateFromProposalPayload = { proposalId, name, description };
     return api.post('/proposal-templates/from-proposal', payload) as Promise<
       ApiResponse<ProposalTemplateCreatedRecord>
@@ -1038,7 +1036,9 @@ export const apiClient = {
     api.post('/cover-letter-templates', data) as Promise<ApiResponse<CoverLetterTemplateRecord>>,
 
   updateCoverLetterTemplate: (id: string, data: UpdateCoverLetterTemplatePayload) =>
-    api.put(`/cover-letter-templates/${id}`, data) as Promise<ApiResponse<CoverLetterTemplateRecord>>,
+    api.put(`/cover-letter-templates/${id}`, data) as Promise<
+      ApiResponse<CoverLetterTemplateRecord>
+    >,
 
   deleteCoverLetterTemplate: (id: string) =>
     api.delete(`/cover-letter-templates/${id}`) as Promise<
