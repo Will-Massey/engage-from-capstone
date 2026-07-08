@@ -271,4 +271,141 @@ describe('api axios interceptors', () => {
       await apiClient.delete('/clients/c1');
     });
   });
+
+  describe('response unwrap', () => {
+    it('returns the JSON envelope body instead of the raw Axios response', async () => {
+      mock.onGet('/services').reply(200, {
+        success: true,
+        data: [{ id: 'svc-1', name: 'Bookkeeping' }],
+      });
+
+      const result = await apiClient.get('/services');
+
+      expect(result).toEqual({
+        success: true,
+        data: [{ id: 'svc-1', name: 'Bookkeeping' }],
+      });
+    });
+
+    it('captures csrfToken from successful responses for later mutations', async () => {
+      mock.onPost('/auth/login').reply(200, {
+        success: true,
+        data: { user: { id: 'u1' }, csrfToken: 'login-csrf-token' },
+      });
+      mock.onPost('/services').reply((config) => {
+        expect(getHeader(config, 'X-CSRF-Token')).toBe('login-csrf-token');
+        return [200, { success: true, data: { id: 'svc-1' } }];
+      });
+
+      await apiClient.login('user@example.com', 'password');
+      await apiClient.createService({
+        category: 'COMPLIANCE',
+        name: 'Bookkeeping',
+        description: 'Monthly books',
+        basePrice: 85,
+      });
+    });
+  });
+
+  describe('public client pages', () => {
+    async function loadPublicSigningPage(): Promise<void> {
+      Object.defineProperty(window, 'location', {
+        configurable: true,
+        value: {
+          pathname: '/engage/proposals/view/share-token-abc',
+          href: '',
+          assign: vi.fn(),
+          replace: vi.fn(),
+        },
+      });
+      await loadApiModule('/engage');
+      clearCsrfCache();
+    }
+
+    it('does not require CSRF on public proposal sign routes', async () => {
+      await loadPublicSigningPage();
+
+      mock.onPost('/proposals/view/share-token-abc/sign').reply((config) => {
+        expect(getHeader(config, 'X-CSRF-Token')).toBeUndefined();
+        return [200, { success: true, data: { status: 'ACCEPTED' } }];
+      });
+
+      await apiClient.post('/proposals/view/share-token-abc/sign', {
+        signedBy: 'Jane Client',
+        signatureData: 'sig',
+      });
+    });
+
+    it('does not redirect to login on UNAUTHORIZED for public proposal views', async () => {
+      await loadPublicSigningPage();
+
+      mock.onGet('/proposals/view/share-token-abc').reply(401, {
+        success: false,
+        error: { code: 'UNAUTHORIZED', message: 'Unauthorized' },
+      });
+      mock.onPost('/auth/refresh').reply(401, {
+        success: false,
+        error: { code: 'INVALID_REFRESH_TOKEN', message: 'No session' },
+      });
+
+      await expect(api.get('/proposals/view/share-token-abc')).rejects.toMatchObject({
+        code: 'UNAUTHORIZED',
+      });
+
+      expect(locationHref).toBe('');
+      expect(authMocks.clearAuth).toHaveBeenCalled();
+    });
+  });
+
+  describe('network and CSRF edge cases', () => {
+    it('blocks mutations when CSRF cannot be fetched', async () => {
+      mock.onGet('/auth/me').reply(401, {
+        success: false,
+        error: { code: 'UNAUTHORIZED', message: 'No session' },
+      });
+      mock.onGet('/auth/csrf-token').reply(200, {
+        success: true,
+        data: {},
+      });
+      mock.onPost('/clients').reply(200, { success: true, data: { id: 'c1' } });
+
+      await expect(apiClient.post('/clients', { name: 'Acme Ltd' })).rejects.toBeTruthy();
+      expect(mock.history.post.filter((req) => req.url === '/clients')).toHaveLength(0);
+    });
+
+    it('maps network failures to NETWORK_ERROR on staff pages', async () => {
+      mock.onGet('/clients').reply((config) =>
+        Promise.reject(
+          Object.assign(new Error('Network Error'), {
+            isAxiosError: true,
+            config,
+            request: {},
+            code: 'ERR_NETWORK',
+          })
+        )
+      );
+
+      await expect(api.get('/clients')).rejects.toMatchObject({
+        code: 'NETWORK_ERROR',
+      });
+    });
+
+    it('hydrates CSRF from sessionStorage on module load', async () => {
+      sessionStorage.setItem('engage_csrf_token', 'session-csrf');
+
+      await loadApiModule('/engage');
+
+      mock.onPost('/services').reply((config) => {
+        expect(getHeader(config, 'X-CSRF-Token')).toBe('session-csrf');
+        return [200, { success: true, data: { id: 'svc-1' } }];
+      });
+
+      await apiClient.createService({
+        category: 'COMPLIANCE',
+        name: 'Bookkeeping',
+        description: 'Monthly books',
+        basePrice: 85,
+      });
+    });
+  });
 });
