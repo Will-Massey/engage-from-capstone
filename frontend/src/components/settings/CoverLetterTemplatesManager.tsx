@@ -2,6 +2,11 @@ import { useEffect, useState } from 'react';
 import { apiClient } from '../../utils/api';
 import toast from 'react-hot-toast';
 import { DocumentTextIcon, PlusIcon, TrashIcon } from '@heroicons/react/24/outline';
+import type {
+  CoverLetterTemplateRecord,
+  CoverLetterTemplateTone,
+  CreateCoverLetterTemplatePayload,
+} from '../../types/templates';
 
 const TONE_LABELS: Record<string, string> = {
   PROFESSIONAL: 'Professional',
@@ -10,11 +15,11 @@ const TONE_LABELS: Record<string, string> = {
 };
 
 export default function CoverLetterTemplatesManager() {
-  const [templates, setTemplates] = useState<any[]>([]);
+  const [templates, setTemplates] = useState<CoverLetterTemplateRecord[]>([]);
   const [mergeFields, setMergeFields] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
-  const [editing, setEditing] = useState<any | null>(null);
-  const [form, setForm] = useState({
+  const [editing, setEditing] = useState<CoverLetterTemplateRecord | { id: null } | null>(null);
+  const [form, setForm] = useState<CreateCoverLetterTemplatePayload>({
     name: '',
     tone: 'PROFESSIONAL',
     content: '',
@@ -28,8 +33,8 @@ export default function CoverLetterTemplatesManager() {
         apiClient.getCoverLetterTemplates(),
         apiClient.getCoverLetterMergeFields(),
       ]);
-      setTemplates((tRes as any).data || []);
-      setMergeFields((mRes as any).data?.fields?.map((f: any) => f.key || f) || []);
+      setTemplates(tRes.data || []);
+      setMergeFields(mRes.data?.map((f) => f.key) || []);
     } catch {
       toast.error('Failed to load cover letter templates');
     } finally {
@@ -52,7 +57,7 @@ export default function CoverLetterTemplatesManager() {
     });
   };
 
-  const openEdit = (t: any) => {
+  const openEdit = (t: CoverLetterTemplateRecord) => {
     setEditing(t);
     setForm({
       name: t.name,
@@ -178,7 +183,9 @@ export default function CoverLetterTemplatesManager() {
             <select
               className="input-field"
               value={form.tone}
-              onChange={(e) => setForm({ ...form, tone: e.target.value })}
+              onChange={(e) =>
+                setForm({ ...form, tone: e.target.value as CoverLetterTemplateTone })
+              }
             >
               {Object.entries(TONE_LABELS).map(([k, v]) => (
                 <option key={k} value={k}>

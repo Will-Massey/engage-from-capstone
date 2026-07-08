@@ -100,6 +100,22 @@ import type {
   UpsertTouchpointTemplatePayload,
 } from '../types/touchpoints';
 import type {
+  CoverLetterMergeField,
+  CoverLetterPreviewPayload,
+  CoverLetterPreviewResult,
+  CoverLetterTemplateRecord,
+  CreateCoverLetterTemplatePayload,
+  CreateProposalTemplatePayload,
+  DeleteCoverLetterTemplateResult,
+  ProposalTemplateCreatedRecord,
+  ProposalTemplateRecord,
+  ProposalTemplateSummary,
+  ProposalTemplatesMeta,
+  SaveProposalTemplateFromProposalPayload,
+  UpdateCoverLetterTemplatePayload,
+  UpdateProposalTemplatePayload,
+} from '../types/templates';
+import type {
   AiAnalyzeEmailResult,
   AiAttentionQueueResult,
   AiAutoFitResult,
@@ -961,56 +977,56 @@ export const apiClient = {
   simulateQuarterlyEngagementLibrary: () => api.post('/engagement-library/simulate-quarterly', {}),
 
   // Cover Letter Templates (tones: PROFESSIONAL | FRIENDLY | MODERN)
-  getCoverLetterTemplates: () => api.get('/cover-letter-templates'),
-  getDefaultCoverLetterTemplate: () => api.get('/cover-letter-templates/default'),
-  getCoverLetterMergeFields: () => api.get('/cover-letter-templates/merge-fields'),
-  previewCoverLetter: (id: string, previewData: any) =>
-    api.post(`/cover-letter-templates/${id}/preview`, previewData),
-  previewCoverLetterRaw: (content: string, previewData: any) =>
-    api.post('/cover-letter-templates/preview', { content, previewData }),
+  getCoverLetterTemplates: () =>
+    api.get('/cover-letter-templates') as Promise<ApiResponse<CoverLetterTemplateRecord[]>>,
+
+  getDefaultCoverLetterTemplate: () =>
+    api.get('/cover-letter-templates/default') as Promise<ApiResponse<CoverLetterTemplateRecord>>,
+
+  getCoverLetterMergeFields: () =>
+    api.get('/cover-letter-templates/merge-fields') as Promise<ApiResponse<CoverLetterMergeField[]>>,
+
+  previewCoverLetter: (id: string, previewData: CoverLetterPreviewPayload) =>
+    api.post(`/cover-letter-templates/${id}/preview`, previewData) as Promise<
+      ApiResponse<CoverLetterPreviewResult>
+    >,
+
+  previewCoverLetterRaw: (content: string, previewData: CoverLetterPreviewPayload) =>
+    api.post('/cover-letter-templates/preview', { content, previewData }) as Promise<
+      ApiResponse<CoverLetterPreviewResult>
+    >,
 
   // Proposal templates — save and reuse proposal configurations
-  getProposalTemplates: () => api.get('/proposal-templates'),
-  getProposalTemplate: (id: string) => api.get(`/proposal-templates/${id}`),
-  createProposalTemplate: (data: {
-    name: string;
-    description?: string;
-    title: string;
-    coverLetter?: string;
-    coverLetterTone?: string;
-    serviceConfig: Array<{
-      serviceId: string;
-      name?: string;
-      billingFrequency: string;
-      displayPrice: number;
-      quantity?: number;
-      discountPercent?: number;
-    }>;
-    targetEntityType?: string;
-  }) => api.post('/proposal-templates', data),
-  updateProposalTemplate: (
-    id: string,
-    data: Partial<{
-      name: string;
-      description: string;
-      title: string;
-      coverLetter: string;
-      coverLetterTone: string;
-      serviceConfig: Array<{
-        serviceId: string;
-        name?: string;
-        billingFrequency: string;
-        displayPrice: number;
-        quantity?: number;
-        discountPercent?: number;
-      }>;
-      targetEntityType: string;
-    }>
-  ) => api.put(`/proposal-templates/${id}`, data),
-  saveProposalTemplateFromProposal: (proposalId: string, name: string, description?: string) =>
-    api.post('/proposal-templates/from-proposal', { proposalId, name, description }),
-  recordProposalTemplateUse: (id: string) => api.post(`/proposal-templates/${id}/record-use`, {}),
-  deleteProposalTemplate: (id: string) => api.delete(`/proposal-templates/${id}`),
+  getProposalTemplates: () =>
+    api.get('/proposal-templates') as Promise<
+      ApiResponse<ProposalTemplateSummary[]> & { meta?: ProposalTemplatesMeta }
+    >,
+
+  getProposalTemplate: (id: string) =>
+    api.get(`/proposal-templates/${id}`) as Promise<ApiResponse<ProposalTemplateRecord>>,
+
+  createProposalTemplate: (data: CreateProposalTemplatePayload) =>
+    api.post('/proposal-templates', data) as Promise<ApiResponse<ProposalTemplateCreatedRecord>>,
+
+  updateProposalTemplate: (id: string, data: UpdateProposalTemplatePayload) =>
+    api.put(`/proposal-templates/${id}`, data) as Promise<ApiResponse<ProposalTemplateRecord>>,
+
+  saveProposalTemplateFromProposal: (
+    proposalId: string,
+    name: string,
+    description?: string
+  ) => {
+    const payload: SaveProposalTemplateFromProposalPayload = { proposalId, name, description };
+    return api.post('/proposal-templates/from-proposal', payload) as Promise<
+      ApiResponse<ProposalTemplateCreatedRecord>
+    >;
+  },
+
+  recordProposalTemplateUse: (id: string) =>
+    api.post(`/proposal-templates/${id}/record-use`, {}) as Promise<ApiResponse<undefined>>,
+
+  deleteProposalTemplate: (id: string) =>
+    api.delete(`/proposal-templates/${id}`) as Promise<ApiResponse<undefined>>,
 
   // Companies House
   getCompaniesHouseStatus: () => api.get('/companies-house/status'),
@@ -1018,10 +1034,16 @@ export const apiClient = {
     api.get('/companies-house/search', { params: { q: query, limit } }),
   getCompaniesHouseCompany: (companyNumber: string) =>
     api.get(`/companies-house/company/${companyNumber}`),
-  createCoverLetterTemplate: (data: any) => api.post('/cover-letter-templates', data),
-  updateCoverLetterTemplate: (id: string, data: any) =>
-    api.put(`/cover-letter-templates/${id}`, data),
-  deleteCoverLetterTemplate: (id: string) => api.delete(`/cover-letter-templates/${id}`),
+  createCoverLetterTemplate: (data: CreateCoverLetterTemplatePayload) =>
+    api.post('/cover-letter-templates', data) as Promise<ApiResponse<CoverLetterTemplateRecord>>,
+
+  updateCoverLetterTemplate: (id: string, data: UpdateCoverLetterTemplatePayload) =>
+    api.put(`/cover-letter-templates/${id}`, data) as Promise<ApiResponse<CoverLetterTemplateRecord>>,
+
+  deleteCoverLetterTemplate: (id: string) =>
+    api.delete(`/cover-letter-templates/${id}`) as Promise<
+      ApiResponse<DeleteCoverLetterTemplateResult>
+    >,
 
   // Proposal audit trail & compliance (views + signatures + key events)
   getProposalAuditTrail: (id: string) =>
