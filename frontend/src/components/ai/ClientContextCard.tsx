@@ -10,30 +10,15 @@ import { apiClient } from '../../utils/api';
 import { AI_COPILOT } from '../../config/aiCopilot';
 import { showAiError } from './AiPanel';
 
+import type { CompaniesHouseMatch, CompaniesHouseSnapshot } from '../../types/companiesHouse';
+
+export type { CompaniesHouseMatch, CompaniesHouseSnapshot };
+
 export interface ClientBriefData {
   brief: string;
   highlights: string[];
   companiesHouse?: CompaniesHouseSnapshot;
   requiresApproval?: boolean;
-}
-
-export interface CompaniesHouseSnapshot {
-  companyNumber: string;
-  companyName: string;
-  companyStatus: string;
-  companyType: string;
-  dateOfCreation: string;
-  registeredOfficeAddress?: string;
-  sicCodes?: string[];
-  accountsNextDue?: string;
-}
-
-export interface CompaniesHouseMatch {
-  companyNumber: string;
-  companyName: string;
-  companyStatus: string;
-  companyType: string;
-  dateOfCreation?: string;
 }
 
 export interface EditableClientFields {
