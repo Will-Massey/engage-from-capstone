@@ -49,6 +49,12 @@ import type {
   PricingMethodologyResult,
   PricingSuggestFeesPayload,
 } from '../types/pricing';
+import type {
+  PayoutAgreements,
+  PayoutLedgerEntry,
+  PayoutSettings,
+  UpdatePayoutSettingsPayload,
+} from '../types/payment';
 import type { AutomationSettings } from '../types/automation';
 import type {
   ClientTouchpointRecord,
@@ -702,9 +708,15 @@ export const apiClient = {
   updateTenantSettings: (data: UpdateTenantSettingsPayload) =>
     api.put('/tenants/settings', data) as Promise<ApiResponse<UpdateTenantSettingsResult>>,
 
-  getPayoutSettings: () => api.get('/payout/settings'),
-  updatePayoutSettings: (data: Record<string, unknown>) => api.put('/payout/settings', data),
-  getPayoutLedger: () => api.get('/payout/ledger'),
+  getPayoutSettings: () => api.get('/payout/settings') as Promise<ApiResponse<PayoutSettings>>,
+
+  updatePayoutSettings: (data: UpdatePayoutSettingsPayload) =>
+    api.put('/payout/settings', data) as Promise<ApiResponse<PayoutSettings>>,
+
+  getPayoutLedger: () => api.get('/payout/ledger') as Promise<ApiResponse<PayoutLedgerEntry[]>>,
+
+  getPayoutAgreements: () =>
+    api.get('/payout/agreements') as Promise<ApiResponse<PayoutAgreements>>,
 
   testIntegrationWebhook: (format?: WebhookFormat) =>
     api.post('/tenants/settings/test-webhook', {
