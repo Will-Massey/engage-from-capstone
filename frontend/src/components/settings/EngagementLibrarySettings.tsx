@@ -5,39 +5,30 @@ import { useAuthStore } from '../../stores/authStore';
 import { hasFullAccess } from '../../constants/roles';
 import toast from 'react-hot-toast';
 import { BookOpenIcon, ExclamationTriangleIcon, ArrowPathIcon } from '@heroicons/react/24/outline';
-
-interface LibraryVersion {
-  id: string;
-  versionLabel: string;
-  publishedAt: string;
-  changelog: string;
-  clauseCount?: number;
-}
-
-interface TemplateNeedingUpdate {
-  id: string;
-  name: string;
-  updatedAt: string;
-  engagementLibraryVersion?: { versionLabel: string } | null;
-}
+import type {
+  EngagementLibraryCurrentVersion,
+  EngagementLibraryQuarterlySchedule,
+  EngagementLibraryTemplateNeedingUpdate,
+  EngagementLibraryVersionListItem,
+} from '../../types/engagementLibrary';
 
 export default function EngagementLibrarySettings() {
   const { user } = useAuthStore();
   const isAdmin = hasFullAccess(user?.role);
 
-  const [current, setCurrent] = useState<LibraryVersion | null>(null);
-  const [versions, setVersions] = useState<LibraryVersion[]>([]);
-  const [proposalTemplates, setProposalTemplates] = useState<TemplateNeedingUpdate[]>([]);
-  const [coverLetterTemplates, setCoverLetterTemplates] = useState<TemplateNeedingUpdate[]>([]);
+  const [current, setCurrent] = useState<EngagementLibraryCurrentVersion | null>(null);
+  const [versions, setVersions] = useState<EngagementLibraryVersionListItem[]>([]);
+  const [proposalTemplates, setProposalTemplates] = useState<
+    EngagementLibraryTemplateNeedingUpdate[]
+  >([]);
+  const [coverLetterTemplates, setCoverLetterTemplates] = useState<
+    EngagementLibraryTemplateNeedingUpdate[]
+  >([]);
   const [loading, setLoading] = useState(true);
   const [publishing, setPublishing] = useState(false);
   const [publishForm, setPublishForm] = useState({ versionLabel: '', changelog: '' });
-  const [quarterlySchedule, setQuarterlySchedule] = useState<{
-    nextQuarterlyReview?: string;
-    currentQuarterLabel?: string;
-    currentQuarterPublished?: boolean;
-    isReviewDayToday?: boolean;
-  } | null>(null);
+  const [quarterlySchedule, setQuarterlySchedule] =
+    useState<EngagementLibraryQuarterlySchedule | null>(null);
   const [simulatingQuarterly, setSimulatingQuarterly] = useState(false);
 
   const load = async () => {
@@ -50,12 +41,11 @@ export default function EngagementLibrarySettings() {
         apiClient.getEngagementLibraryQuarterlySchedule(),
       ]);
 
-      setCurrent((currentRes as any).data || null);
-      setVersions((versionsRes as any).data || []);
-      setQuarterlySchedule((scheduleRes as any).data || null);
-      const status = (statusRes as any).data || {};
-      setProposalTemplates(status.proposalTemplates || []);
-      setCoverLetterTemplates(status.coverLetterTemplates || []);
+      setCurrent(currentRes.data || null);
+      setVersions(versionsRes.data || []);
+      setQuarterlySchedule(scheduleRes.data || null);
+      setProposalTemplates(statusRes.data?.proposalTemplates || []);
+      setCoverLetterTemplates(statusRes.data?.coverLetterTemplates || []);
     } catch {
       toast.error('Failed to load engagement library status');
     } finally {
@@ -75,10 +65,10 @@ export default function EngagementLibrarySettings() {
 
     setPublishing(true);
     try {
-      const res = (await apiClient.publishEngagementLibraryVersion({
+      const res = await apiClient.publishEngagementLibraryVersion({
         versionLabel: publishForm.versionLabel.trim(),
         changelog: publishForm.changelog.trim() || undefined,
-      })) as any;
+      });
 
       const flagged =
         (res.data?.proposalTemplatesFlagged || 0) + (res.data?.coverLetterTemplatesFlagged || 0);
@@ -98,14 +88,14 @@ export default function EngagementLibrarySettings() {
   const handleSimulateQuarterly = async () => {
     setSimulatingQuarterly(true);
     try {
-      const res = (await apiClient.simulateQuarterlyEngagementLibrary()) as any;
-      if (res.data?.skipped) {
-        toast(res.data.reason || 'Quarterly version already published', { icon: 'ℹ️' });
-      } else {
-        const flagged =
-          (res.data?.proposalTemplatesFlagged || 0) + (res.data?.coverLetterTemplatesFlagged || 0);
+      const res = await apiClient.simulateQuarterlyEngagementLibrary();
+      const data = res.data;
+      if (data?.skipped === true) {
+        toast(data.reason || 'Quarterly version already published', { icon: 'ℹ️' });
+      } else if (data?.skipped === false) {
+        const flagged = data.proposalTemplatesFlagged + data.coverLetterTemplatesFlagged;
         toast.success(
-          `Simulated quarterly release ${res.data?.versionLabel}. ${flagged} template(s) flagged.`
+          `Simulated quarterly release ${data.versionLabel}. ${flagged} template(s) flagged.`
         );
       }
       await load();
