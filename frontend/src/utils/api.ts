@@ -39,6 +39,16 @@ import type {
   UpdateTenantSettingsResult,
   WebhookFormat,
 } from '../types/tenants';
+import type {
+  ContingentFeePayload,
+  ContingentFeeResult,
+  PricingAdvisorPayload,
+  PricingAdvisorResult,
+  PricingExplainPayload,
+  PricingExplainResult,
+  PricingMethodologyResult,
+  PricingSuggestFeesPayload,
+} from '../types/pricing';
 
 export type { ApiResponse };
 
@@ -630,24 +640,14 @@ export const apiClient = {
 
   // Services
   // Pricing methodology (W2.9 — rule engine)
-  pricingSuggestFees: (data: {
-    turnoverBand: string;
-    entityType: string;
-    employeeCount: number;
-    vatRegistered: boolean;
-    mtdStatus: string;
-    complexity: { hasPayroll: boolean; hasRd: boolean; multiSite: boolean };
-  }) => api.post('/pricing/suggest-fees', data),
+  pricingSuggestFees: (data: PricingSuggestFeesPayload) =>
+    api.post('/pricing/suggest-fees', data) as Promise<ApiResponse<PricingMethodologyResult>>,
 
-  pricingExplain: (data: { suggestion: { inputs: any; services: any[]; totals: any } }) =>
-    api.post('/pricing/explain', data),
+  pricingExplain: (data: PricingExplainPayload) =>
+    api.post('/pricing/explain', data) as Promise<ApiResponse<PricingExplainResult>>,
 
-  pricingContingentFee: (data: {
-    estimatedSavingGbp: number;
-    percentOfSaving: number;
-    capGbp?: number;
-    floorGbp?: number;
-  }) => api.post('/pricing/contingent-fee', data),
+  pricingContingentFee: (data: ContingentFeePayload) =>
+    api.post('/pricing/contingent-fee', data) as Promise<ApiResponse<ContingentFeeResult>>,
 
   getServices: (params?: ServiceListParams) =>
     api.get('/services', { params }) as Promise<ApiResponse<ServiceRecord[]>>,
@@ -1113,10 +1113,8 @@ export const apiClient = {
 
   aiAutoFit: (clientId: string) => api.post('/ai/auto-fit', { clientId }),
 
-  aiPricingAdvisor: (data: {
-    clientId: string;
-    lineItems: Array<{ serviceId: string; name?: string; displayPrice: number }>;
-  }) => api.post('/ai/pricing-advisor', data),
+  aiPricingAdvisor: (data: PricingAdvisorPayload) =>
+    api.post('/ai/pricing-advisor', data) as Promise<ApiResponse<PricingAdvisorResult>>,
 
   getProposalRegulatoryFit: (proposalId: string) =>
     api.get(`/proposals/${proposalId}/regulatory-fit`),
