@@ -6,9 +6,30 @@ import type { ApiResponse } from '@uk-proposal-platform/shared';
 import type { AuthMePayload, AuthUserListItem, LoginPayload, RegisterPayload } from '../types/auth';
 import type {
   AcceptProposalPayload,
+  ApprovalQueueParams,
+  ApproveProposalPayload,
+  BulkRenewalPayload,
+  BulkRenewalResult,
+  ComplianceAuditEntry,
+  CreateLoeOnlyProposalPayload,
   CreateProposalPayload,
+  DeleteProposalResult,
+  LoeOnlyProposalResult,
+  MarkProposalLostPayload,
+  ProposalActivityEntry,
+  ProposalListMeta,
   ProposalListParams,
   ProposalRecord,
+  ProposalRegulatoryFitResult,
+  ProposalSignatureRecord,
+  ProposalTermsPreviewResult,
+  RecordProposalViewResult,
+  RejectProposalPayload,
+  RenewalCandidate,
+  RenewalCandidatesMeta,
+  RenewalCandidatesParams,
+  SendProposalEmailPayload,
+  SignatureAuditRecord,
   UpdateProposalPayload,
 } from '../types/proposals';
 import type {
@@ -581,47 +602,33 @@ export const apiClient = {
   getProposals: (params?: ProposalListParams) =>
     api.get('/proposals', { params }) as Promise<ApiResponse<ProposalRecord[]>>,
 
-  getRenewalCandidates: (params?: { expiringBefore?: string; clientIds?: string[] }) =>
-    api.get('/proposals/renewal-candidates', { params }),
+  getRenewalCandidates: (params?: RenewalCandidatesParams) =>
+    api.get('/proposals/renewal-candidates', { params }) as Promise<
+      ApiResponse<RenewalCandidate[]> & { meta?: RenewalCandidatesMeta }
+    >,
 
-  bulkCreateRenewalDrafts: (data: {
-    clientIds?: string[];
-    proposalIds?: string[];
-    expiringBefore?: string;
-    templateId?: string;
-    upliftPercent?: number;
-    upliftRules?: {
-      mode: 'percent' | 'cpi' | 'min_floor';
-      percent?: number;
-      cpiPercent?: number;
-      minFeeGbp?: number;
-      perServiceFloors?: Record<string, number>;
-    };
-    useAiCoverLetter?: boolean;
-  }) => api.post('/proposals/bulk-renewal', data),
+  bulkCreateRenewalDrafts: (data: BulkRenewalPayload) =>
+    api.post('/proposals/bulk-renewal', data) as Promise<ApiResponse<BulkRenewalResult>>,
 
   getProposal: (id: string) => api.get(`/proposals/${id}`) as Promise<ApiResponse<ProposalRecord>>,
 
   createProposal: (data: CreateProposalPayload) =>
     api.post('/proposals', data) as Promise<ApiResponse<ProposalRecord>>,
 
-  createLoeOnlyProposal: (data: {
-    clientId: string;
-    serviceIds: string[];
-    title?: string;
-    validUntil?: string;
-    contractStartDate?: string | null;
-    notes?: string;
-  }) => api.post('/proposals/loe-only', data),
+  createLoeOnlyProposal: (data: CreateLoeOnlyProposalPayload) =>
+    api.post('/proposals/loe-only', data) as Promise<ApiResponse<LoeOnlyProposalResult>>,
   previewProposalTerms: (serviceIds: string[]) =>
-    api.post('/proposals/terms-preview', { serviceIds }),
+    api.post('/proposals/terms-preview', { serviceIds }) as Promise<
+      ApiResponse<ProposalTermsPreviewResult>
+    >,
 
   updateProposal: (id: string, data: UpdateProposalPayload) =>
     api.put(`/proposals/${id}`, data) as Promise<ApiResponse<ProposalRecord>>,
 
-  deleteProposal: (id: string) => api.delete(`/proposals/${id}`),
+  deleteProposal: (id: string) =>
+    api.delete(`/proposals/${id}`) as Promise<ApiResponse<DeleteProposalResult>>,
 
-  sendProposal: (id: string, email?: { subject: string; textBody: string; htmlBody?: string }) =>
+  sendProposal: (id: string, email?: SendProposalEmailPayload) =>
     api.post(`/proposals/${id}/send`, {
       ...(email
         ? {
@@ -630,26 +637,30 @@ export const apiClient = {
             aiHtml: email.htmlBody,
           }
         : {}),
-    }),
+    }) as Promise<ApiResponse<ProposalRecord>>,
 
-  getApprovalQueue: (params?: Record<string, unknown>) =>
-    api.get('/proposals/approval-queue', { params }),
+  getApprovalQueue: (params?: ApprovalQueueParams) =>
+    api.get('/proposals/approval-queue', { params }) as Promise<
+      ApiResponse<ProposalRecord[]> & { meta?: ProposalListMeta }
+    >,
 
-  submitProposalForApproval: (id: string) => api.post(`/proposals/${id}/submit-for-approval`, {}),
+  submitProposalForApproval: (id: string) =>
+    api.post(`/proposals/${id}/submit-for-approval`, {}) as Promise<ApiResponse<ProposalRecord>>,
 
-  approveProposal: (id: string, data?: { approvalNotes?: string }) =>
-    api.post(`/proposals/${id}/approve`, data ?? {}),
+  approveProposal: (id: string, data?: ApproveProposalPayload) =>
+    api.post(`/proposals/${id}/approve`, data ?? {}) as Promise<ApiResponse<ProposalRecord>>,
 
-  rejectProposal: (id: string, data: { rejectionReason: string; approvalNotes?: string }) =>
-    api.post(`/proposals/${id}/reject`, data),
+  rejectProposal: (id: string, data: RejectProposalPayload) =>
+    api.post(`/proposals/${id}/reject`, data) as Promise<ApiResponse<ProposalRecord>>,
 
   acceptProposal: (id: string, data: AcceptProposalPayload) =>
     api.post(`/proposals/${id}/accept`, data) as Promise<ApiResponse<ProposalRecord>>,
 
-  withdrawProposal: (id: string) => api.post(`/proposals/${id}/withdraw`, {}),
+  withdrawProposal: (id: string) =>
+    api.post(`/proposals/${id}/withdraw`, {}) as Promise<ApiResponse<ProposalRecord>>,
 
-  markProposalLost: (id: string, data: { declineReason: string; reason?: string }) =>
-    api.post(`/proposals/${id}/mark-lost`, data),
+  markProposalLost: (id: string, data: MarkProposalLostPayload) =>
+    api.post(`/proposals/${id}/mark-lost`, data) as Promise<ApiResponse<ProposalRecord>>,
 
   // Response interceptor already returns `response.data`; for blobs that value IS the Blob.
   downloadProposalPDF: (id: string) =>
@@ -804,9 +815,11 @@ export const apiClient = {
     api.put<{ message?: string }>('/auth/change-password', data),
 
   // Proposal Activity
-  recordProposalView: (id: string) => api.post(`/proposals/${id}/view`, {}),
+  recordProposalView: (id: string) =>
+    api.post(`/proposals/${id}/view`, {}) as Promise<ApiResponse<RecordProposalViewResult>>,
 
-  getProposalActivity: (id: string) => api.get(`/proposals/${id}/activity`),
+  getProposalActivity: (id: string) =>
+    api.get(`/proposals/${id}/activity`) as Promise<ApiResponse<ProposalActivityEntry[]>>,
 
   // Payments
   getStripeConfig: () => api.get('/payments/config'),
@@ -990,10 +1003,14 @@ export const apiClient = {
   deleteCoverLetterTemplate: (id: string) => api.delete(`/cover-letter-templates/${id}`),
 
   // Proposal audit trail & compliance (views + signatures + key events)
-  getProposalAuditTrail: (id: string) => api.get(`/proposals/${id}/audit-trail`),
-  getProposalSignatures: (id: string) => api.get(`/proposals/${id}/signatures`),
+  getProposalAuditTrail: (id: string) =>
+    api.get(`/proposals/${id}/audit-trail`) as Promise<ApiResponse<ComplianceAuditEntry[]>>,
+  getProposalSignatures: (id: string) =>
+    api.get(`/proposals/${id}/signatures`) as Promise<ApiResponse<ProposalSignatureRecord[]>>,
   getSignatureAudit: (proposalId: string, signatureId: string) =>
-    api.get(`/proposals/${proposalId}/signatures/${signatureId}/audit`),
+    api.get(`/proposals/${proposalId}/signatures/${signatureId}/audit`) as Promise<
+      ApiResponse<SignatureAuditRecord>
+    >,
   downloadSignatureCertificate: (proposalId: string, signatureId: string) =>
     api.get(`/proposals/${proposalId}/signatures/${signatureId}/certificate`, {
       responseType: 'blob',
@@ -1179,7 +1196,9 @@ export const apiClient = {
     api.post('/ai/pricing-advisor', data) as Promise<ApiResponse<PricingAdvisorResult>>,
 
   getProposalRegulatoryFit: (proposalId: string) =>
-    api.get(`/proposals/${proposalId}/regulatory-fit`),
+    api.get(`/proposals/${proposalId}/regulatory-fit`) as Promise<
+      ApiResponse<ProposalRegulatoryFitResult>
+    >,
 
   aiRegulatoryAlerts: () =>
     api.get('/ai/regulatory-alerts') as Promise<ApiResponse<AiRegulatoryAlertsResult>>,
