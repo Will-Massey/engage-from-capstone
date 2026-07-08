@@ -898,7 +898,9 @@ export const apiClient = {
   getVoiceOfPractice: () =>
     api.get('/ai/voice-of-practice') as Promise<ApiResponse<VoiceOfPracticeSettings>>,
   saveVoiceOfPractice: (sampleText: string) =>
-    api.post('/ai/voice-of-practice', { sampleText }) as Promise<ApiResponse<VoiceOfPracticeSettings>>,
+    api.post('/ai/voice-of-practice', { sampleText }) as Promise<
+      ApiResponse<VoiceOfPracticeSettings>
+    >,
 
   // Lifecycle actions (wired to touchpoint engine)
   markAmlComplete: (clientId: string) => api.post(`/clients/${clientId}/aml-complete`, {}),
@@ -1081,9 +1083,7 @@ export const apiClient = {
     >,
 
   aiProposalExplanation: (data: AiProposalExplanationPayload) =>
-    api.post('/ai/proposal-explanation', data) as Promise<
-      ApiResponse<AiProposalExplanationResult>
-    >,
+    api.post('/ai/proposal-explanation', data) as Promise<ApiResponse<AiProposalExplanationResult>>,
 
   aiSuggestEmailSubjects: (body: string, context?: AiEmailContext) =>
     api.post('/ai/suggest-email-subjects', { body, context }) as Promise<

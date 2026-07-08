@@ -229,9 +229,7 @@ export interface AiProposalEmailDraftInput {
   practiceName?: string;
 }
 
-export type AiProposalEmailDraftPayload =
-  | { proposalId: string }
-  | AiProposalEmailDraftInput;
+export type AiProposalEmailDraftPayload = { proposalId: string } | AiProposalEmailDraftInput;
 
 export interface AiProposalSendEmailResult {
   subject: string;
