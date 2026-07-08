@@ -49,6 +49,18 @@ import type {
   PricingMethodologyResult,
   PricingSuggestFeesPayload,
 } from '../types/pricing';
+import type { AutomationSettings } from '../types/automation';
+import type {
+  ClientTouchpointRecord,
+  ClientTouchpointSettingsPayload,
+  ClientTouchpointSettingsResult,
+  SeedTouchpointDefaultsPayload,
+  TouchpointApprovalRecord,
+  TouchpointEngineRunResult,
+  TouchpointSeedResult,
+  TouchpointTemplateRecord,
+  UpsertTouchpointTemplatePayload,
+} from '../types/touchpoints';
 
 export type { ApiResponse };
 
@@ -768,20 +780,40 @@ export const apiClient = {
   createSetupIntent: () => api.post('/payments/create-setup-intent', {}),
 
   // Client Touchpoints / Automated Lifecycle
-  getTouchpointTemplates: () => api.get('/touchpoints/templates'),
-  seedTouchpointDefaults: (resetAll = false) =>
-    api.post('/touchpoints/templates/seed-defaults', { resetAll }),
-  restoreTouchpointDefault: (stage: string) =>
-    api.post(`/touchpoints/templates/${stage}/restore-default`, {}),
-  upsertTouchpointTemplate: (stage: string, data: any) =>
-    api.put(`/touchpoints/templates/${stage}`, data),
-  getTouchpointApprovals: () => api.get('/touchpoints/approvals'),
-  approveTouchpoint: (id: string) => api.post(`/touchpoints/${id}/approve`, {}),
-  updateClientTouchpointSettings: (clientId: string, data: any) =>
-    api.patch(`/touchpoints/clients/${clientId}`, data),
-  runTouchpointEngine: () => api.post('/touchpoints/run', {}),
+  getTouchpointTemplates: () =>
+    api.get('/touchpoints/templates') as Promise<ApiResponse<TouchpointTemplateRecord[]>>,
 
-  getAutomationSettings: () => api.get('/automation/settings'),
+  seedTouchpointDefaults: (resetAll = false) =>
+    api.post('/touchpoints/templates/seed-defaults', {
+      resetAll,
+    } satisfies SeedTouchpointDefaultsPayload) as Promise<ApiResponse<TouchpointSeedResult>>,
+
+  restoreTouchpointDefault: (stage: string) =>
+    api.post(`/touchpoints/templates/${stage}/restore-default`, {}) as Promise<
+      ApiResponse<TouchpointTemplateRecord>
+    >,
+
+  upsertTouchpointTemplate: (stage: string, data: UpsertTouchpointTemplatePayload) =>
+    api.put(`/touchpoints/templates/${stage}`, data) as Promise<
+      ApiResponse<TouchpointTemplateRecord>
+    >,
+
+  getTouchpointApprovals: () =>
+    api.get('/touchpoints/approvals') as Promise<ApiResponse<TouchpointApprovalRecord[]>>,
+
+  approveTouchpoint: (id: string) =>
+    api.post(`/touchpoints/${id}/approve`, {}) as Promise<ApiResponse<Record<string, never>>>,
+
+  updateClientTouchpointSettings: (clientId: string, data: ClientTouchpointSettingsPayload) =>
+    api.patch(`/touchpoints/clients/${clientId}`, data) as Promise<
+      ApiResponse<ClientTouchpointSettingsResult>
+    >,
+
+  runTouchpointEngine: () =>
+    api.post('/touchpoints/run', {}) as Promise<ApiResponse<TouchpointEngineRunResult>>,
+
+  getAutomationSettings: () =>
+    api.get('/automation/settings') as Promise<ApiResponse<AutomationSettings>>,
 
   // Xero integration (W1.1–W1.2)
   getXeroStatus: () => api.get('/xero/status'),
@@ -827,7 +859,8 @@ export const apiClient = {
   getClientActivity: (clientId: string) => api.get(`/clients/${clientId}/activity`),
 
   // Touchpoints per client (for Lifecycle panel upcoming + history)
-  getClientTouchpoints: (clientId: string) => api.get(`/touchpoints/client/${clientId}`),
+  getClientTouchpoints: (clientId: string) =>
+    api.get(`/touchpoints/client/${clientId}`) as Promise<ApiResponse<ClientTouchpointRecord[]>>,
 
   // Engagement clause library versioning
   getEngagementLibraryVersions: () => api.get('/engagement-library/versions'),
