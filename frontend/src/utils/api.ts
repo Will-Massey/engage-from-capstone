@@ -87,6 +87,15 @@ import type {
   TenantSubscriptionResult,
   UpdatePayoutSettingsPayload,
 } from '../types/payment';
+import type {
+  EngagementLibraryCurrentVersion,
+  EngagementLibraryQuarterlySchedule,
+  EngagementLibraryTemplatesNeedingUpdateResult,
+  EngagementLibraryVersionListItem,
+  PublishEngagementLibraryVersionPayload,
+  PublishEngagementLibraryVersionResult,
+  QuarterlyEngagementLibraryReleaseResult,
+} from '../types/engagementLibrary';
 import type { AutomationSettings } from '../types/automation';
 import type {
   ClientTouchpointRecord,
@@ -966,15 +975,38 @@ export const apiClient = {
     api.get(`/touchpoints/client/${clientId}`) as Promise<ApiResponse<ClientTouchpointRecord[]>>,
 
   // Engagement clause library versioning
-  getEngagementLibraryVersions: () => api.get('/engagement-library/versions'),
-  getEngagementLibraryCurrent: () => api.get('/engagement-library/current'),
+  getEngagementLibraryVersions: () =>
+    api.get('/engagement-library/versions') as Promise<
+      ApiResponse<EngagementLibraryVersionListItem[]>
+    >,
+
+  getEngagementLibraryCurrent: () =>
+    api.get('/engagement-library/current') as Promise<ApiResponse<EngagementLibraryCurrentVersion>>,
+
   getEngagementLibraryTemplatesNeedingUpdate: () =>
-    api.get('/engagement-library/templates-needing-update'),
-  publishEngagementLibraryVersion: (data: { versionLabel: string; changelog?: string }) =>
-    api.post('/engagement-library/publish', data),
-  getEngagementLibraryQuarterlySchedule: () => api.get('/engagement-library/quarterly-schedule'),
-  publishQuarterlyEngagementLibrary: () => api.post('/engagement-library/publish-quarterly', {}),
-  simulateQuarterlyEngagementLibrary: () => api.post('/engagement-library/simulate-quarterly', {}),
+    api.get('/engagement-library/templates-needing-update') as Promise<
+      ApiResponse<EngagementLibraryTemplatesNeedingUpdateResult>
+    >,
+
+  publishEngagementLibraryVersion: (data: PublishEngagementLibraryVersionPayload) =>
+    api.post('/engagement-library/publish', data) as Promise<
+      ApiResponse<PublishEngagementLibraryVersionResult>
+    >,
+
+  getEngagementLibraryQuarterlySchedule: () =>
+    api.get('/engagement-library/quarterly-schedule') as Promise<
+      ApiResponse<EngagementLibraryQuarterlySchedule>
+    >,
+
+  publishQuarterlyEngagementLibrary: () =>
+    api.post('/engagement-library/publish-quarterly', {}) as Promise<
+      ApiResponse<QuarterlyEngagementLibraryReleaseResult>
+    >,
+
+  simulateQuarterlyEngagementLibrary: () =>
+    api.post('/engagement-library/simulate-quarterly', {}) as Promise<
+      ApiResponse<QuarterlyEngagementLibraryReleaseResult>
+    >,
 
   // Cover Letter Templates (tones: PROFESSIONAL | FRIENDLY | MODERN)
   getCoverLetterTemplates: () =>
