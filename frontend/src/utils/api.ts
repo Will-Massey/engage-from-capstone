@@ -26,6 +26,19 @@ import type {
   ServiceRecord,
   UpdateServicePayload,
 } from '../types/services';
+import type {
+  CreateTenantPayload,
+  CreateTenantResponse,
+  DefaultProposalTerms,
+  OnboardingStatus,
+  SubdomainAvailability,
+  TenantSettingsRecord,
+  TestIntegrationWebhookPayload,
+  TestIntegrationWebhookResult,
+  UpdateTenantSettingsPayload,
+  UpdateTenantSettingsResult,
+  WebhookFormat,
+} from '../types/tenants';
 
 export type { ApiResponse };
 
@@ -657,24 +670,36 @@ export const apiClient = {
     api.delete(`/services/${id}`) as Promise<ApiResponse<{ message?: string }>>,
 
   // Tenants
-  createTenant: (data: any) => api.post('/tenants', data),
+  createTenant: (data: CreateTenantPayload) =>
+    api.post('/tenants', data) as Promise<ApiResponse<CreateTenantResponse>>,
 
-  checkSubdomain: (subdomain: string) => api.get(`/tenants/check-subdomain/${subdomain}`),
+  checkSubdomain: (subdomain: string) =>
+    api.get(`/tenants/check-subdomain/${subdomain}`) as Promise<ApiResponse<SubdomainAvailability>>,
 
-  getOnboardingStatus: () => api.get('/tenants/onboarding-status'),
+  getOnboardingStatus: () =>
+    api.get('/tenants/onboarding-status') as Promise<ApiResponse<OnboardingStatus>>,
 
-  getTenantSettings: () => api.get('/tenants/settings'),
+  getTenantSettings: () =>
+    api.get('/tenants/settings') as Promise<ApiResponse<TenantSettingsRecord>>,
 
-  getDefaultProposalTerms: () => api.get('/tenants/settings/proposal-terms-default'),
+  getDefaultProposalTerms: () =>
+    api.get('/tenants/settings/proposal-terms-default') as Promise<
+      ApiResponse<DefaultProposalTerms>
+    >,
 
-  updateTenantSettings: (data: any) => api.put('/tenants/settings', data),
+  updateTenantSettings: (data: UpdateTenantSettingsPayload) =>
+    api.put('/tenants/settings', data) as Promise<ApiResponse<UpdateTenantSettingsResult>>,
 
   getPayoutSettings: () => api.get('/payout/settings'),
   updatePayoutSettings: (data: Record<string, unknown>) => api.put('/payout/settings', data),
   getPayoutLedger: () => api.get('/payout/ledger'),
 
-  testIntegrationWebhook: (format?: 'default' | 'hubspot' | 'zapier' | 'senta' | 'karbon') =>
-    api.post('/tenants/settings/test-webhook', { format }),
+  testIntegrationWebhook: (format?: WebhookFormat) =>
+    api.post('/tenants/settings/test-webhook', {
+      format,
+    } satisfies TestIntegrationWebhookPayload) as Promise<
+      ApiResponse<TestIntegrationWebhookResult>
+    >,
 
   // Users
   updateMe: (
