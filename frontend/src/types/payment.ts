@@ -83,3 +83,112 @@ export interface PayoutLedgerEntry {
 export interface PayoutAgreements {
   paymentCollectionTermsVersion: string;
 }
+
+/** Platform subscription / Stripe billing — aligned with backend routes/payments.ts and routes/billing.ts */
+
+export type SubscriptionBillingInterval = 'monthly' | 'annual';
+
+export type PaymentProvider = 'revolut' | 'stripe' | null;
+
+export interface SubscriptionTier {
+  name: string;
+  description: string;
+  price: number;
+  billingInterval?: SubscriptionBillingInterval;
+  annualTotal?: number;
+  priceId?: string;
+  maxUsers: number | string;
+  maxClients: number | string;
+  maxProposals: number | string;
+  features: string[];
+}
+
+export type SubscriptionTiersMap = Record<string, SubscriptionTier>;
+
+/** GET /api/payments/config */
+export interface PaymentsConfigResult {
+  isEnabled: boolean;
+  provider: PaymentProvider;
+  publishableKey: string | null;
+  revolutPublicKey: string | null;
+  mode: 'sandbox' | 'prod';
+  tiers: SubscriptionTiersMap;
+}
+
+export interface PlatformPlan {
+  tier: string;
+  name: string;
+  description: string;
+  amount: number;
+  currency: string;
+  displayPrice: number;
+  billingInterval: SubscriptionBillingInterval;
+  annualTotal?: number;
+}
+
+/** GET /api/billing/config */
+export interface BillingConfigResult {
+  provider: 'stripe' | null;
+  mode: null;
+  billingEnabled: boolean;
+  publishableKey: string | null;
+  tiers: SubscriptionTiersMap;
+  plans: PlatformPlan[];
+}
+
+export interface BillingCheckoutPayload {
+  tier: string;
+}
+
+/** Legacy Revolut one-time checkout — route now returns 410; shape retained for API seam */
+export interface BillingCheckoutResult {
+  token?: string;
+  mode?: 'sandbox' | 'prod';
+}
+
+/** GET /api/billing/subscription */
+export interface BillingSubscriptionResult {
+  hasSubscription: boolean;
+  tier: string | null;
+  status: string | null;
+  provider: 'revolut' | 'stripe' | null;
+  lastPaymentDate: string | null;
+}
+
+export interface CreateSubscriptionPayload {
+  priceId: string;
+  paymentMethodId: string;
+}
+
+export interface CreateSubscriptionResult {
+  subscriptionId: string;
+  status: string;
+  clientSecret?: string | null;
+}
+
+/** GET /api/payments/subscription — trial + Stripe period details */
+export interface TenantSubscriptionResult {
+  hasSubscription: boolean;
+  tier: string | null;
+  status: string;
+  currentPeriodEnd?: string | null;
+  cancelAtPeriodEnd?: boolean;
+  trialEndsAt: string;
+  daysRemaining: number;
+  canSendProposals: boolean;
+}
+
+export interface CancelSubscriptionResult {
+  status: string;
+  cancelAtPeriodEnd: boolean;
+  currentPeriodEnd?: string;
+}
+
+export interface ReactivateSubscriptionResult {
+  status: string;
+  cancelAtPeriodEnd: false;
+}
+
+export interface CreateSetupIntentResult {
+  clientSecret: string | null;
+}

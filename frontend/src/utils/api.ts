@@ -71,9 +71,20 @@ import type {
   PricingSuggestFeesPayload,
 } from '../types/pricing';
 import type {
+  BillingCheckoutPayload,
+  BillingCheckoutResult,
+  BillingConfigResult,
+  BillingSubscriptionResult,
+  CancelSubscriptionResult,
+  CreateSetupIntentResult,
+  CreateSubscriptionPayload,
+  CreateSubscriptionResult,
+  PaymentsConfigResult,
   PayoutAgreements,
   PayoutLedgerEntry,
   PayoutSettings,
+  ReactivateSubscriptionResult,
+  TenantSubscriptionResult,
   UpdatePayoutSettingsPayload,
 } from '../types/payment';
 import type { AutomationSettings } from '../types/automation';
@@ -821,25 +832,35 @@ export const apiClient = {
   getProposalActivity: (id: string) =>
     api.get(`/proposals/${id}/activity`) as Promise<ApiResponse<ProposalActivityEntry[]>>,
 
-  // Payments
-  getStripeConfig: () => api.get('/payments/config'),
+  // Payments — platform Stripe subscription + billing config
+  getStripeConfig: () => api.get('/payments/config') as Promise<ApiResponse<PaymentsConfigResult>>,
 
-  getBillingConfig: () => api.get('/billing/config'),
+  getBillingConfig: () => api.get('/billing/config') as Promise<ApiResponse<BillingConfigResult>>,
 
-  createBillingCheckout: (data: { tier: string }) => api.post('/billing/checkout', data),
+  createBillingCheckout: (data: BillingCheckoutPayload) =>
+    api.post('/billing/checkout', data) as Promise<ApiResponse<BillingCheckoutResult>>,
 
-  getBillingSubscription: () => api.get('/billing/subscription'),
+  getBillingSubscription: () =>
+    api.get('/billing/subscription') as Promise<ApiResponse<BillingSubscriptionResult>>,
 
-  createSubscription: (data: { priceId: string; paymentMethodId: string }) =>
-    api.post('/payments/create-subscription', data),
+  createSubscription: (data: CreateSubscriptionPayload) =>
+    api.post('/payments/create-subscription', data) as Promise<
+      ApiResponse<CreateSubscriptionResult>
+    >,
 
-  getSubscription: () => api.get('/payments/subscription'),
+  getSubscription: () =>
+    api.get('/payments/subscription') as Promise<ApiResponse<TenantSubscriptionResult>>,
 
-  cancelSubscription: () => api.post('/payments/cancel-subscription', {}),
+  cancelSubscription: () =>
+    api.post('/payments/cancel-subscription', {}) as Promise<ApiResponse<CancelSubscriptionResult>>,
 
-  reactivateSubscription: () => api.post('/payments/reactivate-subscription', {}),
+  reactivateSubscription: () =>
+    api.post('/payments/reactivate-subscription', {}) as Promise<
+      ApiResponse<ReactivateSubscriptionResult>
+    >,
 
-  createSetupIntent: () => api.post('/payments/create-setup-intent', {}),
+  createSetupIntent: () =>
+    api.post('/payments/create-setup-intent', {}) as Promise<ApiResponse<CreateSetupIntentResult>>,
 
   // Client Touchpoints / Automated Lifecycle
   getTouchpointTemplates: () =>
