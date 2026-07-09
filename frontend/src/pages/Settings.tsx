@@ -231,17 +231,14 @@ const Settings = () => {
   const [payoutForm, setPayoutForm] = useState({
     enabled: false,
     consentAccepted: false,
-    allowRevolutPay: true,
-    allowCard: true,
-    payoutMethod: 'UK_BANK_TRANSFER' as 'UK_BANK_TRANSFER' | 'REVOLUT_COUNTERPARTY',
+    payoutMethod: 'STRIPE_CONNECT' as const,
     accountHolderName: '',
-    sortCode: '',
-    accountNumber: '',
-    revolutCounterpartyId: '',
-    bankDetailsLast4: null as string | null,
+    stripeConnectedAccountId: null as string | null,
+    stripeTransfersStatus: 'inactive' as string,
     platformFeeBps: 250,
     verificationStatus: 'PENDING',
   });
+  const [isStripeOnboarding, setIsStripeOnboarding] = useState(false);
 
   // Clara & AI budget (fetched for visibility meter)
   const [aiBudget, setAiBudget] = useState<any>(null);
@@ -300,12 +297,10 @@ const Settings = () => {
         setPayoutForm((prev) => ({
           ...prev,
           enabled: d.enabled ?? false,
-          allowRevolutPay: d.allowRevolutPay ?? true,
-          allowCard: d.allowCard ?? true,
-          payoutMethod: d.payoutMethod ?? 'UK_BANK_TRANSFER',
+          payoutMethod: 'STRIPE_CONNECT',
           accountHolderName: d.accountHolderName || '',
-          revolutCounterpartyId: d.revolutCounterpartyId || '',
-          bankDetailsLast4: d.bankDetailsLast4,
+          stripeConnectedAccountId: d.stripeConnectedAccountId ?? null,
+          stripeTransfersStatus: d.stripeTransfersStatus ?? 'inactive',
           platformFeeBps: d.platformFeeBps ?? 250,
           verificationStatus: d.verificationStatus ?? 'PENDING',
           consentAccepted: d.consentVersion === PAYMENT_COLLECTION_TERMS_VERSION,
@@ -313,7 +308,7 @@ const Settings = () => {
         setPaymentForm((prev) => ({
           ...prev,
           collectPaymentAtSign: d.collectPaymentAtSign ?? prev.collectPaymentAtSign,
-          allowCard: d.allowCard ?? prev.allowCard,
+          allowCard: true,
         }));
       }
     } catch {
@@ -678,6 +673,25 @@ const Settings = () => {
     }
   };
 
+  const handleStripeOnboard = async () => {
+    setIsStripeOnboarding(true);
+    try {
+      const res = (await apiClient.startStripeOnboarding()) as any;
+      const url = res?.data?.url || res?.url;
+      if (url) {
+        window.location.href = url;
+        return;
+      }
+      toast.error(res?.error?.message || 'Could not start Stripe onboarding');
+    } catch (error: any) {
+      toast.error(
+        error.response?.data?.error?.message || error.message || 'Could not start Stripe onboarding'
+      );
+    } finally {
+      setIsStripeOnboarding(false);
+    }
+  };
+
   const handleSaveVat = async () => {
     setIsSaving('billing');
     try {
@@ -698,13 +712,8 @@ const Settings = () => {
         enabled: payoutForm.enabled,
         consentAccepted: payoutForm.consentAccepted,
         consentVersion: payoutForm.consentAccepted ? PAYMENT_COLLECTION_TERMS_VERSION : undefined,
-        allowRevolutPay: payoutForm.allowRevolutPay,
-        allowCard: payoutForm.allowCard,
-        payoutMethod: payoutForm.payoutMethod,
+        payoutMethod: 'STRIPE_CONNECT',
         accountHolderName: payoutForm.accountHolderName || undefined,
-        sortCode: payoutForm.sortCode || undefined,
-        accountNumber: payoutForm.accountNumber || undefined,
-        revolutCounterpartyId: payoutForm.revolutCounterpartyId || undefined,
         collectPaymentAtSign: payoutForm.enabled ? paymentForm.collectPaymentAtSign : false,
       })) as any;
 
@@ -2038,22 +2047,57 @@ const Settings = () => {
                       Receive Payments Through Engage
                     </h3>
                     <p className="mt-1 text-sm text-slate-500 dark:text-slate-300">
-                      Collect client fees via Revolut. We deduct a{' '}
+                      Collect client fees via Stripe. We deduct a{' '}
                       {(payoutForm.platformFeeBps / 100).toFixed(1)}% platform fee plus payment
-                      processing costs, then pay the remainder to your bank account.
+                      processing costs; the remainder goes to your connected Stripe account.
                     </p>
+
+                    <div className="mt-4 flex flex-wrap items-center gap-3">
+                      <span
+                        data-testid="stripe-connect-status"
+                        className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${
+                          payoutForm.stripeTransfersStatus === 'active'
+                            ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-200'
+                            : 'bg-amber-100 text-amber-900 dark:bg-amber-900/40 dark:text-amber-100'
+                        }`}
+                      >
+                        {payoutForm.stripeTransfersStatus === 'active'
+                          ? 'Connected'
+                          : 'Onboarding incomplete'}
+                      </span>
+                      <button
+                        type="button"
+                        data-testid="connect-with-stripe"
+                        onClick={() => void handleStripeOnboard()}
+                        disabled={isStripeOnboarding}
+                        className="btn-secondary text-sm"
+                      >
+                        {isStripeOnboarding
+                          ? 'Opening Stripe…'
+                          : payoutForm.stripeTransfersStatus === 'active'
+                            ? 'Update Stripe details'
+                            : 'Connect with Stripe'}
+                      </button>
+                    </div>
+
                     <label className="mt-4 flex items-start gap-3">
                       <input
                         type="checkbox"
                         data-testid="payout-enabled"
                         checked={payoutForm.enabled}
+                        disabled={payoutForm.stripeTransfersStatus !== 'active'}
                         onChange={(e) =>
                           setPayoutForm({ ...payoutForm, enabled: e.target.checked })
                         }
-                        className="mt-1 rounded border-slate-300 dark:border-slate-500"
+                        className="mt-1 rounded border-slate-300 dark:border-slate-500 disabled:opacity-50"
                       />
                       <span className="text-sm text-slate-700 dark:text-slate-100">
                         Enable payment collection and automatic payouts
+                        {payoutForm.stripeTransfersStatus !== 'active' && (
+                          <span className="block text-xs text-slate-500 mt-0.5">
+                            Finish Stripe onboarding before enabling
+                          </span>
+                        )}
                       </span>
                     </label>
 
@@ -2085,7 +2129,7 @@ const Settings = () => {
 
                         <div>
                           <label className="block text-sm font-medium text-slate-700 dark:text-slate-200">
-                            Account holder name
+                            Account holder name (optional)
                           </label>
                           <input
                             type="text"
@@ -2096,69 +2140,6 @@ const Settings = () => {
                             className="mt-1 input-field w-full max-w-md"
                           />
                         </div>
-
-                        <div className="grid sm:grid-cols-2 gap-4 max-w-md">
-                          <div>
-                            <label className="block text-sm font-medium text-slate-700 dark:text-slate-200">
-                              Sort code
-                            </label>
-                            <input
-                              type="text"
-                              inputMode="numeric"
-                              placeholder="00-00-00"
-                              value={payoutForm.sortCode}
-                              onChange={(e) =>
-                                setPayoutForm({ ...payoutForm, sortCode: e.target.value })
-                              }
-                              className="mt-1 input-field w-full"
-                            />
-                          </div>
-                          <div>
-                            <label className="block text-sm font-medium text-slate-700 dark:text-slate-200">
-                              Account number
-                            </label>
-                            <input
-                              type="text"
-                              inputMode="numeric"
-                              placeholder="12345678"
-                              value={payoutForm.accountNumber}
-                              onChange={(e) =>
-                                setPayoutForm({ ...payoutForm, accountNumber: e.target.value })
-                              }
-                              className="mt-1 input-field w-full"
-                            />
-                          </div>
-                        </div>
-                        {payoutForm.bankDetailsLast4 && !payoutForm.accountNumber && (
-                          <p className="text-xs text-slate-500">
-                            Saved account ending {payoutForm.bankDetailsLast4}
-                          </p>
-                        )}
-
-                        <div className="space-y-2">
-                          <label className="flex items-center gap-2 text-sm">
-                            <input
-                              type="checkbox"
-                              checked={payoutForm.allowCard}
-                              onChange={(e) =>
-                                setPayoutForm({ ...payoutForm, allowCard: e.target.checked })
-                              }
-                              className="rounded"
-                            />
-                            Card payments (Revolut checkout)
-                          </label>
-                          <label className="flex items-center gap-2 text-sm">
-                            <input
-                              type="checkbox"
-                              checked={payoutForm.allowRevolutPay}
-                              onChange={(e) =>
-                                setPayoutForm({ ...payoutForm, allowRevolutPay: e.target.checked })
-                              }
-                              className="rounded"
-                            />
-                            Revolut Pay
-                          </label>
-                        </div>
                       </div>
                     )}
                   </div>
@@ -2168,7 +2149,7 @@ const Settings = () => {
                       Payment collection at sign
                     </h3>
                     <p className="mt-1 text-sm text-slate-500 dark:text-slate-300">
-                      After a client signs, offer secure Revolut checkout to collect engagement fees
+                      After a client signs, offer secure Stripe Checkout to collect engagement fees
                       immediately.
                     </p>
                     <label className="mt-4 flex items-start gap-3">
@@ -2188,7 +2169,7 @@ const Settings = () => {
                         </span>
                         <span className="block text-xs text-slate-500 dark:text-slate-300 mt-0.5">
                           {payoutForm.enabled
-                            ? 'Clients complete payment authorisation and Revolut checkout after acceptance'
+                            ? 'Clients complete payment authorisation and Stripe Checkout after acceptance'
                             : 'Enable Receive Payments Through Engage first'}
                         </span>
                       </span>

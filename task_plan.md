@@ -8,17 +8,15 @@ Become the **premier UK accountancy proposal platform** — see `PREMIER_SERVICE
 
 ## Current Phase
 
-Phase: **Stripe Connect split payments** — `in_progress` (branch `feat/stripe-connect-split-payments`; Tasks 1–4 done)
+Phase: **Stripe Connect split payments** — `in_progress` (branch `feat/stripe-connect-split-payments`; Tasks 1–8 done)
 
 ## Next Up
 
 <!-- 3–5 bullets ONLY. Next fresh session starts here. Rewrite every checkpoint. -->
 
-1. **Task 5:** Rewrite payout settings + Stripe proposal checkout + collection gating (`payoutSettingsService`, `proposalPaymentStripe`, drop Revolut bank UX)
-2. **Task 6–7:** Connect webhook `/api/webhooks/stripe-connect` + payout/onboard API routes
-3. **Task 8–9:** Frontend onboarding UI; remove Revolut + GoCardless code
-4. **Task 10–11:** Stripe test-mode smoke + rollout docs
-5. **Note:** Live Accounts v2 spike still needed with test secret before first deploy
+1. **Task 9:** Delete Revolut + GoCardless backend leftovers; legal copy; keep builds green
+2. **Task 10–11:** Stripe test-mode smoke + rollout docs
+3. **Env:** `STRIPE_CONNECT_WEBHOOK_SECRET` on Render; live Accounts v2 spike with test secret
 
 ## Phases
 
