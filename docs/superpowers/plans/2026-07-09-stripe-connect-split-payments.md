@@ -135,7 +135,7 @@ git commit -m "feat(payments): decouple split calc from Revolut, add Stripe proc
 **Interfaces:**
 - Produces: `TenantPayoutSettings.stripeConnectedAccountId: string | null`, `TenantPayoutSettings.stripeTransfersStatus: string` (default `"inactive"`). Removes `revolutCounterpartyId`, `bankDetailsEncrypted`, `bankDetailsLast4`, `allowRevolutPay`, `allowCard`.
 
-- [ ] **Step 1: Edit the model**
+- [x] **Step 1: Edit the model**
 
 In `TenantPayoutSettings`, delete the lines for `allowRevolutPay`, `allowCard`, `bankDetailsEncrypted`, `bankDetailsLast4`, `revolutCounterpartyId`. Change `payoutMethod` default to `"STRIPE_CONNECT"`. Add:
 ```prisma
@@ -143,17 +143,15 @@ In `TenantPayoutSettings`, delete the lines for `allowRevolutPay`, `allowCard`, 
   stripeTransfersStatus    String   @default("inactive") @map("stripe_transfers_status")
 ```
 
-- [ ] **Step 2: Generate the migration**
+- [x] **Step 2: Generate the migration**
 
-Run: `cd backend && npx prisma migrate dev --name stripe_connect_payout`
-Expected: migration file created; Prisma Client regenerates; no error.
+Manual migration (no local `DATABASE_URL`): `backend/prisma/migrations/20260709120000_stripe_connect_payout/migration.sql`. `prisma generate` OK.
 
-- [ ] **Step 3: Verify client types**
+- [x] **Step 3: Verify client types**
 
-Run: `cd backend && npx tsc --noEmit -p tsconfig.json 2>&1 | grep -i "revolutCounterpartyId\|allowRevolutPay\|bankDetails" || echo "no stale references in types"`
-Expected: prints references still present in `payoutSettingsService.ts` (fixed in Task 5) — note them; the schema/client themselves must compile.
+Stale refs still in `payoutSettingsService.ts`, `paymentCollection.ts`, `routes/payout.ts`, `revolut/business-client.ts` — fixed in Task 5/9. Client regenerated.
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
 ```bash
 git add backend/prisma/schema.prisma backend/prisma/migrations
