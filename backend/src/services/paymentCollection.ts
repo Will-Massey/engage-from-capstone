@@ -1,23 +1,24 @@
 /**
- * Post-sign payment collection (Revolut-only until GoCardless is integrated).
+ * Post-sign payment collection — Stripe Connect destination charges only.
  */
 
 import { prisma } from '../config/database.js';
 import logger from '../config/logger.js';
-import { isRevolutConfigured } from '../lib/revolut/revolut-client.js';
-import { createProposalCheckoutOrder } from './proposalPayment.js';
+import { stripe } from '../config/stripe.js';
 import { getPaymentSettings } from '../utils/tenantPaymentSettings.js';
 import { tenantAppUrl } from '../config/urls.js';
 import { isPayoutCollectionEnabled } from './payoutSettingsService.js';
+import { getOrCreateConnectedAccount, isCollectionReady } from './stripeConnectService.js';
+import { createStripeProposalCheckout } from './proposalPaymentStripe.js';
 import { buildFeePreview, resolvePlatformFeeBps } from '../lib/payments/splitCalculator.js';
 import { CLIENT_PAYMENT_AUTH_VERSION } from '../constants/paymentAgreements.js';
 
-export type PaymentProviderName = 'revolut' | 'none';
+export type PaymentProviderName = 'stripe' | 'none';
 
 const PAYMENT_COMPLETE_STATUSES = ['ACTIVE', 'PAID', 'COMPLETED', 'SKIPPED'];
 
 export interface MandateSetupOptions {
-  preferredMethod?: 'card' | 'revolut_pay';
+  preferredMethod?: 'card';
   paymentAuthAccepted?: boolean;
 }
 
@@ -33,7 +34,7 @@ export interface MandateSetupResult {
 }
 
 export function resolvePaymentProvider(): PaymentProviderName {
-  if (isRevolutConfigured()) return 'revolut';
+  if (stripe) return 'stripe';
   return 'none';
 }
 
@@ -47,19 +48,25 @@ function getFrontendBaseUrl(tenantSubdomain: string): string {
 
 /**
  * Whether this tenant should offer payment collection after sign.
- * Requires payout opt-in AND collectPaymentAtSign AND Revolut configured.
+ * Requires payout opt-in, collectPaymentAtSign, Stripe configured, and Connect ready.
  */
 export async function shouldCollectPaymentAtSign(tenantId: string): Promise<boolean> {
-  const [payoutEnabled, tenant] = await Promise.all([
+  const [payoutEnabled, ready, tenant] = await Promise.all([
     isPayoutCollectionEnabled(tenantId),
+    isCollectionReady(tenantId),
     prisma.tenant.findUnique({ where: { id: tenantId }, select: { settings: true } }),
   ]);
   const settings = getPaymentSettings(tenant?.settings);
-  return payoutEnabled && settings.collectPaymentAtSign && isPaymentCollectionAvailable();
+  return (
+    payoutEnabled &&
+    ready &&
+    settings.collectPaymentAtSign &&
+    isPaymentCollectionAvailable()
+  );
 }
 
 /**
- * Create a Revolut checkout session after proposal acceptance.
+ * Create a Stripe Connect Checkout Session after proposal acceptance.
  */
 export async function createPostSignMandate(
   proposalId: string,
@@ -99,8 +106,13 @@ export async function createPostSignMandate(
   }
 
   const provider = resolvePaymentProvider();
-  if (provider !== 'revolut') {
-    throw new Error('Revolut payment collection is not configured');
+  if (provider !== 'stripe') {
+    throw new Error('Stripe payment collection is not configured');
+  }
+
+  const ready = await isCollectionReady(proposal.tenantId);
+  if (!ready) {
+    throw new Error('This practice has not completed Stripe onboarding');
   }
 
   const shareToken = proposal.shareToken;
@@ -108,7 +120,6 @@ export async function createPostSignMandate(
     throw new Error('Proposal share token missing — cannot create payment setup link');
   }
 
-  const customerName = proposal.client.contactName || proposal.client.name;
   const customerEmail = proposal.client.contactEmail;
   if (!customerEmail) {
     throw new Error('Client email is required for payment setup');
@@ -123,51 +134,48 @@ export async function createPostSignMandate(
     },
   });
 
-  const checkout = await createProposalCheckoutOrder(
-    {
-      id: proposal.id,
-      tenantId: proposal.tenantId,
-      reference: proposal.reference,
-      title: proposal.title,
-      total: proposal.total,
-      paymentStatus: proposal.paymentStatus,
-      client: {
-        name: proposal.client.name,
-        contactName: proposal.client.contactName,
-        contactEmail: proposal.client.contactEmail,
-      },
-    },
-    { email: customerEmail, name: customerName },
-    shareToken
+  const connectedAccountId = await getOrCreateConnectedAccount(proposal.tenantId);
+  const base = getFrontendBaseUrl(proposal.tenant.subdomain);
+  const platformFeeBps = resolvePlatformFeeBps(
+    proposal.tenant.subscriptionTier,
+    proposal.tenant.payoutSettings?.platformFeeBpsOverride
   );
 
-  if (!checkout) {
-    throw new Error('Revolut checkout could not be created');
-  }
+  const checkout = await createStripeProposalCheckout({
+    proposalId: proposal.id,
+    tenantId: proposal.tenantId,
+    reference: proposal.reference,
+    title: proposal.title,
+    grossPence: Math.round((proposal.total ?? 0) * 100),
+    connectedAccountId,
+    platformFeeBps,
+    customerEmail,
+    successUrl: `${base}/proposals/view/${shareToken}?payment=success`,
+    cancelUrl: `${base}/proposals/view/${shareToken}?payment=cancelled`,
+  });
 
   await prisma.proposal.update({
     where: { id: proposalId },
     data: {
-      paymentMandateId: checkout.orderId,
-      paymentProvider: 'revolut',
+      paymentMandateId: checkout.sessionId,
+      paymentProvider: 'stripe',
       paymentMethod: options.preferredMethod || 'card',
+      paymentUrl: checkout.checkoutUrl,
     },
   });
 
   await logPaymentActivity(proposal.tenantId, proposalId, 'PAYMENT_CHECKOUT_CREATED', {
-    provider: 'revolut',
-    orderId: checkout.orderId,
+    provider: 'stripe',
+    sessionId: checkout.sessionId,
   });
 
   return {
-    provider: 'revolut',
-    mandateId: checkout.orderId,
-    paymentId: checkout.orderId,
-    checkoutUrl: checkout.checkoutUrl || '',
+    provider: 'stripe',
+    mandateId: checkout.sessionId,
+    paymentId: checkout.sessionId,
+    checkoutUrl: checkout.checkoutUrl,
     status: 'PENDING',
     isStub: false,
-    token: checkout.token,
-    mode: checkout.mode,
   };
 }
 
@@ -188,7 +196,6 @@ export interface PublicPaymentConfig {
   provider: PaymentProviderName;
   providerConfigured: boolean;
   methods: {
-    revolutPay: boolean;
     card: boolean;
   };
   paymentStatus: string | null;
@@ -251,10 +258,9 @@ export async function getPublicPaymentConfig(
     collectPaymentAtSign,
     paymentRequired: !!paymentRequired,
     provider,
-    providerConfigured: provider === 'revolut',
+    providerConfigured: provider === 'stripe',
     methods: {
-      revolutPay: payoutSettings?.allowRevolutPay !== false,
-      card: payoutSettings?.allowCard !== false,
+      card: true,
     },
     paymentStatus: proposal?.paymentStatus || null,
     paymentMandateId: proposal?.paymentMandateId || null,

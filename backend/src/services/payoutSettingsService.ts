@@ -1,19 +1,14 @@
 import { prisma } from '../config/database.js';
-import { encrypt } from '../utils/encryption.js';
-import { validateUkBankDetails, maskAccountLast4 } from '../utils/ukBankValidation.js';
 import { PAYMENT_COLLECTION_TERMS_VERSION } from '../constants/paymentAgreements.js';
-import { createCounterpartyFromBankDetails } from '../lib/revolut/business-client.js';
 import { getPaymentSettings } from '../utils/tenantPaymentSettings.js';
 import { resolvePlatformFeeBps } from '../lib/payments/splitCalculator.js';
 
 export interface PayoutSettingsPublic {
   enabled: boolean;
-  allowRevolutPay: boolean;
-  allowCard: boolean;
   payoutMethod: string;
   accountHolderName: string | null;
-  bankDetailsLast4: string | null;
-  revolutCounterpartyId: string | null;
+  stripeConnectedAccountId: string | null;
+  stripeTransfersStatus: string;
   verificationStatus: string;
   verifiedAt: string | null;
   consentVersion: string | null;
@@ -45,12 +40,10 @@ export async function getPayoutSettingsPublic(tenantId: string): Promise<PayoutS
 
   return {
     enabled: settings.enabled,
-    allowRevolutPay: settings.allowRevolutPay,
-    allowCard: settings.allowCard,
     payoutMethod: settings.payoutMethod,
     accountHolderName: settings.accountHolderName,
-    bankDetailsLast4: settings.bankDetailsLast4,
-    revolutCounterpartyId: settings.revolutCounterpartyId,
+    stripeConnectedAccountId: settings.stripeConnectedAccountId,
+    stripeTransfersStatus: settings.stripeTransfersStatus,
     verificationStatus: settings.verificationStatus,
     verifiedAt: settings.verifiedAt?.toISOString() ?? null,
     consentVersion: settings.consentVersion,
@@ -68,6 +61,11 @@ export async function isPayoutCollectionEnabled(tenantId: string): Promise<boole
   return settings?.enabled === true;
 }
 
+/**
+ * Enable/disable payment collection. With Stripe Connect the practice's bank +
+ * identity are collected by Stripe-hosted onboarding, so enabling requires only
+ * accepted terms AND an active stripe_transfers capability.
+ */
 export async function savePayoutSettings({
   tenantId,
   userId,
@@ -75,13 +73,8 @@ export async function savePayoutSettings({
   consentAccepted,
   consentVersion,
   consentIp,
-  allowRevolutPay,
-  allowCard,
   payoutMethod,
   accountHolderName,
-  sortCode,
-  accountNumber,
-  revolutCounterpartyId,
 }: {
   tenantId: string;
   userId: string;
@@ -89,25 +82,13 @@ export async function savePayoutSettings({
   consentAccepted?: boolean;
   consentVersion?: string;
   consentIp?: string | null;
-  allowRevolutPay?: boolean;
-  allowCard?: boolean;
   payoutMethod?: string;
   accountHolderName?: string;
-  sortCode?: string;
-  accountNumber?: string;
-  revolutCounterpartyId?: string;
 }) {
   const current = await getOrCreatePayoutSettings(tenantId);
-  const tenant = await prisma.tenant.findUnique({
-    where: { id: tenantId },
-    select: { name: true, settings: true },
-  });
-  if (!tenant) throw new Error('Tenant not found');
 
   const data: Record<string, unknown> = {};
 
-  if (allowRevolutPay !== undefined) data.allowRevolutPay = allowRevolutPay;
-  if (allowCard !== undefined) data.allowCard = allowCard;
   if (payoutMethod !== undefined) data.payoutMethod = payoutMethod;
   if (accountHolderName !== undefined) data.accountHolderName = accountHolderName;
 
@@ -115,38 +96,8 @@ export async function savePayoutSettings({
     if (!consentAccepted || consentVersion !== PAYMENT_COLLECTION_TERMS_VERSION) {
       throw new Error('Payment Collection Terms must be accepted before enabling payouts');
     }
-
-    const method = payoutMethod ?? current.payoutMethod;
-    let counterpartyId = revolutCounterpartyId ?? current.revolutCounterpartyId;
-
-    if (method === 'REVOLUT_COUNTERPARTY') {
-      if (!counterpartyId) {
-        throw new Error('Revolut counterparty ID is required for Revolut-to-Revolut payouts');
-      }
-    } else if (sortCode && accountNumber) {
-      const validation = validateUkBankDetails(sortCode, accountNumber);
-      if (!validation.ok) throw new Error(validation.message || 'Invalid bank details');
-
-      const encrypted = encrypt(
-        JSON.stringify({
-          sortCode: sortCode.replace(/\D/g, ''),
-          accountNumber: accountNumber.replace(/\D/g, ''),
-        })
-      );
-
-      counterpartyId = await createCounterpartyFromBankDetails({
-        companyName: accountHolderName || tenant.name,
-        sortCode: sortCode.replace(/\D/g, ''),
-        accountNumber: accountNumber.replace(/\D/g, ''),
-      });
-
-      data.bankDetailsEncrypted = encrypted;
-      data.bankDetailsLast4 = maskAccountLast4(accountNumber);
-      data.revolutCounterpartyId = counterpartyId;
-      data.verificationStatus = 'PENDING';
-      data.firstPayoutHeldUntil = new Date(Date.now() + 48 * 60 * 60 * 1000);
-    } else if (!current.revolutCounterpartyId && !counterpartyId) {
-      throw new Error('UK bank details or a Revolut counterparty ID is required to enable payouts');
+    if (current.stripeTransfersStatus !== 'active') {
+      throw new Error('Finish Stripe onboarding before enabling payment collection');
     }
 
     data.enabled = true;
@@ -159,17 +110,8 @@ export async function savePayoutSettings({
     data.enabled = false;
   }
 
-  const effectiveMethod = payoutMethod ?? current.payoutMethod;
-  if (revolutCounterpartyId && methodAllowsCounterparty(effectiveMethod)) {
-    data.revolutCounterpartyId = revolutCounterpartyId;
-  }
-
   return prisma.tenantPayoutSettings.update({
     where: { tenantId },
     data,
   });
-}
-
-function methodAllowsCounterparty(method: string): boolean {
-  return method === 'REVOLUT_COUNTERPARTY' || method === 'UK_BANK_TRANSFER';
 }

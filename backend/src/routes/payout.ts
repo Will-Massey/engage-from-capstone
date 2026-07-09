@@ -1,5 +1,5 @@
 /**
- * Tenant payout settings — Receive Payments Through Engage (Revolut-only v1).
+ * Tenant payout settings — Receive Payments Through Engage (Stripe Connect).
  */
 import { Router } from 'express';
 import { z } from 'zod';
@@ -29,13 +29,8 @@ router.put(
       enabled: z.boolean().optional(),
       consentAccepted: z.boolean().optional(),
       consentVersion: z.string().optional(),
-      allowRevolutPay: z.boolean().optional(),
-      allowCard: z.boolean().optional(),
-      payoutMethod: z.enum(['UK_BANK_TRANSFER', 'REVOLUT_COUNTERPARTY']).optional(),
+      payoutMethod: z.enum(['STRIPE_CONNECT']).optional(),
       accountHolderName: z.string().min(2).max(120).optional(),
-      sortCode: z.string().optional(),
-      accountNumber: z.string().optional(),
-      revolutCounterpartyId: z.string().optional(),
       collectPaymentAtSign: z.boolean().optional(),
     });
 
@@ -50,13 +45,8 @@ router.put(
         consentAccepted: body.consentAccepted,
         consentVersion: body.consentVersion,
         consentIp: req.ip,
-        allowRevolutPay: body.allowRevolutPay,
-        allowCard: body.allowCard,
         payoutMethod: body.payoutMethod,
         accountHolderName: body.accountHolderName,
-        sortCode: body.sortCode,
-        accountNumber: body.accountNumber,
-        revolutCounterpartyId: body.revolutCounterpartyId,
       });
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Failed to save payout settings';
@@ -73,7 +63,7 @@ router.put(
         ...(current.payments || {}),
         collectPaymentAtSign: body.collectPaymentAtSign,
         allowDirectDebit: false,
-        allowCard: body.allowCard ?? current.payments?.allowCard ?? true,
+        allowCard: true,
       };
       await prisma.tenant.update({
         where: { id: tenantId },

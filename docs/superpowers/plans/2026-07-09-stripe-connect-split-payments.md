@@ -442,7 +442,7 @@ Rewrite `payoutSettingsService.ts` (drop Revolut/bank logic), add the Stripe che
   - `shouldCollectPaymentAtSign(tenantId): Promise<boolean>` (unchanged name; Stripe-gated)
   - `createPostSignMandate(proposalId, options): Promise<MandateSetupResult>` (unchanged name; returns Stripe checkout)
 
-- [ ] **Step 1: Write failing test for the checkout builder**
+- [x] **Step 1: Write failing test for the checkout builder**
 
 ```typescript
 // backend/src/services/__tests__/proposalPaymentStripe.test.ts
@@ -541,7 +541,7 @@ export async function createStripeProposalCheckout(input: StripeCheckoutInput): 
 
 - [x] **Step 4: Run — expect PASS** (`cd backend && npx jest proposalPaymentStripe -v`).
 
-- [ ] **Step 5: Rewrite `payoutSettingsService.ts`**
+- [x] **Step 5: Rewrite `payoutSettingsService.ts`**
 
 Remove imports of `encrypt`, `validateUkBankDetails`, `maskAccountLast4`, `createCounterpartyFromBankDetails`. `PayoutSettingsPublic` loses `allowRevolutPay`, `allowCard`, `bankDetailsLast4`, `revolutCounterpartyId`; gains `stripeConnectedAccountId: string | null` and `stripeTransfersStatus: string`. `savePayoutSettings` drops all bank/counterparty branches — enabling requires accepted terms **and** `stripeTransfersStatus === 'active'` (throw otherwise). Keep `getOrCreatePayoutSettings`, `getPayoutSettingsPublic`, `isPayoutCollectionEnabled`. New public shape:
 ```typescript
@@ -579,7 +579,7 @@ if (enabled === true) {
 }
 ```
 
-- [ ] **Step 6: Rewrite `paymentCollection.ts`**
+- [x] **Step 6: Rewrite `paymentCollection.ts`**
 
 Replace `isRevolutConfigured`/`createProposalCheckoutOrder` imports with Stripe. `resolvePaymentProvider()` returns `'stripe'` when `stripe` is configured, else `'none'`. `PaymentProviderName = 'stripe' | 'none'`. `shouldCollectPaymentAtSign` uses `isCollectionReady(tenantId)` AND `collectPaymentAtSign` AND provider `stripe`. `createPostSignMandate` builds the Stripe checkout:
 ```typescript
@@ -613,12 +613,12 @@ return { provider: 'stripe', mandateId: checkout.sessionId, paymentId: checkout.
 ```
 Update `getPublicPaymentConfig` to set `provider: 'stripe'`, `providerConfigured: provider === 'stripe'`, drop the `methods.revolutPay`/`card` toggles (return `{ card: true }` or remove the field — match the frontend change in Task 8).
 
-- [ ] **Step 7: Write + run `paymentCollection.test.ts`**
+- [x] **Step 7: Write + run `paymentCollection.test.ts`**
 
 Test `resolvePaymentProvider()` returns `'stripe'` when `stripe` truthy and `'none'` when null; `shouldCollectPaymentAtSign` false when `isCollectionReady` false. Mock `config/stripe.js`, `stripeConnectService.js`, `config/database.js`.
 Run: `cd backend && npx jest paymentCollection proposalPaymentStripe -v` → PASS.
 
-- [ ] **Step 8: Commit**
+- [x] **Step 8: Commit**
 
 ```bash
 git add backend/src/services/payoutSettingsService.ts backend/src/services/proposalPaymentStripe.ts backend/src/services/paymentCollection.ts backend/src/services/__tests__/
