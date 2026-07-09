@@ -51,7 +51,7 @@ export async function recordProposalPaymentSplit({
   const split = calculateSplit({
     grossPence: totalPence,
     platformFeeBps,
-    processorFeePence: estimateProcessorCost('REVOLUT', totalPence),
+    processorFeePence: estimateProcessorCost('STRIPE', totalPence),
     processorMarkupPence: estimateProcessorMarkup(totalPence),
   });
 
@@ -144,7 +144,7 @@ export function calculatePaymentSplit(totalPence: number, feeBps?: number): Spli
   const split = calculateSplit({
     grossPence: totalPence,
     platformFeeBps: feeBps,
-    processorFeePence: estimateProcessorCost('REVOLUT', totalPence),
+    processorFeePence: estimateProcessorCost('STRIPE', totalPence),
     processorMarkupPence: estimateProcessorMarkup(totalPence),
   });
   return {

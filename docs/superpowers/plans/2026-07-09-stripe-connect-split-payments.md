@@ -36,7 +36,7 @@ Relocate `getPlatformFeeBps()` off the (to-be-deleted) `lib/revolut/plans.ts` an
 **Interfaces:**
 - Produces: `getPlatformFeeBps(): number` (from `feeConfig.js`); `estimateProcessorCost(provider: 'STRIPE', grossPence: number): number`; `buildFeePreview(grossPence: number, platformFeeBps: number)` unchanged signature, now Stripe-based.
 
-- [ ] **Step 1: Write `feeConfig.ts` with the relocated helper**
+- [x] **Step 1: Write `feeConfig.ts` with the relocated helper**
 
 ```typescript
 // backend/src/lib/payments/feeConfig.ts
@@ -57,7 +57,7 @@ export function estimateStripeProcessorCost(grossPence: number): number {
 }
 ```
 
-- [ ] **Step 2: Write failing tests**
+- [x] **Step 2: Write failing tests**
 
 ```typescript
 // append to splitCalculator.test.ts
@@ -86,12 +86,12 @@ describe('splitCalculator STRIPE branch', () => {
 });
 ```
 
-- [ ] **Step 3: Run tests — expect FAIL**
+- [x] **Step 3: Run tests — expect FAIL**
 
 Run: `cd backend && npx jest splitCalculator -v`
 Expected: FAIL — `feeConfig` module not found / `estimateProcessorCost('STRIPE', ...)` unhandled.
 
-- [ ] **Step 4: Update `splitCalculator.ts`**
+- [x] **Step 4: Update `splitCalculator.ts`**
 
 Change line 1 import from `'../revolut/plans.js'` to:
 ```typescript
@@ -111,17 +111,18 @@ In `buildFeePreview` (line ~89) change the first line from the Revolut estimate 
   const processorFeePence = estimateProcessorCost('STRIPE', grossPence);
 ```
 
-- [ ] **Step 5: Run tests + typecheck — expect PASS**
+- [x] **Step 5: Run tests + typecheck — expect PASS**
 
 Run: `cd backend && npx jest splitCalculator -v && npx tsc --noEmit`
 Expected: PASS; no type errors from `splitCalculator.ts` (note: `tsc` may still error on other files that import `lib/revolut` — those are removed in Task 9; scope this check to jest passing + no NEW errors in `splitCalculator.ts`/`feeConfig.ts`).
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add backend/src/lib/payments/feeConfig.ts backend/src/lib/payments/splitCalculator.ts backend/src/lib/payments/__tests__/splitCalculator.test.ts
 git commit -m "feat(payments): decouple split calc from Revolut, add Stripe processor estimate"
 ```
+
 
 ---
 
