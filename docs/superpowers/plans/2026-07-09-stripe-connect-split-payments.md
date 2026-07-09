@@ -175,7 +175,9 @@ Spike the exact v2 payload against test mode first (retrieval over memory), then
   - `createOnboardingLink(accountId: string, returnUrl: string, refreshUrl: string): Promise<{ url: string }>`
   - `getTransfersStatus(accountId: string): Promise<string>` — returns the `stripe_transfers` capability status string (`"active" | "pending" | "inactive" | ...`).
 
-- [ ] **Step 1: Spike the payload in test mode**
+- [x] **Step 1: Spike the payload in test mode**
+
+Deferred live spike (no `STRIPE_SECRET_KEY_TEST` in session). Shape taken from plan + Stripe Accounts v2 docs (`dashboard: express`, recipient `stripe_balance.stripe_transfers`). Confirm against test mode before first deploy.
 
 Using a test-mode secret key, confirm the exact accepted shape:
 ```bash
@@ -194,7 +196,7 @@ console.log(a.id, JSON.stringify(a.configuration?.recipient?.capabilities, null,
 ```
 Expected: an `acct_...` id prints and the capability tree includes `stripe_balance.stripe_transfers` with a `status`. If any field is rejected, adjust to the error's guidance and record the working shape here before continuing.
 
-- [ ] **Step 2: Write failing tests (mock `stripe`)**
+- [x] **Step 2: Write failing tests (mock `stripe`)**
 
 ```typescript
 // backend/src/lib/stripe/__tests__/connect.test.ts
@@ -228,12 +230,12 @@ describe('stripe connect wrapper', () => {
 });
 ```
 
-- [ ] **Step 3: Run — expect FAIL**
+- [x] **Step 3: Run — expect FAIL**
 
 Run: `cd backend && npx jest lib/stripe/__tests__/connect -v`
 Expected: FAIL — `../connect.js` not found.
 
-- [ ] **Step 4: Implement `connect.ts`**
+- [x] **Step 4: Implement `connect.ts`**
 
 ```typescript
 // backend/src/lib/stripe/connect.ts
@@ -292,12 +294,12 @@ export async function getTransfersStatus(accountId: string): Promise<string> {
 }
 ```
 
-- [ ] **Step 5: Run — expect PASS**
+- [x] **Step 5: Run — expect PASS**
 
 Run: `cd backend && npx jest lib/stripe/__tests__/connect -v`
 Expected: PASS.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add backend/src/lib/stripe/connect.ts backend/src/lib/stripe/__tests__/connect.test.ts
