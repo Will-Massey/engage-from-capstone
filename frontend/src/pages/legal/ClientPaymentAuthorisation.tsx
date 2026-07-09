@@ -37,8 +37,8 @@ export default function ClientPaymentAuthorisation() {
       <section className="space-y-4">
         <h2 className="text-xl font-semibold text-slate-900 dark:text-white">3. Card payments</h2>
         <p>
-          Card details are entered on Stripe&apos;s secure checkout page. Engage
-          and your accountant never see or store your full card number, expiry date, or CVC.
+          Card details are entered on Stripe&apos;s secure checkout page. Engage and your accountant
+          never see or store your full card number, expiry date, or CVC.
         </p>
       </section>
 

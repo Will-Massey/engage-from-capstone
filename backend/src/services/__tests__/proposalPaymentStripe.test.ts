@@ -1,4 +1,7 @@
-const sessionCreate = jest.fn(async (_args: any) => ({ id: 'cs_1', url: 'https://checkout.stripe.com/cs_1' }));
+const sessionCreate = jest.fn(async (_args: any) => ({
+  id: 'cs_1',
+  url: 'https://checkout.stripe.com/cs_1',
+}));
 
 jest.mock('../../config/stripe.js', () => ({
   stripe: { checkout: { sessions: { create: sessionCreate } } },

@@ -12,9 +12,8 @@ export default function PaymentCollectionTerms() {
         </p>
         <p>
           Capstone Software Ltd (&ldquo;Capstone&rdquo;, &ldquo;we&rdquo;) collects client payments
-          on your behalf via Stripe. We deduct applicable platform and payment
-          processing fees, then transfer the net amount to the UK bank account you connect
-          through Stripe.
+          on your behalf via Stripe. We deduct applicable platform and payment processing fees, then
+          transfer the net amount to the UK bank account you connect through Stripe.
         </p>
       </section>
 
@@ -54,9 +53,7 @@ export default function PaymentCollectionTerms() {
       <section className="space-y-4">
         <h2 className="text-xl font-semibold text-slate-900 dark:text-white">4. Payouts</h2>
         <ul className="list-disc pl-5 space-y-2">
-          <li>
-            Payouts are made to the UK bank account you connect through Stripe onboarding.
-          </li>
+          <li>Payouts are made to the UK bank account you connect through Stripe onboarding.</li>
           <li>
             First payouts may be held for up to 48 hours while we verify payout destination details.
           </li>

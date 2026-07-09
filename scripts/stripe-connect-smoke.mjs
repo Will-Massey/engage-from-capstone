@@ -19,9 +19,7 @@ const API_URL = (process.env.API_URL || 'http://localhost:3001').replace(/\/$/, 
 const headers = {
   'Content-Type': 'application/json',
   'X-Test-Mode': 'e2e',
-  ...(process.env.E2E_BYPASS_SECRET
-    ? { 'X-Test-Mode-Secret': process.env.E2E_BYPASS_SECRET }
-    : {}),
+  ...(process.env.E2E_BYPASS_SECRET ? { 'X-Test-Mode-Secret': process.env.E2E_BYPASS_SECRET } : {}),
   ...(process.env.AUTH_COOKIE ? { Cookie: process.env.AUTH_COOKIE } : {}),
   ...(process.env.TOKEN ? { Authorization: `Bearer ${process.env.TOKEN}` } : {}),
 };
@@ -59,9 +57,7 @@ async function main() {
   } else if (onboard.ok && onboardBody?.url?.includes('connect.stripe.com')) {
     pass(`onboard URL: ${onboardBody.url.slice(0, 48)}…`);
   } else {
-    fail(
-      `onboard unexpected ${onboard.status}: ${JSON.stringify(onboardBody).slice(0, 200)}`
-    );
+    fail(`onboard unexpected ${onboard.status}: ${JSON.stringify(onboardBody).slice(0, 200)}`);
   }
 
   // Settings shape

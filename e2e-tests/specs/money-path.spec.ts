@@ -37,10 +37,7 @@ test.describe('Money path — sign and collect payment', () => {
     });
   });
 
-  test('client signs, pays via stubbed Stripe, payment marks paid', async ({
-    page,
-    context,
-  }) => {
+  test('client signs, pays via stubbed Stripe, payment marks paid', async ({ page, context }) => {
     test.slow();
 
     const me = await apiGet(page.request, '/auth/me');

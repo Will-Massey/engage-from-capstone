@@ -21,11 +21,7 @@ jest.mock('../../../config/stripe.js', () => ({
   },
 }));
 
-import {
-  createRecipientAccount,
-  createOnboardingLink,
-  getTransfersStatus,
-} from '../connect.js';
+import { createRecipientAccount, createOnboardingLink, getTransfersStatus } from '../connect.js';
 
 describe('stripe connect wrapper', () => {
   beforeEach(() => {

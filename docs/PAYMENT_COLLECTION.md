@@ -40,14 +40,14 @@ Configure via environment:
 
 ## API
 
-| Endpoint                                        | Auth                 | Purpose                         |
-| ----------------------------------------------- | -------------------- | ------------------------------- |
-| `GET /api/payout/settings`                      | Practice user        | Connect status + settings       |
-| `PUT /api/payout/settings`                      | ADMIN/PARTNER        | Opt-in (requires Connect active)|
-| `POST /api/payout/stripe/onboard`               | ADMIN/PARTNER        | Hosted Account Link URL         |
-| `GET /api/payout/ledger`                        | ADMIN/PARTNER/MD     | Split history                   |
-| `POST /api/proposals/view/:token/payment/setup` | Public (share token) | Create Stripe Checkout Session  |
-| `POST /api/webhooks/stripe-connect`             | Stripe signature     | Fulfilment + capability sync    |
+| Endpoint                                        | Auth                 | Purpose                          |
+| ----------------------------------------------- | -------------------- | -------------------------------- |
+| `GET /api/payout/settings`                      | Practice user        | Connect status + settings        |
+| `PUT /api/payout/settings`                      | ADMIN/PARTNER        | Opt-in (requires Connect active) |
+| `POST /api/payout/stripe/onboard`               | ADMIN/PARTNER        | Hosted Account Link URL          |
+| `GET /api/payout/ledger`                        | ADMIN/PARTNER/MD     | Split history                    |
+| `POST /api/proposals/view/:token/payment/setup` | Public (share token) | Create Stripe Checkout Session   |
+| `POST /api/webhooks/stripe-connect`             | Stripe signature     | Fulfilment + capability sync     |
 
 ## Env (Render)
 

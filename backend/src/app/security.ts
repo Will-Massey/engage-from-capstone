@@ -14,10 +14,7 @@ export function applySecurity(app: express.Express): void {
           styleSrc: ["'self'", "'unsafe-inline'", 'https://fonts.googleapis.com'],
           fontSrc: ["'self'", 'https://fonts.gstatic.com'],
           imgSrc: ["'self'", 'data:', 'blob:', 'https:'],
-          connectSrc: [
-            "'self'",
-            process.env.FRONTEND_URL || 'http://localhost:5173',
-          ],
+          connectSrc: ["'self'", process.env.FRONTEND_URL || 'http://localhost:5173'],
           frameSrc: ["'self'"],
           objectSrc: ["'none'"],
           baseUri: ["'self'"],

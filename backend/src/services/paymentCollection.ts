@@ -62,12 +62,7 @@ export async function shouldCollectPaymentAtSign(tenantId: string): Promise<bool
     prisma.tenant.findUnique({ where: { id: tenantId }, select: { settings: true } }),
   ]);
   const settings = getPaymentSettings(tenant?.settings);
-  return (
-    payoutEnabled &&
-    ready &&
-    settings.collectPaymentAtSign &&
-    isPaymentCollectionAvailable()
-  );
+  return payoutEnabled && ready && settings.collectPaymentAtSign && isPaymentCollectionAvailable();
 }
 
 /**

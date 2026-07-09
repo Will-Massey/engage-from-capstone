@@ -93,7 +93,9 @@ router.post(
 
     switch (event.type) {
       case 'checkout.session.completed':
-        await fulfilProposalPayment(event.data.object as Parameters<typeof fulfilProposalPayment>[0]);
+        await fulfilProposalPayment(
+          event.data.object as Parameters<typeof fulfilProposalPayment>[0]
+        );
         break;
       case 'account.updated': {
         const acct = event.data.object as { id?: string };

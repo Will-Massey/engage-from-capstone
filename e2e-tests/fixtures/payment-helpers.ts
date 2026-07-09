@@ -49,7 +49,9 @@ export async function simulateStripeCheckoutCompleted(
 
   if (!res.ok()) {
     const text = await res.text().catch(() => '');
-    throw new Error(`Stripe Connect webhook simulation failed (${res.status()}): ${text.slice(0, 300)}`);
+    throw new Error(
+      `Stripe Connect webhook simulation failed (${res.status()}): ${text.slice(0, 300)}`
+    );
   }
 }
 
