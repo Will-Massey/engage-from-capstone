@@ -363,7 +363,8 @@ router.get(
       success: true,
       data: {
         status: proposal.paymentStatus || 'NOT_STARTED',
-        paid: proposal.paymentStatus === 'COMPLETED',
+        // Stripe Connect webhook writes PAID; legacy Revolut path used COMPLETED/ACTIVE
+        paid: ['PAID', 'COMPLETED', 'ACTIVE'].includes(proposal.paymentStatus || ''),
         amount: proposal.total,
         paymentUrl: proposal.paymentUrl,
       },
