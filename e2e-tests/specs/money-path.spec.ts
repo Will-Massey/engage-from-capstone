@@ -44,11 +44,12 @@ test.describe('Money path — sign and collect payment', () => {
     await expectOkApi('/auth/me', me);
     const tenantId = me.body.data.user.tenant.id as string;
 
+    const runId = Date.now();
     const client = await createTestClient(page, {
-      name: 'Money Path Client',
-      email: `money-path-${Date.now()}@example.com`,
+      name: `Money Path Client ${runId}`,
+      email: `money-path-${runId}@example.com`,
     });
-    const uniqueTitle = `Money Path Proposal ${Date.now()}`;
+    const uniqueTitle = `Money Path Proposal ${runId}`;
     const proposal = await createTestProposal(page, {
       clientName: client.name,
       services: ['Comprehensive Bookkeeping'],
