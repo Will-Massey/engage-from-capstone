@@ -10,6 +10,10 @@ import {
   handleChargeDisputeClosed,
   handleChargeRefunded,
 } from '../../services/stripeDisputeService.js';
+import {
+  handleRecurringInvoicePaid,
+  handleRecurringInvoiceFailed,
+} from '../../services/proposalRecurringStripe.js';
 import { isE2eTestRequest } from '../../utils/securityFlags.js';
 import logger from '../../config/logger.js';
 
@@ -117,6 +121,16 @@ router.post(
         break;
       case 'charge.refunded':
         await handleChargeRefunded(event.data.object as Parameters<typeof handleChargeRefunded>[0]);
+        break;
+      case 'invoice.paid':
+        await handleRecurringInvoicePaid(
+          event.data.object as Parameters<typeof handleRecurringInvoicePaid>[0]
+        );
+        break;
+      case 'invoice.payment_failed':
+        await handleRecurringInvoiceFailed(
+          event.data.object as Parameters<typeof handleRecurringInvoiceFailed>[0]
+        );
         break;
       default:
         break;
