@@ -322,7 +322,7 @@ git commit -m "feat(stripe): Accounts v2 recipient account + onboarding link wra
   - `syncTransfersStatus(accountId: string): Promise<void>` — writes `stripeTransfersStatus` for the owning tenant.
   - `isCollectionReady(tenantId: string): Promise<boolean>` — true iff `stripeTransfersStatus === 'active'`.
 
-- [ ] **Step 1: Write failing tests** (mock connect lib + prisma). Cover: creates account when none stored and persists id; `startOnboarding` returns link URL; `syncTransfersStatus` updates the row by `stripeConnectedAccountId`; `isCollectionReady` reflects the stored status.
+- [x] **Step 1: Write failing tests** (mock connect lib + prisma). Cover: creates account when none stored and persists id; `startOnboarding` returns link URL; `syncTransfersStatus` updates the row by `stripeConnectedAccountId`; `isCollectionReady` reflects the stored status.
 
 ```typescript
 // backend/src/services/__tests__/stripeConnectService.test.ts
@@ -358,9 +358,9 @@ describe('stripeConnectService', () => {
 });
 ```
 
-- [ ] **Step 2: Run — expect FAIL** (`cd backend && npx jest stripeConnectService -v`).
+- [x] **Step 2: Run — expect FAIL** (`cd backend && npx jest stripeConnectService -v`).
 
-- [ ] **Step 3: Implement the service**
+- [x] **Step 3: Implement the service**
 
 ```typescript
 // backend/src/services/stripeConnectService.ts
@@ -413,9 +413,9 @@ export async function isCollectionReady(tenantId: string): Promise<boolean> {
 }
 ```
 
-- [ ] **Step 4: Run — expect PASS** (`cd backend && npx jest stripeConnectService -v`).
+- [x] **Step 4: Run — expect PASS** (`cd backend && npx jest stripeConnectService -v`).
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add backend/src/services/stripeConnectService.ts backend/src/services/__tests__/stripeConnectService.test.ts
@@ -473,7 +473,7 @@ describe('createStripeProposalCheckout', () => {
 });
 ```
 
-- [ ] **Step 2: Run — expect FAIL** (`cd backend && npx jest proposalPaymentStripe -v`).
+- [x] **Step 2: Run — expect FAIL** (`cd backend && npx jest proposalPaymentStripe -v`).
 
 - [ ] **Step 3: Implement `proposalPaymentStripe.ts`**
 
@@ -539,7 +539,7 @@ export async function createStripeProposalCheckout(input: StripeCheckoutInput): 
 }
 ```
 
-- [ ] **Step 4: Run — expect PASS** (`cd backend && npx jest proposalPaymentStripe -v`).
+- [x] **Step 4: Run — expect PASS** (`cd backend && npx jest proposalPaymentStripe -v`).
 
 - [ ] **Step 5: Rewrite `payoutSettingsService.ts`**
 
@@ -673,7 +673,7 @@ describe('stripe-connect webhook', () => {
 });
 ```
 
-- [ ] **Step 2: Run — expect FAIL** (`cd backend && npx jest stripeConnect -v`). If `supertest` is absent, install: `npm i -D supertest @types/supertest` (check `backend/package.json` first).
+- [x] **Step 2: Run — expect FAIL** (`cd backend && npx jest stripeConnect -v`). If `supertest` is absent, install: `npm i -D supertest @types/supertest` (check `backend/package.json` first).
 
 - [ ] **Step 3: Implement the router** (mirror `routes/stripeWebhook.ts`)
 
@@ -756,7 +756,7 @@ git commit -m "feat(payments): Stripe Connect webhook — fulfil payment + sync 
 
 - [ ] **Step 1: Write failing test** — authenticated `POST /api/payout/stripe/onboard` returns `{ url }` from `startOnboarding` (mock it). Assert the return/refresh URLs point at the app's Settings billing tab.
 
-- [ ] **Step 2: Run — expect FAIL** (`cd backend && npx jest payout.stripe -v`).
+- [x] **Step 2: Run — expect FAIL** (`cd backend && npx jest payout.stripe -v`).
 
 - [ ] **Step 3: Add the route** (mirror existing auth middleware usage in `payout.ts`)
 
@@ -773,9 +773,9 @@ router.post('/stripe/onboard', asyncHandler(async (req, res) => {
 ```
 Remove any Revolut counterparty/bank-detail handlers from `payout.ts`.
 
-- [ ] **Step 4: Run — expect PASS** (`cd backend && npx jest payout.stripe -v`).
+- [x] **Step 4: Run — expect PASS** (`cd backend && npx jest payout.stripe -v`).
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add backend/src/routes/payout.ts backend/src/routes/__tests__/payout.stripe.test.ts
@@ -806,7 +806,7 @@ git commit -m "feat(payments): Stripe onboarding route + payout settings API"
 Run: `cd frontend && npm run build && npx vitest run`
 Expected: build succeeds; existing tests pass. Fix any references to removed types.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add frontend/src
