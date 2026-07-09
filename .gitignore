@@ -85,3 +85,7 @@ dump.rdb
 # test temp artifacts
 e2e-tests/.tmp-cookies.txt
 scripts/.revolut-business-screen.png
+
+# Local dev testing aids (Claude) — never commit; .env.testdb holds a Neon secret
+backend/.env.testdb
+backend/dev-preload.mjs
