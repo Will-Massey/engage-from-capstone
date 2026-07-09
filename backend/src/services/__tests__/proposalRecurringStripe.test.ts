@@ -1,4 +1,7 @@
-const sessionCreate = jest.fn(async (_args: any) => ({ id: 'cs_sub_1', url: 'https://checkout.stripe.com/cs_sub_1' }));
+const sessionCreate = jest.fn(async (_args: any) => ({
+  id: 'cs_sub_1',
+  url: 'https://checkout.stripe.com/cs_sub_1',
+}));
 const subRetrieve = jest.fn(async () => ({ metadata: { proposalId: 'p1', tenantId: 't1' } }));
 const activityCreate = jest.fn(async () => ({}));
 
@@ -60,7 +63,10 @@ describe('createRecurringCheckout', () => {
     expect(arg.subscription_data.transfer_data.destination).toBe('acct_1');
     expect(arg.subscription_data.metadata).toEqual({ proposalId: 'p1', tenantId: 't1' });
     expect(arg.line_items).toHaveLength(2);
-    expect(arg.line_items[0].price_data.recurring).toEqual({ interval: 'month', interval_count: 1 });
+    expect(arg.line_items[0].price_data.recurring).toEqual({
+      interval: 'month',
+      interval_count: 1,
+    });
     expect(arg.line_items[0].price_data.unit_amount).toBe(8500);
     expect(r.applicationFeePercent).toBe(2.5);
     expect(r.sessionId).toBe('cs_sub_1');
@@ -97,7 +103,9 @@ describe('recurring invoice webhooks', () => {
       subscription_details: { metadata: { proposalId: 'p1', tenantId: 't1' } },
     });
     expect(activityCreate).toHaveBeenCalledWith(
-      expect.objectContaining({ data: expect.objectContaining({ action: 'RECURRING_PAYMENT_FAILED' }) })
+      expect.objectContaining({
+        data: expect.objectContaining({ action: 'RECURRING_PAYMENT_FAILED' }),
+      })
     );
   });
 });

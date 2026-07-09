@@ -25,13 +25,19 @@ describe('splitRecurring', () => {
     // one monthly group (2 lines) + one yearly group (1 line)
     const byKey = Object.fromEntries(r.recurringGroups.map((g) => [g.key, g]));
     expect(byKey['month:1'].lines).toHaveLength(2);
-    expect(byKey['month:1'].lines[0]).toEqual({ name: 'Bookkeeping', unitAmountPence: 8500, quantity: 1 });
+    expect(byKey['month:1'].lines[0]).toEqual({
+      name: 'Bookkeeping',
+      unitAmountPence: 8500,
+      quantity: 1,
+    });
     expect(byKey['year:1'].lines).toHaveLength(1);
     expect(byKey['year:1'].lines[0].unitAmountPence).toBe(30000);
   });
 
   it('multiplies by quantity for one-off lines', () => {
-    const r = splitRecurring([{ name: 'Setup', displayPrice: 50, billingFrequency: 'ONE_TIME', quantity: 3 }]);
+    const r = splitRecurring([
+      { name: 'Setup', displayPrice: 50, billingFrequency: 'ONE_TIME', quantity: 3 },
+    ]);
     expect(r.oneOffPence).toBe(15000);
     expect(r.recurringGroups).toHaveLength(0);
   });
@@ -39,7 +45,11 @@ describe('splitRecurring', () => {
 
 describe('hasRecurringLines', () => {
   it('detects recurring lines', () => {
-    expect(hasRecurringLines([{ name: 'x', displayPrice: 10, billingFrequency: 'MONTHLY' }])).toBe(true);
-    expect(hasRecurringLines([{ name: 'x', displayPrice: 10, billingFrequency: 'ONE_TIME' }])).toBe(false);
+    expect(hasRecurringLines([{ name: 'x', displayPrice: 10, billingFrequency: 'MONTHLY' }])).toBe(
+      true
+    );
+    expect(hasRecurringLines([{ name: 'x', displayPrice: 10, billingFrequency: 'ONE_TIME' }])).toBe(
+      false
+    );
   });
 });

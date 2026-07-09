@@ -1,6 +1,11 @@
 const chargesRetrieve = jest.fn();
 const transfersCreateReversal = jest.fn(async () => ({ id: 'trr_1' }));
-const transfersRetrieve = jest.fn(async () => ({ id: 'tr_1', amount: 9700, currency: 'gbp', destination: 'acct_1' }));
+const transfersRetrieve = jest.fn(async () => ({
+  id: 'tr_1',
+  amount: 9700,
+  currency: 'gbp',
+  destination: 'acct_1',
+}));
 const transfersCreate = jest.fn(async () => ({ id: 'tr_2' }));
 
 const findUnique = jest.fn();
@@ -66,7 +71,12 @@ describe('stripeDisputeService', () => {
     });
 
     it('skips when the charge has no proposalId', async () => {
-      chargesRetrieve.mockResolvedValue({ id: 'ch_x', transfer: 'tr_x', metadata: {}, payment_intent: null });
+      chargesRetrieve.mockResolvedValue({
+        id: 'ch_x',
+        transfer: 'tr_x',
+        metadata: {},
+        payment_intent: null,
+      });
       await handleChargeDisputed({ id: 'dp_2', charge: 'ch_x' });
       expect(update).not.toHaveBeenCalled();
     });
