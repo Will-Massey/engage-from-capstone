@@ -8,16 +8,16 @@ Become the **premier UK accountancy proposal platform** — see `PREMIER_SERVICE
 
 ## Current Phase
 
-Phase: **Premier Service — P0 security live** — `in_progress` (audit items 1–6 deployed; payout smoke PASS on hardened build)
+Phase: **Stripe Connect split payments** — `in_progress` (PR #44 open; Render Stripe **test** env wired 2026-07-09)
 
 ## Next Up
 
 <!-- 3–5 bullets ONLY. Next fresh session starts here. Rewrite every checkpoint. -->
 
-1. **AML mount fix:** `/api/aml` was imported but never mounted (all AML routes 404'd in prod since W3.3) — fixed locally, needs push + deploy + `POST /api/aml/webhook` returns 403 (not 404) verify
-2. **Revolut Business API:** Run `revolut-business-setup.mjs` + `wire-revolut-business-render.ps1` (OAuth cert from Revolut Business → Settings → APIs) — code + wire scripts ready; credentials not on disk yet
-3. **Xero:** Render `XERO_*` env + Settings → Integrations connect smoke
-4. **Watch:** JWT_REFRESH_SECRET went missing from Render between 4–5 Jul (killed every deploy until rotated 5 Jul) — if it happens again, audit which script PUTs env vars from a stale snapshot; smoke scripts need `E2E_BYPASS_SECRET` + `API_URL=https://engage-backend-e1ue.onrender.com` (see `boardroom/deploy/.engage-p0-secrets.env`)
+1. **Merge PR #44** when CI green (prettier fix pushed) → auto-deploy Connect code + migration
+2. **Smoke:** partner login + `node scripts/stripe-connect-smoke.mjs` + Settings → Connect with Stripe (demo tenant)
+3. **Account:** Stripe test account `charges_enabled=false` — complete sandbox business profile if Connect onboard fails
+4. **Live mode later:** swap `sk_live`/`pk_live`, recreate webhooks on live, update `boardroom/deploy/.engage-stripe.env` + `scripts/wire-stripe-render.ps1`
 
 ## Phases
 

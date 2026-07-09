@@ -31,7 +31,6 @@ import {
 } from '@heroicons/react/24/outline';
 import { motion, AnimatePresence } from 'framer-motion';
 import { AI_COPILOT } from '../../config/aiCopilot';
-import { openRevolutCheckout } from '../../lib/revolut-checkout';
 import {
   buildPublicSignPayload,
   buildSignatureDeviceInfo,
@@ -376,30 +375,14 @@ const PublicProposalView = () => {
       })) as any;
 
       if (response.success) {
-        const { checkoutUrl, provider, token: checkoutToken, mode } = response.data;
+        const { checkoutUrl, provider } = response.data;
 
-        if (provider === 'revolut' && checkoutToken) {
-          await openRevolutCheckout({
-            token: checkoutToken,
-            mode: mode || 'sandbox',
-            onSuccess: () => {
-              setPaymentComplete(true);
-              setPaymentPending(false);
-              setSigningStep('confirmation');
-              setPaymentConfig((prev) =>
-                prev ? { ...prev, paymentStatus: 'COMPLETED', paymentRequired: false } : prev
-              );
-              toast.success('Payment received — thank you');
-            },
-            onError: (message) => toast.error(message || 'Payment failed'),
-            onCancel: () => toast('Payment cancelled — you can try again below', { icon: 'ℹ️' }),
-          });
+        if (provider === 'stripe' && checkoutUrl) {
+          window.location.href = checkoutUrl;
           return;
         }
 
-        if (provider === 'revolut' && checkoutUrl) {
-          window.location.href = checkoutUrl;
-        }
+        toast.error('Payment checkout is not available right now');
       }
     } catch (error: any) {
       toast.error(error.response?.data?.error?.message || 'Failed to set up payment');
@@ -663,7 +646,7 @@ const PublicProposalView = () => {
                         </label>
                         <button
                           type="button"
-                          data-testid="setup-revolut-payment"
+                          data-testid="setup-stripe-payment"
                           onClick={handleSetupPayment}
                           disabled={isSettingUpPayment || !paymentAuthAccepted}
                           className="inline-flex items-center gap-2 rounded-xl border border-sky-300 bg-white px-4 py-2.5 text-sm font-medium text-sky-900 hover:bg-sky-50 disabled:opacity-50"
@@ -1382,7 +1365,7 @@ const PublicProposalView = () => {
                   </p>
                   {paymentConfig.feePreview && (
                     <p className="text-xs text-slate-500 dark:text-slate-400">
-                      Payment is processed securely by Revolut. Your accountant receives the agreed
+                      Payment is processed securely by Stripe. Your accountant receives the agreed
                       fee after platform and processing costs.
                     </p>
                   )}
@@ -1408,13 +1391,13 @@ const PublicProposalView = () => {
                   </label>
                   <button
                     type="button"
-                    data-testid="setup-revolut-payment"
+                    data-testid="setup-stripe-payment"
                     onClick={handleSetupPayment}
                     disabled={isSettingUpPayment || !paymentAuthAccepted}
                     className="w-full inline-flex items-center justify-center gap-2 rounded-xl border border-sky-300 bg-white px-4 py-3 text-sm font-medium text-sky-900 hover:bg-sky-50 disabled:opacity-50 dark:bg-slate-800 dark:border-sky-700 dark:text-sky-100"
                   >
                     <CreditCardIcon className="h-5 w-5" />
-                    {isSettingUpPayment ? 'Opening secure checkout…' : 'Pay securely with Revolut'}
+                    {isSettingUpPayment ? 'Opening secure checkout…' : 'Pay securely with Stripe'}
                   </button>
                   <button
                     type="button"

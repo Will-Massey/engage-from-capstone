@@ -1,8 +1,7 @@
 import { useState, useEffect, lazy, Suspense } from 'react';
 import { apiClient } from '../utils/api';
 import toast from 'react-hot-toast';
-import { CheckIcon, CreditCardIcon } from '@heroicons/react/24/outline';
-import { openRevolutCheckout } from '../lib/revolut-checkout';
+import { CheckIcon } from '@heroicons/react/24/outline';
 
 const StripePaymentForm = lazy(() => import('../components/payments/StripePaymentForm'));
 
@@ -20,8 +19,7 @@ interface PricingTier {
 const TIER_ORDER = ['STARTER', 'PROFESSIONAL', 'ENTERPRISE'] as const;
 
 const Subscription = () => {
-  const [provider, setProvider] = useState<'revolut' | 'stripe' | null>(null);
-  const [revolutMode, setRevolutMode] = useState<'sandbox' | 'prod'>('sandbox');
+  const [provider, setProvider] = useState<'stripe' | null>(null);
   const [stripePromise, setStripePromise] = useState<any>(null);
   const [ElementsComponent, setElementsComponent] = useState<any>(null);
   const [tiers, setTiers] = useState<Record<string, PricingTier>>({});
@@ -31,7 +29,6 @@ const Subscription = () => {
     status?: string;
   } | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [checkoutTier, setCheckoutTier] = useState<string | null>(null);
   const [selectedStripeTier, setSelectedStripeTier] = useState<string | null>(null);
 
   useEffect(() => {
@@ -46,10 +43,10 @@ const Subscription = () => {
       if (!response.success) return;
 
       setTiers(response.data.tiers);
-      setProvider(response.data.provider || null);
-      setRevolutMode(response.data.mode || 'sandbox');
+      const nextProvider = response.data.provider === 'stripe' ? 'stripe' : null;
+      setProvider(nextProvider);
 
-      if (response.data.provider === 'stripe' && response.data.publishableKey?.startsWith('pk_')) {
+      if (nextProvider === 'stripe' && response.data.publishableKey?.startsWith('pk_')) {
         const [{ loadStripe }, { Elements }] = await Promise.all([
           import('@stripe/stripe-js'),
           import('@stripe/react-stripe-js'),
@@ -71,34 +68,6 @@ const Subscription = () => {
       }
     } finally {
       setIsLoading(false);
-    }
-  };
-
-  const handleRevolutCheckout = async (tier: string) => {
-    try {
-      setCheckoutTier(tier);
-      const response = (await apiClient.createBillingCheckout({ tier })) as any;
-
-      if (!response.success) {
-        toast.error('Could not start checkout');
-        return;
-      }
-
-      await openRevolutCheckout({
-        token: response.data.token,
-        mode: response.data.mode || revolutMode,
-        onSuccess: () => {
-          toast.success('Platform subscription activated');
-          void loadSubscription();
-        },
-        onError: (message) => toast.error(message),
-        onCancel: () => toast('Checkout cancelled'),
-      });
-    } catch (error: unknown) {
-      const message = error instanceof Error ? error.message : 'Checkout failed';
-      toast.error(message);
-    } finally {
-      setCheckoutTier(null);
     }
   };
 
@@ -163,22 +132,6 @@ const Subscription = () => {
                   </li>
                 ))}
               </ul>
-
-              {provider === 'revolut' && (
-                <button
-                  type="button"
-                  onClick={() => void handleRevolutCheckout(key)}
-                  disabled={isActive || checkoutTier === key}
-                  className="mt-6 w-full btn-primary flex items-center justify-center gap-2 disabled:opacity-50"
-                >
-                  <CreditCardIcon className="h-5 w-5" />
-                  {isActive
-                    ? 'Current plan'
-                    : checkoutTier === key
-                      ? 'Opening checkout…'
-                      : 'Subscribe'}
-                </button>
-              )}
 
               {provider === 'stripe' && tier.priceId && (
                 <button

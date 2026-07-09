@@ -10,10 +10,9 @@ export interface PaymentConfig {
   payoutEnabled: boolean;
   collectPaymentAtSign: boolean;
   paymentRequired: boolean;
-  provider: 'revolut' | 'none';
+  provider: 'stripe' | 'none';
   providerConfigured: boolean;
   methods: {
-    revolutPay: boolean;
     card: boolean;
   };
   paymentStatus: string | null;
@@ -23,7 +22,9 @@ export interface PaymentConfig {
   clientPaymentAuthVersion: string;
 }
 
-export type PayoutMethod = 'UK_BANK_TRANSFER' | 'REVOLUT_COUNTERPARTY';
+export type PayoutMethod = 'STRIPE_CONNECT';
+
+export type StripeTransfersStatus = 'active' | 'pending' | 'inactive' | string;
 
 export type PayoutVerificationStatus = 'PENDING' | 'VERIFIED' | string;
 
@@ -38,12 +39,10 @@ export type PayoutTransferStatus =
 
 export interface PayoutSettings {
   enabled: boolean;
-  allowRevolutPay: boolean;
-  allowCard: boolean;
   payoutMethod: PayoutMethod | string;
   accountHolderName: string | null;
-  bankDetailsLast4: string | null;
-  revolutCounterpartyId: string | null;
+  stripeConnectedAccountId: string | null;
+  stripeTransfersStatus: StripeTransfersStatus;
   verificationStatus: PayoutVerificationStatus;
   verifiedAt: string | null;
   consentVersion: string | null;
@@ -57,14 +56,13 @@ export interface UpdatePayoutSettingsPayload {
   enabled?: boolean;
   consentAccepted?: boolean;
   consentVersion?: string;
-  allowRevolutPay?: boolean;
-  allowCard?: boolean;
   payoutMethod?: PayoutMethod;
   accountHolderName?: string;
-  sortCode?: string;
-  accountNumber?: string;
-  revolutCounterpartyId?: string;
   collectPaymentAtSign?: boolean;
+}
+
+export interface StripeOnboardResult {
+  url: string;
 }
 
 export interface PayoutLedgerEntry {
@@ -88,7 +86,7 @@ export interface PayoutAgreements {
 
 export type SubscriptionBillingInterval = 'monthly' | 'annual';
 
-export type PaymentProvider = 'revolut' | 'stripe' | null;
+export type PaymentProvider = 'stripe' | null;
 
 export interface SubscriptionTier {
   name: string;
@@ -110,7 +108,6 @@ export interface PaymentsConfigResult {
   isEnabled: boolean;
   provider: PaymentProvider;
   publishableKey: string | null;
-  revolutPublicKey: string | null;
   mode: 'sandbox' | 'prod';
   tiers: SubscriptionTiersMap;
 }
@@ -140,7 +137,7 @@ export interface BillingCheckoutPayload {
   tier: string;
 }
 
-/** Legacy Revolut one-time checkout — route now returns 410; shape retained for API seam */
+/** Legacy one-time checkout — route now returns 410; shape retained for API seam */
 export interface BillingCheckoutResult {
   token?: string;
   mode?: 'sandbox' | 'prod';
@@ -151,7 +148,7 @@ export interface BillingSubscriptionResult {
   hasSubscription: boolean;
   tier: string | null;
   status: string | null;
-  provider: 'revolut' | 'stripe' | null;
+  provider: 'stripe' | null;
   lastPaymentDate: string | null;
 }
 

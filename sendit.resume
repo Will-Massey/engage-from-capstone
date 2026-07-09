@@ -1,26 +1,27 @@
 # Sendit Resume
 
-**Last Deploy:** 2026-07-05 18:31 UTC (checkpoint 6 — ea0a593 live)
+**Last Deploy:** 2026-07-05 18:31 UTC (checkpoint 6 — ea0a593 live). Stripe Connect work is on branch `feat/stripe-connect-split-payments`, not yet deployed.
 
 **Goal:**
 Become the **premier UK accountancy proposal platform** — see `PREMIER_SERVICE_STRATEGY.md` and `PREMIER_SERVICE_TODO.md`.
 
 **Current Phase:**
-Phase: **Premier Service — P0 security live** — `in_progress` (audit 1–6 deployed; payout smoke PASS on hardened build)
+Phase: **Stripe Connect split payments** — `in_progress` (Tasks 1–10 done; client→practice collection now on Stripe Connect destination charges; Revolut + GoCardless removed; platform subscriptions Stripe-only). Plan: `docs/superpowers/plans/2026-07-09-stripe-connect-split-payments.md`.
 
 **Next Up:**
-- **AML mount fix:** `/api/aml` never mounted (404 in prod) — fixed locally, push + verify webhook returns 403
-- **Revolut Business API:** Run `revolut-business-setup.mjs` + `wire-revolut-business-render.ps1` (needs OAuth cert from Revolut Business dashboard)
-- **Xero:** Render `XERO_*` env + Settings → Integrations connect smoke
+- **Validate Accounts v2 payload live:** local `.env.local` STRIPE_SECRET_KEY is malformed — set a valid key, then `node scripts/stripe-connect-smoke.mjs`. Closes the `as any` v2 payload risk in `lib/stripe/connect.ts`.
+- **Render env:** `STRIPE_CONNECT_WEBHOOK_SECRET` + register Connect webhook `/api/webhooks/stripe-connect` (events `checkout.session.completed`, `account.updated`).
+- **Deploy:** branch → prod migration `20260709120000_stripe_connect_payout` → onboard demo tenant → live payout smoke → merge to master.
 
 **Ops notes:**
-- Smoke scripts: set `API_URL=https://engage-backend-e1ue.onrender.com` + `E2E_BYPASS_SECRET` (from `boardroom/deploy/.engage-p0-secrets.env`)
-- JWT_REFRESH_SECRET was lost from Render 4–5 Jul (every deploy failed until rotated) — if deploys fail exit-1 again, check it first
+- Verified locally: backend tsc 0 errors; 180 unit tests pass; frontend + backend build clean. jest workers crash on local Node v25 — use Node 20 (`.node-version`).
+- Shared package must be rebuilt (`cd shared && npm run build`) after edits or backend fails to resolve `@uk-proposal-platform/shared` exports.
+- JWT_REFRESH_SECRET was lost from Render 4–5 Jul (every deploy failed until rotated) — if deploys fail exit-1 again, check it first.
 
 **Status:** pending = false
 
 <!-- Machine hints (do not expand on resume):
 project_root: C:\Users\willi\engage-from-capstone
-commit: ea0a593
-branch: master
+commit: 68d72cc
+branch: feat/stripe-connect-split-payments
 -->

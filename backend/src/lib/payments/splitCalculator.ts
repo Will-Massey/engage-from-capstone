@@ -1,4 +1,4 @@
-import { getPlatformFeeBps } from '../revolut/plans.js';
+import { getPlatformFeeBps, estimateStripeProcessorCost } from './feeConfig.js';
 
 export interface SplitInput {
   grossPence: number;
@@ -30,17 +30,8 @@ export function getProcessorMarkupFixedPence(): number {
 }
 
 /** Estimated processor cost to Engage (pass-through), not client-facing label */
-export function estimateProcessorCost(
-  provider: 'REVOLUT' | 'GOCARDLESS',
-  grossPence: number
-): number {
-  if (provider === 'GOCARDLESS') {
-    const percent = Math.round((grossPence * 100) / 10000); // ~1%
-    return Math.min(percent + 20, 220);
-  }
-  // Revolut card / Revolut Pay estimate — tune to merchant agreement
-  const bps = Number(process.env.ENGAGE_REVOLUT_PROCESSOR_BPS ?? 150);
-  return Math.round((grossPence * bps) / 10000);
+export function estimateProcessorCost(provider: 'STRIPE', grossPence: number): number {
+  return estimateStripeProcessorCost(grossPence);
 }
 
 export function estimateProcessorMarkup(grossPence: number): number {
@@ -88,7 +79,7 @@ export function calculateSplit(input: SplitInput): SplitResult {
 
 /** Public fee preview for client checkout UI */
 export function buildFeePreview(grossPence: number, platformFeeBps: number) {
-  const processorFeePence = estimateProcessorCost('REVOLUT', grossPence);
+  const processorFeePence = estimateProcessorCost('STRIPE', grossPence);
   const processorMarkupPence = estimateProcessorMarkup(grossPence);
   const split = calculateSplit({
     grossPence,

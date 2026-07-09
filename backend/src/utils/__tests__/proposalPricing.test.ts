@@ -34,7 +34,7 @@ describe('proposalPricing', () => {
 
   // Money invariants. Totals are currently held as Float (schema: displayPrice,
   // lineTotal, total ...), and they are converted to Int pence at the payment
-  // boundary (lib/revolut/fulfilment.ts: Math.round(total * 100)). These tests
+  // boundary (proposal checkout uses Math.round(total * 100)). These tests
   // pin the arithmetic relationships so a future Float -> Int-pence migration
   // cannot silently change what a customer is charged.
   const build = (

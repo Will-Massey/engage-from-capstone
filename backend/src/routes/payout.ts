@@ -1,5 +1,5 @@
 /**
- * Tenant payout settings — Receive Payments Through Engage (Revolut-only v1).
+ * Tenant payout settings — Receive Payments Through Engage (Stripe Connect).
  */
 import { Router } from 'express';
 import { z } from 'zod';
@@ -7,7 +7,9 @@ import { authenticate, authorize } from '../middleware/auth.js';
 import { asyncHandler, ApiError } from '../middleware/errorHandler.js';
 import { prisma } from '../config/database.js';
 import { getPayoutSettingsPublic, savePayoutSettings } from '../services/payoutSettingsService.js';
+import { startOnboarding } from '../services/stripeConnectService.js';
 import { PAYMENT_COLLECTION_TERMS_VERSION } from '../constants/paymentAgreements.js';
+import { isE2eTestRequest } from '../utils/securityFlags.js';
 
 const router = Router();
 
@@ -20,6 +22,33 @@ router.get(
   })
 );
 
+/** Start Stripe Connect hosted onboarding (Account Link). */
+router.post(
+  '/stripe/onboard',
+  authenticate,
+  authorize('ADMIN', 'PARTNER'),
+  asyncHandler(async (req, res) => {
+    const tenantId = req.tenantId!;
+    const base = (
+      process.env.APP_URL ||
+      process.env.FRONTEND_URL ||
+      'https://capstonesoftware.co.uk/engage'
+    ).replace(/\/$/, '');
+    const returnUrl = `${base}/settings?tab=billing&onboarding=complete`;
+    const refreshUrl = `${base}/settings?tab=billing&onboarding=refresh`;
+    try {
+      const link = await startOnboarding(tenantId, returnUrl, refreshUrl);
+      res.json({ success: true, data: link });
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Failed to start Stripe onboarding';
+      if (message === 'STRIPE_NOT_CONFIGURED') {
+        throw new ApiError('STRIPE_NOT_CONFIGURED', 'Stripe is not configured', 503);
+      }
+      throw new ApiError('STRIPE_ONBOARD_FAILED', message, 400);
+    }
+  })
+);
+
 router.put(
   '/settings',
   authenticate,
@@ -29,13 +58,8 @@ router.put(
       enabled: z.boolean().optional(),
       consentAccepted: z.boolean().optional(),
       consentVersion: z.string().optional(),
-      allowRevolutPay: z.boolean().optional(),
-      allowCard: z.boolean().optional(),
-      payoutMethod: z.enum(['UK_BANK_TRANSFER', 'REVOLUT_COUNTERPARTY']).optional(),
+      payoutMethod: z.enum(['STRIPE_CONNECT']).optional(),
       accountHolderName: z.string().min(2).max(120).optional(),
-      sortCode: z.string().optional(),
-      accountNumber: z.string().optional(),
-      revolutCounterpartyId: z.string().optional(),
       collectPaymentAtSign: z.boolean().optional(),
     });
 
@@ -50,13 +74,9 @@ router.put(
         consentAccepted: body.consentAccepted,
         consentVersion: body.consentVersion,
         consentIp: req.ip,
-        allowRevolutPay: body.allowRevolutPay,
-        allowCard: body.allowCard,
         payoutMethod: body.payoutMethod,
         accountHolderName: body.accountHolderName,
-        sortCode: body.sortCode,
-        accountNumber: body.accountNumber,
-        revolutCounterpartyId: body.revolutCounterpartyId,
+        e2eStubConnect: isE2eTestRequest(req.headers),
       });
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Failed to save payout settings';
@@ -73,7 +93,7 @@ router.put(
         ...(current.payments || {}),
         collectPaymentAtSign: body.collectPaymentAtSign,
         allowDirectDebit: false,
-        allowCard: body.allowCard ?? current.payments?.allowCard ?? true,
+        allowCard: true,
       };
       await prisma.tenant.update({
         where: { id: tenantId },

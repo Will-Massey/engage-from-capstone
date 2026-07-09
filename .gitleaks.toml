@@ -1,0 +1,20 @@
+# Gitleaks config - extends the default ruleset, plus repo-specific allowlist.
+title = "Engage gitleaks config"
+
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Ephemeral e2e / CI placeholders — not real credentials"
+paths = [
+  '''e2e-tests/\.tmp-cookies\.txt''',
+]
+regexes = [
+  '''e2e-ci-stripe-''',
+  '''e2e-ci-connect''',
+  '''sk_test_e2e_ci_placeholder''',
+  '''pk_test_e2e_ci_placeholder''',
+  '''whsec_e2e_ci_stub''',
+  '''e2e-stub''',
+  '''e2e-webhook-stub''',
+]

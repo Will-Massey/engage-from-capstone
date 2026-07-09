@@ -12,23 +12,21 @@ function productionCspMeta(): string {
     "'self'",
     apiOrigin,
     'https://engage-backend-e1ue.onrender.com',
-    'https://sandbox-merchant.revolut.com',
-    'https://merchant.revolut.com',
-    'https://sandbox-checkout.revolut.com',
-    'https://checkout.revolut.com',
+    'https://api.stripe.com',
+    'https://checkout.stripe.com',
   ].join(' ');
 
   const policy = [
     "default-src 'self'",
-    "script-src 'self' 'unsafe-inline' https://sandbox-checkout.revolut.com https://checkout.revolut.com",
+    "script-src 'self' 'unsafe-inline' https://js.stripe.com https://checkout.stripe.com",
     "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
     "font-src 'self' https://fonts.gstatic.com",
     "img-src 'self' data: blob: https:",
     `connect-src ${connectSrc}`,
-    "frame-src 'self' https://sandbox-checkout.revolut.com https://checkout.revolut.com",
+    "frame-src 'self' https://js.stripe.com https://hooks.stripe.com https://checkout.stripe.com",
     "object-src 'none'",
     "base-uri 'self'",
-    "form-action 'self'",
+    "form-action 'self' https://checkout.stripe.com",
   ].join('; ');
 
   return `<meta http-equiv="Content-Security-Policy" content="${policy}" />`;

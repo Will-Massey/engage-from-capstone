@@ -88,28 +88,16 @@ services:
         sync: false
       - key: STRIPE_WEBHOOK_SECRET
         sync: false
-      - key: REVOLUT_API_SECRET_KEY
+      # Stripe Connect webhooks — two endpoints at the same URL, one per event
+      # scope, each with its own signing secret (verified against either):
+      #   STRIPE_CONNECT_WEBHOOK_SECRET         → "Your account" (checkout.session.completed)
+      #   STRIPE_CONNECT_ACCOUNT_WEBHOOK_SECRET → "Connected accounts" (account.updated)
+      - key: STRIPE_CONNECT_WEBHOOK_SECRET
         sync: false
-      - key: REVOLUT_API_PUBLIC_KEY
+      - key: STRIPE_CONNECT_ACCOUNT_WEBHOOK_SECRET
         sync: false
-      - key: REVOLUT_WEBHOOK_SECRET
-        sync: false
-      - key: REVOLUT_API_URL
-        value: https://merchant.revolut.com
       - key: ENGAGE_PLATFORM_FEE_BPS
         value: '250'
-      - key: REVOLUT_BUSINESS_API_KEY
-        sync: false
-      - key: REVOLUT_BUSINESS_API_URL
-        value: https://b2b.revolut.com
-      - key: REVOLUT_BUSINESS_CLIENT_ID
-        sync: false
-      - key: REVOLUT_BUSINESS_REFRESH_TOKEN
-        sync: false
-      - key: REVOLUT_BUSINESS_PRIVATE_KEY
-        sync: false
-      - key: REVOLUT_BUSINESS_ACCOUNT_ID
-        sync: false
       - key: MICROSOFT_CLIENT_ID
         sync: false
       - key: MICROSOFT_CLIENT_SECRET

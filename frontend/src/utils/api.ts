@@ -846,6 +846,9 @@ export const apiClient = {
   updatePayoutSettings: (data: UpdatePayoutSettingsPayload) =>
     api.put('/payout/settings', data) as Promise<ApiResponse<PayoutSettings>>,
 
+  startStripeOnboarding: () =>
+    api.post('/payout/stripe/onboard') as Promise<ApiResponse<{ url: string }>>,
+
   getPayoutLedger: () => api.get('/payout/ledger') as Promise<ApiResponse<PayoutLedgerEntry[]>>,
 
   getPayoutAgreements: () =>

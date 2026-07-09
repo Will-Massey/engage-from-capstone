@@ -1,63 +1,47 @@
-import crypto from 'crypto';
 import { type APIRequestContext } from '@playwright/test';
 import { API_BASE, apiPut, expectOkApi } from './build-helpers';
 
 export const PAYMENT_COLLECTION_TERMS_VERSION = 'ENGAGE-PCT-2026-001';
 
-export const E2E_REVOLUT_WEBHOOK_SECRET = process.env.REVOLUT_WEBHOOK_SECRET || 'e2e-webhook-stub';
-
-/** Opt the demo tenant into post-sign Revolut checkout (idempotent). */
+/** Opt the demo tenant into post-sign Stripe collection (idempotent; uses e2e Connect stub). */
 export async function enablePayoutCollectionForE2e(request: APIRequestContext): Promise<void> {
   const result = await apiPut(request, '/payout/settings', {
     enabled: true,
     consentAccepted: true,
     consentVersion: PAYMENT_COLLECTION_TERMS_VERSION,
-    payoutMethod: 'REVOLUT_COUNTERPARTY',
-    revolutCounterpartyId: 'e2e-counterparty-stub',
-    allowCard: true,
-    allowRevolutPay: true,
+    payoutMethod: 'STRIPE_CONNECT',
     collectPaymentAtSign: true,
   });
   await expectOkApi('enable payout collection', result);
 }
 
-/** Simulate Revolut ORDER_COMPLETED so fulfilment records the payment split. */
-export async function simulateRevolutOrderCompleted(
+/** Simulate Stripe Connect checkout.session.completed (e2e unsigned path). */
+export async function simulateStripeCheckoutCompleted(
   request: APIRequestContext,
   opts: {
-    orderId: string;
+    sessionId: string;
     proposalId: string;
     tenantId: string;
-    amountPence: number;
+    applicationFeePence?: number;
   }
 ): Promise<void> {
   const body = JSON.stringify({
-    event: 'ORDER_COMPLETED',
-    order: {
-      id: opts.orderId,
-      amount: opts.amountPence,
-      merchant_order_ext_ref: `engage:proposal:${opts.proposalId}:${opts.tenantId}`,
-      metadata: {
-        type: 'proposal_payment',
-        proposalId: opts.proposalId,
-        tenantId: opts.tenantId,
+    type: 'checkout.session.completed',
+    data: {
+      object: {
+        id: opts.sessionId,
+        metadata: {
+          proposalId: opts.proposalId,
+          tenantId: opts.tenantId,
+        },
+        application_fee_amount: opts.applicationFeePence ?? 0,
       },
     },
   });
 
-  const timestamp = String(Date.now());
-  const version = 'v1';
-  const payloadToSign = `${version}.${timestamp}.${body}`;
-  const sig = crypto
-    .createHmac('sha256', E2E_REVOLUT_WEBHOOK_SECRET)
-    .update(payloadToSign)
-    .digest('hex');
-
-  const res = await request.post(`${API_BASE}/billing/webhook`, {
+  const res = await request.post(`${API_BASE}/webhooks/stripe-connect`, {
     headers: {
       'Content-Type': 'application/json',
-      'revolut-signature': `v1=${sig}`,
-      'revolut-request-timestamp': timestamp,
       'X-Test-Mode': 'e2e',
     },
     data: body,
@@ -65,7 +49,9 @@ export async function simulateRevolutOrderCompleted(
 
   if (!res.ok()) {
     const text = await res.text().catch(() => '');
-    throw new Error(`Revolut webhook simulation failed (${res.status()}): ${text.slice(0, 300)}`);
+    throw new Error(
+      `Stripe Connect webhook simulation failed (${res.status()}): ${text.slice(0, 300)}`
+    );
   }
 }
 

@@ -30,7 +30,7 @@ import {
   hashTerms,
   lookupGeoFromIp,
 } from '../../utils/signatureAudit.js';
-import { proposalRequiresPayment } from '../../services/proposalPayment.js';
+import { proposalRequiresPayment } from '../../services/paymentCollection.js';
 import { escapeHtml } from '../../utils/escapeHtml.js';
 import { hashShareToken, publicSignDeclineLimiter } from './shared.js';
 
@@ -213,7 +213,7 @@ router.post(
   asyncHandler(async (req, res) => {
     const { token } = req.params;
     const schema = z.object({
-      preferredMethod: z.enum(['card', 'revolut_pay']).optional(),
+      preferredMethod: z.enum(['card']).optional(),
       paymentAuthAccepted: z.boolean(),
     });
     const { preferredMethod, paymentAuthAccepted } = schema.parse(req.body ?? {});
