@@ -27,8 +27,8 @@ test.describe('Payout collection UAT — sendit v4.0', () => {
     await expectOkApi('payout settings', result);
     expect(result.body.data).toMatchObject({
       enabled: expect.any(Boolean),
-      allowRevolutPay: expect.any(Boolean),
-      allowCard: expect.any(Boolean),
+      stripeTransfersStatus: expect.any(String),
+      payoutMethod: expect.any(String),
       platformFeeBps: expect.any(Number),
     });
   });

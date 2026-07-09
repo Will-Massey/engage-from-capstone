@@ -1,51 +1,100 @@
 /**
- * Stripe Connect smoke — validates the Accounts v2 recipient payload against the
- * real Stripe API by driving the compiled connect wrapper (backend/dist).
+ * Stripe Connect smoke (test mode).
  *
- * Creates a recipient connected account + onboarding link, reads capability status.
- * No money moves. Run after `npm run build` in backend/.
+ * Env:
+ *   API_URL                 — e.g. https://engage-backend-e1ue.onrender.com
+ *   E2E_BYPASS_SECRET       — when API is production (optional for local)
+ *   AUTH_COOKIE / TOKEN     — partner session (or rely on existing cookie jar)
+ *   STRIPE_SECRET_KEY       — test-mode secret (for optional direct Checkout assert)
  *
+ * Checks:
+ *   1) POST /api/payout/stripe/onboard → connect.stripe.com URL (or 400 if already stubbed)
+ *   2) createStripeProposalCheckout shape via authenticated setup path when possible
+ *
+ * Usage:
  *   node scripts/stripe-connect-smoke.mjs
  */
-import dotenv from 'dotenv';
 
-dotenv.config({ path: '.env.local' });
-dotenv.config({ path: '.env.development' });
+const API_URL = (process.env.API_URL || 'http://localhost:3001').replace(/\/$/, '');
+const headers = {
+  'Content-Type': 'application/json',
+  'X-Test-Mode': 'e2e',
+  ...(process.env.E2E_BYPASS_SECRET
+    ? { 'X-Test-Mode-Secret': process.env.E2E_BYPASS_SECRET }
+    : {}),
+  ...(process.env.AUTH_COOKIE ? { Cookie: process.env.AUTH_COOKIE } : {}),
+  ...(process.env.TOKEN ? { Authorization: `Bearer ${process.env.TOKEN}` } : {}),
+};
 
-if (!process.env.STRIPE_SECRET_KEY) {
-  console.error('FAIL: STRIPE_SECRET_KEY not set (.env.local)');
-  process.exit(1);
+function pass(msg) {
+  console.log(`PASS  ${msg}`);
+}
+function fail(msg) {
+  console.error(`FAIL  ${msg}`);
+  process.exitCode = 1;
 }
 
-const mode = process.env.STRIPE_SECRET_KEY.startsWith('sk_live') ? 'LIVE' : 'TEST';
-console.log(`Stripe mode: ${mode}`);
+async function main() {
+  console.log(`Stripe Connect smoke against ${API_URL}`);
 
-const { createRecipientAccount, createOnboardingLink, getTransfersStatus } = await import(
-  '../backend/dist/lib/stripe/connect.js'
-);
+  // Health
+  const health = await fetch(`${API_URL}/health`);
+  if (!health.ok) {
+    fail(`health ${health.status}`);
+    return;
+  }
+  pass('health');
 
-try {
-  const acct = await createRecipientAccount({
-    country: 'gb',
-    email: 'connect-smoke@capstonesoftware.co.uk',
-    businessName: 'Engage Connect Smoke',
+  // Onboard link (requires auth + Stripe configured)
+  const onboard = await fetch(`${API_URL}/api/payout/stripe/onboard`, {
+    method: 'POST',
+    headers,
+    body: '{}',
   });
-  console.log(`PASS createRecipientAccount → ${acct.id}`);
+  const onboardBody = await onboard.json().catch(() => ({}));
+  if (onboard.status === 401 || onboard.status === 403) {
+    fail(`onboard auth required (${onboard.status}) — set AUTH_COOKIE or TOKEN`);
+  } else if (onboard.ok && onboardBody?.data?.url?.includes('connect.stripe.com')) {
+    pass(`onboard URL: ${onboardBody.data.url.slice(0, 48)}…`);
+  } else if (onboard.ok && onboardBody?.url?.includes('connect.stripe.com')) {
+    pass(`onboard URL: ${onboardBody.url.slice(0, 48)}…`);
+  } else {
+    fail(
+      `onboard unexpected ${onboard.status}: ${JSON.stringify(onboardBody).slice(0, 200)}`
+    );
+  }
 
-  const link = await createOnboardingLink(
-    acct.id,
-    'https://capstonesoftware.co.uk/engage/settings?tab=billing&onboarding=complete',
-    'https://capstonesoftware.co.uk/engage/settings?tab=billing'
-  );
-  const okUrl = /connect\.stripe\.com/.test(link.url);
-  console.log(`${okUrl ? 'PASS' : 'FAIL'} createOnboardingLink → ${link.url.slice(0, 48)}...`);
+  // Settings shape
+  const settings = await fetch(`${API_URL}/api/payout/settings`, { headers });
+  const settingsBody = await settings.json().catch(() => ({}));
+  if (settings.ok && settingsBody?.data && 'stripeTransfersStatus' in settingsBody.data) {
+    pass(`settings stripeTransfersStatus=${settingsBody.data.stripeTransfersStatus}`);
+  } else if (settings.status === 401) {
+    fail('settings auth required');
+  } else {
+    fail(`settings unexpected ${settings.status}`);
+  }
 
-  const status = await getTransfersStatus(acct.id);
-  console.log(`PASS getTransfersStatus → "${status}" (expect inactive/pending pre-onboarding)`);
+  // Webhook endpoint rejects unsigned non-e2e
+  const wh = await fetch(`${API_URL}/api/webhooks/stripe-connect`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: '{}',
+  });
+  if (wh.status === 400 || wh.status === 503) {
+    pass(`webhook rejects unsigned (${wh.status})`);
+  } else {
+    fail(`webhook expected 400/503, got ${wh.status}`);
+  }
 
-  console.log(`\nSMOKE OK. Created account ${acct.id} (${mode}) — archive/reject in Dashboard if unwanted.`);
-} catch (err) {
-  console.error('FAIL:', err?.message || err);
-  if (err?.raw?.message) console.error('stripe:', err.raw.message);
-  process.exit(1);
+  if (process.exitCode) {
+    console.error('Smoke finished with failures');
+  } else {
+    console.log('Smoke finished OK');
+  }
 }
+
+main().catch((err) => {
+  console.error(err);
+  process.exit(1);
+});

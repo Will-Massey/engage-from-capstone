@@ -34,12 +34,13 @@
 ### SaaS billing go-live
 
 - [ ] Render **Starter** + 10 GB disk at `/var/data` — **manual Render dashboard**
-- [x] Revolut sandbox → live checkout smoke — **tested Jul 2026** (Merchant checkout, payment/setup, webhook fulfilment)
-- [x] Stripe + Revolut tier config; annual plans (−15%) in `stripe.ts` / `revolut/plans.ts`
+- [x] Revolut sandbox → live checkout smoke — **superseded Jul 2026** by Stripe Connect destination charges
+- [x] Stripe platform subscription tier config; annual plans (−15%) in `stripe.ts`
+- [x] Stripe Connect client→practice split payments (Accounts v2 recipient + Checkout) — branch `feat/stripe-connect-split-payments`
 - [x] **7-day** trial on tenant signup + `trialEndsAt` + Superadmin `reportTrialStarted`
 - [x] Tier limits middleware (users/clients/proposals) — 402 when over limit
 - [x] Trial expiry blocks proposal email send (403)
-- [x] `reportConversion` on paid checkout fulfilment (Revolut fulfilment)
+- [x] `reportConversion` on paid checkout fulfilment (Stripe Connect webhook fulfilment)
 - [x] Settings subscription display (existing Subscription page)
 
 ### Production reliability
@@ -144,7 +145,7 @@
 2. Run migration `20260703120000_add_trial_and_password_reset`
 3. Render Starter + 10 GB disk + `UPLOADS_DIR=/var/data/uploads`
 4. Email provider env for password reset
-5. Revolut live keys + checkout smoke
+5. Stripe Connect webhook secret + onboard demo tenant smoke (`scripts/stripe-connect-smoke.mjs`)
 6. Stripe annual price IDs (optional fallback)
 7. Superadmin env + 6/6 checks
 8. Seed templates: `npx tsx backend/src/scripts/seed-proposal-templates.ts`

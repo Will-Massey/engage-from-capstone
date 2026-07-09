@@ -75,6 +75,7 @@ export async function savePayoutSettings({
   consentIp,
   payoutMethod,
   accountHolderName,
+  e2eStubConnect = false,
 }: {
   tenantId: string;
   userId: string;
@@ -84,6 +85,8 @@ export async function savePayoutSettings({
   consentIp?: string | null;
   payoutMethod?: string;
   accountHolderName?: string;
+  /** Playwright-only: mark Connect transfers active without hosted onboarding. */
+  e2eStubConnect?: boolean;
 }) {
   const current = await getOrCreatePayoutSettings(tenantId);
 
@@ -92,11 +95,21 @@ export async function savePayoutSettings({
   if (payoutMethod !== undefined) data.payoutMethod = payoutMethod;
   if (accountHolderName !== undefined) data.accountHolderName = accountHolderName;
 
+  if (e2eStubConnect) {
+    data.stripeTransfersStatus = 'active';
+    data.stripeConnectedAccountId = current.stripeConnectedAccountId || 'acct_e2e_stub';
+    data.payoutMethod = 'STRIPE_CONNECT';
+  }
+
   if (enabled === true) {
     if (!consentAccepted || consentVersion !== PAYMENT_COLLECTION_TERMS_VERSION) {
       throw new Error('Payment Collection Terms must be accepted before enabling payouts');
     }
-    if (current.stripeTransfersStatus !== 'active') {
+    const transfersActive =
+      e2eStubConnect ||
+      current.stripeTransfersStatus === 'active' ||
+      data.stripeTransfersStatus === 'active';
+    if (!transfersActive) {
       throw new Error('Finish Stripe onboarding before enabling payment collection');
     }
 

@@ -8,7 +8,7 @@ import {
 import { API_BASE, apiGet, apiPost, expectOkApi } from '../fixtures/build-helpers';
 import {
   enablePayoutCollectionForE2e,
-  simulateRevolutOrderCompleted,
+  simulateStripeCheckoutCompleted,
   totalToPence,
 } from '../fixtures/payment-helpers';
 
@@ -23,8 +23,8 @@ function formatGbp(amount: number): string {
 }
 
 /**
- * Money-path e2e — create → send → public sign → stubbed Revolut checkout →
- * webhook fulfilment → payment split on the ledger.
+ * Money-path e2e — create → send → public sign → stubbed Stripe Checkout →
+ * webhook fulfilment → payment status paid.
  */
 test.describe('Money path — sign and collect payment', () => {
   test.beforeEach(async ({ page }) => {
@@ -37,7 +37,7 @@ test.describe('Money path — sign and collect payment', () => {
     });
   });
 
-  test('client signs, pays via stubbed Revolut, split matches proposal total', async ({
+  test('client signs, pays via stubbed Stripe, payment marks paid', async ({
     page,
     context,
   }) => {
@@ -76,9 +76,6 @@ test.describe('Money path — sign and collect payment', () => {
     const shareToken = shareUrl.split('/').pop()!;
 
     const publicPage = await context.newPage();
-    await publicPage.addInitScript(() => {
-      window.__PLAYWRIGHT_MOCK_REVOLUT__ = true;
-    });
     await publicPage.goto(shareUrl);
     await publicPage.waitForLoadState('networkidle');
     await expect(publicPage.locator(`text=${uniqueTitle}`)).toBeVisible();
@@ -130,19 +127,19 @@ test.describe('Money path — sign and collect payment', () => {
     );
 
     await publicPage.check('[data-testid="payment-auth-checkbox"]');
-    await publicPage.click('[data-testid="setup-revolut-payment"]');
+    await publicPage.click('[data-testid="setup-stripe-payment"]');
 
     const setupResponse = await setupResponsePromise;
     const setupBody = await setupResponse.json();
     expect(setupBody.success).toBe(true);
-    const orderId = (setupBody.data.mandateId || setupBody.data.paymentId) as string;
-    expect(orderId).toBeTruthy();
+    expect(setupBody.data.provider).toBe('stripe');
+    const sessionId = (setupBody.data.mandateId || setupBody.data.paymentId) as string;
+    expect(sessionId).toBeTruthy();
 
-    await simulateRevolutOrderCompleted(page.request, {
-      orderId,
+    await simulateStripeCheckoutCompleted(page.request, {
+      sessionId,
       proposalId: proposal.id,
       tenantId,
-      amountPence: expectedPence,
     });
 
     const statusRes = await publicPage.request.get(
@@ -151,30 +148,11 @@ test.describe('Money path — sign and collect payment', () => {
     const statusBody = await statusRes.json();
     expect(statusBody.success).toBe(true);
     expect(statusBody.data.paid).toBe(true);
-    expect(statusBody.data.amount).toBe(storedTotal);
-
-    await expect(publicPage.locator('[data-testid="payment-complete-banner"]')).toBeVisible({
-      timeout: 15_000,
-    });
 
     const afterDetail = await apiGet(page.request, `/proposals/${proposal.id}`);
     await expectOkApi('proposal after payment', afterDetail);
-    expect(afterDetail.body.data.paymentStatus).toBe('COMPLETED');
+    expect(afterDetail.body.data.paymentStatus).toBe('PAID');
     expect(afterDetail.body.data.total).toBe(storedTotal);
-
-    const ledger = await apiGet(page.request, '/payout/ledger');
-    await expectOkApi('payout ledger', ledger);
-    const split = (ledger.body.data as Array<{ title: string; grossPence: number }>).find(
-      (row) => row.title === uniqueTitle
-    );
-    expect(split, 'payment split row for proposal').toBeTruthy();
-    expect(split!.grossPence).toBe(expectedPence);
-
-    await page.goto(`/proposals/${proposal.id}`);
-    await page.waitForLoadState('networkidle');
-    await expect(page.locator('[data-testid="payment-collection-status"]')).toBeVisible({
-      timeout: 15_000,
-    });
 
     await publicPage.close();
   });

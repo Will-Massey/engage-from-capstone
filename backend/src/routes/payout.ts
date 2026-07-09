@@ -9,6 +9,7 @@ import { prisma } from '../config/database.js';
 import { getPayoutSettingsPublic, savePayoutSettings } from '../services/payoutSettingsService.js';
 import { startOnboarding } from '../services/stripeConnectService.js';
 import { PAYMENT_COLLECTION_TERMS_VERSION } from '../constants/paymentAgreements.js';
+import { isE2eTestRequest } from '../utils/securityFlags.js';
 
 const router = Router();
 
@@ -75,6 +76,7 @@ router.put(
         consentIp: req.ip,
         payoutMethod: body.payoutMethod,
         accountHolderName: body.accountHolderName,
+        e2eStubConnect: isE2eTestRequest(req.headers),
       });
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Failed to save payout settings';

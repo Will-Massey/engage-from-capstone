@@ -30,7 +30,7 @@ import {
   hashTerms,
   lookupGeoFromIp,
 } from '../../utils/signatureAudit.js';
-import { proposalRequiresPayment } from '../../services/proposalPayment.js';
+import { proposalRequiresPayment } from '../../services/paymentCollection.js';
 import { escapeHtml } from '../../utils/escapeHtml.js';
 import { hashShareToken, publicSignDeclineLimiter } from './shared.js';
 

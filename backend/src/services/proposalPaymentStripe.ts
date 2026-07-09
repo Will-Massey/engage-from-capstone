@@ -32,8 +32,6 @@ export interface StripeCheckoutResult {
 export async function createStripeProposalCheckout(
   input: StripeCheckoutInput
 ): Promise<StripeCheckoutResult> {
-  if (!stripe) throw new Error('STRIPE_NOT_CONFIGURED');
-
   const processorFeePence = estimateProcessorCost('STRIPE', input.grossPence);
   const processorMarkupPence = estimateProcessorMarkup(input.grossPence);
   const split = calculateSplit({
@@ -43,6 +41,17 @@ export async function createStripeProposalCheckout(
     processorMarkupPence,
   });
   const applicationFeePence = split.engageRevenuePence;
+
+  // Playwright stub — no live Stripe when the connected account is the e2e sentinel.
+  if (input.connectedAccountId === 'acct_e2e_stub') {
+    return {
+      sessionId: `cs_e2e_${input.proposalId}`,
+      checkoutUrl: '',
+      applicationFeePence,
+    };
+  }
+
+  if (!stripe) throw new Error('STRIPE_NOT_CONFIGURED');
 
   const session = await stripe.checkout.sessions.create({
     mode: 'payment',

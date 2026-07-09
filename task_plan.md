@@ -8,16 +8,16 @@ Become the **premier UK accountancy proposal platform** — see `PREMIER_SERVICE
 
 ## Current Phase
 
-Phase: **Stripe Connect split payments** — `in_progress` (branch `feat/stripe-connect-split-payments`; Tasks 1–10 done, code complete)
+Phase: **Stripe Connect split payments** — `in_progress` (branch `feat/stripe-connect-split-payments`; Tasks 1–11 code complete)
 
 ## Next Up
 
 <!-- 3–5 bullets ONLY. Next fresh session starts here. Rewrite every checkpoint. -->
 
-1. **Validate Accounts v2 payload live:** local `.env.local` STRIPE_SECRET_KEY is malformed — set a valid key, then `node scripts/stripe-connect-smoke.mjs`. Closes the `as any` v2 payload risk in `lib/stripe/connect.ts`.
-2. **Render env:** `STRIPE_CONNECT_WEBHOOK_SECRET` + register webhook `/api/webhooks/stripe-connect` (events `checkout.session.completed`, `account.updated`).
-3. **Deploy:** branch → prod migration `20260709120000_stripe_connect_payout` → onboard demo tenant → live payout smoke → merge to master.
-4. **Verified:** backend tsc 0 errors; 180 unit tests pass (jest crashes on local Node v25 — use Node 20); frontend + backend build clean; Revolut/GoCardless fully removed.
+1. **Validate Accounts v2 payload live:** valid `STRIPE_SECRET_KEY` (test), then `node scripts/stripe-connect-smoke.mjs` with partner auth
+2. **Render env:** `STRIPE_CONNECT_WEBHOOK_SECRET` (+ optional account-scope secret); register webhook `/api/webhooks/stripe-connect`
+3. **Deploy:** PR merge → migration `20260709120000_stripe_connect_payout` → demo tenant onboard → live payout smoke
+4. **Done in code:** Revolut/GoCardless removed; e2e money-path on Stripe stubs; frontend build green
 
 ## Phases
 

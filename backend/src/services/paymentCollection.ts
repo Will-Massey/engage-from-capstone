@@ -38,6 +38,11 @@ export function resolvePaymentProvider(): PaymentProviderName {
   return 'none';
 }
 
+/** True when the proposal total warrants post-sign payment collection. */
+export function proposalRequiresPayment(total: number): boolean {
+  return total > 0;
+}
+
 export function isPaymentCollectionAvailable(): boolean {
   return resolvePaymentProvider() !== 'none';
 }
