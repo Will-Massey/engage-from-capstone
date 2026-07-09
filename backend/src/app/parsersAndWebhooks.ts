@@ -28,17 +28,6 @@ export function applyParsersAndWebhooks(app: express.Express): void {
   app.use('/api/payments/webhook', stripeWebhookRoutes);
   app.use('/api/webhooks/stripe-connect', stripeConnectWebhookRoutes);
 
-  // Revolut billing webhook — raw body for HMAC verification (handler mounted with /api/billing below)
-  app.use(
-    '/api/billing/webhook',
-    express.json({
-      limit: '64kb',
-      verify: (req, _res, buf) => {
-        (req as express.Request & { rawBody?: Buffer }).rawBody = buf;
-      },
-    })
-  );
-
   app.use(
     '/api/webhooks/sendgrid',
     express.raw({ type: 'application/json' }),

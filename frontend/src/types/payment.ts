@@ -137,7 +137,7 @@ export interface BillingCheckoutPayload {
   tier: string;
 }
 
-/** Legacy Revolut one-time checkout — route now returns 410; shape retained for API seam */
+/** Legacy one-time checkout — route now returns 410; shape retained for API seam */
 export interface BillingCheckoutResult {
   token?: string;
   mode?: 'sandbox' | 'prod';

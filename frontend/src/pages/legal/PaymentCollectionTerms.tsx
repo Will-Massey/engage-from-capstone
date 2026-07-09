@@ -12,9 +12,9 @@ export default function PaymentCollectionTerms() {
         </p>
         <p>
           Capstone Software Ltd (&ldquo;Capstone&rdquo;, &ldquo;we&rdquo;) collects client payments
-          on your behalf via Revolut Merchant Services. We deduct applicable platform and payment
-          processing fees, then transfer the net amount to your nominated UK bank account or Revolut
-          counterparty.
+          on your behalf via Stripe. We deduct applicable platform and payment
+          processing fees, then transfer the net amount to the UK bank account you connect
+          through Stripe.
         </p>
       </section>
 
@@ -55,15 +55,14 @@ export default function PaymentCollectionTerms() {
         <h2 className="text-xl font-semibold text-slate-900 dark:text-white">4. Payouts</h2>
         <ul className="list-disc pl-5 space-y-2">
           <li>
-            Payouts are made to the UK bank account or Revolut counterparty you nominate in
-            settings.
+            Payouts are made to the UK bank account you connect through Stripe onboarding.
           </li>
           <li>
             First payouts may be held for up to 48 hours while we verify payout destination details.
           </li>
           <li>
             Card payments are typically paid out promptly after successful collection; timing
-            depends on Revolut settlement.
+            depends on Stripe settlement.
           </li>
           <li>
             We may delay or withhold payouts where fraud, chargeback, or compliance concerns arise.
@@ -84,8 +83,9 @@ export default function PaymentCollectionTerms() {
       <section className="space-y-4">
         <h2 className="text-xl font-semibold text-slate-900 dark:text-white">6. Data protection</h2>
         <p>
-          Bank details you provide are encrypted at rest. We do not store card numbers — card data
-          is handled by Revolut. See our Privacy Policy for subprocessors and retention.
+          Your bank and identity details are collected and held by Stripe during onboarding. We do
+          not store card numbers — card data is handled by Stripe. See our Privacy Policy for
+          subprocessors and retention.
         </p>
       </section>
 

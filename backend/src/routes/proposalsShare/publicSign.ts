@@ -213,7 +213,7 @@ router.post(
   asyncHandler(async (req, res) => {
     const { token } = req.params;
     const schema = z.object({
-      preferredMethod: z.enum(['card', 'revolut_pay']).optional(),
+      preferredMethod: z.enum(['card']).optional(),
       paymentAuthAccepted: z.boolean(),
     });
     const { preferredMethod, paymentAuthAccepted } = schema.parse(req.body ?? {});

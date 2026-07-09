@@ -323,7 +323,7 @@ export const csrfProtection = async (
     '/auth/reset-password',
     '/auth/2fa/login',
     '/payments/webhook',
-    '/billing/webhook', // Revolut Merchant API (HMAC-verified)
+    '/webhooks/stripe-connect', // Stripe Connect webhook (signature-verified)
     '/oauth/callback',
     '/proposals/view', // Public proposal viewing and signing
     '/proposals/portal', // Client portal (public access)

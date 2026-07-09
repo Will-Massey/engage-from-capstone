@@ -377,7 +377,7 @@ const PublicProposalView = () => {
       if (response.success) {
         const { checkoutUrl, provider } = response.data;
 
-        if ((provider === 'stripe' || provider === 'revolut') && checkoutUrl) {
+        if (provider === 'stripe' && checkoutUrl) {
           window.location.href = checkoutUrl;
           return;
         }

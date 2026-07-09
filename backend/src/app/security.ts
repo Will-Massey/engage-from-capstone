@@ -10,27 +10,15 @@ export function applySecurity(app: express.Express): void {
           defaultSrc: ["'self'"],
           // No 'unsafe-inline' — the API serves no inline scripts, so this keeps
           // CSP's XSS protection intact for any HTML the backend renders.
-          scriptSrc: [
-            "'self'",
-            'https://sandbox-checkout.revolut.com',
-            'https://checkout.revolut.com',
-          ],
+          scriptSrc: ["'self'"],
           styleSrc: ["'self'", "'unsafe-inline'", 'https://fonts.googleapis.com'],
           fontSrc: ["'self'", 'https://fonts.gstatic.com'],
           imgSrc: ["'self'", 'data:', 'blob:', 'https:'],
           connectSrc: [
             "'self'",
             process.env.FRONTEND_URL || 'http://localhost:5173',
-            'https://sandbox-merchant.revolut.com',
-            'https://merchant.revolut.com',
-            'https://sandbox-checkout.revolut.com',
-            'https://checkout.revolut.com',
           ],
-          frameSrc: [
-            "'self'",
-            'https://sandbox-checkout.revolut.com',
-            'https://checkout.revolut.com',
-          ],
+          frameSrc: ["'self'"],
           objectSrc: ["'none'"],
           baseUri: ["'self'"],
           formAction: ["'self'"],

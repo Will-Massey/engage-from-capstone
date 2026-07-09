@@ -73,9 +73,7 @@ export default function EngagementSummary() {
               <div>
                 <dt className="text-slate-500 dark:text-slate-400">Provider</dt>
                 <dd className="font-medium text-slate-900 dark:text-white capitalize">
-                  {proposal.paymentProvider === 'gocardless_stub'
-                    ? 'GoCardless (demo)'
-                    : proposal.paymentProvider}
+                  {proposal.paymentProvider}
                 </dd>
               </div>
             )}

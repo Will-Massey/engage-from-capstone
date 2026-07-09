@@ -23,7 +23,7 @@ export default function ClientPaymentAuthorisation() {
             recurring charges described in that proposal.
           </li>
           <li>
-            Payment is processed securely by Revolut on behalf of Capstone Software Ltd, acting as
+            Payment is processed securely by Stripe on behalf of Capstone Software Ltd, acting as
             collection agent for <strong>your accountant&apos;s practice</strong>.
           </li>
           <li>
@@ -37,7 +37,7 @@ export default function ClientPaymentAuthorisation() {
       <section className="space-y-4">
         <h2 className="text-xl font-semibold text-slate-900 dark:text-white">3. Card payments</h2>
         <p>
-          Card and Revolut Pay details are entered on Revolut&apos;s secure checkout page. Engage
+          Card details are entered on Stripe&apos;s secure checkout page. Engage
           and your accountant never see or store your full card number, expiry date, or CVC.
         </p>
       </section>
