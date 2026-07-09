@@ -8,16 +8,16 @@ Become the **premier UK accountancy proposal platform** — see `PREMIER_SERVICE
 
 ## Current Phase
 
-Phase: **Stripe Connect split payments** — `in_progress` (branch `feat/stripe-connect-split-payments`; Tasks 1–11 code complete)
+Phase: **Stripe Connect split payments** — `in_progress` (PR #44 open; Render Stripe **test** env wired 2026-07-09)
 
 ## Next Up
 
 <!-- 3–5 bullets ONLY. Next fresh session starts here. Rewrite every checkpoint. -->
 
-1. **Validate Accounts v2 payload live:** valid `STRIPE_SECRET_KEY` (test), then `node scripts/stripe-connect-smoke.mjs` with partner auth
-2. **Render env:** `STRIPE_CONNECT_WEBHOOK_SECRET` (+ optional account-scope secret); register webhook `/api/webhooks/stripe-connect`
-3. **Deploy:** PR merge → migration `20260709120000_stripe_connect_payout` → demo tenant onboard → live payout smoke
-4. **Done in code:** Revolut/GoCardless removed; e2e money-path on Stripe stubs; frontend build green
+1. **Merge PR #44** when CI green (prettier fix pushed) → auto-deploy Connect code + migration
+2. **Smoke:** partner login + `node scripts/stripe-connect-smoke.mjs` + Settings → Connect with Stripe (demo tenant)
+3. **Account:** Stripe test account `charges_enabled=false` — complete sandbox business profile if Connect onboard fails
+4. **Live mode later:** swap `sk_live`/`pk_live`, recreate webhooks on live, update `boardroom/deploy/.engage-stripe.env` + `scripts/wire-stripe-render.ps1`
 
 ## Phases
 
