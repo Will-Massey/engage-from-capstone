@@ -82,10 +82,11 @@ jobs:
           # No SMTP in CI — log emails instead of failing email-gated flows
           EMAIL_DEV_LOG: 'true'
           # Non-empty Stripe secret so the SDK client initialises (money-path uses
-          # acct_e2e_stub Checkout + unsigned Connect webhook — no live Stripe calls)
-          STRIPE_SECRET_KEY: sk_test_e2e_ci_placeholder_not_a_real_key_012345
-          STRIPE_PUBLISHABLE_KEY: pk_test_e2e_ci_placeholder
-          STRIPE_CONNECT_WEBHOOK_SECRET: whsec_e2e_ci_stub
+          # acct_e2e_stub Checkout + unsigned Connect webhook — no live Stripe calls).
+          # Low-entropy placeholders only — real sk_/pk_/whsec_ patterns trip Gitleaks.
+          STRIPE_SECRET_KEY: e2e-ci-stripe-secret
+          STRIPE_PUBLISHABLE_KEY: e2e-ci-stripe-publishable
+          STRIPE_CONNECT_WEBHOOK_SECRET: e2e-ci-connect-webhook
 
       - name: Start frontend
         # VITE_* vars are baked in at build time above; nothing to set here.
