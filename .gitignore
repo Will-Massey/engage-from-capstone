@@ -79,3 +79,9 @@ temp/
 # Redis dumps from local dev
 dump.rdb
 .claude/settings.local.json
+
+# SDD controller scratch
+.superpowers/
+# test temp artifacts
+e2e-tests/.tmp-cookies.txt
+scripts/.revolut-business-screen.png
