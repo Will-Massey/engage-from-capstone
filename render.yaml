@@ -88,9 +88,13 @@ services:
         sync: false
       - key: STRIPE_WEBHOOK_SECRET
         sync: false
-      # Stripe Connect webhook (destination-charge fulfilment + connected-account
-      # capability sync). Separate signing secret from STRIPE_WEBHOOK_SECRET.
+      # Stripe Connect webhooks — two endpoints at the same URL, one per event
+      # scope, each with its own signing secret (verified against either):
+      #   STRIPE_CONNECT_WEBHOOK_SECRET         → "Your account" (checkout.session.completed)
+      #   STRIPE_CONNECT_ACCOUNT_WEBHOOK_SECRET → "Connected accounts" (account.updated)
       - key: STRIPE_CONNECT_WEBHOOK_SECRET
+        sync: false
+      - key: STRIPE_CONNECT_ACCOUNT_WEBHOOK_SECRET
         sync: false
       - key: ENGAGE_PLATFORM_FEE_BPS
         value: '250'

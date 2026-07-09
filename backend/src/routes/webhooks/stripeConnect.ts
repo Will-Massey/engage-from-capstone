@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import express from 'express';
+import type Stripe from 'stripe';
 import { stripe } from '../../config/stripe.js';
 import { prisma } from '../../config/database.js';
 import { asyncHandler, ApiError } from '../../middleware/errorHandler.js';
@@ -57,16 +58,28 @@ router.post(
     }
 
     const sig = req.headers['stripe-signature'];
-    const secret = process.env.STRIPE_CONNECT_WEBHOOK_SECRET;
+    // Two Stripe endpoints point at this URL — one "Your account" scope
+    // (checkout.session.completed) and one "Connected accounts" scope
+    // (account.updated) — each with its own signing secret. Verify against either.
+    const secrets = [
+      process.env.STRIPE_CONNECT_WEBHOOK_SECRET,
+      process.env.STRIPE_CONNECT_ACCOUNT_WEBHOOK_SECRET,
+    ].filter((s): s is string => Boolean(s));
 
-    if (!sig || !secret) {
+    if (!sig || secrets.length === 0) {
       throw new ApiError('INVALID_WEBHOOK', 'Invalid webhook configuration', 400);
     }
 
-    let event;
-    try {
-      event = stripe.webhooks.constructEvent(req.body, sig as string, secret);
-    } catch {
+    let event: Stripe.Event | undefined;
+    for (const secret of secrets) {
+      try {
+        event = stripe.webhooks.constructEvent(req.body, sig as string, secret);
+        break;
+      } catch {
+        // signature didn't match this secret — try the next one
+      }
+    }
+    if (!event) {
       throw new ApiError('INVALID_SIGNATURE', 'Invalid signature', 400);
     }
 

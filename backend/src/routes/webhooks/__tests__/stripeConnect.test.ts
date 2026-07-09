@@ -41,6 +41,7 @@ function app() {
 describe('stripe-connect webhook', () => {
   beforeEach(() => {
     process.env.STRIPE_CONNECT_WEBHOOK_SECRET = 'whsec_test';
+    delete process.env.STRIPE_CONNECT_ACCOUNT_WEBHOOK_SECRET;
     jest.clearAllMocks();
   });
 
@@ -117,5 +118,25 @@ describe('stripe-connect webhook', () => {
       .send(Buffer.from('{}'));
 
     expect(res.status).toBe(400);
+  });
+
+  it('verifies against the second (connected-accounts) secret when the first fails', async () => {
+    process.env.STRIPE_CONNECT_ACCOUNT_WEBHOOK_SECRET = 'whsec_account';
+    // First secret (platform) fails to verify; second secret (connected accounts) succeeds.
+    constructEvent
+      .mockImplementationOnce(() => {
+        throw new Error('no match for platform secret');
+      })
+      .mockReturnValueOnce({ type: 'account.updated', data: { object: { id: 'acct_2' } } });
+
+    const res = await request(app())
+      .post('/api/webhooks/stripe-connect')
+      .set('stripe-signature', 'sig_from_connect_endpoint')
+      .set('Content-Type', 'application/json')
+      .send(Buffer.from('{}'));
+
+    expect(res.status).toBe(200);
+    expect(constructEvent).toHaveBeenCalledTimes(2);
+    expect(syncTransfersStatus).toHaveBeenCalledWith('acct_2');
   });
 });
