@@ -2,6 +2,7 @@ import express from 'express';
 import morgan from 'morgan';
 import cookieParser from 'cookie-parser';
 import stripeWebhookRoutes from '../routes/stripeWebhook.js';
+import stripeConnectWebhookRoutes from '../routes/webhooks/stripeConnect.js';
 import logger from '../utils/logger.js';
 
 // Body parsing — SendGrid webhook needs raw body for signature verification
@@ -25,6 +26,7 @@ export function applyParsersAndWebhooks(app: express.Express): void {
 
   // Stripe webhook must receive raw body — mount before express.json()
   app.use('/api/payments/webhook', stripeWebhookRoutes);
+  app.use('/api/webhooks/stripe-connect', stripeConnectWebhookRoutes);
 
   // Revolut billing webhook — raw body for HMAC verification (handler mounted with /api/billing below)
   app.use(

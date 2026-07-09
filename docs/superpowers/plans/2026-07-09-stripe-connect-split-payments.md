@@ -638,7 +638,7 @@ git commit -m "feat(payments): Stripe-only payout settings, checkout, and collec
 - Consumes: `stripe`, `prisma`, `syncTransfersStatus` (Task 4).
 - Produces: Express router; handles `checkout.session.completed` (mark proposal `PAID`, idempotent) and `account.updated` (call `syncTransfersStatus`). Signing secret env: `STRIPE_CONNECT_WEBHOOK_SECRET`.
 
-- [ ] **Step 1: Write failing test** — a `checkout.session.completed` event with `metadata.proposalId` marks the proposal PAID exactly once; a second delivery is a no-op. Mock `stripe.webhooks.constructEvent` to return the event, and `prisma.proposal`.
+- [x] **Step 1: Write failing test** — a `checkout.session.completed` event with `metadata.proposalId` marks the proposal PAID exactly once; a second delivery is a no-op. Mock `stripe.webhooks.constructEvent` to return the event, and `prisma.proposal`.
 
 ```typescript
 // backend/src/routes/webhooks/__tests__/stripeConnect.test.ts
@@ -675,7 +675,7 @@ describe('stripe-connect webhook', () => {
 
 - [x] **Step 2: Run — expect FAIL** (`cd backend && npx jest stripeConnect -v`). If `supertest` is absent, install: `npm i -D supertest @types/supertest` (check `backend/package.json` first).
 
-- [ ] **Step 3: Implement the router** (mirror `routes/stripeWebhook.ts`)
+- [x] **Step 3: Implement the router** (mirror `routes/stripeWebhook.ts`)
 
 ```typescript
 // backend/src/routes/webhooks/stripeConnect.ts
@@ -725,7 +725,7 @@ router.post('/', express.raw({ type: 'application/json' }), asyncHandler(async (
 export default router;
 ```
 
-- [ ] **Step 4: Mount in `index.ts`**
+- [x] **Step 4: Mount in `index.ts`**
 
 Near the existing `stripeWebhook` mount, add (BEFORE any global `express.json()` body parser, matching how `stripeWebhook` is mounted):
 ```typescript
@@ -733,9 +733,9 @@ import stripeConnectWebhook from './routes/webhooks/stripeConnect.js';
 app.use('/api/webhooks/stripe-connect', stripeConnectWebhook);
 ```
 
-- [ ] **Step 5: Run — expect PASS** (`cd backend && npx jest stripeConnect -v`).
+- [x] **Step 5: Run — expect PASS** (`cd backend && npx jest stripeConnect -v`).
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add backend/src/routes/webhooks/stripeConnect.ts backend/src/index.ts backend/src/routes/webhooks/__tests__/stripeConnect.test.ts
@@ -754,11 +754,11 @@ git commit -m "feat(payments): Stripe Connect webhook — fulfil payment + sync 
 - Consumes: `startOnboarding` (Task 4), `getPayoutSettingsPublic` (Task 5).
 - Produces: `POST /api/payout/stripe/onboard` → `{ url }`; existing `GET /api/payout/settings` returns the new public shape.
 
-- [ ] **Step 1: Write failing test** — authenticated `POST /api/payout/stripe/onboard` returns `{ url }` from `startOnboarding` (mock it). Assert the return/refresh URLs point at the app's Settings billing tab.
+- [x] **Step 1: Write failing test** — authenticated `POST /api/payout/stripe/onboard` returns `{ url }` from `startOnboarding` (mock it). Assert the return/refresh URLs point at the app's Settings billing tab.
 
 - [x] **Step 2: Run — expect FAIL** (`cd backend && npx jest payout.stripe -v`).
 
-- [ ] **Step 3: Add the route** (mirror existing auth middleware usage in `payout.ts`)
+- [x] **Step 3: Add the route** (mirror existing auth middleware usage in `payout.ts`)
 
 ```typescript
 import { startOnboarding } from '../services/stripeConnectService.js';
