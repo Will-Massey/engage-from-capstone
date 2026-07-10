@@ -1,12 +1,10 @@
 import { Router } from 'express';
 import { z } from 'zod';
-import jwt from 'jsonwebtoken';
 import { authenticate } from '../middleware/auth.js';
 import { authorize } from '../middleware/auth.js';
 import { ApiError, asyncHandler } from '../middleware/errorHandler.js';
 import { runEmailAutomation, testEmailAutomation } from '../jobs/emailAutomation.js';
 import { runProposalChaseJob } from '../jobs/proposalChaseJob.js';
-import migrateServicePricing from '../scripts/migrateServicePricing.js';
 import logger from '../config/logger.js';
 import { prisma } from '../config/database.js';
 import { getProposalSettings } from '../utils/tenantProposalSettings.js';
@@ -130,80 +128,6 @@ router.post(
       data: { sent: result.sent, failed: result.failed, skipped: result.skipped },
       message: `Proposal chase completed: ${result.sent} sent, ${result.failed} failed, ${result.skipped} skipped`,
     });
-  })
-);
-
-/**
- * POST /api/automation/migrate-service-pricing
- * Run the service pricing migration (v1 -> v2)
- * Can be called with admin auth OR secret key
- */
-router.post(
-  '/migrate-service-pricing',
-  asyncHandler(async (req, res) => {
-    const secretKey = req.headers['x-migration-key'];
-    const validSecret = process.env.MIGRATION_SECRET_KEY;
-
-    if (!validSecret) {
-      return res.status(503).json({
-        success: false,
-        error: { code: 'NOT_CONFIGURED', message: 'Missing MIGRATION_SECRET_KEY' },
-      });
-    }
-
-    const secretOk = secretKey === validSecret;
-    if (!secretOk) {
-      const authHeader = req.headers.authorization;
-      const cookieToken = req.cookies?.accessToken;
-      let token: string | null = null;
-      if (authHeader?.startsWith('Bearer ')) {
-        token = authHeader.substring(7);
-      } else if (cookieToken) {
-        token = cookieToken;
-      }
-
-      if (!token || !process.env.JWT_SECRET) {
-        return res.status(401).json({
-          success: false,
-          error: { code: 'UNAUTHORIZED', message: 'Valid admin session or migration key required' },
-        });
-      }
-
-      try {
-        const decoded = jwt.verify(token, process.env.JWT_SECRET) as { role?: string };
-        if (!decoded.role || !['ADMIN', 'PARTNER'].includes(decoded.role)) {
-          return res.status(403).json({
-            success: false,
-            error: { code: 'FORBIDDEN', message: 'Admin or partner role required' },
-          });
-        }
-      } catch {
-        return res.status(401).json({
-          success: false,
-          error: { code: 'UNAUTHORIZED', message: 'Invalid or expired token' },
-        });
-      }
-    }
-
-    logger.info('Service pricing migration triggered');
-
-    try {
-      await migrateServicePricing();
-
-      res.json({
-        success: true,
-        message: 'Service pricing migration completed successfully',
-      });
-    } catch (error: any) {
-      logger.error('Migration failed:', error);
-      res.status(500).json({
-        success: false,
-        error: {
-          code: 'MIGRATION_FAILED',
-          message: error.message,
-        },
-      });
-    }
   })
 );
 
