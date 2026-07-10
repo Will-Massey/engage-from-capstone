@@ -18,6 +18,8 @@ export interface RecurringCheckoutInput {
   tenantId: string;
   reference: string;
   group: RecurringGroup;
+  /** One-off (non-recurring) lines added to the first invoice. */
+  oneOffLines?: { name: string; unitAmountPence: number; quantity: number }[];
   connectedAccountId: string;
   platformFeeBps: number;
   customerEmail: string;
@@ -42,7 +44,7 @@ export async function createRecurringCheckout(
   if (!stripe) throw new Error('STRIPE_NOT_CONFIGURED');
 
   const applicationFeePercent = bpsToPercent(input.platformFeeBps);
-  const lineItems = input.group.lines.map((l) => ({
+  const lineItems: object[] = input.group.lines.map((l) => ({
     quantity: l.quantity,
     price_data: {
       currency: 'gbp',
@@ -54,6 +56,17 @@ export async function createRecurringCheckout(
       product_data: { name: l.name },
     },
   }));
+  // One-off items (no `recurring`) are billed once on the first invoice.
+  for (const l of input.oneOffLines ?? []) {
+    lineItems.push({
+      quantity: l.quantity,
+      price_data: {
+        currency: 'gbp',
+        unit_amount: l.unitAmountPence,
+        product_data: { name: l.name },
+      },
+    });
+  }
 
   const session = await stripe.checkout.sessions.create({
     mode: 'subscription',
@@ -146,4 +159,63 @@ export async function handleRecurringInvoiceFailed(invoice: InvoiceLike): Promis
     subscriptionId,
     amountDue: invoice.amount_due,
   });
+}
+
+/**
+ * Stripe billing portal for the client behind a recurring proposal — card
+ * update, invoice history, cancellation (per portal configuration). Returns
+ * null when no portal can be created (no Stripe, no customer).
+ */
+export async function createBillingPortalSession(
+  subscriptionId: string,
+  returnUrl: string
+): Promise<string | null> {
+  if (!stripe) return null;
+  const sub = await stripe.subscriptions.retrieve(subscriptionId);
+  const customer = typeof sub.customer === 'string' ? sub.customer : sub.customer?.id;
+  if (!customer) return null;
+  const session = await stripe.billingPortal.sessions.create({
+    customer,
+    return_url: returnUrl,
+  });
+  return session.url;
+}
+
+export interface RecurringRevenueSummary {
+  activeSubscriptions: number;
+  paidLast30DaysPence: number;
+  failedLast30Days: number;
+}
+
+/**
+ * Practice-facing recurring revenue snapshot, driven by the invoice webhook
+ * activity log: live subscriptions, pence collected in the last 30 days, and
+ * failed payments needing dunning attention.
+ */
+export async function getRecurringRevenueSummary(
+  tenantId: string
+): Promise<RecurringRevenueSummary> {
+  const since = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+  const [activeSubscriptions, paidEvents, failedLast30Days] = await Promise.all([
+    prisma.proposal.count({ where: { tenantId, stripeSubscriptionId: { not: null } } }),
+    prisma.activityLog.findMany({
+      where: { tenantId, action: 'RECURRING_PAYMENT', createdAt: { gte: since } },
+      select: { metadata: true },
+    }),
+    prisma.activityLog.count({
+      where: { tenantId, action: 'RECURRING_PAYMENT_FAILED', createdAt: { gte: since } },
+    }),
+  ]);
+
+  let paidLast30DaysPence = 0;
+  for (const event of paidEvents) {
+    try {
+      const meta = JSON.parse(event.metadata || '{}');
+      if (typeof meta.amountPaid === 'number') paidLast30DaysPence += meta.amountPaid;
+    } catch {
+      // malformed metadata — skip the row
+    }
+  }
+
+  return { activeSubscriptions, paidLast30DaysPence, failedLast30Days };
 }

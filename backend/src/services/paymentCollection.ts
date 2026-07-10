@@ -10,6 +10,8 @@ import { tenantAppUrl } from '../config/urls.js';
 import { isPayoutCollectionEnabled } from './payoutSettingsService.js';
 import { getOrCreateConnectedAccount, isCollectionReady } from './stripeConnectService.js';
 import { createStripeProposalCheckout } from './proposalPaymentStripe.js';
+import { createRecurringCheckout, createBillingPortalSession } from './proposalRecurringStripe.js';
+import { planRecurringCheckout, stripeIntervalFor } from '../lib/payments/recurringLines.js';
 import { buildFeePreview, resolvePlatformFeeBps } from '../lib/payments/splitCalculator.js';
 import { CLIENT_PAYMENT_AUTH_VERSION } from '../constants/paymentAgreements.js';
 
@@ -76,6 +78,7 @@ export async function createPostSignMandate(
     where: { id: proposalId },
     include: {
       client: true,
+      services: { select: { name: true, billingFrequency: true, grossTotal: true } },
       tenant: {
         select: {
           id: true,
@@ -141,18 +144,47 @@ export async function createPostSignMandate(
     proposal.tenant.payoutSettings?.platformFeeBpsOverride
   );
 
-  const checkout = await createStripeProposalCheckout({
-    proposalId: proposal.id,
-    tenantId: proposal.tenantId,
-    reference: proposal.reference,
-    title: proposal.title,
-    grossPence: Math.round((proposal.total ?? 0) * 100),
-    connectedAccountId,
-    platformFeeBps,
-    customerEmail,
-    successUrl: `${base}/proposals/view/${shareToken}?payment=success`,
-    cancelUrl: `${base}/proposals/view/${shareToken}?payment=cancelled`,
-  });
+  const successUrl = `${base}/proposals/view/${shareToken}?payment=success`;
+  const cancelUrl = `${base}/proposals/view/${shareToken}?payment=cancelled`;
+
+  // R1: proposals whose recurring lines share one interval are collected as a
+  // subscription (recurring lines bill on the interval; one-off lines join the
+  // first invoice). Mixed intervals or a discounted/drifting total fall back to
+  // the one-off checkout so the client is charged exactly the displayed total.
+  const plan = planRecurringCheckout(proposal.services ?? [], proposal.total ?? 0);
+  let checkout: { sessionId: string; checkoutUrl: string };
+  if (plan) {
+    checkout = await createRecurringCheckout({
+      proposalId: proposal.id,
+      tenantId: proposal.tenantId,
+      reference: proposal.reference,
+      group: plan.group,
+      oneOffLines: plan.oneOffLines,
+      connectedAccountId,
+      platformFeeBps,
+      customerEmail,
+      successUrl,
+      cancelUrl,
+    });
+  } else {
+    if (proposal.services?.some((s) => stripeIntervalFor(s.billingFrequency) !== null)) {
+      logger.warn(
+        `Proposal ${proposalId}: recurring lines present but not collectable as one subscription — falling back to one-off checkout`
+      );
+    }
+    checkout = await createStripeProposalCheckout({
+      proposalId: proposal.id,
+      tenantId: proposal.tenantId,
+      reference: proposal.reference,
+      title: proposal.title,
+      grossPence: Math.round((proposal.total ?? 0) * 100),
+      connectedAccountId,
+      platformFeeBps,
+      customerEmail,
+      successUrl,
+      cancelUrl,
+    });
+  }
 
   await prisma.proposal.update({
     where: { id: proposalId },
@@ -167,6 +199,7 @@ export async function createPostSignMandate(
   await logPaymentActivity(proposal.tenantId, proposalId, 'PAYMENT_CHECKOUT_CREATED', {
     provider: 'stripe',
     sessionId: checkout.sessionId,
+    recurring: Boolean(plan),
   });
 
   return {
@@ -193,6 +226,8 @@ export interface PublicPaymentConfig {
   payoutEnabled: boolean;
   collectPaymentAtSign: boolean;
   paymentRequired: boolean;
+  /** True when the proposal has a live Stripe subscription the client can manage. */
+  billingPortalAvailable: boolean;
   provider: PaymentProviderName;
   providerConfigured: boolean;
   methods: {
@@ -236,6 +271,7 @@ export async function getPublicPaymentConfig(
       paymentMandateId: true,
       paymentUrl: true,
       paymentProvider: true,
+      stripeSubscriptionId: true,
     },
   });
 
@@ -257,6 +293,7 @@ export async function getPublicPaymentConfig(
     payoutEnabled,
     collectPaymentAtSign,
     paymentRequired: !!paymentRequired,
+    billingPortalAvailable: provider === 'stripe' && Boolean(proposal?.stripeSubscriptionId),
     provider,
     providerConfigured: provider === 'stripe',
     methods: {
@@ -292,4 +329,25 @@ async function logPaymentActivity(
   } catch (err) {
     logger.warn('Failed to log payment activity', err);
   }
+}
+
+/**
+ * Stripe billing portal URL for a recurring proposal's client (card update,
+ * invoice history). Null when the proposal has no live subscription.
+ */
+export async function createProposalBillingPortal(proposalId: string): Promise<string | null> {
+  const proposal = await prisma.proposal.findUnique({
+    where: { id: proposalId },
+    select: {
+      stripeSubscriptionId: true,
+      shareToken: true,
+      tenant: { select: { subdomain: true } },
+    },
+  });
+  if (!proposal?.stripeSubscriptionId || !proposal.shareToken) return null;
+  const base = getFrontendBaseUrl(proposal.tenant.subdomain);
+  return createBillingPortalSession(
+    proposal.stripeSubscriptionId,
+    `${base}/proposals/view/${proposal.shareToken}`
+  );
 }

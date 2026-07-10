@@ -10,6 +10,8 @@ export interface PaymentConfig {
   payoutEnabled: boolean;
   collectPaymentAtSign: boolean;
   paymentRequired: boolean;
+  /** True when the proposal has a live Stripe subscription the client can manage. */
+  billingPortalAvailable?: boolean;
   provider: 'stripe' | 'none';
   providerConfigured: boolean;
   methods: {

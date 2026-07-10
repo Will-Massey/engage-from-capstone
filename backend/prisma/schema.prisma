@@ -542,6 +542,7 @@ model Proposal {
   paymentMethod        String?   // card, open_banking, direct_debit
   paidAt               DateTime?
   paymentFailureReason String?
+  stripeSubscriptionId String?   // set when a recurring (subscription-mode) checkout completes
 
   // Client payment authorisation (Revolut checkout)
   paymentAuthAccepted   Boolean   @default(false) @map("payment_auth_accepted")
