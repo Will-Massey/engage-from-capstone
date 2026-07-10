@@ -501,6 +501,14 @@ model Proposal {
   vatAmount      Float   @default(0)
   total          Float   @default(0)
 
+  // Int-pence mirrors (Stage 1, docs/money-int-pence-migration.md) —
+  // authoritative at the payment boundary; Float columns retained for
+  // display + rollback until Stage 2 drops them.
+  subtotalPence       Int?
+  discountAmountPence Int?
+  vatAmountPence      Int?
+  totalPence          Int?
+
   // Payment terms
   paymentTerms     String           @default("7 days")
   paymentFrequency PricingFrequency @default(MONTHLY)
@@ -666,6 +674,14 @@ model ProposalService {
   vatRate   Float @default(20)
   vatAmount Float @default(0)
   grossTotal Float @default(0)
+
+  // Int-pence mirrors (Stage 1, docs/money-int-pence-migration.md)
+  displayPricePence     Int?
+  unitPricePence        Int?
+  annualEquivalentPence Int?
+  lineTotalPence        Int?
+  vatAmountPence        Int?
+  grossTotalPence       Int?
 
   // Legacy (kept for compatibility)
   frequency  PricingFrequency @default(MONTHLY)

@@ -90,12 +90,22 @@ export interface RecurringPlan {
  * already folded in).
  */
 export function planRecurringCheckout(
-  services: { name: string; billingFrequency: string; grossTotal: number }[],
-  proposalTotalGbp: number
+  services: {
+    name: string;
+    billingFrequency: string;
+    grossTotal: number;
+    /** Stored Int-pence mirror — authoritative when present (Stage 1). */
+    grossTotalPence?: number | null;
+  }[],
+  proposalTotalGbp: number,
+  /** Stored Int-pence header total — authoritative when present (Stage 1). */
+  proposalTotalPence?: number | null
 ): RecurringPlan | null {
+  // Prefer the stored pence mirrors: legacy Float rows can carry dust that
+  // Math.round(x * 100) may resolve differently from what was displayed.
   const lines: ServiceLine[] = services.map((s) => ({
     name: s.name,
-    displayPrice: s.grossTotal,
+    displayPrice: (s.grossTotalPence ?? Math.round(s.grossTotal * 100)) / 100,
     billingFrequency: s.billingFrequency,
     quantity: 1,
   }));
@@ -107,7 +117,8 @@ export function planRecurringCheckout(
   const group = split.recurringGroups[0];
   const sumPence =
     split.oneOffPence + group.lines.reduce((acc, l) => acc + l.unitAmountPence * l.quantity, 0);
-  if (sumPence !== Math.round(proposalTotalGbp * 100)) return null;
+  const targetPence = proposalTotalPence ?? Math.round(proposalTotalGbp * 100);
+  if (sumPence !== targetPence) return null;
 
   const oneOffLines = lines
     .filter((l) => stripeIntervalFor(l.billingFrequency) === null)
