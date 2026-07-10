@@ -149,6 +149,21 @@ describe('stripeDisputeService', () => {
       );
     });
 
+    it('restores the practice share when an inquiry closes as warning_closed', async () => {
+      // An inquiry (warning_needs_response) triggers the clawback at
+      // dispute.created, but warning_closed means no chargeback ever happened —
+      // the practice must get their share back, not be marked DISPUTE_LOST.
+      transfersRetrieve.mockResolvedValueOnce(reversedTransfer);
+      await handleChargeDisputeClosed({ id: 'dp_1', charge: 'ch_1', status: 'warning_closed' });
+      expect(transfersCreate).toHaveBeenCalledWith(
+        expect.objectContaining({ amount: 9700, destination: 'acct_1' }),
+        { idempotencyKey: 'dispute-won-dp_1' }
+      );
+      expect(update).toHaveBeenCalledWith(
+        expect.objectContaining({ data: { paymentStatus: 'PAID' } })
+      );
+    });
+
     it('does not re-transfer on win when the original reversal never happened', async () => {
       // e.g. the reversal at dispute.created failed — the practice kept their
       // share, so paying original.amount again would pay them twice.
@@ -201,6 +216,23 @@ describe('stripeDisputeService', () => {
       );
       expect(transfersCreateReversal).toHaveBeenCalledTimes(1);
       expect(transfersCreate).toHaveBeenCalledTimes(1);
+    });
+
+    it('drives warning_closed disputes through the closed handler', async () => {
+      disputesList.mockResolvedValueOnce({
+        data: [{ id: 'dp_wc', charge: 'ch_1', status: 'warning_closed' }],
+        has_more: false,
+      });
+      findUnique.mockResolvedValueOnce({ id: 'p1', paymentStatus: 'DISPUTED', tenantId: 't1' });
+      transfersRetrieve.mockResolvedValueOnce(reversedTransfer);
+
+      const result = await reconcileDisputes();
+
+      expect(result).toEqual({ scanned: 1, errors: 0 });
+      expect(transfersCreate).toHaveBeenCalledTimes(1);
+      expect(update).toHaveBeenCalledWith(
+        expect.objectContaining({ data: { paymentStatus: 'PAID' } })
+      );
     });
 
     it('counts per-dispute errors without aborting the sweep', async () => {

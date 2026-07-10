@@ -132,7 +132,7 @@ export async function handleChargeDisputed(dispute: DisputeLike): Promise<void> 
   });
 }
 
-/** charge.dispute.closed — if won, re-pay the practice; if lost, keep recovered. */
+/** charge.dispute.closed — if won (or inquiry closed without chargeback), re-pay the practice; if lost, keep recovered. */
 export async function handleChargeDisputeClosed(dispute: DisputeLike): Promise<void> {
   if (!stripe) return;
   const chargeId = typeof dispute.charge === 'string' ? dispute.charge : dispute.charge?.id;
@@ -146,7 +146,9 @@ export async function handleChargeDisputeClosed(dispute: DisputeLike): Promise<v
   const proposal = await findProposal(proposalId);
   if (!proposal || proposal.paymentStatus !== 'DISPUTED') return; // only act on an open dispute
 
-  const won = dispute.status === 'won';
+  // warning_closed = an inquiry resolved without becoming a chargeback: the
+  // platform was never debited, so the clawback must be undone like a win.
+  const won = dispute.status === 'won' || dispute.status === 'warning_closed';
   if (won) {
     // Re-transfer the practice's original share (their money after all).
     const transferId = transferIdOf(charge);
@@ -186,6 +188,7 @@ export async function handleChargeDisputeClosed(dispute: DisputeLike): Promise<v
       disputeId: dispute.id,
       chargeId,
       reTransferred,
+      status: dispute.status,
     });
   } else {
     await prisma.proposal.update({
@@ -263,7 +266,11 @@ export async function reconcileDisputes(
       try {
         if (OPEN_DISPUTE_STATUSES.has(dispute.status)) {
           await handleChargeDisputed(dispute as DisputeLike);
-        } else if (dispute.status === 'won' || dispute.status === 'lost') {
+        } else if (
+          dispute.status === 'won' ||
+          dispute.status === 'lost' ||
+          dispute.status === 'warning_closed'
+        ) {
           await handleChargeDisputeClosed(dispute as DisputeLike);
         }
       } catch (err) {

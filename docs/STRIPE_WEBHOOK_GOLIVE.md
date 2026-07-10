@@ -16,15 +16,15 @@ them.)
 ## Events to add
 
 - `charge.dispute.created` — reverses the practice transfer to cover the chargeback
-- `charge.dispute.closed` — re-pays the practice if won
+- `charge.dispute.closed` — re-pays the practice if won or the inquiry closed without a chargeback (`warning_closed`)
 - `charge.refunded` — tracks refund status (partial refunds logged only)
 - `invoice.paid` — recurring payment received (MRR)
 - `invoice.payment_failed` — recurring payment failed (dunning)
 
 ## Via dashboard
 
-Stripe Dashboard → Developers → Webhooks → select the endpoint → *Update
-details* → add the five events.
+Stripe Dashboard → Developers → Webhooks → select the endpoint → _Update
+details_ → add the five events.
 
 ## Via CLI (equivalent)
 
@@ -42,7 +42,7 @@ stripe webhook_endpoints update we_XXXX --live \
   # checkout.session.completed and account.updated!)
 ```
 
-**Warning:** `webhook_endpoints update` *replaces* `enabled_events` — include
+**Warning:** `webhook_endpoints update` _replaces_ `enabled_events` — include
 the existing events (`checkout.session.completed`, `account.updated`, and any
 others) or existing payment fulfilment breaks.
 
