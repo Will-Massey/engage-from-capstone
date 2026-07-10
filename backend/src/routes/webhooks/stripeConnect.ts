@@ -5,6 +5,15 @@ import { stripe } from '../../config/stripe.js';
 import { prisma } from '../../config/database.js';
 import { asyncHandler, ApiError } from '../../middleware/errorHandler.js';
 import { syncTransfersStatus } from '../../services/stripeConnectService.js';
+import {
+  handleChargeDisputed,
+  handleChargeDisputeClosed,
+  handleChargeRefunded,
+} from '../../services/stripeDisputeService.js';
+import {
+  handleRecurringInvoicePaid,
+  handleRecurringInvoiceFailed,
+} from '../../services/proposalRecurringStripe.js';
 import { isE2eTestRequest } from '../../utils/securityFlags.js';
 import logger from '../../config/logger.js';
 
@@ -102,6 +111,27 @@ router.post(
         if (acct?.id) await syncTransfersStatus(acct.id);
         break;
       }
+      case 'charge.dispute.created':
+        await handleChargeDisputed(event.data.object as Parameters<typeof handleChargeDisputed>[0]);
+        break;
+      case 'charge.dispute.closed':
+        await handleChargeDisputeClosed(
+          event.data.object as Parameters<typeof handleChargeDisputeClosed>[0]
+        );
+        break;
+      case 'charge.refunded':
+        await handleChargeRefunded(event.data.object as Parameters<typeof handleChargeRefunded>[0]);
+        break;
+      case 'invoice.paid':
+        await handleRecurringInvoicePaid(
+          event.data.object as Parameters<typeof handleRecurringInvoicePaid>[0]
+        );
+        break;
+      case 'invoice.payment_failed':
+        await handleRecurringInvoiceFailed(
+          event.data.object as Parameters<typeof handleRecurringInvoiceFailed>[0]
+        );
+        break;
       default:
         break;
     }

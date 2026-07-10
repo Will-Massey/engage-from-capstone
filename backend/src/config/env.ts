@@ -1,4 +1,18 @@
 import { z } from 'zod';
+import dotenv from 'dotenv';
+import path from 'path';
+
+// Load env BEFORE the top-level validation below. index.ts also loads these, but
+// `import './config/env.js'` is hoisted and runs before index.ts's body calls
+// dotenv.config() — so in local dev the schema would otherwise see an empty
+// process.env and exit. Dev-only; production runs on platform-provided env alone.
+if (process.env.NODE_ENV !== 'production') {
+  const backendRoot = path.resolve(process.cwd());
+  const repoRoot = path.resolve(backendRoot, '..');
+  dotenv.config({ path: path.join(repoRoot, '.env.development') });
+  dotenv.config({ path: path.join(repoRoot, '.env') });
+  dotenv.config({ path: path.join(backendRoot, '.env'), override: true });
+}
 
 const boolFromString = z.preprocess((v) => {
   if (typeof v !== 'string') return v;

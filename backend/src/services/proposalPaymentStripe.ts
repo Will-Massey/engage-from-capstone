@@ -69,6 +69,9 @@ export async function createStripeProposalCheckout(
     payment_intent_data: {
       application_fee_amount: applicationFeePence,
       transfer_data: { destination: input.connectedAccountId },
+      // Carry identifiers onto the PaymentIntent/charge so dispute + refund
+      // webhooks (which reference the charge, not the session) can find the proposal.
+      metadata: { proposalId: input.proposalId, tenantId: input.tenantId },
     },
     metadata: { proposalId: input.proposalId, tenantId: input.tenantId },
     success_url: input.successUrl,
