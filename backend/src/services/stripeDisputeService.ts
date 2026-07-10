@@ -241,7 +241,9 @@ const OPEN_DISPUTE_STATUSES = new Set([
  * the idempotent handlers from Stripe's own dispute list. The paymentStatus
  * guards and idempotency keys make repeated runs safe.
  */
-export async function reconcileDisputes(daysBack = 90): Promise<{ scanned: number; errors: number }> {
+export async function reconcileDisputes(
+  daysBack = 90
+): Promise<{ scanned: number; errors: number }> {
   if (!stripe) return { scanned: 0, errors: 0 };
 
   const createdGte = Math.floor(Date.now() / 1000) - daysBack * 86400;

@@ -40,9 +40,7 @@ export default function RecurringRevenueWidget() {
     <div className="glass-tile p-6">
       <div className="flex items-center gap-2 mb-4">
         <ArrowPathIcon className="h-5 w-5 text-emerald-600" />
-        <h3 className="text-lg font-semibold text-slate-900 dark:text-white">
-          Recurring Revenue
-        </h3>
+        <h3 className="text-lg font-semibold text-slate-900 dark:text-white">Recurring Revenue</h3>
       </div>
       {loading ? (
         <p className="text-sm text-slate-500">Loading…</p>
@@ -50,8 +48,8 @@ export default function RecurringRevenueWidget() {
         <p className="text-sm text-slate-500">Recurring revenue data is unavailable.</p>
       ) : data.activeSubscriptions === 0 && data.paidLast30DaysPence === 0 ? (
         <p className="text-sm text-slate-500">
-          No recurring engagements yet — proposals with monthly, quarterly or annual services
-          create a subscription when the client pays.
+          No recurring engagements yet — proposals with monthly, quarterly or annual services create
+          a subscription when the client pays.
         </p>
       ) : (
         <div className="grid grid-cols-3 gap-4">
