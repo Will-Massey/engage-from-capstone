@@ -24,7 +24,7 @@ docker exec engage-postgres-dev pg_isready -U engage   # wait for this
   `engage_postgres_data`). Port 5432 is owned by another project's container
   plus a native Windows Postgres service — never bind 5432, and never assume a
   5432 connection reached Engage's DB (symptom: Prisma "Authentication failed"
-  means you hit the *wrong* Postgres).
+  means you hit the _wrong_ Postgres).
 - Redis is standard: container `engage-redis` on 6379.
 
 If `engage-postgres-dev` doesn't exist (fresh machine), recreate it:
@@ -98,7 +98,7 @@ must belong to the same tenant or you get `INVALID_SERVICES`.
   The store is Redis when Redis was up at boot, otherwise in-memory (restart
   clears it). Failed probes during a DB outage burn the budget fast.
 - **`EADDRINUSE: 3001` / restart doesn't change behaviour** — Windows orphans
-  the tsx/vite children when the parent npm process is killed; the *old*
+  the tsx/vite children when the parent npm process is killed; the _old_
   backend keeps serving. Kill by port before relaunching:
   `Get-NetTCPConnection -LocalPort 3001 -State Listen | % { Stop-Process -Id $_.OwningProcess -Force }`
   (same for 5173).
