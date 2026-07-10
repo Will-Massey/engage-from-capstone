@@ -51,6 +51,22 @@ describe('stripe connect wrapper', () => {
     );
   });
 
+  it('rejects an account payload without an id instead of returning undefined', async () => {
+    // F3: live Accounts-v2 responses were consumed via `as any` — a malformed
+    // payload must fail loudly, not persist an undefined account id.
+    create.mockResolvedValueOnce({} as never);
+    await expect(createRecipientAccount({ country: 'gb' })).rejects.toThrow(
+      /Accounts v2.*unexpected/i
+    );
+  });
+
+  it('rejects an onboarding-link payload without a url', async () => {
+    linkCreate.mockResolvedValueOnce({ url: 42 } as never);
+    await expect(createOnboardingLink('acct_123', 'https://ret', 'https://ref')).rejects.toThrow(
+      /Accounts v2.*unexpected/i
+    );
+  });
+
   it('reads the stripe_transfers capability status', async () => {
     expect(await getTransfersStatus('acct_123')).toBe('active');
   });
