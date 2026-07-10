@@ -6,6 +6,7 @@ import { ApiError, asyncHandler } from '../middleware/errorHandler.js';
 import logger from '../config/logger.js';
 import { synthesiseWinLoss } from '../services/winLossSynthesisService.js';
 import { getFeeBenchmarks } from '../services/feeBenchmarkService.js';
+import { getRecurringRevenueSummary } from '../services/proposalRecurringStripe.js';
 import { getProposalSettings } from '../utils/tenantProposalSettings.js';
 
 const router = Router();
@@ -924,6 +925,15 @@ router.get(
         optedIn,
       },
     });
+  })
+);
+
+/** GET /api/analytics/recurring — MRR snapshot from live subscriptions (R1) */
+router.get(
+  '/recurring',
+  asyncHandler(async (req, res) => {
+    const data = await getRecurringRevenueSummary(req.tenantId!);
+    res.json({ success: true, data });
   })
 );
 

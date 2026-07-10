@@ -1,0 +1,4 @@
+# False positives: Stripe idempotency-key literals in test assertions
+# (idempotencyKey: 'dispute-reversal-dp_1' pattern-matches generic-api-key).
+37a21dce7f9e8d5f7bc3289f0cc49a2abb271e1e:backend/src/services/__tests__/stripeDisputeService.test.ts:generic-api-key:72
+37a21dce7f9e8d5f7bc3289f0cc49a2abb271e1e:backend/src/services/__tests__/stripeDisputeService.test.ts:generic-api-key:137

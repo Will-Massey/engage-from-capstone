@@ -22,6 +22,7 @@ import {
   skipPaymentSetup,
   getPublicPaymentConfig,
   shouldCollectPaymentAtSign,
+  createProposalBillingPortal,
 } from '../../services/paymentCollection.js';
 import {
   AGREEMENT_VERSION,
@@ -253,6 +254,29 @@ router.post(
       logger.error('Post-sign payment setup failed:', error);
       throw new ApiError('PAYMENT_SETUP_FAILED', 'Failed to set up payment', 400);
     }
+  })
+);
+
+// Billing portal for recurring proposals (public — share token)
+router.post(
+  '/view/:token/billing-portal',
+  asyncHandler(async (req, res) => {
+    const { token } = req.params;
+    const proposal = await getProposalByShareToken(token);
+    if (!proposal) {
+      throw new ApiError('PROPOSAL_NOT_FOUND', 'Proposal not found or link expired', 404);
+    }
+
+    const url = await createProposalBillingPortal(proposal.id);
+    if (!url) {
+      throw new ApiError(
+        'NO_RECURRING_BILLING',
+        'No recurring billing exists for this proposal',
+        400
+      );
+    }
+
+    res.json({ success: true, data: { url } });
   })
 );
 

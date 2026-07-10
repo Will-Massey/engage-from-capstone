@@ -537,11 +537,12 @@ model Proposal {
   paymentId            String?
   paymentMandateId     String?
   paymentProvider      String?   // revolut, gocardless_stub
-  paymentStatus        String?   // NOT_STARTED, PENDING, ACTIVE, COMPLETED, PAID, FAILED, CANCELLED, SKIPPED
+  paymentStatus        String?   // NOT_STARTED, PENDING, ACTIVE, COMPLETED, PAID, FAILED, CANCELLED, SKIPPED, DISPUTED, DISPUTE_LOST, REFUNDED
   paymentUrl           String?
   paymentMethod        String?   // card, open_banking, direct_debit
   paidAt               DateTime?
   paymentFailureReason String?
+  stripeSubscriptionId String?   // set when a recurring (subscription-mode) checkout completes
 
   // Client payment authorisation (Revolut checkout)
   paymentAuthAccepted   Boolean   @default(false) @map("payment_auth_accepted")

@@ -22,6 +22,7 @@ interface ChargeLike {
   transfer?: string | { id?: string } | null;
   payment_intent?: string | { metadata?: MetaBag } | null;
   metadata?: MetaBag;
+  amount?: number | null;
   amount_refunded?: number | null;
   currency?: string | null;
 }
@@ -96,14 +97,29 @@ export async function handleChargeDisputed(dispute: DisputeLike): Promise<void> 
   const transferId = transferIdOf(charge);
   let reversed = false;
   if (transferId) {
-    try {
-      await stripe.transfers.createReversal(transferId, {
-        refund_application_fee: true,
-        description: `Dispute ${dispute.id} on proposal ${proposalId}`,
-      });
+    const original = await stripe.transfers.retrieve(transferId);
+    if (original.amount_reversed >= original.amount) {
+      // Already fully clawed back (e.g. a refund created with reverse_transfer).
       reversed = true;
-    } catch (err) {
-      logger.error(`Dispute ${dispute.id}: transfer reversal failed`, err);
+    } else {
+      try {
+        await stripe.transfers.createReversal(
+          transferId,
+          {
+            refund_application_fee: true,
+            description: `Dispute ${dispute.id} on proposal ${proposalId}`,
+          },
+          // Duplicate webhook deliveries race the status guard — same dispute
+          // must never reverse twice.
+          { idempotencyKey: `dispute-reversal-${dispute.id}` }
+        );
+        reversed = true;
+      } catch (err) {
+        // Rethrow so the webhook 500s and Stripe retries — the proposal stays
+        // un-DISPUTED so the retry re-attempts the reversal.
+        logger.error(`Dispute ${dispute.id}: transfer reversal failed`, err);
+        throw err;
+      }
     }
   }
 
@@ -116,7 +132,7 @@ export async function handleChargeDisputed(dispute: DisputeLike): Promise<void> 
   });
 }
 
-/** charge.dispute.closed — if won, re-pay the practice; if lost, keep recovered. */
+/** charge.dispute.closed — if won (or inquiry closed without chargeback), re-pay the practice; if lost, keep recovered. */
 export async function handleChargeDisputeClosed(dispute: DisputeLike): Promise<void> {
   if (!stripe) return;
   const chargeId = typeof dispute.charge === 'string' ? dispute.charge : dispute.charge?.id;
@@ -130,7 +146,9 @@ export async function handleChargeDisputeClosed(dispute: DisputeLike): Promise<v
   const proposal = await findProposal(proposalId);
   if (!proposal || proposal.paymentStatus !== 'DISPUTED') return; // only act on an open dispute
 
-  const won = dispute.status === 'won';
+  // warning_closed = an inquiry resolved without becoming a chargeback: the
+  // platform was never debited, so the clawback must be undone like a win.
+  const won = dispute.status === 'won' || dispute.status === 'warning_closed';
   if (won) {
     // Re-transfer the practice's original share (their money after all).
     const transferId = transferIdOf(charge);
@@ -146,16 +164,23 @@ export async function handleChargeDisputeClosed(dispute: DisputeLike): Promise<v
         // dispute.created failed, the practice still has their share — paying
         // original.amount here would pay them twice.
         if (dest && original.amount_reversed > 0) {
-          await stripe.transfers.create({
-            amount: original.amount_reversed,
-            currency: original.currency,
-            destination: dest,
-            description: `Dispute ${dispute.id} won — re-pay proposal ${proposalId}`,
-          });
+          await stripe.transfers.create(
+            {
+              amount: original.amount_reversed,
+              currency: original.currency,
+              destination: dest,
+              description: `Dispute ${dispute.id} won — re-pay proposal ${proposalId}`,
+            },
+            // Same dispute must never pay the practice twice on duplicate delivery.
+            { idempotencyKey: `dispute-won-${dispute.id}` }
+          );
           reTransferred = true;
         }
       } catch (err) {
+        // Rethrow so the webhook 500s and Stripe retries — the proposal stays
+        // DISPUTED so the retry re-attempts the re-transfer.
         logger.error(`Dispute ${dispute.id}: re-transfer on win failed`, err);
+        throw err;
       }
     }
     await prisma.proposal.update({ where: { id: proposalId }, data: { paymentStatus: 'PAID' } });
@@ -163,6 +188,7 @@ export async function handleChargeDisputeClosed(dispute: DisputeLike): Promise<v
       disputeId: dispute.id,
       chargeId,
       reTransferred,
+      status: dispute.status,
     });
   } else {
     await prisma.proposal.update({
@@ -184,9 +210,79 @@ export async function handleChargeRefunded(charge: ChargeLike): Promise<void> {
   const proposal = await findProposal(proposalId);
   if (!proposal || proposal.paymentStatus === 'REFUNDED') return; // idempotent
 
+  // charge.refunded also fires on partial refunds — only a full refund flips
+  // the proposal to REFUNDED; partials are logged for the audit trail.
+  const isPartial =
+    typeof charge.amount === 'number' &&
+    typeof charge.amount_refunded === 'number' &&
+    charge.amount_refunded < charge.amount;
+  if (isPartial) {
+    await logPaymentEvent(tenantId || proposal.tenantId, proposalId, 'PAYMENT_PARTIALLY_REFUNDED', {
+      chargeId: charge.id,
+      amount: charge.amount,
+      amountRefunded: charge.amount_refunded,
+    });
+    return;
+  }
+
   await prisma.proposal.update({ where: { id: proposalId }, data: { paymentStatus: 'REFUNDED' } });
   await logPaymentEvent(tenantId || proposal.tenantId, proposalId, 'PAYMENT_REFUNDED', {
     chargeId: charge.id,
     amountRefunded: charge.amount_refunded,
   });
+}
+
+const OPEN_DISPUTE_STATUSES = new Set([
+  'needs_response',
+  'warning_needs_response',
+  'under_review',
+  'warning_under_review',
+]);
+
+/**
+ * Reconciliation backstop for missed or out-of-order dispute webhooks: re-drive
+ * the idempotent handlers from Stripe's own dispute list. The paymentStatus
+ * guards and idempotency keys make repeated runs safe.
+ */
+export async function reconcileDisputes(
+  daysBack = 90
+): Promise<{ scanned: number; errors: number }> {
+  if (!stripe) return { scanned: 0, errors: 0 };
+
+  const createdGte = Math.floor(Date.now() / 1000) - daysBack * 86400;
+  let scanned = 0;
+  let errors = 0;
+  let startingAfter: string | undefined;
+
+  for (;;) {
+    const page = await stripe.disputes.list({
+      created: { gte: createdGte },
+      limit: 100,
+      ...(startingAfter ? { starting_after: startingAfter } : {}),
+    });
+
+    for (const dispute of page.data) {
+      scanned++;
+      try {
+        if (OPEN_DISPUTE_STATUSES.has(dispute.status)) {
+          await handleChargeDisputed(dispute as DisputeLike);
+        } else if (
+          dispute.status === 'won' ||
+          dispute.status === 'lost' ||
+          dispute.status === 'warning_closed'
+        ) {
+          await handleChargeDisputeClosed(dispute as DisputeLike);
+        }
+      } catch (err) {
+        errors++;
+        logger.error(`Dispute reconciliation: ${dispute.id} failed`, err);
+      }
+    }
+
+    if (!page.has_more || page.data.length === 0) break;
+    startingAfter = page.data[page.data.length - 1].id;
+  }
+
+  if (scanned > 0) logger.info(`Dispute reconciliation: scanned ${scanned}, errors ${errors}`);
+  return { scanned, errors };
 }

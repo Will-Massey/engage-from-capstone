@@ -8,8 +8,12 @@ useDefault = true
 description = "Ephemeral e2e / CI placeholders — not real credentials"
 paths = [
   '''e2e-tests/\.tmp-cookies\.txt''',
+  # The fingerprint entries in .gitleaksignore themselves match generic-api-key.
+  '''\.gitleaksignore''',
 ]
 regexes = [
+  # Stripe idempotency-key literals asserted in dispute-service tests.
+  '''dispute-(reversal|won)-dp_1''',
   '''e2e-ci-stripe-''',
   '''e2e-ci-connect''',
   '''sk_test_e2e_ci_placeholder''',

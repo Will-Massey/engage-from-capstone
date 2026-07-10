@@ -20,6 +20,7 @@ import { useAuthStore } from '../stores/authStore';
 import { format, parseISO } from 'date-fns';
 import { SkeletonStats } from '../components/skeleton';
 import FeeBenchmarkWidget from '../components/analytics/FeeBenchmarkWidget';
+import RecurringRevenueWidget from '../components/analytics/RecurringRevenueWidget';
 
 interface AnalyticsData {
   proposals: {
@@ -918,6 +919,8 @@ const Analytics = () => {
       {/* Bottom Row */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <TopServicesTable services={data.topServices} />
+
+        <RecurringRevenueWidget />
 
         <FeeBenchmarkWidget />
 

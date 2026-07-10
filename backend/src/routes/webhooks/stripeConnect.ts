@@ -23,6 +23,7 @@ async function fulfilProposalPayment(session: {
   id?: string;
   metadata?: { proposalId?: string; tenantId?: string } | null;
   application_fee_amount?: number | null;
+  subscription?: string | { id?: string } | null;
 }) {
   const proposalId = session?.metadata?.proposalId;
   if (!proposalId) return;
@@ -33,9 +34,17 @@ async function fulfilProposalPayment(session: {
   });
   if (!proposal || proposal.paymentStatus === 'PAID') return; // idempotent
 
+  // Subscription-mode checkouts carry the subscription created for the
+  // recurring lines — persist it for billing-portal and MRR lookups.
+  const subscriptionId =
+    typeof session.subscription === 'string' ? session.subscription : session.subscription?.id;
+
   await prisma.proposal.update({
     where: { id: proposalId },
-    data: { paymentStatus: 'PAID' },
+    data: {
+      paymentStatus: 'PAID',
+      ...(subscriptionId ? { stripeSubscriptionId: subscriptionId } : {}),
+    },
   });
 
   const tenantId = session.metadata?.tenantId || proposal.tenantId;

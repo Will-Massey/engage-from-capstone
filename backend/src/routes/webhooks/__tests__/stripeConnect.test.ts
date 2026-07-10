@@ -74,6 +74,34 @@ describe('stripe-connect webhook', () => {
     expect(activityCreate).toHaveBeenCalled();
   });
 
+  it('stores the subscription id when a subscription-mode checkout completes', async () => {
+    constructEvent.mockReturnValue({
+      type: 'checkout.session.completed',
+      data: {
+        object: {
+          id: 'cs_sub_1',
+          mode: 'subscription',
+          subscription: 'sub_1',
+          metadata: { proposalId: 'p1', tenantId: 't1' },
+        },
+      },
+    });
+    findUnique.mockResolvedValue({ id: 'p1', paymentStatus: 'PENDING', tenantId: 't1' });
+
+    const res = await request(app())
+      .post('/api/webhooks/stripe-connect')
+      .set('stripe-signature', 'sig_test')
+      .set('Content-Type', 'application/json')
+      .send(Buffer.from('{}'));
+
+    expect(res.status).toBe(200);
+    expect(update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({ paymentStatus: 'PAID', stripeSubscriptionId: 'sub_1' }),
+      })
+    );
+  });
+
   it('is a no-op when already PAID', async () => {
     constructEvent.mockReturnValue({
       type: 'checkout.session.completed',

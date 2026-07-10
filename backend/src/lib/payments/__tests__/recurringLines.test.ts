@@ -1,4 +1,9 @@
-import { stripeIntervalFor, splitRecurring, hasRecurringLines } from '../recurringLines.js';
+import {
+  stripeIntervalFor,
+  splitRecurring,
+  hasRecurringLines,
+  planRecurringCheckout,
+} from '../recurringLines.js';
 
 describe('stripeIntervalFor', () => {
   it('maps UK cycles to Stripe intervals', () => {
@@ -51,5 +56,46 @@ describe('hasRecurringLines', () => {
     expect(hasRecurringLines([{ name: 'x', displayPrice: 10, billingFrequency: 'ONE_TIME' }])).toBe(
       false
     );
+  });
+});
+
+describe('planRecurringCheckout', () => {
+  const services = [
+    { name: 'Bookkeeping', billingFrequency: 'MONTHLY', grossTotal: 102 }, // £85 + VAT
+    { name: 'VAT returns', billingFrequency: 'MONTHLY', grossTotal: 48 },
+    { name: 'Onboarding', billingFrequency: 'ONE_TIME', grossTotal: 600 },
+  ];
+
+  it('plans a single-interval subscription with one-off lines when totals match', () => {
+    const plan = planRecurringCheckout(services, 750); // 102 + 48 + 600
+    expect(plan).not.toBeNull();
+    expect(plan!.group.key).toBe('month:1');
+    expect(plan!.group.lines).toHaveLength(2);
+    expect(plan!.group.lines[0]).toEqual({
+      name: 'Bookkeeping',
+      unitAmountPence: 10200,
+      quantity: 1,
+    });
+    expect(plan!.oneOffLines).toEqual([
+      { name: 'Onboarding', unitAmountPence: 60000, quantity: 1 },
+    ]);
+  });
+
+  it('falls back (null) when recurring lines span multiple intervals', () => {
+    const mixed = [
+      ...services,
+      { name: 'Tax review', billingFrequency: 'ANNUALLY', grossTotal: 300 },
+    ];
+    expect(planRecurringCheckout(mixed, 1050)).toBeNull();
+  });
+
+  it('falls back (null) when there are no recurring lines', () => {
+    expect(
+      planRecurringCheckout([{ name: 'Setup', billingFrequency: 'ONE_TIME', grossTotal: 100 }], 100)
+    ).toBeNull();
+  });
+
+  it('falls back (null) when the line sum disagrees with the stored total (e.g. discount)', () => {
+    expect(planRecurringCheckout(services, 700)).toBeNull();
   });
 });

@@ -391,6 +391,20 @@ const PublicProposalView = () => {
     }
   };
 
+  const handleManageBilling = async () => {
+    if (!token) return;
+    try {
+      const response = (await apiClient.post(`/proposals/view/${token}/billing-portal`, {})) as any;
+      if (response.success && response.data?.url) {
+        window.location.href = response.data.url;
+        return;
+      }
+      toast.error('Billing portal is not available right now');
+    } catch (error: any) {
+      toast.error(error.response?.data?.error?.message || 'Failed to open billing portal');
+    }
+  };
+
   const handleSkipPayment = async () => {
     if (!token) return;
     try {
@@ -673,9 +687,18 @@ const PublicProposalView = () => {
                   className="rounded-xl border border-emerald-200 bg-emerald-50/80 px-4 py-3 flex items-center gap-3 dark:border-emerald-800 dark:bg-emerald-950/30"
                 >
                   <CheckCircleIcon className="h-5 w-5 text-emerald-600 shrink-0" />
-                  <p className="text-sm text-emerald-800 dark:text-emerald-200">
+                  <p className="text-sm text-emerald-800 dark:text-emerald-200 flex-1">
                     Payment received — thank you for completing your engagement fees.
                   </p>
+                  {paymentConfig.billingPortalAvailable && (
+                    <button
+                      type="button"
+                      onClick={handleManageBilling}
+                      className="text-sm font-medium text-emerald-700 underline shrink-0 dark:text-emerald-300"
+                    >
+                      Manage billing
+                    </button>
+                  )}
                 </div>
               )}
             </>

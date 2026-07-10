@@ -4,19 +4,28 @@ const sessionCreate = jest.fn(async (_args: any) => ({
 }));
 const subRetrieve = jest.fn(async () => ({ metadata: { proposalId: 'p1', tenantId: 't1' } }));
 const activityCreate = jest.fn(async () => ({}));
+const portalCreate = jest.fn(async () => ({ url: 'https://billing.stripe.com/session_1' }));
 
 jest.mock('../../config/stripe.js', () => ({
   stripe: {
     checkout: { sessions: { create: sessionCreate } },
     subscriptions: { retrieve: subRetrieve },
+    billingPortal: { sessions: { create: portalCreate } },
   },
 }));
 jest.mock('../../config/logger.js', () => ({
   __esModule: true,
   default: { warn: jest.fn(), error: jest.fn(), info: jest.fn() },
 }));
+const proposalCount = jest.fn(async () => 0);
+const activityFindMany = jest.fn(async (): Promise<{ metadata: string | null }[]> => []);
+const activityCount = jest.fn(async () => 0);
+
 jest.mock('../../config/database.js', () => ({
-  prisma: { activityLog: { create: activityCreate } },
+  prisma: {
+    proposal: { count: proposalCount },
+    activityLog: { create: activityCreate, findMany: activityFindMany, count: activityCount },
+  },
 }));
 
 import {
@@ -24,6 +33,8 @@ import {
   bpsToPercent,
   handleRecurringInvoicePaid,
   handleRecurringInvoiceFailed,
+  createBillingPortalSession,
+  getRecurringRevenueSummary,
 } from '../proposalRecurringStripe.js';
 
 const group = {
@@ -71,6 +82,46 @@ describe('createRecurringCheckout', () => {
     expect(r.applicationFeePercent).toBe(2.5);
     expect(r.sessionId).toBe('cs_sub_1');
   });
+
+  it('returns a stub session without calling Stripe for the e2e sentinel account', async () => {
+    // Mirrors createStripeProposalCheckout's Playwright stub — the money-path
+    // e2e signs a MONTHLY proposal, which routes here instead of the one-off path.
+    const r = await createRecurringCheckout({
+      proposalId: 'p1',
+      tenantId: 't1',
+      reference: 'PROP-1',
+      group,
+      connectedAccountId: 'acct_e2e_stub',
+      platformFeeBps: 250,
+      customerEmail: 'c@x.com',
+      successUrl: 'https://s',
+      cancelUrl: 'https://c',
+    });
+    expect(sessionCreate).not.toHaveBeenCalled();
+    expect(r.sessionId).toBe('cs_e2e_p1');
+    expect(r.checkoutUrl).toBe('');
+  });
+
+  it('appends one-off lines as non-recurring items on the first invoice', async () => {
+    await createRecurringCheckout({
+      proposalId: 'p1',
+      tenantId: 't1',
+      reference: 'PROP-1',
+      group,
+      oneOffLines: [{ name: 'Onboarding', unitAmountPence: 60000, quantity: 1 }],
+      connectedAccountId: 'acct_1',
+      platformFeeBps: 250,
+      customerEmail: 'c@x.com',
+      successUrl: 'https://s',
+      cancelUrl: 'https://c',
+    });
+    const arg: any = sessionCreate.mock.calls[0][0];
+    expect(arg.line_items).toHaveLength(3);
+    const oneOff = arg.line_items[2];
+    expect(oneOff.price_data.recurring).toBeUndefined();
+    expect(oneOff.price_data.unit_amount).toBe(60000);
+    expect(oneOff.price_data.product_data.name).toBe('Onboarding');
+  });
 });
 
 describe('recurring invoice webhooks', () => {
@@ -105,6 +156,53 @@ describe('recurring invoice webhooks', () => {
     expect(activityCreate).toHaveBeenCalledWith(
       expect.objectContaining({
         data: expect.objectContaining({ action: 'RECURRING_PAYMENT_FAILED' }),
+      })
+    );
+  });
+});
+
+describe('createBillingPortalSession', () => {
+  beforeEach(() => jest.clearAllMocks());
+
+  it('creates a portal session for the subscription customer', async () => {
+    subRetrieve.mockResolvedValueOnce({ customer: 'cus_1' } as any);
+    const url = await createBillingPortalSession('sub_1', 'https://return');
+    expect(subRetrieve).toHaveBeenCalledWith('sub_1');
+    expect(portalCreate).toHaveBeenCalledWith({ customer: 'cus_1', return_url: 'https://return' });
+    expect(url).toBe('https://billing.stripe.com/session_1');
+  });
+
+  it('returns null when the subscription has no customer', async () => {
+    subRetrieve.mockResolvedValueOnce({ customer: null } as any);
+    const url = await createBillingPortalSession('sub_1', 'https://return');
+    expect(portalCreate).not.toHaveBeenCalled();
+    expect(url).toBeNull();
+  });
+});
+
+describe('getRecurringRevenueSummary', () => {
+  beforeEach(() => jest.clearAllMocks());
+
+  it('aggregates active subscriptions, collected pence, and failures', async () => {
+    proposalCount.mockResolvedValueOnce(3);
+    activityFindMany.mockResolvedValueOnce([
+      { metadata: JSON.stringify({ amountPaid: 12500 }) },
+      { metadata: JSON.stringify({ amountPaid: 8000 }) },
+      { metadata: 'not-json' }, // malformed rows are skipped
+      { metadata: JSON.stringify({}) }, // missing amount is skipped
+    ]);
+    activityCount.mockResolvedValueOnce(2);
+
+    const summary = await getRecurringRevenueSummary('t1');
+
+    expect(summary).toEqual({
+      activeSubscriptions: 3,
+      paidLast30DaysPence: 20500,
+      failedLast30Days: 2,
+    });
+    expect(proposalCount).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({ tenantId: 't1', stripeSubscriptionId: { not: null } }),
       })
     );
   });

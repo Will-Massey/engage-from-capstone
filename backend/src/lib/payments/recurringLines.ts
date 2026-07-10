@@ -74,3 +74,44 @@ export function splitRecurring(services: ServiceLine[]): SplitResult {
 export function hasRecurringLines(services: ServiceLine[]): boolean {
   return services.some((s) => stripeIntervalFor(s.billingFrequency) !== null);
 }
+
+export interface RecurringPlan {
+  group: RecurringGroup;
+  oneOffLines: { name: string; unitAmountPence: number; quantity: number }[];
+}
+
+/**
+ * Decide whether a proposal's service lines can be collected as a single
+ * subscription-mode checkout. v1 requires all recurring lines to share one
+ * interval, and the gross line sum to equal the stored proposal total (a
+ * mismatch means a proposal-level discount or drift — in that case the caller
+ * falls back to the one-off checkout so the client is charged exactly the
+ * displayed total). Line amounts are VAT-inclusive (grossTotal, quantity
+ * already folded in).
+ */
+export function planRecurringCheckout(
+  services: { name: string; billingFrequency: string; grossTotal: number }[],
+  proposalTotalGbp: number
+): RecurringPlan | null {
+  const lines: ServiceLine[] = services.map((s) => ({
+    name: s.name,
+    displayPrice: s.grossTotal,
+    billingFrequency: s.billingFrequency,
+    quantity: 1,
+  }));
+  if (!hasRecurringLines(lines)) return null;
+
+  const split = splitRecurring(lines);
+  if (split.recurringGroups.length !== 1) return null; // mixed intervals — v1 falls back
+
+  const group = split.recurringGroups[0];
+  const sumPence =
+    split.oneOffPence + group.lines.reduce((acc, l) => acc + l.unitAmountPence * l.quantity, 0);
+  if (sumPence !== Math.round(proposalTotalGbp * 100)) return null;
+
+  const oneOffLines = lines
+    .filter((l) => stripeIntervalFor(l.billingFrequency) === null)
+    .map((l) => ({ name: l.name, unitAmountPence: Math.round(l.displayPrice * 100), quantity: 1 }));
+
+  return { group, oneOffLines };
+}
