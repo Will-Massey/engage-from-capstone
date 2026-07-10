@@ -26,6 +26,10 @@ services:
         sync: false
       - key: JWT_SECRET
         generateValue: true
+      # Required in production (middleware/auth.ts) — must be declared here or
+      # a Blueprint sync deletes the dashboard-set value and boot fails.
+      - key: JWT_REFRESH_SECRET
+        generateValue: true
       - key: JWT_EXPIRES_IN
         value: 24h
       - key: JWT_REFRESH_EXPIRES_IN
