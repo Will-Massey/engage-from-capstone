@@ -83,6 +83,25 @@ describe('createRecurringCheckout', () => {
     expect(r.sessionId).toBe('cs_sub_1');
   });
 
+  it('returns a stub session without calling Stripe for the e2e sentinel account', async () => {
+    // Mirrors createStripeProposalCheckout's Playwright stub — the money-path
+    // e2e signs a MONTHLY proposal, which routes here instead of the one-off path.
+    const r = await createRecurringCheckout({
+      proposalId: 'p1',
+      tenantId: 't1',
+      reference: 'PROP-1',
+      group,
+      connectedAccountId: 'acct_e2e_stub',
+      platformFeeBps: 250,
+      customerEmail: 'c@x.com',
+      successUrl: 'https://s',
+      cancelUrl: 'https://c',
+    });
+    expect(sessionCreate).not.toHaveBeenCalled();
+    expect(r.sessionId).toBe('cs_e2e_p1');
+    expect(r.checkoutUrl).toBe('');
+  });
+
   it('appends one-off lines as non-recurring items on the first invoice', async () => {
     await createRecurringCheckout({
       proposalId: 'p1',

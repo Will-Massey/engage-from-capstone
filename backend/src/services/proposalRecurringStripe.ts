@@ -44,6 +44,17 @@ export async function createRecurringCheckout(
   if (!stripe) throw new Error('STRIPE_NOT_CONFIGURED');
 
   const applicationFeePercent = bpsToPercent(input.platformFeeBps);
+
+  // Playwright stub — no live Stripe when the connected account is the e2e
+  // sentinel (mirrors createStripeProposalCheckout).
+  if (input.connectedAccountId === 'acct_e2e_stub') {
+    return {
+      sessionId: `cs_e2e_${input.proposalId}`,
+      checkoutUrl: '',
+      applicationFeePercent,
+    };
+  }
+
   const lineItems: object[] = input.group.lines.map((l) => ({
     quantity: l.quantity,
     price_data: {
