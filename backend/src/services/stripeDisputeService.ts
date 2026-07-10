@@ -142,9 +142,12 @@ export async function handleChargeDisputeClosed(dispute: DisputeLike): Promise<v
           typeof original.destination === 'string'
             ? original.destination
             : (original.destination as { id?: string } | null)?.id;
-        if (dest && original.amount > 0) {
+        // Repay only what the dispute actually clawed back. If the reversal at
+        // dispute.created failed, the practice still has their share — paying
+        // original.amount here would pay them twice.
+        if (dest && original.amount_reversed > 0) {
           await stripe.transfers.create({
-            amount: original.amount,
+            amount: original.amount_reversed,
             currency: original.currency,
             destination: dest,
             description: `Dispute ${dispute.id} won — re-pay proposal ${proposalId}`,

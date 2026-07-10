@@ -3,6 +3,7 @@ const transfersCreateReversal = jest.fn(async () => ({ id: 'trr_1' }));
 const transfersRetrieve = jest.fn(async () => ({
   id: 'tr_1',
   amount: 9700,
+  amount_reversed: 9700,
   currency: 'gbp',
   destination: 'acct_1',
 }));
@@ -102,6 +103,23 @@ describe('stripeDisputeService', () => {
       expect(transfersCreate).not.toHaveBeenCalled();
       expect(update).toHaveBeenCalledWith(
         expect.objectContaining({ data: { paymentStatus: 'DISPUTE_LOST' } })
+      );
+    });
+
+    it('does not re-transfer on win when the original reversal never happened', async () => {
+      // e.g. the reversal at dispute.created failed — the practice kept their
+      // share, so paying original.amount again would pay them twice.
+      transfersRetrieve.mockResolvedValueOnce({
+        id: 'tr_1',
+        amount: 9700,
+        amount_reversed: 0,
+        currency: 'gbp',
+        destination: 'acct_1',
+      });
+      await handleChargeDisputeClosed({ id: 'dp_1', charge: 'ch_1', status: 'won' });
+      expect(transfersCreate).not.toHaveBeenCalled();
+      expect(update).toHaveBeenCalledWith(
+        expect.objectContaining({ data: { paymentStatus: 'PAID' } })
       );
     });
 
