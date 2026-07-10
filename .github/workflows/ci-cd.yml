@@ -17,6 +17,12 @@ on:
     branches: [master]
   workflow_dispatch:
 
+
+# Default token scope: read-only. Jobs that need more (e.g. the
+# deploy-failure alert opening an issue) escalate at job level.
+permissions:
+  contents: read
+
 env:
   NODE_VERSION: '20'
 
@@ -243,3 +249,31 @@ jobs:
             sleep 10
           done
           echo "Backend health check failed after deploy"; exit 1
+
+  # ==========================================================================
+  # Alerting — a failed deploy opens a GitHub issue (the Jul 2026 env-var
+  # outage went unnoticed for 3 days because failures were email-only)
+  # ==========================================================================
+
+  alert-on-deploy-failure:
+    name: Alert on deploy failure
+    runs-on: ubuntu-latest
+    needs: [deploy]
+    if: always() && needs.deploy.result == 'failure'
+    permissions:
+      issues: write
+    steps:
+      - name: Open an issue for the failed deploy
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh label create deploy-failure --repo "$GITHUB_REPOSITORY" \
+            --color B60205 --description "Production deploy failed" 2>/dev/null || true
+          gh issue create --repo "$GITHUB_REPOSITORY" \
+            --title "🚨 Production deploy failed — ${GITHUB_SHA:0:7}" \
+            --label deploy-failure \
+            --body "The \`Deploy to Render\` job failed for \`${GITHUB_SHA}\`.
+
+          Run: ${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}
+
+          Production keeps serving the previous build on \`update_failed\`, but nothing new deploys until this is fixed. Check the Render dashboard deploy log for the boot error (see docs/ROLLBACK_RUNBOOK.md)."

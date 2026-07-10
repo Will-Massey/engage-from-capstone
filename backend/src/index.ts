@@ -56,16 +56,6 @@ import {
   isSuperadminSyncConfigured,
 } from './services/superadminSyncService.js';
 
-// Dynamic import for auto-migration to handle cases where module might not be built
-let autoMigrateOnStartup: any = null;
-import('./scripts/autoMigrateOnStartup.js')
-  .then((mod) => {
-    autoMigrateOnStartup = mod.default;
-  })
-  .catch(() => {
-    logger.warn('Auto-migration module not available');
-  });
-
 // Initialize Express app
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -165,14 +155,6 @@ if (shouldStartServer) {
           logger.error('[engage] Superadmin scheduled sync failed:', message);
         });
       }, SUPERADMIN_SYNC_MS);
-    }
-
-    if (autoMigrateOnStartup) {
-      setTimeout(() => {
-        autoMigrateOnStartup().catch((err: any) => {
-          logger.error('Auto-migration failed:', err);
-        });
-      }, 5000);
     }
   });
 
