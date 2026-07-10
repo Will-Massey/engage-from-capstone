@@ -142,3 +142,45 @@ describe('proposalPricing', () => {
     expect(totals.total).toBe(660);
   });
 });
+
+describe('Int-pence mirrors (Stage 1 of the pence migration)', () => {
+  const build = (displayPrice: number, quantity = 1, discountPercent = 0) =>
+    buildProposalServiceRecord(
+      {
+        serviceId: 's',
+        displayPrice,
+        billingFrequency: 'MONTHLY',
+        quantity,
+        discountPercent,
+        vatRate: 20,
+      },
+      { id: 's', name: 'Svc' },
+      parseOneOffDueDate
+    );
+
+  it('mirrors every line money field as an integer pence column', () => {
+    const r = build(33.33, 1.5);
+    for (const [pounds, pence] of [
+      [r.displayPrice, r.displayPricePence],
+      [r.unitPrice, r.unitPricePence],
+      [r.annualEquivalent, r.annualEquivalentPence],
+      [r.lineTotal, r.lineTotalPence],
+      [r.vatAmount, r.vatAmountPence],
+      [r.grossTotal, r.grossTotalPence],
+    ] as const) {
+      expect(Number.isInteger(pence)).toBe(true);
+      expect(pence).toBe(Math.round(pounds * 100));
+    }
+    expect(r.grossTotalPence).toBe(r.lineTotalPence + r.vatAmountPence);
+  });
+
+  it('sums header pence from line pence, not from re-rounded pounds', () => {
+    const lines = [build(33.33), build(0.01), build(99.99, 3, 7)];
+    const t = calculateHeaderTotals(lines);
+    expect(t.subtotalPence).toBe(lines.reduce((s, l) => s + l.lineTotalPence, 0));
+    expect(t.vatAmountPence).toBe(lines.reduce((s, l) => s + l.vatAmountPence, 0));
+    expect(t.totalPence).toBe(lines.reduce((s, l) => s + l.grossTotalPence, 0));
+    expect(t.totalPence).toBe(t.subtotalPence + t.vatAmountPence);
+    expect(Number.isInteger(t.totalPence)).toBe(true);
+  });
+});

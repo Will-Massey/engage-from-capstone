@@ -99,3 +99,40 @@ describe('planRecurringCheckout', () => {
     expect(planRecurringCheckout(services, 700)).toBeNull();
   });
 });
+
+describe('planRecurringCheckout with Int-pence mirrors (Stage 1)', () => {
+  it('prefers stored pence over float-derived pounds when both are present', () => {
+    // Legacy Float rows can carry dust (e.g. 101.99999999999) — the stored
+    // pence mirror is authoritative at the payment boundary.
+    const plan = planRecurringCheckout(
+      [
+        {
+          name: 'Bookkeeping',
+          billingFrequency: 'MONTHLY',
+          grossTotal: 101.99999999999,
+          grossTotalPence: 10200,
+        },
+      ],
+      101.99999999999,
+      10200
+    );
+    expect(plan).not.toBeNull();
+    expect(plan!.group.lines[0].unitAmountPence).toBe(10200);
+  });
+
+  it('falls back to the one-off path when line pence disagree with the header pence', () => {
+    const plan = planRecurringCheckout(
+      [
+        {
+          name: 'Bookkeeping',
+          billingFrequency: 'MONTHLY',
+          grossTotal: 102,
+          grossTotalPence: 10200,
+        },
+      ],
+      90, // discounted header — must not charge line sum
+      9000
+    );
+    expect(plan).toBeNull();
+  });
+});

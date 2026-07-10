@@ -69,8 +69,21 @@ export interface BuiltProposalService {
   vatRate: number;
   vatAmount: number;
   grossTotal: number;
+  // Int-pence mirrors (Stage 1, docs/money-int-pence-migration.md) —
+  // authoritative at the payment boundary.
+  displayPricePence: number;
+  unitPricePence: number;
+  annualEquivalentPence: number;
+  lineTotalPence: number;
+  vatAmountPence: number;
+  grossTotalPence: number;
   oneOffDueDate: Date | null;
   serviceTemplateId: string | null;
+}
+
+/** Pounds (2dp) → integer pence. The single conversion point at persistence. */
+export function poundsToPence(pounds: number): number {
+  return Math.round(pounds * 100);
 }
 
 export function buildProposalServiceRecord(
@@ -124,15 +137,29 @@ export function buildProposalServiceRecord(
     vatRate,
     vatAmount: line.vatAmount,
     grossTotal,
+    displayPricePence: poundsToPence(roundMoney(line.displayPrice)),
+    unitPricePence: poundsToPence(roundMoney(line.displayPrice)),
+    annualEquivalentPence: poundsToPence(roundMoney(line.annualEquivalent)),
+    lineTotalPence: poundsToPence(netTotal),
+    vatAmountPence: poundsToPence(line.vatAmount),
+    grossTotalPence: poundsToPence(netTotal) + poundsToPence(line.vatAmount),
     oneOffDueDate: parseOneOffDueDate(billingFrequency, svc.oneOffDueDate),
     serviceTemplateId: template?.id ?? null,
   };
 }
 
 export function calculateHeaderTotals(services: BuiltProposalService[]) {
+  // Header pence are exact integer sums of line pence — never re-derived
+  // from rounded pounds, so header pence === Σ line pence by construction.
+  const subtotalPence = services.reduce((sum, s) => sum + s.lineTotalPence, 0);
+  const vatAmountPence = services.reduce((sum, s) => sum + s.vatAmountPence, 0);
+  const totalPence = services.reduce((sum, s) => sum + s.grossTotalPence, 0);
   return {
     subtotal: roundMoney(services.reduce((sum, s) => sum + s.lineTotal, 0)),
     vatAmount: roundMoney(services.reduce((sum, s) => sum + s.vatAmount, 0)),
     total: roundMoney(services.reduce((sum, s) => sum + s.grossTotal, 0)),
+    subtotalPence,
+    vatAmountPence,
+    totalPence,
   };
 }

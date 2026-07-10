@@ -172,6 +172,9 @@ router.post(
       subtotal,
       vatAmount: totalVat,
       total: grandTotal,
+      subtotalPence,
+      vatAmountPence,
+      totalPence,
     } = calculateHeaderTotals(servicesWithClearPricing);
 
     // Generate reference
@@ -207,6 +210,10 @@ router.post(
         vatRate: 20, // Default VAT rate
         vatAmount: totalVat,
         total: grandTotal,
+        subtotalPence,
+        discountAmountPence: 0,
+        vatAmountPence,
+        totalPence,
         paymentTerms:
           data.paymentTerms || formatPaymentTerms(proposalSettings.defaultPaymentTermsDays),
         paymentFrequency: data.paymentFrequency || 'MONTHLY',
@@ -418,6 +425,9 @@ router.put(
             subtotal: totals.subtotal,
             vatAmount: totals.vatAmount,
             total: totals.total,
+            subtotalPence: totals.subtotalPence,
+            vatAmountPence: totals.vatAmountPence,
+            totalPence: totals.totalPence,
           },
         }),
       ]);
