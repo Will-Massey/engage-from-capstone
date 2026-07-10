@@ -17,6 +17,12 @@ on:
     branches: [master]
   workflow_dispatch:
 
+
+# Default token scope: read-only. Jobs that need more (e.g. the
+# deploy-failure alert opening an issue) escalate at job level.
+permissions:
+  contents: read
+
 env:
   NODE_VERSION: '20'
 
