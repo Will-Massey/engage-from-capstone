@@ -10,6 +10,7 @@ import { runProposalChaseJob } from '../jobs/proposalChaseJob.js';
 // Client touchpoint / lifecycle automation engine
 import { runTouchpointEngine } from '../jobs/touchpointEngine.js';
 import { runEmailAutomation } from '../jobs/emailAutomation.js';
+import { reconcileDisputes } from '../services/stripeDisputeService.js';
 
 // Run immediately on startup in production, or every 24 hours
 const RENEWAL_CHECK_INTERVAL = 24 * 60 * 60 * 1000; // 24 hours
@@ -87,4 +88,25 @@ export function scheduleEmailAutomation() {
   setInterval(tick, INTERVAL);
 
   logger.info('✅ Email automation scheduled (every 24 hours)');
+}
+
+export function scheduleDisputeReconciliation() {
+  logger.info('📅 Scheduling Stripe dispute reconciliation...');
+
+  const INTERVAL = 24 * 60 * 60 * 1000; // daily — webhooks are the primary path
+
+  const tick = () =>
+    trackJobRun('disputeReconciliation', () =>
+      withJobLock(JOB_LOCKS.disputeReconciliation, 'dispute reconciliation', () =>
+        reconcileDisputes()
+      )
+    ).catch((err) => {
+      logger.error('Dispute reconciliation failed:', err);
+      captureException(err, { job: 'disputeReconciliation' });
+    });
+
+  setTimeout(tick, 180_000);
+  setInterval(tick, INTERVAL);
+
+  logger.info('✅ Dispute reconciliation scheduled (every 24 hours)');
 }

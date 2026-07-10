@@ -38,6 +38,7 @@ import {
   scheduleProposalChaseJob,
   scheduleTouchpointEngine,
   scheduleEmailAutomation,
+  scheduleDisputeReconciliation,
 } from './app/jobs.js';
 import { registerProcessHandlers } from './app/shutdown.js';
 
@@ -146,6 +147,7 @@ if (shouldStartServer) {
     scheduleProposalChaseJob();
     scheduleTouchpointEngine();
     scheduleEmailAutomation();
+    scheduleDisputeReconciliation();
     initEngageSuperadmin();
 
     if (isSuperadminSyncConfigured()) {
