@@ -34,7 +34,6 @@ import { checkAiTokenBudget, getAiStatusMeta } from '../services/ai/aiClient.js'
 import { AI_FEATURE_FLAGS } from '../config/featureFlags.js';
 import { getRegulatoryAlerts } from '../services/ai/regulatoryWatcherService.js';
 import { advisePricing, type PricingAdvisorLineInput } from '../services/regulatoryFitService.js';
-import { getBenchmarkPricing } from '../services/ai/benchmarkPricingService.js';
 import { draftProposalFromVoice } from '../services/ai/voiceProposalService.js';
 import { triageClientReply, type ReplyTriageInput } from '../services/replyRoutingService.js';
 import { generateProposalExplanation } from '../services/ai/proposalExplanationService.js';
@@ -944,25 +943,6 @@ router.post(
       displayPrice: l.displayPrice,
     }));
     const data = await advisePricing(req.tenantId!, body.clientId, lineItems);
-    res.json({ success: true, data });
-  })
-);
-
-/** GET /api/ai/benchmark-pricing — Phase 5 anonymised fee bands (stub) */
-router.get(
-  '/benchmark-pricing',
-  asyncHandler(async (req, res) => {
-    const services = z
-      .string()
-      .optional()
-      .parse(req.query.services as string | undefined);
-    const serviceNames = services
-      ? services
-          .split(',')
-          .map((s) => s.trim())
-          .filter(Boolean)
-      : undefined;
-    const data = await getBenchmarkPricing(req.tenantId!, req.user?.id, serviceNames);
     res.json({ success: true, data });
   })
 );

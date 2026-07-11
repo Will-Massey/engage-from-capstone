@@ -8,6 +8,8 @@ export interface Client {
   companyType: string;
   contactEmail: string;
   contactName?: string | null;
+  /** Annual turnover (GBP) — picks the fee benchmark turnover band */
+  turnover?: number | null;
 }
 
 export interface Service {
