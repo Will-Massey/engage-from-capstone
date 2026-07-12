@@ -45,6 +45,7 @@ async function main() {
         tenantId: tenant.id,
         role: 'ADMIN',
         isActive: true,
+        emailVerified: new Date(),
       },
     });
     console.log('✅ Created user:', user.email);

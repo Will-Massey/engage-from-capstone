@@ -150,9 +150,13 @@ export interface CreateTenantRecord {
 }
 
 export interface CreateTenantResponse {
+  /** Always true now — signup requires email verification before first sign-in */
+  requiresVerification?: boolean;
+  email?: string;
+  /** Legacy authenticated-signup fields (no longer returned) */
   csrfToken?: string;
-  tenant: CreateTenantRecord;
-  user: CreateTenantUser;
+  tenant?: CreateTenantRecord;
+  user?: CreateTenantUser;
   token?: string;
 }
 

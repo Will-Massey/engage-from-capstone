@@ -62,6 +62,7 @@ async function main() {
       role: 'PARTNER',
       tenantId: demoTenant.id,
       isActive: true,
+      emailVerified: new Date(),
     },
   });
 
@@ -74,6 +75,7 @@ async function main() {
       role: 'MANAGER',
       tenantId: demoTenant.id,
       isActive: true,
+      emailVerified: new Date(),
     },
   });
 
@@ -86,6 +88,7 @@ async function main() {
       role: 'SENIOR',
       tenantId: demoTenant.id,
       isActive: true,
+      emailVerified: new Date(),
     },
   });
 

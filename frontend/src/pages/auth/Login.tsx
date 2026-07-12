@@ -3,7 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { EyeIcon, EyeSlashIcon, ShieldCheckIcon } from '@heroicons/react/24/outline';
+import { EnvelopeIcon, EyeIcon, EyeSlashIcon, ShieldCheckIcon } from '@heroicons/react/24/outline';
 import { apiClient, clearCsrfCache, rememberCsrfToken } from '../../utils/api';
 import { appPath } from '../../utils/appBase';
 import { useAuthStore } from '../../stores/authStore';
@@ -25,6 +25,9 @@ const Login = () => {
   const [requires2FA, setRequires2FA] = useState(false);
   const [pendingToken, setPendingToken] = useState('');
   const [totpToken, setTotpToken] = useState('');
+  const [requiresVerification, setRequiresVerification] = useState(false);
+  const [verificationEmail, setVerificationEmail] = useState('');
+  const [isResending, setIsResending] = useState(false);
 
   useEffect(() => {
     clearAuth();
@@ -50,6 +53,12 @@ const Login = () => {
       })) as any;
 
       if (response.success) {
+        if (response.data.requiresVerification) {
+          setVerificationEmail(response.data.email || data.email);
+          setRequiresVerification(true);
+          return;
+        }
+
         if (response.data.requires2FA && response.data.pendingToken) {
           setPendingToken(response.data.pendingToken);
           setRequires2FA(true);
@@ -106,6 +115,56 @@ const Login = () => {
       setIsLoading(false);
     }
   };
+
+  const handleResendVerification = async () => {
+    setIsResending(true);
+    try {
+      await apiClient.resendVerification(verificationEmail);
+      toast.success('If an account exists for that email, a new verification link has been sent.');
+    } catch {
+      toast.error('Could not resend the verification email. Please try again.');
+    } finally {
+      setIsResending(false);
+    }
+  };
+
+  if (requiresVerification) {
+    return (
+      <div data-testid="login-verify-panel">
+        <div className="flex items-center gap-3 mb-2">
+          <EnvelopeIcon className="h-8 w-8 text-primary-600" />
+          <h2 className="text-2xl font-bold text-slate-900 dark:text-white">Verify your email</h2>
+        </div>
+        <p className="text-slate-600 dark:text-slate-300 mb-6">
+          Your account isn&apos;t verified yet. Follow the link we sent to{' '}
+          <span className="font-medium">{verificationEmail}</span> to verify your email, then sign
+          in again.
+        </p>
+
+        <div className="space-y-5">
+          <button
+            type="button"
+            onClick={handleResendVerification}
+            disabled={isResending}
+            className="w-full btn-primary py-2.5 bg-gradient-to-r from-primary-600 to-primary-700 hover:from-primary-700 hover:to-primary-800"
+          >
+            {isResending ? 'Sending...' : 'Resend verification email'}
+          </button>
+
+          <button
+            type="button"
+            onClick={() => {
+              setRequiresVerification(false);
+              setVerificationEmail('');
+            }}
+            className="w-full text-sm text-slate-600 hover:text-slate-900"
+          >
+            Back to sign in
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   if (requires2FA) {
     return (

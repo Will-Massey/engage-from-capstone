@@ -155,6 +155,20 @@ const AnimatedRoutes = () => {
             </PublicRoute>
           }
         />
+        <Route
+          path="/verify-email"
+          element={
+            <PublicRoute>
+              <AuthLayout>
+                <AnimatedPage>
+                  <PageSuspense>
+                    <Pages.VerifyEmail />
+                  </PageSuspense>
+                </AnimatedPage>
+              </AuthLayout>
+            </PublicRoute>
+          }
+        />
 
         {/* Protected Routes */}
         <Route
@@ -520,7 +534,8 @@ function App() {
         path === '/login' ||
         path === '/register' ||
         path.startsWith('/forgot-password') ||
-        path.startsWith('/reset-password');
+        path.startsWith('/reset-password') ||
+        path.startsWith('/verify-email');
 
       if (skipBootstrap) {
         clearAuth();

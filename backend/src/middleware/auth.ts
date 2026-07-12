@@ -321,6 +321,9 @@ export const csrfProtection = async (
     '/auth/csrf-token',
     '/auth/forgot-password',
     '/auth/reset-password',
+    '/auth/verify-email',
+    '/auth/resend-verification',
+    '/auth/e2e/verification-token', // e2e-only backdoor (X-Test-Mode gated in the route)
     '/auth/2fa/login',
     '/payments/webhook',
     '/webhooks/stripe-connect', // Stripe Connect webhook (signature-verified)
