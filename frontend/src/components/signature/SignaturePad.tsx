@@ -1,4 +1,10 @@
 import { useRef, useState, useEffect, useCallback } from 'react';
+import {
+  clampDevicePixelRatio,
+  computeFullWidthCanvasSize,
+  getCanvasMetrics,
+  getGuidelineOffsets,
+} from './signaturePadGeometry';
 
 interface SignaturePadProps {
   onSave: (signatureData: string) => void;
@@ -7,6 +13,12 @@ interface SignaturePadProps {
   height?: number;
   disabled?: boolean;
   fullWidth?: boolean;
+  /**
+   * Hide the internal "Confirm Signature" button. onSave fires automatically
+   * at the end of each stroke instead, so the parent can render a single
+   * confirm action of its own.
+   */
+  hideConfirm?: boolean;
 }
 
 const SignaturePad = ({
@@ -16,6 +28,7 @@ const SignaturePad = ({
   height = 200,
   disabled = false,
   fullWidth = false,
+  hideConfirm = false,
 }: SignaturePadProps) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -32,10 +45,7 @@ const SignaturePad = ({
 
     const updateSize = () => {
       const containerWidth = containerRef.current?.clientWidth || width;
-      setCanvasSize({
-        width: Math.max(containerWidth, 280),
-        height: Math.max(Math.round(containerWidth * 0.35), 180),
-      });
+      setCanvasSize(computeFullWidthCanvasSize(containerWidth));
     };
 
     updateSize();
@@ -43,11 +53,22 @@ const SignaturePad = ({
     return () => window.removeEventListener('resize', updateSize);
   }, [fullWidth, width, height]);
 
+  // Scale the backing store for crisp strokes on HiDPI/retina screens while
+  // keeping the CSS size (and stroke coordinates) in CSS pixels.
+  const dpr = clampDevicePixelRatio(
+    typeof window !== 'undefined' ? window.devicePixelRatio : undefined
+  );
+  const metrics = getCanvasMetrics(canvasSize.width, canvasSize.height, dpr);
+  const guidelineOffsets = getGuidelineOffsets(canvasSize.height);
+
   useEffect(() => {
     const canvas = canvasRef.current;
     if (canvas) {
       const ctx = canvas.getContext('2d');
       if (ctx) {
+        // Resizing the canvas attributes reset the context, so setTransform
+        // (idempotent, unlike scale) reapplies the dpr scaling each time.
+        ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
         ctx.strokeStyle = '#000000';
         ctx.lineWidth = 2;
         ctx.lineCap = 'round';
@@ -55,30 +76,35 @@ const SignaturePad = ({
         setContext(ctx);
       }
     }
-  }, [canvasSize.width, canvasSize.height]);
+  }, [canvasSize.width, canvasSize.height, dpr]);
 
-  const getCoordinates = useCallback((event: React.MouseEvent | React.TouchEvent) => {
-    const canvas = canvasRef.current;
-    if (!canvas) return { x: 0, y: 0 };
+  const getCoordinates = useCallback(
+    (event: React.MouseEvent | React.TouchEvent) => {
+      const canvas = canvasRef.current;
+      if (!canvas) return { x: 0, y: 0 };
 
-    const rect = canvas.getBoundingClientRect();
-    const scaleX = canvas.width / rect.width;
-    const scaleY = canvas.height / rect.height;
-    let clientX, clientY;
+      // Strokes are drawn in CSS-pixel coordinates (the context is dpr-scaled),
+      // so divide the backing-store size back down by dpr before mapping.
+      const rect = canvas.getBoundingClientRect();
+      const scaleX = canvas.width / dpr / rect.width;
+      const scaleY = canvas.height / dpr / rect.height;
+      let clientX, clientY;
 
-    if ('touches' in event) {
-      clientX = event.touches[0].clientX;
-      clientY = event.touches[0].clientY;
-    } else {
-      clientX = (event as React.MouseEvent).clientX;
-      clientY = (event as React.MouseEvent).clientY;
-    }
+      if ('touches' in event) {
+        clientX = event.touches[0].clientX;
+        clientY = event.touches[0].clientY;
+      } else {
+        clientX = (event as React.MouseEvent).clientX;
+        clientY = (event as React.MouseEvent).clientY;
+      }
 
-    return {
-      x: (clientX - rect.left) * scaleX,
-      y: (clientY - rect.top) * scaleY,
-    };
-  }, []);
+      return {
+        x: (clientX - rect.left) * scaleX,
+        y: (clientY - rect.top) * scaleY,
+      };
+    },
+    [dpr]
+  );
 
   const startDrawing = useCallback(
     (event: React.MouseEvent | React.TouchEvent) => {
@@ -111,7 +137,13 @@ const SignaturePad = ({
     context.closePath();
     setIsDrawing(false);
     setHasSignature(true);
-  }, [isDrawing, context]);
+    if (hideConfirm) {
+      // No internal confirm button — hand the signature to the parent after
+      // every stroke so its own confirm action can take over.
+      const canvas = canvasRef.current;
+      if (canvas) onSave(canvas.toDataURL('image/png'));
+    }
+  }, [isDrawing, context, hideConfirm, onSave]);
 
   const clear = useCallback(() => {
     const canvas = canvasRef.current;
@@ -137,8 +169,8 @@ const SignaturePad = ({
         <canvas
           data-testid="signature-canvas"
           ref={canvasRef}
-          width={canvasSize.width}
-          height={canvasSize.height}
+          width={metrics.pixelWidth}
+          height={metrics.pixelHeight}
           onMouseDown={startDrawing}
           onMouseMove={draw}
           onMouseUp={stopDrawing}
@@ -149,11 +181,21 @@ const SignaturePad = ({
           className={`border-2 border-gray-300 rounded-lg bg-white touch-none ${
             fullWidth ? 'w-full' : ''
           } ${disabled ? 'cursor-not-allowed opacity-50' : 'cursor-crosshair'}`}
-          style={fullWidth ? { height: canvasSize.height } : { maxWidth: '100%', height: 'auto' }}
+          style={
+            fullWidth
+              ? { height: canvasSize.height }
+              : { width: canvasSize.width, maxWidth: '100%', height: 'auto' }
+          }
         />
 
-        <div className="absolute bottom-8 left-4 right-4 border-b-2 border-gray-400 pointer-events-none" />
-        <div className="absolute bottom-2 left-4 text-sm text-gray-400 pointer-events-none">
+        <div
+          className="absolute left-4 right-4 border-b-2 border-gray-400 pointer-events-none"
+          style={{ bottom: guidelineOffsets.baseline }}
+        />
+        <div
+          className="absolute left-4 text-sm text-gray-400 pointer-events-none"
+          style={{ bottom: guidelineOffsets.label }}
+        >
           Sign here
         </div>
       </div>
@@ -171,14 +213,16 @@ const SignaturePad = ({
         >
           Clear
         </button>
-        <button
-          onClick={save}
-          disabled={disabled || !hasSignature}
-          type="button"
-          className="px-4 py-3 min-h-[44px] text-sm font-medium text-white bg-primary-600 rounded-lg hover:bg-primary-700 disabled:opacity-50 touch-manipulation"
-        >
-          Confirm Signature
-        </button>
+        {!hideConfirm && (
+          <button
+            onClick={save}
+            disabled={disabled || !hasSignature}
+            type="button"
+            className="px-4 py-3 min-h-[44px] text-sm font-medium text-white bg-primary-600 rounded-lg hover:bg-primary-700 disabled:opacity-50 touch-manipulation"
+          >
+            Confirm Signature
+          </button>
+        )}
       </div>
     </div>
   );

@@ -104,8 +104,9 @@ test.describe('Money path — sign and collect payment', () => {
       await publicPage.mouse.move(box.x + 150, box.y + 100);
       await publicPage.mouse.up();
     }
-    await publicPage.waitForTimeout(300);
-    await publicPage.click('button:has-text("Confirm Signature")');
+    // The pad hands the signature to the page on stroke end (no internal
+    // confirm button on the public sign page) — wait for the confirm CTA.
+    await publicPage.waitForSelector('[data-testid="confirm-signature-button"]');
 
     const signResponsePromise = publicPage.waitForResponse(
       (resp) => resp.url().includes('/sign') && resp.request().method() === 'POST'
