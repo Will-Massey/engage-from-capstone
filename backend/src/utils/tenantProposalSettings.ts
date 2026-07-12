@@ -20,6 +20,8 @@ export interface ProposalSettings {
   customTerms: string | null;
   /** Opt in to share anonymised fee data and view cross-practice benchmarks */
   benchmarksOptIn: boolean;
+  /** Block sending proposals until the client's AML status is CLEAR (R2.3) */
+  blockSendUntilAmlCleared: boolean;
 }
 
 export const DEFAULT_CHASE_SEQUENCE_DAYS = [3, 7, 14] as const;
@@ -34,6 +36,7 @@ export const DEFAULT_PROPOSAL_SETTINGS: ProposalSettings = {
   termsSource: 'engage_default',
   customTerms: null,
   benchmarksOptIn: false,
+  blockSendUntilAmlCleared: false,
 };
 
 export function formatPaymentTerms(days: number): string {
@@ -79,6 +82,7 @@ export function getProposalSettings(tenantSettingsJson?: string | null): Proposa
         p.termsSource === 'custom' || p.useCustomTerms === true ? 'custom' : 'engage_default',
       customTerms: typeof p.customTerms === 'string' ? p.customTerms : null,
       benchmarksOptIn: p.benchmarksOptIn === true,
+      blockSendUntilAmlCleared: p.blockSendUntilAmlCleared === true,
     };
   } catch {
     return DEFAULT_PROPOSAL_SETTINGS;
