@@ -1,0 +1,82 @@
+# Uptime monitor — pings production every 15 minutes and opens a GitHub issue
+# on failure (same alerting pattern as the deploy-failure job in ci-cd.yml).
+# Deduplicates: no new issue while an open `uptime` issue exists; posts a
+# recovery comment and closes it when prod answers again.
+
+name: Uptime
+
+on:
+  schedule:
+    - cron: '*/15 * * * *'
+  workflow_dispatch:
+
+permissions:
+  issues: write
+
+jobs:
+  probe:
+    name: Probe production
+    runs-on: ubuntu-latest
+    steps:
+      - name: Probe backend ping + frontend shell
+        id: probe
+        run: |
+          set +e
+          failures=""
+
+          api_code=$(curl -sS -o /dev/null -w '%{http_code}' --max-time 20 \
+            https://capstonesoftware.co.uk/engage/ping)
+          [ "$api_code" = "200" ] || failures="${failures}- backend /engage/ping returned \`${api_code:-no response}\`\n"
+
+          fe_code=$(curl -sS -o /dev/null -w '%{http_code}' --max-time 20 \
+            https://capstonesoftware.co.uk/engage/)
+          [ "$fe_code" = "200" ] || failures="${failures}- frontend /engage/ returned \`${fe_code:-no response}\`\n"
+
+          auth_code=$(curl -sS -o /dev/null -w '%{http_code}' --max-time 20 \
+            https://capstonesoftware.co.uk/engage/api/auth/me)
+          [ "$auth_code" = "401" ] || failures="${failures}- /engage/api/auth/me returned \`${auth_code:-no response}\` (expected 401)\n"
+
+          if [ -n "$failures" ]; then
+            printf 'failures<<EOF\n%b\nEOF\n' "$failures" >> "$GITHUB_OUTPUT"
+            echo "down=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "down=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Open or update the downtime issue
+        if: steps.probe.outputs.down == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          FAILURES: ${{ steps.probe.outputs.failures }}
+        run: |
+          gh label create uptime --repo "$GITHUB_REPOSITORY" \
+            --color B60205 --description "Production uptime probe failed" 2>/dev/null || true
+          existing=$(gh issue list --repo "$GITHUB_REPOSITORY" --label uptime --state open --json number --jq '.[0].number')
+          if [ -n "$existing" ]; then
+            gh issue comment "$existing" --repo "$GITHUB_REPOSITORY" \
+              --body "Still failing at $(date -u +%FT%TZ):
+
+          ${FAILURES}"
+          else
+            gh issue create --repo "$GITHUB_REPOSITORY" \
+              --title "🚨 Production uptime probe failing" \
+              --label uptime \
+              --body "The scheduled uptime probe failed at $(date -u +%FT%TZ):
+
+          ${FAILURES}
+
+          Probes: \`/engage/ping\` (expect 200), \`/engage/\` (expect 200), \`/engage/api/auth/me\` (expect 401).
+          Run: ${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}
+          See docs/ROLLBACK_RUNBOOK.md if a recent deploy caused this."
+          fi
+
+      - name: Close the downtime issue on recovery
+        if: steps.probe.outputs.down == 'false'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          existing=$(gh issue list --repo "$GITHUB_REPOSITORY" --label uptime --state open --json number --jq '.[0].number')
+          if [ -n "$existing" ]; then
+            gh issue close "$existing" --repo "$GITHUB_REPOSITORY" \
+              --comment "Recovered — all probes healthy at $(date -u +%FT%TZ)."
+          fi
