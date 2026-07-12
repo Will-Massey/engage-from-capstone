@@ -89,7 +89,17 @@ export function mapDetailsToAiContext(details: CompanyDetails): AiCompaniesHouse
     registeredOfficeAddress: formatChAddress(details),
     sicCodes: details.sic_codes,
     accountsNextDue: details.accounts?.next_due,
+    confirmationStatementNextDue: details.confirmation_statement?.next_due,
   };
+}
+
+/** Parse a Companies House YYYY-MM-DD date (UTC noon to avoid TZ day-shift). */
+export function parseChDate(raw?: string | null): Date | null {
+  if (!raw) return null;
+  const s = String(raw).trim();
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(s)) return null;
+  const d = new Date(`${s}T12:00:00.000Z`);
+  return Number.isNaN(d.getTime()) ? null : d;
 }
 
 export function sicCodesToIndustry(sicCodes?: string[]): string | undefined {
@@ -248,6 +258,17 @@ export async function enrichClientFromCompaniesHouse(
     if (formatted.address?.line1 || formatted.address?.postcode) {
       updateData.address = JSON.stringify(formatted.address);
     }
+  }
+
+  // Compliance deadlines (R5.2) — CH is authoritative, so always refresh both
+  // filing due dates when present (they move forward after each filing).
+  const accountsNextDue = parseChDate(details.accounts?.next_due);
+  if (accountsNextDue) {
+    updateData.nextAccountsDueDate = accountsNextDue;
+  }
+  const confirmationStatementNextDue = parseChDate(details.confirmation_statement?.next_due);
+  if (confirmationStatementNextDue) {
+    updateData.nextConfirmationStatementDue = confirmationStatementNextDue;
   }
 
   let updatedClient = client;

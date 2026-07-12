@@ -58,6 +58,10 @@ export interface CompanyDetails {
     };
     next_due?: string;
   };
+  confirmation_statement?: {
+    next_due?: string;
+    last_made_up_to?: string;
+  };
 }
 
 export class CompaniesHouseService {

@@ -352,7 +352,12 @@ export interface AiRegulatoryAlertsResult {
 }
 
 export interface AiAttentionQueueItem {
-  proposalId: string;
+  /** 'proposal' items link to /proposals/{proposalId}; 'regulatory' to /clients/{clientId} */
+  kind?: 'proposal' | 'regulatory';
+  proposalId?: string;
+  /** RegulatorySignal id — present on kind 'regulatory' items (used to dismiss) */
+  signalId?: string;
+  clientId?: string;
   reference: string;
   title: string;
   clientName: string;

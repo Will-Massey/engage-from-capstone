@@ -11,6 +11,7 @@ import { runProposalChaseJob } from '../jobs/proposalChaseJob.js';
 import { runTouchpointEngine } from '../jobs/touchpointEngine.js';
 import { runEmailAutomation } from '../jobs/emailAutomation.js';
 import { reconcileDisputes } from '../services/stripeDisputeService.js';
+import { runRegulatoryScan } from '../jobs/regulatoryScan.js';
 
 // Run immediately on startup in production, or every 24 hours
 const RENEWAL_CHECK_INTERVAL = 24 * 60 * 60 * 1000; // 24 hours
@@ -109,4 +110,23 @@ export function scheduleDisputeReconciliation() {
   setInterval(tick, INTERVAL);
 
   logger.info('✅ Dispute reconciliation scheduled (every 24 hours)');
+}
+
+export function scheduleRegulatoryScan() {
+  logger.info('📅 Scheduling regulatory signal scan...');
+
+  const INTERVAL = 24 * 60 * 60 * 1000; // nightly — deterministic rules, no AI
+
+  const tick = () =>
+    trackJobRun('regulatoryScan', () =>
+      withJobLock(JOB_LOCKS.regulatoryScan, 'regulatory scan', () => runRegulatoryScan())
+    ).catch((err) => {
+      logger.error('Regulatory scan failed:', err);
+      captureException(err, { job: 'regulatoryScan' });
+    });
+
+  setTimeout(tick, 240_000);
+  setInterval(tick, INTERVAL);
+
+  logger.info('✅ Regulatory scan scheduled (every 24 hours)');
 }

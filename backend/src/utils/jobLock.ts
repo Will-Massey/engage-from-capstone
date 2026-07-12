@@ -12,6 +12,7 @@ export const JOB_LOCKS = {
   touchpointEngine: 4103,
   emailAutomation: 4104,
   disputeReconciliation: 4105,
+  regulatoryScan: 4106,
 } as const;
 
 /**
