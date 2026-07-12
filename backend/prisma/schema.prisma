@@ -278,6 +278,7 @@ model Tenant {
   emailSuppressions     EmailSuppression[]
   paymentSplits         PaymentSplit[]
   payoutSettings        TenantPayoutSettings?
+  regulatorySignals     RegulatorySignal[]
 
   @@index([subdomain])
   @@index([isActive])
@@ -319,6 +320,7 @@ model User {
   refreshTokens      RefreshToken[]
   passwordResets     PasswordReset[]
   twoFactorBackupCodes TwoFactorBackupCode[]
+  dismissedRegulatorySignals RegulatorySignal[]
 
   @@unique([email, tenantId])
   @@index([tenantId])
@@ -437,6 +439,7 @@ model Client {
   proposals Proposal[]
   touchpoints Touchpoint[]
   emailLogs   EmailLog[]
+  regulatorySignals RegulatorySignal[]
 
   @@unique([tenantId, contactEmail])
   @@index([tenantId])
@@ -1095,4 +1098,36 @@ model EmailSuppression {
 
   @@unique([tenantId, email])
   @@index([tenantId])
+}
+
+// ==================== REGULATORY SIGNALS (R5.2) ====================
+
+/// Persisted output of the deterministic regulatory rule engine — one row per
+/// (tenant, client, rule). Raised/resolved by the nightly regulatory scan job.
+model RegulatorySignal {
+  id       String @id @default(uuid())
+  tenantId String
+  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  clientId String
+  client   Client @relation(fields: [clientId], references: [id], onDelete: Cascade)
+
+  ruleId   String // e.g. vat-registration-required
+  family   String // vat | mtd_itsa | filing_deadlines | payroll
+  severity String // info | warning | action_required
+  title    String
+  detail   String
+  metadata String @default("{}") // JSON: thresholds, dates, income used, etc.
+
+  status String @default("OPEN") // OPEN | DISMISSED | RESOLVED | ACTIONED
+
+  firstRaisedAt   DateTime  @default(now())
+  lastEvaluatedAt DateTime  @default(now())
+  dismissedAt     DateTime?
+  dismissedByUserId String?
+  dismissedBy     User?     @relation(fields: [dismissedByUserId], references: [id], onDelete: SetNull)
+  resolvedAt      DateTime?
+
+  @@unique([tenantId, clientId, ruleId])
+  @@index([tenantId, status])
+  @@index([clientId])
 }

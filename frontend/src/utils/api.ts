@@ -1387,6 +1387,11 @@ export const apiClient = {
   aiAttentionQueue: () =>
     api.get('/ai/attention-queue') as Promise<ApiResponse<AiAttentionQueueResult>>,
 
+  dismissRegulatorySignal: (signalId: string, reason?: string) =>
+    api.post(`/regulatory/signals/${signalId}/dismiss`, reason ? { reason } : {}) as Promise<
+      ApiResponse<{ id: string; status: string; dismissedAt: string }>
+    >,
+
   // Streaming (SSE) for live drafts — uses native fetch + token from auth store
   aiStreamCoverLetter: async (
     data: AiCoverLetterPayload,
