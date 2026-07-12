@@ -15,12 +15,40 @@ import {
   type XeroSession,
 } from './xeroService.js';
 
+export const XERO_PROPOSAL_PUSHED_ACTION = 'XERO_PROPOSAL_PUSHED';
+
 export interface XeroProposalPushResult {
   mode: 'live' | 'stub';
   proposalId: string;
   reference: string;
   xero: Awaited<ReturnType<typeof pushAcceptedProposalToXero>>;
   warnings: string[];
+  /** True when a prior successful push was found and no new artifacts were created */
+  skipped?: boolean;
+}
+
+export interface XeroProposalPushOptions {
+  /** Re-push even when a prior successful push record exists */
+  force?: boolean;
+  sessionOverride?: XeroSession;
+}
+
+/** Prior successful push record for a proposal, or null (ActivityLog-based idempotency). */
+async function findPriorPushRecord(tenantId: string, proposalId: string) {
+  const record = await prisma.activityLog.findFirst({
+    where: { tenantId, proposalId, action: XERO_PROPOSAL_PUSHED_ACTION },
+    orderBy: { createdAt: 'desc' },
+    select: { createdAt: true, metadata: true },
+  });
+  if (!record) return null;
+  let repeatingInvoiceIds: string[] = [];
+  try {
+    const meta = JSON.parse(record.metadata || '{}');
+    if (Array.isArray(meta.repeatingInvoiceIds)) repeatingInvoiceIds = meta.repeatingInvoiceIds;
+  } catch {
+    // malformed metadata — treat as a bare success record
+  }
+  return { createdAt: record.createdAt, repeatingInvoiceIds };
 }
 
 function buildProposalPayload(proposal: {
@@ -84,7 +112,7 @@ function extractXeroContactId(tags: string): string | undefined {
 export async function pushProposalToXero(
   tenantId: string,
   proposalId: string,
-  sessionOverride?: XeroSession
+  options?: XeroProposalPushOptions
 ): Promise<XeroProposalPushResult> {
   const proposal = await prisma.proposal.findFirst({
     where: { id: proposalId, tenantId },
@@ -100,6 +128,33 @@ export async function pushProposalToXero(
 
   if (proposal.status !== 'ACCEPTED') {
     throw new Error('Only accepted proposals can be pushed to Xero');
+  }
+
+  // Idempotency (no schema changes): a XERO_PROPOSAL_PUSHED activity record
+  // marks a prior successful push — skip unless the caller forces a re-push.
+  if (!options?.force) {
+    const prior = await findPriorPushRecord(tenantId, proposalId);
+    if (prior) {
+      return {
+        mode: 'live',
+        proposalId,
+        reference: proposal.reference,
+        skipped: true,
+        xero: {
+          contactNote: { implemented: true, updated: false },
+          repeatingInvoice: {
+            implemented: true,
+            stub: false,
+            created: 0,
+            repeatingInvoiceIds: prior.repeatingInvoiceIds,
+            drafts: [],
+            errors: [],
+            message: `Already pushed to Xero on ${prior.createdAt.toISOString()} — skipped (use force to re-push).`,
+          },
+        },
+        warnings: [],
+      };
+    }
   }
 
   const payload = buildProposalPayload(proposal);
@@ -130,7 +185,7 @@ export async function pushProposalToXero(
     };
   }
 
-  let session = sessionOverride;
+  let session = options?.sessionOverride;
   if (!session) {
     try {
       session = await getAuthenticatedXeroSession(tenantId);
@@ -147,8 +202,12 @@ export async function pushProposalToXero(
     }
   }
 
+  // paid_invoices mode never creates repeating invoices (Stripe payments are
+  // mirrored as they land instead — avoids double-billing in Xero).
+  const skipRepeatingInvoices = settings.xeroSyncMode === 'paid_invoices';
+
   try {
-    const result = await pushAcceptedProposalToXero(session, payload);
+    const result = await pushAcceptedProposalToXero(session, payload, { skipRepeatingInvoices });
 
     if (!result.contactNote.updated) {
       warnings.push('Contact note was not written to Xero — check contact matching.');
@@ -161,6 +220,32 @@ export async function pushProposalToXero(
       ...settings,
       lastPushAt: new Date().toISOString(),
     });
+
+    // Success record — the idempotency marker for future pushes.
+    const succeeded =
+      result.repeatingInvoice.created > 0 || (skipRepeatingInvoices && result.contactNote.updated);
+    if (succeeded) {
+      try {
+        await prisma.activityLog.create({
+          data: {
+            tenantId,
+            action: XERO_PROPOSAL_PUSHED_ACTION,
+            entityType: 'PROPOSAL',
+            entityId: proposalId,
+            proposalId,
+            description: `Pushed proposal ${proposal.reference} to Xero`,
+            metadata: JSON.stringify({
+              proposalId,
+              repeatingInvoiceIds: result.repeatingInvoice.repeatingInvoiceIds,
+              contactId: result.contactNote.contactId,
+              syncMode: skipRepeatingInvoices ? 'paid_invoices' : 'repeating_draft',
+            }),
+          },
+        });
+      } catch (logErr) {
+        logger.warn('Failed to record Xero push activity', logErr);
+      }
+    }
 
     return {
       mode: 'live',
@@ -178,14 +263,22 @@ export async function pushProposalToXero(
 
 /**
  * Fire-and-forget hook after proposal acceptance — never throws to caller.
+ * Only pushes when Xero OAuth is configured, the tenant is connected, and
+ * auto-push is enabled (autoPushOnAcceptance, default true).
  */
 export async function triggerXeroPushOnAcceptance(
   tenantId: string,
   proposalId: string
 ): Promise<void> {
   try {
+    if (!isXeroOAuthConfigured()) return;
+    const settings = await getTenantXeroSettings(tenantId);
+    if (!settings?.connected || settings.autoPushOnAcceptance === false) return;
+
     const result = await pushProposalToXero(tenantId, proposalId);
-    if (result.warnings.length) {
+    if (result.skipped) {
+      logger.info(`Xero push skipped for proposal ${proposalId} — already pushed`);
+    } else if (result.warnings.length) {
       logger.warn(`Xero push warnings for proposal ${proposalId}:`, result.warnings);
     } else {
       logger.info(`Xero push completed for proposal ${proposalId} (${result.mode})`);

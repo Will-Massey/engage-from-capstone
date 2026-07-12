@@ -436,6 +436,14 @@ export async function recordElectronicSignature(
       logger.warn('Failed to trigger touchpoint workflow on proposal acceptance', e);
     }
 
+    // Accounting sync — fire-and-forget; gated on tenant connection + auto-push setting
+    try {
+      const { triggerXeroPushOnAcceptance } = await import('./xeroProposalPush.js');
+      void triggerXeroPushOnAcceptance(data.tenantId, data.proposalId);
+    } catch (e) {
+      logger.warn('Failed to trigger Xero push on proposal acceptance', e);
+    }
+
     // Clara post-sign onboarding checklist (stored on proposal customFields + activity log)
     try {
       const { generateAndStoreOnboardingChecklist } =

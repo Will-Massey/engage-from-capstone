@@ -77,12 +77,12 @@ turnover clients," from ≥ N contributing firms.
 
 ## Phase R4 — Complete the loop (fast follows)
 
-| ID   | Deliverable                                                              | Status/Notes                                            |
-| ---- | ------------------------------------------------------------------------ | ------------------------------------------------------- |
-| R4.1 | Deep Xero/QBO sync — push **recurring invoices**, not just contact notes | Xero scaffold done; **blocked on OAuth creds** for live |
-| R4.2 | Partner approval workflow (junior drafts → partner approves → send)      | pure app logic; unblocked                               |
-| R4.3 | 100+ ICAEW/ACCA-aligned engagement templates                             | content; #1 onboarding-drop-off fix                     |
-| R4.4 | Mobile signing polish + Clara FAQ on public sign page                    |                                                         |
+| ID   | Deliverable                                                              | Status/Notes                                                                                        |
+| ---- | ------------------------------------------------------------------------ | --------------------------------------------------------------------------------------------------- |
+| R4.1 | Deep Xero/QBO sync — push **recurring invoices**, not just contact notes | built (auto-push + paid-invoice mirror + real QBO OAuth); creds-ready — see docs/XERO_QBO_GOLIVE.md |
+| R4.2 | Partner approval workflow (junior drafts → partner approves → send)      | pure app logic; unblocked                                                                           |
+| R4.3 | 100+ ICAEW/ACCA-aligned engagement templates                             | content; #1 onboarding-drop-off fix                                                                 |
+| R4.4 | Mobile signing polish + Clara FAQ on public sign page                    |                                                                                                     |
 
 ## Phase R5 — Beyond parity (true differentiators)
 

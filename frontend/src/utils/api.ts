@@ -133,10 +133,14 @@ import type {
 } from '../types/firmGroup';
 import type {
   DisconnectIntegrationResult,
+  ImportQuickBooksClientsPayload,
+  ImportQuickBooksClientsResult,
   ImportXeroClientsPayload,
   ImportXeroClientsResult,
   OAuthConnectResult,
+  QuickBooksProposalPushResult,
   QuickBooksStatusResult,
+  UpdateXeroSettingsPayload,
   XeroProposalPushResult,
   XeroStatusResult,
 } from '../types/integrations';
@@ -990,12 +994,15 @@ export const apiClient = {
     >;
   },
 
-  pushAcceptedProposalToXero: (proposalId: string) =>
-    api.post(`/xero/push-accepted/${proposalId}`, {}) as Promise<
+  pushAcceptedProposalToXero: (proposalId: string, force = false) =>
+    api.post(`/xero/push-accepted/${proposalId}${force ? '?force=true' : ''}`, {}) as Promise<
       ApiResponse<XeroProposalPushResult>
     >,
 
-  // QuickBooks integration (W4.7 scaffold)
+  updateXeroSettings: (payload: UpdateXeroSettingsPayload) =>
+    api.post('/xero/settings', payload) as Promise<ApiResponse<XeroStatusResult>>,
+
+  // QuickBooks integration (R4.1)
   getQuickBooksStatus: () =>
     api.get('/quickbooks/status') as Promise<ApiResponse<QuickBooksStatusResult>>,
 
@@ -1004,6 +1011,18 @@ export const apiClient = {
 
   disconnectQuickBooks: () =>
     api.post('/quickbooks/disconnect', {}) as Promise<DisconnectIntegrationResult>,
+
+  importQuickBooksClients: (dryRun = false) => {
+    const payload: ImportQuickBooksClientsPayload = { dryRun };
+    return api.post('/quickbooks/import-clients', payload) as Promise<
+      ApiResponse<ImportQuickBooksClientsResult>
+    >;
+  },
+
+  pushProposalToQuickBooks: (proposalId: string, force = false) =>
+    api.post(`/quickbooks/push-proposal/${proposalId}${force ? '?force=true' : ''}`, {}) as Promise<
+      ApiResponse<QuickBooksProposalPushResult>
+    >,
 
   // W4.1 fee benchmarks (R3: optional turnover band + your-fee comparison)
   getFeeBenchmarks: (params?: FeeBenchmarksParams) =>

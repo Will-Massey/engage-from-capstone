@@ -159,6 +159,22 @@ export async function handleRecurringInvoicePaid(invoice: InvoiceLike): Promise<
     subscriptionId,
     amountPaid: invoice.amount_paid,
   });
+
+  // Accounting mirror (Xero paid_invoices mode / QuickBooks) — fire-and-forget;
+  // a sync failure must never fail the Stripe webhook.
+  if (invoice.id && typeof invoice.amount_paid === 'number' && invoice.amount_paid > 0) {
+    try {
+      const { syncPaidStripeInvoice } = await import('./accountingPaidInvoiceSync.js');
+      void syncPaidStripeInvoice({
+        tenantId,
+        proposalId,
+        stripeInvoiceId: invoice.id,
+        amountPaidPence: invoice.amount_paid,
+      }).catch((err) => logger.warn('Paid-invoice accounting sync failed', err));
+    } catch (err) {
+      logger.warn('Paid-invoice accounting sync failed to start', err);
+    }
+  }
 }
 
 /** invoice.payment_failed — recurring payment failed (dunning signal). */
