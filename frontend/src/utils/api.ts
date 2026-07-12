@@ -108,6 +108,7 @@ import type {
   AmlCheckResult,
   AmlClientStatus,
   AmlOnboardingContext,
+  AmlUsageSummary,
   InitiateAmlCheckPayload,
   RegulatoryCheckResult,
   SubmitAmlOnboardingPayload,
@@ -786,6 +787,9 @@ export const apiClient = {
 
   getAmlStatus: (clientId: string) =>
     api.get(`/aml/status/${clientId}`) as Promise<ApiResponse<AmlClientStatus>>,
+
+  getAmlUsage: (month?: string) =>
+    api.get(`/aml/usage${month ? `?month=${month}` : ''}`) as Promise<ApiResponse<AmlUsageSummary>>,
 
   getRegulatoryCheck: (clientId: string) =>
     api.get(`/regulatory/check/${clientId}`) as Promise<ApiResponse<RegulatoryCheckResult>>,
