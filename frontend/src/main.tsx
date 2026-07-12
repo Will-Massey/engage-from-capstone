@@ -72,11 +72,11 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
             },
             loading: {
               iconTheme: {
-                primary: '#6366f1',
+                primary: '#2563eb',
                 secondary: '#fff',
               },
               style: {
-                borderLeft: '4px solid #6366f1',
+                borderLeft: '4px solid #2563eb',
               },
             },
           }}

@@ -433,8 +433,8 @@ export default function PricingCalculator({ compact = false }: PricingCalculator
               </div>
 
               {explanation && (
-                <div className="p-3 rounded-lg bg-purple-50 dark:bg-purple-900/20 border border-purple-100 dark:border-purple-800/40 text-sm text-slate-700 dark:text-slate-300">
-                  <div className="flex items-center gap-1 text-xs font-medium text-purple-700 dark:text-purple-300 mb-1">
+                <div className="p-3 rounded-lg bg-primary-50 dark:bg-primary-900/20 border border-primary-100 dark:border-primary-800/40 text-sm text-slate-700 dark:text-slate-300">
+                  <div className="flex items-center gap-1 text-xs font-medium text-primary-700 dark:text-primary-300 mb-1">
                     <SparklesIcon className="h-3.5 w-3.5" />
                     Clara
                   </div>

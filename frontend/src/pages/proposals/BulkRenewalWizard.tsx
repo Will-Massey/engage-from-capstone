@@ -594,7 +594,7 @@ export default function BulkRenewalWizard() {
               />
               <div>
                 <span className="flex items-center gap-1.5 font-medium text-slate-900 dark:text-white text-sm">
-                  <SparklesIcon className="h-4 w-4 text-purple-500" />
+                  <SparklesIcon className="h-4 w-4 text-primary-500" />
                   Draft cover letters with Clara (AI)
                 </span>
                 <p className="text-xs text-slate-500 mt-1">
@@ -636,7 +636,7 @@ export default function BulkRenewalWizard() {
                 </p>
               )}
               {useAiCoverLetter && (
-                <p className="mt-1 text-purple-700 dark:text-purple-300">
+                <p className="mt-1 text-primary-700 dark:text-primary-300">
                   AI cover letters enabled
                 </p>
               )}

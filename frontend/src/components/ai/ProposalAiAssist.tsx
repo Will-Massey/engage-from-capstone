@@ -179,7 +179,7 @@ export default function ProposalAiAssist({ proposal, onUpdated }: ProposalAiAssi
                 onClick={() => setFollowUpTone(t)}
                 className={`text-xs px-2 py-1 rounded-full capitalize ${
                   followUpTone === t
-                    ? 'bg-violet-600 text-white'
+                    ? 'bg-primary-600 text-white'
                     : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300'
                 }`}
               >
@@ -228,7 +228,7 @@ export default function ProposalAiAssist({ proposal, onUpdated }: ProposalAiAssi
             type="button"
             onClick={() => generateEngagementLetter(true)}
             disabled={engagementLoading}
-            className="mt-2 text-xs px-2 py-1 rounded-lg border border-violet-300 dark:border-violet-700 text-violet-700 dark:text-violet-300 hover:bg-violet-50 dark:hover:bg-violet-950/30 disabled:opacity-50"
+            className="mt-2 text-xs px-2 py-1 rounded-lg border border-primary-300 dark:border-primary-700 text-primary-700 dark:text-primary-300 hover:bg-primary-50 dark:hover:bg-primary-950/30 disabled:opacity-50"
           >
             Assemble with {AI_COPILOT.name} introduction
           </button>
@@ -280,7 +280,7 @@ export default function ProposalAiAssist({ proposal, onUpdated }: ProposalAiAssi
           {renewalDraft && (
             <div className="mt-2 space-y-2">
               {renewalDraft.renewalNarrative && (
-                <p className="text-xs text-violet-600 dark:text-violet-400">
+                <p className="text-xs text-primary-600 dark:text-primary-400">
                   {renewalDraft.renewalNarrative}
                 </p>
               )}

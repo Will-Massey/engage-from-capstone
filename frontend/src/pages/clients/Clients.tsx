@@ -66,9 +66,9 @@ const Clients = () => {
       case 'SOLE_TRADER':
         return <UserIcon className="h-5 w-5 text-green-500" />;
       case 'PARTNERSHIP':
-        return <UsersIcon className="h-5 w-5 text-purple-500" />;
+        return <UsersIcon className="h-5 w-5 text-primary-500" />;
       case 'LLP':
-        return <BuildingOfficeIcon className="h-5 w-5 text-indigo-500" />;
+        return <BuildingOfficeIcon className="h-5 w-5 text-primary-500" />;
       case 'CHARITY':
       case 'NON_PROFIT':
         return <HomeIcon className="h-5 w-5 text-pink-500" />;
@@ -90,9 +90,9 @@ const Clients = () => {
           : /ENGAGEMENT/.test(stage)
             ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300'
             : /ONBOARD|KICKOFF/.test(stage)
-              ? 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300'
+              ? 'bg-primary-100 text-primary-700 dark:bg-primary-900/30 dark:text-primary-300'
               : /MILESTONE|REVIEW/.test(stage)
-                ? 'bg-indigo-100 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-300'
+                ? 'bg-primary-100 text-primary-700 dark:bg-primary-900/30 dark:text-primary-300'
                 : 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300';
 
     return (
@@ -118,7 +118,7 @@ const Clients = () => {
       </div>
 
       {/* MTD ITSA Alert */}
-      <div className="bg-gradient-to-r from-blue-500 to-indigo-500 rounded-lg p-4 text-white">
+      <div className="bg-gradient-to-r from-blue-500 to-primary-500 rounded-lg p-4 text-white">
         <div className="flex items-start">
           <ClockIcon className="h-6 w-6 mt-0.5 flex-shrink-0" />
           <div className="ml-3">

@@ -46,9 +46,9 @@ export default function ClaraEmptyTip({ context, fallback, className = '' }: Cla
 
   return (
     <div
-      className={`p-3 rounded-lg bg-violet-50 dark:bg-violet-950/30 border border-violet-100 dark:border-violet-900 text-left ${className}`}
+      className={`p-3 rounded-lg bg-primary-50 dark:bg-primary-950/30 border border-primary-100 dark:border-primary-900 text-left ${className}`}
     >
-      <div className="flex items-center gap-1.5 text-xs font-medium text-violet-600 dark:text-violet-400 mb-1">
+      <div className="flex items-center gap-1.5 text-xs font-medium text-primary-600 dark:text-primary-400 mb-1">
         <SparklesIcon className="h-3.5 w-3.5" />
         Clara suggests
       </div>

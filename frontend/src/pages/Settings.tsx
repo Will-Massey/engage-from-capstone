@@ -1540,7 +1540,7 @@ const Settings = () => {
               {/* Clara & AI budget visibility (polish + transparency) */}
               <div className="glass-tile p-8">
                 <div className="flex items-center gap-3 mb-5">
-                  <SparklesIcon className="h-6 w-6 text-violet-600 dark:text-violet-400" />
+                  <SparklesIcon className="h-6 w-6 text-primary-600 dark:text-primary-400" />
                   <div>
                     <h2 className="text-lg font-semibold text-slate-900 dark:text-white">
                       Clara &amp; AI
@@ -1591,7 +1591,7 @@ const Settings = () => {
                           aria-valuemax={100}
                         >
                           <div
-                            className="h-2.5 rounded-full transition-all bg-violet-600 dark:bg-violet-500"
+                            className="h-2.5 rounded-full transition-all bg-primary-600 dark:bg-primary-500"
                             style={{ width: `${pct}%` }}
                           />
                         </div>
@@ -2343,7 +2343,7 @@ const Settings = () => {
                 {/* MTD explainer — how clauses appear in generated letters */}
                 <div className="pt-6 border-t border-slate-200 dark:border-slate-700">
                   <div className="flex items-start gap-3">
-                    <SparklesIcon className="h-5 w-5 text-violet-600 dark:text-violet-400 shrink-0 mt-0.5" />
+                    <SparklesIcon className="h-5 w-5 text-primary-600 dark:text-primary-400 shrink-0 mt-0.5" />
                     <div>
                       <h3 className="text-sm font-semibold text-slate-900 dark:text-white">
                         Making Tax Digital (MTD) in proposals
@@ -2369,7 +2369,7 @@ const Settings = () => {
                         </p>
                         <p className="text-xs text-slate-500 dark:text-slate-400">
                           Regulatory alerts for live proposals appear on the dashboard and via{' '}
-                          <code className="text-violet-600 dark:text-violet-400">
+                          <code className="text-primary-600 dark:text-primary-400">
                             /api/ai/regulatory-alerts
                           </code>
                           .

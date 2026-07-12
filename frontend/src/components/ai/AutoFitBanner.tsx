@@ -185,7 +185,7 @@ export default function AutoFitBanner({
       case 'coverLetter':
         return (
           <div className="space-y-1">
-            <span className="text-[10px] uppercase tracking-wide text-violet-600 dark:text-violet-400">
+            <span className="text-[10px] uppercase tracking-wide text-primary-600 dark:text-primary-400">
               Tone: {result.coverLetterTone}
             </span>
             <p className="text-sm text-slate-700 dark:text-slate-200 whitespace-pre-wrap max-h-32 overflow-y-auto">
@@ -207,12 +207,12 @@ export default function AutoFitBanner({
   };
 
   return (
-    <div className="rounded-2xl border border-violet-300/70 dark:border-violet-700/60 bg-gradient-to-r from-violet-50 via-white to-indigo-50/80 dark:from-violet-950/50 dark:via-slate-900/60 dark:to-indigo-950/30 p-4 shadow-sm mb-6">
+    <div className="rounded-2xl border border-primary-300/70 dark:border-primary-700/60 bg-gradient-to-r from-primary-50 via-white to-primary-50/80 dark:from-primary-950/50 dark:via-slate-900/60 dark:to-primary-950/30 p-4 shadow-sm mb-6">
       <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
         <div className="flex items-start gap-3 min-w-0">
-          <div className="p-2 rounded-xl bg-violet-500/15 border border-violet-400/25 shrink-0">
+          <div className="p-2 rounded-xl bg-primary-500/15 border border-primary-400/25 shrink-0">
             <SparklesIcon
-              className={`h-5 w-5 text-violet-600 dark:text-violet-400 ${loading ? 'animate-pulse' : ''}`}
+              className={`h-5 w-5 text-primary-600 dark:text-primary-400 ${loading ? 'animate-pulse' : ''}`}
             />
           </div>
           <div className="min-w-0">
@@ -288,17 +288,17 @@ export default function AutoFitBanner({
           {visibleSections.map((key) => (
             <div
               key={key}
-              className="rounded-xl border border-violet-100 dark:border-violet-900/50 bg-white/70 dark:bg-slate-900/50 p-3"
+              className="rounded-xl border border-primary-100 dark:border-primary-900/50 bg-white/70 dark:bg-slate-900/50 p-3"
             >
               <div className="flex items-center justify-between gap-2 mb-2">
-                <span className="text-xs font-semibold text-violet-700 dark:text-violet-300">
+                <span className="text-xs font-semibold text-primary-700 dark:text-primary-300">
                   {SECTION_LABELS[key]}
                 </span>
                 <div className="flex items-center gap-1.5">
                   <button
                     type="button"
                     onClick={() => acceptSection(key)}
-                    className="text-[10px] px-2 py-0.5 rounded-full bg-violet-100 dark:bg-violet-900/40 text-violet-700 dark:text-violet-200 hover:bg-violet-200 dark:hover:bg-violet-800/50"
+                    className="text-[10px] px-2 py-0.5 rounded-full bg-primary-100 dark:bg-primary-900/40 text-primary-700 dark:text-primary-200 hover:bg-primary-200 dark:hover:bg-primary-800/50"
                   >
                     Accept
                   </button>
@@ -318,9 +318,9 @@ export default function AutoFitBanner({
       )}
 
       {reviewMode && result && currentSection && (
-        <div className="mt-4 rounded-xl border border-violet-200 dark:border-violet-800 bg-white/80 dark:bg-slate-900/60 p-4">
+        <div className="mt-4 rounded-xl border border-primary-200 dark:border-primary-800 bg-white/80 dark:bg-slate-900/60 p-4">
           <div className="flex items-center justify-between mb-3">
-            <p className="text-xs font-medium text-violet-700 dark:text-violet-300">
+            <p className="text-xs font-medium text-primary-700 dark:text-primary-300">
               Section {reviewIndex + 1} of {visibleSections.length}:{' '}
               {SECTION_LABELS[currentSection]}
             </p>

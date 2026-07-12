@@ -469,11 +469,11 @@ export default function ProposalWizard() {
             ? 'border-green-300 dark:border-green-800 bg-green-50/50 dark:bg-green-950/20'
             : decision === 'rejected'
               ? 'border-slate-200 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-800/30 opacity-70'
-              : 'border-violet-200 dark:border-violet-800 bg-white/70 dark:bg-slate-900/50'
+              : 'border-primary-200 dark:border-primary-800 bg-white/70 dark:bg-slate-900/50'
         }`}
       >
         <div className="flex items-center justify-between gap-2 mb-2">
-          <span className="text-xs font-semibold text-violet-700 dark:text-violet-300">
+          <span className="text-xs font-semibold text-primary-700 dark:text-primary-300">
             {SECTION_LABELS[section]}
           </span>
           {decision !== 'pending' && (
@@ -545,9 +545,9 @@ export default function ProposalWizard() {
               disabled={s.id > step}
               className={`flex items-center gap-1.5 px-2 sm:px-3 py-1.5 rounded-full text-xs font-medium transition-colors ${
                 step === s.id
-                  ? 'bg-violet-600 text-white'
+                  ? 'bg-primary-600 text-white'
                   : s.id < step
-                    ? 'bg-violet-100 dark:bg-violet-900/40 text-violet-700 dark:text-violet-200 cursor-pointer hover:bg-violet-200'
+                    ? 'bg-primary-100 dark:bg-primary-900/40 text-primary-700 dark:text-primary-200 cursor-pointer hover:bg-primary-200'
                     : 'bg-slate-100 dark:bg-slate-800 text-slate-400'
               }`}
             >
@@ -558,7 +558,7 @@ export default function ProposalWizard() {
             </button>
             {idx < WIZARD_STEPS.length - 1 && (
               <div
-                className={`w-4 sm:w-8 h-0.5 mx-0.5 ${s.id < step ? 'bg-violet-400' : 'bg-slate-200 dark:bg-slate-700'}`}
+                className={`w-4 sm:w-8 h-0.5 mx-0.5 ${s.id < step ? 'bg-primary-400' : 'bg-slate-200 dark:bg-slate-700'}`}
               />
             )}
           </div>
@@ -612,9 +612,9 @@ export default function ProposalWizard() {
                         key={c.id}
                         type="button"
                         onClick={() => selectClient(c)}
-                        className={`text-left rounded-xl border p-4 transition-all hover:border-violet-400 hover:shadow-sm ${
+                        className={`text-left rounded-xl border p-4 transition-all hover:border-primary-400 hover:shadow-sm ${
                           selectedClient?.id === c.id
-                            ? 'border-violet-500 bg-violet-50/50 dark:bg-violet-950/20'
+                            ? 'border-primary-500 bg-primary-50/50 dark:bg-primary-950/20'
                             : 'border-slate-200 dark:border-slate-700'
                         }`}
                       >
@@ -659,9 +659,9 @@ export default function ProposalWizard() {
         {step === 2 && selectedClient && (
           <div className="space-y-5 animate-fade-in">
             <div className="flex items-start gap-3">
-              <div className="p-2 rounded-xl bg-violet-500/15">
+              <div className="p-2 rounded-xl bg-primary-500/15">
                 <SparklesIcon
-                  className={`h-5 w-5 text-violet-600 dark:text-violet-400 ${autoFitLoading ? 'animate-pulse' : ''}`}
+                  className={`h-5 w-5 text-primary-600 dark:text-primary-400 ${autoFitLoading ? 'animate-pulse' : ''}`}
                 />
               </div>
               <div>
@@ -676,7 +676,7 @@ export default function ProposalWizard() {
 
             {autoFitLoading && (
               <div className="text-center py-12 text-slate-500">
-                <SparklesIcon className="h-8 w-8 mx-auto mb-3 animate-pulse text-violet-500" />
+                <SparklesIcon className="h-8 w-8 mx-auto mb-3 animate-pulse text-primary-500" />
                 {AI_COPILOT.name} is analysing {selectedClient.name}…
               </div>
             )}
@@ -807,7 +807,7 @@ export default function ProposalWizard() {
                 </div>
 
                 {pricingNotes && (
-                  <p className="text-xs text-violet-700 dark:text-violet-300 bg-violet-50 dark:bg-violet-950/30 p-3 rounded-lg">
+                  <p className="text-xs text-primary-700 dark:text-primary-300 bg-primary-50 dark:bg-primary-950/30 p-3 rounded-lg">
                     {pricingNotes}
                   </p>
                 )}
@@ -971,8 +971,8 @@ export default function ProposalWizard() {
         {/* Step 5: Send */}
         {step === 5 && selectedClient && (
           <div className="space-y-5 animate-fade-in text-center max-w-lg mx-auto py-4">
-            <div className="p-4 rounded-2xl bg-gradient-to-br from-violet-50 to-indigo-50 dark:from-violet-950/40 dark:to-indigo-950/30 border border-violet-200 dark:border-violet-800">
-              <PaperAirplaneIcon className="h-10 w-10 mx-auto text-violet-600 dark:text-violet-400 mb-3" />
+            <div className="p-4 rounded-2xl bg-gradient-to-br from-primary-50 to-primary-50 dark:from-primary-950/40 dark:to-primary-950/30 border border-primary-200 dark:border-primary-800">
+              <PaperAirplaneIcon className="h-10 w-10 mx-auto text-primary-600 dark:text-primary-400 mb-3" />
               <h2 className="text-lg font-semibold text-slate-900 dark:text-white">
                 Ready to send
               </h2>
@@ -1007,7 +1007,7 @@ export default function ProposalWizard() {
                 type="button"
                 onClick={handleSend}
                 disabled={sending || saving}
-                className="btn-primary inline-flex items-center justify-center gap-2 bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-700 hover:to-indigo-700"
+                className="btn-primary inline-flex items-center justify-center gap-2"
               >
                 <PaperAirplaneIcon className="h-4 w-4" />
                 {sending ? 'Sending…' : 'Create & send proposal'}

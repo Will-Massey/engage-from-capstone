@@ -123,7 +123,7 @@ const Header = ({ onMenuClick }: HeaderProps) => {
             >
               <div
                 className="w-8 h-8 rounded-full flex items-center justify-center text-white text-sm font-medium shrink-0"
-                style={{ background: 'linear-gradient(135deg, #6366F1 0%, #8B5CF6 100%)' }}
+                style={{ background: 'linear-gradient(135deg, #2563EB 0%, #3B82F6 100%)' }}
               >
                 {user?.firstName?.charAt(0)}
               </div>

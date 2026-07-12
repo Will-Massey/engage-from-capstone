@@ -194,7 +194,7 @@ const ClientDetail = () => {
             <p className="text-sm text-slate-600">
               {client.companyType?.replace(/_/g, ' ')} • {client.industry || 'No industry set'}
               {client.clientRelationship && (
-                <span className="ml-2 text-xs font-medium text-violet-700 dark:text-violet-300">
+                <span className="ml-2 text-xs font-medium text-primary-700 dark:text-primary-300">
                   • {client.clientRelationship === 'EXISTING' ? 'Existing client' : 'New client'}
                 </span>
               )}
@@ -765,12 +765,12 @@ const STAGE_COLORS: Record<string, string> = {
   ENGAGEMENT_LETTER_SIGNED: 'bg-blue-100 text-blue-700',
   INFO_REQUESTED: 'bg-orange-100 text-orange-700',
   INFO_RECEIVED: 'bg-emerald-100 text-emerald-700',
-  ONBOARDING_SETUP: 'bg-purple-100 text-purple-700',
+  ONBOARDING_SETUP: 'bg-primary-100 text-primary-700',
   KICKOFF_SENT: 'bg-emerald-100 text-emerald-700',
-  MILESTONE_CHECK_IN: 'bg-indigo-100 text-indigo-700',
+  MILESTONE_CHECK_IN: 'bg-primary-100 text-primary-700',
   SATISFACTION_CHECK: 'bg-pink-100 text-pink-700',
   ONGOING: 'bg-slate-100 text-slate-700',
-  ANNUAL_REVIEW: 'bg-violet-100 text-violet-700',
+  ANNUAL_REVIEW: 'bg-primary-100 text-primary-700',
 };
 
 function LifecyclePanel({ client, onRefresh }: { client: any; onRefresh: () => void }) {

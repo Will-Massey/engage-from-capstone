@@ -66,7 +66,7 @@ export default function AuditTab() {
       {/* Summary stats */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         <div className="glass-tile p-4 text-center">
-          <p className="text-2xl font-bold text-purple-600 tabular-nums">{clientOpenCount}</p>
+          <p className="text-2xl font-bold text-primary-600 tabular-nums">{clientOpenCount}</p>
           <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">Client opens</p>
         </div>
         <div className="glass-tile p-4 text-center">
@@ -314,9 +314,9 @@ export default function AuditTab() {
               let highlight = '';
 
               if (isView) {
-                icon = <EyeIcon className="h-4 w-4 text-purple-600" />;
+                icon = <EyeIcon className="h-4 w-4 text-primary-600" />;
                 label = 'Client viewed the proposal';
-                highlight = 'text-purple-700 dark:text-purple-300';
+                highlight = 'text-primary-700 dark:text-primary-300';
               } else if (isSigned) {
                 icon = <PencilSquareIcon className="h-4 w-4 text-emerald-600" />;
                 const who =

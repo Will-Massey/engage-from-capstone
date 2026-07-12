@@ -284,8 +284,8 @@ const Dashboard = () => {
       change: `${stats.viewRate}% viewed · ${stats.signRate}% signed`,
       trend: stats.conversionRate > 0 ? ('up' as const) : ('neutral' as const),
       icon: ChartBarIcon,
-      color: 'from-purple-500 to-purple-600',
-      bgGradient: 'from-purple-500/10 to-purple-600/5',
+      color: 'from-ink-700 to-ink-900',
+      bgGradient: 'from-ink-700/10 to-ink-900/5',
     },
     {
       name: 'Total Clients',
@@ -318,7 +318,7 @@ const Dashboard = () => {
       />
 
       {sentProposalCount === 0 && (
-        <div className="rounded-2xl border border-violet-200/80 dark:border-violet-800/60 bg-gradient-to-r from-violet-50/90 via-white to-indigo-50/70 dark:from-violet-950/40 dark:via-slate-900/50 dark:to-indigo-950/30 p-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+        <div className="rounded-2xl border border-primary-200/80 dark:border-primary-800/60 bg-gradient-to-r from-primary-50/90 via-white to-primary-50/70 dark:from-primary-950/40 dark:via-slate-900/50 dark:to-primary-950/30 p-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
           <div>
             <p className="text-sm font-semibold text-slate-900 dark:text-white">
               Ready to send your first proposal?
@@ -521,7 +521,7 @@ const Dashboard = () => {
 
       {/* MTD ITSA Alert */}
       {stats.mtditsaClients > 0 && (
-        <div className="relative overflow-hidden rounded-xl bg-gradient-to-r from-blue-500 to-indigo-500 p-6 text-white shadow-lg">
+        <div className="relative overflow-hidden rounded-xl bg-ink-950 p-6 text-white shadow-lg">
           <div className="absolute top-0 right-0 -mt-4 -mr-4 w-24 h-24 bg-white/10 rounded-full blur-2xl"></div>
           <div className="absolute bottom-0 left-0 -mb-4 -ml-4 w-32 h-32 bg-white/10 rounded-full blur-2xl"></div>
           <div className="relative flex items-start">
@@ -587,7 +587,7 @@ const Dashboard = () => {
                         : activity.color === 'green'
                           ? 'bg-emerald-100/80 text-emerald-600 dark:bg-emerald-900/30 dark:text-emerald-300'
                           : activity.color === 'purple'
-                            ? 'bg-purple-100/80 text-purple-600 dark:bg-purple-900/30 dark:text-purple-300'
+                            ? 'bg-primary-100/80 text-primary-600 dark:bg-primary-900/30 dark:text-primary-300'
                             : activity.color === 'orange'
                               ? 'bg-amber-100/80 text-amber-600 dark:bg-amber-900/30 dark:text-amber-300'
                               : 'bg-slate-100/80 text-slate-600 dark:bg-slate-800/80 dark:text-slate-400'
@@ -746,9 +746,9 @@ const Dashboard = () => {
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
           <Link
             to="/proposals/wizard"
-            className="glass-tile group text-center hover:border-violet-300 dark:hover:border-violet-700"
+            className="glass-tile group text-center hover:border-primary-300 dark:hover:border-primary-700"
           >
-            <div className="w-14 h-14 mx-auto bg-gradient-to-br from-violet-500 to-indigo-600 text-white rounded-xl shadow-lg mb-3 group-hover:scale-110 transition-transform flex items-center justify-center">
+            <div className="w-14 h-14 mx-auto bg-gradient-to-br from-primary-500 to-primary-600 text-white rounded-xl shadow-lg mb-3 group-hover:scale-110 transition-transform flex items-center justify-center">
               <SparklesIcon className="h-7 w-7" />
             </div>
             <p className="text-sm font-medium text-slate-900 dark:text-slate-100">5-min wizard</p>
@@ -764,9 +764,9 @@ const Dashboard = () => {
           </Link>
           <Link
             to="/services"
-            className="glass-tile group text-center hover:border-purple-300 dark:hover:border-purple-700"
+            className="glass-tile group text-center hover:border-primary-300 dark:hover:border-primary-700"
           >
-            <div className="w-14 h-14 mx-auto bg-gradient-to-br from-purple-500 to-purple-600 text-white rounded-xl shadow-lg mb-3 group-hover:scale-110 transition-transform flex items-center justify-center">
+            <div className="w-14 h-14 mx-auto bg-gradient-to-br from-primary-500 to-primary-600 text-white rounded-xl shadow-lg mb-3 group-hover:scale-110 transition-transform flex items-center justify-center">
               <SparklesIcon className="h-7 w-7" />
             </div>
             <p className="text-sm font-medium text-slate-900 dark:text-slate-100">Services</p>

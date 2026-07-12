@@ -59,7 +59,7 @@ const UserFooter = ({ onLogout }: { onLogout: () => void }) => {
       <div className="flex items-center gap-3 min-w-0">
         <div
           className="w-10 h-10 rounded-full flex items-center justify-center text-white font-medium shrink-0"
-          style={{ background: 'linear-gradient(135deg, #6366F1 0%, #8B5CF6 100%)' }}
+          style={{ background: 'linear-gradient(135deg, #2563EB 0%, #3B82F6 100%)' }}
         >
           {user?.firstName?.charAt(0)}
           {user?.lastName?.charAt(0)}

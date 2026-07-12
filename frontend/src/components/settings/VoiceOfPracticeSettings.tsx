@@ -52,7 +52,7 @@ export default function VoiceOfPracticeSettings() {
   return (
     <div className="space-y-4">
       <div className="flex items-start gap-3">
-        <SparklesIcon className="h-6 w-6 text-violet-600 shrink-0" />
+        <SparklesIcon className="h-6 w-6 text-primary-600 shrink-0" />
         <div>
           <h4 className="font-medium text-slate-900 dark:text-white">Voice of practice</h4>
           <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">
@@ -75,8 +75,8 @@ export default function VoiceOfPracticeSettings() {
       </button>
 
       {styleHints && (
-        <div className="rounded-xl border border-violet-200 dark:border-violet-800/50 bg-violet-50/50 dark:bg-violet-950/20 p-4">
-          <p className="text-xs font-medium text-violet-800 dark:text-violet-200 uppercase tracking-wide">
+        <div className="rounded-xl border border-primary-200 dark:border-primary-800/50 bg-primary-50/50 dark:bg-primary-950/20 p-4">
+          <p className="text-xs font-medium text-primary-800 dark:text-primary-200 uppercase tracking-wide">
             Current style hints
           </p>
           <p className="text-sm text-slate-800 dark:text-slate-200 mt-2 whitespace-pre-wrap">

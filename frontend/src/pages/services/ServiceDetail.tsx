@@ -45,11 +45,11 @@ interface Service {
 
 const categoryColors: Record<string, string> = {
   COMPLIANCE: 'bg-blue-100 text-blue-800',
-  ADVISORY: 'bg-purple-100 text-purple-800',
+  ADVISORY: 'bg-primary-100 text-primary-800',
   TAX: 'bg-green-100 text-green-800',
   BOOKKEEPING: 'bg-yellow-100 text-yellow-800',
   CONSULTING: 'bg-pink-100 text-pink-800',
-  TECHNICAL: 'bg-indigo-100 text-indigo-800',
+  TECHNICAL: 'bg-primary-100 text-primary-800',
   SPECIALIZED: 'bg-orange-100 text-orange-800',
   PAYROLL: 'bg-cyan-100 text-cyan-800',
 };

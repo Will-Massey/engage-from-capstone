@@ -63,7 +63,7 @@ export default function ProposalHealthCard({ proposalId }: ProposalHealthCardPro
             <ul className="text-xs space-y-1.5 text-slate-600 dark:text-slate-300">
               {health.recommendedActions.map((a: string, i: number) => (
                 <li key={i} className="flex gap-2">
-                  <span className="text-violet-500">→</span>
+                  <span className="text-primary-500">→</span>
                   {a}
                 </li>
               ))}

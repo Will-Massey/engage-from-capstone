@@ -116,7 +116,7 @@ const SidebarNavItems = ({ pathname, onNavigate }: SidebarNavItemsProps) => {
           openAi();
           onNavigate?.();
         }}
-        className="mx-1 flex items-center justify-center gap-2 w-[calc(100%-0.5rem)] py-2.5 rounded-xl text-sm font-semibold bg-gradient-to-r from-violet-600/15 to-indigo-600/15 hover:from-violet-600/25 hover:to-indigo-600/25 border border-violet-400/40 text-violet-700 dark:text-violet-200 transition-all"
+        className="mx-1 flex items-center justify-center gap-2 w-[calc(100%-0.5rem)] py-2.5 rounded-xl text-sm font-semibold bg-gradient-to-r from-primary-600/15 to-primary-600/15 hover:from-primary-600/25 hover:to-primary-600/25 border border-primary-400/40 text-primary-700 dark:text-primary-200 transition-all"
       >
         <SparklesIcon className="h-5 w-5" />
         {AI_COPILOT.name}

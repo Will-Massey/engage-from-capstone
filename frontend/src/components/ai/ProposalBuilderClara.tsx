@@ -205,9 +205,9 @@ export default function ProposalBuilderClara({
 
   return (
     <aside className="lg:sticky lg:top-6 h-fit space-y-4 print:hidden">
-      <div className="rounded-2xl border border-violet-200 dark:border-violet-800/60 bg-gradient-to-br from-violet-50 to-white dark:from-violet-950/40 dark:to-slate-900/60 p-4 shadow-sm">
+      <div className="rounded-2xl border border-primary-200 dark:border-primary-800/60 bg-gradient-to-br from-primary-50 to-white dark:from-primary-950/40 dark:to-slate-900/60 p-4 shadow-sm">
         <div className="flex items-center gap-2 mb-1">
-          <SparklesIcon className="h-5 w-5 text-violet-600 dark:text-violet-400" />
+          <SparklesIcon className="h-5 w-5 text-primary-600 dark:text-primary-400" />
           <h3 className="font-semibold text-slate-900 dark:text-white">{AI_COPILOT.name}</h3>
         </div>
         <p className="text-xs text-slate-600 dark:text-slate-400 mb-3">
@@ -266,10 +266,10 @@ export default function ProposalBuilderClara({
             >
               {titleSuggestion && (
                 <div className="space-y-2">
-                  <p className="text-[10px] uppercase tracking-wide text-violet-600 dark:text-violet-400 font-medium">
+                  <p className="text-[10px] uppercase tracking-wide text-primary-600 dark:text-primary-400 font-medium">
                     Suggested title — review before applying
                   </p>
-                  <p className="text-sm font-medium text-slate-800 dark:text-slate-100 rounded-lg bg-white/80 dark:bg-slate-900/60 p-3 border border-violet-100 dark:border-violet-900">
+                  <p className="text-sm font-medium text-slate-800 dark:text-slate-100 rounded-lg bg-white/80 dark:bg-slate-900/60 p-3 border border-primary-100 dark:border-primary-900">
                     {titleSuggestion}
                   </p>
                   <div className="flex gap-2">
@@ -339,10 +339,10 @@ export default function ProposalBuilderClara({
                         return (
                           <li
                             key={i}
-                            className="rounded-lg border border-violet-100 dark:border-violet-900/50 bg-white/70 dark:bg-slate-900/50 p-2.5"
+                            className="rounded-lg border border-primary-100 dark:border-primary-900/50 bg-white/70 dark:bg-slate-900/50 p-2.5"
                           >
                             <p className="flex gap-2">
-                              <span className="text-violet-500 shrink-0">→</span>
+                              <span className="text-primary-500 shrink-0">→</span>
                               {a}
                             </p>
                             <div className="flex flex-wrap gap-1.5 mt-2 ml-5">
@@ -350,7 +350,7 @@ export default function ProposalBuilderClara({
                                 <button
                                   type="button"
                                   onClick={() => applyRecommendedAction(a, i)}
-                                  className="text-[10px] px-2 py-0.5 rounded-full bg-violet-100 dark:bg-violet-900/40 text-violet-700 dark:text-violet-200 hover:bg-violet-200 dark:hover:bg-violet-800/50 inline-flex items-center gap-1"
+                                  className="text-[10px] px-2 py-0.5 rounded-full bg-primary-100 dark:bg-primary-900/40 text-primary-700 dark:text-primary-200 hover:bg-primary-200 dark:hover:bg-primary-800/50 inline-flex items-center gap-1"
                                 >
                                   <CheckIcon className="h-3 w-3" />
                                   Accept
