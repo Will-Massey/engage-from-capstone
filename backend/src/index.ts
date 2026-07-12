@@ -40,6 +40,7 @@ import {
   scheduleEmailAutomation,
   scheduleDisputeReconciliation,
   scheduleRegulatoryScan,
+  scheduleClaraAgenticDrafting,
 } from './app/jobs.js';
 import { registerProcessHandlers } from './app/shutdown.js';
 
@@ -140,6 +141,7 @@ if (shouldStartServer) {
     scheduleEmailAutomation();
     scheduleDisputeReconciliation();
     scheduleRegulatoryScan();
+    scheduleClaraAgenticDrafting();
     initEngageSuperadmin();
 
     if (isSuperadminSyncConfigured()) {

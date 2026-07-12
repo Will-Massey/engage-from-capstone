@@ -21,7 +21,7 @@ import { VALID_BILLING_FREQUENCIES } from '../../utils/proposalPricing.js';
 import { AI_COPILOT } from '../../config/aiCopilot.js';
 import { getVoiceOfPracticePromptContext } from '../voiceOfPracticeService.js';
 
-const UK_SYSTEM =
+export const UK_SYSTEM =
   AI_COPILOT.systemPersona +
   ' Use UK English spelling (organisation, specialised, favour). ' +
   'Be professional, concise, and accurate. Never invent statutory deadlines or fees. ' +
@@ -970,8 +970,11 @@ export async function executeQuickAction(
 }
 
 export interface AttentionQueueItem {
-  /** 'proposal' items link to /proposals/{proposalId}; 'regulatory' to /clients/{clientId} */
-  kind: 'proposal' | 'regulatory';
+  /**
+   * 'proposal' and 'clara_draft' items link to /proposals/{proposalId};
+   * 'regulatory' to /clients/{clientId}
+   */
+  kind: 'proposal' | 'regulatory' | 'clara_draft';
   proposalId?: string;
   /** RegulatorySignal id — set on kind 'regulatory' items (used to dismiss) */
   signalId?: string;
@@ -1132,7 +1135,7 @@ ${JSON.stringify(
   // Append top OPEN regulatory signals (R5.2) into the remaining slots so the
   // combined list stays ≤ 10. Copy is deterministic rule output — no AI call.
   try {
-    const slots = Math.max(0, 10 - items.length);
+    let slots = Math.max(0, 10 - items.length);
     if (slots > 0) {
       const signals = await prisma.regulatorySignal.findMany({
         where: { tenantId, status: 'OPEN' },
@@ -1160,6 +1163,62 @@ ${JSON.stringify(
           })
         );
       items.push(...regulatoryItems);
+      slots -= regulatoryItems.length;
+    }
+
+    // R5.1 — signals Clara has ACTIONED with a drafted proposal surface as
+    // 'clara_draft' items while the draft is still awaiting approval. They
+    // resolve via approve/reject, so there is no dismiss affordance.
+    if (slots > 0) {
+      const actioned = await prisma.regulatorySignal.findMany({
+        where: { tenantId, status: 'ACTIONED' },
+        include: { client: { select: { name: true } } },
+        orderBy: { lastEvaluatedAt: 'desc' },
+        take: 50,
+      });
+      const withDraft = actioned.flatMap((signal) => {
+        try {
+          const meta = JSON.parse(signal.metadata || '{}') as Record<string, unknown>;
+          return typeof meta.proposalId === 'string'
+            ? [{ signal, proposalId: meta.proposalId }]
+            : [];
+        } catch {
+          return [];
+        }
+      });
+      if (withDraft.length > 0) {
+        const drafts = await prisma.proposal.findMany({
+          where: {
+            tenantId,
+            id: { in: withDraft.map((x) => x.proposalId) },
+            status: 'DRAFT',
+            approvalStatus: 'PENDING',
+          },
+          select: { id: true, title: true, reference: true },
+        });
+        const draftById = new Map(drafts.map((d) => [d.id, d]));
+        const claraItems = withDraft
+          .filter(({ proposalId }) => draftById.has(proposalId))
+          .slice(0, slots)
+          .map(({ signal, proposalId }): AttentionQueueItem => {
+            const draft = draftById.get(proposalId)!;
+            return {
+              kind: 'clara_draft' as const,
+              proposalId,
+              signalId: signal.id,
+              clientId: signal.clientId,
+              reference: draft.reference,
+              title: draft.title,
+              clientName: signal.client.name,
+              status: 'DRAFT',
+              priorityScore: 70,
+              reason: 'Clara drafted a proposal — awaiting approval',
+              narrative: `Clara drafted: ${draft.title} — awaiting approval`,
+              recommendedAction: 'Review the draft in the approval queue and approve or reject it.',
+            };
+          });
+        items.push(...claraItems);
+      }
     }
   } catch (err) {
     logger.warn('Attention queue: failed to append regulatory signals', err);

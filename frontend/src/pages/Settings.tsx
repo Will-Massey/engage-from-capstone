@@ -155,6 +155,13 @@ const Settings = () => {
     },
   });
 
+  // Clara autopilot form state (agentic drafting — default OFF)
+  const [claraForm, setClaraForm] = useState({
+    agenticDraftingEnabled: false,
+    draftRenewals: true,
+    renewalUpliftPercent: 0,
+  });
+
   // Password form state
   const [passwordForm, setPasswordForm] = useState({
     currentPassword: '',
@@ -550,6 +557,16 @@ const Settings = () => {
             },
           }));
         }
+        if (data.clara) {
+          const c = data.clara as Record<string, unknown>;
+          setClaraForm((prev) => ({
+            ...prev,
+            agenticDraftingEnabled: c.agenticDraftingEnabled === true,
+            draftRenewals: c.draftRenewals !== false,
+            renewalUpliftPercent:
+              typeof c.renewalUpliftPercent === 'number' ? c.renewalUpliftPercent : 0,
+          }));
+        }
         if (data.vat) {
           setVatForm((prev) => ({
             ...prev,
@@ -595,6 +612,24 @@ const Settings = () => {
       })) as any;
       if (response.success) {
         toast.success('Communication settings saved');
+      } else {
+        toast.error(response.error?.message || 'Failed to save settings');
+      }
+    } catch (error: any) {
+      toast.error(error.message || 'Failed to save settings');
+    } finally {
+      setIsSaving(null);
+    }
+  };
+
+  const handleSaveClara = async () => {
+    setIsSaving('clara');
+    try {
+      const response = (await apiClient.updateTenantSettings({
+        clara: claraForm,
+      })) as any;
+      if (response.success) {
+        toast.success('Clara autopilot settings saved');
       } else {
         toast.error(response.error?.message || 'Failed to save settings');
       }
@@ -1785,6 +1820,95 @@ const Settings = () => {
                       className="btn-primary"
                     >
                       {isSaving === 'communications' ? 'Saving...' : 'Save proposal defaults'}
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              {/* Clara autopilot (agentic drafting) */}
+              <div className="glass-tile overflow-hidden">
+                <div className="px-8 py-5 border-b border-slate-200 dark:border-slate-700 bg-white/40 dark:bg-slate-800/30">
+                  <h2 className="text-lg font-semibold text-slate-900 dark:text-white">
+                    Clara autopilot
+                  </h2>
+                  <p className="text-sm text-slate-500 dark:text-slate-300">
+                    Clara drafts and prices proposals from regulatory signals and upcoming renewals,
+                    queued for partner approval. Nothing is ever sent automatically.
+                  </p>
+                </div>
+                <div className="p-6 space-y-4">
+                  <label className="flex items-start gap-3 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={claraForm.agenticDraftingEnabled}
+                      onChange={(e) =>
+                        setClaraForm({ ...claraForm, agenticDraftingEnabled: e.target.checked })
+                      }
+                      className="mt-1 h-4 w-4 rounded border-slate-300 text-primary-600 focus:ring-primary-200"
+                    />
+                    <span>
+                      <span className="block text-sm font-semibold text-slate-700 dark:text-slate-100">
+                        Let Clara draft proposals for approval
+                      </span>
+                      <span className="block text-xs text-slate-500 dark:text-slate-300 mt-1">
+                        Drafts appear in the approval queue for a partner to approve or reject.
+                        Prices always come from your service library — never from AI.
+                      </span>
+                    </span>
+                  </label>
+
+                  <label className="flex items-start gap-3 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={claraForm.draftRenewals}
+                      disabled={!claraForm.agenticDraftingEnabled}
+                      onChange={(e) =>
+                        setClaraForm({ ...claraForm, draftRenewals: e.target.checked })
+                      }
+                      className="mt-1 h-4 w-4 rounded border-slate-300 text-primary-600 focus:ring-primary-200 disabled:opacity-50"
+                    />
+                    <span>
+                      <span className="block text-sm font-semibold text-slate-700 dark:text-slate-100">
+                        Draft renewals automatically
+                      </span>
+                      <span className="block text-xs text-slate-500 dark:text-slate-300 mt-1">
+                        Renewal drafts for contracts nearing their renewal date. The existing
+                        contract stays live until the renewal is approved.
+                      </span>
+                    </span>
+                  </label>
+
+                  <div>
+                    <label className="block text-sm font-semibold text-slate-700 dark:text-slate-100">
+                      Renewal uplift (%)
+                    </label>
+                    <input
+                      type="number"
+                      min={-50}
+                      max={100}
+                      step={0.5}
+                      disabled={!claraForm.agenticDraftingEnabled || !claraForm.draftRenewals}
+                      value={claraForm.renewalUpliftPercent}
+                      onChange={(e) =>
+                        setClaraForm({
+                          ...claraForm,
+                          renewalUpliftPercent: Number(e.target.value) || 0,
+                        })
+                      }
+                      className="mt-1 input-field w-full sm:w-40 disabled:opacity-50"
+                    />
+                    <p className="mt-1 text-xs text-slate-500 dark:text-slate-300">
+                      Applied to Clara-drafted renewals (0 = straight renewal at existing fees)
+                    </p>
+                  </div>
+
+                  <div className="pt-4 border-t border-slate-200 dark:border-slate-700">
+                    <button
+                      onClick={handleSaveClara}
+                      disabled={isSaving === 'clara'}
+                      className="btn-primary"
+                    >
+                      {isSaving === 'clara' ? 'Saving...' : 'Save Clara autopilot'}
                     </button>
                   </div>
                 </div>

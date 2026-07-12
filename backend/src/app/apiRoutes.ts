@@ -27,6 +27,7 @@ import integrationsRoutes from '../routes/integrations.js';
 import xeroRoutes from '../routes/xero.js';
 import amlRoutes from '../routes/aml.js';
 import regulatoryRoutes from '../routes/regulatory.js';
+import claraRoutes from '../routes/clara.js';
 import quickbooksRoutes from '../routes/quickbooks.js';
 import statusRoutes from '../routes/status.js';
 
@@ -54,6 +55,7 @@ export function mountApiRoutes(app: express.Express): void {
   app.use('/api/engagement-library', extractTenant, engagementLibraryRoutes);
   app.use('/api/analytics', extractTenant, analyticsRoutes);
   app.use('/api/regulatory', extractTenant, regulatoryRoutes);
+  app.use('/api/clara', extractTenant, claraRoutes);
   app.use('/api/touchpoints', extractTenant, touchpointRoutes);
   app.use('/api/automation', extractTenant, automationRoutes);
   app.use('/api/uploads', extractTenant, uploadsRoutes);

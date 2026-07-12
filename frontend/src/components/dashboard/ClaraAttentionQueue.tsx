@@ -11,7 +11,7 @@ import { AI_COPILOT } from '../../config/aiCopilot';
 import { showAiError } from '../ai/AiPanel';
 
 interface AttentionItem {
-  kind?: 'proposal' | 'regulatory';
+  kind?: 'proposal' | 'regulatory' | 'clara_draft';
   proposalId?: string;
   signalId?: string;
   clientId?: string;
@@ -135,6 +135,7 @@ export default function ClaraAttentionQueue() {
       <div className="space-y-2">
         {items.map((item) => {
           const isRegulatory = item.kind === 'regulatory';
+          const isClaraDraft = item.kind === 'clara_draft';
           const linkTo =
             isRegulatory && item.clientId
               ? `/clients/${item.clientId}`
@@ -157,6 +158,10 @@ export default function ClaraAttentionQueue() {
                     {isRegulatory ? (
                       <span className="text-[10px] font-semibold uppercase tracking-wide px-1.5 py-0.5 rounded bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300">
                         Regulatory
+                      </span>
+                    ) : isClaraDraft ? (
+                      <span className="text-[10px] font-semibold uppercase tracking-wide px-1.5 py-0.5 rounded bg-violet-100 text-violet-700 dark:bg-violet-900/40 dark:text-violet-300">
+                        Clara draft
                       </span>
                     ) : (
                       <span className="text-xs text-slate-500">{item.reference}</span>
