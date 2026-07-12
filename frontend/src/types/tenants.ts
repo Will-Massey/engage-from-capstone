@@ -190,7 +190,6 @@ export interface TenantSettingsRecord {
   privacyPolicyUrl?: string;
   termsVersion?: string;
   whiteLabel?: TenantWhiteLabelSettings;
-  benchmarkPricingOptIn?: boolean;
   integrations?: TenantIntegrationsSettings;
   webhookUrl?: string;
   claraOnboarding?: ClaraOnboardingProfile;
@@ -216,7 +215,6 @@ export interface UpdateTenantSettingsPayload {
   privacyPolicyUrl?: string;
   termsVersion?: string;
   whiteLabel?: TenantWhiteLabelSettings;
-  benchmarkPricingOptIn?: boolean;
   /** Stored in settings JSON; used by webhook settings UI */
   integrations?: TenantIntegrationsSettings;
   webhookUrl?: string;

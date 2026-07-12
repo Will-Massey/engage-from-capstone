@@ -2,6 +2,9 @@ import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { ChartBarIcon, InformationCircleIcon } from '@heroicons/react/24/outline';
 import { apiClient } from '../../utils/api';
+import { formatServiceCategory } from '../../utils/serviceCategoryLabels';
+import { TURNOVER_BAND_LABELS } from '../../utils/feeBenchmarks';
+import type { ServiceCategory, TurnoverBand, YourFeeComparison } from '../../types/analytics';
 
 interface FeeBenchmarkBand {
   category: string;
@@ -19,6 +22,7 @@ interface FeeBenchmarkData {
   kAnonymityMinTenants: number;
   disclaimer: string;
   optedIn?: boolean;
+  yourFee?: YourFeeComparison;
 }
 
 function formatGbp(amount: number): string {
@@ -30,7 +34,28 @@ function formatGbp(amount: number): string {
   }).format(amount);
 }
 
-export default function FeeBenchmarkWidget({ compact = false }: { compact?: boolean }) {
+function ordinal(n: number): string {
+  const mod10 = n % 10;
+  const mod100 = n % 100;
+  if (mod10 === 1 && mod100 !== 11) return `${n}st`;
+  if (mod10 === 2 && mod100 !== 12) return `${n}nd`;
+  if (mod10 === 3 && mod100 !== 13) return `${n}rd`;
+  return `${n}th`;
+}
+
+interface FeeBenchmarkWidgetProps {
+  compact?: boolean;
+  /** R3.2: compare this monthly GBP fee for a category against the market */
+  yourFee?: { fee: number; category: ServiceCategory };
+  /** Scope the your-fee comparison to a client turnover band when known */
+  turnoverBand?: TurnoverBand;
+}
+
+export default function FeeBenchmarkWidget({
+  compact = false,
+  yourFee,
+  turnoverBand,
+}: FeeBenchmarkWidgetProps) {
   const [data, setData] = useState<FeeBenchmarkData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -40,7 +65,9 @@ export default function FeeBenchmarkWidget({ compact = false }: { compact?: bool
       setLoading(true);
       setError(null);
       try {
-        const res = (await apiClient.getFeeBenchmarks()) as {
+        const res = (await apiClient.getFeeBenchmarks(
+          yourFee ? { category: yourFee.category, fee: yourFee.fee, turnoverBand } : undefined
+        )) as {
           success?: boolean;
           data?: FeeBenchmarkData;
         };
@@ -56,7 +83,9 @@ export default function FeeBenchmarkWidget({ compact = false }: { compact?: bool
       }
     };
     load();
-  }, []);
+    // Callers memoise `yourFee` (PricingCalculator useMemo) so this refetches
+    // only when the comparison inputs actually change.
+  }, [yourFee, turnoverBand]);
 
   if (loading) {
     return (
@@ -129,6 +158,16 @@ export default function FeeBenchmarkWidget({ compact = false }: { compact?: bool
       <p className="text-xs text-slate-600 dark:text-slate-400 mb-4">
         Monthly fee percentiles across Engage practices (no client or firm identifiers).
       </p>
+      {data.yourFee && (
+        <div className="mb-4 rounded-lg border border-primary-100 dark:border-primary-800/50 bg-primary-50 dark:bg-primary-900/20 px-3 py-2 text-xs text-primary-900 dark:text-primary-100">
+          Your {formatServiceCategory(data.yourFee.category)} fee:{' '}
+          <span className="font-semibold">{formatGbp(data.yourFee.fee)}/mo</span> — ~
+          {ordinal(data.yourFee.percentile)} percentile for{' '}
+          {data.yourFee.scope === 'category_band' && data.yourFee.turnoverBand
+            ? `${TURNOVER_BAND_LABELS[data.yourFee.turnoverBand]} clients`
+            : 'clients of all sizes'}
+        </div>
+      )}
       <div className={`grid gap-3 ${compact ? 'grid-cols-1' : 'grid-cols-1 sm:grid-cols-2'}`}>
         {data.benchmarks.map((band) => (
           <div

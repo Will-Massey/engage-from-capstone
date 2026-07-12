@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import { z } from 'zod';
+import { ServiceCategory } from '@prisma/client';
 import { prisma } from '../config/database.js';
 import { authenticate } from '../middleware/auth.js';
 import { ApiError, asyncHandler } from '../middleware/errorHandler.js';
@@ -908,16 +909,23 @@ router.get(
   })
 );
 
+const feeBenchmarksQuerySchema = z.object({
+  category: z.nativeEnum(ServiceCategory).optional(),
+  fee: z.coerce.number().positive().optional(),
+  turnoverBand: z.enum(['UNKNOWN', 'MICRO', 'SMALL', 'MEDIUM', 'LARGE']).optional(),
+});
+
 /** GET /api/analytics/fee-benchmarks — anonymised cross-practice fee bands */
 router.get(
   '/fee-benchmarks',
   asyncHandler(async (req, res) => {
+    const query = feeBenchmarksQuerySchema.parse(req.query);
     const tenant = await prisma.tenant.findUnique({
       where: { id: req.tenantId! },
       select: { settings: true },
     });
     const optedIn = getProposalSettings(tenant?.settings).benchmarksOptIn;
-    const data = await getFeeBenchmarks();
+    const data = await getFeeBenchmarks(query);
     res.json({
       success: true,
       data: {
