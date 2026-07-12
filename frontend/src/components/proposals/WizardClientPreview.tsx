@@ -92,7 +92,7 @@ export default function WizardClientPreview({
             </div>
 
             {coverLetter && (
-              <div className="text-slate-600 dark:text-slate-300 whitespace-pre-wrap text-xs leading-relaxed border-l-2 border-violet-200 dark:border-violet-800 pl-3">
+              <div className="text-slate-600 dark:text-slate-300 whitespace-pre-wrap text-xs leading-relaxed border-l-2 border-primary-200 dark:border-primary-800 pl-3">
                 {coverLetter.slice(0, 600)}
                 {coverLetter.length > 600 ? '…' : ''}
               </div>

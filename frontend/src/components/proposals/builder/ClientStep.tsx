@@ -143,7 +143,7 @@ export default function ClientStep() {
                 type="button"
                 data-testid="build-mode-clara"
                 onClick={() => selectBuildMode('clara')}
-                className="text-left p-4 rounded-xl border-2 border-violet-200 dark:border-violet-800 hover:border-violet-400 dark:hover:border-violet-600 bg-violet-50/50 dark:bg-violet-950/20 transition-colors"
+                className="text-left p-4 rounded-xl border-2 border-primary-200 dark:border-primary-800 hover:border-primary-400 dark:hover:border-primary-600 bg-primary-50/50 dark:bg-primary-950/20 transition-colors"
               >
                 <p className="font-semibold text-slate-900 dark:text-white">
                   Start with {AI_COPILOT.name} suggestions

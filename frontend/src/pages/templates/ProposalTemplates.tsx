@@ -310,7 +310,7 @@ export default function ProposalTemplates() {
                     {template.name}
                   </h3>
                   {template.isLibraryTemplate ? (
-                    <span className="text-[10px] px-2 py-0.5 rounded-full font-medium bg-indigo-100 text-indigo-800 dark:bg-indigo-900/40 dark:text-indigo-200 shrink-0">
+                    <span className="text-[10px] px-2 py-0.5 rounded-full font-medium bg-primary-100 text-primary-800 dark:bg-primary-900/40 dark:text-primary-200 shrink-0">
                       Engage library
                     </span>
                   ) : (

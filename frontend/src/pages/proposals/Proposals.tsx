@@ -20,6 +20,7 @@ import {
 } from '@heroicons/react/24/outline';
 import { apiClient } from '../../utils/api';
 import { appPath } from '../../utils/appBase';
+import { formatCurrency } from '../../utils/formatters';
 import { useAuthStore } from '../../stores/authStore';
 import { format, formatDistanceToNow } from 'date-fns';
 import toast from 'react-hot-toast';
@@ -33,7 +34,7 @@ const _iconRefs = [DocumentTextIcon, CheckCircleIcon, ClockIcon];
 const statusColors: Record<string, string> = {
   DRAFT: 'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300',
   SENT: 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-200',
-  VIEWED: 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-200',
+  VIEWED: 'bg-primary-100 text-primary-700 dark:bg-primary-900/30 dark:text-primary-200',
   ACCEPTED: 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-200',
   DECLINED: 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-200',
   EXPIRED: 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-200',
@@ -268,10 +269,7 @@ const Proposals = () => {
             Export CSV
           </button>
         )}
-        <Link
-          to="/proposals/wizard"
-          className="btn-primary bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-700 hover:to-indigo-700"
-        >
+        <Link to="/proposals/wizard" className="btn-primary">
           <PlusIcon className="h-5 w-5 mr-2" />
           Create proposal in 5 minutes
         </Link>
@@ -394,7 +392,7 @@ const Proposals = () => {
                                 </span>
                               )}
                               {(proposal._count?.views || 0) > 0 && (
-                                <span className="inline-flex items-center gap-0.5 rounded px-1.5 py-0.5 text-[10px] font-medium bg-purple-100 text-purple-800 dark:bg-purple-900/40 dark:text-purple-200">
+                                <span className="inline-flex items-center gap-0.5 rounded px-1.5 py-0.5 text-[10px] font-medium bg-primary-100 text-primary-800 dark:bg-primary-900/40 dark:text-primary-200">
                                   <EyeIcon className="h-3 w-3" />
                                   {proposal._count.views}{' '}
                                   {proposal._count.views === 1 ? 'open' : 'opens'}
@@ -511,8 +509,8 @@ const Proposals = () => {
                         </div>
                       </td>
                       <td className="px-4 py-4 whitespace-nowrap text-right">
-                        <div className="text-sm font-medium text-slate-900 dark:text-slate-100">
-                          £{proposal.total?.toLocaleString()}
+                        <div className="text-sm font-semibold text-ink-900 dark:text-slate-100 tabular-nums">
+                          {formatCurrency(proposal.total ?? 0)}
                         </div>
                         <div className="text-xs text-slate-500 dark:text-slate-400">
                           {proposal.paymentFrequency?.toLowerCase()}
@@ -592,7 +590,7 @@ const Proposals = () => {
                           {/* Duplicate/Resubmit */}
                           <button
                             onClick={() => duplicateProposal(proposal)}
-                            className="p-1 text-slate-500 hover:text-purple-600"
+                            className="p-1 text-slate-500 hover:text-primary-600"
                             title={isExpired ? 'Resubmit' : 'Duplicate'}
                           >
                             <DocumentDuplicateIcon className="h-5 w-5" />

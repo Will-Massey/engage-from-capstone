@@ -37,8 +37,8 @@ const providerConfig = {
   microsoft365: {
     name: 'Microsoft 365',
     icon: 'https://www.microsoft.com/favicon.ico',
-    color: 'bg-indigo-50 border-indigo-200 text-indigo-900',
-    buttonColor: 'bg-indigo-600 hover:bg-indigo-700',
+    color: 'bg-primary-50 border-primary-200 text-primary-900',
+    buttonColor: 'bg-primary-600 hover:bg-primary-700',
   },
 };
 

@@ -66,12 +66,12 @@ export default function ClaraAttentionQueue() {
   if (loading) {
     return (
       <div
-        className="glass-tile p-6 border border-violet-200 dark:border-violet-900/50 animate-pulse"
+        className="glass-tile p-6 border border-primary-200 dark:border-primary-900/50 animate-pulse"
         aria-busy="true"
       >
         <div className="flex items-center gap-2 mb-4">
-          <div className="h-5 w-5 rounded bg-violet-200 dark:bg-violet-800" />
-          <div className="h-5 w-48 rounded bg-violet-100 dark:bg-violet-900/40" />
+          <div className="h-5 w-5 rounded bg-primary-200 dark:bg-primary-800" />
+          <div className="h-5 w-48 rounded bg-primary-100 dark:bg-primary-900/40" />
         </div>
         <div className="space-y-3">
           {[1, 2, 3].map((i) => (
@@ -89,14 +89,14 @@ export default function ClaraAttentionQueue() {
       ? 'text-red-600 dark:text-red-400'
       : score >= 60
         ? 'text-amber-600 dark:text-amber-400'
-        : 'text-violet-600 dark:text-violet-400';
+        : 'text-primary-600 dark:text-primary-400';
 
   return (
-    <div className="glass-tile p-6 border border-violet-200 dark:border-violet-900/50 bg-gradient-to-br from-white to-violet-50/30 dark:from-slate-900 dark:to-violet-950/20">
+    <div className="glass-tile p-6 border border-primary-200 dark:border-primary-900/50 bg-gradient-to-br from-white to-primary-50/30 dark:from-slate-900 dark:to-primary-950/20">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
         <div className="flex items-center gap-2">
-          <div className="p-2 rounded-xl bg-violet-100 dark:bg-violet-900/40">
-            <SparklesIcon className="h-5 w-5 text-violet-600 dark:text-violet-400" />
+          <div className="p-2 rounded-xl bg-primary-100 dark:bg-primary-900/40">
+            <SparklesIcon className="h-5 w-5 text-primary-600 dark:text-primary-400" />
           </div>
           <div>
             <h2 className="font-semibold text-lg text-slate-900 dark:text-white">
@@ -144,7 +144,7 @@ export default function ClaraAttentionQueue() {
             <Link
               key={item.proposalId || item.signalId}
               to={linkTo}
-              className="group flex flex-col sm:flex-row sm:items-center gap-3 rounded-xl border border-slate-200 dark:border-slate-700 p-4 hover:border-violet-300 hover:bg-violet-50/40 dark:hover:bg-violet-950/20 transition-all"
+              className="group flex flex-col sm:flex-row sm:items-center gap-3 rounded-xl border border-slate-200 dark:border-slate-700 p-4 hover:border-primary-300 hover:bg-primary-50/40 dark:hover:bg-primary-950/20 transition-all"
             >
               <div className="flex items-start gap-3 flex-1 min-w-0">
                 <ExclamationTriangleIcon
@@ -152,7 +152,7 @@ export default function ClaraAttentionQueue() {
                 />
                 <div className="min-w-0">
                   <div className="flex flex-wrap items-center gap-2">
-                    <span className="font-medium text-sm text-slate-900 dark:text-white group-hover:text-violet-700 dark:group-hover:text-violet-300">
+                    <span className="font-medium text-sm text-slate-900 dark:text-white group-hover:text-primary-700 dark:group-hover:text-primary-300">
                       {item.clientName}
                     </span>
                     {isRegulatory ? (
@@ -160,7 +160,7 @@ export default function ClaraAttentionQueue() {
                         Regulatory
                       </span>
                     ) : isClaraDraft ? (
-                      <span className="text-[10px] font-semibold uppercase tracking-wide px-1.5 py-0.5 rounded bg-violet-100 text-violet-700 dark:bg-violet-900/40 dark:text-violet-300">
+                      <span className="text-[10px] font-semibold uppercase tracking-wide px-1.5 py-0.5 rounded bg-primary-100 text-primary-700 dark:bg-primary-900/40 dark:text-primary-300">
                         Clara draft
                       </span>
                     ) : (
@@ -175,7 +175,7 @@ export default function ClaraAttentionQueue() {
                   <p className="text-sm text-slate-700 dark:text-slate-200 mt-1">
                     {item.narrative}
                   </p>
-                  <p className="text-xs text-violet-600 dark:text-violet-400 mt-1">
+                  <p className="text-xs text-primary-600 dark:text-primary-400 mt-1">
                     {item.recommendedAction}
                   </p>
                 </div>
@@ -197,7 +197,7 @@ export default function ClaraAttentionQueue() {
                     <XMarkIcon className="h-4 w-4" />
                   </button>
                 )}
-                <span className="text-violet-600 opacity-70 group-hover:opacity-100 transition">
+                <span className="text-primary-600 opacity-70 group-hover:opacity-100 transition">
                   Open →
                 </span>
               </span>

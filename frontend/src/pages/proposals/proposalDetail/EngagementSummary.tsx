@@ -123,7 +123,7 @@ export default function EngagementSummary() {
       {proposal.status !== 'DRAFT' && (
         <div className="flex flex-wrap gap-2 print:hidden">
           {clientOpenCount > 0 && (
-            <span className="inline-flex items-center gap-1.5 rounded-full border border-purple-200 bg-purple-50 px-3 py-1 text-xs font-medium text-purple-800 dark:border-purple-900/50 dark:bg-purple-950/30 dark:text-purple-200">
+            <span className="inline-flex items-center gap-1.5 rounded-full border border-primary-200 bg-primary-50 px-3 py-1 text-xs font-medium text-primary-800 dark:border-primary-900/50 dark:bg-primary-950/30 dark:text-primary-200">
               <EyeIcon className="h-3.5 w-3.5" />
               Opened {clientOpenCount} {clientOpenCount === 1 ? 'time' : 'times'}
             </span>

@@ -172,7 +172,7 @@ function ProposalBuilderShell() {
         !autoFitLoading &&
         !autoFitResult &&
         aiConfigured && (
-          <div className="mb-6 rounded-2xl border border-violet-200 dark:border-violet-800 bg-violet-50/40 dark:bg-violet-950/20 p-4 flex flex-wrap items-center justify-between gap-3">
+          <div className="mb-6 rounded-2xl border border-primary-200 dark:border-primary-800 bg-primary-50/40 dark:bg-primary-950/20 p-4 flex flex-wrap items-center justify-between gap-3">
             <p className="text-sm text-slate-700 dark:text-slate-200">
               Ask {AI_COPILOT.name} for an optional starter bundle for {selectedClient.name}.
             </p>

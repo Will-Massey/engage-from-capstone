@@ -57,12 +57,12 @@ export default function SaveProposalTemplateDialog({
       <div
         role="dialog"
         aria-labelledby="save-template-title"
-        className="w-full max-w-md rounded-2xl bg-white dark:bg-slate-900 shadow-xl border border-violet-200 dark:border-violet-800"
+        className="w-full max-w-md rounded-2xl bg-white dark:bg-slate-900 shadow-xl border border-primary-200 dark:border-primary-800"
       >
         <div className="flex items-start justify-between gap-3 p-5 border-b border-slate-200 dark:border-slate-700">
           <div className="flex items-start gap-3 min-w-0">
-            <div className="p-2 rounded-xl bg-violet-100 dark:bg-violet-900/40">
-              <SparklesIcon className="h-5 w-5 text-violet-600 dark:text-violet-400" />
+            <div className="p-2 rounded-xl bg-primary-100 dark:bg-primary-900/40">
+              <SparklesIcon className="h-5 w-5 text-primary-600 dark:text-primary-400" />
             </div>
             <div className="min-w-0">
               <h2

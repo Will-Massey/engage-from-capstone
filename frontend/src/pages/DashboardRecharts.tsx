@@ -44,8 +44,8 @@ export function RevenueAndPieCharts({ revenueData, proposalStatusData }: Revenue
             <AreaChart data={revenueData}>
               <defs>
                 <linearGradient id="colorRevenue" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor="#6366F1" stopOpacity={0.3} />
-                  <stop offset="95%" stopColor="#6366F1" stopOpacity={0} />
+                  <stop offset="5%" stopColor="#2563EB" stopOpacity={0.3} />
+                  <stop offset="95%" stopColor="#2563EB" stopOpacity={0} />
                 </linearGradient>
               </defs>
               <CartesianGrid strokeDasharray="3 3" stroke="rgba(148, 163, 184, 0.2)" />
@@ -69,7 +69,7 @@ export function RevenueAndPieCharts({ revenueData, proposalStatusData }: Revenue
               <Area
                 type="monotone"
                 dataKey="value"
-                stroke="#6366F1"
+                stroke="#2563EB"
                 strokeWidth={2}
                 fillOpacity={1}
                 fill="url(#colorRevenue)"
@@ -155,8 +155,8 @@ export function WeeklyActivityChart({ weeklyActivity }: WeeklyProps) {
                 backdropFilter: 'blur(12px)',
               }}
             />
-            <Bar dataKey="proposals" fill="#6366F1" radius={[4, 4, 0, 0]} />
-            <Bar dataKey="views" fill="#8B5CF6" radius={[4, 4, 0, 0]} />
+            <Bar dataKey="proposals" fill="#2563EB" radius={[4, 4, 0, 0]} />
+            <Bar dataKey="views" fill="#60A5FA" radius={[4, 4, 0, 0]} />
           </BarChart>
         </ResponsiveContainer>
       </div>

@@ -88,7 +88,7 @@ export default function WebhookSettings() {
   return (
     <div className="space-y-4">
       <div className="flex items-start gap-3">
-        <LinkIcon className="h-6 w-6 text-violet-600 shrink-0 mt-1" />
+        <LinkIcon className="h-6 w-6 text-primary-600 shrink-0 mt-1" />
         <div className="flex-1">
           <h4 className="font-medium text-slate-900 dark:text-white">Proposal event webhook</h4>
           <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">

@@ -256,7 +256,7 @@ const Onboarding = () => {
                     ? 'bg-primary-600 text-white'
                     : currentStep === step.id
                       ? step.id === 2
-                        ? 'bg-violet-100 text-violet-700 border-2 border-violet-600'
+                        ? 'bg-primary-100 text-primary-700 border-2 border-primary-600'
                         : 'bg-primary-100 text-primary-700 border-2 border-primary-600'
                       : 'bg-slate-100 text-slate-600'
                 }`}
@@ -323,10 +323,10 @@ const Onboarding = () => {
         {/* Step 2: Clara onboarding questions */}
         {currentStep === 2 && (
           <div className="space-y-6 animate-fade-in">
-            <div className="rounded-2xl border border-violet-200 bg-gradient-to-br from-violet-50 to-white p-5">
+            <div className="rounded-2xl border border-primary-200 bg-gradient-to-br from-primary-50 to-white p-5">
               <div className="flex items-start gap-3 mb-4">
-                <div className="p-2 rounded-xl bg-violet-500/15 border border-violet-400/25">
-                  <SparklesIcon className="h-6 w-6 text-violet-600" />
+                <div className="p-2 rounded-xl bg-primary-500/15 border border-primary-400/25">
+                  <SparklesIcon className="h-6 w-6 text-primary-600" />
                 </div>
                 <div>
                   <h3 className="font-semibold text-slate-900">Hi, I&apos;m {AI_COPILOT.name}</h3>
@@ -350,8 +350,8 @@ const Onboarding = () => {
                         onClick={() => setClaraProfile((p) => ({ ...p, practiceSize: opt.value }))}
                         className={`text-left rounded-xl border p-3 text-sm transition-all ${
                           claraProfile.practiceSize === opt.value
-                            ? 'border-violet-500 bg-violet-50 text-violet-900 ring-2 ring-violet-500/30'
-                            : 'border-slate-200 hover:border-violet-300 bg-white'
+                            ? 'border-primary-500 bg-primary-50 text-primary-900 ring-2 ring-primary-500/30'
+                            : 'border-slate-200 hover:border-primary-300 bg-white'
                         }`}
                       >
                         {opt.label}
@@ -373,8 +373,8 @@ const Onboarding = () => {
                         onClick={() => toggleClientType(opt.value)}
                         className={`text-left rounded-xl border p-3 text-sm transition-all ${
                           claraProfile.clientTypes.includes(opt.value)
-                            ? 'border-violet-500 bg-violet-50 text-violet-900 ring-2 ring-violet-500/30'
-                            : 'border-slate-200 hover:border-violet-300 bg-white'
+                            ? 'border-primary-500 bg-primary-50 text-primary-900 ring-2 ring-primary-500/30'
+                            : 'border-slate-200 hover:border-primary-300 bg-white'
                         }`}
                       >
                         {opt.label}
@@ -395,8 +395,8 @@ const Onboarding = () => {
                         onClick={() => setClaraProfile((p) => ({ ...p, mtdStatus: opt.value }))}
                         className={`w-full text-left rounded-xl border p-3 text-sm transition-all ${
                           claraProfile.mtdStatus === opt.value
-                            ? 'border-violet-500 bg-violet-50 text-violet-900 ring-2 ring-violet-500/30'
-                            : 'border-slate-200 hover:border-violet-300 bg-white'
+                            ? 'border-primary-500 bg-primary-50 text-primary-900 ring-2 ring-primary-500/30'
+                            : 'border-slate-200 hover:border-primary-300 bg-white'
                         }`}
                       >
                         {opt.label}
@@ -411,11 +411,7 @@ const Onboarding = () => {
               <button type="button" onClick={prevStep} className="flex-1 btn-secondary py-2.5">
                 Back
               </button>
-              <button
-                type="button"
-                onClick={nextStep}
-                className="flex-1 btn-primary py-2.5 bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-700 hover:to-indigo-700"
-              >
+              <button type="button" onClick={nextStep} className="flex-1 btn-primary py-2.5">
                 Continue with {AI_COPILOT.shortName}
               </button>
             </div>

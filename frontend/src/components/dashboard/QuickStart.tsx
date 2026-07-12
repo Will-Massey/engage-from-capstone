@@ -12,7 +12,7 @@ const QuickStart = () => {
 
   return (
     <section
-      className="card p-5 sm:p-6 border border-violet-200/60 dark:border-violet-800/40 bg-gradient-to-br from-violet-50/80 via-white to-indigo-50/50 dark:from-violet-950/30 dark:via-slate-900/60 dark:to-indigo-950/20"
+      className="card p-5 sm:p-6 border border-primary-200/60 dark:border-primary-800/40 bg-gradient-to-br from-primary-50/80 via-white to-primary-50/50 dark:from-primary-950/30 dark:via-slate-900/60 dark:to-primary-950/20"
       aria-labelledby="quick-start-heading"
     >
       <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4 mb-5">
@@ -42,7 +42,7 @@ const QuickStart = () => {
       <div className="flex flex-col sm:flex-row gap-4 items-stretch">
         <Link
           to="/proposals/wizard"
-          className="flex-1 group rounded-xl border-2 border-violet-400/70 dark:border-violet-600/60 bg-gradient-to-r from-violet-600 to-indigo-600 p-5 text-white shadow-lg hover:from-violet-700 hover:to-indigo-700 transition-all"
+          className="flex-1 group rounded-xl border-2 border-ink-800 dark:border-ink-700 bg-ink-950 p-5 text-white shadow-lg hover:bg-ink-800 transition-all"
         >
           <div className="flex items-center gap-3">
             <div className="p-2.5 rounded-xl bg-white/20">
@@ -50,7 +50,7 @@ const QuickStart = () => {
             </div>
             <div>
               <p className="font-semibold text-lg">Create proposal in 5 minutes</p>
-              <p className="text-sm text-violet-100 mt-0.5">
+              <p className="text-sm text-primary-100 mt-0.5">
                 Client → Clara services → pricing → email → send
               </p>
             </div>

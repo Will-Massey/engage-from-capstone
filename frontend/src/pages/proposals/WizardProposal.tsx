@@ -16,7 +16,7 @@ export default function WizardProposal() {
           </Link>
           <div>
             <div className="flex items-center gap-2">
-              <SparklesIcon className="h-6 w-6 text-violet-600 dark:text-violet-400" />
+              <SparklesIcon className="h-6 w-6 text-primary-600 dark:text-primary-400" />
               <h1 className="text-2xl font-bold text-slate-900 dark:text-white">
                 Create proposal in 5 minutes
               </h1>

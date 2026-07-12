@@ -10,6 +10,7 @@ import {
   XMarkIcon,
 } from '@heroicons/react/24/outline';
 import { apiClient } from '../../utils/api';
+import { formatCurrency } from '../../utils/formatters';
 import { useAuthStore } from '../../stores/authStore';
 import toast from 'react-hot-toast';
 import { SkeletonCard } from '../../components/skeleton/SkeletonCard';
@@ -41,11 +42,11 @@ interface Service {
 
 const categoryColors: Record<string, string> = {
   COMPLIANCE: 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-200',
-  ADVISORY: 'bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-200',
+  ADVISORY: 'bg-primary-100 text-primary-800 dark:bg-primary-900/30 dark:text-primary-200',
   TAX: 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-200',
   BOOKKEEPING: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-200',
   CONSULTING: 'bg-pink-100 text-pink-800 dark:bg-pink-900/30 dark:text-pink-200',
-  TECHNICAL: 'bg-indigo-100 text-indigo-800 dark:bg-indigo-900/30 dark:text-indigo-200',
+  TECHNICAL: 'bg-primary-100 text-primary-800 dark:bg-primary-900/30 dark:text-primary-200',
   SPECIALIZED: 'bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-200',
   PAYROLL: 'bg-cyan-100 text-cyan-800 dark:bg-cyan-900/30 dark:text-cyan-200',
 };
@@ -546,7 +547,9 @@ const Services = () => {
               <div className="flex items-center justify-between pt-4 border-t border-slate-100 dark:border-slate-700">
                 <div>
                   <span className="text-2xl font-bold text-slate-900 dark:text-white">
-                    £{(service.priceAmount || service.basePrice || 0).toLocaleString()}
+                    <span className="tabular-nums">
+                      {formatCurrency(service.priceAmount || service.basePrice || 0)}
+                    </span>
                   </span>
                   <span className="text-xs text-slate-600 dark:text-slate-300 ml-1">
                     /

@@ -2,6 +2,7 @@ import { useLocation } from 'react-router-dom';
 import { XMarkIcon, ArrowRightOnRectangleIcon } from '@heroicons/react/24/outline';
 import { useAuthStore } from '../../stores/authStore';
 import { appPath } from '../../utils/appBase';
+import { DEFAULT_LOGO_URL } from '../../utils/brandLogo';
 import SidebarNavItems from './SidebarNavItems';
 
 interface SidebarProps {
@@ -58,7 +59,7 @@ const UserFooter = ({ onLogout }: { onLogout: () => void }) => {
       <div className="flex items-center gap-3 min-w-0">
         <div
           className="w-10 h-10 rounded-full flex items-center justify-center text-white font-medium shrink-0"
-          style={{ background: 'linear-gradient(135deg, #6366F1 0%, #8B5CF6 100%)' }}
+          style={{ background: 'linear-gradient(135deg, #2563EB 0%, #3B82F6 100%)' }}
         >
           {user?.firstName?.charAt(0)}
           {user?.lastName?.charAt(0)}
@@ -89,7 +90,7 @@ const UserFooter = ({ onLogout }: { onLogout: () => void }) => {
 const Sidebar = ({ isOpen, onClose }: SidebarProps) => {
   const { tenant, clearAuth } = useAuthStore();
   const { pathname } = useLocation();
-  const logoUrl = tenant?.logo || '/capstone-logo.jpg';
+  const logoUrl = tenant?.logo || DEFAULT_LOGO_URL;
   const tenantName = tenant?.name || 'Engage by Capstone';
 
   const handleLogout = () => {

@@ -5,33 +5,48 @@ export default {
   theme: {
     extend: {
       colors: {
-        // Capstone brand colors
-        capstone: {
-          50: '#EEF2FF',
-          100: '#E0E7FF',
-          200: '#C7D2FE',
-          300: '#A5B4FC',
-          400: '#818CF8',
-          500: '#6366F1',
-          600: '#4F46E5',
-          700: '#4338CA',
-          800: '#3730A3',
-          900: '#312E81',
-          950: '#1E1B4B',
+        // Ink — near-black neutral for primary CTAs, headings, chrome
+        // (Editorial Mono: black primary + one accent, Linear/Stripe style)
+        ink: {
+          50: '#F7F7F8',
+          100: '#ECECEE',
+          200: '#D9D9DD',
+          300: '#B9B9C0',
+          400: '#8E8E98',
+          500: '#6B6B75',
+          600: '#52525B',
+          700: '#3F3F46',
+          800: '#27272A',
+          900: '#111113',
+          950: '#0A0A0A',
         },
-        // Primary - Modern blue gradient
+        // Primary accent — trust blue, echoes the Engage logo (#1E88E5→#0D47A1)
+        // Replaces the former indigo/purple across the whole app.
+        capstone: {
+          50: '#EFF6FF',
+          100: '#DBEAFE',
+          200: '#BFDBFE',
+          300: '#93C5FD',
+          400: '#60A5FA',
+          500: '#3B82F6',
+          600: '#2563EB',
+          700: '#1D4ED8',
+          800: '#1E40AF',
+          900: '#1E3A8A',
+          950: '#172554',
+        },
         primary: {
-          50: '#EEF2FF',
-          100: '#E0E7FF',
-          200: '#C7D2FE',
-          300: '#A5B4FC',
-          400: '#818CF8',
-          500: '#6366F1',
-          600: '#4F46E5',
-          700: '#4338CA',
-          800: '#3730A3',
-          900: '#312E81',
-          950: '#1E1B4B',
+          50: '#EFF6FF',
+          100: '#DBEAFE',
+          200: '#BFDBFE',
+          300: '#93C5FD',
+          400: '#60A5FA',
+          500: '#3B82F6',
+          600: '#2563EB',
+          700: '#1D4ED8',
+          800: '#1E40AF',
+          900: '#1E3A8A',
+          950: '#172554',
         },
         // Glass surface colors
         glass: {
