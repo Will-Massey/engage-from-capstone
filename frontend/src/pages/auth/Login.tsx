@@ -308,11 +308,7 @@ const Login = () => {
           </div>
         </div>
 
-        <button
-          type="submit"
-          disabled={isLoading}
-          className="w-full btn-primary py-2.5"
-        >
+        <button type="submit" disabled={isLoading} className="w-full btn-primary py-2.5">
           {isLoading ? (
             <>
               <svg

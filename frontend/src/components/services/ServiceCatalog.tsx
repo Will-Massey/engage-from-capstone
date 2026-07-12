@@ -270,7 +270,10 @@ const ServiceCatalog = ({ onImport }: ServiceCatalogProps) => {
                     {/* Pricing Info */}
                     <div className="mt-3 flex items-center space-x-4 text-sm">
                       <span className="text-gray-600">
-                        From <strong className="tabular-nums">{formatCurrency(service.basePrice)}</strong>
+                        From{' '}
+                        <strong className="tabular-nums">
+                          {formatCurrency(service.basePrice)}
+                        </strong>
                       </span>
                       <span className="text-gray-400">|</span>
                       <span className="text-gray-600 capitalize">
