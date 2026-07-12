@@ -1,5 +1,6 @@
 import { useAuthStore } from '../../stores/authStore';
 import { LegalFooterLinks } from '../legal/LegalPageLayout';
+import { DEFAULT_LOGO_URL } from '../../utils/brandLogo';
 
 interface AuthLayoutProps {
   children: React.ReactNode;
@@ -7,7 +8,7 @@ interface AuthLayoutProps {
 
 const AuthLayout = ({ children }: AuthLayoutProps) => {
   const { tenant } = useAuthStore();
-  const logoUrl = tenant?.logo || '/capstone-logo.jpg';
+  const logoUrl = tenant?.logo || DEFAULT_LOGO_URL;
 
   return (
     <div className="min-h-screen flex flex-col justify-center bg-slate-950 py-12 px-4 sm:px-6 lg:px-8 relative overflow-hidden">
