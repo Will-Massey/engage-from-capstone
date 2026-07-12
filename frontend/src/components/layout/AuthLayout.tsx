@@ -11,30 +11,21 @@ const AuthLayout = ({ children }: AuthLayoutProps) => {
   const logoUrl = tenant?.logo || DEFAULT_LOGO_URL;
 
   return (
-    <div className="min-h-screen flex flex-col justify-center bg-slate-950 py-12 px-4 sm:px-6 lg:px-8 relative overflow-hidden">
-      {/* Animated background elements */}
-      <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute -top-40 -right-40 w-96 h-96 bg-primary-500/10 rounded-full blur-3xl animate-pulse"></div>
-        <div
-          className="absolute -bottom-40 -left-40 w-96 h-96 bg-capstone-500/10 rounded-full blur-3xl animate-pulse"
-          style={{ animationDelay: '1s' }}
-        ></div>
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] bg-gradient-radial from-primary-500/5 to-transparent rounded-full"></div>
-      </div>
+    <div className="min-h-screen flex flex-col justify-center bg-slate-50 py-12 px-4 sm:px-6 lg:px-8 relative">
+      {/* Hairline top accent — quiet brand detail */}
+      <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-primary-600/40 to-transparent" />
 
       <div className="relative sm:mx-auto sm:w-full sm:max-w-md">
         {/* Logo */}
         <div className="flex flex-col items-center">
-          <div className="flex items-center space-x-3">
-            <img src={logoUrl} alt={tenant?.name || 'Engage by Capstone'} className="h-16 w-auto" />
-          </div>
-          <p className="mt-4 text-center text-sm text-slate-400">
+          <img src={logoUrl} alt={tenant?.name || 'Engage by Capstone'} className="h-12 w-auto" />
+          <p className="mt-3 text-center text-sm text-ink-500">
             Professional proposal generation for UK accountants
           </p>
         </div>
 
         <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md">
-          <div className="glass-card bg-white/5 dark:bg-slate-900/50 backdrop-blur-xl py-8 px-4 shadow-2xl sm:rounded-2xl sm:px-10 border border-white/10 dark:border-slate-700/50">
+          <div className="bg-white py-8 px-6 sm:rounded-2xl sm:px-10 border border-slate-200 shadow-[0_1px_2px_0_rgba(10,10,10,0.04),0_12px_32px_-12px_rgba(10,10,10,0.12)]">
             {children}
           </div>
         </div>
@@ -42,11 +33,11 @@ const AuthLayout = ({ children }: AuthLayoutProps) => {
         {/* Footer */}
         <div className="mt-8 text-center space-y-2">
           <LegalFooterLinks />
-          <p className="text-xs text-slate-500">
+          <p className="text-xs text-ink-400">
             &copy; {new Date().getFullYear()} Capstone. All rights reserved.
           </p>
-          <p className="text-xs text-slate-600">
-            MTD ITSA Ready &bull; UK Compliant &bull; Secure & Private
+          <p className="text-xs text-ink-400">
+            MTD ITSA Ready &bull; UK Compliant &bull; Secure &amp; Private
           </p>
         </div>
       </div>
