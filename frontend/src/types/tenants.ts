@@ -85,6 +85,7 @@ export interface TenantProposalSettings {
   termsSource?: ProposalTermsSource;
   customTerms?: string | null;
   benchmarksOptIn?: boolean;
+  blockSendUntilAmlCleared?: boolean;
   /** Legacy flag still read by some UI paths */
   useCustomTerms?: boolean;
 }

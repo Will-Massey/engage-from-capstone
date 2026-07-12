@@ -1,13 +1,22 @@
 /**
  * AML partner integration — SmartSearch / Creditsafe with stub fallback (W3.3)
+ * Provider implementations live in ./aml/providers (R2.1).
  */
 
 import { v4 as uuidv4 } from 'uuid';
 import { AmlStatus } from '@prisma/client';
 import { prisma } from '../config/database.js';
 import logger from '../config/logger.js';
+import {
+  AmlPartnerApiError,
+  creditsafeProvider,
+  resolveAmlCheckProvider,
+  smartsearchProvider,
+} from './aml/providers/index.js';
+import type { AmlProvider } from './aml/providers/index.js';
+import { recordAmlCheckUsage } from './aml/amlUsageService.js';
 
-export type AmlProvider = 'smartsearch' | 'creditsafe' | 'stub';
+export type { AmlProvider } from './aml/providers/index.js';
 
 export interface AmlCheckRequest {
   tenantId: string;
@@ -55,27 +64,6 @@ export interface AmlWebhookPayload {
   details?: Record<string, unknown>;
 }
 
-const SMARTSEARCH_API_KEY = process.env.SMARTSEARCH_API_KEY;
-const CREDITSAFE_API_KEY = process.env.CREDITSAFE_API_KEY;
-const SMARTSEARCH_API_URL =
-  process.env.SMARTSEARCH_API_URL ||
-  (process.env.SMARTSEARCH_SANDBOX === 'false'
-    ? 'https://api.smartsearch.com'
-    : 'https://sandbox-api.smartsearch.com');
-const CREDITSAFE_API_URL =
-  process.env.CREDITSAFE_API_URL || 'https://connect.sandbox.creditsafe.com/v1';
-
-class AmlPartnerApiError extends Error {
-  constructor(
-    message: string,
-    public readonly provider: AmlProvider,
-    public readonly statusCode?: number
-  ) {
-    super(message);
-    this.name = 'AmlPartnerApiError';
-  }
-}
-
 function getApiBase(): string {
   return (
     process.env.API_URL || process.env.BACKEND_URL || `http://localhost:${process.env.PORT || 3001}`
@@ -83,12 +71,12 @@ function getApiBase(): string {
 }
 
 export function isAmlPartnerConfigured(): boolean {
-  return !!(SMARTSEARCH_API_KEY || CREDITSAFE_API_KEY);
+  return smartsearchProvider.isConfigured() || creditsafeProvider.isConfigured();
 }
 
 export function getAmlPartnerConfig(): AmlPartnerConfig {
-  const smartsearchConfigured = !!SMARTSEARCH_API_KEY;
-  const creditsafeConfigured = !!CREDITSAFE_API_KEY;
+  const smartsearchConfigured = smartsearchProvider.isConfigured();
+  const creditsafeConfigured = creditsafeProvider.isConfigured();
   const partnerConfigured = smartsearchConfigured || creditsafeConfigured;
   const availableProviders: AmlProvider[] = [];
   if (smartsearchConfigured) availableProviders.push('smartsearch');
@@ -105,12 +93,7 @@ export function getAmlPartnerConfig(): AmlPartnerConfig {
 }
 
 export function resolveAmlProvider(requested?: AmlProvider): AmlProvider {
-  if (requested === 'stub') return 'stub';
-  if (requested === 'smartsearch' && SMARTSEARCH_API_KEY) return 'smartsearch';
-  if (requested === 'creditsafe' && CREDITSAFE_API_KEY) return 'creditsafe';
-  if (SMARTSEARCH_API_KEY) return 'smartsearch';
-  if (CREDITSAFE_API_KEY) return 'creditsafe';
-  return 'stub';
+  return resolveAmlCheckProvider(requested).name;
 }
 
 function inferProviderFromRef(ref: string | null | undefined): AmlProvider | null {
@@ -119,179 +102,6 @@ function inferProviderFromRef(ref: string | null | undefined): AmlProvider | nul
   if (ref.startsWith('creditsafe_')) return 'creditsafe';
   if (ref.startsWith('stub_')) return 'stub';
   return null;
-}
-
-function splitName(fullName: string): { forename: string; surname: string } {
-  const parts = fullName.trim().split(/\s+/);
-  if (parts.length === 1) return { forename: parts[0], surname: parts[0] };
-  return { forename: parts[0], surname: parts.slice(1).join(' ') };
-}
-
-function parseAmlSubmission(client: {
-  amlSubmissionData: string | null;
-  contactName: string | null;
-  name: string;
-}) {
-  if (!client.amlSubmissionData) {
-    return {
-      fullLegalName: client.contactName || client.name,
-      dateOfBirth: undefined as string | undefined,
-      registeredAddress: undefined as string | undefined,
-      nationality: undefined as string | undefined,
-    };
-  }
-  try {
-    const data = JSON.parse(client.amlSubmissionData) as Record<string, string>;
-    return {
-      fullLegalName: data.fullLegalName || client.contactName || client.name,
-      dateOfBirth: data.dateOfBirth,
-      registeredAddress: data.registeredAddress,
-      nationality: data.nationality,
-    };
-  } catch {
-    return {
-      fullLegalName: client.contactName || client.name,
-      dateOfBirth: undefined,
-      registeredAddress: undefined,
-      nationality: undefined,
-    };
-  }
-}
-
-async function submitSmartSearchCheck(params: {
-  ref: string;
-  client: {
-    id: string;
-    name: string;
-    contactName: string | null;
-    contactEmail: string | null;
-    amlSubmissionData: string | null;
-  };
-  webhookUrl: string;
-}): Promise<{ providerRef: string; message: string }> {
-  const submission = parseAmlSubmission(params.client);
-  const { forename, surname } = splitName(submission.fullLegalName);
-
-  const body = {
-    reference: params.ref,
-    callback_url: params.webhookUrl,
-    individual: {
-      forename,
-      surname,
-      date_of_birth: submission.dateOfBirth,
-      address: submission.registeredAddress,
-      nationality: submission.nationality,
-      email: params.client.contactEmail,
-    },
-    metadata: {
-      client_id: params.client.id,
-      client_name: params.client.name,
-    },
-  };
-
-  const response = await fetch(`${SMARTSEARCH_API_URL}/v2/identity-verifications`, {
-    method: 'POST',
-    headers: {
-      Authorization: `Bearer ${SMARTSEARCH_API_KEY}`,
-      'Content-Type': 'application/json',
-      Accept: 'application/json',
-      'X-Request-Id': params.ref,
-    },
-    body: JSON.stringify(body),
-  });
-
-  const responseText = await response.text();
-  let parsed: Record<string, unknown> = {};
-  try {
-    parsed = responseText ? (JSON.parse(responseText) as Record<string, unknown>) : {};
-  } catch {
-    parsed = { raw: responseText.slice(0, 500) };
-  }
-
-  if (!response.ok) {
-    const detail =
-      (parsed.message as string) ||
-      (parsed.error as string) ||
-      `SmartSearch API returned ${response.status}`;
-    throw new AmlPartnerApiError(detail, 'smartsearch', response.status);
-  }
-
-  const providerRef =
-    (parsed.id as string) ||
-    (parsed.reference as string) ||
-    ((parsed.data as Record<string, unknown> | undefined)?.id as string) ||
-    params.ref;
-
-  return {
-    providerRef: String(providerRef),
-    message: 'AML check submitted to SmartSearch. Await webhook confirmation.',
-  };
-}
-
-async function submitCreditsafeCheck(params: {
-  ref: string;
-  client: {
-    id: string;
-    name: string;
-    contactName: string | null;
-    contactEmail: string | null;
-    amlSubmissionData: string | null;
-  };
-  webhookUrl: string;
-}): Promise<{ providerRef: string; message: string }> {
-  const submission = parseAmlSubmission(params.client);
-  const { forename, surname } = splitName(submission.fullLegalName);
-
-  const body = {
-    reference: params.ref,
-    webhookUrl: params.webhookUrl,
-    person: {
-      firstName: forename,
-      lastName: surname,
-      dateOfBirth: submission.dateOfBirth,
-      address: submission.registeredAddress,
-      nationality: submission.nationality,
-      email: params.client.contactEmail,
-    },
-    externalReference: params.client.id,
-  };
-
-  const response = await fetch(`${CREDITSAFE_API_URL}/compliance/aml-checks`, {
-    method: 'POST',
-    headers: {
-      Authorization: `Bearer ${CREDITSAFE_API_KEY}`,
-      'Content-Type': 'application/json',
-      Accept: 'application/json',
-    },
-    body: JSON.stringify(body),
-  });
-
-  const responseText = await response.text();
-  let parsed: Record<string, unknown> = {};
-  try {
-    parsed = responseText ? (JSON.parse(responseText) as Record<string, unknown>) : {};
-  } catch {
-    parsed = { raw: responseText.slice(0, 500) };
-  }
-
-  if (!response.ok) {
-    const detail =
-      (parsed.message as string) ||
-      (parsed.error as string) ||
-      `Creditsafe API returned ${response.status}`;
-    throw new AmlPartnerApiError(detail, 'creditsafe', response.status);
-  }
-
-  const providerRef =
-    (parsed.checkId as string) ||
-    (parsed.id as string) ||
-    ((parsed.data as Record<string, unknown> | undefined)?.checkId as string) ||
-    params.ref;
-
-  return {
-    providerRef: String(providerRef),
-    message: 'AML check submitted to Creditsafe. Await webhook confirmation.',
-  };
 }
 
 /**
@@ -306,7 +116,8 @@ export async function initiateAmlCheck(input: AmlCheckRequest): Promise<AmlCheck
     throw new Error('Client not found');
   }
 
-  const provider = resolveAmlProvider(input.provider);
+  const providerImpl = resolveAmlCheckProvider(input.provider);
+  const provider = providerImpl.name;
   const localRef = `${provider}_${uuidv4().replace(/-/g, '').slice(0, 16)}`;
   const isStub = provider === 'stub';
   const apiBase = getApiBase();
@@ -319,10 +130,7 @@ export async function initiateAmlCheck(input: AmlCheckRequest): Promise<AmlCheck
 
   if (!isStub) {
     try {
-      const result =
-        provider === 'smartsearch'
-          ? await submitSmartSearchCheck({ ref: localRef, client, webhookUrl })
-          : await submitCreditsafeCheck({ ref: localRef, client, webhookUrl });
+      const result = await providerImpl.submitCheck({ ref: localRef, client, webhookUrl });
       providerRef = result.providerRef;
       message = result.message;
     } catch (err) {
@@ -350,6 +158,7 @@ export async function initiateAmlCheck(input: AmlCheckRequest): Promise<AmlCheck
     },
   });
 
+  // Usage record for per-check metering (R2.4) — aggregated by amlUsageService.
   await prisma.activityLog.create({
     data: {
       tenantId: input.tenantId,
@@ -364,6 +173,8 @@ export async function initiateAmlCheck(input: AmlCheckRequest): Promise<AmlCheck
 
   if (!isStub) {
     logger.info(`AML live check submitted for client ${client.id} via ${provider}: ${providerRef}`);
+    // Billing hook — no-op unless AML_BILLING_ENABLED and a per-check price are set.
+    await recordAmlCheckUsage(input.tenantId, provider, client.id);
   }
 
   return {
