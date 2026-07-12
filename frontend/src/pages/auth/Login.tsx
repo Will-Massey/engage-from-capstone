@@ -146,7 +146,7 @@ const Login = () => {
             type="button"
             onClick={handleResendVerification}
             disabled={isResending}
-            className="w-full btn-primary py-2.5 bg-gradient-to-r from-primary-600 to-primary-700 hover:from-primary-700 hover:to-primary-800"
+            className="w-full btn-primary py-2.5"
           >
             {isResending ? 'Sending...' : 'Resend verification email'}
           </button>
@@ -206,7 +206,7 @@ const Login = () => {
           <button
             type="submit"
             disabled={isLoading || totpToken.length < 6}
-            className="w-full btn-primary py-2.5 bg-gradient-to-r from-primary-600 to-primary-700 hover:from-primary-700 hover:to-primary-800"
+            className="w-full btn-primary py-2.5"
           >
             {isLoading ? 'Verifying...' : 'Verify and sign in'}
           </button>
@@ -311,7 +311,7 @@ const Login = () => {
         <button
           type="submit"
           disabled={isLoading}
-          className="w-full btn-primary py-2.5 bg-gradient-to-r from-primary-600 to-primary-700 hover:from-primary-700 hover:to-primary-800"
+          className="w-full btn-primary py-2.5"
         >
           {isLoading ? (
             <>
