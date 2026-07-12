@@ -30,6 +30,7 @@ export interface AuthUser {
   role: UserRole;
   isActive?: boolean;
   lastLoginAt?: string | null;
+  emailVerified?: string | null;
   twoFactorEnabled?: boolean;
   tenant: AuthTenant;
 }

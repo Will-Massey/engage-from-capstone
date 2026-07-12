@@ -10,6 +10,7 @@ export const Login = lazy(() => import('../pages/auth/Login'));
 export const Onboarding = lazy(() => import('../pages/auth/Onboarding'));
 export const ForgotPassword = lazy(() => import('../pages/auth/ForgotPassword'));
 export const ResetPassword = lazy(() => import('../pages/auth/ResetPassword'));
+export const VerifyEmail = lazy(() => import('../pages/auth/VerifyEmail'));
 export const TwoFactorSetup = lazy(() => import('../pages/auth/TwoFactorSetup'));
 
 /** Staff dashboard shell pages */
@@ -57,6 +58,7 @@ export const ROUTE_LAZY_PAGES: Record<string, LazyExoticComponent<ComponentType<
   Onboarding,
   ForgotPassword,
   ResetPassword,
+  VerifyEmail,
   TwoFactorSetup,
   Dashboard,
   Proposals,

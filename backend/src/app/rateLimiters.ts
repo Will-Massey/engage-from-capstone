@@ -154,6 +154,8 @@ export function applyRouteRateLimiters(app: express.Express): void {
   app.use('/api/auth/refresh', authLimiter);
   app.use('/api/auth/forgot-password', authLimiter);
   app.use('/api/auth/reset-password', authLimiter);
+  app.use('/api/auth/verify-email', authLimiter);
+  app.use('/api/auth/resend-verification', authLimiter);
   app.use('/api/auth/2fa/login', loginLimiter);
   app.use('/api/auth/2fa/setup', authLimiter);
   app.use('/api/auth/2fa/verify', authLimiter);

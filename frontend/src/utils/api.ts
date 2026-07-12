@@ -236,7 +236,8 @@ export function isAuthPage(): boolean {
     path === '/login' ||
     path === '/register' ||
     path.startsWith('/forgot-password') ||
-    path.startsWith('/reset-password')
+    path.startsWith('/reset-password') ||
+    path.startsWith('/verify-email')
   );
 }
 
@@ -675,6 +676,11 @@ export const apiClient = {
     lastName: string;
     tenantId: string;
   }) => api.post<RegisterPayload>('/auth/register', data),
+
+  verifyEmail: (token: string) => api.post<{ verified: boolean }>('/auth/verify-email', { token }),
+
+  resendVerification: (email: string, subdomain?: string) =>
+    api.post<{ message?: string }>('/auth/resend-verification', { email, subdomain }),
 
   logout: () => api.post<{ message?: string }>('/auth/logout', {}),
 

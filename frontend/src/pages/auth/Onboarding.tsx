@@ -1,11 +1,11 @@
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { strongPasswordSchema } from '../../utils/passwordPolicy';
 import { CheckIcon } from '@heroicons/react/24/solid';
-import { SparklesIcon } from '@heroicons/react/24/outline';
+import { EnvelopeIcon, SparklesIcon } from '@heroicons/react/24/outline';
 import { apiClient } from '../../utils/api';
 import { useAuthStore } from '../../stores/authStore';
 import { AI_COPILOT } from '../../config/aiCopilot';
@@ -76,6 +76,8 @@ const Onboarding = () => {
   const [currentStep, setCurrentStep] = useState(1);
   const [isLoading, setIsLoading] = useState(false);
   const [subdomainAvailable, setSubdomainAvailable] = useState<boolean | null>(null);
+  const [verificationEmail, setVerificationEmail] = useState('');
+  const [isResending, setIsResending] = useState(false);
   const [claraProfile, setClaraProfile] = useState<ClaraOnboardingProfile>({
     practiceSize: '',
     clientTypes: [],
@@ -128,6 +130,15 @@ const Onboarding = () => {
       })) as any;
 
       if (response.success) {
+        if (response.data.requiresVerification) {
+          // No session yet — the Clara profile stays in localStorage (written in
+          // step 2) and is persisted to tenant settings after first sign-in.
+          setVerificationEmail(response.data.email || data.adminEmail);
+          toast.success('Account created! Check your email to verify your address.');
+          return;
+        }
+
+        // Legacy authenticated-signup path (backend without verification gate)
         setSession(response.data.user, response.data.tenant);
         if (claraProfile.practiceSize && claraProfile.mtdStatus) {
           await persistClaraProfile(claraProfile);
@@ -178,6 +189,56 @@ const Onboarding = () => {
   const prevStep = () => {
     setCurrentStep(currentStep - 1);
   };
+
+  const handleResendVerification = async () => {
+    setIsResending(true);
+    try {
+      await apiClient.resendVerification(verificationEmail);
+      toast.success('If an account exists for that email, a new verification link has been sent.');
+    } catch {
+      toast.error('Could not resend the verification email. Please try again.');
+    } finally {
+      setIsResending(false);
+    }
+  };
+
+  if (verificationEmail) {
+    return (
+      <div className="text-center space-y-6" data-testid="verify-email-panel">
+        <div className="flex justify-center">
+          <div className="w-16 h-16 bg-primary-100 rounded-full flex items-center justify-center">
+            <EnvelopeIcon className="w-8 h-8 text-primary-600" />
+          </div>
+        </div>
+
+        <div>
+          <h2 className="text-2xl font-bold text-slate-900">Check your email</h2>
+          <p className="mt-2 text-slate-700">
+            We&apos;ve sent a verification link to{' '}
+            <span className="font-medium">{verificationEmail}</span>. Follow it to verify your
+            address, then sign in to your new practice.
+          </p>
+          <p className="mt-2 text-sm text-slate-500">The link is valid for 24 hours.</p>
+        </div>
+
+        <button
+          type="button"
+          onClick={handleResendVerification}
+          disabled={isResending}
+          className="w-full btn-primary py-2.5"
+        >
+          {isResending ? 'Sending...' : 'Resend verification email'}
+        </button>
+
+        <p className="text-sm text-slate-700">
+          Already verified?{' '}
+          <Link to="/login" className="font-medium text-primary-600 hover:text-primary-500">
+            Sign in
+          </Link>
+        </p>
+      </div>
+    );
+  }
 
   return (
     <div>

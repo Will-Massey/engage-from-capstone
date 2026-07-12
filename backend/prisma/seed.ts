@@ -82,6 +82,7 @@ async function main() {
         role: 'ADMIN',
         tenantId: tenant.id,
         isActive: true,
+        emailVerified: new Date(),
       },
     });
     console.log('✅ Created demo user:', user.email);
