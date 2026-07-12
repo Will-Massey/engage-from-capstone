@@ -92,12 +92,12 @@ const BUILTIN_SETTINGS: RegulatorySettings = {
  * covered when any accepted-proposal service line matches by name (regex) or by
  * catalog category. Reuses the accounts regex style from scanTenantRegulatoryAlerts.
  */
-const ACCOUNTS_SERVICE_PATTERN =
+export const ACCOUNTS_SERVICE_PATTERN =
   /annual accounts|statutory accounts|year[\s-]?end accounts|accounts preparation|financial statements/i;
-const CONFIRMATION_STATEMENT_SERVICE_PATTERN =
+export const CONFIRMATION_STATEMENT_SERVICE_PATTERN =
   /confirmation statement|annual return|company secretarial/i;
-const VAT_SERVICE_PATTERN = /\bvat\b/i;
-const PAYROLL_SERVICE_PATTERN = /payroll|\bpaye\b|auto[\s-]?enrol?lment|\bpension\b/i;
+export const VAT_SERVICE_PATTERN = /\bvat\b/i;
+export const PAYROLL_SERVICE_PATTERN = /payroll|\bpaye\b|auto[\s-]?enrol?lment|\bpension\b/i;
 
 export function hasAccountsCoverage(services: EngagedService[]): boolean {
   return services.some(

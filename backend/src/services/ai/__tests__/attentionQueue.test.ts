@@ -202,3 +202,112 @@ describe('getAiAttentionQueue — regulatory signal append (R5.2)', () => {
     expect(items[0].kind).toBe('proposal');
   });
 });
+
+describe('getAiAttentionQueue — Clara-actioned drafts (R5.1)', () => {
+  function actionedSignal(overrides: Record<string, unknown> = {}) {
+    return signal({
+      status: 'ACTIONED',
+      metadata: JSON.stringify({ proposalId: 'cd-1' }),
+      ...overrides,
+    });
+  }
+
+  /** Route the shared mocks by query shape: OPEN vs ACTIONED, list vs id-lookup */
+  function routeMocks(options: {
+    proposals?: unknown[];
+    openSignals?: unknown[];
+    actionedSignals?: unknown[];
+    claraDrafts?: unknown[];
+  }) {
+    proposalFindMany.mockImplementation(async (args: { where?: { id?: unknown } }) =>
+      args?.where?.id ? (options.claraDrafts ?? []) : (options.proposals ?? [])
+    );
+    signalFindMany.mockImplementation(async (args: { where?: { status?: string } }) =>
+      args?.where?.status === 'OPEN' ? (options.openSignals ?? []) : (options.actionedSignals ?? [])
+    );
+  }
+
+  it('surfaces ACTIONED signals with a pending Clara draft after the regulatory items', async () => {
+    const actioned = actionedSignal();
+    routeMocks({
+      proposals: [proposal({ status: 'EXPIRED', validUntil: new Date(NOW - 1 * day) })],
+      openSignals: [signal({ severity: 'warning' })],
+      actionedSignals: [actioned],
+      claraDrafts: [{ id: 'cd-1', title: 'VAT services — Acme Ltd', reference: 'PROP-CD' }],
+    });
+
+    const { items } = await getAiAttentionQueue('t1', 'u1');
+
+    expect(items.map((i) => i.kind)).toEqual(['proposal', 'regulatory', 'clara_draft']);
+    expect(items[2]).toMatchObject({
+      kind: 'clara_draft',
+      proposalId: 'cd-1',
+      signalId: actioned.id,
+      clientId: actioned.clientId,
+      reference: 'PROP-CD',
+      title: 'VAT services — Acme Ltd',
+      clientName: 'Reg Client',
+      status: 'DRAFT',
+      priorityScore: 70,
+      narrative: 'Clara drafted: VAT services — Acme Ltd — awaiting approval',
+    });
+    // The draft lookup is pinned to Clara's ceiling: DRAFT + PENDING only
+    expect(proposalFindMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({
+          tenantId: 't1',
+          id: { in: ['cd-1'] },
+          status: 'DRAFT',
+          approvalStatus: 'PENDING',
+        }),
+      })
+    );
+  });
+
+  it('drops actioned signals whose draft is no longer awaiting approval', async () => {
+    routeMocks({
+      proposals: [proposal({ status: 'EXPIRED', validUntil: new Date(NOW - 1 * day) })],
+      actionedSignals: [actionedSignal()],
+      claraDrafts: [], // approved/rejected/sent → excluded by the DRAFT+PENDING filter
+    });
+
+    const { items } = await getAiAttentionQueue('t1', 'u1');
+
+    expect(items).toHaveLength(1);
+    expect(items.some((i) => i.kind === 'clara_draft')).toBe(false);
+  });
+
+  it('ignores actioned signals without a parsable proposalId in metadata', async () => {
+    routeMocks({
+      proposals: [proposal({ status: 'EXPIRED', validUntil: new Date(NOW - 1 * day) })],
+      actionedSignals: [
+        actionedSignal({ metadata: '{}' }),
+        actionedSignal({ metadata: 'not-json' }),
+      ],
+    });
+
+    const { items } = await getAiAttentionQueue('t1', 'u1');
+
+    expect(items.some((i) => i.kind === 'clara_draft')).toBe(false);
+    // No proposalIds → no second proposal query
+    expect(proposalFindMany).toHaveBeenCalledTimes(1);
+  });
+
+  it('never queries for Clara drafts once regulatory items fill the 10 slots', async () => {
+    routeMocks({
+      proposals: Array.from({ length: 9 }, () =>
+        proposal({ status: 'EXPIRED', validUntil: new Date(NOW - 1 * day) })
+      ),
+      openSignals: [signal(), signal({ severity: 'warning' })],
+      actionedSignals: [actionedSignal()],
+      claraDrafts: [{ id: 'cd-1', title: 'X', reference: 'PROP-CD' }],
+    });
+
+    const { items } = await getAiAttentionQueue('t1', 'u1');
+
+    expect(items).toHaveLength(10);
+    expect(items.some((i) => i.kind === 'clara_draft')).toBe(false);
+    // Only the OPEN query ran — the ACTIONED query was skipped with no slots left
+    expect(signalFindMany).toHaveBeenCalledTimes(1);
+  });
+});

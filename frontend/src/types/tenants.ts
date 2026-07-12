@@ -172,6 +172,17 @@ export interface OnboardingStatus {
   steps: OnboardingStep[];
 }
 
+/** Clara autopilot (R5.1) — agentic drafting config, default OFF */
+export interface TenantClaraSettings {
+  agenticDraftingEnabled?: boolean;
+  draftRegulatoryFamilies?: string[];
+  draftRenewals?: boolean;
+  renewalUpliftPercent?: number;
+  useAiCoverLetter?: boolean;
+  draftOwnerUserId?: string | null;
+  maxDraftsPerRun?: number;
+}
+
 /** Full settings document returned by GET /tenants/settings */
 export interface TenantSettingsRecord {
   vat?: TenantVatSettings;
@@ -194,6 +205,7 @@ export interface TenantSettingsRecord {
   integrations?: TenantIntegrationsSettings;
   webhookUrl?: string;
   claraOnboarding?: ClaraOnboardingProfile;
+  clara?: TenantClaraSettings;
   defaultCurrency?: string;
 }
 
@@ -220,6 +232,7 @@ export interface UpdateTenantSettingsPayload {
   integrations?: TenantIntegrationsSettings;
   webhookUrl?: string;
   claraOnboarding?: ClaraOnboardingProfile;
+  clara?: TenantClaraSettings;
 }
 
 export interface UpdateTenantSettingsResult {

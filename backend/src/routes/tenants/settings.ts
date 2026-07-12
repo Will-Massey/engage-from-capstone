@@ -155,6 +155,20 @@ router.put(
           allowCard: z.boolean().optional(),
         })
         .optional(),
+      clara: z
+        .object({
+          agenticDraftingEnabled: z.boolean().optional(),
+          draftRegulatoryFamilies: z
+            .array(z.enum(['vat', 'mtd_itsa', 'filing_deadlines', 'payroll']))
+            .max(4)
+            .optional(),
+          draftRenewals: z.boolean().optional(),
+          renewalUpliftPercent: z.number().min(-50).max(100).optional(),
+          useAiCoverLetter: z.boolean().optional(),
+          draftOwnerUserId: z.string().uuid().nullable().optional(),
+          maxDraftsPerRun: z.number().int().min(1).max(50).optional(),
+        })
+        .optional(),
       professionalBody: z
         .enum(['ACCA', 'ICAEW', 'ICAS', 'CIMA', 'AAT', 'ATT', 'CIOT', 'CPAA', 'OTHER'])
         .optional(),
@@ -215,6 +229,9 @@ router.put(
       payments: data.payments
         ? { ...(currentSettings.payments || {}), ...data.payments }
         : currentSettings.payments,
+      clara: data.clara
+        ? { ...(currentSettings.clara || {}), ...data.clara }
+        : currentSettings.clara,
       professionalBody: data.professionalBody || currentSettings.professionalBody,
       companyRegistration: data.companyRegistration || currentSettings.companyRegistration,
       phone: data.phone || currentSettings.phone,

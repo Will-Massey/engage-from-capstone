@@ -12,6 +12,7 @@ import { runTouchpointEngine } from '../jobs/touchpointEngine.js';
 import { runEmailAutomation } from '../jobs/emailAutomation.js';
 import { reconcileDisputes } from '../services/stripeDisputeService.js';
 import { runRegulatoryScan } from '../jobs/regulatoryScan.js';
+import { runClaraAgenticDrafting } from '../jobs/claraAgenticDrafting.js';
 
 // Run immediately on startup in production, or every 24 hours
 const RENEWAL_CHECK_INTERVAL = 24 * 60 * 60 * 1000; // 24 hours
@@ -129,4 +130,25 @@ export function scheduleRegulatoryScan() {
   setInterval(tick, INTERVAL);
 
   logger.info('✅ Regulatory scan scheduled (every 24 hours)');
+}
+
+export function scheduleClaraAgenticDrafting() {
+  logger.info('📅 Scheduling Clara agentic drafting...');
+
+  const INTERVAL = 24 * 60 * 60 * 1000; // nightly — opt-in tenants only, drafts never send
+
+  const tick = () =>
+    trackJobRun('claraAgenticDrafting', () =>
+      withJobLock(JOB_LOCKS.claraAgenticDrafting, 'clara agentic drafting', () =>
+        runClaraAgenticDrafting()
+      )
+    ).catch((err) => {
+      logger.error('Clara agentic drafting failed:', err);
+      captureException(err, { job: 'claraAgenticDrafting' });
+    });
+
+  setTimeout(tick, 300_000);
+  setInterval(tick, INTERVAL);
+
+  logger.info('✅ Clara agentic drafting scheduled (every 24 hours)');
 }
