@@ -145,6 +145,7 @@ router.put(
           termsSource: z.enum(['engage_default', 'custom']).optional(),
           customTerms: z.string().max(50000).nullable().optional(),
           benchmarksOptIn: z.boolean().optional(),
+          blockSendUntilAmlCleared: z.boolean().optional(),
         })
         .optional(),
       payments: z

@@ -114,7 +114,9 @@ router.get(
 
     if (!libraryComplete) {
       const provision = await provisionTenantEngageLibraryBatched(req.tenantId!, req.user!.id, {
-        maxBatches: 4,
+        // Enough batches to walk the whole package list in one request —
+        // batches whose names already exist are cheap no-ops.
+        maxBatches: Math.max(4, Math.ceil(expected / 50)),
         batchSize: 50,
       });
       libraryCount = provision.libraryActive;

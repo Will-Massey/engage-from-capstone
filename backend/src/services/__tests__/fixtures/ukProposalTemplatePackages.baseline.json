@@ -1,0 +1,1271 @@
+[
+  {
+    "name": "Statutory Annual Accounts — Limited Company",
+    "description": "COMPLIANCE package for Limited Company clients",
+    "title": "Statutory Annual Accounts proposal",
+    "targetEntityType": "LIMITED_COMPANY",
+    "serviceNames": ["Statutory Annual Accounts"],
+    "coverLetterSnippet": "We are pleased to set out our fees for statutory annual accounts for your business."
+  },
+  {
+    "name": "CT600 Corporation Tax Return — Limited Company",
+    "description": "COMPLIANCE package for Limited Company clients",
+    "title": "CT600 Corporation Tax Return proposal",
+    "targetEntityType": "LIMITED_COMPANY",
+    "serviceNames": ["CT600 Corporation Tax Return"],
+    "coverLetterSnippet": "We are pleased to set out our fees for ct600 corporation tax return for your business."
+  },
+  {
+    "name": "Personal Tax Return (SA100) — Limited Company",
+    "description": "COMPLIANCE package for Limited Company clients",
+    "title": "Personal Tax Return (SA100) proposal",
+    "targetEntityType": "LIMITED_COMPANY",
+    "serviceNames": ["Personal Tax Return (SA100)"],
+    "coverLetterSnippet": "We are pleased to set out our fees for personal tax return (sa100) for your business."
+  },
+  {
+    "name": "VAT Return Preparation — Limited Company",
+    "description": "COMPLIANCE package for Limited Company clients",
+    "title": "VAT Return Preparation proposal",
+    "targetEntityType": "LIMITED_COMPANY",
+    "serviceNames": ["VAT Return Preparation"],
+    "coverLetterSnippet": "We are pleased to set out our fees for vat return preparation for your business."
+  },
+  {
+    "name": "VAT Registration Service — Limited Company",
+    "description": "COMPLIANCE package for Limited Company clients",
+    "title": "VAT Registration Service proposal",
+    "targetEntityType": "LIMITED_COMPANY",
+    "serviceNames": ["VAT Registration Service"],
+    "coverLetterSnippet": "We are pleased to set out our fees for vat registration service for your business."
+  },
+  {
+    "name": "Monthly Payroll Processing — Limited Company",
+    "description": "COMPLIANCE package for Limited Company clients",
+    "title": "Monthly Payroll Processing proposal",
+    "targetEntityType": "LIMITED_COMPANY",
+    "serviceNames": ["Monthly Payroll Processing"],
+    "coverLetterSnippet": "We are pleased to set out our fees for monthly payroll processing for your business."
+  },
+  {
+    "name": "P11D Benefits Reporting — Limited Company",
+    "description": "COMPLIANCE package for Limited Company clients",
+    "title": "P11D Benefits Reporting proposal",
+    "targetEntityType": "LIMITED_COMPANY",
+    "serviceNames": ["P11D Benefits Reporting"],
+    "coverLetterSnippet": "We are pleased to set out our fees for p11d benefits reporting for your business."
+  },
+  {
+    "name": "CIS Monthly Return — Limited Company",
+    "description": "COMPLIANCE package for Limited Company clients",
+    "title": "CIS Monthly Return proposal",
+    "targetEntityType": "LIMITED_COMPANY",
+    "serviceNames": ["CIS Monthly Return"],
+    "coverLetterSnippet": "We are pleased to set out our fees for cis monthly return for your business."
+  },
+  {
+    "name": "Confirmation Statement (CS01) — Limited Company",
+    "description": "COMPLIANCE package for Limited Company clients",
+    "title": "Confirmation Statement (CS01) proposal",
+    "targetEntityType": "LIMITED_COMPANY",
+    "serviceNames": ["Confirmation Statement (CS01)"],
+    "coverLetterSnippet": "We are pleased to set out our fees for confirmation statement (cs01) for your business."
+  },
+  {
+    "name": "Personal Tax Planning Review — Limited Company",
+    "description": "ADVISORY package for Limited Company clients",
+    "title": "Personal Tax Planning Review proposal",
+    "targetEntityType": "LIMITED_COMPANY",
+    "serviceNames": ["Personal Tax Planning Review"],
+    "coverLetterSnippet": "We are pleased to set out our fees for personal tax planning review for your business."
+  },
+  {
+    "name": "R&D Tax Credit Claim — Limited Company",
+    "description": "ADVISORY package for Limited Company clients",
+    "title": "R&D Tax Credit Claim proposal",
+    "targetEntityType": "LIMITED_COMPANY",
+    "serviceNames": ["R&D Tax Credit Claim"],
+    "coverLetterSnippet": "We are pleased to set out our fees for r&d tax credit claim for your business."
+  },
+  {
+    "name": "Management Accounts — Limited Company",
+    "description": "ADVISORY package for Limited Company clients",
+    "title": "Management Accounts proposal",
+    "targetEntityType": "LIMITED_COMPANY",
+    "serviceNames": ["Management Accounts"],
+    "coverLetterSnippet": "We are pleased to set out our fees for management accounts for your business."
+  },
+  {
+    "name": "Cash Flow Forecasting — Limited Company",
+    "description": "ADVISORY package for Limited Company clients",
+    "title": "Cash Flow Forecasting proposal",
+    "targetEntityType": "LIMITED_COMPANY",
+    "serviceNames": ["Cash Flow Forecasting"],
+    "coverLetterSnippet": "We are pleased to set out our fees for cash flow forecasting for your business."
+  },
+  {
+    "name": "Funding Application Support — Limited Company",
+    "description": "ADVISORY package for Limited Company clients",
+    "title": "Funding Application Support proposal",
+    "targetEntityType": "LIMITED_COMPANY",
+    "serviceNames": ["Funding Application Support"],
+    "coverLetterSnippet": "We are pleased to set out our fees for funding application support for your business."
+  },
+  {
+    "name": "Statutory Audit — Limited Company",
+    "description": "CONSULTING package for Limited Company clients",
+    "title": "Statutory Audit proposal",
+    "targetEntityType": "LIMITED_COMPANY",
+    "serviceNames": ["Statutory Audit"],
+    "coverLetterSnippet": "We are pleased to set out our fees for statutory audit for your business."
+  },
+  {
+    "name": "Forensic Accounting — Limited Company",
+    "description": "CONSULTING package for Limited Company clients",
+    "title": "Forensic Accounting proposal",
+    "targetEntityType": "LIMITED_COMPANY",
+    "serviceNames": ["Forensic Accounting"],
+    "coverLetterSnippet": "We are pleased to set out our fees for forensic accounting for your business."
+  },
+  {
+    "name": "International Tax Planning — Limited Company",
+    "description": "CONSULTING package for Limited Company clients",
+    "title": "International Tax Planning proposal",
+    "targetEntityType": "LIMITED_COMPANY",
+    "serviceNames": ["International Tax Planning"],
+    "coverLetterSnippet": "We are pleased to set out our fees for international tax planning for your business."
+  },
+  {
+    "name": "Exit & Succession Planning — Limited Company",
+    "description": "CONSULTING package for Limited Company clients",
+    "title": "Exit & Succession Planning proposal",
+    "targetEntityType": "LIMITED_COMPANY",
+    "serviceNames": ["Exit & Succession Planning"],
+    "coverLetterSnippet": "We are pleased to set out our fees for exit & succession planning for your business."
+  },
+  {
+    "name": "Full Bookkeeping Service — Limited Company",
+    "description": "BOOKKEEPING package for Limited Company clients",
+    "title": "Full Bookkeeping Service proposal",
+    "targetEntityType": "LIMITED_COMPANY",
+    "serviceNames": ["Full Bookkeeping Service"],
+    "coverLetterSnippet": "We are pleased to set out our fees for full bookkeeping service for your business."
+  },
+  {
+    "name": "Digital Bookkeeping Setup — Limited Company",
+    "description": "BOOKKEEPING package for Limited Company clients",
+    "title": "Digital Bookkeeping Setup proposal",
+    "targetEntityType": "LIMITED_COMPANY",
+    "serviceNames": ["Digital Bookkeeping Setup"],
+    "coverLetterSnippet": "We are pleased to set out our fees for digital bookkeeping setup for your business."
+  },
+  {
+    "name": "Statutory Annual Accounts — Llp",
+    "description": "COMPLIANCE package for Llp clients",
+    "title": "Statutory Annual Accounts proposal",
+    "targetEntityType": "LLP",
+    "serviceNames": ["Statutory Annual Accounts"],
+    "coverLetterSnippet": "We are pleased to set out our fees for statutory annual accounts for your business."
+  },
+  {
+    "name": "VAT Return Preparation — Llp",
+    "description": "COMPLIANCE package for Llp clients",
+    "title": "VAT Return Preparation proposal",
+    "targetEntityType": "LLP",
+    "serviceNames": ["VAT Return Preparation"],
+    "coverLetterSnippet": "We are pleased to set out our fees for vat return preparation for your business."
+  },
+  {
+    "name": "VAT Registration Service — Llp",
+    "description": "COMPLIANCE package for Llp clients",
+    "title": "VAT Registration Service proposal",
+    "targetEntityType": "LLP",
+    "serviceNames": ["VAT Registration Service"],
+    "coverLetterSnippet": "We are pleased to set out our fees for vat registration service for your business."
+  },
+  {
+    "name": "Monthly Payroll Processing — Llp",
+    "description": "COMPLIANCE package for Llp clients",
+    "title": "Monthly Payroll Processing proposal",
+    "targetEntityType": "LLP",
+    "serviceNames": ["Monthly Payroll Processing"],
+    "coverLetterSnippet": "We are pleased to set out our fees for monthly payroll processing for your business."
+  },
+  {
+    "name": "Management Accounts — Llp",
+    "description": "ADVISORY package for Llp clients",
+    "title": "Management Accounts proposal",
+    "targetEntityType": "LLP",
+    "serviceNames": ["Management Accounts"],
+    "coverLetterSnippet": "We are pleased to set out our fees for management accounts for your business."
+  },
+  {
+    "name": "Cash Flow Forecasting — Llp",
+    "description": "ADVISORY package for Llp clients",
+    "title": "Cash Flow Forecasting proposal",
+    "targetEntityType": "LLP",
+    "serviceNames": ["Cash Flow Forecasting"],
+    "coverLetterSnippet": "We are pleased to set out our fees for cash flow forecasting for your business."
+  },
+  {
+    "name": "Funding Application Support — Llp",
+    "description": "ADVISORY package for Llp clients",
+    "title": "Funding Application Support proposal",
+    "targetEntityType": "LLP",
+    "serviceNames": ["Funding Application Support"],
+    "coverLetterSnippet": "We are pleased to set out our fees for funding application support for your business."
+  },
+  {
+    "name": "Full Bookkeeping Service — Llp",
+    "description": "BOOKKEEPING package for Llp clients",
+    "title": "Full Bookkeeping Service proposal",
+    "targetEntityType": "LLP",
+    "serviceNames": ["Full Bookkeeping Service"],
+    "coverLetterSnippet": "We are pleased to set out our fees for full bookkeeping service for your business."
+  },
+  {
+    "name": "Digital Bookkeeping Setup — Llp",
+    "description": "BOOKKEEPING package for Llp clients",
+    "title": "Digital Bookkeeping Setup proposal",
+    "targetEntityType": "LLP",
+    "serviceNames": ["Digital Bookkeeping Setup"],
+    "coverLetterSnippet": "We are pleased to set out our fees for digital bookkeeping setup for your business."
+  },
+  {
+    "name": "Sole Trader Annual Accounts — Sole Trader",
+    "description": "COMPLIANCE package for Sole Trader clients",
+    "title": "Sole Trader Annual Accounts proposal",
+    "targetEntityType": "SOLE_TRADER",
+    "serviceNames": ["Sole Trader Annual Accounts"],
+    "coverLetterSnippet": "We are pleased to set out our fees for sole trader annual accounts for your business."
+  },
+  {
+    "name": "Personal Tax Return (SA100) — Sole Trader",
+    "description": "COMPLIANCE package for Sole Trader clients",
+    "title": "Personal Tax Return (SA100) proposal",
+    "targetEntityType": "SOLE_TRADER",
+    "serviceNames": ["Personal Tax Return (SA100)"],
+    "coverLetterSnippet": "We are pleased to set out our fees for personal tax return (sa100) for your business."
+  },
+  {
+    "name": "VAT Return Preparation — Sole Trader",
+    "description": "COMPLIANCE package for Sole Trader clients",
+    "title": "VAT Return Preparation proposal",
+    "targetEntityType": "SOLE_TRADER",
+    "serviceNames": ["VAT Return Preparation"],
+    "coverLetterSnippet": "We are pleased to set out our fees for vat return preparation for your business."
+  },
+  {
+    "name": "VAT Registration Service — Sole Trader",
+    "description": "COMPLIANCE package for Sole Trader clients",
+    "title": "VAT Registration Service proposal",
+    "targetEntityType": "SOLE_TRADER",
+    "serviceNames": ["VAT Registration Service"],
+    "coverLetterSnippet": "We are pleased to set out our fees for vat registration service for your business."
+  },
+  {
+    "name": "Monthly Payroll Processing — Sole Trader",
+    "description": "COMPLIANCE package for Sole Trader clients",
+    "title": "Monthly Payroll Processing proposal",
+    "targetEntityType": "SOLE_TRADER",
+    "serviceNames": ["Monthly Payroll Processing"],
+    "coverLetterSnippet": "We are pleased to set out our fees for monthly payroll processing for your business."
+  },
+  {
+    "name": "CIS Monthly Return — Sole Trader",
+    "description": "COMPLIANCE package for Sole Trader clients",
+    "title": "CIS Monthly Return proposal",
+    "targetEntityType": "SOLE_TRADER",
+    "serviceNames": ["CIS Monthly Return"],
+    "coverLetterSnippet": "We are pleased to set out our fees for cis monthly return for your business."
+  },
+  {
+    "name": "Business Structure Review — Sole Trader",
+    "description": "ADVISORY package for Sole Trader clients",
+    "title": "Business Structure Review proposal",
+    "targetEntityType": "SOLE_TRADER",
+    "serviceNames": ["Business Structure Review"],
+    "coverLetterSnippet": "We are pleased to set out our fees for business structure review for your business."
+  },
+  {
+    "name": "Personal Tax Planning Review — Sole Trader",
+    "description": "ADVISORY package for Sole Trader clients",
+    "title": "Personal Tax Planning Review proposal",
+    "targetEntityType": "SOLE_TRADER",
+    "serviceNames": ["Personal Tax Planning Review"],
+    "coverLetterSnippet": "We are pleased to set out our fees for personal tax planning review for your business."
+  },
+  {
+    "name": "MTD ITSA Quarterly Return — Sole Trader",
+    "description": "TAX package for Sole Trader clients",
+    "title": "MTD ITSA Quarterly Return proposal",
+    "targetEntityType": "SOLE_TRADER",
+    "serviceNames": ["MTD ITSA Quarterly Return"],
+    "coverLetterSnippet": "We are pleased to set out our fees for mtd itsa quarterly return for your business."
+  },
+  {
+    "name": "MTD Digital Setup & Training — Sole Trader",
+    "description": "TAX package for Sole Trader clients",
+    "title": "MTD Digital Setup & Training proposal",
+    "targetEntityType": "SOLE_TRADER",
+    "serviceNames": ["MTD Digital Setup & Training"],
+    "coverLetterSnippet": "We are pleased to set out our fees for mtd digital setup & training for your business."
+  },
+  {
+    "name": "Forensic Accounting — Sole Trader",
+    "description": "CONSULTING package for Sole Trader clients",
+    "title": "Forensic Accounting proposal",
+    "targetEntityType": "SOLE_TRADER",
+    "serviceNames": ["Forensic Accounting"],
+    "coverLetterSnippet": "We are pleased to set out our fees for forensic accounting for your business."
+  },
+  {
+    "name": "Full Bookkeeping Service — Sole Trader",
+    "description": "BOOKKEEPING package for Sole Trader clients",
+    "title": "Full Bookkeeping Service proposal",
+    "targetEntityType": "SOLE_TRADER",
+    "serviceNames": ["Full Bookkeeping Service"],
+    "coverLetterSnippet": "We are pleased to set out our fees for full bookkeeping service for your business."
+  },
+  {
+    "name": "Digital Bookkeeping Setup — Sole Trader",
+    "description": "BOOKKEEPING package for Sole Trader clients",
+    "title": "Digital Bookkeeping Setup proposal",
+    "targetEntityType": "SOLE_TRADER",
+    "serviceNames": ["Digital Bookkeeping Setup"],
+    "coverLetterSnippet": "We are pleased to set out our fees for digital bookkeeping setup for your business."
+  },
+  {
+    "name": "Personal Tax Return (SA100) — Partnership",
+    "description": "COMPLIANCE package for Partnership clients",
+    "title": "Personal Tax Return (SA100) proposal",
+    "targetEntityType": "PARTNERSHIP",
+    "serviceNames": ["Personal Tax Return (SA100)"],
+    "coverLetterSnippet": "We are pleased to set out our fees for personal tax return (sa100) for your business."
+  },
+  {
+    "name": "VAT Return Preparation — Partnership",
+    "description": "COMPLIANCE package for Partnership clients",
+    "title": "VAT Return Preparation proposal",
+    "targetEntityType": "PARTNERSHIP",
+    "serviceNames": ["VAT Return Preparation"],
+    "coverLetterSnippet": "We are pleased to set out our fees for vat return preparation for your business."
+  },
+  {
+    "name": "VAT Registration Service — Partnership",
+    "description": "COMPLIANCE package for Partnership clients",
+    "title": "VAT Registration Service proposal",
+    "targetEntityType": "PARTNERSHIP",
+    "serviceNames": ["VAT Registration Service"],
+    "coverLetterSnippet": "We are pleased to set out our fees for vat registration service for your business."
+  },
+  {
+    "name": "Monthly Payroll Processing — Partnership",
+    "description": "COMPLIANCE package for Partnership clients",
+    "title": "Monthly Payroll Processing proposal",
+    "targetEntityType": "PARTNERSHIP",
+    "serviceNames": ["Monthly Payroll Processing"],
+    "coverLetterSnippet": "We are pleased to set out our fees for monthly payroll processing for your business."
+  },
+  {
+    "name": "Business Structure Review — Partnership",
+    "description": "ADVISORY package for Partnership clients",
+    "title": "Business Structure Review proposal",
+    "targetEntityType": "PARTNERSHIP",
+    "serviceNames": ["Business Structure Review"],
+    "coverLetterSnippet": "We are pleased to set out our fees for business structure review for your business."
+  },
+  {
+    "name": "Personal Tax Planning Review — Partnership",
+    "description": "ADVISORY package for Partnership clients",
+    "title": "Personal Tax Planning Review proposal",
+    "targetEntityType": "PARTNERSHIP",
+    "serviceNames": ["Personal Tax Planning Review"],
+    "coverLetterSnippet": "We are pleased to set out our fees for personal tax planning review for your business."
+  },
+  {
+    "name": "Funding Application Support — Partnership",
+    "description": "ADVISORY package for Partnership clients",
+    "title": "Funding Application Support proposal",
+    "targetEntityType": "PARTNERSHIP",
+    "serviceNames": ["Funding Application Support"],
+    "coverLetterSnippet": "We are pleased to set out our fees for funding application support for your business."
+  },
+  {
+    "name": "Forensic Accounting — Partnership",
+    "description": "CONSULTING package for Partnership clients",
+    "title": "Forensic Accounting proposal",
+    "targetEntityType": "PARTNERSHIP",
+    "serviceNames": ["Forensic Accounting"],
+    "coverLetterSnippet": "We are pleased to set out our fees for forensic accounting for your business."
+  },
+  {
+    "name": "Exit & Succession Planning — Partnership",
+    "description": "CONSULTING package for Partnership clients",
+    "title": "Exit & Succession Planning proposal",
+    "targetEntityType": "PARTNERSHIP",
+    "serviceNames": ["Exit & Succession Planning"],
+    "coverLetterSnippet": "We are pleased to set out our fees for exit & succession planning for your business."
+  },
+  {
+    "name": "Full Bookkeeping Service — Partnership",
+    "description": "BOOKKEEPING package for Partnership clients",
+    "title": "Full Bookkeeping Service proposal",
+    "targetEntityType": "PARTNERSHIP",
+    "serviceNames": ["Full Bookkeeping Service"],
+    "coverLetterSnippet": "We are pleased to set out our fees for full bookkeeping service for your business."
+  },
+  {
+    "name": "Digital Bookkeeping Setup — Partnership",
+    "description": "BOOKKEEPING package for Partnership clients",
+    "title": "Digital Bookkeeping Setup proposal",
+    "targetEntityType": "PARTNERSHIP",
+    "serviceNames": ["Digital Bookkeeping Setup"],
+    "coverLetterSnippet": "We are pleased to set out our fees for digital bookkeeping setup for your business."
+  },
+  {
+    "name": "Limited Company COMPLIANCE — Micro",
+    "description": "Micro-tier compliance bundle for Limited Company",
+    "title": "Micro COMPLIANCE engagement",
+    "targetEntityType": "LIMITED_COMPANY",
+    "serviceNames": ["Statutory Annual Accounts", "CT600 Corporation Tax Return"]
+  },
+  {
+    "name": "Limited Company COMPLIANCE — Small",
+    "description": "Small-tier compliance bundle for Limited Company",
+    "title": "Small COMPLIANCE engagement",
+    "targetEntityType": "LIMITED_COMPANY",
+    "serviceNames": [
+      "Statutory Annual Accounts",
+      "CT600 Corporation Tax Return",
+      "Personal Tax Return (SA100)"
+    ]
+  },
+  {
+    "name": "Limited Company COMPLIANCE — Standard",
+    "description": "Standard-tier compliance bundle for Limited Company",
+    "title": "Standard COMPLIANCE engagement",
+    "targetEntityType": "LIMITED_COMPANY",
+    "serviceNames": [
+      "Statutory Annual Accounts",
+      "CT600 Corporation Tax Return",
+      "Personal Tax Return (SA100)",
+      "VAT Return Preparation"
+    ]
+  },
+  {
+    "name": "Limited Company COMPLIANCE — Growth",
+    "description": "Growth-tier compliance bundle for Limited Company",
+    "title": "Growth COMPLIANCE engagement",
+    "targetEntityType": "LIMITED_COMPANY",
+    "serviceNames": [
+      "Statutory Annual Accounts",
+      "CT600 Corporation Tax Return",
+      "Personal Tax Return (SA100)",
+      "VAT Return Preparation",
+      "VAT Registration Service"
+    ]
+  },
+  {
+    "name": "Limited Company COMPLIANCE — Premium",
+    "description": "Premium-tier compliance bundle for Limited Company",
+    "title": "Premium COMPLIANCE engagement",
+    "targetEntityType": "LIMITED_COMPANY",
+    "serviceNames": [
+      "Statutory Annual Accounts",
+      "CT600 Corporation Tax Return",
+      "Personal Tax Return (SA100)",
+      "VAT Return Preparation",
+      "VAT Registration Service",
+      "Monthly Payroll Processing"
+    ]
+  },
+  {
+    "name": "Limited Company ADVISORY — Micro",
+    "description": "Micro-tier advisory bundle for Limited Company",
+    "title": "Micro ADVISORY engagement",
+    "targetEntityType": "LIMITED_COMPANY",
+    "serviceNames": ["Personal Tax Planning Review", "R&D Tax Credit Claim"]
+  },
+  {
+    "name": "Limited Company ADVISORY — Small",
+    "description": "Small-tier advisory bundle for Limited Company",
+    "title": "Small ADVISORY engagement",
+    "targetEntityType": "LIMITED_COMPANY",
+    "serviceNames": ["Personal Tax Planning Review", "R&D Tax Credit Claim", "Management Accounts"]
+  },
+  {
+    "name": "Limited Company ADVISORY — Standard",
+    "description": "Standard-tier advisory bundle for Limited Company",
+    "title": "Standard ADVISORY engagement",
+    "targetEntityType": "LIMITED_COMPANY",
+    "serviceNames": [
+      "Personal Tax Planning Review",
+      "R&D Tax Credit Claim",
+      "Management Accounts",
+      "Cash Flow Forecasting"
+    ]
+  },
+  {
+    "name": "Limited Company ADVISORY — Growth",
+    "description": "Growth-tier advisory bundle for Limited Company",
+    "title": "Growth ADVISORY engagement",
+    "targetEntityType": "LIMITED_COMPANY",
+    "serviceNames": [
+      "Personal Tax Planning Review",
+      "R&D Tax Credit Claim",
+      "Management Accounts",
+      "Cash Flow Forecasting",
+      "Funding Application Support"
+    ]
+  },
+  {
+    "name": "Limited Company ADVISORY — Premium",
+    "description": "Premium-tier advisory bundle for Limited Company",
+    "title": "Premium ADVISORY engagement",
+    "targetEntityType": "LIMITED_COMPANY",
+    "serviceNames": [
+      "Personal Tax Planning Review",
+      "R&D Tax Credit Claim",
+      "Management Accounts",
+      "Cash Flow Forecasting",
+      "Funding Application Support"
+    ]
+  },
+  {
+    "name": "Limited Company BOOKKEEPING — Micro",
+    "description": "Micro-tier bookkeeping bundle for Limited Company",
+    "title": "Micro BOOKKEEPING engagement",
+    "targetEntityType": "LIMITED_COMPANY",
+    "serviceNames": ["Full Bookkeeping Service", "Digital Bookkeeping Setup"]
+  },
+  {
+    "name": "Limited Company BOOKKEEPING — Small",
+    "description": "Small-tier bookkeeping bundle for Limited Company",
+    "title": "Small BOOKKEEPING engagement",
+    "targetEntityType": "LIMITED_COMPANY",
+    "serviceNames": ["Full Bookkeeping Service", "Digital Bookkeeping Setup"]
+  },
+  {
+    "name": "Limited Company BOOKKEEPING — Standard",
+    "description": "Standard-tier bookkeeping bundle for Limited Company",
+    "title": "Standard BOOKKEEPING engagement",
+    "targetEntityType": "LIMITED_COMPANY",
+    "serviceNames": ["Full Bookkeeping Service", "Digital Bookkeeping Setup"]
+  },
+  {
+    "name": "Limited Company BOOKKEEPING — Growth",
+    "description": "Growth-tier bookkeeping bundle for Limited Company",
+    "title": "Growth BOOKKEEPING engagement",
+    "targetEntityType": "LIMITED_COMPANY",
+    "serviceNames": ["Full Bookkeeping Service", "Digital Bookkeeping Setup"]
+  },
+  {
+    "name": "Limited Company BOOKKEEPING — Premium",
+    "description": "Premium-tier bookkeeping bundle for Limited Company",
+    "title": "Premium BOOKKEEPING engagement",
+    "targetEntityType": "LIMITED_COMPANY",
+    "serviceNames": ["Full Bookkeeping Service", "Digital Bookkeeping Setup"]
+  },
+  {
+    "name": "Llp COMPLIANCE — Micro",
+    "description": "Micro-tier compliance bundle for Llp",
+    "title": "Micro COMPLIANCE engagement",
+    "targetEntityType": "LLP",
+    "serviceNames": ["Statutory Annual Accounts", "VAT Return Preparation"]
+  },
+  {
+    "name": "Llp COMPLIANCE — Small",
+    "description": "Small-tier compliance bundle for Llp",
+    "title": "Small COMPLIANCE engagement",
+    "targetEntityType": "LLP",
+    "serviceNames": [
+      "Statutory Annual Accounts",
+      "VAT Return Preparation",
+      "VAT Registration Service"
+    ]
+  },
+  {
+    "name": "Llp COMPLIANCE — Standard",
+    "description": "Standard-tier compliance bundle for Llp",
+    "title": "Standard COMPLIANCE engagement",
+    "targetEntityType": "LLP",
+    "serviceNames": [
+      "Statutory Annual Accounts",
+      "VAT Return Preparation",
+      "VAT Registration Service",
+      "Monthly Payroll Processing"
+    ]
+  },
+  {
+    "name": "Llp COMPLIANCE — Growth",
+    "description": "Growth-tier compliance bundle for Llp",
+    "title": "Growth COMPLIANCE engagement",
+    "targetEntityType": "LLP",
+    "serviceNames": [
+      "Statutory Annual Accounts",
+      "VAT Return Preparation",
+      "VAT Registration Service",
+      "Monthly Payroll Processing"
+    ]
+  },
+  {
+    "name": "Llp COMPLIANCE — Premium",
+    "description": "Premium-tier compliance bundle for Llp",
+    "title": "Premium COMPLIANCE engagement",
+    "targetEntityType": "LLP",
+    "serviceNames": [
+      "Statutory Annual Accounts",
+      "VAT Return Preparation",
+      "VAT Registration Service",
+      "Monthly Payroll Processing"
+    ]
+  },
+  {
+    "name": "Llp ADVISORY — Micro",
+    "description": "Micro-tier advisory bundle for Llp",
+    "title": "Micro ADVISORY engagement",
+    "targetEntityType": "LLP",
+    "serviceNames": ["Management Accounts", "Cash Flow Forecasting"]
+  },
+  {
+    "name": "Llp ADVISORY — Small",
+    "description": "Small-tier advisory bundle for Llp",
+    "title": "Small ADVISORY engagement",
+    "targetEntityType": "LLP",
+    "serviceNames": ["Management Accounts", "Cash Flow Forecasting", "Funding Application Support"]
+  },
+  {
+    "name": "Llp ADVISORY — Standard",
+    "description": "Standard-tier advisory bundle for Llp",
+    "title": "Standard ADVISORY engagement",
+    "targetEntityType": "LLP",
+    "serviceNames": ["Management Accounts", "Cash Flow Forecasting", "Funding Application Support"]
+  },
+  {
+    "name": "Llp ADVISORY — Growth",
+    "description": "Growth-tier advisory bundle for Llp",
+    "title": "Growth ADVISORY engagement",
+    "targetEntityType": "LLP",
+    "serviceNames": ["Management Accounts", "Cash Flow Forecasting", "Funding Application Support"]
+  },
+  {
+    "name": "Llp ADVISORY — Premium",
+    "description": "Premium-tier advisory bundle for Llp",
+    "title": "Premium ADVISORY engagement",
+    "targetEntityType": "LLP",
+    "serviceNames": ["Management Accounts", "Cash Flow Forecasting", "Funding Application Support"]
+  },
+  {
+    "name": "Llp BOOKKEEPING — Micro",
+    "description": "Micro-tier bookkeeping bundle for Llp",
+    "title": "Micro BOOKKEEPING engagement",
+    "targetEntityType": "LLP",
+    "serviceNames": ["Full Bookkeeping Service", "Digital Bookkeeping Setup"]
+  },
+  {
+    "name": "Llp BOOKKEEPING — Small",
+    "description": "Small-tier bookkeeping bundle for Llp",
+    "title": "Small BOOKKEEPING engagement",
+    "targetEntityType": "LLP",
+    "serviceNames": ["Full Bookkeeping Service", "Digital Bookkeeping Setup"]
+  },
+  {
+    "name": "Llp BOOKKEEPING — Standard",
+    "description": "Standard-tier bookkeeping bundle for Llp",
+    "title": "Standard BOOKKEEPING engagement",
+    "targetEntityType": "LLP",
+    "serviceNames": ["Full Bookkeeping Service", "Digital Bookkeeping Setup"]
+  },
+  {
+    "name": "Llp BOOKKEEPING — Growth",
+    "description": "Growth-tier bookkeeping bundle for Llp",
+    "title": "Growth BOOKKEEPING engagement",
+    "targetEntityType": "LLP",
+    "serviceNames": ["Full Bookkeeping Service", "Digital Bookkeeping Setup"]
+  },
+  {
+    "name": "Llp BOOKKEEPING — Premium",
+    "description": "Premium-tier bookkeeping bundle for Llp",
+    "title": "Premium BOOKKEEPING engagement",
+    "targetEntityType": "LLP",
+    "serviceNames": ["Full Bookkeeping Service", "Digital Bookkeeping Setup"]
+  },
+  {
+    "name": "Sole Trader COMPLIANCE — Micro",
+    "description": "Micro-tier compliance bundle for Sole Trader",
+    "title": "Micro COMPLIANCE engagement",
+    "targetEntityType": "SOLE_TRADER",
+    "serviceNames": ["Sole Trader Annual Accounts", "Personal Tax Return (SA100)"]
+  },
+  {
+    "name": "Sole Trader COMPLIANCE — Small",
+    "description": "Small-tier compliance bundle for Sole Trader",
+    "title": "Small COMPLIANCE engagement",
+    "targetEntityType": "SOLE_TRADER",
+    "serviceNames": [
+      "Sole Trader Annual Accounts",
+      "Personal Tax Return (SA100)",
+      "VAT Return Preparation"
+    ]
+  },
+  {
+    "name": "Sole Trader COMPLIANCE — Standard",
+    "description": "Standard-tier compliance bundle for Sole Trader",
+    "title": "Standard COMPLIANCE engagement",
+    "targetEntityType": "SOLE_TRADER",
+    "serviceNames": [
+      "Sole Trader Annual Accounts",
+      "Personal Tax Return (SA100)",
+      "VAT Return Preparation",
+      "VAT Registration Service"
+    ]
+  },
+  {
+    "name": "Sole Trader COMPLIANCE — Growth",
+    "description": "Growth-tier compliance bundle for Sole Trader",
+    "title": "Growth COMPLIANCE engagement",
+    "targetEntityType": "SOLE_TRADER",
+    "serviceNames": [
+      "Sole Trader Annual Accounts",
+      "Personal Tax Return (SA100)",
+      "VAT Return Preparation",
+      "VAT Registration Service",
+      "Monthly Payroll Processing"
+    ]
+  },
+  {
+    "name": "Sole Trader COMPLIANCE — Premium",
+    "description": "Premium-tier compliance bundle for Sole Trader",
+    "title": "Premium COMPLIANCE engagement",
+    "targetEntityType": "SOLE_TRADER",
+    "serviceNames": [
+      "Sole Trader Annual Accounts",
+      "Personal Tax Return (SA100)",
+      "VAT Return Preparation",
+      "VAT Registration Service",
+      "Monthly Payroll Processing",
+      "CIS Monthly Return"
+    ]
+  },
+  {
+    "name": "Sole Trader ADVISORY — Micro",
+    "description": "Micro-tier advisory bundle for Sole Trader",
+    "title": "Micro ADVISORY engagement",
+    "targetEntityType": "SOLE_TRADER",
+    "serviceNames": ["Business Structure Review", "Personal Tax Planning Review"]
+  },
+  {
+    "name": "Sole Trader ADVISORY — Small",
+    "description": "Small-tier advisory bundle for Sole Trader",
+    "title": "Small ADVISORY engagement",
+    "targetEntityType": "SOLE_TRADER",
+    "serviceNames": ["Business Structure Review", "Personal Tax Planning Review"]
+  },
+  {
+    "name": "Sole Trader ADVISORY — Standard",
+    "description": "Standard-tier advisory bundle for Sole Trader",
+    "title": "Standard ADVISORY engagement",
+    "targetEntityType": "SOLE_TRADER",
+    "serviceNames": ["Business Structure Review", "Personal Tax Planning Review"]
+  },
+  {
+    "name": "Sole Trader ADVISORY — Growth",
+    "description": "Growth-tier advisory bundle for Sole Trader",
+    "title": "Growth ADVISORY engagement",
+    "targetEntityType": "SOLE_TRADER",
+    "serviceNames": ["Business Structure Review", "Personal Tax Planning Review"]
+  },
+  {
+    "name": "Sole Trader ADVISORY — Premium",
+    "description": "Premium-tier advisory bundle for Sole Trader",
+    "title": "Premium ADVISORY engagement",
+    "targetEntityType": "SOLE_TRADER",
+    "serviceNames": ["Business Structure Review", "Personal Tax Planning Review"]
+  },
+  {
+    "name": "Sole Trader BOOKKEEPING — Micro",
+    "description": "Micro-tier bookkeeping bundle for Sole Trader",
+    "title": "Micro BOOKKEEPING engagement",
+    "targetEntityType": "SOLE_TRADER",
+    "serviceNames": ["Full Bookkeeping Service", "Digital Bookkeeping Setup"]
+  },
+  {
+    "name": "Sole Trader BOOKKEEPING — Small",
+    "description": "Small-tier bookkeeping bundle for Sole Trader",
+    "title": "Small BOOKKEEPING engagement",
+    "targetEntityType": "SOLE_TRADER",
+    "serviceNames": ["Full Bookkeeping Service", "Digital Bookkeeping Setup"]
+  },
+  {
+    "name": "Sole Trader BOOKKEEPING — Standard",
+    "description": "Standard-tier bookkeeping bundle for Sole Trader",
+    "title": "Standard BOOKKEEPING engagement",
+    "targetEntityType": "SOLE_TRADER",
+    "serviceNames": ["Full Bookkeeping Service", "Digital Bookkeeping Setup"]
+  },
+  {
+    "name": "Sole Trader BOOKKEEPING — Growth",
+    "description": "Growth-tier bookkeeping bundle for Sole Trader",
+    "title": "Growth BOOKKEEPING engagement",
+    "targetEntityType": "SOLE_TRADER",
+    "serviceNames": ["Full Bookkeeping Service", "Digital Bookkeeping Setup"]
+  },
+  {
+    "name": "Sole Trader BOOKKEEPING — Premium",
+    "description": "Premium-tier bookkeeping bundle for Sole Trader",
+    "title": "Premium BOOKKEEPING engagement",
+    "targetEntityType": "SOLE_TRADER",
+    "serviceNames": ["Full Bookkeeping Service", "Digital Bookkeeping Setup"]
+  },
+  {
+    "name": "Partnership COMPLIANCE — Micro",
+    "description": "Micro-tier compliance bundle for Partnership",
+    "title": "Micro COMPLIANCE engagement",
+    "targetEntityType": "PARTNERSHIP",
+    "serviceNames": ["Personal Tax Return (SA100)", "VAT Return Preparation"]
+  },
+  {
+    "name": "Partnership COMPLIANCE — Small",
+    "description": "Small-tier compliance bundle for Partnership",
+    "title": "Small COMPLIANCE engagement",
+    "targetEntityType": "PARTNERSHIP",
+    "serviceNames": [
+      "Personal Tax Return (SA100)",
+      "VAT Return Preparation",
+      "VAT Registration Service"
+    ]
+  },
+  {
+    "name": "Partnership COMPLIANCE — Standard",
+    "description": "Standard-tier compliance bundle for Partnership",
+    "title": "Standard COMPLIANCE engagement",
+    "targetEntityType": "PARTNERSHIP",
+    "serviceNames": [
+      "Personal Tax Return (SA100)",
+      "VAT Return Preparation",
+      "VAT Registration Service",
+      "Monthly Payroll Processing"
+    ]
+  },
+  {
+    "name": "Partnership COMPLIANCE — Growth",
+    "description": "Growth-tier compliance bundle for Partnership",
+    "title": "Growth COMPLIANCE engagement",
+    "targetEntityType": "PARTNERSHIP",
+    "serviceNames": [
+      "Personal Tax Return (SA100)",
+      "VAT Return Preparation",
+      "VAT Registration Service",
+      "Monthly Payroll Processing"
+    ]
+  },
+  {
+    "name": "Partnership COMPLIANCE — Premium",
+    "description": "Premium-tier compliance bundle for Partnership",
+    "title": "Premium COMPLIANCE engagement",
+    "targetEntityType": "PARTNERSHIP",
+    "serviceNames": [
+      "Personal Tax Return (SA100)",
+      "VAT Return Preparation",
+      "VAT Registration Service",
+      "Monthly Payroll Processing"
+    ]
+  },
+  {
+    "name": "Partnership ADVISORY — Micro",
+    "description": "Micro-tier advisory bundle for Partnership",
+    "title": "Micro ADVISORY engagement",
+    "targetEntityType": "PARTNERSHIP",
+    "serviceNames": ["Business Structure Review", "Personal Tax Planning Review"]
+  },
+  {
+    "name": "Partnership ADVISORY — Small",
+    "description": "Small-tier advisory bundle for Partnership",
+    "title": "Small ADVISORY engagement",
+    "targetEntityType": "PARTNERSHIP",
+    "serviceNames": [
+      "Business Structure Review",
+      "Personal Tax Planning Review",
+      "Funding Application Support"
+    ]
+  },
+  {
+    "name": "Partnership ADVISORY — Standard",
+    "description": "Standard-tier advisory bundle for Partnership",
+    "title": "Standard ADVISORY engagement",
+    "targetEntityType": "PARTNERSHIP",
+    "serviceNames": [
+      "Business Structure Review",
+      "Personal Tax Planning Review",
+      "Funding Application Support"
+    ]
+  },
+  {
+    "name": "Partnership ADVISORY — Growth",
+    "description": "Growth-tier advisory bundle for Partnership",
+    "title": "Growth ADVISORY engagement",
+    "targetEntityType": "PARTNERSHIP",
+    "serviceNames": [
+      "Business Structure Review",
+      "Personal Tax Planning Review",
+      "Funding Application Support"
+    ]
+  },
+  {
+    "name": "Partnership ADVISORY — Premium",
+    "description": "Premium-tier advisory bundle for Partnership",
+    "title": "Premium ADVISORY engagement",
+    "targetEntityType": "PARTNERSHIP",
+    "serviceNames": [
+      "Business Structure Review",
+      "Personal Tax Planning Review",
+      "Funding Application Support"
+    ]
+  },
+  {
+    "name": "Partnership BOOKKEEPING — Micro",
+    "description": "Micro-tier bookkeeping bundle for Partnership",
+    "title": "Micro BOOKKEEPING engagement",
+    "targetEntityType": "PARTNERSHIP",
+    "serviceNames": ["Full Bookkeeping Service", "Digital Bookkeeping Setup"]
+  },
+  {
+    "name": "Partnership BOOKKEEPING — Small",
+    "description": "Small-tier bookkeeping bundle for Partnership",
+    "title": "Small BOOKKEEPING engagement",
+    "targetEntityType": "PARTNERSHIP",
+    "serviceNames": ["Full Bookkeeping Service", "Digital Bookkeeping Setup"]
+  },
+  {
+    "name": "Partnership BOOKKEEPING — Standard",
+    "description": "Standard-tier bookkeeping bundle for Partnership",
+    "title": "Standard BOOKKEEPING engagement",
+    "targetEntityType": "PARTNERSHIP",
+    "serviceNames": ["Full Bookkeeping Service", "Digital Bookkeeping Setup"]
+  },
+  {
+    "name": "Partnership BOOKKEEPING — Growth",
+    "description": "Growth-tier bookkeeping bundle for Partnership",
+    "title": "Growth BOOKKEEPING engagement",
+    "targetEntityType": "PARTNERSHIP",
+    "serviceNames": ["Full Bookkeeping Service", "Digital Bookkeeping Setup"]
+  },
+  {
+    "name": "Partnership BOOKKEEPING — Premium",
+    "description": "Premium-tier bookkeeping bundle for Partnership",
+    "title": "Premium BOOKKEEPING engagement",
+    "targetEntityType": "PARTNERSHIP",
+    "serviceNames": ["Full Bookkeeping Service", "Digital Bookkeeping Setup"]
+  },
+  {
+    "name": "General — Limited Company compliance starter",
+    "description": "ICAEW/ACCA-aligned starter pack for general Limited Company clients",
+    "title": "Compliance proposal — General",
+    "targetEntityType": "LIMITED_COMPANY",
+    "targetIndustry": "General",
+    "serviceNames": [
+      "Statutory Annual Accounts",
+      "CT600 Corporation Tax Return",
+      "Personal Tax Return (SA100)"
+    ],
+    "coverLetterSnippet": "This proposal is tailored for general businesses and reflects typical UK practice fee structures."
+  },
+  {
+    "name": "General — Sole Trader compliance starter",
+    "description": "ICAEW/ACCA-aligned starter pack for general Sole Trader clients",
+    "title": "Compliance proposal — General",
+    "targetEntityType": "SOLE_TRADER",
+    "targetIndustry": "General",
+    "serviceNames": ["Sole Trader Annual Accounts", "Personal Tax Return (SA100)"],
+    "coverLetterSnippet": "This proposal is tailored for general businesses and reflects typical UK practice fee structures."
+  },
+  {
+    "name": "General — Partnership compliance starter",
+    "description": "ICAEW/ACCA-aligned starter pack for general Partnership clients",
+    "title": "Compliance proposal — General",
+    "targetEntityType": "PARTNERSHIP",
+    "targetIndustry": "General",
+    "serviceNames": ["Personal Tax Return (SA100)"],
+    "coverLetterSnippet": "This proposal is tailored for general businesses and reflects typical UK practice fee structures."
+  },
+  {
+    "name": "Retail & e-commerce — Limited Company compliance starter",
+    "description": "ICAEW/ACCA-aligned starter pack for retail & e-commerce Limited Company clients",
+    "title": "Compliance proposal — Retail & e-commerce",
+    "targetEntityType": "LIMITED_COMPANY",
+    "targetIndustry": "Retail & e-commerce",
+    "serviceNames": [
+      "Statutory Annual Accounts",
+      "CT600 Corporation Tax Return",
+      "Personal Tax Return (SA100)"
+    ],
+    "coverLetterSnippet": "This proposal is tailored for retail & e-commerce businesses and reflects typical UK practice fee structures."
+  },
+  {
+    "name": "Retail & e-commerce — Sole Trader compliance starter",
+    "description": "ICAEW/ACCA-aligned starter pack for retail & e-commerce Sole Trader clients",
+    "title": "Compliance proposal — Retail & e-commerce",
+    "targetEntityType": "SOLE_TRADER",
+    "targetIndustry": "Retail & e-commerce",
+    "serviceNames": ["Sole Trader Annual Accounts", "Personal Tax Return (SA100)"],
+    "coverLetterSnippet": "This proposal is tailored for retail & e-commerce businesses and reflects typical UK practice fee structures."
+  },
+  {
+    "name": "Retail & e-commerce — Partnership compliance starter",
+    "description": "ICAEW/ACCA-aligned starter pack for retail & e-commerce Partnership clients",
+    "title": "Compliance proposal — Retail & e-commerce",
+    "targetEntityType": "PARTNERSHIP",
+    "targetIndustry": "Retail & e-commerce",
+    "serviceNames": ["Personal Tax Return (SA100)"],
+    "coverLetterSnippet": "This proposal is tailored for retail & e-commerce businesses and reflects typical UK practice fee structures."
+  },
+  {
+    "name": "Construction — Limited Company compliance starter",
+    "description": "ICAEW/ACCA-aligned starter pack for construction Limited Company clients",
+    "title": "Compliance proposal — Construction",
+    "targetEntityType": "LIMITED_COMPANY",
+    "targetIndustry": "Construction",
+    "serviceNames": [
+      "Statutory Annual Accounts",
+      "CT600 Corporation Tax Return",
+      "Personal Tax Return (SA100)"
+    ],
+    "coverLetterSnippet": "This proposal is tailored for construction businesses and reflects typical UK practice fee structures."
+  },
+  {
+    "name": "Construction — Sole Trader compliance starter",
+    "description": "ICAEW/ACCA-aligned starter pack for construction Sole Trader clients",
+    "title": "Compliance proposal — Construction",
+    "targetEntityType": "SOLE_TRADER",
+    "targetIndustry": "Construction",
+    "serviceNames": ["Sole Trader Annual Accounts", "Personal Tax Return (SA100)"],
+    "coverLetterSnippet": "This proposal is tailored for construction businesses and reflects typical UK practice fee structures."
+  },
+  {
+    "name": "Construction — Partnership compliance starter",
+    "description": "ICAEW/ACCA-aligned starter pack for construction Partnership clients",
+    "title": "Compliance proposal — Construction",
+    "targetEntityType": "PARTNERSHIP",
+    "targetIndustry": "Construction",
+    "serviceNames": ["Personal Tax Return (SA100)"],
+    "coverLetterSnippet": "This proposal is tailored for construction businesses and reflects typical UK practice fee structures."
+  },
+  {
+    "name": "Professional services — Limited Company compliance starter",
+    "description": "ICAEW/ACCA-aligned starter pack for professional services Limited Company clients",
+    "title": "Compliance proposal — Professional services",
+    "targetEntityType": "LIMITED_COMPANY",
+    "targetIndustry": "Professional services",
+    "serviceNames": [
+      "Statutory Annual Accounts",
+      "CT600 Corporation Tax Return",
+      "Personal Tax Return (SA100)"
+    ],
+    "coverLetterSnippet": "This proposal is tailored for professional services businesses and reflects typical UK practice fee structures."
+  },
+  {
+    "name": "Professional services — Sole Trader compliance starter",
+    "description": "ICAEW/ACCA-aligned starter pack for professional services Sole Trader clients",
+    "title": "Compliance proposal — Professional services",
+    "targetEntityType": "SOLE_TRADER",
+    "targetIndustry": "Professional services",
+    "serviceNames": ["Sole Trader Annual Accounts", "Personal Tax Return (SA100)"],
+    "coverLetterSnippet": "This proposal is tailored for professional services businesses and reflects typical UK practice fee structures."
+  },
+  {
+    "name": "Professional services — Partnership compliance starter",
+    "description": "ICAEW/ACCA-aligned starter pack for professional services Partnership clients",
+    "title": "Compliance proposal — Professional services",
+    "targetEntityType": "PARTNERSHIP",
+    "targetIndustry": "Professional services",
+    "serviceNames": ["Personal Tax Return (SA100)"],
+    "coverLetterSnippet": "This proposal is tailored for professional services businesses and reflects typical UK practice fee structures."
+  },
+  {
+    "name": "Property & lettings — Limited Company compliance starter",
+    "description": "ICAEW/ACCA-aligned starter pack for property & lettings Limited Company clients",
+    "title": "Compliance proposal — Property & lettings",
+    "targetEntityType": "LIMITED_COMPANY",
+    "targetIndustry": "Property & lettings",
+    "serviceNames": [
+      "Statutory Annual Accounts",
+      "CT600 Corporation Tax Return",
+      "Personal Tax Return (SA100)"
+    ],
+    "coverLetterSnippet": "This proposal is tailored for property & lettings businesses and reflects typical UK practice fee structures."
+  },
+  {
+    "name": "Property & lettings — Sole Trader compliance starter",
+    "description": "ICAEW/ACCA-aligned starter pack for property & lettings Sole Trader clients",
+    "title": "Compliance proposal — Property & lettings",
+    "targetEntityType": "SOLE_TRADER",
+    "targetIndustry": "Property & lettings",
+    "serviceNames": ["Sole Trader Annual Accounts", "Personal Tax Return (SA100)"],
+    "coverLetterSnippet": "This proposal is tailored for property & lettings businesses and reflects typical UK practice fee structures."
+  },
+  {
+    "name": "Property & lettings — Partnership compliance starter",
+    "description": "ICAEW/ACCA-aligned starter pack for property & lettings Partnership clients",
+    "title": "Compliance proposal — Property & lettings",
+    "targetEntityType": "PARTNERSHIP",
+    "targetIndustry": "Property & lettings",
+    "serviceNames": ["Personal Tax Return (SA100)"],
+    "coverLetterSnippet": "This proposal is tailored for property & lettings businesses and reflects typical UK practice fee structures."
+  },
+  {
+    "name": "Hospitality — Limited Company compliance starter",
+    "description": "ICAEW/ACCA-aligned starter pack for hospitality Limited Company clients",
+    "title": "Compliance proposal — Hospitality",
+    "targetEntityType": "LIMITED_COMPANY",
+    "targetIndustry": "Hospitality",
+    "serviceNames": [
+      "Statutory Annual Accounts",
+      "CT600 Corporation Tax Return",
+      "Personal Tax Return (SA100)"
+    ],
+    "coverLetterSnippet": "This proposal is tailored for hospitality businesses and reflects typical UK practice fee structures."
+  },
+  {
+    "name": "Hospitality — Sole Trader compliance starter",
+    "description": "ICAEW/ACCA-aligned starter pack for hospitality Sole Trader clients",
+    "title": "Compliance proposal — Hospitality",
+    "targetEntityType": "SOLE_TRADER",
+    "targetIndustry": "Hospitality",
+    "serviceNames": ["Sole Trader Annual Accounts", "Personal Tax Return (SA100)"],
+    "coverLetterSnippet": "This proposal is tailored for hospitality businesses and reflects typical UK practice fee structures."
+  },
+  {
+    "name": "Hospitality — Partnership compliance starter",
+    "description": "ICAEW/ACCA-aligned starter pack for hospitality Partnership clients",
+    "title": "Compliance proposal — Hospitality",
+    "targetEntityType": "PARTNERSHIP",
+    "targetIndustry": "Hospitality",
+    "serviceNames": ["Personal Tax Return (SA100)"],
+    "coverLetterSnippet": "This proposal is tailored for hospitality businesses and reflects typical UK practice fee structures."
+  },
+  {
+    "name": "Technology — Limited Company compliance starter",
+    "description": "ICAEW/ACCA-aligned starter pack for technology Limited Company clients",
+    "title": "Compliance proposal — Technology",
+    "targetEntityType": "LIMITED_COMPANY",
+    "targetIndustry": "Technology",
+    "serviceNames": [
+      "Statutory Annual Accounts",
+      "CT600 Corporation Tax Return",
+      "Personal Tax Return (SA100)"
+    ],
+    "coverLetterSnippet": "This proposal is tailored for technology businesses and reflects typical UK practice fee structures."
+  },
+  {
+    "name": "Technology — Sole Trader compliance starter",
+    "description": "ICAEW/ACCA-aligned starter pack for technology Sole Trader clients",
+    "title": "Compliance proposal — Technology",
+    "targetEntityType": "SOLE_TRADER",
+    "targetIndustry": "Technology",
+    "serviceNames": ["Sole Trader Annual Accounts", "Personal Tax Return (SA100)"],
+    "coverLetterSnippet": "This proposal is tailored for technology businesses and reflects typical UK practice fee structures."
+  },
+  {
+    "name": "Technology — Partnership compliance starter",
+    "description": "ICAEW/ACCA-aligned starter pack for technology Partnership clients",
+    "title": "Compliance proposal — Technology",
+    "targetEntityType": "PARTNERSHIP",
+    "targetIndustry": "Technology",
+    "serviceNames": ["Personal Tax Return (SA100)"],
+    "coverLetterSnippet": "This proposal is tailored for technology businesses and reflects typical UK practice fee structures."
+  },
+  {
+    "name": "Healthcare — Limited Company compliance starter",
+    "description": "ICAEW/ACCA-aligned starter pack for healthcare Limited Company clients",
+    "title": "Compliance proposal — Healthcare",
+    "targetEntityType": "LIMITED_COMPANY",
+    "targetIndustry": "Healthcare",
+    "serviceNames": [
+      "Statutory Annual Accounts",
+      "CT600 Corporation Tax Return",
+      "Personal Tax Return (SA100)"
+    ],
+    "coverLetterSnippet": "This proposal is tailored for healthcare businesses and reflects typical UK practice fee structures."
+  },
+  {
+    "name": "Healthcare — Sole Trader compliance starter",
+    "description": "ICAEW/ACCA-aligned starter pack for healthcare Sole Trader clients",
+    "title": "Compliance proposal — Healthcare",
+    "targetEntityType": "SOLE_TRADER",
+    "targetIndustry": "Healthcare",
+    "serviceNames": ["Sole Trader Annual Accounts", "Personal Tax Return (SA100)"],
+    "coverLetterSnippet": "This proposal is tailored for healthcare businesses and reflects typical UK practice fee structures."
+  },
+  {
+    "name": "Healthcare — Partnership compliance starter",
+    "description": "ICAEW/ACCA-aligned starter pack for healthcare Partnership clients",
+    "title": "Compliance proposal — Healthcare",
+    "targetEntityType": "PARTNERSHIP",
+    "targetIndustry": "Healthcare",
+    "serviceNames": ["Personal Tax Return (SA100)"],
+    "coverLetterSnippet": "This proposal is tailored for healthcare businesses and reflects typical UK practice fee structures."
+  },
+  {
+    "name": "Manufacturing — Limited Company compliance starter",
+    "description": "ICAEW/ACCA-aligned starter pack for manufacturing Limited Company clients",
+    "title": "Compliance proposal — Manufacturing",
+    "targetEntityType": "LIMITED_COMPANY",
+    "targetIndustry": "Manufacturing",
+    "serviceNames": [
+      "Statutory Annual Accounts",
+      "CT600 Corporation Tax Return",
+      "Personal Tax Return (SA100)"
+    ],
+    "coverLetterSnippet": "This proposal is tailored for manufacturing businesses and reflects typical UK practice fee structures."
+  },
+  {
+    "name": "Manufacturing — Sole Trader compliance starter",
+    "description": "ICAEW/ACCA-aligned starter pack for manufacturing Sole Trader clients",
+    "title": "Compliance proposal — Manufacturing",
+    "targetEntityType": "SOLE_TRADER",
+    "targetIndustry": "Manufacturing",
+    "serviceNames": ["Sole Trader Annual Accounts", "Personal Tax Return (SA100)"],
+    "coverLetterSnippet": "This proposal is tailored for manufacturing businesses and reflects typical UK practice fee structures."
+  },
+  {
+    "name": "Manufacturing — Partnership compliance starter",
+    "description": "ICAEW/ACCA-aligned starter pack for manufacturing Partnership clients",
+    "title": "Compliance proposal — Manufacturing",
+    "targetEntityType": "PARTNERSHIP",
+    "targetIndustry": "Manufacturing",
+    "serviceNames": ["Personal Tax Return (SA100)"],
+    "coverLetterSnippet": "This proposal is tailored for manufacturing businesses and reflects typical UK practice fee structures."
+  },
+  {
+    "name": "Agriculture — Limited Company compliance starter",
+    "description": "ICAEW/ACCA-aligned starter pack for agriculture Limited Company clients",
+    "title": "Compliance proposal — Agriculture",
+    "targetEntityType": "LIMITED_COMPANY",
+    "targetIndustry": "Agriculture",
+    "serviceNames": [
+      "Statutory Annual Accounts",
+      "CT600 Corporation Tax Return",
+      "Personal Tax Return (SA100)"
+    ],
+    "coverLetterSnippet": "This proposal is tailored for agriculture businesses and reflects typical UK practice fee structures."
+  },
+  {
+    "name": "Agriculture — Sole Trader compliance starter",
+    "description": "ICAEW/ACCA-aligned starter pack for agriculture Sole Trader clients",
+    "title": "Compliance proposal — Agriculture",
+    "targetEntityType": "SOLE_TRADER",
+    "targetIndustry": "Agriculture",
+    "serviceNames": ["Sole Trader Annual Accounts", "Personal Tax Return (SA100)"],
+    "coverLetterSnippet": "This proposal is tailored for agriculture businesses and reflects typical UK practice fee structures."
+  },
+  {
+    "name": "Agriculture — Partnership compliance starter",
+    "description": "ICAEW/ACCA-aligned starter pack for agriculture Partnership clients",
+    "title": "Compliance proposal — Agriculture",
+    "targetEntityType": "PARTNERSHIP",
+    "targetIndustry": "Agriculture",
+    "serviceNames": ["Personal Tax Return (SA100)"],
+    "coverLetterSnippet": "This proposal is tailored for agriculture businesses and reflects typical UK practice fee structures."
+  }
+]
