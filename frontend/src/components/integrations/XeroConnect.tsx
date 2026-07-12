@@ -7,6 +7,8 @@ import {
   ArrowPathIcon,
   CloudArrowDownIcon,
 } from '@heroicons/react/24/outline';
+import type { XeroSyncMode } from '../../types/integrations';
+import { XERO_SYNC_MODE_OPTIONS, buildXeroSettingsPayload } from '../../utils/accountingSync';
 
 interface XeroStatus {
   connected: boolean;
@@ -17,6 +19,9 @@ interface XeroStatus {
   lastImportAt?: string;
   lastPushAt?: string;
   scopes?: string[];
+  autoPushOnAcceptance?: boolean;
+  xeroSyncMode?: XeroSyncMode;
+  xeroPaymentAccountCode?: string;
 }
 
 const XeroConnect = () => {
@@ -24,12 +29,23 @@ const XeroConnect = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [isConnecting, setIsConnecting] = useState(false);
   const [isImporting, setIsImporting] = useState(false);
+  const [isSavingSettings, setIsSavingSettings] = useState(false);
+  const [autoPush, setAutoPush] = useState(true);
+  const [syncMode, setSyncMode] = useState<XeroSyncMode>('repeating_draft');
+  const [paymentAccountCode, setPaymentAccountCode] = useState('');
+
+  const applyStatus = (data: XeroStatus) => {
+    setStatus(data);
+    setAutoPush(data.autoPushOnAcceptance !== false);
+    setSyncMode(data.xeroSyncMode ?? 'repeating_draft');
+    setPaymentAccountCode(data.xeroPaymentAccountCode ?? '');
+  };
 
   const loadStatus = useCallback(async () => {
     try {
       const response = (await apiClient.getXeroStatus()) as any;
       if (response.success) {
-        setStatus(response.data);
+        applyStatus(response.data);
       }
     } catch {
       setStatus({ connected: false, configured: false });
@@ -104,6 +120,26 @@ const XeroConnect = () => {
     }
   };
 
+  const saveSettings = async () => {
+    setIsSavingSettings(true);
+    try {
+      const payload = buildXeroSettingsPayload({
+        autoPushOnAcceptance: autoPush,
+        xeroSyncMode: syncMode,
+        xeroPaymentAccountCode: paymentAccountCode,
+      });
+      const response = (await apiClient.updateXeroSettings(payload)) as any;
+      if (response.success) {
+        toast.success('Xero sync settings saved');
+        applyStatus({ ...(status ?? { connected: true, configured: true }), ...response.data });
+      }
+    } catch (error: any) {
+      toast.error(error.response?.data?.error?.message || 'Failed to save Xero settings');
+    } finally {
+      setIsSavingSettings(false);
+    }
+  };
+
   if (isLoading) {
     return (
       <div className="p-4 rounded-lg border bg-sky-50 border-sky-200 text-sky-900 dark:bg-sky-950/40 dark:border-sky-800 dark:text-sky-100">
@@ -130,7 +166,8 @@ const XeroConnect = () => {
         <div className="flex-1">
           <h4 className="font-medium text-slate-900 dark:text-white">Xero Accounting</h4>
           <p className="mt-1 text-sm opacity-80">
-            Import clients from Xero and push accepted proposal fees as contact notes.
+            Import clients from Xero and sync accepted proposals — draft repeating invoices, or
+            invoices mirroring each payment Stripe collects.
           </p>
 
           {!serverConfigured && (
@@ -178,6 +215,73 @@ const XeroConnect = () => {
                   Disconnect
                 </button>
               </div>
+
+              <div className="mt-4 pt-4 border-t border-sky-200 dark:border-sky-800 space-y-3">
+                <h5 className="text-sm font-medium text-slate-900 dark:text-white">
+                  Proposal sync
+                </h5>
+
+                <label className="flex items-start gap-2 text-sm">
+                  <input
+                    type="checkbox"
+                    checked={autoPush}
+                    onChange={(e) => setAutoPush(e.target.checked)}
+                    className="mt-0.5 rounded border-sky-300"
+                  />
+                  <span>
+                    Automatically push proposals to Xero when they are accepted
+                    <span className="block text-xs opacity-70">
+                      Pushes create draft artifacts only — nothing is sent to clients from Xero.
+                    </span>
+                  </span>
+                </label>
+
+                <div className="space-y-2">
+                  {XERO_SYNC_MODE_OPTIONS.map((option) => (
+                    <label key={option.value} className="flex items-start gap-2 text-sm">
+                      <input
+                        type="radio"
+                        name="xero-sync-mode"
+                        value={option.value}
+                        checked={syncMode === option.value}
+                        onChange={() => setSyncMode(option.value)}
+                        className="mt-0.5"
+                      />
+                      <span>
+                        {option.label}
+                        <span className="block text-xs opacity-70">{option.description}</span>
+                      </span>
+                    </label>
+                  ))}
+                </div>
+
+                {syncMode === 'paid_invoices' && (
+                  <label className="block text-sm">
+                    Payment account code (optional)
+                    <input
+                      type="text"
+                      value={paymentAccountCode}
+                      onChange={(e) => setPaymentAccountCode(e.target.value)}
+                      placeholder="e.g. 090"
+                      className="mt-1 block w-40 rounded border border-sky-300 dark:border-sky-700 bg-white dark:bg-slate-900 px-2 py-1 text-sm"
+                    />
+                    <span className="block mt-1 text-xs opacity-70">
+                      When set, synced invoices are marked paid against this Xero account (Stripe
+                      already collected the money). Leave blank to keep them awaiting payment.
+                    </span>
+                  </label>
+                )}
+
+                <button
+                  type="button"
+                  onClick={saveSettings}
+                  disabled={isSavingSettings}
+                  className="inline-flex items-center px-3 py-1.5 text-sm font-medium text-white bg-sky-600 hover:bg-sky-700 rounded-lg disabled:opacity-50"
+                >
+                  {isSavingSettings && <ArrowPathIcon className="h-4 w-4 mr-1 animate-spin" />}
+                  Save sync settings
+                </button>
+              </div>
             </>
           ) : (
             <button
@@ -207,9 +311,9 @@ const XeroConnect = () => {
           <p className="text-xs opacity-70">
             <strong>What happens next?</strong>
             <br />
-            You&apos;ll authorize Engage to read contacts and write contact notes in your Xero
-            organisation. Accepted proposals can be pushed via API (
-            <code className="text-xs">POST /api/xero/push-accepted/:proposalId</code>).
+            You&apos;ll authorize Engage to read contacts and write invoices in your Xero
+            organisation. Accepted proposals sync automatically as draft repeating invoices, or as
+            paid invoices mirroring each Stripe payment — configurable once connected.
           </p>
         </div>
       )}

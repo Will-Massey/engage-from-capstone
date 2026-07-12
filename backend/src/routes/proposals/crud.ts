@@ -361,6 +361,18 @@ router.put(
       },
     });
 
+    // Staff-side transition to ACCEPTED via status update (the route rejects
+    // already-accepted proposals above) — accounting sync is fire-and-forget
+    // (gated on tenant connection + auto-push setting).
+    if (proposal.status === 'ACCEPTED') {
+      try {
+        const { triggerXeroPushOnAcceptance } = await import('../../services/xeroProposalPush.js');
+        void triggerXeroPushOnAcceptance(req.tenantId!, proposal.id);
+      } catch (e) {
+        logger.warn('Failed to trigger Xero push on proposal acceptance', e);
+      }
+    }
+
     // Update services if provided
     if (data.services) {
       const serviceTemplateIds = data.services.map((s) => s.serviceId);

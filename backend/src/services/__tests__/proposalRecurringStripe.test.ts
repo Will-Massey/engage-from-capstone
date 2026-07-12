@@ -28,6 +28,12 @@ jest.mock('../../config/database.js', () => ({
   },
 }));
 
+// R4.1 — accounting mirror is dynamically imported by handleRecurringInvoicePaid
+const syncPaidStripeInvoice = jest.fn(async (..._args: unknown[]) => undefined);
+jest.mock('../accountingPaidInvoiceSync.js', () => ({
+  syncPaidStripeInvoice: (...args: unknown[]) => syncPaidStripeInvoice(...args),
+}));
+
 import {
   createRecurringCheckout,
   bpsToPercent,
@@ -144,6 +150,47 @@ describe('recurring invoice webhooks', () => {
     await handleRecurringInvoicePaid({ id: 'in_2', subscription: 'sub_1', amount_paid: 12500 });
     expect(subRetrieve).toHaveBeenCalledWith('sub_1');
     expect(activityCreate).toHaveBeenCalled();
+  });
+
+  it('kicks off the accounting mirror with the Stripe invoice id and amount', async () => {
+    await handleRecurringInvoicePaid({
+      id: 'in_1',
+      subscription: 'sub_1',
+      amount_paid: 12500,
+      subscription_details: { metadata: { proposalId: 'p1', tenantId: 't1' } },
+    });
+    expect(syncPaidStripeInvoice).toHaveBeenCalledWith({
+      tenantId: 't1',
+      proposalId: 'p1',
+      stripeInvoiceId: 'in_1',
+      amountPaidPence: 12500,
+    });
+  });
+
+  it('skips the accounting mirror for zero/missing amounts', async () => {
+    await handleRecurringInvoicePaid({
+      id: 'in_free',
+      subscription: 'sub_1',
+      amount_paid: 0,
+      subscription_details: { metadata: { proposalId: 'p1', tenantId: 't1' } },
+    });
+    expect(syncPaidStripeInvoice).not.toHaveBeenCalled();
+  });
+
+  it('never rejects when the accounting mirror fails (webhook safety)', async () => {
+    syncPaidStripeInvoice.mockRejectedValueOnce(new Error('xero exploded'));
+    await expect(
+      handleRecurringInvoicePaid({
+        id: 'in_1',
+        subscription: 'sub_1',
+        amount_paid: 12500,
+        subscription_details: { metadata: { proposalId: 'p1', tenantId: 't1' } },
+      })
+    ).resolves.toBeUndefined();
+    // The RECURRING_PAYMENT activity log is still written.
+    expect(activityCreate).toHaveBeenCalledWith(
+      expect.objectContaining({ data: expect.objectContaining({ action: 'RECURRING_PAYMENT' }) })
+    );
   });
 
   it('logs RECURRING_PAYMENT_FAILED on invoice.payment_failed', async () => {

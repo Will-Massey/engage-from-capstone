@@ -5,6 +5,8 @@
 import { prisma } from '../config/database.js';
 import { encrypt, decrypt, encryptObject, decryptObject } from '../utils/encryption.js';
 
+export type XeroSyncMode = 'repeating_draft' | 'paid_invoices';
+
 export interface TenantXeroSettings {
   connected: boolean;
   /** Xero organisation tenant ID (xero-tenant-id header) */
@@ -21,6 +23,16 @@ export interface TenantXeroSettings {
   lastPushAt?: string;
   /** Default Xero revenue account code for repeating invoices (e.g. 200) */
   defaultRevenueAccountCode?: string;
+  /** Push accepted proposals to Xero automatically (default true — DRAFT artifacts only) */
+  autoPushOnAcceptance?: boolean;
+  /**
+   * repeating_draft (default): acceptance creates DRAFT repeating invoices.
+   * paid_invoices: acceptance skips repeating invoices; each paid Stripe
+   * recurring invoice is mirrored as an AUTHORISED ACCREC invoice instead.
+   */
+  xeroSyncMode?: XeroSyncMode;
+  /** Xero account code paid_invoices payments are applied against (unset = leave AUTHORISED unpaid) */
+  xeroPaymentAccountCode?: string;
 }
 
 export interface TenantSettingsJson {
@@ -117,6 +129,9 @@ export function xeroStatusFromSettings(raw?: TenantXeroSettings | null) {
     lastImportAt: raw.lastImportAt,
     lastPushAt: raw.lastPushAt,
     scope: raw.scope,
+    autoPushOnAcceptance: raw.autoPushOnAcceptance !== false,
+    xeroSyncMode: raw.xeroSyncMode ?? 'repeating_draft',
+    xeroPaymentAccountCode: raw.xeroPaymentAccountCode,
   };
 }
 

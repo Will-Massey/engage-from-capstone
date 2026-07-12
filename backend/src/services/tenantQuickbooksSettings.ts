@@ -15,6 +15,10 @@ export interface TenantQuickBooksSettings {
   scope?: string[];
   connectedAt: string;
   connectedByUserId?: string;
+  lastImportAt?: string;
+  lastPushAt?: string;
+  /** QBO account id (DepositToAccountRef) payments are recorded against (unset = invoice left unpaid) */
+  paymentAccountId?: string;
 }
 
 export interface TenantSettingsJson {
@@ -113,6 +117,9 @@ export function quickbooksStatusFromSettings(raw: TenantQuickBooksSettings | nul
   realmId?: string;
   companyName?: string;
   connectedAt?: string;
+  lastImportAt?: string;
+  lastPushAt?: string;
+  paymentAccountId?: string;
 } {
   return {
     connected: Boolean(raw?.connected),
@@ -120,5 +127,8 @@ export function quickbooksStatusFromSettings(raw: TenantQuickBooksSettings | nul
     realmId: raw?.realmId,
     companyName: raw?.companyName,
     connectedAt: raw?.connectedAt,
+    lastImportAt: raw?.lastImportAt,
+    lastPushAt: raw?.lastPushAt,
+    paymentAccountId: raw?.paymentAccountId,
   };
 }

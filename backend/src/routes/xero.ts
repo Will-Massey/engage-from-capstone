@@ -58,12 +58,13 @@ function ensureXeroConfigured() {
   }
 }
 
-async function handlePushProposal(tenantId: string, proposalId: string) {
+async function handlePushProposal(tenantId: string, proposalId: string, force: boolean) {
   try {
-    const result = await pushProposalToXero(tenantId, proposalId);
+    const result = await pushProposalToXero(tenantId, proposalId, { force });
 
-    const message =
-      result.mode === 'live'
+    const message = result.skipped
+      ? 'Proposal was already pushed to Xero — skipped (pass ?force=true to re-push)'
+      : result.mode === 'live'
         ? result.xero.repeatingInvoice.created > 0
           ? `Proposal pushed to Xero — ${result.xero.repeatingInvoice.created} repeating invoice(s) created`
           : 'Proposal pushed to Xero with warnings — check response details'
@@ -75,6 +76,7 @@ async function handlePushProposal(tenantId: string, proposalId: string) {
         proposalId,
         reference: result.reference,
         mode: result.mode,
+        skipped: result.skipped ?? false,
         xero: result.xero,
         warnings: result.warnings,
       },
@@ -314,7 +316,8 @@ router.post(
   authenticate,
   authorize('ADMIN', 'PARTNER', 'MANAGER'),
   asyncHandler(async (req, res) => {
-    const payload = await handlePushProposal(req.tenantId!, req.params.proposalId);
+    const force = req.query.force === 'true';
+    const payload = await handlePushProposal(req.tenantId!, req.params.proposalId, force);
     res.json(payload);
   })
 );
@@ -324,8 +327,51 @@ router.post(
   authenticate,
   authorize('ADMIN', 'PARTNER', 'MANAGER'),
   asyncHandler(async (req, res) => {
-    const payload = await handlePushProposal(req.tenantId!, req.params.proposalId);
+    const force = req.query.force === 'true';
+    const payload = await handlePushProposal(req.tenantId!, req.params.proposalId, force);
     res.json(payload);
+  })
+);
+
+/**
+ * POST /api/xero/settings — sync preferences (auto-push, sync mode, payment account)
+ */
+router.post(
+  '/settings',
+  authenticate,
+  authorize('ADMIN', 'PARTNER', 'MANAGER'),
+  asyncHandler(async (req, res) => {
+    const body = z
+      .object({
+        autoPushOnAcceptance: z.boolean().optional(),
+        xeroSyncMode: z.enum(['repeating_draft', 'paid_invoices']).optional(),
+        xeroPaymentAccountCode: z.string().trim().max(20).nullable().optional(),
+      })
+      .parse(req.body ?? {});
+
+    const tenantId = req.tenantId!;
+    const settings = await getTenantXeroSettings(tenantId);
+    if (!settings?.connected) {
+      throw new ApiError('XERO_NOT_CONNECTED', 'Xero is not connected for this practice', 400);
+    }
+
+    await saveTenantXeroSettings(tenantId, {
+      ...settings,
+      ...(body.autoPushOnAcceptance !== undefined
+        ? { autoPushOnAcceptance: body.autoPushOnAcceptance }
+        : {}),
+      ...(body.xeroSyncMode !== undefined ? { xeroSyncMode: body.xeroSyncMode } : {}),
+      ...(body.xeroPaymentAccountCode !== undefined
+        ? { xeroPaymentAccountCode: body.xeroPaymentAccountCode || undefined }
+        : {}),
+    });
+
+    const updated = await getTenantXeroSettings(tenantId);
+    res.json({
+      success: true,
+      data: xeroStatusFromSettings(updated),
+      message: 'Xero sync settings updated',
+    });
   })
 );
 

@@ -10,6 +10,8 @@ export interface DisconnectIntegrationResult {
   message: string;
 }
 
+export type XeroSyncMode = 'repeating_draft' | 'paid_invoices';
+
 export interface XeroStatusResult {
   connected: boolean;
   configured: boolean;
@@ -21,6 +23,15 @@ export interface XeroStatusResult {
   scope?: string[];
   redirectUri: string;
   scopes: string[];
+  autoPushOnAcceptance?: boolean;
+  xeroSyncMode?: XeroSyncMode;
+  xeroPaymentAccountCode?: string;
+}
+
+export interface UpdateXeroSettingsPayload {
+  autoPushOnAcceptance?: boolean;
+  xeroSyncMode?: XeroSyncMode;
+  xeroPaymentAccountCode?: string | null;
 }
 
 export interface ImportXeroClientsPayload {
@@ -50,6 +61,7 @@ export interface XeroProposalPushResult {
   proposalId: string;
   reference: string;
   mode: 'live' | 'stub';
+  skipped?: boolean;
   xero: {
     contactNote: {
       implemented: boolean;
@@ -76,8 +88,42 @@ export interface QuickBooksStatusResult {
   realmId?: string;
   companyName?: string;
   connectedAt?: string;
+  lastImportAt?: string;
+  lastPushAt?: string;
+  paymentAccountId?: string;
   provider: 'quickbooks';
   sandbox: boolean;
-  scaffold: true;
-  note: string;
+}
+
+export interface ImportQuickBooksClientsPayload {
+  dryRun?: boolean;
+}
+
+export interface ImportQuickBooksClientsResult {
+  dryRun: boolean;
+  qboCustomersFetched: number;
+  created: number;
+  skipped: number;
+  errors: number;
+  createdClients: Array<{
+    name: string;
+    contactEmail: string;
+    qboCustomerId?: string;
+  }>;
+  skippedCustomers: Array<{
+    name: string;
+    reason: string;
+    existingClientId?: string;
+  }>;
+  importErrors: Array<{ name: string; error: string }>;
+}
+
+export interface QuickBooksProposalPushResult {
+  proposalId: string;
+  reference: string;
+  customerId?: string;
+  invoiceId?: string;
+  linesPushed: number;
+  warnings: string[];
+  skipped?: boolean;
 }

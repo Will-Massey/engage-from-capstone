@@ -114,6 +114,15 @@ services:
         sync: false
       - key: XERO_REDIRECT_URI
         value: https://capstonesoftware.co.uk/engage/api/oauth/callback/xero
+      - key: QUICKBOOKS_CLIENT_ID
+        sync: false
+      - key: QUICKBOOKS_CLIENT_SECRET
+        sync: false
+      - key: QUICKBOOKS_REDIRECT_URI
+        value: https://capstonesoftware.co.uk/engage/api/oauth/callback/quickbooks
+      # 'false' = production API (quickbooks.api.intuit.com); anything else = sandbox
+      - key: QUICKBOOKS_SANDBOX
+        value: 'false'
     autoDeploy: false # deploys are triggered by CI (ci-cd.yml) after green lint+test+e2e
 
   # Frontend Static Site
