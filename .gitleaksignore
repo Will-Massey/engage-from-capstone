@@ -2,3 +2,21 @@
 # (idempotencyKey: 'dispute-reversal-dp_1' pattern-matches generic-api-key).
 37a21dce7f9e8d5f7bc3289f0cc49a2abb271e1e:backend/src/services/__tests__/stripeDisputeService.test.ts:generic-api-key:72
 37a21dce7f9e8d5f7bc3289f0cc49a2abb271e1e:backend/src/services/__tests__/stripeDisputeService.test.ts:generic-api-key:137
+
+# Historical false positives in deleted files (full-history scheduled scan).
+# Verified 2026-07-11: none are live secrets.
+# - AGENTS.md / RESTART_POINT.md referenced the old hardcoded public-seed key
+#   'capstone-uk-2026'; the endpoint now requires env PUBLIC_SEED_KEY, is
+#   disabled in prod unless ENABLE_PUBLIC_SEED=true, and uses secureCompare
+#   (backend/src/app/preCsrfRoutes.ts).
+# - TEST_RESULTS.md flagged 'Bearer YOUR_TOKEN' curl placeholders.
+# - backend/dist/passwordResetService.js was a committed build output; the
+#   flagged line is crypto.randomBytes token-generation code, not a secret.
+7e5436704f2c05fc78bdc63adb59c8c8a3b12900:AGENTS.md:generic-api-key:346
+ee5a21112f7c43e7b3cadc1b39692d587383aa75:TEST_RESULTS.md:curl-auth-header:143
+ee5a21112f7c43e7b3cadc1b39692d587383aa75:TEST_RESULTS.md:curl-auth-header:150
+030bc9e65987d1d71455bddaa05a8b7cdb87e696:RESTART_POINT.md:generic-api-key:18
+030bc9e65987d1d71455bddaa05a8b7cdb87e696:RESTART_POINT.md:generic-api-key:55
+89734e53612839b36f886f396bc7a6d579197382:backend/dist/services/passwordResetService.js:generic-api-key:20
+4026ae82ac3fa68c625b445005ec7711c336a300:backend/dist/services/passwordResetService.js:generic-api-key:20
+544f5df7c50dc78443a1152f4eb5c9b0d3102496:backend/dist/services/passwordResetService.js:generic-api-key:20
