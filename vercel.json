@@ -1,0 +1,6 @@
+{
+  "$comment": "Vercel is NOT part of the deploy path (Render is — see render.yaml). This file only disables the vestigial Vercel GitHub integration that fails a check on every PR. Delete the Vercel projects/dashboard integration to remove it fully.",
+  "github": {
+    "enabled": false
+  }
+}
