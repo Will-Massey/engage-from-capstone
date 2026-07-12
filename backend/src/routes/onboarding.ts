@@ -4,6 +4,7 @@ import { prisma } from '../config/database.js';
 import { asyncHandler, ApiError } from '../middleware/errorHandler.js';
 import { getClientByPortalToken } from '../services/proposalSharingService.js';
 import { saveAmlDocument } from '../services/fileStorage.js';
+import { getAmlPartnerConfig, initiateAmlCheck } from '../services/amlService.js';
 import logger from '../config/logger.js';
 
 const router = Router();
@@ -183,6 +184,21 @@ router.post(
     });
 
     logger.info(`AML form submitted for client ${client.id} with document uploads`);
+
+    // R2.2 — close the self-service loop: when a live partner is configured,
+    // run the provider check automatically. A provider error must never fail
+    // the client's submission; demo (stub) mode keeps manual initiation.
+    if (getAmlPartnerConfig().mode === 'live') {
+      try {
+        const check = await initiateAmlCheck({
+          tenantId: client.tenantId,
+          clientId: client.id,
+        });
+        logger.info(`Auto AML check initiated for client ${client.id} via ${check.provider}`);
+      } catch (err) {
+        logger.error(`Auto AML check failed for client ${client.id} after submission`, err);
+      }
+    }
 
     res.json({
       success: true,

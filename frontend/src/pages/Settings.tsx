@@ -145,6 +145,7 @@ const Settings = () => {
       termsSource: 'engage_default' as 'engage_default' | 'custom',
       customTerms: null as string | null,
       benchmarksOptIn: false,
+      blockSendUntilAmlCleared: false,
     },
     notifications: {
       proposalAccepted: true,
@@ -545,6 +546,7 @@ const Settings = () => {
                   ? p.cancellationNoticeDays
                   : prev.proposals.cancellationNoticeDays,
               benchmarksOptIn: p.benchmarksOptIn === true,
+              blockSendUntilAmlCleared: p.blockSendUntilAmlCleared === true,
             },
           }));
         }
@@ -1742,6 +1744,35 @@ const Settings = () => {
                           bands shown in the proposal builder. No client or firm identifiers are
                           shared. Categories with fewer than five contributing practices are
                           withheld.
+                        </span>
+                      </span>
+                    </label>
+                  </div>
+
+                  <div className="pt-4 border-t border-slate-200 dark:border-slate-700">
+                    <label className="flex items-start gap-3 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={communicationsForm.proposals.blockSendUntilAmlCleared}
+                        onChange={(e) =>
+                          setCommunicationsForm({
+                            ...communicationsForm,
+                            proposals: {
+                              ...communicationsForm.proposals,
+                              blockSendUntilAmlCleared: e.target.checked,
+                            },
+                          })
+                        }
+                        className="mt-1 h-4 w-4 rounded border-slate-300 text-primary-600 focus:ring-primary-200"
+                      />
+                      <span>
+                        <span className="block text-sm font-semibold text-slate-700 dark:text-slate-100">
+                          Require AML clearance before sending proposals
+                        </span>
+                        <span className="block text-xs text-slate-500 dark:text-slate-300 mt-1">
+                          Proposals cannot be emailed until the client&apos;s AML status is Clear.
+                          Partners and admins can override per proposal; overrides are recorded in
+                          the audit log.
                         </span>
                       </span>
                     </label>

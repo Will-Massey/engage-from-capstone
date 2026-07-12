@@ -42,6 +42,14 @@ export interface AmlClientStatus {
   config: AmlPartnerConfig;
 }
 
+export interface AmlUsageSummary {
+  month: string;
+  checksByProvider: Record<string, number>;
+  totalChecks: number;
+  perCheckPricePence: number;
+  billingEnabled: boolean;
+}
+
 export interface RegulatoryRule {
   id: string;
   title: string;

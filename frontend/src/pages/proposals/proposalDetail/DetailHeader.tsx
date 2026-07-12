@@ -4,6 +4,7 @@
  * ProposalDetail monolith; all state and handlers come from useProposalDetail().
  */
 
+import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import {
   ArrowLeftIcon,
@@ -22,6 +23,8 @@ import {
 import toast from 'react-hot-toast';
 import { format, formatDistanceToNow } from 'date-fns';
 import { DECLINE_REASON_LABELS, type DeclineReason } from '../../../constants/declineReasons';
+import { apiClient } from '../../../utils/api';
+import { amlStatusColour, amlStatusLabel } from '../../../utils/amlBadge';
 import { useProposalDetail } from './ProposalDetailContext';
 
 export default function DetailHeader() {
@@ -59,6 +62,27 @@ export default function DetailHeader() {
     setShowDeleteModal,
     deleteLoading,
   } = useProposalDetail();
+
+  // R2.3 — AML badge shown only when the tenant blocks sending until AML clear.
+  const [amlGateEnabled, setAmlGateEnabled] = useState(false);
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = (await apiClient.getTenantSettings()) as any;
+        if (!cancelled && res?.success) {
+          setAmlGateEnabled(res.data?.proposals?.blockSendUntilAmlCleared === true);
+        }
+      } catch {
+        // Badge is informational — ignore load failures
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const clientAmlStatus: string | undefined = proposal.client?.amlStatus;
 
   return (
     <>
@@ -150,6 +174,16 @@ export default function DetailHeader() {
               >
                 <ShieldCheckIcon className="h-3 w-3 mr-1" />
                 {approvalStatusUi.label}
+              </span>
+            )}
+            {amlGateEnabled && clientAmlStatus && (
+              <span
+                className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${amlStatusColour(clientAmlStatus)}`}
+                title="Client AML status — sending requires AML clearance"
+                data-testid="proposal-aml-badge"
+              >
+                <ShieldCheckIcon className="h-3 w-3 mr-1" />
+                AML: {amlStatusLabel(clientAmlStatus)}
               </span>
             )}
           </div>
