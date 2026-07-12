@@ -1357,7 +1357,13 @@ const PublicProposalView = () => {
                   <h3 className="text-lg font-semibold text-slate-900 dark:text-white">
                     Add your signature
                   </h3>
-                  <SignaturePad onSave={handleSignatureSave} fullWidth height={220} />
+                  <SignaturePad
+                    onSave={handleSignatureSave}
+                    onClear={() => setSignatureData('')}
+                    fullWidth
+                    height={220}
+                    hideConfirm
+                  />
                   {signatureData && (
                     <div className="flex gap-3">
                       <button type="button" className="btn-secondary flex-1" onClick={goToPrevStep}>
@@ -1707,7 +1713,10 @@ const PublicProposalView = () => {
 
         {/* Mobile sticky accept bar */}
         {!isAccepted && !isExpired && !inSigningFlow && !showDecline && (
-          <div className="fixed bottom-0 left-0 right-0 z-40 p-4 bg-white/95 dark:bg-slate-900/95 border-t border-slate-200 dark:border-slate-700 backdrop-blur-md sm:hidden">
+          <div
+            data-testid="mobile-accept-bar"
+            className="fixed bottom-0 left-0 right-0 z-40 p-4 bg-white/95 dark:bg-slate-900/95 border-t border-slate-200 dark:border-slate-700 backdrop-blur-md sm:hidden"
+          >
             <button
               type="button"
               onClick={startSigningFlow}
