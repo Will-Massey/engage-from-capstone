@@ -121,6 +121,7 @@ import type {
 } from '../types/clientLifecycle';
 import type {
   DashboardStats,
+  FeeBenchmarksParams,
   FeeBenchmarksResult,
   ProposalFunnelParams,
   ProposalFunnelResult,
@@ -1008,9 +1009,9 @@ export const apiClient = {
   disconnectQuickBooks: () =>
     api.post('/quickbooks/disconnect', {}) as Promise<DisconnectIntegrationResult>,
 
-  // W4.1 fee benchmarks
-  getFeeBenchmarks: () =>
-    api.get('/analytics/fee-benchmarks') as Promise<ApiResponse<FeeBenchmarksResult>>,
+  // W4.1 fee benchmarks (R3: optional turnover band + your-fee comparison)
+  getFeeBenchmarks: (params?: FeeBenchmarksParams) =>
+    api.get('/analytics/fee-benchmarks', { params }) as Promise<ApiResponse<FeeBenchmarksResult>>,
 
   getProposalFunnel: (params?: ProposalFunnelParams) =>
     api.get('/analytics/proposal-funnel', { params }) as Promise<ApiResponse<ProposalFunnelResult>>,

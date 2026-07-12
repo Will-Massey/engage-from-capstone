@@ -1,0 +1,6 @@
+{
+  "$comment": "Vercel is NOT part of the deploy path (Render is). Disables the vestigial Vercel GitHub integration for the 'engage-from-capstone-backend' Vercel project, whose root directory is backend/.",
+  "github": {
+    "enabled": false
+  }
+}

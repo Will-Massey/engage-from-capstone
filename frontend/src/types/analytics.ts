@@ -56,6 +56,8 @@ export type ServiceCategory =
   | 'TECHNICAL'
   | 'SPECIALIZED';
 
+export type TurnoverBand = 'UNKNOWN' | 'MICRO' | 'SMALL' | 'MEDIUM' | 'LARGE';
+
 export interface FeeBenchmarkBand {
   category: ServiceCategory;
   label: string;
@@ -68,10 +70,33 @@ export interface FeeBenchmarkBand {
   unit: 'per_month_gbp';
 }
 
+export interface FeeBenchmarkTurnoverCell extends FeeBenchmarkBand {
+  turnoverBand: TurnoverBand;
+  turnoverBandLabel: string;
+}
+
+export interface YourFeeComparison {
+  fee: number;
+  percentile: number;
+  vsMedianPct: number;
+  scope: 'category_band' | 'category';
+  category: ServiceCategory;
+  turnoverBand?: TurnoverBand;
+}
+
+export interface FeeBenchmarksParams {
+  category?: ServiceCategory;
+  fee?: number;
+  turnoverBand?: TurnoverBand;
+}
+
 export interface FeeBenchmarksResult {
   benchmarks: FeeBenchmarkBand[];
+  bandsByTurnover: FeeBenchmarkTurnoverCell[];
   suppressedCategories: number;
+  suppressedTurnoverCells: number;
   kAnonymityMinTenants: number;
+  yourFee?: YourFeeComparison;
   disclaimer: string;
   generatedAt: string;
   optedIn: boolean;

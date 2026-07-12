@@ -182,7 +182,6 @@ router.put(
           portalTitle: z.string().max(120).optional(),
         })
         .optional(),
-      benchmarkPricingOptIn: z.boolean().optional(),
     });
 
     const data = schema.parse(req.body);
@@ -229,7 +228,6 @@ router.put(
       whiteLabel: data.whiteLabel
         ? { ...(currentSettings.whiteLabel || {}), ...data.whiteLabel }
         : currentSettings.whiteLabel,
-      benchmarkPricingOptIn: data.benchmarkPricingOptIn ?? currentSettings.benchmarkPricingOptIn,
     };
 
     // Update tenant
