@@ -10,6 +10,7 @@ import {
   XMarkIcon,
 } from '@heroicons/react/24/outline';
 import { apiClient } from '../../utils/api';
+import { formatCurrency } from '../../utils/formatters';
 import { useAuthStore } from '../../stores/authStore';
 import toast from 'react-hot-toast';
 import { SkeletonCard } from '../../components/skeleton/SkeletonCard';
@@ -546,7 +547,9 @@ const Services = () => {
               <div className="flex items-center justify-between pt-4 border-t border-slate-100 dark:border-slate-700">
                 <div>
                   <span className="text-2xl font-bold text-slate-900 dark:text-white">
-                    £{(service.priceAmount || service.basePrice || 0).toLocaleString()}
+                    <span className="tabular-nums">
+                      {formatCurrency(service.priceAmount || service.basePrice || 0)}
+                    </span>
                   </span>
                   <span className="text-xs text-slate-600 dark:text-slate-300 ml-1">
                     /

@@ -20,6 +20,7 @@ import {
 } from '@heroicons/react/24/outline';
 import { apiClient } from '../../utils/api';
 import { appPath } from '../../utils/appBase';
+import { formatCurrency } from '../../utils/formatters';
 import { useAuthStore } from '../../stores/authStore';
 import { format, formatDistanceToNow } from 'date-fns';
 import toast from 'react-hot-toast';
@@ -511,8 +512,8 @@ const Proposals = () => {
                         </div>
                       </td>
                       <td className="px-4 py-4 whitespace-nowrap text-right">
-                        <div className="text-sm font-medium text-slate-900 dark:text-slate-100">
-                          £{proposal.total?.toLocaleString()}
+                        <div className="text-sm font-semibold text-ink-900 dark:text-slate-100 tabular-nums">
+                          {formatCurrency(proposal.total ?? 0)}
                         </div>
                         <div className="text-xs text-slate-500 dark:text-slate-400">
                           {proposal.paymentFrequency?.toLowerCase()}

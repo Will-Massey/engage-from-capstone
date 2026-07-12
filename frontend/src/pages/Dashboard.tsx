@@ -16,6 +16,7 @@ import {
   BellIcon,
 } from '@heroicons/react/24/outline';
 import { apiClient } from '../utils/api';
+import { formatCurrency } from '../utils/formatters';
 import { useAuthStore } from '../stores/authStore';
 import QuickStart from '../components/dashboard/QuickStart';
 import ClaraAttentionQueue from '../components/dashboard/ClaraAttentionQueue';
@@ -261,7 +262,7 @@ const Dashboard = () => {
   const statsCards = [
     {
       name: 'Pipeline Value',
-      value: `£${stats.pipelineValue.toLocaleString()}`,
+      value: formatCurrency(stats.pipelineValue),
       change: `${stats.sentProposals} sent · ${stats.viewedProposals} viewed`,
       trend: 'neutral' as 'up' | 'down' | 'neutral',
       icon: CurrencyPoundIcon,
@@ -271,7 +272,7 @@ const Dashboard = () => {
     {
       name: 'Signed Proposals',
       value: stats.acceptedProposals,
-      change: `£${stats.totalRevenue.toLocaleString()} accepted`,
+      change: `${formatCurrency(stats.totalRevenue)} accepted`,
       trend: 'up' as const,
       icon: CheckCircleIcon,
       color: 'from-blue-500 to-blue-600',
@@ -339,23 +340,18 @@ const Dashboard = () => {
       {/* Welcome Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <div className="flex items-center space-x-3">
-            <img src="/images/capstone-icon.svg" alt="Capstone" className="h-10 w-10" />
-            <div>
-              <h1 className="text-2xl font-bold text-slate-900">
-                Good{' '}
-                {new Date().getHours() < 12
-                  ? 'morning'
-                  : new Date().getHours() < 17
-                    ? 'afternoon'
-                    : 'evening'}
-                , {user?.firstName}! 👋
-              </h1>
-              <p className="mt-1 text-sm text-slate-600">
-                Here's what's happening with {tenant?.name || 'your practice'} today
-              </p>
-            </div>
-          </div>
+          <h1 className="text-2xl font-bold text-ink-900 tracking-tight">
+            Good{' '}
+            {new Date().getHours() < 12
+              ? 'morning'
+              : new Date().getHours() < 17
+                ? 'afternoon'
+                : 'evening'}
+            , {user?.firstName}
+          </h1>
+          <p className="mt-1 text-sm text-ink-500">
+            Here's what's happening with {tenant?.name || 'your practice'} today
+          </p>
         </div>
         <div className="flex items-center space-x-3">
           <select
@@ -368,10 +364,7 @@ const Dashboard = () => {
             <option value="90days">Last 90 days</option>
             <option value="year">This year</option>
           </select>
-          <Link
-            to="/proposals/wizard"
-            className="btn-primary bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-700 hover:to-indigo-700"
-          >
+          <Link to="/proposals/wizard" className="btn-primary">
             <SparklesIcon className="h-4 w-4 mr-2" />
             Create proposal in 5 minutes
           </Link>
@@ -673,8 +666,8 @@ const Dashboard = () => {
                       >
                         {proposal.status}
                       </span>
-                      <p className="text-sm font-medium text-slate-900 dark:text-slate-100 mt-1">
-                        £{proposal.total?.toLocaleString()}
+                      <p className="text-sm font-semibold text-ink-900 dark:text-slate-100 mt-1 tabular-nums">
+                        {formatCurrency(proposal.total ?? 0)}
                       </p>
                     </div>
                   </div>

@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { apiClient } from '../../utils/api';
+import { formatCurrency } from '../../utils/formatters';
 import toast from 'react-hot-toast';
 import { formatServiceCategory } from '../../utils/serviceCategoryLabels';
 import {
@@ -269,7 +270,7 @@ const ServiceCatalog = ({ onImport }: ServiceCatalogProps) => {
                     {/* Pricing Info */}
                     <div className="mt-3 flex items-center space-x-4 text-sm">
                       <span className="text-gray-600">
-                        From <strong>£{service.basePrice.toLocaleString()}</strong>
+                        From <strong className="tabular-nums">{formatCurrency(service.basePrice)}</strong>
                       </span>
                       <span className="text-gray-400">|</span>
                       <span className="text-gray-600 capitalize">
