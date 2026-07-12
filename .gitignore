@@ -89,3 +89,4 @@ scripts/.revolut-business-screen.png
 # Local dev testing aids (Claude) — never commit; .env.testdb holds a Neon secret
 backend/.env.testdb
 backend/dev-preload.mjs
+.claude/worktrees/
