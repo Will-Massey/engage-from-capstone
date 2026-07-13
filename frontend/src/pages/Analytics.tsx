@@ -172,7 +172,7 @@ const StatCard = ({
     <div className="flex items-center justify-between">
       <div>
         <p className="text-sm font-medium text-slate-600">{title}</p>
-        <p className="mt-2 text-3xl font-bold text-slate-900 dark:text-white">
+        <p className="mt-2 text-3xl font-bold text-slate-900 dark:text-white tabular-nums">
           {value}
           {suffix && <span className="text-lg font-normal text-slate-500">{suffix}</span>}
         </p>
@@ -423,25 +423,27 @@ const RevenuePipeline = ({
     <div className="grid grid-cols-2 gap-4 mb-4">
       <div className="p-4 bg-white/40 dark:bg-slate-700/40 rounded-lg">
         <p className="text-xs text-slate-500 dark:text-slate-300">Pipeline Value</p>
-        <p className="text-xl font-bold text-slate-900 dark:text-white">
+        <p className="text-xl font-bold text-slate-900 dark:text-white tabular-nums">
           {formatCurrency(data.pipeline.value)}
         </p>
         <p className="text-xs text-slate-500">{data.pipeline.count} proposals</p>
       </div>
       <div className="p-4 bg-white/40 dark:bg-slate-700/40 rounded-lg">
         <p className="text-xs text-slate-500 dark:text-slate-300">Accepted Revenue</p>
-        <p className="text-xl font-bold text-green-600">{formatCurrency(data.accepted.value)}</p>
+        <p className="text-xl font-bold text-emerald-600 dark:text-emerald-400 tabular-nums">
+          {formatCurrency(data.accepted.value)}
+        </p>
       </div>
       <div className="p-4 bg-white/40 dark:bg-slate-700/40 rounded-lg">
         <p className="text-xs text-slate-500 dark:text-slate-300">Monthly Recurring</p>
-        <p className="text-xl font-bold text-primary-600">
+        <p className="text-xl font-bold text-emerald-600 dark:text-emerald-400 tabular-nums">
           {formatCurrency(data.monthlyRecurring)}
         </p>
         <p className="text-xs text-slate-500">/month</p>
       </div>
       <div className="p-4 bg-white/40 dark:bg-slate-700/40 rounded-lg">
         <p className="text-xs text-slate-500 dark:text-slate-300">Forecast (30% conv.)</p>
-        <p className="text-xl font-bold text-amber-600">
+        <p className="text-xl font-bold text-slate-900 dark:text-white tabular-nums">
           {formatCurrency(data.forecast.expectedValue)}
         </p>
       </div>

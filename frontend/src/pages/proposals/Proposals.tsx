@@ -329,7 +329,7 @@ const Proposals = () => {
         ) : (
           <div className="overflow-x-auto">
             <table className="min-w-[1100px] w-full divide-y divide-slate-200 dark:divide-slate-700">
-              <thead className="bg-slate-50/80 dark:bg-slate-800/80 backdrop-blur-sm">
+              <thead className="bg-slate-50 dark:bg-slate-800">
                 <tr>
                   <th className="px-4 py-3 text-left text-xs font-medium text-slate-600 dark:text-slate-400 uppercase tracking-wider w-[22%]">
                     Proposal
