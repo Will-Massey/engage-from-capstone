@@ -54,7 +54,7 @@ export default function RecurringRevenueWidget() {
       ) : (
         <div className="grid grid-cols-3 gap-4">
           <div className="p-3 bg-white/40 dark:bg-slate-700/40 rounded-lg">
-            <p className="text-2xl font-semibold text-slate-900 dark:text-white">
+            <p className="text-2xl font-semibold text-slate-900 dark:text-white tabular-nums">
               {data.activeSubscriptions}
             </p>
             <p className="text-xs text-slate-600 dark:text-slate-300 mt-1">
@@ -62,7 +62,7 @@ export default function RecurringRevenueWidget() {
             </p>
           </div>
           <div className="p-3 bg-white/40 dark:bg-slate-700/40 rounded-lg">
-            <p className="text-2xl font-semibold text-slate-900 dark:text-white">
+            <p className="text-2xl font-semibold text-emerald-600 dark:text-emerald-400 tabular-nums">
               {formatGbp(data.paidLast30DaysPence)}
             </p>
             <p className="text-xs text-slate-600 dark:text-slate-300 mt-1">
@@ -71,7 +71,7 @@ export default function RecurringRevenueWidget() {
           </div>
           <div className="p-3 bg-white/40 dark:bg-slate-700/40 rounded-lg">
             <p
-              className={`text-2xl font-semibold ${
+              className={`text-2xl font-semibold tabular-nums ${
                 data.failedLast30Days > 0
                   ? 'text-red-600 dark:text-red-400'
                   : 'text-slate-900 dark:text-white'

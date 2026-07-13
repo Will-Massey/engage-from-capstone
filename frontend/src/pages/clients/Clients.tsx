@@ -118,7 +118,7 @@ const Clients = () => {
       </div>
 
       {/* MTD ITSA Alert */}
-      <div className="bg-gradient-to-r from-blue-500 to-primary-500 rounded-lg p-4 text-white">
+      <div className="bg-primary-600 rounded-lg p-4 text-white">
         <div className="flex items-start">
           <ClockIcon className="h-6 w-6 mt-0.5 flex-shrink-0" />
           <div className="ml-3">
@@ -210,7 +210,7 @@ const Clients = () => {
             <Link
               key={client.id}
               to={`/clients/${client.id}`}
-              className="glass-tile p-5 hover:border-white/20 transition-all"
+              className="glass-tile p-5 transition-colors hover:border-slate-300 dark:hover:border-slate-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500/40"
             >
               <div className="flex items-start justify-between">
                 <div className="flex items-center">
@@ -246,7 +246,7 @@ const Clients = () => {
               <div className="mt-4 pt-4 border-t border-slate-100 flex items-center justify-between text-sm">
                 <span className="text-slate-500">{client._count?.proposals || 0} proposals</span>
                 {client.turnover && (
-                  <span className="text-slate-900 dark:text-white font-semibold">
+                  <span className="text-slate-900 dark:text-white font-semibold tabular-nums">
                     £{(client.turnover / 1000).toFixed(0)}k turnover
                   </span>
                 )}

@@ -91,7 +91,7 @@ const ServiceModal = ({
 }: ServiceModalProps) => (
   <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
     <div className="glass-tile rounded-lg w-full max-w-2xl max-h-[90vh] overflow-y-auto">
-      <div className="p-6 border-b border-white/10 flex items-center justify-between">
+      <div className="p-6 border-b border-slate-200 dark:border-slate-700 flex items-center justify-between">
         <h3 className="text-lg font-semibold text-slate-900 dark:text-white">
           {isEdit ? 'Edit Service' : 'Add New Service'}
         </h3>
@@ -230,7 +230,7 @@ const ServiceModal = ({
         </div>
       </div>
 
-      <div className="p-6 border-t border-white/10 flex justify-end space-x-3">
+      <div className="p-6 border-t border-slate-200 dark:border-slate-700 flex justify-end space-x-3">
         <button onClick={onClose} className="btn-secondary">
           Cancel
         </button>
@@ -513,7 +513,10 @@ const Services = () => {
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {filteredServices.map((service) => (
-            <div key={service.id} className="glass-tile p-5 hover:border-white/20 transition-all">
+            <div
+              key={service.id}
+              className="glass-tile p-5 transition-colors hover:border-slate-300 dark:hover:border-slate-600"
+            >
               <div className="flex items-start justify-between mb-3">
                 <span
                   className={`px-2 py-1 text-xs font-medium rounded-full ${categoryColors[service.category] || 'bg-slate-100 text-slate-800'}`}
