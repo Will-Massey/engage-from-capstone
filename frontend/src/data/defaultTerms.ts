@@ -1,13 +1,30 @@
 export const generateTermsAndConditions = (companyDetails: any) => {
   const {
-    name = '[Your Company Name]',
-    companyNumber = '[Company Number]',
-    address = '[Registered Office Address]',
-    professionalBody = '[Professional Body]',
-    insurerName = '[Insurer Name]',
+    name = '',
+    companyNumber = '',
+    address = '',
+    professionalBody = '',
+    insurerName = '',
     governingLaw = 'England and Wales',
     fcaAuthorised = false,
   } = companyDetails;
+
+  // A value counts as "set" only when it is a non-empty string that is not a
+  // leftover bracket placeholder (e.g. "[Company Number]"). Unset fields are
+  // omitted gracefully so client-facing terms never print raw [...] tokens.
+  const isSet = (v: unknown): v is string =>
+    typeof v === 'string' && v.trim() !== '' && !v.trim().startsWith('[');
+
+  const firmLabel = isSet(name) ? `${name} Ltd` : 'The Firm';
+  const registrationParts: string[] = [];
+  if (isSet(companyNumber)) registrationParts.push(`Company Number ${companyNumber}`);
+  if (isSet(address)) registrationParts.push(`Registered Office ${address}`);
+  const firmHeader = registrationParts.length
+    ? `${firmLabel} (${registrationParts.join(', ')})`
+    : firmLabel;
+
+  const professionalBodyName = isSet(professionalBody) ? professionalBody : null;
+  const professionalBodyInline = professionalBodyName || 'our professional body';
 
   const fcaText = fcaAuthorised
     ? 'We are authorised by the Financial Conduct Authority (FCA) to provide regulated investment advice.'
@@ -15,7 +32,7 @@ export const generateTermsAndConditions = (companyDetails: any) => {
 
   return `STANDARD TERMS AND CONDITIONS OF BUSINESS
 
-${name} Ltd (Company Number ${companyNumber}, Registered Office ${address})
+${firmHeader}
 ("We", "Us", "Our", "the Firm")
 
 These Standard Terms and Conditions of Business ("Terms") apply to all services we provide and form part of our contract with you together with the accompanying Proposal / Engagement Letter and any Schedules of Services. They are governed by the law of ${governingLaw}.
@@ -24,9 +41,9 @@ By instructing us or accepting our services (including by providing information 
 
 1. OUR PROFESSIONAL RESPONSIBILITIES AND AUTHORISATION
 
-1.1 We are registered with ${professionalBody} and will comply with their Code of Ethics and professional standards at all times (including the 2025 revisions addressing the impact of technology and AI).
+1.1 We are registered with ${professionalBodyInline} and will comply with their Code of Ethics and professional standards at all times (including the 2025 revisions addressing the impact of technology and AI).
 
-1.2 We maintain professional indemnity insurance with ${insurerName} (territorial coverage: United Kingdom only). Details available on request.
+1.2 We maintain professional indemnity insurance${isSet(insurerName) ? ` with ${insurerName}` : ''} (territorial coverage: United Kingdom only). Details available on request.
 
 1.3 ${fcaText}
 
@@ -79,7 +96,7 @@ Services are limited to those expressly set out in the Engagement Letter and Sch
 
 6.4 We may suspend or terminate services if fees remain unpaid after written notice.
 
-6.5 We may hold client monies in a segregated client account in accordance with ${professionalBody} Client Money Rules. Interest is paid only where significant (typically over £25 or as agreed).
+6.5 We may hold client monies in a segregated client account in accordance with ${professionalBodyInline} Client Money Rules. Interest is paid only where significant (typically over £25 or as agreed).
 
 6.6 We may receive commissions or benefits from third-party introductions and will notify you in writing.
 
@@ -143,7 +160,7 @@ Services are limited to those expressly set out in the Engagement Letter and Sch
 
 13. COMPLAINTS
 
-We aim for high-quality service. If dissatisfied, contact us promptly. We will investigate promptly. If unresolved, you may refer to our professional body ${professionalBody} or the Legal Ombudsman (if applicable).
+We aim for high-quality service. If dissatisfied, contact us promptly. We will investigate promptly. If unresolved, you may refer to our professional body${professionalBodyName ? ` (${professionalBodyName})` : ''} or the Legal Ombudsman (if applicable).
 
 14. OTHER PROVISIONS
 

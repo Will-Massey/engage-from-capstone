@@ -118,6 +118,8 @@ const Settings = () => {
     address: '',
     phone: '',
     website: '',
+    yearsExperience: '',
+    sectorOrRegion: '',
     // Legal fields
     insurerName: '',
     governingLaw: 'England and Wales',
@@ -521,6 +523,11 @@ const Settings = () => {
             : '',
           phone: data.phone || '',
           website: data.website || '',
+          yearsExperience:
+            data.yearsExperience !== undefined && data.yearsExperience !== null
+              ? String(data.yearsExperience)
+              : '',
+          sectorOrRegion: data.sectorOrRegion || '',
           insurerName: data.insurerName || '',
           governingLaw: data.governingLaw || 'England and Wales',
           fcaAuthorised: data.fcaAuthorised || false,
@@ -684,6 +691,10 @@ const Settings = () => {
         },
         phone: practiceForm.phone,
         website: practiceForm.website,
+        ...(practiceForm.yearsExperience.trim()
+          ? { yearsExperience: Number(practiceForm.yearsExperience) }
+          : {}),
+        sectorOrRegion: practiceForm.sectorOrRegion,
         insurerName: practiceForm.insurerName,
         governingLaw: practiceForm.governingLaw,
         fcaAuthorised: practiceForm.fcaAuthorised,
@@ -1263,6 +1274,41 @@ const Settings = () => {
                         }
                         className="mt-1 input-field w-full"
                         placeholder="https://"
+                      />
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                    <div>
+                      <label className="block text-sm font-semibold text-slate-700 dark:text-slate-100">
+                        Years of Experience
+                      </label>
+                      <input
+                        type="number"
+                        min={0}
+                        value={practiceForm.yearsExperience}
+                        onChange={(e) =>
+                          setPracticeForm({ ...practiceForm, yearsExperience: e.target.value })
+                        }
+                        className="mt-1 input-field w-full"
+                        placeholder="e.g., 12"
+                      />
+                      <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+                        Used by Clara when drafting cover letters — left blank, no tenure is
+                        claimed.
+                      </p>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-semibold text-slate-700 dark:text-slate-100">
+                        Sector or Region Focus
+                      </label>
+                      <input
+                        type="text"
+                        value={practiceForm.sectorOrRegion}
+                        onChange={(e) =>
+                          setPracticeForm({ ...practiceForm, sectorOrRegion: e.target.value })
+                        }
+                        className="mt-1 input-field w-full"
+                        placeholder="e.g., hospitality, or the South West"
                       />
                     </div>
                   </div>

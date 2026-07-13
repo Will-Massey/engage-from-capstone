@@ -205,6 +205,8 @@ export interface TenantSettingsRecord {
   fcaAuthorised?: boolean;
   privacyPolicyUrl?: string;
   termsVersion?: string;
+  yearsExperience?: number;
+  sectorOrRegion?: string;
   whiteLabel?: TenantWhiteLabelSettings;
   integrations?: TenantIntegrationsSettings;
   webhookUrl?: string;
@@ -231,6 +233,9 @@ export interface UpdateTenantSettingsPayload {
   fcaAuthorised?: boolean;
   privacyPolicyUrl?: string;
   termsVersion?: string;
+  /** Practice profile fields consumed by cover-letter merge context */
+  yearsExperience?: number;
+  sectorOrRegion?: string;
   whiteLabel?: TenantWhiteLabelSettings;
   /** Stored in settings JSON; used by webhook settings UI */
   integrations?: TenantIntegrationsSettings;

@@ -4,6 +4,13 @@ import { prisma } from '../../config/database.js';
 import { asyncHandler, ApiError } from '../../middleware/errorHandler.js';
 import { authenticate, authorize } from '../../middleware/auth.js';
 import { validateTenantLogoForStorage } from '../../utils/tenantLogoConstraints.js';
+import {
+  getEngageDefaultTermsTemplate,
+  previewEngageDefaultTermsForTenant,
+} from '../../services/proposalTermsService.js';
+import { sendTestIntegrationWebhook } from '../../services/integrationEvents.js';
+
+const WEBHOOK_FORMAT_ENUM = z.enum(['default', 'hubspot', 'zapier', 'senta', 'karbon']);
 
 const router = Router();
 
@@ -189,6 +196,15 @@ router.put(
       fcaAuthorised: z.boolean().optional(),
       privacyPolicyUrl: z.string().optional(),
       termsVersion: z.string().optional(),
+      yearsExperience: z.number().int().min(0).max(200).optional(),
+      sectorOrRegion: z.string().max(200).optional(),
+      webhookUrl: z.string().max(2000).optional(),
+      integrations: z
+        .object({
+          webhookUrl: z.string().max(2000).optional(),
+          webhookFormat: WEBHOOK_FORMAT_ENUM.optional(),
+        })
+        .optional(),
       whiteLabel: z
         .object({
           customDomain: z.string().max(255).optional(),
@@ -242,6 +258,14 @@ router.put(
       fcaAuthorised: data.fcaAuthorised || currentSettings.fcaAuthorised,
       privacyPolicyUrl: data.privacyPolicyUrl || currentSettings.privacyPolicyUrl,
       termsVersion: data.termsVersion || currentSettings.termsVersion,
+      yearsExperience:
+        data.yearsExperience !== undefined ? data.yearsExperience : currentSettings.yearsExperience,
+      sectorOrRegion:
+        data.sectorOrRegion !== undefined ? data.sectorOrRegion : currentSettings.sectorOrRegion,
+      webhookUrl: data.webhookUrl !== undefined ? data.webhookUrl : currentSettings.webhookUrl,
+      integrations: data.integrations
+        ? { ...(currentSettings.integrations || {}), ...data.integrations }
+        : currentSettings.integrations,
       whiteLabel: data.whiteLabel
         ? { ...(currentSettings.whiteLabel || {}), ...data.whiteLabel }
         : currentSettings.whiteLabel,
@@ -294,6 +318,47 @@ router.put(
       },
       message: 'Settings saved successfully',
     });
+  })
+);
+
+/**
+ * GET /api/tenants/settings/proposal-terms-default
+ * Engage default proposal terms — `template` keeps placeholders for editing,
+ * `preview` is rendered for the caller's tenant. Single source of truth is
+ * proposalTermsService (also used by the proposal builder terms-preview).
+ */
+router.get(
+  '/settings/proposal-terms-default',
+  authenticate,
+  asyncHandler(async (req, res) => {
+    const preview = await previewEngageDefaultTermsForTenant(req.tenantId!);
+    const template = getEngageDefaultTermsTemplate();
+    res.json({ success: true, data: { preview, template } });
+  })
+);
+
+/**
+ * POST /api/tenants/settings/test-webhook
+ * Dispatch a sample proposal event to the tenant's configured webhook URL.
+ */
+router.post(
+  '/settings/test-webhook',
+  authenticate,
+  authorize('ADMIN', 'PARTNER', 'MANAGER'),
+  asyncHandler(async (req, res) => {
+    const { format } = z.object({ format: WEBHOOK_FORMAT_ENUM.optional() }).parse(req.body);
+
+    const result = await sendTestIntegrationWebhook(req.tenantId!, format);
+
+    if (!result.delivered) {
+      throw new ApiError(
+        'NO_WEBHOOK_URL',
+        'Save an HTTPS webhook URL before sending a test event',
+        400
+      );
+    }
+
+    res.json({ success: true, data: result });
   })
 );
 
