@@ -2,6 +2,7 @@
  * UK Compliant Engagement Letter Template
  * Based on ACCA and ICAEW guidelines for professional engagement letters
  */
+import { escapeHtml } from '../utils/escapeHtml.js';
 
 export interface EngagementLetterData {
   practiceName: string;
@@ -362,29 +363,29 @@ export function generateProposalEmailTemplate(data: {
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Proposal from ${data.practiceName}</title>
+  <title>Proposal from ${escapeHtml(data.practiceName)}</title>
 </head>
 <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
-  
+
   <div style="background: linear-gradient(135deg, #0ea5e9 0%, #0284c7 100%); padding: 30px; border-radius: 8px 8px 0 0; text-align: center;">
-    <h1 style="color: white; margin: 0; font-size: 24px;">${data.practiceName}</h1>
+    <h1 style="color: white; margin: 0; font-size: 24px;">${escapeHtml(data.practiceName)}</h1>
     <p style="color: #e0f2fe; margin: 10px 0 0 0;">Professional Accountancy Services</p>
   </div>
-  
+
   <div style="background: #ffffff; padding: 30px; border: 1px solid #e5e7eb; border-top: none;">
-    <p>Dear ${data.clientName},</p>
-    
-    <p>Thank you for considering ${data.practiceName} for your accountancy needs.</p>
-    
+    <p>Dear ${escapeHtml(data.clientName)},</p>
+
+    <p>Thank you for considering ${escapeHtml(data.practiceName)} for your accountancy needs.</p>
+
     <p>We are pleased to present our proposal for:</p>
-    
+
     <div style="background: #f8fafc; padding: 20px; border-radius: 6px; margin: 20px 0; border-left: 4px solid #0ea5e9;">
-      <h2 style="margin: 0 0 10px 0; color: #0f172a; font-size: 18px;">${data.proposalTitle}</h2>
-      <p style="margin: 0; color: #64748b; font-size: 14px;">Reference: ${data.proposalReference}</p>
+      <h2 style="margin: 0 0 10px 0; color: #0f172a; font-size: 18px;">${escapeHtml(data.proposalTitle)}</h2>
+      <p style="margin: 0; color: #64748b; font-size: 14px;">Reference: ${escapeHtml(data.proposalReference)}</p>
     </div>
-    
+
     <p style="background: #fef3c7; padding: 15px; border-radius: 6px; border-left: 4px solid #f59e0b;">
-      <strong>⏰ Valid Until:</strong> ${data.validUntil}
+      <strong>⏰ Valid Until:</strong> ${escapeHtml(data.validUntil)}
     </p>
     
     <div style="text-align: center; margin: 30px 0;">
@@ -398,16 +399,16 @@ export function generateProposalEmailTemplate(data: {
     <p>We look forward to working with you.</p>
     
     <div style="margin-top: 30px; padding-top: 20px; border-top: 1px solid #e5e7eb;">
-      <p style="margin: 0;"><strong>${data.senderName}</strong></p>
-      <p style="margin: 5px 0 0 0; color: #64748b;">${data.senderPosition}</p>
-      <p style="margin: 5px 0 0 0; color: #64748b;">${data.practiceName}</p>
+      <p style="margin: 0;"><strong>${escapeHtml(data.senderName)}</strong></p>
+      <p style="margin: 5px 0 0 0; color: #64748b;">${escapeHtml(data.senderPosition)}</p>
+      <p style="margin: 5px 0 0 0; color: #64748b;">${escapeHtml(data.practiceName)}</p>
     </div>
   </div>
-  
+
   <div style="background: #f8fafc; padding: 20px; border-radius: 0 0 8px 8px; text-align: center; border: 1px solid #e5e7eb; border-top: none;">
     <p style="margin: 0; font-size: 12px; color: #94a3b8;">
       This email contains confidential information. If you received this in error, please delete it.<br>
-      © ${new Date().getFullYear()} ${data.practiceName}. All rights reserved.
+      © ${new Date().getFullYear()} ${escapeHtml(data.practiceName)}. All rights reserved.
     </p>
   </div>
   

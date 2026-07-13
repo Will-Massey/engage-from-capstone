@@ -15,6 +15,7 @@ shared/dist/
 # Environment variables
 .env
 .env.development
+.env.production
 .env.local
 .env.*.local
 .env.neon

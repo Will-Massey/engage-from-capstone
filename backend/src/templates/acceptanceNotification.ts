@@ -1,4 +1,5 @@
 import { getFrontendUrl } from '../config/urls.js';
+import { escapeHtml } from '../utils/escapeHtml.js';
 
 /**
  * Acceptance Notification Email Template
@@ -63,7 +64,7 @@ export function generateAcceptanceNotification(data: AcceptanceNotificationData)
     <div class="header">
       <div class="success-icon">✅</div>
       <h1>Proposal Accepted!</h1>
-      <p>${data.clientName} has accepted your proposal</p>
+      <p>${escapeHtml(data.clientName)} has accepted your proposal</p>
     </div>
     
     <div class="content">
@@ -72,26 +73,26 @@ export function generateAcceptanceNotification(data: AcceptanceNotificationData)
           ? `<div style="background:#ecfdf5;border-left:4px solid #10b981;padding:16px 18px;border-radius:6px;margin-bottom:20px;">
         <p style="margin:0;white-space:pre-wrap;line-height:1.65;">${escapeHtml(data.personalizedMessage)}</p>
       </div>`
-          : `<p>Great news! <strong>${data.clientName}</strong> has electronically signed and accepted your proposal.</p>`
+          : `<p>Great news! <strong>${escapeHtml(data.clientName)}</strong> has electronically signed and accepted your proposal.</p>`
       }
       
       <div class="details">
         <table>
           <tr>
             <td>Proposal</td>
-            <td>${data.proposalTitle}</td>
+            <td>${escapeHtml(data.proposalTitle)}</td>
           </tr>
           <tr>
             <td>Reference</td>
-            <td>${data.proposalReference}</td>
+            <td>${escapeHtml(data.proposalReference)}</td>
           </tr>
           <tr>
             <td>Client</td>
-            <td>${data.clientName}</td>
+            <td>${escapeHtml(data.clientName)}</td>
           </tr>
           <tr>
             <td>Signed By</td>
-            <td>${data.signedBy} (${data.signedByRole})</td>
+            <td>${escapeHtml(data.signedBy)} (${escapeHtml(data.signedByRole)})</td>
           </tr>
           <tr>
             <td>Accepted At</td>
@@ -99,7 +100,7 @@ export function generateAcceptanceNotification(data: AcceptanceNotificationData)
           </tr>
           <tr>
             <td>Total Value</td>
-            <td class="amount">${data.totalAmount}</td>
+            <td class="amount">${escapeHtml(data.totalAmount)}</td>
           </tr>
         </table>
       </div>
@@ -153,14 +154,6 @@ Sent by Engage by Capstone
   `.trim();
 
   return { html, text, subject };
-}
-
-function escapeHtml(value: string): string {
-  return value
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;');
 }
 
 export default generateAcceptanceNotification;

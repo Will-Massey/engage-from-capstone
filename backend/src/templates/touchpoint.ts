@@ -13,6 +13,8 @@
  * users can edit wording in the admin UI (TouchpointTemplate table) without code changes.
  */
 
+import { escapeHtml } from '../utils/escapeHtml.js';
+
 export interface TouchpointMergeContext {
   client_name: string;
   contact_name?: string;
@@ -22,15 +24,30 @@ export interface TouchpointMergeContext {
   [key: string]: string | undefined;
 }
 
-export function renderTouchpointTemplate(body: string, context: TouchpointMergeContext): string {
-  return body.replace(/\{\{(\w+)\}\}/g, (_match, key: string) => {
+function applyMergeTags(
+  template: string,
+  context: TouchpointMergeContext,
+  escape: boolean
+): string {
+  return template.replace(/\{\{(\w+)\}\}/g, (_match, key: string) => {
     const value = context[key];
-    return value !== undefined ? String(value) : '';
+    if (value === undefined) return '';
+    return escape ? escapeHtml(String(value)) : String(value);
   });
 }
 
+/**
+ * Render the touchpoint body. The body is admin-authored HTML, but the merge
+ * values (client/contact/practice names, free-text extras) are user/tenant data,
+ * so they are HTML-escaped to prevent injection into the outgoing email.
+ */
+export function renderTouchpointTemplate(body: string, context: TouchpointMergeContext): string {
+  return applyMergeTags(body, context, true);
+}
+
+/** Render the plain-text subject line — no HTML context, so values are not escaped. */
 export function renderTouchpointSubject(subject: string, context: TouchpointMergeContext): string {
-  return renderTouchpointTemplate(subject, context);
+  return applyMergeTags(subject, context, false);
 }
 
 /**

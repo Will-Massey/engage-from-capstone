@@ -1,0 +1,11 @@
+# Security headers for the static SPA (Render/Netlify-style).
+# The Cloudflare worker (workers/engage-proxy) applies the same headers at the
+# edge for capstonesoftware.co.uk/engage; this file is defence-in-depth for
+# requests that reach the static origin directly. Keep the CSP in sync with the
+# worker's SECURITY_HEADERS — including the inline-bootstrap script hash.
+/*
+  X-Frame-Options: DENY
+  X-Content-Type-Options: nosniff
+  Referrer-Policy: strict-origin-when-cross-origin
+  Strict-Transport-Security: max-age=31536000; includeSubDomains
+  Content-Security-Policy: default-src 'self'; base-uri 'self'; object-src 'none'; frame-ancestors 'none'; script-src 'self' 'sha256-3aDszuIcW79BhSuAMQ1r/1XG8+STG20nI13wmXCOXxY=' https://js.stripe.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; img-src 'self' data: blob: https:; connect-src 'self' https://api.stripe.com; frame-src 'self' https://js.stripe.com https://hooks.stripe.com https://checkout.stripe.com; form-action 'self'; upgrade-insecure-requests
