@@ -2,12 +2,20 @@ import crypto from 'crypto';
 
 const ENCRYPTION_KEY = process.env.ENCRYPTION_KEY;
 
+// Minimum key material we accept in production. A short key is trivially
+// brute-forceable, so fail closed rather than silently accept a weak secret.
+const MIN_KEY_LENGTH = 32;
+
 if (!ENCRYPTION_KEY) {
   if (process.env.NODE_ENV === 'production') {
     throw new Error('ENCRYPTION_KEY environment variable is required in production');
   }
   console.warn(
     '[encryption] ENCRYPTION_KEY not set — using ephemeral dev key (not for production)'
+  );
+} else if (process.env.NODE_ENV === 'production' && ENCRYPTION_KEY.length < MIN_KEY_LENGTH) {
+  throw new Error(
+    `ENCRYPTION_KEY must be at least ${MIN_KEY_LENGTH} characters in production (got ${ENCRYPTION_KEY.length})`
   );
 }
 

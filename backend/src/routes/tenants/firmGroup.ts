@@ -8,6 +8,7 @@ import {
   updateFirmGroup,
   dissolveFirmGroup,
   addPracticeToFirmGroup,
+  createFirmGroupJoinCode,
   removePracticeFromFirmGroup,
   leaveFirmGroup,
 } from '../../services/firmGroupService.js';
@@ -30,6 +31,8 @@ const updateFirmGroupSchema = z.object({
 
 const addPracticeSchema = z.object({
   subdomain: z.string().min(2).max(30),
+  // Single-use join code issued by the target practice (consent).
+  inviteCode: z.string().min(1).max(128),
 });
 
 /**
@@ -86,15 +89,30 @@ router.delete(
 );
 
 /**
- * POST /api/tenants/firm-group/practices — link another practice by subdomain
+ * POST /api/tenants/firm-group/join-code — the current practice issues a single-use
+ * join code to hand to a firm-group owner (consent to be linked).
+ */
+router.post(
+  '/firm-group/join-code',
+  authenticate,
+  authorize('ADMIN', 'PARTNER'),
+  asyncHandler(async (req, res) => {
+    const data = await createFirmGroupJoinCode(req.tenantId!, req.user!.role);
+    res.status(201).json({ success: true, data });
+  })
+);
+
+/**
+ * POST /api/tenants/firm-group/practices — link another practice by subdomain.
+ * Requires a valid single-use join code issued by that practice.
  */
 router.post(
   '/firm-group/practices',
   authenticate,
   authorize('ADMIN', 'PARTNER'),
   asyncHandler(async (req, res) => {
-    const { subdomain } = addPracticeSchema.parse(req.body);
-    const data = await addPracticeToFirmGroup(req.tenantId!, req.user!.role, subdomain);
+    const { subdomain, inviteCode } = addPracticeSchema.parse(req.body);
+    const data = await addPracticeToFirmGroup(req.tenantId!, req.user!.role, subdomain, inviteCode);
     res.json({ success: true, data });
   })
 );
