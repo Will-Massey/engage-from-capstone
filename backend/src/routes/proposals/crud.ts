@@ -513,6 +513,21 @@ router.delete(
       throw new ApiError('INVALID_STATUS', 'Cannot delete an accepted proposal', 400);
     }
 
+    // The e-sign audit trail is immutable: a proposal that has any recorded
+    // signature (e.g. SENT and partially/fully signed) cannot be hard-deleted,
+    // which would otherwise destroy legally-retained signature records.
+    const signatureCount = await prisma.proposalSignature.count({
+      where: { proposalId: id },
+    });
+
+    if (signatureCount > 0) {
+      throw new ApiError(
+        'SIGNATURES_EXIST',
+        'Proposals with recorded signatures cannot be deleted',
+        409
+      );
+    }
+
     await prisma.proposal.delete({
       where: { id },
     });
