@@ -776,7 +776,10 @@ model ProposalSignature {
   agreementAccepted Boolean
 
   proposalId String
-  proposal   Proposal @relation(fields: [proposalId], references: [id], onDelete: Cascade)
+  // Restrict (not Cascade): the e-sign audit trail is immutable and must not be
+  // destroyed by deleting its parent proposal. Proposal deletion is blocked in
+  // the route layer when signatures exist; anonymization retains the row.
+  proposal   Proposal @relation(fields: [proposalId], references: [id], onDelete: Restrict)
 
   @@index([proposalId])
   @@index([signedAt])
