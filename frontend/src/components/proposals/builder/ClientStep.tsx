@@ -1,5 +1,10 @@
 import { Link } from 'react-router-dom';
-import { ArrowRightIcon, MagnifyingGlassIcon } from '@heroicons/react/24/outline';
+import {
+  ArrowRightIcon,
+  MagnifyingGlassIcon,
+  UsersIcon,
+  UserPlusIcon,
+} from '@heroicons/react/24/outline';
 import { AI_COPILOT } from '../../../config/aiCopilot';
 import { useProposalBuilder } from './ProposalBuilderContext';
 
@@ -74,36 +79,76 @@ export default function ClientStep() {
         <MagnifyingGlassIcon className="absolute left-3 top-3.5 w-5 h-5 text-slate-400" />
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        {clients
-          .filter((c) => c.name.toLowerCase().includes(clientSearch.toLowerCase()))
-          .map((client) => (
-            <div
-              key={client.id}
-              data-testid="client-card"
-              data-client-name={client.name}
-              onClick={() => selectClient(client)}
-              className={`p-4 rounded-xl border-2 cursor-pointer transition-all ${
-                selectedClient?.id === client.id
-                  ? 'border-primary-500 bg-primary-50 dark:bg-primary-900/20'
-                  : 'border-slate-200 dark:border-slate-700 hover:border-primary-300 dark:hover:border-primary-600 hover:bg-slate-100 dark:hover:bg-slate-800'
-              }`}
-            >
-              <h3 className="font-semibold text-slate-900 dark:text-white">{client.name}</h3>
-              {client.contactName?.trim() && (
-                <p className="text-sm text-slate-600 dark:text-slate-300">
-                  {client.contactName.trim()}
-                </p>
-              )}
-              <p className="text-sm text-slate-500 dark:text-slate-300 dark:text-slate-300">
-                {client.companyType}
+      {(() => {
+        const filteredClients = clients.filter((c) =>
+          c.name.toLowerCase().includes(clientSearch.toLowerCase())
+        );
+        if (filteredClients.length === 0) {
+          return clients.length === 0 ? (
+            <div className="card p-10 text-center max-w-md mx-auto">
+              <div className="mx-auto mb-5 flex h-14 w-14 items-center justify-center rounded-2xl bg-slate-100 dark:bg-slate-700/60">
+                <UsersIcon className="h-7 w-7 text-ink-500 dark:text-slate-300" />
+              </div>
+              <h3 className="text-lg font-semibold text-ink-900 dark:text-white mb-2">
+                No clients yet
+              </h3>
+              <p className="text-sm text-ink-500 dark:text-slate-400 mb-6 leading-relaxed">
+                Add your first client to build a proposal for them.
               </p>
-              <p className="text-sm text-slate-400 dark:text-slate-500 dark:text-slate-300">
-                {client.contactEmail}
+              <Link to="/clients/new" className="btn-primary inline-flex items-center gap-2">
+                <UserPlusIcon className="h-5 w-5" />
+                Add a client
+              </Link>
+            </div>
+          ) : (
+            <div className="card p-10 text-center max-w-md mx-auto">
+              <div className="mx-auto mb-5 flex h-14 w-14 items-center justify-center rounded-2xl bg-slate-100 dark:bg-slate-700/60">
+                <MagnifyingGlassIcon className="h-7 w-7 text-ink-500 dark:text-slate-300" />
+              </div>
+              <h3 className="text-lg font-semibold text-ink-900 dark:text-white mb-2">
+                No clients match “{clientSearch}”
+              </h3>
+              <p className="text-sm text-ink-500 dark:text-slate-400 leading-relaxed">
+                Try a different name, or{' '}
+                <Link to="/clients/new" className="text-primary-600 hover:underline">
+                  add a new client
+                </Link>
+                .
               </p>
             </div>
-          ))}
-      </div>
+          );
+        }
+        return (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {filteredClients.map((client) => (
+              <div
+                key={client.id}
+                data-testid="client-card"
+                data-client-name={client.name}
+                onClick={() => selectClient(client)}
+                className={`p-4 rounded-xl border-2 cursor-pointer transition-all ${
+                  selectedClient?.id === client.id
+                    ? 'border-primary-500 bg-primary-50 dark:bg-primary-900/20'
+                    : 'border-slate-200 dark:border-slate-700 hover:border-primary-300 dark:hover:border-primary-600 hover:bg-slate-100 dark:hover:bg-slate-800'
+                }`}
+              >
+                <h3 className="font-semibold text-slate-900 dark:text-white">{client.name}</h3>
+                {client.contactName?.trim() && (
+                  <p className="text-sm text-slate-600 dark:text-slate-300">
+                    {client.contactName.trim()}
+                  </p>
+                )}
+                <p className="text-sm text-slate-500 dark:text-slate-300 dark:text-slate-300">
+                  {client.companyType}
+                </p>
+                <p className="text-sm text-slate-400 dark:text-slate-500 dark:text-slate-300">
+                  {client.contactEmail}
+                </p>
+              </div>
+            ))}
+          </div>
+        );
+      })()}
 
       {selectedClient && buildMode === 'unset' && (
         <div className="rounded-2xl border border-slate-200 dark:border-slate-700 bg-white/80 dark:bg-slate-900/50 p-5 space-y-4">
