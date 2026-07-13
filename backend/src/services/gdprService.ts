@@ -4,6 +4,13 @@
  */
 
 import crypto from 'crypto';
+import { deleteAmlDocument, deleteSignature } from './fileStorage.js';
+
+export interface TruncationInfo {
+  returned: number;
+  total: number;
+  truncated: boolean;
+}
 
 export interface UserDataExport {
   exportDate: Date;
@@ -11,6 +18,8 @@ export interface UserDataExport {
   proposals: unknown[];
   clients: unknown[];
   activityLogs: unknown[];
+  truncated: boolean;
+  truncation: Record<string, TruncationInfo>;
 }
 
 export interface AuditExport {
@@ -30,6 +39,11 @@ export interface DataDeletionResult {
   deletedAt: Date;
   retainedFields: string[];
 }
+
+// Row caps applied to unbounded log tables in exports. Paired with a count()
+// so truncation is reported in the export metadata rather than silently lost.
+const ACTIVITY_LOG_EXPORT_LIMIT = 1000;
+const TENANT_LOG_EXPORT_LIMIT = 10000;
 
 export class GDPRService {
   /**
@@ -134,7 +148,7 @@ export class GDPRService {
         },
         activityLogs: {
           orderBy: { createdAt: 'desc' },
-          take: 1000,
+          take: ACTIVITY_LOG_EXPORT_LIMIT,
         },
       },
     });
@@ -146,12 +160,25 @@ export class GDPRService {
     // Remove sensitive fields
     const sanitizedUser = this.sanitizeExport(user);
 
+    const activityLogs = user.activityLogs || [];
+    // Detect (rather than silently swallow) truncation of the capped activity log.
+    const activityLogTotal = await prisma.activityLog.count({ where: { userId } });
+    const truncation: Record<string, TruncationInfo> = {
+      activityLogs: {
+        returned: activityLogs.length,
+        total: activityLogTotal,
+        truncated: activityLogTotal > activityLogs.length,
+      },
+    };
+
     return {
       exportDate: new Date(),
       user: sanitizedUser,
       proposals: user.createdProposals || [],
       clients: await this.getUserClients(userId, prisma),
-      activityLogs: user.activityLogs || [],
+      activityLogs,
+      truncated: Object.values(truncation).some((t) => t.truncated),
+      truncation,
     };
   }
 
@@ -305,6 +332,10 @@ export class GDPRService {
       activityLogs,
       emailLogs,
       paymentSplits,
+      touchpoints,
+      regulatorySignals,
+      activityLogTotal,
+      emailLogTotal,
     ] = await Promise.all([
       prisma.tenant.findUnique({ where: { id: tenantId } }),
       prisma.user.findMany({ where: { tenantId } }),
@@ -319,19 +350,37 @@ export class GDPRService {
       prisma.activityLog.findMany({
         where: { tenantId },
         orderBy: { createdAt: 'desc' },
-        take: 10000,
+        take: TENANT_LOG_EXPORT_LIMIT,
       }),
       prisma.emailLog.findMany({
         where: { tenantId },
         orderBy: { createdAt: 'desc' },
-        take: 10000,
+        take: TENANT_LOG_EXPORT_LIMIT,
       }),
       prisma.paymentSplit.findMany({ where: { tenantId } }),
+      prisma.touchpoint.findMany({ where: { tenantId } }),
+      prisma.regulatorySignal.findMany({ where: { tenantId } }),
+      prisma.activityLog.count({ where: { tenantId } }),
+      prisma.emailLog.count({ where: { tenantId } }),
     ]);
 
     if (!tenant) {
       throw new Error('Tenant not found');
     }
+
+    // Report truncation of the capped log tables rather than losing rows silently.
+    const truncation: Record<string, TruncationInfo> = {
+      activityLogs: {
+        returned: activityLogs.length,
+        total: activityLogTotal,
+        truncated: activityLogTotal > activityLogs.length,
+      },
+      emailLogs: {
+        returned: emailLogs.length,
+        total: emailLogTotal,
+        truncated: emailLogTotal > emailLogs.length,
+      },
+    };
 
     return {
       exportDate: new Date(),
@@ -346,6 +395,10 @@ export class GDPRService {
       activityLogs,
       emailLogs,
       paymentSplits,
+      touchpoints,
+      regulatorySignals,
+      truncated: Object.values(truncation).some((t) => t.truncated),
+      truncation,
     };
   }
 
@@ -391,10 +444,24 @@ export class GDPRService {
       throw new Error('Account is already closed');
     }
 
-    const [users, clients] = await Promise.all([
+    const [users, clients, signatures] = await Promise.all([
       prisma.user.findMany({ where: { tenantId }, select: { id: true } }),
-      prisma.client.findMany({ where: { tenantId }, select: { id: true } }),
+      prisma.client.findMany({
+        where: { tenantId },
+        select: { id: true, amlSubmissionData: true },
+      }),
+      prisma.proposalSignature.findMany({
+        where: { proposal: { tenantId }, signatureFilePath: { not: null } },
+        select: { signatureFilePath: true },
+      }),
     ]);
+
+    // Enumerate stored files (AML documents + signature images) BEFORE the
+    // transaction nulls the DB references, so offboarding removes files too.
+    const amlFileKeys = clients.flatMap((c: any) => this.extractAmlFileKeys(c.amlSubmissionData));
+    const signatureFileKeys = signatures
+      .map((s: any) => s.signatureFilePath)
+      .filter((p: unknown): p is string => typeof p === 'string' && p.length > 0);
 
     const ops: unknown[] = [];
 
@@ -440,6 +507,20 @@ export class GDPRService {
         })
       );
     }
+
+    // Redact signature images/PII but retain the row + hashes for the legal
+    // audit trail; the underlying image files are deleted after the transaction.
+    ops.push(
+      prisma.proposalSignature.updateMany({
+        where: { proposal: { tenantId } },
+        data: {
+          signedBy: 'Deleted User',
+          signerEmail: null,
+          signatureData: '[REDACTED - Legal Retention]',
+          signatureFilePath: null,
+        },
+      })
+    );
 
     // Revoke any live public/share access to proposals (client portal tokens
     // are revoked on the client update above).
@@ -491,11 +572,151 @@ export class GDPRService {
 
     await prisma.$transaction(ops);
 
+    // Remove stored files after the DB PII/references are cleared. Helpers are
+    // best-effort and swallow missing-file errors.
+    await Promise.all([
+      ...amlFileKeys.map((key) => deleteAmlDocument(key)),
+      ...signatureFileKeys.map((key) => deleteSignature(key)),
+    ]);
+
     return {
       success: true,
       closedAt,
       usersAnonymized: users.length,
       clientsAnonymized: clients.length,
+      retainedFields,
+    };
+  }
+
+  /**
+   * Extract the stored file keys (relativePath) for a client's AML documents
+   * from the JSON blob persisted in Client.amlSubmissionData. Returns [] when
+   * the blob is absent or unparseable. See routes/onboarding.ts for the shape:
+   * { photoIdDocument: { relativePath, ... }, proofOfAddressDocument: {...} }.
+   */
+  private extractAmlFileKeys(amlSubmissionData: string | null | undefined): string[] {
+    if (!amlSubmissionData) return [];
+    let parsed: any;
+    try {
+      parsed = JSON.parse(amlSubmissionData);
+    } catch {
+      return [];
+    }
+    const keys: string[] = [];
+    for (const doc of [parsed?.photoIdDocument, parsed?.proofOfAddressDocument]) {
+      const key = doc?.relativePath;
+      if (typeof key === 'string' && key.length > 0) keys.push(key);
+    }
+    return keys;
+  }
+
+  /**
+   * Client-scoped erasure (GDPR Article 17) for a single data subject.
+   * Anonymizes Client PII, redacts recipient PII on the client's email logs,
+   * redacts signature image/PII (retaining the row + hashes for the legal audit
+   * trail), and deletes the client's stored AML documents + signature image
+   * files. Financial/signature-anchoring rows are retained, not hard-deleted.
+   */
+  async eraseClientData(
+    tenantId: string,
+    clientId: string,
+    prisma: any,
+    context: { actorUserId?: string; reason?: string } = {}
+  ): Promise<{
+    success: boolean;
+    erasedAt: Date;
+    amlFilesDeleted: number;
+    signatureFilesDeleted: number;
+    retainedFields: string[];
+  }> {
+    const erasedAt = new Date();
+    const retainedFields = [
+      'proposal_signatures', // legal audit trail (row + hashes retained; PII redacted)
+      'proposal_financials', // HMRC 6-year retention
+    ];
+
+    const client = await prisma.client.findFirst({
+      where: { id: clientId, tenantId },
+      select: { id: true, amlSubmissionData: true },
+    });
+    if (!client) throw new Error('Client not found');
+
+    // Enumerate stored files BEFORE nulling the DB references that point to them.
+    const amlFileKeys = this.extractAmlFileKeys(client.amlSubmissionData);
+    const signatures = await prisma.proposalSignature.findMany({
+      where: { proposal: { clientId, tenantId }, signatureFilePath: { not: null } },
+      select: { signatureFilePath: true },
+    });
+    const signatureFileKeys = signatures
+      .map((s: any) => s.signatureFilePath)
+      .filter((p: unknown): p is string => typeof p === 'string' && p.length > 0);
+
+    const anon = `deleted_${crypto.randomUUID()}`;
+
+    await prisma.$transaction([
+      // Anonymize client PII; retain the row so financial/signature links hold.
+      prisma.client.update({
+        where: { id: clientId },
+        data: {
+          name: 'Erased Client',
+          contactEmail: `${anon}@deleted.local`,
+          contactName: null,
+          contactPhone: null,
+          notes: null,
+          amlSubmissionData: null,
+          portalToken: null,
+          portalTokenExpiry: null,
+        },
+      }),
+
+      // Redact recipient PII on the client's email logs; keep the audit rows.
+      prisma.emailLog.updateMany({
+        where: { clientId, tenantId },
+        data: { to: '[REDACTED]' },
+      }),
+
+      // Redact signature image/PII but keep the row + hashes for legal audit.
+      prisma.proposalSignature.updateMany({
+        where: { proposal: { clientId, tenantId } },
+        data: {
+          signedBy: 'Erased Client',
+          signerEmail: null,
+          signatureData: '[REDACTED - Legal Retention]',
+          signatureFilePath: null,
+        },
+      }),
+
+      prisma.activityLog.create({
+        data: {
+          tenantId,
+          userId: context.actorUserId,
+          action: 'CLIENT_DATA_ERASED',
+          entityType: 'CLIENT',
+          entityId: clientId,
+          description: 'Client personal data erased under GDPR Article 17',
+          metadata: JSON.stringify({
+            reason: context.reason || 'GDPR Right to Erasure',
+            amlFilesDeleted: amlFileKeys.length,
+            signatureFilesDeleted: signatureFileKeys.length,
+            retainedFields,
+          }),
+          ipAddress: 'system',
+          createdAt: erasedAt,
+        },
+      }),
+    ]);
+
+    // Delete stored files after DB references are cleared (best-effort).
+    await Promise.all([
+      ...amlFileKeys.map((key) => deleteAmlDocument(key)),
+      ...signatureFileKeys.map((key) => deleteSignature(key)),
+    ]);
+
+    return {
+      success: true,
+      erasedAt,
+      amlFilesDeleted: amlFileKeys.length,
+      signatureFilesDeleted: signatureFileKeys.length,
       retainedFields,
     };
   }
