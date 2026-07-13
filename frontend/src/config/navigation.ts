@@ -112,7 +112,7 @@ export function isNavItemActive(pathname: string, item: NavItem): boolean {
 }
 
 export function getPageMeta(pathname: string): {
-  title: string;
+  title?: string;
   description?: string;
   breadcrumbs: { label: string; href?: string }[];
   backTo?: { label: string; href: string };
@@ -137,6 +137,19 @@ export function getPageMeta(pathname: string): {
         { label: 'Proposals', href: '/proposals' },
         { label: 'New' },
       ],
+      backTo: { label: 'Back to proposals', href: '/proposals' },
+    };
+  }
+  if (pathname === '/proposals/wizard') {
+    return {
+      title: 'Create proposal',
+      description: 'A guided flow from client to signed engagement — review every step',
+      breadcrumbs: [
+        { label: 'Dashboard', href: '/' },
+        { label: 'Proposals', href: '/proposals' },
+        { label: 'Guided' },
+      ],
+      backTo: { label: 'Back to proposals', href: '/proposals' },
     };
   }
   if (pathname === '/proposals/renewals') {
@@ -151,10 +164,23 @@ export function getPageMeta(pathname: string): {
       backTo: { label: 'Back to proposals', href: '/proposals' },
     };
   }
-  if (pathname.startsWith('/proposals/')) {
+  if (pathname.startsWith('/proposals/') && pathname.endsWith('/edit')) {
+    const proposalId = pathname.split('/')[2];
     return {
-      title: 'Proposal details',
-      description: 'Review pricing, send to client, or download PDF',
+      title: 'Edit proposal',
+      description: 'Update services, pricing, and cover letter',
+      breadcrumbs: [
+        { label: 'Dashboard', href: '/' },
+        { label: 'Proposals', href: '/proposals' },
+        { label: 'Edit' },
+      ],
+      backTo: { label: 'Back to proposal', href: `/proposals/${proposalId}` },
+    };
+  }
+  if (pathname.startsWith('/proposals/')) {
+    // Detail page renders its own rich header (title, status, actions), so the
+    // route header contributes breadcrumbs + back link only.
+    return {
       breadcrumbs: [
         { label: 'Dashboard', href: '/' },
         { label: 'Proposals', href: '/proposals' },
@@ -180,12 +206,13 @@ export function getPageMeta(pathname: string): {
         { label: 'Clients', href: '/clients' },
         { label: 'New' },
       ],
+      backTo: { label: 'Back to clients', href: '/clients' },
     };
   }
   if (pathname.startsWith('/clients/')) {
+    // Detail page renders its own rich header (client name, actions), so the
+    // route header contributes breadcrumbs + back link only.
     return {
-      title: 'Client details',
-      description: 'Profile, compliance, and linked proposals',
       breadcrumbs: [
         { label: 'Dashboard', href: '/' },
         { label: 'Clients', href: '/clients' },
@@ -215,20 +242,23 @@ export function getPageMeta(pathname: string): {
     };
   }
   if (pathname.startsWith('/services/')) {
+    // Detail page renders its own rich header (service name, actions), so the
+    // route header contributes breadcrumbs + back link only.
     return {
-      title: 'Service',
       breadcrumbs: [
         { label: 'Dashboard', href: '/' },
         { label: 'Services', href: '/services' },
         { label: 'Details' },
       ],
+      backTo: { label: 'Back to services', href: '/services' },
     };
   }
 
   if (pathname === '/templates') {
     return {
       title: 'Templates',
-      description: 'Pre-made proposal bundles — services, pricing, and cover letters',
+      description:
+        'Ready-made ICAEW and ACCA service bundles, plus your own custom templates — nothing is replaced when you add one',
       breadcrumbs: [{ label: 'Dashboard', href: '/' }, { label: 'Templates' }],
     };
   }
@@ -243,8 +273,24 @@ export function getPageMeta(pathname: string): {
   if (pathname === '/settings') {
     return {
       title: 'Settings',
-      description: 'Practice branding, team, and integrations',
+      description: 'Manage your account, practice details, and preferences',
       breadcrumbs: [{ label: 'Dashboard', href: '/' }, { label: 'Settings' }],
+    };
+  }
+  if (pathname === '/subscription') {
+    return {
+      title: 'Platform subscription',
+      description:
+        'Your practice’s monthly platform plan — client proposal payments are handled separately',
+      breadcrumbs: [{ label: 'Dashboard', href: '/' }, { label: 'Subscription' }],
+    };
+  }
+  if (pathname === '/partners') {
+    return {
+      title: 'Partner programme',
+      description:
+        'Refer UK accountancy firms to Engage and earn recurring commission — ideal for resellers, networks, and consultants',
+      breadcrumbs: [{ label: 'Dashboard', href: '/' }, { label: 'Partner programme' }],
     };
   }
 

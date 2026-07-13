@@ -1,5 +1,4 @@
 import { useState, useEffect, type Dispatch, type SetStateAction } from 'react';
-import { Link } from 'react-router-dom';
 import {
   PlusIcon,
   MagnifyingGlassIcon,
@@ -465,20 +464,7 @@ const Services = () => {
 
   return (
     <div className="space-y-6 animate-fade-in">
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-bold text-slate-900 dark:text-white">Services catalogue</h1>
-          <p className="text-sm text-slate-600 dark:text-slate-300 mt-1">
-            Manage fees and service lines for proposals. Use the{' '}
-            <Link
-              to="/pricing-calculator"
-              className="text-primary-600 dark:text-primary-400 hover:underline"
-            >
-              pricing calculator
-            </Link>{' '}
-            from the sidebar when you need turnover-based fee suggestions.
-          </p>
-        </div>
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-end gap-4 -mt-2">
         <button onClick={openAddModal} className="btn-primary inline-flex shrink-0">
           <PlusIcon className="h-5 w-5 mr-2" />
           Add Service

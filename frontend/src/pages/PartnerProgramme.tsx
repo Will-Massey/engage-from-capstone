@@ -32,17 +32,6 @@ const benefits = [
 export default function PartnerProgramme() {
   return (
     <div className="max-w-4xl mx-auto px-4 py-10">
-      <div className="mb-8">
-        <p className="text-sm font-medium text-primary-600 uppercase tracking-wide">
-          Engage Partner Programme
-        </p>
-        <h1 className="text-3xl font-bold text-slate-900 mt-2">Grow with UK practices</h1>
-        <p className="text-slate-600 mt-3 max-w-2xl">
-          Refer accountancy firms to Engage and earn recurring commission. Ideal for software
-          resellers, networks, and consultants serving UK practices.
-        </p>
-      </div>
-
       <div className="grid gap-4 sm:grid-cols-2 mb-10">
         {benefits.map((b) => (
           <div key={b.title} className="glass-tile p-5">

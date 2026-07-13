@@ -11,7 +11,6 @@ import {
 } from '@heroicons/react/24/outline';
 import { useAuthStore } from '../../stores/authStore';
 import ThemeToggle from '../theme/ThemeToggle';
-import { AiAssistantTrigger } from '../ai/AiAssistant';
 import toast from 'react-hot-toast';
 import useCommandPalette from '../../hooks/useCommandPalette';
 
@@ -48,12 +47,10 @@ const Header = ({ onMenuClick }: HeaderProps) => {
             <Bars3Icon className="w-6 h-6" />
           </button>
 
-          {/* Quick actions - hidden on very small screens */}
+          {/* Quick action — hidden on very small screens. "New proposal" lives in
+              the sidebar as the single primary create action; the top bar keeps the
+              complementary "New client" shortcut. */}
           <div className="hidden sm:flex items-center ml-4 space-x-3">
-            <Link to="/proposals/new" className="btn-primary" data-tour="create-proposal">
-              <PlusIcon className="w-4 h-4 mr-1.5" />
-              New Proposal
-            </Link>
             <Link to="/clients/new" className="btn-secondary">
               <PlusIcon className="w-4 h-4 mr-1.5" />
               New Client
@@ -63,9 +60,6 @@ const Header = ({ onMenuClick }: HeaderProps) => {
 
         {/* Right side */}
         <div className="flex items-center space-x-1.5 sm:space-x-3 shrink-0 min-w-0 max-w-[55%] sm:max-w-none">
-          <div className="hidden md:block">
-            <AiAssistantTrigger />
-          </div>
           <button
             type="button"
             onClick={openCommandPalette}

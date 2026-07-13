@@ -88,18 +88,13 @@ const Subscription = () => {
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold text-gray-900">Platform subscription</h1>
-        <p className="mt-2 text-gray-600">
-          Monthly platform fee for your agency. Client proposal payments are handled separately when
-          proposals are accepted.
-        </p>
-        {currentSubscription?.hasSubscription && (
-          <p className="mt-3 text-sm text-emerald-700 font-medium">
+      {currentSubscription?.hasSubscription && (
+        <div className="mb-8">
+          <p className="text-sm text-emerald-700 font-medium">
             Active plan: {activeTier} ({currentSubscription.status})
           </p>
-        )}
-      </div>
+        </div>
+      )}
 
       {!provider && (
         <div className="rounded-lg border border-amber-200 bg-amber-50 p-4 text-amber-900">

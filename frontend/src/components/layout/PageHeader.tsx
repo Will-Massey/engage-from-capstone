@@ -7,7 +7,7 @@ export interface BreadcrumbItem {
 }
 
 interface PageHeaderProps {
-  title: string;
+  title?: string;
   description?: string;
   breadcrumbs?: BreadcrumbItem[];
   backTo?: { label: string; href: string };
@@ -61,9 +61,11 @@ const PageHeader = ({ title, description, breadcrumbs, backTo, actions }: PageHe
               {backTo.label}
             </Link>
           )}
-          <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100 tracking-tight">
-            {title}
-          </h1>
+          {title && (
+            <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100 tracking-tight">
+              {title}
+            </h1>
+          )}
           {description && (
             <p className="mt-1 text-sm text-slate-600 dark:text-slate-400 max-w-2xl">
               {description}
