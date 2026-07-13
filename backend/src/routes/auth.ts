@@ -29,6 +29,7 @@ import { enforceTierLimit } from '../middleware/tierLimits.js';
 import { gdprService } from '../services/gdprService.js';
 import { createEmailService } from '../services/emailService.js';
 import { setAuthCookies, clearAuthCookies, issueCsrfToken } from '../utils/authCookies.js';
+import { canAssignRole, canManageUser } from '../constants/roles.js';
 
 const router = Router();
 const JWT_SECRET = process.env.JWT_SECRET!;
@@ -657,6 +658,16 @@ router.post(
 
     const data = createUserSchema.parse(req.body);
 
+    // Can't create a user more privileged than yourself (e.g. a MANAGER minting
+    // an MD, which is full-access).
+    if (!canAssignRole(req.user!.role, data.role)) {
+      throw new ApiError(
+        'FORBIDDEN',
+        'You cannot create a user with higher privileges than your own',
+        403
+      );
+    }
+
     // Check if email already exists
     const existingUser = await prisma.user.findFirst({
       where: {
@@ -740,6 +751,29 @@ router.put(
       throw new ApiError('USER_NOT_FOUND', 'User not found', 404);
     }
 
+    // Privilege-escalation guards (must run before any write):
+    const actorRole = req.user!.role;
+    // 1. Can't manage a user ranked at/above yourself (e.g. a MANAGER editing an ADMIN).
+    if (!canManageUser(actorRole, existingUser.role)) {
+      throw new ApiError(
+        'FORBIDDEN',
+        'You cannot modify a user with equal or higher privileges',
+        403
+      );
+    }
+    // 2. Can't change your own role (no self-promotion).
+    if (data.role && id === req.user!.id && data.role !== existingUser.role) {
+      throw new ApiError('FORBIDDEN', 'You cannot change your own role', 403);
+    }
+    // 3. Can't grant a role above your own, and only full-access roles can grant full access.
+    if (data.role && !canAssignRole(actorRole, data.role)) {
+      throw new ApiError(
+        'FORBIDDEN',
+        'You cannot assign a role with higher privileges than your own',
+        403
+      );
+    }
+
     // Check email uniqueness if changing
     if (data.email && data.email !== existingUser.email) {
       const emailExists = await prisma.user.findFirst({
@@ -810,6 +844,16 @@ router.delete(
 
     if (!existingUser) {
       throw new ApiError('USER_NOT_FOUND', 'User not found', 404);
+    }
+
+    // Can't deactivate a user with equal/higher privileges (e.g. a MANAGER
+    // disabling the tenant ADMIN).
+    if (!canManageUser(req.user!.role, existingUser.role)) {
+      throw new ApiError(
+        'FORBIDDEN',
+        'You cannot deactivate a user with equal or higher privileges',
+        403
+      );
     }
 
     await prisma.user.update({
