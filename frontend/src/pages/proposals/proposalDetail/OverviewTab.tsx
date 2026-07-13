@@ -81,9 +81,9 @@ export default function OverviewTab() {
             return (
               <div
                 key={service.id}
-                className="flex items-start justify-between p-4 bg-white/40 dark:bg-slate-800/70 rounded-lg border border-white/20 dark:border-slate-600/50"
+                className="flex items-start justify-between gap-4 p-4 bg-slate-50 dark:bg-slate-800/70 rounded-lg border border-slate-200 dark:border-slate-600/50"
               >
-                <div className="flex-1">
+                <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-2">
                     <p className="font-medium text-slate-900 dark:text-slate-100">{service.name}</p>
                     {service.vatRate !== 20 && hasMixedVatRates && (
@@ -108,19 +108,19 @@ export default function OverviewTab() {
                     </p>
                   )}
                 </div>
-                <div className="text-right ml-4">
-                  <p className="font-semibold text-slate-900 dark:text-white">
+                <div className="shrink-0 text-right">
+                  <p className="font-semibold text-slate-900 dark:text-white tabular-nums">
                     {formatCurrency(service.lineTotal || service.total || 0)}
                     <span className="block text-xs font-normal text-slate-500 dark:text-slate-400">
                       ex VAT
                     </span>
                   </p>
                   {(service.vatAmount > 0 || hasMixedVatRates) && (
-                    <p className="text-xs text-slate-500 dark:text-slate-300">
+                    <p className="text-xs text-slate-500 dark:text-slate-300 tabular-nums">
                       + {formatCurrency(service.vatAmount || 0)} VAT
                     </p>
                   )}
-                  <p className="text-sm font-medium text-slate-900 dark:text-white">
+                  <p className="text-sm font-medium text-slate-900 dark:text-white tabular-nums">
                     {formatCurrency(
                       service.grossTotal ?? (service.total || 0) + (service.vatAmount || 0)
                     )}

@@ -26,11 +26,7 @@ export default function DetailSidebar() {
 
   return (
     <div className="space-y-6">
-      {activeTab === 'overview' && id && (
-        <ProposalAiAssist proposal={proposal} onUpdated={loadProposal} />
-      )}
-
-      {/* Pricing — monthly, annual, and one-time */}
+      {/* Pricing — monthly, annual, and one-time. Lead the rail: this is the money. */}
       <div className="glass-tile p-6">
         <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-100 mb-2">
           Investment summary
@@ -41,49 +37,49 @@ export default function DetailSidebar() {
         </p>
         <div className="space-y-3">
           {groupTotals.MONTHLY?.total > 0 && (
-            <div className="flex justify-between items-baseline">
-              <span className="text-slate-600 dark:text-slate-300">Monthly</span>
-              <span className="font-bold text-xl text-primary-600 tabular-nums">
+            <div className="flex justify-between items-baseline gap-3">
+              <span className="min-w-0 text-slate-600 dark:text-slate-300">Monthly</span>
+              <span className="shrink-0 whitespace-nowrap text-right font-bold text-xl text-primary-600 tabular-nums">
                 {formatCurrency(groupTotals.MONTHLY.total)}
                 <span className="text-xs font-normal text-slate-500 ml-1">/month</span>
               </span>
             </div>
           )}
           {groupTotals.ANNUALLY?.total > 0 && (
-            <div className="flex justify-between items-baseline">
-              <span className="text-slate-600 dark:text-slate-300">Annual</span>
-              <span className="font-bold text-xl text-primary-600 tabular-nums">
+            <div className="flex justify-between items-baseline gap-3">
+              <span className="min-w-0 text-slate-600 dark:text-slate-300">Annual</span>
+              <span className="shrink-0 whitespace-nowrap text-right font-bold text-xl text-primary-600 tabular-nums">
                 {formatCurrency(groupTotals.ANNUALLY.total)}
                 <span className="text-xs font-normal text-slate-500 ml-1">/year</span>
               </span>
             </div>
           )}
           {groupTotals.ONE_TIME?.total > 0 && (
-            <div className="flex justify-between items-baseline">
-              <span className="text-slate-600 dark:text-slate-300">One-time</span>
-              <span className="font-semibold text-slate-900 dark:text-white tabular-nums">
+            <div className="flex justify-between items-baseline gap-3">
+              <span className="min-w-0 text-slate-600 dark:text-slate-300">One-time</span>
+              <span className="shrink-0 whitespace-nowrap text-right font-semibold text-slate-900 dark:text-white tabular-nums">
                 {formatCurrency(groupTotals.ONE_TIME.total)}
               </span>
             </div>
           )}
 
           {(pricingBreakdown.monthlyIncVat > 0 || pricingBreakdown.oneOffIncVat > 0) && (
-            <div className="border-t border-white/20 dark:border-slate-600/50 pt-3 space-y-2">
+            <div className="border-t border-slate-200 dark:border-slate-600/50 pt-3 space-y-2">
               {pricingBreakdown.monthlyIncVat > 0 && (
                 <>
-                  <div className="flex justify-between text-sm">
-                    <span className="text-slate-600 dark:text-slate-300">
+                  <div className="flex justify-between gap-3 text-sm">
+                    <span className="min-w-0 text-slate-600 dark:text-slate-300">
                       Recurring subtotal (ex VAT)
                     </span>
-                    <span className="font-medium text-slate-900 dark:text-white tabular-nums">
+                    <span className="shrink-0 whitespace-nowrap text-right font-medium text-slate-900 dark:text-white tabular-nums">
                       {formatCurrency(pricingBreakdown.monthlyExVat)}
                     </span>
                   </div>
-                  <div className="flex justify-between text-sm">
-                    <span className="text-slate-600 dark:text-slate-300">
+                  <div className="flex justify-between gap-3 text-sm">
+                    <span className="min-w-0 text-slate-600 dark:text-slate-300">
                       Recurring VAT {hasMixedVatRates ? '(mixed)' : `(${proposal.vatRate || 20}%)`}
                     </span>
-                    <span className="font-medium text-slate-900 dark:text-white tabular-nums">
+                    <span className="shrink-0 whitespace-nowrap text-right font-medium text-slate-900 dark:text-white tabular-nums">
                       {formatCurrency(pricingBreakdown.monthlyVat)}
                     </span>
                   </div>
@@ -92,17 +88,17 @@ export default function DetailSidebar() {
 
               {pricingBreakdown.oneOffIncVat > 0 && (
                 <>
-                  <div className="flex justify-between text-sm pt-1 border-t border-dashed border-white/10 dark:border-slate-600/30">
-                    <span className="text-slate-600 dark:text-slate-300">
+                  <div className="flex justify-between gap-3 text-sm pt-1 border-t border-dashed border-slate-200 dark:border-slate-600/30">
+                    <span className="min-w-0 text-slate-600 dark:text-slate-300">
                       One-time subtotal (ex VAT)
                     </span>
-                    <span className="font-medium text-slate-900 dark:text-white tabular-nums">
+                    <span className="shrink-0 whitespace-nowrap text-right font-medium text-slate-900 dark:text-white tabular-nums">
                       {formatCurrency(pricingBreakdown.oneOffExVat)}
                     </span>
                   </div>
-                  <div className="flex justify-between text-sm">
-                    <span className="text-slate-600 dark:text-slate-300">One-time VAT</span>
-                    <span className="font-medium text-slate-900 dark:text-white tabular-nums">
+                  <div className="flex justify-between gap-3 text-sm">
+                    <span className="min-w-0 text-slate-600 dark:text-slate-300">One-time VAT</span>
+                    <span className="shrink-0 whitespace-nowrap text-right font-medium text-slate-900 dark:text-white tabular-nums">
                       {formatCurrency(pricingBreakdown.oneOffVat)}
                     </span>
                   </div>
@@ -110,20 +106,20 @@ export default function DetailSidebar() {
               )}
 
               {proposal.discountAmount > 0 && (
-                <div className="flex justify-between text-sm">
-                  <span className="text-slate-600 dark:text-slate-300">Discount</span>
-                  <span className="font-medium text-red-600 dark:text-red-400 tabular-nums">
+                <div className="flex justify-between gap-3 text-sm">
+                  <span className="min-w-0 text-slate-600 dark:text-slate-300">Discount</span>
+                  <span className="shrink-0 whitespace-nowrap text-right font-medium text-red-600 dark:text-red-400 tabular-nums">
                     -{formatCurrency(proposal.discountAmount)}
                   </span>
                 </div>
               )}
 
               {pricingBreakdown.oneOffIncVat > 0 && pricingBreakdown.monthlyIncVat > 0 && (
-                <div className="flex justify-between items-baseline pt-2 border-t border-dashed border-white/30 dark:border-slate-500/50">
-                  <span className="font-semibold text-slate-900 dark:text-white">
+                <div className="flex justify-between items-baseline gap-3 pt-2 border-t border-dashed border-slate-300 dark:border-slate-500/50">
+                  <span className="min-w-0 font-semibold text-slate-900 dark:text-white">
                     First payment
                   </span>
-                  <span className="font-bold text-xl text-slate-900 dark:text-white tabular-nums tracking-tight">
+                  <span className="shrink-0 whitespace-nowrap text-right font-bold text-xl text-slate-900 dark:text-white tabular-nums tracking-tight">
                     {formatCurrency(pricingBreakdown.monthlyIncVat + pricingBreakdown.oneOffIncVat)}
                   </span>
                 </div>
@@ -140,6 +136,11 @@ export default function DetailSidebar() {
           </p>
         </div>
       </div>
+
+      {/* Clara insights — secondary to the money above; quietly degrades when AI is off */}
+      {activeTab === 'overview' && id && (
+        <ProposalAiAssist proposal={proposal} onUpdated={loadProposal} />
+      )}
 
       {/* Valid until */}
       <div className="glass-tile p-6">

@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
+import { SparklesIcon } from '@heroicons/react/24/outline';
 import { apiClient } from '../../utils/api';
 import { AiPanel, AiDraftPreview, showAiError } from './AiPanel';
 import ProposalHealthCard from './ProposalHealthCard';
@@ -157,6 +158,22 @@ export default function ProposalAiAssist({ proposal, onUpdated }: ProposalAiAssi
   const showFollowUp =
     proposal.status === 'SENT' || proposal.status === 'VIEWED' || proposal.status === 'EXPIRED';
   const showRenewal = proposal.status === 'ACCEPTED';
+
+  // When the assistant is switched off, collapse the whole panel stack into one
+  // quiet line rather than several cards each announcing that Clara is unavailable.
+  if (!configured) {
+    return (
+      <div className="glass-tile p-4 print:hidden">
+        <p className="flex items-start gap-2 text-xs text-slate-500 dark:text-slate-400">
+          <SparklesIcon className="h-4 w-4 shrink-0 mt-px text-slate-400 dark:text-slate-500" />
+          <span>
+            {AI_COPILOT.name} insights (proposal health, follow-ups, engagement letters) appear here
+            once the assistant is enabled in server settings.
+          </span>
+        </p>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-4 print:hidden">
