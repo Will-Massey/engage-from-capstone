@@ -1,4 +1,5 @@
 import { Router } from 'express';
+import { z } from 'zod';
 import { prisma } from '../../config/database.js';
 import { authenticate, authorize } from '../../middleware/auth.js';
 import { asyncHandler, ApiError } from '../../middleware/errorHandler.js';
@@ -20,6 +21,7 @@ import {
 } from '../../utils/tenantProposalSettings.js';
 import { getProposalRegulatoryFit } from '../../services/regulatoryFitService.js';
 import { resolveProposalTerms } from '../../services/proposalTermsService.js';
+import { createLoeOnlyProposal } from '../../services/loeOnlyProposalService.js';
 import {
   createProposalSchema,
   generateReference,
@@ -266,6 +268,45 @@ router.post(
         ...proposal,
         services: serializeProposalServicesForApi(proposal.services as any),
       },
+    });
+  })
+);
+
+/**
+ * POST /api/proposals/loe-only
+ * Create an engagement-letter-only proposal (scope + terms, no fee schedule).
+ */
+const loeOnlySchema = z.object({
+  clientId: z.string().min(1),
+  serviceIds: z.array(z.string().min(1)).min(1, 'Select at least one service'),
+  title: z.string().max(200).optional(),
+  validUntil: z.string().optional(),
+  contractStartDate: z.string().nullable().optional(),
+  notes: z.string().max(5000).optional(),
+});
+
+router.post(
+  '/loe-only',
+  authenticate,
+  authorize('PARTNER', 'MANAGER', 'SENIOR', 'ADMIN'),
+  enforceTierLimit('proposals'),
+  asyncHandler(async (req, res) => {
+    const data = loeOnlySchema.parse(req.body);
+
+    const result = await createLoeOnlyProposal({
+      tenantId: req.tenantId!,
+      userId: req.user!.id,
+      clientId: data.clientId,
+      serviceIds: data.serviceIds,
+      title: data.title,
+      validUntil: data.validUntil,
+      contractStartDate: data.contractStartDate,
+      notes: data.notes,
+    });
+
+    res.status(201).json({
+      success: true,
+      data: { ...result.proposal, clauseIds: result.clauseIds },
     });
   })
 );

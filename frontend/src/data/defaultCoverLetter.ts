@@ -91,7 +91,7 @@ export function generateCoverLetterForTone(params: {
     addresseeName,
     companyName,
     practiceName,
-    senderName = 'Your Name',
+    senderName = '',
     senderPosition = '',
     services = [],
     discussionDate,
@@ -103,9 +103,12 @@ export function generateCoverLetterForTone(params: {
   const company = companyName?.trim() || clientName;
   const servicesSummary = buildServicesSummary(services);
   const when = formatDiscussionDate(discussionDate);
+  // Omit the sign-off name line entirely when no sender name is set, rather
+  // than printing a placeholder like "Your Name".
+  const senderNameLine = senderName?.trim() ? `${senderName.trim()}\n\n` : '';
   const senderLine = senderPosition
-    ? `${senderName}\n\n${senderPosition}, ${practiceName}`
-    : `${senderName}\n\n${practiceName}`;
+    ? `${senderNameLine}${senderPosition}, ${practiceName}`
+    : `${senderNameLine}${practiceName}`;
 
   if (tone === 'PROFESSIONAL') {
     return `Dear ${clientName},
@@ -133,9 +136,7 @@ If anything doesn't make sense, or you want to talk through any of it, just call
 
 Best,
 
-${senderName}
-
-${practiceName}`;
+${senderNameLine}${practiceName}`;
   }
 
   // MODERN
@@ -148,9 +149,7 @@ The short version: ${servicesSummary}. Full detail, pricing, and timelines are i
 
 We're confident this gets you ${outcome}. If you want to move forward, the next step is below — if you've got questions first, let's talk this week.
 
-${senderName}
-
-${practiceName}`;
+${senderNameLine}${practiceName}`;
 }
 
 /**

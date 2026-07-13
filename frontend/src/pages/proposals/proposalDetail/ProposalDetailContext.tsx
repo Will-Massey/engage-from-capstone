@@ -339,13 +339,13 @@ export function ProposalDetailProvider({ children }: ProposalDetailProviderProps
     if (!companySettings) return proposal?.terms || '';
 
     const companyDetails = {
-      name: companySettings.branding?.name || tenant?.name || '[Company Name]',
-      companyNumber: companySettings.companyRegistration || '[Company Number]',
+      name: companySettings.branding?.name || tenant?.name || '',
+      companyNumber: companySettings.companyRegistration || '',
       address: companySettings.address?.line1
         ? `${companySettings.address.line1}, ${companySettings.address.city}, ${companySettings.address.postcode}`
-        : '[Registered Office Address]',
-      professionalBody: companySettings.professionalBody || '[Professional Body]',
-      insurerName: companySettings.insurerName || '[Insurer Name]',
+        : '',
+      professionalBody: companySettings.professionalBody || '',
+      insurerName: companySettings.insurerName || '',
       governingLaw: companySettings.governingLaw || 'England and Wales',
       fcaAuthorised: companySettings.fcaAuthorised || false,
     };
