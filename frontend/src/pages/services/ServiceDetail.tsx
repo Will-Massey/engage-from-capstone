@@ -151,16 +151,7 @@ const ServiceDetail = () => {
 
   return (
     <div className="animate-fade-in space-y-6">
-      {/* Back button */}
-      <Link
-        to="/services"
-        className="inline-flex items-center text-sm text-slate-600 hover:text-slate-800"
-      >
-        <ArrowLeftIcon className="h-4 w-4 mr-1" />
-        Back to services
-      </Link>
-
-      {/* Header */}
+      {/* Header — back link + breadcrumbs come from the global page header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <div className="flex items-center space-x-3">

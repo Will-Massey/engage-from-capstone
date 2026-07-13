@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import {
-  ArrowLeftIcon,
   PencilIcon,
   DocumentTextIcon,
   EnvelopeIcon,
@@ -174,16 +173,7 @@ const ClientDetail = () => {
 
   return (
     <div className="space-y-6 animate-fade-in">
-      {/* Back button */}
-      <Link
-        to="/clients"
-        className="inline-flex items-center text-sm text-slate-600 hover:text-slate-800"
-      >
-        <ArrowLeftIcon className="h-4 w-4 mr-1" />
-        Back to clients
-      </Link>
-
-      {/* Header */}
+      {/* Header — back link + breadcrumbs come from the global page header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div className="flex items-center">
           <div className="p-3 bg-primary-100 rounded-lg">

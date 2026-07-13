@@ -179,17 +179,7 @@ export default function ProposalTemplates() {
 
   return (
     <div className="space-y-6 animate-fade-in">
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-bold text-slate-900 dark:text-white flex items-center gap-2">
-            <RectangleStackIcon className="h-7 w-7 text-emerald-600" />
-            Proposal templates
-          </h1>
-          <p className="text-sm text-slate-600 dark:text-slate-400 mt-1 max-w-xl">
-            The Engage library gives you ready-made ICAEW and ACCA service bundles. Add your own
-            templates alongside them — nothing is replaced when you create something custom.
-          </p>
-        </div>
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-end gap-4 -mt-2">
         <button
           type="button"
           onClick={openCreate}

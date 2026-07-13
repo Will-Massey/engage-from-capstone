@@ -7,7 +7,6 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import {
-  ArrowLeftIcon,
   PencilIcon,
   EnvelopeIcon,
   CheckIcon,
@@ -146,16 +145,7 @@ export default function DetailHeader() {
         </div>
       )}
 
-      {/* Back button */}
-      <Link
-        to="/proposals"
-        className="inline-flex items-center text-sm text-slate-600 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 transition-colors"
-      >
-        <ArrowLeftIcon className="h-4 w-4 mr-1" />
-        Back to proposals
-      </Link>
-
-      {/* Header */}
+      {/* Header — back link + breadcrumbs come from the global page header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <div className="flex items-center space-x-3">

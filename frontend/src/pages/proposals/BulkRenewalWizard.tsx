@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import {
-  ArrowLeftIcon,
   ArrowRightIcon,
   ArrowPathIcon,
   CheckCircleIcon,
@@ -298,20 +297,13 @@ export default function BulkRenewalWizard() {
 
   return (
     <div className="space-y-6 animate-fade-in">
-      <div className="flex items-center gap-3">
-        <Link to="/proposals" className="btn-secondary text-sm">
-          <ArrowLeftIcon className="h-4 w-4 mr-1.5" />
-          Back to proposals
-        </Link>
-      </div>
-
       <div className="card p-6">
         <div className="flex items-start gap-3 mb-2">
           <ArrowPathIcon className="h-8 w-8 text-emerald-600 shrink-0" />
           <div>
-            <h1 className="text-xl font-semibold text-slate-900 dark:text-white">
+            <h2 className="text-xl font-semibold text-slate-900 dark:text-white">
               Bulk renewal wizard
-            </h1>
+            </h2>
             <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">
               Filter clients with expiring contracts, apply a fee uplift or template, then create
               draft renewals for review — nothing is sent automatically.

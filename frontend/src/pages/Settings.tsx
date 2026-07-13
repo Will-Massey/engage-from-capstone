@@ -991,14 +991,6 @@ const Settings = () => {
 
   return (
     <div className="space-y-6 animate-fade-in max-w-7xl mx-auto">
-      {/* Header */}
-      <div className="border-b border-slate-200 dark:border-slate-700 pb-5">
-        <h1 className="text-2xl font-bold text-slate-900 dark:text-white">Settings</h1>
-        <p className="mt-1.5 text-sm text-slate-600 dark:text-slate-300">
-          Manage your account, practice details, and preferences
-        </p>
-      </div>
-
       <div className="flex flex-col lg:flex-row gap-10">
         {/* Sidebar - Modern card style */}
         <div className="lg:w-72 flex-shrink-0">
