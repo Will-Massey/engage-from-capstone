@@ -256,7 +256,7 @@ export function getPageMeta(pathname: string): {
 
   if (pathname === '/templates') {
     return {
-      title: 'Templates',
+      title: 'Proposal Templates',
       description:
         'Ready-made ICAEW and ACCA service bundles, plus your own custom templates — nothing is replaced when you add one',
       breadcrumbs: [{ label: 'Dashboard', href: '/' }, { label: 'Templates' }],
