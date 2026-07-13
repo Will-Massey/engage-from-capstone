@@ -43,7 +43,11 @@ export function firmCredentialsFromSettings(settings: Record<string, unknown>): 
     typeof settings.professionalBody === 'string' ? settings.professionalBody : undefined
   );
   if (!body) return undefined;
-  return `${body}-regulated practice`;
+  // Adjective only ("CPAA-regulated") — the cover-letter templates already
+  // supply the following noun ("… as a {{firmCredentials}} practice."). Older
+  // seeded tenants still hold that template text, so appending " practice" here
+  // produced the doubled "…regulated practice practice".
+  return `${body}-regulated`;
 }
 
 /** Only use explicit yearsExperience from settings — never invent tenure. */
