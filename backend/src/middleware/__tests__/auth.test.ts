@@ -54,6 +54,33 @@ describe('authenticate middleware', () => {
     expect(result.nextCalled).toBe(false);
   });
 
+  it('rejects a 2FA-pending token as an access token (2FA bypass regression)', async () => {
+    // The pending token is signed with the SAME secret but carries a `purpose`
+    // and no tenantId — it must never establish a session.
+    const pending = jwt.sign({ userId: 'user-1', purpose: '2fa_pending' }, secret, {
+      expiresIn: '5m',
+    });
+    const result = await callAuthenticate({
+      headers: { authorization: `Bearer ${pending}` },
+      cookies: {},
+    });
+    expect(result.status).toBe(401);
+    expect(result.nextCalled).toBe(false);
+    expect(result.user).toBeUndefined();
+    // The user lookup must not even run for a non-access token.
+    expect(prisma.user.findFirst).not.toHaveBeenCalled();
+  });
+
+  it('rejects a token with no tenantId claim', async () => {
+    const noTenant = jwt.sign({ userId: 'user-1', role: 'ADMIN' }, secret, { expiresIn: '5m' });
+    const result = await callAuthenticate({
+      headers: { authorization: `Bearer ${noTenant}` },
+      cookies: {},
+    });
+    expect(result.status).toBe(401);
+    expect(result.nextCalled).toBe(false);
+  });
+
   it('returns TOKEN_EXPIRED for expired tokens', async () => {
     const token = jwt.sign(
       {
