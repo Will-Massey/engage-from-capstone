@@ -1,6 +1,7 @@
 # Render Blueprint for Engage by Capstone
 # Deploy: https://dashboard.render.com/select-repo?type=blueprint
-# Starter tier — no cold sleep, persistent disk for uploads/signatures
+# Starter tier — no cold sleep. Uploads (signatures/AML docs) persist in
+# Cloudflare R2 (UPLOADS_BACKEND=r2); the local UPLOADS_DIR is a dev fallback only.
 
 services:
   # Backend API Service
@@ -84,6 +85,18 @@ services:
         value: uploads
       - key: UPLOADS_DIR
         value: uploads
+      # Cloudflare R2 object storage for durable upload persistence (signatures, AML docs).
+      # Set UPLOADS_BACKEND=r2 and fill the R2_* secrets in the Render dashboard to activate.
+      - key: UPLOADS_BACKEND
+        sync: false
+      - key: R2_ACCOUNT_ID
+        sync: false
+      - key: R2_ACCESS_KEY_ID
+        sync: false
+      - key: R2_SECRET_ACCESS_KEY
+        sync: false
+      - key: R2_BUCKET
+        sync: false
       - key: COMPANIES_HOUSE_API_KEY
         sync: false
       - key: XAI_API_KEY
