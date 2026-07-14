@@ -395,7 +395,7 @@ router.post(
       accessToken: 'e2e-stub-access-token',
       connectedAt: new Date().toISOString(),
       connectedByUserId: req.user!.id,
-      scope: ['accounting.contacts', 'accounting.transactions'],
+      scope: ['accounting.contacts', 'accounting.invoices', 'accounting.payments'],
     });
 
     res.json({
