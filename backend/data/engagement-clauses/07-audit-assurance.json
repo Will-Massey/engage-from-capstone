@@ -16,5 +16,11 @@
     "title": "No assurance provided",
     "tags": ["_always", "_icaew", "_acca"],
     "body": "Unless expressly stated, our work does not constitute an audit, review, or other assurance engagement, and no opinion is expressed on the accuracy or completeness of your records."
+  },
+  {
+    "id": "scope-hmrc-enquiries-excluded",
+    "title": "HMRC enquiries and audits (out of scope)",
+    "tags": ["_always"],
+    "body": "HMRC enquiries, compliance checks, and investigations — including any audit or review of a return we have prepared — fall outside the scope of this engagement. Should HMRC open an enquiry or audit, the work involved in responding to it will be the subject of a separate engagement and charged in addition to the fees set out in this proposal. We will agree the scope and cost of that additional work with you before we begin."
   }
 ]

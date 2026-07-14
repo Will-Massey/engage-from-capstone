@@ -16,5 +16,11 @@
     "title": "Client software obligations",
     "tags": ["_always", "_acca"],
     "body": "You are responsible for maintaining subscriptions to third-party software and granting us appropriate user access to complete the agreed services."
+  },
+  {
+    "id": "terms-software-retention-of-title",
+    "title": "Software licences and retention of title",
+    "tags": ["_always"],
+    "body": "Where we pay for Xero (or other cloud accounting software) on your behalf as part of this engagement, the subscription and associated licences remain our property until all fees due under this engagement have been paid in full. On completion or termination of the engagement, transfer of the subscription into your name is conditional upon settlement of all outstanding amounts."
   }
 ]
