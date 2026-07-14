@@ -263,7 +263,7 @@ const EmailSettings = () => {
               </p>
               {!platform?.platformReady && (
                 <p className="text-sm text-amber-700 dark:text-amber-300 mt-2">
-                  Platform email not configured on server (SENDGRID_API_KEY missing).
+                  Platform email not configured on server (EMAIL_WORKER_URL missing).
                 </p>
               )}
             </>
