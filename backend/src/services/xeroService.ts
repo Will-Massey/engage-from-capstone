@@ -31,14 +31,20 @@ import {
   type TenantXeroSettings,
 } from './tenantXeroSettings.js';
 
-/** OAuth scopes — register these on your Xero app */
+/**
+ * OAuth scopes. Xero retired the umbrella `accounting.transactions` scope in
+ * favour of granular scopes; newly-created apps reject it as invalid_scope.
+ * `accounting.invoices` covers Invoices + Repeating Invoices, and
+ * `accounting.payments` covers createPayment.
+ */
 export const XERO_OAUTH_SCOPES = [
   'openid',
   'profile',
   'email',
   'offline_access',
   'accounting.contacts',
-  'accounting.transactions',
+  'accounting.invoices',
+  'accounting.payments',
   'accounting.settings',
 ] as const;
 
