@@ -56,7 +56,7 @@ const tabs = [
     id: 'templates',
     name: 'Templates & terms',
     icon: RectangleStackIcon,
-    description: 'Proposal bundles, letters, T&Cs',
+    description: 'Expiry, bundles, letters, T&Cs',
   },
   {
     id: 'billing',
@@ -1681,188 +1681,6 @@ const Settings = () => {
                 </div>
               </div>
 
-              {/* Proposal defaults */}
-              <div className="glass-tile overflow-hidden">
-                <div className="px-8 py-5 border-b border-slate-200 dark:border-slate-700 bg-white/40 dark:bg-slate-800/30">
-                  <h2 className="text-lg font-semibold text-slate-900 dark:text-white">
-                    Proposal defaults
-                  </h2>
-                  <p className="text-sm text-slate-500 dark:text-slate-300">
-                    Default expiry and renewal reminder timing for new proposals
-                  </p>
-                </div>
-                <div className="p-6 space-y-4">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                    <div>
-                      <label className="block text-sm font-semibold text-slate-700 dark:text-slate-100">
-                        Default proposal validity (days)
-                      </label>
-                      <input
-                        type="number"
-                        min={1}
-                        max={365}
-                        value={communicationsForm.proposals.defaultExpiryDays}
-                        onChange={(e) =>
-                          setCommunicationsForm({
-                            ...communicationsForm,
-                            proposals: {
-                              ...communicationsForm.proposals,
-                              defaultExpiryDays: Number(e.target.value) || 30,
-                            },
-                          })
-                        }
-                        className="mt-1 input-field w-full"
-                      />
-                      <p className="mt-1 text-xs text-slate-500 dark:text-slate-300">
-                        Pre-fills the &quot;valid until&quot; date when creating a proposal
-                      </p>
-                    </div>
-                    <div>
-                      <label className="block text-sm font-semibold text-slate-700 dark:text-slate-100">
-                        Default payment terms (days)
-                      </label>
-                      <input
-                        type="number"
-                        min={1}
-                        max={90}
-                        value={communicationsForm.proposals.defaultPaymentTermsDays ?? 7}
-                        onChange={(e) =>
-                          setCommunicationsForm({
-                            ...communicationsForm,
-                            proposals: {
-                              ...communicationsForm.proposals,
-                              defaultPaymentTermsDays: Number(e.target.value) || 7,
-                            },
-                          })
-                        }
-                        className="mt-1 input-field w-full"
-                      />
-                      <p className="mt-1 text-xs text-slate-500 dark:text-slate-300">
-                        Invoices are payable within this many days (shown on proposals and
-                        engagement letters)
-                      </p>
-                    </div>
-                    <div>
-                      <label className="block text-sm font-semibold text-slate-700 dark:text-slate-100">
-                        Renewal / expiry reminder (days before)
-                      </label>
-                      <input
-                        type="number"
-                        min={1}
-                        max={90}
-                        value={communicationsForm.proposals.renewalReminderDays}
-                        onChange={(e) =>
-                          setCommunicationsForm({
-                            ...communicationsForm,
-                            proposals: {
-                              ...communicationsForm.proposals,
-                              renewalReminderDays: Number(e.target.value) || 30,
-                            },
-                          })
-                        }
-                        className="mt-1 input-field w-full"
-                      />
-                      <p className="mt-1 text-xs text-slate-500 dark:text-slate-300">
-                        Email reminders before proposal expiry or annual renewal
-                      </p>
-                    </div>
-                    <div>
-                      <label className="block text-sm font-semibold text-slate-700 dark:text-slate-100">
-                        Cancellation notice (days)
-                      </label>
-                      <input
-                        type="number"
-                        min={1}
-                        max={365}
-                        value={communicationsForm.proposals.cancellationNoticeDays ?? 30}
-                        onChange={(e) =>
-                          setCommunicationsForm({
-                            ...communicationsForm,
-                            proposals: {
-                              ...communicationsForm.proposals,
-                              cancellationNoticeDays: Number(e.target.value) || 30,
-                            },
-                          })
-                        }
-                        className="mt-1 input-field w-full"
-                      />
-                      <p className="mt-1 text-xs text-slate-500 dark:text-slate-300">
-                        Written notice required to terminate the engagement (shown in terms)
-                      </p>
-                    </div>
-                  </div>
-
-                  <div className="pt-4 border-t border-slate-200 dark:border-slate-700">
-                    <label className="flex items-start gap-3 cursor-pointer">
-                      <input
-                        type="checkbox"
-                        checked={communicationsForm.proposals.benchmarksOptIn}
-                        onChange={(e) =>
-                          setCommunicationsForm({
-                            ...communicationsForm,
-                            proposals: {
-                              ...communicationsForm.proposals,
-                              benchmarksOptIn: e.target.checked,
-                            },
-                          })
-                        }
-                        className="mt-1 h-4 w-4 rounded border-slate-300 text-primary-600 focus:ring-primary-200"
-                      />
-                      <span>
-                        <span className="block text-sm font-semibold text-slate-700 dark:text-slate-100">
-                          Share anonymised fee data to see benchmarks
-                        </span>
-                        <span className="block text-xs text-slate-500 dark:text-slate-300 mt-1">
-                          Contribute anonymised proposal line fees to cross-practice percentile
-                          bands shown in the proposal builder. No client or firm identifiers are
-                          shared. Categories with fewer than five contributing practices are
-                          withheld.
-                        </span>
-                      </span>
-                    </label>
-                  </div>
-
-                  <div className="pt-4 border-t border-slate-200 dark:border-slate-700">
-                    <label className="flex items-start gap-3 cursor-pointer">
-                      <input
-                        type="checkbox"
-                        checked={communicationsForm.proposals.blockSendUntilAmlCleared}
-                        onChange={(e) =>
-                          setCommunicationsForm({
-                            ...communicationsForm,
-                            proposals: {
-                              ...communicationsForm.proposals,
-                              blockSendUntilAmlCleared: e.target.checked,
-                            },
-                          })
-                        }
-                        className="mt-1 h-4 w-4 rounded border-slate-300 text-primary-600 focus:ring-primary-200"
-                      />
-                      <span>
-                        <span className="block text-sm font-semibold text-slate-700 dark:text-slate-100">
-                          Require AML clearance before sending proposals
-                        </span>
-                        <span className="block text-xs text-slate-500 dark:text-slate-300 mt-1">
-                          Proposals cannot be emailed until the client&apos;s AML status is Clear.
-                          Partners and admins can override per proposal; overrides are recorded in
-                          the audit log.
-                        </span>
-                      </span>
-                    </label>
-                  </div>
-
-                  <div className="pt-4 border-t border-slate-200 dark:border-slate-700 flex flex-wrap gap-3">
-                    <button
-                      onClick={handleSaveCommunications}
-                      disabled={isSaving === 'communications'}
-                      className="btn-primary"
-                    >
-                      {isSaving === 'communications' ? 'Saving...' : 'Save proposal defaults'}
-                    </button>
-                  </div>
-                </div>
-              </div>
-
               {/* Clara autopilot (agentic drafting) */}
               <div className="glass-tile overflow-hidden">
                 <div className="px-8 py-5 border-b border-slate-200 dark:border-slate-700 bg-white/40 dark:bg-slate-800/30">
@@ -2423,6 +2241,188 @@ const Settings = () => {
           {/* TEMPLATES & TERMS TAB */}
           {activeTab === 'templates' && (
             <div className="space-y-6">
+              {/* Proposal defaults */}
+              <div className="glass-tile overflow-hidden">
+                <div className="px-8 py-5 border-b border-slate-200 dark:border-slate-700 bg-white/40 dark:bg-slate-800/30">
+                  <h2 className="text-lg font-semibold text-slate-900 dark:text-white">
+                    Proposal defaults
+                  </h2>
+                  <p className="text-sm text-slate-500 dark:text-slate-300">
+                    Default expiry and renewal reminder timing for new proposals
+                  </p>
+                </div>
+                <div className="p-6 space-y-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                    <div>
+                      <label className="block text-sm font-semibold text-slate-700 dark:text-slate-100">
+                        Default proposal validity (days)
+                      </label>
+                      <input
+                        type="number"
+                        min={1}
+                        max={365}
+                        value={communicationsForm.proposals.defaultExpiryDays}
+                        onChange={(e) =>
+                          setCommunicationsForm({
+                            ...communicationsForm,
+                            proposals: {
+                              ...communicationsForm.proposals,
+                              defaultExpiryDays: Number(e.target.value) || 30,
+                            },
+                          })
+                        }
+                        className="mt-1 input-field w-full"
+                      />
+                      <p className="mt-1 text-xs text-slate-500 dark:text-slate-300">
+                        Pre-fills the &quot;valid until&quot; date when creating a proposal
+                      </p>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-semibold text-slate-700 dark:text-slate-100">
+                        Default payment terms (days)
+                      </label>
+                      <input
+                        type="number"
+                        min={1}
+                        max={90}
+                        value={communicationsForm.proposals.defaultPaymentTermsDays ?? 7}
+                        onChange={(e) =>
+                          setCommunicationsForm({
+                            ...communicationsForm,
+                            proposals: {
+                              ...communicationsForm.proposals,
+                              defaultPaymentTermsDays: Number(e.target.value) || 7,
+                            },
+                          })
+                        }
+                        className="mt-1 input-field w-full"
+                      />
+                      <p className="mt-1 text-xs text-slate-500 dark:text-slate-300">
+                        Invoices are payable within this many days (shown on proposals and
+                        engagement letters)
+                      </p>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-semibold text-slate-700 dark:text-slate-100">
+                        Renewal / expiry reminder (days before)
+                      </label>
+                      <input
+                        type="number"
+                        min={1}
+                        max={90}
+                        value={communicationsForm.proposals.renewalReminderDays}
+                        onChange={(e) =>
+                          setCommunicationsForm({
+                            ...communicationsForm,
+                            proposals: {
+                              ...communicationsForm.proposals,
+                              renewalReminderDays: Number(e.target.value) || 30,
+                            },
+                          })
+                        }
+                        className="mt-1 input-field w-full"
+                      />
+                      <p className="mt-1 text-xs text-slate-500 dark:text-slate-300">
+                        Email reminders before proposal expiry or annual renewal
+                      </p>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-semibold text-slate-700 dark:text-slate-100">
+                        Cancellation notice (days)
+                      </label>
+                      <input
+                        type="number"
+                        min={1}
+                        max={365}
+                        value={communicationsForm.proposals.cancellationNoticeDays ?? 30}
+                        onChange={(e) =>
+                          setCommunicationsForm({
+                            ...communicationsForm,
+                            proposals: {
+                              ...communicationsForm.proposals,
+                              cancellationNoticeDays: Number(e.target.value) || 30,
+                            },
+                          })
+                        }
+                        className="mt-1 input-field w-full"
+                      />
+                      <p className="mt-1 text-xs text-slate-500 dark:text-slate-300">
+                        Written notice required to terminate the engagement (shown in terms)
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="pt-4 border-t border-slate-200 dark:border-slate-700">
+                    <label className="flex items-start gap-3 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={communicationsForm.proposals.benchmarksOptIn}
+                        onChange={(e) =>
+                          setCommunicationsForm({
+                            ...communicationsForm,
+                            proposals: {
+                              ...communicationsForm.proposals,
+                              benchmarksOptIn: e.target.checked,
+                            },
+                          })
+                        }
+                        className="mt-1 h-4 w-4 rounded border-slate-300 text-primary-600 focus:ring-primary-200"
+                      />
+                      <span>
+                        <span className="block text-sm font-semibold text-slate-700 dark:text-slate-100">
+                          Share anonymised fee data to see benchmarks
+                        </span>
+                        <span className="block text-xs text-slate-500 dark:text-slate-300 mt-1">
+                          Contribute anonymised proposal line fees to cross-practice percentile
+                          bands shown in the proposal builder. No client or firm identifiers are
+                          shared. Categories with fewer than five contributing practices are
+                          withheld.
+                        </span>
+                      </span>
+                    </label>
+                  </div>
+
+                  <div className="pt-4 border-t border-slate-200 dark:border-slate-700">
+                    <label className="flex items-start gap-3 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={communicationsForm.proposals.blockSendUntilAmlCleared}
+                        onChange={(e) =>
+                          setCommunicationsForm({
+                            ...communicationsForm,
+                            proposals: {
+                              ...communicationsForm.proposals,
+                              blockSendUntilAmlCleared: e.target.checked,
+                            },
+                          })
+                        }
+                        className="mt-1 h-4 w-4 rounded border-slate-300 text-primary-600 focus:ring-primary-200"
+                      />
+                      <span>
+                        <span className="block text-sm font-semibold text-slate-700 dark:text-slate-100">
+                          Require AML clearance before sending proposals
+                        </span>
+                        <span className="block text-xs text-slate-500 dark:text-slate-300 mt-1">
+                          Proposals cannot be emailed until the client&apos;s AML status is Clear.
+                          Partners and admins can override per proposal; overrides are recorded in
+                          the audit log.
+                        </span>
+                      </span>
+                    </label>
+                  </div>
+
+                  <div className="pt-4 border-t border-slate-200 dark:border-slate-700 flex flex-wrap gap-3">
+                    <button
+                      onClick={handleSaveCommunications}
+                      disabled={isSaving === 'communications'}
+                      className="btn-primary"
+                    >
+                      {isSaving === 'communications' ? 'Saving...' : 'Save proposal defaults'}
+                    </button>
+                  </div>
+                </div>
+              </div>
+
               <div className="glass-tile overflow-hidden">
                 <div className="px-8 py-5 border-b border-slate-200 dark:border-slate-700 bg-white/40 dark:bg-slate-800/30">
                   <h2 className="text-lg font-semibold text-slate-900 dark:text-white">
