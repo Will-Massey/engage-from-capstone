@@ -803,7 +803,16 @@ export async function createClientPortalLink(
     },
   });
 
-  const base = frontendOrigin?.replace(/\/$/, '') || getFrontendUrl();
+  // The app is served under a base path (/engage). A bare browser origin
+  // (https://capstonesoftware.co.uk) omits it, and the edge worker hard-404s any
+  // path not starting with /engage — so only honour frontendOrigin when it
+  // already includes the app base path; otherwise use the canonical URL.
+  const canonical = getFrontendUrl();
+  const basePath = new URL(canonical).pathname.replace(/\/$/, '');
+  const base =
+    frontendOrigin && (basePath === '' || frontendOrigin.includes(basePath))
+      ? frontendOrigin.replace(/\/$/, '')
+      : canonical;
   const portalUrl = `${base}/portal/${token}`;
   return { token, portalUrl, expiresAt };
 }

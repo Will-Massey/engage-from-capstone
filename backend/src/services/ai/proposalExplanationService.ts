@@ -6,7 +6,7 @@ import { ApiError } from '../../middleware/errorHandler.js';
 import { AI_COPILOT } from '../../config/aiCopilot.js';
 import { chatCompletion, checkAiTokenBudget, isAiConfigured } from './aiClient.js';
 import { logAiUsage } from './proposalAiService.js';
-import { coverLetterAddressee } from '../../utils/proposalDisplay.js';
+import { coverLetterAddressee, formatUserRole } from '../../utils/proposalDisplay.js';
 
 export interface ProposalExplanationInput {
   clientId: string;
@@ -115,11 +115,36 @@ Requirements:
   );
 
   const explanation = content.trim();
+
+  // The prompt intentionally ends the letter at "Yours sincerely," with no
+  // fabricated name. Append a real signature block from the author + practice
+  // so the sign-off is always populated (never invented).
+  const signatory = userId
+    ? await prisma.user.findFirst({
+        where: { id: userId, tenantId },
+        select: { firstName: true, lastName: true, jobTitle: true, role: true },
+      })
+    : null;
+  const practiceName = tenant?.name?.trim();
+  const senderName = signatory
+    ? `${signatory.firstName ?? ''} ${signatory.lastName ?? ''}`.trim()
+    : '';
+  const position = signatory
+    ? signatory.jobTitle?.trim() || formatUserRole(signatory.role)
+    : undefined;
+  const signatureLines = [
+    senderName || undefined,
+    position && practiceName ? `${position}, ${practiceName}` : position || practiceName,
+  ].filter(Boolean);
+  const signedLetter = signatureLines.length
+    ? `${explanation}\n\n${signatureLines.join('\n\n')}`
+    : explanation;
+
   await logAiUsage(tenantId, userId, 'proposal_explanation', {
     ...usage,
     clientId: input.clientId,
     serviceCount: input.services.length,
   });
 
-  return explanation;
+  return signedLetter;
 }
