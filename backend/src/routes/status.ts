@@ -8,21 +8,22 @@ import { getJobHealth } from '../app/jobHealth.js';
 import { isXeroOAuthConfigured } from '../services/tenantXeroSettings.js';
 import { isQuickBooksOAuthConfigured } from '../services/tenantQuickbooksSettings.js';
 import { asyncHandler } from '../middleware/errorHandler.js';
+import { isSendGridConfigured } from '../services/sendgridTransport.js';
 
 const router = Router();
 
 type ComponentStatus = 'operational' | 'degraded' | 'unavailable' | 'not_configured';
 
 function emailStatus(): { status: ComponentStatus; detail: string } {
-  if (process.env.SENDGRID_API_KEY) {
-    return { status: 'operational', detail: 'SendGrid configured' };
+  if (isSendGridConfigured()) {
+    return { status: 'operational', detail: 'Cloudflare email configured' };
   }
   if (process.env.SMTP_HOST && process.env.SMTP_USER) {
     return { status: 'operational', detail: 'SMTP configured' };
   }
   return {
     status: 'degraded',
-    detail: 'No email provider configured (SENDGRID_API_KEY or SMTP)',
+    detail: 'No email transport configured (set EMAIL_WORKER_URL or SMTP)',
   };
 }
 

@@ -97,8 +97,8 @@ export default function PrivacyPolicy() {
           terms.
         </p>
         <p>
-          Key providers may include Render, Neon, Cloudflare, Stripe, SendGrid, and xAI (for AI
-          features).
+          Key providers may include Render, Neon, Cloudflare (hosting and email), Stripe, and xAI
+          (for AI features).
         </p>
       </section>
 

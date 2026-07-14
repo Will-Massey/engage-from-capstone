@@ -195,6 +195,7 @@ enum EmailMessageType {
 
 enum EmailProvider {
   SENDGRID
+  CLOUDFLARE
   SMTP
   GMAIL
   OUTLOOK

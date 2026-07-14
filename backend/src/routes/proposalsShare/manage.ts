@@ -207,7 +207,7 @@ router.post(
       pdfAttachment = await PDFGenerator.generateProposal(id);
     }
 
-    // Send email via tenant mailer (platform SendGrid or custom SMTP/OAuth)
+    // Send email via tenant mailer (platform Cloudflare or custom SMTP/OAuth)
     const senderName = Array.from(
       new Set([proposal.createdBy.firstName, proposal.createdBy.lastName].filter(Boolean))
     ).join(' ');
