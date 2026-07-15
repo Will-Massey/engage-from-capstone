@@ -146,7 +146,18 @@ export async function exchangeXeroCallbackUrl(callbackUrl: string): Promise<{
   tokenSet: any;
   tenants: Array<{ tenantId: string; tenantName?: string }>;
 }> {
-  const xero = createXeroClient();
+  // xero-node builds its CSRF check as `{ state: config.state }`, and
+  // openid-client throws "checks.state argument is missing" when the callback
+  // URL carries a `state` param but no expected state was configured. The
+  // caller (handleXeroOAuthCallback) has already cryptographically verified
+  // this state via verifyOAuthState, so we extract it and hand it back to the
+  // client purely to satisfy openid-client's equality check.
+  const queryIdx = callbackUrl.indexOf('?');
+  const expectedState =
+    queryIdx >= 0
+      ? new URLSearchParams(callbackUrl.slice(queryIdx + 1)).get('state') || undefined
+      : undefined;
+  const xero = createXeroClient(expectedState);
   await xero.initialize();
   const tokenSet = await xero.apiCallback(callbackUrl);
   await xero.setTokenSet(tokenSet);
