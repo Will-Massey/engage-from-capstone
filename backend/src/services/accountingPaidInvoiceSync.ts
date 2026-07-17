@@ -41,10 +41,9 @@ export const QBO_INVOICE_SYNCED_ACTION = 'QBO_INVOICE_SYNCED';
 export interface PaidInvoiceServiceLine {
   name: string;
   billingFrequency: string;
-  lineTotal: number;
-  vatAmount: number;
-  grossTotal: number;
-  grossTotalPence?: number | null;
+  lineTotalPence: number;
+  vatAmountPence: number;
+  grossTotalPence: number;
 }
 
 export interface PaidInvoiceLinePlan {
@@ -60,7 +59,7 @@ export interface PaidInvoiceLinePlan {
 }
 
 function grossPence(s: PaidInvoiceServiceLine): number {
-  return s.grossTotalPence ?? Math.round(s.grossTotal * 100);
+  return s.grossTotalPence;
 }
 
 /**
@@ -89,8 +88,8 @@ export function planPaidInvoiceLines(
         matchedLines: true,
         lines: lines.map((s) => ({
           description: s.name,
-          netAmount: s.lineTotal,
-          vatAmount: s.vatAmount,
+          netAmount: s.lineTotalPence / 100,
+          vatAmount: s.vatAmountPence / 100,
           grossAmount: grossPence(s) / 100,
         })),
       };

@@ -8,6 +8,7 @@ import { prisma } from '../config/database.js';
 import { getApiUrl, getFrontendUrl, tenantAppUrl } from '../config/urls.js';
 import logger from '../config/logger.js';
 import { saveSignaturePng, readSignature } from './fileStorage.js';
+import { penceToPounds, poundsToPence } from '../utils/proposalPricing.js';
 import { calculateRenewalDate } from '../jobs/renewalReminders.js';
 import {
   parseProposalCustomFields,
@@ -267,9 +268,9 @@ export async function recordElectronicSignature(
         contractStartDate: true,
         clientId: true,
         customFields: true,
-        subtotal: true,
-        vatAmount: true,
-        total: true,
+        subtotalPence: true,
+        vatAmountPence: true,
+        totalPence: true,
         status: true,
         _count: { select: { signatures: true } },
       },
@@ -391,9 +392,9 @@ export async function recordElectronicSignature(
       selectedTier &&
       calculateTierTotals(
         {
-          subtotal: proposalMeta.subtotal,
-          vatAmount: proposalMeta.vatAmount,
-          total: proposalMeta.total,
+          subtotal: penceToPounds(proposalMeta.subtotalPence),
+          vatAmount: penceToPounds(proposalMeta.vatAmountPence),
+          total: penceToPounds(proposalMeta.totalPence),
         },
         selectedTier
       );
@@ -419,9 +420,9 @@ export async function recordElectronicSignature(
         customFields: serializeProposalCustomFields(finalCustomFields),
         ...(tierTotals
           ? {
-              subtotal: tierTotals.subtotal,
-              vatAmount: tierTotals.vatAmount,
-              total: tierTotals.total,
+              subtotalPence: poundsToPence(tierTotals.subtotal),
+              vatAmountPence: poundsToPence(tierTotals.vatAmount),
+              totalPence: poundsToPence(tierTotals.total),
             }
           : {}),
       },
@@ -878,10 +879,10 @@ export async function getClientProposalsForPortal(clientId: string) {
         reference: true,
         title: true,
         status: true,
-        total: true,
-        subtotal: true,
-        vatAmount: true,
-        discountAmount: true,
+        totalPence: true,
+        subtotalPence: true,
+        vatAmountPence: true,
+        discountAmountPence: true,
         validUntil: true,
         sentAt: true,
         viewedAt: true,
@@ -897,11 +898,11 @@ export async function getClientProposalsForPortal(clientId: string) {
             name: true,
             description: true,
             quantity: true,
-            unitPrice: true,
-            lineTotal: true,
+            unitPricePence: true,
+            lineTotalPence: true,
             vatRate: true,
-            vatAmount: true,
-            grossTotal: true,
+            vatAmountPence: true,
+            grossTotalPence: true,
             billingFrequency: true,
             priceDisplayMode: true,
           },

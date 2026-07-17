@@ -8,6 +8,7 @@ import logger from '../config/logger.js';
 import { PDFGenerator } from './pdfGenerator.js';
 import { tenantMailer } from './tenantMailer.js';
 import { getSignatureImage } from './proposalSharingService.js';
+import { penceToPounds } from '../utils/proposalPricing.js';
 import {
   generateAcceptanceAdminNotification,
   tenantUseAiEmails,
@@ -109,11 +110,13 @@ export async function buildAcceptanceAdminContext(
     clientEmployees: proposal.client.employeeCount,
     proposalTitle: proposal.title,
     proposalReference: proposal.reference,
-    totalAmount: formatGbp(proposal.total),
+    totalAmount: formatGbp(penceToPounds(proposal.totalPence)),
     serviceCount: proposal.services.length,
     servicesSummary: proposal.services
       .slice(0, 6)
-      .map((s) => `${s.name} (${formatGbp(s.displayPrice || s.unitPrice)})`)
+      .map(
+        (s) => `${s.name} (${formatGbp(penceToPounds(s.displayPricePence || s.unitPricePence))})`
+      )
       .join('; '),
     signedBy: signature?.signedBy || proposal.acceptedBy || 'Client signatory',
     signedByRole: signature?.signedByRole || proposal.signatoryPosition || 'Authorised signatory',

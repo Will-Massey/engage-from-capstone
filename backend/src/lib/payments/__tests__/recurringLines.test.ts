@@ -61,13 +61,13 @@ describe('hasRecurringLines', () => {
 
 describe('planRecurringCheckout', () => {
   const services = [
-    { name: 'Bookkeeping', billingFrequency: 'MONTHLY', grossTotal: 102 }, // £85 + VAT
-    { name: 'VAT returns', billingFrequency: 'MONTHLY', grossTotal: 48 },
-    { name: 'Onboarding', billingFrequency: 'ONE_TIME', grossTotal: 600 },
+    { name: 'Bookkeeping', billingFrequency: 'MONTHLY', grossTotalPence: 10200 }, // £85 + VAT
+    { name: 'VAT returns', billingFrequency: 'MONTHLY', grossTotalPence: 4800 },
+    { name: 'Onboarding', billingFrequency: 'ONE_TIME', grossTotalPence: 60000 },
   ];
 
   it('plans a single-interval subscription with one-off lines when totals match', () => {
-    const plan = planRecurringCheckout(services, 750); // 102 + 48 + 600
+    const plan = planRecurringCheckout(services, 75000); // 10200 + 4800 + 60000
     expect(plan).not.toBeNull();
     expect(plan!.group.key).toBe('month:1');
     expect(plan!.group.lines).toHaveLength(2);
@@ -84,36 +84,35 @@ describe('planRecurringCheckout', () => {
   it('falls back (null) when recurring lines span multiple intervals', () => {
     const mixed = [
       ...services,
-      { name: 'Tax review', billingFrequency: 'ANNUALLY', grossTotal: 300 },
+      { name: 'Tax review', billingFrequency: 'ANNUALLY', grossTotalPence: 30000 },
     ];
-    expect(planRecurringCheckout(mixed, 1050)).toBeNull();
+    expect(planRecurringCheckout(mixed, 105000)).toBeNull();
   });
 
   it('falls back (null) when there are no recurring lines', () => {
     expect(
-      planRecurringCheckout([{ name: 'Setup', billingFrequency: 'ONE_TIME', grossTotal: 100 }], 100)
+      planRecurringCheckout(
+        [{ name: 'Setup', billingFrequency: 'ONE_TIME', grossTotalPence: 10000 }],
+        10000
+      )
     ).toBeNull();
   });
 
   it('falls back (null) when the line sum disagrees with the stored total (e.g. discount)', () => {
-    expect(planRecurringCheckout(services, 700)).toBeNull();
+    expect(planRecurringCheckout(services, 70000)).toBeNull();
   });
 });
 
-describe('planRecurringCheckout with Int-pence mirrors (Stage 1)', () => {
-  it('prefers stored pence over float-derived pounds when both are present', () => {
-    // Legacy Float rows can carry dust (e.g. 101.99999999999) — the stored
-    // pence mirror is authoritative at the payment boundary.
+describe('planRecurringCheckout with Int-pence storage (Stage 2)', () => {
+  it('charges exactly the stored pence at the payment boundary', () => {
     const plan = planRecurringCheckout(
       [
         {
           name: 'Bookkeeping',
           billingFrequency: 'MONTHLY',
-          grossTotal: 101.99999999999,
           grossTotalPence: 10200,
         },
       ],
-      101.99999999999,
       10200
     );
     expect(plan).not.toBeNull();
@@ -126,12 +125,10 @@ describe('planRecurringCheckout with Int-pence mirrors (Stage 1)', () => {
         {
           name: 'Bookkeeping',
           billingFrequency: 'MONTHLY',
-          grossTotal: 102,
           grossTotalPence: 10200,
         },
       ],
-      90, // discounted header — must not charge line sum
-      9000
+      9000 // discounted header — must not charge line sum
     );
     expect(plan).toBeNull();
   });

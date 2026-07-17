@@ -609,7 +609,12 @@ async function main() {
 
   console.log('✅ Created clients:', clients.length);
 
-  // Create proposals
+  // Create proposals. Money is integer pence and arithmetically coherent:
+  // per-line VAT at 20%, header = Σ lines. Dates are relative to "now" so the
+  // demo always shows a living pipeline (charts, funnel, renewal queue).
+  const daysAgo = (n: number) => new Date(Date.now() - n * 24 * 60 * 60 * 1000);
+  const daysAhead = (n: number) => new Date(Date.now() + n * 24 * 60 * 60 * 1000);
+
   const proposalsData = [
     {
       clientId: clients[0].id,
@@ -617,10 +622,11 @@ async function main() {
       reference: 'PROP-2024-001',
       title: 'Annual Compliance Package 2024/25',
       status: 'ACCEPTED',
-      subtotal: 2850,
-      discount: 0,
-      vat: 570,
-      total: 3420,
+      createdAt: daysAgo(75),
+      sentAt: daysAgo(72),
+      viewedAt: daysAgo(70),
+      acceptedAt: daysAgo(68),
+      validUntil: daysAhead(290),
       services: [
         { serviceId: services[0].id, name: 'Annual Accounts Preparation', qty: 1, price: 750 },
         { serviceId: services[1].id, name: 'Corporation Tax Return', qty: 1, price: 600 },
@@ -634,10 +640,11 @@ async function main() {
       reference: 'PROP-2024-002',
       title: 'MTD ITSA Transition Package',
       status: 'ACCEPTED',
-      subtotal: 850,
-      discount: 50,
-      vat: 160,
-      total: 960,
+      createdAt: daysAgo(34),
+      sentAt: daysAgo(31),
+      viewedAt: daysAgo(29),
+      acceptedAt: daysAgo(26),
+      validUntil: daysAhead(330),
       services: [
         { serviceId: services[3].id, name: 'Self Assessment', qty: 1, price: 250 },
         { serviceId: services[8].id, name: 'MTD ITSA Quarterly', qty: 4, price: 100 },
@@ -650,10 +657,9 @@ async function main() {
       reference: 'PROP-2024-003',
       title: 'Construction Industry Package',
       status: 'SENT',
-      subtotal: 4200,
-      discount: 200,
-      vat: 800,
-      total: 4800,
+      createdAt: daysAgo(9),
+      sentAt: daysAgo(7),
+      validUntil: daysAhead(23),
       services: [
         { serviceId: services[0].id, name: 'Annual Accounts', qty: 1, price: 1200 },
         { serviceId: services[1].id, name: 'Corporation Tax', qty: 1, price: 800 },
@@ -667,10 +673,8 @@ async function main() {
       reference: 'PROP-2024-004',
       title: 'Property Investment Services',
       status: 'DRAFT',
-      subtotal: 1800,
-      discount: 0,
-      vat: 360,
-      total: 2160,
+      createdAt: daysAgo(2),
+      validUntil: daysAhead(30),
       services: [
         { serviceId: services[3].id, name: 'Self Assessment', qty: 1, price: 350 },
         { serviceId: services[24].id, name: 'Property Tax Advisory', qty: 1, price: 1200 },
@@ -683,10 +687,10 @@ async function main() {
       reference: 'PROP-2024-005',
       title: 'Hospitality Full Service Package',
       status: 'VIEWED',
-      subtotal: 5500,
-      discount: 500,
-      vat: 1000,
-      total: 6000,
+      createdAt: daysAgo(6),
+      sentAt: daysAgo(5),
+      viewedAt: daysAgo(3),
+      validUntil: daysAhead(25),
       services: [
         { serviceId: services[0].id, name: 'Annual Accounts', qty: 1, price: 950 },
         { serviceId: services[1].id, name: 'Corporation Tax', qty: 1, price: 750 },
@@ -699,6 +703,28 @@ async function main() {
 
   const createdProposals = [];
   for (const proposal of proposalsData) {
+    // Per-line pence with 20% VAT; header totals are exact sums of the lines
+    // so every screen (list, detail, public view, PDF) is arithmetically
+    // consistent.
+    const lines = proposal.services.map((svc) => {
+      const lineTotalPence = svc.qty * svc.price * 100;
+      const vatAmountPence = Math.round(lineTotalPence * 0.2);
+      return {
+        serviceTemplateId: svc.serviceId,
+        name: svc.name,
+        quantity: svc.qty,
+        unitPricePence: svc.price * 100,
+        displayPricePence: svc.price * 100,
+        lineTotalPence,
+        vatAmountPence,
+        grossTotalPence: lineTotalPence + vatAmountPence,
+        vatRate: 20,
+        frequency: 'MONTHLY' as const,
+      };
+    });
+    const subtotalPence = lines.reduce((sum, l) => sum + l.lineTotalPence, 0);
+    const vatAmountPence = lines.reduce((sum, l) => sum + l.vatAmountPence, 0);
+
     const created = await prisma.proposal.create({
       data: {
         tenantId: demoTenant.id,
@@ -707,11 +733,15 @@ async function main() {
         reference: proposal.reference,
         title: proposal.title,
         status: proposal.status,
-        validUntil: new Date('2024-12-31'),
-        subtotal: proposal.subtotal,
-        discountAmount: proposal.discount,
-        vatAmount: proposal.vat,
-        total: proposal.total,
+        createdAt: proposal.createdAt,
+        sentAt: proposal.sentAt ?? null,
+        viewedAt: proposal.viewedAt ?? null,
+        acceptedAt: proposal.acceptedAt ?? null,
+        validUntil: proposal.validUntil,
+        subtotalPence,
+        discountAmountPence: 0,
+        vatAmountPence,
+        totalPence: subtotalPence + vatAmountPence,
         paymentTerms: '30 days',
         paymentFrequency: 'MONTHLY',
         coverLetter: `Dear valued client,\n\nWe are pleased to present this proposal for your accounting and compliance needs. This comprehensive package has been tailored specifically for your business.\n\nBest regards,\nThe Team`,
@@ -720,18 +750,9 @@ async function main() {
 
     // Add proposal services
     await Promise.all(
-      proposal.services.map((svc) =>
+      lines.map((line) =>
         prisma.proposalService.create({
-          data: {
-            proposalId: created.id,
-            serviceTemplateId: svc.serviceId,
-            name: svc.name,
-            quantity: svc.qty,
-            unitPrice: svc.price,
-            displayPrice: svc.price,
-            lineTotal: svc.qty * svc.price,
-            frequency: 'MONTHLY',
-          },
+          data: { proposalId: created.id, ...line },
         })
       )
     );

@@ -6,18 +6,18 @@ function mockProposal(
 ) {
   return {
     paymentFrequency: 'MONTHLY',
-    total: 1200,
-    vatAmount: 200,
-    subtotal: 1000,
+    totalPence: 120000,
+    vatAmountPence: 20000,
+    subtotalPence: 100000,
     services: services.map((s, i) => ({
       id: `svc-${i}`,
       name: s.name ?? 'Service',
       description: null,
       quantity: s.quantity ?? 1,
-      unitPrice: s.unitPrice ?? 100,
-      lineTotal: s.lineTotal ?? 100,
-      grossTotal: s.grossTotal ?? 120,
-      vatAmount: s.vatAmount ?? 20,
+      unitPricePence: s.unitPricePence ?? 10000,
+      lineTotalPence: s.lineTotalPence ?? 10000,
+      grossTotalPence: s.grossTotalPence ?? 12000,
+      vatAmountPence: s.vatAmountPence ?? 2000,
       billingFrequency: s.billingFrequency ?? 'MONTHLY',
       frequency: s.frequency ?? 'MONTHLY',
       isOptional: s.isOptional ?? false,
@@ -33,8 +33,18 @@ describe('computeSigningCostSummary', () => {
   it('uses monthly recurring when services are billed monthly', () => {
     const summary = computeSigningCostSummary(
       mockProposal([
-        { name: 'Bookkeeping', grossTotal: 600, vatAmount: 100, billingFrequency: 'MONTHLY' },
-        { name: 'Payroll', grossTotal: 540, vatAmount: 90, billingFrequency: 'MONTHLY' },
+        {
+          name: 'Bookkeeping',
+          grossTotalPence: 60000,
+          vatAmountPence: 10000,
+          billingFrequency: 'MONTHLY',
+        },
+        {
+          name: 'Payroll',
+          grossTotalPence: 54000,
+          vatAmountPence: 9000,
+          billingFrequency: 'MONTHLY',
+        },
       ])
     );
     expect(summary.dueToday).toBeNull();
@@ -45,8 +55,18 @@ describe('computeSigningCostSummary', () => {
   it('splits due today and monthly recurring fees', () => {
     const summary = computeSigningCostSummary(
       mockProposal([
-        { name: 'Setup', grossTotal: 300, vatAmount: 50, billingFrequency: 'ONE_TIME' },
-        { name: 'Bookkeeping', grossTotal: 600, vatAmount: 100, billingFrequency: 'MONTHLY' },
+        {
+          name: 'Setup',
+          grossTotalPence: 30000,
+          vatAmountPence: 5000,
+          billingFrequency: 'ONE_TIME',
+        },
+        {
+          name: 'Bookkeeping',
+          grossTotalPence: 60000,
+          vatAmountPence: 10000,
+          billingFrequency: 'MONTHLY',
+        },
       ])
     );
     expect(summary.dueToday?.amount).toBe(300);
@@ -58,7 +78,12 @@ describe('computeSigningCostSummary', () => {
   it('uses annual recurring when services are billed annually', () => {
     const summary = computeSigningCostSummary(
       mockProposal([
-        { name: 'Accounts', grossTotal: 960, vatAmount: 160, billingFrequency: 'ANNUALLY' },
+        {
+          name: 'Accounts',
+          grossTotalPence: 96000,
+          vatAmountPence: 16000,
+          billingFrequency: 'ANNUALLY',
+        },
       ])
     );
     expect(summary.recurring?.amount).toBe(960);
@@ -68,7 +93,12 @@ describe('computeSigningCostSummary', () => {
   it('uses due today only for one-off proposals', () => {
     const summary = computeSigningCostSummary(
       mockProposal([
-        { name: 'Setup', grossTotal: 300, vatAmount: 50, billingFrequency: 'ONE_TIME' },
+        {
+          name: 'Setup',
+          grossTotalPence: 30000,
+          vatAmountPence: 5000,
+          billingFrequency: 'ONE_TIME',
+        },
       ])
     );
     expect(summary.dueToday?.amount).toBe(300);

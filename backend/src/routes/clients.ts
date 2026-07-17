@@ -216,7 +216,7 @@ router.get(
             reference: true,
             title: true,
             status: true,
-            total: true,
+            totalPence: true,
             createdAt: true,
           },
           orderBy: { createdAt: 'desc' },

@@ -6,6 +6,7 @@
 
 import { prisma } from '../config/database.js';
 import logger from '../utils/logger.js';
+import { penceToPounds } from '../utils/proposalPricing.js';
 
 export type IntegrationEventType =
   | 'proposal.sent'
@@ -318,7 +319,7 @@ async function loadProposalEventContext(
     include: {
       client: { select: { name: true, contactEmail: true } },
       services: {
-        select: { name: true, lineTotal: true, billingFrequency: true },
+        select: { name: true, lineTotalPence: true, billingFrequency: true },
         orderBy: { sortOrder: 'asc' },
       },
     },
@@ -337,7 +338,7 @@ async function loadProposalEventContext(
       reference: proposal.reference,
       title: proposal.title,
       status: proposal.status,
-      total: proposal.total,
+      total: penceToPounds(proposal.totalPence),
       currency: 'GBP',
       clientName: proposal.client.name,
       clientEmail: proposal.client.contactEmail,
@@ -353,7 +354,7 @@ async function loadProposalEventContext(
     },
     services: proposal.services.map((s) => ({
       name: s.name,
-      lineTotal: s.lineTotal,
+      lineTotal: penceToPounds(s.lineTotalPence),
       billingFrequency: s.billingFrequency,
     })),
   };

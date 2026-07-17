@@ -5,6 +5,7 @@
 import { Router } from 'express';
 import { z } from 'zod';
 import { prisma } from '../config/database.js';
+import { penceToPounds } from '../utils/proposalPricing.js';
 import { authenticate, authorize } from '../middleware/auth.js';
 import { asyncHandler, ApiError } from '../middleware/errorHandler.js';
 import { deepCloneJson } from '../utils/proposalServiceSnapshot.js';
@@ -274,7 +275,7 @@ router.post(
           name: s.name,
           description: s.description ?? null,
           billingFrequency: s.billingFrequency,
-          displayPrice: s.displayPrice,
+          displayPrice: penceToPounds(s.displayPricePence),
           quantity: s.quantity,
           discountPercent: s.discountPercent,
         }))

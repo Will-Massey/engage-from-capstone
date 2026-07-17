@@ -341,9 +341,6 @@ describe('regulatory-signal drafting', () => {
       approvalStatus: 'PENDING',
       submittedForApprovalAt: NOW,
       title: 'VAT services — Acme Ltd',
-      subtotal: expectedTotals.subtotal,
-      vatAmount: expectedTotals.vatAmount,
-      total: expectedTotals.total,
       subtotalPence: expectedTotals.subtotalPence,
       vatAmountPence: expectedTotals.vatAmountPence,
       totalPence: expectedTotals.totalPence,
@@ -484,9 +481,8 @@ describe('AI narrative discipline', () => {
     const expectedTotals = calculateHeaderTotals([
       buildProposalServiceRecord({ serviceId: VAT_TEMPLATE.id }, VAT_TEMPLATE as never, () => null),
     ]);
-    expect(createArg.total).toBe(expectedTotals.total);
     expect(createArg.totalPence).toBe(expectedTotals.totalPence);
-    expect(createArg.services.create[0].displayPrice).toBe(60);
+    expect(createArg.services.create[0].displayPricePence).toBe(6000);
 
     expect(logAiUsage).toHaveBeenCalledWith('t1', 'owner-1', 'clara_agentic_draft', {
       signalId: 'sig-1',

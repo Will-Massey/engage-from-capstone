@@ -136,7 +136,7 @@ export async function pushProposalToQuickBooks(
     privateNote: `Engage proposal ${proposal.reference} — ${proposal.title}`,
     lines: recurring.map((s) => ({
       description: `${s.name} (${s.billingFrequency})`,
-      amount: (s.grossTotalPence ?? Math.round(s.grossTotal * 100)) / 100,
+      amount: s.grossTotalPence / 100,
     })),
   });
 

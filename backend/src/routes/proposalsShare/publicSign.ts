@@ -5,6 +5,7 @@
 import { Router } from 'express';
 import { z } from 'zod';
 import { prisma } from '../../config/database.js';
+import { penceToPounds } from '../../utils/proposalPricing.js';
 import { getFrontendUrl } from '../../config/urls.js';
 import { asyncHandler, ApiError } from '../../middleware/errorHandler.js';
 import {
@@ -185,7 +186,7 @@ router.post(
 
     const collectPayment =
       result.fullyAccepted &&
-      proposalRequiresPayment(proposal.total) &&
+      proposalRequiresPayment(penceToPounds(proposal.totalPence)) &&
       (await shouldCollectPaymentAtSign(proposal.tenantId));
 
     const paymentConfig = result.fullyAccepted
@@ -389,7 +390,7 @@ router.get(
         status: proposal.paymentStatus || 'NOT_STARTED',
         // Stripe Connect webhook writes PAID; legacy Revolut path used COMPLETED/ACTIVE
         paid: ['PAID', 'COMPLETED', 'ACTIVE'].includes(proposal.paymentStatus || ''),
-        amount: proposal.total,
+        amount: penceToPounds(proposal.totalPence),
         paymentUrl: proposal.paymentUrl,
       },
     });
