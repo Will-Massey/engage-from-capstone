@@ -155,7 +155,7 @@ const Dashboard = () => {
         pipelineValue: dash?.pipeline?.value ?? 0,
         totalClients: dash?.clients?.total ?? clientsRes.meta?.total ?? 0,
         mtditsaClients: clients.filter((c: any) => c.mtditsaEligible).length,
-        totalRevenue: dash?.revenue?.total ?? 0,
+        totalRevenue: dash?.revenue?.acceptedValue ?? dash?.revenue?.total ?? 0,
         conversionRate: dash?.conversion?.rate ?? 0,
         viewRate: dash?.conversion?.viewRate ?? 0,
         signRate: dash?.conversion?.signRate ?? 0,
@@ -281,7 +281,7 @@ const Dashboard = () => {
     {
       name: 'Total Clients',
       value: stats.totalClients,
-      change: `${stats.totalProposals} proposals`,
+      change: `${stats.totalProposals} ${stats.totalProposals === 1 ? 'proposal' : 'proposals'}`,
       icon: UsersIcon,
       money: false,
     },
@@ -710,7 +710,8 @@ const Dashboard = () => {
                         <span className="badge badge-amber">MTD ITSA</span>
                       )}
                       <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-                        {client._count?.proposals || 0} proposals
+                        {client._count?.proposals || 0}{' '}
+                        {(client._count?.proposals || 0) === 1 ? 'proposal' : 'proposals'}
                       </p>
                     </div>
                   </div>

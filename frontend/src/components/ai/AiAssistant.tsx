@@ -192,6 +192,15 @@ export default function AiAssistant() {
     }
   };
 
+  // Focused creation flows keep their primary CTA bottom-right — the floating
+  // launcher would sit on top of it. Clara stays reachable from the sidebar.
+  const isFocusedFlow =
+    location.pathname.startsWith('/proposals/wizard') ||
+    location.pathname.startsWith('/proposals/new');
+  if (isFocusedFlow && !isOpen) {
+    return null;
+  }
+
   return (
     <>
       {/* Floating launcher */}

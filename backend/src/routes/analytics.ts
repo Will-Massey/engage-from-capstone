@@ -55,6 +55,7 @@ router.get(
       viewedCount,
       signedCount,
       pipelineValue,
+      acceptedValue,
       monthlyRevenue,
       statusCounts,
       dailyActivity,
@@ -127,6 +128,10 @@ router.get(
       prisma.proposal.count({ where: { tenantId, status: 'ACCEPTED' } }),
       prisma.proposal.aggregate({
         where: { tenantId, status: { in: ['SENT', 'VIEWED'] } },
+        _sum: { totalPence: true },
+      }),
+      prisma.proposal.aggregate({
+        where: { tenantId, status: 'ACCEPTED' },
         _sum: { totalPence: true },
       }),
 
@@ -225,8 +230,13 @@ router.get(
     const [funnelSent, acceptedCount] = conversionRate;
     const conversionRatePercent =
       funnelSent > 0 ? Math.round((acceptedCount / funnelSent) * 100) : 0;
-    const viewRate = sentCount > 0 ? Math.round((viewedCount / sentCount) * 100) : 0;
-    const signRate = viewedCount > 0 ? Math.round((signedCount / viewedCount) * 100) : 0;
+    // Status counts are stage snapshots (a signed proposal is no longer
+    // VIEWED), so rates use the cumulative funnel — never exceed 100%.
+    const reachedView = viewedCount + signedCount;
+    const reachedSentOrBeyond = sentCount + reachedView;
+    const viewRate =
+      reachedSentOrBeyond > 0 ? Math.round((reachedView / reachedSentOrBeyond) * 100) : 0;
+    const signRate = reachedView > 0 ? Math.round((signedCount / reachedView) * 100) : 0;
 
     const proposalGrowth =
       proposalsLastMonth > 0
@@ -318,6 +328,7 @@ router.get(
         revenue: {
           total: penceToPounds(totalValue._sum.totalPence),
           accepted: signedCount,
+          acceptedValue: penceToPounds(acceptedValue._sum.totalPence),
           thisMonth: penceToPounds(valueThisMonth._sum.totalPence),
           currency: 'GBP',
         },

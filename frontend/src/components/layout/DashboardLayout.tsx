@@ -69,7 +69,8 @@ const DashboardLayout = () => {
         </div>
 
         {/* Main content area */}
-        <main id="main-content" className="pt-20 pb-10 px-4 sm:px-6 lg:px-8">
+        {/* pb-28 keeps the floating Clara launcher clear of the last row of content */}
+        <main id="main-content" className="pt-20 pb-28 px-4 sm:px-6 lg:px-8">
           <div className="max-w-7xl mx-auto space-y-8">
             <AppRouteHeader />
             <Outlet />
