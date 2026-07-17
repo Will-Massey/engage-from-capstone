@@ -3,6 +3,7 @@
  */
 import { annualEquivalentFor } from '@uk-proposal-platform/shared';
 import { prisma } from '../../config/database.js';
+import { penceToPounds } from '../../utils/proposalPricing.js';
 import { logAiUsage } from './proposalAiService.js';
 
 export interface BenchmarkBand {
@@ -89,9 +90,9 @@ async function aggregateBenchmarks(
     },
     select: {
       name: true,
-      displayPrice: true,
+      displayPricePence: true,
       billingFrequency: true,
-      annualEquivalent: true,
+      annualEquivalentPence: true,
     },
     take: 5000,
   });
@@ -100,9 +101,11 @@ async function aggregateBenchmarks(
   for (const line of lines) {
     // One-offs count at face value for benchmarking (amortised, not excluded)
     const annual =
-      line.annualEquivalent > 0
-        ? line.annualEquivalent
-        : annualEquivalentFor(line.displayPrice, line.billingFrequency, { oneTime: 'amortised' });
+      line.annualEquivalentPence > 0
+        ? penceToPounds(line.annualEquivalentPence)
+        : annualEquivalentFor(penceToPounds(line.displayPricePence), line.billingFrequency, {
+            oneTime: 'amortised',
+          });
     if (annual <= 0) continue;
     const cat = categoriseServiceName(line.name);
     const arr = buckets.get(cat) ?? [];
@@ -197,7 +200,7 @@ export async function getBenchmarkPricing(
 async function aggregateTenantBenchmarks(tenantId: string): Promise<BenchmarkBand[]> {
   const accepted = await prisma.proposal.findMany({
     where: { tenantId, status: 'ACCEPTED' },
-    include: { services: { select: { name: true, unitPrice: true, billingFrequency: true } } },
+    include: { services: { select: { name: true, unitPricePence: true, billingFrequency: true } } },
     take: 200,
     orderBy: { acceptedAt: 'desc' },
   });
@@ -209,7 +212,7 @@ async function aggregateTenantBenchmarks(tenantId: string): Promise<BenchmarkBan
     for (const s of p.services) {
       const key = s.name.split(' ').slice(0, 3).join(' ');
       const arr = byCategory.get(key) || [];
-      arr.push(s.unitPrice);
+      arr.push(penceToPounds(s.unitPricePence));
       byCategory.set(key, arr);
     }
   }

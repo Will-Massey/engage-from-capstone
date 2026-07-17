@@ -5,8 +5,15 @@ import { asyncHandler, ApiError } from '../../middleware/errorHandler.js';
 import { enforceTierLimit } from '../../middleware/tierLimits.js';
 import logger from '../../config/logger.js';
 import { getProposalViewStats } from '../../services/proposalSharingService.js';
-import { buildProposalServiceRecord, calculateHeaderTotals } from '../../utils/proposalPricing.js';
-import { serializeProposalServicesForApi } from '../../utils/proposalServiceSnapshot.js';
+import {
+  buildProposalServiceRecord,
+  calculateHeaderTotals,
+  penceToPounds,
+} from '../../utils/proposalPricing.js';
+import {
+  serializeProposalServicesForApi,
+  proposalMoneyForApi,
+} from '../../utils/proposalServiceSnapshot.js';
 import {
   mergeProposalCustomFields,
   parseProposalCustomFields,
@@ -91,6 +98,7 @@ router.get(
       success: true,
       data: {
         ...proposal,
+        ...proposalMoneyForApi(proposal),
         services: serializeProposalServicesForApi(proposal.services as any),
         viewCount: viewStats?.totalViews ?? 0,
         lastViewedAt: viewStats?.lastViewedAt ?? null,
@@ -168,14 +176,8 @@ router.post(
     });
     const proposalSettings = getProposalSettings(tenantRecord?.settings);
 
-    const {
-      subtotal,
-      vatAmount: totalVat,
-      total: grandTotal,
-      subtotalPence,
-      vatAmountPence,
-      totalPence,
-    } = calculateHeaderTotals(servicesWithClearPricing);
+    const { subtotalPence, vatAmountPence, totalPence } =
+      calculateHeaderTotals(servicesWithClearPricing);
 
     // Generate reference
     const reference = generateReference('PROP');
@@ -203,15 +205,11 @@ router.post(
         status: 'DRAFT',
         validUntil,
         contractStartDate,
-        subtotal,
         discountType: data.discountType,
         discountValue: data.discountValue,
-        discountAmount: 0, // Line-level discounts are already applied
         vatRate: 20, // Default VAT rate
-        vatAmount: totalVat,
-        total: grandTotal,
         subtotalPence,
-        discountAmountPence: 0,
+        discountAmountPence: 0, // Line-level discounts are already applied
         vatAmountPence,
         totalPence,
         paymentTerms:
@@ -264,6 +262,7 @@ router.post(
       success: true,
       data: {
         ...proposal,
+        ...proposalMoneyForApi(proposal),
         services: serializeProposalServicesForApi(proposal.services as any),
       },
     });
@@ -397,7 +396,9 @@ router.put(
             displayPrice:
               svc.displayPrice !== undefined
                 ? svc.displayPrice
-                : (prior?.displayPrice ?? prior?.unitPrice),
+                : prior
+                  ? penceToPounds(prior.displayPricePence ?? prior.unitPricePence)
+                  : undefined,
             billingFrequency: svc.billingFrequency ?? prior?.billingFrequency ?? prior?.frequency,
             vatRate: svc.vatRate ?? prior?.vatRate,
           },
@@ -422,9 +423,6 @@ router.put(
         prisma.proposal.update({
           where: { id },
           data: {
-            subtotal: totals.subtotal,
-            vatAmount: totals.vatAmount,
-            total: totals.total,
             subtotalPence: totals.subtotalPence,
             vatAmountPence: totals.vatAmountPence,
             totalPence: totals.totalPence,
@@ -468,6 +466,7 @@ router.put(
       data: refreshed
         ? {
             ...refreshed,
+            ...proposalMoneyForApi(refreshed),
             services: serializeProposalServicesForApi(refreshed.services as any),
           }
         : proposal,

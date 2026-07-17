@@ -9,7 +9,11 @@ import {
   getProposalSettings,
   parseProposalDateInput,
 } from '../utils/tenantProposalSettings.js';
-import { buildProposalServiceRecord, calculateHeaderTotals } from '../utils/proposalPricing.js';
+import {
+  buildProposalServiceRecord,
+  calculateHeaderTotals,
+  penceToPounds,
+} from '../utils/proposalPricing.js';
 import { calculateRenewalDate } from '../jobs/renewalReminders.js';
 import { revokeShareableLink } from './proposalSharingService.js';
 
@@ -169,7 +173,7 @@ export async function findRenewalCandidates(
       proposalReference: proposal.reference,
       proposalTitle: proposal.title,
       renewalDate: renewalDate.toISOString(),
-      total: proposal.total,
+      total: penceToPounds(proposal.totalPence),
       paymentFrequency: proposal.paymentFrequency,
       hasPendingRenewal: pendingOriginalIds.has(proposal.id),
       daysUntilRenewal: daysUntil(renewalDate),
@@ -186,10 +190,9 @@ type RenewalServiceInput = {
   name: string;
   description: string | null;
   quantity: number;
-  unitPrice: number;
+  unitPricePence: number;
   discountPercent: number;
-  displayPrice: number | null;
-  lineTotal: number;
+  displayPricePence: number | null;
   billingFrequency: string;
   priceDisplayMode: string;
   frequency: string;
@@ -249,7 +252,8 @@ export function computeUpliftedUnitPrice(
 
 function applyUpliftRulesToServices(services: RenewalServiceInput[], rules: UpliftRules) {
   return services.map((svc) => {
-    const basePrice = svc.displayPrice ?? svc.unitPrice;
+    // Uplift math runs in pounds (rules are GBP); pence → pounds is lossless.
+    const basePrice = penceToPounds(svc.displayPricePence ?? svc.unitPricePence);
     const displayPrice = computeUpliftedUnitPrice(basePrice, rules, svc);
 
     return buildProposalServiceRecord(
@@ -411,15 +415,11 @@ export async function createRenewalDraft(
       createdById: userId,
       status: 'DRAFT',
       validUntil,
-      subtotal: totals.subtotal,
       discountType: originalProposal.discountType,
       discountValue: originalProposal.discountValue,
-      discountAmount: originalProposal.discountAmount,
       vatRate: 20,
-      vatAmount: totals.vatAmount,
-      total: totals.total,
       subtotalPence: totals.subtotalPence,
-      discountAmountPence: Math.round((originalProposal.discountAmount ?? 0) * 100),
+      discountAmountPence: originalProposal.discountAmountPence,
       vatAmountPence: totals.vatAmountPence,
       totalPence: totals.totalPence,
       paymentTerms,
@@ -436,16 +436,17 @@ export async function createRenewalDraft(
           name: svc.name,
           description: svc.description,
           quantity: svc.quantity,
-          unitPrice: svc.unitPrice,
+          unitPricePence: svc.unitPricePence,
           discountPercent: svc.discountPercent,
-          displayPrice: svc.displayPrice,
-          lineTotal: svc.lineTotal,
+          displayPricePence: svc.displayPricePence,
+          annualEquivalentPence: svc.annualEquivalentPence,
+          lineTotalPence: svc.lineTotalPence,
           billingFrequency: svc.billingFrequency,
           priceDisplayMode: svc.priceDisplayMode,
           frequency: svc.frequency,
           vatRate: svc.vatRate,
-          vatAmount: svc.vatAmount,
-          grossTotal: svc.grossTotal,
+          vatAmountPence: svc.vatAmountPence,
+          grossTotalPence: svc.grossTotalPence,
           oneOffDueDate: svc.oneOffDueDate,
           serviceTemplateId: svc.serviceTemplateId,
         })) as any,
@@ -581,7 +582,7 @@ export async function bulkCreateRenewalDrafts(
           proposalReference: proposal.reference,
           proposalTitle: proposal.title,
           renewalDate: renewalDate.toISOString(),
-          total: proposal.total,
+          total: penceToPounds(proposal.totalPence),
           paymentFrequency: proposal.paymentFrequency,
           hasPendingRenewal: pendingOriginalIds.has(proposal.id),
           daysUntilRenewal: daysUntil(renewalDate),
@@ -643,7 +644,7 @@ export async function bulkCreateRenewalDrafts(
         proposalId: created.id,
         reference: created.reference,
         title: created.title,
-        total: created.total,
+        total: penceToPounds(created.totalPence),
       });
       result.summary.created++;
     } catch (err: any) {

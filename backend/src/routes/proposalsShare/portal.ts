@@ -9,6 +9,7 @@ import { prisma } from '../../config/database.js';
 import { asyncHandler, ApiError } from '../../middleware/errorHandler.js';
 import { authenticate } from '../../middleware/auth.js';
 import { extractTenant } from '../../middleware/tenant.js';
+import { penceToPounds } from '../../utils/proposalPricing.js';
 import {
   createClientPortalLink,
   revokeClientPortalLink,
@@ -150,17 +151,23 @@ router.get(
           reference: p.reference,
           title: p.title,
           status: p.status,
-          total: p.total,
-          subtotal: p.subtotal,
-          vatAmount: p.vatAmount,
-          discountAmount: p.discountAmount,
+          total: penceToPounds(p.totalPence),
+          subtotal: penceToPounds(p.subtotalPence),
+          vatAmount: penceToPounds(p.vatAmountPence),
+          discountAmount: penceToPounds(p.discountAmountPence),
           validUntil: p.validUntil,
           sentAt: p.sentAt,
           viewedAt: p.viewedAt,
           acceptedAt: p.acceptedAt,
           declinedAt: p.declinedAt,
           createdAt: p.createdAt,
-          services: p.services,
+          services: p.services.map((s) => ({
+            ...s,
+            unitPrice: penceToPounds(s.unitPricePence),
+            lineTotal: penceToPounds(s.lineTotalPence),
+            vatAmount: penceToPounds(s.vatAmountPence),
+            grossTotal: penceToPounds(s.grossTotalPence),
+          })),
           // shareToken is intentionally NOT exposed here — resolve per-proposal
           // via GET /portal/:token/proposals/:proposalId/view-link
           canView: Boolean(

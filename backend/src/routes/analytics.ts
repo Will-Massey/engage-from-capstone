@@ -8,6 +8,7 @@ import { synthesiseWinLoss } from '../services/winLossSynthesisService.js';
 import { getFeeBenchmarks } from '../services/feeBenchmarkService.js';
 import { getRecurringRevenueSummary } from '../services/proposalRecurringStripe.js';
 import { getProposalSettings } from '../utils/tenantProposalSettings.js';
+import { penceToPounds } from '../utils/proposalPricing.js';
 
 const router = Router();
 
@@ -92,7 +93,7 @@ router.get(
       // Total value of all proposals
       prisma.proposal.aggregate({
         where: { tenantId },
-        _sum: { total: true },
+        _sum: { totalPence: true },
       }),
 
       // Value this month
@@ -101,7 +102,7 @@ router.get(
           tenantId,
           createdAt: { gte: thirtyDaysAgo },
         },
-        _sum: { total: true },
+        _sum: { totalPence: true },
       }),
 
       // Conversion rate (accepted / total sent)
@@ -125,11 +126,11 @@ router.get(
       prisma.proposal.count({ where: { tenantId, status: 'ACCEPTED' } }),
       prisma.proposal.aggregate({
         where: { tenantId, status: { in: ['SENT', 'VIEWED'] } },
-        _sum: { total: true },
+        _sum: { totalPence: true },
       }),
 
       prisma.$queryRaw`
-        SELECT DATE_TRUNC('month', "createdAt") as month, SUM(total) as revenue
+        SELECT DATE_TRUNC('month', "createdAt") as month, SUM("totalPence") / 100.0 as revenue
         FROM "Proposal"
         WHERE "tenantId" = ${tenantId}
           AND status = 'ACCEPTED'
@@ -185,7 +186,7 @@ router.get(
       SELECT 
         DATE_TRUNC('month', "createdAt") as month,
         COUNT(*) as count,
-        SUM("total") as value,
+        SUM("totalPence") / 100.0 as value,
         COUNT(CASE WHEN "status" = 'ACCEPTED' THEN 1 END) as accepted
       FROM "Proposal"
       WHERE "tenantId" = ${tenantId}
@@ -201,7 +202,7 @@ router.get(
         proposal: { tenantId },
       },
       _count: { serviceTemplateId: true },
-      _sum: { lineTotal: true },
+      _sum: { lineTotalPence: true },
       orderBy: { _count: { serviceTemplateId: 'desc' } },
       take: 5,
     });
@@ -310,13 +311,13 @@ router.get(
           ),
         },
         pipeline: {
-          value: pipelineValue._sum.total || 0,
+          value: penceToPounds(pipelineValue._sum.totalPence),
           currency: 'GBP',
         },
         revenue: {
-          total: totalValue._sum.total || 0,
+          total: penceToPounds(totalValue._sum.totalPence),
           accepted: signedCount,
-          thisMonth: valueThisMonth._sum.total || 0,
+          thisMonth: penceToPounds(valueThisMonth._sum.totalPence),
           currency: 'GBP',
         },
         conversion: {
@@ -340,7 +341,7 @@ router.get(
         topServices: topServicesWithNames.map((s) => ({
           name: s.name,
           count: s._count.serviceTemplateId,
-          revenue: s._sum.lineTotal || 0,
+          revenue: penceToPounds(s._sum.lineTotalPence),
         })),
         revenueData,
         proposalStatusData,
@@ -435,7 +436,7 @@ router.get(
         },
         proposals: {
           select: {
-            total: true,
+            totalPence: true,
             status: true,
             createdAt: true,
           },
@@ -452,7 +453,7 @@ router.get(
       name: client.name,
       totalProposals: client._count.proposals,
       totalValue: client.proposals.reduce(
-        (sum, p) => sum + (p.status === 'ACCEPTED' ? p.total : 0),
+        (sum, p) => sum + (p.status === 'ACCEPTED' ? penceToPounds(p.totalPence) : 0),
         0
       ),
       conversionRate:
@@ -556,24 +557,24 @@ router.get(
           tenantId,
           status: { in: ['SENT', 'VIEWED'] },
         },
-        _sum: { total: true, subtotal: true },
+        _sum: { totalPence: true, subtotalPence: true },
         _count: { id: true },
       }),
       // Accepted revenue
       prisma.proposal.aggregate({
         where: { tenantId, status: 'ACCEPTED' },
-        _sum: { total: true },
+        _sum: { totalPence: true },
       }),
       // Monthly recurring revenue (from accepted proposals with recurring services)
       prisma.$queryRaw`
         SELECT 
-          SUM(CASE 
-            WHEN ps."billingFrequency" = 'WEEKLY' THEN ps."grossTotal" * 52 / 12
-            WHEN ps."billingFrequency" = 'MONTHLY' THEN ps."grossTotal"
-            WHEN ps."billingFrequency" = 'QUARTERLY' THEN ps."grossTotal" / 3
-            WHEN ps."billingFrequency" = 'ANNUALLY' THEN ps."grossTotal" / 12
+          SUM(CASE
+            WHEN ps."billingFrequency" = 'WEEKLY' THEN ps."grossTotalPence" * 52 / 12.0
+            WHEN ps."billingFrequency" = 'MONTHLY' THEN ps."grossTotalPence"
+            WHEN ps."billingFrequency" = 'QUARTERLY' THEN ps."grossTotalPence" / 3.0
+            WHEN ps."billingFrequency" = 'ANNUALLY' THEN ps."grossTotalPence" / 12.0
             ELSE 0
-          END) as monthly_recurring
+          END) / 100.0 as monthly_recurring
         FROM "ProposalService" ps
         JOIN "Proposal" p ON p.id = ps."proposalId"
         WHERE p."tenantId" = ${tenantId}
@@ -586,17 +587,17 @@ router.get(
       success: true,
       data: {
         pipeline: {
-          value: pipelineProposals._sum.total || 0,
-          subtotal: pipelineProposals._sum.subtotal || 0,
+          value: penceToPounds(pipelineProposals._sum.totalPence),
+          subtotal: penceToPounds(pipelineProposals._sum.subtotalPence),
           count: pipelineProposals._count.id || 0,
         },
         accepted: {
-          value: acceptedRevenue._sum.total || 0,
+          value: penceToPounds(acceptedRevenue._sum.totalPence),
         },
         monthlyRecurring: Number((monthlyRecurring as any[])[0]?.monthly_recurring) || 0,
         forecast: {
           // Pipeline value × conversion rate (assumed 30% if no data)
-          expectedValue: Math.round((pipelineProposals._sum.total || 0) * 0.3),
+          expectedValue: Math.round(penceToPounds(pipelineProposals._sum.totalPence) * 0.3),
         },
       },
     });
@@ -710,7 +711,7 @@ router.get(
         client: { select: { id: true, name: true } },
         views: { select: { id: true, viewedAt: true } },
       },
-      orderBy: { total: 'desc' },
+      orderBy: { totalPence: 'desc' },
       take: 200,
     });
 
@@ -758,7 +759,7 @@ router.get(
         clientName: p.client.name,
         clientId: p.client.id,
         status: p.status,
-        total: p.total,
+        total: penceToPounds(p.totalPence),
         sentAt: p.sentAt!.toISOString(),
         validUntil: p.validUntil.toISOString(),
         daysSinceSent,

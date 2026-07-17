@@ -2,6 +2,8 @@ import { Router } from 'express';
 import { z } from 'zod';
 import { ApprovalStatus, ProposalStatus } from '@prisma/client';
 import { prisma } from '../../config/database.js';
+import { proposalMoneyForApi } from '../../utils/proposalServiceSnapshot.js';
+import { penceToPounds } from '../../utils/proposalPricing.js';
 import { authenticate, authorize } from '../../middleware/auth.js';
 import { requireActiveSubscription } from '../../middleware/subscription.js';
 import { asyncHandler, ApiError } from '../../middleware/errorHandler.js';
@@ -117,7 +119,7 @@ router.post(
     const totalAmount = new Intl.NumberFormat('en-GB', {
       style: 'currency',
       currency: 'GBP',
-    }).format(proposal.total);
+    }).format(penceToPounds(proposal.totalPence));
 
     const emailResult = await tenantMailer.sendProposalEmail(
       req.tenantId!,
@@ -195,7 +197,7 @@ router.post(
 
     res.json({
       success: true,
-      data: updatedProposal,
+      data: { ...updatedProposal, ...proposalMoneyForApi(updatedProposal) },
       message: 'Proposal sent successfully',
     });
   })
@@ -296,7 +298,7 @@ router.post(
 
     res.json({
       success: true,
-      data: updatedProposal,
+      data: { ...updatedProposal, ...proposalMoneyForApi(updatedProposal) },
     });
   })
 );
@@ -350,7 +352,7 @@ router.post(
 
     res.json({
       success: true,
-      data: updatedProposal,
+      data: { ...updatedProposal, ...proposalMoneyForApi(updatedProposal) },
       message: 'Proposal withdrawn successfully',
     });
   })
@@ -429,7 +431,7 @@ router.post(
 
     res.json({
       success: true,
-      data: updatedProposal,
+      data: { ...updatedProposal, ...proposalMoneyForApi(updatedProposal) },
       message: 'Proposal marked as lost',
     });
   })

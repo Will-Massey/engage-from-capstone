@@ -8,6 +8,7 @@ import { DEFAULT_VAT_RATE, vatAmountFor } from '@uk-proposal-platform/shared';
 type PDFDoc = any;
 import { prisma } from '../config/database.js';
 import { getFrontendUrl } from '../config/urls.js';
+import { penceToPounds } from '../utils/proposalPricing.js';
 import { formatGeoLocationDisplay } from '../utils/signatureAudit.js';
 import { parseProposalCustomFields } from '../utils/proposalCustomFields.js';
 import { parseClientAddress, preparedForLines, senderPosition } from '../utils/proposalDisplay.js';
@@ -136,7 +137,7 @@ export class PDFGenerator {
    */
   static async generateProposal(proposalId: string): Promise<Buffer> {
     // Fetch proposal with all related data
-    const proposal = (await prisma.proposal.findUnique({
+    const proposalRow = await prisma.proposal.findUnique({
       where: { id: proposalId },
       include: {
         client: {
@@ -160,7 +161,27 @@ export class PDFGenerator {
           orderBy: { signedAt: 'asc' as const },
         },
       },
-    })) as unknown as ProposalData & { signatures?: any[] };
+    });
+
+    // Stored money is integer pence (Stage 2); the renderer works in pounds.
+    const proposal =
+      proposalRow &&
+      ({
+        ...proposalRow,
+        subtotal: penceToPounds(proposalRow.subtotalPence),
+        discountAmount: penceToPounds(proposalRow.discountAmountPence),
+        vatAmount: penceToPounds(proposalRow.vatAmountPence),
+        total: penceToPounds(proposalRow.totalPence),
+        services: proposalRow.services.map((s) => ({
+          ...s,
+          unitPrice: penceToPounds(s.unitPricePence),
+          displayPrice: penceToPounds(s.displayPricePence),
+          lineTotal: penceToPounds(s.lineTotalPence),
+          vatAmount: penceToPounds(s.vatAmountPence),
+          grossTotal: penceToPounds(s.grossTotalPence),
+          annualEquivalent: penceToPounds(s.annualEquivalentPence),
+        })),
+      } as unknown as ProposalData & { signatures?: any[] });
 
     if (!proposal) {
       throw new Error('Proposal not found');

@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { z } from 'zod';
 import { prisma } from '../../config/database.js';
+import { proposalMoneyForApi } from '../../utils/proposalServiceSnapshot.js';
 import { authenticate, authorize } from '../../middleware/auth.js';
 import { asyncHandler, ApiError } from '../../middleware/errorHandler.js';
 import { APPROVER_ROLES, SUBMITTER_ROLES, proposalApprovalInclude } from './shared.js';
@@ -74,7 +75,7 @@ router.post(
 
     res.json({
       success: true,
-      data: updated,
+      data: { ...updated, ...proposalMoneyForApi(updated) },
       message: 'Proposal submitted for partner approval',
     });
   })
@@ -139,7 +140,7 @@ router.post(
 
     res.json({
       success: true,
-      data: updated,
+      data: { ...updated, ...proposalMoneyForApi(updated) },
       message: 'Proposal approved',
     });
   })
@@ -208,7 +209,7 @@ router.post(
 
     res.json({
       success: true,
-      data: updated,
+      data: { ...updated, ...proposalMoneyForApi(updated) },
       message: 'Proposal rejected',
     });
   })

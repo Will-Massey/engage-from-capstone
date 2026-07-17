@@ -27,7 +27,7 @@ describe('proposal line snapshots', () => {
 
     expect(line.name).toBe('Frozen proposal name');
     expect(line.description).toBe('Frozen description');
-    expect(line.displayPrice).toBe(1200);
+    expect(line.displayPricePence).toBe(120000);
     expect(line.serviceTemplateId).toBe('catalogue-1');
   });
 
@@ -45,6 +45,6 @@ describe('proposal line snapshots', () => {
 
     expect(line.serviceTemplateId).toBeNull();
     expect(line.name).toBe('Custom line');
-    expect(line.displayPrice).toBe(99);
+    expect(line.displayPricePence).toBe(9900);
   });
 });

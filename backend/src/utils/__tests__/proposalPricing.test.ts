@@ -1,4 +1,8 @@
-import { buildProposalServiceRecord, calculateHeaderTotals } from '../proposalPricing';
+import {
+  buildProposalServiceRecord,
+  calculateHeaderTotals,
+  penceToPounds,
+} from '../proposalPricing';
 
 const parseOneOffDueDate = (billingFrequency: string, raw: unknown) => {
   if (billingFrequency !== 'ONE_TIME') return null;
@@ -8,7 +12,7 @@ const parseOneOffDueDate = (billingFrequency: string, raw: unknown) => {
 };
 
 describe('proposalPricing', () => {
-  it('stores lineTotal as discounted netTotal on create', () => {
+  it('stores lineTotalPence as discounted netTotal on create', () => {
     const record = buildProposalServiceRecord(
       {
         serviceId: 'svc-1',
@@ -27,16 +31,16 @@ describe('proposalPricing', () => {
       parseOneOffDueDate
     );
 
-    expect(record.lineTotal).toBe(340);
-    expect(record.vatAmount).toBe(68);
-    expect(record.grossTotal).toBe(408);
+    expect(record.lineTotalPence).toBe(34000);
+    expect(record.vatAmountPence).toBe(6800);
+    expect(record.grossTotalPence).toBe(40800);
   });
 
-  // Money invariants. Totals are currently held as Float (schema: displayPrice,
-  // lineTotal, total ...), and they are converted to Int pence at the payment
-  // boundary (proposal checkout uses Math.round(total * 100)). These tests
-  // pin the arithmetic relationships so a future Float -> Int-pence migration
-  // cannot silently change what a customer is charged.
+  // Money invariants. Storage is integer pence only (Stage 2 of the pence
+  // migration, docs/money-int-pence-migration.md) — pounds exist solely at
+  // the API boundary via penceToPounds. These tests pin the arithmetic
+  // relationships so refactors cannot silently change what a customer is
+  // charged.
   const build = (
     displayPrice: number,
     quantity: number,
@@ -50,9 +54,7 @@ describe('proposalPricing', () => {
       parseOneOffDueDate
     );
 
-  const pence = (n: number) => Math.round(n * 100);
-
-  it('keeps grossTotal === lineTotal + vatAmount on every line, incl. awkward prices', () => {
+  it('keeps grossTotalPence === lineTotalPence + vatAmountPence on every line, incl. awkward prices', () => {
     const lines = [
       build(71, 3, 0, 20),
       build(33.33, 7, 12.5, 20),
@@ -61,12 +63,12 @@ describe('proposalPricing', () => {
       build(0.1, 9, 0, 20),
     ];
     for (const l of lines) {
-      // Exact identity, not toBeCloseTo — stored money is rounded to pence
-      expect(l.grossTotal).toBe(pence(l.lineTotal + l.vatAmount) / 100);
+      // Exact integer identity — no float rounding anywhere in stored money
+      expect(l.grossTotalPence).toBe(l.lineTotalPence + l.vatAmountPence);
     }
   });
 
-  it('persists every money field as whole pence (Stage 0 of the Int-pence migration)', () => {
+  it('persists every money field as an integer pence value', () => {
     const awkward = [
       build(33.333, 3, 0, 20), // 99.999 raw net
       build(0.115, 2, 0, 20), // sub-penny display price
@@ -74,25 +76,24 @@ describe('proposalPricing', () => {
     ];
     for (const l of awkward) {
       for (const field of [
-        'displayPrice',
-        'unitPrice',
-        'lineTotal',
-        'vatAmount',
-        'grossTotal',
-        'annualEquivalent',
+        'displayPricePence',
+        'unitPricePence',
+        'lineTotalPence',
+        'vatAmountPence',
+        'grossTotalPence',
+        'annualEquivalentPence',
       ] as const) {
-        const v = l[field];
-        expect(pence(v) / 100).toBeCloseTo(v, 10); // v IS a whole-pence value
+        expect(Number.isInteger(l[field])).toBe(true);
       }
-      expect(l.grossTotal).toBe(pence(l.lineTotal + l.vatAmount) / 100);
+      expect(l.grossTotalPence).toBe(l.lineTotalPence + l.vatAmountPence);
     }
     const totals = calculateHeaderTotals(awkward);
-    for (const v of [totals.subtotal, totals.vatAmount, totals.total]) {
-      expect(pence(v) / 100).toBeCloseTo(v, 10);
+    for (const v of [totals.subtotalPence, totals.vatAmountPence, totals.totalPence]) {
+      expect(Number.isInteger(v)).toBe(true);
     }
   });
 
-  it('keeps header total === subtotal + VAT across an awkward mixed basket', () => {
+  it('keeps header totalPence === subtotalPence + vatAmountPence across an awkward mixed basket', () => {
     const basket = [
       build(71, 3, 0, 20),
       build(33.33, 7, 12.5, 20),
@@ -101,13 +102,13 @@ describe('proposalPricing', () => {
       build(0.1, 9, 0, 20),
     ];
     const t = calculateHeaderTotals(basket);
-    expect(t.total).toBeCloseTo(t.subtotal + t.vatAmount, 6);
+    expect(t.totalPence).toBe(t.subtotalPence + t.vatAmountPence);
   });
 
-  it('converts the header total to whole pence exactly for clean amounts (payment boundary)', () => {
+  it('produces the exact pence total charged at the payment boundary', () => {
     const totals = calculateHeaderTotals([build(100, 1, 0, 20), build(500, 1, 10, 20, 'ONE_TIME')]);
-    // 660.00 -> 66000p, the value fulfilment charges via Math.round(total * 100)
-    expect(pence(totals.total)).toBe(66000);
+    // £660.00 — the checkout charges totalPence directly
+    expect(totals.totalPence).toBe(66000);
   });
 
   it('calculates header totals from discounted line totals', () => {
@@ -137,50 +138,26 @@ describe('proposalPricing', () => {
     );
 
     const totals = calculateHeaderTotals([monthly, oneTime]);
-    expect(totals.subtotal).toBe(550);
-    expect(totals.vatAmount).toBe(110);
-    expect(totals.total).toBe(660);
-  });
-});
-
-describe('Int-pence mirrors (Stage 1 of the pence migration)', () => {
-  const build = (displayPrice: number, quantity = 1, discountPercent = 0) =>
-    buildProposalServiceRecord(
-      {
-        serviceId: 's',
-        displayPrice,
-        billingFrequency: 'MONTHLY',
-        quantity,
-        discountPercent,
-        vatRate: 20,
-      },
-      { id: 's', name: 'Svc' },
-      parseOneOffDueDate
-    );
-
-  it('mirrors every line money field as an integer pence column', () => {
-    const r = build(33.33, 1.5);
-    for (const [pounds, pence] of [
-      [r.displayPrice, r.displayPricePence],
-      [r.unitPrice, r.unitPricePence],
-      [r.annualEquivalent, r.annualEquivalentPence],
-      [r.lineTotal, r.lineTotalPence],
-      [r.vatAmount, r.vatAmountPence],
-      [r.grossTotal, r.grossTotalPence],
-    ] as const) {
-      expect(Number.isInteger(pence)).toBe(true);
-      expect(pence).toBe(Math.round(pounds * 100));
-    }
-    expect(r.grossTotalPence).toBe(r.lineTotalPence + r.vatAmountPence);
+    expect(totals.subtotalPence).toBe(55000);
+    expect(totals.vatAmountPence).toBe(11000);
+    expect(totals.totalPence).toBe(66000);
   });
 
   it('sums header pence from line pence, not from re-rounded pounds', () => {
-    const lines = [build(33.33), build(0.01), build(99.99, 3, 7)];
+    const lines = [build(33.33, 1, 0, 20), build(0.01, 1, 0, 20), build(99.99, 3, 7, 20)];
     const t = calculateHeaderTotals(lines);
     expect(t.subtotalPence).toBe(lines.reduce((s, l) => s + l.lineTotalPence, 0));
     expect(t.vatAmountPence).toBe(lines.reduce((s, l) => s + l.vatAmountPence, 0));
     expect(t.totalPence).toBe(lines.reduce((s, l) => s + l.grossTotalPence, 0));
     expect(t.totalPence).toBe(t.subtotalPence + t.vatAmountPence);
     expect(Number.isInteger(t.totalPence)).toBe(true);
+  });
+
+  it('penceToPounds is the lossless inverse of stored pence at the API boundary', () => {
+    const r = build(33.33, 1.5, 0, 20);
+    expect(penceToPounds(r.lineTotalPence)).toBeCloseTo(r.lineTotalPence / 100, 10);
+    expect(penceToPounds(null)).toBe(0);
+    expect(penceToPounds(undefined)).toBe(0);
+    expect(penceToPounds(66000)).toBe(660);
   });
 });

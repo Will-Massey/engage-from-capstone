@@ -492,22 +492,16 @@ model Proposal {
   // Acceptance notification
   acceptanceNotifiedAt DateTime?
 
-  // Pricing
-  subtotal       Float   @default(0)
+  // Pricing — integer pence (docs/money-int-pence-migration.md, Stage 2:
+  // pence authoritative; wire format converts to pounds at the API boundary)
   discountType   String?
   discountValue  Float   @default(0)
-  discountAmount Float   @default(0)
   vatRate        Float   @default(20)
-  vatAmount      Float   @default(0)
-  total          Float   @default(0)
 
-  // Int-pence mirrors (Stage 1, docs/money-int-pence-migration.md) —
-  // authoritative at the payment boundary; Float columns retained for
-  // display + rollback until Stage 2 drops them.
-  subtotalPence       Int?
-  discountAmountPence Int?
-  vatAmountPence      Int?
-  totalPence          Int?
+  subtotalPence       Int @default(0)
+  discountAmountPence Int @default(0)
+  vatAmountPence      Int @default(0)
+  totalPence          Int @default(0)
 
   // Payment terms
   paymentTerms     String           @default("7 days")
@@ -656,32 +650,25 @@ model ProposalService {
   name        String
   description String?
 
-  // Clear Pricing - What the client sees
-  displayPrice    Float           // Price as shown (e.g., 71 or 850)
+  // Clear Pricing - What the client sees. Money is integer pence
+  // (docs/money-int-pence-migration.md, Stage 2); wire format converts to
+  // pounds at the API boundary.
   billingFrequency BillingCycle   @default(MONTHLY)  // How often billed
   priceDisplayMode PriceDisplayMode @default(PER_MONTH)  // How to show it
-  
-  // Annual equivalent for comparison
-  annualEquivalent Float @default(0)
-  
+
   // Quantity and calculations
   quantity        Float @default(1)
-  unitPrice       Float           // Legacy: per-unit price
   discountPercent Float @default(0)
-  lineTotal       Float           // displayPrice × quantity - discount
 
   // VAT (per line)
   vatRate   Float @default(20)
-  vatAmount Float @default(0)
-  grossTotal Float @default(0)
 
-  // Int-pence mirrors (Stage 1, docs/money-int-pence-migration.md)
-  displayPricePence     Int?
-  unitPricePence        Int?
-  annualEquivalentPence Int?
-  lineTotalPence        Int?
-  vatAmountPence        Int?
-  grossTotalPence       Int?
+  displayPricePence     Int                // Price as shown (e.g., 7100 or 85000)
+  unitPricePence        Int                // Legacy: per-unit price
+  annualEquivalentPence Int @default(0)    // Annual equivalent for comparison
+  lineTotalPence        Int                // displayPrice × quantity - discount
+  vatAmountPence        Int @default(0)
+  grossTotalPence       Int @default(0)
 
   // Legacy (kept for compatibility)
   frequency  PricingFrequency @default(MONTHLY)
