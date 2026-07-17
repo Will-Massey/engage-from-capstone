@@ -27,7 +27,7 @@ function line(
   turnover: number | null = 100_000
 ) {
   return {
-    displayPrice,
+    displayPricePence: Math.round(displayPrice * 100),
     billingFrequency,
     proposal: { tenantId, client: { turnover } },
     serviceTemplate: { category },
