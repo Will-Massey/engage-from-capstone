@@ -327,6 +327,10 @@ router.post(
       include: { client: true, services: true },
     });
 
+    if (!updatedProposal) {
+      throw new ApiError('NOT_FOUND', 'Proposal not found', 404);
+    }
+
     res.json({
       success: true,
       data: { ...updatedProposal, ...proposalMoneyForApi(updatedProposal) },

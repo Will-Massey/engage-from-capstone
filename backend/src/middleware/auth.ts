@@ -9,15 +9,14 @@ import {
   isCsrfTokenRegisteredAsync,
   registerCsrfToken,
 } from '../utils/csrfStore.js';
+import { env } from '../config/env.js';
 
-const JWT_SECRET = process.env.JWT_SECRET;
-const JWT_REFRESH_SECRET = process.env.JWT_REFRESH_SECRET || JWT_SECRET;
+// Read the validated env (JWT_SECRET is guaranteed present, min 32 chars) so
+// these are typed `string`, not `string | undefined` from a raw process.env read.
+const JWT_SECRET = env.JWT_SECRET;
+const JWT_REFRESH_SECRET = env.JWT_REFRESH_SECRET || JWT_SECRET;
 
-if (!JWT_SECRET) {
-  throw new Error('JWT_SECRET environment variable is required');
-}
-
-if (process.env.NODE_ENV === 'production' && !process.env.JWT_REFRESH_SECRET) {
+if (env.NODE_ENV === 'production' && !env.JWT_REFRESH_SECRET) {
   throw new Error('JWT_REFRESH_SECRET environment variable is required in production');
 }
 

@@ -6,7 +6,7 @@ async function checkDatabaseStatus() {
 
   try {
     // Test basic connection
-    const result = await prisma.$queryRaw`SELECT NOW()`;
+    const result = (await prisma.$queryRaw`SELECT NOW()`) as Array<{ now: Date }>;
     logger.info('✅ Database connection: OK');
     logger.info(`   Server time: ${result[0].now}`);
 

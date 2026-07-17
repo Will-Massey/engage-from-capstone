@@ -91,7 +91,7 @@ router.post(
   asyncHandler(async (req, res) => {
     logOpsAccess(req, 'admin.fix-schema');
     try {
-      const fixes = [];
+      const fixes: string[] = [];
 
       try {
         const result = await prisma.$queryRaw`
