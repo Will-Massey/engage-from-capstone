@@ -19,6 +19,7 @@ export default function ServicesStep() {
     categories,
     selectedCategory,
     setSelectedCategory,
+    selectedClient,
     taxServiceLines,
     applyContingentFeeToLine,
     filteredServices,
@@ -66,7 +67,17 @@ export default function ServicesStep() {
         ))}
       </div>
 
-      <FeeBenchmarkChips categories={categories} />
+      <FeeBenchmarkChips
+        categories={categories}
+        lines={selectedServices.map((s) => ({
+          id: s.id,
+          name: s.name,
+          category: s.category,
+          displayPrice: s.displayPrice,
+          billingCycle: s.billingCycle,
+        }))}
+        clientTurnover={selectedClient?.turnover}
+      />
 
       {taxServiceLines.length > 0 && (
         <ContingentFeeCalculator

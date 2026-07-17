@@ -1,5 +1,4 @@
 import { useState, useEffect, type Dispatch, type SetStateAction } from 'react';
-import { Link } from 'react-router-dom';
 import {
   PlusIcon,
   MagnifyingGlassIcon,
@@ -10,6 +9,7 @@ import {
   XMarkIcon,
 } from '@heroicons/react/24/outline';
 import { apiClient } from '../../utils/api';
+import { formatCurrency } from '../../utils/formatters';
 import { useAuthStore } from '../../stores/authStore';
 import toast from 'react-hot-toast';
 import { SkeletonCard } from '../../components/skeleton/SkeletonCard';
@@ -41,11 +41,11 @@ interface Service {
 
 const categoryColors: Record<string, string> = {
   COMPLIANCE: 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-200',
-  ADVISORY: 'bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-200',
+  ADVISORY: 'bg-primary-100 text-primary-800 dark:bg-primary-900/30 dark:text-primary-200',
   TAX: 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-200',
   BOOKKEEPING: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-200',
   CONSULTING: 'bg-pink-100 text-pink-800 dark:bg-pink-900/30 dark:text-pink-200',
-  TECHNICAL: 'bg-indigo-100 text-indigo-800 dark:bg-indigo-900/30 dark:text-indigo-200',
+  TECHNICAL: 'bg-primary-100 text-primary-800 dark:bg-primary-900/30 dark:text-primary-200',
   SPECIALIZED: 'bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-200',
   PAYROLL: 'bg-cyan-100 text-cyan-800 dark:bg-cyan-900/30 dark:text-cyan-200',
 };
@@ -91,7 +91,7 @@ const ServiceModal = ({
 }: ServiceModalProps) => (
   <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
     <div className="glass-tile rounded-lg w-full max-w-2xl max-h-[90vh] overflow-y-auto">
-      <div className="p-6 border-b border-white/10 flex items-center justify-between">
+      <div className="p-6 border-b border-slate-200 dark:border-slate-700 flex items-center justify-between">
         <h3 className="text-lg font-semibold text-slate-900 dark:text-white">
           {isEdit ? 'Edit Service' : 'Add New Service'}
         </h3>
@@ -230,7 +230,7 @@ const ServiceModal = ({
         </div>
       </div>
 
-      <div className="p-6 border-t border-white/10 flex justify-end space-x-3">
+      <div className="p-6 border-t border-slate-200 dark:border-slate-700 flex justify-end space-x-3">
         <button onClick={onClose} className="btn-secondary">
           Cancel
         </button>
@@ -464,20 +464,7 @@ const Services = () => {
 
   return (
     <div className="space-y-6 animate-fade-in">
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-bold text-slate-900 dark:text-white">Services catalogue</h1>
-          <p className="text-sm text-slate-600 dark:text-slate-300 mt-1">
-            Manage fees and service lines for proposals. Use the{' '}
-            <Link
-              to="/pricing-calculator"
-              className="text-primary-600 dark:text-primary-400 hover:underline"
-            >
-              pricing calculator
-            </Link>{' '}
-            from the sidebar when you need turnover-based fee suggestions.
-          </p>
-        </div>
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-end gap-4 -mt-2">
         <button onClick={openAddModal} className="btn-primary inline-flex shrink-0">
           <PlusIcon className="h-5 w-5 mr-2" />
           Add Service
@@ -526,7 +513,10 @@ const Services = () => {
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {filteredServices.map((service) => (
-            <div key={service.id} className="glass-tile p-5 hover:border-white/20 transition-all">
+            <div
+              key={service.id}
+              className="glass-tile p-5 transition-colors hover:border-slate-300 dark:hover:border-slate-600"
+            >
               <div className="flex items-start justify-between mb-3">
                 <span
                   className={`px-2 py-1 text-xs font-medium rounded-full ${categoryColors[service.category] || 'bg-slate-100 text-slate-800'}`}
@@ -546,7 +536,9 @@ const Services = () => {
               <div className="flex items-center justify-between pt-4 border-t border-slate-100 dark:border-slate-700">
                 <div>
                   <span className="text-2xl font-bold text-slate-900 dark:text-white">
-                    £{(service.priceAmount || service.basePrice || 0).toLocaleString()}
+                    <span className="tabular-nums">
+                      {formatCurrency(service.priceAmount || service.basePrice || 0)}
+                    </span>
                   </span>
                   <span className="text-xs text-slate-600 dark:text-slate-300 ml-1">
                     /

@@ -3,9 +3,8 @@ import { z } from 'zod';
 import bcrypt from 'bcryptjs';
 import { prisma } from '../../config/database.js';
 import { asyncHandler, ApiError } from '../../middleware/errorHandler.js';
-import { generateToken, generateRefreshToken } from '../../middleware/auth.js';
 import { allowPublicTenantSignup } from '../../utils/securityFlags.js';
-import { setAuthCookies } from '../../utils/authCookies.js';
+import { emailVerificationService } from '../../services/emailVerificationService.js';
 import { getEngageSuperadmin } from '../../lib/superadmin.js';
 import { trialEndsAtFromNow } from '../../config/trial.js';
 import logger from '../../config/logger.js';
@@ -159,18 +158,18 @@ router.post(
       return { tenant, user };
     });
 
-    // Generate token
-    const token = generateToken({
-      id: result.user.id,
-      email: result.user.email,
-      firstName: result.user.firstName,
-      lastName: result.user.lastName,
-      role: result.user.role,
-      tenantId: result.user.tenantId,
-    });
-
-    const refreshToken = await generateRefreshToken(result.user.id);
-    const { csrfToken } = setAuthCookies(res, token, refreshToken);
+    // Email verification required before first sign-in — no session is issued
+    // here. The admin user was created with emailVerified null; the login gate
+    // holds until they follow the emailed link.
+    await emailVerificationService.sendVerificationEmail(
+      {
+        id: result.user.id,
+        email: result.user.email,
+        firstName: result.user.firstName,
+        tenantId: result.tenant.id,
+      },
+      result.tenant.name
+    );
 
     scheduleTenantLibraryProvision(result.tenant.id, result.user.id);
 
@@ -197,22 +196,8 @@ router.post(
     res.status(201).json({
       success: true,
       data: {
-        csrfToken,
-        tenant: {
-          id: result.tenant.id,
-          subdomain: result.tenant.subdomain,
-          name: result.tenant.name,
-          primaryColor: result.tenant.primaryColor,
-          settings: result.tenant.settings,
-        },
-        user: {
-          id: result.user.id,
-          email: result.user.email,
-          firstName: result.user.firstName,
-          lastName: result.user.lastName,
-          role: result.user.role,
-        },
-        token,
+        requiresVerification: true,
+        email: result.user.email,
       },
     });
   })

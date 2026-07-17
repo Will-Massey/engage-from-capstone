@@ -66,6 +66,12 @@ export interface CreateRenewalDraftOptions {
   templateId?: string;
   useAiCoverLetter?: boolean;
   bulkRenewal?: boolean;
+  /**
+   * Archive + supersede the accepted original at draft time (default true).
+   * Clara's agentic drafts pass false so the original stays live until a human
+   * approves the renewal (see archiveSupersededOriginal + approvals handler).
+   */
+  archiveOriginal?: boolean;
 }
 
 export interface BulkRenewalItemResult {
@@ -481,20 +487,47 @@ export async function createRenewalDraft(
     },
   });
 
-  // Archive the superseded accepted proposal — renewal quote replaces it in the pipeline
-  if (originalProposal.shareToken || originalProposal.publicAccessEnabled) {
+  // Archive the superseded accepted proposal — renewal quote replaces it in the
+  // pipeline. Clara's agentic drafts defer this until a human approves the
+  // renewal (archiveOriginal: false → routes/proposals/approvals.ts).
+  if (options.archiveOriginal !== false) {
+    await archiveSupersededOriginal(tenantId, userId, originalProposal, renewalProposal);
+  }
+
+  return renewalProposal;
+}
+
+/**
+ * Archive an ACCEPTED proposal superseded by a renewal: revoke any live share
+ * link, set ARCHIVED + supersededById, and log PROPOSAL_ARCHIVED_SUPERSEDED.
+ * Callers must confirm the original is still ACCEPTED first, which keeps the
+ * deferred (approve-time) path idempotent and a no-op for already-archived
+ * originals.
+ */
+export async function archiveSupersededOriginal(
+  tenantId: string,
+  userId: string | undefined,
+  original: {
+    id: string;
+    reference: string;
+    shareToken: string | null;
+    publicAccessEnabled: boolean;
+  },
+  renewal: { id: string; reference: string }
+): Promise<void> {
+  if (original.shareToken || original.publicAccessEnabled) {
     try {
-      await revokeShareableLink(originalProposal.id);
+      await revokeShareableLink(original.id);
     } catch {
       // non-fatal
     }
   }
 
   await prisma.proposal.update({
-    where: { id: originalProposal.id },
+    where: { id: original.id },
     data: {
       status: 'ARCHIVED',
-      supersededById: renewalProposal.id,
+      supersededById: renewal.id,
       archivedAt: new Date(),
       publicAccessEnabled: false,
       shareToken: null,
@@ -508,16 +541,14 @@ export async function createRenewalDraft(
       userId,
       action: 'PROPOSAL_ARCHIVED_SUPERSEDED',
       entityType: 'PROPOSAL',
-      entityId: originalProposal.id,
-      description: `Archived ${originalProposal.reference} — superseded by renewal ${renewalProposal.reference}`,
+      entityId: original.id,
+      description: `Archived ${original.reference} — superseded by renewal ${renewal.reference}`,
       metadata: JSON.stringify({
-        supersededById: renewalProposal.id,
-        supersededByReference: renewalProposal.reference,
+        supersededById: renewal.id,
+        supersededByReference: renewal.reference,
       }),
     },
   });
-
-  return renewalProposal;
 }
 
 export interface BulkRenewalRequest {

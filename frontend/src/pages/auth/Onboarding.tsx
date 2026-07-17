@@ -1,11 +1,11 @@
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { strongPasswordSchema } from '../../utils/passwordPolicy';
 import { CheckIcon } from '@heroicons/react/24/solid';
-import { SparklesIcon } from '@heroicons/react/24/outline';
+import { EnvelopeIcon, SparklesIcon } from '@heroicons/react/24/outline';
 import { apiClient } from '../../utils/api';
 import { useAuthStore } from '../../stores/authStore';
 import { AI_COPILOT } from '../../config/aiCopilot';
@@ -76,6 +76,8 @@ const Onboarding = () => {
   const [currentStep, setCurrentStep] = useState(1);
   const [isLoading, setIsLoading] = useState(false);
   const [subdomainAvailable, setSubdomainAvailable] = useState<boolean | null>(null);
+  const [verificationEmail, setVerificationEmail] = useState('');
+  const [isResending, setIsResending] = useState(false);
   const [claraProfile, setClaraProfile] = useState<ClaraOnboardingProfile>({
     practiceSize: '',
     clientTypes: [],
@@ -128,6 +130,15 @@ const Onboarding = () => {
       })) as any;
 
       if (response.success) {
+        if (response.data.requiresVerification) {
+          // No session yet — the Clara profile stays in localStorage (written in
+          // step 2) and is persisted to tenant settings after first sign-in.
+          setVerificationEmail(response.data.email || data.adminEmail);
+          toast.success('Account created! Check your email to verify your address.');
+          return;
+        }
+
+        // Legacy authenticated-signup path (backend without verification gate)
         setSession(response.data.user, response.data.tenant);
         if (claraProfile.practiceSize && claraProfile.mtdStatus) {
           await persistClaraProfile(claraProfile);
@@ -179,6 +190,56 @@ const Onboarding = () => {
     setCurrentStep(currentStep - 1);
   };
 
+  const handleResendVerification = async () => {
+    setIsResending(true);
+    try {
+      await apiClient.resendVerification(verificationEmail);
+      toast.success('If an account exists for that email, a new verification link has been sent.');
+    } catch {
+      toast.error('Could not resend the verification email. Please try again.');
+    } finally {
+      setIsResending(false);
+    }
+  };
+
+  if (verificationEmail) {
+    return (
+      <div className="text-center space-y-6" data-testid="verify-email-panel">
+        <div className="flex justify-center">
+          <div className="w-16 h-16 bg-primary-100 rounded-full flex items-center justify-center">
+            <EnvelopeIcon className="w-8 h-8 text-primary-600" />
+          </div>
+        </div>
+
+        <div>
+          <h2 className="text-2xl font-bold text-slate-900">Check your email</h2>
+          <p className="mt-2 text-slate-700">
+            We&apos;ve sent a verification link to{' '}
+            <span className="font-medium">{verificationEmail}</span>. Follow it to verify your
+            address, then sign in to your new practice.
+          </p>
+          <p className="mt-2 text-sm text-slate-500">The link is valid for 24 hours.</p>
+        </div>
+
+        <button
+          type="button"
+          onClick={handleResendVerification}
+          disabled={isResending}
+          className="w-full btn-primary py-2.5"
+        >
+          {isResending ? 'Sending...' : 'Resend verification email'}
+        </button>
+
+        <p className="text-sm text-slate-700">
+          Already verified?{' '}
+          <Link to="/login" className="font-medium text-primary-600 hover:text-primary-500">
+            Sign in
+          </Link>
+        </p>
+      </div>
+    );
+  }
+
   return (
     <div>
       <h2 className="text-2xl font-bold text-slate-900 mb-2">Create your account</h2>
@@ -195,7 +256,7 @@ const Onboarding = () => {
                     ? 'bg-primary-600 text-white'
                     : currentStep === step.id
                       ? step.id === 2
-                        ? 'bg-violet-100 text-violet-700 border-2 border-violet-600'
+                        ? 'bg-primary-100 text-primary-700 border-2 border-primary-600'
                         : 'bg-primary-100 text-primary-700 border-2 border-primary-600'
                       : 'bg-slate-100 text-slate-600'
                 }`}
@@ -262,10 +323,10 @@ const Onboarding = () => {
         {/* Step 2: Clara onboarding questions */}
         {currentStep === 2 && (
           <div className="space-y-6 animate-fade-in">
-            <div className="rounded-2xl border border-violet-200 bg-gradient-to-br from-violet-50 to-white p-5">
+            <div className="rounded-2xl border border-primary-200 bg-gradient-to-br from-primary-50 to-white p-5">
               <div className="flex items-start gap-3 mb-4">
-                <div className="p-2 rounded-xl bg-violet-500/15 border border-violet-400/25">
-                  <SparklesIcon className="h-6 w-6 text-violet-600" />
+                <div className="p-2 rounded-xl bg-primary-500/15 border border-primary-400/25">
+                  <SparklesIcon className="h-6 w-6 text-primary-600" />
                 </div>
                 <div>
                   <h3 className="font-semibold text-slate-900">Hi, I&apos;m {AI_COPILOT.name}</h3>
@@ -289,8 +350,8 @@ const Onboarding = () => {
                         onClick={() => setClaraProfile((p) => ({ ...p, practiceSize: opt.value }))}
                         className={`text-left rounded-xl border p-3 text-sm transition-all ${
                           claraProfile.practiceSize === opt.value
-                            ? 'border-violet-500 bg-violet-50 text-violet-900 ring-2 ring-violet-500/30'
-                            : 'border-slate-200 hover:border-violet-300 bg-white'
+                            ? 'border-primary-500 bg-primary-50 text-primary-900 ring-2 ring-primary-500/30'
+                            : 'border-slate-200 hover:border-primary-300 bg-white'
                         }`}
                       >
                         {opt.label}
@@ -312,8 +373,8 @@ const Onboarding = () => {
                         onClick={() => toggleClientType(opt.value)}
                         className={`text-left rounded-xl border p-3 text-sm transition-all ${
                           claraProfile.clientTypes.includes(opt.value)
-                            ? 'border-violet-500 bg-violet-50 text-violet-900 ring-2 ring-violet-500/30'
-                            : 'border-slate-200 hover:border-violet-300 bg-white'
+                            ? 'border-primary-500 bg-primary-50 text-primary-900 ring-2 ring-primary-500/30'
+                            : 'border-slate-200 hover:border-primary-300 bg-white'
                         }`}
                       >
                         {opt.label}
@@ -334,8 +395,8 @@ const Onboarding = () => {
                         onClick={() => setClaraProfile((p) => ({ ...p, mtdStatus: opt.value }))}
                         className={`w-full text-left rounded-xl border p-3 text-sm transition-all ${
                           claraProfile.mtdStatus === opt.value
-                            ? 'border-violet-500 bg-violet-50 text-violet-900 ring-2 ring-violet-500/30'
-                            : 'border-slate-200 hover:border-violet-300 bg-white'
+                            ? 'border-primary-500 bg-primary-50 text-primary-900 ring-2 ring-primary-500/30'
+                            : 'border-slate-200 hover:border-primary-300 bg-white'
                         }`}
                       >
                         {opt.label}
@@ -350,11 +411,7 @@ const Onboarding = () => {
               <button type="button" onClick={prevStep} className="flex-1 btn-secondary py-2.5">
                 Back
               </button>
-              <button
-                type="button"
-                onClick={nextStep}
-                className="flex-1 btn-primary py-2.5 bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-700 hover:to-indigo-700"
-              >
+              <button type="button" onClick={nextStep} className="flex-1 btn-primary py-2.5">
                 Continue with {AI_COPILOT.shortName}
               </button>
             </div>

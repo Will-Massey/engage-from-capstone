@@ -11,6 +11,7 @@ import { PDFGenerator } from '../../services/pdfGenerator.js';
 import logger from '../../config/logger.js';
 import { revokeShareableLink } from '../../services/proposalSharingService.js';
 import { DECLINE_REASONS } from '../../constants/declineReasons.js';
+import { getProposalSettings } from '../../utils/tenantProposalSettings.js';
 import { canOverrideApproval, canSendProposal, resolveSenderPosition } from './shared.js';
 
 const router = Router();
@@ -31,6 +32,7 @@ router.post(
         aiSubject: z.string().max(200).optional(),
         aiText: z.string().max(50_000).optional(),
         aiHtml: z.string().max(100_000).optional(),
+        overrideAml: z.boolean().optional(),
       })
       .parse(req.body ?? {});
 
@@ -79,6 +81,21 @@ router.post(
         'APPROVAL_REQUIRED',
         'Partner approval is required before this proposal can be sent',
         403
+      );
+    }
+
+    // R2.3 — configurable AML gate: block sending until the client is CLEAR.
+    // overrideAml mirrors the approval override: partner-level roles only.
+    const proposalSettings = getProposalSettings(proposal.tenant.settings);
+    const clientAmlStatus = proposal.client.amlStatus;
+    const amlBlocked = proposalSettings.blockSendUntilAmlCleared && clientAmlStatus !== 'CLEAR';
+    const amlOverrideUsed = amlBlocked && sendBody.overrideAml === true && overrideApproval;
+
+    if (amlBlocked && !amlOverrideUsed) {
+      throw new ApiError(
+        'AML_NOT_CLEARED',
+        `AML clearance is required before sending. The client's AML status is ${clientAmlStatus}.`,
+        409
       );
     }
 
@@ -191,6 +208,20 @@ router.post(
         description: `Sent proposal "${proposal.title}" to ${proposal.client.name} via email`,
       },
     });
+
+    if (amlOverrideUsed) {
+      await prisma.activityLog.create({
+        data: {
+          tenantId: req.tenantId,
+          userId: req.user!.id,
+          action: 'PROPOSAL_AML_OVERRIDE',
+          entityType: 'PROPOSAL',
+          entityId: proposal.id,
+          description: `Sent proposal "${proposal.title}" with the AML gate overridden (client AML status: ${clientAmlStatus})`,
+          metadata: JSON.stringify({ clientId: proposal.clientId, amlStatus: clientAmlStatus }),
+        },
+      });
+    }
 
     const { emitIntegrationEvent } = await import('../../services/integrationEvents.js');
     void emitIntegrationEvent(req.tenantId!, proposal.id, 'proposal.sent');

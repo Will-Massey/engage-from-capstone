@@ -54,12 +54,46 @@ export async function signupDisposableTenant(
     );
   }
 
+  // Signup no longer issues a session — verify via the X-Test-Mode-gated
+  // backdoor, then log in to put session cookies on this request context.
+  const tokenRes = await request.post(`${API_BASE}/auth/e2e/verification-token`, {
+    data: { email },
+  });
+  if (!tokenRes.ok()) {
+    throw new Error(`Verification-token backdoor failed (${tokenRes.status()})`);
+  }
+  const token = (await tokenRes.json()).data.token as string;
+
+  const verifyRes = await request.post(`${API_BASE}/auth/verify-email`, {
+    data: { token },
+    headers: { ...headers, 'Content-Type': 'application/json' },
+  });
+  if (!verifyRes.ok()) {
+    throw new Error(`Email verification failed (${verifyRes.status()})`);
+  }
+
+  const loginRes = await request.post(`${API_BASE}/auth/login`, {
+    data: { email, password },
+    headers: { ...headers, 'Content-Type': 'application/json' },
+  });
+  const loginBody = await loginRes.json().catch(() => ({}));
+  if (!loginRes.ok() || loginBody?.data?.requiresVerification) {
+    throw new Error(
+      `Post-verification login failed (${loginRes.status()}): ${JSON.stringify(loginBody).slice(0, 300)}`
+    );
+  }
+
+  const me = await apiGet(request, '/auth/me');
+  if (!me.body?.data?.user?.id) {
+    throw new Error(`auth/me after signup login failed (${me.status})`);
+  }
+
   return {
     email,
     password,
     subdomain,
-    tenantId: body.data.tenant.id as string,
-    userId: body.data.user.id as string,
+    tenantId: me.body.data.user.tenant.id as string,
+    userId: me.body.data.user.id as string,
   };
 }
 

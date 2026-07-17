@@ -463,7 +463,7 @@ const CommandPalette = ({ isOpen, onClose }: CommandPaletteProps) => {
             ))
           )}
           {aiReply && (
-            <div className="mx-4 mb-2 p-3 rounded-lg bg-violet-50 dark:bg-violet-950/30 border border-violet-200 dark:border-violet-800 text-sm text-slate-700 dark:text-slate-200">
+            <div className="mx-4 mb-2 p-3 rounded-lg bg-primary-50 dark:bg-primary-950/30 border border-primary-200 dark:border-primary-800 text-sm text-slate-700 dark:text-slate-200">
               {aiReply}
             </div>
           )}

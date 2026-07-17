@@ -35,6 +35,7 @@ async function main() {
         firstName: 'Admin',
         lastName: 'User',
         tenantId: tenant.id,
+        emailVerified: new Date(),
       },
     });
     console.log('✅ Created/Updated user:', user.email);

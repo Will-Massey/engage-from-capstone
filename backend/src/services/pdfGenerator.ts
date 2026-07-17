@@ -1,6 +1,8 @@
 import PDFDocument from 'pdfkit';
 import fs from 'fs';
 import path from 'path';
+import net from 'net';
+import dns from 'dns/promises';
 import { DEFAULT_VAT_RATE, vatAmountFor } from '@uk-proposal-platform/shared';
 
 // pdfkit types export the constructor as a value, not a type
@@ -78,6 +80,97 @@ interface ProposalData {
 
 const PDF_PAGE_WIDTH = 612;
 const PDF_PAGE_HEIGHT = 792;
+
+// Remote logo fetch hardening (SSRF): tenant-supplied logo URLs are fetched
+// server-side, so an attacker could point them at internal/metadata endpoints.
+const REMOTE_FETCH_TIMEOUT_MS = 5000;
+
+/** True if an IPv4/IPv6 literal falls in a private, loopback, link-local, or reserved range. */
+export function isPrivateIp(ip: string): boolean {
+  const type = net.isIP(ip);
+  if (type === 4) {
+    const p = ip.split('.').map(Number);
+    if (p.length !== 4 || p.some((n) => Number.isNaN(n) || n < 0 || n > 255)) return true;
+    const [a, b] = p;
+    if (a === 0) return true; // 0.0.0.0/8 (incl. 0.0.0.0)
+    if (a === 10) return true; // 10.0.0.0/8
+    if (a === 127) return true; // 127.0.0.0/8 loopback
+    if (a === 169 && b === 254) return true; // 169.254.0.0/16 link-local (AWS metadata)
+    if (a === 172 && b >= 16 && b <= 31) return true; // 172.16.0.0/12
+    if (a === 192 && b === 168) return true; // 192.168.0.0/16
+    if (a === 100 && b >= 64 && b <= 127) return true; // 100.64.0.0/10 CGNAT
+    if (a >= 224) return true; // multicast / reserved
+    return false;
+  }
+  if (type === 6) {
+    const v6 = ip.toLowerCase().split('%')[0];
+    if (v6 === '::1' || v6 === '::') return true; // loopback / unspecified
+    // IPv4-mapped (::ffff:a.b.c.d) — validate the embedded v4
+    const mapped = v6.match(/::ffff:(\d+\.\d+\.\d+\.\d+)$/);
+    if (mapped) return isPrivateIp(mapped[1]);
+    if (v6.startsWith('fc') || v6.startsWith('fd')) return true; // fc00::/7 unique-local
+    if (v6.startsWith('fe80')) return true; // link-local
+    return false;
+  }
+  // Not a recognisable IP literal — treat as unsafe.
+  return true;
+}
+
+/**
+ * Structural + DNS safety check for a remote URL before we fetch it server-side.
+ * Only http/https, and every resolved address must be publicly routable.
+ * (There is a residual DNS-rebinding TOCTOU window; acceptable for a logo fetch.)
+ */
+export async function isSafeRemoteUrl(rawUrl: string): Promise<boolean> {
+  let url: URL;
+  try {
+    url = new URL(rawUrl);
+  } catch {
+    return false;
+  }
+  if (url.protocol !== 'http:' && url.protocol !== 'https:') return false;
+
+  const hostname = url.hostname.replace(/^\[|\]$/g, '');
+  if (!hostname || hostname.toLowerCase() === 'localhost') return false;
+
+  // Literal IP host — check directly; otherwise resolve every A/AAAA record.
+  if (net.isIP(hostname)) {
+    return !isPrivateIp(hostname);
+  }
+  try {
+    const records = await dns.lookup(hostname, { all: true });
+    if (records.length === 0) return false;
+    return records.every((r) => !isPrivateIp(r.address));
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Fetch a remote image with SSRF guard, size cap, and timeout. Returns null on
+ * any failure (unsafe host, oversize, timeout, non-OK response).
+ */
+async function fetchRemoteImageSafely(rawUrl: string, maxBytes: number): Promise<Buffer | null> {
+  if (!(await isSafeRemoteUrl(rawUrl))) return null;
+
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), REMOTE_FETCH_TIMEOUT_MS);
+  try {
+    const res = await fetch(rawUrl, { signal: controller.signal, redirect: 'error' });
+    if (!res.ok) return null;
+
+    const declared = Number(res.headers.get('content-length'));
+    if (Number.isFinite(declared) && declared > maxBytes) return null;
+
+    const buffer = Buffer.from(await res.arrayBuffer());
+    if (buffer.length === 0 || buffer.length > maxBytes) return null;
+    return buffer;
+  } catch {
+    return null;
+  } finally {
+    clearTimeout(timer);
+  }
+}
 
 // Billing frequency labels for display
 const BILLING_LABELS: Record<string, string> = {
@@ -220,9 +313,8 @@ export class PDFGenerator {
         const base64Data = logoData.split(',')[1];
         buffer = base64Data ? Buffer.from(base64Data, 'base64') : null;
       } else if (logoData.startsWith('http://') || logoData.startsWith('https://')) {
-        const res = await fetch(logoData);
-        if (!res.ok) return null;
-        buffer = Buffer.from(await res.arrayBuffer());
+        // SSRF guard: allowlist public hosts only, cap size + timeout.
+        buffer = await fetchRemoteImageSafely(logoData, TENANT_LOGO_MAX_BYTES);
       } else {
         buffer = Buffer.from(logoData, 'base64');
       }

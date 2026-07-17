@@ -32,7 +32,7 @@ function TypingIndicator() {
       {[0, 1, 2].map((i) => (
         <motion.span
           key={i}
-          className="w-2 h-2 rounded-full bg-violet-500"
+          className="w-2 h-2 rounded-full bg-primary-500"
           animate={{ opacity: [0.3, 1, 0.3], y: [0, -3, 0] }}
           transition={{ duration: 0.9, repeat: Infinity, delay: i * 0.15 }}
         />
@@ -202,7 +202,7 @@ export default function AiAssistant() {
               initial={{ opacity: 0, x: 8 }}
               animate={{ opacity: 1, x: 0 }}
               exit={{ opacity: 0 }}
-              className="hidden sm:block text-xs font-medium text-violet-700 dark:text-violet-300 bg-white/90 dark:bg-slate-900/90 backdrop-blur px-3 py-1.5 rounded-full border border-violet-200 dark:border-violet-800 shadow-lg"
+              className="hidden sm:block text-xs font-medium text-primary-700 dark:text-primary-300 bg-white/90 dark:bg-slate-900/90 backdrop-blur px-3 py-1.5 rounded-full border border-primary-200 dark:border-primary-800 shadow-lg"
             >
               {AI_COPILOT.name}
             </motion.span>
@@ -217,8 +217,8 @@ export default function AiAssistant() {
           whileHover={{ scale: 1.05 }}
           whileTap={{ scale: 0.97 }}
         >
-          <span className="absolute inset-0 rounded-full bg-violet-500/40 blur-xl animate-pulse" />
-          <span className="relative flex h-14 w-14 items-center justify-center rounded-full bg-gradient-to-br from-violet-600 via-indigo-600 to-purple-700 text-white shadow-xl shadow-violet-500/30 border border-white/20">
+          <span className="absolute inset-0 rounded-full bg-primary-500/40 blur-xl animate-pulse" />
+          <span className="relative flex h-14 w-14 items-center justify-center rounded-full bg-gradient-to-br from-primary-600 via-primary-600 to-primary-700 text-white shadow-xl shadow-primary-500/30 border border-white/20">
             <SparklesIcon className="h-7 w-7" />
           </span>
           <span
@@ -248,19 +248,19 @@ export default function AiAssistant() {
               animate={{ opacity: 1, y: 0, scale: 1 }}
               exit={{ opacity: 0, y: 16, scale: 0.98 }}
               transition={{ type: 'spring', damping: 26, stiffness: 320 }}
-              className="fixed z-[59] bottom-0 right-0 sm:bottom-6 sm:right-[max(1.5rem,env(safe-area-inset-right))] w-full sm:w-[min(520px,calc(100vw-3rem-env(safe-area-inset-right)))] max-w-[min(100vw,calc(520px+env(safe-area-inset-right)))] sm:max-h-[min(720px,calc(100dvh-3rem))] h-[min(85dvh,720px)] flex flex-col rounded-t-2xl sm:rounded-2xl overflow-hidden border border-violet-300/50 dark:border-violet-700/60 shadow-2xl shadow-violet-900/20 bg-gradient-to-b from-slate-950 via-slate-900 to-slate-950 text-slate-100 pb-[env(safe-area-inset-bottom)]"
+              className="fixed z-[59] bottom-0 right-0 sm:bottom-6 sm:right-[max(1.5rem,env(safe-area-inset-right))] w-full sm:w-[min(520px,calc(100vw-3rem-env(safe-area-inset-right)))] max-w-[min(100vw,calc(520px+env(safe-area-inset-right)))] sm:max-h-[min(720px,calc(100dvh-3rem))] h-[min(85dvh,720px)] flex flex-col rounded-t-2xl sm:rounded-2xl overflow-hidden border border-primary-300/50 dark:border-primary-700/60 shadow-2xl shadow-primary-900/20 bg-gradient-to-b from-slate-950 via-slate-900 to-slate-950 text-slate-100 pb-[env(safe-area-inset-bottom)]"
             >
               {/* Header */}
-              <div className="relative px-4 py-3 border-b border-white/10 bg-gradient-to-r from-violet-950/80 to-indigo-950/80">
+              <div className="relative px-4 py-3 border-b border-white/10 bg-gradient-to-r from-primary-950/80 to-primary-950/80">
                 <div className="absolute inset-0 opacity-30 bg-[radial-gradient(circle_at_30%_20%,rgba(139,92,246,0.4),transparent_50%)]" />
                 <div className="relative flex items-center justify-between">
                   <div className="flex items-center gap-2">
-                    <div className="p-1.5 rounded-lg bg-violet-500/20 border border-violet-400/30">
-                      <SparklesIcon className="h-5 w-5 text-violet-300" />
+                    <div className="p-1.5 rounded-lg bg-primary-500/20 border border-primary-400/30">
+                      <SparklesIcon className="h-5 w-5 text-primary-300" />
                     </div>
                     <div>
                       <h2 className="text-sm font-semibold tracking-tight">{AI_COPILOT.name}</h2>
-                      <p className="text-[10px] text-violet-300/80">
+                      <p className="text-[10px] text-primary-300/80">
                         {configured ? AI_COPILOT.onlineSubtitle : AI_COPILOT.offlineSubtitle} ·{' '}
                         {AI_COPILOT.tagline}
                       </p>
@@ -296,7 +296,7 @@ export default function AiAssistant() {
                       type="button"
                       disabled={loading}
                       onClick={() => runQuickAction(chip)}
-                      className="shrink-0 inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-full text-[11px] font-medium bg-violet-500/15 hover:bg-violet-500/25 border border-violet-400/25 text-violet-100 transition-colors disabled:opacity-50"
+                      className="shrink-0 inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-full text-[11px] font-medium bg-primary-500/15 hover:bg-primary-500/25 border border-primary-400/25 text-primary-100 transition-colors disabled:opacity-50"
                     >
                       <Icon className="h-3.5 w-3.5" />
                       {chip.label}
@@ -315,7 +315,7 @@ export default function AiAssistant() {
                     <div
                       className={`max-w-[88%] rounded-2xl px-3 py-2 text-sm leading-relaxed whitespace-pre-wrap ${
                         msg.role === 'user'
-                          ? 'bg-violet-600 text-white rounded-br-md'
+                          ? 'bg-primary-600 text-white rounded-br-md'
                           : 'bg-white/10 text-slate-100 border border-white/10 rounded-bl-md'
                       }`}
                     >
@@ -347,14 +347,14 @@ export default function AiAssistant() {
                     value={input}
                     onChange={(e) => setInput(e.target.value)}
                     placeholder={AI_COPILOT.askPlaceholder}
-                    className="flex-1 rounded-xl bg-white/10 border border-white/15 px-3 py-2.5 text-sm text-white placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-violet-500/50"
+                    className="flex-1 rounded-xl bg-white/10 border border-white/15 px-3 py-2.5 text-sm text-white placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-primary-500/50"
                     maxLength={400}
                     disabled={loading}
                   />
                   <button
                     type="submit"
                     disabled={loading || !input.trim()}
-                    className="shrink-0 p-2.5 rounded-xl bg-gradient-to-br from-violet-600 to-indigo-600 text-white disabled:opacity-40 hover:from-violet-500 hover:to-indigo-500 transition-all"
+                    className="shrink-0 p-2.5 rounded-xl bg-gradient-to-br from-primary-600 to-primary-600 text-white disabled:opacity-40 hover:from-primary-500 hover:to-primary-500 transition-all"
                   >
                     <PaperAirplaneIcon className="h-5 w-5" />
                   </button>
@@ -378,7 +378,7 @@ export function AiAssistantTrigger({ className = '' }: { className?: string }) {
     <button
       type="button"
       onClick={open}
-      className={`inline-flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-medium transition-all bg-gradient-to-r from-violet-600/15 to-indigo-600/15 hover:from-violet-600/25 hover:to-indigo-600/25 border border-violet-400/30 text-violet-700 dark:text-violet-200 ${className}`}
+      className={`inline-flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-medium transition-all bg-gradient-to-r from-primary-600/15 to-primary-600/15 hover:from-primary-600/25 hover:to-primary-600/25 border border-primary-400/30 text-primary-700 dark:text-primary-200 ${className}`}
     >
       <SparklesIcon className="h-4 w-4" />
       <span>{AI_COPILOT.name}</span>

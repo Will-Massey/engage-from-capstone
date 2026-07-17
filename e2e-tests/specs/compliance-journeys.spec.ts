@@ -163,7 +163,28 @@ test.describe('Tenant signup to first proposal', () => {
     });
     await page.click('button:has-text("Create Account")');
 
-    await page.waitForURL(/\/(dashboard)?$|\/proposals/, { timeout: 45_000 });
+    // Signup no longer issues a session — verify the email first (token via
+    // the X-Test-Mode-gated backdoor), then sign in.
+    await expect(page.getByTestId('verify-email-panel')).toBeVisible({ timeout: 45_000 });
+
+    const tokenRes = await page.request.post('/api/auth/e2e/verification-token', {
+      data: { email },
+    });
+    expect(tokenRes.ok()).toBeTruthy();
+    const { data: tokenData } = await tokenRes.json();
+
+    await page.goto(`/verify-email?token=${tokenData.token}`);
+    await expect(page.getByRole('heading', { name: 'Email verified!' })).toBeVisible({
+      timeout: 15_000,
+    });
+
+    await page.goto('/login');
+    await page.fill('input[name="email"]', email);
+    await page.fill('input[name="password"]', 'DemoPass123!');
+    await Promise.all([
+      page.waitForURL(/\/(dashboard)?$|\/proposals/, { timeout: 45_000 }),
+      page.click('button[type="submit"]'),
+    ]);
     await page.locator('nav[aria-label="Main"]:visible').first().waitFor({ timeout: 30_000 });
 
     await page.goto('/proposals/first-wizard');

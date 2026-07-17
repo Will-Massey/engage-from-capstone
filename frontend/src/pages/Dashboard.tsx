@@ -9,13 +9,11 @@ import {
   ClockIcon,
   ChartBarIcon,
   SparklesIcon,
-  ArrowUpIcon,
-  ArrowDownIcon,
   CalendarIcon,
-  EnvelopeIcon,
   BellIcon,
 } from '@heroicons/react/24/outline';
 import { apiClient } from '../utils/api';
+import { formatCurrency } from '../utils/formatters';
 import { useAuthStore } from '../stores/authStore';
 import QuickStart from '../components/dashboard/QuickStart';
 import ClaraAttentionQueue from '../components/dashboard/ClaraAttentionQueue';
@@ -261,41 +259,62 @@ const Dashboard = () => {
   const statsCards = [
     {
       name: 'Pipeline Value',
-      value: `£${stats.pipelineValue.toLocaleString()}`,
+      value: formatCurrency(stats.pipelineValue),
       change: `${stats.sentProposals} sent · ${stats.viewedProposals} viewed`,
-      trend: 'neutral' as 'up' | 'down' | 'neutral',
       icon: CurrencyPoundIcon,
-      color: 'from-emerald-500 to-emerald-600',
-      bgGradient: 'from-emerald-500/10 to-emerald-600/5',
+      money: true,
     },
     {
       name: 'Signed Proposals',
       value: stats.acceptedProposals,
-      change: `£${stats.totalRevenue.toLocaleString()} accepted`,
-      trend: 'up' as const,
+      change: `${formatCurrency(stats.totalRevenue)} accepted`,
       icon: CheckCircleIcon,
-      color: 'from-blue-500 to-blue-600',
-      bgGradient: 'from-blue-500/10 to-blue-600/5',
+      money: false,
     },
     {
       name: 'Conversion Rate',
       value: `${stats.conversionRate}%`,
       change: `${stats.viewRate}% viewed · ${stats.signRate}% signed`,
-      trend: stats.conversionRate > 0 ? ('up' as const) : ('neutral' as const),
       icon: ChartBarIcon,
-      color: 'from-purple-500 to-purple-600',
-      bgGradient: 'from-purple-500/10 to-purple-600/5',
+      money: false,
     },
     {
       name: 'Total Clients',
       value: stats.totalClients,
       change: `${stats.totalProposals} proposals`,
-      trend: 'neutral' as 'up' | 'down' | 'neutral',
       icon: UsersIcon,
-      color: 'from-amber-500 to-orange-500',
-      bgGradient: 'from-amber-500/10 to-orange-500/5',
+      money: false,
     },
   ];
+
+  const hasProposals = stats.totalProposals > 0;
+
+  const kpiRow = (
+    <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+      {statsCards.map((stat) => (
+        <div key={stat.name} className="card p-5">
+          <div className="flex items-center justify-between gap-2">
+            <p className="text-xs font-semibold uppercase tracking-wider text-ink-500 dark:text-slate-400">
+              {stat.name}
+            </p>
+            <stat.icon className="h-4 w-4 shrink-0 text-ink-400 dark:text-slate-500" />
+          </div>
+          <p
+            className={`mt-3 text-3xl font-bold tabular-nums ${
+              stat.money
+                ? 'text-emerald-600 dark:text-emerald-400'
+                : 'text-ink-900 dark:text-slate-100'
+            }`}
+          >
+            {stat.value}
+          </p>
+          <p className="mt-1 text-xs text-ink-500 dark:text-slate-400 truncate" title={stat.change}>
+            {stat.change}
+          </p>
+        </div>
+      ))}
+    </div>
+  );
 
   if (isLoading) {
     return (
@@ -316,8 +335,47 @@ const Dashboard = () => {
         }}
       />
 
+      {/* Welcome Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-bold text-ink-900 tracking-tight">
+            Good{' '}
+            {new Date().getHours() < 12
+              ? 'morning'
+              : new Date().getHours() < 17
+                ? 'afternoon'
+                : 'evening'}
+            , {user?.firstName}
+          </h1>
+          <p className="mt-1 text-sm text-ink-500">
+            Here's what's happening with {tenant?.name || 'your practice'} today
+          </p>
+        </div>
+        <div className="flex items-center space-x-3">
+          <select
+            value={dateRange}
+            onChange={(e) => setDateRange(e.target.value)}
+            className="input-field w-40"
+          >
+            <option value="7days">Last 7 days</option>
+            <option value="30days">Last 30 days</option>
+            <option value="90days">Last 90 days</option>
+            <option value="year">This year</option>
+          </select>
+          {hasProposals && (
+            <Link to="/proposals/wizard" className="btn-primary">
+              <SparklesIcon className="h-4 w-4 mr-2" />
+              Create proposal
+            </Link>
+          )}
+        </div>
+      </div>
+
+      {/* Established practices lead with the numbers; brand-new tenants get the guided card */}
+      {hasProposals ? kpiRow : <QuickStart />}
+
       {sentProposalCount === 0 && (
-        <div className="rounded-2xl border border-violet-200/80 dark:border-violet-800/60 bg-gradient-to-r from-violet-50/90 via-white to-indigo-50/70 dark:from-violet-950/40 dark:via-slate-900/50 dark:to-indigo-950/30 p-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+        <div className="rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
           <div>
             <p className="text-sm font-semibold text-slate-900 dark:text-white">
               Ready to send your first proposal?
@@ -336,91 +394,7 @@ const Dashboard = () => {
         </div>
       )}
 
-      {/* Welcome Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div>
-          <div className="flex items-center space-x-3">
-            <img src="/images/capstone-icon.svg" alt="Capstone" className="h-10 w-10" />
-            <div>
-              <h1 className="text-2xl font-bold text-slate-900">
-                Good{' '}
-                {new Date().getHours() < 12
-                  ? 'morning'
-                  : new Date().getHours() < 17
-                    ? 'afternoon'
-                    : 'evening'}
-                , {user?.firstName}! 👋
-              </h1>
-              <p className="mt-1 text-sm text-slate-600">
-                Here's what's happening with {tenant?.name || 'your practice'} today
-              </p>
-            </div>
-          </div>
-        </div>
-        <div className="flex items-center space-x-3">
-          <select
-            value={dateRange}
-            onChange={(e) => setDateRange(e.target.value)}
-            className="input-field w-40"
-          >
-            <option value="7days">Last 7 days</option>
-            <option value="30days">Last 30 days</option>
-            <option value="90days">Last 90 days</option>
-            <option value="year">This year</option>
-          </select>
-          <Link
-            to="/proposals/wizard"
-            className="btn-primary bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-700 hover:to-indigo-700"
-          >
-            <SparklesIcon className="h-4 w-4 mr-2" />
-            Create proposal in 5 minutes
-          </Link>
-        </div>
-      </div>
-
-      <QuickStart />
-
       <ClaraAttentionQueue />
-
-      {/* Quick Stats - Glassmorphism Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        {statsCards.map((stat, index) => (
-          <div
-            key={stat.name}
-            className="glass-tile group cursor-pointer"
-            style={{ animationDelay: `${index * 100}ms` }}
-          >
-            <div className="flex items-center justify-between">
-              <div
-                className={`w-12 h-12 rounded-xl bg-gradient-to-br ${stat.color} text-white shadow-lg flex items-center justify-center group-hover:scale-110 transition-transform duration-300`}
-              >
-                <stat.icon className="h-6 w-6" />
-              </div>
-              <div
-                className={`flex items-center text-sm font-medium px-2.5 py-1 rounded-full backdrop-blur-sm ${
-                  stat.trend === 'up'
-                    ? 'bg-emerald-100/80 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300'
-                    : stat.trend === 'down'
-                      ? 'bg-red-100/80 text-red-700 dark:bg-red-900/30 dark:text-red-300'
-                      : 'bg-slate-100/80 text-slate-600 dark:bg-slate-800/80 dark:text-slate-400'
-                }`}
-              >
-                {stat.trend === 'up' && <ArrowUpIcon className="h-3.5 w-3.5 mr-1" />}
-                {stat.trend === 'down' && <ArrowDownIcon className="h-3.5 w-3.5 mr-1" />}
-                {stat.change}
-              </div>
-            </div>
-            <div className="mt-4">
-              <p className="text-sm font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider">
-                {stat.name}
-              </p>
-              <p className="text-3xl font-bold mt-1 text-slate-900 dark:text-slate-100">
-                {stat.value}
-              </p>
-            </div>
-          </div>
-        ))}
-      </div>
 
       {/* New: Client Lifecycle / Automation Attention (makes the touchpoint system visible and useful) */}
       <div className="glass-tile p-5 border border-primary-100 dark:border-primary-900/60 bg-gradient-to-br from-white to-primary-50/40 dark:from-slate-900 dark:to-primary-950/20">
@@ -528,7 +502,7 @@ const Dashboard = () => {
 
       {/* MTD ITSA Alert */}
       {stats.mtditsaClients > 0 && (
-        <div className="relative overflow-hidden rounded-xl bg-gradient-to-r from-blue-500 to-indigo-500 p-6 text-white shadow-lg">
+        <div className="relative overflow-hidden rounded-xl bg-ink-950 p-6 text-white shadow-lg">
           <div className="absolute top-0 right-0 -mt-4 -mr-4 w-24 h-24 bg-white/10 rounded-full blur-2xl"></div>
           <div className="absolute bottom-0 left-0 -mb-4 -ml-4 w-32 h-32 bg-white/10 rounded-full blur-2xl"></div>
           <div className="relative flex items-start">
@@ -594,7 +568,7 @@ const Dashboard = () => {
                         : activity.color === 'green'
                           ? 'bg-emerald-100/80 text-emerald-600 dark:bg-emerald-900/30 dark:text-emerald-300'
                           : activity.color === 'purple'
-                            ? 'bg-purple-100/80 text-purple-600 dark:bg-purple-900/30 dark:text-purple-300'
+                            ? 'bg-primary-100/80 text-primary-600 dark:bg-primary-900/30 dark:text-primary-300'
                             : activity.color === 'orange'
                               ? 'bg-amber-100/80 text-amber-600 dark:bg-amber-900/30 dark:text-amber-300'
                               : 'bg-slate-100/80 text-slate-600 dark:bg-slate-800/80 dark:text-slate-400'
@@ -673,8 +647,8 @@ const Dashboard = () => {
                       >
                         {proposal.status}
                       </span>
-                      <p className="text-sm font-medium text-slate-900 dark:text-slate-100 mt-1">
-                        £{proposal.total?.toLocaleString()}
+                      <p className="text-sm font-semibold text-ink-900 dark:text-slate-100 mt-1 tabular-nums">
+                        {formatCurrency(proposal.total ?? 0)}
                       </p>
                     </div>
                   </div>
@@ -753,9 +727,9 @@ const Dashboard = () => {
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
           <Link
             to="/proposals/wizard"
-            className="glass-tile group text-center hover:border-violet-300 dark:hover:border-violet-700"
+            className="glass-tile group text-center hover:border-primary-300 dark:hover:border-primary-700"
           >
-            <div className="w-14 h-14 mx-auto bg-gradient-to-br from-violet-500 to-indigo-600 text-white rounded-xl shadow-lg mb-3 group-hover:scale-110 transition-transform flex items-center justify-center">
+            <div className="w-14 h-14 mx-auto bg-gradient-to-br from-primary-500 to-primary-600 text-white rounded-xl shadow-lg mb-3 group-hover:scale-110 transition-transform flex items-center justify-center">
               <SparklesIcon className="h-7 w-7" />
             </div>
             <p className="text-sm font-medium text-slate-900 dark:text-slate-100">5-min wizard</p>
@@ -771,9 +745,9 @@ const Dashboard = () => {
           </Link>
           <Link
             to="/services"
-            className="glass-tile group text-center hover:border-purple-300 dark:hover:border-purple-700"
+            className="glass-tile group text-center hover:border-primary-300 dark:hover:border-primary-700"
           >
-            <div className="w-14 h-14 mx-auto bg-gradient-to-br from-purple-500 to-purple-600 text-white rounded-xl shadow-lg mb-3 group-hover:scale-110 transition-transform flex items-center justify-center">
+            <div className="w-14 h-14 mx-auto bg-gradient-to-br from-primary-500 to-primary-600 text-white rounded-xl shadow-lg mb-3 group-hover:scale-110 transition-transform flex items-center justify-center">
               <SparklesIcon className="h-7 w-7" />
             </div>
             <p className="text-sm font-medium text-slate-900 dark:text-slate-100">Services</p>

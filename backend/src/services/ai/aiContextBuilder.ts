@@ -98,6 +98,7 @@ export interface AiCompaniesHouseContext {
   registeredOfficeAddress?: string;
   sicCodes?: string[];
   accountsNextDue?: string;
+  confirmationStatementNextDue?: string;
 }
 
 export interface BuildAiContextResult {

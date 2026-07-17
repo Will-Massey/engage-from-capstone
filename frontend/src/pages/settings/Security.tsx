@@ -240,8 +240,8 @@ export const SecuritySettings: React.FC = () => {
       {/* Data & Privacy */}
       <Card>
         <div className="flex items-center gap-4 mb-6">
-          <div className="w-12 h-12 bg-purple-100 rounded-xl flex items-center justify-center">
-            <ShieldCheckIcon className="w-6 h-6 text-purple-600" />
+          <div className="w-12 h-12 bg-primary-100 rounded-xl flex items-center justify-center">
+            <ShieldCheckIcon className="w-6 h-6 text-primary-600" />
           </div>
           <div>
             <h3 className="font-semibold text-slate-900">Data & Privacy</h3>

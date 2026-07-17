@@ -5,6 +5,7 @@ import {
   ArrowTopRightOnSquareIcon,
   CheckCircleIcon,
   ArrowPathIcon,
+  CloudArrowDownIcon,
 } from '@heroicons/react/24/outline';
 
 interface QuickBooksStatus {
@@ -13,14 +14,15 @@ interface QuickBooksStatus {
   realmId?: string;
   companyName?: string;
   connectedAt?: string;
-  scaffold?: boolean;
-  note?: string;
+  lastImportAt?: string;
+  lastPushAt?: string;
 }
 
 const QuickBooksConnect = () => {
   const [status, setStatus] = useState<QuickBooksStatus | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isConnecting, setIsConnecting] = useState(false);
+  const [isImporting, setIsImporting] = useState(false);
 
   const loadStatus = useCallback(async () => {
     try {
@@ -52,7 +54,7 @@ const QuickBooksConnect = () => {
     }
 
     if (oauth === 'success' && provider === 'quickbooks') {
-      toast.success('QuickBooks connected (scaffold)');
+      toast.success('QuickBooks connected successfully!');
       loadStatus();
       window.history.replaceState({}, document.title, '/settings?tab=integrations');
     }
@@ -86,6 +88,21 @@ const QuickBooksConnect = () => {
     }
   };
 
+  const importClients = async () => {
+    setIsImporting(true);
+    try {
+      const response = (await apiClient.importQuickBooksClients()) as any;
+      if (response.success) {
+        toast.success(response.message || `Imported ${response.data?.created ?? 0} clients`);
+        loadStatus();
+      }
+    } catch (error: any) {
+      toast.error(error.response?.data?.error?.message || 'Client import failed');
+    } finally {
+      setIsImporting(false);
+    }
+  };
+
   if (isLoading) {
     return (
       <div className="p-4 rounded-lg border bg-green-50 border-green-200 text-green-900 dark:bg-green-950/40 dark:border-green-800 dark:text-green-100">
@@ -107,7 +124,8 @@ const QuickBooksConnect = () => {
         <div className="flex-1">
           <h4 className="font-medium text-slate-900 dark:text-white">QuickBooks Online</h4>
           <p className="mt-1 text-sm opacity-80">
-            OAuth scaffold — client sync and proposal push parity with Xero (W4.7).
+            Import customers from QuickBooks and mirror each recurring payment Stripe collects as a
+            QuickBooks invoice.
           </p>
 
           {!serverConfigured && (
@@ -121,20 +139,44 @@ const QuickBooksConnect = () => {
             <>
               <div className="mt-2 flex items-center text-sm">
                 <CheckCircleIcon className="h-4 w-4 mr-1 text-green-600" />
-                <span className="text-green-700 dark:text-green-400">Connected (scaffold)</span>
+                <span className="text-green-700 dark:text-green-400">Connected</span>
                 {status.companyName && (
                   <span className="ml-2 text-slate-500 dark:text-slate-400">
                     ({status.companyName})
                   </span>
                 )}
               </div>
-              <button
-                type="button"
-                onClick={disconnect}
-                className="mt-3 text-sm text-red-600 hover:text-red-800 underline"
-              >
-                Disconnect
-              </button>
+              {status.lastImportAt && (
+                <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+                  Last import: {new Date(status.lastImportAt).toLocaleString()}
+                </p>
+              )}
+              <div className="mt-3 flex flex-wrap gap-3">
+                <button
+                  type="button"
+                  onClick={importClients}
+                  disabled={isImporting}
+                  className="inline-flex items-center px-3 py-1.5 text-sm font-medium text-white bg-green-700 hover:bg-green-800 rounded-lg disabled:opacity-50"
+                >
+                  {isImporting ? (
+                    <ArrowPathIcon className="h-4 w-4 mr-1 animate-spin" />
+                  ) : (
+                    <CloudArrowDownIcon className="h-4 w-4 mr-1" />
+                  )}
+                  Import clients from QuickBooks
+                </button>
+                <button
+                  type="button"
+                  onClick={disconnect}
+                  className="text-sm text-red-600 hover:text-red-800 underline"
+                >
+                  Disconnect
+                </button>
+              </div>
+              <p className="mt-3 text-xs opacity-70">
+                Recurring payments collected by Stripe are mirrored automatically as QuickBooks
+                invoices, so your books always match the money actually collected.
+              </p>
             </>
           ) : (
             <button
@@ -156,8 +198,6 @@ const QuickBooksConnect = () => {
               )}
             </button>
           )}
-
-          {status?.note && <p className="mt-3 text-xs opacity-70">{status.note}</p>}
         </div>
       </div>
     </div>

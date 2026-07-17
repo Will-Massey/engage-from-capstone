@@ -47,16 +47,15 @@ export const EmptyState = ({
 
   return (
     <div className="flex flex-col items-center justify-center py-16 px-4 animate-fade-in">
-      <div className="glass-tile p-12 text-center max-w-md">
-        <div className="relative mb-6">
-          <div className="absolute inset-0 bg-gradient-to-br from-primary-400/20 to-primary-600/20 rounded-full blur-xl" />
-          <div className="relative p-4 bg-white/50 dark:bg-slate-800/50 rounded-full inline-block">
-            <Icon className="h-16 w-16 text-slate-400 dark:text-slate-500" />
-          </div>
+      <div className="card p-10 text-center max-w-md">
+        <div className="mx-auto mb-5 flex h-14 w-14 items-center justify-center rounded-2xl bg-slate-100 dark:bg-slate-700/60">
+          <Icon className="h-7 w-7 text-ink-500 dark:text-slate-300" />
         </div>
 
-        <h3 className="text-xl font-semibold text-slate-900 dark:text-white mb-2">{title}</h3>
-        <p className="text-slate-600 dark:text-slate-400 mb-6">{description}</p>
+        <h3 className="text-lg font-semibold text-ink-900 dark:text-white mb-2">{title}</h3>
+        <p className="text-sm text-ink-500 dark:text-slate-400 mb-6 leading-relaxed">
+          {description}
+        </p>
 
         {context && <ClaraEmptyTip context={context} fallback={claraTip} className="mb-6" />}
         {!context && claraTip && (

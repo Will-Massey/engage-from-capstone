@@ -189,10 +189,20 @@ export async function saveAmlDocument(
   };
 }
 
+export async function deleteAmlDocument(relativePath: string): Promise<void> {
+  try {
+    await deleteBytes(relativePath);
+    logger.info(`AML document deleted: ${relativePath}`);
+  } catch (error) {
+    logger.error('Failed to delete AML document:', error);
+  }
+}
+
 export default {
   saveSignaturePng,
   readSignature,
   deleteSignature,
   getFullPath,
   saveAmlDocument,
+  deleteAmlDocument,
 };

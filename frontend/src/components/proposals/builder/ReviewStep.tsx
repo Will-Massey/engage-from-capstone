@@ -186,7 +186,7 @@ export default function ReviewStep() {
               type="button"
               onClick={runAiCoverLetter}
               disabled={aiCoverLoading || !aiConfigured}
-              className="text-xs inline-flex items-center gap-1 px-2 py-1 rounded-lg border border-violet-300 dark:border-violet-700 text-violet-700 dark:text-violet-300 hover:bg-violet-50 dark:hover:bg-violet-950/30 disabled:opacity-50"
+              className="text-xs inline-flex items-center gap-1 px-2 py-1 rounded-lg border border-primary-300 dark:border-primary-700 text-primary-700 dark:text-primary-300 hover:bg-primary-50 dark:hover:bg-primary-950/30 disabled:opacity-50"
               title={aiConfigured ? AI_COPILOT.draftWithLabel : `${AI_COPILOT.name} unavailable`}
             >
               <SparklesIcon className={`h-3.5 w-3.5 ${aiCoverLoading ? 'animate-pulse' : ''}`} />
@@ -297,7 +297,7 @@ export default function ReviewStep() {
         {coverLetter.trim() && aiConfigured && (
           <div className="mt-3">
             <div className="flex items-center gap-2 mb-1.5">
-              <SparklesIcon className="h-3.5 w-3.5 text-violet-600" />
+              <SparklesIcon className="h-3.5 w-3.5 text-primary-600" />
               <span className="text-[10px] uppercase tracking-wider text-slate-500 dark:text-slate-300 dark:text-slate-300">
                 Clara quick tweaks (low cost)
               </span>
@@ -310,7 +310,7 @@ export default function ReviewStep() {
                     type="button"
                     onClick={() => applyCoverLetterTweak(label)}
                     disabled={applyingCoverLetterTweak}
-                    className="text-xs px-2 py-0.5 rounded border border-violet-200 dark:border-violet-800 text-violet-700 dark:text-violet-300 hover:bg-violet-50 dark:hover:bg-violet-950/30 disabled:opacity-50"
+                    className="text-xs px-2 py-0.5 rounded border border-primary-200 dark:border-primary-800 text-primary-700 dark:text-primary-300 hover:bg-primary-50 dark:hover:bg-primary-950/30 disabled:opacity-50"
                   >
                     {label}
                   </button>
@@ -352,7 +352,7 @@ export default function ReviewStep() {
 
       {/* Package options — Bronze / Silver / Gold / Platinum */}
       <div
-        className="card p-4 border border-violet-100 dark:border-violet-900/40"
+        className="card p-4 border border-primary-100 dark:border-primary-900/40"
         data-testid="package-options-card"
       >
         <h3 className="font-semibold text-slate-900 dark:text-white mb-1">Package options</h3>
@@ -465,9 +465,9 @@ export default function ReviewStep() {
       {isEditMode && proposalId && aiConfigured && <ProposalHealthCard proposalId={proposalId} />}
 
       {!isEditMode && aiConfigured && (
-        <div className="glass-tile p-4 border border-violet-200 dark:border-violet-800/50">
+        <div className="glass-tile p-4 border border-primary-200 dark:border-primary-800/50">
           <p className="text-sm text-slate-700 dark:text-slate-200">
-            <SparklesIcon className="inline h-4 w-4 text-violet-500 mr-1" />
+            <SparklesIcon className="inline h-4 w-4 text-primary-500 mr-1" />
             {AI_COPILOT.name} tip: After creating the proposal, open it to get a health score and
             follow-up suggestions.
           </p>
@@ -520,7 +520,7 @@ export default function ReviewStep() {
             <button
               type="button"
               onClick={() => setShowEmailPreview(true)}
-              className="btn-secondary text-sm inline-flex items-center gap-1.5 border-violet-200 dark:border-violet-700 text-violet-700 dark:text-violet-300"
+              className="btn-secondary text-sm inline-flex items-center gap-1.5 border-primary-200 dark:border-primary-700 text-primary-700 dark:text-primary-300"
             >
               <SparklesIcon className="h-4 w-4" />
               Preview client email

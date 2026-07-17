@@ -352,7 +352,12 @@ export interface AiRegulatoryAlertsResult {
 }
 
 export interface AiAttentionQueueItem {
-  proposalId: string;
+  /** 'proposal' items link to /proposals/{proposalId}; 'regulatory' to /clients/{clientId} */
+  kind?: 'proposal' | 'regulatory';
+  proposalId?: string;
+  /** RegulatorySignal id — present on kind 'regulatory' items (used to dismiss) */
+  signalId?: string;
+  clientId?: string;
   reference: string;
   title: string;
   clientName: string;
@@ -368,7 +373,7 @@ export interface AiAttentionQueueResult {
   generatedAt: string;
 }
 
-/** Stored in tenant settings — GET /ai/voice-of-practice is not wired yet; shape matches voiceOfPracticeService. */
+/** Stored in tenant settings; returned by GET /ai/voice-of-practice (shape matches voiceOfPracticeService). */
 export interface VoiceOfPracticeSettings {
   sampleText?: string;
   styleHints?: string;

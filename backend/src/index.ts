@@ -39,6 +39,8 @@ import {
   scheduleTouchpointEngine,
   scheduleEmailAutomation,
   scheduleDisputeReconciliation,
+  scheduleRegulatoryScan,
+  scheduleClaraAgenticDrafting,
 } from './app/jobs.js';
 import { registerProcessHandlers } from './app/shutdown.js';
 
@@ -59,6 +61,13 @@ import {
 // Initialize Express app
 const app = express();
 const PORT = process.env.PORT || 3001;
+
+// Trust the reverse-proxy chain (Cloudflare Worker -> Render) so `req.ip`
+// reflects the real client, not the upstream socket. Without this, all
+// rate-limiters/lockouts key on one shared proxy IP (a login-DoS vector) and
+// e-sign / consent audit records store the proxy IP instead of the signer's.
+// `TRUST_PROXY_HOPS` lets ops tune the hop count; default 1 fits CF->Render.
+app.set('trust proxy', Number(process.env.TRUST_PROXY_HOPS ?? 1));
 
 /*
  * ============================================================================
@@ -138,6 +147,8 @@ if (shouldStartServer) {
     scheduleTouchpointEngine();
     scheduleEmailAutomation();
     scheduleDisputeReconciliation();
+    scheduleRegulatoryScan();
+    scheduleClaraAgenticDrafting();
     initEngageSuperadmin();
 
     if (isSuperadminSyncConfigured()) {

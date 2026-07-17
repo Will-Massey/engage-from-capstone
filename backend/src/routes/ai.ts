@@ -34,9 +34,12 @@ import { checkAiTokenBudget, getAiStatusMeta } from '../services/ai/aiClient.js'
 import { AI_FEATURE_FLAGS } from '../config/featureFlags.js';
 import { getRegulatoryAlerts } from '../services/ai/regulatoryWatcherService.js';
 import { advisePricing, type PricingAdvisorLineInput } from '../services/regulatoryFitService.js';
-import { getBenchmarkPricing } from '../services/ai/benchmarkPricingService.js';
 import { draftProposalFromVoice } from '../services/ai/voiceProposalService.js';
 import { triageClientReply, type ReplyTriageInput } from '../services/replyRoutingService.js';
+import {
+  getVoiceOfPractice,
+  saveVoiceOfPracticeSample,
+} from '../services/voiceOfPracticeService.js';
 import { generateProposalExplanation } from '../services/ai/proposalExplanationService.js';
 import { AI_COPILOT } from '../config/aiCopilot.js';
 import { shouldSkipRateLimit } from '../utils/securityFlags.js';
@@ -948,25 +951,6 @@ router.post(
   })
 );
 
-/** GET /api/ai/benchmark-pricing — Phase 5 anonymised fee bands (stub) */
-router.get(
-  '/benchmark-pricing',
-  asyncHandler(async (req, res) => {
-    const services = z
-      .string()
-      .optional()
-      .parse(req.query.services as string | undefined);
-    const serviceNames = services
-      ? services
-          .split(',')
-          .map((s) => s.trim())
-          .filter(Boolean)
-      : undefined;
-    const data = await getBenchmarkPricing(req.tenantId!, req.user?.id, serviceNames);
-    res.json({ success: true, data });
-  })
-);
-
 /** POST /api/ai/voice-proposal — Phase 5 voice transcript → structured draft */
 router.post(
   '/voice-proposal',
@@ -1116,43 +1100,27 @@ router.post(
   })
 );
 
-/** POST /api/ai/voice-of-practice — store practice tone samples for Clara personalisation */
+/** GET /api/ai/voice-of-practice — current stored style hints (null when unset) */
+router.get(
+  '/voice-of-practice',
+  asyncHandler(async (req, res) => {
+    const data = await getVoiceOfPractice(req.tenantId!);
+    res.json({ success: true, data });
+  })
+);
+
+/** POST /api/ai/voice-of-practice — analyse a sample letter into reusable style hints */
 router.post(
   '/voice-of-practice',
   asyncHandler(async (req, res) => {
-    const { samples } = z
+    const { sampleText } = z
       .object({
-        samples: z
-          .array(
-            z.object({
-              label: z.string().min(1).max(100),
-              content: z.string().min(20).max(4000),
-            })
-          )
-          .min(1)
-          .max(10),
+        sampleText: z.string().trim().min(80, 'Sample letter must be at least 80 characters'),
       })
       .parse(req.body);
 
-    const { prisma } = await import('../config/database.js');
-    const tenant = await prisma.tenant.findUnique({
-      where: { id: req.tenantId! },
-      select: { settings: true },
-    });
-
-    const settings = JSON.parse(tenant?.settings || '{}');
-    settings.voiceOfPractice = {
-      samples,
-      updatedAt: new Date().toISOString(),
-      updatedBy: req.user?.id,
-    };
-
-    await prisma.tenant.update({
-      where: { id: req.tenantId! },
-      data: { settings: JSON.stringify(settings) },
-    });
-
-    res.json({ success: true, data: { sampleCount: samples.length } });
+    const data = await saveVoiceOfPracticeSample(req.tenantId!, req.user?.id, sampleText);
+    res.json({ success: true, data });
   })
 );
 

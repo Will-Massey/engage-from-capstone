@@ -13,6 +13,8 @@ import {
   Contact,
   Contacts,
   Invoice,
+  Invoices,
+  Payment,
   HistoryRecords,
   RepeatingInvoice,
   RepeatingInvoices,
@@ -29,14 +31,20 @@ import {
   type TenantXeroSettings,
 } from './tenantXeroSettings.js';
 
-/** OAuth scopes — register these on your Xero app */
+/**
+ * OAuth scopes. Xero retired the umbrella `accounting.transactions` scope in
+ * favour of granular scopes; newly-created apps reject it as invalid_scope.
+ * `accounting.invoices` covers Invoices + Repeating Invoices, and
+ * `accounting.payments` covers createPayment.
+ */
 export const XERO_OAUTH_SCOPES = [
   'openid',
   'profile',
   'email',
   'offline_access',
   'accounting.contacts',
-  'accounting.transactions',
+  'accounting.invoices',
+  'accounting.payments',
   'accounting.settings',
 ] as const;
 
@@ -138,7 +146,18 @@ export async function exchangeXeroCallbackUrl(callbackUrl: string): Promise<{
   tokenSet: any;
   tenants: Array<{ tenantId: string; tenantName?: string }>;
 }> {
-  const xero = createXeroClient();
+  // xero-node builds its CSRF check as `{ state: config.state }`, and
+  // openid-client throws "checks.state argument is missing" when the callback
+  // URL carries a `state` param but no expected state was configured. The
+  // caller (handleXeroOAuthCallback) has already cryptographically verified
+  // this state via verifyOAuthState, so we extract it and hand it back to the
+  // client purely to satisfy openid-client's equality check.
+  const queryIdx = callbackUrl.indexOf('?');
+  const expectedState =
+    queryIdx >= 0
+      ? new URLSearchParams(callbackUrl.slice(queryIdx + 1)).get('state') || undefined
+      : undefined;
+  const xero = createXeroClient(expectedState);
   await xero.initialize();
   const tokenSet = await xero.apiCallback(callbackUrl);
   await xero.setTokenSet(tokenSet);
@@ -273,7 +292,7 @@ function groupRecurringServices(services: ProposalServiceLine[]) {
   return { groups, oneTime };
 }
 
-async function resolveOrCreateContact(
+export async function resolveOrCreateContact(
   session: XeroSession,
   client: {
     name: string;
@@ -396,6 +415,9 @@ function buildRepeatingInvoiceDraft(
 /**
  * Push accepted proposal to Xero.
  * When session is null, returns stub payloads only (no API calls).
+ * options.skipRepeatingInvoices (paid_invoices sync mode) still syncs the
+ * contact + history note but never creates repeating invoices, so recurring
+ * fees are only mirrored when Stripe actually collects them.
  */
 export async function pushAcceptedProposalToXero(
   session: XeroSession | null,
@@ -414,7 +436,8 @@ export async function pushAcceptedProposalToXero(
       xeroContactId?: string;
     };
     services: ProposalServiceLine[];
-  }
+  },
+  options?: { skipRepeatingInvoices?: boolean }
 ): Promise<{
   contactNote: { implemented: boolean; contactId?: string; updated: boolean; error?: string };
   repeatingInvoice: {
@@ -484,6 +507,27 @@ export async function pushAcceptedProposalToXero(
 
   const repeatingInvoiceIds: string[] = [];
   const drafts: unknown[] = [];
+
+  if (options?.skipRepeatingInvoices) {
+    return {
+      contactNote: {
+        implemented: true,
+        contactId,
+        updated: contactUpdated,
+        error: contactUpdated ? undefined : errors.find((e) => e.includes('Contact note')),
+      },
+      repeatingInvoice: {
+        implemented: true,
+        stub: false,
+        created: 0,
+        repeatingInvoiceIds,
+        drafts,
+        errors,
+        message:
+          'Repeating invoices skipped — paid-invoices sync mode mirrors each Stripe payment instead.',
+      },
+    };
+  }
 
   if (!contactId) {
     errors.push('Repeating invoices skipped — no Xero contact available.');
@@ -562,6 +606,77 @@ export async function pushAcceptedProposalToXero(
           : 'No repeating invoices were created — see errors for details.',
     },
   };
+}
+
+export interface XeroInvoiceLine {
+  description: string;
+  /** Net (VAT-exclusive) unit amount in GBP */
+  unitAmount: number;
+  /** Explicit VAT in GBP; undefined lets Xero derive from the account default */
+  taxAmount?: number;
+  /** Set to 'NONE' on fallback lines so the invoice total is exact */
+  taxType?: string;
+}
+
+/**
+ * Create an AUTHORISED ACCREC invoice (paid_invoices sync mode) mirroring a
+ * Stripe recurring payment. Reference carries the Stripe invoice id.
+ */
+export async function createXeroAccRecInvoice(
+  session: XeroSession,
+  args: { contactId: string; reference: string; lines: XeroInvoiceLine[] }
+): Promise<string> {
+  const { client, xeroTenantId } = session;
+  const revenueAccount = session.settings.defaultRevenueAccountCode || DEFAULT_REVENUE_ACCOUNT;
+  const today = new Date().toISOString().slice(0, 10);
+
+  const invoice: Invoice = {
+    type: Invoice.TypeEnum.ACCREC,
+    contact: { contactID: args.contactId },
+    date: today,
+    dueDate: today,
+    lineItems: args.lines.map((l) => ({
+      description: l.description,
+      quantity: 1,
+      unitAmount: l.unitAmount,
+      accountCode: revenueAccount,
+      ...(l.taxAmount !== undefined ? { taxAmount: l.taxAmount } : {}),
+      ...(l.taxType ? { taxType: l.taxType } : {}),
+    })),
+    lineAmountTypes: LineAmountTypes.Exclusive,
+    status: Invoice.StatusEnum.AUTHORISED,
+    reference: args.reference,
+    currencyCode: CurrencyCode.GBP,
+  };
+
+  const payload: Invoices = { invoices: [invoice] };
+  const response = await client.accountingApi.createInvoices(xeroTenantId, payload, true);
+  const created = response.body.invoices?.[0];
+  if (!created?.invoiceID) {
+    const validationErrors = (created as { validationErrors?: Array<{ message?: string }> })
+      ?.validationErrors;
+    const detail = validationErrors
+      ?.map((e) => e.message)
+      .filter(Boolean)
+      .join('; ');
+    throw new Error(detail || 'Xero invoice creation returned no invoice ID');
+  }
+  return created.invoiceID;
+}
+
+/** Apply a payment against an invoice (Stripe already collected the money). */
+export async function createXeroPaymentForInvoice(
+  session: XeroSession,
+  args: { invoiceId: string; accountCode: string; amount: number }
+): Promise<void> {
+  const { client, xeroTenantId } = session;
+  const payment: Payment = {
+    invoice: { invoiceID: args.invoiceId },
+    account: { code: args.accountCode },
+    amount: args.amount,
+    date: new Date().toISOString().slice(0, 10),
+  };
+  await client.accountingApi.createPayment(xeroTenantId, payment);
 }
 
 export function getXeroPublicConfig() {

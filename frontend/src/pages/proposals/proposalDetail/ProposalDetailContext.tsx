@@ -52,8 +52,8 @@ const statusConfig: Record<string, { color: string; bg: string; icon: any; label
     label: 'Sent',
   },
   VIEWED: {
-    color: 'text-purple-700 dark:text-purple-200',
-    bg: 'bg-purple-100 dark:bg-purple-900/40',
+    color: 'text-primary-700 dark:text-primary-200',
+    bg: 'bg-primary-100 dark:bg-primary-900/40',
     icon: ClockIcon,
     label: 'Viewed',
   },
@@ -339,13 +339,13 @@ export function ProposalDetailProvider({ children }: ProposalDetailProviderProps
     if (!companySettings) return proposal?.terms || '';
 
     const companyDetails = {
-      name: companySettings.branding?.name || tenant?.name || '[Company Name]',
-      companyNumber: companySettings.companyRegistration || '[Company Number]',
+      name: companySettings.branding?.name || tenant?.name || '',
+      companyNumber: companySettings.companyRegistration || '',
       address: companySettings.address?.line1
         ? `${companySettings.address.line1}, ${companySettings.address.city}, ${companySettings.address.postcode}`
-        : '[Registered Office Address]',
-      professionalBody: companySettings.professionalBody || '[Professional Body]',
-      insurerName: companySettings.insurerName || '[Insurer Name]',
+        : '',
+      professionalBody: companySettings.professionalBody || '',
+      insurerName: companySettings.insurerName || '',
       governingLaw: companySettings.governingLaw || 'England and Wales',
       fcaAuthorised: companySettings.fcaAuthorised || false,
     };

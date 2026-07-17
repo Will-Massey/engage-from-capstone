@@ -101,11 +101,11 @@ async function main() {
     (r) => r.body?.success && Array.isArray(r.body?.data?.alerts)
   );
 
-  const benchmark = await request('/ai/benchmark-pricing', { headers: authHeaders });
+  const benchmark = await request('/analytics/fee-benchmarks', { headers: authHeaders });
   ok(
-    'ai/benchmark-pricing',
+    'analytics/fee-benchmarks',
     benchmark,
-    (r) => r.body?.success && Array.isArray(r.body?.data?.bands)
+    (r) => r.body?.success && Array.isArray(r.body?.data?.benchmarks)
   );
 
   const proposals = await request('/proposals?limit=1&status=DRAFT', { headers: authHeaders });

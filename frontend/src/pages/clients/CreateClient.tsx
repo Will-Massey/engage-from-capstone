@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -272,9 +272,11 @@ const CreateClient = ({ onSuccess, onCancel }: CreateClientProps = {}) => {
 
   return (
     <div className="max-w-3xl mx-auto animate-fade-in">
-      {/* Header */}
-      <div className="mb-6">
-        {onCancel ? (
+      {/* Header — shown only when embedded (e.g. inside the proposal wizard).
+          On the standalone /clients/new route the global page header supplies the
+          title, description, and back link. */}
+      {onCancel && (
+        <div className="mb-6">
           <button
             onClick={onCancel}
             className="inline-flex items-center text-sm text-slate-500 hover:text-slate-700"
@@ -282,18 +284,10 @@ const CreateClient = ({ onSuccess, onCancel }: CreateClientProps = {}) => {
             <ArrowLeftIcon className="h-4 w-4 mr-1" />
             Cancel
           </button>
-        ) : (
-          <Link
-            to="/clients"
-            className="inline-flex items-center text-sm text-slate-500 hover:text-slate-700"
-          >
-            <ArrowLeftIcon className="h-4 w-4 mr-1" />
-            Back to clients
-          </Link>
-        )}
-        <h1 className="text-2xl font-bold text-slate-900 mt-4">Add New Client</h1>
-        <p className="text-sm text-slate-500">Enter your client's details to get started</p>
-      </div>
+          <h1 className="text-2xl font-bold text-slate-900 mt-4">Add New Client</h1>
+          <p className="text-sm text-slate-500">Enter your client's details to get started</p>
+        </div>
+      )}
 
       {/* Progress */}
       <div className="mb-8">

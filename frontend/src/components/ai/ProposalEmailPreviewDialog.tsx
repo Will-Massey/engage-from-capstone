@@ -387,12 +387,12 @@ export default function ProposalEmailPreviewDialog({
           aria-hidden
         />
 
-        <div className="relative w-full max-w-2xl rounded-2xl border border-violet-200 dark:border-violet-800 shadow-2xl bg-white dark:bg-slate-900 overflow-hidden">
-          <div className="px-5 py-4 border-b border-violet-100 dark:border-violet-900/50 bg-gradient-to-r from-violet-50 to-indigo-50/80 dark:from-violet-950/60 dark:to-indigo-950/40">
+        <div className="relative w-full max-w-2xl rounded-2xl border border-primary-200 dark:border-primary-800 shadow-2xl bg-white dark:bg-slate-900 overflow-hidden">
+          <div className="px-5 py-4 border-b border-primary-100 dark:border-primary-900/50 bg-gradient-to-r from-primary-50 to-primary-50/80 dark:from-primary-950/60 dark:to-primary-950/40">
             <div className="flex items-start justify-between gap-3">
               <div className="flex items-start gap-3">
-                <div className="p-2 rounded-xl bg-violet-500/15 border border-violet-400/25">
-                  <EnvelopeIcon className="h-5 w-5 text-violet-600 dark:text-violet-400" />
+                <div className="p-2 rounded-xl bg-primary-500/15 border border-primary-400/25">
+                  <EnvelopeIcon className="h-5 w-5 text-primary-600 dark:text-primary-400" />
                 </div>
                 <div>
                   <h2 className="text-lg font-semibold text-slate-900 dark:text-white">
@@ -416,7 +416,7 @@ export default function ProposalEmailPreviewDialog({
           <div className="p-5 space-y-4 max-h-[min(70vh,560px)] overflow-y-auto">
             {loading ? (
               <div className="py-12 text-center space-y-3" aria-busy="true">
-                <SparklesIcon className="h-8 w-8 text-violet-500 mx-auto animate-pulse" />
+                <SparklesIcon className="h-8 w-8 text-primary-500 mx-auto animate-pulse" />
                 <p className="text-sm text-slate-500 dark:text-slate-300">
                   {AI_COPILOT.name} is drafting the client email…
                 </p>
@@ -568,7 +568,7 @@ export default function ProposalEmailPreviewDialog({
                 {body && !loading && (
                   <div className="mt-2">
                     <div className="flex items-center gap-2 mb-1">
-                      <SparklesIcon className="h-3.5 w-3.5 text-violet-500" />
+                      <SparklesIcon className="h-3.5 w-3.5 text-primary-500" />
                       <span className="text-xs font-medium text-slate-500 dark:text-slate-400">
                         Clara suggested CTAs (tiny cost)
                       </span>
@@ -583,23 +583,23 @@ export default function ProposalEmailPreviewDialog({
                         {ctaSuggestions.map((c, idx) => (
                           <div
                             key={idx}
-                            className="inline-flex items-center gap-1 rounded-md border border-violet-200 dark:border-violet-700 bg-white dark:bg-slate-800 px-2 py-0.5 text-xs"
+                            className="inline-flex items-center gap-1 rounded-md border border-primary-200 dark:border-primary-700 bg-white dark:bg-slate-800 px-2 py-0.5 text-xs"
                           >
                             <span
-                              className="max-w-[220px] truncate text-violet-800 dark:text-violet-200"
+                              className="max-w-[220px] truncate text-primary-800 dark:text-primary-200"
                               title={c}
                             >
                               {c}
                             </span>
                             <button
                               onClick={() => insertCta(c, 'end')}
-                              className="ml-1 rounded bg-violet-600 px-1.5 py-0.5 text-[10px] font-medium text-white hover:bg-violet-700 dark:bg-violet-500 dark:hover:bg-violet-600 transition"
+                              className="ml-1 rounded bg-primary-600 px-1.5 py-0.5 text-[10px] font-medium text-white hover:bg-primary-700 dark:bg-primary-500 dark:hover:bg-primary-600 transition"
                             >
                               Insert this CTA
                             </button>
                             <button
                               onClick={() => insertCta(c, 'replace')}
-                              className="text-[10px] text-violet-600 dark:text-violet-400 hover:underline"
+                              className="text-[10px] text-primary-600 dark:text-primary-400 hover:underline"
                               title="Replace last sentence"
                             >
                               or replace last
@@ -611,7 +611,7 @@ export default function ProposalEmailPreviewDialog({
                       <button
                         onClick={() => fetchCtaSuggestions()}
                         disabled={suggestingCtas}
-                        className="text-xs text-violet-600 dark:text-violet-400 hover:underline disabled:opacity-50 flex items-center gap-1"
+                        className="text-xs text-primary-600 dark:text-primary-400 hover:underline disabled:opacity-50 flex items-center gap-1"
                       >
                         <SparklesIcon className="h-3.5 w-3.5" />
                         {suggestingCtas ? 'Thinking…' : 'Suggest stronger CTAs'}
@@ -669,7 +669,7 @@ export default function ProposalEmailPreviewDialog({
               type="button"
               onClick={fetchDraft}
               disabled={loading}
-              className="text-xs inline-flex items-center gap-1 text-slate-500 dark:text-slate-300 hover:text-violet-600 disabled:opacity-50"
+              className="text-xs inline-flex items-center gap-1 text-slate-500 dark:text-slate-300 hover:text-primary-600 disabled:opacity-50"
             >
               <ArrowPathIcon className={`h-3.5 w-3.5 ${loading ? 'animate-spin' : ''}`} />
               Redraft with {AI_COPILOT.shortName}

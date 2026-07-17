@@ -273,10 +273,10 @@ export default function ClientContextCard({
   if (!configured) {
     return (
       <div
-        className={`rounded-2xl border border-dashed border-violet-300 dark:border-violet-700 bg-violet-50/40 dark:bg-violet-950/20 p-4 ${className}`}
+        className={`rounded-2xl border border-dashed border-primary-300 dark:border-primary-700 bg-primary-50/40 dark:bg-primary-950/20 p-4 ${className}`}
       >
         <div className="flex items-start gap-2">
-          <SparklesIcon className="h-5 w-5 text-violet-500 shrink-0 mt-0.5" />
+          <SparklesIcon className="h-5 w-5 text-primary-500 shrink-0 mt-0.5" />
           <div>
             <p className="text-sm font-medium text-slate-800 dark:text-slate-100">Client context</p>
             <p className="text-xs text-slate-600 dark:text-slate-400 mt-1">
@@ -292,11 +292,11 @@ export default function ClientContextCard({
 
   return (
     <div
-      className={`rounded-2xl border border-violet-200 dark:border-violet-800/60 bg-gradient-to-br from-violet-50 to-white dark:from-violet-950/40 dark:to-slate-900/60 p-4 shadow-sm ${className}`}
+      className={`rounded-2xl border border-primary-200 dark:border-primary-800/60 bg-gradient-to-br from-primary-50 to-white dark:from-primary-950/40 dark:to-slate-900/60 p-4 shadow-sm ${className}`}
     >
       <div className="flex items-start justify-between gap-3 mb-2">
         <div className="flex items-start gap-2 min-w-0">
-          <SparklesIcon className="h-5 w-5 text-violet-600 dark:text-violet-400 shrink-0 mt-0.5" />
+          <SparklesIcon className="h-5 w-5 text-primary-600 dark:text-primary-400 shrink-0 mt-0.5" />
           <div className="min-w-0">
             <h3 className="text-sm font-semibold text-slate-900 dark:text-white">Client context</h3>
             <p className="text-xs text-slate-600 dark:text-slate-400 mt-0.5">
@@ -325,7 +325,7 @@ export default function ClientContextCard({
           <button
             type="button"
             onClick={() => setEditing((v) => !v)}
-            className="inline-flex items-center gap-1 text-xs px-2 py-1 rounded-lg border border-violet-200 dark:border-violet-700 text-violet-700 dark:text-violet-300 hover:bg-violet-50 dark:hover:bg-violet-950/40"
+            className="inline-flex items-center gap-1 text-xs px-2 py-1 rounded-lg border border-primary-200 dark:border-primary-700 text-primary-700 dark:text-primary-300 hover:bg-primary-50 dark:hover:bg-primary-950/40"
             title="Edit client details"
           >
             <PencilIcon className="h-3.5 w-3.5" />
@@ -335,7 +335,7 @@ export default function ClientContextCard({
             type="button"
             onClick={() => void refreshAll()}
             disabled={loading || chPulling}
-            className="inline-flex items-center gap-1 text-xs px-2 py-1 rounded-lg border border-violet-200 dark:border-violet-700 text-violet-700 dark:text-violet-300 hover:bg-violet-50 dark:hover:bg-violet-950/40 disabled:opacity-50"
+            className="inline-flex items-center gap-1 text-xs px-2 py-1 rounded-lg border border-primary-200 dark:border-primary-700 text-primary-700 dark:text-primary-300 hover:bg-primary-50 dark:hover:bg-primary-950/40 disabled:opacity-50"
             title="Refresh brief"
           >
             <ArrowPathIcon className={`h-3.5 w-3.5 ${loading ? 'animate-spin' : ''}`} />
@@ -433,7 +433,7 @@ export default function ClientContextCard({
                   onClick={() => setClientRelationship(value)}
                   className={`text-xs px-3 py-1.5 rounded-lg border transition-colors ${
                     clientRelationship === value
-                      ? 'border-violet-500 bg-violet-50 dark:bg-violet-950/40 text-violet-800 dark:text-violet-200'
+                      ? 'border-primary-500 bg-primary-50 dark:bg-primary-950/40 text-primary-800 dark:text-primary-200'
                       : 'border-slate-200 dark:border-slate-600'
                   }`}
                 >
@@ -537,10 +537,10 @@ export default function ClientContextCard({
 
       {loading && !brief ? (
         <div className="space-y-2 animate-pulse" aria-busy="true">
-          <div className="h-3 bg-violet-100 dark:bg-violet-900/40 rounded w-full" />
-          <div className="h-3 bg-violet-100 dark:bg-violet-900/40 rounded w-5/6" />
-          <div className="h-3 bg-violet-100 dark:bg-violet-900/40 rounded w-4/6" />
-          <p className="text-xs text-violet-600 dark:text-violet-400 pt-1">
+          <div className="h-3 bg-primary-100 dark:bg-primary-900/40 rounded w-full" />
+          <div className="h-3 bg-primary-100 dark:bg-primary-900/40 rounded w-5/6" />
+          <div className="h-3 bg-primary-100 dark:bg-primary-900/40 rounded w-4/6" />
+          <p className="text-xs text-primary-600 dark:text-primary-400 pt-1">
             {chPulling
               ? 'Pulling Companies House data…'
               : `${AI_COPILOT.name} is researching this client…`}
@@ -555,7 +555,7 @@ export default function ClientContextCard({
             <ul className="text-xs space-y-1 text-slate-600 dark:text-slate-300">
               {brief.highlights.map((h, i) => (
                 <li key={i} className="flex gap-2">
-                  <span className="text-violet-500 shrink-0">•</span>
+                  <span className="text-primary-500 shrink-0">•</span>
                   <span>{h}</span>
                 </li>
               ))}

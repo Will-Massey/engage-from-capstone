@@ -184,10 +184,9 @@ test.describe('Electronic Signature', () => {
       await publicPage.mouse.up();
     }
 
-    // Wait for React state update and confirm signature in the pad
-    await publicPage.waitForTimeout(300);
-    await publicPage.click('button:has-text("Confirm Signature")');
-
+    // The pad hands the signature to the page on stroke end (no internal
+    // confirm button on the public sign page) — wait for the confirm CTA.
+    await publicPage.waitForSelector('[data-testid="confirm-signature-button"]');
     await publicPage.click('[data-testid="confirm-signature-button"]');
 
     const signResponse = await signResponsePromise;

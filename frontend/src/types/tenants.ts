@@ -85,6 +85,7 @@ export interface TenantProposalSettings {
   termsSource?: ProposalTermsSource;
   customTerms?: string | null;
   benchmarksOptIn?: boolean;
+  blockSendUntilAmlCleared?: boolean;
   /** Legacy flag still read by some UI paths */
   useCustomTerms?: boolean;
 }
@@ -149,9 +150,13 @@ export interface CreateTenantRecord {
 }
 
 export interface CreateTenantResponse {
+  /** Always true now — signup requires email verification before first sign-in */
+  requiresVerification?: boolean;
+  email?: string;
+  /** Legacy authenticated-signup fields (no longer returned) */
   csrfToken?: string;
-  tenant: CreateTenantRecord;
-  user: CreateTenantUser;
+  tenant?: CreateTenantRecord;
+  user?: CreateTenantUser;
   token?: string;
 }
 
@@ -169,6 +174,17 @@ export interface OnboardingStep {
 
 export interface OnboardingStatus {
   steps: OnboardingStep[];
+}
+
+/** Clara autopilot (R5.1) — agentic drafting config, default OFF */
+export interface TenantClaraSettings {
+  agenticDraftingEnabled?: boolean;
+  draftRegulatoryFamilies?: string[];
+  draftRenewals?: boolean;
+  renewalUpliftPercent?: number;
+  useAiCoverLetter?: boolean;
+  draftOwnerUserId?: string | null;
+  maxDraftsPerRun?: number;
 }
 
 /** Full settings document returned by GET /tenants/settings */
@@ -189,11 +205,13 @@ export interface TenantSettingsRecord {
   fcaAuthorised?: boolean;
   privacyPolicyUrl?: string;
   termsVersion?: string;
+  yearsExperience?: number;
+  sectorOrRegion?: string;
   whiteLabel?: TenantWhiteLabelSettings;
-  benchmarkPricingOptIn?: boolean;
   integrations?: TenantIntegrationsSettings;
   webhookUrl?: string;
   claraOnboarding?: ClaraOnboardingProfile;
+  clara?: TenantClaraSettings;
   defaultCurrency?: string;
 }
 
@@ -215,12 +233,15 @@ export interface UpdateTenantSettingsPayload {
   fcaAuthorised?: boolean;
   privacyPolicyUrl?: string;
   termsVersion?: string;
+  /** Practice profile fields consumed by cover-letter merge context */
+  yearsExperience?: number;
+  sectorOrRegion?: string;
   whiteLabel?: TenantWhiteLabelSettings;
-  benchmarkPricingOptIn?: boolean;
   /** Stored in settings JSON; used by webhook settings UI */
   integrations?: TenantIntegrationsSettings;
   webhookUrl?: string;
   claraOnboarding?: ClaraOnboardingProfile;
+  clara?: TenantClaraSettings;
 }
 
 export interface UpdateTenantSettingsResult {

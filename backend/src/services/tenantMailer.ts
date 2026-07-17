@@ -178,7 +178,7 @@ export async function tenantMailerSend(
         proposalId: relatedIds?.proposalId,
         touchpointId: relatedIds?.touchpointId,
         messageType,
-        provider: 'SENDGRID',
+        provider: 'CLOUDFLARE',
         status: 'SUPPRESSED',
         to: toStr,
         from: getPlatformFromAddress().email,
@@ -191,7 +191,7 @@ export async function tenantMailerSend(
       success: false,
       error: 'Recipient suppressed',
       emailLogId: log.id,
-      provider: 'SENDGRID',
+      provider: 'CLOUDFLARE',
     };
   }
 
@@ -208,7 +208,7 @@ export async function tenantMailerSend(
       proposalId: relatedIds?.proposalId,
       touchpointId: relatedIds?.touchpointId,
       messageType,
-      provider: useCustom ? mapNodemailerProvider(customConfig!.provider) : 'SENDGRID',
+      provider: useCustom ? mapNodemailerProvider(customConfig!.provider) : 'CLOUDFLARE',
       status: 'QUEUED',
       to: toStr,
       from: fromAddress,
@@ -220,7 +220,7 @@ export async function tenantMailerSend(
   let result: { success: boolean; messageId?: string; error?: string; bounced?: string[] };
   let provider: EmailProvider = useCustom
     ? mapNodemailerProvider(customConfig!.provider)
-    : 'SENDGRID';
+    : 'CLOUDFLARE';
 
   if (useCustom && customConfig) {
     result = await sendWithCustom(customConfig, message, replyTo);
@@ -239,7 +239,7 @@ export async function tenantMailerSend(
           relatedIds?.proposalId
         )
       );
-      provider = 'SENDGRID';
+      provider = 'CLOUDFLARE';
     }
   } else if (isSendGridConfigured()) {
     result = await sendWithPlatform(
@@ -255,7 +255,7 @@ export async function tenantMailerSend(
         relatedIds?.proposalId
       )
     );
-    provider = 'SENDGRID';
+    provider = 'CLOUDFLARE';
   } else if (process.env.EMAIL_DEV_LOG === 'true') {
     // Explicit opt-in for local/e2e stacks with no transport: log instead of
     // sending so email-gated flows (send → sign) stay testable end-to-end.
@@ -444,7 +444,7 @@ export async function getEmailStatusForTenant(tenantId: string) {
     replyTo,
     platformFrom: platformFrom.email,
     customFrom: ctx?.email.fromEmail || null,
-    provider: customReady ? ctx?.email.provider : 'sendgrid',
+    provider: customReady ? ctx?.email.provider : 'cloudflare',
   };
 }
 

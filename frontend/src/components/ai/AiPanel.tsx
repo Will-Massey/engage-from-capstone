@@ -25,9 +25,9 @@ export function AiPanel({
 }: AiPanelProps) {
   if (!configured) {
     return (
-      <div className="rounded-xl border border-dashed border-violet-300 dark:border-violet-700 bg-violet-50/50 dark:bg-violet-950/20 p-4">
+      <div className="rounded-xl border border-dashed border-primary-300 dark:border-primary-700 bg-primary-50/50 dark:bg-primary-950/20 p-4">
         <div className="flex items-start gap-3">
-          <SparklesIcon className="h-5 w-5 text-violet-500 shrink-0 mt-0.5" />
+          <SparklesIcon className="h-5 w-5 text-primary-500 shrink-0 mt-0.5" />
           <div>
             <p className="text-sm font-medium text-slate-800 dark:text-slate-100">{title}</p>
             <p className="text-xs text-slate-600 dark:text-slate-300 mt-1">
@@ -40,10 +40,10 @@ export function AiPanel({
   }
 
   return (
-    <div className="rounded-xl border border-violet-200 dark:border-violet-800 bg-gradient-to-br from-violet-50/80 to-white dark:from-violet-950/30 dark:to-slate-900/40 p-4">
+    <div className="rounded-xl border border-primary-200 dark:border-primary-800 bg-gradient-to-br from-primary-50/80 to-white dark:from-primary-950/30 dark:to-slate-900/40 p-4">
       <div className="flex items-start justify-between gap-3 mb-3">
         <div className="flex items-start gap-2">
-          <SparklesIcon className="h-5 w-5 text-violet-600 dark:text-violet-400 shrink-0" />
+          <SparklesIcon className="h-5 w-5 text-primary-600 dark:text-primary-400 shrink-0" />
           <div>
             <h4 className="text-sm font-semibold text-slate-900 dark:text-white">{title}</h4>
             {description && (
@@ -93,17 +93,17 @@ export function AiDraftPreview({
 
   return (
     <div className="mt-3 space-y-2">
-      <p className="text-[10px] uppercase tracking-wide text-violet-600 dark:text-violet-400 font-medium flex items-center gap-1">
+      <p className="text-[10px] uppercase tracking-wide text-primary-600 dark:text-primary-400 font-medium flex items-center gap-1">
         {isStreaming ? (
           <>
             Clara drafting live{' '}
-            <span className="inline-block w-1 h-3 bg-violet-600 animate-pulse ml-0.5" />
+            <span className="inline-block w-1 h-3 bg-primary-600 animate-pulse ml-0.5" />
           </>
         ) : (
           'Draft from Clara — review before using'
         )}
       </p>
-      <div className="text-sm text-slate-700 dark:text-slate-200 whitespace-pre-wrap max-h-48 overflow-y-auto rounded-lg bg-white/80 dark:bg-slate-900/60 p-3 border border-violet-100 dark:border-violet-900">
+      <div className="text-sm text-slate-700 dark:text-slate-200 whitespace-pre-wrap max-h-48 overflow-y-auto rounded-lg bg-white/80 dark:bg-slate-900/60 p-3 border border-primary-100 dark:border-primary-900">
         {content}
         {isStreaming && (
           <span className="inline-block w-1.5 h-3.5 bg-current align-middle ml-0.5 animate-pulse">
@@ -145,7 +145,7 @@ export function AiDraftPreview({
       )}
 
       {isStreaming && (
-        <p className="text-[10px] text-violet-500 dark:text-violet-400">
+        <p className="text-[10px] text-primary-500 dark:text-primary-400">
           Live preview — you can Apply at any time or wait for Clara to finish.
         </p>
       )}

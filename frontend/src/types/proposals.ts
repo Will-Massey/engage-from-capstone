@@ -184,10 +184,8 @@ export interface CreateLoeOnlyProposalPayload {
   notes?: string;
 }
 
-export interface LoeOnlyProposalResult {
-  proposal: ProposalRecord;
-  clauseIds: string[];
-}
+/** POST /proposals/loe-only returns the created draft flattened with clause metadata. */
+export type LoeOnlyProposalResult = ProposalRecord & { clauseIds: string[] };
 
 export interface ProposalTermsPreviewResult {
   terms: string;

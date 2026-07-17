@@ -66,8 +66,8 @@ test.describe('Build smoke — API contracts', () => {
     await expectOkApi('regulatory-alerts', await apiGet(request, '/ai/regulatory-alerts'));
   });
 
-  test('benchmark pricing stub', async ({ request }) => {
-    await expectOkApi('benchmark-pricing', await apiGet(request, '/ai/benchmark-pricing'));
+  test('fee benchmarks', async ({ request }) => {
+    await expectOkApi('fee-benchmarks', await apiGet(request, '/analytics/fee-benchmarks'));
   });
 });
 

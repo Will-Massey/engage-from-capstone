@@ -134,7 +134,20 @@ export const authenticate = async (
     }
 
     // Verify token
-    const decoded = jwt.verify(token, JWT_SECRET) as JWTPayload;
+    const decoded = jwt.verify(token, JWT_SECRET, { algorithms: ['HS256'] }) as JWTPayload & {
+      purpose?: string;
+    };
+
+    // Reject non-access tokens (e.g. the short-lived '2fa_pending' token, which
+    // is signed with the same secret but must NOT grant a session). Access
+    // tokens carry no `purpose` claim and always carry a tenantId.
+    if (decoded.purpose || !decoded.tenantId) {
+      res.status(401).json({
+        success: false,
+        error: { code: 'UNAUTHORIZED', message: 'Invalid access token' },
+      });
+      return;
+    }
 
     // Check if user still exists and is active
     const user = await prisma.user.findFirst({
@@ -263,7 +276,15 @@ export const optionalAuth = async (
     }
 
     const token = authHeader.substring(7);
-    const decoded = jwt.verify(token, JWT_SECRET) as JWTPayload;
+    const decoded = jwt.verify(token, JWT_SECRET, { algorithms: ['HS256'] }) as JWTPayload & {
+      purpose?: string;
+    };
+
+    // Non-access tokens (2fa_pending etc.) must not establish identity here.
+    if (decoded.purpose || !decoded.tenantId) {
+      next();
+      return;
+    }
 
     const user = await prisma.user.findFirst({
       where: {
@@ -321,6 +342,9 @@ export const csrfProtection = async (
     '/auth/csrf-token',
     '/auth/forgot-password',
     '/auth/reset-password',
+    '/auth/verify-email',
+    '/auth/resend-verification',
+    '/auth/e2e/verification-token', // e2e-only backdoor (X-Test-Mode gated in the route)
     '/auth/2fa/login',
     '/payments/webhook',
     '/webhooks/stripe-connect', // Stripe Connect webhook (signature-verified)

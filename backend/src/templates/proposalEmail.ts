@@ -2,6 +2,7 @@
  * Email Templates for Proposal Emails
  * Professional UK accounting firm templates
  */
+import { escapeHtml } from '../utils/escapeHtml.js';
 
 export interface ProposalEmailData {
   clientName: string;
@@ -30,7 +31,7 @@ export function generateProposalEmailTemplate(data: ProposalEmailData): {
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Proposal from ${data.tenantName}</title>
+  <title>Proposal from ${escapeHtml(data.tenantName)}</title>
   <style>
     body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; margin: 0; padding: 0; background-color: #f4f4f4; }
     .container { max-width: 600px; margin: 20px auto; background: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
@@ -64,8 +65,8 @@ export function generateProposalEmailTemplate(data: ProposalEmailData): {
       
       <div class="proposal-box">
         <div class="proposal-title">${escapeHtml(data.proposalTitle)}</div>
-        <div class="proposal-ref">Reference: ${data.proposalReference}</div>
-        ${data.totalAmount ? `<div style="margin-top: 10px; font-size: 18px; color: #0ea5e9; font-weight: bold;">Total: ${data.totalAmount}</div>` : ''}
+        <div class="proposal-ref">Reference: ${escapeHtml(data.proposalReference)}</div>
+        ${data.totalAmount ? `<div style="margin-top: 10px; font-size: 18px; color: #0ea5e9; font-weight: bold;">Total: ${escapeHtml(data.totalAmount)}</div>` : ''}
         ${data.serviceCount ? `<div style="margin-top: 5px; color: #64748b;">${data.serviceCount} service${data.serviceCount > 1 ? 's' : ''} included</div>` : ''}
       </div>
 
@@ -93,7 +94,7 @@ export function generateProposalEmailTemplate(data: ProposalEmailData): {
         <p><strong>${escapeHtml(data.senderName)}</strong><br>
         ${data.senderPosition ? `${escapeHtml(data.senderPosition)}<br>` : ''}
         ${escapeHtml(data.tenantName)}<br>
-        <a href="mailto:${data.senderEmail}">${data.senderEmail}</a></p>
+        <a href="mailto:${encodeURIComponent(data.senderEmail)}">${escapeHtml(data.senderEmail)}</a></p>
       </div>
     </div>
     
@@ -155,7 +156,7 @@ export function generateProposalReminderTemplate(data: ProposalEmailData): {
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Reminder: Proposal from ${data.tenantName}</title>
+  <title>Reminder: Proposal from ${escapeHtml(data.tenantName)}</title>
   <style>
     body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; margin: 0; padding: 0; background-color: #f4f4f4; }
     .container { max-width: 600px; margin: 20px auto; background: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
@@ -180,8 +181,8 @@ export function generateProposalReminderTemplate(data: ProposalEmailData): {
       
       <div class="reminder-box">
         <strong>Proposal:</strong> ${escapeHtml(data.proposalTitle)}<br>
-        <strong>Reference:</strong> ${data.proposalReference}<br>
-        <strong>Valid Until:</strong> ${data.validUntil}
+        <strong>Reference:</strong> ${escapeHtml(data.proposalReference)}<br>
+        <strong>Valid Until:</strong> ${escapeHtml(data.validUntil)}
       </div>
       
       <p>We understand you may be reviewing your options. If you have any questions or need any clarification, please don't hesitate to reach out.</p>
@@ -242,7 +243,7 @@ export function generateProposalAcceptedTemplate(
 <html>
 <head>
   <meta charset="utf-8">
-  <title>Proposal Accepted - ${data.tenantName}</title>
+  <title>Proposal Accepted - ${escapeHtml(data.tenantName)}</title>
   <style>
     body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; margin: 0; padding: 0; background-color: #f4f4f4; }
     .container { max-width: 600px; margin: 20px auto; background: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
@@ -265,12 +266,12 @@ export function generateProposalAcceptedTemplate(
       <div class="success-box">
         <p><strong>Thank you!</strong> We have received your acceptance of our proposal.</p>
         <p style="margin-bottom: 0;"><strong>Proposal:</strong> ${escapeHtml(data.proposalTitle)}<br>
-        <strong>Reference:</strong> ${data.proposalReference}</p>
+        <strong>Reference:</strong> ${escapeHtml(data.proposalReference)}</p>
       </div>
       
       <p>We are delighted to be working with you. Our team will be in touch within the next 24-48 hours to discuss the next steps and get everything set up for you.</p>
       
-      <p>In the meantime, if you have any urgent questions, please contact us at ${data.senderEmail}.</p>
+      <p>In the meantime, if you have any urgent questions, please contact us at ${escapeHtml(data.senderEmail)}.</p>
       
       <p>Welcome aboard!</p>
       
@@ -280,7 +281,7 @@ export function generateProposalAcceptedTemplate(
     </div>
     
     <div class="footer">
-      <p>Thank you for choosing ${data.tenantName}</p>
+      <p>Thank you for choosing ${escapeHtml(data.tenantName)}</p>
     </div>
   </div>
 </body>
@@ -309,10 +310,4 @@ ${data.tenantName}
 `;
 
   return { html, text };
-}
-
-// Helper function to escape HTML special characters
-function escapeHtml(text: string): string {
-  const div = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;' };
-  return text.replace(/[&<>"']/g, (m) => div[m as keyof typeof div]);
 }

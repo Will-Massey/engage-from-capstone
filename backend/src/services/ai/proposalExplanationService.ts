@@ -6,7 +6,7 @@ import { ApiError } from '../../middleware/errorHandler.js';
 import { AI_COPILOT } from '../../config/aiCopilot.js';
 import { chatCompletion, checkAiTokenBudget, isAiConfigured } from './aiClient.js';
 import { logAiUsage } from './proposalAiService.js';
-import { coverLetterAddressee } from '../../utils/proposalDisplay.js';
+import { coverLetterAddressee, formatUserRole } from '../../utils/proposalDisplay.js';
 
 export interface ProposalExplanationInput {
   clientId: string;
@@ -93,11 +93,12 @@ Services included (you MUST reference each by name and sell its value):
 ${serviceBlocks.join('\n')}
 
 Requirements:
-- Open with "Dear ${addressee}," then write 4–5 substantial paragraphs (350–480 words), UK English.
-- Paragraph 1: personal, warm opening — acknowledge ${client.name}, their situation, and why now is the right time for this engagement.
-- Paragraphs 2–4: persuasive sales prose — for EACH service listed, explain what it is, what it delivers for their business, and the outcome they gain (compliance certainty, reclaimed time, better decisions, reduced risk, growth headroom). Make them feel the value before they see the fee table.
-- Final paragraph: confident close — how you will work together, responsiveness, and a gentle invitation to review the services and fees that follow. Sign off with "Yours sincerely," on its own line (no fabricated name after it).
-- Tone: expert adviser who genuinely wants their success — persuasive but never pushy or hypey.
+- Open with "Dear ${addressee}," then write 6–7 substantial, flowing paragraphs (550–750 words), UK English. This is the firm's flagship first impression — make it genuinely impressive and bespoke, never generic or templated.
+- Paragraph 1: personal, warm opening — acknowledge ${client.name} by name, reflect their specific situation (${companyType}${industry ? `, ${industry}` : ''}), and articulate why now is the right moment for this engagement.
+- Middle paragraphs: persuasive, benefit-led prose — for EACH service listed, give it real space: explain what it is, precisely what it delivers for THEIR business, and the tangible outcome they gain (compliance certainty, reclaimed time, sharper decisions, reduced risk, headroom to grow). Weave the services into a narrative of how you'll support them across the year, not a list. Make them feel the value long before they reach the fee table.
+- A paragraph on how you work: proactive, responsive, plain-English advice; a named point of contact; technology that keeps them ahead of deadlines (MTD, filing dates). Build trust and reassurance.
+- Final paragraph: confident, personal close — the partnership you're offering, and a warm invitation to review the services and fees that follow and to speak with any questions. Sign off with "Yours sincerely," on its own line (no fabricated name after it).
+- Tone: a senior partner who genuinely wants their success — warm, expert, persuasive; never pushy, hypey, or robotic. Vary sentence rhythm so it reads as written by a person, not a template.
 - Do NOT invent credentials, ICAEW/ACCA membership years, awards, or client counts.
 - No bullet points, headings, or markdown. Plain prose paragraphs separated by blank lines only.`;
 
@@ -110,15 +111,40 @@ Requirements:
       },
       { role: 'user', content: prompt },
     ],
-    { temperature: 0.5, maxTokens: 750 }
+    { temperature: 0.6, maxTokens: 1600 }
   );
 
   const explanation = content.trim();
+
+  // The prompt intentionally ends the letter at "Yours sincerely," with no
+  // fabricated name. Append a real signature block from the author + practice
+  // so the sign-off is always populated (never invented).
+  const signatory = userId
+    ? await prisma.user.findFirst({
+        where: { id: userId, tenantId },
+        select: { firstName: true, lastName: true, jobTitle: true, role: true },
+      })
+    : null;
+  const practiceName = tenant?.name?.trim();
+  const senderName = signatory
+    ? `${signatory.firstName ?? ''} ${signatory.lastName ?? ''}`.trim()
+    : '';
+  const position = signatory
+    ? signatory.jobTitle?.trim() || formatUserRole(signatory.role)
+    : undefined;
+  const signatureLines = [
+    senderName || undefined,
+    position && practiceName ? `${position}, ${practiceName}` : position || practiceName,
+  ].filter(Boolean);
+  const signedLetter = signatureLines.length
+    ? `${explanation}\n\n${signatureLines.join('\n\n')}`
+    : explanation;
+
   await logAiUsage(tenantId, userId, 'proposal_explanation', {
     ...usage,
     clientId: input.clientId,
     serviceCount: input.services.length,
   });
 
-  return explanation;
+  return signedLetter;
 }

@@ -2,6 +2,7 @@
  * AML partner routes (W3.3)
  * POST /api/aml/check            — initiate AML check (SmartSearch/Creditsafe / demo stub)
  * GET  /api/aml/status/:clientId — staff panel AML status
+ * GET  /api/aml/usage            — provider-backed checks this month (R2.4 metering)
  * POST /api/aml/webhook          — partner results webhook
  */
 
@@ -17,6 +18,7 @@ import {
   initiateAmlCheck,
   processAmlWebhook,
 } from '../services/amlService.js';
+import { getAmlUsage } from '../services/aml/amlUsageService.js';
 import logger from '../config/logger.js';
 
 const router = Router();
@@ -24,6 +26,13 @@ const router = Router();
 const checkSchema = z.object({
   clientId: z.string().uuid(),
   provider: z.enum(['smartsearch', 'creditsafe', 'stub']).optional(),
+});
+
+const usageQuerySchema = z.object({
+  month: z
+    .string()
+    .regex(/^\d{4}-(0[1-9]|1[0-2])$/)
+    .optional(),
 });
 
 const webhookSchema = z.object({
@@ -94,6 +103,30 @@ router.get(
       }
       logger.error('AML status lookup failed', err);
       throw new ApiError('AML_STATUS_FAILED', 'Failed to load AML status', 500);
+    }
+  })
+);
+
+/**
+ * GET /api/aml/usage?month=YYYY-MM
+ * Provider-backed AML checks this month (stub checks excluded) plus billing config.
+ */
+router.get(
+  '/usage',
+  authenticate,
+  authorize('ADMIN', 'PARTNER', 'MANAGER'),
+  asyncHandler(async (req, res) => {
+    const { month } = usageQuerySchema.parse(req.query ?? {});
+
+    try {
+      const usage = await getAmlUsage(req.tenantId!, month);
+      res.json({
+        success: true,
+        data: usage,
+      });
+    } catch (err) {
+      logger.error('AML usage lookup failed', err);
+      throw new ApiError('AML_USAGE_FAILED', 'Failed to load AML usage', 500);
     }
   })
 );

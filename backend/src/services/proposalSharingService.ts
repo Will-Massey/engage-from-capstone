@@ -437,6 +437,14 @@ export async function recordElectronicSignature(
       logger.warn('Failed to trigger touchpoint workflow on proposal acceptance', e);
     }
 
+    // Accounting sync — fire-and-forget; gated on tenant connection + auto-push setting
+    try {
+      const { triggerXeroPushOnAcceptance } = await import('./xeroProposalPush.js');
+      void triggerXeroPushOnAcceptance(data.tenantId, data.proposalId);
+    } catch (e) {
+      logger.warn('Failed to trigger Xero push on proposal acceptance', e);
+    }
+
     // Clara post-sign onboarding checklist (stored on proposal customFields + activity log)
     try {
       const { generateAndStoreOnboardingChecklist } =
@@ -796,7 +804,16 @@ export async function createClientPortalLink(
     },
   });
 
-  const base = frontendOrigin?.replace(/\/$/, '') || getFrontendUrl();
+  // The app is served under a base path (/engage). A bare browser origin
+  // (https://capstonesoftware.co.uk) omits it, and the edge worker hard-404s any
+  // path not starting with /engage — so only honour frontendOrigin when it
+  // already includes the app base path; otherwise use the canonical URL.
+  const canonical = getFrontendUrl();
+  const basePath = new URL(canonical).pathname.replace(/\/$/, '');
+  const base =
+    frontendOrigin && (basePath === '' || frontendOrigin.includes(basePath))
+      ? frontendOrigin.replace(/\/$/, '')
+      : canonical;
   const portalUrl = `${base}/portal/${token}`;
   return { token, portalUrl, expiresAt };
 }

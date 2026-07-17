@@ -108,6 +108,7 @@ import type {
   AmlCheckResult,
   AmlClientStatus,
   AmlOnboardingContext,
+  AmlUsageSummary,
   InitiateAmlCheckPayload,
   RegulatoryCheckResult,
   SubmitAmlOnboardingPayload,
@@ -120,6 +121,7 @@ import type {
 } from '../types/clientLifecycle';
 import type {
   DashboardStats,
+  FeeBenchmarksParams,
   FeeBenchmarksResult,
   ProposalFunnelParams,
   ProposalFunnelResult,
@@ -132,10 +134,14 @@ import type {
 } from '../types/firmGroup';
 import type {
   DisconnectIntegrationResult,
+  ImportQuickBooksClientsPayload,
+  ImportQuickBooksClientsResult,
   ImportXeroClientsPayload,
   ImportXeroClientsResult,
   OAuthConnectResult,
+  QuickBooksProposalPushResult,
   QuickBooksStatusResult,
+  UpdateXeroSettingsPayload,
   XeroProposalPushResult,
   XeroStatusResult,
 } from '../types/integrations';
@@ -230,7 +236,8 @@ export function isAuthPage(): boolean {
     path === '/login' ||
     path === '/register' ||
     path.startsWith('/forgot-password') ||
-    path.startsWith('/reset-password')
+    path.startsWith('/reset-password') ||
+    path.startsWith('/verify-email')
   );
 }
 
@@ -670,6 +677,11 @@ export const apiClient = {
     tenantId: string;
   }) => api.post<RegisterPayload>('/auth/register', data),
 
+  verifyEmail: (token: string) => api.post<{ verified: boolean }>('/auth/verify-email', { token }),
+
+  resendVerification: (email: string, subdomain?: string) =>
+    api.post<{ message?: string }>('/auth/resend-verification', { email, subdomain }),
+
   logout: () => api.post<{ message?: string }>('/auth/logout', {}),
 
   getMe: () => api.get<AuthMePayload>('/auth/me'),
@@ -785,6 +797,9 @@ export const apiClient = {
 
   getAmlStatus: (clientId: string) =>
     api.get(`/aml/status/${clientId}`) as Promise<ApiResponse<AmlClientStatus>>,
+
+  getAmlUsage: (month?: string) =>
+    api.get(`/aml/usage${month ? `?month=${month}` : ''}`) as Promise<ApiResponse<AmlUsageSummary>>,
 
   getRegulatoryCheck: (clientId: string) =>
     api.get(`/regulatory/check/${clientId}`) as Promise<ApiResponse<RegulatoryCheckResult>>,
@@ -989,12 +1004,15 @@ export const apiClient = {
     >;
   },
 
-  pushAcceptedProposalToXero: (proposalId: string) =>
-    api.post(`/xero/push-accepted/${proposalId}`, {}) as Promise<
+  pushAcceptedProposalToXero: (proposalId: string, force = false) =>
+    api.post(`/xero/push-accepted/${proposalId}${force ? '?force=true' : ''}`, {}) as Promise<
       ApiResponse<XeroProposalPushResult>
     >,
 
-  // QuickBooks integration (W4.7 scaffold)
+  updateXeroSettings: (payload: UpdateXeroSettingsPayload) =>
+    api.post('/xero/settings', payload) as Promise<ApiResponse<XeroStatusResult>>,
+
+  // QuickBooks integration (R4.1)
   getQuickBooksStatus: () =>
     api.get('/quickbooks/status') as Promise<ApiResponse<QuickBooksStatusResult>>,
 
@@ -1004,9 +1022,21 @@ export const apiClient = {
   disconnectQuickBooks: () =>
     api.post('/quickbooks/disconnect', {}) as Promise<DisconnectIntegrationResult>,
 
-  // W4.1 fee benchmarks
-  getFeeBenchmarks: () =>
-    api.get('/analytics/fee-benchmarks') as Promise<ApiResponse<FeeBenchmarksResult>>,
+  importQuickBooksClients: (dryRun = false) => {
+    const payload: ImportQuickBooksClientsPayload = { dryRun };
+    return api.post('/quickbooks/import-clients', payload) as Promise<
+      ApiResponse<ImportQuickBooksClientsResult>
+    >;
+  },
+
+  pushProposalToQuickBooks: (proposalId: string, force = false) =>
+    api.post(`/quickbooks/push-proposal/${proposalId}${force ? '?force=true' : ''}`, {}) as Promise<
+      ApiResponse<QuickBooksProposalPushResult>
+    >,
+
+  // W4.1 fee benchmarks (R3: optional turnover band + your-fee comparison)
+  getFeeBenchmarks: (params?: FeeBenchmarksParams) =>
+    api.get('/analytics/fee-benchmarks', { params }) as Promise<ApiResponse<FeeBenchmarksResult>>,
 
   getProposalFunnel: (params?: ProposalFunnelParams) =>
     api.get('/analytics/proposal-funnel', { params }) as Promise<ApiResponse<ProposalFunnelResult>>,
@@ -1385,6 +1415,11 @@ export const apiClient = {
 
   aiAttentionQueue: () =>
     api.get('/ai/attention-queue') as Promise<ApiResponse<AiAttentionQueueResult>>,
+
+  dismissRegulatorySignal: (signalId: string, reason?: string) =>
+    api.post(`/regulatory/signals/${signalId}/dismiss`, reason ? { reason } : {}) as Promise<
+      ApiResponse<{ id: string; status: string; dismissedAt: string }>
+    >,
 
   // Streaming (SSE) for live drafts — uses native fetch + token from auth store
   aiStreamCoverLetter: async (

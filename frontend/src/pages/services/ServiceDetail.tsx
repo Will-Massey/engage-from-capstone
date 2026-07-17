@@ -45,11 +45,11 @@ interface Service {
 
 const categoryColors: Record<string, string> = {
   COMPLIANCE: 'bg-blue-100 text-blue-800',
-  ADVISORY: 'bg-purple-100 text-purple-800',
+  ADVISORY: 'bg-primary-100 text-primary-800',
   TAX: 'bg-green-100 text-green-800',
   BOOKKEEPING: 'bg-yellow-100 text-yellow-800',
   CONSULTING: 'bg-pink-100 text-pink-800',
-  TECHNICAL: 'bg-indigo-100 text-indigo-800',
+  TECHNICAL: 'bg-primary-100 text-primary-800',
   SPECIALIZED: 'bg-orange-100 text-orange-800',
   PAYROLL: 'bg-cyan-100 text-cyan-800',
 };
@@ -151,16 +151,7 @@ const ServiceDetail = () => {
 
   return (
     <div className="animate-fade-in space-y-6">
-      {/* Back button */}
-      <Link
-        to="/services"
-        className="inline-flex items-center text-sm text-slate-600 hover:text-slate-800"
-      >
-        <ArrowLeftIcon className="h-4 w-4 mr-1" />
-        Back to services
-      </Link>
-
-      {/* Header */}
+      {/* Header — back link + breadcrumbs come from the global page header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <div className="flex items-center space-x-3">

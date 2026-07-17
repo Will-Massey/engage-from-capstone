@@ -66,9 +66,9 @@ const Clients = () => {
       case 'SOLE_TRADER':
         return <UserIcon className="h-5 w-5 text-green-500" />;
       case 'PARTNERSHIP':
-        return <UsersIcon className="h-5 w-5 text-purple-500" />;
+        return <UsersIcon className="h-5 w-5 text-primary-500" />;
       case 'LLP':
-        return <BuildingOfficeIcon className="h-5 w-5 text-indigo-500" />;
+        return <BuildingOfficeIcon className="h-5 w-5 text-primary-500" />;
       case 'CHARITY':
       case 'NON_PROFIT':
         return <HomeIcon className="h-5 w-5 text-pink-500" />;
@@ -90,9 +90,9 @@ const Clients = () => {
           : /ENGAGEMENT/.test(stage)
             ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300'
             : /ONBOARD|KICKOFF/.test(stage)
-              ? 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300'
+              ? 'bg-primary-100 text-primary-700 dark:bg-primary-900/30 dark:text-primary-300'
               : /MILESTONE|REVIEW/.test(stage)
-                ? 'bg-indigo-100 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-300'
+                ? 'bg-primary-100 text-primary-700 dark:bg-primary-900/30 dark:text-primary-300'
                 : 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300';
 
     return (
@@ -118,7 +118,7 @@ const Clients = () => {
       </div>
 
       {/* MTD ITSA Alert */}
-      <div className="bg-gradient-to-r from-blue-500 to-indigo-500 rounded-lg p-4 text-white">
+      <div className="bg-primary-600 rounded-lg p-4 text-white">
         <div className="flex items-start">
           <ClockIcon className="h-6 w-6 mt-0.5 flex-shrink-0" />
           <div className="ml-3">
@@ -210,7 +210,7 @@ const Clients = () => {
             <Link
               key={client.id}
               to={`/clients/${client.id}`}
-              className="glass-tile p-5 hover:border-white/20 transition-all"
+              className="glass-tile p-5 transition-colors hover:border-slate-300 dark:hover:border-slate-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500/40"
             >
               <div className="flex items-start justify-between">
                 <div className="flex items-center">
@@ -246,7 +246,7 @@ const Clients = () => {
               <div className="mt-4 pt-4 border-t border-slate-100 flex items-center justify-between text-sm">
                 <span className="text-slate-500">{client._count?.proposals || 0} proposals</span>
                 {client.turnover && (
-                  <span className="text-slate-900 dark:text-white font-semibold">
+                  <span className="text-slate-900 dark:text-white font-semibold tabular-nums">
                     £{(client.turnover / 1000).toFixed(0)}k turnover
                   </span>
                 )}

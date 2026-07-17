@@ -5,6 +5,7 @@ import { proposalMoneyForApi } from '../../utils/proposalServiceSnapshot.js';
 import { authenticate, authorize } from '../../middleware/auth.js';
 import { asyncHandler, ApiError } from '../../middleware/errorHandler.js';
 import { APPROVER_ROLES, SUBMITTER_ROLES, proposalApprovalInclude } from './shared.js';
+import { archiveSupersededOriginal } from '../../services/renewalProposalService.js';
 
 const router = Router();
 
@@ -137,6 +138,25 @@ router.post(
         metadata: JSON.stringify({ approvalNotes: body.approvalNotes ?? null }),
       },
     });
+
+    // Deferred archive for agentically drafted renewals (Clara passes
+    // archiveOriginal: false at draft time so the accepted original stays live
+    // until a human approves). Only fires while the original is still
+    // ACCEPTED — manually created renewals archive their original at draft
+    // time, so this is a no-op for them, and repeat runs are impossible
+    // because approval requires approvalStatus PENDING.
+    if (updated.isRenewal && updated.originalProposalId) {
+      const original = await prisma.proposal.findFirst({
+        where: { id: updated.originalProposalId, tenantId: req.tenantId, status: 'ACCEPTED' },
+        select: { id: true, reference: true, shareToken: true, publicAccessEnabled: true },
+      });
+      if (original) {
+        await archiveSupersededOriginal(req.tenantId!, req.user!.id, original, {
+          id: updated.id,
+          reference: updated.reference,
+        });
+      }
+    }
 
     res.json({
       success: true,

@@ -14,7 +14,7 @@ import {
 } from '../middleware/auth.js';
 import { registerCsrfToken } from '../utils/csrfStore.js';
 import { asyncHandler, ApiError } from '../middleware/errorHandler.js';
-import { allowPublicRegister } from '../utils/securityFlags.js';
+import { allowPublicRegister, isE2eTestRequest } from '../utils/securityFlags.js';
 import logger from '../config/logger.js';
 import {
   isLoginLocked,
@@ -24,10 +24,12 @@ import {
 } from '../utils/loginLockout.js';
 import { twoFactorService } from '../services/twoFactorService.js';
 import { passwordResetService } from '../services/passwordResetService.js';
+import { emailVerificationService } from '../services/emailVerificationService.js';
 import { enforceTierLimit } from '../middleware/tierLimits.js';
 import { gdprService } from '../services/gdprService.js';
 import { createEmailService } from '../services/emailService.js';
 import { setAuthCookies, clearAuthCookies, issueCsrfToken } from '../utils/authCookies.js';
+import { canAssignRole, canManageUser } from '../constants/roles.js';
 
 const router = Router();
 const JWT_SECRET = process.env.JWT_SECRET!;
@@ -160,7 +162,7 @@ router.post(
     }
 
     // Find user
-    const user = await prisma.user.findFirst({
+    let user = await prisma.user.findFirst({
       where: {
         email: email.toLowerCase(),
         tenantId: resolvedTenantId,
@@ -170,6 +172,22 @@ router.post(
         tenant: true,
       },
     });
+
+    // The ambient tenant (host subdomain / DEFAULT_TENANT_SUBDOMAIN fallback)
+    // may not be the user's practice — e.g. a freshly signed-up tenant logging
+    // in from the apex domain. When the caller didn't pin a tenant explicitly,
+    // fall back to the same email-only lookup used when no tenant resolves.
+    if (!user && !tenantId) {
+      user = await prisma.user.findFirst({
+        where: {
+          email: email.toLowerCase(),
+          isActive: true,
+        },
+        include: {
+          tenant: true,
+        },
+      });
+    }
 
     if (!user) {
       logger.warn(`Login failed: User not found - ${email} in tenant ${resolvedTenantId}`);
@@ -193,6 +211,21 @@ router.post(
     }
 
     await clearLoginAttempts(email, resolvedTenantId);
+
+    // Email verification gate — unverified users never receive a session.
+    // Mirrors the requires2FA shape so the FE treats it as an extra login step.
+    if (user.emailVerified === null) {
+      logger.info(`Login blocked pending email verification: ${email} (${user.id})`);
+
+      res.json({
+        success: true,
+        data: {
+          requiresVerification: true,
+          email: user.email,
+        },
+      });
+      return;
+    }
 
     if (user.twoFactorEnabled && user.twoFactorSecret) {
       const pendingToken = jwt.sign({ userId: user.id, purpose: '2fa_pending' }, JWT_SECRET, {
@@ -254,7 +287,8 @@ router.post(
     // Hash password
     const passwordHash = await bcrypt.hash(password, 12);
 
-    // Create user
+    // Create user — public registrations start unverified (emailVerified null)
+    // and must verify before a session is ever issued.
     const user = await prisma.user.create({
       data: {
         email: email.toLowerCase(),
@@ -270,38 +304,21 @@ router.post(
       },
     });
 
-    // Generate tokens
-    const accessToken = generateToken({
-      id: user.id,
-      email: user.email,
-      firstName: user.firstName,
-      lastName: user.lastName,
-      role: user.role,
-      tenantId: user.tenantId,
-    });
-
-    const refreshToken = await generateRefreshToken(user.id);
-
-    const { csrfToken } = setAuthCookies(res, accessToken, refreshToken);
+    await emailVerificationService.sendVerificationEmail(
+      {
+        id: user.id,
+        email: user.email,
+        firstName: user.firstName,
+        tenantId: user.tenantId,
+      },
+      user.tenant?.name
+    );
 
     res.status(201).json({
       success: true,
       data: {
-        csrfToken,
-        user: {
-          id: user.id,
-          email: user.email,
-          firstName: user.firstName,
-          lastName: user.lastName,
-          phone: user.phone,
-          jobTitle: user.jobTitle,
-          role: user.role,
-          tenant: {
-            id: user.tenant.id,
-            name: user.tenant.name,
-            subdomain: user.tenant.subdomain,
-          },
-        },
+        requiresVerification: true,
+        email: user.email,
       },
     });
   })
@@ -641,6 +658,16 @@ router.post(
 
     const data = createUserSchema.parse(req.body);
 
+    // Can't create a user more privileged than yourself (e.g. a MANAGER minting
+    // an MD, which is full-access).
+    if (!canAssignRole(req.user!.role, data.role)) {
+      throw new ApiError(
+        'FORBIDDEN',
+        'You cannot create a user with higher privileges than your own',
+        403
+      );
+    }
+
     // Check if email already exists
     const existingUser = await prisma.user.findFirst({
       where: {
@@ -667,6 +694,8 @@ router.post(
         passwordHash,
         tenantId: req.tenantId!,
         isActive: true,
+        // Admin-created staff are vouched for — no verification email round-trip
+        emailVerified: new Date(),
       },
     });
 
@@ -720,6 +749,29 @@ router.put(
 
     if (!existingUser) {
       throw new ApiError('USER_NOT_FOUND', 'User not found', 404);
+    }
+
+    // Privilege-escalation guards (must run before any write):
+    const actorRole = req.user!.role;
+    // 1. Can't manage a user ranked at/above yourself (e.g. a MANAGER editing an ADMIN).
+    if (!canManageUser(actorRole, existingUser.role)) {
+      throw new ApiError(
+        'FORBIDDEN',
+        'You cannot modify a user with equal or higher privileges',
+        403
+      );
+    }
+    // 2. Can't change your own role (no self-promotion).
+    if (data.role && id === req.user!.id && data.role !== existingUser.role) {
+      throw new ApiError('FORBIDDEN', 'You cannot change your own role', 403);
+    }
+    // 3. Can't grant a role above your own, and only full-access roles can grant full access.
+    if (data.role && !canAssignRole(actorRole, data.role)) {
+      throw new ApiError(
+        'FORBIDDEN',
+        'You cannot assign a role with higher privileges than your own',
+        403
+      );
     }
 
     // Check email uniqueness if changing
@@ -792,6 +844,16 @@ router.delete(
 
     if (!existingUser) {
       throw new ApiError('USER_NOT_FOUND', 'User not found', 404);
+    }
+
+    // Can't deactivate a user with equal/higher privileges (e.g. a MANAGER
+    // disabling the tenant ADMIN).
+    if (!canManageUser(req.user!.role, existingUser.role)) {
+      throw new ApiError(
+        'FORBIDDEN',
+        'You cannot deactivate a user with equal or higher privileges',
+        403
+      );
     }
 
     await prisma.user.update({
@@ -941,6 +1003,140 @@ router.post(
     res.json({
       success: true,
       data: { message: 'Password reset successfully. You can now sign in.' },
+    });
+  })
+);
+
+// ============================================================================
+// EMAIL VERIFICATION
+// ============================================================================
+
+const verifyEmailSchema = z.object({
+  token: z.string().min(1, 'Verification token is required'),
+});
+
+const resendVerificationSchema = z.object({
+  email: z.string().email('Please enter a valid email address'),
+  subdomain: z.string().optional(),
+});
+
+/**
+ * POST /api/auth/verify-email
+ * Verify a user's email address with a token from the verification email
+ */
+router.post(
+  '/verify-email',
+  asyncHandler(async (req, res) => {
+    const { token } = verifyEmailSchema.parse(req.body);
+
+    const tokenHash = emailVerificationService.hashToken(token);
+    const verificationRecord = await prisma.emailVerification.findFirst({
+      where: {
+        tokenHash,
+        expiresAt: { gt: new Date() },
+        usedAt: null,
+      },
+    });
+
+    if (!verificationRecord) {
+      throw new ApiError('INVALID_TOKEN', 'This verification link is invalid or has expired.', 400);
+    }
+
+    await prisma.$transaction([
+      prisma.user.update({
+        where: { id: verificationRecord.userId },
+        data: { emailVerified: new Date() },
+      }),
+      prisma.emailVerification.update({
+        where: { id: verificationRecord.id },
+        data: { usedAt: new Date() },
+      }),
+    ]);
+
+    res.json({
+      success: true,
+      data: { verified: true },
+    });
+  })
+);
+
+/**
+ * POST /api/auth/resend-verification
+ * Re-send the verification email (neutral response — anti-enumeration)
+ */
+router.post(
+  '/resend-verification',
+  asyncHandler(async (req, res) => {
+    const { email, subdomain } = resendVerificationSchema.parse(req.body);
+
+    const user = await prisma.user.findFirst({
+      where: {
+        email: email.toLowerCase(),
+        isActive: true,
+        ...(subdomain ? { tenant: { subdomain } } : {}),
+      },
+      include: { tenant: true },
+    });
+
+    if (user && user.emailVerified === null) {
+      await emailVerificationService.sendVerificationEmail(
+        {
+          id: user.id,
+          email: user.email,
+          firstName: user.firstName,
+          tenantId: user.tenantId,
+        },
+        user.tenant?.name
+      );
+    }
+
+    res.json({
+      success: true,
+      data: {
+        message: 'If an account exists for that email, verification instructions have been sent.',
+      },
+    });
+  })
+);
+
+/**
+ * POST /api/auth/e2e/verification-token
+ * E2e-only — issue a fresh verification token for an email so Playwright can
+ * complete the verify flow without a mailbox. Gated exactly like the Xero
+ * mock-connect route: X-Test-Mode header, and in production additionally
+ * requires X-Test-Mode-Secret to match E2E_BYPASS_SECRET (unset = no bypass).
+ */
+router.post(
+  '/e2e/verification-token',
+  asyncHandler(async (req, res) => {
+    if (!isE2eTestRequest(req.headers)) {
+      throw new ApiError(
+        'FORBIDDEN',
+        'Verification token backdoor is only available when X-Test-Mode is set',
+        403
+      );
+    }
+
+    const { email } = z.object({ email: z.string().email() }).parse(req.body);
+
+    const user = await prisma.user.findFirst({
+      where: { email: email.toLowerCase(), isActive: true },
+    });
+
+    if (!user) {
+      throw new ApiError('USER_NOT_FOUND', 'User not found', 404);
+    }
+
+    const { token, tokenHash, expiresAt } = emailVerificationService.generateToken();
+
+    await prisma.emailVerification.deleteMany({ where: { userId: user.id } });
+    await prisma.emailVerification.create({
+      data: { userId: user.id, tokenHash, expiresAt },
+    });
+
+    res.json({
+      success: true,
+      data: { token },
     });
   })
 );

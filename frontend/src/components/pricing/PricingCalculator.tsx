@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   CalculatorIcon,
@@ -16,6 +16,17 @@ import {
 } from '../../utils/pricingSuggestionStorage';
 import toast from 'react-hot-toast';
 import FeeBenchmarkWidget from '../analytics/FeeBenchmarkWidget';
+import type { ServiceCategory, TurnoverBand } from '../../types/analytics';
+
+/** Map calculator turnover options onto the benchmark bands (by band midpoint). */
+const BENCHMARK_TURNOVER_BANDS: Record<string, TurnoverBand> = {
+  UNDER_50K: 'MICRO',
+  BAND_50K_100K: 'SMALL',
+  BAND_100K_250K: 'SMALL',
+  BAND_250K_500K: 'MEDIUM',
+  BAND_500K_1M: 'MEDIUM',
+  OVER_1M: 'LARGE',
+};
 
 const TURNOVER_OPTIONS = [
   { value: 'UNDER_50K', label: 'Under £50,000' },
@@ -164,9 +175,21 @@ export default function PricingCalculator({ compact = false }: PricingCalculator
 
   const showMtdOptions = inputs.entityType === 'SOLE_TRADER';
 
+  // R3.2: benchmark the dominant suggested category fee against the market
+  const benchmarkYourFee = useMemo(() => {
+    if (!result || result.byCategory.length === 0) return undefined;
+    const top = [...result.byCategory].sort((a, b) => b.monthlySuggested - a.monthlySuggested)[0];
+    if (!(top.monthlySuggested > 0)) return undefined;
+    return { fee: top.monthlySuggested, category: top.category as ServiceCategory };
+  }, [result]);
+  const benchmarkTurnoverBand =
+    benchmarkYourFee && result
+      ? (BENCHMARK_TURNOVER_BANDS[result.inputs.turnoverBand] ?? 'UNKNOWN')
+      : undefined;
+
   return (
     <div className={compact ? 'space-y-4' : 'space-y-6'}>
-      <FeeBenchmarkWidget compact />
+      <FeeBenchmarkWidget compact yourFee={benchmarkYourFee} turnoverBand={benchmarkTurnoverBand} />
       {!compact && (
         <div className="flex items-start gap-3">
           <div className="p-2 rounded-lg bg-primary-100 dark:bg-primary-900/30">
@@ -410,8 +433,8 @@ export default function PricingCalculator({ compact = false }: PricingCalculator
               </div>
 
               {explanation && (
-                <div className="p-3 rounded-lg bg-purple-50 dark:bg-purple-900/20 border border-purple-100 dark:border-purple-800/40 text-sm text-slate-700 dark:text-slate-300">
-                  <div className="flex items-center gap-1 text-xs font-medium text-purple-700 dark:text-purple-300 mb-1">
+                <div className="p-3 rounded-lg bg-primary-50 dark:bg-primary-900/20 border border-primary-100 dark:border-primary-800/40 text-sm text-slate-700 dark:text-slate-300">
+                  <div className="flex items-center gap-1 text-xs font-medium text-primary-700 dark:text-primary-300 mb-1">
                     <SparklesIcon className="h-3.5 w-3.5" />
                     Clara
                   </div>

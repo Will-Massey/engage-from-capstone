@@ -1,6 +1,7 @@
 # Render Blueprint for Engage by Capstone
 # Deploy: https://dashboard.render.com/select-repo?type=blueprint
-# Starter tier — no cold sleep, persistent disk for uploads/signatures
+# Starter tier — no cold sleep. Uploads (signatures/AML docs) persist in
+# Cloudflare R2 (UPLOADS_BACKEND=r2); the local UPLOADS_DIR is a dev fallback only.
 
 services:
   # Backend API Service
@@ -40,6 +41,10 @@ services:
         value: /engage
       - key: DEFAULT_TENANT_SUBDOMAIN
         value: demo
+      # Self-serve public signup gate — flip to 'true' in the dashboard when
+      # ready to open POST /api/tenants (see docs/SELF_SERVE_SIGNUP.md).
+      - key: ALLOW_PUBLIC_TENANT_SIGNUP
+        sync: false
       - key: API_URL
         value: https://capstonesoftware.co.uk/engage
       - key: EMAIL_WORKER_URL
@@ -80,6 +85,18 @@ services:
         value: uploads
       - key: UPLOADS_DIR
         value: uploads
+      # Cloudflare R2 object storage for durable upload persistence (signatures, AML docs).
+      # Set UPLOADS_BACKEND=r2 and fill the R2_* secrets in the Render dashboard to activate.
+      - key: UPLOADS_BACKEND
+        sync: false
+      - key: R2_ACCOUNT_ID
+        sync: false
+      - key: R2_ACCESS_KEY_ID
+        sync: false
+      - key: R2_SECRET_ACCESS_KEY
+        sync: false
+      - key: R2_BUCKET
+        sync: false
       - key: COMPANIES_HOUSE_API_KEY
         sync: false
       - key: XAI_API_KEY
@@ -114,6 +131,15 @@ services:
         sync: false
       - key: XERO_REDIRECT_URI
         value: https://capstonesoftware.co.uk/engage/api/oauth/callback/xero
+      - key: QUICKBOOKS_CLIENT_ID
+        sync: false
+      - key: QUICKBOOKS_CLIENT_SECRET
+        sync: false
+      - key: QUICKBOOKS_REDIRECT_URI
+        value: https://capstonesoftware.co.uk/engage/api/oauth/callback/quickbooks
+      # 'false' = production API (quickbooks.api.intuit.com); anything else = sandbox
+      - key: QUICKBOOKS_SANDBOX
+        value: 'false'
     autoDeploy: false # deploys are triggered by CI (ci-cd.yml) after green lint+test+e2e
 
   # Frontend Static Site

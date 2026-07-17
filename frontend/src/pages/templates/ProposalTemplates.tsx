@@ -179,17 +179,7 @@ export default function ProposalTemplates() {
 
   return (
     <div className="space-y-6 animate-fade-in">
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-bold text-slate-900 dark:text-white flex items-center gap-2">
-            <RectangleStackIcon className="h-7 w-7 text-emerald-600" />
-            Proposal templates
-          </h1>
-          <p className="text-sm text-slate-600 dark:text-slate-400 mt-1 max-w-xl">
-            The Engage library gives you ready-made ICAEW and ACCA service bundles. Add your own
-            templates alongside them — nothing is replaced when you create something custom.
-          </p>
-        </div>
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-end gap-4 -mt-2">
         <button
           type="button"
           onClick={openCreate}
@@ -228,7 +218,7 @@ export default function ProposalTemplates() {
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Search templates…"
-            className="w-full pl-10 pr-4 py-2 rounded-lg border border-slate-200 dark:border-slate-700 dark:bg-slate-800"
+            className="input-field w-full pl-10"
           />
         </div>
         <div className="flex rounded-lg border border-slate-200 dark:border-slate-700 overflow-hidden text-sm shrink-0">
@@ -310,7 +300,7 @@ export default function ProposalTemplates() {
                     {template.name}
                   </h3>
                   {template.isLibraryTemplate ? (
-                    <span className="text-[10px] px-2 py-0.5 rounded-full font-medium bg-indigo-100 text-indigo-800 dark:bg-indigo-900/40 dark:text-indigo-200 shrink-0">
+                    <span className="text-[10px] px-2 py-0.5 rounded-full font-medium bg-primary-100 text-primary-800 dark:bg-primary-900/40 dark:text-primary-200 shrink-0">
                       Engage library
                     </span>
                   ) : (

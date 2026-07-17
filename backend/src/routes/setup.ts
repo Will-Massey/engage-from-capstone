@@ -108,6 +108,7 @@ router.get(
         role: 'ADMIN',
         tenantId: tenant.id,
         isActive: true,
+        emailVerified: new Date(),
       },
     });
 

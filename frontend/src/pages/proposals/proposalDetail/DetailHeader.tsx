@@ -4,9 +4,9 @@
  * ProposalDetail monolith; all state and handlers come from useProposalDetail().
  */
 
+import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import {
-  ArrowLeftIcon,
   PencilIcon,
   EnvelopeIcon,
   CheckIcon,
@@ -18,16 +18,18 @@ import {
   NoSymbolIcon,
   TrashIcon,
   ArchiveBoxIcon,
+  EllipsisHorizontalIcon,
 } from '@heroicons/react/24/outline';
 import toast from 'react-hot-toast';
 import { format, formatDistanceToNow } from 'date-fns';
 import { DECLINE_REASON_LABELS, type DeclineReason } from '../../../constants/declineReasons';
+import { apiClient } from '../../../utils/api';
+import { amlStatusColour, amlStatusLabel } from '../../../utils/amlBadge';
 import { useProposalDetail } from './ProposalDetailContext';
 
 export default function DetailHeader() {
   const {
     id,
-    tenant,
     proposal,
     status,
     StatusIcon,
@@ -59,6 +61,44 @@ export default function DetailHeader() {
     setShowDeleteModal,
     deleteLoading,
   } = useProposalDetail();
+
+  // R2.3 — AML badge shown only when the tenant blocks sending until AML clear.
+  const [amlGateEnabled, setAmlGateEnabled] = useState(false);
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = (await apiClient.getTenantSettings()) as any;
+        if (!cancelled && res?.success) {
+          setAmlGateEnabled(res.data?.proposals?.blockSendUntilAmlCleared === true);
+        }
+      } catch {
+        // Badge is informational — ignore load failures
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const clientAmlStatus: string | undefined = proposal.client?.amlStatus;
+
+  // Destructive actions (rescind / mark lost / delete) are grouped behind an
+  // overflow menu so they don't compete with the primary Send / Submit flow.
+  const [showMoreMenu, setShowMoreMenu] = useState(false);
+  const moreMenuRef = useRef<HTMLDivElement>(null);
+  const hasDangerActions =
+    canManageProposal && (canWithdrawProposal || canMarkAsLost || canDeleteProposal);
+  useEffect(() => {
+    if (!showMoreMenu) return;
+    const onDocClick = (e: MouseEvent) => {
+      if (moreMenuRef.current && !moreMenuRef.current.contains(e.target as Node)) {
+        setShowMoreMenu(false);
+      }
+    };
+    document.addEventListener('mousedown', onDocClick);
+    return () => document.removeEventListener('mousedown', onDocClick);
+  }, [showMoreMenu]);
 
   return (
     <>
@@ -122,16 +162,7 @@ export default function DetailHeader() {
         </div>
       )}
 
-      {/* Back button */}
-      <Link
-        to="/proposals"
-        className="inline-flex items-center text-sm text-slate-600 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 transition-colors"
-      >
-        <ArrowLeftIcon className="h-4 w-4 mr-1" />
-        Back to proposals
-      </Link>
-
-      {/* Header */}
+      {/* Header — back link + breadcrumbs come from the global page header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <div className="flex items-center space-x-3">
@@ -150,6 +181,16 @@ export default function DetailHeader() {
               >
                 <ShieldCheckIcon className="h-3 w-3 mr-1" />
                 {approvalStatusUi.label}
+              </span>
+            )}
+            {amlGateEnabled && clientAmlStatus && (
+              <span
+                className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${amlStatusColour(clientAmlStatus)}`}
+                title="Client AML status — sending requires AML clearance"
+                data-testid="proposal-aml-badge"
+              >
+                <ShieldCheckIcon className="h-3 w-3 mr-1" />
+                AML: {amlStatusLabel(clientAmlStatus)}
               </span>
             )}
           </div>
@@ -180,7 +221,8 @@ export default function DetailHeader() {
           )}
         </div>
 
-        <div className="flex flex-wrap gap-2">
+        <div className="flex flex-wrap items-center gap-2">
+          {/* Utility actions — quiet, secondary weight */}
           <button onClick={downloadPDF} className="btn-secondary" title="Download PDF">
             <ArrowDownTrayIcon className="h-4 w-4 mr-2" />
             PDF
@@ -212,12 +254,26 @@ export default function DetailHeader() {
             </button>
           )}
 
+          {/* Reject sits beside Approve as its quiet counterpart */}
+          {proposal.status === 'DRAFT' && approvalStatus === 'PENDING' && isApprover && (
+            <button
+              type="button"
+              onClick={() => setShowRejectModal(true)}
+              disabled={approvalActionLoading}
+              className="btn-secondary text-red-700 border-red-200 hover:bg-red-50 dark:text-red-300 dark:border-red-800 dark:hover:bg-red-950/30"
+            >
+              <XMarkIcon className="h-4 w-4 mr-2" />
+              Reject
+            </button>
+          )}
+
+          {/* Primary action — the ink button leads the flow */}
           {canSubmitForApproval && (
             <button
               type="button"
               onClick={handleSubmitForApproval}
               disabled={approvalActionLoading}
-              className="btn-secondary"
+              className="btn-primary"
             >
               <ShieldCheckIcon className="h-4 w-4 mr-2" />
               Submit for partner approval
@@ -225,72 +281,21 @@ export default function DetailHeader() {
           )}
 
           {proposal.status === 'DRAFT' && approvalStatus === 'PENDING' && isApprover && (
-            <>
-              <button
-                type="button"
-                onClick={handleApproveProposal}
-                disabled={approvalActionLoading}
-                className="btn-primary bg-emerald-600 hover:bg-emerald-700"
-              >
-                <CheckIcon className="h-4 w-4 mr-2" />
-                Approve
-              </button>
-              <button
-                type="button"
-                onClick={() => setShowRejectModal(true)}
-                disabled={approvalActionLoading}
-                className="btn-secondary text-red-700 border-red-200 hover:bg-red-50"
-              >
-                <XMarkIcon className="h-4 w-4 mr-2" />
-                Reject
-              </button>
-            </>
+            <button
+              type="button"
+              onClick={handleApproveProposal}
+              disabled={approvalActionLoading}
+              className="btn-primary bg-emerald-600 hover:bg-emerald-700"
+            >
+              <CheckIcon className="h-4 w-4 mr-2" />
+              Approve
+            </button>
           )}
 
           {canSendDraft && (
-            <button
-              onClick={openSendFlow}
-              className="btn-primary"
-              style={{ backgroundColor: tenant?.primaryColor || '#0ea5e9' }}
-            >
+            <button onClick={openSendFlow} className="btn-primary">
               <EnvelopeIcon className="h-4 w-4 mr-2" />
               Send
-            </button>
-          )}
-
-          {canWithdrawProposal && canManageProposal && (
-            <button
-              type="button"
-              onClick={() => setShowWithdrawModal(true)}
-              disabled={withdrawLoading}
-              className="btn-secondary text-amber-800 border-amber-200 hover:bg-amber-50 dark:text-amber-200 dark:border-amber-800 dark:hover:bg-amber-950/30"
-            >
-              <NoSymbolIcon className="h-4 w-4 mr-2" />
-              Rescind proposal
-            </button>
-          )}
-
-          {canMarkAsLost && canManageProposal && (
-            <button
-              type="button"
-              onClick={() => setShowMarkLostModal(true)}
-              disabled={markLostLoading}
-              className="btn-secondary text-red-700 border-red-200 hover:bg-red-50 dark:text-red-300 dark:border-red-800 dark:hover:bg-red-950/30"
-            >
-              <XMarkIcon className="h-4 w-4 mr-2" />
-              Mark as lost
-            </button>
-          )}
-
-          {canDeleteProposal && canManageProposal && (
-            <button
-              type="button"
-              onClick={() => setShowDeleteModal(true)}
-              disabled={deleteLoading}
-              className="btn-secondary text-red-700 border-red-200 hover:bg-red-50 dark:text-red-300 dark:border-red-800 dark:hover:bg-red-950/30"
-            >
-              <TrashIcon className="h-4 w-4 mr-2" />
-              Delete
             </button>
           )}
 
@@ -311,6 +316,78 @@ export default function DetailHeader() {
               <CheckIcon className="h-4 w-4 mr-2" />
               Accept with signature
             </button>
+          )}
+
+          {/* Destructive actions — grouped behind an overflow menu, quiet danger */}
+          {hasDangerActions && (
+            <div className="relative" ref={moreMenuRef}>
+              <button
+                type="button"
+                onClick={() => setShowMoreMenu((v) => !v)}
+                className="btn-secondary px-2"
+                aria-haspopup="menu"
+                aria-expanded={showMoreMenu}
+                aria-label="More actions"
+                title="More actions"
+              >
+                <EllipsisHorizontalIcon className="h-5 w-5" />
+              </button>
+
+              {showMoreMenu && (
+                <div
+                  role="menu"
+                  className="absolute right-0 z-20 mt-1 w-56 origin-top-right rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-1.5 shadow-lg"
+                >
+                  {canWithdrawProposal && canManageProposal && (
+                    <button
+                      type="button"
+                      role="menuitem"
+                      onClick={() => {
+                        setShowMoreMenu(false);
+                        setShowWithdrawModal(true);
+                      }}
+                      disabled={withdrawLoading}
+                      className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm text-amber-800 dark:text-amber-200 hover:bg-amber-50 dark:hover:bg-amber-950/30 disabled:opacity-50"
+                    >
+                      <NoSymbolIcon className="h-4 w-4 shrink-0" />
+                      Rescind proposal
+                    </button>
+                  )}
+
+                  {canMarkAsLost && canManageProposal && (
+                    <button
+                      type="button"
+                      role="menuitem"
+                      onClick={() => {
+                        setShowMoreMenu(false);
+                        setShowMarkLostModal(true);
+                      }}
+                      disabled={markLostLoading}
+                      className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm text-red-700 dark:text-red-300 hover:bg-red-50 dark:hover:bg-red-950/30 disabled:opacity-50"
+                    >
+                      <XMarkIcon className="h-4 w-4 shrink-0" />
+                      Mark as lost
+                    </button>
+                  )}
+
+                  {canDeleteProposal && canManageProposal && (
+                    <button
+                      type="button"
+                      role="menuitem"
+                      onClick={() => {
+                        setShowMoreMenu(false);
+                        setShowDeleteModal(true);
+                      }}
+                      disabled={deleteLoading}
+                      className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm text-red-700 dark:text-red-300 hover:bg-red-50 dark:hover:bg-red-950/30 disabled:opacity-50"
+                    >
+                      <TrashIcon className="h-4 w-4 shrink-0" />
+                      Delete
+                    </button>
+                  )}
+                </div>
+              )}
+            </div>
           )}
         </div>
       </div>

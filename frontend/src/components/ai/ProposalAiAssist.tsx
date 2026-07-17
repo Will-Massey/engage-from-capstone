@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
+import { SparklesIcon } from '@heroicons/react/24/outline';
 import { apiClient } from '../../utils/api';
 import { AiPanel, AiDraftPreview, showAiError } from './AiPanel';
 import ProposalHealthCard from './ProposalHealthCard';
@@ -158,6 +159,22 @@ export default function ProposalAiAssist({ proposal, onUpdated }: ProposalAiAssi
     proposal.status === 'SENT' || proposal.status === 'VIEWED' || proposal.status === 'EXPIRED';
   const showRenewal = proposal.status === 'ACCEPTED';
 
+  // When the assistant is switched off, collapse the whole panel stack into one
+  // quiet line rather than several cards each announcing that Clara is unavailable.
+  if (!configured) {
+    return (
+      <div className="glass-tile p-4 print:hidden">
+        <p className="flex items-start gap-2 text-xs text-slate-500 dark:text-slate-400">
+          <SparklesIcon className="h-4 w-4 shrink-0 mt-px text-slate-400 dark:text-slate-500" />
+          <span>
+            {AI_COPILOT.name} insights (proposal health, follow-ups, engagement letters) appear here
+            once the assistant is enabled in server settings.
+          </span>
+        </p>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-4 print:hidden">
       <ProposalHealthCard proposalId={proposal.id} />
@@ -179,7 +196,7 @@ export default function ProposalAiAssist({ proposal, onUpdated }: ProposalAiAssi
                 onClick={() => setFollowUpTone(t)}
                 className={`text-xs px-2 py-1 rounded-full capitalize ${
                   followUpTone === t
-                    ? 'bg-violet-600 text-white'
+                    ? 'bg-primary-600 text-white'
                     : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300'
                 }`}
               >
@@ -228,7 +245,7 @@ export default function ProposalAiAssist({ proposal, onUpdated }: ProposalAiAssi
             type="button"
             onClick={() => generateEngagementLetter(true)}
             disabled={engagementLoading}
-            className="mt-2 text-xs px-2 py-1 rounded-lg border border-violet-300 dark:border-violet-700 text-violet-700 dark:text-violet-300 hover:bg-violet-50 dark:hover:bg-violet-950/30 disabled:opacity-50"
+            className="mt-2 text-xs px-2 py-1 rounded-lg border border-primary-300 dark:border-primary-700 text-primary-700 dark:text-primary-300 hover:bg-primary-50 dark:hover:bg-primary-950/30 disabled:opacity-50"
           >
             Assemble with {AI_COPILOT.name} introduction
           </button>
@@ -280,7 +297,7 @@ export default function ProposalAiAssist({ proposal, onUpdated }: ProposalAiAssi
           {renewalDraft && (
             <div className="mt-2 space-y-2">
               {renewalDraft.renewalNarrative && (
-                <p className="text-xs text-violet-600 dark:text-violet-400">
+                <p className="text-xs text-primary-600 dark:text-primary-400">
                   {renewalDraft.renewalNarrative}
                 </p>
               )}

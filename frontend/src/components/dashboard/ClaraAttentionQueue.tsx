@@ -1,12 +1,15 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { SparklesIcon, ArrowPathIcon, ExclamationTriangleIcon } from '@heroicons/react/24/outline';
+import { SparklesIcon, ArrowPathIcon, XMarkIcon } from '@heroicons/react/24/outline';
 import { apiClient } from '../../utils/api';
 import { AI_COPILOT } from '../../config/aiCopilot';
 import { showAiError } from '../ai/AiPanel';
 
 interface AttentionItem {
-  proposalId: string;
+  kind?: 'proposal' | 'regulatory' | 'clara_draft';
+  proposalId?: string;
+  signalId?: string;
+  clientId?: string;
   reference: string;
   title: string;
   clientName: string;
@@ -21,6 +24,7 @@ export default function ClaraAttentionQueue() {
   const [loading, setLoading] = useState(true);
   const [items, setItems] = useState<AttentionItem[]>([]);
   const [generatedAt, setGeneratedAt] = useState<string | null>(null);
+  const [dismissingId, setDismissingId] = useState<string | null>(null);
 
   const loadQueue = async () => {
     setLoading(true);
@@ -42,15 +46,27 @@ export default function ClaraAttentionQueue() {
     loadQueue();
   }, []);
 
+  const dismissSignal = async (signalId: string) => {
+    setDismissingId(signalId);
+    try {
+      await apiClient.dismissRegulatorySignal(signalId);
+      await loadQueue();
+    } catch (e) {
+      showAiError(e);
+    } finally {
+      setDismissingId(null);
+    }
+  };
+
   if (loading) {
     return (
       <div
-        className="glass-tile p-6 border border-violet-200 dark:border-violet-900/50 animate-pulse"
+        className="glass-tile p-6 border border-primary-200 dark:border-primary-900/50 animate-pulse"
         aria-busy="true"
       >
         <div className="flex items-center gap-2 mb-4">
-          <div className="h-5 w-5 rounded bg-violet-200 dark:bg-violet-800" />
-          <div className="h-5 w-48 rounded bg-violet-100 dark:bg-violet-900/40" />
+          <div className="h-5 w-5 rounded bg-primary-200 dark:bg-primary-800" />
+          <div className="h-5 w-48 rounded bg-primary-100 dark:bg-primary-900/40" />
         </div>
         <div className="space-y-3">
           {[1, 2, 3].map((i) => (
@@ -68,21 +84,24 @@ export default function ClaraAttentionQueue() {
       ? 'text-red-600 dark:text-red-400'
       : score >= 60
         ? 'text-amber-600 dark:text-amber-400'
-        : 'text-violet-600 dark:text-violet-400';
+        : 'text-primary-600 dark:text-primary-400';
+
+  const scoreDot = (score: number) =>
+    score >= 80 ? 'bg-red-500' : score >= 60 ? 'bg-amber-500' : 'bg-primary-500';
 
   return (
-    <div className="glass-tile p-6 border border-violet-200 dark:border-violet-900/50 bg-gradient-to-br from-white to-violet-50/30 dark:from-slate-900 dark:to-violet-950/20">
+    <div className="glass-tile p-6 border border-primary-200 dark:border-primary-900/50 bg-gradient-to-br from-white to-primary-50/30 dark:from-slate-900 dark:to-primary-950/20">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
         <div className="flex items-center gap-2">
-          <div className="p-2 rounded-xl bg-violet-100 dark:bg-violet-900/40">
-            <SparklesIcon className="h-5 w-5 text-violet-600 dark:text-violet-400" />
+          <div className="p-2 rounded-xl bg-primary-100 dark:bg-primary-900/40">
+            <SparklesIcon className="h-5 w-5 text-primary-600 dark:text-primary-400" />
           </div>
           <div>
             <h2 className="font-semibold text-lg text-slate-900 dark:text-white">
               {AI_COPILOT.name}&apos;s attention queue
             </h2>
             <p className="text-xs text-slate-500 dark:text-slate-400">
-              {items.length} proposal{items.length === 1 ? '' : 's'} need your attention
+              {items.length} item{items.length === 1 ? '' : 's'} need your attention
               {generatedAt && (
                 <span>
                   {' '}
@@ -111,40 +130,74 @@ export default function ClaraAttentionQueue() {
         </div>
       </div>
 
-      <div className="space-y-2">
-        {items.map((item) => (
-          <Link
-            key={item.proposalId}
-            to={`/proposals/${item.proposalId}`}
-            className="group flex flex-col sm:flex-row sm:items-center gap-3 rounded-xl border border-slate-200 dark:border-slate-700 p-4 hover:border-violet-300 hover:bg-violet-50/40 dark:hover:bg-violet-950/20 transition-all"
-          >
-            <div className="flex items-start gap-3 flex-1 min-w-0">
-              <ExclamationTriangleIcon
-                className={`h-5 w-5 shrink-0 mt-0.5 ${scoreColour(item.priorityScore)}`}
+      <div className="divide-y divide-slate-100 dark:divide-slate-800 border-t border-slate-100 dark:border-slate-800">
+        {items.map((item) => {
+          const isRegulatory = item.kind === 'regulatory';
+          const isClaraDraft = item.kind === 'clara_draft';
+          const linkTo =
+            isRegulatory && item.clientId
+              ? `/clients/${item.clientId}`
+              : `/proposals/${item.proposalId}`;
+          return (
+            <Link
+              key={item.proposalId || item.signalId}
+              to={linkTo}
+              className="group flex items-start gap-3 py-3 hover:bg-primary-50/40 dark:hover:bg-primary-950/20 transition-colors"
+            >
+              <span
+                className={`mt-1.5 h-2 w-2 shrink-0 rounded-full ${scoreDot(item.priorityScore)}`}
+                aria-hidden
               />
-              <div className="min-w-0">
-                <div className="flex flex-wrap items-center gap-2">
-                  <span className="font-medium text-sm text-slate-900 dark:text-white group-hover:text-violet-700 dark:group-hover:text-violet-300">
+              <div className="min-w-0 flex-1">
+                <div className="flex items-center gap-2">
+                  <span className="font-medium text-sm text-slate-900 dark:text-white truncate group-hover:text-primary-700 dark:group-hover:text-primary-300">
                     {item.clientName}
                   </span>
-                  <span className="text-xs text-slate-500">{item.reference}</span>
+                  {isRegulatory ? (
+                    <span className="shrink-0 text-[10px] font-semibold uppercase tracking-wide px-1.5 py-0.5 rounded bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300">
+                      Regulatory
+                    </span>
+                  ) : isClaraDraft ? (
+                    <span className="shrink-0 text-[10px] font-semibold uppercase tracking-wide px-1.5 py-0.5 rounded bg-primary-100 text-primary-700 dark:bg-primary-900/40 dark:text-primary-300">
+                      Clara draft
+                    </span>
+                  ) : (
+                    <span className="shrink-0 text-xs text-slate-500">{item.reference}</span>
+                  )}
                   <span
-                    className={`text-xs font-bold tabular-nums ${scoreColour(item.priorityScore)}`}
+                    className={`ml-auto shrink-0 text-xs font-bold tabular-nums ${scoreColour(item.priorityScore)}`}
                   >
                     {item.priorityScore}
                   </span>
                 </div>
-                <p className="text-sm text-slate-700 dark:text-slate-200 mt-1">{item.narrative}</p>
-                <p className="text-xs text-violet-600 dark:text-violet-400 mt-1">
-                  {item.recommendedAction}
+                <p className="text-xs text-slate-600 dark:text-slate-300 truncate mt-0.5">
+                  {item.narrative}
                 </p>
               </div>
-            </div>
-            <span className="text-violet-600 opacity-70 group-hover:opacity-100 transition shrink-0 text-sm">
-              Open →
-            </span>
-          </Link>
-        ))}
+              <span className="flex items-center gap-1.5 shrink-0 self-center text-sm">
+                {isRegulatory && item.signalId && (
+                  <button
+                    type="button"
+                    title="Dismiss this regulatory signal"
+                    aria-label="Dismiss this regulatory signal"
+                    disabled={dismissingId === item.signalId}
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      dismissSignal(item.signalId!);
+                    }}
+                    className="p-1 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 dark:hover:text-slate-200 dark:hover:bg-slate-800 transition disabled:opacity-50"
+                  >
+                    <XMarkIcon className="h-4 w-4" />
+                  </button>
+                )}
+                <span className="text-primary-600 opacity-70 group-hover:opacity-100 transition whitespace-nowrap">
+                  Open →
+                </span>
+              </span>
+            </Link>
+          );
+        })}
       </div>
     </div>
   );

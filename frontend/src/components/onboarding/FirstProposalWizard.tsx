@@ -596,7 +596,7 @@ export default function FirstProposalWizard({ open, onClose, onSent }: FirstProp
         >
           <div className="flex items-start justify-between gap-3 px-5 sm:px-6 pt-5 sm:pt-6 pb-3 border-b border-slate-200/70 dark:border-slate-700/70">
             <div className="min-w-0">
-              <p className="text-xs font-medium text-violet-600 dark:text-violet-400 uppercase tracking-wider">
+              <p className="text-xs font-medium text-primary-600 dark:text-primary-400 uppercase tracking-wider">
                 First proposal wizard
               </p>
               <h2
@@ -626,7 +626,7 @@ export default function FirstProposalWizard({ open, onClose, onSent }: FirstProp
                   <div
                     className={`flex items-center gap-2 px-2.5 py-1 rounded-full text-xs font-medium ${
                       step === s.id
-                        ? 'bg-violet-100 text-violet-800 dark:bg-violet-900/50 dark:text-violet-200'
+                        ? 'bg-primary-100 text-primary-800 dark:bg-primary-900/50 dark:text-primary-200'
                         : step > s.id
                           ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300'
                           : 'bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400'
@@ -648,7 +648,7 @@ export default function FirstProposalWizard({ open, onClose, onSent }: FirstProp
           <div className="flex-1 overflow-y-auto px-5 sm:px-6 py-5">
             {loading ? (
               <div className="flex items-center justify-center py-16">
-                <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-violet-600" />
+                <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-primary-600" />
               </div>
             ) : (
               <>
@@ -682,8 +682,8 @@ export default function FirstProposalWizard({ open, onClose, onSent }: FirstProp
                             onClick={() => setSelectedClient(client)}
                             className={`text-left p-4 rounded-xl border-2 transition-all ${
                               selectedClient?.id === client.id
-                                ? 'border-violet-500 bg-violet-50/80 dark:bg-violet-950/30'
-                                : 'border-slate-200 dark:border-slate-700 hover:border-violet-300'
+                                ? 'border-primary-500 bg-primary-50/80 dark:bg-primary-950/30'
+                                : 'border-slate-200 dark:border-slate-700 hover:border-primary-300'
                             }`}
                           >
                             <p className="font-semibold text-slate-900 dark:text-white">
@@ -775,11 +775,11 @@ export default function FirstProposalWizard({ open, onClose, onSent }: FirstProp
                           onClick={() => selectBuildMode('clara')}
                           className={`text-left p-4 rounded-xl border-2 transition-colors ${
                             buildMode === 'clara'
-                              ? 'border-violet-500 bg-violet-50 dark:bg-violet-900/20'
-                              : 'border-slate-200 dark:border-slate-700 hover:border-violet-300'
+                              ? 'border-primary-500 bg-primary-50 dark:bg-primary-900/20'
+                              : 'border-slate-200 dark:border-slate-700 hover:border-primary-300'
                           }`}
                         >
-                          <SparklesIcon className="h-6 w-6 text-violet-600 mb-2" />
+                          <SparklesIcon className="h-6 w-6 text-primary-600 mb-2" />
                           <p className="font-semibold text-slate-900 dark:text-white">
                             Start with {AI_COPILOT.name}
                           </p>
@@ -847,7 +847,7 @@ export default function FirstProposalWizard({ open, onClose, onSent }: FirstProp
                       )}
 
                     {(visibleSuggestions.length > 0 || suggestLoading) && (
-                      <div className="rounded-2xl border border-violet-200 dark:border-violet-800 bg-violet-50/40 dark:bg-violet-950/20 p-4">
+                      <div className="rounded-2xl border border-primary-200 dark:border-primary-800 bg-primary-50/40 dark:bg-primary-950/20 p-4">
                         <div className="flex items-center justify-between gap-2 mb-3">
                           <h3 className="text-sm font-semibold text-slate-900 dark:text-white">
                             {AI_COPILOT.name} service suggestions
@@ -857,7 +857,7 @@ export default function FirstProposalWizard({ open, onClose, onSent }: FirstProp
                               type="button"
                               onClick={() => void runSuggestServices()}
                               disabled={suggestLoading}
-                              className="text-xs text-violet-700 dark:text-violet-300 hover:underline"
+                              className="text-xs text-primary-700 dark:text-primary-300 hover:underline"
                             >
                               {suggestLoading ? 'Thinking…' : 'Refresh'}
                             </button>
@@ -897,7 +897,7 @@ export default function FirstProposalWizard({ open, onClose, onSent }: FirstProp
                               className={`text-left p-3 rounded-lg border text-sm transition-colors ${
                                 selected
                                   ? 'border-emerald-400 bg-emerald-50 dark:bg-emerald-900/20'
-                                  : 'border-slate-200 dark:border-slate-700 hover:border-violet-300'
+                                  : 'border-slate-200 dark:border-slate-700 hover:border-primary-300'
                               }`}
                             >
                               <span className="font-medium text-slate-900 dark:text-white">
@@ -976,7 +976,7 @@ export default function FirstProposalWizard({ open, onClose, onSent }: FirstProp
                             }}
                             className={`text-xs px-3 py-1.5 rounded-full border ${
                               coverLetterTone === style.tone
-                                ? 'border-violet-500 bg-violet-50 text-violet-800 dark:bg-violet-900/40 dark:text-violet-200'
+                                ? 'border-primary-500 bg-primary-50 text-primary-800 dark:bg-primary-900/40 dark:text-primary-200'
                                 : 'border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300'
                             }`}
                           >

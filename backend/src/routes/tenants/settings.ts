@@ -4,6 +4,13 @@ import { prisma } from '../../config/database.js';
 import { asyncHandler, ApiError } from '../../middleware/errorHandler.js';
 import { authenticate, authorize } from '../../middleware/auth.js';
 import { validateTenantLogoForStorage } from '../../utils/tenantLogoConstraints.js';
+import {
+  getEngageDefaultTermsTemplate,
+  previewEngageDefaultTermsForTenant,
+} from '../../services/proposalTermsService.js';
+import { sendTestIntegrationWebhook } from '../../services/integrationEvents.js';
+
+const WEBHOOK_FORMAT_ENUM = z.enum(['default', 'hubspot', 'zapier', 'senta', 'karbon']);
 
 const router = Router();
 
@@ -145,6 +152,7 @@ router.put(
           termsSource: z.enum(['engage_default', 'custom']).optional(),
           customTerms: z.string().max(50000).nullable().optional(),
           benchmarksOptIn: z.boolean().optional(),
+          blockSendUntilAmlCleared: z.boolean().optional(),
         })
         .optional(),
       payments: z
@@ -152,6 +160,20 @@ router.put(
           collectPaymentAtSign: z.boolean().optional(),
           allowDirectDebit: z.boolean().optional(),
           allowCard: z.boolean().optional(),
+        })
+        .optional(),
+      clara: z
+        .object({
+          agenticDraftingEnabled: z.boolean().optional(),
+          draftRegulatoryFamilies: z
+            .array(z.enum(['vat', 'mtd_itsa', 'filing_deadlines', 'payroll']))
+            .max(4)
+            .optional(),
+          draftRenewals: z.boolean().optional(),
+          renewalUpliftPercent: z.number().min(-50).max(100).optional(),
+          useAiCoverLetter: z.boolean().optional(),
+          draftOwnerUserId: z.string().uuid().nullable().optional(),
+          maxDraftsPerRun: z.number().int().min(1).max(50).optional(),
         })
         .optional(),
       professionalBody: z
@@ -174,6 +196,15 @@ router.put(
       fcaAuthorised: z.boolean().optional(),
       privacyPolicyUrl: z.string().optional(),
       termsVersion: z.string().optional(),
+      yearsExperience: z.number().int().min(0).max(200).optional(),
+      sectorOrRegion: z.string().max(200).optional(),
+      webhookUrl: z.string().max(2000).optional(),
+      integrations: z
+        .object({
+          webhookUrl: z.string().max(2000).optional(),
+          webhookFormat: WEBHOOK_FORMAT_ENUM.optional(),
+        })
+        .optional(),
       whiteLabel: z
         .object({
           customDomain: z.string().max(255).optional(),
@@ -181,7 +212,6 @@ router.put(
           portalTitle: z.string().max(120).optional(),
         })
         .optional(),
-      benchmarkPricingOptIn: z.boolean().optional(),
     });
 
     const data = schema.parse(req.body);
@@ -215,6 +245,9 @@ router.put(
       payments: data.payments
         ? { ...(currentSettings.payments || {}), ...data.payments }
         : currentSettings.payments,
+      clara: data.clara
+        ? { ...(currentSettings.clara || {}), ...data.clara }
+        : currentSettings.clara,
       professionalBody: data.professionalBody || currentSettings.professionalBody,
       companyRegistration: data.companyRegistration || currentSettings.companyRegistration,
       phone: data.phone || currentSettings.phone,
@@ -225,10 +258,17 @@ router.put(
       fcaAuthorised: data.fcaAuthorised || currentSettings.fcaAuthorised,
       privacyPolicyUrl: data.privacyPolicyUrl || currentSettings.privacyPolicyUrl,
       termsVersion: data.termsVersion || currentSettings.termsVersion,
+      yearsExperience:
+        data.yearsExperience !== undefined ? data.yearsExperience : currentSettings.yearsExperience,
+      sectorOrRegion:
+        data.sectorOrRegion !== undefined ? data.sectorOrRegion : currentSettings.sectorOrRegion,
+      webhookUrl: data.webhookUrl !== undefined ? data.webhookUrl : currentSettings.webhookUrl,
+      integrations: data.integrations
+        ? { ...(currentSettings.integrations || {}), ...data.integrations }
+        : currentSettings.integrations,
       whiteLabel: data.whiteLabel
         ? { ...(currentSettings.whiteLabel || {}), ...data.whiteLabel }
         : currentSettings.whiteLabel,
-      benchmarkPricingOptIn: data.benchmarkPricingOptIn ?? currentSettings.benchmarkPricingOptIn,
     };
 
     // Update tenant
@@ -278,6 +318,47 @@ router.put(
       },
       message: 'Settings saved successfully',
     });
+  })
+);
+
+/**
+ * GET /api/tenants/settings/proposal-terms-default
+ * Engage default proposal terms — `template` keeps placeholders for editing,
+ * `preview` is rendered for the caller's tenant. Single source of truth is
+ * proposalTermsService (also used by the proposal builder terms-preview).
+ */
+router.get(
+  '/settings/proposal-terms-default',
+  authenticate,
+  asyncHandler(async (req, res) => {
+    const preview = await previewEngageDefaultTermsForTenant(req.tenantId!);
+    const template = getEngageDefaultTermsTemplate();
+    res.json({ success: true, data: { preview, template } });
+  })
+);
+
+/**
+ * POST /api/tenants/settings/test-webhook
+ * Dispatch a sample proposal event to the tenant's configured webhook URL.
+ */
+router.post(
+  '/settings/test-webhook',
+  authenticate,
+  authorize('ADMIN', 'PARTNER', 'MANAGER'),
+  asyncHandler(async (req, res) => {
+    const { format } = z.object({ format: WEBHOOK_FORMAT_ENUM.optional() }).parse(req.body);
+
+    const result = await sendTestIntegrationWebhook(req.tenantId!, format);
+
+    if (!result.delivered) {
+      throw new ApiError(
+        'NO_WEBHOOK_URL',
+        'Save an HTTPS webhook URL before sending a test event',
+        400
+      );
+    }
+
+    res.json({ success: true, data: result });
   })
 );
 

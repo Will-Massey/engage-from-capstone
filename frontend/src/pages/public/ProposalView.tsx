@@ -145,7 +145,7 @@ function QaTypingIndicator() {
       {[0, 1, 2].map((i) => (
         <motion.span
           key={i}
-          className="w-1.5 h-1.5 rounded-full bg-violet-500"
+          className="w-1.5 h-1.5 rounded-full bg-primary-500"
           animate={{ opacity: [0.3, 1, 0.3], y: [0, -2, 0] }}
           transition={{ duration: 0.9, repeat: Infinity, delay: i * 0.15 }}
         />
@@ -1031,7 +1031,7 @@ const PublicProposalView = () => {
                           setFaqExpanded(false);
                           setQaExpanded(true);
                         }}
-                        className="text-sm text-violet-700 dark:text-violet-300 hover:underline mt-2 min-h-[44px]"
+                        className="text-sm text-primary-700 dark:text-primary-300 hover:underline mt-2 min-h-[44px]"
                       >
                         Still have a question? Chat with {AI_COPILOT.name} about this proposal →
                       </button>
@@ -1052,8 +1052,8 @@ const PublicProposalView = () => {
                 className="w-full flex items-center justify-between gap-3 text-left group min-h-[44px]"
               >
                 <div className="flex items-center gap-2">
-                  <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-violet-100 dark:bg-violet-900/40">
-                    <SparklesIcon className="h-4 w-4 text-violet-600 dark:text-violet-300" />
+                  <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary-100 dark:bg-primary-900/40">
+                    <SparklesIcon className="h-4 w-4 text-primary-600 dark:text-primary-300" />
                   </span>
                   <div>
                     <h3 className="text-sm font-medium text-slate-900 dark:text-white">
@@ -1080,7 +1080,7 @@ const PublicProposalView = () => {
                     transition={{ duration: 0.2 }}
                     className="overflow-hidden"
                   >
-                    <div className="mt-4 rounded-xl border border-violet-200/80 dark:border-violet-800/60 bg-gradient-to-b from-violet-50/80 to-white dark:from-violet-950/20 dark:to-slate-800/50 p-4">
+                    <div className="mt-4 rounded-xl border border-primary-200/80 dark:border-primary-800/60 bg-gradient-to-b from-primary-50/80 to-white dark:from-primary-950/20 dark:to-slate-800/50 p-4">
                       {qaMessages.length === 0 && !qaLoading && (
                         <p className="text-sm text-slate-600 dark:text-slate-300 mb-3">
                           Not sure about fees, services, or terms? Ask a question and{' '}
@@ -1097,12 +1097,12 @@ const PublicProposalView = () => {
                             <div
                               className={`max-w-[90%] rounded-2xl px-3 py-2 text-sm leading-relaxed whitespace-pre-wrap ${
                                 msg.role === 'user'
-                                  ? 'bg-violet-600 text-white rounded-br-md'
-                                  : 'bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 border border-violet-100 dark:border-violet-900/50 rounded-bl-md shadow-sm'
+                                  ? 'bg-primary-600 text-white rounded-br-md'
+                                  : 'bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 border border-primary-100 dark:border-primary-900/50 rounded-bl-md shadow-sm'
                               }`}
                             >
                               {msg.role === 'assistant' && (
-                                <span className="block text-[10px] font-medium text-violet-600 dark:text-violet-300 mb-1">
+                                <span className="block text-[10px] font-medium text-primary-600 dark:text-primary-300 mb-1">
                                   {AI_COPILOT.name}
                                 </span>
                               )}
@@ -1112,7 +1112,7 @@ const PublicProposalView = () => {
                         ))}
                         {qaLoading && (
                           <div className="flex justify-start">
-                            <div className="rounded-2xl rounded-bl-md bg-white dark:bg-slate-800 border border-violet-100 dark:border-violet-900/50 shadow-sm">
+                            <div className="rounded-2xl rounded-bl-md bg-white dark:bg-slate-800 border border-primary-100 dark:border-primary-900/50 shadow-sm">
                               <QaTypingIndicator />
                             </div>
                           </div>
@@ -1134,13 +1134,13 @@ const PublicProposalView = () => {
                           onChange={(e) => setQaInput(e.target.value)}
                           placeholder="e.g. What is included in the monthly fee?"
                           maxLength={500}
-                          className="flex-1 rounded-lg border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-900 px-3 py-2 text-sm text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-violet-500/40"
+                          className="flex-1 rounded-lg border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-900 px-3 py-2 text-sm text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-primary-500/40"
                         />
                         <button
                           type="submit"
                           data-testid="qa-submit"
                           disabled={qaLoading || qaInput.trim().length < 3}
-                          className="inline-flex items-center justify-center rounded-lg bg-violet-600 px-3 py-2 text-white hover:bg-violet-700 disabled:opacity-50 transition-colors"
+                          className="inline-flex items-center justify-center rounded-lg bg-primary-600 px-3 py-2 text-white hover:bg-primary-700 disabled:opacity-50 transition-colors"
                           aria-label="Send question"
                         >
                           <PaperAirplaneIcon className="h-4 w-4" />
@@ -1357,7 +1357,13 @@ const PublicProposalView = () => {
                   <h3 className="text-lg font-semibold text-slate-900 dark:text-white">
                     Add your signature
                   </h3>
-                  <SignaturePad onSave={handleSignatureSave} fullWidth height={220} />
+                  <SignaturePad
+                    onSave={handleSignatureSave}
+                    onClear={() => setSignatureData('')}
+                    fullWidth
+                    height={220}
+                    hideConfirm
+                  />
                   {signatureData && (
                     <div className="flex gap-3">
                       <button type="button" className="btn-secondary flex-1" onClick={goToPrevStep}>
@@ -1707,7 +1713,10 @@ const PublicProposalView = () => {
 
         {/* Mobile sticky accept bar */}
         {!isAccepted && !isExpired && !inSigningFlow && !showDecline && (
-          <div className="fixed bottom-0 left-0 right-0 z-40 p-4 bg-white/95 dark:bg-slate-900/95 border-t border-slate-200 dark:border-slate-700 backdrop-blur-md sm:hidden">
+          <div
+            data-testid="mobile-accept-bar"
+            className="fixed bottom-0 left-0 right-0 z-40 p-4 bg-white/95 dark:bg-slate-900/95 border-t border-slate-200 dark:border-slate-700 backdrop-blur-md sm:hidden"
+          >
             <button
               type="button"
               onClick={startSigningFlow}

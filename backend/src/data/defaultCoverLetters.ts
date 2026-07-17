@@ -105,8 +105,9 @@ export const coverLetterMergeFields = [
   },
   {
     key: 'firmCredentials',
-    description: 'Professional body from Settings (e.g. CPAA-regulated practice)',
-    example: 'CPAA-regulated practice',
+    description:
+      'Professional body from Settings, as an adjective (e.g. CPAA-regulated). Templates supply the following noun, e.g. "… a {{firmCredentials}} practice."',
+    example: 'CPAA-regulated',
   },
   {
     key: 'keyOutcome',

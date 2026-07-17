@@ -2,6 +2,8 @@ import { useEffect, useState } from 'react';
 import { ShieldCheckIcon, ArrowPathIcon } from '@heroicons/react/24/outline';
 import toast from 'react-hot-toast';
 import { apiClient } from '../../utils/api';
+import type { AmlUsageSummary } from '../../types/aml';
+import { AML_STATUS_COLOURS, AML_STATUS_LABELS, formatAmlCheckPrice } from '../../utils/amlBadge';
 
 interface AmlPartnerPanelProps {
   clientId: string;
@@ -25,21 +27,8 @@ type AmlStatusData = {
   };
 };
 
-const STATUS_LABELS: Record<string, string> = {
-  NOT_STARTED: 'Not started',
-  PENDING: 'Pending',
-  CLEAR: 'Clear',
-  REFER: 'Refer',
-  FAILED: 'Failed',
-};
-
-const STATUS_COLOURS: Record<string, string> = {
-  NOT_STARTED: 'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300',
-  PENDING: 'bg-amber-100 text-amber-800 dark:bg-amber-950/50 dark:text-amber-200',
-  CLEAR: 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/50 dark:text-emerald-200',
-  REFER: 'bg-orange-100 text-orange-800 dark:bg-orange-950/50 dark:text-orange-200',
-  FAILED: 'bg-red-100 text-red-800 dark:bg-red-950/50 dark:text-red-200',
-};
+const STATUS_LABELS = AML_STATUS_LABELS;
+const STATUS_COLOURS = AML_STATUS_COLOURS;
 
 const PROVIDER_LABELS: Record<string, string> = {
   smartsearch: 'SmartSearch',
@@ -57,6 +46,7 @@ export default function AmlPartnerPanel({
   const [running, setRunning] = useState(false);
   const [loadingStatus, setLoadingStatus] = useState(true);
   const [status, setStatus] = useState<AmlStatusData | null>(null);
+  const [usage, setUsage] = useState<AmlUsageSummary | null>(null);
 
   const loadStatus = async () => {
     try {
@@ -68,6 +58,14 @@ export default function AmlPartnerPanel({
       // Non-blocking — panel still usable for initiating checks
     } finally {
       setLoadingStatus(false);
+    }
+    try {
+      const usageRes = await apiClient.getAmlUsage();
+      if (usageRes.success && usageRes.data) {
+        setUsage(usageRes.data);
+      }
+    } catch {
+      // Non-blocking — usage is informational
     }
   };
 
@@ -160,6 +158,17 @@ export default function AmlPartnerPanel({
           {status?.amlProviderRef && (
             <p className="font-mono truncate" title={status.amlProviderRef}>
               Ref: {status.amlProviderRef}
+            </p>
+          )}
+          {usage && (
+            <p data-testid="aml-usage-summary">
+              <span className="font-medium text-slate-700 dark:text-slate-300">
+                Checks this month:
+              </span>{' '}
+              {usage.totalChecks}
+              {formatAmlCheckPrice(usage.perCheckPricePence)
+                ? ` · ${formatAmlCheckPrice(usage.perCheckPricePence)} per check`
+                : ''}
             </p>
           )}
         </div>

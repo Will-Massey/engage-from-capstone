@@ -88,7 +88,7 @@ export default function ClaraServiceSuggestionCards({
           return (
             <li
               key={s.serviceId}
-              className="rounded-xl border border-violet-100 dark:border-violet-900/50 bg-white/70 dark:bg-slate-900/50 p-3 text-slate-600 dark:text-slate-300"
+              className="rounded-xl border border-primary-100 dark:border-primary-900/50 bg-white/70 dark:bg-slate-900/50 p-3 text-slate-600 dark:text-slate-300"
             >
               <div className="flex flex-wrap items-start justify-between gap-2">
                 <div className="min-w-0 flex-1">
@@ -101,8 +101,8 @@ export default function ClaraServiceSuggestionCards({
               </div>
 
               {isTweaking ? (
-                <div className="mt-3 pt-3 border-t border-violet-100 dark:border-violet-900/40 space-y-2">
-                  <p className="text-[10px] uppercase tracking-wide text-violet-600 dark:text-violet-400 font-medium">
+                <div className="mt-3 pt-3 border-t border-primary-100 dark:border-primary-900/40 space-y-2">
+                  <p className="text-[10px] uppercase tracking-wide text-primary-600 dark:text-primary-400 font-medium">
                     Tweak before adding
                   </p>
                   <div className="flex flex-wrap gap-2">
@@ -136,7 +136,7 @@ export default function ClaraServiceSuggestionCards({
                     <button
                       type="button"
                       onClick={() => applyTweak(s)}
-                      className="text-[10px] px-2.5 py-1 rounded-full bg-violet-600 text-white hover:bg-violet-700 inline-flex items-center gap-1"
+                      className="text-[10px] px-2.5 py-1 rounded-full bg-primary-600 text-white hover:bg-primary-700 inline-flex items-center gap-1"
                     >
                       <CheckIcon className="h-3 w-3" />
                       Apply tweak
@@ -155,7 +155,7 @@ export default function ClaraServiceSuggestionCards({
                   <button
                     type="button"
                     onClick={() => onAccept(s)}
-                    className="text-[10px] px-2.5 py-1 rounded-full bg-violet-100 dark:bg-violet-900/40 text-violet-700 dark:text-violet-200 hover:bg-violet-200 dark:hover:bg-violet-800/50 inline-flex items-center gap-1"
+                    className="text-[10px] px-2.5 py-1 rounded-full bg-primary-100 dark:bg-primary-900/40 text-primary-700 dark:text-primary-200 hover:bg-primary-200 dark:hover:bg-primary-800/50 inline-flex items-center gap-1"
                   >
                     <CheckIcon className="h-3 w-3" />
                     Accept

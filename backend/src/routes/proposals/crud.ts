@@ -1,4 +1,5 @@
 import { Router } from 'express';
+import { z } from 'zod';
 import { prisma } from '../../config/database.js';
 import { authenticate, authorize } from '../../middleware/auth.js';
 import { asyncHandler, ApiError } from '../../middleware/errorHandler.js';
@@ -27,6 +28,7 @@ import {
 } from '../../utils/tenantProposalSettings.js';
 import { getProposalRegulatoryFit } from '../../services/regulatoryFitService.js';
 import { resolveProposalTerms } from '../../services/proposalTermsService.js';
+import { createLoeOnlyProposal } from '../../services/loeOnlyProposalService.js';
 import {
   createProposalSchema,
   generateReference,
@@ -270,6 +272,45 @@ router.post(
 );
 
 /**
+ * POST /api/proposals/loe-only
+ * Create an engagement-letter-only proposal (scope + terms, no fee schedule).
+ */
+const loeOnlySchema = z.object({
+  clientId: z.string().min(1),
+  serviceIds: z.array(z.string().min(1)).min(1, 'Select at least one service'),
+  title: z.string().max(200).optional(),
+  validUntil: z.string().optional(),
+  contractStartDate: z.string().nullable().optional(),
+  notes: z.string().max(5000).optional(),
+});
+
+router.post(
+  '/loe-only',
+  authenticate,
+  authorize('PARTNER', 'MANAGER', 'SENIOR', 'ADMIN'),
+  enforceTierLimit('proposals'),
+  asyncHandler(async (req, res) => {
+    const data = loeOnlySchema.parse(req.body);
+
+    const result = await createLoeOnlyProposal({
+      tenantId: req.tenantId!,
+      userId: req.user!.id,
+      clientId: data.clientId,
+      serviceIds: data.serviceIds,
+      title: data.title,
+      validUntil: data.validUntil,
+      contractStartDate: data.contractStartDate,
+      notes: data.notes,
+    });
+
+    res.status(201).json({
+      success: true,
+      data: { ...result.proposal, clauseIds: result.clauseIds },
+    });
+  })
+);
+
+/**
  * PUT /api/proposals/:id
  * Update proposal
  */
@@ -359,6 +400,18 @@ router.put(
         },
       },
     });
+
+    // Staff-side transition to ACCEPTED via status update (the route rejects
+    // already-accepted proposals above) — accounting sync is fire-and-forget
+    // (gated on tenant connection + auto-push setting).
+    if (proposal.status === 'ACCEPTED') {
+      try {
+        const { triggerXeroPushOnAcceptance } = await import('../../services/xeroProposalPush.js');
+        void triggerXeroPushOnAcceptance(req.tenantId!, proposal.id);
+      } catch (e) {
+        logger.warn('Failed to trigger Xero push on proposal acceptance', e);
+      }
+    }
 
     // Update services if provided
     if (data.services) {
@@ -498,6 +551,21 @@ router.delete(
 
     if (proposal.status === 'ACCEPTED') {
       throw new ApiError('INVALID_STATUS', 'Cannot delete an accepted proposal', 400);
+    }
+
+    // The e-sign audit trail is immutable: a proposal that has any recorded
+    // signature (e.g. SENT and partially/fully signed) cannot be hard-deleted,
+    // which would otherwise destroy legally-retained signature records.
+    const signatureCount = await prisma.proposalSignature.count({
+      where: { proposalId: id },
+    });
+
+    if (signatureCount > 0) {
+      throw new ApiError(
+        'SIGNATURES_EXIST',
+        'Proposals with recorded signatures cannot be deleted',
+        409
+      );
     }
 
     await prisma.proposal.delete({
