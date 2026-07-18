@@ -153,8 +153,10 @@ router.post(
 
     try {
       const services = await prisma.serviceTemplate.findMany({
+        // priceAmount is a non-nullable Float (@default(0)); the old `null`
+        // branch never matched. Zero-priced templates with a real basePrice.
         where: {
-          OR: [{ priceAmount: 0 }, { priceAmount: null }],
+          priceAmount: 0,
           basePrice: { gt: 0 },
         },
       });

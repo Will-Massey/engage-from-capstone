@@ -9,16 +9,18 @@ import { evaluateTenantBilling, getTrialEndsAt } from '../services/subscriptionS
 
 const router = Router();
 
-// Helper to check if Stripe is configured
-const checkStripe = () => {
-  if (!stripe) {
+// Assert Stripe is configured. Assertion signature so a single call narrows
+// the module-level `stripe` from `Stripe | null` to `Stripe` for the rest of
+// the handler — the runtime guard and the type guard are now the same check.
+function checkStripe(client: typeof stripe): asserts client is Stripe {
+  if (!client) {
     throw new ApiError(
       'STRIPE_NOT_CONFIGURED',
       'Payments are not configured. Please contact support.',
       503
     );
   }
-};
+}
 
 /**
  * GET /api/payments/config
@@ -52,7 +54,7 @@ router.post(
   authenticate,
   authorize('ADMIN', 'PARTNER'),
   asyncHandler(async (req, res) => {
-    checkStripe();
+    checkStripe(stripe);
     const schema = z.object({
       priceId: z.string(),
       paymentMethodId: z.string(),
@@ -232,7 +234,7 @@ router.post(
   authenticate,
   authorize('ADMIN', 'PARTNER'),
   asyncHandler(async (req, res) => {
-    checkStripe();
+    checkStripe(stripe);
     const tenantId = req.tenantId!;
 
     const tenant = await prisma.tenant.findUnique({
@@ -245,7 +247,7 @@ router.post(
     }
 
     // Cancel at period end
-    const subscription = (await stripe!.subscriptions.update(tenant.stripeSubscriptionId, {
+    const subscription = (await stripe.subscriptions.update(tenant.stripeSubscriptionId, {
       cancel_at_period_end: true,
     })) as any;
 
@@ -275,7 +277,7 @@ router.post(
   authenticate,
   authorize('ADMIN', 'PARTNER'),
   asyncHandler(async (req, res) => {
-    checkStripe();
+    checkStripe(stripe);
     const tenantId = req.tenantId!;
 
     const tenant = await prisma.tenant.findUnique({
@@ -317,7 +319,7 @@ router.post(
   authenticate,
   authorize('ADMIN', 'PARTNER'),
   asyncHandler(async (req, res) => {
-    checkStripe();
+    checkStripe(stripe);
     const tenantId = req.tenantId!;
 
     const tenant = await prisma.tenant.findUnique({
