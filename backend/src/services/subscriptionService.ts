@@ -2,7 +2,9 @@ import { prisma } from '../config/database.js';
 import { ApiError } from '../middleware/errorHandler.js';
 import { TRIAL_DAYS } from '../config/trial.js';
 
-const PAID_ACTIVE_STATUSES = new Set(['active']);
+// 'complimentary' = comped tenant (design partners); set by ops only — no
+// public route can write it (tenant settings PUT is schema-whitelisted).
+const PAID_ACTIVE_STATUSES = new Set(['active', 'complimentary']);
 
 const BLOCKED_STATUSES = new Set([
   'past_due',

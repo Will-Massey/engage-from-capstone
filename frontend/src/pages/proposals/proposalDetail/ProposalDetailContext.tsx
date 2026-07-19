@@ -421,23 +421,23 @@ export function ProposalDetailProvider({ children }: ProposalDetailProviderProps
     textBody: string;
     htmlBody?: string;
   }) => {
+    // Dismiss only our loading toast — toast.dismiss() with no id wipes the
+    // API interceptor's error toast too, leaving a failed send looking silent.
+    const toastId = toast.loading('Sending proposal…');
     try {
-      toast.loading('Sending proposal…');
       await apiClient.sendProposal(id!, approved);
-      toast.dismiss();
+      toast.dismiss(toastId);
       toast.success('Proposal sent successfully');
       loadProposal();
       loadAuditTrail();
     } catch (error: any) {
-      toast.dismiss();
+      toast.dismiss(toastId);
       const message =
-        error?.response?.data?.error?.message || error?.response?.data?.message || error?.message;
-      if (message?.toLowerCase().includes('email')) {
-        toast.error(
-          message.includes('transport') || message.includes('configured')
-            ? 'Email is not configured on the server — contact your administrator'
-            : message
-        );
+        error?.message || error?.response?.data?.error?.message || error?.response?.data?.message;
+      // The interceptor already toasts the server message; add the friendlier
+      // wording only for the email-transport config case.
+      if (message?.includes('transport') || message?.includes('configured')) {
+        toast.error('Email is not configured on the server — contact your administrator');
       }
     }
   };
