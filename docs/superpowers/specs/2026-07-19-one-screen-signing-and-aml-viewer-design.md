@@ -18,7 +18,7 @@ The public proposal page (`ProposalView.tsx`) keeps its content. "Accept proposa
 
 - **Documents**: Terms and Engagement letter as collapsible sections (collapsed by default; engagement section only rendered when a letter exists). Full text stays in-page — reading is one tap, never a download.
 - **Identity**: `signerName`/`signerEmail` prefilled from the proposal's client contact (`contactName`, `contactEmail`); `signerRole` empty with placeholder "Director". All three editable. Same validation as today (all required).
-- **One consent checkbox**, dynamic label: *"I have read and agree to the terms and conditions[ and the engagement letter], and I confirm I am authorised to sign on behalf of {client name}."* The rendered sentence is sent as `consentText` and stored on the signature record — the audit evidence explicitly names every accepted document.
+- **One consent checkbox**, dynamic label: _"I have read and agree to the terms and conditions[ and the engagement letter], and I confirm I am authorised to sign on behalf of {client name}."_ The rendered sentence is sent as `consentText` and stored on the signature record — the audit evidence explicitly names every accepted document.
 - **Signature**: two tabs.
   - **Draw** — existing `SignaturePad`, unchanged.
   - **Type** — new `TypedSignatureInput`: signer types their name, live-rendered onto a canvas in a bundled cursive webfont (bundled, not a CDN font, so rendering is deterministic and works offline); produces the same PNG data-URL contract as the pad. Signature method (`drawn`/`typed`) is recorded inside the existing `deviceInfo` JSON blob (no schema change).
