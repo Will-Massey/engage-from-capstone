@@ -394,6 +394,63 @@ router.post(
 );
 
 /**
+ * POST /api/proposals/:id/archive
+ * Archive a proposal (test/superseded records). The sanctioned alternative to
+ * deletion when signatures exist: signature rows are preserved, the record
+ * leaves active pipelines, any live share link is revoked.
+ */
+router.post(
+  '/:id/archive',
+  authenticate,
+  authorize('ADMIN', 'PARTNER', 'MD', 'MANAGER'),
+  requireActiveSubscription,
+  asyncHandler(async (req, res) => {
+    const { id } = req.params;
+
+    const proposal = await prisma.proposal.findFirst({
+      where: { id, tenantId: req.tenantId },
+      include: { client: true },
+    });
+
+    if (!proposal) {
+      throw new ApiError('NOT_FOUND', 'Proposal not found', 404);
+    }
+
+    if (proposal.status === 'ARCHIVED') {
+      throw new ApiError('INVALID_STATUS', 'Proposal is already archived', 400);
+    }
+
+    if (proposal.shareToken || proposal.publicAccessEnabled) {
+      await revokeShareableLink(id);
+    }
+
+    const updatedProposal = await prisma.proposal.update({
+      where: { id },
+      data: { status: 'ARCHIVED', archivedAt: new Date() },
+    });
+
+    await prisma.activityLog.create({
+      data: {
+        tenantId: req.tenantId,
+        userId: req.user!.id,
+        action: 'PROPOSAL_ARCHIVED',
+        entityType: 'PROPOSAL',
+        entityId: proposal.id,
+        description: `Archived proposal "${proposal.title}" for ${proposal.client.name}`,
+        ipAddress: req.ip,
+        userAgent: req.headers['user-agent'],
+      },
+    });
+
+    res.json({
+      success: true,
+      data: { ...updatedProposal, ...proposalMoneyForApi(updatedProposal) },
+      message: 'Proposal archived successfully',
+    });
+  })
+);
+
+/**
  * POST /api/proposals/:id/mark-lost
  * Practice marks an open quotation as lost (feeds win/loss stats)
  */

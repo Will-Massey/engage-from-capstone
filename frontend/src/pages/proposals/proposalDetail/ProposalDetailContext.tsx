@@ -188,6 +188,10 @@ export interface ProposalDetailContextValue {
   setShowWithdrawModal: Dispatch<SetStateAction<boolean>>;
   withdrawLoading: boolean;
   handleWithdrawProposal: () => Promise<void>;
+  showArchiveModal: boolean;
+  setShowArchiveModal: Dispatch<SetStateAction<boolean>>;
+  archiveLoading: boolean;
+  handleArchiveProposal: () => Promise<void>;
   showDeleteModal: boolean;
   setShowDeleteModal: Dispatch<SetStateAction<boolean>>;
   deleteLoading: boolean;
@@ -218,6 +222,7 @@ export interface ProposalDetailContextValue {
   canWithdrawProposal: boolean;
   canMarkAsLost: boolean;
   canDeleteProposal: boolean;
+  canArchiveProposal: boolean;
   canManageProposal: boolean;
   clientOpenCount: number;
   canEditCoverLetter: boolean;
@@ -271,6 +276,8 @@ export function ProposalDetailProvider({ children }: ProposalDetailProviderProps
   const [showSendEmailPreview, setShowSendEmailPreview] = useState(false);
   const [showRejectModal, setShowRejectModal] = useState(false);
   const [showWithdrawModal, setShowWithdrawModal] = useState(false);
+  const [showArchiveModal, setShowArchiveModal] = useState(false);
+  const [archiveLoading, setArchiveLoading] = useState(false);
   const [rejectionReason, setRejectionReason] = useState('');
   const [approvalActionLoading, setApprovalActionLoading] = useState(false);
   const [withdrawLoading, setWithdrawLoading] = useState(false);
@@ -509,6 +516,22 @@ export function ProposalDetailProvider({ children }: ProposalDetailProviderProps
       // handled by API interceptor
     } finally {
       setWithdrawLoading(false);
+    }
+  };
+
+  const handleArchiveProposal = async () => {
+    if (!id) return;
+    try {
+      setArchiveLoading(true);
+      await apiClient.archiveProposal(id);
+      toast.success('Proposal archived — it keeps its records but leaves your active pipeline');
+      setShowArchiveModal(false);
+      loadProposal();
+      loadAuditTrail();
+    } catch {
+      // handled by API interceptor
+    } finally {
+      setArchiveLoading(false);
     }
   };
 
@@ -850,6 +873,7 @@ export function ProposalDetailProvider({ children }: ProposalDetailProviderProps
     proposal.status
   );
   const canDeleteProposal = proposal.status !== 'ACCEPTED' && proposal.status !== 'ARCHIVED';
+  const canArchiveProposal = proposal.status !== 'ARCHIVED';
   const deleteManageRoles = new Set(['ADMIN', 'PARTNER', 'MD', 'MANAGER']);
   const canManageProposal = userRole ? deleteManageRoles.has(userRole) : false;
   const clientOpenCount = typeof proposal.viewCount === 'number' ? proposal.viewCount : 0;
@@ -926,6 +950,10 @@ export function ProposalDetailProvider({ children }: ProposalDetailProviderProps
     setShowWithdrawModal,
     withdrawLoading,
     handleWithdrawProposal,
+    showArchiveModal,
+    setShowArchiveModal,
+    archiveLoading,
+    handleArchiveProposal,
     showDeleteModal,
     setShowDeleteModal,
     deleteLoading,
@@ -952,6 +980,7 @@ export function ProposalDetailProvider({ children }: ProposalDetailProviderProps
     canWithdrawProposal,
     canMarkAsLost,
     canDeleteProposal,
+    canArchiveProposal,
     canManageProposal,
     clientOpenCount,
     canEditCoverLetter,
