@@ -27,7 +27,10 @@ describe('tierLimits trial/paid classification', () => {
 
     it('treats status complimentary as paid (comped design-partner tenants)', () => {
       expect(
-        tenantHasPaidSubscription({ subscriptionStatus: 'complimentary', stripeSubscriptionId: null })
+        tenantHasPaidSubscription({
+          subscriptionStatus: 'complimentary',
+          stripeSubscriptionId: null,
+        })
       ).toBe(true);
     });
 
