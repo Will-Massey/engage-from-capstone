@@ -30,6 +30,7 @@ import regulatoryRoutes from '../routes/regulatory.js';
 import claraRoutes from '../routes/clara.js';
 import quickbooksRoutes from '../routes/quickbooks.js';
 import statusRoutes from '../routes/status.js';
+import notificationsRoutes from '../routes/notifications.js';
 
 // Import middleware
 import { extractTenant } from '../middleware/tenant.js';
@@ -65,6 +66,7 @@ export function mountApiRoutes(app: express.Express): void {
   // pages call /api/xero/* and /api/quickbooks/* directly (404 until now).
   app.use('/api/xero', extractTenant, xeroRoutes);
   app.use('/api/quickbooks', extractTenant, quickbooksRoutes);
+  app.use('/api/notifications', extractTenant, notificationsRoutes);
 
   // W4.5 — Public status page API (no auth)
   app.use('/api/status', statusRoutes);

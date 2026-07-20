@@ -27,6 +27,10 @@ export default function DetailModals() {
     setShowWithdrawModal,
     withdrawLoading,
     handleWithdrawProposal,
+    showArchiveModal,
+    setShowArchiveModal,
+    archiveLoading,
+    handleArchiveProposal,
     showMarkLostModal,
     setShowMarkLostModal,
     markLostLoading,
@@ -108,6 +112,39 @@ export default function DetailModals() {
                 className="btn-primary bg-amber-600 hover:bg-amber-700"
               >
                 {withdrawLoading ? 'Rescinding…' : 'Rescind proposal'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showArchiveModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+          <div className="w-full max-w-md rounded-xl bg-white dark:bg-slate-900 p-6 shadow-xl">
+            <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-100">
+              Archive proposal
+            </h3>
+            <p className="mt-2 text-sm text-slate-600 dark:text-slate-400">
+              This moves the proposal out of your active pipeline and revokes any live client link.
+              Signatures and the audit trail are kept — archiving is the right way to tidy away
+              signed test or superseded proposals that cannot be deleted.
+            </p>
+            <div className="mt-4 flex justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => setShowArchiveModal(false)}
+                className="btn-secondary"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                data-testid="confirm-archive-button"
+                onClick={handleArchiveProposal}
+                disabled={archiveLoading}
+                className="btn-primary"
+              >
+                {archiveLoading ? 'Archiving…' : 'Archive proposal'}
               </button>
             </div>
           </div>

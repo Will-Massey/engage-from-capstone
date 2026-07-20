@@ -4,13 +4,13 @@ import {
   Bars3Icon,
   PlusIcon,
   MagnifyingGlassIcon,
-  BellIcon,
   UserCircleIcon,
   ArrowRightOnRectangleIcon,
   CommandLineIcon,
 } from '@heroicons/react/24/outline';
 import { useAuthStore } from '../../stores/authStore';
 import ThemeToggle from '../theme/ThemeToggle';
+import NotificationsBell from './NotificationsBell';
 import toast from 'react-hot-toast';
 import useCommandPalette from '../../hooks/useCommandPalette';
 
@@ -100,13 +100,7 @@ const Header = ({ onMenuClick }: HeaderProps) => {
           <ThemeToggle />
 
           {/* Notifications */}
-          <button className="p-2 text-slate-500 dark:text-slate-300 rounded-xl hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-100/80 dark:hover:bg-slate-800/80 relative transition-colors">
-            <BellIcon className="w-6 h-6" />
-            <span
-              className="absolute top-1.5 right-1.5 w-2 h-2 bg-primary-500 rounded-full"
-              style={{ boxShadow: '0 0 8px rgba(99, 102, 241, 0.6)' }}
-            ></span>
-          </button>
+          <NotificationsBell />
 
           {/* User menu */}
           <div className="relative min-w-0">
