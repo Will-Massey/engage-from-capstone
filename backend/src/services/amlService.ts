@@ -15,6 +15,7 @@ import {
 } from './aml/providers/index.js';
 import type { AmlProvider } from './aml/providers/index.js';
 import { recordAmlCheckUsage } from './aml/amlUsageService.js';
+import { listAmlDocuments, type AmlDocumentMeta } from './aml/amlDocuments.js';
 
 export type { AmlProvider } from './aml/providers/index.js';
 
@@ -47,6 +48,7 @@ export interface AmlClientStatus {
   mode: 'live' | 'demo';
   lastCheckMessage: string | null;
   partnerConfigured: boolean;
+  documents: AmlDocumentMeta[];
 }
 
 export interface AmlPartnerConfig {
@@ -205,6 +207,7 @@ export async function getAmlStatusForClient(
       amlCompletedAt: true,
       amlSubmittedAt: true,
       lifecycleStage: true,
+      amlSubmissionData: true,
     },
   });
 
@@ -248,6 +251,7 @@ export async function getAmlStatusForClient(
     mode: isStub ? 'demo' : 'live',
     lastCheckMessage,
     partnerConfigured: config.partnerConfigured,
+    documents: listAmlDocuments(client.amlSubmissionData),
   };
 }
 
