@@ -719,6 +719,12 @@ export const apiClient = {
   deleteProposal: (id: string) =>
     api.delete(`/proposals/${id}`) as Promise<ApiResponse<DeleteProposalResult>>,
 
+  archiveProposal: (id: string) =>
+    api.post(`/proposals/${id}/archive`, {}) as Promise<ApiResponse<ProposalRecord>>,
+
+  getNotifications: () =>
+    api.get('/notifications') as Promise<ApiResponse<import('./notifications').NotificationItem[]>>,
+
   sendProposal: (id: string, email?: SendProposalEmailPayload) =>
     api.post(`/proposals/${id}/send`, {
       ...(email
