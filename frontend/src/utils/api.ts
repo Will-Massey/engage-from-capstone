@@ -807,6 +807,10 @@ export const apiClient = {
   getAmlUsage: (month?: string) =>
     api.get(`/aml/usage${month ? `?month=${month}` : ''}`) as Promise<ApiResponse<AmlUsageSummary>>,
 
+  // Response interceptor already returns `response.data`; for blobs that value IS the Blob.
+  getAmlDocument: (clientId: string, type: 'photo_id' | 'proof_of_address') =>
+    api.get(`/aml/documents/${clientId}/${type}`, { responseType: 'blob' }) as Promise<Blob>,
+
   getRegulatoryCheck: (clientId: string) =>
     api.get(`/regulatory/check/${clientId}`) as Promise<ApiResponse<RegulatoryCheckResult>>,
 
