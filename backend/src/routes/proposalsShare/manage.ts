@@ -21,6 +21,8 @@ import {
 } from '../../services/proposalSharingService.js';
 import { tenantMailer } from '../../services/tenantMailer.js';
 import PDFGenerator from '../../services/pdfGenerator.js';
+import { assertProposalSendable } from '../proposals/shared.js';
+import { assertTenantCanSendProposals } from '../../services/subscriptionService.js';
 
 const router = Router();
 
@@ -46,6 +48,7 @@ router.post(
       },
       include: {
         client: true,
+        tenant: true,
       },
     });
 
@@ -76,6 +79,33 @@ router.post(
         userAgent: req.headers['user-agent'],
       },
     });
+
+    // Sharing the link IS a send: a DRAFT the practice copies to a client
+    // should move to SENT (and start being tracked/chased), subject to the
+    // same guards as the email-send path — approval, AML, and subscription.
+    if (proposal.status === 'DRAFT') {
+      assertProposalSendable(proposal, req.user!.role);
+      await assertTenantCanSendProposals(tenantId);
+
+      await prisma.proposal.update({
+        where: { id },
+        data: { status: 'SENT', sentAt: new Date() },
+      });
+
+      await prisma.activityLog.create({
+        data: {
+          tenantId,
+          userId: req.user!.id,
+          action: 'PROPOSAL_SENT',
+          entityType: 'PROPOSAL',
+          entityId: id,
+          description: `Proposal ${proposal.reference} sent to ${proposal.client.name} (link shared)`,
+          proposalId: id,
+          ipAddress: req.ip,
+          userAgent: req.headers['user-agent'],
+        },
+      });
+    }
 
     res.json({
       success: true,

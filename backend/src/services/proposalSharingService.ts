@@ -32,26 +32,45 @@ export async function createShareableLink(
   tenantSubdomain: string
 ): Promise<{ token: string; shareUrl: string; expiresAt: Date }> {
   try {
-    const token = generateShareToken();
-    const expiresAt = new Date();
-    expiresAt.setDate(expiresAt.getDate() + expiryDays);
-
-    await prisma.proposal.update({
+    // Reuse a still-valid link rather than minting a new token — regenerating
+    // would invalidate a link already copied/sent to a client. Only create a
+    // fresh token when none exists, it's disabled, or it has expired.
+    const existing = await prisma.proposal.findUnique({
       where: { id: proposalId },
-      data: {
-        shareToken: token,
-        shareTokenExpiry: expiresAt,
-        publicAccessEnabled: true,
-      },
+      select: { shareToken: true, shareTokenExpiry: true, publicAccessEnabled: true },
     });
+
+    let token: string;
+    let expiresAt: Date;
+    const reusable =
+      existing?.shareToken &&
+      existing.publicAccessEnabled &&
+      existing.shareTokenExpiry &&
+      existing.shareTokenExpiry > new Date();
+
+    if (reusable) {
+      token = existing!.shareToken!;
+      expiresAt = existing!.shareTokenExpiry!;
+    } else {
+      token = generateShareToken();
+      expiresAt = new Date();
+      expiresAt.setDate(expiresAt.getDate() + expiryDays);
+      await prisma.proposal.update({
+        where: { id: proposalId },
+        data: {
+          shareToken: token,
+          shareTokenExpiry: expiresAt,
+          publicAccessEnabled: true,
+        },
+      });
+      logger.info(`Created shareable link for proposal ${proposalId}`);
+    }
 
     const baseUrl = (process.env.PUBLIC_PROPOSAL_URL || tenantAppUrl(tenantSubdomain)).replace(
       /\/$/,
       ''
     );
     const shareUrl = `${baseUrl}/proposals/view/${token}`;
-
-    logger.info(`Created shareable link for proposal ${proposalId}`);
 
     return { token, shareUrl, expiresAt };
   } catch (error) {

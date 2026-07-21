@@ -28,7 +28,6 @@ import {
   ArchiveBoxIcon,
 } from '@heroicons/react/24/outline';
 import { apiClient } from '../../../utils/api';
-import { appPath } from '../../../utils/appBase';
 import toast from 'react-hot-toast';
 import { copyTextToClipboard } from '../../../utils/clipboard';
 import { useAuthStore, type Tenant } from '../../../stores/authStore';
@@ -650,38 +649,36 @@ export function ProposalDetailProvider({ children }: ProposalDetailProviderProps
 
   const handleCopyClientLink = async () => {
     if (!id || !proposal) return;
+    const wasDraft = proposal.status === 'DRAFT';
     try {
-      if (proposal.shareToken) {
-        const link = `${window.location.origin}${appPath(`/proposals/view/${proposal.shareToken}`)}`;
-        const ok = await copyTextToClipboard(link);
-        if (ok) {
-          toast.success('Client link copied to clipboard');
-        } else {
-          toast.error('Could not copy automatically. Copy this link manually: ' + link, {
-            duration: 8000,
-          });
-        }
-        return;
-      }
       setCopyingLink(true);
+      // Always go through the server: it reuses the existing link (so re-copying
+      // never invalidates one already sent) and, for a DRAFT, marks the proposal
+      // SENT — under the same approval / AML / subscription guards as emailing it.
       const response = (await apiClient.post(`/proposals/${id}/share`, {
         expiryDays: 30,
       })) as any;
       if (response.success && response.data?.shareUrl) {
         const ok = await copyTextToClipboard(response.data.shareUrl);
         if (ok) {
-          toast.success('Client link copied to clipboard');
+          toast.success(
+            wasDraft
+              ? 'Client link copied — proposal marked as sent'
+              : 'Client link copied to clipboard'
+          );
         } else {
-          toast.error('Link created but not copied. Copy manually: ' + response.data.shareUrl, {
+          toast.error('Link ready but not copied. Copy manually: ' + response.data.shareUrl, {
             duration: 10000,
           });
         }
         loadProposal();
+        loadAuditTrail();
       } else {
         toast.error('Failed to generate share link');
       }
     } catch {
-      toast.error('Failed to copy client link');
+      // The API interceptor already surfaces server errors here — e.g. awaiting
+      // partner approval, trial expired, or AML not cleared — so don't mask them.
     } finally {
       setCopyingLink(false);
     }
