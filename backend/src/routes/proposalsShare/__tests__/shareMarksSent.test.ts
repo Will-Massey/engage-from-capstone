@@ -12,7 +12,14 @@ jest.mock('../../../middleware/auth.js', () => ({
   authenticate: (req: express.Request, _res: express.Response, next: express.NextFunction) => {
     const r = req as express.Request & { tenantId?: string; user?: unknown; tenant?: unknown };
     r.tenantId = 't1';
-    r.user = { id: 'u1', email: 'a@x.com', firstName: 'A', lastName: 'B', role: mockRole, tenantId: 't1' };
+    r.user = {
+      id: 'u1',
+      email: 'a@x.com',
+      firstName: 'A',
+      lastName: 'B',
+      role: mockRole,
+      tenantId: 't1',
+    };
     r.tenant = { subdomain: 'demo' };
     next();
   },
@@ -47,7 +54,11 @@ jest.mock('../../../services/subscriptionService.js', () => ({
 
 jest.mock('../../../services/tenantMailer.js', () => ({ tenantMailer: { send: jest.fn() } }));
 jest.mock('../../../services/pdfGenerator.js', () => ({ __esModule: true, default: {} }));
-jest.mock('../../../config/sentry.js', () => ({ captureException: jest.fn(), initSentry: jest.fn(), Sentry: {} }));
+jest.mock('../../../config/sentry.js', () => ({
+  captureException: jest.fn(),
+  initSentry: jest.fn(),
+  Sentry: {},
+}));
 
 import shareRoutes from '../manage.js';
 import { errorHandler, ApiError } from '../../../middleware/errorHandler.js';
@@ -76,7 +87,9 @@ beforeEach(() => {
   proposalUpdate.mockReset().mockResolvedValue({});
   activityLogCreate.mockReset().mockResolvedValue({});
   createShareableLink.mockReset().mockResolvedValue({
-    token: 'tok', shareUrl: 'https://x/proposals/view/tok', expiresAt: new Date('2026-12-01'),
+    token: 'tok',
+    shareUrl: 'https://x/proposals/view/tok',
+    expiresAt: new Date('2026-12-01'),
   });
   assertTenantCanSendProposals.mockReset().mockResolvedValue(undefined);
 });
