@@ -1,5 +1,6 @@
 import type { CSSProperties } from 'react';
 import { format, isValid, parseISO } from 'date-fns';
+import { formatCoverLetter } from '@shared/coverLetter';
 
 export interface PreviewServiceLine {
   name: string;
@@ -236,7 +237,24 @@ export default function ProposalClientPreview({
                 background: `linear-gradient(135deg, ${primaryColor}08, transparent)`,
               }}
             >
-              <p className="whitespace-pre-wrap">{coverLetter}</p>
+              {(() => {
+                const cl = formatCoverLetter({
+                  body: coverLetter,
+                  contactName: clientContactName,
+                  companyName: clientName,
+                });
+                return (
+                  <>
+                    {cl.companyLine && <p className="font-semibold">{cl.companyLine}</p>}
+                    <p>{cl.greeting}</p>
+                    {cl.paragraphs.map((para, i) => (
+                      <p key={i} className="whitespace-pre-wrap mt-3">
+                        {para}
+                      </p>
+                    ))}
+                  </>
+                );
+              })()}
             </div>
           </div>
         )}

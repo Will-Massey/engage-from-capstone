@@ -37,9 +37,9 @@ import {
   buildSigningSteps,
   collectSignatureValidationErrors,
   readBrowserDeviceInfo,
-  splitCoverLetterParagraphs,
   type SigningStep,
 } from './publicSigning';
+import { formatCoverLetter } from '@shared/coverLetter';
 
 interface ProposalData {
   id: string;
@@ -773,17 +773,34 @@ const PublicProposalView = () => {
                 Cover letter
               </h3>
               <div className="mt-3 rounded-xl border border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-900/60 p-5 space-y-5">
-                {splitCoverLetterParagraphs(
-                  proposal.coverLetter,
-                  (proposal as { proposalSummary?: string }).proposalSummary
-                ).map((paragraph, i) => (
-                  <p
-                    key={i}
-                    className="text-sm sm:text-base leading-relaxed text-slate-800 dark:text-slate-100"
-                  >
-                    {paragraph}
-                  </p>
-                ))}
+                {(() => {
+                  const cl = formatCoverLetter({
+                    body: proposal.coverLetter,
+                    summary: (proposal as { proposalSummary?: string }).proposalSummary,
+                    contactName: proposal.client.contactName,
+                    companyName: proposal.client.name,
+                  });
+                  return (
+                    <>
+                      {cl.companyLine && (
+                        <p className="text-sm sm:text-base font-semibold text-slate-900 dark:text-white">
+                          {cl.companyLine}
+                        </p>
+                      )}
+                      <p className="text-sm sm:text-base leading-relaxed text-slate-800 dark:text-slate-100">
+                        {cl.greeting}
+                      </p>
+                      {cl.paragraphs.map((paragraph, i) => (
+                        <p
+                          key={i}
+                          className="text-sm sm:text-base leading-relaxed text-slate-800 dark:text-slate-100"
+                        >
+                          {paragraph}
+                        </p>
+                      ))}
+                    </>
+                  );
+                })()}
               </div>
             </div>
           )}
