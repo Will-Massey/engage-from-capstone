@@ -3,7 +3,7 @@ import fs from 'fs';
 import path from 'path';
 import net from 'net';
 import dns from 'dns/promises';
-import { DEFAULT_VAT_RATE, vatAmountFor } from '@uk-proposal-platform/shared';
+import { DEFAULT_VAT_RATE, vatAmountFor, formatCoverLetter } from '@uk-proposal-platform/shared';
 
 // pdfkit types export the constructor as a value, not a type
 // Use any for the document type to avoid TS2749 errors
@@ -639,7 +639,22 @@ ${senderPosition(proposal.createdBy) ? `${senderPosition(proposal.createdBy)}, `
         }
       });
     } else {
-      const paragraphs = body.split('\n\n');
+      // Normalise the header: company (where there's a distinct contact) then a
+      // single "Dear <person>," greeting, with any greeting(s) in the stored
+      // body stripped so the recipient is never addressed twice.
+      const { companyLine, greeting, paragraphs } = formatCoverLetter({
+        body,
+        contactName: proposal.client.contactName,
+        companyName: proposal.client.name,
+      });
+
+      if (companyLine) {
+        doc.font('Helvetica-Bold').text(companyLine, { lineGap: 5 });
+        doc.font('Helvetica');
+      }
+      doc.text(greeting, { lineGap: 5 });
+      doc.moveDown(1);
+
       paragraphs.forEach((paragraph) => {
         if (paragraph.trim()) {
           doc.text(paragraph.trim(), {
