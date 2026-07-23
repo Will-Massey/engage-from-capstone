@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -14,6 +14,7 @@ import {
 } from '@heroicons/react/24/outline';
 import { apiClient } from '../../utils/api';
 import { useAuthStore } from '../../stores/authStore';
+import { parseClientPrefill, parseNextAction } from '../../utils/clientPrefill';
 import toast from 'react-hot-toast';
 
 const clientSchema = z.object({
@@ -82,9 +83,16 @@ interface CreateClientProps {
 
 const CreateClient = ({ onSuccess, onCancel }: CreateClientProps = {}) => {
   const navigate = useNavigate();
+  const location = useLocation();
   const { tenant } = useAuthStore();
   const [isLoading, setIsLoading] = useState(false);
   const [step, setStep] = useState(1);
+
+  // Cross-app prefill (e.g. "Quote in Engage" from the Graft portal): the
+  // link carries the client's details + next=proposal. Read once on mount —
+  // location.search is stable for the life of this form.
+  const [prefill] = useState(() => parseClientPrefill(location.search));
+  const [nextAction] = useState(() => parseNextAction(location.search));
 
   const {
     register,
@@ -95,9 +103,13 @@ const CreateClient = ({ onSuccess, onCancel }: CreateClientProps = {}) => {
   } = useForm<ClientForm>({
     resolver: zodResolver(clientSchema),
     defaultValues: {
-      companyType: 'LIMITED_COMPANY',
+      companyType: prefill?.companyType ?? 'LIMITED_COMPANY',
       vatRegistered: false,
-      contactName: '',
+      name: prefill?.name ?? '',
+      contactName: prefill?.contactName ?? '',
+      contactEmail: prefill?.contactEmail ?? '',
+      contactPhone: prefill?.contactPhone ?? '',
+      notes: prefill?.notes ?? '',
       clientRelationship: 'NEW',
     },
     mode: 'onChange',
@@ -251,6 +263,10 @@ const CreateClient = ({ onSuccess, onCancel }: CreateClientProps = {}) => {
         toast.success('Client created successfully');
         if (onSuccess) {
           onSuccess(response.data);
+        } else if (nextAction === 'proposal') {
+          // Deep-linked handoff (e.g. from Graft): straight into the builder
+          // with the new client preselected.
+          navigate(`/proposals/new?clientId=${response.data.id}`);
         } else {
           navigate(`/clients/${response.data.id}`);
         }
@@ -286,6 +302,17 @@ const CreateClient = ({ onSuccess, onCancel }: CreateClientProps = {}) => {
           </button>
           <h1 className="text-2xl font-bold text-slate-900 mt-4">Add New Client</h1>
           <p className="text-sm text-slate-500">Enter your client's details to get started</p>
+        </div>
+      )}
+
+      {prefill && (
+        <div
+          data-testid="prefill-banner"
+          className="mb-6 rounded-xl border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-900"
+        >
+          Client details filled in{prefill.source === 'graft' ? ' from Graft' : ''} — check them,
+          add anything missing, and continue
+          {nextAction === 'proposal' ? ' straight into a proposal' : ''}.
         </div>
       )}
 
