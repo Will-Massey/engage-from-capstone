@@ -6,6 +6,13 @@
   "observability": {
     "enabled": true,
   },
+  // Marketing page for anonymous visitors at /engage/ + its assets under /engage/site/.
+  // run_worker_first so the worker's cookie gate decides, not the asset router.
+  "assets": {
+    "directory": "./public",
+    "binding": "ASSETS",
+    "run_worker_first": true,
+  },
   "routes": [
     { "pattern": "capstonesoftware.co.uk/engage*", "zone_name": "capstonesoftware.co.uk" },
     { "pattern": "www.capstonesoftware.co.uk/engage*", "zone_name": "capstonesoftware.co.uk" },
