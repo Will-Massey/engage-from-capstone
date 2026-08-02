@@ -34,7 +34,7 @@ test.describe('Practice OS — jobs, letters, automations', () => {
       await expect(page.getByText(/open jobs/i).first()).toBeVisible();
     } else {
       // Fresh tenant — still must land on dashboard
-      await expect(page.locator('nav[aria-label="Main"]')).toBeVisible();
+      await expect(page.locator('nav[aria-label="Main"]:visible').first()).toBeVisible();
     }
   });
 
