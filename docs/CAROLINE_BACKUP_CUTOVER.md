@@ -42,11 +42,11 @@ git checkout -b restore-caroline backup/caroline-pre-practice-cutover-20260802
 
 ## Cutover executed
 
-| Item | Value |
-|------|--------|
-| **PR** | https://github.com/Will-Massey/engage-from-capstone/pull/91 |
-| **Merged at** | 2026-08-02T19:13:16Z |
-| **Merge commit** | `2401c7e` (on `origin/master`) |
+| Item                   | Value                                                           |
+| ---------------------- | --------------------------------------------------------------- |
+| **PR**                 | https://github.com/Will-Massey/engage-from-capstone/pull/91     |
+| **Merged at**          | 2026-08-02T19:13:16Z                                            |
+| **Merge commit**       | `2401c7e` (on `origin/master`)                                  |
 | **Pre-cutover master** | `7b5ea1e` (tag `backup/caroline-pre-practice-cutover-20260802`) |
 
 ## After merge
