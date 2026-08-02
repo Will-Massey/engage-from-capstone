@@ -133,17 +133,25 @@ test.describe('Practice OS — jobs, letters, automations', () => {
 
   test('API jobs board returns columns for demo tenant', async ({ request }) => {
     // Cookie login via API (API already includes /api prefix)
-    const login = await request.post(`${API}/auth/login`, {
-      data: {
-        email: process.env.TEST_USER_EMAIL || 'admin@demo.practice',
-        password: process.env.TEST_USER_PASSWORD || 'DemoPass123!',
-      },
-      headers: {
-        Origin: FRONTEND,
-        'Content-Type': 'application/json',
-      },
+    const email = process.env.TEST_USER_EMAIL || 'admin@demo.practice';
+    const password = process.env.TEST_USER_PASSWORD || 'DemoPass123!';
+    const headers = {
+      Origin: FRONTEND,
+      'Content-Type': 'application/json',
+    };
+    let login = await request.post(`${API}/auth/login`, {
+      data: { email, password },
+      headers,
     });
-    expect(login.ok()).toBeTruthy();
+    // Rare RefreshToken unique race under serial suite — one retry is enough
+    if (!login.ok()) {
+      await new Promise((r) => setTimeout(r, 500));
+      login = await request.post(`${API}/auth/login`, {
+        data: { email, password },
+        headers,
+      });
+    }
+    expect(login.ok(), `login status ${login.status()} body=${await login.text()}`).toBeTruthy();
     const jobs = await request.get(`${API}/jobs`, {
       headers: { Origin: FRONTEND },
     });
