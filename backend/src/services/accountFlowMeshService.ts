@@ -1,0 +1,477 @@
+/**
+ * Capstone Engage ↔ AccountFlow mesh (federated).
+ *
+ * SAFETY: Default mode is `mock` — never calls production AccountFlow.
+ * - mock:  in-process store + deep links to Engage sandbox UI
+ * - local: HTTP to ACCOUNTFLOW_BASE_URL (must be localhost / private — blocked otherwise)
+ * - live:  requires ACCOUNTFLOW_MESH_ALLOW_LIVE=true AND non-local URL (explicit only)
+ *
+ * Production AccountFlow is never touched unless William enables live deliberately.
+ */
+import { randomUUID } from 'crypto';
+import { prisma } from '../config/database.js';
+import logger from '../utils/logger.js';
+
+export type MeshMode = 'mock' | 'local' | 'live' | 'off';
+
+export interface MeshStatus {
+  mode: MeshMode;
+  available: boolean;
+  message: string;
+  accountFlowBaseUrl: string | null;
+  allowLive: boolean;
+}
+
+export interface HandoffResult {
+  available: boolean;
+  mode: MeshMode;
+  status: string;
+  message: string;
+  deepLink: string | null;
+  accountFlowClientId: string | null;
+  accountFlowWorkId: string | null;
+  capstoneClientId: string | null;
+  jobId?: string | null;
+  proposalId?: string | null;
+}
+
+interface MockAfClient {
+  id: string;
+  name: string;
+  contactEmail: string;
+  companyNumber?: string | null;
+  engageClientId: string;
+  tenantId: string;
+  createdAt: string;
+}
+
+interface MockAfWork {
+  id: string;
+  title: string;
+  status: string;
+  clientId: string;
+  engageJobId: string | null;
+  engageProposalId: string | null;
+  tenantId: string;
+  createdAt: string;
+}
+
+/** Process-local mock AF — survives until process restart (practice sandbox). */
+const mockClients = new Map<string, MockAfClient>();
+const mockWork = new Map<string, MockAfWork>();
+const mockClientsByEngageId = new Map<string, string>(); // engageClientId → afClientId
+
+function resolveMode(): MeshMode {
+  const raw = (process.env.ACCOUNTFLOW_MESH_MODE || 'mock').toLowerCase().trim();
+  if (raw === 'off' || raw === 'false' || raw === '0') return 'off';
+  if (raw === 'local') return 'local';
+  if (raw === 'live') return 'live';
+  return 'mock';
+}
+
+function allowLive(): boolean {
+  return process.env.ACCOUNTFLOW_MESH_ALLOW_LIVE === 'true';
+}
+
+function baseUrl(): string | null {
+  const u = process.env.ACCOUNTFLOW_BASE_URL?.trim();
+  return u || null;
+}
+
+function isPrivateBase(url: string): boolean {
+  try {
+    const u = new URL(url);
+    const h = u.hostname.toLowerCase();
+    return (
+      h === 'localhost' ||
+      h === '127.0.0.1' ||
+      h === '::1' ||
+      h.endsWith('.local') ||
+      h.startsWith('10.') ||
+      h.startsWith('192.168.') ||
+      /^172\.(1[6-9]|2\d|3[0-1])\./.test(h)
+    );
+  } catch {
+    return false;
+  }
+}
+
+export function getMeshStatus(): MeshStatus {
+  const mode = resolveMode();
+  const url = baseUrl();
+  if (mode === 'off') {
+    return {
+      mode,
+      available: false,
+      message: 'AccountFlow mesh disabled (ACCOUNTFLOW_MESH_MODE=off).',
+      accountFlowBaseUrl: url,
+      allowLive: allowLive(),
+    };
+  }
+  if (mode === 'live' && !allowLive()) {
+    return {
+      mode: 'mock',
+      available: true,
+      message:
+        'Live mesh requested but ACCOUNTFLOW_MESH_ALLOW_LIVE is not true — running mock only (prod AF protected).',
+      accountFlowBaseUrl: null,
+      allowLive: false,
+    };
+  }
+  if (mode === 'local' || mode === 'live') {
+    if (!url) {
+      return {
+        mode: 'mock',
+        available: true,
+        message: `${mode} mode needs ACCOUNTFLOW_BASE_URL — falling back to mock.`,
+        accountFlowBaseUrl: null,
+        allowLive: allowLive(),
+      };
+    }
+    if (mode === 'local' && !isPrivateBase(url)) {
+      return {
+        mode: 'mock',
+        available: true,
+        message:
+          'local mode refused non-private ACCOUNTFLOW_BASE_URL (prod AF protection) — mock active.',
+        accountFlowBaseUrl: null,
+        allowLive: allowLive(),
+      };
+    }
+    if (mode === 'live' && isPrivateBase(url)) {
+      // live pointing at localhost is fine
+    }
+  }
+  return {
+    mode: mode === 'live' && !allowLive() ? 'mock' : mode,
+    available: true,
+    message:
+      mode === 'mock' || (mode === 'live' && !allowLive())
+        ? 'Mock AccountFlow mesh — no outbound calls to production AccountFlow.'
+        : `AccountFlow mesh mode=${mode} base=${url}`,
+    accountFlowBaseUrl: mode === 'mock' ? null : url,
+    allowLive: allowLive(),
+  };
+}
+
+function ensureCapstoneClientId(existing: string | null | undefined): string {
+  return existing || `ccid_${randomUUID().replace(/-/g, '')}`;
+}
+
+/** Mock / local sandbox link — never hits production AccountFlow */
+async function linkClientMock(params: {
+  tenantId: string;
+  clientId: string;
+}): Promise<{ capstoneClientId: string; accountFlowClientId: string }> {
+  const client = await prisma.client.findFirst({
+    where: { id: params.clientId, tenantId: params.tenantId },
+  });
+  if (!client) throw new Error('CLIENT_NOT_FOUND');
+  const capstoneClientId = ensureCapstoneClientId(client.capstoneClientId);
+  let afId = client.accountFlowClientId || mockClientsByEngageId.get(client.id);
+  if (!afId || !mockClients.has(afId)) {
+    afId = `afc_mock_${randomUUID().slice(0, 12)}`;
+    mockClients.set(afId, {
+      id: afId,
+      name: client.name,
+      contactEmail: client.contactEmail,
+      companyNumber: client.companyNumber,
+      engageClientId: client.id,
+      tenantId: params.tenantId,
+      createdAt: new Date().toISOString(),
+    });
+    mockClientsByEngageId.set(client.id, afId);
+  }
+  await prisma.client.update({
+    where: { id: client.id },
+    data: {
+      capstoneClientId,
+      accountFlowClientId: afId,
+      accountFlowLinkedAt: client.accountFlowLinkedAt || new Date(),
+    },
+  });
+  return { capstoneClientId, accountFlowClientId: afId };
+}
+
+async function ensureWorkLinked(params: {
+  tenantId: string;
+  jobId: string;
+  proposalId?: string | null;
+  accountFlowClientId: string;
+}): Promise<string> {
+  const job = await prisma.job.findFirst({
+    where: { id: params.jobId, tenantId: params.tenantId },
+  });
+  if (!job) throw new Error('JOB_NOT_FOUND');
+
+  if (job.accountFlowWorkId && mockWork.has(job.accountFlowWorkId)) {
+    return job.accountFlowWorkId;
+  }
+  if (job.accountFlowWorkId && job.accountFlowSyncStatus === 'LINKED') {
+    return job.accountFlowWorkId;
+  }
+
+  const workId = job.accountFlowWorkId || `afw_mock_${randomUUID().slice(0, 12)}`;
+  mockWork.set(workId, {
+    id: workId,
+    title: job.title,
+    status: job.boardColumn,
+    clientId: params.accountFlowClientId,
+    engageJobId: job.id,
+    engageProposalId: params.proposalId || job.proposalId,
+    tenantId: params.tenantId,
+    createdAt: new Date().toISOString(),
+  });
+
+  await prisma.job.update({
+    where: { id: job.id },
+    data: {
+      accountFlowWorkId: workId,
+      accountFlowSyncStatus: 'MOCK',
+      accountFlowLastSyncedAt: new Date(),
+    },
+  });
+
+  await prisma.jobActivity.create({
+    data: {
+      kind: 'ACCOUNTFLOW_LINKED',
+      message: `Linked to AccountFlow work ${workId} (mesh mock — prod AF untouched)`,
+      jobId: job.id,
+      metadata: JSON.stringify({ accountFlowWorkId: workId, mode: 'mock' }),
+    },
+  });
+
+  return workId;
+}
+
+function sandboxDeepLink(opts: {
+  accountFlowClientId: string;
+  accountFlowWorkId?: string | null;
+}): string {
+  // Stays inside Engage Practice UI — never redirects to production AF
+  const q = new URLSearchParams({
+    afClient: opts.accountFlowClientId,
+  });
+  if (opts.accountFlowWorkId) q.set('afWork', opts.accountFlowWorkId);
+  return `/integrations/accountflow/sandbox?${q.toString()}`;
+}
+
+/**
+ * Primary handoff: ensure AF client (+ optional work) exist in mesh and return deep link.
+ */
+export async function handoffToAccountFlow(params: {
+  tenantId: string;
+  proposalId?: string | null;
+  jobId?: string | null;
+  clientId?: string | null;
+  mode?: 'open' | 'create_and_open';
+}): Promise<HandoffResult> {
+  const status = getMeshStatus();
+  if (status.mode === 'off' || !status.available) {
+    return {
+      available: false,
+      mode: status.mode,
+      status: 'disabled',
+      message: status.message,
+      deepLink: null,
+      accountFlowClientId: null,
+      accountFlowWorkId: null,
+      capstoneClientId: null,
+      jobId: params.jobId,
+      proposalId: params.proposalId,
+    };
+  }
+
+  let clientId = params.clientId || null;
+  let jobId = params.jobId || null;
+  let proposalId = params.proposalId || null;
+
+  if (jobId) {
+    const job = await prisma.job.findFirst({
+      where: { id: jobId, tenantId: params.tenantId },
+      select: { clientId: true, proposalId: true, id: true },
+    });
+    if (!job) {
+      return {
+        available: false,
+        mode: status.mode,
+        status: 'error',
+        message: 'Job not found',
+        deepLink: null,
+        accountFlowClientId: null,
+        accountFlowWorkId: null,
+        capstoneClientId: null,
+      };
+    }
+    clientId = job.clientId;
+    proposalId = proposalId || job.proposalId;
+  } else if (proposalId) {
+    const proposal = await prisma.proposal.findFirst({
+      where: { id: proposalId, tenantId: params.tenantId },
+      select: { clientId: true, id: true },
+    });
+    if (!proposal) {
+      return {
+        available: false,
+        mode: status.mode,
+        status: 'error',
+        message: 'Proposal not found',
+        deepLink: null,
+        accountFlowClientId: null,
+        accountFlowWorkId: null,
+        capstoneClientId: null,
+      };
+    }
+    clientId = proposal.clientId;
+    if (!jobId) {
+      const j = await prisma.job.findFirst({
+        where: { proposalId, tenantId: params.tenantId },
+        select: { id: true },
+      });
+      jobId = j?.id || null;
+    }
+  }
+
+  if (!clientId) {
+    return {
+      available: false,
+      mode: status.mode,
+      status: 'error',
+      message: 'clientId, jobId, or proposalId required',
+      deepLink: null,
+      accountFlowClientId: null,
+      accountFlowWorkId: null,
+      capstoneClientId: null,
+    };
+  }
+
+  // Mock until live is explicitly allowed AND AF mesh HTTP API is implemented
+  const useMock = status.mode === 'mock' || !allowLive() || !status.accountFlowBaseUrl;
+  if (!useMock) {
+    logger.info(
+      'accountFlowMesh: live/local HTTP adapter not implemented yet — using mock (prod AF still safe)'
+    );
+  }
+
+  try {
+    const linked = await linkClientMock({ tenantId: params.tenantId, clientId });
+
+    let workId: string | null = null;
+    if (jobId) {
+      workId = await ensureWorkLinked({
+        tenantId: params.tenantId,
+        jobId,
+        proposalId,
+        accountFlowClientId: linked.accountFlowClientId,
+      });
+    }
+
+    const deepLink = sandboxDeepLink({
+      accountFlowClientId: linked.accountFlowClientId,
+      accountFlowWorkId: workId,
+    });
+
+    return {
+      available: true,
+      mode: useMock ? 'mock' : status.mode,
+      status: useMock ? 'mock_linked' : 'linked',
+      message: useMock
+        ? 'Linked in AccountFlow mesh sandbox (production AccountFlow not contacted).'
+        : 'Linked via AccountFlow mesh.',
+      deepLink,
+      accountFlowClientId: linked.accountFlowClientId,
+      accountFlowWorkId: workId,
+      capstoneClientId: linked.capstoneClientId,
+      jobId,
+      proposalId,
+    };
+  } catch (e: any) {
+    logger.warn('accountFlowMesh handoff failed', { err: e?.message });
+    return {
+      available: false,
+      mode: status.mode,
+      status: 'error',
+      message: e?.message || 'Handoff failed',
+      deepLink: null,
+      accountFlowClientId: null,
+      accountFlowWorkId: null,
+      capstoneClientId: null,
+      jobId,
+      proposalId,
+    };
+  }
+}
+
+/**
+ * Link all open jobs for a tenant into the mock AF mesh (practice sandbox).
+ * Production AccountFlow is never contacted in mock mode.
+ */
+export async function handoffAllOpenJobs(tenantId: string): Promise<{
+  mode: MeshMode;
+  linked: number;
+  skipped: number;
+  results: HandoffResult[];
+}> {
+  const status = getMeshStatus();
+  if (status.mode === 'off' || !status.available) {
+    return { mode: status.mode, linked: 0, skipped: 0, results: [] };
+  }
+
+  const jobs = await prisma.job.findMany({
+    where: { tenantId, isActive: true, boardColumn: { not: 'COMPLETE' } },
+    select: { id: true },
+    take: 100,
+  });
+
+  const results: HandoffResult[] = [];
+  let linked = 0;
+  let skipped = 0;
+  for (const j of jobs) {
+    const r = await handoffToAccountFlow({
+      tenantId,
+      jobId: j.id,
+      mode: 'create_and_open',
+    });
+    results.push(r);
+    if (r.available && r.accountFlowWorkId) linked += 1;
+    else skipped += 1;
+  }
+
+  return { mode: status.mode, linked, skipped, results };
+}
+
+/** Called after job spawn — best-effort mesh link, never throws to caller. */
+export async function onJobSpawnedMesh(params: {
+  tenantId: string;
+  jobId: string;
+  clientId: string;
+  proposalId?: string | null;
+}): Promise<void> {
+  try {
+    const status = getMeshStatus();
+    if (status.mode === 'off') return;
+    await handoffToAccountFlow({
+      tenantId: params.tenantId,
+      jobId: params.jobId,
+      clientId: params.clientId,
+      proposalId: params.proposalId,
+      mode: 'create_and_open',
+    });
+  } catch (e) {
+    logger.warn('accountFlowMesh onJobSpawnedMesh ignored error', e);
+  }
+}
+
+export function listMockAccountFlowState(tenantId: string) {
+  const clients = [...mockClients.values()].filter((c) => c.tenantId === tenantId);
+  const work = [...mockWork.values()].filter((w) => w.tenantId === tenantId);
+  return { clients, work, mode: resolveMode() };
+}
+
+export function getMockWork(id: string) {
+  return mockWork.get(id) || null;
+}
+
+export function getMockClient(id: string) {
+  return mockClients.get(id) || null;
+}

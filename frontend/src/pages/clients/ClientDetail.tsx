@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useParams, Link, useSearchParams } from 'react-router-dom';
 import {
   PencilIcon,
   DocumentTextIcon,
@@ -14,6 +14,7 @@ import {
   ArrowRightIcon,
   SparklesIcon,
   CalendarIcon,
+  BriefcaseIcon,
 } from '@heroicons/react/24/outline';
 import { apiClient } from '../../utils/api';
 import { useAuthStore } from '../../stores/authStore';
@@ -22,17 +23,69 @@ import { motion } from 'framer-motion';
 import toast from 'react-hot-toast';
 import AmlPartnerPanel from '../../components/clients/AmlPartnerPanel';
 import LoeOnlyModal from '../../components/proposals/LoeOnlyModal';
+import {
+  StatusChip,
+  MoneyPill,
+  ProgressRing,
+  boardColumnLabel,
+  boardColumnTone,
+} from '../../components/ui/StatusChip';
 
 const ClientDetail = () => {
   const { id } = useParams<{ id: string }>();
+  const [searchParams] = useSearchParams();
   const { tenant } = useAuthStore();
   const [client, setClient] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState('overview');
+  const tabFromUrl = searchParams.get('tab');
+  const [activeTab, setActiveTab] = useState(
+    tabFromUrl &&
+      ['overview', 'jobs', 'proposals', 'comms', 'mtditsa', 'documents', 'lifecycle'].includes(
+        tabFromUrl
+      )
+      ? tabFromUrl
+      : 'overview'
+  );
+
+  useEffect(() => {
+    if (
+      tabFromUrl &&
+      ['overview', 'jobs', 'proposals', 'comms', 'mtditsa', 'documents', 'lifecycle'].includes(
+        tabFromUrl
+      )
+    ) {
+      setActiveTab(tabFromUrl);
+    }
+  }, [tabFromUrl]);
   const [showEditModal, setShowEditModal] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [isVerifyingId, setIsVerifyingId] = useState(false);
   const [showLoeOnlyModal, setShowLoeOnlyModal] = useState(false);
+  const [clientJobs, setClientJobs] = useState<any[]>([]);
+  const [jobsLoading, setJobsLoading] = useState(false);
+  const [commsEvents, setCommsEvents] = useState<
+    Array<{
+      id: string;
+      channel: string;
+      at: string;
+      title: string;
+      detail: string;
+      status?: string;
+    }>
+  >([]);
+  const [commsLoading, setCommsLoading] = useState(false);
+  const [smsConfigured, setSmsConfigured] = useState(false);
+  const [smsText, setSmsText] = useState('');
+  const [smsBusy, setSmsBusy] = useState(false);
+  const [portalTasks, setPortalTasks] = useState<
+    Array<{ id: string; title: string; done: boolean; dueAt: string | null; from: string }>
+  >([]);
+  const [portalMessages, setPortalMessages] = useState<
+    Array<{ id: string; body: string; createdAt: string; from: string; authorName?: string }>
+  >([]);
+  const [portalTaskDraft, setPortalTaskDraft] = useState('');
+  const [portalMsgDraft, setPortalMsgDraft] = useState('');
+  const [portalOsBusy, setPortalOsBusy] = useState(false);
 
   // Edit form state
   const [editForm, setEditForm] = useState({
@@ -60,6 +113,94 @@ const ClientDetail = () => {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
+
+  useEffect(() => {
+    if (!id || activeTab !== 'jobs') return;
+    let cancelled = false;
+    (async () => {
+      setJobsLoading(true);
+      try {
+        const res = await apiClient.get('/jobs', { params: { clientId: id } });
+        const data = res.data?.data ?? res.data;
+        if (!cancelled) setClientJobs(data.jobs || []);
+      } catch {
+        if (!cancelled) setClientJobs([]);
+      } finally {
+        if (!cancelled) setJobsLoading(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [id, activeTab]);
+
+  useEffect(() => {
+    if (!id || activeTab !== 'comms') return;
+    let cancelled = false;
+    (async () => {
+      setCommsLoading(true);
+      try {
+        const res = (await apiClient.get(`/clients/${id}/comms-timeline`)) as any;
+        const data = res?.data ?? res;
+        if (!cancelled) {
+          setCommsEvents(data?.events || []);
+          setSmsConfigured(!!data?.smsConfigured);
+        }
+      } catch {
+        if (!cancelled) setCommsEvents([]);
+      } finally {
+        if (!cancelled) setCommsLoading(false);
+      }
+      try {
+        const os = (await apiClient.get(`/clients/${id}/portal-os`)) as any;
+        const data = os?.data ?? os;
+        if (!cancelled) {
+          setPortalTasks(data?.tasks || []);
+          setPortalMessages(data?.messages || []);
+        }
+      } catch {
+        if (!cancelled) {
+          setPortalTasks([]);
+          setPortalMessages([]);
+        }
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [id, activeTab]);
+
+  const refreshPortalOs = async () => {
+    if (!id) return;
+    try {
+      const os = (await apiClient.get(`/clients/${id}/portal-os`)) as any;
+      const data = os?.data ?? os;
+      setPortalTasks(data?.tasks || []);
+      setPortalMessages(data?.messages || []);
+    } catch {
+      /* ignore */
+    }
+  };
+
+  const sendClientSms = async () => {
+    if (!id || !smsText.trim()) return;
+    setSmsBusy(true);
+    try {
+      const res = (await apiClient.post(`/clients/${id}/sms`, {
+        message: smsText.trim(),
+        send: true,
+      })) as any;
+      toast.success(res?.message || 'SMS processed');
+      setSmsText('');
+      const tl = (await apiClient.get(`/clients/${id}/comms-timeline`)) as any;
+      setCommsEvents(tl?.data?.events || tl?.events || []);
+      setSmsConfigured(!!(tl?.data?.smsConfigured ?? tl?.smsConfigured));
+    } catch {
+      /* interceptor */
+    } finally {
+      setSmsBusy(false);
+    }
+  };
 
   const loadClient = async () => {
     try {
@@ -236,7 +377,8 @@ const ClientDetail = () => {
       {/* Tabs */}
       <div className="border-b border-slate-200">
         <nav className="-mb-px flex space-x-8">
-          {['overview', 'proposals', 'mtditsa', 'documents', 'lifecycle'].map((tab) => (
+          {['overview', 'jobs', 'proposals', 'comms', 'mtditsa', 'documents', 'lifecycle'].map(
+            (tab) => (
             <button
               key={tab}
               onClick={() => setActiveTab(tab)}
@@ -246,9 +388,10 @@ const ClientDetail = () => {
                   : 'border-transparent text-slate-600 hover:text-slate-800 hover:border-slate-300'
               }`}
             >
-              {tab === 'mtditsa' ? 'MTD ITSA' : tab}
+              {tab === 'mtditsa' ? 'MTD ITSA' : tab === 'comms' ? 'Comms' : tab}
             </button>
-          ))}
+          )
+          )}
         </nav>
       </div>
 
@@ -364,6 +507,321 @@ const ClientDetail = () => {
               </div>
             </div>
           </div>
+        </div>
+      )}
+
+      {activeTab === 'comms' && (
+        <div className="space-y-4">
+          <div className="grid gap-4 lg:grid-cols-2">
+            <div className="metal-tile p-5">
+              <span className="metal-specular" aria-hidden />
+              <div className="relative z-[1]">
+                <p className="metal-kicker">Portal tasks</p>
+                <h3 className="mt-1 text-sm font-semibold text-slate-900 dark:text-white">
+                  Client checklist
+                </h3>
+                <p className="mt-1 text-xs text-slate-500">
+                  Visible in the client portal. Client can tick items off.
+                </p>
+                <ul className="mt-3 max-h-40 space-y-1.5 overflow-y-auto">
+                  {portalTasks.length === 0 && (
+                    <li className="text-xs text-slate-500">No portal tasks yet.</li>
+                  )}
+                  {portalTasks.map((t) => (
+                    <li key={t.id} className="flex items-center gap-2 text-sm">
+                      <input
+                        type="checkbox"
+                        checked={t.done}
+                        disabled={portalOsBusy}
+                        onChange={async () => {
+                          if (!id) return;
+                          setPortalOsBusy(true);
+                          try {
+                            await apiClient.patch(`/clients/${id}/portal-os/tasks/${t.id}`, {
+                              done: !t.done,
+                            });
+                            await refreshPortalOs();
+                          } finally {
+                            setPortalOsBusy(false);
+                          }
+                        }}
+                      />
+                      <span className={t.done ? 'text-slate-400 line-through' : ''}>{t.title}</span>
+                    </li>
+                  ))}
+                </ul>
+                <div className="mt-3 flex gap-2">
+                  <input
+                    className="input-field flex-1 text-sm"
+                    placeholder="e.g. Upload bank statements"
+                    value={portalTaskDraft}
+                    onChange={(e) => setPortalTaskDraft(e.target.value)}
+                  />
+                  <button
+                    type="button"
+                    className="btn-secondary text-xs"
+                    disabled={portalOsBusy || !portalTaskDraft.trim()}
+                    onClick={async () => {
+                      if (!id || !portalTaskDraft.trim()) return;
+                      setPortalOsBusy(true);
+                      try {
+                        await apiClient.post(`/clients/${id}/portal-os/tasks`, {
+                          title: portalTaskDraft.trim(),
+                        });
+                        setPortalTaskDraft('');
+                        await refreshPortalOs();
+                        toast.success('Portal task added');
+                      } finally {
+                        setPortalOsBusy(false);
+                      }
+                    }}
+                  >
+                    Add
+                  </button>
+                </div>
+              </div>
+            </div>
+            <div className="metal-tile p-5">
+              <span className="metal-specular" aria-hidden />
+              <div className="relative z-[1]">
+                <p className="metal-kicker">Portal messages</p>
+                <h3 className="mt-1 text-sm font-semibold text-slate-900 dark:text-white">
+                  Secure thread
+                </h3>
+                <ul className="mt-3 max-h-40 space-y-1.5 overflow-y-auto">
+                  {portalMessages.length === 0 && (
+                    <li className="text-xs text-slate-500">No portal messages yet.</li>
+                  )}
+                  {portalMessages.map((m) => (
+                    <li
+                      key={m.id}
+                      className={`rounded-md px-2 py-1.5 text-xs ${
+                        m.from === 'client'
+                          ? 'bg-emerald-50 text-emerald-900 dark:bg-emerald-950/30'
+                          : 'bg-slate-50 text-slate-700 dark:bg-slate-800'
+                      }`}
+                    >
+                      <span className="font-semibold">
+                        {m.from === 'client' ? 'Client' : m.authorName || 'Staff'}:
+                      </span>{' '}
+                      {m.body}
+                    </li>
+                  ))}
+                </ul>
+                <textarea
+                  className="input-field mt-3 min-h-[3rem] text-sm"
+                  placeholder="Reply via portal…"
+                  value={portalMsgDraft}
+                  onChange={(e) => setPortalMsgDraft(e.target.value)}
+                />
+                <button
+                  type="button"
+                  className="btn-accent mt-2 text-sm"
+                  disabled={portalOsBusy || !portalMsgDraft.trim()}
+                  onClick={async () => {
+                    if (!id || !portalMsgDraft.trim()) return;
+                    setPortalOsBusy(true);
+                    try {
+                      await apiClient.post(`/clients/${id}/portal-os/messages`, {
+                        body: portalMsgDraft.trim(),
+                      });
+                      setPortalMsgDraft('');
+                      await refreshPortalOs();
+                      toast.success('Portal message sent');
+                    } finally {
+                      setPortalOsBusy(false);
+                    }
+                  }}
+                >
+                  Send to portal
+                </button>
+                <Link to="/inbox" className="mt-2 block text-xs text-emerald-700 hover:underline">
+                  View firm inbox →
+                </Link>
+              </div>
+            </div>
+          </div>
+
+          <div className="metal-tile p-5">
+            <span className="metal-specular" aria-hidden />
+            <div className="relative z-[1]">
+              <p className="metal-kicker">SMS</p>
+              <h3 className="mt-1 text-sm font-semibold text-slate-900 dark:text-white">
+                Text client
+                {!smsConfigured && (
+                  <span className="ml-2 text-xs font-normal text-amber-700">
+                    (Twilio not configured — saves draft)
+                  </span>
+                )}
+              </h3>
+              <p className="mt-1 text-xs text-slate-500">
+                To: {client.contactPhone || 'No phone on file'}
+              </p>
+              <div className="mt-2 flex flex-wrap gap-1.5">
+                {[
+                  {
+                    id: 'records',
+                    label: 'Records chase',
+                    text: `Hi${client.contactName ? ` ${String(client.contactName).split(' ')[0]}` : ''}, just a quick reminder we still need your records pack for ${client.name}. Upload via your portal when you can — thanks.`,
+                  },
+                  {
+                    id: 'appt',
+                    label: 'Appointment',
+                    text: `Hi${client.contactName ? ` ${String(client.contactName).split(' ')[0]}` : ''}, confirming our call about ${client.name}. Reply if you need to reschedule.`,
+                  },
+                  {
+                    id: 'payment',
+                    label: 'Payment nudge',
+                    text: `Hi${client.contactName ? ` ${String(client.contactName).split(' ')[0]}` : ''}, a payment for ${client.name} needs attention. Check your email for the secure link, or reply here and we'll help.`,
+                  },
+                ].map((t) => (
+                  <button
+                    key={t.id}
+                    type="button"
+                    className="rounded-full border border-slate-200 bg-white/80 px-2.5 py-0.5 text-2xs font-medium text-slate-600 hover:border-emerald-300 hover:text-emerald-800 dark:border-slate-600 dark:bg-slate-800"
+                    onClick={() => setSmsText(t.text)}
+                  >
+                    {t.label}
+                  </button>
+                ))}
+              </div>
+              <textarea
+                className="input-field mt-3 min-h-[4rem] text-sm"
+                placeholder="Short chase or appointment reminder…"
+                value={smsText}
+                onChange={(e) => setSmsText(e.target.value)}
+                disabled={!client.contactPhone}
+              />
+              <div className="mt-2 flex flex-wrap items-center gap-2">
+                <button
+                  type="button"
+                  className="btn-accent text-sm"
+                  disabled={smsBusy || !smsText.trim() || !client.contactPhone}
+                  onClick={() => void sendClientSms()}
+                >
+                  {smsBusy ? 'Sending…' : smsConfigured ? 'Send SMS' : 'Save SMS draft'}
+                </button>
+                <span className="text-2xs text-slate-400">
+                  {smsText.length}/1600 · templates fill the box first
+                </span>
+              </div>
+            </div>
+          </div>
+
+          <div className="metal-tile p-5">
+            <span className="metal-specular" aria-hidden />
+            <div className="relative z-[1]">
+              <p className="metal-kicker">Timeline</p>
+              <h3 className="mt-1 mb-3 text-sm font-semibold text-slate-900 dark:text-white">
+                Email · SMS · dunning
+              </h3>
+              {commsLoading ? (
+                <p className="text-sm text-slate-500">Loading…</p>
+              ) : commsEvents.length === 0 ? (
+                <p className="text-sm text-slate-500">
+                  No email or SMS activity logged for this client yet.
+                </p>
+              ) : (
+                <ul className="max-h-96 space-y-2 overflow-y-auto">
+                  {commsEvents.map((ev) => (
+                    <li
+                      key={ev.id}
+                      className="rounded-lg border border-slate-200/70 bg-white/60 px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-900/40"
+                    >
+                      <div className="flex flex-wrap items-center gap-2">
+                        <StatusChip
+                          tone={
+                            ev.channel === 'email'
+                              ? 'info'
+                              : ev.channel === 'sms'
+                                ? 'mint'
+                                : 'danger'
+                          }
+                        >
+                          {ev.channel}
+                        </StatusChip>
+                        <span className="font-medium text-slate-800 dark:text-slate-100">
+                          {ev.title}
+                        </span>
+                      </div>
+                      <p className="mt-0.5 text-xs text-slate-500">{ev.detail}</p>
+                      <p className="text-2xs text-slate-400">
+                        {format(new Date(ev.at), 'dd MMM yyyy HH:mm')}
+                        {ev.status ? ` · ${ev.status}` : ''}
+                      </p>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {activeTab === 'jobs' && (
+        <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm">
+          {jobsLoading ? (
+            <div className="h-32 animate-pulse bg-slate-50 dark:bg-slate-900/40" />
+          ) : clientJobs.length === 0 ? (
+            <div className="text-center py-12 px-4">
+              <BriefcaseIcon className="mx-auto h-12 w-12 text-slate-300" />
+              <h3 className="mt-4 text-lg font-medium text-slate-900 dark:text-white">
+                No delivery jobs yet
+              </h3>
+              <p className="mt-1 text-sm text-slate-500 max-w-md mx-auto">
+                Jobs appear when this client accepts a proposal. Track phases, deadlines, and time
+                from the board.
+              </p>
+              <Link to="/jobs" className="mt-4 btn-secondary inline-flex text-sm">
+                Open jobs board
+              </Link>
+            </div>
+          ) : (
+            <div className="divide-y divide-slate-200 dark:divide-slate-700">
+              {clientJobs.map((job: any) => {
+                const phases = job.phases || [];
+                const pct =
+                  phases.length === 0
+                    ? 0
+                    : Math.round(
+                        phases.reduce((a: number, p: any) => a + (p.progressPct || 0), 0) /
+                          phases.length
+                      );
+                const overdue = job.dueAt && new Date(job.dueAt) < new Date();
+                return (
+                  <Link
+                    key={job.id}
+                    to={`/jobs/${job.id}`}
+                    className="flex flex-wrap items-center justify-between gap-3 px-6 py-4 hover:bg-slate-50 dark:hover:bg-slate-900/40"
+                  >
+                    <div className="min-w-0 flex items-start gap-3">
+                      <ProgressRing pct={pct} size={32} stroke={3} />
+                      <div>
+                        <p className="text-sm font-medium text-slate-900 dark:text-white">
+                          {job.title}
+                        </p>
+                        <p className="text-xs text-slate-500">
+                          {job.reference}
+                          {job.proposal?.reference ? ` · ${job.proposal.reference}` : ''}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <StatusChip tone={boardColumnTone(job.boardColumn)}>
+                        {boardColumnLabel(job.boardColumn)}
+                      </StatusChip>
+                      {job.dueAt && (
+                        <StatusChip tone={overdue ? 'danger' : 'info'}>
+                          {format(new Date(job.dueAt), 'dd MMM yyyy')}
+                        </StatusChip>
+                      )}
+                      <MoneyPill pence={job.proposedFeePence || 0} />
+                    </div>
+                  </Link>
+                );
+              })}
+            </div>
+          )}
         </div>
       )}
 

@@ -17,8 +17,20 @@ export const TwoFactorSetup = lazy(() => import('../pages/auth/TwoFactorSetup'))
 export const Dashboard = lazy(() => import('../pages/Dashboard'));
 export const Proposals = lazy(() => import('../pages/proposals/Proposals'));
 export const ProposalDetail = lazy(() => import('../pages/proposals/ProposalDetail'));
+export const JobsBoard = lazy(() => import('../pages/jobs/JobsBoard'));
+export const JobDetail = lazy(() => import('../pages/jobs/JobDetail'));
+export const Workload = lazy(() => import('../pages/jobs/Workload'));
+export const PracticeLetters = lazy(() => import('../pages/letters/PracticeLetters'));
+export const PracticeAutomations = lazy(() => import('../pages/automations/PracticeAutomations'));
+export const FirmInbox = lazy(() => import('../pages/inbox/FirmInbox'));
+export const PracticeForms = lazy(() => import('../pages/forms/PracticeForms'));
+export const AccountFlowSandbox = lazy(
+  () => import('../pages/integrations/AccountFlowSandbox')
+);
+export const IntegrationsHub = lazy(() => import('../pages/integrations/IntegrationsHub'));
 export const Clients = lazy(() => import('../pages/clients/Clients'));
 export const ClientDetail = lazy(() => import('../pages/clients/ClientDetail'));
+export const ClientImport = lazy(() => import('../pages/clients/ClientImport'));
 export const Services = lazy(() => import('../pages/services/Services'));
 export const ServiceDetail = lazy(() => import('../pages/services/ServiceDetail'));
 export const ProposalTemplates = lazy(() => import('../pages/templates/ProposalTemplates'));
@@ -41,6 +53,8 @@ export const Settings = lazy(() => import('../pages/Settings'));
 export const Subscription = lazy(() => import('../pages/Subscription'));
 export const Analytics = lazy(() => import('../pages/Analytics'));
 export const PartnerProgramme = lazy(() => import('../pages/PartnerProgramme'));
+export const SwitchFromEngager = lazy(() => import('../pages/gtm/SwitchFromEngager'));
+export const TrustPack = lazy(() => import('../pages/gtm/TrustPack'));
 
 /** Legal (public) */
 export const TermsOfService = lazy(() => import('../pages/legal/TermsOfService'));
@@ -62,6 +76,15 @@ export const ROUTE_LAZY_PAGES: Record<string, LazyExoticComponent<ComponentType<
   TwoFactorSetup,
   Dashboard,
   Proposals,
+  JobsBoard,
+  JobDetail,
+  Workload,
+  PracticeLetters,
+  PracticeAutomations,
+  FirmInbox,
+  PracticeForms,
+  AccountFlowSandbox,
+  IntegrationsHub,
   BulkRenewalWizard,
   FirstProposalWizardPage,
   ProposalDetail,
@@ -70,6 +93,7 @@ export const ROUTE_LAZY_PAGES: Record<string, LazyExoticComponent<ComponentType<
   EditProposal,
   Clients,
   ClientDetail,
+  ClientImport,
   CreateClient,
   Services,
   ServiceDetail,
@@ -79,6 +103,8 @@ export const ROUTE_LAZY_PAGES: Record<string, LazyExoticComponent<ComponentType<
   Subscription,
   Analytics,
   PartnerProgramme,
+  SwitchFromEngager,
+  TrustPack,
   NotFound,
   Status,
   PublicProposalView,

@@ -1,10 +1,31 @@
 /**
- * Base-path-aware default brand logo.
+ * Base-path-aware default brand logos — Metal Mint wordmark.
  *
- * The app is served under a base path in production (`/engage/`), so an
- * absolute `/capstone-logo.jpg` resolves to the domain root and 404s. Using
- * `import.meta.env.BASE_URL` keeps the URL correct in every environment, and
- * the SVG asset is crisp at any size (the old JPG also wasn't deployed at the
- * base path). Tenants with an uploaded logo override this.
+ * Light = white-field metal (login, light chrome)
+ * Dark  = charcoal-field metal (dark mode sidebar / night UI)
+ *
+ * Tenants with an uploaded logo override these defaults.
  */
-export const DEFAULT_LOGO_URL = `${import.meta.env.BASE_URL}images/engage-logo.svg`;
+
+const base = import.meta.env.BASE_URL;
+
+/** Full metal wordmark on light field — primary default */
+export const DEFAULT_LOGO_URL = `${base}images/engage-logo-metal-light.jpg`;
+
+/** Full metal wordmark on dark field */
+export const DEFAULT_LOGO_DARK_URL = `${base}images/engage-logo-metal-dark.jpg`;
+
+/** Alias used by some legacy references */
+export const DEFAULT_LOGO_JPG = `${base}images/engage-logo.jpg`;
+
+/**
+ * Pick light vs dark metal mark. Pass `isDark` from theme store / media query.
+ * Always prefer a tenant-uploaded logo when provided.
+ */
+export function resolveBrandLogo(opts?: {
+  tenantLogo?: string | null;
+  isDark?: boolean;
+}): string {
+  if (opts?.tenantLogo) return opts.tenantLogo;
+  return opts?.isDark ? DEFAULT_LOGO_DARK_URL : DEFAULT_LOGO_URL;
+}

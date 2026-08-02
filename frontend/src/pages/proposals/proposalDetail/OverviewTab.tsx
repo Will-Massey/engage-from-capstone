@@ -5,21 +5,155 @@
  * handlers come from useProposalDetail().
  */
 
+import { useCallback, useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
 import {
   PencilIcon,
   CheckIcon,
   PrinterIcon,
   DocumentTextIcon,
   BuildingOfficeIcon,
+  BriefcaseIcon,
 } from '@heroicons/react/24/outline';
 import { format } from 'date-fns';
 import { formatCurrency } from '../../../utils/formatters';
 import { generateDefaultCoverLetter } from '../../../data/defaultCoverLetter';
 import SignaturePad from '../../../components/SignaturePad';
 import { useProposalDetail } from './ProposalDetailContext';
+import { apiClient } from '../../../utils/api';
+import {
+  StatusChip,
+  MoneyPill,
+  boardColumnLabel,
+  boardColumnTone,
+} from '../../../components/ui/StatusChip';
+
+/** Delivery job linked to an accepted proposal (spawn on accept). */
+function DeliveryJobPanel({ proposalId }: { proposalId: string }) {
+  const [job, setJob] = useState<any | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [spawning, setSpawning] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      // Interceptor unwraps to { success, data: { jobs, columns } }
+      const res = (await apiClient.get('/jobs', { params: { proposalId } })) as {
+        data?: { jobs?: unknown[] };
+        jobs?: unknown[];
+      };
+      const list = res?.data?.jobs ?? res?.jobs ?? [];
+      setJob(Array.isArray(list) && list[0] ? list[0] : null);
+    } catch (e: any) {
+      setError(e?.message || 'Could not load job');
+      setJob(null);
+    } finally {
+      setLoading(false);
+    }
+  }, [proposalId]);
+
+  useEffect(() => {
+    void load();
+  }, [load]);
+
+  async function spawn() {
+    setSpawning(true);
+    setError(null);
+    try {
+      await apiClient.post(`/jobs/spawn-from-proposal/${proposalId}`, {});
+      await load();
+    } catch (e: any) {
+      setError(e?.response?.data?.error?.message || e?.message || 'Spawn failed');
+    } finally {
+      setSpawning(false);
+    }
+  }
+
+  if (loading) {
+    return <div className="card h-16 animate-pulse bg-slate-100" />;
+  }
+
+  return (
+    <div className="card border border-slate-200 p-4 dark:border-slate-700">
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div className="flex items-start gap-3 min-w-0">
+          <div className="rounded-lg bg-emerald-50 p-2 dark:bg-emerald-950/40">
+            <BriefcaseIcon className="h-5 w-5 text-emerald-600" />
+          </div>
+          <div className="min-w-0">
+            <h3 className="text-sm font-semibold text-slate-900 dark:text-white">
+              Delivery job
+            </h3>
+            {job ? (
+              <>
+                <p className="mt-0.5 truncate text-sm text-slate-600 dark:text-slate-300">
+                  {job.title}
+                </p>
+                <div className="mt-2 flex flex-wrap items-center gap-1.5">
+                  <StatusChip tone={boardColumnTone(job.boardColumn)}>
+                    {boardColumnLabel(job.boardColumn)}
+                  </StatusChip>
+                  <MoneyPill pence={job.proposedFeePence || 0} />
+                  <span className="text-2xs text-slate-400">{job.reference}</span>
+                </div>
+              </>
+            ) : (
+              <p className="mt-0.5 text-sm text-slate-500">
+                No job yet — spawn one to track phases, deadlines, and chases on the board.
+              </p>
+            )}
+            {error && <p className="mt-1 text-xs text-red-600">{error}</p>}
+          </div>
+        </div>
+        <div className="flex flex-wrap gap-2">
+          {job ? (
+            <Link to={`/jobs/${job.id}`} className="btn-accent text-xs">
+              Open job
+            </Link>
+          ) : (
+            <button
+              type="button"
+              className="btn-accent text-xs"
+              disabled={spawning}
+              onClick={() => void spawn()}
+            >
+              {spawning ? 'Creating…' : 'Create delivery job'}
+            </button>
+          )}
+          <button
+            type="button"
+            className="btn-secondary text-xs"
+            onClick={async () => {
+              try {
+                const h = (await apiClient.post('/integrations/accountflow/handoff', {
+                  proposalId,
+                  jobId: job?.id,
+                  mode: 'create_and_open',
+                })) as any;
+                const d = h?.data ?? h;
+                if (d?.deepLink) window.location.assign(d.deepLink);
+              } catch {
+                /* ignore */
+              }
+            }}
+            title="Mock AccountFlow mesh — production AF untouched"
+          >
+            AccountFlow mesh
+          </button>
+          <Link to="/jobs" className="btn-secondary text-xs">
+            Jobs board
+          </Link>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 export default function OverviewTab() {
   const {
+    id,
     tenant,
     proposal,
     activeTab,
@@ -297,23 +431,26 @@ export default function OverviewTab() {
       )}
 
       {proposal.status === 'ACCEPTED' && activeTab === 'overview' && (
-        <div className="glass-tile p-4 border border-emerald-200 dark:border-emerald-900/50 bg-emerald-50/50 dark:bg-emerald-950/20">
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <div className="flex items-center gap-2 text-sm text-emerald-800 dark:text-emerald-200">
-              <CheckIcon className="h-5 w-5" />
-              <span>
-                Signed by <strong>{proposal.acceptedBy}</strong>
-                {signedAt && <> on {format(signedAt, 'dd MMM yyyy, HH:mm')}</>}
-              </span>
+        <div className="space-y-3">
+          <div className="rounded-xl border border-emerald-200 dark:border-emerald-900/50 bg-emerald-50/50 dark:bg-emerald-950/20 p-4">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div className="flex items-center gap-2 text-sm text-emerald-800 dark:text-emerald-200">
+                <CheckIcon className="h-5 w-5" />
+                <span>
+                  Signed by <strong>{proposal.acceptedBy}</strong>
+                  {signedAt && <> on {format(signedAt, 'dd MMM yyyy, HH:mm')}</>}
+                </span>
+              </div>
+              <button
+                type="button"
+                onClick={() => setActiveTab('audit')}
+                className="btn-secondary text-xs"
+              >
+                View signature &amp; access history
+              </button>
             </div>
-            <button
-              type="button"
-              onClick={() => setActiveTab('audit')}
-              className="btn-secondary text-xs"
-            >
-              View signature &amp; access history
-            </button>
           </div>
+          <DeliveryJobPanel proposalId={id || proposal.id} />
         </div>
       )}
 

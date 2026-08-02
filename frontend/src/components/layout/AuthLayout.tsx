@@ -1,6 +1,6 @@
 import { useAuthStore } from '../../stores/authStore';
 import { LegalFooterLinks } from '../legal/LegalPageLayout';
-import { DEFAULT_LOGO_URL } from '../../utils/brandLogo';
+import { BrandLogo } from '../ui/BrandLogo';
 
 interface AuthLayoutProps {
   children: React.ReactNode;
@@ -8,7 +8,6 @@ interface AuthLayoutProps {
 
 const AuthLayout = ({ children }: AuthLayoutProps) => {
   const { tenant } = useAuthStore();
-  const logoUrl = tenant?.logo || DEFAULT_LOGO_URL;
 
   return (
     <div className="min-h-screen flex flex-col justify-center bg-slate-50 py-12 px-4 sm:px-6 lg:px-8 relative">
@@ -16,10 +15,15 @@ const AuthLayout = ({ children }: AuthLayoutProps) => {
       <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-primary-600/40 to-transparent" />
 
       <div className="relative sm:mx-auto sm:w-full sm:max-w-md">
-        {/* Logo */}
+        {/* Logo — metal wordmark (full height on login) */}
         <div className="flex flex-col items-center">
-          <img src={logoUrl} alt={tenant?.name || 'Engage by Capstone'} className="h-12 w-auto" />
-          <p className="mt-3 text-center text-sm text-ink-500">
+          <BrandLogo
+            tenantLogo={tenant?.logo}
+            alt={tenant?.name || 'Engage by Capstone'}
+            className="h-24 sm:h-28 w-auto max-w-[14rem] object-contain"
+            frameClassName="px-1"
+          />
+          <p className="mt-4 text-center text-sm text-ink-500">
             Professional proposal generation for UK accountants
           </p>
         </div>

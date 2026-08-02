@@ -68,7 +68,7 @@ const Login = () => {
 
         setSession(response.data.user, response.data.user.tenant);
         rememberCsrfToken(response.data.csrfToken);
-        toast.success('Welcome to Engage!');
+        toast.success('Welcome to Engage Practice!');
         window.location.assign(appPath('/'));
         return;
       }
@@ -101,7 +101,7 @@ const Login = () => {
       if (response.success) {
         setSession(response.data.user, response.data.user.tenant);
         rememberCsrfToken(response.data.csrfToken);
-        toast.success('Welcome to Engage!');
+        toast.success('Welcome to Engage Practice!');
         window.location.assign(appPath('/'));
         return;
       }

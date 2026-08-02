@@ -37,22 +37,28 @@ const NavItemLink = ({
       end={item.href === '/'}
       onClick={onNavigate}
       title={item.description}
-      className={`group flex items-center px-4 py-2.5 text-sm font-medium rounded-xl border transition-all duration-200 ${
+      className={`group flex items-center min-h-[2.5rem] px-3 py-2 text-sm font-medium rounded-xl border transition-colors duration-150 cursor-pointer ${
         active
-          ? 'text-primary-700 dark:text-primary-300 bg-primary-500/10 dark:bg-primary-500/20 border-primary-500/20 dark:border-primary-500/30'
-          : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 border-transparent'
+          ? 'text-emerald-800 dark:text-emerald-200 bg-emerald-500/10 dark:bg-emerald-500/15 border-emerald-500/25 dark:border-emerald-500/30 shadow-sm'
+          : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 hover:bg-slate-100/80 dark:hover:bg-slate-800/50 border-transparent'
       }`}
     >
       <item.icon
-        className={`mr-3 h-5 w-5 flex-shrink-0 transition-colors ${
+        className={`mr-2.5 h-5 w-5 flex-shrink-0 transition-colors ${
           active
-            ? 'text-primary-600 dark:text-primary-400'
+            ? 'text-emerald-600 dark:text-emerald-400'
             : 'text-slate-400 group-hover:text-slate-600 dark:group-hover:text-slate-300'
         }`}
+        aria-hidden
       />
       <span className="truncate flex-1">{item.name}</span>
       {badge != null && badge > 0 && (
-        <span className="ml-2 inline-flex min-w-[1.25rem] items-center justify-center rounded-full bg-amber-500 px-1.5 py-0.5 text-[10px] font-bold text-white">
+        <span
+          className={`ml-2 inline-flex min-w-[1.25rem] items-center justify-center rounded-full px-1.5 py-0.5 text-[10px] font-bold text-white ${
+            item.href === '/jobs' ? 'bg-rose-500' : 'bg-amber-500'
+          }`}
+          aria-label={`${badge} pending`}
+        >
           {badge > 99 ? '99+' : badge}
         </span>
       )}
@@ -65,6 +71,7 @@ const SidebarNavItems = ({ pathname, onNavigate }: SidebarNavItemsProps) => {
   const aiConfigured = useAiAssistantStore((s) => s.configured);
   const user = useAuthStore((s) => s.user);
   const [approvalQueueCount, setApprovalQueueCount] = useState(0);
+  const [jobsOverdueCount, setJobsOverdueCount] = useState(0);
 
   useEffect(() => {
     if (!isApprover(user?.role)) {
@@ -98,15 +105,37 @@ const SidebarNavItems = ({ pathname, onNavigate }: SidebarNavItemsProps) => {
     };
   }, [user?.role]);
 
+  useEffect(() => {
+    let cancelled = false;
+    const loadOverdue = async () => {
+      try {
+        const res = (await apiClient.get('/jobs/meta/pipeline')) as {
+          data?: { overdueCount?: number };
+          success?: boolean;
+        };
+        const n = res?.data?.overdueCount ?? 0;
+        if (!cancelled) setJobsOverdueCount(typeof n === 'number' ? n : 0);
+      } catch {
+        if (!cancelled) setJobsOverdueCount(0);
+      }
+    };
+    loadOverdue();
+    const interval = window.setInterval(loadOverdue, 90_000);
+    return () => {
+      cancelled = true;
+      window.clearInterval(interval);
+    };
+  }, []);
+
   return (
-    <div className="space-y-5">
+    <div className="space-y-4">
       <Link
         to={PRIMARY_CREATE.href}
         onClick={onNavigate}
-        className="mx-1 flex items-center justify-center gap-2 w-[calc(100%-0.5rem)] btn-primary py-3"
+        className="mx-1 flex items-center justify-center gap-2 w-[calc(100%-0.5rem)] btn-primary py-3 shadow-md shadow-emerald-600/15"
         data-tour="create-proposal"
       >
-        <PlusIcon className="h-5 w-5" />
+        <PlusIcon className="h-5 w-5" aria-hidden />
         {PRIMARY_CREATE.label}
       </Link>
 
@@ -116,28 +145,36 @@ const SidebarNavItems = ({ pathname, onNavigate }: SidebarNavItemsProps) => {
           openAi();
           onNavigate?.();
         }}
-        className="mx-1 flex items-center justify-center gap-2 w-[calc(100%-0.5rem)] py-2.5 rounded-xl text-sm font-semibold bg-gradient-to-r from-primary-600/15 to-primary-600/15 hover:from-primary-600/25 hover:to-primary-600/25 border border-primary-400/40 text-primary-700 dark:text-primary-200 transition-all"
+        className="mx-1 flex min-h-[2.5rem] items-center justify-center gap-2 w-[calc(100%-0.5rem)] py-2.5 rounded-xl text-sm font-semibold cursor-pointer bg-gradient-to-r from-emerald-600/12 to-teal-500/10 hover:from-emerald-600/20 hover:to-teal-500/15 border border-emerald-400/35 text-emerald-800 dark:text-emerald-200 transition-colors"
       >
-        <SparklesIcon className="h-5 w-5" />
+        <SparklesIcon className="h-5 w-5" aria-hidden />
         {AI_COPILOT.name}
         <span
           className={`ml-auto h-2 w-2 rounded-full ${aiConfigured ? 'bg-emerald-500' : 'bg-amber-500'}`}
+          title={aiConfigured ? 'Clara ready' : 'Clara needs configuration'}
+          aria-hidden
         />
       </button>
 
       {NAV_SECTIONS.map((section) => (
         <div key={section.id}>
-          <p className="text-xs font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500 px-4 mb-2">
+          <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-400 dark:text-slate-500 px-3 mb-1.5">
             {section.label}
           </p>
-          <div className="space-y-0.5 px-1">
+          <div className="space-y-0.5 px-0.5">
             {section.items.map((item) => (
               <NavItemLink
                 key={item.href}
                 item={item}
                 pathname={pathname}
                 onNavigate={onNavigate}
-                badge={item.href === '/proposals' ? approvalQueueCount : undefined}
+                badge={
+                  item.href === '/proposals'
+                    ? approvalQueueCount
+                    : item.href === '/jobs'
+                      ? jobsOverdueCount
+                      : undefined
+                }
               />
             ))}
           </div>

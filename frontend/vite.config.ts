@@ -22,10 +22,11 @@ export default defineConfig({
     },
   },
   server: {
-    port: 5173,
+    // Isolated from production Engage (5173/3001) — see ISOLATION.md
+    port: 5273,
     proxy: {
       '/api': {
-        target: 'http://localhost:3001',
+        target: 'http://localhost:3101',
         changeOrigin: true,
       },
     },

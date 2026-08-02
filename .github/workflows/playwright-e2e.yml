@@ -1,8 +1,20 @@
-# Reusable Playwright stack (shared by ci-cd.yml and e2e-scheduled.yml)
+# Reusable Playwright stack (shared by ci-cd.yml, e2e-scheduled.yml, practice-e2e.yml)
 name: Playwright E2E
 
 on:
   workflow_call:
+    inputs:
+      # Space-separated paths or empty = full chromium suite
+      test_filter:
+        description: 'Playwright path filter (e.g. specs/practice-w3-surfaces.spec.ts)'
+        type: string
+        required: false
+        default: ''
+      skip_build_smoke:
+        description: 'Skip playwright.build.config authenticated suite'
+        type: boolean
+        required: false
+        default: false
 
 jobs:
   playwright:
@@ -104,7 +116,13 @@ jobs:
           done
 
       - name: Run E2E tests (core specs)
-        run: cd e2e-tests && npx playwright test --project=chromium
+        run: |
+          cd e2e-tests
+          if [ -n "${{ inputs.test_filter }}" ]; then
+            npx playwright test --project=chromium ${{ inputs.test_filter }}
+          else
+            npx playwright test --project=chromium
+          fi
         env:
           FRONTEND_URL: http://localhost:5173
           API_URL: http://localhost:3001/api
@@ -112,6 +130,7 @@ jobs:
           TEST_USER_PASSWORD: DemoPass123!
 
       - name: Run E2E tests (authenticated smoke suite)
+        if: ${{ inputs.skip_build_smoke != true }}
         # The build config does a single global login and reuses the saved
         # storage state — the 8 smoke specs 401-cascade under the default config.
         run: cd e2e-tests && npx playwright test --config=playwright.build.config.ts --project=chromium

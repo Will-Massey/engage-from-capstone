@@ -8,6 +8,14 @@ import {
   RectangleStackIcon,
   ChartPieIcon,
   CogIcon,
+  BriefcaseIcon,
+  DocumentDuplicateIcon,
+  BoltIcon,
+  ArrowsRightLeftIcon,
+  ScaleIcon,
+  ShieldCheckIcon,
+  InboxIcon,
+  ClipboardDocumentListIcon,
 } from '@heroicons/react/24/outline';
 
 export type NavIcon = ComponentType<SVGProps<SVGSVGElement>>;
@@ -27,15 +35,46 @@ export interface NavSection {
   items: NavItem[];
 }
 
+/**
+ * Nav IA (path simplification):
+ * 1) Today — daily delivery loop (fewest clicks)
+ * 2) Win work — proposals
+ * 3) Run practice — secondary ops
+ * 4) Catalogue / Insights / Account
+ * Grow (GTM) is demoted so it never competes with delivery.
+ */
 export const NAV_SECTIONS: NavSection[] = [
   {
-    id: 'overview',
-    label: 'Overview',
-    items: [{ name: 'Dashboard', href: '/', icon: HomeIcon, matchPrefix: false }],
+    id: 'today',
+    label: 'Today',
+    items: [
+      { name: 'Home', href: '/', icon: HomeIcon, matchPrefix: false },
+      {
+        name: 'Jobs',
+        href: '/jobs',
+        icon: BriefcaseIcon,
+        description: 'Delivery board — phases, deadlines, time',
+        matchPrefix: true,
+      },
+      {
+        name: 'Inbox',
+        href: '/inbox',
+        icon: InboxIcon,
+        description: 'Two-way mailbox, SMS, portal messages',
+        matchPrefix: true,
+      },
+      {
+        name: 'Clients',
+        href: '/clients',
+        icon: UsersIcon,
+        description: 'Client records, portal, MTD ITSA',
+        matchPrefix: true,
+      },
+    ],
   },
   {
-    id: 'work',
-    label: 'Your work',
+    id: 'win',
+    label: 'Win work',
     items: [
       {
         name: 'Proposals',
@@ -44,11 +83,45 @@ export const NAV_SECTIONS: NavSection[] = [
         description: 'Create and send engagement letters',
         matchPrefix: true,
       },
+    ],
+  },
+  {
+    id: 'practice',
+    label: 'Run practice',
+    items: [
       {
-        name: 'Clients',
-        href: '/clients',
+        name: 'Workload',
+        href: '/jobs/workload',
         icon: UsersIcon,
-        description: 'Client records and MTD ITSA',
+        description: 'Open jobs and overdue by team member',
+        matchPrefix: false,
+      },
+      {
+        name: 'Forms',
+        href: '/forms',
+        icon: ClipboardDocumentListIcon,
+        description: 'Bulk questionnaires assigned to clients',
+        matchPrefix: true,
+      },
+      {
+        name: 'Letters',
+        href: '/letters',
+        icon: DocumentDuplicateIcon,
+        description: 'Disengagement, clearance, HMRC 64-8',
+        matchPrefix: true,
+      },
+      {
+        name: 'Automations',
+        href: '/automations',
+        icon: BoltIcon,
+        description: 'Chase packs, proposal follow-ups, schedules',
+        matchPrefix: true,
+      },
+      {
+        name: 'Integrations',
+        href: '/integrations',
+        icon: ArrowsRightLeftIcon,
+        description: 'Xero, QuickBooks, AccountFlow mesh',
         matchPrefix: true,
       },
     ],
@@ -65,18 +138,18 @@ export const NAV_SECTIONS: NavSection[] = [
         matchPrefix: true,
       },
       {
-        name: 'Pricing calculator',
-        href: '/pricing-calculator',
-        icon: CalculatorIcon,
-        description: 'Turnover and complexity → suggested fee bands',
-        matchPrefix: false,
-      },
-      {
         name: 'Templates',
         href: '/templates',
         icon: RectangleStackIcon,
-        description: 'Pre-made proposal bundles for faster drafting',
+        description: 'Pre-made proposal bundles',
         matchPrefix: true,
+      },
+      {
+        name: 'Pricing',
+        href: '/pricing-calculator',
+        icon: CalculatorIcon,
+        description: 'Turnover → fee bands',
+        matchPrefix: false,
       },
     ],
   },
@@ -86,16 +159,37 @@ export const NAV_SECTIONS: NavSection[] = [
     items: [{ name: 'Analytics', href: '/analytics', icon: ChartPieIcon, matchPrefix: true }],
   },
   {
+    id: 'gtm',
+    label: 'Partner demo',
+    items: [
+      {
+        name: 'Switch from Engager',
+        href: '/switch-from-engager',
+        icon: ScaleIcon,
+        description: 'Battle card · ROI · demo script',
+        matchPrefix: false,
+      },
+      {
+        name: 'Trust pack',
+        href: '/trust',
+        icon: ShieldCheckIcon,
+        description: 'CE prep · UK residency · diligence',
+        matchPrefix: false,
+      },
+    ],
+  },
+  {
     id: 'account',
     label: 'Account',
     items: [{ name: 'Settings', href: '/settings', icon: CogIcon, matchPrefix: true }],
   },
 ];
 
+/** Primary create path — guided wizard (fewest steps to value) */
 export const PRIMARY_CREATE = {
   label: 'New proposal',
-  href: '/proposals/new',
-  shortcut: '⌘K then N',
+  href: '/proposals/wizard',
+  shortcut: 'Ctrl+K',
 };
 
 /** Flat list for command palette / search */
@@ -104,6 +198,10 @@ export const ALL_NAV_ITEMS: NavItem[] = NAV_SECTIONS.flatMap((s) => s.items);
 export function isNavItemActive(pathname: string, item: NavItem): boolean {
   if (item.href === '/') {
     return pathname === '/';
+  }
+  // Jobs board should not stay active on Workload (sibling under /jobs/*)
+  if (item.href === '/jobs' && pathname.startsWith('/jobs/workload')) {
+    return false;
   }
   if (item.matchPrefix) {
     return pathname === item.href || pathname.startsWith(`${item.href}/`);
@@ -187,6 +285,89 @@ export function getPageMeta(pathname: string): {
         { label: 'Details' },
       ],
       backTo: { label: 'Back to proposals', href: '/proposals' },
+    };
+  }
+
+  if (pathname === '/switch-from-engager') {
+    return {
+      title: 'Switch from Engager',
+      description: 'Battle card and ROI calculator',
+      breadcrumbs: [{ label: 'Dashboard', href: '/' }, { label: 'Switch from Engager' }],
+    };
+  }
+  if (pathname === '/trust') {
+    return {
+      title: 'Trust pack',
+      description: 'Cyber Essentials prep and UK residency',
+      breadcrumbs: [{ label: 'Dashboard', href: '/' }, { label: 'Trust' }],
+    };
+  }
+
+  if (pathname === '/jobs') {
+    return {
+      title: 'Jobs',
+      description: 'Delivery board for accepted engagements',
+      breadcrumbs: [{ label: 'Dashboard', href: '/' }, { label: 'Jobs' }],
+    };
+  }
+  if (pathname === '/jobs/workload') {
+    return {
+      title: 'Workload',
+      description: 'Balance open jobs across the team',
+      breadcrumbs: [
+        { label: 'Dashboard', href: '/' },
+        { label: 'Jobs', href: '/jobs' },
+        { label: 'Workload' },
+      ],
+      backTo: { label: 'Back to jobs', href: '/jobs' },
+    };
+  }
+  if (pathname === '/letters' || pathname.startsWith('/letters/')) {
+    return {
+      title: 'Practice letters',
+      description: 'Disengagement, professional clearance, HMRC 64-8',
+      breadcrumbs: [{ label: 'Dashboard', href: '/' }, { label: 'Letters' }],
+    };
+  }
+  if (pathname === '/inbox' || pathname.startsWith('/inbox/')) {
+    return {
+      title: 'Inbox',
+      description: 'Two-way mailbox + activity timeline',
+      breadcrumbs: [{ label: 'Home', href: '/' }, { label: 'Inbox' }],
+    };
+  }
+  if (pathname === '/forms' || pathname.startsWith('/forms/')) {
+    return {
+      title: 'Forms',
+      description: 'Bulk questionnaires for clients',
+      breadcrumbs: [{ label: 'Home', href: '/' }, { label: 'Forms' }],
+    };
+  }
+  if (pathname === '/automations' || pathname.startsWith('/automations/')) {
+    return {
+      title: 'Automations',
+      description: 'Chase packs and proposal follow-ups',
+      breadcrumbs: [{ label: 'Dashboard', href: '/' }, { label: 'Automations' }],
+    };
+  }
+  if (pathname.startsWith('/integrations/accountflow')) {
+    return {
+      title: 'AccountFlow mesh',
+      description: 'Sandbox linkage — production AccountFlow not contacted',
+      breadcrumbs: [
+        { label: 'Dashboard', href: '/' },
+        { label: 'AccountFlow mesh' },
+      ],
+    };
+  }
+  if (pathname.startsWith('/jobs/')) {
+    return {
+      breadcrumbs: [
+        { label: 'Dashboard', href: '/' },
+        { label: 'Jobs', href: '/jobs' },
+        { label: 'Details' },
+      ],
+      backTo: { label: 'Back to jobs', href: '/jobs' },
     };
   }
 

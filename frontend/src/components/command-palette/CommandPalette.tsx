@@ -12,6 +12,13 @@ import {
   CreditCardIcon,
   ClockIcon,
   SparklesIcon,
+  BriefcaseIcon,
+  DocumentDuplicateIcon,
+  BoltIcon,
+  ScaleIcon,
+  ShieldCheckIcon,
+  ArrowUpTrayIcon,
+  InboxIcon,
 } from '@heroicons/react/24/outline';
 import { useAuthStore } from '../../stores/authStore';
 import { apiClient } from '../../utils/api';
@@ -67,6 +74,52 @@ const CommandPalette = ({ isOpen, onClose }: CommandPaletteProps) => {
         action: () => navigate('/proposals'),
       },
       {
+        id: 'nav-jobs',
+        title: 'Go to Jobs board',
+        icon: BriefcaseIcon,
+        shortcut: 'G J',
+        category: 'Navigation',
+        action: () => navigate('/jobs'),
+      },
+      {
+        id: 'nav-jobs-overdue',
+        title: 'Jobs: overdue only',
+        subtitle: 'Filter board to overdue delivery',
+        icon: BriefcaseIcon,
+        category: 'Navigation',
+        action: () => navigate('/jobs?filter=overdue'),
+      },
+      {
+        id: 'nav-jobs-help',
+        title: 'Jobs: help needed',
+        subtitle: 'Jobs blocked or needing support',
+        icon: BriefcaseIcon,
+        category: 'Navigation',
+        action: () => navigate('/jobs?filter=help'),
+      },
+      {
+        id: 'nav-workload',
+        title: 'Go to Workload',
+        icon: UsersIcon,
+        category: 'Navigation',
+        action: () => navigate('/jobs/workload'),
+      },
+      {
+        id: 'nav-letters',
+        title: 'Go to Practice letters',
+        icon: DocumentDuplicateIcon,
+        category: 'Navigation',
+        action: () => navigate('/letters'),
+      },
+      {
+        id: 'nav-automations',
+        title: 'Go to Automations',
+        subtitle: 'Chase packs and proposal follow-ups',
+        icon: BoltIcon,
+        category: 'Navigation',
+        action: () => navigate('/automations'),
+      },
+      {
         id: 'nav-clients',
         title: 'Go to Clients',
         icon: UsersIcon,
@@ -91,6 +144,30 @@ const CommandPalette = ({ isOpen, onClose }: CommandPaletteProps) => {
         action: () => navigate('/settings'),
       },
       {
+        id: 'nav-switch',
+        title: 'Switch from Engager',
+        subtitle: 'Battle card + ROI calculator',
+        icon: ScaleIcon,
+        category: 'Grow',
+        action: () => navigate('/switch-from-engager'),
+      },
+      {
+        id: 'nav-trust',
+        title: 'Trust pack',
+        subtitle: 'Cyber Essentials prep · UK residency',
+        icon: ShieldCheckIcon,
+        category: 'Grow',
+        action: () => navigate('/trust'),
+      },
+      {
+        id: 'nav-import-clients',
+        title: 'Import clients (CSV)',
+        subtitle: 'Switcher bulk import',
+        icon: ArrowUpTrayIcon,
+        category: 'Grow',
+        action: () => navigate('/clients/import'),
+      },
+      {
         id: 'nav-billing',
         title: 'Go to Billing',
         icon: CreditCardIcon,
@@ -101,11 +178,27 @@ const CommandPalette = ({ isOpen, onClose }: CommandPaletteProps) => {
       {
         id: 'action-new-proposal',
         title: 'Create New Proposal',
-        subtitle: 'Start drafting a new proposal',
+        subtitle: 'Guided wizard — client to send in ~5 min',
         icon: PlusIcon,
         shortcut: 'C P',
         category: 'Actions',
-        action: () => navigate('/proposals/new'),
+        action: () => navigate('/proposals/wizard'),
+      },
+      {
+        id: 'nav-inbox',
+        title: 'Go to Inbox',
+        subtitle: 'Firm email, SMS, and portal messages',
+        icon: InboxIcon,
+        category: 'Navigation',
+        action: () => navigate('/inbox'),
+      },
+      {
+        id: 'nav-jobs',
+        title: 'Go to Jobs board',
+        subtitle: 'Delivery board for accepted work',
+        icon: BriefcaseIcon,
+        category: 'Navigation',
+        action: () => navigate('/jobs'),
       },
       {
         id: 'action-new-client',
@@ -215,7 +308,7 @@ const CommandPalette = ({ isOpen, onClose }: CommandPaletteProps) => {
         navigate(String(params.path));
         onClose();
       } else if (action === 'create_proposal') {
-        navigate('/proposals/new');
+        navigate('/proposals/wizard');
         onClose();
       } else if (action === 'proposal_health' && params?.proposalId) {
         navigate(`/proposals/${params.proposalId}`);
@@ -227,7 +320,7 @@ const CommandPalette = ({ isOpen, onClose }: CommandPaletteProps) => {
         navigate(`/proposals/${params.proposalId}`);
         onClose();
       } else if (action === 'suggest_services' && params?.clientId) {
-        navigate(`/proposals/new?clientId=${params.clientId}`);
+        navigate(`/proposals/wizard?clientId=${params.clientId}`);
         onClose();
       } else if (message) {
         toast.success(message, { duration: 5000 });

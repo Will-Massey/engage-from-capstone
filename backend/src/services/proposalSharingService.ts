@@ -473,6 +473,14 @@ export async function recordElectronicSignature(
       logger.warn('Failed to generate post-sign onboarding checklist', e);
     }
 
+    // Engage Practice: spawn delivery Job (idempotent; one per proposal)
+    try {
+      const { spawnJobForProposal } = await import('./jobSpawnService.js');
+      await spawnJobForProposal(data.proposalId, { actorId: data.userId || null });
+    } catch (e) {
+      logger.warn('Failed to spawn practice job on proposal acceptance', e);
+    }
+
     await prisma.activityLog.create({
       data: {
         tenantId: data.tenantId,

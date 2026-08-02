@@ -1,7 +1,7 @@
 {
-  "name": "engage-by-capstone",
-  "version": "1.0.0",
-  "description": "Engage by Capstone - Professional proposal generation for UK accountants",
+  "name": "engage-practice",
+  "version": "2.0.0-practice",
+  "description": "Engage Practice — isolated clone building win+deliver+collect (exceeds Engager). Production Engage is engage-from-capstone.",
   "private": true,
   "workspaces": [
     "backend",
