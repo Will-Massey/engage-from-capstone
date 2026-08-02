@@ -1,12 +1,10 @@
 /*
-  Warnings:
+  Practice jobs + schema alignment.
 
-  - The `billingFrequency` column on the `ProposalService` table would be dropped and recreated. This will lead to data loss if there is data in the column.
-  - The `priceDisplayMode` column on the `ServiceTemplate` table would be dropped and recreated. This will lead to data loss if there is data in the column.
-  - Made the column `vatRate` on table `ProposalService` required. This step will fail if there are existing NULL values in that column.
-  - Made the column `priceDisplayMode` on table `ProposalService` required. This step will fail if there are existing NULL values in that column.
-  - Made the column `priceAmount` on table `ServiceTemplate` required. This step will fail if there are existing NULL values in that column.
-
+  SAFE for Caroline production:
+  - Do NOT drop/recreate billingFrequency or priceDisplayMode (would wipe fees).
+  - Cast TEXT → enum in place when needed; leave alone if already enum.
+  - Backfill NULLs before SET NOT NULL.
 */
 -- CreateEnum
 CREATE TYPE "JobBoardColumn" AS ENUM ('REQUEST_RECORDS', 'RECORDS_RECEIVED', 'IN_PROGRESS', 'HELP_NEEDED', 'IN_REVIEW', 'COMPLETE');
@@ -14,35 +12,86 @@ CREATE TYPE "JobBoardColumn" AS ENUM ('REQUEST_RECORDS', 'RECORDS_RECEIVED', 'IN
 -- CreateEnum
 CREATE TYPE "JobDeadlineKind" AS ENUM ('STATUTORY', 'INTERNAL', 'NONE');
 
--- DropIndex
-DROP INDEX "Proposal_declineReason_idx";
-
--- DropIndex
-DROP INDEX "Proposal_paymentMandateId_idx";
-
--- DropIndex
-DROP INDEX "ProposalService_vatRate_idx";
-
--- DropIndex
-DROP INDEX "ServiceTemplate_billingCycle_idx";
-
--- DropIndex
-DROP INDEX "ServiceTemplate_priceDisplayMode_idx";
+-- DropIndex (ignore if already gone)
+DROP INDEX IF EXISTS "Proposal_declineReason_idx";
+DROP INDEX IF EXISTS "Proposal_paymentMandateId_idx";
+DROP INDEX IF EXISTS "ProposalService_vatRate_idx";
+DROP INDEX IF EXISTS "ServiceTemplate_billingCycle_idx";
+DROP INDEX IF EXISTS "ServiceTemplate_priceDisplayMode_idx";
 
 -- AlterTable
 ALTER TABLE "Client" ALTER COLUMN "lifecycleStage" SET DEFAULT 'PROSPECT';
 
--- AlterTable
-ALTER TABLE "ProposalService" ALTER COLUMN "vatRate" SET NOT NULL,
-DROP COLUMN "billingFrequency",
-ADD COLUMN     "billingFrequency" "BillingCycle" NOT NULL DEFAULT 'MONTHLY',
-ALTER COLUMN "priceDisplayMode" SET NOT NULL;
+-- ProposalService: fill nulls, then tighten NOT NULL; cast billingFrequency TEXT→BillingCycle without data loss
+UPDATE "ProposalService" SET "vatRate" = 20 WHERE "vatRate" IS NULL;
+UPDATE "ProposalService" SET "priceDisplayMode" = 'PER_MONTH' WHERE "priceDisplayMode" IS NULL;
+ALTER TABLE "ProposalService" ALTER COLUMN "vatRate" SET NOT NULL;
+ALTER TABLE "ProposalService" ALTER COLUMN "priceDisplayMode" SET NOT NULL;
 
--- AlterTable
-ALTER TABLE "ServiceTemplate" ALTER COLUMN "priceAmount" SET NOT NULL,
-ALTER COLUMN "priceAmount" SET DEFAULT 0,
-DROP COLUMN "priceDisplayMode",
-ADD COLUMN     "priceDisplayMode" "PriceDisplayMode" NOT NULL DEFAULT 'PER_MONTH';
+DO $$
+BEGIN
+  -- Only rewrite when still TEXT (prod from 20260410 overhaul). Skip if already BillingCycle.
+  IF EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_schema = 'public' AND table_name = 'ProposalService'
+      AND column_name = 'billingFrequency' AND data_type = 'text'
+  ) THEN
+    ALTER TABLE "ProposalService"
+      ALTER COLUMN "billingFrequency" DROP DEFAULT,
+      ALTER COLUMN "billingFrequency" TYPE "BillingCycle"
+        USING (
+          CASE upper(coalesce("billingFrequency", 'MONTHLY'))
+            WHEN 'FIXED_DATE' THEN 'FIXED_DATE'::"BillingCycle"
+            WHEN 'WEEKLY' THEN 'WEEKLY'::"BillingCycle"
+            WHEN 'MONTHLY' THEN 'MONTHLY'::"BillingCycle"
+            WHEN 'QUARTERLY' THEN 'QUARTERLY'::"BillingCycle"
+            WHEN 'ANNUALLY' THEN 'ANNUALLY'::"BillingCycle"
+            WHEN 'ONE_TIME' THEN 'ONE_TIME'::"BillingCycle"
+            ELSE 'MONTHLY'::"BillingCycle"
+          END
+        ),
+      ALTER COLUMN "billingFrequency" SET DEFAULT 'MONTHLY'::"BillingCycle",
+      ALTER COLUMN "billingFrequency" SET NOT NULL;
+  END IF;
+END $$;
+
+-- ServiceTemplate: fill null priceAmount; cast priceDisplayMode TEXT→enum without data loss
+UPDATE "ServiceTemplate" SET "priceAmount" = 0 WHERE "priceAmount" IS NULL;
+ALTER TABLE "ServiceTemplate" ALTER COLUMN "priceAmount" SET DEFAULT 0;
+ALTER TABLE "ServiceTemplate" ALTER COLUMN "priceAmount" SET NOT NULL;
+
+DO $$
+BEGIN
+  IF EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_schema = 'public' AND table_name = 'ServiceTemplate'
+      AND column_name = 'priceDisplayMode' AND data_type = 'text'
+  ) THEN
+    ALTER TABLE "ServiceTemplate"
+      ALTER COLUMN "priceDisplayMode" DROP DEFAULT,
+      ALTER COLUMN "priceDisplayMode" TYPE "PriceDisplayMode"
+        USING (
+          CASE upper(coalesce("priceDisplayMode", 'PER_MONTH'))
+            WHEN 'PER_MONTH' THEN 'PER_MONTH'::"PriceDisplayMode"
+            WHEN 'PER_QUARTER' THEN 'PER_QUARTER'::"PriceDisplayMode"
+            WHEN 'PER_YEAR' THEN 'PER_YEAR'::"PriceDisplayMode"
+            WHEN 'ONE_TIME' THEN 'ONE_TIME'::"PriceDisplayMode"
+            WHEN 'PER_HOUR' THEN 'PER_HOUR'::"PriceDisplayMode"
+            WHEN 'PER_UNIT' THEN 'PER_UNIT'::"PriceDisplayMode"
+            ELSE 'PER_MONTH'::"PriceDisplayMode"
+          END
+        ),
+      ALTER COLUMN "priceDisplayMode" SET DEFAULT 'PER_MONTH'::"PriceDisplayMode",
+      ALTER COLUMN "priceDisplayMode" SET NOT NULL;
+  ELSIF EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_schema = 'public' AND table_name = 'ServiceTemplate'
+      AND column_name = 'priceDisplayMode'
+  ) THEN
+    UPDATE "ServiceTemplate" SET "priceDisplayMode" = 'PER_MONTH' WHERE "priceDisplayMode" IS NULL;
+    ALTER TABLE "ServiceTemplate" ALTER COLUMN "priceDisplayMode" SET NOT NULL;
+  END IF;
+END $$;
 
 -- CreateTable
 CREATE TABLE "Job" (
