@@ -8,6 +8,16 @@ import { injectBuildTime } from './src/plugins/injectBuildTime';
 
 const isCapacitorBuild = process.env.CAPACITOR === 'true' || process.env.VITE_CAPACITOR === 'true';
 const appBase = process.env.VITE_APP_BASE || '/';
+// Default production/CI backend port 3001. Local practice isolation can override
+// with VITE_API_PROXY_TARGET=http://localhost:3101 (and VITE_DEV_PORT=5273).
+const apiProxyTarget = process.env.VITE_API_PROXY_TARGET || 'http://localhost:3001';
+const devPort = Number(process.env.VITE_DEV_PORT || 5173);
+const apiProxy = {
+  '/api': {
+    target: apiProxyTarget,
+    changeOrigin: true,
+  },
+};
 
 // https://vitejs.dev/config/
 export default defineConfig({
@@ -22,14 +32,13 @@ export default defineConfig({
     },
   },
   server: {
-    // Isolated from production Engage (5173/3001) — see ISOLATION.md
-    port: 5273,
-    proxy: {
-      '/api': {
-        target: 'http://localhost:3101',
-        changeOrigin: true,
-      },
-    },
+    port: devPort,
+    proxy: apiProxy,
+  },
+  // vite preview inherits server.proxy only in some versions — set explicitly for CI
+  preview: {
+    port: 5173,
+    proxy: apiProxy,
   },
   build: {
     outDir: 'dist',
