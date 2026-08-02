@@ -811,7 +811,13 @@ router.post(
       _max: { sortOrder: true },
     });
     let sort = maxSort._max.sortOrder ?? 0;
-    const created = [];
+    const created: Array<{
+      id: string;
+      title: string;
+      isDone: boolean;
+      sortOrder: number;
+      jobId: string;
+    }> = [];
     for (const title of lines) {
       sort += 1;
       const task = await prisma.jobTask.create({
