@@ -28,7 +28,8 @@ git checkout -b restore-caroline backup/caroline-pre-practice-cutover-20260802
 - Production Postgres is on **Neon** (Render `DATABASE_URL`).
 - CI creates `pre-deploy-*` Neon branches **before** each master deploy when `NEON_API_KEY` + `NEON_PROJECT_ID` secrets are set (see `ROLLBACK_RUNBOOK.md`).
 - This cutover does **not** replace prod DB with practice local DB.
-- Migrations are **additive** (jobs, letters, mesh fields only).
+- Migrations: new tables (jobs, letters) + mesh columns; existing `billingFrequency` /
+  `priceDisplayMode` are **cast in place** (no drop/recreate) so Caroline proposal lines keep values.
 
 ## What cutover does / does not do
 

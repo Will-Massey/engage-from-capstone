@@ -277,11 +277,11 @@ CREATE INDEX "JobActivity_jobId_idx" ON "JobActivity"("jobId");
 -- CreateIndex
 CREATE INDEX "JobActivity_createdAt_idx" ON "JobActivity"("createdAt");
 
--- CreateIndex
-CREATE INDEX "Client_lifecycleStage_idx" ON "Client"("lifecycleStage");
+-- CreateIndex (may already exist from earlier migrations on prod / CI)
+CREATE INDEX IF NOT EXISTS "Client_lifecycleStage_idx" ON "Client"("lifecycleStage");
 
--- CreateIndex
-CREATE INDEX "ProposalService_billingFrequency_idx" ON "ProposalService"("billingFrequency");
+-- CreateIndex (created by 20260410 overhaul — do not fail if present)
+CREATE INDEX IF NOT EXISTS "ProposalService_billingFrequency_idx" ON "ProposalService"("billingFrequency");
 
 -- AddForeignKey
 ALTER TABLE "Job" ADD CONSTRAINT "Job_tenantId_fkey" FOREIGN KEY ("tenantId") REFERENCES "Tenant"("id") ON DELETE CASCADE ON UPDATE CASCADE;
