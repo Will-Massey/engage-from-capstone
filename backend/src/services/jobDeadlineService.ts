@@ -28,12 +28,12 @@ function parseYearEnd(yearEnd: string | null | undefined, now: Date): Date | nul
   const s = yearEnd.trim();
 
   // DD/MM or D/M
-  const uk = s.match(/^(\d{1,2})[\/\-](\d{1,2})$/);
+  const uk = s.match(/^(\d{1,2})[/-](\d{1,2})$/);
   if (uk) {
     const day = parseInt(uk[1], 10);
     const month = parseInt(uk[2], 10) - 1;
     if (month < 0 || month > 11 || day < 1 || day > 31) return null;
-    let y = now.getFullYear();
+    const y = now.getFullYear();
     let d = new Date(y, month, day, 23, 59, 59, 999);
     if (d.getTime() < now.getTime()) {
       d = new Date(y + 1, month, day, 23, 59, 59, 999);
