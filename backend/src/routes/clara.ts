@@ -32,11 +32,7 @@ router.get(
   authenticate,
   asyncHandler(async (req, res) => {
     const user = req.user as { id?: string; firstName?: string } | undefined;
-    const data = await buildMorningBrief(
-      req.tenantId!,
-      user?.id,
-      user?.firstName
-    );
+    const data = await buildMorningBrief(req.tenantId!, user?.id, user?.firstName);
     res.json({ success: true, data });
   })
 );

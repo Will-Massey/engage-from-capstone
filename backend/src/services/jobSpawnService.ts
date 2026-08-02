@@ -4,10 +4,7 @@
  */
 import { prisma } from '../config/database.js';
 import logger from '../utils/logger.js';
-import {
-  inferCategoryFromServiceName,
-  resolveCategoryTemplate,
-} from './jobPhaseTemplates.js';
+import { inferCategoryFromServiceName, resolveCategoryTemplate } from './jobPhaseTemplates.js';
 import { computeJobDeadline } from './jobDeadlineService.js';
 
 export async function spawnJobForProposal(

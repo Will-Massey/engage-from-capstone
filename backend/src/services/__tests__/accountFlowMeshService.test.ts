@@ -1,10 +1,7 @@
 /**
  * Mesh safety: default mode must never require live AF.
  */
-import {
-  getMeshStatus,
-  listMockAccountFlowState,
-} from '../accountFlowMeshService.js';
+import { getMeshStatus, listMockAccountFlowState } from '../accountFlowMeshService.js';
 
 describe('accountFlowMeshService', () => {
   const prevMode = process.env.ACCOUNTFLOW_MESH_MODE;

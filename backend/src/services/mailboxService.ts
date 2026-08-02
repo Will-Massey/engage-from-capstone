@@ -53,8 +53,14 @@ function parseMeta(raw: string | null | undefined): Record<string, any> {
 }
 
 function threadKeyFor(from: string, to: string, subject: string): string {
-  const norm = subject.replace(/^(re|fw|fwd):\s*/gi, '').trim().toLowerCase();
-  const parties = [from, to].map((s) => s.toLowerCase().trim()).sort().join('|');
+  const norm = subject
+    .replace(/^(re|fw|fwd):\s*/gi, '')
+    .trim()
+    .toLowerCase();
+  const parties = [from, to]
+    .map((s) => s.toLowerCase().trim())
+    .sort()
+    .join('|');
   return `${parties}::${norm.slice(0, 120)}`;
 }
 
@@ -119,7 +125,10 @@ async function matchClientByEmail(
   tenantId: string,
   address: string
 ): Promise<{ id: string; name: string } | null> {
-  const email = address.toLowerCase().replace(/.*<|>.*/g, '').trim();
+  const email = address
+    .toLowerCase()
+    .replace(/.*<|>.*/g, '')
+    .trim();
   if (!email.includes('@')) return null;
   const client = await prisma.client.findFirst({
     where: {
@@ -218,7 +227,8 @@ function rowToMessage(
   const clientId = row.entityId;
   return {
     id: row.id,
-    direction: m.direction === 'outbound' || row.action === 'EMAIL_OUTBOUND' ? 'outbound' : 'inbound',
+    direction:
+      m.direction === 'outbound' || row.action === 'EMAIL_OUTBOUND' ? 'outbound' : 'inbound',
     from: String(m.from || ''),
     to: String(m.to || ''),
     subject: String(m.subject || row.description || ''),
@@ -230,7 +240,9 @@ function rowToMessage(
       (typeof m.clientName === 'string' && m.clientName) ||
       (clientId ? clientNameMap.get(clientId) || null : null),
     externalId: m.externalId ? String(m.externalId) : null,
-    threadKey: String(m.threadKey || threadKeyFor(String(m.from || ''), String(m.to || ''), String(m.subject || ''))),
+    threadKey: String(
+      m.threadKey || threadKeyFor(String(m.from || ''), String(m.to || ''), String(m.subject || ''))
+    ),
     provider: m.provider ? String(m.provider) : null,
   };
 }
@@ -328,7 +340,8 @@ async function getMicrosoftAccess(tenantId: string): Promise<{
       client_secret: clientSecret,
       refresh_token: refreshToken,
       grant_type: 'refresh_token',
-      scope: 'https://graph.microsoft.com/Mail.Read https://graph.microsoft.com/Mail.Send offline_access User.Read',
+      scope:
+        'https://graph.microsoft.com/Mail.Read https://graph.microsoft.com/Mail.Send offline_access User.Read',
     }),
   });
   if (!res.ok) {
@@ -385,9 +398,7 @@ async function syncGmail(tenantId: string): Promise<number> {
       subject,
       body,
       externalId: `gmail:${msg.id}`,
-      at: full.data.internalDate
-        ? new Date(Number(full.data.internalDate))
-        : new Date(),
+      at: full.data.internalDate ? new Date(Number(full.data.internalDate)) : new Date(),
       provider: 'gmail',
     });
     if (id) imported++;
@@ -426,8 +437,10 @@ async function syncMicrosoft(tenantId: string): Promise<number> {
         ? `${msg.from.emailAddress.name} <${msg.from.emailAddress.address}>`
         : msg.from?.emailAddress?.address || '';
     const to =
-      msg.toRecipients?.map((t) => t.emailAddress?.address).filter(Boolean).join(', ') ||
-      auth.user;
+      msg.toRecipients
+        ?.map((t) => t.emailAddress?.address)
+        .filter(Boolean)
+        .join(', ') || auth.user;
     await upsertMailboxActivity({
       tenantId,
       direction: 'inbound',
@@ -505,10 +518,7 @@ export async function syncMailbox(tenantId: string): Promise<{
     }
   }
 
-  if (
-    (conn.provider === 'microsoft365' || conn.provider === 'outlook') &&
-    conn.canSync
-  ) {
+  if ((conn.provider === 'microsoft365' || conn.provider === 'outlook') && conn.canSync) {
     try {
       const imported = await syncMicrosoft(tenantId);
       return {
@@ -578,10 +588,7 @@ export async function sendMailboxMessage(params: {
   });
   const emailCfg = parseSettings(tenant?.settings).email || {};
   const fromAddr =
-    emailCfg.fromEmail ||
-    emailCfg.gmail?.user ||
-    emailCfg.outlook?.user ||
-    'noreply@engage.local';
+    emailCfg.fromEmail || emailCfg.gmail?.user || emailCfg.outlook?.user || 'noreply@engage.local';
 
   let sent = false;
   let error: string | undefined;
@@ -623,10 +630,7 @@ export async function sendMailboxMessage(params: {
   return { id, sent, error };
 }
 
-export async function markMailboxRead(
-  tenantId: string,
-  messageId: string
-): Promise<boolean> {
+export async function markMailboxRead(tenantId: string, messageId: string): Promise<boolean> {
   const row = await prisma.activityLog.findFirst({
     where: {
       id: messageId,

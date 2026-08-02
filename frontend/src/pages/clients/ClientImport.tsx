@@ -220,9 +220,7 @@ export default function ClientImport() {
               setResult(null);
             }}
           />
-          {parseError && (
-            <p className="text-sm text-rose-600">{parseError}</p>
-          )}
+          {parseError && <p className="text-sm text-rose-600">{parseError}</p>}
           <div className="flex flex-wrap items-center gap-3">
             <button
               type="button"

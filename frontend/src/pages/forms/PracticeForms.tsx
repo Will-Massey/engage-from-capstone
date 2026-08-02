@@ -87,9 +87,7 @@ export default function PracticeForms() {
     const q = clientSearch.toLowerCase().trim();
     if (!q) return clients;
     return clients.filter(
-      (c) =>
-        c.name.toLowerCase().includes(q) ||
-        (c.contactEmail || '').toLowerCase().includes(q)
+      (c) => c.name.toLowerCase().includes(q) || (c.contactEmail || '').toLowerCase().includes(q)
     );
   }, [clients, clientSearch]);
 
@@ -124,7 +122,9 @@ export default function PracticeForms() {
         clientIds: [...selectedClientIds],
         dueInDays,
       })) as any;
-      setMsg(res?.message || `Assigned to ${res?.data?.assigned ?? selectedClientIds.size} clients`);
+      setMsg(
+        res?.message || `Assigned to ${res?.data?.assigned ?? selectedClientIds.size} clients`
+      );
       setSelectedClientIds(new Set());
       await load();
     } catch (e: any) {
@@ -379,9 +379,7 @@ export default function PracticeForms() {
                 disabled={busy || !selectedTemplateId || selectedClientIds.size === 0}
                 onClick={() => void assignSelected()}
               >
-                {busy
-                  ? 'Assigning…'
-                  : `Assign to ${selectedClientIds.size || 0} selected`}
+                {busy ? 'Assigning…' : `Assign to ${selectedClientIds.size || 0} selected`}
               </button>
               <button
                 type="button"

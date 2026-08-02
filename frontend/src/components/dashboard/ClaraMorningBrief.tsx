@@ -82,7 +82,10 @@ export default function ClaraMorningBrief() {
 
   if (loading && !brief) {
     return (
-      <div className="card space-y-3 border border-emerald-200/80 p-5 dark:border-emerald-900/40" aria-busy>
+      <div
+        className="card space-y-3 border border-emerald-200/80 p-5 dark:border-emerald-900/40"
+        aria-busy
+      >
         <div className="skeleton h-5 w-48" />
         <div className="skeleton h-4 w-full" />
         <div className="skeleton h-16 w-full" />
@@ -94,7 +97,10 @@ export default function ClaraMorningBrief() {
   if (error && !brief) {
     return (
       <div className="rounded-xl border border-amber-200 bg-amber-50/80 px-4 py-3 text-sm text-amber-900">
-        Clara brief unavailable. <button type="button" className="underline" onClick={() => void load()}>Retry</button>
+        Clara brief unavailable.{' '}
+        <button type="button" className="underline" onClick={() => void load()}>
+          Retry
+        </button>
       </div>
     );
   }
@@ -140,31 +146,21 @@ export default function ClaraMorningBrief() {
       </div>
 
       <div className="flex flex-wrap gap-2 border-b border-emerald-100/60 px-5 py-2.5 text-xs dark:border-emerald-900/30">
-        {s.overdueJobs > 0 && (
-          <StatusChip tone="danger">{s.overdueJobs} overdue</StatusChip>
-        )}
-        {s.helpNeeded > 0 && (
-          <StatusChip tone="warning">{s.helpNeeded} help needed</StatusChip>
-        )}
-        {s.unreadMail > 0 && (
-          <StatusChip tone="info">{s.unreadMail} unread mail</StatusChip>
-        )}
+        {s.overdueJobs > 0 && <StatusChip tone="danger">{s.overdueJobs} overdue</StatusChip>}
+        {s.helpNeeded > 0 && <StatusChip tone="warning">{s.helpNeeded} help needed</StatusChip>}
+        {s.unreadMail > 0 && <StatusChip tone="info">{s.unreadMail} unread mail</StatusChip>}
         {s.pendingForms > 0 && (
           <StatusChip tone="warning">{s.pendingForms} forms pending</StatusChip>
         )}
         {s.unsignedProposals > 0 && (
           <StatusChip tone="mint">{s.unsignedProposals} unsigned</StatusChip>
         )}
-        {s.openMentions > 0 && (
-          <StatusChip tone="neutral">{s.openMentions} @mentions</StatusChip>
-        )}
+        {s.openMentions > 0 && <StatusChip tone="neutral">{s.openMentions} @mentions</StatusChip>}
         {!s.overdueJobs &&
           !s.helpNeeded &&
           !s.unreadMail &&
           !s.pendingForms &&
-          !s.unsignedProposals && (
-            <StatusChip tone="success">Clear runway</StatusChip>
-          )}
+          !s.unsignedProposals && <StatusChip tone="success">Clear runway</StatusChip>}
       </div>
 
       <ul className="divide-y divide-emerald-100/70 dark:divide-emerald-900/30">

@@ -22,13 +22,19 @@ const PageHeader = ({ title, description, breadcrumbs, backTo, actions }: PageHe
   return (
     <header className="space-y-1.5 pb-0.5">
       {showCrumbs && (
-        <nav aria-label="Breadcrumb" className="flex flex-wrap items-center gap-1 text-xs sm:text-sm">
+        <nav
+          aria-label="Breadcrumb"
+          className="flex flex-wrap items-center gap-1 text-xs sm:text-sm"
+        >
           {breadcrumbs!.map((crumb, index) => {
             const isLast = index === breadcrumbs!.length - 1;
             return (
               <span key={`${crumb.label}-${index}`} className="flex items-center gap-1">
                 {index > 0 && (
-                  <ChevronRightIcon className="h-3.5 w-3.5 text-slate-400 dark:text-slate-500 shrink-0" aria-hidden />
+                  <ChevronRightIcon
+                    className="h-3.5 w-3.5 text-slate-400 dark:text-slate-500 shrink-0"
+                    aria-hidden
+                  />
                 )}
                 {crumb.href && !isLast ? (
                   <Link

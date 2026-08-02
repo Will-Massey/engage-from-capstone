@@ -56,17 +56,13 @@ export function MetalTile({
             {icon && <span className="metal-icon-well">{icon}</span>}
           </div>
         )}
-        {title && (
-          <p className="text-xs font-medium text-slate-500 dark:text-slate-400">{title}</p>
-        )}
+        {title && <p className="text-xs font-medium text-slate-500 dark:text-slate-400">{title}</p>}
         {value != null && (
           <div className="mt-0.5 text-xl font-bold tabular-nums tracking-tight text-slate-900 dark:text-white">
             {value}
           </div>
         )}
-        {hint && (
-          <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">{hint}</p>
-        )}
+        {hint && <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">{hint}</p>}
         {children}
       </div>
     </div>
@@ -122,7 +118,9 @@ export function MetalProgress({
       {(label || showPct) && (
         <div className="mb-1 flex items-center justify-between gap-2 text-[10px] font-semibold uppercase tracking-wide text-slate-500">
           {label ? <span>{label}</span> : <span />}
-          {showPct && <span className="tabular-nums text-slate-600 dark:text-slate-300">{clamped}%</span>}
+          {showPct && (
+            <span className="tabular-nums text-slate-600 dark:text-slate-300">{clamped}%</span>
+          )}
         </div>
       )}
       <div className={`metal-progress-track w-full overflow-hidden rounded-full ${height}`}>

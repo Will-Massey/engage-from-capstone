@@ -150,10 +150,7 @@ router.put(
   authorize('ADMIN', 'PARTNER', 'MD', 'MANAGER'),
   asyncHandler(async (req, res) => {
     const body = rulesSchema.parse(req.body);
-    const saved = await saveAutomationRules(
-      req.tenantId!,
-      body.rules as AutomationRule[]
-    );
+    const saved = await saveAutomationRules(req.tenantId!, body.rules as AutomationRule[]);
     res.json({ success: true, data: { rules: saved } });
   })
 );

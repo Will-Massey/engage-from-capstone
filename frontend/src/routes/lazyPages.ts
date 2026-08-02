@@ -24,9 +24,7 @@ export const PracticeLetters = lazy(() => import('../pages/letters/PracticeLette
 export const PracticeAutomations = lazy(() => import('../pages/automations/PracticeAutomations'));
 export const FirmInbox = lazy(() => import('../pages/inbox/FirmInbox'));
 export const PracticeForms = lazy(() => import('../pages/forms/PracticeForms'));
-export const AccountFlowSandbox = lazy(
-  () => import('../pages/integrations/AccountFlowSandbox')
-);
+export const AccountFlowSandbox = lazy(() => import('../pages/integrations/AccountFlowSandbox'));
 export const IntegrationsHub = lazy(() => import('../pages/integrations/IntegrationsHub'));
 export const Clients = lazy(() => import('../pages/clients/Clients'));
 export const ClientDetail = lazy(() => import('../pages/clients/ClientDetail'));

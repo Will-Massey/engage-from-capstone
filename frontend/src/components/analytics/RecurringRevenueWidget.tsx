@@ -118,9 +118,7 @@ export default function RecurringRevenueWidget() {
               ? 'Failed recurring payments (30d)'
               : `${data.unpaidAcceptedCount || 0} accepted unpaid`
           }
-          icon={
-            dunning ? <ExclamationTriangleIcon className="h-4 w-4 text-rose-600" /> : undefined
-          }
+          icon={dunning ? <ExclamationTriangleIcon className="h-4 w-4 text-rose-600" /> : undefined}
         />
       </div>
 

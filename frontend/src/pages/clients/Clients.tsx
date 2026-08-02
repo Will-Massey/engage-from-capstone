@@ -241,7 +241,9 @@ const Clients = () => {
                   {client.contactEmail}
                 </p>
                 {client.contactPhone && (
-                  <p className="text-sm text-slate-600 dark:text-slate-400">{client.contactPhone}</p>
+                  <p className="text-sm text-slate-600 dark:text-slate-400">
+                    {client.contactPhone}
+                  </p>
                 )}
               </div>
 

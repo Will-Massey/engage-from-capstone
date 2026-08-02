@@ -65,7 +65,12 @@ export const DEFAULT_FORM_TEMPLATES: Omit<FormTemplate, 'createdAt'>[] = [
     category: 'Onboarding',
     isActive: true,
     fields: [
-      { id: 'bank_ready', type: 'boolean', label: 'Bank statements ready (12 months)', required: true },
+      {
+        id: 'bank_ready',
+        type: 'boolean',
+        label: 'Bank statements ready (12 months)',
+        required: true,
+      },
       {
         id: 'software',
         type: 'select',
@@ -304,9 +309,7 @@ export async function assignFormBulk(params: {
   // Skip clients who already have a pending assignment for this template
   const existing = await listAssignments(params.tenantId);
   const pendingKeys = new Set(
-    existing
-      .filter((a) => a.status === 'pending' && a.templateId === tpl.id)
-      .map((a) => a.clientId)
+    existing.filter((a) => a.status === 'pending' && a.templateId === tpl.id).map((a) => a.clientId)
   );
 
   let assigned = 0;
@@ -359,18 +362,14 @@ export async function assignFormBulk(params: {
 }
 
 /** Nudge: re-assign pending forms that are past due (creates reminder note on assignment metadata) */
-export async function remindOverdueForms(
-  tenantId: string
-): Promise<{ reminded: number }> {
+export async function remindOverdueForms(tenantId: string): Promise<{ reminded: number }> {
   const list = await listAssignments(tenantId, { status: 'pending' });
   const now = Date.now();
   let reminded = 0;
   for (const a of list) {
     const due = a.dueAt ? new Date(a.dueAt).getTime() : 0;
     const stale =
-      due > 0
-        ? due < now
-        : now - new Date(a.assignedAt).getTime() > 7 * 24 * 60 * 60 * 1000;
+      due > 0 ? due < now : now - new Date(a.assignedAt).getTime() > 7 * 24 * 60 * 60 * 1000;
     if (!stale) continue;
     const row = await prisma.activityLog.findFirst({
       where: { id: a.id, tenantId },

@@ -1,8 +1,4 @@
-import {
-  getChasePack,
-  listChasePacks,
-  renderChaseTemplate,
-} from '../chasePackService.js';
+import { getChasePack, listChasePacks, renderChaseTemplate } from '../chasePackService.js';
 
 describe('chasePackService', () => {
   it('lists UK chase packs', () => {

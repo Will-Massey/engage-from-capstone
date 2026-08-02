@@ -217,7 +217,9 @@ export async function runAutomationRules(
         entityType: 'Tenant',
         entityId: tenantId,
         description: `Automation run: ${results.reduce((s, r) => s + r.acted, 0)} actions`,
-        metadata: JSON.stringify({ results: results.map((r) => ({ ...r, details: r.details.slice(0, 5) })) }),
+        metadata: JSON.stringify({
+          results: results.map((r) => ({ ...r, details: r.details.slice(0, 5) })),
+        }),
         tenantId,
       },
     });

@@ -23,8 +23,7 @@ export interface StorageService {
 }
 
 const ROOT =
-  process.env.PRACTICE_STORAGE_ROOT ||
-  path.join(process.cwd(), '.data', 'practice-storage');
+  process.env.PRACTICE_STORAGE_ROOT || path.join(process.cwd(), '.data', 'practice-storage');
 
 export class LocalFsStorageService implements StorageService {
   private root: string;
@@ -43,7 +42,10 @@ export class LocalFsStorageService implements StorageService {
     buffer: Buffer;
     mimeType: string;
   }): Promise<StoredObject> {
-    const base = path.basename(opts.originalName).replace(/[^a-zA-Z0-9._-]+/g, '_').slice(0, 120);
+    const base = path
+      .basename(opts.originalName)
+      .replace(/[^a-zA-Z0-9._-]+/g, '_')
+      .slice(0, 120);
     const safeTenant = opts.tenantId.replace(/[^a-zA-Z0-9_-]/g, '');
     const key = path.posix.join(safeTenant, `${randomUUID()}-${base || 'file'}`);
     const full = this.resolveKey(key);

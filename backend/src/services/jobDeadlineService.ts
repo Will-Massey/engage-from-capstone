@@ -65,9 +65,10 @@ function ct600Due(yearEndDate: Date): Date {
 
 function nextSaDeadline(now: Date): Date {
   // Online SA: 31 January following tax year
-  const year = now.getMonth() > 0 || (now.getMonth() === 0 && now.getDate() > 31)
-    ? now.getFullYear() + 1
-    : now.getFullYear();
+  const year =
+    now.getMonth() > 0 || (now.getMonth() === 0 && now.getDate() > 31)
+      ? now.getFullYear() + 1
+      : now.getFullYear();
   // If we're before 31 Jan this calendar year, use this year
   const thisJan = new Date(now.getFullYear(), 0, 31, 23, 59, 59, 999);
   if (now.getTime() <= thisJan.getTime()) return thisJan;
@@ -175,6 +176,6 @@ export function computeJobDeadline(input: DeadlineInput): DeadlineHint {
     return { dueAt: null, deadlineKind: 'NONE', ruleId: 'none', label: 'No deadline inferred' };
   }
 
-  pool.sort((a, b) => (a.dueAt!.getTime() - b.dueAt!.getTime()));
+  pool.sort((a, b) => a.dueAt!.getTime() - b.dueAt!.getTime());
   return pool[0];
 }

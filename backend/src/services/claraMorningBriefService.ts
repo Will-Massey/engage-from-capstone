@@ -40,44 +40,42 @@ export async function buildMorningBrief(
 ): Promise<MorningBrief> {
   const now = new Date();
   const hour = now.getHours();
-  const hello =
-    hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening';
+  const hello = hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening';
   const greeting = `${hello}${firstName ? `, ${firstName}` : ''}`;
 
-  const [board, mail, forms, unsignedCount, mentions, helpCount, overdueCount] =
-    await Promise.all([
-      prioritiseJobsBoard(tenantId, 5),
-      listMailboxMessages(tenantId, { limit: 40, unreadOnly: true }),
-      listAssignments(tenantId, { status: 'pending' }),
-      prisma.proposal.count({
-        where: { tenantId, status: { in: ['SENT', 'VIEWED'] } },
-      }),
-      userId
-        ? prisma.activityLog.count({
-            where: {
-              tenantId,
-              action: 'JOB_MENTION',
-              userId,
-              createdAt: { gte: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000) },
-            },
-          })
-        : Promise.resolve(0),
-      prisma.job.count({
-        where: {
-          tenantId,
-          isActive: true,
-          boardColumn: 'HELP_NEEDED',
-        },
-      }),
-      prisma.job.count({
-        where: {
-          tenantId,
-          isActive: true,
-          boardColumn: { not: 'COMPLETE' },
-          dueAt: { lt: now },
-        },
-      }),
-    ]);
+  const [board, mail, forms, unsignedCount, mentions, helpCount, overdueCount] = await Promise.all([
+    prioritiseJobsBoard(tenantId, 5),
+    listMailboxMessages(tenantId, { limit: 40, unreadOnly: true }),
+    listAssignments(tenantId, { status: 'pending' }),
+    prisma.proposal.count({
+      where: { tenantId, status: { in: ['SENT', 'VIEWED'] } },
+    }),
+    userId
+      ? prisma.activityLog.count({
+          where: {
+            tenantId,
+            action: 'JOB_MENTION',
+            userId,
+            createdAt: { gte: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000) },
+          },
+        })
+      : Promise.resolve(0),
+    prisma.job.count({
+      where: {
+        tenantId,
+        isActive: true,
+        boardColumn: 'HELP_NEEDED',
+      },
+    }),
+    prisma.job.count({
+      where: {
+        tenantId,
+        isActive: true,
+        boardColumn: { not: 'COMPLETE' },
+        dueAt: { lt: now },
+      },
+    }),
+  ]);
 
   const actions: BriefAction[] = [];
 
@@ -109,8 +107,7 @@ export async function buildMorningBrief(
   const formSlice = forms.slice(0, 4);
   for (const f of formSlice) {
     const dueBoost =
-      f.assignedAt &&
-      Date.now() - new Date(f.assignedAt).getTime() > 3 * 24 * 60 * 60 * 1000
+      f.assignedAt && Date.now() - new Date(f.assignedAt).getTime() > 3 * 24 * 60 * 60 * 1000
         ? 15
         : 0;
     actions.push({
@@ -181,19 +178,19 @@ export async function buildMorningBrief(
   };
 
   const parts: string[] = [];
-  if (stats.overdueJobs) parts.push(`${stats.overdueJobs} overdue job${stats.overdueJobs === 1 ? '' : 's'}`);
+  if (stats.overdueJobs)
+    parts.push(`${stats.overdueJobs} overdue job${stats.overdueJobs === 1 ? '' : 's'}`);
   if (stats.helpNeeded) parts.push(`${stats.helpNeeded} need help`);
   if (stats.unreadMail) parts.push(`${stats.unreadMail} unread mail`);
-  if (stats.pendingForms) parts.push(`${stats.pendingForms} form${stats.pendingForms === 1 ? '' : 's'} waiting`);
+  if (stats.pendingForms)
+    parts.push(`${stats.pendingForms} form${stats.pendingForms === 1 ? '' : 's'} waiting`);
   if (stats.unsignedProposals) parts.push(`${stats.unsignedProposals} unsigned`);
   if (!parts.length) parts.push('inbox is calm — good time to win work');
 
   return {
     generatedAt: now.toISOString(),
     greeting,
-    summary: board.summary
-      ? `${parts.join(' · ')}. ${board.summary}`
-      : parts.join(' · '),
+    summary: board.summary ? `${parts.join(' · ')}. ${board.summary}` : parts.join(' · '),
     actions: top,
     stats,
   };

@@ -83,9 +83,7 @@ function DeliveryJobPanel({ proposalId }: { proposalId: string }) {
             <BriefcaseIcon className="h-5 w-5 text-emerald-600" />
           </div>
           <div className="min-w-0">
-            <h3 className="text-sm font-semibold text-slate-900 dark:text-white">
-              Delivery job
-            </h3>
+            <h3 className="text-sm font-semibold text-slate-900 dark:text-white">Delivery job</h3>
             {job ? (
               <>
                 <p className="mt-0.5 truncate text-sm text-slate-600 dark:text-slate-300">

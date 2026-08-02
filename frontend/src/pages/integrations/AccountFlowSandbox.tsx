@@ -43,11 +43,15 @@ export default function AccountFlowSandbox() {
       try {
         const next: { client?: any; work?: any } = {};
         if (afClient) {
-          const c = (await apiClient.get(`/integrations/accountflow/sandbox/clients/${afClient}`)) as any;
+          const c = (await apiClient.get(
+            `/integrations/accountflow/sandbox/clients/${afClient}`
+          )) as any;
           next.client = c?.data ?? c;
         }
         if (afWork) {
-          const w = (await apiClient.get(`/integrations/accountflow/sandbox/work/${afWork}`)) as any;
+          const w = (await apiClient.get(
+            `/integrations/accountflow/sandbox/work/${afWork}`
+          )) as any;
           next.work = w?.data ?? w;
         }
         setDetail(next);
@@ -130,15 +134,11 @@ export default function AccountFlowSandbox() {
       {status && (
         <div className="card space-y-2 p-4">
           <div className="flex flex-wrap items-center gap-2">
-            <StatusChip tone={status.available ? 'success' : 'neutral'}>
-              {status.mode}
-            </StatusChip>
+            <StatusChip tone={status.available ? 'success' : 'neutral'}>{status.mode}</StatusChip>
             <StatusChip tone="warning">prod AF protected</StatusChip>
           </div>
           <p className="text-sm text-slate-600 dark:text-slate-300">{status.message}</p>
-          {status.isolation && (
-            <p className="text-xs text-slate-500">{status.isolation}</p>
-          )}
+          {status.isolation && <p className="text-xs text-slate-500">{status.isolation}</p>}
         </div>
       )}
 
@@ -150,7 +150,9 @@ export default function AccountFlowSandbox() {
                 <BuildingOfficeIcon className="h-5 w-5" />
                 <h2 className="font-semibold">AF client (mock)</h2>
               </div>
-              <p className="mt-2 font-medium text-slate-900 dark:text-white">{detail.client.name}</p>
+              <p className="mt-2 font-medium text-slate-900 dark:text-white">
+                {detail.client.name}
+              </p>
               <p className="text-xs text-slate-500">{detail.client.id}</p>
               <p className="text-sm text-slate-600">{detail.client.contactEmail}</p>
               <Link
@@ -192,14 +194,20 @@ export default function AccountFlowSandbox() {
         </p>
         <ul className="mt-3 divide-y divide-slate-100 dark:divide-slate-700">
           {state.work.map((w) => (
-            <li key={w.id} className="flex flex-wrap items-center justify-between gap-2 py-2 text-sm">
+            <li
+              key={w.id}
+              className="flex flex-wrap items-center justify-between gap-2 py-2 text-sm"
+            >
               <div>
                 <p className="font-medium text-slate-900 dark:text-white">{w.title}</p>
                 <p className="text-xs text-slate-400">{w.id}</p>
               </div>
               <div className="flex gap-2">
                 {w.engageJobId && (
-                  <Link to={`/jobs/${w.engageJobId}`} className="text-xs font-medium text-emerald-600">
+                  <Link
+                    to={`/jobs/${w.engageJobId}`}
+                    className="text-xs font-medium text-emerald-600"
+                  >
                     Job
                   </Link>
                 )}

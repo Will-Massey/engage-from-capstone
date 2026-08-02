@@ -244,8 +244,8 @@ export default function SwitchFromEngager() {
             </h1>
             <p className="mt-2 max-w-xl text-sm leading-relaxed text-slate-600 dark:text-slate-300">
               Keep delivery ops. Add the money loop Engager lacks — Companies House → priced
-              proposal → signed engagement → collected fees → jobs → mailbox → forms — with Clara
-              as co-pilot.
+              proposal → signed engagement → collected fees → jobs → mailbox → forms — with Clara as
+              co-pilot.
             </p>
             <div className="mt-4 flex flex-wrap gap-2">
               <Link
@@ -495,8 +495,8 @@ export default function SwitchFromEngager() {
             </div>
           </div>
           <p className="mt-3 text-2xs text-slate-400">
-            Illustrative only — not a quote. Adjust hours for proposal drafting, chase follow-up, and
-            board admin reclaimed with Clara + ops.
+            Illustrative only — not a quote. Adjust hours for proposal drafting, chase follow-up,
+            and board admin reclaimed with Clara + ops.
           </p>
         </div>
       </section>

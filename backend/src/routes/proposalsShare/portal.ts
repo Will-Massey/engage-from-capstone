@@ -221,9 +221,7 @@ router.get(
           proposedFee: penceToPounds(j.proposedFeePence),
           phases: j.phases,
           progressPct: j.phases.length
-            ? Math.round(
-                j.phases.reduce((a, p) => a + (p.progressPct || 0), 0) / j.phases.length
-              )
+            ? Math.round(j.phases.reduce((a, p) => a + (p.progressPct || 0), 0) / j.phases.length)
             : 0,
         })),
         files,
@@ -327,10 +325,7 @@ router.get(
     if (!file) throw new ApiError('NOT_FOUND', 'File not found', 404);
     const buffer = await getStorageService().get(file.storageKey);
     res.setHeader('Content-Type', file.mimeType);
-    res.setHeader(
-      'Content-Disposition',
-      `attachment; filename="${file.name.replace(/"/g, '')}"`
-    );
+    res.setHeader('Content-Disposition', `attachment; filename="${file.name.replace(/"/g, '')}"`);
     res.setHeader('Cache-Control', 'private, no-store');
     res.send(buffer);
   })
@@ -387,8 +382,16 @@ router.get(
           description:
             'Help your accountant prepare your work — bank statements, software, VAT and payroll.',
           fields: [
-            { id: 'bankStatementsReady', type: 'boolean', label: 'Bank statements ready (last 12 months)' },
-            { id: 'bookkeepingSoftware', type: 'text', label: 'Bookkeeping software (Xero, QBO, none…)' },
+            {
+              id: 'bankStatementsReady',
+              type: 'boolean',
+              label: 'Bank statements ready (last 12 months)',
+            },
+            {
+              id: 'bookkeepingSoftware',
+              type: 'text',
+              label: 'Bookkeeping software (Xero, QBO, none…)',
+            },
             { id: 'vatScheme', type: 'text', label: 'VAT scheme (if registered)' },
             { id: 'payroll', type: 'boolean', label: 'We run payroll' },
             { id: 'contactPhone', type: 'text', label: 'Best phone number' },
@@ -530,10 +533,8 @@ router.get(
     if (!client) {
       throw new ApiError('PORTAL_NOT_FOUND', 'Portal link not found or expired', 404);
     }
-    const {
-      listPortalTasks,
-      listPortalMessages,
-    } = await import('../../services/portalOsService.js');
+    const { listPortalTasks, listPortalMessages } =
+      await import('../../services/portalOsService.js');
     const [tasks, messages] = await Promise.all([
       listPortalTasks(client.tenantId, client.id),
       listPortalMessages(client.tenantId, client.id),

@@ -24,13 +24,13 @@ CORS already allows `capacitor://localhost` and `https://localhost` (see `backen
 
 ## Scripts (from `frontend/`)
 
-| Command | Purpose |
-|---------|---------|
+| Command                   | Purpose                          |
+| ------------------------- | -------------------------------- |
 | `npm run build:capacitor` | Vite build with `CAPACITOR=true` |
-| `npm run cap:sync` | Build + `cap sync` all platforms |
-| `npm run cap:sync:ios` | Build + sync iOS only |
-| `npm run cap:open:ios` | Open Xcode |
-| `npm run cap:run:ios` | Sync + run on simulator/device |
+| `npm run cap:sync`        | Build + `cap sync` all platforms |
+| `npm run cap:sync:ios`    | Build + sync iOS only            |
+| `npm run cap:open:ios`    | Open Xcode                       |
+| `npm run cap:run:ios`     | Sync + run on simulator/device   |
 
 ## Add Android (when SDK present)
 
@@ -66,15 +66,15 @@ Run Vite with `--host` (already default in `npm run dev`).
 
 Use universal links / custom scheme later. For now open:
 
-- Staff: `https://app…/` (or cap server url) after login  
-- Client portal: `/portal/{token}`  
+- Staff: `https://app…/` (or cap server url) after login
+- Client portal: `/portal/{token}`
 - Public sign: `/proposals/view/{token}`
 
 ## Practice vs production
 
-| | Practice | Production cutover |
-|--|----------|-------------------|
+|        | Practice                              | Production cutover                 |
+| ------ | ------------------------------------- | ---------------------------------- |
 | Bundle | Local `cap:sync` against practice API | Point `VITE_API_URL` at Render API |
-| Store | Not published | Separate release checklist |
+| Store  | Not published                         | Separate release checklist         |
 
 Do **not** publish store builds from practice secrets.

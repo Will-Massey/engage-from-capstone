@@ -32,7 +32,12 @@ test.describe('Practice W3 — money, Clara, automations, workload', () => {
     await page.goto('/jobs');
     await page.waitForLoadState('networkidle');
     await expect(page.getByRole('heading', { name: /jobs board/i })).toBeVisible();
-    if (await page.getByText(/no jobs yet/i).isVisible().catch(() => false)) {
+    if (
+      await page
+        .getByText(/no jobs yet/i)
+        .isVisible()
+        .catch(() => false)
+    ) {
       test.skip(true, 'No jobs — Clara panel hidden');
     }
     // Clara panel may take a moment
@@ -85,12 +90,23 @@ test.describe('Practice W3 — money, Clara, automations, workload', () => {
   test('job detail can open and shows tasks section', async ({ page }) => {
     await page.goto('/jobs');
     await page.waitForLoadState('networkidle');
-    if (await page.getByText(/no jobs yet/i).isVisible().catch(() => false)) {
+    if (
+      await page
+        .getByText(/no jobs yet/i)
+        .isVisible()
+        .catch(() => false)
+    ) {
       test.skip(true, 'No jobs');
     }
     // Job UUID links only — not /jobs/workload nav
-    const card = page.locator('main a[href^="/jobs/"]').filter({ hasNotText: /workload/i }).first();
-    const uuidCard = page.locator('a[href*="/jobs/"][href*="-"]').filter({ hasNot: page.locator('[href$="/workload"]') }).first();
+    const card = page
+      .locator('main a[href^="/jobs/"]')
+      .filter({ hasNotText: /workload/i })
+      .first();
+    const uuidCard = page
+      .locator('a[href*="/jobs/"][href*="-"]')
+      .filter({ hasNot: page.locator('[href$="/workload"]') })
+      .first();
     const link = (await card.count()) > 0 ? card : uuidCard;
     if ((await link.count()) === 0) {
       // Fallback: list view then first client link into a job

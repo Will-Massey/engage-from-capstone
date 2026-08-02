@@ -428,9 +428,7 @@ export default function ClientPortal() {
   /** Portal OS: top 3 things the client should finish */
   const openPortalTasks = portalTasks.filter((t) => !t.done);
   const openAssignedForms = assignedForms.filter((f) => f.status !== 'submitted');
-  const actionableProposals = proposals.filter(
-    (p) => p.status === 'SENT' || p.status === 'VIEWED'
-  );
+  const actionableProposals = proposals.filter((p) => p.status === 'SENT' || p.status === 'VIEWED');
   const threeThings: Array<{ kind: string; title: string; detail: string }> = [];
   for (const f of openAssignedForms.slice(0, 2)) {
     threeThings.push({
@@ -626,7 +624,9 @@ export default function ClientPortal() {
               </p>
               <ul className="mt-4 max-h-64 space-y-2 overflow-y-auto">
                 {portalTasks.length === 0 && (
-                  <li className="text-sm text-slate-500">No tasks yet. Your practice will add items here.</li>
+                  <li className="text-sm text-slate-500">
+                    No tasks yet. Your practice will add items here.
+                  </li>
                 )}
                 {portalTasks.map((t) => (
                   <li
@@ -664,9 +664,7 @@ export default function ClientPortal() {
                         {t.title}
                       </p>
                       {t.dueAt && (
-                        <p className="text-2xs text-slate-400">
-                          Due {formatDate(t.dueAt)}
-                        </p>
+                        <p className="text-2xs text-slate-400">Due {formatDate(t.dueAt)}</p>
                       )}
                     </div>
                   </li>
@@ -824,9 +822,7 @@ export default function ClientPortal() {
                       </h3>
                       <span
                         className={`rounded-full px-2 py-0.5 text-xs font-semibold ${
-                          done
-                            ? 'bg-emerald-100 text-emerald-800'
-                            : 'bg-amber-100 text-amber-900'
+                          done ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-900'
                         }`}
                       >
                         {done ? 'Submitted' : 'Action needed'}
@@ -1142,7 +1138,10 @@ export default function ClientPortal() {
           ) : (
             <ul className="divide-y divide-slate-100 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm dark:divide-slate-700 dark:border-slate-700 dark:bg-slate-800">
               {files.map((f) => (
-                <li key={f.id} className="flex items-center justify-between gap-2 px-4 py-3 text-sm">
+                <li
+                  key={f.id}
+                  className="flex items-center justify-between gap-2 px-4 py-3 text-sm"
+                >
                   <a
                     className="truncate font-medium text-emerald-600 hover:underline"
                     href={`/api/proposals/portal/${token}/files/${f.id}/download`}
@@ -1150,7 +1149,8 @@ export default function ClientPortal() {
                     {f.name}
                   </a>
                   <span className="shrink-0 text-xs text-slate-400">
-                    {Math.round(f.sizeBytes / 1024)}kb · {f.uploadedBy === 'client' ? 'You' : 'Firm'}
+                    {Math.round(f.sizeBytes / 1024)}kb ·{' '}
+                    {f.uploadedBy === 'client' ? 'You' : 'Firm'}
                   </span>
                 </li>
               ))}

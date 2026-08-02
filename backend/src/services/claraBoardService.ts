@@ -121,9 +121,7 @@ export async function prioritiseJobsBoard(
       boardColumn: j.boardColumn,
       dueAt: j.dueAt?.toISOString() || null,
       feePence: j.proposedFeePence,
-      assigneeName: j.assignee
-        ? `${j.assignee.firstName} ${j.assignee.lastName}`
-        : null,
+      assigneeName: j.assignee ? `${j.assignee.firstName} ${j.assignee.lastName}` : null,
       score,
       reasons: reasons.length ? reasons : ['on radar'],
       suggestedAction,

@@ -76,7 +76,12 @@ test.describe('Practice OS — jobs, letters, automations', () => {
   test('job detail shows profitability strip when opening first job', async ({ page }) => {
     await page.goto('/jobs');
     await page.waitForLoadState('networkidle');
-    if (await page.getByText(/no jobs yet/i).isVisible().catch(() => false)) {
+    if (
+      await page
+        .getByText(/no jobs yet/i)
+        .isVisible()
+        .catch(() => false)
+    ) {
       test.skip(true, 'No seeded jobs');
     }
     // Prefer in-main content links to /jobs/:uuid (avoid sidebar /jobs/workload)

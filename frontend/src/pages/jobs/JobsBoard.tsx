@@ -109,8 +109,7 @@ function JobCardView({
 }) {
   const pct = phaseProgress(job);
   const due = daysLabel(job.dueAt);
-  const currentPhase =
-    job.phases.find((p) => !p.isComplete) || job.phases[job.phases.length - 1];
+  const currentPhase = job.phases.find((p) => !p.isComplete) || job.phases[job.phases.length - 1];
   const isDragging = draggingId === job.id;
 
   return (
@@ -615,8 +614,9 @@ export default function JobsBoard() {
       {filtersActive && jobs.length > 0 && (
         <div className="flex flex-wrap items-center gap-2 text-xs text-slate-500">
           <span>
-            Showing <strong className="text-slate-800 dark:text-slate-200">{filteredJobs.length}</strong>{' '}
-            of {jobs.length}
+            Showing{' '}
+            <strong className="text-slate-800 dark:text-slate-200">{filteredJobs.length}</strong> of{' '}
+            {jobs.length}
           </span>
           <button
             type="button"
@@ -699,10 +699,7 @@ export default function JobsBoard() {
                   const pct = phaseProgress(job);
                   const due = daysLabel(job.dueAt);
                   return (
-                    <tr
-                      key={job.id}
-                      className="hover:bg-slate-50/80 dark:hover:bg-slate-800/40"
-                    >
+                    <tr key={job.id} className="hover:bg-slate-50/80 dark:hover:bg-slate-800/40">
                       <td className="px-4 py-2.5">
                         <Link
                           to={`/jobs/${job.id}`}
@@ -751,9 +748,7 @@ export default function JobsBoard() {
                           className="input-field py-1 text-xs"
                           value={job.boardColumn}
                           disabled={movingId === job.id}
-                          onChange={(e) =>
-                            void moveJob(job.id, e.target.value as BoardColumn)
-                          }
+                          onChange={(e) => void moveJob(job.id, e.target.value as BoardColumn)}
                         >
                           {COLUMN_ORDER.map((c) => (
                             <option key={c} value={c}>
@@ -782,16 +777,12 @@ export default function JobsBoard() {
             const colAvg =
               cards.length === 0
                 ? 0
-                : Math.round(
-                    cards.reduce((s, j) => s + phaseProgress(j), 0) / cards.length
-                  );
+                : Math.round(cards.reduce((s, j) => s + phaseProgress(j), 0) / cards.length);
             return (
               <div
                 key={col}
                 className={`flex w-72 shrink-0 flex-col overflow-hidden rounded-xl border shadow-sm transition-all ${chrome.accent} ${chrome.body} ${
-                  isDropTarget
-                    ? 'ring-2 ring-emerald-400/50 scale-[1.01] shadow-md'
-                    : ''
+                  isDropTarget ? 'ring-2 ring-emerald-400/50 scale-[1.01] shadow-md' : ''
                 }`}
                 onDragOver={(e) => onColumnDragOver(e, col)}
                 onDragLeave={() => {

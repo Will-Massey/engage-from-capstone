@@ -481,13 +481,7 @@ export class EmailService {
     state?: string
   ): string {
     // Graph Mail.Read + Mail.Send for two-way mailbox (not SMTP.Send alone)
-    const scopes = [
-      'offline_access',
-      'User.Read',
-      'Mail.Read',
-      'Mail.Send',
-      'Mail.ReadWrite',
-    ];
+    const scopes = ['offline_access', 'User.Read', 'Mail.Read', 'Mail.Send', 'Mail.ReadWrite'];
 
     const tenant = tenantId || 'common';
 

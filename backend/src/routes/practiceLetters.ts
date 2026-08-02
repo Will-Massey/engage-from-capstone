@@ -155,9 +155,7 @@ const patchLetterSchema = z.object({
     .optional(),
 });
 
-function blocksToHtml(
-  blocks: Array<{ type: string; content: string }>
-): string {
+function blocksToHtml(blocks: Array<{ type: string; content: string }>): string {
   const parts = blocks.map((b) => {
     const c = b.content;
     switch (b.type) {

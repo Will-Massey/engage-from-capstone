@@ -219,9 +219,7 @@ export function StatTile({
       className={`rounded-xl border bg-gradient-to-br p-3.5 shadow-sm ${surface[tone]} ${className}`}
     >
       <div className="flex items-start gap-3">
-        {icon && (
-          <div className={`rounded-lg p-2 shadow-sm ${iconBg[tone]}`}>{icon}</div>
-        )}
+        {icon && <div className={`rounded-lg p-2 shadow-sm ${iconBg[tone]}`}>{icon}</div>}
         <div className="min-w-0 flex-1">
           <p className="text-2xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
             {label}
@@ -248,7 +246,12 @@ export function StaffAvatar({
   size?: 'sm' | 'md' | 'lg';
 }) {
   const initials = `${firstName?.[0] || ''}${lastName?.[0] || ''}`.toUpperCase() || '?';
-  const sz = size === 'sm' ? 'h-6 w-6 text-[9px]' : size === 'lg' ? 'h-9 w-9 text-xs' : 'h-7 w-7 text-[10px]';
+  const sz =
+    size === 'sm'
+      ? 'h-6 w-6 text-[9px]'
+      : size === 'lg'
+        ? 'h-9 w-9 text-xs'
+        : 'h-7 w-7 text-[10px]';
   // Stable colour from name
   const palette = [
     'from-emerald-500 to-teal-400',
@@ -310,7 +313,8 @@ export function boardColumnChrome(column: string): {
       };
     case 'RECORDS_RECEIVED':
       return {
-        header: 'bg-gradient-to-r from-amber-100 to-orange-50 dark:from-amber-950/50 dark:to-slate-900',
+        header:
+          'bg-gradient-to-r from-amber-100 to-orange-50 dark:from-amber-950/50 dark:to-slate-900',
         body: 'bg-amber-50/40 dark:bg-amber-950/10',
         accent: 'border-amber-200 dark:border-amber-900/50',
         bar: 'bg-amber-500',

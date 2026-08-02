@@ -3,16 +3,16 @@
 **This repo is a clone of Engage used to build the Engager-exceeding product.**  
 Production / live Engage stays at `C:\Users\willi\engage-from-capstone` and must not be broken by this work.
 
-| Concern | Production Engage | This clone (`engage-practice`) |
-| --- | --- | --- |
-| Path | `C:\Users\willi\engage-from-capstone` | `C:\Users\willi\engage-practice` |
-| Git remote | `Will-Massey/engage-from-capstone` | same remote for now; use **branch only** `feat/practice-os` — do not merge to master until cutover |
-| Backend port | `3001` | **`3101`** |
-| Frontend port | `5173` | **`5273`** |
-| Postgres DB | `engage_dev` on host `5433` | **`engage_practice_dev`** on host `5433` (same Docker container, separate database) |
-| Redis | shared `6379` ok | same; keys are app-scoped by process |
-| Product name (dev) | Engage | **Engage Practice** (working title until cutover) |
-| Cutover | — | When happy: promote this tree (or merge) and retire old product surface |
+| Concern            | Production Engage                     | This clone (`engage-practice`)                                                                     |
+| ------------------ | ------------------------------------- | -------------------------------------------------------------------------------------------------- |
+| Path               | `C:\Users\willi\engage-from-capstone` | `C:\Users\willi\engage-practice`                                                                   |
+| Git remote         | `Will-Massey/engage-from-capstone`    | same remote for now; use **branch only** `feat/practice-os` — do not merge to master until cutover |
+| Backend port       | `3001`                                | **`3101`**                                                                                         |
+| Frontend port      | `5173`                                | **`5273`**                                                                                         |
+| Postgres DB        | `engage_dev` on host `5433`           | **`engage_practice_dev`** on host `5433` (same Docker container, separate database)                |
+| Redis              | shared `6379` ok                      | same; keys are app-scoped by process                                                               |
+| Product name (dev) | Engage                                | **Engage Practice** (working title until cutover)                                                  |
+| Cutover            | —                                     | When happy: promote this tree (or merge) and retire old product surface                            |
 
 ## Local env (gitignored)
 

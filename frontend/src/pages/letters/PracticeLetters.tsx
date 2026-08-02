@@ -37,7 +37,10 @@ export default function PracticeLetters() {
   const [editHtml, setEditHtml] = useState('');
   const [designerMode, setDesignerMode] = useState(false);
   const [blocks, setBlocks] = useState<
-    Array<{ type: 'header' | 'body' | 'services' | 'fees' | 'clauses' | 'signoff'; content: string }>
+    Array<{
+      type: 'header' | 'body' | 'services' | 'fees' | 'clauses' | 'signoff';
+      content: string;
+    }>
   >([
     { type: 'header', content: '' },
     { type: 'body', content: '' },
@@ -208,9 +211,7 @@ export default function PracticeLetters() {
       )}
 
       <div className="card p-4 space-y-3">
-        <h2 className="text-sm font-semibold uppercase tracking-wide text-slate-500">
-          New letter
-        </h2>
+        <h2 className="text-sm font-semibold uppercase tracking-wide text-slate-500">New letter</h2>
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
           <label className="text-xs text-slate-500">
             Type
@@ -403,18 +404,18 @@ export default function PracticeLetters() {
                     </label>
                   ))}
                   <div className="flex flex-wrap gap-1">
-                    {(
-                      ['header', 'body', 'services', 'fees', 'clauses', 'signoff'] as const
-                    ).map((t) => (
-                      <button
-                        key={t}
-                        type="button"
-                        className="rounded-full border border-slate-200 px-2 py-0.5 text-2xs font-medium hover:border-emerald-400"
-                        onClick={() => setBlocks((bs) => [...bs, { type: t, content: '' }])}
-                      >
-                        + {t}
-                      </button>
-                    ))}
+                    {(['header', 'body', 'services', 'fees', 'clauses', 'signoff'] as const).map(
+                      (t) => (
+                        <button
+                          key={t}
+                          type="button"
+                          className="rounded-full border border-slate-200 px-2 py-0.5 text-2xs font-medium hover:border-emerald-400"
+                          onClick={() => setBlocks((bs) => [...bs, { type: t, content: '' }])}
+                        >
+                          + {t}
+                        </button>
+                      )
+                    )}
                   </div>
                 </div>
               ) : editing ? (

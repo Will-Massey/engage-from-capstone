@@ -1,10 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
-import {
-  CheckCircleIcon,
-  ChevronDownIcon,
-  ChevronRightIcon,
-} from '@heroicons/react/24/outline';
+import { CheckCircleIcon, ChevronDownIcon, ChevronRightIcon } from '@heroicons/react/24/outline';
 import { apiClient } from '../../utils/api';
 import {
   StatusChip,
@@ -330,8 +326,7 @@ export default function JobDetail() {
   const phasePct =
     job.phases?.length > 0
       ? Math.round(
-          job.phases.reduce((a: number, p: any) => a + (p.progressPct || 0), 0) /
-            job.phases.length
+          job.phases.reduce((a: number, p: any) => a + (p.progressPct || 0), 0) / job.phases.length
         )
       : 0;
 
@@ -340,8 +335,7 @@ export default function JobDetail() {
   const budget = job.budgetPence || 0;
   const marginPence = fee - actual;
   const marginPct = fee > 0 ? Math.round((marginPence / fee) * 100) : null;
-  const totalMinutes =
-    job.timeEntries?.reduce((a: number, t: any) => a + (t.minutes || 0), 0) || 0;
+  const totalMinutes = job.timeEntries?.reduce((a: number, t: any) => a + (t.minutes || 0), 0) || 0;
   const checklistDone =
     job.phases?.reduce(
       (a: number, p: any) => a + (p.checklistItems?.filter((c: any) => c.isDone).length || 0),
@@ -449,7 +443,9 @@ export default function JobDetail() {
               <MoneyPill pence={fee} />
               <div className="text-xs text-slate-400">
                 Logged · £{(actual / 100).toLocaleString('en-GB')}
-                {totalMinutes > 0 ? ` · ${Math.round(totalMinutes / 60)}h ${totalMinutes % 60}m` : ''}
+                {totalMinutes > 0
+                  ? ` · ${Math.round(totalMinutes / 60)}h ${totalMinutes % 60}m`
+                  : ''}
               </div>
             </div>
             {job.assignee && (
@@ -479,11 +475,7 @@ export default function JobDetail() {
 
         {/* Profitability strip — fee vs time cost */}
         <div className="mt-4 grid gap-2 sm:grid-cols-4">
-          <StatTile
-            tone="success"
-            label="Fee"
-            value={`£${(fee / 100).toLocaleString('en-GB')}`}
-          />
+          <StatTile tone="success" label="Fee" value={`£${(fee / 100).toLocaleString('en-GB')}`} />
           <StatTile
             tone="info"
             label="Time cost"
@@ -561,8 +553,8 @@ export default function JobDetail() {
               Work by service
             </h2>
             <span className="text-xs text-slate-400">
-              {groups.reduce((a, g) => a + g.done, 0)}/
-              {groups.reduce((a, g) => a + g.total, 0)} phases done
+              {groups.reduce((a, g) => a + g.done, 0)}/{groups.reduce((a, g) => a + g.total, 0)}{' '}
+              phases done
             </span>
           </div>
 
@@ -573,9 +565,7 @@ export default function JobDetail() {
                 <button
                   type="button"
                   className="flex w-full items-center gap-3 px-4 py-3 text-left hover:bg-slate-50 dark:hover:bg-slate-800/60"
-                  onClick={() =>
-                    setExpanded((e) => ({ ...e, [g.service]: !e[g.service] }))
-                  }
+                  onClick={() => setExpanded((e) => ({ ...e, [g.service]: !e[g.service] }))}
                 >
                   {open ? (
                     <ChevronDownIcon className="h-4 w-4 text-slate-400" />
@@ -638,9 +628,7 @@ export default function JobDetail() {
                                 type="checkbox"
                                 className="mt-0.5 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500"
                                 checked={item.isDone}
-                                onChange={(e) =>
-                                  void toggleChecklist(item.id, e.target.checked)
-                                }
+                                onChange={(e) => void toggleChecklist(item.id, e.target.checked)}
                               />
                               <span
                                 className={
@@ -716,7 +704,9 @@ export default function JobDetail() {
                   />
                   <span
                     className={
-                      t.isDone ? 'text-slate-400 line-through' : 'text-slate-800 dark:text-slate-100'
+                      t.isDone
+                        ? 'text-slate-400 line-through'
+                        : 'text-slate-800 dark:text-slate-100'
                     }
                   >
                     {t.title}
@@ -846,11 +836,8 @@ export default function JobDetail() {
                   className="flex justify-between border-b border-slate-100 py-1 dark:border-slate-700"
                 >
                   <span>
-                    {t.minutes}m
-                    {t.user ? ` · ${t.user.firstName}` : ''}
-                    {t.amountPence
-                      ? ` · £${(t.amountPence / 100).toLocaleString('en-GB')}`
-                      : ''}
+                    {t.minutes}m{t.user ? ` · ${t.user.firstName}` : ''}
+                    {t.amountPence ? ` · £${(t.amountPence / 100).toLocaleString('en-GB')}` : ''}
                   </span>
                   <span className="text-slate-400">
                     {new Date(t.createdAt).toLocaleDateString('en-GB')}
@@ -943,10 +930,7 @@ export default function JobDetail() {
                   /* ignore */
                 }
                 return (
-                  <li
-                    key={a.id}
-                    className="border-b border-slate-100 pb-2 dark:border-slate-700"
-                  >
+                  <li key={a.id} className="border-b border-slate-100 pb-2 dark:border-slate-700">
                     <div className="font-medium text-slate-700 dark:text-slate-200">
                       {a.message}
                     </div>
@@ -963,9 +947,7 @@ export default function JobDetail() {
                       </div>
                     )}
                     <div className="text-slate-400">
-                      {a.actor
-                        ? `${a.actor.firstName} ${a.actor.lastName} · `
-                        : ''}
+                      {a.actor ? `${a.actor.firstName} ${a.actor.lastName} · ` : ''}
                       {new Date(a.createdAt).toLocaleString('en-GB')}
                     </div>
                   </li>

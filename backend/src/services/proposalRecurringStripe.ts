@@ -230,35 +230,30 @@ export async function getRecurringRevenueSummary(
   tenantId: string
 ): Promise<RecurringRevenueSummary> {
   const since = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
-  const [
-    activeSubscriptions,
-    paidEvents,
-    failedLast30Days,
-    openJobs,
-    acceptedProposals,
-  ] = await Promise.all([
-    prisma.proposal.count({ where: { tenantId, stripeSubscriptionId: { not: null } } }),
-    prisma.activityLog.findMany({
-      where: { tenantId, action: 'RECURRING_PAYMENT', createdAt: { gte: since } },
-      select: { metadata: true },
-    }),
-    prisma.activityLog.count({
-      where: { tenantId, action: 'RECURRING_PAYMENT_FAILED', createdAt: { gte: since } },
-    }),
-    prisma.job.findMany({
-      where: { tenantId, isActive: true, boardColumn: { not: 'COMPLETE' } },
-      select: { proposedFeePence: true },
-    }),
-    prisma.proposal.findMany({
-      where: { tenantId, status: 'ACCEPTED' },
-      select: {
-        totalPence: true,
-        paymentStatus: true,
-        stripeSubscriptionId: true,
-        services: { select: { billingFrequency: true, grossTotalPence: true } },
-      },
-    }),
-  ]);
+  const [activeSubscriptions, paidEvents, failedLast30Days, openJobs, acceptedProposals] =
+    await Promise.all([
+      prisma.proposal.count({ where: { tenantId, stripeSubscriptionId: { not: null } } }),
+      prisma.activityLog.findMany({
+        where: { tenantId, action: 'RECURRING_PAYMENT', createdAt: { gte: since } },
+        select: { metadata: true },
+      }),
+      prisma.activityLog.count({
+        where: { tenantId, action: 'RECURRING_PAYMENT_FAILED', createdAt: { gte: since } },
+      }),
+      prisma.job.findMany({
+        where: { tenantId, isActive: true, boardColumn: { not: 'COMPLETE' } },
+        select: { proposedFeePence: true },
+      }),
+      prisma.proposal.findMany({
+        where: { tenantId, status: 'ACCEPTED' },
+        select: {
+          totalPence: true,
+          paymentStatus: true,
+          stripeSubscriptionId: true,
+          services: { select: { billingFrequency: true, grossTotalPence: true } },
+        },
+      }),
+    ]);
 
   let paidLast30DaysPence = 0;
   for (const event of paidEvents) {

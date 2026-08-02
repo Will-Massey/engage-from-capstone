@@ -49,7 +49,11 @@ const BY_CATEGORY: Record<string, CategoryTemplate> = {
       },
       {
         name: 'Filing',
-        checklist: ['Client approval', 'File with Companies House / HMRC', 'Archive working papers'],
+        checklist: [
+          'Client approval',
+          'File with Companies House / HMRC',
+          'Archive working papers',
+        ],
       },
     ],
   },

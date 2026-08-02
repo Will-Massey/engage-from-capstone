@@ -96,11 +96,17 @@ export default function PartnerProgramme() {
 
       <p className="text-center text-sm text-slate-500">
         Switching a firm off Engager?{' '}
-        <Link to="/switch-from-engager" className="text-emerald-700 hover:underline dark:text-emerald-400">
+        <Link
+          to="/switch-from-engager"
+          className="text-emerald-700 hover:underline dark:text-emerald-400"
+        >
           Open the battle card &amp; ROI tool
         </Link>
         {' · '}
-        <Link to="/clients/import" className="text-emerald-700 hover:underline dark:text-emerald-400">
+        <Link
+          to="/clients/import"
+          className="text-emerald-700 hover:underline dark:text-emerald-400"
+        >
           Import their clients
         </Link>
       </p>

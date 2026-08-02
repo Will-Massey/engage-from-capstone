@@ -164,9 +164,7 @@ router.post(
     const body = schema.parse(req.body);
     const pending = await listAssignments(req.tenantId!, { status: 'pending' });
     const clientIds = [
-      ...new Set(
-        pending.filter((a) => a.templateId === body.templateId).map((a) => a.clientId)
-      ),
+      ...new Set(pending.filter((a) => a.templateId === body.templateId).map((a) => a.clientId)),
     ];
     if (clientIds.length === 0) {
       res.json({

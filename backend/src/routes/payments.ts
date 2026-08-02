@@ -413,9 +413,7 @@ router.get(
 
     const proposalIds = [
       ...new Set(
-        failedLogs
-          .map((l) => l.proposalId || l.entityId)
-          .filter((id): id is string => !!id)
+        failedLogs.map((l) => l.proposalId || l.entityId).filter((id): id is string => !!id)
       ),
     ];
     const proposals = proposalIds.length
@@ -452,8 +450,7 @@ router.get(
         clientName: p?.client.name || null,
         clientId: p?.client.id || null,
         contactEmail: p?.client.contactEmail || null,
-        amountPence:
-          typeof meta.amountDue === 'number' ? meta.amountDue : p?.totalPence || 0,
+        amountPence: typeof meta.amountDue === 'number' ? meta.amountDue : p?.totalPence || 0,
         invoiceId: typeof meta.invoiceId === 'string' ? meta.invoiceId : null,
         subscriptionId:
           typeof meta.subscriptionId === 'string'
@@ -512,16 +509,10 @@ router.post(
     });
     if (!proposal) throw new ApiError('NOT_FOUND', 'Proposal not found', 404);
     if (!proposal.stripeSubscriptionId) {
-      throw new ApiError(
-        'NO_SUBSCRIPTION',
-        'No live Stripe subscription on this proposal',
-        400
-      );
+      throw new ApiError('NO_SUBSCRIPTION', 'No live Stripe subscription on this proposal', 400);
     }
 
-    const { createProposalBillingPortal } = await import(
-      '../services/paymentCollection.js'
-    );
+    const { createProposalBillingPortal } = await import('../services/paymentCollection.js');
     const url = await createProposalBillingPortal(proposal.id);
     if (!url) {
       throw new ApiError(
@@ -558,8 +549,7 @@ router.post(
   authorize('ADMIN', 'PARTNER', 'MANAGER', 'MD'),
   asyncHandler(async (req, res) => {
     const tenantId = req.tenantId!;
-    const invoiceId =
-      typeof req.body?.invoiceId === 'string' ? req.body.invoiceId : null;
+    const invoiceId = typeof req.body?.invoiceId === 'string' ? req.body.invoiceId : null;
 
     const proposal = await prisma.proposal.findFirst({
       where: { id: req.params.id, tenantId },
@@ -591,9 +581,7 @@ router.post(
     let portalUrl: string | null = null;
     if (proposal.stripeSubscriptionId) {
       try {
-        const { createProposalBillingPortal } = await import(
-          '../services/paymentCollection.js'
-        );
+        const { createProposalBillingPortal } = await import('../services/paymentCollection.js');
         portalUrl = await createProposalBillingPortal(proposal.id);
       } catch {
         portalUrl = null;
@@ -633,8 +621,7 @@ router.post(
             ? 'Invoice paid successfully'
             : portalUrl
               ? 'Share the billing portal link so the client can update their card'
-              : payError ||
-                'Retry logged — no live invoice/subscription available to charge',
+              : payError || 'Retry logged — no live invoice/subscription available to charge',
       },
     });
   })

@@ -99,7 +99,8 @@ const UK_PACKS: Array<{
   {
     id: 'vat-records',
     name: 'VAT records chase',
-    description: 'When a job hits Request records, draft a VAT pack request; remind if still stuck.',
+    description:
+      'When a job hits Request records, draft a VAT pack request; remind if still stuck.',
     badge: 'VAT',
     rules: [
       { trigger: 'job.column.REQUEST_RECORDS', action: 'chase.RECORDS_REQUEST' },
@@ -129,7 +130,8 @@ const UK_PACKS: Array<{
   {
     id: 'phase-handoff',
     name: 'Phase complete handoff',
-    description: 'On phase complete, notify assignee and prepare next-step records chase if needed.',
+    description:
+      'On phase complete, notify assignee and prepare next-step records chase if needed.',
     badge: 'Delivery',
     rules: [
       { trigger: 'phase.complete', action: 'notify.assignee' },
@@ -297,7 +299,8 @@ export default function PracticeAutomations() {
           success?: boolean;
         };
         // Interceptor unwraps axios body → { success, data }
-        const data = res?.data ?? (res as unknown as AutomationSettings & { automationRules?: LocalRule[] });
+        const data =
+          res?.data ?? (res as unknown as AutomationSettings & { automationRules?: LocalRule[] });
         setSettings(data);
         // Prefer server rules when present (source of truth after first sync)
         if (Array.isArray(data?.automationRules) && data.automationRules.length > 0) {
@@ -385,9 +388,7 @@ export default function PracticeAutomations() {
               One-click install into the local builder — VAT, SA, MTD, proposal warm-up
             </p>
           </div>
-          {packMsg && (
-            <StatusChip tone="success">{packMsg}</StatusChip>
-          )}
+          {packMsg && <StatusChip tone="success">{packMsg}</StatusChip>}
         </div>
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {UK_PACKS.map((pack) => (
@@ -537,9 +538,7 @@ export default function PracticeAutomations() {
                   type="button"
                   onClick={() =>
                     setRules((prev) =>
-                      prev.map((x) =>
-                        x.id === rule.id ? { ...x, enabled: !x.enabled } : x
-                      )
+                      prev.map((x) => (x.id === rule.id ? { ...x, enabled: !x.enabled } : x))
                     )
                   }
                 >
@@ -575,7 +574,11 @@ export default function PracticeAutomations() {
                 Recent automation activity
               </h2>
             </div>
-            <button type="button" className="btn-secondary text-xs" onClick={() => void loadRunHistory()}>
+            <button
+              type="button"
+              className="btn-secondary text-xs"
+              onClick={() => void loadRunHistory()}
+            >
               Refresh
             </button>
           </div>
@@ -641,7 +644,9 @@ export default function PracticeAutomations() {
                   {asList(settings?.proposalChase?.chaseSequenceDays)}
                 </span>
               </p>
-              <p className="text-2xs text-slate-400">Schedule · {settings?.proposalChase.schedule}</p>
+              <p className="text-2xs text-slate-400">
+                Schedule · {settings?.proposalChase.schedule}
+              </p>
               <div className="mt-3 flex flex-wrap gap-2">
                 <button
                   type="button"
@@ -709,10 +714,7 @@ export default function PracticeAutomations() {
         </div>
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {(settings?.jobChasePacks || []).map((pack) => (
-            <article
-              key={pack.id}
-              className="metal-tile flex flex-col p-4"
-            >
+            <article key={pack.id} className="metal-tile flex flex-col p-4">
               <div className="flex items-start justify-between gap-2">
                 <div className="flex items-center gap-2">
                   <BriefcaseIcon className="h-4 w-4 text-emerald-500" />
@@ -723,7 +725,8 @@ export default function PracticeAutomations() {
               <p className="mt-2 flex-1 text-sm text-slate-500">{pack.description}</p>
               {pack.boardColumns?.length ? (
                 <p className="mt-2 text-2xs text-slate-400">
-                  Best on · {pack.boardColumns.map((c) => c.replace(/_/g, ' ').toLowerCase()).join(', ')}
+                  Best on ·{' '}
+                  {pack.boardColumns.map((c) => c.replace(/_/g, ' ').toLowerCase()).join(', ')}
                 </p>
               ) : (
                 <p className="mt-2 text-2xs text-slate-400">Any board column</p>

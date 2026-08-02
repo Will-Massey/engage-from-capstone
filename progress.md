@@ -445,6 +445,7 @@ Continue build per task_plan.md. Last deploy: 121574bc on master. Phase: Manual 
 ## Session: 2026-08-01 - AFK UI marathon #2 (engage-practice)
 
 ### Checkpoint
+
 - **Jobs board:** staff filter, Help needed filter, board/list toggle (persisted), URL `?filter=overdue|week|help`, clear filters
 - **Job detail:** profitability strip (fee / time cost / margin / time logged), hourly rate on time log, client record link, checklist chip
 - **Client detail:** Jobs tab with progress rings + column chips
@@ -457,6 +458,7 @@ Continue build per task_plan.md. Last deploy: 121574bc on master. Phase: Manual 
 - **Verify:** frontend tsc clean; jest 10/10 practice unit tests; login + 5 jobs + pipeline (2 overdue, £19.5k open fee); servers :3101/:5273
 
 #### Resume prompt
+
 ```
 Open http://localhost:5273 — admin@demo.practice / DemoPass123!
 Review Jobs list view, Client Jobs tab, Job profitability, Dashboard needs-attention.
@@ -466,6 +468,7 @@ Cutover still blocked until happy. Optional next: Playwright e2e, automation bui
 ## Session: 2026-08-01 - polish, e2e, cutover prep + Stripe webhook repair
 
 ### Stripe (production engage-backend) — NOT caused by practice work
+
 - **Symptom:** Stripe "webhook not working" notification
 - **Root cause:** Live Connect endpoints duplicated + signing secrets drifted from Render `whsec`
 - **Fix:** Created canonical live endpoints; rotated `STRIPE_CONNECT_WEBHOOK_SECRET` + `STRIPE_WEBHOOK_SECRET` on Render; disabled old endpoints; deploy live
@@ -473,11 +476,13 @@ Cutover still blocked until happy. Optional next: Playwright e2e, automation bui
 - **Local:** `account.updated` try/catch so unknown acct does not 500 (needs deploy to Render when convenient)
 
 ### Practice polish / e2e / cutover
+
 - E2E: `e2e-tests/specs/practice-jobs-letters.spec.ts` — **8/8 passed** (chromium)
 - Cutover prep: `docs/CUTOVER_PREP.md`
 - Automations page crash fix (non-array chaseSequenceDays `.join`)
 
 #### Resume
+
 ```
 Review practice UI. E2E green. Stripe webhooks repaired live.
 Cutover only after explicit happy + docs/CUTOVER_PREP.md checklist.
@@ -485,12 +490,13 @@ Optional: commit+deploy account.updated harden on engage-from-capstone master.
 ```
 
 ## Night freeze 2026-08-01
+
 - Delivery job panel on accepted proposals; phase complete-all API; proposalId filter; client job counts; morning handoff
 - E2E 8/8; unit 13/13; tsc clean
 - Resume: docs/MORNING_HANDOFF.md
 
-
 ## 2026-08-02 autonomous continue
+
 - Metal Mint: metal.css + MetalTile; jobs metal cards/KPI; dashboard metal tiles
 - W1: bulk column move API+UI; job tasks CRUD API + UI
 - W2: automation visual builder v0 (localStorage rules)
@@ -498,6 +504,7 @@ Optional: commit+deploy account.updated harden on engage-from-capstone master.
 - Portal hub banner polish
 
 ## 2026-08-02 continue (metal + utilisation + packs)
+
 - Metal near-mirror chrome polish (no grain)
 - Metal kit: MetalProgress, StatusGem, Sparkline, ColumnMetalHeader, SegmentedMeter, HeatDot
 - Workload: utilisation API (load/hours/recovery %) + metal UI + heat + composition meter
@@ -507,6 +514,7 @@ Optional: commit+deploy account.updated harden on engage-from-capstone master.
 - Stack: :3101 / :5273
 
 ## 2026-08-02 wave: mentions, forms, automations server, letter designer
+
 - Job activity notes + @colleague mentions → JobActivity + ActivityLog JOB_MENTION
 - Portal records-pack questionnaire (GET/POST portal forms; stored on client.notes envelope)
 - E-sign forensic cert already on Proposal Audit tab (PDF + JSON) — verified wired
@@ -515,6 +523,7 @@ Optional: commit+deploy account.updated harden on engage-from-capstone master.
 - Frontend: JobDetail mentions UI; Automations save/run; Portal form; Letters designer
 
 ## 2026-08-02 W3 money + Clara prioritise
+
 - analytics/recurring: estimatedMrrPence, cashUnderManagementPence, unpaid accepted + dunning
 - RecurringRevenueWidget → metal Cash & recurring strip (MRR / cash / collected / dunning)
 - GET /clara/prioritise-board — ranked at-risk jobs + suggested chases
@@ -523,6 +532,7 @@ Optional: commit+deploy account.updated harden on engage-from-capstone master.
 - Metal logos wired (light/dark)
 
 ## 2026-08-02 items 1–5
+
 1. Dunning: GET /payments/dunning-queue; POST billing-portal + dunning-retry; Dashboard DunningQueue
 2. Meeting notes → tasks: POST /jobs/:id/tasks/from-notes; JobDetail UI
 3. Comms: GET clients/:id/comms-timeline; POST clients/:id/sms; ClientDetail Comms tab
@@ -530,12 +540,14 @@ Optional: commit+deploy account.updated harden on engage-from-capstone master.
 5. docs/CUTOVER_PREP.md refreshed — sign-off still required; no prod cutover
 
 ## 2026-08-02 path B — GTM + polish
+
 - /switch-from-engager — battle card, comparison table, interactive ROI
 - /trust — Cyber Essentials prep map + UK residency + evidence links
 - Nav “Grow” section; Dunning empty state; SMS templates on Client Comms
 - E2E covers GTM pages
 
 ## 2026-08-02 continue build
+
 - POST /clients/import bulk CSV (max 200, skip/update duplicates)
 - /clients/import UI + Clients “Import CSV” + switcher CTA
 - Command palette: Switch, Trust, Import
@@ -544,7 +556,7 @@ Optional: commit+deploy account.updated harden on engage-from-capstone master.
 - npm run test:practice
 
 ## 2026-08-02 B+C+D
+
 - B: NativeTabBar, native deep links, cap android scripts, docs/MOBILE_CAPACITOR.md
 - C: GET /integrations/hub, POST handoff-open-jobs, IntegrationsHub UI, AF batch
 - D: docs/CUTOVER_DRY_RUN.md (migrations, PR outline, smoke) — no prod actions
-

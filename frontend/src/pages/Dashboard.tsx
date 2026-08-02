@@ -225,7 +225,10 @@ const Dashboard = () => {
       }
 
       try {
-        const pipe = (await timeout(apiClient.get('/jobs/meta/pipeline') as Promise<any>, 8000)) as any;
+        const pipe = (await timeout(
+          apiClient.get('/jobs/meta/pipeline') as Promise<any>,
+          8000
+        )) as any;
         const d = pipe?.data?.data ?? pipe?.data;
         if (d && typeof d.openCount === 'number') {
           setJobsPipeline({
@@ -369,7 +372,10 @@ const Dashboard = () => {
             <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-slate-500 dark:text-slate-400">
               {stat.name}
             </p>
-            <stat.icon className="h-4 w-4 shrink-0 text-slate-400 dark:text-slate-500" aria-hidden />
+            <stat.icon
+              className="h-4 w-4 shrink-0 text-slate-400 dark:text-slate-500"
+              aria-hidden
+            />
           </div>
           <p
             className={`mt-2.5 text-2xl sm:text-3xl font-bold tabular-nums tracking-tight ${
@@ -380,7 +386,10 @@ const Dashboard = () => {
           >
             {stat.value}
           </p>
-          <p className="mt-1 text-xs text-slate-500 dark:text-slate-400 truncate" title={stat.change}>
+          <p
+            className="mt-1 text-xs text-slate-500 dark:text-slate-400 truncate"
+            title={stat.change}
+          >
             {stat.change}
           </p>
         </div>
@@ -514,8 +523,7 @@ const Dashboard = () => {
                   style={{
                     width: `${Math.max(
                       0,
-                      100 -
-                        Math.round((jobsPipeline.overdueCount / jobsPipeline.openCount) * 100)
+                      100 - Math.round((jobsPipeline.overdueCount / jobsPipeline.openCount) * 100)
                     )}%`,
                   }}
                 />
@@ -590,9 +598,7 @@ const Dashboard = () => {
                           {j.dueAt && (
                             <span
                               className={`rounded-full px-2 py-0.5 text-2xs font-semibold ${
-                                overdue
-                                  ? 'bg-red-50 text-red-700'
-                                  : 'bg-amber-50 text-amber-800'
+                                overdue ? 'bg-red-50 text-red-700' : 'bg-amber-50 text-amber-800'
                               }`}
                             >
                               {overdue ? 'Overdue' : 'Due soon'} ·{' '}

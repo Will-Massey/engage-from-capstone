@@ -1035,10 +1035,7 @@ router.get(
         where: {
           tenantId,
           action: { in: ['SMS_SENT', 'SMS_DRAFT'] },
-          OR: [
-            { entityId: clientId },
-            { metadata: { contains: clientId } },
-          ],
+          OR: [{ entityId: clientId }, { metadata: { contains: clientId } }],
         },
         orderBy: { createdAt: 'desc' },
         take: 30,
@@ -1054,11 +1051,7 @@ router.get(
         where: {
           tenantId,
           action: {
-            in: [
-              'RECURRING_PAYMENT_FAILED',
-              'DUNNING_RETRY',
-              'DUNNING_PORTAL_OPENED',
-            ],
+            in: ['RECURRING_PAYMENT_FAILED', 'DUNNING_RETRY', 'DUNNING_PORTAL_OPENED'],
           },
         },
         orderBy: { createdAt: 'desc' },
@@ -1080,9 +1073,7 @@ router.get(
       select: { id: true },
     });
     const pset = new Set(proposalIds.map((p) => p.id));
-    const dunning = dunningLogs.filter(
-      (d) => d.proposalId && pset.has(d.proposalId)
-    );
+    const dunning = dunningLogs.filter((d) => d.proposalId && pset.has(d.proposalId));
 
     type Event = {
       id: string;
@@ -1128,8 +1119,8 @@ router.get(
 
     const twilioReady = Boolean(
       process.env.TWILIO_ACCOUNT_SID &&
-        process.env.TWILIO_AUTH_TOKEN &&
-        process.env.TWILIO_FROM_NUMBER
+      process.env.TWILIO_AUTH_TOKEN &&
+      process.env.TWILIO_FROM_NUMBER
     );
 
     res.json({
@@ -1204,9 +1195,7 @@ router.post(
         phone: client.contactPhone,
         message: body.message,
       },
-      message: sent
-        ? 'SMS sent'
-        : 'SMS saved as draft (Twilio not configured or send skipped)',
+      message: sent ? 'SMS sent' : 'SMS saved as draft (Twilio not configured or send skipped)',
     });
   })
 );
@@ -1226,10 +1215,7 @@ router.get(
     });
     if (!client) throw new ApiError('NOT_FOUND', 'Client not found', 404);
 
-    const {
-      listPortalTasks,
-      listPortalMessages,
-    } = await import('../services/portalOsService.js');
+    const { listPortalTasks, listPortalMessages } = await import('../services/portalOsService.js');
     const [tasks, messages] = await Promise.all([
       listPortalTasks(tenantId, clientId),
       listPortalMessages(tenantId, clientId),

@@ -354,10 +354,7 @@ export function getPageMeta(pathname: string): {
     return {
       title: 'AccountFlow mesh',
       description: 'Sandbox linkage — production AccountFlow not contacted',
-      breadcrumbs: [
-        { label: 'Dashboard', href: '/' },
-        { label: 'AccountFlow mesh' },
-      ],
+      breadcrumbs: [{ label: 'Dashboard', href: '/' }, { label: 'AccountFlow mesh' }],
     };
   }
   if (pathname.startsWith('/jobs/')) {

@@ -150,7 +150,8 @@ export default function IntegrationsHub() {
               <>
                 <ConnBadge ok={!!hub.xero.connected} />
                 <p className="text-xs text-slate-500">
-                  OAuth app: {hub.xero.oauthConfigured || hub.xero.configured ? 'configured' : 'not set'}
+                  OAuth app:{' '}
+                  {hub.xero.oauthConfigured || hub.xero.configured ? 'configured' : 'not set'}
                   {hub.xero.xeroTenantName ? ` · ${hub.xero.xeroTenantName}` : ''}
                 </p>
                 <p className="text-2xs text-slate-400">
@@ -199,8 +200,8 @@ export default function IntegrationsHub() {
         <ShieldCheckIcon className="h-5 w-5 shrink-0 text-amber-600" />
         <p className="text-sm text-slate-600 dark:text-slate-300">
           <strong>Isolation:</strong> Practice mesh defaults to in-process mock. Live AF requires{' '}
-          <code className="text-xs">ACCOUNTFLOW_MESH_ALLOW_LIVE=true</code> and an explicit
-          decision — never enabled by this hub.
+          <code className="text-xs">ACCOUNTFLOW_MESH_ALLOW_LIVE=true</code> and an explicit decision
+          — never enabled by this hub.
         </p>
       </div>
     </div>

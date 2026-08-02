@@ -155,10 +155,13 @@ export default function FirmInbox() {
   }, [channel, q]);
 
   useEffect(() => {
-    const t = setTimeout(() => {
-      if (channel === 'mailbox') void loadMailbox();
-      else void loadActivity();
-    }, q ? 250 : 0);
+    const t = setTimeout(
+      () => {
+        if (channel === 'mailbox') void loadMailbox();
+        else void loadActivity();
+      },
+      q ? 250 : 0
+    );
     return () => clearTimeout(t);
   }, [channel, q, loadMailbox, loadActivity]);
 
@@ -240,9 +243,7 @@ export default function FirmInbox() {
     if (m.direction === 'inbound' && !m.read) {
       try {
         await apiClient.post(`/comms/mailbox/messages/${m.id}/read`, {});
-        setMessages((list) =>
-          list.map((x) => (x.id === m.id ? { ...x, read: true } : x))
-        );
+        setMessages((list) => list.map((x) => (x.id === m.id ? { ...x, read: true } : x)));
       } catch {
         /* non-fatal */
       }
@@ -372,8 +373,8 @@ export default function FirmInbox() {
             <>
               <ExclamationTriangleIcon className="h-4 w-4 shrink-0" aria-hidden />
               <span>
-                Local / platform mode — connect <strong>Gmail</strong> or <strong>Microsoft 365</strong>{' '}
-                in Settings for live two-way sync.
+                Local / platform mode — connect <strong>Gmail</strong> or{' '}
+                <strong>Microsoft 365</strong> in Settings for live two-way sync.
               </span>
             </>
           )}
@@ -479,7 +480,10 @@ export default function FirmInbox() {
                               {m.direction}
                             </StatusChip>
                             {!m.read && m.direction === 'inbound' && (
-                              <span className="h-2 w-2 rounded-full bg-rose-500" aria-label="Unread" />
+                              <span
+                                className="h-2 w-2 rounded-full bg-rose-500"
+                                aria-label="Unread"
+                              />
                             )}
                             <span className="ml-auto text-2xs tabular-nums text-slate-400">
                               {format(new Date(m.at), 'dd MMM HH:mm')}
@@ -661,7 +665,9 @@ export default function FirmInbox() {
                       <p className="font-semibold text-violet-900 dark:text-violet-200">
                         {triage.category} · {triage.urgency}
                       </p>
-                      <p className="mt-1 text-slate-600 dark:text-slate-300">{triage.partnerNotes}</p>
+                      <p className="mt-1 text-slate-600 dark:text-slate-300">
+                        {triage.partnerNotes}
+                      </p>
                     </div>
                   )}
 

@@ -379,18 +379,18 @@ const ClientDetail = () => {
         <nav className="-mb-px flex space-x-8">
           {['overview', 'jobs', 'proposals', 'comms', 'mtditsa', 'documents', 'lifecycle'].map(
             (tab) => (
-            <button
-              key={tab}
-              onClick={() => setActiveTab(tab)}
-              className={`py-4 px-1 border-b-2 font-medium text-sm capitalize ${
-                activeTab === tab
-                  ? 'border-primary-500 text-primary-600'
-                  : 'border-transparent text-slate-600 hover:text-slate-800 hover:border-slate-300'
-              }`}
-            >
-              {tab === 'mtditsa' ? 'MTD ITSA' : tab === 'comms' ? 'Comms' : tab}
-            </button>
-          )
+              <button
+                key={tab}
+                onClick={() => setActiveTab(tab)}
+                className={`py-4 px-1 border-b-2 font-medium text-sm capitalize ${
+                  activeTab === tab
+                    ? 'border-primary-500 text-primary-600'
+                    : 'border-transparent text-slate-600 hover:text-slate-800 hover:border-slate-300'
+                }`}
+              >
+                {tab === 'mtditsa' ? 'MTD ITSA' : tab === 'comms' ? 'Comms' : tab}
+              </button>
+            )
           )}
         </nav>
       </div>

@@ -61,9 +61,7 @@ export default function DunningQueue() {
     setBusyId(proposalId);
     setMsg(null);
     try {
-      const res = (await apiClient.post(
-        `/payments/proposals/${proposalId}/billing-portal`
-      )) as any;
+      const res = (await apiClient.post(`/payments/proposals/${proposalId}/billing-portal`)) as any;
       const url = res?.data?.url ?? res?.url;
       if (url) window.open(url, '_blank', 'noopener,noreferrer');
       else setMsg('No portal URL returned');
@@ -79,10 +77,9 @@ export default function DunningQueue() {
     setBusyId(item.proposalId);
     setMsg(null);
     try {
-      const res = (await apiClient.post(
-        `/payments/proposals/${item.proposalId}/dunning-retry`,
-        { invoiceId: item.invoiceId }
-      )) as any;
+      const res = (await apiClient.post(`/payments/proposals/${item.proposalId}/dunning-retry`, {
+        invoiceId: item.invoiceId,
+      })) as any;
       const data = res?.data ?? res;
       setMsg(data?.message || res?.message || 'Retry complete');
       if (data?.portalUrl) window.open(data.portalUrl, '_blank', 'noopener,noreferrer');
@@ -142,8 +139,8 @@ export default function DunningQueue() {
         )}
         {!items.length && (
           <p className="mt-3 text-sm text-slate-500">
-            No failed recurring payments or unpaid accepted proposals. When clients pay late,
-            Retry and Portal actions appear here.
+            No failed recurring payments or unpaid accepted proposals. When clients pay late, Retry
+            and Portal actions appear here.
           </p>
         )}
         <ul className="mt-3 divide-y divide-slate-200/60 dark:divide-slate-700/50">

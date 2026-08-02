@@ -154,11 +154,7 @@ export default function Workload() {
           kicker="Money"
           title="Fee at risk"
           value={`£${(totals.feePence / 100).toLocaleString('en-GB')}`}
-          hint={
-            totals.recoveryPct != null
-              ? `${totals.recoveryPct}% time recovered`
-              : undefined
-          }
+          hint={totals.recoveryPct != null ? `${totals.recoveryPct}% time recovered` : undefined}
         />
         <MetalTile
           tone={avgLoad >= 100 ? 'amber' : 'violet'}
@@ -207,10 +203,7 @@ export default function Workload() {
             const recoveryPct = s.recoveryPct ?? 0;
             const heat = heatLevel(loadPct, s.overdueCount);
             return (
-              <section
-                key={s.assigneeId || 'unassigned'}
-                className="metal-tile overflow-hidden"
-              >
+              <section key={s.assigneeId || 'unassigned'} className="metal-tile overflow-hidden">
                 <span className="metal-specular" aria-hidden />
                 <header className="relative z-[1] flex flex-wrap items-center justify-between gap-3 border-b border-white/40 px-4 py-3 dark:border-slate-700/60">
                   <div className="flex min-w-0 flex-1 items-center gap-3">
@@ -222,10 +215,22 @@ export default function Workload() {
                         </h2>
                         <StatusGem
                           tone={
-                            heat >= 3 ? 'rose' : heat === 2 ? 'amber' : heat === 1 ? 'mint' : 'default'
+                            heat >= 3
+                              ? 'rose'
+                              : heat === 2
+                                ? 'amber'
+                                : heat === 1
+                                  ? 'mint'
+                                  : 'default'
                           }
                         >
-                          {heat >= 3 ? 'Overloaded' : heat === 2 ? 'Busy' : heat === 1 ? 'Healthy' : 'Light'}
+                          {heat >= 3
+                            ? 'Overloaded'
+                            : heat === 2
+                              ? 'Busy'
+                              : heat === 1
+                                ? 'Healthy'
+                                : 'Light'}
                         </StatusGem>
                         <span className="inline-flex gap-0.5" title="Heat">
                           {[0, 1, 2, 3, 4].map((i) => (

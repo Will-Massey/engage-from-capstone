@@ -19,29 +19,29 @@ Ship a full practice product that **exceeds Engager.app** (jobs, portal, automat
 
 ## Next up
 
-1. Explicit “cut over now” only after William UI sign-off  
-2. AF mesh live only when ALLOW_LIVE (still mock by default)  
+1. Explicit “cut over now” only after William UI sign-off
+2. AF mesh live only when ALLOW_LIVE (still mock by default)
 3. `npx cap add android` when Android SDK available
 
 ## Phases
 
-| Phase | Status |
-| --- | --- |
-| Isolation & product fork | **done** |
-| V Visual system | **improved** |
-| P0–P5 core practice OS | **demo-complete** (jobs, letters, workload, portal, automations catalogue, Clara chase) |
-| AFK polish #1–#2 + night close | **done** |
-| P6 Trust/mobile/GTM | pending |
-| Cutover replace Engage | blocked until happy |
+| Phase                          | Status                                                                                  |
+| ------------------------------ | --------------------------------------------------------------------------------------- |
+| Isolation & product fork       | **done**                                                                                |
+| V Visual system                | **improved**                                                                            |
+| P0–P5 core practice OS         | **demo-complete** (jobs, letters, workload, portal, automations catalogue, Clara chase) |
+| AFK polish #1–#2 + night close | **done**                                                                                |
+| P6 Trust/mobile/GTM            | pending                                                                                 |
+| Cutover replace Engage         | blocked until happy                                                                     |
 
 ## Demo
 
-- URL: http://localhost:5273 · API: http://localhost:3101  
-- Login: `admin@demo.practice` / `DemoPass123!`  
+- URL: http://localhost:5273 · API: http://localhost:3101
+- Login: `admin@demo.practice` / `DemoPass123!`
 - E2E: `e2e-tests/specs/practice-jobs-letters.spec.ts` (8 tests)
 
 ## Notes
 
-- Never migrate `engage_dev` from this tree  
-- Stripe live webhooks repaired 2026-08-01 (not caused by practice) — see CUTOVER_PREP  
-- Do not merge to master without cutover checklist  
+- Never migrate `engage_dev` from this tree
+- Stripe live webhooks repaired 2026-08-01 (not caused by practice) — see CUTOVER_PREP
+- Do not merge to master without cutover checklist

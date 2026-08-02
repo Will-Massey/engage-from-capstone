@@ -78,7 +78,8 @@ router.get(
       byColumn[col] = { count: 0, feePence: 0 };
     }
     for (const j of jobs) {
-      const bucket = byColumn[j.boardColumn] || (byColumn[j.boardColumn] = { count: 0, feePence: 0 });
+      const bucket =
+        byColumn[j.boardColumn] || (byColumn[j.boardColumn] = { count: 0, feePence: 0 });
       bucket.count += 1;
       bucket.feePence += j.proposedFeePence;
     }
@@ -252,9 +253,7 @@ router.get(
       if (!map.has(key)) {
         map.set(key, {
           assigneeId: j.assigneeId,
-          name: j.assignee
-            ? `${j.assignee.firstName} ${j.assignee.lastName}`
-            : 'Unassigned',
+          name: j.assignee ? `${j.assignee.firstName} ${j.assignee.lastName}` : 'Unassigned',
           openCount: 0,
           overdueCount: 0,
           feePence: 0,
@@ -281,8 +280,7 @@ router.get(
       b.loadPct = Math.round((b.openCount / CAPACITY_OPEN_JOBS) * 100);
       const hours = b.loggedMinutes / 60;
       b.hoursPct = Math.round((hours / CAPACITY_HOURS) * 100);
-      b.recoveryPct =
-        b.feePence > 0 ? Math.round((b.actualPence / b.feePence) * 100) : 0;
+      b.recoveryPct = b.feePence > 0 ? Math.round((b.actualPence / b.feePence) * 100) : 0;
     }
 
     const staff = Array.from(map.values()).sort(
@@ -307,12 +305,9 @@ router.get(
           loggedMinutes: totalLogged,
           loadPct:
             staff.length > 0
-              ? Math.round(
-                  staff.reduce((s, x) => s + x.loadPct, 0) / staff.length
-                )
+              ? Math.round(staff.reduce((s, x) => s + x.loadPct, 0) / staff.length)
               : 0,
-          recoveryPct:
-            totalFee > 0 ? Math.round((totalActual / totalFee) * 100) : 0,
+          recoveryPct: totalFee > 0 ? Math.round((totalActual / totalFee) * 100) : 0,
         },
         staff,
       },
@@ -406,10 +401,7 @@ router.get(
     if (!file) throw new ApiError('NOT_FOUND', 'File not found', 404);
     const buffer = await getStorageService().get(file.storageKey);
     res.setHeader('Content-Type', file.mimeType);
-    res.setHeader(
-      'Content-Disposition',
-      `attachment; filename="${file.name.replace(/"/g, '')}"`
-    );
+    res.setHeader('Content-Disposition', `attachment; filename="${file.name.replace(/"/g, '')}"`);
     res.setHeader('Cache-Control', 'private, no-store');
     res.send(buffer);
   })
@@ -443,9 +435,7 @@ router.patch(
       where: { id: existing.id },
       data: {
         ...(body.assigneeId !== undefined ? { assigneeId: body.assigneeId } : {}),
-        ...(body.dueAt !== undefined
-          ? { dueAt: body.dueAt ? new Date(body.dueAt) : null }
-          : {}),
+        ...(body.dueAt !== undefined ? { dueAt: body.dueAt ? new Date(body.dueAt) : null } : {}),
         ...(body.deadlineKind !== undefined ? { deadlineKind: body.deadlineKind } : {}),
         ...(body.notes !== undefined ? { notes: body.notes } : {}),
       },
@@ -536,9 +526,7 @@ router.patch(
     if (boardColumn === 'COMPLETE' && existing.boardColumn !== 'COMPLETE' && job.proposalId) {
       const prop = job.proposal;
       const renewDate = prop?.renewalDate ? new Date(prop.renewalDate) : null;
-      const inWindow =
-        !renewDate ||
-        renewDate.getTime() - Date.now() < 120 * 24 * 60 * 60 * 1000; // within ~4 months or unset
+      const inWindow = !renewDate || renewDate.getTime() - Date.now() < 120 * 24 * 60 * 60 * 1000; // within ~4 months or unset
       if (inWindow) {
         const msg = renewDate
           ? `Job complete — renewal window open (renewal ${renewDate.toLocaleDateString('en-GB')}). Open bulk renewals or create next-year engagement.`
@@ -636,9 +624,7 @@ router.patch(
     await prisma.jobActivity.create({
       data: {
         kind: isComplete ? 'PHASE_COMPLETED' : 'PHASE_REOPENED',
-        message: isComplete
-          ? `Completed phase: ${phase.name}`
-          : `Reopened phase: ${phase.name}`,
+        message: isComplete ? `Completed phase: ${phase.name}` : `Reopened phase: ${phase.name}`,
         jobId: phase.jobId,
         actorId: req.user?.id,
         metadata: JSON.stringify({ phaseId: phase.id }),
@@ -650,7 +636,11 @@ router.patch(
 );
 
 const timeSchema = z.object({
-  minutes: z.number().int().positive().max(24 * 60),
+  minutes: z
+    .number()
+    .int()
+    .positive()
+    .max(24 * 60),
   note: z.string().max(2000).optional(),
   phaseId: z.string().uuid().optional().nullable(),
   ratePence: z.number().int().min(0).optional(),
@@ -931,12 +921,7 @@ router.patch(
         isDone: body.isDone,
         assigneeId: body.assigneeId === undefined ? undefined : body.assigneeId,
         dueAt: body.dueAt === undefined ? undefined : body.dueAt ? new Date(body.dueAt) : null,
-        completedAt:
-          body.isDone === undefined
-            ? undefined
-            : body.isDone
-              ? new Date()
-              : null,
+        completedAt: body.isDone === undefined ? undefined : body.isDone ? new Date() : null,
       },
       include: {
         assignee: { select: { id: true, firstName: true, lastName: true } },
@@ -1058,7 +1043,10 @@ router.post(
             to,
             subject,
             html: bodyHtml,
-            text: bodyHtml.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim(),
+            text: bodyHtml
+              .replace(/<[^>]+>/g, ' ')
+              .replace(/\s+/g, ' ')
+              .trim(),
           });
           if (result.success) sent = true;
           else sendError = result.error || 'Email send failed';

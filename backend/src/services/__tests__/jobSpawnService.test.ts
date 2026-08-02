@@ -1,10 +1,7 @@
 /**
  * Unit tests for job phase template resolution (no DB).
  */
-import {
-  inferCategoryFromServiceName,
-  resolveCategoryTemplate,
-} from '../jobPhaseTemplates.js';
+import { inferCategoryFromServiceName, resolveCategoryTemplate } from '../jobPhaseTemplates.js';
 
 describe('jobPhaseTemplates', () => {
   it('resolves COMPLIANCE template with filing phase', () => {
