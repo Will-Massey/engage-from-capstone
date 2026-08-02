@@ -177,11 +177,12 @@ export async function createTestProposal(
 ): Promise<{ id: string; reference: string }> {
   await page.goto('/proposals/new');
 
-  // Step 1: Select client
+  // Step 1: Select client (seeded demos can leave duplicate name cards)
   await page.waitForSelector('[data-testid="client-card"]');
   const clientCard = page
     .locator('[data-testid="client-card"]')
-    .filter({ hasText: config.clientName });
+    .filter({ hasText: config.clientName })
+    .first();
   await expect(clientCard).toBeVisible();
   await clientCard.click();
   // The builder asks how to build (manual / template / Clara) after picking a
