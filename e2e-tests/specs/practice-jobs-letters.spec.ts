@@ -12,8 +12,10 @@
 import { test, expect } from '@playwright/test';
 import { loginAsPartner } from '../fixtures/helpers';
 
-const FRONTEND = (process.env.FRONTEND_URL || 'http://localhost:5273').replace(/\/$/, '');
-const API = (process.env.API_URL || 'http://localhost:3101').replace(/\/$/, '');
+const FRONTEND = (process.env.FRONTEND_URL || 'http://localhost:5173').replace(/\/$/, '');
+// CI sets API_URL=http://localhost:3001/api; local practice may use :3101 without /api
+const rawApi = (process.env.API_URL || 'http://localhost:3001/api').replace(/\/$/, '');
+const API = rawApi.endsWith('/api') ? rawApi : `${rawApi}/api`;
 
 test.describe.configure({ mode: 'serial' });
 
@@ -130,15 +132,21 @@ test.describe('Practice OS — jobs, letters, automations', () => {
   });
 
   test('API jobs board returns columns for demo tenant', async ({ request }) => {
-    // Cookie login via API
-    const login = await request.post(`${API}/api/auth/login`, {
+    // Cookie login via API (API already includes /api prefix)
+    const login = await request.post(`${API}/auth/login`, {
       data: {
         email: process.env.TEST_USER_EMAIL || 'admin@demo.practice',
         password: process.env.TEST_USER_PASSWORD || 'DemoPass123!',
       },
+      headers: {
+        Origin: FRONTEND,
+        'Content-Type': 'application/json',
+      },
     });
     expect(login.ok()).toBeTruthy();
-    const jobs = await request.get(`${API}/api/jobs`);
+    const jobs = await request.get(`${API}/jobs`, {
+      headers: { Origin: FRONTEND },
+    });
     expect(jobs.ok()).toBeTruthy();
     const body = await jobs.json();
     const data = body.data ?? body;
