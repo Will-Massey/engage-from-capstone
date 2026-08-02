@@ -1,3 +1,5 @@
+/* Helpers + components live together for the practice StatusChip kit */
+/* eslint-disable react-refresh/only-export-components */
 import type { HTMLAttributes, ReactNode } from 'react';
 
 export type StatusTone = 'neutral' | 'info' | 'success' | 'warning' | 'danger' | 'mint' | 'violet';

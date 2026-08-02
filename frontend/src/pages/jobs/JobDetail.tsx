@@ -87,6 +87,7 @@ export default function JobDetail() {
 
   useEffect(() => {
     void load();
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- reload on job id only
   }, [id]);
 
   useEffect(() => {

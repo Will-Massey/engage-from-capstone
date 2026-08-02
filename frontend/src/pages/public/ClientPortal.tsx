@@ -390,6 +390,7 @@ export default function ClientPortal() {
         /* optional form endpoint */
       }
     })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- portal token drives load
   }, [token]);
 
   if (isLoading) {
