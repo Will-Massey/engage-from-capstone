@@ -1,0 +1,239 @@
+/* Capstone surfaces — solid pale cards (metal chrome retired as too loud) */
+
+.metal-tile {
+  --metal-bg: #f8fafc;
+  --metal-edge: #e2e8f0;
+  --metal-tint: transparent;
+
+  position: relative;
+  isolation: isolate;
+  border-radius: 0.75rem;
+  border: 1px solid var(--metal-edge);
+  color: #0f172a;
+  background-color: var(--metal-bg);
+  background-image: none;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+  transition:
+    border-color 0.15s ease,
+    box-shadow 0.15s ease;
+}
+
+/* No anodized wash / chrome bloom */
+.metal-tile::before,
+.metal-tile::after {
+  content: none;
+  display: none;
+}
+
+.metal-tile > :not(.metal-specular):not(.metal-glare) {
+  position: relative;
+  z-index: 1;
+}
+
+/* Hide chrome specular / glare layers if still in markup */
+.metal-specular,
+.metal-glare {
+  display: none !important;
+}
+
+.metal-tile:hover {
+  transform: none;
+  filter: none;
+  border-color: #cbd5e1;
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.06);
+}
+
+.dark .metal-tile {
+  --metal-bg: #1e293b;
+  --metal-edge: #334155;
+  color: #f1f5f9;
+  background-color: var(--metal-bg);
+  box-shadow: none;
+}
+
+.dark .metal-tile:hover {
+  border-color: #475569;
+  box-shadow: none;
+}
+
+/* Pale solid tone variants — soft pastels only */
+.metal-tile--mint {
+  --metal-bg: #f0fdf4;
+  --metal-edge: #bbf7d0;
+}
+
+.metal-tile--rose {
+  --metal-bg: #fff1f2;
+  --metal-edge: #fecdd3;
+}
+
+.metal-tile--sky {
+  --metal-bg: #f0f9ff;
+  --metal-edge: #bae6fd;
+}
+
+.metal-tile--amber {
+  --metal-bg: #fffbeb;
+  --metal-edge: #fde68a;
+}
+
+.metal-tile--violet {
+  --metal-bg: #f5f3ff;
+  --metal-edge: #ddd6fe;
+}
+
+.dark .metal-tile--mint {
+  --metal-bg: #052e1c;
+  --metal-edge: #14532d;
+}
+
+.dark .metal-tile--rose {
+  --metal-bg: #4c0519;
+  --metal-edge: #881337;
+}
+
+.dark .metal-tile--sky {
+  --metal-bg: #0c4a6e;
+  --metal-edge: #075985;
+}
+
+.dark .metal-tile--amber {
+  --metal-bg: #451a03;
+  --metal-edge: #92400e;
+}
+
+.dark .metal-tile--violet {
+  --metal-bg: #2e1065;
+  --metal-edge: #5b21b6;
+}
+
+/* Soft = same as default pale (alias) */
+.metal-tile--soft {
+  --metal-bg: #fafafa;
+  --metal-edge: #e5e7eb;
+}
+
+.dark .metal-tile--soft {
+  --metal-bg: #1e293b;
+  --metal-edge: #334155;
+}
+
+/* Progress track — simple pale channel */
+.metal-progress-track {
+  background: #e2e8f0;
+  box-shadow: none;
+}
+
+.dark .metal-progress-track {
+  background: #334155;
+  box-shadow: none;
+}
+
+.metal-progress-fill {
+  box-shadow: none;
+}
+
+/* Status gem — quiet pill */
+.metal-gem {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  border-radius: 999px;
+  padding: 0.15rem 0.55rem 0.15rem 0.4rem;
+  font-size: 0.625rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  border: 1px solid #e2e8f0;
+  background: #f8fafc;
+  box-shadow: none;
+  color: #475569;
+}
+
+.dark .metal-gem {
+  border-color: #475569;
+  background: #1e293b;
+  color: #cbd5e1;
+  box-shadow: none;
+}
+
+.metal-gem-dot {
+  width: 0.35rem;
+  height: 0.35rem;
+  border-radius: 999px;
+  background: #94a3b8;
+  box-shadow: none;
+}
+
+.metal-gem--mint .metal-gem-dot {
+  background: #34d399;
+}
+.metal-gem--rose .metal-gem-dot {
+  background: #fb7185;
+}
+.metal-gem--sky .metal-gem-dot {
+  background: #38bdf8;
+}
+.metal-gem--amber .metal-gem-dot {
+  background: #fbbf24;
+}
+.metal-gem--violet .metal-gem-dot {
+  background: #a78bfa;
+}
+.metal-gem--slate .metal-gem-dot {
+  background: #94a3b8;
+}
+
+.metal-edge {
+  position: absolute;
+  left: 0;
+  top: 0.75rem;
+  bottom: 0.75rem;
+  width: 3px;
+  border-radius: 999px;
+  z-index: 2;
+  background: #94a3b8;
+  box-shadow: none;
+}
+
+.metal-kicker {
+  font-family: ui-monospace, 'JetBrains Mono', Menlo, monospace;
+  font-size: 0.625rem;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: #64748b;
+  text-shadow: none;
+}
+
+.dark .metal-kicker {
+  color: #94a3b8;
+  text-shadow: none;
+}
+
+.metal-icon-well {
+  display: inline-flex;
+  height: 2rem;
+  width: 2rem;
+  align-items: center;
+  justify-content: center;
+  border-radius: 0.5rem;
+  background: #f1f5f9;
+  box-shadow: none;
+  border: 1px solid #e2e8f0;
+}
+
+.dark .metal-icon-well {
+  background: #334155;
+  border-color: #475569;
+  box-shadow: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .metal-tile,
+  .metal-tile:hover {
+    transition: none;
+    transform: none;
+    filter: none;
+  }
+}

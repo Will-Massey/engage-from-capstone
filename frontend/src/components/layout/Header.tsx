@@ -6,7 +6,6 @@ import {
   MagnifyingGlassIcon,
   UserCircleIcon,
   ArrowRightOnRectangleIcon,
-  CommandLineIcon,
 } from '@heroicons/react/24/outline';
 import { useAuthStore } from '../../stores/authStore';
 import ThemeToggle from '../theme/ThemeToggle';
@@ -39,62 +38,54 @@ const Header = ({ onMenuClick }: HeaderProps) => {
     >
       <div className="flex items-center justify-between h-16 min-w-0 gap-2">
         {/* Left side */}
-        <div className="flex items-center min-w-0 flex-1">
+        <div className="flex items-center min-w-0 flex-1 gap-2">
           <button
+            type="button"
             onClick={onMenuClick}
-            className="p-2 -ml-2 text-slate-500 dark:text-slate-300 rounded-xl hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-100/80 dark:hover:bg-slate-800/80 lg:hidden transition-colors"
+            className="inline-flex min-h-11 min-w-11 items-center justify-center -ml-1 text-slate-500 dark:text-slate-300 rounded-xl hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-100/80 dark:hover:bg-slate-800/80 lg:hidden transition-colors cursor-pointer"
+            aria-label="Open navigation menu"
           >
             <Bars3Icon className="w-6 h-6" />
           </button>
 
-          {/* Quick action — hidden on very small screens. "New proposal" lives in
-              the sidebar as the single primary create action; the top bar keeps the
-              complementary "New client" shortcut. */}
-          <div className="hidden sm:flex items-center ml-4 space-x-3">
-            <Link to="/clients/new" className="btn-secondary">
-              <PlusIcon className="w-4 h-4 mr-1.5" />
-              New Client
+          {/* One primary create path in the chrome — wizard is the short path */}
+          <div className="hidden sm:flex items-center gap-2 ml-1">
+            <Link to="/proposals/wizard" className="btn-primary btn-sm min-h-9">
+              <PlusIcon className="w-4 h-4" aria-hidden />
+              New proposal
+            </Link>
+            <Link to="/clients/new" className="btn-ghost btn-sm min-h-9 hidden md:inline-flex">
+              New client
             </Link>
           </div>
         </div>
 
-        {/* Right side */}
-        <div className="flex items-center space-x-1.5 sm:space-x-3 shrink-0 min-w-0 max-w-[55%] sm:max-w-none">
+        {/* Right side — search is the jump UI; no duplicate Cmd+K chip */}
+        <div className="flex items-center gap-1 sm:gap-2 shrink-0 min-w-0 max-w-[55%] sm:max-w-none">
           <button
             type="button"
             onClick={openCommandPalette}
-            className="md:hidden p-2 text-slate-500 dark:text-slate-300 rounded-xl hover:bg-slate-100/80 dark:hover:bg-slate-800/80 transition-colors"
+            className="md:hidden inline-flex min-h-11 min-w-11 items-center justify-center text-slate-500 dark:text-slate-300 rounded-xl hover:bg-slate-100/80 dark:hover:bg-slate-800/80 transition-colors cursor-pointer"
             aria-label="Search and jump to"
           >
             <MagnifyingGlassIcon className="w-6 h-6" />
           </button>
 
           <div className="hidden md:flex items-center">
-            <div className="relative">
-              <div className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
-                <MagnifyingGlassIcon className="w-4 h-4 text-slate-400" />
-              </div>
-              <input
-                type="text"
-                placeholder="Search or jump to…"
-                className="search-input w-48 lg:w-64 cursor-pointer"
-                readOnly
-                onFocus={openCommandPalette}
-                onClick={openCommandPalette}
-                aria-label="Open command palette"
-              />
-            </div>
+            <button
+              type="button"
+              onClick={openCommandPalette}
+              className="group relative flex items-center w-52 lg:w-72 cursor-pointer rounded-xl border border-slate-200/90 dark:border-slate-600/80 bg-white/80 dark:bg-slate-800/70 py-2 pl-9 pr-3 text-left text-sm text-slate-500 shadow-sm transition-colors hover:border-emerald-300/70 hover:bg-white dark:hover:border-emerald-700/50"
+              data-tour="command-palette"
+              aria-label="Open command palette"
+            >
+              <MagnifyingGlassIcon className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400 group-hover:text-emerald-600" />
+              <span className="truncate">Search or jump…</span>
+              <kbd className="ml-auto hidden lg:inline rounded-md border border-slate-200 bg-slate-50 px-1.5 py-0.5 text-[10px] font-semibold text-slate-400 dark:border-slate-600 dark:bg-slate-900">
+                Ctrl K
+              </kbd>
+            </button>
           </div>
-
-          {/* Command Palette Button */}
-          <button
-            onClick={openCommandPalette}
-            className="hidden sm:flex items-center px-3 py-1.5 text-sm text-slate-500 dark:text-slate-300 bg-slate-100/50 dark:bg-slate-800/50 rounded-lg hover:bg-slate-200/50 dark:hover:bg-slate-700/50 transition-colors"
-            data-tour="command-palette"
-          >
-            <CommandLineIcon className="w-4 h-4 mr-2" />
-            <span className="hidden lg:inline">Cmd+K</span>
-          </button>
 
           {/* Theme Toggle */}
           <ThemeToggle />
@@ -105,13 +96,16 @@ const Header = ({ onMenuClick }: HeaderProps) => {
           {/* User menu */}
           <div className="relative min-w-0">
             <button
+              type="button"
               onClick={() => setShowUserMenu(!showUserMenu)}
-              className="flex items-center gap-2 p-2 rounded-xl hover:bg-slate-100/80 dark:hover:bg-slate-800/80 transition-colors min-w-0 max-w-full"
+              className="flex items-center gap-2 min-h-11 rounded-xl px-1.5 hover:bg-slate-100/80 dark:hover:bg-slate-800/80 transition-colors min-w-0 max-w-full cursor-pointer"
               title={fullName || undefined}
+              aria-expanded={showUserMenu}
+              aria-haspopup="menu"
             >
               <div
                 className="w-8 h-8 rounded-full flex items-center justify-center text-white text-sm font-medium shrink-0"
-                style={{ background: 'linear-gradient(135deg, #2563EB 0%, #3B82F6 100%)' }}
+                style={{ background: 'linear-gradient(135deg, #059669 0%, #34d399 100%)' }}
               >
                 {user?.firstName?.charAt(0)}
               </div>

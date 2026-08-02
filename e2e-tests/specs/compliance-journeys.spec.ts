@@ -182,7 +182,7 @@ test.describe('Tenant signup to first proposal', () => {
     await page.fill('input[name="email"]', email);
     await page.fill('input[name="password"]', 'DemoPass123!');
     await Promise.all([
-      page.waitForURL(/\/(dashboard)?$|\/proposals/, { timeout: 45_000 }),
+      page.waitForURL(/\/($|dashboard|proposals|jobs)/, { timeout: 45_000 }),
       page.click('button[type="submit"]'),
     ]);
     await page.locator('nav[aria-label="Main"]:visible').first().waitFor({ timeout: 30_000 });

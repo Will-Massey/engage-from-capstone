@@ -1,4 +1,5 @@
 @import './styles/base.css';
+@import './styles/metal.css';
 
 @tailwind base;
 @tailwind components;
@@ -15,8 +16,20 @@
   }
 
   body {
-    @apply bg-slate-50 text-slate-800 dark:bg-slate-900 dark:text-slate-100;
+    /* Soft multi-stop wash — more inviting than flat grey */
+    @apply text-slate-800 dark:bg-slate-900 dark:text-slate-100;
+    background-color: #f0f4f8;
+    background-image:
+      radial-gradient(ellipse 80% 50% at 0% -20%, rgba(52, 211, 153, 0.12), transparent),
+      radial-gradient(ellipse 60% 40% at 100% 0%, rgba(56, 189, 248, 0.1), transparent),
+      radial-gradient(ellipse 50% 30% at 50% 100%, rgba(167, 139, 250, 0.06), transparent);
     font-feature-settings: 'cv02', 'cv03', 'cv04', 'cv11';
+  }
+
+  .dark body {
+    background-image:
+      radial-gradient(ellipse 80% 50% at 0% -20%, rgba(16, 185, 129, 0.08), transparent),
+      radial-gradient(ellipse 60% 40% at 100% 0%, rgba(14, 165, 233, 0.06), transparent);
   }
 
   /* Mobile viewport fix */
@@ -26,12 +39,47 @@
     }
   }
 
+  /* Capacitor native shell — room for bottom tab bar */
+  html.capacitor-native body {
+    padding-bottom: calc(3.5rem + env(safe-area-inset-bottom, 0px));
+  }
+
+  /* Logo plate — soft frame so photo marks blend with pale UI */
+  .brand-logo-plate {
+    background: linear-gradient(180deg, #fafbfc 0%, #f1f5f9 100%);
+    box-shadow:
+      0 0 0 1px rgba(255, 255, 255, 0.8) inset,
+      0 1px 2px rgba(15, 23, 42, 0.04);
+  }
+
+  .dark .brand-logo-plate {
+    background: linear-gradient(180deg, #334155 0%, #1e293b 100%);
+    box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.04) inset;
+  }
+
+  .brand-logo-plate img {
+    display: block;
+    border-radius: 0.35rem;
+  }
+
   /* Capacitor iOS — respect notch / home indicator */
   html.capacitor-native body {
     padding-top: env(safe-area-inset-top);
     padding-bottom: env(safe-area-inset-bottom);
     padding-left: env(safe-area-inset-left);
     padding-right: env(safe-area-inset-right);
+  }
+
+  /* UI/UX: calm motion; never fight reduced-motion preferences */
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+      scroll-behavior: auto !important;
+    }
   }
 }
 
@@ -54,33 +102,33 @@
            sm:text-sm transition-colors duration-150;
   }
 
-  /* Editorial buttons — solid ink primary, one blue accent, clean states */
+  /* Buttons — min 40px touch height, pointer, Engage mint accent for primary create */
   .btn {
-    @apply inline-flex items-center justify-center gap-1.5 px-4 py-2.5
-           text-sm font-semibold rounded-lg
+    @apply inline-flex items-center justify-center gap-1.5 px-4 py-2.5 min-h-[2.5rem]
+           text-sm font-semibold rounded-lg cursor-pointer
            focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2
-           transition-all duration-150 ease-out
+           transition-[background-color,box-shadow,border-color,color,transform] duration-150 ease-out
            disabled:opacity-50 disabled:cursor-not-allowed disabled:pointer-events-none
            active:scale-[0.98];
   }
 
   .btn-primary {
-    @apply btn bg-ink-950 text-white shadow-sm
-           hover:bg-ink-800 hover:shadow-md
-           focus-visible:ring-ink-900
-           dark:bg-white dark:text-ink-950 dark:hover:bg-slate-200;
+    @apply btn bg-emerald-600 text-white shadow-sm
+           hover:bg-emerald-700 hover:shadow-md
+           focus-visible:ring-emerald-600
+           dark:bg-emerald-500 dark:text-slate-950 dark:hover:bg-emerald-400;
   }
 
   .btn-accent {
-    @apply btn bg-primary-600 text-white shadow-sm
-           hover:bg-primary-700 hover:shadow-md focus-visible:ring-primary-600;
+    @apply btn bg-emerald-600 text-white shadow-sm
+           hover:bg-emerald-700 hover:shadow-md focus-visible:ring-emerald-600;
   }
 
   .btn-secondary {
     @apply btn bg-white dark:bg-slate-800 text-ink-800 dark:text-slate-100
            border border-slate-300 dark:border-slate-600 shadow-sm
-           hover:bg-slate-50 dark:hover:bg-slate-700
-           focus-visible:ring-slate-400;
+           hover:bg-slate-50 dark:hover:bg-slate-700 hover:border-slate-400
+           focus-visible:ring-emerald-500/40;
   }
 
   .btn-danger {
@@ -107,24 +155,32 @@
     @apply px-3 py-1.5 text-xs;
   }
 
-  /* Editorial cards — solid surface, hairline border, soft layered shadow */
+  /* Cards — solid surface, hairline border, soft shadow; interactive variants get pointer */
   .card {
     @apply rounded-xl bg-white dark:bg-slate-800
            border border-slate-200 dark:border-slate-700
            shadow-[0_1px_2px_0_rgba(10,10,10,0.04),0_4px_16px_-8px_rgba(10,10,10,0.08)]
-           transition-shadow duration-200;
+           transition-[box-shadow,border-color,transform] duration-200;
   }
 
   .card-hover {
-    @apply card hover:shadow-[0_2px_4px_0_rgba(10,10,10,0.05),0_12px_28px_-12px_rgba(10,10,10,0.14)];
+    @apply card cursor-pointer
+           hover:shadow-[0_2px_4px_0_rgba(10,10,10,0.05),0_12px_28px_-12px_rgba(10,10,10,0.14)]
+           hover:border-emerald-200/80 dark:hover:border-emerald-800/50;
   }
 
   .glass-tile {
     @apply rounded-xl p-6 bg-white dark:bg-slate-800
            border border-slate-200 dark:border-slate-700
            shadow-[0_1px_2px_0_rgba(10,10,10,0.04),0_4px_16px_-8px_rgba(10,10,10,0.08)]
-           transition-shadow duration-200
+           transition-[box-shadow,border-color] duration-200
            hover:shadow-[0_2px_4px_0_rgba(10,10,10,0.05),0_12px_28px_-12px_rgba(10,10,10,0.14)];
+  }
+
+  /* Interactive list row / tile — for path shortcuts */
+  .path-tile {
+    @apply card-hover flex items-center gap-3 p-3.5 sm:p-4
+           focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/40 focus-visible:ring-offset-2;
   }
 
   /* Editorial badges — solid tints, no blur, quiet borders */
@@ -181,19 +237,24 @@
     box-shadow: 0 0 8px rgba(99, 102, 241, 0.5);
   }
 
-  /* Navigation with glass effect */
+  /* Navigation — mint active (Engage product accent), not indigo */
   .nav-link {
-    @apply flex items-center gap-3 px-4 py-3 text-sm font-medium rounded-xl
-           text-slate-600 dark:text-slate-400
+    @apply flex items-center gap-3 px-3 py-2.5 min-h-[2.5rem] text-sm font-medium rounded-xl
+           text-slate-600 dark:text-slate-400 cursor-pointer
            hover:text-slate-900 dark:hover:text-slate-100
-           hover:bg-white/50 dark:hover:bg-slate-800/50
-           transition-all duration-200;
+           hover:bg-slate-100/80 dark:hover:bg-slate-800/60
+           transition-colors duration-150;
   }
 
   .nav-link-active {
-    @apply nav-link text-primary-700 dark:text-primary-300 font-semibold;
-    background: linear-gradient(135deg, rgba(99, 102, 241, 0.1) 0%, rgba(139, 92, 246, 0.1) 100%);
-    border: 1px solid rgba(99, 102, 241, 0.2);
+    @apply nav-link text-emerald-800 dark:text-emerald-200 font-semibold;
+    background: linear-gradient(135deg, rgba(16, 185, 129, 0.12) 0%, rgba(52, 211, 153, 0.08) 100%);
+    border: 1px solid rgba(16, 185, 129, 0.22);
+  }
+
+  /* Skeleton pulse used on loaders */
+  .skeleton {
+    @apply animate-pulse rounded-lg bg-slate-200/80 dark:bg-slate-700/50;
   }
 
   /* Tables - Clean, readable with glass effect */
@@ -407,8 +468,9 @@
 
   /* Gradient backgrounds */
   .bg-gradient-page {
-    @apply bg-gradient-to-br from-slate-50 via-white to-primary-50/30
-           dark:from-slate-900 dark:via-slate-900 dark:to-primary-900/10;
+    /* Calm ops surface — Engager-like light grey, soft mint wash */
+    @apply bg-gradient-to-br from-[#F4F6F8] via-white to-emerald-50/40
+           dark:from-slate-900 dark:via-slate-900 dark:to-emerald-950/20;
   }
 
   /* Glass panel */

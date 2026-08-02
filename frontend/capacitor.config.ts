@@ -1,8 +1,9 @@
 import type { CapacitorConfig } from '@capacitor/cli';
 
 /**
- * Engage iOS (Capacitor) — bundles the Vite SPA; API calls use VITE_API_URL.
- * Sync after each web build: npm run cap:sync:ios
+ * Engage Capacitor shells (iOS + Android) — Vite SPA; API via VITE_API_URL.
+ * See docs/MOBILE_CAPACITOR.md
+ * Sync: npm run cap:sync:ios | npx cap add android && npm run cap:sync
  */
 const config: CapacitorConfig = {
   appId: 'uk.co.capstonesoftware.engage',
@@ -11,25 +12,29 @@ const config: CapacitorConfig = {
   ios: {
     contentInset: 'automatic',
     scheme: 'Engage',
-    backgroundColor: '#0D47A1',
+    backgroundColor: '#0f172a',
+  },
+  android: {
+    backgroundColor: '#0f172a',
+    allowMixedContent: false,
   },
   server: {
     androidScheme: 'https',
     iosScheme: 'https',
-    // Uncomment for live-reload against local Vite during native dev (Mac + device/simulator):
-    // url: 'http://YOUR_LAN_IP:5173',
+    // Practice live-reload (device on LAN):
+    // url: 'http://YOUR_LAN_IP:5273',
     // cleartext: true,
   },
   plugins: {
     SplashScreen: {
       launchAutoHide: true,
       launchShowDuration: 2000,
-      backgroundColor: '#0D47A1',
+      backgroundColor: '#0f172a',
       showSpinner: false,
     },
     StatusBar: {
-      style: 'LIGHT',
-      backgroundColor: '#0D47A1',
+      style: 'DARK',
+      backgroundColor: '#0f172a',
     },
     Keyboard: {
       resize: 'body',

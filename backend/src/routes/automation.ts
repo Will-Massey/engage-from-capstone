@@ -8,6 +8,13 @@ import { runProposalChaseJob } from '../jobs/proposalChaseJob.js';
 import logger from '../config/logger.js';
 import { prisma } from '../config/database.js';
 import { getProposalSettings } from '../utils/tenantProposalSettings.js';
+import { listChasePacks } from '../services/chasePackService.js';
+import {
+  getAutomationRules,
+  saveAutomationRules,
+  runAutomationRules,
+  type AutomationRule,
+} from '../services/automationRulesService.js';
 
 const router = Router();
 
@@ -107,7 +114,76 @@ router.get(
           defaultExpiryDays: proposalSettings.defaultExpiryDays,
           reminderDaysBefore: proposalSettings.renewalReminderDays,
         },
+        /** Practice delivery chase packs (Engager-style record request / deadline chases) */
+        jobChasePacks: listChasePacks().map((p) => ({
+          id: p.id,
+          name: p.name,
+          description: p.description,
+          tone: p.tone,
+          boardColumns: p.boardColumns || null,
+        })),
+        /** Server-side automation rules (synced from builder / UK packs) */
+        automationRules: getAutomationRules(tenant?.settings),
       },
+    });
+  })
+);
+
+const rulesSchema = z.object({
+  rules: z
+    .array(
+      z.object({
+        id: z.string().min(1).max(80),
+        trigger: z.string().min(1).max(80),
+        action: z.string().min(1).max(80),
+        enabled: z.boolean().optional(),
+        source: z.string().max(80).optional(),
+      })
+    )
+    .max(100),
+});
+
+/** PUT /api/automation/rules — persist builder rules on tenant */
+router.put(
+  '/rules',
+  authenticate,
+  authorize('ADMIN', 'PARTNER', 'MD', 'MANAGER'),
+  asyncHandler(async (req, res) => {
+    const body = rulesSchema.parse(req.body);
+    const saved = await saveAutomationRules(req.tenantId!, body.rules as AutomationRule[]);
+    res.json({ success: true, data: { rules: saved } });
+  })
+);
+
+/** GET /api/automation/rules */
+router.get(
+  '/rules',
+  authenticate,
+  asyncHandler(async (req, res) => {
+    const tenant = await prisma.tenant.findUnique({
+      where: { id: req.tenantId! },
+      select: { settings: true },
+    });
+    res.json({ success: true, data: { rules: getAutomationRules(tenant?.settings) } });
+  })
+);
+
+/** POST /api/automation/rules/run — dry-run or execute server rules */
+router.post(
+  '/rules/run',
+  authenticate,
+  authorize('ADMIN', 'PARTNER', 'MD', 'MANAGER'),
+  asyncHandler(async (req, res) => {
+    const dryRun = req.body?.dryRun !== false; // default dry-run for safety
+    const { results, dryRun: mode } = await runAutomationRules(req.tenantId!, { dryRun });
+    const acted = results.reduce((s, r) => s + r.acted, 0);
+    const matched = results.reduce((s, r) => s + r.matched, 0);
+    res.json({
+      success: true,
+      data: { results, dryRun: mode, matched, acted },
+      message: mode
+        ? `Dry run: ${matched} matches across ${results.length} rules`
+        : `Executed: ${acted} actions (${matched} matches)`,
     });
   })
 );
@@ -127,6 +203,53 @@ router.post(
       success: result.success,
       data: { sent: result.sent, failed: result.failed, skipped: result.skipped },
       message: `Proposal chase completed: ${result.sent} sent, ${result.failed} failed, ${result.skipped} skipped`,
+    });
+  })
+);
+
+/**
+ * GET /api/automation/runs — recent AUTOMATION_RUN activity for the tenant.
+ */
+router.get(
+  '/runs',
+  authenticate,
+  asyncHandler(async (req, res) => {
+    const tenantId = req.tenantId!;
+    const limit = Math.min(parseInt(String(req.query.limit || '20'), 10) || 20, 50);
+    const rows = await prisma.activityLog.findMany({
+      where: {
+        tenantId,
+        action: { in: ['AUTOMATION_RUN', 'AUTOMATION_NOTIFY'] },
+      },
+      orderBy: { createdAt: 'desc' },
+      take: limit,
+      select: {
+        id: true,
+        action: true,
+        description: true,
+        metadata: true,
+        createdAt: true,
+      },
+    });
+    res.json({
+      success: true,
+      data: {
+        runs: rows.map((r) => {
+          let meta: unknown = {};
+          try {
+            meta = JSON.parse(r.metadata || '{}');
+          } catch {
+            /* ignore */
+          }
+          return {
+            id: r.id,
+            action: r.action,
+            description: r.description,
+            metadata: meta,
+            at: r.createdAt.toISOString(),
+          };
+        }),
+      },
     });
   })
 );

@@ -280,6 +280,10 @@ model Tenant {
   paymentSplits         PaymentSplit[]
   payoutSettings        TenantPayoutSettings?
   regulatorySignals     RegulatorySignal[]
+  jobs                  Job[]
+  timeEntries           TimeEntry[]
+  portalFiles           PortalFile[]
+  practiceLetters       PracticeLetter[]
 
   @@index([subdomain])
   @@index([isActive])
@@ -323,6 +327,12 @@ model User {
   emailVerifications EmailVerification[]
   twoFactorBackupCodes TwoFactorBackupCode[]
   dismissedRegulatorySignals RegulatorySignal[]
+  assignedJobs               Job[]               @relation("JobAssignee")
+  createdJobs                Job[]               @relation("JobCreatedBy")
+  assignedJobTasks           JobTask[]           @relation("JobTaskAssignee")
+  timeEntries                TimeEntry[]
+  jobActivities              JobActivity[]
+  practiceLettersAuthored    PracticeLetter[]    @relation("PracticeLetterAuthor")
 
   @@unique([email, tenantId])
   @@index([tenantId])
@@ -425,6 +435,12 @@ model Client {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+  /// Capstone unified client graph id (stable across Engage + AccountFlow mesh)
+  capstoneClientId     String? @unique
+  /// Linked AccountFlow client (mesh only — never set by prod AF until ready)
+  accountFlowClientId  String?
+  accountFlowLinkedAt  DateTime?
+
   // Tenant relation
   tenantId String
   tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
@@ -457,6 +473,9 @@ model Client {
   touchpoints Touchpoint[]
   emailLogs   EmailLog[]
   regulatorySignals RegulatorySignal[]
+  jobs        Job[]
+  portalFiles PortalFile[]
+  practiceLetters PracticeLetter[]
 
   @@unique([tenantId, contactEmail])
   @@index([tenantId])
@@ -594,6 +613,7 @@ model Proposal {
   signatures   ProposalSignature[]
   paymentSplits PaymentSplit[]
   emailLogs    EmailLog[]
+  job          Job?
 
   @@index([tenantId])
   @@index([clientId])
@@ -1137,4 +1157,261 @@ model RegulatorySignal {
   @@unique([tenantId, clientId, ruleId])
   @@index([tenantId, status])
   @@index([clientId])
+}
+
+// ==================== PRACTICE JOBS (Engage Practice OS) ====================
+// One Job per accepted proposal; JobPhases from service lines; boardColumn is
+// staff-driven kanban (Engager-style). See docs/ENGAGER_COMPETITIVE_ANALYSIS_AND_PLAN.md
+
+enum JobBoardColumn {
+  REQUEST_RECORDS
+  RECORDS_RECEIVED
+  IN_PROGRESS
+  HELP_NEEDED
+  IN_REVIEW
+  COMPLETE
+}
+
+enum JobDeadlineKind {
+  STATUTORY
+  INTERNAL
+  NONE
+}
+
+model Job {
+  id          String         @id @default(uuid())
+  reference   String
+  title       String
+  boardColumn JobBoardColumn @default(REQUEST_RECORDS)
+  deadlineKind JobDeadlineKind @default(NONE)
+  dueAt       DateTime?
+
+  /// Client-facing fee copied from proposal total at spawn (pence)
+  proposedFeePence Int @default(0)
+  /// Internal expected cost / effort budget (pence); may equal proposed until cost rates exist
+  budgetPence      Int @default(0)
+  /// Rollup from TimeEntry (pence); updated when time is logged
+  actualPence      Int @default(0)
+
+  notes     String?
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  completedAt DateTime?
+
+  tenantId String
+  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  clientId String
+  client   Client @relation(fields: [clientId], references: [id], onDelete: Cascade)
+
+  /// One job per accepted proposal (idempotent spawn)
+  proposalId String?   @unique
+  proposal   Proposal? @relation(fields: [proposalId], references: [id], onDelete: SetNull)
+
+  assigneeId String?
+  assignee   User?   @relation("JobAssignee", fields: [assigneeId], references: [id], onDelete: SetNull)
+
+  createdById String?
+  createdBy   User?   @relation("JobCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+
+  /// Linked AccountFlow work item (mesh sandbox / future live)
+  accountFlowWorkId   String?
+  accountFlowSyncStatus String? // LINKED | MOCK | DIVERGED | NONE
+  accountFlowLastSyncedAt DateTime?
+
+  phases      JobPhase[]
+  tasks       JobTask[]
+  timeEntries TimeEntry[]
+  portalFiles PortalFile[]
+  activities  JobActivity[]
+  practiceLetters PracticeLetter[]
+
+  @@unique([tenantId, reference])
+  @@index([tenantId])
+  @@index([tenantId, boardColumn])
+  @@index([clientId])
+  @@index([assigneeId])
+  @@index([dueAt])
+  @@index([accountFlowWorkId])
+}
+
+model JobPhase {
+  id          String    @id @default(uuid())
+  name        String
+  sortOrder   Int       @default(0)
+  isComplete  Boolean   @default(false)
+  completedAt DateTime?
+  /// 0–100 progress within this phase
+  progressPct Int       @default(0)
+
+  jobId String
+  job   Job    @relation(fields: [jobId], references: [id], onDelete: Cascade)
+
+  /// Optional link to the proposal service line this phase represents
+  proposalServiceId String?
+  serviceCategory   String?
+
+  checklistItems ChecklistItem[]
+  tasks          JobTask[]
+  timeEntries    TimeEntry[]
+
+  @@index([jobId])
+  @@index([proposalServiceId])
+}
+
+model ChecklistItem {
+  id          String    @id @default(uuid())
+  label       String
+  isDone      Boolean   @default(false)
+  sortOrder   Int       @default(0)
+  completedAt DateTime?
+
+  phaseId String
+  phase   JobPhase @relation(fields: [phaseId], references: [id], onDelete: Cascade)
+
+  @@index([phaseId])
+}
+
+model JobTask {
+  id          String    @id @default(uuid())
+  title       String
+  description String?
+  isDone      Boolean   @default(false)
+  dueAt       DateTime?
+  sortOrder   Int       @default(0)
+  completedAt DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  jobId String
+  job   Job    @relation(fields: [jobId], references: [id], onDelete: Cascade)
+
+  phaseId String?
+  phase   JobPhase? @relation(fields: [phaseId], references: [id], onDelete: SetNull)
+
+  assigneeId String?
+  assignee   User?   @relation("JobTaskAssignee", fields: [assigneeId], references: [id], onDelete: SetNull)
+
+  @@index([jobId])
+  @@index([phaseId])
+  @@index([assigneeId])
+}
+
+model TimeEntry {
+  id          String   @id @default(uuid())
+  /// Duration in whole minutes
+  minutes     Int
+  /// Billable rate at log time (pence per hour); 0 if non-billable
+  ratePence   Int      @default(0)
+  /// minutes/60 * ratePence, stored for fast rollup
+  amountPence Int      @default(0)
+  note        String?
+  startedAt   DateTime?
+  endedAt     DateTime?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  jobId String
+  job   Job    @relation(fields: [jobId], references: [id], onDelete: Cascade)
+
+  phaseId String?
+  phase   JobPhase? @relation(fields: [phaseId], references: [id], onDelete: SetNull)
+
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  tenantId String
+  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@index([jobId])
+  @@index([tenantId])
+  @@index([userId])
+  @@index([phaseId])
+}
+
+/// Client portal file exchange (storage via StorageService abstraction)
+model PortalFile {
+  id           String   @id @default(uuid())
+  name         String
+  mimeType     String
+  sizeBytes    Int
+  /// Opaque key for StorageService (local path or S3 key)
+  storageKey   String
+  uploadedBy   String   // 'client' | 'staff' | userId
+  createdAt    DateTime @default(now())
+
+  tenantId String
+  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  clientId String
+  client   Client @relation(fields: [clientId], references: [id], onDelete: Cascade)
+
+  jobId String?
+  job   Job?    @relation(fields: [jobId], references: [id], onDelete: SetNull)
+
+  @@index([tenantId])
+  @@index([clientId])
+  @@index([jobId])
+}
+
+model JobActivity {
+  id        String   @id @default(uuid())
+  kind      String   // SPAWNED | COLUMN_CHANGED | PHASE_COMPLETED | NOTE | TIME_LOGGED
+  message   String
+  metadata  String   @default("{}")
+  createdAt DateTime @default(now())
+
+  jobId String
+  job   Job    @relation(fields: [jobId], references: [id], onDelete: Cascade)
+
+  actorId String?
+  actor   User?   @relation(fields: [actorId], references: [id], onDelete: SetNull)
+
+  @@index([jobId])
+  @@index([createdAt])
+}
+
+// ==================== PRACTICE ADMIN LETTERS ====================
+
+enum PracticeLetterType {
+  DISENGAGEMENT
+  PROFESSIONAL_CLEARANCE
+  HMRC_64_8
+}
+
+enum PracticeLetterStatus {
+  DRAFT
+  SENT
+  ARCHIVED
+}
+
+model PracticeLetter {
+  id        String               @id @default(uuid())
+  type      PracticeLetterType
+  status    PracticeLetterStatus @default(DRAFT)
+  title     String
+  bodyHtml  String
+  /// Free-form notes / successor firm / reason
+  metaJson  String               @default("{}")
+  createdAt DateTime             @default(now())
+  updatedAt DateTime             @updatedAt
+  sentAt    DateTime?
+
+  tenantId String
+  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  clientId String
+  client   Client @relation(fields: [clientId], references: [id], onDelete: Cascade)
+
+  jobId String?
+  job   Job?    @relation(fields: [jobId], references: [id], onDelete: SetNull)
+
+  createdById String?
+  createdBy   User?   @relation("PracticeLetterAuthor", fields: [createdById], references: [id], onDelete: SetNull)
+
+  @@index([tenantId])
+  @@index([clientId])
+  @@index([type])
+  @@index([status])
 }

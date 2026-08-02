@@ -9,14 +9,13 @@ import {
   HomeIcon,
   ClockIcon,
   ArrowPathIcon,
+  ArrowUpTrayIcon,
 } from '@heroicons/react/24/outline';
 import { apiClient } from '../../utils/api';
-import { useAuthStore } from '../../stores/authStore';
 import { SkeletonCard } from '../../components/skeleton/SkeletonCard';
 import { EmptyClients } from '../../components/empty-states/EmptyStates';
 
 const Clients = () => {
-  const { tenant } = useAuthStore();
   const [clients, setClients] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
@@ -105,44 +104,45 @@ const Clients = () => {
   };
 
   return (
-    <div className="space-y-6 animate-fade-in">
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-end gap-4 -mt-2">
-        <Link
-          to="/clients/new"
-          className="btn-primary inline-flex"
-          style={{ backgroundColor: tenant?.primaryColor || '#0ea5e9' }}
-        >
-          <PlusIcon className="h-5 w-5 mr-2" />
-          Add Client
-        </Link>
-      </div>
-
-      {/* MTD ITSA Alert */}
-      <div className="bg-primary-600 rounded-lg p-4 text-white">
-        <div className="flex items-start">
-          <ClockIcon className="h-6 w-6 mt-0.5 flex-shrink-0" />
-          <div className="ml-3">
-            <h3 className="text-lg font-semibold">MTD ITSA Compliance</h3>
-            <p className="mt-1 text-blue-100">
-              Sole traders and partnerships with income over £50,000 must maintain Making Tax
-              Digital compliance. Limited companies, LLPs, and charities are not affected.
-            </p>
-          </div>
+    <div className="space-y-5 animate-fade-in">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+        <p className="text-sm text-slate-500 max-w-md">
+          Search, filter by lifecycle, open a client for jobs · portal · comms.
+        </p>
+        <div className="flex flex-wrap items-center gap-2">
+          <Link to="/clients/import" className="btn-secondary btn-sm inline-flex items-center">
+            <ArrowUpTrayIcon className="h-4 w-4 mr-1.5" aria-hidden />
+            Import
+          </Link>
+          <Link to="/clients/new" className="btn-primary btn-sm inline-flex items-center">
+            <PlusIcon className="h-4 w-4 mr-1.5" aria-hidden />
+            Add client
+          </Link>
         </div>
       </div>
 
+      {/* Quiet compliance note — not a full-bleed blue shout */}
+      <div className="flex gap-3 rounded-xl border border-amber-200/80 bg-amber-50/80 px-4 py-3 text-sm text-amber-950 dark:border-amber-900/50 dark:bg-amber-950/30 dark:text-amber-100">
+        <ClockIcon className="h-5 w-5 shrink-0 text-amber-600 dark:text-amber-400" aria-hidden />
+        <p>
+          <span className="font-semibold">MTD ITSA:</span> sole traders & partnerships over £50k
+          income need digital records. Ltd cos / LLPs / charities are out of scope.
+        </p>
+      </div>
+
       {/* Search */}
-      <div className="card p-4">
+      <div className="card p-3 sm:p-4">
         <form onSubmit={handleSearch} className="relative">
           <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-            <MagnifyingGlassIcon className="h-5 w-5 text-slate-400" />
+            <MagnifyingGlassIcon className="h-5 w-5 text-slate-400" aria-hidden />
           </div>
           <input
-            type="text"
+            type="search"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             className="input-field w-full pl-10"
-            placeholder="Search clients by name, email, company number..."
+            placeholder="Search name, email, company number…"
+            aria-label="Search clients"
           />
         </form>
       </div>
@@ -210,11 +210,11 @@ const Clients = () => {
             <Link
               key={client.id}
               to={`/clients/${client.id}`}
-              className="glass-tile p-5 transition-colors hover:border-slate-300 dark:hover:border-slate-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500/40"
+              className="card p-5 transition-shadow hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500/40"
             >
               <div className="flex items-start justify-between">
                 <div className="flex items-center">
-                  <div className="p-2 bg-blue-50 rounded-lg">
+                  <div className="p-2 bg-emerald-50 rounded-lg dark:bg-emerald-950/40">
                     {getCompanyTypeIcon(client.companyType)}
                   </div>
                   <div className="ml-3">
@@ -237,14 +237,25 @@ const Clients = () => {
               </div>
 
               <div className="mt-4 space-y-1">
-                <p className="text-sm text-slate-700 font-medium">{client.contactEmail}</p>
+                <p className="text-sm text-slate-700 font-medium dark:text-slate-200">
+                  {client.contactEmail}
+                </p>
                 {client.contactPhone && (
-                  <p className="text-sm text-slate-600">{client.contactPhone}</p>
+                  <p className="text-sm text-slate-600 dark:text-slate-400">
+                    {client.contactPhone}
+                  </p>
                 )}
               </div>
 
-              <div className="mt-4 pt-4 border-t border-slate-100 flex items-center justify-between text-sm">
-                <span className="text-slate-500">{client._count?.proposals || 0} proposals</span>
+              <div className="mt-4 pt-4 border-t border-slate-100 dark:border-slate-700 flex items-center justify-between text-sm">
+                <span className="text-slate-500">
+                  {client._count?.proposals || 0} proposals
+                  {typeof client._count?.jobs === 'number' && client._count.jobs > 0 && (
+                    <span className="ml-2 font-medium text-emerald-700 dark:text-emerald-400">
+                      · {client._count.jobs} jobs
+                    </span>
+                  )}
+                </span>
                 {client.turnover && (
                   <span className="text-slate-900 dark:text-white font-semibold tabular-nums">
                     £{(client.turnover / 1000).toFixed(0)}k turnover

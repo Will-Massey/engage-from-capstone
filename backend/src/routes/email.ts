@@ -320,10 +320,17 @@ router.get(
         createdAt: true,
         proposalId: true,
         clientId: true,
+        client: { select: { id: true, name: true } },
       },
     });
 
-    res.json({ success: true, data: logs });
+    res.json({
+      success: true,
+      data: logs.map((l) => ({
+        ...l,
+        clientName: l.client?.name || null,
+      })),
+    });
   })
 );
 

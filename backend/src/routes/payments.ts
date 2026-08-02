@@ -354,4 +354,277 @@ function getTierFromPriceId(priceId: string): string {
   return priceToTier[priceId] || 'STARTER';
 }
 
+/**
+ * GET /api/payments/dunning-queue
+ * Failed recurring payments + unpaid accepted proposals (collection board).
+ */
+router.get(
+  '/dunning-queue',
+  authenticate,
+  asyncHandler(async (req, res) => {
+    const tenantId = req.tenantId!;
+    const since = new Date(Date.now() - 90 * 24 * 60 * 60 * 1000);
+
+    const [failedLogs, unpaidAccepted] = await Promise.all([
+      prisma.activityLog.findMany({
+        where: {
+          tenantId,
+          action: 'RECURRING_PAYMENT_FAILED',
+          createdAt: { gte: since },
+        },
+        orderBy: { createdAt: 'desc' },
+        take: 50,
+        select: {
+          id: true,
+          entityId: true,
+          proposalId: true,
+          metadata: true,
+          createdAt: true,
+          description: true,
+        },
+      }),
+      prisma.proposal.findMany({
+        where: {
+          tenantId,
+          status: 'ACCEPTED',
+          OR: [
+            { paymentStatus: null },
+            {
+              paymentStatus: {
+                notIn: ['PAID', 'COMPLETED', 'ACTIVE'],
+              },
+            },
+          ],
+          stripeSubscriptionId: null,
+        },
+        select: {
+          id: true,
+          reference: true,
+          title: true,
+          totalPence: true,
+          paymentStatus: true,
+          acceptedAt: true,
+          client: { select: { id: true, name: true, contactEmail: true } },
+        },
+        take: 40,
+        orderBy: { acceptedAt: 'desc' },
+      }),
+    ]);
+
+    const proposalIds = [
+      ...new Set(
+        failedLogs.map((l) => l.proposalId || l.entityId).filter((id): id is string => !!id)
+      ),
+    ];
+    const proposals = proposalIds.length
+      ? await prisma.proposal.findMany({
+          where: { id: { in: proposalIds }, tenantId },
+          select: {
+            id: true,
+            reference: true,
+            title: true,
+            totalPence: true,
+            stripeSubscriptionId: true,
+            paymentStatus: true,
+            client: { select: { id: true, name: true, contactEmail: true } },
+          },
+        })
+      : [];
+    const byId = Object.fromEntries(proposals.map((p) => [p.id, p]));
+
+    const failed = failedLogs.map((log) => {
+      let meta: Record<string, unknown> = {};
+      try {
+        meta = JSON.parse(log.metadata || '{}');
+      } catch {
+        /* ignore */
+      }
+      const pid = log.proposalId || log.entityId || '';
+      const p = byId[pid];
+      return {
+        kind: 'recurring_failed' as const,
+        logId: log.id,
+        proposalId: pid || null,
+        reference: p?.reference || null,
+        title: p?.title || null,
+        clientName: p?.client.name || null,
+        clientId: p?.client.id || null,
+        contactEmail: p?.client.contactEmail || null,
+        amountPence: typeof meta.amountDue === 'number' ? meta.amountDue : p?.totalPence || 0,
+        invoiceId: typeof meta.invoiceId === 'string' ? meta.invoiceId : null,
+        subscriptionId:
+          typeof meta.subscriptionId === 'string'
+            ? meta.subscriptionId
+            : p?.stripeSubscriptionId || null,
+        failedAt: log.createdAt.toISOString(),
+        billingPortalAvailable: Boolean(p?.stripeSubscriptionId || meta.subscriptionId),
+      };
+    });
+
+    const unpaid = unpaidAccepted.map((p) => ({
+      kind: 'unpaid_accepted' as const,
+      logId: null as string | null,
+      proposalId: p.id,
+      reference: p.reference,
+      title: p.title,
+      clientName: p.client.name,
+      clientId: p.client.id,
+      contactEmail: p.client.contactEmail,
+      amountPence: p.totalPence,
+      invoiceId: null as string | null,
+      subscriptionId: null as string | null,
+      failedAt: p.acceptedAt?.toISOString() || null,
+      billingPortalAvailable: false,
+      paymentStatus: p.paymentStatus,
+    }));
+
+    res.json({
+      success: true,
+      data: {
+        failed,
+        unpaid,
+        totals: {
+          failedCount: failed.length,
+          unpaidCount: unpaid.length,
+          failedPence: failed.reduce((s, f) => s + (f.amountPence || 0), 0),
+          unpaidPence: unpaid.reduce((s, u) => s + u.amountPence, 0),
+        },
+      },
+    });
+  })
+);
+
+/**
+ * POST /api/payments/proposals/:id/billing-portal
+ * Staff-initiated Stripe customer portal (card update / invoices).
+ */
+router.post(
+  '/proposals/:id/billing-portal',
+  authenticate,
+  asyncHandler(async (req, res) => {
+    const tenantId = req.tenantId!;
+    const proposal = await prisma.proposal.findFirst({
+      where: { id: req.params.id, tenantId },
+      select: { id: true, stripeSubscriptionId: true, reference: true },
+    });
+    if (!proposal) throw new ApiError('NOT_FOUND', 'Proposal not found', 404);
+    if (!proposal.stripeSubscriptionId) {
+      throw new ApiError('NO_SUBSCRIPTION', 'No live Stripe subscription on this proposal', 400);
+    }
+
+    const { createProposalBillingPortal } = await import('../services/paymentCollection.js');
+    const url = await createProposalBillingPortal(proposal.id);
+    if (!url) {
+      throw new ApiError(
+        'PORTAL_UNAVAILABLE',
+        'Could not create billing portal (Stripe not configured or no customer)',
+        503
+      );
+    }
+
+    await prisma.activityLog.create({
+      data: {
+        tenantId,
+        action: 'DUNNING_PORTAL_OPENED',
+        entityType: 'Proposal',
+        entityId: proposal.id,
+        proposalId: proposal.id,
+        description: `Billing portal link created for ${proposal.reference}`,
+        metadata: JSON.stringify({ by: req.user?.id }),
+        userId: req.user?.id,
+      },
+    });
+
+    res.json({ success: true, data: { url, proposalId: proposal.id } });
+  })
+);
+
+/**
+ * POST /api/payments/proposals/:id/dunning-retry
+ * Attempt invoice.pay when invoiceId known; always logs retry + optional portal URL.
+ */
+router.post(
+  '/proposals/:id/dunning-retry',
+  authenticate,
+  authorize('ADMIN', 'PARTNER', 'MANAGER', 'MD'),
+  asyncHandler(async (req, res) => {
+    const tenantId = req.tenantId!;
+    const invoiceId = typeof req.body?.invoiceId === 'string' ? req.body.invoiceId : null;
+
+    const proposal = await prisma.proposal.findFirst({
+      where: { id: req.params.id, tenantId },
+      select: {
+        id: true,
+        reference: true,
+        stripeSubscriptionId: true,
+        client: { select: { contactEmail: true, name: true } },
+      },
+    });
+    if (!proposal) throw new ApiError('NOT_FOUND', 'Proposal not found', 404);
+
+    let payResult: 'paid' | 'failed' | 'skipped' = 'skipped';
+    let payError: string | null = null;
+
+    if (invoiceId && stripe) {
+      try {
+        const inv = await stripe.invoices.pay(invoiceId);
+        payResult = inv.status === 'paid' ? 'paid' : 'failed';
+        if (inv.status !== 'paid') {
+          payError = inv.status || 'not paid';
+        }
+      } catch (e: any) {
+        payResult = 'failed';
+        payError = e?.message || 'invoice.pay failed';
+      }
+    }
+
+    let portalUrl: string | null = null;
+    if (proposal.stripeSubscriptionId) {
+      try {
+        const { createProposalBillingPortal } = await import('../services/paymentCollection.js');
+        portalUrl = await createProposalBillingPortal(proposal.id);
+      } catch {
+        portalUrl = null;
+      }
+    }
+
+    await prisma.activityLog.create({
+      data: {
+        tenantId,
+        action: 'DUNNING_RETRY',
+        entityType: 'Proposal',
+        entityId: proposal.id,
+        proposalId: proposal.id,
+        description: `Dunning retry on ${proposal.reference}: ${payResult}`,
+        metadata: JSON.stringify({
+          invoiceId,
+          payResult,
+          payError,
+          portalUrl: portalUrl ? true : false,
+          by: req.user?.id,
+        }),
+        userId: req.user?.id,
+      },
+    });
+
+    res.json({
+      success: true,
+      data: {
+        proposalId: proposal.id,
+        reference: proposal.reference,
+        payResult,
+        payError,
+        portalUrl,
+        clientEmail: proposal.client.contactEmail,
+        message:
+          payResult === 'paid'
+            ? 'Invoice paid successfully'
+            : portalUrl
+              ? 'Share the billing portal link so the client can update their card'
+              : payError || 'Retry logged — no live invoice/subscription available to charge',
+      },
+    });
+  })
+);
+
 export default router;

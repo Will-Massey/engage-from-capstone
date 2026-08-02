@@ -438,7 +438,13 @@ export class EmailService {
 
     return oauth2Client.generateAuthUrl({
       access_type: 'offline',
-      scope: ['https://mail.google.com/', 'https://www.googleapis.com/auth/gmail.send'],
+      // Full mailbox: read (two-way inbox) + send
+      scope: [
+        'https://mail.google.com/',
+        'https://www.googleapis.com/auth/gmail.modify',
+        'https://www.googleapis.com/auth/gmail.send',
+        'https://www.googleapis.com/auth/userinfo.email',
+      ],
       prompt: 'consent',
       ...(state ? { state } : {}),
     });
@@ -474,7 +480,8 @@ export class EmailService {
     tenantId?: string,
     state?: string
   ): string {
-    const scopes = ['offline_access', 'https://outlook.office365.com/SMTP.Send', 'User.Read'];
+    // Graph Mail.Read + Mail.Send for two-way mailbox (not SMTP.Send alone)
+    const scopes = ['offline_access', 'User.Read', 'Mail.Read', 'Mail.Send', 'Mail.ReadWrite'];
 
     const tenant = tenantId || 'common';
 
