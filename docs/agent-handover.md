@@ -26,7 +26,7 @@ in this repo — they are your roadmap and evidence base.
   master only after lint + typecheck + unit tests + full Playwright e2e are
   green, takes a pre-deploy Neon backup branch, deploys backend then frontend
   via the Render API, and health-checks. Branch protection on master requires
-  the three CI checks. Railway/Vercel/GHCR/Docker configs in the repo are
+  the three CI checks. Render/Vercel/GHCR/Docker configs in the repo are
   vestigial — ignore them (a failing non-required "Vercel" PR check is noise).
 - **Migrations** run at container boot via `backend/start-prod.mjs`
   (fail-closed). Every migration must be additive/idempotent-safe.

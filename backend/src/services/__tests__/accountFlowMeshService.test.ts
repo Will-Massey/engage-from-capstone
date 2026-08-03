@@ -30,7 +30,7 @@ describe('accountFlowMeshService', () => {
 
   it('refuses live without ACCOUNTFLOW_MESH_ALLOW_LIVE', () => {
     process.env.ACCOUNTFLOW_MESH_MODE = 'live';
-    process.env.ACCOUNTFLOW_BASE_URL = 'https://capstone-saas-production.up.railway.app';
+    process.env.ACCOUNTFLOW_BASE_URL = 'https://accountflow.example.com';
     delete process.env.ACCOUNTFLOW_MESH_ALLOW_LIVE;
     const s = getMeshStatus();
     // Forced off live path
@@ -40,7 +40,7 @@ describe('accountFlowMeshService', () => {
 
   it('local mode rejects public URLs (prod protection)', () => {
     process.env.ACCOUNTFLOW_MESH_MODE = 'local';
-    process.env.ACCOUNTFLOW_BASE_URL = 'https://capstone-saas-production.up.railway.app';
+    process.env.ACCOUNTFLOW_BASE_URL = 'https://accountflow.example.com';
     const s = getMeshStatus();
     expect(s.mode).toBe('mock');
     expect(s.message.toLowerCase()).toMatch(/private|mock|refused/);

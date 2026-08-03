@@ -26,7 +26,7 @@ app.use(
 
 ### 2. ❌ Wrong API URL
 
-**Problem:** Frontend was calling `https://your-railway-app.up.railway.app` instead of the correct URL
+**Problem:** Frontend was calling `https://engage-backend-e1ue.onrender.com` instead of the correct URL
 
 **Root Cause:** The `.env` file (not `.env.production`) was being used during build
 
@@ -37,7 +37,7 @@ app.use(
 VITE_API_URL=http://localhost:3001
 
 # After
-VITE_API_URL=https://engage-by-capstone-production.up.railway.app
+VITE_API_URL=https://capstonesoftware.co.uk/engage
 ```
 
 **Status:** ✅ Fixed - JS bundle now contains correct API URL
@@ -68,7 +68,7 @@ VITE_API_URL=https://engage-by-capstone-production.up.railway.app
 ## Test the App
 
 1. Clear browser cache (Ctrl+Shift+R or Cmd+Shift+R)
-2. Open: https://engage-by-capstone-production.up.railway.app
+2. Open: https://capstonesoftware.co.uk/engage
 3. Open DevTools (F12)
 4. Check Console - should have no CSP errors
 5. Try logging in - API calls should work
@@ -82,5 +82,5 @@ VITE_API_URL=https://engage-by-capstone-production.up.railway.app
   ```typescript
   styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
   fontSrc: ["'self'", "https://fonts.gstatic.com"],
-  connectSrc: ["'self'", "https://engage-by-capstone-production.up.railway.app"],
+  connectSrc: ["'self'", "https://capstonesoftware.co.uk/engage"],
   ```

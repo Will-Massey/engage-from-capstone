@@ -104,7 +104,7 @@ try {
     Write-Host "  • Schema: All tables created" -ForegroundColor White
     Write-Host "  • Prisma Client: Generated" -ForegroundColor White
     
-    Write-Host "`n💾 Save this connection string for Railway deployment:" -ForegroundColor Cyan
+    Write-Host "`n💾 Save this connection string for Render deployment:" -ForegroundColor Cyan
     Write-Host $connectionString -ForegroundColor Gray
     
     # Save to file
@@ -122,6 +122,6 @@ try {
 }
 
 Write-Host "`n📚 Next steps:" -ForegroundColor Cyan
-Write-Host "  1. Copy the DATABASE_URL to Railway environment variables" -ForegroundColor White
-Write-Host "  2. Or run: .\deploy-railway.ps1" -ForegroundColor White
+Write-Host "  1. Copy the DATABASE_URL to Render environment variables" -ForegroundColor White
+Write-Host "  2. Or run: .\deploy-Render.ps1" -ForegroundColor White
 Write-Host "  3. Your database is ready! 🎉" -ForegroundColor White

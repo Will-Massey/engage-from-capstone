@@ -54,11 +54,11 @@ Products:
 - Capstone Cloud
 ```
 
-#### 3. Railway Deployment
+#### 3. Render deployment
 
 ```
 Domain: engage.capstonesoftware.co.uk
-Platform: Railway
+Platform: Render
 SSL: Automatic (Let's Encrypt)
 ```
 
@@ -68,10 +68,10 @@ SSL: Automatic (Let's Encrypt)
 
 ```
 CNAME: engage.capstonesoftware.co.uk
-Points to: railway.app
+Points to: render.com
 ```
 
-#### Environment Variables (Railway)
+#### Environment Variables (Render)
 
 ```env
 # Database
