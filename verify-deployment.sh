@@ -35,7 +35,7 @@ warning() {
 # FILE STRUCTURE CHECKS
 # ==========================================
 echo "📁 Checking file structure..."
-test -f "railway.toml" && check 0 "railway.toml exists" || check 1 "railway.toml missing"
+test -f "Render.toml" && check 0 "Render.toml exists" || check 1 "Render.toml missing"
 test -f "Dockerfile" && check 0 "Dockerfile exists" || check 1 "Dockerfile missing"
 test -f "package.json" && check 0 "package.json exists" || check 1 "package.json missing"
 test -d "backend" && check 0 "backend directory exists" || check 1 "backend directory missing"
@@ -199,7 +199,7 @@ if [ $ERRORS -eq 0 ] && [ $WARNINGS -eq 0 ]; then
     echo ""
     echo "Next steps:"
     echo "  ./build-production.sh"
-    echo "  ./deploy-railway.sh"
+    echo "  ./deploy-Render.sh"
     exit 0
 elif [ $ERRORS -eq 0 ]; then
     echo -e "${YELLOW}⚠️  PASSED WITH WARNINGS${NC}"

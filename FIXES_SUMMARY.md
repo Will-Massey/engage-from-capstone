@@ -88,13 +88,13 @@
 
 ### Files Created for Deployment
 
-1. **`railway.toml`** - Railway configuration
+1. **`Render.toml`** - Render configuration
 2. **`Dockerfile`** - Multi-stage production build
-3. **`DEPLOY_RAILWAY.md`** - Deployment guide
+3. **`DEPLOY.md`** - Deployment guide
 
 ### Health Check
 
-- Added `/api/health` endpoint for Railway health checks
+- Added `/api/health` endpoint for Render health checks
 - Returns 503 if database disconnected
 - Returns 200 with status if healthy
 
@@ -129,11 +129,11 @@
 
 ## 📝 Next Steps for Production
 
-1. **Deploy to Railway:**
+1. **Deploy to Render:**
 
    ```bash
-   railway login
-   railway up
+   # Render: dashboard or RENDER_API_KEY
+   # Render: merge to master or dashboard Deploy
    ```
 
 2. **Add PostgreSQL database**

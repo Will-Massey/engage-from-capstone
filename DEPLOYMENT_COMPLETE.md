@@ -7,7 +7,7 @@
 
 ## 🌐 Live Application
 
-**URL:** https://engage-by-capstone-production.up.railway.app
+**URL:** https://capstonesoftware.co.uk/engage
 
 ---
 
@@ -35,8 +35,8 @@
 
 ### 5. Tenant Extraction ✅
 
-- Modified middleware to handle Railway domains
-- Returns 'demo' subdomain for Railway deployments
+- Modified middleware to handle Render domains
+- Returns 'demo' subdomain for Render deployments
 
 ### 6. Database Schema ✅
 
@@ -81,8 +81,8 @@
 
 | Application            | URL                                                  | Purpose               |
 | ---------------------- | ---------------------------------------------------- | --------------------- |
-| **AccountFlow**        | https://capstone-saas-production.up.railway.app      | Compliance Management |
-| **Engage by Capstone** | https://engage-by-capstone-production.up.railway.app | Proposal Generation   |
+| **AccountFlow**        | https://accountflow.capstonesoftware.co.uk      | Compliance Management |
+| **Engage by Capstone** | https://capstonesoftware.co.uk/engage | Proposal Generation   |
 
 ---
 

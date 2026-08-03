@@ -53,14 +53,14 @@
 
 ## 🚀 Deployment Instructions
 
-### Option 1: Railway (Recommended)
+### Option 1: Render (Recommended)
 
 ```bash
-# Login to Railway
-railway login
+# Login to Render
+# Render: dashboard or RENDER_API_KEY
 
 # Deploy
-railway up
+# Render: merge to master or dashboard Deploy
 ```
 
 ### Option 2: Manual Steps
@@ -73,8 +73,8 @@ railway up
    git push origin main
    ```
 
-2. **Create Railway Project**
-   - Go to https://railway.app
+2. **Create Render Project**
+   - Go to https://render.com
    - New Project → Deploy from GitHub repo
 
 3. **Add PostgreSQL**
@@ -90,17 +90,17 @@ railway up
    ```
 
 5. **Deploy**
-   - Railway auto-deploys from GitHub
+   - Render auto-deploys from GitHub
 
 6. **Run Migrations**
 
    ```bash
-   railway run npx prisma migrate deploy
+   # Render shell: npx prisma migrate deploy
    ```
 
 7. **Seed Database (Optional)**
    ```bash
-   railway run npx prisma db seed
+   # Render shell: npx prisma db seed
    ```
 
 ---
@@ -134,7 +134,7 @@ FRONTEND_URL=https://your-app.vercel.app
 ### Frontend
 
 ```env
-VITE_API_URL=https://your-backend.railway.app
+VITE_API_URL=https://your-backend.render.com
 ```
 
 ---
@@ -201,7 +201,7 @@ Before going live:
 
    ```bash
    cd engage
-   railway up
+   # Render: merge to master or dashboard Deploy
    ```
 
 2. **Deploy Frontend**
@@ -212,7 +212,7 @@ Before going live:
    ```
 
 3. **Configure Domain**
-   - Add custom domain in Railway/Vercel
+   - Add custom domain in Render/Vercel
    - Update FRONTEND_URL and CORS_ORIGINS
 
 4. **Set Up Monitoring**
@@ -251,7 +251,7 @@ Update `backend/src/index.ts` with your frontend URL.
 
 All critical issues fixed. All features working. Build successful.
 
-**Deploy now with:** `./deploy-railway.sh`
+**Deploy now with:** `./deploy-Render.sh`
 
 ---
 

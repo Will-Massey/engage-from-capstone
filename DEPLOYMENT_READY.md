@@ -34,37 +34,37 @@
 # 2. Build for production
 ./build-production.sh
 
-# 3. Deploy to Railway
-./deploy-railway.sh
+# 3. Deploy to Render
+./deploy-Render.sh
 ```
 
 ### Option 2: Manual Steps
 
 ```bash
-# 1. Install Railway CLI
-npm install -g @railway/cli
+# 1. Install Render deploy (CI or dashboard)
+npm install -g (use Render dashboard or GitHub Actions)
 
 # 2. Login
-railway login
+# Render: dashboard or RENDER_API_KEY
 
 # 3. Create project
-railway init
+# Render: connect GitHub repo
 
-# 4. Add PostgreSQL (in Railway dashboard)
+# 4. Add PostgreSQL (in Render dashboard)
 # Dashboard → New → Database → PostgreSQL
 
 # 5. Set environment variables
-railway variables set NODE_ENV=production
-railway variables set JWT_SECRET=$(openssl rand -base64 32)
+# Render Environment:  NODE_ENV=production
+# Render Environment:  JWT_SECRET=$(openssl rand -base64 32)
 
 # 6. Deploy
-railway up
+# Render: merge to master or dashboard Deploy
 
 # 7. Run migrations
-railway run npx prisma migrate deploy
+# Render shell: npx prisma migrate deploy
 
 # 8. Seed database (optional)
-railway run npx prisma db seed
+# Render shell: npx prisma db seed
 ```
 
 ---
@@ -73,10 +73,10 @@ railway run npx prisma db seed
 
 | File                       | Purpose                          |
 | -------------------------- | -------------------------------- |
-| `railway.toml`             | Railway deployment configuration |
+| `Render.toml`             | Render deployment configuration |
 | `Dockerfile`               | Multi-stage production build     |
 | `.env.production.template` | Production environment template  |
-| `deploy-railway.sh`        | Automated deployment script      |
+| `deploy-Render.sh`        | Automated deployment script      |
 | `build-production.sh`      | Production build script          |
 | `verify-deployment.sh`     | Pre-deployment verification      |
 | `PRE_DEPLOY_CHECKLIST.md`  | Manual verification checklist    |
@@ -91,7 +91,7 @@ railway run npx prisma db seed
 NODE_ENV=production
 PORT=3001
 JWT_SECRET=<generate-strong-secret>
-DATABASE_URL=<railway-postgresql-url>
+DATABASE_URL=<Render-postgresql-url>
 FRONTEND_URL=<your-frontend-url>
 ```
 
@@ -143,7 +143,7 @@ After deployment:
 | Environment     | URL                             |
 | --------------- | ------------------------------- |
 | Local Dev       | http://localhost:5173           |
-| Railway Backend | https://your-app.up.railway.app |
+| Render backend | https://your-app.onrender.com |
 | Vercel Frontend | https://your-app.vercel.app     |
 
 ---
@@ -154,10 +154,10 @@ After deployment:
 
 ```bash
 # Check database URL
-railway variables
+Render variables
 
 # Test connection
-railway connect postgres
+Render connect postgres
 ```
 
 ### Build Fails
@@ -187,7 +187,7 @@ allowedOrigins: [
 ## 📈 Next Steps After Deploy
 
 1. **Configure Custom Domain** (optional)
-   - Add domain in Railway dashboard
+   - Add domain in Render dashboard
    - Update DNS records
    - Update FRONTEND_URL
 
@@ -210,9 +210,9 @@ allowedOrigins: [
 
 ## 📞 Support
 
-- **Railway Docs:** https://docs.railway.app
+- **Render Docs:** https://docs.render.com
 - **Prisma Docs:** https://www.prisma.io/docs
-- **Railway Discord:** https://discord.gg/railway
+- **Render Discord:** https://discord.gg/Render
 
 ---
 
@@ -220,7 +220,7 @@ allowedOrigins: [
 
 All critical issues have been fixed and the application is ready for production deployment.
 
-**Run `./verify-deployment.sh` then `./deploy-railway.sh` to deploy!**
+**Run `./verify-deployment.sh` then `./deploy-Render.sh` to deploy!**
 
 ---
 

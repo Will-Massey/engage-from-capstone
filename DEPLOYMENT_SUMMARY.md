@@ -4,7 +4,7 @@
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
-│                         Railway.app                              │
+│                         render.com                              │
 │                    (Application Hosting)                         │
 │                                                                  │
 │  ┌──────────────────────────────────────────────────────────┐   │
@@ -38,15 +38,15 @@
 | File              | Purpose                                   |
 | ----------------- | ----------------------------------------- |
 | `Dockerfile`      | Multi-stage Docker build for production   |
-| `railway.toml`    | Railway deployment configuration          |
-| `railway.json`    | Alternative Railway config (JSON format)  |
+| `Render.toml`    | Render deployment configuration          |
+| `Render.json`    | Alternative Render config (JSON format)  |
 | `.env.production` | Production environment variables template |
 
 ### Scripts
 
 | File                             | Purpose                                 |
 | -------------------------------- | --------------------------------------- |
-| `deploy-railway.ps1`             | Automated deployment script for Railway |
+| `deploy-Render.ps1`             | Automated deployment script for Render |
 | `setup-neon.ps1`                 | Neon database setup helper              |
 | `backend/src/scripts/startup.ts` | Production startup with migrations      |
 
@@ -54,7 +54,7 @@
 
 | File                     | Purpose                   |
 | ------------------------ | ------------------------- |
-| `DEPLOY_NEON_RAILWAY.md` | Complete deployment guide |
+| `DEPLOY.md` | Complete deployment guide |
 | `DEPLOYMENT_SUMMARY.md`  | This summary document     |
 
 ---
@@ -65,16 +65,16 @@
 
 1. **GitHub** - For repository hosting
 2. **Neon** - For PostgreSQL database (https://neon.tech)
-3. **Railway** - For application hosting (https://railway.app)
+3. **Render** - For application hosting (https://render.com)
 
 ### Local Tools
 
 ```powershell
-# Install Railway CLI
-npm install -g @railway/cli
+# Install Render deploy (CI or dashboard)
+npm install -g (use Render dashboard or GitHub Actions)
 
 # Verify installations
-railway --version  # v3.x.x
+Render --version  # v3.x.x
 git --version      # 2.x.x
 node --version     # v18+
 ```
@@ -96,22 +96,22 @@ node --version     # v18+
 # 4. Copy connection string
 ```
 
-### Step 2: Deploy to Railway
+### Step 2: Deploy to Render
 
 ```powershell
 # Run the deployment script
-.\deploy-railway.ps1
+.\deploy-Render.ps1
 
 # Or manually:
-# 1. railway login
-# 2. railway init (or railway link)
+# 1. # Render: dashboard or RENDER_API_KEY
+# 2. # Render: connect GitHub repo (or # Render: connect GitHub repo)
 # 3. Set environment variables
-# 4. railway up
+# 4. # Render: merge to master or dashboard Deploy
 ```
 
 ### Step 3: Configure Environment Variables
 
-Required in Railway dashboard:
+Required in Render dashboard:
 
 ```bash
 # Database
@@ -147,7 +147,7 @@ PORT=3001
 - 190 compute hours/month
 - Auto-suspend after inactivity
 
-**Railway (Free Tier)**
+**Render (Free Tier)**
 
 - 512 MB RAM
 - 1 GB disk
@@ -159,13 +159,13 @@ PORT=3001
 **Small Practice (~10 users, 100 clients)**
 
 - Neon: $19/month (Pro plan)
-- Railway: $5-20/month (Hobby/Pro)
+- Render: $5-20/month (Hobby/Pro)
 - **Total: ~$25-40/month**
 
 **Medium Practice (~50 users, 1000 clients)**
 
 - Neon: $69/month (Scale plan)
-- Railway: $50-100/month (Pro/Business)
+- Render: $50-100/month (Pro/Business)
 - **Total: ~$120-170/month**
 
 ---
@@ -176,7 +176,7 @@ PORT=3001
 
 - [x] SSL required for all connections (`sslmode=require`)
 - [x] Strong database password
-- [x] Connection string stored in Railway (not in code)
+- [x] Connection string stored in Render (not in code)
 - [x] Regular backups (Neon provides PITR)
 
 ### Application
@@ -190,7 +190,7 @@ PORT=3001
 ### Email
 
 - [x] App passwords for Gmail (not regular password)
-- [x] SMTP credentials encrypted in Railway
+- [x] SMTP credentials encrypted in Render
 - [x] From address verified with provider
 
 ---
@@ -199,12 +199,12 @@ PORT=3001
 
 ### Automatic Deployments
 
-Railway automatically deploys on git push:
+Render automatically deploys on git push:
 
 ```
 git push origin main
     ↓
-Railway detects push
+Render detects push
     ↓
 Builds Docker image
     ↓
@@ -218,16 +218,16 @@ Zero-downtime switch
 ### Manual Deployment
 
 ```powershell
-# Using Railway CLI
-railway login
-railway link
-railway up
+# Using Render deploy (CI or dashboard)
+# Render: dashboard or RENDER_API_KEY
+# Render: connect GitHub repo
+# Render: merge to master or dashboard Deploy
 
 # Check status
-railway status
+# Render dashboard status
 
 # View logs
-railway logs
+# Render dashboard logs
 ```
 
 ---
@@ -237,7 +237,7 @@ railway logs
 ### 1. Health Check
 
 ```bash
-curl https://your-app.railway.app/health
+curl https://your-app.render.com/health
 
 # Expected response:
 {
@@ -256,16 +256,16 @@ curl https://your-app.railway.app/health
 
 ```bash
 # Get billing cycles
-curl https://your-app.railway.app/api/services/v2/billing-cycles
+curl https://your-app.render.com/api/services/v2/billing-cycles
 
 # Get VAT rates
-curl https://your-app.railway.app/api/services/v2/vat-rates
+curl https://your-app.render.com/api/services/v2/vat-rates
 ```
 
 ### 3. Frontend
 
 ```
-https://your-app.railway.app/login
+https://your-app.render.com/login
 ```
 
 ---
@@ -293,7 +293,7 @@ npx prisma migrate deploy
 
 ### Build Failures
 
-Check Railway logs for:
+Check # Render dashboard logs for:
 
 - Missing environment variables
 - TypeScript compilation errors
@@ -303,9 +303,9 @@ Check Railway logs for:
 
 ## 📈 Monitoring & Maintenance
 
-### Railway Dashboard
+### Render dashboard
 
-- Deployments: https://railway.app/project/[id]/deployments
+- Deployments: https://render.com/project/[id]/deployments
 - Logs: Built-in log viewer
 - Metrics: CPU, memory, disk usage
 - Variables: Environment configuration
@@ -334,7 +334,7 @@ GET /health
 1. **Create Admin User**
 
    ```bash
-   railway run node backend/dist/scripts/createAdmin.js
+   # Render shell: node backend/dist/scripts/createAdmin.js
    ```
 
 2. **Import Service Catalog**
@@ -347,7 +347,7 @@ GET /health
    - Send test proposal
 
 4. **Custom Domain (Optional)**
-   - Add domain in Railway
+   - Add domain in Render
    - Update DNS records
    - Configure SSL
 
@@ -360,7 +360,7 @@ GET /health
 
 ## 🎯 Success Criteria
 
-✅ App accessible at Railway URL  
+✅ App accessible at Render URL  
 ✅ Database migrations applied  
 ✅ Health endpoint returns 200  
 ✅ Login works with demo credentials  
@@ -373,7 +373,7 @@ GET /health
 ## 📚 Additional Resources
 
 - **Neon Docs**: https://neon.tech/docs
-- **Railway Docs**: https://docs.railway.app
+- **Render Docs**: https://docs.render.com
 - **Prisma Deployment**: https://prisma.io/docs/guides/deployment
 - **Docker Best Practices**: https://docs.docker.com/develop/dev-best-practices/
 
@@ -381,4 +381,4 @@ GET /health
 
 **Your Engage by Capstone application is ready for production!** 🚀
 
-Need help? Check the detailed guide in `DEPLOY_NEON_RAILWAY.md`
+Need help? Check the detailed guide in `DEPLOY.md`

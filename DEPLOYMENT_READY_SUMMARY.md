@@ -163,7 +163,7 @@ cd e2e-tests && npx playwright test specs/unit-calculations.spec.ts
 cd backend && npx prisma migrate deploy
 
 # 2. Deploy backend
-# (Railway/Render deployment)
+# (Render/Render deployment)
 
 # 3. Deploy frontend
 # (Vercel deployment)

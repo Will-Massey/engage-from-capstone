@@ -204,7 +204,7 @@ If deployment fails:
    pg_dump $DATABASE_URL > backup-$(date +%Y%m%d).sql
    ```
 
-2. **Railway:** Use Railway dashboard to rollback to previous deployment
+2. **Render:** Use Render dashboard to rollback to previous deployment
 
 3. **Environment:** Keep previous environment variables saved
 

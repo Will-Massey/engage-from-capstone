@@ -246,7 +246,7 @@ OPENAI_API_KEY=sk-xxx
 SENTRY_DSN=https://xxx
 
 # Deployment
-RAILWAY_TOKEN=xxx
+RENDER_API_KEY=xxx
 RENDER_API_KEY=xxx
 ```
 
@@ -266,7 +266,7 @@ npx prisma migrate deploy
 npx prisma migrate status
 ```
 
-### 13. Deploy to Railway 🚂
+### 13. Deploy to Render 🚂
 
 ```bash
 # Option 1: GitHub Actions (Automatic)
@@ -276,20 +276,20 @@ git push origin main
 
 # CI/CD will automatically deploy
 
-# Option 2: Railway CLI
-npm install -g @railway/cli
-railway login
-railway link
-railway up
+# Option 2: Render deploy (CI or dashboard)
+npm install -g (use Render dashboard or GitHub Actions)
+# Render: dashboard or RENDER_API_KEY
+# Render: connect GitHub repo
+# Render: merge to master or dashboard Deploy
 ```
 
 ### 14. Configure Custom Domain 🔗
 
 ```bash
-# After Railway deployment:
-# 1. Add domain in Railway dashboard
+# After Render deployment:
+# 1. Add domain in Render dashboard
 # 2. Update DNS records
-# 3. Configure SSL (automatic on Railway)
+# 3. Configure SSL (automatic on Render)
 # 4. Update CORS_ORIGIN in environment
 ```
 
@@ -350,7 +350,7 @@ railway up
 // 1. Application Performance Monitoring (APM)
 - New Relic integration
 - Datadog APM
-- Railway native metrics
+- Render native metrics
 
 // 2. Error Tracking
 - Sentry integration (configured)
@@ -485,7 +485,7 @@ npm install swagger-jsdoc swagger-ui-express
 ```
 1. Fix Prisma Windows issue → 2. Run migrations → 3. Test locally
                                     ↓
-4. Deploy to Railway → 5. Configure domain → 6. Monitor
+4. Deploy to Render → 5. Configure domain → 6. Monitor
                                     ↓
                          7. Production testing → 8. Launch! 🎉
 ```
@@ -515,7 +515,7 @@ Then decide:
 | Resource      | Link                         |
 | ------------- | ---------------------------- |
 | Prisma Docs   | https://www.prisma.io/docs   |
-| Railway Docs  | https://docs.railway.app     |
+| Render Docs  | https://docs.render.com     |
 | Docker Docs   | https://docs.docker.com      |
 | React Docs    | https://react.dev            |
 | Tailwind Docs | https://tailwindcss.com/docs |
