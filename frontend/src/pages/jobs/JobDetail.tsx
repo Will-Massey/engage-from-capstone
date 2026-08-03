@@ -305,7 +305,13 @@ export default function JobDetail() {
       })) as any;
       const d = res?.data ?? res;
       if (d?.deepLink) {
-        window.location.assign(d.deepLink);
+        // External AF deep links open in a new tab so Engage stays open (symbiotic shell)
+        const link = String(d.deepLink);
+        if (link.startsWith('http') || link.includes('/app/clients/')) {
+          window.open(link, '_blank', 'noopener,noreferrer');
+        } else {
+          window.location.assign(link);
+        }
       } else {
         setError(d?.message || 'AccountFlow mesh unavailable');
       }

@@ -15,6 +15,7 @@ import {
   SparklesIcon,
   CalendarIcon,
   BriefcaseIcon,
+  ArrowTopRightOnSquareIcon,
 } from '@heroicons/react/24/outline';
 import { apiClient } from '../../utils/api';
 import { useAuthStore } from '../../stores/authStore';
@@ -38,6 +39,7 @@ const ClientDetail = () => {
   const [client, setClient] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
   const tabFromUrl = searchParams.get('tab');
+  const fromAccountFlow = searchParams.get('from') === 'accountflow';
   const [activeTab, setActiveTab] = useState(
     tabFromUrl &&
       ['overview', 'jobs', 'proposals', 'comms', 'mtditsa', 'documents', 'lifecycle'].includes(
@@ -46,6 +48,33 @@ const ClientDetail = () => {
       ? tabFromUrl
       : 'overview'
   );
+  const [afBusy, setAfBusy] = useState(false);
+
+  async function openInAccountFlow() {
+    if (!id) return;
+    setAfBusy(true);
+    try {
+      const res = (await apiClient.post('/integrations/accountflow/handoff', {
+        clientId: id,
+        mode: 'create_and_open',
+      })) as any;
+      const d = res?.data ?? res;
+      if (d?.deepLink) {
+        const link = String(d.deepLink);
+        if (link.startsWith('http') || link.includes('/app/clients/')) {
+          window.open(link, '_blank', 'noopener,noreferrer');
+        } else {
+          window.location.assign(link);
+        }
+      } else {
+        toast.error(d?.message || 'AccountFlow mesh unavailable');
+      }
+    } catch (e: any) {
+      toast.error(e?.message || 'AccountFlow handoff failed');
+    } finally {
+      setAfBusy(false);
+    }
+  }
 
   useEffect(() => {
     if (
@@ -314,6 +343,17 @@ const ClientDetail = () => {
 
   return (
     <div className="space-y-6 animate-fade-in">
+      {fromAccountFlow && (
+        <div className="flex items-start gap-3 rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-900 dark:border-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-100">
+          <BriefcaseIcon className="mt-0.5 h-5 w-5 shrink-0 text-emerald-600" />
+          <div>
+            <p className="font-medium">Opened from AccountFlow</p>
+            <p className="mt-0.5 text-emerald-800/90 dark:text-emerald-200/90">
+              Capstone Tandem linked this client. Use Open in AccountFlow for deep WIP / deadlines.
+            </p>
+          </div>
+        </div>
+      )}
       {/* Header — back link + breadcrumbs come from the global page header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div className="flex items-center">
@@ -329,6 +369,11 @@ const ClientDetail = () => {
                   • {client.clientRelationship === 'EXISTING' ? 'Existing client' : 'New client'}
                 </span>
               )}
+              {client.accountFlowClientId && (
+                <span className="ml-2 text-xs font-medium text-emerald-700 dark:text-emerald-300">
+                  • Linked to AccountFlow
+                </span>
+              )}
             </p>
           </div>
         </div>
@@ -341,6 +386,16 @@ const ClientDetail = () => {
             <DocumentTextIcon className="h-4 w-4 mr-2" />
             New Proposal
           </Link>
+          <button
+            type="button"
+            onClick={() => void openInAccountFlow()}
+            disabled={afBusy}
+            className="btn-secondary"
+            title="Capstone Tandem handoff to AccountFlow"
+          >
+            <ArrowTopRightOnSquareIcon className="h-4 w-4 mr-2" />
+            {afBusy ? 'Linking…' : 'Open in AccountFlow'}
+          </button>
           <button type="button" onClick={() => setShowLoeOnlyModal(true)} className="btn-secondary">
             <DocumentTextIcon className="h-4 w-4 mr-2" />
             Send engagement letter only
