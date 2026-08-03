@@ -1,43 +1,19 @@
 # Engage Build Plan (post-cutover + Capstone Tandem)
 
-## Goal
+## Production
 
-Exceed Engager on practice ops while defending proposal→cash + Clara.  
-**Production live** on Neon + Render: https://capstonesoftware.co.uk/engage
+https://capstonesoftware.co.uk/engage — Neon + Render
 
-## Capstone Tandem (Engage ↔ AccountFlow)
+## Merged
 
-| Direction   | Mechanism                                                               |
-| ----------- | ----------------------------------------------------------------------- |
-| Engage → AF | Handoff HTTP + `publishTandemEvent` on job spawn / column / complete    |
-| AF → Engage | `POST /api/integrations/accountflow/inbound` + AF `notifyEngageInbound` |
-| Default     | `ACCOUNTFLOW_MESH_MODE=mock` (prod AF never contacted)                  |
+- Practice OS cutover (#91)
+- Railway removed (#93)
+- Capstone Tandem bi-di mesh (#95)
+- Proposal sales board (#94 — this branch)
 
-### Local symbiotic loop
+## Next
 
-```
-# AccountFlow (accountflow-practice feat/mesh-sandbox)
-ENGAGE_BASE_URL=http://localhost:3101
-ENGAGE_MESH_SECRET=<shared>
-
-# Engage
-ACCOUNTFLOW_MESH_MODE=local
-ACCOUNTFLOW_BASE_URL=http://localhost:3000
-ACCOUNTFLOW_API_KEY=af_live_…
-ACCOUNTFLOW_MESH_INBOUND_SECRET=<shared>
-ENGAGE_PUBLIC_URL=http://localhost:5273
-```
-
-## Next up
-
-1. Merge tandem bi-di mesh PR
-2. Sales board PR #94
-3. Mailbox OAuth depth
-4. Portal / bulk forms polish
-5. iOS after desktop solid
-
-## Done
-
-- Practice OS cutover (2026-08-02)
-- Railway refs removed (#93)
-- Tandem HTTP adapter + bi-di events (this branch)
+1. Mailbox OAuth depth
+2. Portal / bulk forms polish
+3. Local tandem loop with AF agent
+4. iOS after desktop solid
