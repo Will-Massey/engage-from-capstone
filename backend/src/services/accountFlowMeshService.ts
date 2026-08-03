@@ -11,8 +11,13 @@
 import { randomUUID } from 'crypto';
 import { prisma } from '../config/database.js';
 import logger from '../utils/logger.js';
+import {
+  getAccountFlowMeshSettings,
+  type AccountFlowMeshSettings,
+  type MeshMode,
+} from '../utils/tenantAccountFlowMesh.js';
 
-export type MeshMode = 'mock' | 'local' | 'live' | 'off';
+export type { MeshMode };
 
 export interface MeshStatus {
   mode: MeshMode;
@@ -20,6 +25,14 @@ export interface MeshStatus {
   message: string;
   accountFlowBaseUrl: string | null;
   allowLive: boolean;
+  autoHandoff?: boolean;
+  ssoEnabled?: boolean;
+  hasApiKey?: boolean;
+  source?: 'tenant' | 'env' | 'default';
+}
+
+interface MeshRuntime extends AccountFlowMeshSettings {
+  source: 'tenant' | 'env' | 'default';
 }
 
 export interface HandoffResult {
@@ -61,23 +74,6 @@ const mockClients = new Map<string, MockAfClient>();
 const mockWork = new Map<string, MockAfWork>();
 const mockClientsByEngageId = new Map<string, string>(); // engageClientId → afClientId
 
-function resolveMode(): MeshMode {
-  const raw = (process.env.ACCOUNTFLOW_MESH_MODE || 'mock').toLowerCase().trim();
-  if (raw === 'off' || raw === 'false' || raw === '0') return 'off';
-  if (raw === 'local') return 'local';
-  if (raw === 'live') return 'live';
-  return 'mock';
-}
-
-function allowLive(): boolean {
-  return process.env.ACCOUNTFLOW_MESH_ALLOW_LIVE === 'true';
-}
-
-function baseUrl(): string | null {
-  const u = process.env.ACCOUNTFLOW_BASE_URL?.trim();
-  return u || null;
-}
-
 function isPrivateBase(url: string): boolean {
   try {
     const u = new URL(url);
@@ -96,62 +92,129 @@ function isPrivateBase(url: string): boolean {
   }
 }
 
-export function getMeshStatus(): MeshStatus {
-  const mode = resolveMode();
-  const url = baseUrl();
+function envAllowsLive(): boolean {
+  return process.env.ACCOUNTFLOW_MESH_ALLOW_LIVE === 'true';
+}
+
+async function loadRuntime(tenantId?: string | null): Promise<MeshRuntime> {
+  let settingsJson: string | null = null;
+  let source: MeshRuntime['source'] = 'default';
+  if (tenantId) {
+    const t = await prisma.tenant.findUnique({
+      where: { id: tenantId },
+      select: { settings: true },
+    });
+    settingsJson = t?.settings ?? null;
+    if (settingsJson && settingsJson !== '{}') source = 'tenant';
+  }
+  const s = getAccountFlowMeshSettings(settingsJson);
+  if (!settingsJson && (process.env.ACCOUNTFLOW_MESH_MODE || process.env.ACCOUNTFLOW_BASE_URL)) {
+    source = 'env';
+  }
+  return { ...s, source };
+}
+
+function statusFromRuntime(rt: MeshRuntime): MeshStatus {
+  let mode = rt.mode;
+  const url = rt.baseUrl;
+  const allowLive = rt.allowLive || envAllowsLive();
+
   if (mode === 'off') {
     return {
       mode,
       available: false,
-      message: 'AccountFlow mesh disabled (ACCOUNTFLOW_MESH_MODE=off).',
+      message: 'AccountFlow mesh disabled for this practice.',
       accountFlowBaseUrl: url,
-      allowLive: allowLive(),
+      allowLive,
+      autoHandoff: rt.autoHandoff,
+      ssoEnabled: rt.ssoEnabled,
+      hasApiKey: !!rt.apiKey,
+      source: rt.source,
     };
   }
-  if (mode === 'live' && !allowLive()) {
+  if (mode === 'live' && !allowLive) {
     return {
       mode: 'mock',
       available: true,
       message:
-        'Live mesh requested but ACCOUNTFLOW_MESH_ALLOW_LIVE is not true — running mock only (prod AF protected).',
+        'Live mesh requested but live is not allowed — enable allowLive on the practice (and ACCOUNTFLOW_MESH_ALLOW_LIVE on the server for non-private URLs). Mock only.',
       accountFlowBaseUrl: null,
       allowLive: false,
+      autoHandoff: rt.autoHandoff,
+      ssoEnabled: rt.ssoEnabled,
+      hasApiKey: !!rt.apiKey,
+      source: rt.source,
     };
   }
-  if (mode === 'local' || mode === 'live') {
-    if (!url) {
-      return {
-        mode: 'mock',
-        available: true,
-        message: `${mode} mode needs ACCOUNTFLOW_BASE_URL — falling back to mock.`,
-        accountFlowBaseUrl: null,
-        allowLive: allowLive(),
-      };
-    }
-    if (mode === 'local' && !isPrivateBase(url)) {
-      return {
-        mode: 'mock',
-        available: true,
-        message:
-          'local mode refused non-private ACCOUNTFLOW_BASE_URL (prod AF protection) — mock active.',
-        accountFlowBaseUrl: null,
-        allowLive: allowLive(),
-      };
-    }
-    if (mode === 'live' && isPrivateBase(url)) {
-      // live pointing at localhost is fine
-    }
+  if ((mode === 'local' || mode === 'live') && !url) {
+    return {
+      mode: 'mock',
+      available: true,
+      message: `${mode} mode needs AccountFlow base URL — falling back to mock.`,
+      accountFlowBaseUrl: null,
+      allowLive,
+      autoHandoff: rt.autoHandoff,
+      ssoEnabled: rt.ssoEnabled,
+      hasApiKey: !!rt.apiKey,
+      source: rt.source,
+    };
   }
+  if (mode === 'local' && url && !isPrivateBase(url)) {
+    return {
+      mode: 'mock',
+      available: true,
+      message: 'local mode refused non-private AccountFlow URL — mock active.',
+      accountFlowBaseUrl: null,
+      allowLive: false,
+      autoHandoff: rt.autoHandoff,
+      ssoEnabled: rt.ssoEnabled,
+      hasApiKey: !!rt.apiKey,
+      source: rt.source,
+    };
+  }
+  // Non-private live requires env kill-switch OR tenant allowLive (practice connect)
+  if (mode === 'live' && url && !isPrivateBase(url) && !envAllowsLive() && !rt.allowLive) {
+    mode = 'mock';
+  }
+  const effective = mode;
   return {
-    mode: mode === 'live' && !allowLive() ? 'mock' : mode,
+    mode: effective,
     available: true,
     message:
-      mode === 'mock' || (mode === 'live' && !allowLive())
+      effective === 'mock'
         ? 'Mock AccountFlow mesh — no outbound calls to production AccountFlow.'
-        : `AccountFlow mesh mode=${mode} base=${url}`,
-    accountFlowBaseUrl: mode === 'mock' ? null : url,
-    allowLive: allowLive(),
+        : `AccountFlow mesh mode=${effective} base=${url}`,
+    accountFlowBaseUrl: effective === 'mock' ? null : url,
+    allowLive,
+    autoHandoff: rt.autoHandoff,
+    ssoEnabled: rt.ssoEnabled,
+    hasApiKey: !!rt.apiKey,
+    source: rt.source,
   };
+}
+
+/** Env-only status (legacy callers). Prefer getMeshStatusForTenant. */
+export function getMeshStatus(): MeshStatus {
+  const s = getAccountFlowMeshSettings(null);
+  return statusFromRuntime({ ...s, source: 'env' });
+}
+
+export async function getMeshStatusForTenant(tenantId: string): Promise<MeshStatus> {
+  return statusFromRuntime(await loadRuntime(tenantId));
+}
+
+// --- env compatibility helpers used by HTTP path until fully tenant-scoped ---
+function resolveMode(): MeshMode {
+  return getAccountFlowMeshSettings(null).mode;
+}
+function allowLive(): boolean {
+  return getAccountFlowMeshSettings(null).allowLive || envAllowsLive();
+}
+function baseUrl(): string | null {
+  return getAccountFlowMeshSettings(null).baseUrl;
+}
+function apiKeyFromEnv(): string | null {
+  return getAccountFlowMeshSettings(null).apiKey;
 }
 
 function ensureCapstoneClientId(existing: string | null | undefined): string {
@@ -256,26 +319,22 @@ function sandboxDeepLink(opts: {
   return `/integrations/accountflow/sandbox?${q.toString()}`;
 }
 
-function apiKey(): string | null {
-  return process.env.ACCOUNTFLOW_API_KEY?.trim() || null;
-}
-
 /** Whether Capstone Tandem HTTP (AF /api/v1/external/tandem) should be used. */
-function shouldUseHttp(status: MeshStatus): boolean {
+function shouldUseHttp(status: MeshStatus, apiKey?: string | null): boolean {
   if (status.mode === 'off' || status.mode === 'mock') return false;
   if (!status.accountFlowBaseUrl) return false;
-  if (!apiKey()) return false;
-  if (status.mode === 'live' && !allowLive()) return false;
+  if (!(apiKey || apiKeyFromEnv())) return false;
   if (status.mode === 'local' && !isPrivateBase(status.accountFlowBaseUrl)) return false;
   return true;
 }
 
 async function tandemFetch<T>(
   path: string,
-  init: RequestInit & { method?: string } = {}
+  init: RequestInit & { method?: string } = {},
+  rt?: MeshRuntime | null
 ): Promise<T> {
-  const base = baseUrl();
-  const key = apiKey();
+  const base = rt?.baseUrl || baseUrl();
+  const key = rt?.apiKey || apiKeyFromEnv();
   if (!base || !key) throw new Error('ACCOUNTFLOW_BASE_URL and ACCOUNTFLOW_API_KEY required');
 
   const url = `${base.replace(/\/$/, '')}/api/v1/external/tandem${path.startsWith('/') ? path : `/${path}`}`;
@@ -302,10 +361,10 @@ async function tandemFetch<T>(
   return (body?.data ?? body) as T;
 }
 
-async function linkClientHttp(params: {
-  tenantId: string;
-  clientId: string;
-}): Promise<{
+async function linkClientHttp(
+  params: { tenantId: string; clientId: string },
+  rt?: MeshRuntime | null
+): Promise<{
   capstoneClientId: string;
   accountFlowClientId: string;
   deepLink: string | null;
@@ -324,7 +383,9 @@ async function linkClientHttp(params: {
     accountFlowClientId: string;
     capstoneClientId: string;
     deepLink?: string;
-  }>('/clients/upsert', {
+  }>(
+    '/clients/upsert',
+    {
     method: 'POST',
     body: JSON.stringify({
       capstoneClientId: client.capstoneClientId || undefined,
@@ -335,9 +396,13 @@ async function linkClientHttp(params: {
       contactName: client.contactName || undefined,
       contactPhone: client.contactPhone || undefined,
       clientType: client.companyType || undefined,
-      engageDeepLink: engagePublic ? `${engagePublic}/clients/${client.id}?from=accountflow` : undefined,
+      engageDeepLink: engagePublic
+        ? `${engagePublic}/clients/${client.id}?from=accountflow`
+        : undefined,
     }),
-  });
+    },
+    rt
+  );
 
   await prisma.client.update({
     where: { id: client.id },
@@ -355,12 +420,15 @@ async function linkClientHttp(params: {
   };
 }
 
-async function ensureWorkHttp(params: {
-  tenantId: string;
-  jobId: string;
-  proposalId?: string | null;
-  accountFlowClientId: string;
-}): Promise<{ accountFlowWorkId: string; deepLink: string | null }> {
+async function ensureWorkHttp(
+  params: {
+    tenantId: string;
+    jobId: string;
+    proposalId?: string | null;
+    accountFlowClientId: string;
+  },
+  rt?: MeshRuntime | null
+): Promise<{ accountFlowWorkId: string; deepLink: string | null }> {
   const job = await prisma.job.findFirst({
     where: { id: params.jobId, tenantId: params.tenantId },
   });
@@ -376,18 +444,22 @@ async function ensureWorkHttp(params: {
   const data = await tandemFetch<{
     accountFlowWorkId: string;
     deepLink?: string;
-  }>('/work/upsert', {
-    method: 'POST',
-    body: JSON.stringify({
-      accountFlowClientId: params.accountFlowClientId,
-      engageJobId: job.id,
-      engageProposalId: params.proposalId || job.proposalId || undefined,
-      title: job.title || job.reference || `Job ${job.id}`,
-      status: job.boardColumn || 'OPEN',
-      dueDate: due,
-      metadata: { source: 'engage', boardColumn: job.boardColumn },
-    }),
-  });
+  }>(
+    '/work/upsert',
+    {
+      method: 'POST',
+      body: JSON.stringify({
+        accountFlowClientId: params.accountFlowClientId,
+        engageJobId: job.id,
+        engageProposalId: params.proposalId || job.proposalId || undefined,
+        title: job.title || job.reference || `Job ${job.id}`,
+        status: job.boardColumn || 'OPEN',
+        dueDate: due,
+        metadata: { source: 'engage', boardColumn: job.boardColumn },
+      }),
+    },
+    rt
+  );
 
   await prisma.job.update({
     where: { id: job.id },
@@ -417,6 +489,41 @@ async function ensureWorkHttp(params: {
   };
 }
 
+/** Exchange an AF deep link for an SSO handoff URL (skip re-login). */
+async function wrapDeepLinkWithSso(
+  rt: MeshRuntime,
+  afDeepLink: string | null,
+  ssoUser: { email?: string | null; fullName?: string | null; role?: string | null }
+): Promise<string | null> {
+  if (!afDeepLink || !ssoUser.email) return afDeepLink;
+  try {
+    let redirectPath = afDeepLink;
+    try {
+      const u = new URL(afDeepLink);
+      redirectPath = u.pathname + u.search;
+    } catch {
+      if (!redirectPath.startsWith('/')) redirectPath = `/${redirectPath}`;
+    }
+    const sso = await tandemFetch<{ deepLink: string }>(
+      '/session/handoff',
+      {
+        method: 'POST',
+        body: JSON.stringify({
+          email: ssoUser.email,
+          fullName: ssoUser.fullName || undefined,
+          role: ssoUser.role || undefined,
+          redirectPath,
+        }),
+      },
+      rt
+    );
+    return sso.deepLink || afDeepLink;
+  } catch (e: any) {
+    logger.warn('accountFlowMesh SSO handoff skipped', { err: e?.message });
+    return afDeepLink;
+  }
+}
+
 /**
  * Primary handoff: ensure AF client (+ optional work) exist in mesh and return deep link.
  * - mock: in-process sandbox (default, prod AF never contacted)
@@ -428,8 +535,11 @@ export async function handoffToAccountFlow(params: {
   jobId?: string | null;
   clientId?: string | null;
   mode?: 'open' | 'create_and_open';
+  /** For SSO handoff into AF without re-login */
+  ssoUser?: { email?: string | null; fullName?: string | null; role?: string | null } | null;
 }): Promise<HandoffResult> {
-  const status = getMeshStatus();
+  const rt = await loadRuntime(params.tenantId);
+  const status = statusFromRuntime(rt);
   if (status.mode === 'off' || !status.available) {
     return {
       available: false,
@@ -508,29 +618,36 @@ export async function handoffToAccountFlow(params: {
     };
   }
 
-  const useHttp = shouldUseHttp(status);
+  const useHttp = shouldUseHttp(status, rt.apiKey);
 
   try {
     if (useHttp) {
-      const linked = await linkClientHttp({ tenantId: params.tenantId, clientId });
+      const linked = await linkClientHttp({ tenantId: params.tenantId, clientId }, rt);
       let workId: string | null = null;
       let workDeep: string | null = null;
       if (jobId) {
-        const work = await ensureWorkHttp({
-          tenantId: params.tenantId,
-          jobId,
-          proposalId,
-          accountFlowClientId: linked.accountFlowClientId,
-        });
+        const work = await ensureWorkHttp(
+          {
+            tenantId: params.tenantId,
+            jobId,
+            proposalId,
+            accountFlowClientId: linked.accountFlowClientId,
+          },
+          rt
+        );
         workId = work.accountFlowWorkId;
         workDeep = work.deepLink;
+      }
+      let deepLink = workDeep || linked.deepLink;
+      if (rt.ssoEnabled && params.ssoUser?.email) {
+        deepLink = await wrapDeepLinkWithSso(rt, deepLink, params.ssoUser);
       }
       return {
         available: true,
         mode: status.mode,
         status: 'linked',
         message: `Linked via Capstone Tandem (${status.mode}) → AccountFlow.`,
-        deepLink: workDeep || linked.deepLink,
+        deepLink,
         accountFlowClientId: linked.accountFlowClientId,
         accountFlowWorkId: workId,
         capstoneClientId: linked.capstoneClientId,
@@ -590,13 +707,16 @@ export async function handoffToAccountFlow(params: {
  * Link all open jobs for a tenant into the mock AF mesh (practice sandbox).
  * Production AccountFlow is never contacted in mock mode.
  */
-export async function handoffAllOpenJobs(tenantId: string): Promise<{
+export async function handoffAllOpenJobs(
+  tenantId: string,
+  ssoUser?: { email?: string | null; fullName?: string | null; role?: string | null } | null
+): Promise<{
   mode: MeshMode;
   linked: number;
   skipped: number;
   results: HandoffResult[];
 }> {
-  const status = getMeshStatus();
+  const status = await getMeshStatusForTenant(tenantId);
   if (status.mode === 'off' || !status.available) {
     return { mode: status.mode, linked: 0, skipped: 0, results: [] };
   }
@@ -615,6 +735,7 @@ export async function handoffAllOpenJobs(tenantId: string): Promise<{
       tenantId,
       jobId: j.id,
       mode: 'create_and_open',
+      ssoUser,
     });
     results.push(r);
     if (r.available && r.accountFlowWorkId) linked += 1;
@@ -632,8 +753,13 @@ export async function onJobSpawnedMesh(params: {
   proposalId?: string | null;
 }): Promise<void> {
   try {
-    const status = getMeshStatus();
+    const rt = await loadRuntime(params.tenantId);
+    const status = statusFromRuntime(rt);
     if (status.mode === 'off') return;
+    if (!rt.autoHandoff) {
+      logger.info('accountFlowMesh autoHandoff disabled for tenant — skip spawn link');
+      return;
+    }
     await handoffToAccountFlow({
       tenantId: params.tenantId,
       jobId: params.jobId,
@@ -643,6 +769,57 @@ export async function onJobSpawnedMesh(params: {
     });
   } catch (e) {
     logger.warn('accountFlowMesh onJobSpawnedMesh ignored error', e);
+  }
+}
+
+/** Ping AF tandem + optionally persist lastPing on tenant settings. */
+export async function testMeshConnection(tenantId: string): Promise<{
+  ok: boolean;
+  message: string;
+  status: MeshStatus;
+  ping?: unknown;
+}> {
+  const rt = await loadRuntime(tenantId);
+  const status = statusFromRuntime(rt);
+  if (!shouldUseHttp(status, rt.apiKey)) {
+    return {
+      ok: status.mode === 'mock',
+      message: status.message,
+      status,
+    };
+  }
+  try {
+    const ping = await tandemFetch('/ping', { method: 'GET' }, rt);
+    // persist last ping
+    const tenant = await prisma.tenant.findUnique({
+      where: { id: tenantId },
+      select: { settings: true },
+    });
+    const { mergeAccountFlowMeshSettings } = await import('../utils/tenantAccountFlowMesh.js');
+    const next = mergeAccountFlowMeshSettings(tenant?.settings, {
+      lastPingAt: new Date().toISOString(),
+      lastPingOk: true,
+      lastPingMessage: 'Ping OK',
+    });
+    await prisma.tenant.update({ where: { id: tenantId }, data: { settings: next } });
+    return { ok: true, message: 'Connected to AccountFlow Tandem.', status, ping };
+  } catch (e: any) {
+    const tenant = await prisma.tenant.findUnique({
+      where: { id: tenantId },
+      select: { settings: true },
+    });
+    const { mergeAccountFlowMeshSettings } = await import('../utils/tenantAccountFlowMesh.js');
+    const next = mergeAccountFlowMeshSettings(tenant?.settings, {
+      lastPingAt: new Date().toISOString(),
+      lastPingOk: false,
+      lastPingMessage: e?.message || 'Ping failed',
+    });
+    await prisma.tenant.update({ where: { id: tenantId }, data: { settings: next } });
+    return {
+      ok: false,
+      message: e?.message || 'Ping failed',
+      status,
+    };
   }
 }
 
