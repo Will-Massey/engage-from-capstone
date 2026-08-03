@@ -15,6 +15,8 @@ import {
   listMockAccountFlowState,
   getMockClient,
   getMockWork,
+  applyInboundFromAccountFlow,
+  pingAccountFlowTandem,
   testMeshConnection,
 } from '../services/accountFlowMeshService.js';
 import {
@@ -36,25 +38,71 @@ import {
 
 const router = Router();
 
+/**
+ * POST /accountflow/inbound — AccountFlow → Engage status mirror (no JWT).
+ * Auth: X-API-Key or X-Mesh-Secret matching ACCOUNTFLOW_API_KEY or ACCOUNTFLOW_MESH_INBOUND_SECRET.
+ * Body: { type, engageJobId, boardColumn|status, message? }
+ */
+router.post(
+  '/accountflow/inbound',
+  asyncHandler(async (req, res) => {
+    const secret =
+      (req.headers['x-mesh-secret'] as string) || (req.headers['x-api-key'] as string) || '';
+    const expected =
+      process.env.ACCOUNTFLOW_MESH_INBOUND_SECRET?.trim() ||
+      process.env.ACCOUNTFLOW_API_KEY?.trim() ||
+      '';
+    if (!expected || secret !== expected) {
+      throw new ApiError('UNAUTHORIZED', 'Invalid mesh inbound secret', 401);
+    }
+
+    const body = z
+      .object({
+        type: z.string().min(1),
+        engageJobId: z.string().optional().nullable(),
+        jobId: z.string().optional().nullable(),
+        boardColumn: z.string().optional().nullable(),
+        status: z.string().optional().nullable(),
+        message: z.string().max(500).optional().nullable(),
+      })
+      .parse(req.body || {});
+
+    const result = await applyInboundFromAccountFlow({
+      type: body.type,
+      engageJobId: body.engageJobId || body.jobId,
+      boardColumn: body.boardColumn,
+      status: body.status,
+      message: body.message,
+    });
+
+    res.json({ success: true, data: result });
+  })
+);
+
 router.use(authenticate);
 
-/** Mesh status — safe for UI banners (tenant-aware) */
+/** Mesh status — safe for UI banners (+ optional Tandem ping when HTTP configured) */
 router.get(
   '/accountflow/status',
-  asyncHandler(async (req, res) => {
-    const status = await getMeshStatusForTenant(req.tenantId!);
-    const tenant = await prisma.tenant.findUnique({
-      where: { id: req.tenantId! },
-      select: { settings: true },
-    });
-    const settings = publicMeshSettings(getAccountFlowMeshSettings(tenant?.settings));
+  asyncHandler(async (_req, res) => {
+    const status = getMeshStatus();
+    const ping = await pingAccountFlowTandem();
     res.json({
       success: true,
       data: {
         ...status,
-        settings,
+        tandemPing: ping,
         isolation:
-          'Production AccountFlow is not modified unless this practice enables live mesh and stores an API key.',
+          status.mode === 'mock'
+            ? 'Mesh mock sandbox — production AccountFlow not contacted.'
+            : 'Capstone Tandem HTTP enabled — calls AccountFlow /api/v1/external/tandem/* only.',
+        accountflowClone: 'C:\\Users\\willi\\accountflow-practice (feat/mesh-sandbox)',
+        contract: {
+          clientsUpsert: 'POST /api/v1/external/tandem/clients/upsert',
+          workUpsert: 'POST /api/v1/external/tandem/work/upsert',
+          events: 'POST /api/v1/external/tandem/events',
+          inbound: 'POST /api/integrations/accountflow/inbound (Engage reverse)',
+        },
       },
     });
   })

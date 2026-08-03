@@ -517,6 +517,20 @@ router.patch(
       },
     });
 
+    // Capstone Tandem: mirror board move / complete to AccountFlow mesh_work
+    void import('../services/accountFlowMeshService.js')
+      .then(({ publishTandemEvent }) =>
+        publishTandemEvent({
+          type: boardColumn === 'COMPLETE' ? 'job.completed' : 'job.column_changed',
+          tenantId: req.tenantId!,
+          jobId: job.id,
+          clientId: job.clientId,
+          proposalId: job.proposalId,
+          boardColumn,
+        })
+      )
+      .catch(() => undefined);
+
     // W3.3 — job complete → renewal window nudge
     let renewalNudge: {
       proposalId: string;

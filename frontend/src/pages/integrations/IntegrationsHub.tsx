@@ -155,8 +155,7 @@ export default function IntegrationsHub() {
   }
 
   const settings = hub?.accountFlow?.settings;
-  const httpReady =
-    hub?.accountFlow?.mode === 'local' || hub?.accountFlow?.mode === 'live';
+  const httpReady = hub?.accountFlow?.mode === 'local' || hub?.accountFlow?.mode === 'live';
 
   return (
     <div className="mx-auto max-w-4xl space-y-6 pb-10">
@@ -297,9 +296,7 @@ export default function IntegrationsHub() {
             </Link>
           </div>
 
-          {saveMsg && (
-            <p className="text-sm text-slate-700 dark:text-slate-200">{saveMsg}</p>
-          )}
+          {saveMsg && <p className="text-sm text-slate-700 dark:text-slate-200">{saveMsg}</p>}
           {batchMsg && <p className="text-sm text-emerald-800">{batchMsg}</p>}
           {settings?.lastPingAt && (
             <p className="text-xs text-slate-500">
