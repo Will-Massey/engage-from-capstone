@@ -298,13 +298,9 @@ const Proposals = () => {
   });
 
   const pipelineStats = (() => {
-    const open = proposals.filter((p) =>
-      ['DRAFT', 'SENT', 'VIEWED'].includes(p.status)
-    );
+    const open = proposals.filter((p) => ['DRAFT', 'SENT', 'VIEWED'].includes(p.status));
     const won = proposals.filter((p) => p.status === 'ACCEPTED');
-    const lost = proposals.filter((p) =>
-      ['DECLINED', 'EXPIRED', 'LOST'].includes(p.status)
-    );
+    const lost = proposals.filter((p) => ['DECLINED', 'EXPIRED', 'LOST'].includes(p.status));
     return {
       openCount: open.length,
       openValue: open.reduce((s, p) => s + (Number(p.total) || 0), 0),
@@ -334,9 +330,7 @@ const Proposals = () => {
         list.map((p) => (p.id === proposalId ? { ...p, status: prev.status } : p))
       );
       toast.error(
-        error?.response?.data?.error?.message ||
-          error?.message ||
-          'Could not move proposal'
+        error?.response?.data?.error?.message || error?.message || 'Could not move proposal'
       );
     } finally {
       setMovingId(null);
