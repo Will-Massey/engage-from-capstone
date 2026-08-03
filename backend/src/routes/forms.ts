@@ -111,6 +111,7 @@ router.post(
     const schema = z.object({
       templateId: z.string().min(1),
       limit: z.number().int().min(1).max(200).optional(),
+      dueInDays: z.number().int().min(1).max(90).optional().nullable(),
     });
     const body = schema.parse(req.body);
     const clients = await prisma.client.findMany({
@@ -124,6 +125,7 @@ router.post(
       templateId: body.templateId,
       clientIds: clients.map((c) => c.id),
       userId: req.user?.id,
+      dueInDays: body.dueInDays,
     });
     res.json({
       success: true,

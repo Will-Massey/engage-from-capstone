@@ -38,6 +38,7 @@ type FormAssignment = {
   assignedAt: string;
   submittedAt?: string | null;
   dueAt?: string | null;
+  answers?: Record<string, unknown>;
 };
 
 type ClientRow = { id: string; name: string; contactEmail?: string };
@@ -53,8 +54,11 @@ export default function PracticeForms() {
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [statusFilter, setStatusFilter] = useState<'all' | 'pending' | 'submitted'>('all');
+  const [statusFilter, setStatusFilter] = useState<'all' | 'pending' | 'submitted' | 'overdue'>(
+    'all'
+  );
   const [dueInDays, setDueInDays] = useState(7);
+  const [viewAssignment, setViewAssignment] = useState<FormAssignment | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -92,9 +96,44 @@ export default function PracticeForms() {
   }, [clients, clientSearch]);
 
   const filteredAssignments = useMemo(() => {
+    const now = Date.now();
     if (statusFilter === 'all') return assignments;
+    if (statusFilter === 'overdue') {
+      return assignments.filter(
+        (a) =>
+          a.status === 'pending' && a.dueAt && new Date(a.dueAt).getTime() < now
+      );
+    }
     return assignments.filter((a) => a.status === statusFilter);
   }, [assignments, statusFilter]);
+
+  function exportAssignmentsCsv() {
+    const rows = [
+      ['Template', 'Client', 'Status', 'Assigned', 'Due', 'Submitted', 'Answers JSON'],
+      ...filteredAssignments.map((a) => [
+        a.templateName,
+        a.clientName || a.clientId,
+        a.status,
+        a.assignedAt,
+        a.dueAt || '',
+        a.submittedAt || '',
+        a.answers ? JSON.stringify(a.answers) : '',
+      ]),
+    ];
+    const csv = rows
+      .map((r) =>
+        r.map((c) => `"${String(c).replace(/"/g, '""')}"`).join(',')
+      )
+      .join('\n');
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `form-assignments-${new Date().toISOString().slice(0, 10)}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+    setMsg('CSV exported');
+  }
 
   const selectedTemplate = templates.find((t) => t.id === selectedTemplateId);
 
@@ -142,6 +181,7 @@ export default function PracticeForms() {
     try {
       const res = (await apiClient.post('/forms/assign-all-active', {
         templateId: selectedTemplateId,
+        dueInDays,
       })) as any;
       setMsg(res?.message || 'Bulk assign complete');
       await load();
@@ -416,8 +456,8 @@ export default function PracticeForms() {
               <h2 className="text-base font-semibold text-slate-900 dark:text-white">
                 Assignment tracker
               </h2>
-              <div className="flex gap-1">
-                {(['all', 'pending', 'submitted'] as const).map((s) => (
+              <div className="flex flex-wrap items-center gap-1">
+                {(['all', 'pending', 'overdue', 'submitted'] as const).map((s) => (
                   <button
                     key={s}
                     type="button"
@@ -431,6 +471,13 @@ export default function PracticeForms() {
                     {s}
                   </button>
                 ))}
+                <button
+                  type="button"
+                  className="btn-ghost btn-sm !min-h-8 !py-1 text-2xs"
+                  onClick={() => exportAssignmentsCsv()}
+                >
+                  Export CSV
+                </button>
               </div>
             </div>
             <ul className="mt-3 max-h-80 space-y-2 overflow-y-auto">
@@ -468,6 +515,15 @@ export default function PracticeForms() {
                         <ClockIcon className="h-3 w-3" /> Pending
                       </StatusChip>
                     )}
+                    {(a.status === 'submitted' || a.answers) && (
+                      <button
+                        type="button"
+                        className="btn-ghost btn-sm !min-h-8 !py-1 text-2xs"
+                        onClick={() => setViewAssignment(a)}
+                      >
+                        View
+                      </button>
+                    )}
                   </div>
                 </li>
               ))}
@@ -475,6 +531,53 @@ export default function PracticeForms() {
           </div>
         </div>
       </section>
+
+      {viewAssignment && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
+          role="dialog"
+          aria-modal="true"
+          onClick={() => setViewAssignment(null)}
+        >
+          <div
+            className="max-h-[80vh] w-full max-w-lg overflow-y-auto rounded-xl bg-white p-5 shadow-xl dark:bg-slate-900"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h3 className="text-lg font-semibold text-slate-900 dark:text-white">
+              {viewAssignment.templateName}
+            </h3>
+            <p className="text-sm text-slate-500">
+              {viewAssignment.clientName || viewAssignment.clientId}
+              {viewAssignment.submittedAt
+                ? ` · submitted ${new Date(viewAssignment.submittedAt).toLocaleString('en-GB')}`
+                : ''}
+            </p>
+            <dl className="mt-4 space-y-2">
+              {viewAssignment.answers && Object.keys(viewAssignment.answers).length > 0 ? (
+                Object.entries(viewAssignment.answers).map(([k, v]) => (
+                  <div key={k} className="rounded-lg border border-slate-200 px-3 py-2 dark:border-slate-700">
+                    <dt className="text-xs font-semibold uppercase tracking-wide text-slate-400">
+                      {k}
+                    </dt>
+                    <dd className="mt-0.5 text-sm text-slate-800 dark:text-slate-100">
+                      {typeof v === 'boolean' ? (v ? 'Yes' : 'No') : String(v ?? '—')}
+                    </dd>
+                  </div>
+                ))
+              ) : (
+                <p className="text-sm text-slate-500">No answers stored for this assignment.</p>
+              )}
+            </dl>
+            <button
+              type="button"
+              className="btn-primary mt-4 text-sm"
+              onClick={() => setViewAssignment(null)}
+            >
+              Close
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -110,6 +110,9 @@ export default function FirmInbox() {
   } | null>(null);
   const [triageBusy, setTriageBusy] = useState(false);
   const [formTemplates, setFormTemplates] = useState<Array<{ id: string; name: string }>>([]);
+  const [clientsForLink, setClientsForLink] = useState<Array<{ id: string; name: string }>>([]);
+  const [linkClientId, setLinkClientId] = useState('');
+  const [unreadOnly, setUnreadOnly] = useState(false);
 
   const loadMailbox = useCallback(async () => {
     setLoading(true);
@@ -118,6 +121,7 @@ export default function FirmInbox() {
       const params = new URLSearchParams();
       params.set('limit', '100');
       if (q.trim()) params.set('q', q.trim());
+      if (unreadOnly) params.set('unread', '1');
       const res = (await apiClient.get(`/comms/mailbox/messages?${params}`)) as any;
       const data = res?.data ?? res;
       setMessages(data?.messages || []);
@@ -132,7 +136,7 @@ export default function FirmInbox() {
     } finally {
       setLoading(false);
     }
-  }, [q]);
+  }, [q, unreadOnly]);
 
   const loadActivity = useCallback(async () => {
     setLoading(true);
@@ -324,6 +328,14 @@ export default function FirmInbox() {
         <div className="flex flex-wrap gap-2">
           {channel === 'mailbox' && (
             <>
+              <button
+                type="button"
+                className={`btn-secondary text-sm ${unreadOnly ? 'ring-2 ring-emerald-500' : ''}`}
+                onClick={() => setUnreadOnly((v) => !v)}
+                title="Show unread inbound only"
+              >
+                Unread only
+              </button>
               <button
                 type="button"
                 className="btn-secondary text-sm"
@@ -554,6 +566,73 @@ export default function FirmInbox() {
                   <h2 className="text-base font-semibold text-slate-900 dark:text-white">
                     {selectedMail.subject}
                   </h2>
+
+                  {/* Manual client link when auto-match missed */}
+                  {!mailContext?.client && selectedMail && (
+                    <div className="rounded-lg border border-amber-200 bg-amber-50/60 p-3 text-xs dark:border-amber-900 dark:bg-amber-950/20">
+                      <p className="font-semibold text-amber-900 dark:text-amber-200">
+                        No client matched
+                      </p>
+                      <p className="mt-0.5 text-slate-500">
+                        Link this thread to a client for jobs, forms, and timeline.
+                      </p>
+                      <div className="mt-2 flex flex-wrap gap-2">
+                        <select
+                          className="input-field max-w-xs flex-1 py-1 text-xs"
+                          value={linkClientId}
+                          onChange={(e) => setLinkClientId(e.target.value)}
+                          onFocus={() => {
+                            if (clientsForLink.length) return;
+                            void (async () => {
+                              try {
+                                const res = (await apiClient.get('/clients?limit=100')) as any;
+                                const list = res?.data || res || [];
+                                setClientsForLink(
+                                  (Array.isArray(list) ? list : list.data || []).map(
+                                    (c: any) => ({
+                                      id: c.id,
+                                      name: c.name || c.company_name || 'Client',
+                                    })
+                                  )
+                                );
+                              } catch {
+                                /* ignore */
+                              }
+                            })();
+                          }}
+                        >
+                          <option value="">Select client…</option>
+                          {clientsForLink.map((c) => (
+                            <option key={c.id} value={c.id}>
+                              {c.name}
+                            </option>
+                          ))}
+                        </select>
+                        <button
+                          type="button"
+                          className="btn-secondary btn-sm !min-h-8 !py-1 text-2xs"
+                          disabled={!linkClientId}
+                          onClick={async () => {
+                            if (!selectedMail || !linkClientId) return;
+                            try {
+                              const res = (await apiClient.post(
+                                `/comms/mailbox/messages/${selectedMail.id}/link-client`,
+                                { clientId: linkClientId }
+                              )) as any;
+                              setSyncMsg(res?.message || 'Linked to client');
+                              setLinkClientId('');
+                              await loadMailbox();
+                              await openMail({ ...selectedMail, clientId: linkClientId });
+                            } catch (e: any) {
+                              setError(e?.message || 'Link failed');
+                            }
+                          }}
+                        >
+                          Link client
+                        </button>
+                      </div>
+                    </div>
+                  )}
 
                   {/* Graph context */}
                   {mailContext?.client && (

@@ -14,6 +14,8 @@ import {
   syncMailbox,
   sendMailboxMessage,
   markMailboxRead,
+  linkMailboxMessageToClient,
+  countUnreadMailbox,
 } from '../services/mailboxService.js';
 
 const router = Router();
@@ -250,7 +252,7 @@ router.get(
   asyncHandler(async (req, res) => {
     const tenantId = req.tenantId!;
     const dayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
-    const [emails, portal] = await Promise.all([
+    const [emails, portal, mailboxUnread] = await Promise.all([
       prisma.emailLog.count({ where: { tenantId, createdAt: { gte: dayAgo } } }),
       prisma.activityLog.count({
         where: {
@@ -259,10 +261,11 @@ router.get(
           createdAt: { gte: dayAgo },
         },
       }),
+      countUnreadMailbox(tenantId),
     ]);
     res.json({
       success: true,
-      data: { last24h: emails + portal, emails, portal },
+      data: { last24h: emails + portal + mailboxUnread, emails, portal, mailboxUnread },
     });
   })
 );
@@ -352,6 +355,49 @@ router.post(
     const ok = await markMailboxRead(req.tenantId!, req.params.id);
     if (!ok) throw new ApiError('NOT_FOUND', 'Message not found', 404);
     res.json({ success: true });
+  })
+);
+
+/**
+ * POST /api/comms/mailbox/messages/:id/link-client
+ * Manually attach a message (+ same thread) to a client when auto-match missed.
+ */
+router.post(
+  '/mailbox/messages/:id/link-client',
+  authenticate,
+  asyncHandler(async (req, res) => {
+    const schema = z.object({ clientId: z.string().uuid() });
+    const body = schema.parse(req.body);
+    try {
+      const result = await linkMailboxMessageToClient({
+        tenantId: req.tenantId!,
+        messageId: req.params.id,
+        clientId: body.clientId,
+      });
+      res.json({
+        success: true,
+        data: result,
+        message: `Linked ${result.updated} message(s) to ${result.clientName}`,
+      });
+    } catch (e: any) {
+      if (e?.message === 'CLIENT_NOT_FOUND') {
+        throw new ApiError('NOT_FOUND', 'Client not found', 404);
+      }
+      if (e?.message === 'MESSAGE_NOT_FOUND') {
+        throw new ApiError('NOT_FOUND', 'Message not found', 404);
+      }
+      throw e;
+    }
+  })
+);
+
+/** GET /api/comms/mailbox/unread-count — nav badge */
+router.get(
+  '/mailbox/unread-count',
+  authenticate,
+  asyncHandler(async (req, res) => {
+    const unread = await countUnreadMailbox(req.tenantId!);
+    res.json({ success: true, data: { unread } });
   })
 );
 
