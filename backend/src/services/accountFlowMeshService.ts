@@ -383,20 +383,20 @@ async function linkClientHttp(params: { tenantId: string; clientId: string }): P
   }>(
     '/clients/upsert',
     {
-    method: 'POST',
-    body: JSON.stringify({
-      capstoneClientId: client.capstoneClientId || undefined,
-      engageClientId: client.id,
-      companyName: client.name,
-      companyNumber: client.companyNumber || undefined,
-      contactEmail: client.contactEmail || undefined,
-      contactName: client.contactName || undefined,
-      contactPhone: client.contactPhone || undefined,
-      clientType: client.companyType || undefined,
-      engageDeepLink: engagePublic
-        ? `${engagePublic}/clients/${client.id}?from=accountflow`
-        : undefined,
-    }),
+      method: 'POST',
+      body: JSON.stringify({
+        capstoneClientId: client.capstoneClientId || undefined,
+        engageClientId: client.id,
+        companyName: client.name,
+        companyNumber: client.companyNumber || undefined,
+        contactEmail: client.contactEmail || undefined,
+        contactName: client.contactName || undefined,
+        contactPhone: client.contactPhone || undefined,
+        clientType: client.companyType || undefined,
+        engageDeepLink: engagePublic
+          ? `${engagePublic}/clients/${client.id}?from=accountflow`
+          : undefined,
+      }),
     },
     rt
   );
