@@ -1,43 +1,28 @@
-# Engage Build Plan (post-cutover + Capstone Tandem)
+# Engage Build Plan (post-cutover)
 
 ## Goal
+Exceed Engager on practice ops **while** defending proposal-cash + Clara. Production is live Practice OS on Neon + Render.
 
-Exceed Engager on practice ops while defending proposal→cash + Clara.  
-**Production live** on Neon + Render: https://capstonesoftware.co.uk/engage
+## Production
+| Item | Value |
+|------|-------|
+| App | https://capstonesoftware.co.uk/engage |
+| Cutover | Done 2026-08-02 |
 
-## Capstone Tandem (Engage ↔ AccountFlow)
+## Current phase
+**Post-cutover polish** — shipping sales board + mailbox/forms depth + Capstone Tandem.
 
-| Direction   | Mechanism                                                               |
-| ----------- | ----------------------------------------------------------------------- |
-| Engage → AF | Handoff HTTP + `publishTandemEvent` on job spawn / column / complete    |
-| AF → Engage | `POST /api/integrations/accountflow/inbound` + AF `notifyEngageInbound` |
-| Default     | `ACCOUNTFLOW_MESH_MODE=mock` (prod AF never contacted)                  |
-
-### Local symbiotic loop
-
-```
-# AccountFlow (accountflow-practice feat/mesh-sandbox)
-ENGAGE_BASE_URL=http://localhost:3101
-ENGAGE_MESH_SECRET=<shared>
-
-# Engage
-ACCOUNTFLOW_MESH_MODE=local
-ACCOUNTFLOW_BASE_URL=http://localhost:3000
-ACCOUNTFLOW_API_KEY=af_live_…
-ACCOUNTFLOW_MESH_INBOUND_SECRET=<shared>
-ENGAGE_PUBLIC_URL=http://localhost:5273
-```
+## Shipped this session
+1. **Sales board** PR #94 **MERGED** (list/board, DnD, column totals, pipeline strip)
+2. **Capstone Tandem bi-di** PR #95 **MERGED** (+ Connect UI / SSO earlier on master)
+3. **Mailbox depth** PR #96 — link client, unread filter, unread in stats
+4. **Bulk forms depth** PR #96 — overdue filter, CSV export, view answers, dueInDays on assign-all
 
 ## Next up
+1. Merge PR #96 when CI green
+2. Capacitor iOS after desktop solid
+3. Optional: status mirror polish AF blocked → Engage HELP_NEEDED
 
-1. Merge tandem bi-di mesh PR
-2. Sales board PR #94
-3. Mailbox OAuth depth
-4. Portal / bulk forms polish
-5. iOS after desktop solid
-
-## Done
-
-- Practice OS cutover (2026-08-02)
-- Railway refs removed (#93)
-- Tandem HTTP adapter + bi-di events (this branch)
+## Notes
+- Never restore practice seed over Neon prod
+- AccountFlow live mesh: practice Connect UI + ALLOW_LIVE for public URLs
