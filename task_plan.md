@@ -16,14 +16,14 @@ Exceed Engager on practice ops **while** defending proposal→cash + Clara. Prod
 
 ## Current phase
 
-**Post-cutover polish + Engager gap close** on `master`.
+**Post-cutover polish + Engager gap close** — sales board + Capstone Tandem in flight on PRs.
 
 ## Next up (priority)
 
-1. **Sales board** (proposals kanban) — shipping this session
-2. Two-way mailbox depth (OAuth sync polish)
-3. Bulk forms / portal OS depth
-4. AccountFlow mesh stays **mock** until ALLOW_LIVE
+1. **Sales board** — list/board + DnD + column £ totals (PR #94) → merge when CI green
+2. **Capstone Tandem bi-di** — PR #95 + Connect UI on Integrations (landed pieces on master)
+3. Two-way mailbox depth (OAuth sync polish)
+4. Bulk forms / portal OS depth
 5. Capacitor iOS only after desktop solid
 
 ## Done recently
@@ -31,6 +31,8 @@ Exceed Engager on practice ops **while** defending proposal→cash + Clara. Prod
 - Practice OS cutover (jobs, letters, automations, inbox, forms, GTM, metal UI)
 - Caroline backup + data-safe migrations
 - Railway refs purged; deploy path = Render only
+- Capstone Tandem: AF mesh API + SSO handoff + Engage Connect UI
+- Sales board: Draft→Signed columns, pipeline value strip, drag-to-status
 
 ## Notes
 

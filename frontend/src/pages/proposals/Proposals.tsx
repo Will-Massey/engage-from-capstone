@@ -59,6 +59,8 @@ const statusLabels: Record<string, string> = {
 
 /** Sales pipeline columns (Engager-style board) */
 const BOARD_COLUMNS = ['DRAFT', 'SENT', 'VIEWED', 'ACCEPTED', 'DECLINED', 'EXPIRED'] as const;
+type BoardStatus = (typeof BOARD_COLUMNS)[number];
+const DND_MIME = 'application/x-engage-proposal-id';
 
 type ViewMode = 'list' | 'board';
 
@@ -73,6 +75,9 @@ const Proposals = () => {
     searchParams.get('view') === 'board' ? 'board' : 'list'
   );
   const [meta, setMeta] = useState({ page: 1, totalPages: 1, total: 0 });
+  const [movingId, setMovingId] = useState<string | null>(null);
+  const [dragOverCol, setDragOverCol] = useState<BoardStatus | null>(null);
+  const [draggingId, setDraggingId] = useState<string | null>(null);
 
   useEffect(() => {
     loadProposals();
@@ -281,11 +286,88 @@ const Proposals = () => {
     toast.success('Export downloaded');
   };
 
-  const boardGroups = BOARD_COLUMNS.map((col) => ({
-    status: col,
-    label: statusLabels[col] || col,
-    items: proposals.filter((p) => p.status === col),
-  }));
+  const boardGroups = BOARD_COLUMNS.map((col) => {
+    const items = proposals.filter((p) => p.status === col);
+    const total = items.reduce((s, p) => s + (Number(p.total) || 0), 0);
+    return {
+      status: col,
+      label: statusLabels[col] || col,
+      items,
+      total,
+    };
+  });
+
+  const pipelineStats = (() => {
+    const open = proposals.filter((p) =>
+      ['DRAFT', 'SENT', 'VIEWED'].includes(p.status)
+    );
+    const won = proposals.filter((p) => p.status === 'ACCEPTED');
+    const lost = proposals.filter((p) =>
+      ['DECLINED', 'EXPIRED', 'LOST'].includes(p.status)
+    );
+    return {
+      openCount: open.length,
+      openValue: open.reduce((s, p) => s + (Number(p.total) || 0), 0),
+      wonCount: won.length,
+      wonValue: won.reduce((s, p) => s + (Number(p.total) || 0), 0),
+      lostCount: lost.length,
+      lostValue: lost.reduce((s, p) => s + (Number(p.total) || 0), 0),
+    };
+  })();
+
+  const moveProposal = async (proposalId: string, nextStatus: BoardStatus) => {
+    const prev = proposals.find((p) => p.id === proposalId);
+    if (!prev || prev.status === nextStatus) return;
+    if (prev.status === 'ACCEPTED') {
+      toast.error('Signed proposals cannot be moved on the board');
+      return;
+    }
+    setMovingId(proposalId);
+    setProposals((list) =>
+      list.map((p) => (p.id === proposalId ? { ...p, status: nextStatus } : p))
+    );
+    try {
+      await apiClient.updateProposal(proposalId, { status: nextStatus } as any);
+      toast.success(`Moved to ${statusLabels[nextStatus] || nextStatus}`);
+    } catch (error: any) {
+      setProposals((list) =>
+        list.map((p) => (p.id === proposalId ? { ...p, status: prev.status } : p))
+      );
+      toast.error(
+        error?.response?.data?.error?.message ||
+          error?.message ||
+          'Could not move proposal'
+      );
+    } finally {
+      setMovingId(null);
+    }
+  };
+
+  const onCardDragStart = (e: React.DragEvent, proposalId: string) => {
+    e.dataTransfer.setData(DND_MIME, proposalId);
+    e.dataTransfer.setData('text/plain', proposalId);
+    e.dataTransfer.effectAllowed = 'move';
+    setDraggingId(proposalId);
+  };
+
+  const onCardDragEnd = () => {
+    setDraggingId(null);
+    setDragOverCol(null);
+  };
+
+  const onColumnDragOver = (e: React.DragEvent, col: BoardStatus) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+    if (dragOverCol !== col) setDragOverCol(col);
+  };
+
+  const onColumnDrop = (e: React.DragEvent, col: BoardStatus) => {
+    e.preventDefault();
+    const id = e.dataTransfer.getData(DND_MIME) || e.dataTransfer.getData('text/plain');
+    setDragOverCol(null);
+    setDraggingId(null);
+    if (id) void moveProposal(id, col);
+  };
 
   return (
     <div className="space-y-6 animate-fade-in">
@@ -384,6 +466,42 @@ const Proposals = () => {
       {/* Sales board */}
       {viewMode === 'board' && (
         <div className="space-y-3">
+          {!isLoading && proposals.length > 0 && (
+            <div className="grid gap-2 sm:grid-cols-3">
+              <div className="rounded-xl border border-slate-200/80 bg-white px-3 py-2.5 shadow-sm dark:border-slate-700 dark:bg-slate-800">
+                <div className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">
+                  Open pipeline
+                </div>
+                <div className="mt-0.5 text-lg font-bold tabular-nums text-slate-900 dark:text-white">
+                  {formatCurrency(pipelineStats.openValue)}
+                </div>
+                <div className="text-xs text-slate-500">
+                  {pipelineStats.openCount} draft / sent / viewed
+                </div>
+              </div>
+              <div className="rounded-xl border border-emerald-200/80 bg-emerald-50/60 px-3 py-2.5 dark:border-emerald-900/40 dark:bg-emerald-950/30">
+                <div className="text-[11px] font-semibold uppercase tracking-wide text-emerald-700/80 dark:text-emerald-300/80">
+                  Won (board slice)
+                </div>
+                <div className="mt-0.5 text-lg font-bold tabular-nums text-emerald-800 dark:text-emerald-200">
+                  {formatCurrency(pipelineStats.wonValue)}
+                </div>
+                <div className="text-xs text-emerald-700/70 dark:text-emerald-300/70">
+                  {pipelineStats.wonCount} signed
+                </div>
+              </div>
+              <div className="rounded-xl border border-slate-200/80 bg-white px-3 py-2.5 shadow-sm dark:border-slate-700 dark:bg-slate-800">
+                <div className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">
+                  Lost / expired
+                </div>
+                <div className="mt-0.5 text-lg font-bold tabular-nums text-slate-900 dark:text-white">
+                  {formatCurrency(pipelineStats.lostValue)}
+                </div>
+                <div className="text-xs text-slate-500">{pipelineStats.lostCount} closed out</div>
+              </div>
+            </div>
+          )}
+
           {isLoading ? (
             <SkeletonCard count={4} />
           ) : proposals.length === 0 ? (
@@ -393,9 +511,16 @@ const Proposals = () => {
               {boardGroups.map((col) => (
                 <div
                   key={col.status}
-                  className="flex w-72 shrink-0 flex-col rounded-xl border border-slate-200/80 bg-slate-50/80 dark:border-slate-700 dark:bg-slate-900/40"
+                  onDragOver={(e) => onColumnDragOver(e, col.status)}
+                  onDragLeave={() => setDragOverCol((c) => (c === col.status ? null : c))}
+                  onDrop={(e) => onColumnDrop(e, col.status)}
+                  className={`flex w-72 shrink-0 flex-col rounded-xl border bg-slate-50/80 transition dark:bg-slate-900/40 ${
+                    dragOverCol === col.status
+                      ? 'border-emerald-400 ring-2 ring-emerald-400/30 dark:border-emerald-500'
+                      : 'border-slate-200/80 dark:border-slate-700'
+                  }`}
                 >
-                  <div className="flex items-center justify-between border-b border-slate-200/80 px-3 py-2.5 dark:border-slate-700">
+                  <div className="flex items-center justify-between gap-2 border-b border-slate-200/80 px-3 py-2.5 dark:border-slate-700">
                     <span
                       className={`inline-flex rounded-full px-2 py-0.5 text-xs font-semibold ${
                         statusColors[col.status] || statusColors.DRAFT
@@ -403,41 +528,65 @@ const Proposals = () => {
                     >
                       {col.label}
                     </span>
-                    <span className="text-xs font-medium tabular-nums text-slate-500">
-                      {col.items.length}
-                    </span>
+                    <div className="text-right">
+                      <div className="text-xs font-semibold tabular-nums text-slate-700 dark:text-slate-200">
+                        {formatCurrency(col.total)}
+                      </div>
+                      <div className="text-[11px] tabular-nums text-slate-500">
+                        {col.items.length}
+                      </div>
+                    </div>
                   </div>
                   <div className="flex max-h-[min(70vh,720px)] flex-col gap-2 overflow-y-auto p-2">
                     {col.items.length === 0 ? (
-                      <p className="px-1 py-6 text-center text-xs text-slate-400">No proposals</p>
+                      <p className="px-1 py-6 text-center text-xs text-slate-400">
+                        Drop proposals here
+                      </p>
                     ) : (
                       col.items.map((p) => (
-                        <Link
+                        <div
                           key={p.id}
-                          to={`/proposals/${p.id}`}
-                          className="block rounded-lg border border-slate-200/90 bg-white p-3 shadow-sm transition hover:border-emerald-300 hover:shadow-md dark:border-slate-600 dark:bg-slate-800"
+                          draggable={p.status !== 'ACCEPTED' && movingId !== p.id}
+                          onDragStart={(e) => onCardDragStart(e, p.id)}
+                          onDragEnd={onCardDragEnd}
+                          className={`rounded-lg border bg-white shadow-sm transition dark:bg-slate-800 ${
+                            draggingId === p.id
+                              ? 'border-emerald-400 opacity-60'
+                              : 'border-slate-200/90 hover:border-emerald-300 hover:shadow-md dark:border-slate-600'
+                          } ${movingId === p.id ? 'pointer-events-none opacity-50' : ''}`}
                         >
-                          <div className="text-[11px] font-medium uppercase tracking-wide text-slate-400">
-                            {p.reference}
-                          </div>
-                          <div className="mt-0.5 line-clamp-2 text-sm font-semibold text-slate-900 dark:text-slate-50">
-                            {p.title}
-                          </div>
-                          <div className="mt-1 truncate text-xs text-slate-500">
-                            {p.client?.name || '—'}
-                          </div>
-                          <div className="mt-2 flex items-center justify-between gap-2">
-                            <span className="text-sm font-semibold tabular-nums text-slate-800 dark:text-slate-100">
-                              {formatCurrency(p.total ?? 0)}
-                            </span>
-                            {(p._count?.views ?? 0) > 0 && (
-                              <span className="inline-flex items-center gap-0.5 text-[11px] text-slate-500">
-                                <EyeIcon className="h-3.5 w-3.5" />
-                                {p._count.views}
+                          <Link to={`/proposals/${p.id}`} className="block p-3">
+                            <div className="text-[11px] font-medium uppercase tracking-wide text-slate-400">
+                              {p.reference}
+                            </div>
+                            <div className="mt-0.5 line-clamp-2 text-sm font-semibold text-slate-900 dark:text-slate-50">
+                              {p.title}
+                            </div>
+                            <div className="mt-1 truncate text-xs text-slate-500">
+                              {p.client?.name || '—'}
+                            </div>
+                            <div className="mt-2 flex items-center justify-between gap-2">
+                              <span className="text-sm font-semibold tabular-nums text-slate-800 dark:text-slate-100">
+                                {formatCurrency(p.total ?? 0)}
                               </span>
-                            )}
-                          </div>
-                        </Link>
+                              <span className="inline-flex items-center gap-1 text-[11px] text-slate-500">
+                                {(p._count?.views ?? 0) > 0 && (
+                                  <span className="inline-flex items-center gap-0.5">
+                                    <EyeIcon className="h-3.5 w-3.5" />
+                                    {p._count.views}
+                                  </span>
+                                )}
+                                {p.updatedAt && (
+                                  <span title={format(new Date(p.updatedAt), 'dd MMM yyyy')}>
+                                    {formatDistanceToNow(new Date(p.updatedAt), {
+                                      addSuffix: true,
+                                    })}
+                                  </span>
+                                )}
+                              </span>
+                            </div>
+                          </Link>
+                        </div>
                       ))
                     )}
                   </div>
@@ -446,8 +595,8 @@ const Proposals = () => {
             </div>
           )}
           <p className="text-xs text-slate-500">
-            Sales board shows up to 100 open-pipeline proposals. Open a card for send, share, or
-            edit.
+            Drag cards between columns to update status (signed proposals are locked). Shows up to
+            100 proposals in the open pipeline slice.
           </p>
         </div>
       )}
