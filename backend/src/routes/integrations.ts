@@ -17,6 +17,7 @@ import {
   getMockWork,
   applyInboundFromAccountFlow,
   pingAccountFlowTandem,
+  testMeshConnection,
 } from '../services/accountFlowMeshService.js';
 import {
   getAccountFlowMeshSettings,
