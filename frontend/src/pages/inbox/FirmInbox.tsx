@@ -588,12 +588,10 @@ export default function FirmInbox() {
                                 const res = (await apiClient.get('/clients?limit=100')) as any;
                                 const list = res?.data || res || [];
                                 setClientsForLink(
-                                  (Array.isArray(list) ? list : list.data || []).map(
-                                    (c: any) => ({
-                                      id: c.id,
-                                      name: c.name || c.company_name || 'Client',
-                                    })
-                                  )
+                                  (Array.isArray(list) ? list : list.data || []).map((c: any) => ({
+                                    id: c.id,
+                                    name: c.name || c.company_name || 'Client',
+                                  }))
                                 );
                               } catch {
                                 /* ignore */

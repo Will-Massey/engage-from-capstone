@@ -100,8 +100,7 @@ export default function PracticeForms() {
     if (statusFilter === 'all') return assignments;
     if (statusFilter === 'overdue') {
       return assignments.filter(
-        (a) =>
-          a.status === 'pending' && a.dueAt && new Date(a.dueAt).getTime() < now
+        (a) => a.status === 'pending' && a.dueAt && new Date(a.dueAt).getTime() < now
       );
     }
     return assignments.filter((a) => a.status === statusFilter);
@@ -121,9 +120,7 @@ export default function PracticeForms() {
       ]),
     ];
     const csv = rows
-      .map((r) =>
-        r.map((c) => `"${String(c).replace(/"/g, '""')}"`).join(',')
-      )
+      .map((r) => r.map((c) => `"${String(c).replace(/"/g, '""')}"`).join(','))
       .join('\n');
     const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
     const url = URL.createObjectURL(blob);
@@ -555,7 +552,10 @@ export default function PracticeForms() {
             <dl className="mt-4 space-y-2">
               {viewAssignment.answers && Object.keys(viewAssignment.answers).length > 0 ? (
                 Object.entries(viewAssignment.answers).map(([k, v]) => (
-                  <div key={k} className="rounded-lg border border-slate-200 px-3 py-2 dark:border-slate-700">
+                  <div
+                    key={k}
+                    className="rounded-lg border border-slate-200 px-3 py-2 dark:border-slate-700"
+                  >
                     <dt className="text-xs font-semibold uppercase tracking-wide text-slate-400">
                       {k}
                     </dt>

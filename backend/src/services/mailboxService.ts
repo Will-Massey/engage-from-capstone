@@ -680,9 +680,7 @@ export async function linkMailboxMessageToClient(params: {
     where: {
       tenantId: params.tenantId,
       action: { in: ['EMAIL_INBOUND', 'EMAIL_OUTBOUND'] },
-      OR: threadKey
-        ? [{ id: row.id }, { metadata: { contains: threadKey } }]
-        : [{ id: row.id }],
+      OR: threadKey ? [{ id: row.id }, { metadata: { contains: threadKey } }] : [{ id: row.id }],
     },
     take: 80,
   });
