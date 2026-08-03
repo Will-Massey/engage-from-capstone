@@ -818,18 +818,38 @@ export async function createClientPortalLink(
   expiryDays: number = 90,
   frontendOrigin?: string
 ): Promise<{ token: string; portalUrl: string; expiresAt: Date }> {
-  const token = generatePortalToken();
-  const expiresAt = new Date();
-  expiresAt.setDate(expiresAt.getDate() + expiryDays);
-
-  await prisma.client.update({
+  // Reuse a still-valid portal token so Copy/Open from staff UI does not
+  // invalidate a link already sent to the client.
+  const existing = await prisma.client.findUnique({
     where: { id: clientId },
-    data: {
-      portalToken: token,
-      portalTokenExpiry: expiresAt,
-      portalEnabled: true,
-    },
+    select: { portalToken: true, portalTokenExpiry: true, portalEnabled: true },
   });
+
+  let token: string;
+  let expiresAt: Date;
+  const reusable =
+    existing?.portalToken &&
+    existing.portalEnabled &&
+    existing.portalTokenExpiry &&
+    existing.portalTokenExpiry > new Date();
+
+  if (reusable) {
+    token = existing!.portalToken!;
+    expiresAt = existing!.portalTokenExpiry!;
+  } else {
+    token = generatePortalToken();
+    expiresAt = new Date();
+    expiresAt.setDate(expiresAt.getDate() + expiryDays);
+    await prisma.client.update({
+      where: { id: clientId },
+      data: {
+        portalToken: token,
+        portalTokenExpiry: expiresAt,
+        portalEnabled: true,
+      },
+    });
+    logger.info(`Created client portal link for client ${clientId}`);
+  }
 
   // The app is served under a base path (/engage). A bare browser origin
   // (https://capstonesoftware.co.uk) omits it, and the edge worker hard-404s any

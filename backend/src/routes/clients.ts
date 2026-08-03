@@ -1211,15 +1211,41 @@ router.get(
     const clientId = req.params.id;
     const client = await prisma.client.findFirst({
       where: { id: clientId, tenantId },
-      select: { id: true, name: true, portalEnabled: true, portalToken: true },
+      select: {
+        id: true,
+        name: true,
+        portalEnabled: true,
+        portalToken: true,
+        portalTokenExpiry: true,
+      },
     });
     if (!client) throw new ApiError('NOT_FOUND', 'Client not found', 404);
 
     const { listPortalTasks, listPortalMessages } = await import('../services/portalOsService.js');
-    const [tasks, messages] = await Promise.all([
+    const [tasks, messages, files] = await Promise.all([
       listPortalTasks(tenantId, clientId),
       listPortalMessages(tenantId, clientId),
+      prisma.portalFile.findMany({
+        where: { tenantId, clientId },
+        orderBy: { createdAt: 'desc' },
+        take: 50,
+        select: {
+          id: true,
+          name: true,
+          mimeType: true,
+          sizeBytes: true,
+          uploadedBy: true,
+          createdAt: true,
+          jobId: true,
+        },
+      }),
     ]);
+
+    const tokenValid =
+      Boolean(client.portalToken) &&
+      client.portalEnabled &&
+      !!client.portalTokenExpiry &&
+      client.portalTokenExpiry > new Date();
 
     res.json({
       success: true,
@@ -1229,9 +1255,12 @@ router.get(
           name: client.name,
           portalEnabled: client.portalEnabled,
           hasPortalToken: Boolean(client.portalToken),
+          portalTokenExpiry: client.portalTokenExpiry,
+          portalActive: tokenValid,
         },
         tasks,
         messages,
+        files,
       },
     });
   })
