@@ -1,47 +1,38 @@
-# Engage Practice — Build Plan (Capstone Tandem)
-
-<!-- Isolated clone of Engage. Production Engage remains at engage-from-capstone. -->
+# Engage Build Plan (post-cutover)
 
 ## Goal
 
-Ship a full practice product that **exceeds Engager.app** (jobs, portal, automations, time, admin letters) while keeping Engage’s moat (Clara, CH→price→sign→cash). Cut over when happy; until then production Engage is untouched.
+Exceed Engager on practice ops **while** defending proposal→cash + Clara. Production is live Practice OS on Neon + Render.
 
-## Session
+## Production
 
-- Capstone Tandem: `--session engage-practice`
-- Spec: `docs/ENGAGER_COMPETITIVE_ANALYSIS_AND_PLAN.md`
-- Isolation: `ISOLATION.md` (ports 3101/5273, DB `engage_practice_dev`)
-- **Morning resume:** `docs/MORNING_HANDOFF.md`
+| Item | Value |
+|------|--------|
+| App | https://capstonesoftware.co.uk/engage |
+| Login | https://capstonesoftware.co.uk/engage/login |
+| Stack | Neon Postgres + Render + Cloudflare worker |
+| Cutover | **Done** 2026-08-02 (PR #91) + deploy hotfix #92 |
+| Railway | Removed from repo (PR #93); disconnect GitHub app if statuses remain |
 
 ## Current phase
 
-**2026-08-02** — B mobile shells + C integrations hub/mesh batch + D cutover dry-run docs.
+**Post-cutover polish + Engager gap close** on `master`.
 
-## Next up
+## Next up (priority)
 
-1. Explicit “cut over now” only after William UI sign-off
-2. AF mesh live only when ALLOW_LIVE (still mock by default)
-3. `npx cap add android` when Android SDK available
+1. **Sales board** (proposals kanban) — shipping this session  
+2. Two-way mailbox depth (OAuth sync polish)  
+3. Bulk forms / portal OS depth  
+4. AccountFlow mesh stays **mock** until ALLOW_LIVE  
+5. Capacitor iOS only after desktop solid  
 
-## Phases
+## Done recently
 
-| Phase                          | Status                                                                                  |
-| ------------------------------ | --------------------------------------------------------------------------------------- |
-| Isolation & product fork       | **done**                                                                                |
-| V Visual system                | **improved**                                                                            |
-| P0–P5 core practice OS         | **demo-complete** (jobs, letters, workload, portal, automations catalogue, Clara chase) |
-| AFK polish #1–#2 + night close | **done**                                                                                |
-| P6 Trust/mobile/GTM            | pending                                                                                 |
-| Cutover replace Engage         | blocked until happy                                                                     |
-
-## Demo
-
-- URL: http://localhost:5273 · API: http://localhost:3101
-- Login: `admin@demo.practice` / `DemoPass123!`
-- E2E: `e2e-tests/specs/practice-jobs-letters.spec.ts` (8 tests)
+- Practice OS cutover (jobs, letters, automations, inbox, forms, GTM, metal UI)
+- Caroline backup + data-safe migrations
+- Railway refs purged; deploy path = Render only
 
 ## Notes
 
-- Never migrate `engage_dev` from this tree
-- Stripe live webhooks repaired 2026-08-01 (not caused by practice) — see CUTOVER_PREP
-- Do not merge to master without cutover checklist
+- Never restore practice seed over Neon prod  
+- AccountFlow live mesh: explicit env only  

@@ -1,7 +1,7 @@
 # Engage Practice vs Engager.app — Scorecard
 
 **Date:** 2026-08-02  
-**Engage build under review:** `engage-practice` · branch `feat/practice-os` (isolated clone; **not cut over** to production)  
+**Engage build under review:** production `engage-from-capstone` · **Practice OS cut over 2026-08-02** (Neon + Render)  
 **Engager reference:** TaxCalc Engager (engager.app) — product marketing + known PM OS pattern  
 **Baseline plan:** `docs/ENGAGER_COMPETITIVE_ANALYSIS_AND_PLAN.md` (2026-08-01)
 
@@ -14,7 +14,7 @@
 | **Can Engage run day-to-day delivery like Engager?** | **Near-parity on the happy path** in the practice clone: jobs board, phases/checklists, deadlines, workload, time→margin, chase packs, admin letters, colourful ops UI.                                            |
 | **Does Engage still win “win work + cash”?**         | **Yes — still decisive** (Clara, CH→proposal, Stripe Connect collect-at-sign, engagement library versioning). Engager remains partner-heavy on money.                                                              |
 | **Who wins overall product completeness today?**     | **Engager still wins breadth** (TaxCalc mesh, mature automations, inbox, bulk forms, mobile apps, unlimited-user pricing). **Engage Practice closes the #1 “no jobs” gap** that made comparison unfair a week ago. |
-| **Demo readiness**                                   | **High** for a partner walkthrough of proposal→accept→job→chase→letter. **Not** production-cutover ready without sign-off + merge.                                                                                 |
+| **Demo readiness**                                   | **Live on production** (cutover 2026-08-02). Continue closing Engager gaps (sales board, mailbox depth, mobile store).                                                                                              |
 | **Recommended story**                                | _“Engager is a great PM OS. Engage is the only product that **wins the client, collects the fee, and runs the job** with an AI co-pilot.”_                                                                         |
 
 ### Headline scores (0–10, subjective product judgment)
@@ -71,7 +71,7 @@ Legend: **E+** Engage ahead · **≈** parity · **G+** Engager ahead · **Δ** 
 | Letter of engagement      | Strong           | Versioned clause library                                       | **≈ / E+**                | —                       |
 | Value-based pricing UX    | Formula builder  | Rules + calculator + AI advisor path                           | **≈ / E+**                | —                       |
 | Catch-up fees             | First-class      | One-off lines                                                  | **G+**                    | —                       |
-| Sales kanban              | Add-on           | Proposal statuses                                              | **G+**                    | —                       |
+| Sales kanban              | Add-on           | **List + board** (pipeline columns)                            | **≈ / G+**                | **board view 2026-08-03** |
 | Companies House           | Integration      | Native CH → brief                                              | **E+**                    | —                       |
 | MTD ITSA intelligence     | Jobs mention     | Client fields + signals                                        | **E+**                    | —                       |
 | **SIGN & ONBOARD**        |                  |                                                                |                           |                         |

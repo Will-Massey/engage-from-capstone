@@ -17,6 +17,8 @@ import {
   DocumentDuplicateIcon,
   ExclamationTriangleIcon,
   PencilSquareIcon,
+  Squares2X2Icon,
+  ListBulletIcon,
 } from '@heroicons/react/24/outline';
 import { apiClient } from '../../utils/api';
 import { appPath } from '../../utils/appBase';
@@ -55,28 +57,43 @@ const statusLabels: Record<string, string> = {
   LOST: 'Lost',
 };
 
+/** Sales pipeline columns (Engager-style board) */
+const BOARD_COLUMNS = ['DRAFT', 'SENT', 'VIEWED', 'ACCEPTED', 'DECLINED', 'EXPIRED'] as const;
+
+type ViewMode = 'list' | 'board';
+
 const Proposals = () => {
   const { tenant } = useAuthStore();
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [proposals, setProposals] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState(searchParams.get('status') || '');
+  const [viewMode, setViewMode] = useState<ViewMode>(
+    searchParams.get('view') === 'board' ? 'board' : 'list'
+  );
   const [meta, setMeta] = useState({ page: 1, totalPages: 1, total: 0 });
 
   useEffect(() => {
     loadProposals();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [meta.page, statusFilter]);
+  }, [meta.page, statusFilter, viewMode]);
 
   const loadProposals = async () => {
     try {
       setIsLoading(true);
       const response = (await apiClient.getProposals({
-        page: meta.page,
-        limit: 20,
-        status: statusFilter && statusFilter !== 'AWAITING_APPROVAL' ? statusFilter : undefined,
-        approvalStatus: statusFilter === 'AWAITING_APPROVAL' ? 'PENDING' : undefined,
+        page: viewMode === 'board' ? 1 : meta.page,
+        // Board needs a wide pipeline slice; list stays paginated
+        limit: viewMode === 'board' ? 100 : 20,
+        status:
+          viewMode === 'board'
+            ? undefined
+            : statusFilter && statusFilter !== 'AWAITING_APPROVAL'
+              ? statusFilter
+              : undefined,
+        approvalStatus:
+          viewMode === 'list' && statusFilter === 'AWAITING_APPROVAL' ? 'PENDING' : undefined,
         search: searchQuery || undefined,
       })) as any;
 
@@ -87,6 +104,14 @@ const Proposals = () => {
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const setView = (mode: ViewMode) => {
+    setViewMode(mode);
+    const next = new URLSearchParams(searchParams);
+    if (mode === 'board') next.set('view', 'board');
+    else next.delete('view');
+    setSearchParams(next, { replace: true });
   };
 
   const handleSearch = (e: React.FormEvent) => {
@@ -256,14 +281,48 @@ const Proposals = () => {
     toast.success('Export downloaded');
   };
 
+  const boardGroups = BOARD_COLUMNS.map((col) => ({
+    status: col,
+    label: statusLabels[col] || col,
+    items: proposals.filter((p) => p.status === col),
+  }));
+
   return (
     <div className="space-y-6 animate-fade-in">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-end gap-4 -mt-2">
+        <div className="inline-flex rounded-lg border border-slate-200 p-0.5 dark:border-slate-700">
+          <button
+            type="button"
+            onClick={() => setView('list')}
+            className={`inline-flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-xs font-medium ${
+              viewMode === 'list'
+                ? 'bg-slate-900 text-white dark:bg-slate-100 dark:text-slate-900'
+                : 'text-slate-600 hover:bg-slate-50 dark:text-slate-300'
+            }`}
+            title="List view"
+          >
+            <ListBulletIcon className="h-4 w-4" />
+            List
+          </button>
+          <button
+            type="button"
+            onClick={() => setView('board')}
+            className={`inline-flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-xs font-medium ${
+              viewMode === 'board'
+                ? 'bg-slate-900 text-white dark:bg-slate-100 dark:text-slate-900'
+                : 'text-slate-600 hover:bg-slate-50 dark:text-slate-300'
+            }`}
+            title="Sales board"
+          >
+            <Squares2X2Icon className="h-4 w-4" />
+            Board
+          </button>
+        </div>
         <Link to="/proposals/renewals" className="btn-secondary text-sm">
           <ArrowPathIcon className="h-4 w-4 mr-1.5" />
           Bulk renew
         </Link>
-        {proposals.length > 0 && (
+        {proposals.length > 0 && viewMode === 'list' && (
           <button type="button" onClick={exportCsv} className="btn-secondary text-sm">
             <ArrowDownTrayIcon className="h-4 w-4 mr-1.5" />
             Export CSV
@@ -293,34 +352,108 @@ const Proposals = () => {
             </div>
           </form>
 
-          <div className="flex items-center space-x-3">
-            <select
-              value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value)}
-              className="input-field w-44"
-            >
-              <option value="">All Status</option>
-              <option value="DRAFT">Draft</option>
-              <option value="AWAITING_APPROVAL">Awaiting approval</option>
-              <option value="SENT">Sent</option>
-              <option value="ACCEPTED">Accepted</option>
-              <option value="DECLINED">Declined</option>
-              <option value="WITHDRAWN">Rescinded</option>
-              <option value="LOST">Lost</option>
-              <option value="ARCHIVED">Archived</option>
-              <option value="EXPIRED">Expired</option>
-              <option value="RENEWALS_DUE">Renewals Due (30 days)</option>
-            </select>
+          {viewMode === 'list' && (
+            <div className="flex items-center space-x-3">
+              <select
+                value={statusFilter}
+                onChange={(e) => setStatusFilter(e.target.value)}
+                className="input-field w-44"
+              >
+                <option value="">All Status</option>
+                <option value="DRAFT">Draft</option>
+                <option value="AWAITING_APPROVAL">Awaiting approval</option>
+                <option value="SENT">Sent</option>
+                <option value="ACCEPTED">Accepted</option>
+                <option value="DECLINED">Declined</option>
+                <option value="WITHDRAWN">Rescinded</option>
+                <option value="LOST">Lost</option>
+                <option value="ARCHIVED">Archived</option>
+                <option value="EXPIRED">Expired</option>
+                <option value="RENEWALS_DUE">Renewals Due (30 days)</option>
+              </select>
 
-            <button onClick={loadProposals} className="btn-secondary">
-              <FunnelIcon className="h-4 w-4 mr-1.5" />
-              Filter
-            </button>
-          </div>
+              <button onClick={loadProposals} className="btn-secondary">
+                <FunnelIcon className="h-4 w-4 mr-1.5" />
+                Filter
+              </button>
+            </div>
+          )}
         </div>
       </div>
 
+      {/* Sales board */}
+      {viewMode === 'board' && (
+        <div className="space-y-3">
+          {isLoading ? (
+            <SkeletonCard count={4} />
+          ) : proposals.length === 0 ? (
+            <EmptyProposals />
+          ) : (
+            <div className="-mx-1 flex gap-3 overflow-x-auto pb-2">
+              {boardGroups.map((col) => (
+                <div
+                  key={col.status}
+                  className="flex w-72 shrink-0 flex-col rounded-xl border border-slate-200/80 bg-slate-50/80 dark:border-slate-700 dark:bg-slate-900/40"
+                >
+                  <div className="flex items-center justify-between border-b border-slate-200/80 px-3 py-2.5 dark:border-slate-700">
+                    <span
+                      className={`inline-flex rounded-full px-2 py-0.5 text-xs font-semibold ${
+                        statusColors[col.status] || statusColors.DRAFT
+                      }`}
+                    >
+                      {col.label}
+                    </span>
+                    <span className="text-xs font-medium tabular-nums text-slate-500">
+                      {col.items.length}
+                    </span>
+                  </div>
+                  <div className="flex max-h-[min(70vh,720px)] flex-col gap-2 overflow-y-auto p-2">
+                    {col.items.length === 0 ? (
+                      <p className="px-1 py-6 text-center text-xs text-slate-400">No proposals</p>
+                    ) : (
+                      col.items.map((p) => (
+                        <Link
+                          key={p.id}
+                          to={`/proposals/${p.id}`}
+                          className="block rounded-lg border border-slate-200/90 bg-white p-3 shadow-sm transition hover:border-emerald-300 hover:shadow-md dark:border-slate-600 dark:bg-slate-800"
+                        >
+                          <div className="text-[11px] font-medium uppercase tracking-wide text-slate-400">
+                            {p.reference}
+                          </div>
+                          <div className="mt-0.5 line-clamp-2 text-sm font-semibold text-slate-900 dark:text-slate-50">
+                            {p.title}
+                          </div>
+                          <div className="mt-1 truncate text-xs text-slate-500">
+                            {p.client?.name || '—'}
+                          </div>
+                          <div className="mt-2 flex items-center justify-between gap-2">
+                            <span className="text-sm font-semibold tabular-nums text-slate-800 dark:text-slate-100">
+                              {formatCurrency(p.total ?? 0)}
+                            </span>
+                            {(p._count?.views ?? 0) > 0 && (
+                              <span className="inline-flex items-center gap-0.5 text-[11px] text-slate-500">
+                                <EyeIcon className="h-3.5 w-3.5" />
+                                {p._count.views}
+                              </span>
+                            )}
+                          </div>
+                        </Link>
+                      ))
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+          <p className="text-xs text-slate-500">
+            Sales board shows up to 100 open-pipeline proposals. Open a card for send, share, or
+            edit.
+          </p>
+        </div>
+      )}
+
       {/* Proposals table - Glass Card */}
+      {viewMode === 'list' && (
       <div className="card overflow-hidden">
         {isLoading ? (
           <SkeletonCard count={6} />
@@ -650,6 +783,7 @@ const Proposals = () => {
           </div>
         )}
       </div>
+      )}
     </div>
   );
 };
