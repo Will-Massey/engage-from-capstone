@@ -18,6 +18,7 @@ import {
   ArrowTopRightOnSquareIcon,
 } from '@heroicons/react/24/outline';
 import { apiClient } from '../../utils/api';
+import { copyTextToClipboard } from '../../utils/clipboard';
 import { useAuthStore } from '../../stores/authStore';
 import { format, formatDistanceToNow } from 'date-fns';
 import { motion } from 'framer-motion';
@@ -115,6 +116,24 @@ const ClientDetail = () => {
   const [portalTaskDraft, setPortalTaskDraft] = useState('');
   const [portalMsgDraft, setPortalMsgDraft] = useState('');
   const [portalOsBusy, setPortalOsBusy] = useState(false);
+  const [portalLinkBusy, setPortalLinkBusy] = useState(false);
+  const [portalMeta, setPortalMeta] = useState<{
+    portalEnabled?: boolean;
+    hasPortalToken?: boolean;
+    portalActive?: boolean;
+    portalTokenExpiry?: string | null;
+  } | null>(null);
+  const [portalFiles, setPortalFiles] = useState<
+    Array<{
+      id: string;
+      name: string;
+      mimeType: string;
+      sizeBytes: number;
+      uploadedBy: string;
+      createdAt: string;
+      jobId?: string | null;
+    }>
+  >([]);
 
   // Edit form state
   const [editForm, setEditForm] = useState({
@@ -164,21 +183,23 @@ const ClientDetail = () => {
   }, [id, activeTab]);
 
   useEffect(() => {
-    if (!id || activeTab !== 'comms') return;
+    if (!id || (activeTab !== 'comms' && activeTab !== 'documents')) return;
     let cancelled = false;
     (async () => {
-      setCommsLoading(true);
-      try {
-        const res = (await apiClient.get(`/clients/${id}/comms-timeline`)) as any;
-        const data = res?.data ?? res;
-        if (!cancelled) {
-          setCommsEvents(data?.events || []);
-          setSmsConfigured(!!data?.smsConfigured);
+      if (activeTab === 'comms') {
+        setCommsLoading(true);
+        try {
+          const res = (await apiClient.get(`/clients/${id}/comms-timeline`)) as any;
+          const data = res?.data ?? res;
+          if (!cancelled) {
+            setCommsEvents(data?.events || []);
+            setSmsConfigured(!!data?.smsConfigured);
+          }
+        } catch {
+          if (!cancelled) setCommsEvents([]);
+        } finally {
+          if (!cancelled) setCommsLoading(false);
         }
-      } catch {
-        if (!cancelled) setCommsEvents([]);
-      } finally {
-        if (!cancelled) setCommsLoading(false);
       }
       try {
         const os = (await apiClient.get(`/clients/${id}/portal-os`)) as any;
@@ -186,11 +207,15 @@ const ClientDetail = () => {
         if (!cancelled) {
           setPortalTasks(data?.tasks || []);
           setPortalMessages(data?.messages || []);
+          setPortalMeta(data?.client || null);
+          setPortalFiles(data?.files || []);
         }
       } catch {
         if (!cancelled) {
           setPortalTasks([]);
           setPortalMessages([]);
+          setPortalMeta(null);
+          setPortalFiles([]);
         }
       }
     })();
@@ -206,8 +231,56 @@ const ClientDetail = () => {
       const data = os?.data ?? os;
       setPortalTasks(data?.tasks || []);
       setPortalMessages(data?.messages || []);
+      setPortalMeta(data?.client || null);
+      setPortalFiles(data?.files || []);
     } catch {
       /* ignore */
+    }
+  };
+
+  /** Create or reuse portal magic link (does not rotate a still-valid token). */
+  const ensurePortalLink = async (): Promise<string | null> => {
+    if (!id) return null;
+    const response = (await apiClient.post(`/proposals/portal/${id}`, {
+      expiryDays: 90,
+      frontendOrigin: window.location.origin,
+    })) as any;
+    if (!response.success || !response.data?.portalUrl) {
+      toast.error('Failed to generate portal link');
+      return null;
+    }
+    await refreshPortalOs();
+    return response.data.portalUrl as string;
+  };
+
+  const handleCopyPortalLink = async () => {
+    try {
+      setPortalLinkBusy(true);
+      const portalUrl = await ensurePortalLink();
+      if (!portalUrl) return;
+      const ok = await copyTextToClipboard(portalUrl);
+      if (ok) {
+        toast.success('Client portal link copied (valid 90 days)');
+      } else {
+        toast.error('Copy manually: ' + portalUrl, { duration: 10000 });
+      }
+    } catch (err: any) {
+      toast.error(err?.message || 'Failed to generate portal link');
+    } finally {
+      setPortalLinkBusy(false);
+    }
+  };
+
+  const handleOpenPortalPreview = async () => {
+    try {
+      setPortalLinkBusy(true);
+      const portalUrl = await ensurePortalLink();
+      if (!portalUrl) return;
+      window.open(portalUrl, '_blank', 'noopener,noreferrer');
+    } catch (err: any) {
+      toast.error(err?.message || 'Failed to open portal');
+    } finally {
+      setPortalLinkBusy(false);
     }
   };
 
@@ -401,6 +474,26 @@ const ClientDetail = () => {
             Send engagement letter only
           </button>
           <button
+            type="button"
+            onClick={() => void handleCopyPortalLink()}
+            disabled={portalLinkBusy}
+            className="btn-secondary"
+            title="Copy client portal link — documents, forms, proposals"
+          >
+            <DocumentTextIcon className="h-4 w-4 mr-2" />
+            {portalLinkBusy ? 'Portal…' : 'Copy portal link'}
+          </button>
+          <button
+            type="button"
+            onClick={() => void handleOpenPortalPreview()}
+            disabled={portalLinkBusy}
+            className="btn-secondary"
+            title="Open client portal in a new tab (staff preview)"
+          >
+            <ArrowTopRightOnSquareIcon className="h-4 w-4 mr-2" />
+            Open portal
+          </button>
+          <button
             onClick={handleRequestIdVerification}
             disabled={isVerifyingId}
             className="btn-secondary"
@@ -443,7 +536,13 @@ const ClientDetail = () => {
                     : 'border-transparent text-slate-600 hover:text-slate-800 hover:border-slate-300'
                 }`}
               >
-                {tab === 'mtditsa' ? 'MTD ITSA' : tab === 'comms' ? 'Comms' : tab}
+                {tab === 'mtditsa'
+                  ? 'MTD ITSA'
+                  : tab === 'comms'
+                    ? 'Comms'
+                    : tab === 'documents'
+                      ? 'Documents'
+                      : tab}
               </button>
             )
           )}
@@ -1013,6 +1112,135 @@ const ClientDetail = () => {
                 )}
             </div>
           )}
+        </div>
+      )}
+
+      {activeTab === 'documents' && (
+        <div className="space-y-4">
+          <div className="metal-tile p-5">
+            <span className="metal-specular" aria-hidden />
+            <div className="relative z-[1]">
+              <p className="metal-kicker">Client portal</p>
+              <h3 className="mt-1 text-sm font-semibold text-slate-900 dark:text-white">
+                Documents &amp; secure upload
+              </h3>
+              <p className="mt-1 text-xs text-slate-500 max-w-2xl">
+                Clients open a magic link (no login) to upload files, complete forms, tick tasks,
+                and review proposals. Staff manage checklist and messages under Comms; generate or
+                preview the link here.
+              </p>
+              <div className="mt-3 flex flex-wrap items-center gap-2">
+                <StatusChip
+                  tone={
+                    portalMeta?.portalActive
+                      ? 'mint'
+                      : portalMeta?.hasPortalToken
+                        ? 'danger'
+                        : 'info'
+                  }
+                >
+                  {portalMeta?.portalActive
+                    ? 'Portal link active'
+                    : portalMeta?.hasPortalToken
+                      ? 'Portal link expired'
+                      : 'No portal link yet'}
+                </StatusChip>
+                {portalMeta?.portalTokenExpiry && (
+                  <span className="text-xs text-slate-500">
+                    Expires {format(new Date(portalMeta.portalTokenExpiry), 'dd MMM yyyy')}
+                  </span>
+                )}
+              </div>
+              <div className="mt-4 flex flex-wrap gap-2">
+                <button
+                  type="button"
+                  className="btn-accent text-sm"
+                  disabled={portalLinkBusy}
+                  onClick={() => void handleCopyPortalLink()}
+                >
+                  {portalLinkBusy ? 'Working…' : 'Copy portal link'}
+                </button>
+                <button
+                  type="button"
+                  className="btn-secondary text-sm"
+                  disabled={portalLinkBusy}
+                  onClick={() => void handleOpenPortalPreview()}
+                >
+                  Open portal preview
+                </button>
+                <button
+                  type="button"
+                  className="btn-secondary text-sm"
+                  onClick={() => setActiveTab('comms')}
+                >
+                  Portal tasks &amp; messages
+                </button>
+              </div>
+              <p className="mt-3 text-2xs text-slate-400">
+                Link is valid 90 days. Copying reuses the current link while it is still valid so
+                clients are not cut off.
+              </p>
+            </div>
+          </div>
+
+          <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm p-6">
+            <div className="flex flex-wrap items-center justify-between gap-2 mb-4">
+              <h2 className="text-lg font-semibold text-slate-900 dark:text-white">
+                Uploaded files
+              </h2>
+              <button
+                type="button"
+                className="text-xs text-primary-600 hover:underline"
+                onClick={() => void refreshPortalOs()}
+              >
+                Refresh
+              </button>
+            </div>
+            {portalFiles.length === 0 ? (
+              <div className="text-center py-10">
+                <DocumentTextIcon className="mx-auto h-10 w-10 text-slate-300" />
+                <p className="mt-3 text-sm text-slate-600 dark:text-slate-400">
+                  No portal uploads yet for this client.
+                </p>
+                <p className="mt-1 text-xs text-slate-500">
+                  When the client uploads via their portal, files appear here and on related jobs.
+                </p>
+              </div>
+            ) : (
+              <ul className="divide-y divide-slate-200 dark:divide-slate-700">
+                {portalFiles.map((f) => (
+                  <li
+                    key={f.id}
+                    className="flex flex-wrap items-center justify-between gap-2 py-3 text-sm"
+                  >
+                    <div className="min-w-0">
+                      <p className="font-medium text-slate-900 dark:text-white truncate">
+                        {f.name}
+                      </p>
+                      <p className="text-xs text-slate-500">
+                        {f.mimeType || 'file'}
+                        {typeof f.sizeBytes === 'number'
+                          ? ` · ${f.sizeBytes < 1024 ? `${f.sizeBytes} B` : `${Math.round(f.sizeBytes / 1024)} KB`}`
+                          : ''}
+                        {f.uploadedBy ? ` · ${f.uploadedBy}` : ''}
+                        {f.createdAt
+                          ? ` · ${format(new Date(f.createdAt), 'dd MMM yyyy HH:mm')}`
+                          : ''}
+                      </p>
+                    </div>
+                    {f.jobId && (
+                      <Link
+                        to={`/jobs/${f.jobId}`}
+                        className="text-xs text-primary-600 hover:underline shrink-0"
+                      >
+                        View job
+                      </Link>
+                    )}
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
         </div>
       )}
 
