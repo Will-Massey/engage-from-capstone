@@ -361,7 +361,10 @@ async function tandemFetch<T>(
   return (body?.data ?? body) as T;
 }
 
-async function linkClientHttp(params: { tenantId: string; clientId: string }): Promise<{
+async function linkClientHttp(
+  params: { tenantId: string; clientId: string },
+  rt?: MeshRuntime | null
+): Promise<{
   capstoneClientId: string;
   accountFlowClientId: string;
   deepLink: string | null;
@@ -764,7 +767,6 @@ export async function onJobSpawnedMesh(params: {
       proposalId: params.proposalId,
       mode: 'create_and_open',
     });
-    // Also push event envelope so AF event bus stays warm (idempotent upsert)
     void publishTandemEvent({
       type: 'job.created',
       tenantId: params.tenantId,
@@ -791,8 +793,9 @@ export async function publishTandemEvent(params: {
   extra?: Record<string, unknown>;
 }): Promise<void> {
   try {
-    const status = getMeshStatus();
-    if (!shouldUseHttp(status)) return;
+    const rt = await loadRuntime(params.tenantId);
+    const status = statusFromRuntime(rt);
+    if (!shouldUseHttp(status, rt.apiKey)) return;
 
     let clientId = params.clientId || null;
     let companyName: string | undefined;
@@ -857,36 +860,40 @@ export async function publishTandemEvent(params: {
       process.env.FRONTEND_URL?.replace(/\/$/, '') ||
       '';
 
-    await tandemFetch('/events', {
-      method: 'POST',
-      body: JSON.stringify({
-        type: params.type,
-        payload: {
-          engageClientId: clientId,
-          clientId,
-          capstoneClientId,
-          companyName,
-          companyNumber,
-          contactEmail,
-          contactName,
-          contactPhone,
-          clientType,
-          engageJobId: params.jobId || undefined,
-          jobId: params.jobId || undefined,
-          engageProposalId: params.proposalId || undefined,
-          proposalId: params.proposalId || undefined,
-          jobTitle,
-          title: jobTitle,
-          boardColumn: params.boardColumn || undefined,
-          status: params.boardColumn || undefined,
-          dueAt,
-          engageDeepLink: engagePublic
-            ? `${engagePublic}/clients/${clientId}?from=accountflow`
-            : undefined,
-          ...(params.extra || {}),
-        },
-      }),
-    });
+    await tandemFetch(
+      '/events',
+      {
+        method: 'POST',
+        body: JSON.stringify({
+          type: params.type,
+          payload: {
+            engageClientId: clientId,
+            clientId,
+            capstoneClientId,
+            companyName,
+            companyNumber,
+            contactEmail,
+            contactName,
+            contactPhone,
+            clientType,
+            engageJobId: params.jobId || undefined,
+            jobId: params.jobId || undefined,
+            engageProposalId: params.proposalId || undefined,
+            proposalId: params.proposalId || undefined,
+            jobTitle,
+            title: jobTitle,
+            boardColumn: params.boardColumn || undefined,
+            status: params.boardColumn || undefined,
+            dueAt,
+            engageDeepLink: engagePublic
+              ? `${engagePublic}/clients/${clientId}?from=accountflow`
+              : undefined,
+            ...(params.extra || {}),
+          },
+        }),
+      },
+      rt
+    );
   } catch (e: any) {
     logger.warn('accountFlowMesh publishTandemEvent failed', {
       type: params.type,
@@ -897,7 +904,6 @@ export async function publishTandemEvent(params: {
 
 /**
  * Inbound status mirror from AccountFlow (Capstone Tandem reverse path).
- * AF may POST when deep WIP is blocked/complete so Engage board stays aligned.
  */
 export async function applyInboundFromAccountFlow(params: {
   type: string;
@@ -963,7 +969,6 @@ function mapAfStatusToBoardColumn(raw?: string | null): string | null {
   if (s === 'IN_REVIEW' || s === 'REVIEW') return 'IN_REVIEW';
   if (s === 'IN_PROGRESS' || s === 'ACTIVE' || s === 'OPEN' || s === 'DOING') return 'IN_PROGRESS';
   if (s === 'REQUEST_RECORDS' || s === 'RECORDS_RECEIVED') return s;
-  // AF mesh_work free-form — only map known tokens
   if (
     [
       'REQUEST_RECORDS',
@@ -979,21 +984,18 @@ function mapAfStatusToBoardColumn(raw?: string | null): string | null {
   return null;
 }
 
-/** Optional live ping for status banner when HTTP mesh is configured. */
+/** Ping AF tandem (env-level; tenant-aware version is testMeshConnection). */
 export async function pingAccountFlowTandem(): Promise<{
   ok: boolean;
   message: string;
   practiceName?: string;
 }> {
   const status = getMeshStatus();
-  if (!shouldUseHttp(status)) {
-    return {
-      ok: status.mode === 'mock',
-      message: status.message,
-    };
+  if (!shouldUseHttp(status, apiKeyFromEnv())) {
+    return { ok: status.mode === 'mock', message: status.message };
   }
   try {
-    const data = await tandemFetch<{ practiceName?: string; service?: string }>('/ping');
+    const data = await tandemFetch<{ practiceName?: string }>('/ping', { method: 'GET' });
     return {
       ok: true,
       message: `Capstone Tandem OK${data?.practiceName ? ` · ${data.practiceName}` : ''}`,
@@ -1001,6 +1003,57 @@ export async function pingAccountFlowTandem(): Promise<{
     };
   } catch (e: any) {
     return { ok: false, message: e?.message || 'Tandem ping failed' };
+  }
+}
+
+/** Ping AF tandem + optionally persist lastPing on tenant settings. */
+export async function testMeshConnection(tenantId: string): Promise<{
+  ok: boolean;
+  message: string;
+  status: MeshStatus;
+  ping?: unknown;
+}> {
+  const rt = await loadRuntime(tenantId);
+  const status = statusFromRuntime(rt);
+  if (!shouldUseHttp(status, rt.apiKey)) {
+    return {
+      ok: status.mode === 'mock',
+      message: status.message,
+      status,
+    };
+  }
+  try {
+    const ping = await tandemFetch('/ping', { method: 'GET' }, rt);
+    // persist last ping
+    const tenant = await prisma.tenant.findUnique({
+      where: { id: tenantId },
+      select: { settings: true },
+    });
+    const { mergeAccountFlowMeshSettings } = await import('../utils/tenantAccountFlowMesh.js');
+    const next = mergeAccountFlowMeshSettings(tenant?.settings, {
+      lastPingAt: new Date().toISOString(),
+      lastPingOk: true,
+      lastPingMessage: 'Ping OK',
+    });
+    await prisma.tenant.update({ where: { id: tenantId }, data: { settings: next } });
+    return { ok: true, message: 'Connected to AccountFlow Tandem.', status, ping };
+  } catch (e: any) {
+    const tenant = await prisma.tenant.findUnique({
+      where: { id: tenantId },
+      select: { settings: true },
+    });
+    const { mergeAccountFlowMeshSettings } = await import('../utils/tenantAccountFlowMesh.js');
+    const next = mergeAccountFlowMeshSettings(tenant?.settings, {
+      lastPingAt: new Date().toISOString(),
+      lastPingOk: false,
+      lastPingMessage: e?.message || 'Ping failed',
+    });
+    await prisma.tenant.update({ where: { id: tenantId }, data: { settings: next } });
+    return {
+      ok: false,
+      message: e?.message || 'Ping failed',
+      status,
+    };
   }
 }
 
