@@ -201,11 +201,11 @@
 
 ### Hardcoded Values
 
-| File                                             | Line          | Value                                                    | Recommendation                |
-| ------------------------------------------------ | ------------- | -------------------------------------------------------- | ----------------------------- |
-| `backend/src/index.ts`                           | 208, 213, 218 | `'https://engagebycapstone.co.uk'`                       | ✅ Uses env var with fallback |
+| File                                             | Line          | Value                                     | Recommendation                |
+| ------------------------------------------------ | ------------- | ----------------------------------------- | ----------------------------- |
+| `backend/src/index.ts`                           | 208, 213, 218 | `'https://engagebycapstone.co.uk'`        | ✅ Uses env var with fallback |
 | `backend/src/routes/email.ts`                    | 464, 504-521  | `'https://capstonesoftware.co.uk/engage'` | ✅ Uses env var with fallback |
-| `backend/src/services/proposalSharingService.ts` | 35, 396       | `'.engage.capstone.co.uk'`                               | ⚠️ Consider env var           |
+| `backend/src/services/proposalSharingService.ts` | 35, 396       | `'.engage.capstone.co.uk'`                | ⚠️ Consider env var           |
 
 ---
 

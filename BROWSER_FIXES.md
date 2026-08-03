@@ -22,11 +22,7 @@ app.use(
         fontSrc: ["'self'", 'https://fonts.gstatic.com'],
         scriptSrc: ["'self'", "'unsafe-eval'"],
         imgSrc: ["'self'", 'data:', 'https:', 'blob:'],
-        connectSrc: [
-          "'self'",
-          'https://capstonesoftware.co.uk/engage',
-          'https://*.onrender.com',
-        ],
+        connectSrc: ["'self'", 'https://capstonesoftware.co.uk/engage', 'https://*.onrender.com'],
       },
     },
   })

@@ -8,13 +8,13 @@
 
 ## 🌐 Deployment Details
 
-| Detail           | Value                                                |
-| ---------------- | ---------------------------------------------------- |
-| **Live URL**     | https://capstonesoftware.co.uk/engage |
-| **Health Check** | ✅ `{"status":"healthy","database":"connected"}`     |
-| **Environment**  | Production                                           |
-| **Port**         | 3001                                                 |
-| **Database**     | ✅ PostgreSQL Connected                              |
+| Detail           | Value                                            |
+| ---------------- | ------------------------------------------------ |
+| **Live URL**     | https://capstonesoftware.co.uk/engage            |
+| **Health Check** | ✅ `{"status":"healthy","database":"connected"}` |
+| **Environment**  | Production                                       |
+| **Port**         | 3001                                             |
+| **Database**     | ✅ PostgreSQL Connected                          |
 
 ---
 
@@ -82,8 +82,8 @@ These errors don't affect runtime functionality but should be fixed for better c
 
 ## 🚀 Application URLs
 
-| Endpoint | URL                                                         |
-| -------- | ----------------------------------------------------------- |
+| Endpoint | URL                                          |
+| -------- | -------------------------------------------- |
 | Main App | https://capstonesoftware.co.uk/engage        |
 | Health   | https://capstonesoftware.co.uk/engage/health |
 | API      | https://capstonesoftware.co.uk/engage/api    |

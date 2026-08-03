@@ -39,7 +39,7 @@
 | **Package Manager**  | **npm** (`package-lock.json`) — use `npm ci` in CI and on servers for reproducible installs                                     |
 | **CI/CD**            | GitHub Actions (`ci-cd.yml`, `e2e-scheduled.yml`, `security.yml`, deploy workflows)                                             |
 | **Containerization** | Docker + Docker Compose                                                                                                         |
-| **Deployment**       | Neon Postgres + Render (backend/frontend) + Cloudflare Worker (`/engage` on capstonesoftware.co.uk)                            |
+| **Deployment**       | Neon Postgres + Render (backend/frontend) + Cloudflare Worker (`/engage` on capstonesoftware.co.uk)                             |
 
 ---
 
@@ -538,11 +538,11 @@ The `.github/workflows/ci-cd.yml` **test** job spins up PostgreSQL 15 and Redis 
 
 ### Git branches & what they trigger
 
-| Branch / action         | Typical outcome                                                                                                                                                                                                                                              |
-| ----------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| **`master` / `main`**   | **Production path:** `ci-cd.yml` runs lint → tests → E2E → **Deploy to Render** (backend then frontend). Neon is the Postgres provider.                                                                                                                        |
-| **`develop`**           | Development only. Use local Docker / Neon branch; production deploys from `master` via Render.                                                                                                                                                                |
-| **`workflow_dispatch`** | Manual CI runs / deploy as defined in workflows                                                                                                                                                                                                                |
+| Branch / action         | Typical outcome                                                                                                                         |
+| ----------------------- | --------------------------------------------------------------------------------------------------------------------------------------- |
+| **`master` / `main`**   | **Production path:** `ci-cd.yml` runs lint → tests → E2E → **Deploy to Render** (backend then frontend). Neon is the Postgres provider. |
+| **`develop`**           | Development only. Use local Docker / Neon branch; production deploys from `master` via Render.                                          |
+| **`workflow_dispatch`** | Manual CI runs / deploy as defined in workflows                                                                                         |
 
 **Render auto-deploy:** If each Render service is connected to the same GitHub repo, pushing the linked branch can start a deploy **without** the GitHub Action — check the service's **Auto-Deploy** branch in the Render dashboard.
 

@@ -79,10 +79,10 @@
 
 ## 🚀 Both Applications Live!
 
-| Application            | URL                                                  | Purpose               |
-| ---------------------- | ---------------------------------------------------- | --------------------- |
-| **AccountFlow**        | https://accountflow.capstonesoftware.co.uk      | Compliance Management |
-| **Engage by Capstone** | https://capstonesoftware.co.uk/engage | Proposal Generation   |
+| Application            | URL                                        | Purpose               |
+| ---------------------- | ------------------------------------------ | --------------------- |
+| **AccountFlow**        | https://accountflow.capstonesoftware.co.uk | Compliance Management |
+| **Engage by Capstone** | https://capstonesoftware.co.uk/engage      | Proposal Generation   |
 
 ---
 

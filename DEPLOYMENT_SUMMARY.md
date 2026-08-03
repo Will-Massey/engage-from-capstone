@@ -38,24 +38,24 @@
 | File              | Purpose                                   |
 | ----------------- | ----------------------------------------- |
 | `Dockerfile`      | Multi-stage Docker build for production   |
-| `Render.toml`    | Render deployment configuration          |
-| `Render.json`    | Alternative Render config (JSON format)  |
+| `Render.toml`     | Render deployment configuration           |
+| `Render.json`     | Alternative Render config (JSON format)   |
 | `.env.production` | Production environment variables template |
 
 ### Scripts
 
-| File                             | Purpose                                 |
-| -------------------------------- | --------------------------------------- |
-| `deploy-Render.ps1`             | Automated deployment script for Render |
-| `setup-neon.ps1`                 | Neon database setup helper              |
-| `backend/src/scripts/startup.ts` | Production startup with migrations      |
+| File                             | Purpose                                |
+| -------------------------------- | -------------------------------------- |
+| `deploy-Render.ps1`              | Automated deployment script for Render |
+| `setup-neon.ps1`                 | Neon database setup helper             |
+| `backend/src/scripts/startup.ts` | Production startup with migrations     |
 
 ### Documentation
 
-| File                     | Purpose                   |
-| ------------------------ | ------------------------- |
-| `DEPLOY.md` | Complete deployment guide |
-| `DEPLOYMENT_SUMMARY.md`  | This summary document     |
+| File                    | Purpose                   |
+| ----------------------- | ------------------------- |
+| `DEPLOY.md`             | Complete deployment guide |
+| `DEPLOYMENT_SUMMARY.md` | This summary document     |
 
 ---
 

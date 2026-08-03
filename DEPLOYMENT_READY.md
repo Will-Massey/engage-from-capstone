@@ -71,15 +71,15 @@ npm install -g (use Render dashboard or GitHub Actions)
 
 ## 🔧 Configuration Files Created
 
-| File                       | Purpose                          |
-| -------------------------- | -------------------------------- |
-| `Render.toml`             | Render deployment configuration |
-| `Dockerfile`               | Multi-stage production build     |
-| `.env.production.template` | Production environment template  |
-| `deploy-Render.sh`        | Automated deployment script      |
-| `build-production.sh`      | Production build script          |
-| `verify-deployment.sh`     | Pre-deployment verification      |
-| `PRE_DEPLOY_CHECKLIST.md`  | Manual verification checklist    |
+| File                       | Purpose                         |
+| -------------------------- | ------------------------------- |
+| `Render.toml`              | Render deployment configuration |
+| `Dockerfile`               | Multi-stage production build    |
+| `.env.production.template` | Production environment template |
+| `deploy-Render.sh`         | Automated deployment script     |
+| `build-production.sh`      | Production build script         |
+| `verify-deployment.sh`     | Pre-deployment verification     |
+| `PRE_DEPLOY_CHECKLIST.md`  | Manual verification checklist   |
 
 ---
 
@@ -140,11 +140,11 @@ Before going live, test:
 
 After deployment:
 
-| Environment     | URL                             |
-| --------------- | ------------------------------- |
-| Local Dev       | http://localhost:5173           |
-| Render backend | https://your-app.onrender.com |
-| Vercel Frontend | https://your-app.vercel.app     |
+| Environment     | URL                           |
+| --------------- | ----------------------------- |
+| Local Dev       | http://localhost:5173         |
+| Render backend  | https://your-app.onrender.com |
+| Vercel Frontend | https://your-app.vercel.app   |
 
 ---
 

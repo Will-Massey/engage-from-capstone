@@ -515,7 +515,7 @@ Then decide:
 | Resource      | Link                         |
 | ------------- | ---------------------------- |
 | Prisma Docs   | https://www.prisma.io/docs   |
-| Render Docs  | https://docs.render.com     |
+| Render Docs   | https://docs.render.com      |
 | Docker Docs   | https://docs.docker.com      |
 | React Docs    | https://react.dev            |
 | Tailwind Docs | https://tailwindcss.com/docs |
