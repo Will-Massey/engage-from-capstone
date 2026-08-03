@@ -9,6 +9,7 @@ import { authenticate } from '../middleware/auth.js';
 import { asyncHandler, ApiError } from '../middleware/errorHandler.js';
 import {
   getMeshStatus,
+  getMeshStatusForTenant,
   handoffToAccountFlow,
   handoffAllOpenJobs,
   listMockAccountFlowState,
@@ -17,6 +18,12 @@ import {
   applyInboundFromAccountFlow,
   pingAccountFlowTandem,
 } from '../services/accountFlowMeshService.js';
+import {
+  getAccountFlowMeshSettings,
+  publicMeshSettings,
+  mergeAccountFlowMeshSettings,
+} from '../utils/tenantAccountFlowMesh.js';
+import { prisma } from '../config/database.js';
 import {
   getTenantXeroSettings,
   xeroStatusFromSettings,
@@ -101,6 +108,83 @@ router.get(
 );
 
 /**
+ * GET/PUT practice AccountFlow connection (Capstone Tandem).
+ * Stores baseUrl, apiKey, mode, autoHandoff, ssoEnabled on Tenant.settings.accountFlowMesh.
+ */
+router.get(
+  '/accountflow/connection',
+  asyncHandler(async (req, res) => {
+    const tenant = await prisma.tenant.findUnique({
+      where: { id: req.tenantId! },
+      select: { settings: true },
+    });
+    const status = await getMeshStatusForTenant(req.tenantId!);
+    res.json({
+      success: true,
+      data: {
+        settings: publicMeshSettings(getAccountFlowMeshSettings(tenant?.settings)),
+        status,
+      },
+    });
+  })
+);
+
+router.put(
+  '/accountflow/connection',
+  asyncHandler(async (req, res) => {
+    const body = z
+      .object({
+        mode: z.enum(['mock', 'local', 'live', 'off']).optional(),
+        baseUrl: z.union([z.string().url(), z.literal(''), z.null()]).optional(),
+        apiKey: z.union([z.string().min(10), z.literal(''), z.null()]).optional(),
+        clearApiKey: z.boolean().optional(),
+        allowLive: z.boolean().optional(),
+        autoHandoff: z.boolean().optional(),
+        ssoEnabled: z.boolean().optional(),
+      })
+      .parse(req.body || {});
+
+    const tenant = await prisma.tenant.findUnique({
+      where: { id: req.tenantId! },
+      select: { settings: true },
+    });
+    if (!tenant) throw new ApiError('NOT_FOUND', 'Tenant not found', 404);
+
+    const next = mergeAccountFlowMeshSettings(tenant.settings, {
+      mode: body.mode,
+      baseUrl: body.baseUrl === '' ? null : body.baseUrl,
+      apiKey: body.apiKey === '' ? null : body.apiKey,
+      clearApiKey: body.clearApiKey,
+      allowLive: body.allowLive,
+      autoHandoff: body.autoHandoff,
+      ssoEnabled: body.ssoEnabled,
+    });
+    await prisma.tenant.update({
+      where: { id: req.tenantId! },
+      data: { settings: next },
+    });
+
+    const status = await getMeshStatusForTenant(req.tenantId!);
+    res.json({
+      success: true,
+      data: {
+        settings: publicMeshSettings(getAccountFlowMeshSettings(next)),
+        status,
+        message: 'AccountFlow connection saved.',
+      },
+    });
+  })
+);
+
+router.post(
+  '/accountflow/connection/test',
+  asyncHandler(async (req, res) => {
+    const result = await testMeshConnection(req.tenantId!);
+    res.status(result.ok ? 200 : 502).json({ success: result.ok, data: result });
+  })
+);
+
+/**
  * POST handoff — create/link AF client (+ work if job) and return deep link.
  * Deep link points at Engage sandbox UI until live AF is authorised.
  */
@@ -130,6 +214,13 @@ router.post(
       jobId: body.jobId,
       clientId: body.clientId,
       mode: body.mode || 'create_and_open',
+      ssoUser: {
+        email: (req as any).user?.email,
+        fullName: [(req as any).user?.firstName, (req as any).user?.lastName]
+          .filter(Boolean)
+          .join(' '),
+        role: (req as any).user?.role,
+      },
     });
 
     res.json({ success: true, data: result });
@@ -145,7 +236,7 @@ router.get(
     const clientId = (req.query.clientId as string) || undefined;
 
     if (!proposalId && !jobId && !clientId) {
-      const status = getMeshStatus();
+      const status = await getMeshStatusForTenant(req.tenantId!);
       res.json({
         success: true,
         data: {
@@ -210,7 +301,13 @@ router.get(
 router.post(
   '/accountflow/handoff-open-jobs',
   asyncHandler(async (req, res) => {
-    const result = await handoffAllOpenJobs(req.tenantId!);
+    const result = await handoffAllOpenJobs(req.tenantId!, {
+      email: (req as any).user?.email,
+      fullName: [(req as any).user?.firstName, (req as any).user?.lastName]
+        .filter(Boolean)
+        .join(' '),
+      role: (req as any).user?.role,
+    });
     res.json({
       success: true,
       data: result,
@@ -227,7 +324,11 @@ router.get(
   '/hub',
   asyncHandler(async (req, res) => {
     const tenantId = req.tenantId!;
-    const mesh = getMeshStatus();
+    const mesh = await getMeshStatusForTenant(tenantId);
+    const tenant = await prisma.tenant.findUnique({
+      where: { id: tenantId },
+      select: { settings: true },
+    });
     const xeroSettings = await getTenantXeroSettings(tenantId);
     const xero = xeroStatusFromSettings(xeroSettings);
     const qbSettings = await getTenantQuickBooksSettings(tenantId);
@@ -239,9 +340,11 @@ router.get(
       data: {
         accountFlow: {
           ...mesh,
+          settings: publicMeshSettings(getAccountFlowMeshSettings(tenant?.settings)),
           sandboxClients: meshState.clients.length,
           sandboxWork: meshState.work.length,
-          isolation: 'mock-default; production AccountFlow never contacted without ALLOW_LIVE',
+          isolation:
+            'Mock by default. Connect AccountFlow below to enable live tandem + auto-handoff + SSO.',
         },
         xero: {
           ...xero,
