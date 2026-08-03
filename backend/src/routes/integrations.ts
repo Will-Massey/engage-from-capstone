@@ -39,9 +39,7 @@ router.post(
   '/accountflow/inbound',
   asyncHandler(async (req, res) => {
     const secret =
-      (req.headers['x-mesh-secret'] as string) ||
-      (req.headers['x-api-key'] as string) ||
-      '';
+      (req.headers['x-mesh-secret'] as string) || (req.headers['x-api-key'] as string) || '';
     const expected =
       process.env.ACCOUNTFLOW_MESH_INBOUND_SECRET?.trim() ||
       process.env.ACCOUNTFLOW_API_KEY?.trim() ||

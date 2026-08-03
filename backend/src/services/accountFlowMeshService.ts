@@ -302,10 +302,7 @@ async function tandemFetch<T>(
   return (body?.data ?? body) as T;
 }
 
-async function linkClientHttp(params: {
-  tenantId: string;
-  clientId: string;
-}): Promise<{
+async function linkClientHttp(params: { tenantId: string; clientId: string }): Promise<{
   capstoneClientId: string;
   accountFlowClientId: string;
   deepLink: string | null;
@@ -335,7 +332,9 @@ async function linkClientHttp(params: {
       contactName: client.contactName || undefined,
       contactPhone: client.contactPhone || undefined,
       clientType: client.companyType || undefined,
-      engageDeepLink: engagePublic ? `${engagePublic}/clients/${client.id}?from=accountflow` : undefined,
+      engageDeepLink: engagePublic
+        ? `${engagePublic}/clients/${client.id}?from=accountflow`
+        : undefined,
     }),
   });
 
@@ -818,8 +817,7 @@ export async function applyInboundFromAccountFlow(params: {
     data: {
       kind: 'ACCOUNTFLOW_SYNC',
       message:
-        params.message ||
-        `AccountFlow updated board → ${mapped.replace(/_/g, ' ').toLowerCase()}`,
+        params.message || `AccountFlow updated board → ${mapped.replace(/_/g, ' ').toLowerCase()}`,
       jobId: job.id,
       metadata: JSON.stringify({
         source: 'accountflow',
@@ -843,9 +841,14 @@ function mapAfStatusToBoardColumn(raw?: string | null): string | null {
   if (s === 'REQUEST_RECORDS' || s === 'RECORDS_RECEIVED') return s;
   // AF mesh_work free-form — only map known tokens
   if (
-    ['REQUEST_RECORDS', 'RECORDS_RECEIVED', 'IN_PROGRESS', 'HELP_NEEDED', 'IN_REVIEW', 'COMPLETE'].includes(
-      s
-    )
+    [
+      'REQUEST_RECORDS',
+      'RECORDS_RECEIVED',
+      'IN_PROGRESS',
+      'HELP_NEEDED',
+      'IN_REVIEW',
+      'COMPLETE',
+    ].includes(s)
   ) {
     return s;
   }

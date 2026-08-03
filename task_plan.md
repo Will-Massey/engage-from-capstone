@@ -7,11 +7,11 @@ Exceed Engager on practice ops while defending proposal→cash + Clara.
 
 ## Capstone Tandem (Engage ↔ AccountFlow)
 
-| Direction | Mechanism |
-|-----------|-----------|
-| Engage → AF | Handoff HTTP + `publishTandemEvent` on job spawn / column / complete |
+| Direction   | Mechanism                                                               |
+| ----------- | ----------------------------------------------------------------------- |
+| Engage → AF | Handoff HTTP + `publishTandemEvent` on job spawn / column / complete    |
 | AF → Engage | `POST /api/integrations/accountflow/inbound` + AF `notifyEngageInbound` |
-| Default | `ACCOUNTFLOW_MESH_MODE=mock` (prod AF never contacted) |
+| Default     | `ACCOUNTFLOW_MESH_MODE=mock` (prod AF never contacted)                  |
 
 ### Local symbiotic loop
 
@@ -30,14 +30,14 @@ ENGAGE_PUBLIC_URL=http://localhost:5273
 
 ## Next up
 
-1. Merge tandem bi-di mesh PR  
-2. Sales board PR #94  
-3. Mailbox OAuth depth  
-4. Portal / bulk forms polish  
-5. iOS after desktop solid  
+1. Merge tandem bi-di mesh PR
+2. Sales board PR #94
+3. Mailbox OAuth depth
+4. Portal / bulk forms polish
+5. iOS after desktop solid
 
 ## Done
 
-- Practice OS cutover (2026-08-02)  
-- Railway refs removed (#93)  
-- Tandem HTTP adapter + bi-di events (this branch)  
+- Practice OS cutover (2026-08-02)
+- Railway refs removed (#93)
+- Tandem HTTP adapter + bi-di events (this branch)

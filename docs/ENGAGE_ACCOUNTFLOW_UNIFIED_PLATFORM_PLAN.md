@@ -5,10 +5,10 @@
 **Related:** `docs/WORLD_DOMINATION_PLAN.md`, `docs/ENGAGE_VS_ENGAGER_SCORECARD_2026-08-02.md`, `PREMIER_SERVICE_STRATEGY.md`  
 **Current code (2026-08-03):** Capstone **Tandem** federated mesh on both sides.
 
-| Side | Location |
-|------|----------|
-| AccountFlow | `accountflow-practice` · `feat/mesh-sandbox` · `/api/v1/external/tandem/*` · `docs/CAPSTONE_TANDEM.md` |
-| Engage | `accountFlowMeshService` · mock default · HTTP when `ACCOUNTFLOW_MESH_MODE=local\|live` + URL + API key · **event bus** on job spawn/column/complete · **inbound** `POST /api/integrations/accountflow/inbound` for AF→Engage board mirror |
+| Side        | Location                                                                                                                                                                                                                                   |
+| ----------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| AccountFlow | `accountflow-practice` · `feat/mesh-sandbox` · `/api/v1/external/tandem/*` · `docs/CAPSTONE_TANDEM.md`                                                                                                                                     |
+| Engage      | `accountFlowMeshService` · mock default · HTTP when `ACCOUNTFLOW_MESH_MODE=local\|live` + URL + API key · **event bus** on job spawn/column/complete · **inbound** `POST /api/integrations/accountflow/inbound` for AF→Engage board mirror |
 
 Production AccountFlow is **never called** unless `ACCOUNTFLOW_MESH_ALLOW_LIVE=true` (off by default).
 
