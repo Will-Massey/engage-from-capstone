@@ -10,6 +10,19 @@ import {
 import { apiClient } from '../../utils/api';
 import { StatusChip } from '../../components/ui/StatusChip';
 
+type MeshSettings = {
+  mode: string;
+  baseUrl: string | null;
+  hasApiKey: boolean;
+  apiKeyPreview: string | null;
+  allowLive: boolean;
+  autoHandoff: boolean;
+  ssoEnabled: boolean;
+  lastPingAt?: string | null;
+  lastPingOk?: boolean | null;
+  lastPingMessage?: string | null;
+};
+
 type HubData = {
   accountFlow: {
     mode: string;
@@ -18,6 +31,10 @@ type HubData = {
     sandboxClients?: number;
     sandboxWork?: number;
     isolation?: string;
+    autoHandoff?: boolean;
+    ssoEnabled?: boolean;
+    hasApiKey?: boolean;
+    settings?: MeshSettings;
   };
   xero: {
     connected: boolean;
@@ -52,12 +69,30 @@ export default function IntegrationsHub() {
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [batchMsg, setBatchMsg] = useState<string | null>(null);
+  const [saveMsg, setSaveMsg] = useState<string | null>(null);
+
+  // Connection form
+  const [mode, setMode] = useState('mock');
+  const [baseUrl, setBaseUrl] = useState('');
+  const [apiKey, setApiKey] = useState('');
+  const [allowLive, setAllowLive] = useState(false);
+  const [autoHandoff, setAutoHandoff] = useState(true);
+  const [ssoEnabled, setSsoEnabled] = useState(true);
 
   const load = async () => {
     try {
       const res = (await apiClient.get('/integrations/hub')) as any;
-      setHub(res?.data ?? res);
+      const data = res?.data ?? res;
+      setHub(data);
       setError(null);
+      const s = data?.accountFlow?.settings as MeshSettings | undefined;
+      if (s) {
+        setMode(s.mode || 'mock');
+        setBaseUrl(s.baseUrl || '');
+        setAllowLive(!!s.allowLive);
+        setAutoHandoff(s.autoHandoff !== false);
+        setSsoEnabled(s.ssoEnabled !== false);
+      }
     } catch (e: any) {
       setError(e?.message || 'Failed to load integrations hub');
     }
@@ -81,6 +116,48 @@ export default function IntegrationsHub() {
     }
   }
 
+  async function saveConnection() {
+    setBusy(true);
+    setSaveMsg(null);
+    try {
+      const body: Record<string, unknown> = {
+        mode,
+        baseUrl: baseUrl.trim() || null,
+        allowLive,
+        autoHandoff,
+        ssoEnabled,
+      };
+      if (apiKey.trim()) body.apiKey = apiKey.trim();
+      const res = (await apiClient.put('/integrations/accountflow/connection', body)) as any;
+      setSaveMsg(res?.data?.message || 'Saved.');
+      setApiKey('');
+      await load();
+    } catch (e: any) {
+      setSaveMsg(e?.response?.data?.error?.message || e.message || 'Save failed');
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function testConnection() {
+    setBusy(true);
+    setSaveMsg(null);
+    try {
+      const res = (await apiClient.post('/integrations/accountflow/connection/test', {})) as any;
+      const d = res?.data ?? res;
+      setSaveMsg(d?.message || (d?.ok ? 'Ping OK' : 'Ping failed'));
+      await load();
+    } catch (e: any) {
+      setSaveMsg(e?.response?.data?.data?.message || e?.message || 'Test failed');
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  const settings = hub?.accountFlow?.settings;
+  const httpReady =
+    hub?.accountFlow?.mode === 'local' || hub?.accountFlow?.mode === 'live';
+
   return (
     <div className="mx-auto max-w-4xl space-y-6 pb-10">
       <header className="metal-tile p-6">
@@ -91,9 +168,8 @@ export default function IntegrationsHub() {
             Practice integrations desk
           </h1>
           <p className="mt-1 max-w-2xl text-sm text-slate-500">
-            Xero, QuickBooks Online, and AccountFlow mesh status. AF mesh stays{' '}
-            <strong>mock</strong> unless live is explicitly allowed — production AF is never
-            contacted from practice by default.
+            Connect AccountFlow (Capstone Tandem) for auto-handoff on accept, deep links, and SSO.
+            Xero and QuickBooks Online stay under Settings.
           </p>
         </div>
       </header>
@@ -104,43 +180,141 @@ export default function IntegrationsHub() {
         </div>
       )}
 
-      <div className="grid gap-4 md:grid-cols-3">
-        <article className="metal-tile metal-tile--mint p-5">
-          <span className="metal-specular" aria-hidden />
-          <div className="relative z-[1] space-y-2">
-            <ArrowsRightLeftIcon className="h-7 w-7 text-emerald-600" />
-            <h2 className="font-semibold text-slate-900 dark:text-white">AccountFlow mesh</h2>
-            {hub ? (
-              <>
-                <StatusChip tone={hub.accountFlow.available ? 'success' : 'neutral'}>
-                  {hub.accountFlow.mode}
-                </StatusChip>
-                <p className="text-xs text-slate-500">{hub.accountFlow.message}</p>
-                <p className="text-xs text-slate-500">
-                  Sandbox: {hub.accountFlow.sandboxClients ?? 0} clients ·{' '}
-                  {hub.accountFlow.sandboxWork ?? 0} work items
-                </p>
-                <div className="flex flex-wrap gap-2 pt-2">
-                  <Link to="/integrations/accountflow/sandbox" className="btn-secondary text-xs">
-                    Open sandbox
-                  </Link>
-                  <button
-                    type="button"
-                    className="btn-accent text-xs"
-                    disabled={busy}
-                    onClick={() => void batchMesh()}
-                  >
-                    {busy ? 'Linking…' : 'Link all open jobs'}
-                  </button>
-                </div>
-                {batchMsg && <p className="text-xs text-emerald-800">{batchMsg}</p>}
-              </>
-            ) : (
-              <p className="text-sm text-slate-400">Loading…</p>
+      {/* Connect AccountFlow */}
+      <section className="metal-tile p-6 space-y-4">
+        <span className="metal-specular" aria-hidden />
+        <div className="relative z-[1] space-y-4">
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div>
+              <h2 className="text-lg font-semibold text-slate-900 dark:text-white">
+                Connect AccountFlow
+              </h2>
+              <p className="mt-1 text-sm text-slate-500">
+                Paste a practice API key from AccountFlow (Admin → External API / keys with{' '}
+                <code className="text-xs">clients:write</code>). Enable auto-handoff so accepted
+                proposals create AF clients automatically. SSO skips re-login when opening AF.
+              </p>
+            </div>
+            {hub && (
+              <StatusChip tone={httpReady ? 'success' : 'neutral'}>
+                {hub.accountFlow.mode}
+              </StatusChip>
             )}
           </div>
-        </article>
 
+          <div className="grid gap-3 sm:grid-cols-2">
+            <label className="block text-sm">
+              <span className="text-slate-600 dark:text-slate-300">Mode</span>
+              <select
+                className="mt-1 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 dark:border-slate-700 dark:bg-slate-900"
+                value={mode}
+                onChange={(e) => setMode(e.target.value)}
+              >
+                <option value="mock">mock (sandbox only)</option>
+                <option value="local">local (localhost AF)</option>
+                <option value="live">live (production AF)</option>
+                <option value="off">off</option>
+              </select>
+            </label>
+            <label className="block text-sm">
+              <span className="text-slate-600 dark:text-slate-300">AccountFlow base URL</span>
+              <input
+                className="mt-1 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 dark:border-slate-700 dark:bg-slate-900"
+                placeholder="https://app.capstonesoftware.co.uk"
+                value={baseUrl}
+                onChange={(e) => setBaseUrl(e.target.value)}
+              />
+            </label>
+            <label className="block text-sm sm:col-span-2">
+              <span className="text-slate-600 dark:text-slate-300">
+                API key {settings?.hasApiKey ? `(stored: ${settings.apiKeyPreview})` : ''}
+              </span>
+              <input
+                type="password"
+                autoComplete="off"
+                className="mt-1 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 dark:border-slate-700 dark:bg-slate-900"
+                placeholder={settings?.hasApiKey ? 'Leave blank to keep existing key' : 'af_live_…'}
+                value={apiKey}
+                onChange={(e) => setApiKey(e.target.value)}
+              />
+            </label>
+          </div>
+
+          <div className="flex flex-wrap gap-4 text-sm">
+            <label className="inline-flex items-center gap-2">
+              <input
+                type="checkbox"
+                checked={allowLive}
+                onChange={(e) => setAllowLive(e.target.checked)}
+              />
+              Allow live outbound calls
+            </label>
+            <label className="inline-flex items-center gap-2">
+              <input
+                type="checkbox"
+                checked={autoHandoff}
+                onChange={(e) => setAutoHandoff(e.target.checked)}
+              />
+              Auto-handoff on proposal accept
+            </label>
+            <label className="inline-flex items-center gap-2">
+              <input
+                type="checkbox"
+                checked={ssoEnabled}
+                onChange={(e) => setSsoEnabled(e.target.checked)}
+              />
+              SSO (no re-login on Open in AccountFlow)
+            </label>
+          </div>
+
+          <div className="flex flex-wrap gap-2">
+            <button
+              type="button"
+              className="btn-accent text-sm"
+              disabled={busy}
+              onClick={() => void saveConnection()}
+            >
+              {busy ? 'Saving…' : 'Save connection'}
+            </button>
+            <button
+              type="button"
+              className="btn-secondary text-sm"
+              disabled={busy}
+              onClick={() => void testConnection()}
+            >
+              Test connection
+            </button>
+            <button
+              type="button"
+              className="btn-secondary text-sm"
+              disabled={busy}
+              onClick={() => void batchMesh()}
+            >
+              Link all open jobs
+            </button>
+            <Link to="/integrations/accountflow/sandbox" className="btn-secondary text-sm">
+              Open sandbox
+            </Link>
+          </div>
+
+          {saveMsg && (
+            <p className="text-sm text-slate-700 dark:text-slate-200">{saveMsg}</p>
+          )}
+          {batchMsg && <p className="text-sm text-emerald-800">{batchMsg}</p>}
+          {settings?.lastPingAt && (
+            <p className="text-xs text-slate-500">
+              Last ping: {new Date(settings.lastPingAt).toLocaleString()} —{' '}
+              {settings.lastPingOk ? 'OK' : 'failed'}
+              {settings.lastPingMessage ? ` (${settings.lastPingMessage})` : ''}
+            </p>
+          )}
+          {hub?.accountFlow?.message && (
+            <p className="text-xs text-slate-500">{hub.accountFlow.message}</p>
+          )}
+        </div>
+      </section>
+
+      <div className="grid gap-4 md:grid-cols-2">
         <article className="metal-tile metal-tile--sky p-5">
           <span className="metal-specular" aria-hidden />
           <div className="relative z-[1] space-y-2">
@@ -153,9 +327,6 @@ export default function IntegrationsHub() {
                   OAuth app:{' '}
                   {hub.xero.oauthConfigured || hub.xero.configured ? 'configured' : 'not set'}
                   {hub.xero.xeroTenantName ? ` · ${hub.xero.xeroTenantName}` : ''}
-                </p>
-                <p className="text-2xs text-slate-400">
-                  Connect in Settings. Push accepted proposals / import contacts when live.
                 </p>
                 <Link to="/settings" className="btn-secondary mt-2 inline-flex text-xs">
                   Settings
@@ -182,9 +353,6 @@ export default function IntegrationsHub() {
                     : 'not set'}
                   {hub.quickbooks.companyName ? ` · ${hub.quickbooks.companyName}` : ''}
                 </p>
-                <p className="text-2xs text-slate-400">
-                  See docs/XERO_QBO_GOLIVE.md for redirect URIs and Render secrets.
-                </p>
                 <Link to="/settings" className="btn-secondary mt-2 inline-flex text-xs">
                   Settings
                 </Link>
@@ -199,10 +367,16 @@ export default function IntegrationsHub() {
       <div className="metal-tile metal-tile--soft flex items-start gap-3 p-4">
         <ShieldCheckIcon className="h-5 w-5 shrink-0 text-amber-600" />
         <p className="text-sm text-slate-600 dark:text-slate-300">
-          <strong>Isolation:</strong> Practice mesh defaults to in-process mock. Live AF requires{' '}
-          <code className="text-xs">ACCOUNTFLOW_MESH_ALLOW_LIVE=true</code> and an explicit decision
-          — never enabled by this hub.
+          <strong>How it works:</strong> On proposal accept, Engage spawns a delivery job and (when
+          auto-handoff is on) upserts the client + work shell into AccountFlow via Capstone Tandem.
+          Matching AF users (same email) can open AF deep links without signing in again when SSO is
+          enabled. API keys never leave your practice settings JSON.
         </p>
+      </div>
+
+      <div className="flex items-center gap-2 text-xs text-slate-400">
+        <ArrowsRightLeftIcon className="h-4 w-4" />
+        Capstone Tandem · Engage ↔ AccountFlow
       </div>
     </div>
   );
