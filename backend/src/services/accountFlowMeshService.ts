@@ -256,8 +256,171 @@ function sandboxDeepLink(opts: {
   return `/integrations/accountflow/sandbox?${q.toString()}`;
 }
 
+function apiKey(): string | null {
+  return process.env.ACCOUNTFLOW_API_KEY?.trim() || null;
+}
+
+/** Whether Capstone Tandem HTTP (AF /api/v1/external/tandem) should be used. */
+function shouldUseHttp(status: MeshStatus): boolean {
+  if (status.mode === 'off' || status.mode === 'mock') return false;
+  if (!status.accountFlowBaseUrl) return false;
+  if (!apiKey()) return false;
+  if (status.mode === 'live' && !allowLive()) return false;
+  if (status.mode === 'local' && !isPrivateBase(status.accountFlowBaseUrl)) return false;
+  return true;
+}
+
+async function tandemFetch<T>(
+  path: string,
+  init: RequestInit & { method?: string } = {}
+): Promise<T> {
+  const base = baseUrl();
+  const key = apiKey();
+  if (!base || !key) throw new Error('ACCOUNTFLOW_BASE_URL and ACCOUNTFLOW_API_KEY required');
+
+  const url = `${base.replace(/\/$/, '')}/api/v1/external/tandem${path.startsWith('/') ? path : `/${path}`}`;
+  const res = await fetch(url, {
+    ...init,
+    headers: {
+      Accept: 'application/json',
+      'Content-Type': 'application/json',
+      'X-API-Key': key,
+      ...(init.headers || {}),
+    },
+  });
+  const text = await res.text();
+  let body: any = null;
+  try {
+    body = text ? JSON.parse(text) : null;
+  } catch {
+    body = { error: text };
+  }
+  if (!res.ok) {
+    const msg = body?.error || body?.message || `AccountFlow tandem ${res.status}`;
+    throw new Error(msg);
+  }
+  return (body?.data ?? body) as T;
+}
+
+async function linkClientHttp(params: {
+  tenantId: string;
+  clientId: string;
+}): Promise<{
+  capstoneClientId: string;
+  accountFlowClientId: string;
+  deepLink: string | null;
+}> {
+  const client = await prisma.client.findFirst({
+    where: { id: params.clientId, tenantId: params.tenantId },
+  });
+  if (!client) throw new Error('CLIENT_NOT_FOUND');
+
+  const engagePublic =
+    process.env.ENGAGE_PUBLIC_URL?.replace(/\/$/, '') ||
+    process.env.FRONTEND_URL?.replace(/\/$/, '') ||
+    '';
+
+  const data = await tandemFetch<{
+    accountFlowClientId: string;
+    capstoneClientId: string;
+    deepLink?: string;
+  }>('/clients/upsert', {
+    method: 'POST',
+    body: JSON.stringify({
+      capstoneClientId: client.capstoneClientId || undefined,
+      engageClientId: client.id,
+      companyName: client.name,
+      companyNumber: client.companyNumber || undefined,
+      contactEmail: client.contactEmail || undefined,
+      contactName: client.contactName || undefined,
+      contactPhone: client.contactPhone || undefined,
+      clientType: client.companyType || undefined,
+      engageDeepLink: engagePublic ? `${engagePublic}/clients/${client.id}?from=accountflow` : undefined,
+    }),
+  });
+
+  await prisma.client.update({
+    where: { id: client.id },
+    data: {
+      capstoneClientId: data.capstoneClientId || client.capstoneClientId,
+      accountFlowClientId: data.accountFlowClientId,
+      accountFlowLinkedAt: client.accountFlowLinkedAt || new Date(),
+    },
+  });
+
+  return {
+    capstoneClientId: data.capstoneClientId,
+    accountFlowClientId: data.accountFlowClientId,
+    deepLink: data.deepLink || null,
+  };
+}
+
+async function ensureWorkHttp(params: {
+  tenantId: string;
+  jobId: string;
+  proposalId?: string | null;
+  accountFlowClientId: string;
+}): Promise<{ accountFlowWorkId: string; deepLink: string | null }> {
+  const job = await prisma.job.findFirst({
+    where: { id: params.jobId, tenantId: params.tenantId },
+  });
+  if (!job) throw new Error('JOB_NOT_FOUND');
+
+  const due =
+    job.dueAt instanceof Date
+      ? job.dueAt.toISOString().slice(0, 10)
+      : job.dueAt
+        ? String(job.dueAt).slice(0, 10)
+        : undefined;
+
+  const data = await tandemFetch<{
+    accountFlowWorkId: string;
+    deepLink?: string;
+  }>('/work/upsert', {
+    method: 'POST',
+    body: JSON.stringify({
+      accountFlowClientId: params.accountFlowClientId,
+      engageJobId: job.id,
+      engageProposalId: params.proposalId || job.proposalId || undefined,
+      title: job.title || job.reference || `Job ${job.id}`,
+      status: job.boardColumn || 'OPEN',
+      dueDate: due,
+      metadata: { source: 'engage', boardColumn: job.boardColumn },
+    }),
+  });
+
+  await prisma.job.update({
+    where: { id: job.id },
+    data: {
+      accountFlowWorkId: data.accountFlowWorkId,
+      accountFlowSyncStatus: 'LINKED',
+      accountFlowLastSyncedAt: new Date(),
+    },
+  });
+
+  await prisma.jobActivity.create({
+    data: {
+      kind: 'ACCOUNTFLOW_LINKED',
+      message: `Linked to AccountFlow work ${data.accountFlowWorkId} via Capstone Tandem`,
+      jobId: job.id,
+      metadata: JSON.stringify({
+        accountFlowWorkId: data.accountFlowWorkId,
+        mode: resolveMode(),
+        transport: 'http',
+      }),
+    },
+  });
+
+  return {
+    accountFlowWorkId: data.accountFlowWorkId,
+    deepLink: data.deepLink || null,
+  };
+}
+
 /**
  * Primary handoff: ensure AF client (+ optional work) exist in mesh and return deep link.
+ * - mock: in-process sandbox (default, prod AF never contacted)
+ * - local/live: Capstone Tandem HTTP → AccountFlow /api/v1/external/tandem/*
  */
 export async function handoffToAccountFlow(params: {
   tenantId: string;
@@ -345,15 +508,38 @@ export async function handoffToAccountFlow(params: {
     };
   }
 
-  // Mock until live is explicitly allowed AND AF mesh HTTP API is implemented
-  const useMock = status.mode === 'mock' || !allowLive() || !status.accountFlowBaseUrl;
-  if (!useMock) {
-    logger.info(
-      'accountFlowMesh: live/local HTTP adapter not implemented yet — using mock (prod AF still safe)'
-    );
-  }
+  const useHttp = shouldUseHttp(status);
 
   try {
+    if (useHttp) {
+      const linked = await linkClientHttp({ tenantId: params.tenantId, clientId });
+      let workId: string | null = null;
+      let workDeep: string | null = null;
+      if (jobId) {
+        const work = await ensureWorkHttp({
+          tenantId: params.tenantId,
+          jobId,
+          proposalId,
+          accountFlowClientId: linked.accountFlowClientId,
+        });
+        workId = work.accountFlowWorkId;
+        workDeep = work.deepLink;
+      }
+      return {
+        available: true,
+        mode: status.mode,
+        status: 'linked',
+        message: `Linked via Capstone Tandem (${status.mode}) → AccountFlow.`,
+        deepLink: workDeep || linked.deepLink,
+        accountFlowClientId: linked.accountFlowClientId,
+        accountFlowWorkId: workId,
+        capstoneClientId: linked.capstoneClientId,
+        jobId,
+        proposalId,
+      };
+    }
+
+    // Default mock path — production AF never contacted
     const linked = await linkClientMock({ tenantId: params.tenantId, clientId });
 
     let workId: string | null = null;
@@ -373,11 +559,9 @@ export async function handoffToAccountFlow(params: {
 
     return {
       available: true,
-      mode: useMock ? 'mock' : status.mode,
-      status: useMock ? 'mock_linked' : 'linked',
-      message: useMock
-        ? 'Linked in AccountFlow mesh sandbox (production AccountFlow not contacted).'
-        : 'Linked via AccountFlow mesh.',
+      mode: 'mock',
+      status: 'mock_linked',
+      message: 'Linked in AccountFlow mesh sandbox (production AccountFlow not contacted).',
       deepLink,
       accountFlowClientId: linked.accountFlowClientId,
       accountFlowWorkId: workId,
@@ -386,7 +570,7 @@ export async function handoffToAccountFlow(params: {
       proposalId,
     };
   } catch (e: any) {
-    logger.warn('accountFlowMesh handoff failed', { err: e?.message });
+    logger.warn('accountFlowMesh handoff failed', { err: e?.message, useHttp });
     return {
       available: false,
       mode: status.mode,
