@@ -1,40 +1,19 @@
-# Engage Build Plan (post-cutover)
-
-## Goal
-
-Exceed Engager on practice ops **while** defending proposal→cash + Clara. Production is live Practice OS on Neon + Render.
+# Engage Build Plan (post-cutover + Capstone Tandem)
 
 ## Production
 
-| Item    | Value                                                                |
-| ------- | -------------------------------------------------------------------- |
-| App     | https://capstonesoftware.co.uk/engage                                |
-| Login   | https://capstonesoftware.co.uk/engage/login                          |
-| Stack   | Neon Postgres + Render + Cloudflare worker                           |
-| Cutover | **Done** 2026-08-02 (PR #91) + deploy hotfix #92                     |
-| Railway | Removed from repo (PR #93); disconnect GitHub app if statuses remain |
+https://capstonesoftware.co.uk/engage — Neon + Render
 
-## Current phase
+## Merged
 
-**Post-cutover polish + Engager gap close** — sales board + Capstone Tandem in flight on PRs.
+- Practice OS cutover (#91)
+- Railway removed (#93)
+- Capstone Tandem bi-di mesh (#95)
+- Proposal sales board (#94 — this branch)
 
-## Next up (priority)
+## Next
 
-1. **Sales board** — list/board + DnD + column £ totals (PR #94) → merge when CI green
-2. **Capstone Tandem bi-di** — PR #95 + Connect UI on Integrations (landed pieces on master)
-3. Two-way mailbox depth (OAuth sync polish)
-4. Bulk forms / portal OS depth
-5. Capacitor iOS only after desktop solid
-
-## Done recently
-
-- Practice OS cutover (jobs, letters, automations, inbox, forms, GTM, metal UI)
-- Caroline backup + data-safe migrations
-- Railway refs purged; deploy path = Render only
-- Capstone Tandem: AF mesh API + SSO handoff + Engage Connect UI
-- Sales board: Draft→Signed columns, pipeline value strip, drag-to-status
-
-## Notes
-
-- Never restore practice seed over Neon prod
-- AccountFlow live mesh: explicit env only
+1. Mailbox OAuth depth
+2. Portal / bulk forms polish
+3. Local tandem loop with AF agent
+4. iOS after desktop solid

@@ -767,8 +767,242 @@ export async function onJobSpawnedMesh(params: {
       proposalId: params.proposalId,
       mode: 'create_and_open',
     });
+    void publishTandemEvent({
+      type: 'job.created',
+      tenantId: params.tenantId,
+      jobId: params.jobId,
+      clientId: params.clientId,
+      proposalId: params.proposalId,
+    });
   } catch (e) {
     logger.warn('accountFlowMesh onJobSpawnedMesh ignored error', e);
+  }
+}
+
+/**
+ * Fire-and-forget event to AccountFlow Capstone Tandem bus.
+ * No-op in mock/off modes. Never throws.
+ */
+export async function publishTandemEvent(params: {
+  type: string;
+  tenantId: string;
+  jobId?: string | null;
+  clientId?: string | null;
+  proposalId?: string | null;
+  boardColumn?: string | null;
+  extra?: Record<string, unknown>;
+}): Promise<void> {
+  try {
+    const rt = await loadRuntime(params.tenantId);
+    const status = statusFromRuntime(rt);
+    if (!shouldUseHttp(status, rt.apiKey)) return;
+
+    let clientId = params.clientId || null;
+    let companyName: string | undefined;
+    let companyNumber: string | undefined;
+    let contactEmail: string | undefined;
+    let contactName: string | undefined;
+    let contactPhone: string | undefined;
+    let clientType: string | undefined;
+    let capstoneClientId: string | undefined;
+    let jobTitle: string | undefined;
+    let dueAt: string | undefined;
+
+    if (params.jobId) {
+      const job = await prisma.job.findFirst({
+        where: { id: params.jobId, tenantId: params.tenantId },
+        include: {
+          client: {
+            select: {
+              id: true,
+              name: true,
+              companyNumber: true,
+              contactEmail: true,
+              contactName: true,
+              contactPhone: true,
+              companyType: true,
+              capstoneClientId: true,
+            },
+          },
+        },
+      });
+      if (job) {
+        clientId = job.clientId;
+        jobTitle = job.title;
+        dueAt = job.dueAt ? job.dueAt.toISOString() : undefined;
+        companyName = job.client.name;
+        companyNumber = job.client.companyNumber || undefined;
+        contactEmail = job.client.contactEmail || undefined;
+        contactName = job.client.contactName || undefined;
+        contactPhone = job.client.contactPhone || undefined;
+        clientType = job.client.companyType || undefined;
+        capstoneClientId = job.client.capstoneClientId || undefined;
+      }
+    } else if (clientId) {
+      const c = await prisma.client.findFirst({
+        where: { id: clientId, tenantId: params.tenantId },
+      });
+      if (c) {
+        companyName = c.name;
+        companyNumber = c.companyNumber || undefined;
+        contactEmail = c.contactEmail || undefined;
+        contactName = c.contactName || undefined;
+        contactPhone = c.contactPhone || undefined;
+        clientType = c.companyType || undefined;
+        capstoneClientId = c.capstoneClientId || undefined;
+      }
+    }
+
+    if (!clientId || !companyName) return;
+
+    const engagePublic =
+      process.env.ENGAGE_PUBLIC_URL?.replace(/\/$/, '') ||
+      process.env.FRONTEND_URL?.replace(/\/$/, '') ||
+      '';
+
+    await tandemFetch(
+      '/events',
+      {
+        method: 'POST',
+        body: JSON.stringify({
+          type: params.type,
+          payload: {
+            engageClientId: clientId,
+            clientId,
+            capstoneClientId,
+            companyName,
+            companyNumber,
+            contactEmail,
+            contactName,
+            contactPhone,
+            clientType,
+            engageJobId: params.jobId || undefined,
+            jobId: params.jobId || undefined,
+            engageProposalId: params.proposalId || undefined,
+            proposalId: params.proposalId || undefined,
+            jobTitle,
+            title: jobTitle,
+            boardColumn: params.boardColumn || undefined,
+            status: params.boardColumn || undefined,
+            dueAt,
+            engageDeepLink: engagePublic
+              ? `${engagePublic}/clients/${clientId}?from=accountflow`
+              : undefined,
+            ...(params.extra || {}),
+          },
+        }),
+      },
+      rt
+    );
+  } catch (e: any) {
+    logger.warn('accountFlowMesh publishTandemEvent failed', {
+      type: params.type,
+      err: e?.message,
+    });
+  }
+}
+
+/**
+ * Inbound status mirror from AccountFlow (Capstone Tandem reverse path).
+ */
+export async function applyInboundFromAccountFlow(params: {
+  type: string;
+  engageJobId?: string | null;
+  boardColumn?: string | null;
+  status?: string | null;
+  message?: string | null;
+}): Promise<{ updated: boolean; jobId?: string; boardColumn?: string }> {
+  const jobId = params.engageJobId;
+  if (!jobId) return { updated: false };
+
+  const job = await prisma.job.findFirst({ where: { id: jobId } });
+  if (!job) return { updated: false };
+
+  const mapped = mapAfStatusToBoardColumn(params.boardColumn || params.status);
+  if (!mapped || mapped === job.boardColumn) {
+    if (params.message) {
+      await prisma.jobActivity.create({
+        data: {
+          kind: 'ACCOUNTFLOW_NOTE',
+          message: params.message.slice(0, 500),
+          jobId: job.id,
+          metadata: JSON.stringify({ source: 'accountflow', type: params.type }),
+        },
+      });
+    }
+    return { updated: false, jobId: job.id, boardColumn: job.boardColumn };
+  }
+
+  await prisma.job.update({
+    where: { id: job.id },
+    data: {
+      boardColumn: mapped as any,
+      completedAt: mapped === 'COMPLETE' ? new Date() : null,
+      accountFlowSyncStatus: 'SYNCED_FROM_AF',
+      accountFlowLastSyncedAt: new Date(),
+    },
+  });
+
+  await prisma.jobActivity.create({
+    data: {
+      kind: 'ACCOUNTFLOW_SYNC',
+      message:
+        params.message || `AccountFlow updated board → ${mapped.replace(/_/g, ' ').toLowerCase()}`,
+      jobId: job.id,
+      metadata: JSON.stringify({
+        source: 'accountflow',
+        type: params.type,
+        from: job.boardColumn,
+        to: mapped,
+      }),
+    },
+  });
+
+  return { updated: true, jobId: job.id, boardColumn: mapped };
+}
+
+function mapAfStatusToBoardColumn(raw?: string | null): string | null {
+  if (!raw) return null;
+  const s = String(raw).toUpperCase().replace(/\s+/g, '_');
+  if (s === 'COMPLETE' || s === 'COMPLETED' || s === 'DONE') return 'COMPLETE';
+  if (s === 'BLOCKED' || s === 'HELP_NEEDED' || s === 'HELP') return 'HELP_NEEDED';
+  if (s === 'IN_REVIEW' || s === 'REVIEW') return 'IN_REVIEW';
+  if (s === 'IN_PROGRESS' || s === 'ACTIVE' || s === 'OPEN' || s === 'DOING') return 'IN_PROGRESS';
+  if (s === 'REQUEST_RECORDS' || s === 'RECORDS_RECEIVED') return s;
+  if (
+    [
+      'REQUEST_RECORDS',
+      'RECORDS_RECEIVED',
+      'IN_PROGRESS',
+      'HELP_NEEDED',
+      'IN_REVIEW',
+      'COMPLETE',
+    ].includes(s)
+  ) {
+    return s;
+  }
+  return null;
+}
+
+/** Ping AF tandem (env-level; tenant-aware version is testMeshConnection). */
+export async function pingAccountFlowTandem(): Promise<{
+  ok: boolean;
+  message: string;
+  practiceName?: string;
+}> {
+  const status = getMeshStatus();
+  if (!shouldUseHttp(status, apiKeyFromEnv())) {
+    return { ok: status.mode === 'mock', message: status.message };
+  }
+  try {
+    const data = await tandemFetch<{ practiceName?: string }>('/ping', { method: 'GET' });
+    return {
+      ok: true,
+      message: `Capstone Tandem OK${data?.practiceName ? ` · ${data.practiceName}` : ''}`,
+      practiceName: data?.practiceName,
+    };
+  } catch (e: any) {
+    return { ok: false, message: e?.message || 'Tandem ping failed' };
   }
 }
 
