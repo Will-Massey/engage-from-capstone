@@ -647,3 +647,74 @@ export async function markMailboxRead(tenantId: string, messageId: string): Prom
   });
   return true;
 }
+
+/**
+ * Manually link a mailbox message (and same-thread siblings) to a client.
+ * Used when auto-match by email fails.
+ */
+export async function linkMailboxMessageToClient(params: {
+  tenantId: string;
+  messageId: string;
+  clientId: string;
+}): Promise<{ updated: number; clientName: string | null }> {
+  const client = await prisma.client.findFirst({
+    where: { id: params.clientId, tenantId: params.tenantId },
+    select: { id: true, name: true },
+  });
+  if (!client) throw new Error('CLIENT_NOT_FOUND');
+
+  const row = await prisma.activityLog.findFirst({
+    where: {
+      id: params.messageId,
+      tenantId: params.tenantId,
+      action: { in: ['EMAIL_INBOUND', 'EMAIL_OUTBOUND'] },
+    },
+  });
+  if (!row) throw new Error('MESSAGE_NOT_FOUND');
+
+  const meta = parseMeta(row.metadata);
+  const threadKey = String(meta.threadKey || '');
+
+  // Update this message + other messages in the same thread (when threadKey present)
+  const candidates = await prisma.activityLog.findMany({
+    where: {
+      tenantId: params.tenantId,
+      action: { in: ['EMAIL_INBOUND', 'EMAIL_OUTBOUND'] },
+      OR: threadKey ? [{ id: row.id }, { metadata: { contains: threadKey } }] : [{ id: row.id }],
+    },
+    take: 80,
+  });
+
+  let updated = 0;
+  for (const r of candidates) {
+    const m = parseMeta(r.metadata);
+    if (threadKey && m.threadKey && m.threadKey !== threadKey && r.id !== row.id) continue;
+    m.clientId = client.id;
+    m.clientName = client.name;
+    await prisma.activityLog.update({
+      where: { id: r.id },
+      data: {
+        entityType: 'CLIENT',
+        entityId: client.id,
+        metadata: JSON.stringify(m),
+      },
+    });
+    updated += 1;
+  }
+
+  return { updated, clientName: client.name };
+}
+
+/** Count unread inbound messages (for nav badges). */
+export async function countUnreadMailbox(tenantId: string): Promise<number> {
+  const rows = await prisma.activityLog.findMany({
+    where: { tenantId, action: 'EMAIL_INBOUND' },
+    select: { metadata: true },
+    take: 300,
+    orderBy: { createdAt: 'desc' },
+  });
+  return rows.filter((r) => {
+    const m = parseMeta(r.metadata);
+    return m.read !== true;
+  }).length;
+}

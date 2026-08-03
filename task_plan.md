@@ -1,19 +1,35 @@
-# Engage Build Plan (post-cutover + Capstone Tandem)
+# Engage Build Plan (post-cutover)
+
+## Goal
+
+Exceed Engager on practice ops **while** defending proposal-cash + Clara. Production is live Practice OS on Neon + Render.
 
 ## Production
 
-https://capstonesoftware.co.uk/engage — Neon + Render
+| Item    | Value                                 |
+| ------- | ------------------------------------- |
+| App     | https://capstonesoftware.co.uk/engage |
+| Cutover | Done 2026-08-02                       |
 
-## Merged
+## Current phase
 
-- Practice OS cutover (#91)
-- Railway removed (#93)
-- Capstone Tandem bi-di mesh (#95)
-- Proposal sales board (#94 — this branch)
+**Post-cutover polish** — shipping mailbox/forms depth + Capstone Tandem live wiring.
 
-## Next
+## Shipped this session
 
-1. Mailbox OAuth depth
-2. Portal / bulk forms polish
-3. Local tandem loop with AF agent
-4. iOS after desktop solid
+1. **Sales board** PR #94 **MERGED** (list/board, DnD, column totals, pipeline strip)
+2. **Capstone Tandem bi-di** PR #95 **MERGED** (+ Connect UI / SSO earlier on master)
+3. **Mailbox depth** PR #96 — link client, unread filter, unread in stats (this branch)
+4. **Bulk forms depth** PR #96 — overdue filter, CSV export, view answers, dueInDays on assign-all
+
+## Next up
+
+1. Merge PR #96 when CI green
+2. Prod smoke + AF live mesh env (`ENGAGE_BASE_URL` / shared secret)
+3. Capacitor iOS after desktop solid
+4. Optional: status mirror polish AF blocked → Engage HELP_NEEDED
+
+## Notes
+
+- Never restore practice seed over Neon prod
+- AccountFlow live mesh: practice Connect UI + ALLOW_LIVE for public URLs
