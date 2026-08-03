@@ -454,335 +454,336 @@ const Proposals = () => {
 
       {/* Proposals table - Glass Card */}
       {viewMode === 'list' && (
-      <div className="card overflow-hidden">
-        {isLoading ? (
-          <SkeletonCard count={6} />
-        ) : proposals.length === 0 ? (
-          <EmptyProposals />
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="min-w-[1100px] w-full divide-y divide-slate-200 dark:divide-slate-700">
-              <thead className="bg-slate-50 dark:bg-slate-800">
-                <tr>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-slate-600 dark:text-slate-400 uppercase tracking-wider w-[22%]">
-                    Proposal
-                  </th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-slate-600 dark:text-slate-400 uppercase tracking-wider w-[22%]">
-                    Client
-                  </th>
-                  <th className="px-3 py-3 text-left text-xs font-medium text-slate-600 dark:text-slate-400 uppercase tracking-wider w-[10%]">
-                    Status
-                  </th>
-                  <th className="px-3 py-3 text-center text-xs font-medium text-slate-600 dark:text-slate-400 uppercase tracking-wider w-[8%]">
-                    Views
-                  </th>
-                  <th className="px-4 py-3 text-right text-xs font-medium text-slate-600 dark:text-slate-400 uppercase tracking-wider w-[12%]">
-                    Amount
-                  </th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-slate-600 dark:text-slate-400 uppercase tracking-wider w-[14%] whitespace-nowrap">
-                    Valid Until
-                  </th>
-                  <th className="px-3 py-3 text-right text-xs font-medium text-slate-600 dark:text-slate-400 uppercase tracking-wider w-[12%]">
-                    Actions
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-200 dark:divide-slate-700">
-                {proposals.map((proposal) => {
-                  const isExpired = checkExpired(proposal.validUntil);
-                  const displayStatus =
-                    isExpired &&
-                    proposal.status !== 'ACCEPTED' &&
-                    proposal.status !== 'DECLINED' &&
-                    proposal.status !== 'WITHDRAWN'
-                      ? 'EXPIRED'
-                      : proposal.status;
+        <div className="card overflow-hidden">
+          {isLoading ? (
+            <SkeletonCard count={6} />
+          ) : proposals.length === 0 ? (
+            <EmptyProposals />
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="min-w-[1100px] w-full divide-y divide-slate-200 dark:divide-slate-700">
+                <thead className="bg-slate-50 dark:bg-slate-800">
+                  <tr>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-slate-600 dark:text-slate-400 uppercase tracking-wider w-[22%]">
+                      Proposal
+                    </th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-slate-600 dark:text-slate-400 uppercase tracking-wider w-[22%]">
+                      Client
+                    </th>
+                    <th className="px-3 py-3 text-left text-xs font-medium text-slate-600 dark:text-slate-400 uppercase tracking-wider w-[10%]">
+                      Status
+                    </th>
+                    <th className="px-3 py-3 text-center text-xs font-medium text-slate-600 dark:text-slate-400 uppercase tracking-wider w-[8%]">
+                      Views
+                    </th>
+                    <th className="px-4 py-3 text-right text-xs font-medium text-slate-600 dark:text-slate-400 uppercase tracking-wider w-[12%]">
+                      Amount
+                    </th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-slate-600 dark:text-slate-400 uppercase tracking-wider w-[14%] whitespace-nowrap">
+                      Valid Until
+                    </th>
+                    <th className="px-3 py-3 text-right text-xs font-medium text-slate-600 dark:text-slate-400 uppercase tracking-wider w-[12%]">
+                      Actions
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-200 dark:divide-slate-700">
+                  {proposals.map((proposal) => {
+                    const isExpired = checkExpired(proposal.validUntil);
+                    const displayStatus =
+                      isExpired &&
+                      proposal.status !== 'ACCEPTED' &&
+                      proposal.status !== 'DECLINED' &&
+                      proposal.status !== 'WITHDRAWN'
+                        ? 'EXPIRED'
+                        : proposal.status;
 
-                  return (
-                    <tr
-                      key={proposal.id}
-                      data-testid="proposal-row"
-                      data-proposal-title={proposal.title}
-                      className="hover:bg-slate-50/50 dark:hover:bg-slate-800/50 transition-colors"
-                    >
-                      <td className="px-4 py-4 whitespace-nowrap">
-                        <div>
-                          <Link
-                            to={`/proposals/${proposal.id}`}
-                            className="text-sm font-medium text-slate-900 dark:text-slate-100 hover:text-primary-600 dark:hover:text-primary-400 truncate max-w-[200px] block"
-                          >
-                            {proposal.title}
-                          </Link>
-                          <p className="text-xs text-slate-500 dark:text-slate-400">
-                            {proposal.reference}
-                          </p>
-                          {proposal.status !== 'DRAFT' && (
-                            <div className="flex flex-wrap gap-1 mt-1.5">
-                              {proposal.acceptedAt && (
-                                <span className="inline-flex items-center gap-0.5 rounded px-1.5 py-0.5 text-[10px] font-medium bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-200">
-                                  <PencilSquareIcon className="h-3 w-3" />
-                                  Signed {format(new Date(proposal.acceptedAt), 'dd MMM')}
-                                </span>
-                              )}
-                              {(proposal._count?.views || 0) > 0 && (
-                                <span className="inline-flex items-center gap-0.5 rounded px-1.5 py-0.5 text-[10px] font-medium bg-primary-100 text-primary-800 dark:bg-primary-900/40 dark:text-primary-200">
-                                  <EyeIcon className="h-3 w-3" />
-                                  {proposal._count.views}{' '}
-                                  {proposal._count.views === 1 ? 'open' : 'opens'}
-                                </span>
-                              )}
-                              {proposal.status === 'SENT' &&
-                                (proposal._count?.views || 0) === 0 && (
-                                  <span className="inline-flex items-center rounded px-1.5 py-0.5 text-[10px] font-medium bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-200">
-                                    Awaiting client
+                    return (
+                      <tr
+                        key={proposal.id}
+                        data-testid="proposal-row"
+                        data-proposal-title={proposal.title}
+                        className="hover:bg-slate-50/50 dark:hover:bg-slate-800/50 transition-colors"
+                      >
+                        <td className="px-4 py-4 whitespace-nowrap">
+                          <div>
+                            <Link
+                              to={`/proposals/${proposal.id}`}
+                              className="text-sm font-medium text-slate-900 dark:text-slate-100 hover:text-primary-600 dark:hover:text-primary-400 truncate max-w-[200px] block"
+                            >
+                              {proposal.title}
+                            </Link>
+                            <p className="text-xs text-slate-500 dark:text-slate-400">
+                              {proposal.reference}
+                            </p>
+                            {proposal.status !== 'DRAFT' && (
+                              <div className="flex flex-wrap gap-1 mt-1.5">
+                                {proposal.acceptedAt && (
+                                  <span className="inline-flex items-center gap-0.5 rounded px-1.5 py-0.5 text-[10px] font-medium bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-200">
+                                    <PencilSquareIcon className="h-3 w-3" />
+                                    Signed {format(new Date(proposal.acceptedAt), 'dd MMM')}
                                   </span>
                                 )}
-                              {((proposal._count?.views || 0) > 0 || proposal.acceptedAt) && (
-                                <Link
-                                  to={`/proposals/${proposal.id}?tab=audit`}
-                                  className="inline-flex items-center rounded px-1.5 py-0.5 text-[10px] font-medium text-primary-700 hover:text-primary-900 dark:text-primary-300 dark:hover:text-primary-100 hover:underline"
-                                >
-                                  Audit trail
-                                </Link>
-                              )}
-                            </div>
-                          )}
-                        </div>
-                      </td>
-                      <td className="px-4 py-4 whitespace-nowrap">
-                        <div className="text-sm text-slate-900 dark:text-slate-100 truncate max-w-[180px]">
-                          {proposal.client?.name}
-                        </div>
-                        <div className="text-xs text-slate-500 dark:text-slate-400">
-                          {proposal.client?.companyType?.replace(/_/g, ' ')}
-                        </div>
-                      </td>
-                      <td className="px-3 py-4 whitespace-nowrap">
-                        <div className="flex flex-col gap-1">
-                          <div className="flex items-center space-x-1">
-                            <span
-                              className={`inline-flex px-2.5 py-0.5 rounded-full text-xs font-medium ${statusColors[displayStatus] || 'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300'}`}
-                            >
-                              {statusLabels[displayStatus] || displayStatus}
-                            </span>
-                            {proposal.status === 'ACCEPTED' && (
-                              <CheckCircleIcon
-                                className="h-4 w-4 text-green-500"
-                                title="Accepted & signed"
-                              />
+                                {(proposal._count?.views || 0) > 0 && (
+                                  <span className="inline-flex items-center gap-0.5 rounded px-1.5 py-0.5 text-[10px] font-medium bg-primary-100 text-primary-800 dark:bg-primary-900/40 dark:text-primary-200">
+                                    <EyeIcon className="h-3 w-3" />
+                                    {proposal._count.views}{' '}
+                                    {proposal._count.views === 1 ? 'open' : 'opens'}
+                                  </span>
+                                )}
+                                {proposal.status === 'SENT' &&
+                                  (proposal._count?.views || 0) === 0 && (
+                                    <span className="inline-flex items-center rounded px-1.5 py-0.5 text-[10px] font-medium bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-200">
+                                      Awaiting client
+                                    </span>
+                                  )}
+                                {((proposal._count?.views || 0) > 0 || proposal.acceptedAt) && (
+                                  <Link
+                                    to={`/proposals/${proposal.id}?tab=audit`}
+                                    className="inline-flex items-center rounded px-1.5 py-0.5 text-[10px] font-medium text-primary-700 hover:text-primary-900 dark:text-primary-300 dark:hover:text-primary-100 hover:underline"
+                                  >
+                                    Audit trail
+                                  </Link>
+                                )}
+                              </div>
                             )}
                           </div>
-                          {proposal.status === 'DRAFT' && proposal.approvalStatus === 'PENDING' && (
-                            <span className="inline-flex px-2 py-0.5 rounded text-xs font-medium bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-200">
-                              Awaiting partner approval
-                            </span>
-                          )}
-                          {proposal.status === 'DRAFT' &&
-                            proposal.approvalStatus === 'REJECTED' && (
-                              <span className="inline-flex px-2 py-0.5 rounded text-xs font-medium bg-red-100 text-red-800 dark:bg-red-900/40 dark:text-red-200">
-                                Rejected
+                        </td>
+                        <td className="px-4 py-4 whitespace-nowrap">
+                          <div className="text-sm text-slate-900 dark:text-slate-100 truncate max-w-[180px]">
+                            {proposal.client?.name}
+                          </div>
+                          <div className="text-xs text-slate-500 dark:text-slate-400">
+                            {proposal.client?.companyType?.replace(/_/g, ' ')}
+                          </div>
+                        </td>
+                        <td className="px-3 py-4 whitespace-nowrap">
+                          <div className="flex flex-col gap-1">
+                            <div className="flex items-center space-x-1">
+                              <span
+                                className={`inline-flex px-2.5 py-0.5 rounded-full text-xs font-medium ${statusColors[displayStatus] || 'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300'}`}
+                              >
+                                {statusLabels[displayStatus] || displayStatus}
                               </span>
-                            )}
-                          {/* Renewal Badge */}
-                          {proposal.status === 'ACCEPTED' &&
-                            proposal.renewalDate &&
-                            (() => {
-                              const daysUntil = getDaysUntilRenewal(proposal.renewalDate);
-                              if (daysUntil === null) return null;
-                              if (daysUntil <= 0)
+                              {proposal.status === 'ACCEPTED' && (
+                                <CheckCircleIcon
+                                  className="h-4 w-4 text-green-500"
+                                  title="Accepted & signed"
+                                />
+                              )}
+                            </div>
+                            {proposal.status === 'DRAFT' &&
+                              proposal.approvalStatus === 'PENDING' && (
+                                <span className="inline-flex px-2 py-0.5 rounded text-xs font-medium bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-200">
+                                  Awaiting partner approval
+                                </span>
+                              )}
+                            {proposal.status === 'DRAFT' &&
+                              proposal.approvalStatus === 'REJECTED' && (
+                                <span className="inline-flex px-2 py-0.5 rounded text-xs font-medium bg-red-100 text-red-800 dark:bg-red-900/40 dark:text-red-200">
+                                  Rejected
+                                </span>
+                              )}
+                            {/* Renewal Badge */}
+                            {proposal.status === 'ACCEPTED' &&
+                              proposal.renewalDate &&
+                              (() => {
+                                const daysUntil = getDaysUntilRenewal(proposal.renewalDate);
+                                if (daysUntil === null) return null;
+                                if (daysUntil <= 0)
+                                  return (
+                                    <span className="inline-flex px-2 py-0.5 rounded text-xs font-medium bg-red-100 text-red-700">
+                                      Renewal overdue
+                                    </span>
+                                  );
+                                if (daysUntil <= 30)
+                                  return (
+                                    <span className="inline-flex px-2 py-0.5 rounded text-xs font-medium bg-amber-100 text-amber-700">
+                                      Renews in {daysUntil} days
+                                    </span>
+                                  );
                                 return (
-                                  <span className="inline-flex px-2 py-0.5 rounded text-xs font-medium bg-red-100 text-red-700">
-                                    Renewal overdue
-                                  </span>
-                                );
-                              if (daysUntil <= 30)
-                                return (
-                                  <span className="inline-flex px-2 py-0.5 rounded text-xs font-medium bg-amber-100 text-amber-700">
+                                  <span className="inline-flex px-2 py-0.5 rounded text-xs font-medium bg-emerald-100 text-emerald-700">
                                     Renews in {daysUntil} days
                                   </span>
                                 );
-                              return (
-                                <span className="inline-flex px-2 py-0.5 rounded text-xs font-medium bg-emerald-100 text-emerald-700">
-                                  Renews in {daysUntil} days
-                                </span>
-                              );
-                            })()}
-                          {proposal.isRenewal && (
-                            <span className="inline-flex px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-700">
-                              Renewal
-                            </span>
-                          )}
-                        </div>
-                      </td>
-                      <td className="px-3 py-4 whitespace-nowrap text-center">
-                        <div className="flex flex-col items-center">
-                          <div className="flex items-center space-x-1">
-                            <EyeIcon
-                              className={`h-4 w-4 ${proposal._count?.views > 0 ? 'text-primary-500' : 'text-slate-400 dark:text-slate-500'}`}
-                            />
-                            <span
-                              className={`text-sm ${proposal._count?.views > 0 ? 'text-primary-700 dark:text-primary-300 font-medium' : 'text-slate-700 dark:text-slate-300'}`}
-                            >
-                              {formatViewCount(proposal._count?.views || 0)}
-                            </span>
+                              })()}
+                            {proposal.isRenewal && (
+                              <span className="inline-flex px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-700">
+                                Renewal
+                              </span>
+                            )}
                           </div>
-                          {proposal.viewedAt && (
-                            <span className="text-xs text-slate-500 dark:text-slate-400">
-                              Last:{' '}
-                              {formatDistanceToNow(new Date(proposal.viewedAt), {
-                                addSuffix: true,
-                              })}
-                            </span>
-                          )}
-                          {proposal.acceptedAt && (
-                            <span className="text-xs text-emerald-600 dark:text-emerald-400">
-                              Signed {format(new Date(proposal.acceptedAt), 'dd MMM HH:mm')}
-                            </span>
-                          )}
-                        </div>
-                      </td>
-                      <td className="px-4 py-4 whitespace-nowrap text-right">
-                        <div className="text-sm font-semibold text-ink-900 dark:text-slate-100 tabular-nums">
-                          {formatCurrency(proposal.total ?? 0)}
-                        </div>
-                        <div className="text-xs text-slate-500 dark:text-slate-400">
-                          {proposal.paymentFrequency?.toLowerCase()}
-                        </div>
-                      </td>
-                      <td className="px-4 py-4 whitespace-nowrap">
-                        <div
-                          className={`text-sm ${isExpired ? 'text-red-600 dark:text-red-400 font-medium' : 'text-slate-600 dark:text-slate-400'}`}
-                        >
-                          {proposal.validUntil &&
-                            format(new Date(proposal.validUntil), 'dd MMM yyyy')}
-                          {isExpired &&
-                            proposal.status !== 'ACCEPTED' &&
-                            proposal.status !== 'DECLINED' && (
-                              <span className="ml-1 text-xs">(Expired)</span>
+                        </td>
+                        <td className="px-3 py-4 whitespace-nowrap text-center">
+                          <div className="flex flex-col items-center">
+                            <div className="flex items-center space-x-1">
+                              <EyeIcon
+                                className={`h-4 w-4 ${proposal._count?.views > 0 ? 'text-primary-500' : 'text-slate-400 dark:text-slate-500'}`}
+                              />
+                              <span
+                                className={`text-sm ${proposal._count?.views > 0 ? 'text-primary-700 dark:text-primary-300 font-medium' : 'text-slate-700 dark:text-slate-300'}`}
+                              >
+                                {formatViewCount(proposal._count?.views || 0)}
+                              </span>
+                            </div>
+                            {proposal.viewedAt && (
+                              <span className="text-xs text-slate-500 dark:text-slate-400">
+                                Last:{' '}
+                                {formatDistanceToNow(new Date(proposal.viewedAt), {
+                                  addSuffix: true,
+                                })}
+                              </span>
                             )}
-                        </div>
-                      </td>
-                      <td className="px-3 py-4 whitespace-nowrap text-right text-sm font-medium">
-                        <div className="flex items-center justify-end space-x-1">
-                          {/* View */}
-                          <Link
-                            to={`/proposals/${proposal.id}`}
-                            className="p-1 text-blue-600 hover:text-blue-800"
-                            title="View"
+                            {proposal.acceptedAt && (
+                              <span className="text-xs text-emerald-600 dark:text-emerald-400">
+                                Signed {format(new Date(proposal.acceptedAt), 'dd MMM HH:mm')}
+                              </span>
+                            )}
+                          </div>
+                        </td>
+                        <td className="px-4 py-4 whitespace-nowrap text-right">
+                          <div className="text-sm font-semibold text-ink-900 dark:text-slate-100 tabular-nums">
+                            {formatCurrency(proposal.total ?? 0)}
+                          </div>
+                          <div className="text-xs text-slate-500 dark:text-slate-400">
+                            {proposal.paymentFrequency?.toLowerCase()}
+                          </div>
+                        </td>
+                        <td className="px-4 py-4 whitespace-nowrap">
+                          <div
+                            className={`text-sm ${isExpired ? 'text-red-600 dark:text-red-400 font-medium' : 'text-slate-600 dark:text-slate-400'}`}
                           >
-                            <EyeIcon className="h-5 w-5" />
-                          </Link>
-
-                          {/* Edit - if draft, sent, viewed, or expired */}
-                          {(proposal.status === 'DRAFT' ||
-                            proposal.status === 'SENT' ||
-                            proposal.status === 'VIEWED' ||
-                            isExpired) && (
+                            {proposal.validUntil &&
+                              format(new Date(proposal.validUntil), 'dd MMM yyyy')}
+                            {isExpired &&
+                              proposal.status !== 'ACCEPTED' &&
+                              proposal.status !== 'DECLINED' && (
+                                <span className="ml-1 text-xs">(Expired)</span>
+                              )}
+                          </div>
+                        </td>
+                        <td className="px-3 py-4 whitespace-nowrap text-right text-sm font-medium">
+                          <div className="flex items-center justify-end space-x-1">
+                            {/* View */}
                             <Link
-                              to={`/proposals/${proposal.id}/edit`}
-                              className="p-1 text-slate-500 hover:text-slate-700 dark:hover:text-slate-300"
-                              title="Edit"
+                              to={`/proposals/${proposal.id}`}
+                              className="p-1 text-blue-600 hover:text-blue-800"
+                              title="View"
                             >
-                              <PencilIcon className="h-5 w-5" />
+                              <EyeIcon className="h-5 w-5" />
                             </Link>
-                          )}
 
-                          {/* Send Email */}
-                          {proposal.status !== 'ACCEPTED' &&
-                            proposal.status !== 'DECLINED' &&
-                            !isExpired && (
-                              <button
-                                onClick={() => sendProposalEmail(proposal)}
-                                className="p-1 text-slate-500 hover:text-blue-600"
-                                title="Send Email"
+                            {/* Edit - if draft, sent, viewed, or expired */}
+                            {(proposal.status === 'DRAFT' ||
+                              proposal.status === 'SENT' ||
+                              proposal.status === 'VIEWED' ||
+                              isExpired) && (
+                              <Link
+                                to={`/proposals/${proposal.id}/edit`}
+                                className="p-1 text-slate-500 hover:text-slate-700 dark:hover:text-slate-300"
+                                title="Edit"
                               >
-                                <EnvelopeIcon className="h-5 w-5" />
-                              </button>
+                                <PencilIcon className="h-5 w-5" />
+                              </Link>
                             )}
 
-                          {/* Generate/Copy Link */}
-                          {proposal.status !== 'ACCEPTED' &&
-                            proposal.status !== 'DECLINED' &&
-                            !isExpired && (
-                              <button
-                                data-testid="share-proposal-button"
-                                onClick={() =>
-                                  proposal.shareToken
-                                    ? copyProposalLink(proposal.shareToken)
-                                    : generateShareLink(proposal)
-                                }
-                                className={`p-1 ${proposal.shareToken ? 'text-primary-600 hover:text-primary-700' : 'text-slate-500 hover:text-primary-600'}`}
-                                title={
-                                  proposal.shareToken ? 'Copy client link' : 'Generate share link'
-                                }
-                              >
-                                <LinkIcon className="h-5 w-5" />
-                              </button>
-                            )}
+                            {/* Send Email */}
+                            {proposal.status !== 'ACCEPTED' &&
+                              proposal.status !== 'DECLINED' &&
+                              !isExpired && (
+                                <button
+                                  onClick={() => sendProposalEmail(proposal)}
+                                  className="p-1 text-slate-500 hover:text-blue-600"
+                                  title="Send Email"
+                                >
+                                  <EnvelopeIcon className="h-5 w-5" />
+                                </button>
+                              )}
 
-                          {/* Duplicate/Resubmit */}
-                          <button
-                            onClick={() => duplicateProposal(proposal)}
-                            className="p-1 text-slate-500 hover:text-primary-600"
-                            title={isExpired ? 'Resubmit' : 'Duplicate'}
-                          >
-                            <DocumentDuplicateIcon className="h-5 w-5" />
-                          </button>
+                            {/* Generate/Copy Link */}
+                            {proposal.status !== 'ACCEPTED' &&
+                              proposal.status !== 'DECLINED' &&
+                              !isExpired && (
+                                <button
+                                  data-testid="share-proposal-button"
+                                  onClick={() =>
+                                    proposal.shareToken
+                                      ? copyProposalLink(proposal.shareToken)
+                                      : generateShareLink(proposal)
+                                  }
+                                  className={`p-1 ${proposal.shareToken ? 'text-primary-600 hover:text-primary-700' : 'text-slate-500 hover:text-primary-600'}`}
+                                  title={
+                                    proposal.shareToken ? 'Copy client link' : 'Generate share link'
+                                  }
+                                >
+                                  <LinkIcon className="h-5 w-5" />
+                                </button>
+                              )}
 
-                          {/* Create Renewal - for accepted proposals */}
-                          {proposal.status === 'ACCEPTED' && !proposal.isRenewal && (
+                            {/* Duplicate/Resubmit */}
                             <button
-                              onClick={() => createRenewal(proposal.id)}
-                              className="p-1 text-slate-500 hover:text-emerald-600"
-                              title="Create Renewal"
+                              onClick={() => duplicateProposal(proposal)}
+                              className="p-1 text-slate-500 hover:text-primary-600"
+                              title={isExpired ? 'Resubmit' : 'Duplicate'}
                             >
-                              <CheckCircleIcon className="h-5 w-5" />
+                              <DocumentDuplicateIcon className="h-5 w-5" />
                             </button>
-                          )}
 
-                          {/* Download PDF */}
-                          <button
-                            onClick={() => downloadPDF(proposal.id, proposal.reference)}
-                            className="p-1 text-slate-500 hover:text-slate-700"
-                            title="Download PDF"
-                          >
-                            <ArrowDownTrayIcon className="h-5 w-5" />
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-        )}
+                            {/* Create Renewal - for accepted proposals */}
+                            {proposal.status === 'ACCEPTED' && !proposal.isRenewal && (
+                              <button
+                                onClick={() => createRenewal(proposal.id)}
+                                className="p-1 text-slate-500 hover:text-emerald-600"
+                                title="Create Renewal"
+                              >
+                                <CheckCircleIcon className="h-5 w-5" />
+                              </button>
+                            )}
 
-        {/* Pagination */}
-        {meta.totalPages > 1 && (
-          <div className="px-6 py-4 border-t border-slate-200 dark:border-slate-700 flex items-center justify-between">
-            <div className="text-sm text-slate-600 dark:text-slate-400">
-              Showing page {meta.page} of {meta.totalPages}
+                            {/* Download PDF */}
+                            <button
+                              onClick={() => downloadPDF(proposal.id, proposal.reference)}
+                              className="p-1 text-slate-500 hover:text-slate-700"
+                              title="Download PDF"
+                            >
+                              <ArrowDownTrayIcon className="h-5 w-5" />
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
             </div>
-            <div className="flex space-x-2">
-              <button
-                onClick={() => setMeta({ ...meta, page: meta.page - 1 })}
-                disabled={meta.page === 1}
-                className="btn-secondary py-1.5 text-sm disabled:opacity-50"
-              >
-                Previous
-              </button>
-              <button
-                onClick={() => setMeta({ ...meta, page: meta.page + 1 })}
-                disabled={meta.page === meta.totalPages}
-                className="btn-secondary py-1.5 text-sm disabled:opacity-50"
-              >
-                Next
-              </button>
+          )}
+
+          {/* Pagination */}
+          {meta.totalPages > 1 && (
+            <div className="px-6 py-4 border-t border-slate-200 dark:border-slate-700 flex items-center justify-between">
+              <div className="text-sm text-slate-600 dark:text-slate-400">
+                Showing page {meta.page} of {meta.totalPages}
+              </div>
+              <div className="flex space-x-2">
+                <button
+                  onClick={() => setMeta({ ...meta, page: meta.page - 1 })}
+                  disabled={meta.page === 1}
+                  className="btn-secondary py-1.5 text-sm disabled:opacity-50"
+                >
+                  Previous
+                </button>
+                <button
+                  onClick={() => setMeta({ ...meta, page: meta.page + 1 })}
+                  disabled={meta.page === meta.totalPages}
+                  className="btn-secondary py-1.5 text-sm disabled:opacity-50"
+                >
+                  Next
+                </button>
+              </div>
             </div>
-          </div>
-        )}
-      </div>
+          )}
+        </div>
       )}
     </div>
   );
