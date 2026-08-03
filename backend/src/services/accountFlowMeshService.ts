@@ -11,8 +11,13 @@
 import { randomUUID } from 'crypto';
 import { prisma } from '../config/database.js';
 import logger from '../utils/logger.js';
+import {
+  getAccountFlowMeshSettings,
+  type AccountFlowMeshSettings,
+  type MeshMode,
+} from '../utils/tenantAccountFlowMesh.js';
 
-export type MeshMode = 'mock' | 'local' | 'live' | 'off';
+export type { MeshMode };
 
 export interface MeshStatus {
   mode: MeshMode;
@@ -20,6 +25,14 @@ export interface MeshStatus {
   message: string;
   accountFlowBaseUrl: string | null;
   allowLive: boolean;
+  autoHandoff?: boolean;
+  ssoEnabled?: boolean;
+  hasApiKey?: boolean;
+  source?: 'tenant' | 'env' | 'default';
+}
+
+interface MeshRuntime extends AccountFlowMeshSettings {
+  source: 'tenant' | 'env' | 'default';
 }
 
 export interface HandoffResult {
@@ -61,23 +74,6 @@ const mockClients = new Map<string, MockAfClient>();
 const mockWork = new Map<string, MockAfWork>();
 const mockClientsByEngageId = new Map<string, string>(); // engageClientId → afClientId
 
-function resolveMode(): MeshMode {
-  const raw = (process.env.ACCOUNTFLOW_MESH_MODE || 'mock').toLowerCase().trim();
-  if (raw === 'off' || raw === 'false' || raw === '0') return 'off';
-  if (raw === 'local') return 'local';
-  if (raw === 'live') return 'live';
-  return 'mock';
-}
-
-function allowLive(): boolean {
-  return process.env.ACCOUNTFLOW_MESH_ALLOW_LIVE === 'true';
-}
-
-function baseUrl(): string | null {
-  const u = process.env.ACCOUNTFLOW_BASE_URL?.trim();
-  return u || null;
-}
-
 function isPrivateBase(url: string): boolean {
   try {
     const u = new URL(url);
@@ -96,62 +92,115 @@ function isPrivateBase(url: string): boolean {
   }
 }
 
-export function getMeshStatus(): MeshStatus {
-  const mode = resolveMode();
-  const url = baseUrl();
+function envAllowsLive(): boolean {
+  return process.env.ACCOUNTFLOW_MESH_ALLOW_LIVE === 'true';
+}
+
+async function loadRuntime(tenantId?: string | null): Promise<MeshRuntime> {
+  let settingsJson: string | null = null;
+  let source: MeshRuntime['source'] = 'default';
+  if (tenantId) {
+    const t = await prisma.tenant.findUnique({
+      where: { id: tenantId },
+      select: { settings: true },
+    });
+    settingsJson = t?.settings ?? null;
+    if (settingsJson && settingsJson !== '{}') source = 'tenant';
+  }
+  const s = getAccountFlowMeshSettings(settingsJson);
+  if (!settingsJson && (process.env.ACCOUNTFLOW_MESH_MODE || process.env.ACCOUNTFLOW_BASE_URL)) {
+    source = 'env';
+  }
+  return { ...s, source };
+}
+
+function statusFromRuntime(rt: MeshRuntime): MeshStatus {
+  let mode = rt.mode;
+  const url = rt.baseUrl;
+  const allowLive = rt.allowLive || envAllowsLive();
+
   if (mode === 'off') {
     return {
       mode,
       available: false,
-      message: 'AccountFlow mesh disabled (ACCOUNTFLOW_MESH_MODE=off).',
+      message: 'AccountFlow mesh disabled for this practice.',
       accountFlowBaseUrl: url,
-      allowLive: allowLive(),
+      allowLive,
+      autoHandoff: rt.autoHandoff,
+      ssoEnabled: rt.ssoEnabled,
+      hasApiKey: !!rt.apiKey,
+      source: rt.source,
     };
   }
-  if (mode === 'live' && !allowLive()) {
+  if (mode === 'live' && !allowLive) {
     return {
       mode: 'mock',
       available: true,
       message:
-        'Live mesh requested but ACCOUNTFLOW_MESH_ALLOW_LIVE is not true — running mock only (prod AF protected).',
+        'Live mesh requested but live is not allowed — enable allowLive on the practice (and ACCOUNTFLOW_MESH_ALLOW_LIVE on the server for non-private URLs). Mock only.',
       accountFlowBaseUrl: null,
       allowLive: false,
+      autoHandoff: rt.autoHandoff,
+      ssoEnabled: rt.ssoEnabled,
+      hasApiKey: !!rt.apiKey,
+      source: rt.source,
     };
   }
-  if (mode === 'local' || mode === 'live') {
-    if (!url) {
-      return {
-        mode: 'mock',
-        available: true,
-        message: `${mode} mode needs ACCOUNTFLOW_BASE_URL — falling back to mock.`,
-        accountFlowBaseUrl: null,
-        allowLive: allowLive(),
-      };
-    }
-    if (mode === 'local' && !isPrivateBase(url)) {
-      return {
-        mode: 'mock',
-        available: true,
-        message:
-          'local mode refused non-private ACCOUNTFLOW_BASE_URL (prod AF protection) — mock active.',
-        accountFlowBaseUrl: null,
-        allowLive: allowLive(),
-      };
-    }
-    if (mode === 'live' && isPrivateBase(url)) {
-      // live pointing at localhost is fine
-    }
+  if ((mode === 'local' || mode === 'live') && !url) {
+    return {
+      mode: 'mock',
+      available: true,
+      message: `${mode} mode needs AccountFlow base URL — falling back to mock.`,
+      accountFlowBaseUrl: null,
+      allowLive,
+      autoHandoff: rt.autoHandoff,
+      ssoEnabled: rt.ssoEnabled,
+      hasApiKey: !!rt.apiKey,
+      source: rt.source,
+    };
   }
+  if (mode === 'local' && url && !isPrivateBase(url)) {
+    return {
+      mode: 'mock',
+      available: true,
+      message: 'local mode refused non-private AccountFlow URL — mock active.',
+      accountFlowBaseUrl: null,
+      allowLive: false,
+      autoHandoff: rt.autoHandoff,
+      ssoEnabled: rt.ssoEnabled,
+      hasApiKey: !!rt.apiKey,
+      source: rt.source,
+    };
+  }
+  // Non-private live requires env kill-switch OR tenant allowLive (practice connect)
+  if (mode === 'live' && url && !isPrivateBase(url) && !envAllowsLive() && !rt.allowLive) {
+    mode = 'mock';
+  }
+  const effective = mode;
   return {
-    mode: mode === 'live' && !allowLive() ? 'mock' : mode,
+    mode: effective,
     available: true,
     message:
-      mode === 'mock' || (mode === 'live' && !allowLive())
+      effective === 'mock'
         ? 'Mock AccountFlow mesh — no outbound calls to production AccountFlow.'
-        : `AccountFlow mesh mode=${mode} base=${url}`,
-    accountFlowBaseUrl: mode === 'mock' ? null : url,
-    allowLive: allowLive(),
+        : `AccountFlow mesh mode=${effective} base=${url}`,
+    accountFlowBaseUrl: effective === 'mock' ? null : url,
+    allowLive,
+    autoHandoff: rt.autoHandoff,
+    ssoEnabled: rt.ssoEnabled,
+    hasApiKey: !!rt.apiKey,
+    source: rt.source,
   };
+}
+
+/** Env-only status (legacy callers). Prefer getMeshStatusForTenant. */
+export function getMeshStatus(): MeshStatus {
+  const s = getAccountFlowMeshSettings(null);
+  return statusFromRuntime({ ...s, source: 'env' });
+}
+
+export async function getMeshStatusForTenant(tenantId: string): Promise<MeshStatus> {
+  return statusFromRuntime(await loadRuntime(tenantId));
 }
 
 function ensureCapstoneClientId(existing: string | null | undefined): string {
@@ -302,10 +351,7 @@ async function tandemFetch<T>(
   return (body?.data ?? body) as T;
 }
 
-async function linkClientHttp(params: {
-  tenantId: string;
-  clientId: string;
-}): Promise<{
+async function linkClientHttp(params: { tenantId: string; clientId: string }): Promise<{
   capstoneClientId: string;
   accountFlowClientId: string;
   deepLink: string | null;
@@ -335,7 +381,9 @@ async function linkClientHttp(params: {
       contactName: client.contactName || undefined,
       contactPhone: client.contactPhone || undefined,
       clientType: client.companyType || undefined,
-      engageDeepLink: engagePublic ? `${engagePublic}/clients/${client.id}?from=accountflow` : undefined,
+      engageDeepLink: engagePublic
+        ? `${engagePublic}/clients/${client.id}?from=accountflow`
+        : undefined,
     }),
   });
 
