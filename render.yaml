@@ -97,6 +97,11 @@ services:
         sync: false
       - key: R2_BUCKET
         sync: false
+      # Capstone Tandem mesh — AF→Engage inbound auth is ENV-ONLY (the tenant
+      # Connect UI key does not authorize inbound). Declared here so Blueprint
+      # syncs never delete it (the JWT_REFRESH_SECRET lesson, 2026-07-10).
+      - key: ACCOUNTFLOW_MESH_INBOUND_SECRET
+        sync: false
       - key: COMPANIES_HOUSE_API_KEY
         sync: false
       - key: XAI_API_KEY
