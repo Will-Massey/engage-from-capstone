@@ -150,8 +150,10 @@ router.post(
       throw new ApiError('CLIENT_NOT_FOUND', 'Client not found', 404);
     }
 
-    // Fetch service templates for frequency and name info (tenant-scoped)
-    const requestedIds = data.services.map((s: any) => s.serviceId);
+    // Fetch service templates for frequency and name info (tenant-scoped).
+    // Compare unique ids — a proposal may carry two lines from one catalogue
+    // service (e.g. a recurring line plus its one-off catch-up fee).
+    const requestedIds = [...new Set<string>(data.services.map((s: any) => s.serviceId))];
     const serviceTemplates = await prisma.serviceTemplate.findMany({
       where: {
         id: { in: requestedIds },
@@ -415,7 +417,9 @@ router.put(
 
     // Update services if provided
     if (data.services) {
-      const serviceTemplateIds = data.services.map((s) => s.serviceId);
+      // Unique ids — duplicate lines from one catalogue service are legal
+      // (recurring line + its catch-up fee).
+      const serviceTemplateIds = [...new Set(data.services.map((s) => s.serviceId))];
       const serviceTemplates = await prisma.serviceTemplate.findMany({
         where: {
           id: { in: serviceTemplateIds },
