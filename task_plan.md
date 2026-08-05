@@ -33,12 +33,18 @@ Exceed Engager on practice ops **while** defending proposal-cash + Clara. Produc
 - render.yaml declares `ACCOUNTFLOW_MESH_INBOUND_SECRET` (Blueprint-deletion guard)
 - Stripe re-check: still zero Engage payment events on platform account (webhook watch stands)
 
+Also shipped same day (commercial-readiness continuation):
+
+- **#102 catch-up fees** — DEPLOYED + smoked (recurring line → derived ONE_TIME line at months × monthly equivalent; dup-serviceId validation fixed to unique sets)
+- **#103 @mention notifications** — MERGED (JOB_MENTION now personal in the bell feed + escaped email ping per mention via jobMentionService; composer chips already existed)
+- Prod smokes all green: portal overhaul live (`/api/document-requests` 401-gated), catch-up affordance in the deployed ProposalBuilder chunk
+
 ## Next up
 
-1. **Post-deploy prod smoke** — health, `/api/document-requests` 401-gated, portal upload → `R2 object saved: portal-files/…` in logs, download survives a redeploy
-2. Prod mesh via deliberate Connect UI + `ALLOW_LIVE` — **William gates**: set `ACCOUNTFLOW_MESH_INBOUND_SECRET` value in Render dashboard (both sides share the AF API key), create prod AF API key, then Connect UI
-3. Optional open PRs: #90 marketing root, #80 OAuth TTL (both green, William's call)
-4. Commercial gaps per scorecard after portal-OS closes: catch-up fees (Engager first-class), colleague tagging, two-way mailbox depth, Credas AML (awaits William's partner email), Capacitor iOS after desktop solid
+1. Prod mesh via deliberate Connect UI + `ALLOW_LIVE` — **William gates**: set `ACCOUNTFLOW_MESH_INBOUND_SECRET` value in Render dashboard (both sides share the AF API key), create prod AF API key, then Connect UI
+2. Optional open PRs: #90 marketing root, #80 OAuth TTL (both green, William's call)
+3. Remaining scorecard gaps: two-way mailbox depth (M365/Gmail sync), Credas AML (awaits William's partner email), Capacitor iOS after desktop solid
+4. Caroline flow to watch: first real document request end-to-end (email → portal checklist → upload → auto-complete)
 
 ## Notes
 
