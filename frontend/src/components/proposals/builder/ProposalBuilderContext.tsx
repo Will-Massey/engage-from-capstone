@@ -86,6 +86,7 @@ import {
   type Service,
 } from './shared';
 import {
+  buildCatchUpLine,
   buildProposalSavePayload,
   buildSelectedServiceLine,
   collectProposalValidationErrors,
@@ -354,6 +355,11 @@ export function ProposalBuilderProvider({ proposalId, children }: ProposalBuilde
   const [serviceSearch, setServiceSearch] = useState('');
   const [selectedServices, setSelectedServices] = useState<SelectedService[]>([]);
   const [editingService, setEditingService] = useState<string | null>(null);
+
+  // Catch-up fee mini-form (per recurring line)
+  const [catchUpForId, setCatchUpForId] = useState<string | null>(null);
+  const [catchUpMonths, setCatchUpMonths] = useState(3);
+  const [catchUpDiscount, setCatchUpDiscount] = useState(0);
 
   // Edit form state
   const [editForm, setEditForm] = useState<{
@@ -1055,6 +1061,30 @@ export function ProposalBuilderProvider({ proposalId, children }: ProposalBuilde
         }));
       }
     }
+  };
+
+  /** Add a one-off catch-up line derived from a recurring line (client behind on their books). */
+  const addCatchUpFee = (sourceId: string) => {
+    const source = selectedServices.find((s) => s.id === sourceId);
+    if (!source) return;
+    const line = buildCatchUpLine(source, {
+      months: catchUpMonths,
+      discountPercent: catchUpDiscount,
+      includeVat,
+      todayIso,
+    });
+    if (!line) {
+      toast.error('Catch-up fees apply to recurring lines only');
+      return;
+    }
+    setSelectedServices((prev) => {
+      const idx = prev.findIndex((s) => s.id === sourceId);
+      const next = [...prev];
+      next.splice(idx + 1, 0, line);
+      return next;
+    });
+    setCatchUpForId(null);
+    toast.success(`Added ${line.name}`);
   };
 
   const goToReviewStep = () => {
@@ -2182,6 +2212,80 @@ export function ProposalBuilderProvider({ proposalId, children }: ProposalBuilde
             onChange={(cadence) => changeServiceCadence(service.id, cadence)}
           />
         </div>
+
+        {service.billingCycle !== 'ONE_TIME' &&
+          (catchUpForId === service.id ? (
+            <div className="flex flex-wrap items-end gap-2 pt-2 border-t border-slate-200/80 dark:border-slate-700/80">
+              <div>
+                <label className="block text-[10px] uppercase tracking-wide text-slate-500 dark:text-slate-300 mb-0.5">
+                  Months behind
+                </label>
+                <input
+                  data-testid="catch-up-months"
+                  type="number"
+                  min={1}
+                  max={24}
+                  value={catchUpMonths}
+                  onChange={(e) => setCatchUpMonths(Number(e.target.value))}
+                  className="w-20 px-2 py-1 text-sm border rounded dark:bg-slate-800 dark:border-slate-600"
+                />
+              </div>
+              <div>
+                <label className="block text-[10px] uppercase tracking-wide text-slate-500 dark:text-slate-300 mb-0.5">
+                  Disc %
+                </label>
+                <input
+                  data-testid="catch-up-discount"
+                  type="number"
+                  min={0}
+                  max={100}
+                  value={catchUpDiscount}
+                  onChange={(e) => setCatchUpDiscount(Number(e.target.value))}
+                  className="w-16 px-2 py-1 text-sm border rounded dark:bg-slate-800 dark:border-slate-600"
+                />
+              </div>
+              <span className="text-xs text-slate-500 dark:text-slate-300 mb-1.5">
+                ≈{' '}
+                {formatCurrency(
+                  buildCatchUpLine(service, {
+                    months: catchUpMonths,
+                    discountPercent: catchUpDiscount,
+                    includeVat,
+                    todayIso,
+                  })?.grossTotal || 0
+                )}{' '}
+                one-time inc VAT
+              </span>
+              <button
+                data-testid="catch-up-add"
+                type="button"
+                onClick={() => addCatchUpFee(service.id)}
+                className="px-2.5 py-1.5 text-xs font-medium rounded-lg bg-primary-600 text-white hover:bg-primary-700"
+              >
+                Add catch-up
+              </button>
+              <button
+                type="button"
+                onClick={() => setCatchUpForId(null)}
+                className="px-2 py-1.5 text-xs text-slate-500 dark:text-slate-300 hover:text-slate-700"
+              >
+                Cancel
+              </button>
+            </div>
+          ) : (
+            <button
+              data-testid="catch-up-open"
+              type="button"
+              onClick={() => {
+                setCatchUpForId(service.id);
+                setCatchUpMonths(3);
+                setCatchUpDiscount(0);
+              }}
+              className="text-xs text-primary-600 dark:text-primary-400 hover:underline"
+            >
+              + Catch-up fee — client behind on these?
+            </button>
+          ))}
       </div>
     );
   };

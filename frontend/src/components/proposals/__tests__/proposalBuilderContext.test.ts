@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  buildCatchUpLine,
   buildProposalSavePayload,
   buildSelectedServiceLine,
   collectProposalValidationErrors,
@@ -214,6 +215,55 @@ describe('ProposalBuilderContext actions', () => {
       expect(payload.services[0].vatRate).toBe(0);
       expect(payload.paymentTerms).toBe('1 day');
       expect(payload.terms).toBeUndefined();
+    });
+  });
+
+  describe('buildCatchUpLine', () => {
+    it('derives a one-off line: months x monthly equivalent, due today', () => {
+      const line = buildCatchUpLine(selectedLine(), {
+        months: 6,
+        includeVat: true,
+        todayIso: '2026-08-05',
+      });
+      expect(line).not.toBeNull();
+      expect(line!.billingCycle).toBe('ONE_TIME');
+      expect(line!.displayPrice).toBe(510); // 85 x 6
+      expect(line!.grossTotal).toBe(612); // + 20% VAT
+      expect(line!.name).toContain('Catch-up');
+      expect(line!.name).toContain('6 months');
+      expect(line!.oneOffDueDate).toBe('2026-08-05');
+      expect(line!.id).not.toBe('line-1');
+      expect(line!.templateId).toBe('svc-bookkeeping');
+    });
+
+    it('converts non-monthly cadences via the monthly equivalent', () => {
+      const quarterly = selectedLine({ billingCycle: 'QUARTERLY', displayPrice: 300 });
+      const line = buildCatchUpLine(quarterly, {
+        months: 3,
+        includeVat: true,
+        todayIso: '2026-08-05',
+      });
+      expect(line!.displayPrice).toBe(300); // 300/quarter = 100/mo x 3
+    });
+
+    it('applies the discount and clamps months into 1-24', () => {
+      const line = buildCatchUpLine(selectedLine(), {
+        months: 99,
+        discountPercent: 50,
+        includeVat: false,
+        todayIso: '2026-08-05',
+      });
+      expect(line!.name).toContain('24 months');
+      expect(line!.displayPrice).toBe(2040); // 85 x 24
+      expect(line!.lineTotal).toBe(1020); // 50% off
+      expect(line!.vatAmount).toBe(0); // VAT excluded
+    });
+
+    it('returns null for one-time source lines', () => {
+      const oneOff = selectedLine({ billingCycle: 'ONE_TIME' });
+      expect(
+        buildCatchUpLine(oneOff, { months: 3, includeVat: true, todayIso: '2026-08-05' })
+      ).toBeNull();
     });
   });
 });
