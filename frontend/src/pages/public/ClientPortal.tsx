@@ -70,6 +70,21 @@ interface PortalFileMeta {
   jobId: string | null;
 }
 
+interface PortalDocRequestItem {
+  id: string;
+  name: string;
+  required: boolean;
+  status: 'PENDING' | 'RECEIVED';
+}
+
+interface PortalDocRequest {
+  id: string;
+  title: string;
+  message: string | null;
+  createdAt: string;
+  items: PortalDocRequestItem[];
+}
+
 interface PortalData {
   client: {
     id: string;
@@ -85,6 +100,7 @@ interface PortalData {
   proposals: PortalProposal[];
   jobs?: PortalJob[];
   files?: PortalFileMeta[];
+  documentRequests?: PortalDocRequest[];
 }
 
 const statusConfig: Record<string, { label: string; icon: any; color: string; bg: string }> = {
@@ -420,6 +436,7 @@ export default function ClientPortal() {
   const { client, practice, proposals } = portalData;
   const jobs = portalData.jobs || [];
   const files = portalData.files || [];
+  const documentRequests = portalData.documentRequests || [];
 
   const actionableCount = proposals.filter(
     (p) => p.status === 'SENT' || p.status === 'VIEWED'
@@ -473,7 +490,7 @@ export default function ClientPortal() {
     }
   }
 
-  async function uploadPortalFile(file: File | null) {
+  async function uploadPortalFile(file: File | null, requestItemId?: string) {
     if (!file || !token) return;
     setUploading(true);
     setUploadMsg(null);
@@ -489,6 +506,7 @@ export default function ClientPortal() {
         mimeType: file.type || 'application/octet-stream',
         data: dataUrl,
         jobId: jobs[0]?.id || null,
+        requestItemId: requestItemId || null,
       });
       // refresh portal
       const response = (await apiClient.get(`/proposals/portal/${token}`)) as any;
@@ -1107,6 +1125,80 @@ export default function ClientPortal() {
                 );
               })}
             </div>
+          </div>
+        )}
+
+        {documentRequests.length > 0 && (
+          <div className="space-y-4 mb-10">
+            <div>
+              <h2 className="text-lg font-semibold text-slate-900 dark:text-white">
+                Documents requested
+              </h2>
+              <p className="text-xs text-slate-500">
+                {practice.name} has asked for the documents below — upload each one and the list
+                ticks itself off.
+              </p>
+            </div>
+            {documentRequests.map((dr) => {
+              const received = dr.items.filter((i) => i.status === 'RECEIVED').length;
+              return (
+                <div
+                  key={dr.id}
+                  className="rounded-2xl border border-emerald-200 dark:border-emerald-900/50 bg-white dark:bg-slate-800 p-5 shadow-sm"
+                >
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <h3 className="text-sm font-semibold text-slate-900 dark:text-white">
+                      {dr.title}
+                    </h3>
+                    <span className="text-xs font-medium text-emerald-700 dark:text-emerald-300">
+                      {received}/{dr.items.length} uploaded
+                    </span>
+                  </div>
+                  {dr.message && (
+                    <p className="mt-1 text-xs text-slate-500 whitespace-pre-line">{dr.message}</p>
+                  )}
+                  <ul className="mt-3 space-y-2">
+                    {dr.items.map((item) => (
+                      <li
+                        key={item.id}
+                        className="flex flex-wrap items-center gap-2 rounded-lg border border-slate-100 dark:border-slate-700 px-3 py-2"
+                      >
+                        {item.status === 'RECEIVED' ? (
+                          <CheckCircleIcon className="h-5 w-5 text-emerald-500 flex-shrink-0" />
+                        ) : (
+                          <ClockIcon className="h-5 w-5 text-amber-500 flex-shrink-0" />
+                        )}
+                        <span
+                          className={`flex-1 text-sm ${
+                            item.status === 'RECEIVED'
+                              ? 'text-slate-400 line-through'
+                              : 'text-slate-800 dark:text-slate-200'
+                          }`}
+                        >
+                          {item.name}
+                          {!item.required && (
+                            <span className="text-xs text-slate-400"> (if available)</span>
+                          )}
+                        </span>
+                        {item.status !== 'RECEIVED' && (
+                          <label className="inline-flex cursor-pointer items-center gap-1.5 rounded-lg bg-emerald-600 px-2.5 py-1 text-xs font-medium text-white shadow-sm hover:bg-emerald-700">
+                            {uploading ? 'Uploading…' : 'Upload'}
+                            <input
+                              type="file"
+                              className="hidden"
+                              disabled={uploading}
+                              onChange={(e) =>
+                                void uploadPortalFile(e.target.files?.[0] || null, item.id)
+                              }
+                            />
+                          </label>
+                        )}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              );
+            })}
           </div>
         )}
 

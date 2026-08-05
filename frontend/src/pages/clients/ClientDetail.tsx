@@ -25,6 +25,10 @@ import { motion } from 'framer-motion';
 import toast from 'react-hot-toast';
 import AmlPartnerPanel from '../../components/clients/AmlPartnerPanel';
 import LoeOnlyModal from '../../components/proposals/LoeOnlyModal';
+import DocumentRequestDialog from '../../components/documents/DocumentRequestDialog';
+import DocumentRequestList, {
+  type DocumentRequestSummary,
+} from '../../components/documents/DocumentRequestList';
 import {
   StatusChip,
   MoneyPill,
@@ -134,6 +138,8 @@ const ClientDetail = () => {
       jobId?: string | null;
     }>
   >([]);
+  const [docRequests, setDocRequests] = useState<DocumentRequestSummary[]>([]);
+  const [docRequestDialogOpen, setDocRequestDialogOpen] = useState(false);
 
   // Edit form state
   const [editForm, setEditForm] = useState({
@@ -218,6 +224,14 @@ const ClientDetail = () => {
           setPortalFiles([]);
         }
       }
+      try {
+        const dr = (await apiClient.get(`/document-requests?clientId=${id}`)) as {
+          data?: { requests?: DocumentRequestSummary[] };
+        };
+        if (!cancelled) setDocRequests(dr?.data?.requests || []);
+      } catch {
+        if (!cancelled) setDocRequests([]);
+      }
     })();
     return () => {
       cancelled = true;
@@ -235,6 +249,19 @@ const ClientDetail = () => {
       setPortalFiles(data?.files || []);
     } catch {
       /* ignore */
+    }
+    void refreshDocRequests();
+  };
+
+  const refreshDocRequests = async () => {
+    if (!id) return;
+    try {
+      const res = (await apiClient.get(`/document-requests?clientId=${id}`)) as {
+        data?: { requests?: DocumentRequestSummary[] };
+      };
+      setDocRequests(res?.data?.requests || []);
+    } catch {
+      setDocRequests([]);
     }
   };
 
@@ -1154,6 +1181,13 @@ const ClientDetail = () => {
               <div className="mt-4 flex flex-wrap gap-2">
                 <button
                   type="button"
+                  className="btn-primary text-sm"
+                  onClick={() => setDocRequestDialogOpen(true)}
+                >
+                  Request documents
+                </button>
+                <button
+                  type="button"
                   className="btn-accent text-sm"
                   disabled={portalLinkBusy}
                   onClick={() => void handleCopyPortalLink()}
@@ -1181,6 +1215,19 @@ const ClientDetail = () => {
                 clients are not cut off.
               </p>
             </div>
+          </div>
+
+          <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm p-6">
+            <div className="flex flex-wrap items-center justify-between gap-2 mb-4">
+              <h2 className="text-lg font-semibold text-slate-900 dark:text-white">
+                Document requests
+              </h2>
+            </div>
+            <DocumentRequestList
+              requests={docRequests}
+              onChanged={() => void refreshDocRequests()}
+              emptyText="No document requests yet — use “Request documents” to ask this client for what you need."
+            />
           </div>
 
           <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm p-6">
@@ -1241,6 +1288,14 @@ const ClientDetail = () => {
               </ul>
             )}
           </div>
+
+          <DocumentRequestDialog
+            open={docRequestDialogOpen}
+            onClose={() => setDocRequestDialogOpen(false)}
+            clientId={id || ''}
+            clientName={client?.name || 'the client'}
+            onCreated={() => void refreshDocRequests()}
+          />
         </div>
       )}
 

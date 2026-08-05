@@ -253,6 +253,16 @@ const AnimatedRoutes = () => {
             }
           />
           <Route
+            path="documents"
+            element={
+              <AnimatedPage>
+                <PageSuspense>
+                  <Pages.DocumentsHub />
+                </PageSuspense>
+              </AnimatedPage>
+            }
+          />
+          <Route
             path="automations"
             element={
               <AnimatedPage>

@@ -16,6 +16,7 @@ import {
   ShieldCheckIcon,
   InboxIcon,
   ClipboardDocumentListIcon,
+  FolderOpenIcon,
 } from '@heroicons/react/24/outline';
 
 export type NavIcon = ComponentType<SVGProps<SVGSVGElement>>;
@@ -68,6 +69,13 @@ export const NAV_SECTIONS: NavSection[] = [
         href: '/clients',
         icon: UsersIcon,
         description: 'Client records, portal, MTD ITSA',
+        matchPrefix: true,
+      },
+      {
+        name: 'Documents',
+        href: '/documents',
+        icon: FolderOpenIcon,
+        description: 'Request and collect client documents via the portal',
         matchPrefix: true,
       },
     ],

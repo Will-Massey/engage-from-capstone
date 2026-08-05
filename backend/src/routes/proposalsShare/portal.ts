@@ -20,6 +20,10 @@ import {
   getStorageService,
   StorageObjectMissingError,
 } from '../../services/storage/storageService.js';
+import {
+  attachUploadToRequestItem,
+  listOpenRequestsForPortal,
+} from '../../services/documentRequestService.js';
 
 const router = Router();
 
@@ -164,10 +168,13 @@ router.get(
         uploadedBy: true,
         createdAt: true,
         jobId: true,
+        requestItemId: true,
       },
       orderBy: { createdAt: 'desc' },
       take: 50,
     });
+
+    const documentRequests = await listOpenRequestsForPortal(client.tenantId, client.id);
 
     res.json({
       success: true,
@@ -228,6 +235,7 @@ router.get(
             : 0,
         })),
         files,
+        documentRequests,
       },
     });
   })
@@ -248,6 +256,7 @@ router.post(
       mimeType: z.string().min(1).max(120),
       data: z.string().min(1).max(12_000_000),
       jobId: z.string().uuid().optional().nullable(),
+      requestItemId: z.string().uuid().optional().nullable(),
     });
     const body = schema.parse(req.body);
 
@@ -296,6 +305,17 @@ router.post(
       });
     }
 
+    let requestItemAttached = false;
+    if (body.requestItemId) {
+      const attached = await attachUploadToRequestItem({
+        tenantId: client.tenantId,
+        clientId: client.id,
+        requestItemId: body.requestItemId,
+        portalFileId: file.id,
+      });
+      requestItemAttached = Boolean(attached);
+    }
+
     res.status(201).json({
       success: true,
       data: {
@@ -305,6 +325,7 @@ router.post(
         sizeBytes: file.sizeBytes,
         createdAt: file.createdAt,
         jobId: file.jobId,
+        requestItemAttached,
       },
     });
   })

@@ -1,0 +1,2 @@
+-- AlterEnum
+ALTER TYPE "EmailMessageType" ADD VALUE 'DOCUMENT_REQUEST';
