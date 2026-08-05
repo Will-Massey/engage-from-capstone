@@ -13,6 +13,7 @@ import {
 import { buildAiContext } from './aiContextBuilder.js';
 import { logAiUsage } from './proposalAiService.js';
 import { VALID_BILLING_FREQUENCIES } from '../../utils/proposalPricing.js';
+import { dedupeLeadingGreetings } from '@uk-proposal-platform/shared';
 
 const UK_SYSTEM =
   AI_COPILOT.systemPersona +
@@ -309,7 +310,10 @@ ${JSON.stringify(
     suggestedTitle: parsed.suggestedTitle?.trim() || `Proposal for ${ctx.client.name}`,
     services,
     coverLetterTone: tone,
-    coverLetterDraft: parsed.coverLetterDraft?.trim() || '',
+    coverLetterDraft: dedupeLeadingGreetings(parsed.coverLetterDraft?.trim() || '', [
+      ctx.client.contactName || '',
+      ctx.client.name,
+    ]),
     pricingNotes: parsed.pricingNotes?.trim() || '',
     validUntilDays: parsed.validUntilDays || 30,
   };

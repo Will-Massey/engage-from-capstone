@@ -3,7 +3,13 @@
 import { vatAmountFor } from './pricingEngine';
 
 export { TRIAL_DAYS } from './constants.js';
-export { formatCoverLetter, type FormattedCoverLetter } from './coverLetter.js';
+export {
+  formatCoverLetter,
+  dedupeLeadingGreetings,
+  startsWithSalutation,
+  stripLeadingGreetings,
+  type FormattedCoverLetter,
+} from './coverLetter.js';
 
 // ==================== ENUMS (aligned with backend/prisma/schema.prisma) ====================
 

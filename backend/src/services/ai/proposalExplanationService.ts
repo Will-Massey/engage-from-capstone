@@ -7,6 +7,7 @@ import { AI_COPILOT } from '../../config/aiCopilot.js';
 import { chatCompletion, checkAiTokenBudget, isAiConfigured } from './aiClient.js';
 import { logAiUsage } from './proposalAiService.js';
 import { coverLetterAddressee, formatUserRole } from '../../utils/proposalDisplay.js';
+import { dedupeLeadingGreetings } from '@uk-proposal-platform/shared';
 
 export interface ProposalExplanationInput {
   clientId: string;
@@ -114,7 +115,9 @@ Requirements:
     { temperature: 0.6, maxTokens: 1600 }
   );
 
-  const explanation = content.trim();
+  // Models occasionally open with two salutations ("Hi Jon," then "Dear Jon,")
+  // — keep only the first so the stored letter never greets the client twice.
+  const explanation = dedupeLeadingGreetings(content.trim(), [addressee, client.name]);
 
   // The prompt intentionally ends the letter at "Yours sincerely," with no
   // fabricated name. Append a real signature block from the author + practice
