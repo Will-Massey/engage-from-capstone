@@ -259,6 +259,30 @@ describe('ProposalBuilderContext actions', () => {
       expect(line!.vatAmount).toBe(0); // VAT excluded
     });
 
+    it('resolves quarterly 9-months-behind to an exact figure (single rounding)', () => {
+      const quarterly = selectedLine({ billingCycle: 'QUARTERLY', displayPrice: 1200 });
+      const line = buildCatchUpLine(quarterly, {
+        months: 9,
+        includeVat: true,
+        todayIso: '2026-08-05',
+      });
+      expect(line!.displayPrice).toBe(3600); // 1200/q = 400/mo x 9, exact
+      expect(line!.grossTotal).toBe(4320); // + 20% VAT, exact
+    });
+
+    it('composes discount before VAT: 100/mo x 3, 20% off, inc VAT = 288 gross', () => {
+      const line = buildCatchUpLine(selectedLine({ displayPrice: 100 }), {
+        months: 3,
+        discountPercent: 20,
+        includeVat: true,
+        todayIso: '2026-08-05',
+      });
+      expect(line!.displayPrice).toBe(300);
+      expect(line!.lineTotal).toBe(240); // discount on net
+      expect(line!.vatAmount).toBe(48); // VAT on discounted net
+      expect(line!.grossTotal).toBe(288);
+    });
+
     it('returns null for one-time source lines', () => {
       const oneOff = selectedLine({ billingCycle: 'ONE_TIME' });
       expect(

@@ -2214,6 +2214,7 @@ export function ProposalBuilderProvider({ proposalId, children }: ProposalBuilde
         </div>
 
         {service.billingCycle !== 'ONE_TIME' &&
+          service.displayPrice * service.quantity > 0 &&
           (catchUpForId === service.id ? (
             <div className="flex flex-wrap items-end gap-2 pt-2 border-t border-slate-200/80 dark:border-slate-700/80">
               <div>
