@@ -21,6 +21,8 @@ export type AutomationRunResult = {
   action: string;
   matched: number;
   acted: number;
+  /** Entities skipped because the (rule, entity) pair acted within the cooldown window */
+  skippedCooldown: number;
   details: string[];
 };
 
@@ -71,10 +73,47 @@ export async function saveAutomationRules(
   return cleaned;
 }
 
+/**
+ * Cooldown ledger — tenant-scoped: has this (rule, entity) pair acted within
+ * the window? Prevents a daily scheduled run from re-firing client-facing
+ * actions every day while a trigger condition persists.
+ */
+async function underCooldown(
+  tenantId: string,
+  ruleId: string,
+  entityId: string,
+  days: number
+): Promise<boolean> {
+  const since = new Date(Date.now() - days * 24 * 60 * 60 * 1000);
+  const prior = await prisma.activityLog.findFirst({
+    where: {
+      tenantId,
+      action: 'AUTOMATION_RULE_ACTED',
+      entityId: `${ruleId}:${entityId}`,
+      createdAt: { gte: since },
+    },
+    select: { id: true },
+  });
+  return Boolean(prior);
+}
+
+async function recordActed(tenantId: string, ruleId: string, entityId: string, detail: string) {
+  await prisma.activityLog.create({
+    data: {
+      action: 'AUTOMATION_RULE_ACTED',
+      entityType: 'AutomationRule',
+      entityId: `${ruleId}:${entityId}`,
+      description: detail,
+      metadata: JSON.stringify({ ruleId, targetId: entityId }),
+      tenantId,
+    },
+  });
+}
+
 /** Dry-run or execute enabled rules for a tenant */
 export async function runAutomationRules(
   tenantId: string,
-  opts: { dryRun?: boolean } = {}
+  opts: { dryRun?: boolean; cooldownDays?: number } = {}
 ): Promise<{ results: AutomationRunResult[]; dryRun: boolean }> {
   const tenant = await prisma.tenant.findUnique({
     where: { id: tenantId },
@@ -82,9 +121,26 @@ export async function runAutomationRules(
   });
   const rules = getAutomationRules(tenant?.settings).filter((r) => r.enabled);
   const dryRun = opts.dryRun === true;
+  const cooldownDays = opts.cooldownDays && opts.cooldownDays > 0 ? opts.cooldownDays : 0;
   const results: AutomationRunResult[] = [];
   const now = new Date();
   const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+
+  /** Shared gate: true = proceed with the action; false = skip (cooldown). */
+  const passesCooldown = async (
+    result: AutomationRunResult,
+    ruleId: string,
+    entityId: string,
+    label: string
+  ): Promise<boolean> => {
+    if (!cooldownDays) return true;
+    if (await underCooldown(tenantId, ruleId, entityId, cooldownDays)) {
+      result.skippedCooldown += 1;
+      result.details.push(`Cooldown skip (${cooldownDays}d) → ${label}`);
+      return false;
+    }
+    return true;
+  };
 
   for (const rule of rules) {
     const result: AutomationRunResult = {
@@ -93,6 +149,7 @@ export async function runAutomationRules(
       action: rule.action,
       matched: 0,
       acted: 0,
+      skippedCooldown: 0,
       details: [],
     };
 
@@ -117,7 +174,11 @@ export async function runAutomationRules(
             result.details.push(`Would act on ${job.reference} (${job.client.name})`);
             continue;
           }
+          if (!(await passesCooldown(result, rule.id, job.id, job.reference))) continue;
           await applyAction(tenantId, rule.action, job, tenant?.name || 'Practice');
+          if (cooldownDays) {
+            await recordActed(tenantId, rule.id, job.id, `${rule.action} → ${job.reference}`);
+          }
           result.acted += 1;
           result.details.push(`${rule.action} → ${job.reference}`);
         }
@@ -137,7 +198,11 @@ export async function runAutomationRules(
             result.details.push(`Would act on ${job.reference}`);
             continue;
           }
+          if (!(await passesCooldown(result, rule.id, job.id, job.reference))) continue;
           await applyAction(tenantId, rule.action, job, tenant?.name || 'Practice');
+          if (cooldownDays) {
+            await recordActed(tenantId, rule.id, job.id, `${rule.action} → ${job.reference}`);
+          }
           result.acted += 1;
           result.details.push(`${rule.action} → ${job.reference}`);
         }
@@ -156,6 +221,10 @@ export async function runAutomationRules(
           if (dryRun) {
             result.details.push(`Would chase proposal ${p.reference}`);
             continue;
+          }
+          if (!(await passesCooldown(result, rule.id, p.id, p.reference))) continue;
+          if (cooldownDays) {
+            await recordActed(tenantId, rule.id, p.id, `${rule.action} → ${p.reference}`);
           }
           await prisma.activityLog.create({
             data: {
@@ -195,9 +264,54 @@ export async function runAutomationRules(
             result.details.push(`Would act on phase ${ph.name} / ${ph.job.reference}`);
             continue;
           }
+          if (!(await passesCooldown(result, rule.id, ph.id, `${ph.job.reference}/${ph.name}`)))
+            continue;
           await applyAction(tenantId, rule.action, ph.job, tenant?.name || 'Practice', ph.name);
+          if (cooldownDays) {
+            await recordActed(
+              tenantId,
+              rule.id,
+              ph.id,
+              `${rule.action} → ${ph.job.reference} / ${ph.name}`
+            );
+          }
           result.acted += 1;
           result.details.push(`${rule.action} → ${ph.job.reference} / ${ph.name}`);
+        }
+      } else if (rule.trigger === 'document_request.stale') {
+        // Sent document requests still OPEN with nothing received for 3+ days.
+        // sentCount >= 1 excludes drafts the practice never sent; resend
+        // updates lastSentAt, so this is self-limiting even without cooldown.
+        const staleBefore = new Date(now.getTime() - 3 * 24 * 60 * 60 * 1000);
+        const requests = await prisma.documentRequest.findMany({
+          where: {
+            tenantId,
+            status: 'OPEN',
+            sentCount: { gte: 1 },
+            lastSentAt: { lte: staleBefore },
+          },
+          take: 25,
+          select: { id: true, title: true, client: { select: { name: true } } },
+        });
+        result.matched = requests.length;
+        for (const reqRow of requests) {
+          const label = `${reqRow.title} (${reqRow.client.name})`;
+          if (dryRun) {
+            result.details.push(`Would resend document request: ${label}`);
+            continue;
+          }
+          if (rule.action !== 'resend_document_request') {
+            result.details.push(`Unsupported action ${rule.action} for ${rule.trigger}`);
+            break;
+          }
+          if (!(await passesCooldown(result, rule.id, reqRow.id, label))) continue;
+          const { resendDocumentRequest } = await import('./documentRequestService.js');
+          await resendDocumentRequest({ tenantId, requestId: reqRow.id });
+          if (cooldownDays) {
+            await recordActed(tenantId, rule.id, reqRow.id, `resend → ${label}`);
+          }
+          result.acted += 1;
+          result.details.push(`resend_document_request → ${label}`);
         }
       } else {
         result.details.push(`Unknown trigger: ${rule.trigger}`);

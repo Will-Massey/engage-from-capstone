@@ -13,6 +13,7 @@ import { runEmailAutomation } from '../jobs/emailAutomation.js';
 import { reconcileDisputes } from '../services/stripeDisputeService.js';
 import { runRegulatoryScan } from '../jobs/regulatoryScan.js';
 import { runClaraAgenticDrafting } from '../jobs/claraAgenticDrafting.js';
+import { runScheduledAutomations } from '../jobs/automationRunJob.js';
 
 // Run immediately on startup in production, or every 24 hours
 const RENEWAL_CHECK_INTERVAL = 24 * 60 * 60 * 1000; // 24 hours
@@ -151,4 +152,23 @@ export function scheduleClaraAgenticDrafting() {
   setInterval(tick, INTERVAL);
 
   logger.info('✅ Clara agentic drafting scheduled (every 24 hours)');
+}
+
+export function scheduleAutomationRules() {
+  logger.info('📅 Scheduling tenant automation rules (opt-in, daily)...');
+
+  const INTERVAL = 24 * 60 * 60 * 1000; // daily — opt-in tenants only, 3d cooldown per (rule, entity)
+
+  const tick = () =>
+    trackJobRun('automationRules', () =>
+      withJobLock(JOB_LOCKS.automationRules, 'automation rules', () => runScheduledAutomations())
+    ).catch((err) => {
+      logger.error('Scheduled automation run failed:', err);
+      captureException(err, { job: 'automationRules' });
+    });
+
+  setTimeout(tick, 360_000);
+  setInterval(tick, INTERVAL);
+
+  logger.info('✅ Automation rules scheduled (every 24 hours, opt-in tenants)');
 }
