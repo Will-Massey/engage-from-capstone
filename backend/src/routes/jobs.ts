@@ -16,6 +16,9 @@ import {
 } from '../services/chasePackService.js';
 import { chatCompletion, isAiConfigured } from '../services/ai/aiClient.js';
 import { createEmailService } from '../services/emailService.js';
+import { tenantMailerSend } from '../services/tenantMailer.js';
+import { getFrontendUrl } from '../config/urls.js';
+import logger from '../config/logger.js';
 
 const router = Router();
 
@@ -1290,6 +1293,26 @@ router.post(
           userId: m.id,
         })),
       });
+
+      // Email ping per mention — best-effort per recipient: one bad address
+      // must never block the note or the other mentions.
+      const jobUrl = `${getFrontendUrl()}/jobs/${job.id}`;
+      for (const m of mentions) {
+        if (m.id === req.user?.id) continue;
+        try {
+          await tenantMailerSend({
+            tenantId,
+            messageType: 'OTHER',
+            message: {
+              to: m.email,
+              subject: `${actorName} mentioned you on ${job.reference}`,
+              html: `<p>${actorName} mentioned you on <strong>${job.reference} — ${job.title}</strong>:</p><blockquote style="border-left:3px solid #0ea5e9;margin:8px 0;padding:4px 12px;color:#334155;">${body.message.slice(0, 500)}</blockquote><p><a href="${jobUrl}">Open the job</a></p>`,
+            },
+          });
+        } catch (e) {
+          logger.warn(`Mention email failed for ${m.email} on job ${job.id}`, e);
+        }
+      }
     }
 
     res.status(201).json({

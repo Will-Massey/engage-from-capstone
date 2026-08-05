@@ -74,7 +74,11 @@ describe('GET /api/notifications', () => {
       expect.objectContaining({
         where: expect.objectContaining({
           tenantId: 't1',
-          action: { in: expect.arrayContaining(['PROPOSAL_SIGNED', 'CLIENT_AML_SUBMITTED']) },
+          OR: [
+            { action: { in: expect.arrayContaining(['PROPOSAL_SIGNED', 'CLIENT_AML_SUBMITTED']) } },
+            // personal mentions: only the current user's
+            { action: 'JOB_MENTION', userId: 'u1' },
+          ],
         }),
         orderBy: { createdAt: 'desc' },
         take: 20,

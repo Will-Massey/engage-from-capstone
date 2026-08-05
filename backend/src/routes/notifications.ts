@@ -35,7 +35,11 @@ router.get(
     const items = await prisma.activityLog.findMany({
       where: {
         tenantId: req.tenantId,
-        action: { in: NOTIFICATION_ACTIONS },
+        OR: [
+          { action: { in: NOTIFICATION_ACTIONS } },
+          // @mentions are personal — only the mentioned user sees theirs
+          { action: 'JOB_MENTION', userId: req.user?.id },
+        ],
       },
       orderBy: { createdAt: 'desc' },
       take: 20,
