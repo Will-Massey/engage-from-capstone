@@ -36,7 +36,8 @@ Exceed Engager on practice ops **while** defending proposal-cash + Clara. Produc
 Also shipped same day (commercial-readiness continuation):
 
 - **#102 catch-up fees** — DEPLOYED + smoked (recurring line → derived ONE_TIME line at months × monthly equivalent; dup-serviceId validation fixed to unique sets)
-- **#103 @mention notifications** — MERGED (JOB_MENTION now personal in the bell feed + escaped email ping per mention via jobMentionService; composer chips already existed)
+- **#103 @mention notifications** — DEPLOYED (JOB_MENTION now personal in the bell feed + escaped email ping per mention via jobMentionService; composer chips already existed)
+- **#104 scheduled automations + document-request auto-chase** — DEPLOYED + smoked (`/api/automation/schedule` 401-gated). Daily runs are OPT-IN per tenant (Automations page toggle + confirm dialog, audited); 3d cooldown ledger per (rule, entity); `document_request.stale → resend_document_request` closes the records-chasing loop. **A tenant must enable the toggle AND have the DOCS pack (or a matching rule) for auto-chase to fire.**
 - Prod smokes all green: portal overhaul live (`/api/document-requests` 401-gated), catch-up affordance in the deployed ProposalBuilder chunk
 
 ## Next up
