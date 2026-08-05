@@ -7,6 +7,7 @@ import { AI_COPILOT } from '../../../config/aiCopilot';
 import { DEFAULT_PRICING_TIERS, formatTierMultiplier } from '../../../utils/proposalCustomFields';
 import { InvestmentSummaryBands } from './InvestmentSummaryBands';
 import { coverLetterAddressee, formatCurrency } from './shared';
+import { formatCoverLetter } from '@shared/coverLetter';
 import { useProposalBuilder } from './ProposalBuilderContext';
 
 // Render Step 3: Review
@@ -488,10 +489,22 @@ export default function ReviewStep() {
           </div>
           <p className="text-xs text-slate-500 dark:text-slate-300 mb-2">From {tenant?.name}</p>
           <h4 className="text-lg font-bold">{proposalTitle || 'Proposal title'}</h4>
-          <p className="text-sm text-slate-600 mt-2 whitespace-pre-wrap">
-            {coverLetter.slice(0, 600)}
-            {coverLetter.length > 600 ? '…' : ''}
-          </p>
+          {(() => {
+            const cl = formatCoverLetter({
+              body: coverLetter,
+              contactName: selectedClient?.contactName,
+              companyName: selectedClient?.name,
+            });
+            const bodyText = cl.paragraphs.join('\n\n');
+            return (
+              <div className="text-sm text-slate-600 mt-2 whitespace-pre-wrap">
+                {cl.companyLine && <p className="font-semibold">{cl.companyLine}</p>}
+                <p className="mb-2">{cl.greeting}</p>
+                {bodyText.slice(0, 600)}
+                {bodyText.length > 600 ? '…' : ''}
+              </div>
+            );
+          })()}
           <div className="mt-4 pt-4 border-t border-slate-200 dark:border-slate-600">
             <InvestmentSummaryBands summary={summary} />
           </div>

@@ -1,4 +1,5 @@
 import { formatCurrency, formatDate } from '../../utils/formatters';
+import { formatCoverLetter } from '@shared/coverLetter';
 
 interface PreviewService {
   name: string;
@@ -10,6 +11,7 @@ interface WizardClientPreviewProps {
   practiceName: string;
   primaryColor?: string;
   clientName: string;
+  clientContactName?: string | null;
   proposalTitle: string;
   coverLetter?: string;
   validUntil?: string;
@@ -31,6 +33,7 @@ export default function WizardClientPreview({
   practiceName,
   primaryColor = '#0ea5e9',
   clientName,
+  clientContactName,
   proposalTitle,
   coverLetter,
   validUntil,
@@ -91,12 +94,27 @@ export default function WizardClientPreview({
               )}
             </div>
 
-            {coverLetter && (
-              <div className="text-slate-600 dark:text-slate-300 whitespace-pre-wrap text-xs leading-relaxed border-l-2 border-primary-200 dark:border-primary-800 pl-3">
-                {coverLetter.slice(0, 600)}
-                {coverLetter.length > 600 ? '…' : ''}
-              </div>
-            )}
+            {coverLetter &&
+              (() => {
+                const cl = formatCoverLetter({
+                  body: coverLetter,
+                  contactName: clientContactName,
+                  companyName: clientName,
+                });
+                const bodyText = cl.paragraphs.join('\n\n');
+                return (
+                  <div className="text-slate-600 dark:text-slate-300 whitespace-pre-wrap text-xs leading-relaxed border-l-2 border-primary-200 dark:border-primary-800 pl-3">
+                    {cl.companyLine && (
+                      <p className="font-semibold text-slate-800 dark:text-slate-100">
+                        {cl.companyLine}
+                      </p>
+                    )}
+                    <p className="mb-2">{cl.greeting}</p>
+                    {bodyText.slice(0, 600)}
+                    {bodyText.length > 600 ? '…' : ''}
+                  </div>
+                );
+              })()}
 
             <div className="space-y-2">
               <p className="text-[10px] uppercase tracking-wide text-slate-500 font-medium">

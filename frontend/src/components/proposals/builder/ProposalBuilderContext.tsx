@@ -27,6 +27,7 @@ import {
   type CoverLetterTone,
   getStyleByTone,
 } from '../../../data/defaultCoverLetter';
+import { stripLeadingGreetings } from '@shared/coverLetter';
 import { toast } from 'react-hot-toast';
 import BillingCadenceSelector from '../BillingCadenceSelector';
 import {
@@ -1693,8 +1694,12 @@ export function ProposalBuilderProvider({ proposalId, children }: ProposalBuilde
       setProposalTitle(p.title || '');
       const legacySummary = (p.proposalSummary || '').trim();
       const letter = (p.coverLetter || '').trim();
+      // The letter already carries the greeting — strip any salutation opening
+      // the legacy summary so the merged text never greets the client twice.
       setCoverLetter(
-        legacySummary && letter ? `${letter}\n\n${legacySummary}` : letter || legacySummary
+        legacySummary && letter
+          ? `${letter}\n\n${stripLeadingGreetings(legacySummary)}`
+          : letter || legacySummary
       );
       setProposalTerms((p.terms || '').trim());
       coverLetterServicesKeyRef.current = 'loaded';
