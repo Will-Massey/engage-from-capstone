@@ -97,14 +97,20 @@ async function underCooldown(
   return Boolean(prior);
 }
 
-async function recordActed(tenantId: string, ruleId: string, entityId: string, detail: string) {
+async function recordActed(
+  tenantId: string,
+  ruleId: string,
+  ruleAction: string,
+  entityId: string,
+  detail: string
+) {
   await prisma.activityLog.create({
     data: {
       action: 'AUTOMATION_RULE_ACTED',
       entityType: 'AutomationRule',
       entityId: `${ruleId}:${entityId}`,
       description: detail,
-      metadata: JSON.stringify({ ruleId, targetId: entityId }),
+      metadata: JSON.stringify({ ruleId, action: ruleAction, targetId: entityId }),
       tenantId,
     },
   });
@@ -177,7 +183,13 @@ export async function runAutomationRules(
           if (!(await passesCooldown(result, rule.id, job.id, job.reference))) continue;
           await applyAction(tenantId, rule.action, job, tenant?.name || 'Practice');
           if (cooldownDays) {
-            await recordActed(tenantId, rule.id, job.id, `${rule.action} → ${job.reference}`);
+            await recordActed(
+              tenantId,
+              rule.id,
+              rule.action,
+              job.id,
+              `${rule.action} → ${job.reference}`
+            );
           }
           result.acted += 1;
           result.details.push(`${rule.action} → ${job.reference}`);
@@ -201,7 +213,13 @@ export async function runAutomationRules(
           if (!(await passesCooldown(result, rule.id, job.id, job.reference))) continue;
           await applyAction(tenantId, rule.action, job, tenant?.name || 'Practice');
           if (cooldownDays) {
-            await recordActed(tenantId, rule.id, job.id, `${rule.action} → ${job.reference}`);
+            await recordActed(
+              tenantId,
+              rule.id,
+              rule.action,
+              job.id,
+              `${rule.action} → ${job.reference}`
+            );
           }
           result.acted += 1;
           result.details.push(`${rule.action} → ${job.reference}`);
@@ -224,7 +242,13 @@ export async function runAutomationRules(
           }
           if (!(await passesCooldown(result, rule.id, p.id, p.reference))) continue;
           if (cooldownDays) {
-            await recordActed(tenantId, rule.id, p.id, `${rule.action} → ${p.reference}`);
+            await recordActed(
+              tenantId,
+              rule.id,
+              rule.action,
+              p.id,
+              `${rule.action} → ${p.reference}`
+            );
           }
           await prisma.activityLog.create({
             data: {
@@ -271,6 +295,7 @@ export async function runAutomationRules(
             await recordActed(
               tenantId,
               rule.id,
+              rule.action,
               ph.id,
               `${rule.action} → ${ph.job.reference} / ${ph.name}`
             );
@@ -308,7 +333,7 @@ export async function runAutomationRules(
           const { resendDocumentRequest } = await import('./documentRequestService.js');
           await resendDocumentRequest({ tenantId, requestId: reqRow.id });
           if (cooldownDays) {
-            await recordActed(tenantId, rule.id, reqRow.id, `resend → ${label}`);
+            await recordActed(tenantId, rule.id, rule.action, reqRow.id, `resend → ${label}`);
           }
           result.acted += 1;
           result.details.push(`resend_document_request → ${label}`);

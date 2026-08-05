@@ -178,6 +178,7 @@ export default function PracticeAutomations() {
   const [runDetail, setRunDetail] = useState<string | null>(null);
   const [scheduleEnabled, setScheduleEnabled] = useState(false);
   const [scheduleLastRun, setScheduleLastRun] = useState<string | null>(null);
+  const [scheduleLastSummary, setScheduleLastSummary] = useState<string | null>(null);
   const [scheduleConfirmOpen, setScheduleConfirmOpen] = useState(false);
   const [scheduleBusy, setScheduleBusy] = useState(false);
 
@@ -187,6 +188,7 @@ export default function PracticeAutomations() {
       const data = res?.data ?? res;
       setScheduleEnabled(Boolean(data?.enabled));
       setScheduleLastRun(data?.lastRunAt || null);
+      setScheduleLastSummary(data?.lastRunSummary || null);
     } catch {
       /* leave defaults */
     }
@@ -429,7 +431,11 @@ export default function PracticeAutomations() {
             {scheduleEnabled
               ? `On — server runs your enabled rules every 24h with a 3-day per-client cooldown.${
                   scheduleLastRun
-                    ? ` Last run ${new Date(scheduleLastRun).toLocaleString('en-GB')}.`
+                    ? ` Last run ${new Date(scheduleLastRun).toLocaleString('en-GB')}${
+                        scheduleLastSummary
+                          ? ` — ${scheduleLastSummary.replace('Scheduled automation run: ', '')}`
+                          : ''
+                      }.`
                     : ' No run yet.'
                 }`
               : 'Off — rules only run when you press Execute. Turn on to chase records and deadlines automatically.'}
