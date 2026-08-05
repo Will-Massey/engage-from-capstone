@@ -16,6 +16,7 @@ import {
 } from '../services/chasePackService.js';
 import { chatCompletion, isAiConfigured } from '../services/ai/aiClient.js';
 import { createEmailService } from '../services/emailService.js';
+import { sendMentionEmails } from '../services/jobMentionService.js';
 
 const router = Router();
 
@@ -1289,6 +1290,15 @@ router.post(
           tenantId,
           userId: m.id,
         })),
+      });
+
+      await sendMentionEmails({
+        tenantId,
+        job,
+        actorName,
+        message: body.message,
+        mentions,
+        actorUserId: req.user?.id,
       });
     }
 
