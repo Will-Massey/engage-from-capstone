@@ -16,7 +16,10 @@ import {
   getClientByPortalToken,
   getClientProposalsForPortal,
 } from '../../services/proposalSharingService.js';
-import { getStorageService } from '../../services/storage/storageService.js';
+import {
+  getStorageService,
+  StorageObjectMissingError,
+} from '../../services/storage/storageService.js';
 
 const router = Router();
 
@@ -323,7 +326,21 @@ router.get(
       },
     });
     if (!file) throw new ApiError('NOT_FOUND', 'File not found', 404);
-    const buffer = await getStorageService().get(file.storageKey);
+    let buffer: Buffer;
+    try {
+      buffer = await getStorageService().get(file.storageKey, {
+        expectedTenantId: client.tenantId,
+      });
+    } catch (e) {
+      if (e instanceof StorageObjectMissingError) {
+        throw new ApiError(
+          'FILE_UNAVAILABLE',
+          'This file is no longer available — please upload it again.',
+          410
+        );
+      }
+      throw e;
+    }
     res.setHeader('Content-Type', file.mimeType);
     res.setHeader('Content-Disposition', `attachment; filename="${file.name.replace(/"/g, '')}"`);
     res.setHeader('Cache-Control', 'private, no-store');
