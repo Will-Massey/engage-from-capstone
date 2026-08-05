@@ -24,6 +24,7 @@ export const PracticeLetters = lazy(() => import('../pages/letters/PracticeLette
 export const PracticeAutomations = lazy(() => import('../pages/automations/PracticeAutomations'));
 export const FirmInbox = lazy(() => import('../pages/inbox/FirmInbox'));
 export const PracticeForms = lazy(() => import('../pages/forms/PracticeForms'));
+export const DocumentsHub = lazy(() => import('../pages/documents/DocumentsHub'));
 export const AccountFlowSandbox = lazy(() => import('../pages/integrations/AccountFlowSandbox'));
 export const IntegrationsHub = lazy(() => import('../pages/integrations/IntegrationsHub'));
 export const Clients = lazy(() => import('../pages/clients/Clients'));
@@ -81,6 +82,7 @@ export const ROUTE_LAZY_PAGES: Record<string, LazyExoticComponent<ComponentType<
   PracticeAutomations,
   FirmInbox,
   PracticeForms,
+  DocumentsHub,
   AccountFlowSandbox,
   IntegrationsHub,
   BulkRenewalWizard,

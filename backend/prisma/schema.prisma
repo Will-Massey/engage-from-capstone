@@ -189,6 +189,7 @@ enum EmailMessageType {
   TOUCHPOINT
   RENEWAL
   FOLLOW_UP
+  DOCUMENT_REQUEST
   TEST
   OTHER
 }
@@ -284,6 +285,7 @@ model Tenant {
   timeEntries           TimeEntry[]
   portalFiles           PortalFile[]
   practiceLetters       PracticeLetter[]
+  documentRequests      DocumentRequest[]
 
   @@index([subdomain])
   @@index([isActive])
@@ -321,6 +323,7 @@ model User {
   // Relations
   createdProposals   Proposal[]            @relation("CreatedProposals")
   approvedProposals  Proposal[]            @relation("ApprovedProposals")
+  documentRequestsCreated DocumentRequest[] @relation("DocumentRequestCreatedBy")
   activityLogs       ActivityLog[]
   refreshTokens      RefreshToken[]
   passwordResets     PasswordReset[]
@@ -476,6 +479,7 @@ model Client {
   jobs        Job[]
   portalFiles PortalFile[]
   practiceLetters PracticeLetter[]
+  documentRequests DocumentRequest[]
 
   @@unique([tenantId, contactEmail])
   @@index([tenantId])
@@ -1226,6 +1230,7 @@ model Job {
   portalFiles PortalFile[]
   activities  JobActivity[]
   practiceLetters PracticeLetter[]
+  documentRequests DocumentRequest[]
 
   @@unique([tenantId, reference])
   @@index([tenantId])
@@ -1350,9 +1355,71 @@ model PortalFile {
   jobId String?
   job   Job?    @relation(fields: [jobId], references: [id], onDelete: SetNull)
 
+  /// Set when the upload satisfies a DocumentRequestItem
+  requestItemId String?
+  requestItem   DocumentRequestItem? @relation(fields: [requestItemId], references: [id], onDelete: SetNull)
+
   @@index([tenantId])
   @@index([clientId])
   @@index([jobId])
+  @@index([requestItemId])
+}
+
+enum DocumentRequestStatus {
+  OPEN
+  COMPLETE
+  CANCELLED
+}
+
+enum DocumentRequestItemStatus {
+  PENDING
+  RECEIVED
+}
+
+model DocumentRequest {
+  id          String                @id @default(uuid())
+  title       String
+  message     String?
+  status      DocumentRequestStatus @default(OPEN)
+  sentCount   Int                   @default(0)
+  lastSentAt  DateTime?
+  completedAt DateTime?
+  createdAt   DateTime              @default(now())
+  updatedAt   DateTime              @updatedAt
+
+  tenantId String
+  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  clientId String
+  client   Client @relation(fields: [clientId], references: [id], onDelete: Cascade)
+
+  jobId String?
+  job   Job?    @relation(fields: [jobId], references: [id], onDelete: SetNull)
+
+  createdById String?
+  createdBy   User?   @relation("DocumentRequestCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+
+  items DocumentRequestItem[]
+
+  @@index([tenantId, status])
+  @@index([clientId])
+  @@index([jobId])
+}
+
+model DocumentRequestItem {
+  id         String                    @id @default(uuid())
+  name       String
+  required   Boolean                   @default(true)
+  status     DocumentRequestItemStatus @default(PENDING)
+  receivedAt DateTime?
+  sortOrder  Int                       @default(0)
+
+  requestId String
+  request   DocumentRequest @relation(fields: [requestId], references: [id], onDelete: Cascade)
+
+  files PortalFile[]
+
+  @@index([requestId])
 }
 
 model JobActivity {

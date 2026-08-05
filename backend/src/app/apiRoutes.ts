@@ -31,6 +31,7 @@ import claraRoutes from '../routes/clara.js';
 import quickbooksRoutes from '../routes/quickbooks.js';
 import statusRoutes from '../routes/status.js';
 import notificationsRoutes from '../routes/notifications.js';
+import documentRequestsRoutes from '../routes/documentRequests.js';
 import jobsRoutes from '../routes/jobs.js';
 import practiceLettersRoutes from '../routes/practiceLetters.js';
 import commsRoutes from '../routes/comms.js';
@@ -75,6 +76,7 @@ export function mountApiRoutes(app: express.Express): void {
   app.use('/api/xero', extractTenant, xeroRoutes);
   app.use('/api/quickbooks', extractTenant, quickbooksRoutes);
   app.use('/api/notifications', extractTenant, notificationsRoutes);
+  app.use('/api/document-requests', extractTenant, documentRequestsRoutes);
 
   // W4.5 — Public status page API (no auth)
   app.use('/api/status', statusRoutes);
