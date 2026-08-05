@@ -24,14 +24,21 @@ Exceed Engager on practice ops **while** defending proposal-cash + Clara. Produc
 5. Client Documents tab + portal link copy/open **#98**
 6. AF main: work status mirror → Engage HELP_NEEDED (`notifyEngageInbound`, `PATCH /work/:id/status`)
 
+## Shipped 2026-08-05 PM (tandem session engage-commercial-push)
+
+- **#99 MERGED** — cover-letter greeting round 2 (recovered from stash, 19 shared tests)
+- **#100 MERGED** — R2 storage for portal/job documents. Root cause of "portal not working": disk-only storage on Render's ephemeral filesystem deleted every client upload on each deploy. Legacy dead rows now 410 with a re-upload message.
+- **#101 MERGED** — document requests + Documents hub + portal checklist: request email (tenant-branded, carries auto-minted portal link) → client uploads per item → auto-complete → staff notifications; resend/cancel/manual override; duplicate-title 409
+- AF `ca9680b` — mesh migrations 102/103 now reach the prod boot runner; 001 fresh-install fix; db/migrations drift README
+- render.yaml declares `ACCOUNTFLOW_MESH_INBOUND_SECRET` (Blueprint-deletion guard)
+- Stripe re-check: still zero Engage payment events on platform account (webhook watch stands)
+
 ## Next up
 
-1. ~~Render deploy smoke — Documents tab + portal copy on prod~~ **DONE 2026-08-05** (health 200, `portal-os` route live 401-gated vs 404 control, deployed ClientDetail chunk contains Documents tab)
-2. ~~Local tandem loop (AF :3000 + Engage) with shared mesh secret~~ **DONE 2026-08-05** — full bi-di verified: Connect UI save + test ping → client handoff (AF client + `capstone_client_id`) → proposal accept → job spawn → auto mesh work shell in AF → AF `PATCH /work/:id/status` BLOCKED → Engage board HELP_NEEDED (and back to IN_PROGRESS)
-3. Prod mesh only via deliberate Connect UI + `ALLOW_LIVE` (not demo)
-4. Optional open PRs: #90 marketing root, #80 OAuth TTL
-5. Capacitor iOS after desktop solid
-6. **Cover-letter greeting round 2 is in `git stash@{0}`** ("wip-unrelated-cover-letter", 12 files / +278) — never committed; awaiting William's go-ahead. Pop, rebase on current master, re-run shared tests before shipping.
+1. **Post-deploy prod smoke** — health, `/api/document-requests` 401-gated, portal upload → `R2 object saved: portal-files/…` in logs, download survives a redeploy
+2. Prod mesh via deliberate Connect UI + `ALLOW_LIVE` — **William gates**: set `ACCOUNTFLOW_MESH_INBOUND_SECRET` value in Render dashboard (both sides share the AF API key), create prod AF API key, then Connect UI
+3. Optional open PRs: #90 marketing root, #80 OAuth TTL (both green, William's call)
+4. Commercial gaps per scorecard after portal-OS closes: catch-up fees (Engager first-class), colleague tagging, two-way mailbox depth, Credas AML (awaits William's partner email), Capacitor iOS after desktop solid
 
 ## Notes
 
