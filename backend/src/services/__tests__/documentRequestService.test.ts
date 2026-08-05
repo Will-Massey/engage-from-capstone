@@ -131,6 +131,21 @@ describe('createDocumentRequest', () => {
       createDocumentRequest({ tenantId: 't1', clientId: 'c1', title: 'X', items: [], send: false })
     ).rejects.toMatchObject({ statusCode: 400 });
   });
+
+  it('409s when an open request with the same title exists for the client', async () => {
+    prismaMock.client.findFirst.mockResolvedValue({ id: 'c1' });
+    prismaMock.documentRequest.findFirst.mockResolvedValue({ id: 'req-existing' });
+    await expect(
+      createDocumentRequest({
+        tenantId: 't1',
+        clientId: 'c1',
+        title: 'Year-end records',
+        items: [{ name: 'Doc' }],
+        send: false,
+      })
+    ).rejects.toMatchObject({ statusCode: 409 });
+    expect(prismaMock.documentRequest.create).not.toHaveBeenCalled();
+  });
 });
 
 describe('resendDocumentRequest', () => {

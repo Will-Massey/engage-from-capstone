@@ -183,6 +183,23 @@ export async function createDocumentRequest(opts: {
     throw new ApiError('VALIDATION', 'At least one document item is required', 400);
   }
 
+  const duplicate = await prisma.documentRequest.findFirst({
+    where: {
+      tenantId: opts.tenantId,
+      clientId: opts.clientId,
+      title: opts.title,
+      status: 'OPEN',
+    },
+    select: { id: true },
+  });
+  if (duplicate) {
+    throw new ApiError(
+      'DUPLICATE_REQUEST',
+      'An open request with this title already exists for this client — resend it or use a different title.',
+      409
+    );
+  }
+
   const created = await prisma.documentRequest.create({
     data: {
       title: opts.title,
