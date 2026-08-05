@@ -65,6 +65,7 @@ const TRIGGERS = [
   { id: 'job.column.HELP_NEEDED', label: 'Job needs help' },
   { id: 'proposal.unsigned_7d', label: 'Proposal unsigned 7 days' },
   { id: 'phase.complete', label: 'Job phase completed' },
+  { id: 'document_request.stale', label: 'Document request unanswered 3 days' },
 ];
 
 const ACTIONS = [
@@ -73,6 +74,7 @@ const ACTIONS = [
   { id: 'chase.DEADLINE_APPROACHING', label: 'Draft deadline approaching email' },
   { id: 'notify.assignee', label: 'Notify job assignee (in-app activity)' },
   { id: 'clara.rewrite', label: 'Clara rewrite last chase draft' },
+  { id: 'resend_document_request', label: 'Re-send the document request email' },
 ];
 
 const RULES_KEY = 'engage.practice.automationRules';
@@ -96,6 +98,14 @@ const UK_PACKS: Array<{
   badge: string;
   rules: Array<{ trigger: string; action: string }>;
 }> = [
+  {
+    id: 'document-auto-chase',
+    name: 'Document request auto-chase',
+    description:
+      'A sent document request still unanswered after 3 days is automatically re-sent (portal link included).',
+    badge: 'DOCS',
+    rules: [{ trigger: 'document_request.stale', action: 'resend_document_request' }],
+  },
   {
     id: 'vat-records',
     name: 'VAT records chase',
@@ -166,6 +176,36 @@ export default function PracticeAutomations() {
     Array<{ id: string; action: string; description: string | null; at: string }>
   >([]);
   const [runDetail, setRunDetail] = useState<string | null>(null);
+  const [scheduleEnabled, setScheduleEnabled] = useState(false);
+  const [scheduleLastRun, setScheduleLastRun] = useState<string | null>(null);
+  const [scheduleLastSummary, setScheduleLastSummary] = useState<string | null>(null);
+  const [scheduleConfirmOpen, setScheduleConfirmOpen] = useState(false);
+  const [scheduleBusy, setScheduleBusy] = useState(false);
+
+  async function loadSchedule() {
+    try {
+      const res = (await apiClient.get('/automation/schedule')) as any;
+      const data = res?.data ?? res;
+      setScheduleEnabled(Boolean(data?.enabled));
+      setScheduleLastRun(data?.lastRunAt || null);
+      setScheduleLastSummary(data?.lastRunSummary || null);
+    } catch {
+      /* leave defaults */
+    }
+  }
+
+  async function setSchedule(enabled: boolean) {
+    setScheduleBusy(true);
+    try {
+      await apiClient.put('/automation/schedule', { enabled });
+      setScheduleEnabled(enabled);
+      setScheduleConfirmOpen(false);
+    } catch (e: any) {
+      setError(e?.response?.data?.error?.message || e.message || 'Failed to update schedule');
+    } finally {
+      setScheduleBusy(false);
+    }
+  }
 
   async function loadRunHistory() {
     try {
@@ -292,6 +332,10 @@ export default function PracticeAutomations() {
   }, [rules]);
 
   useEffect(() => {
+    void loadSchedule();
+  }, []);
+
+  useEffect(() => {
     (async () => {
       try {
         const res = (await apiClient.get('/automation/settings')) as {
@@ -376,6 +420,76 @@ export default function PracticeAutomations() {
           </Link>
         </div>
       </div>
+
+      {/* Scheduled runs — opt-in */}
+      <section className="rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900/60 p-4 flex flex-wrap items-center justify-between gap-3">
+        <div className="min-w-0">
+          <h2 className="text-sm font-semibold text-slate-900 dark:text-slate-100">
+            Run rules daily, automatically
+          </h2>
+          <p className="text-xs text-slate-500 dark:text-slate-400">
+            {scheduleEnabled
+              ? `On — server runs your enabled rules every 24h with a 3-day per-client cooldown.${
+                  scheduleLastRun
+                    ? ` Last run ${new Date(scheduleLastRun).toLocaleString('en-GB')}${
+                        scheduleLastSummary
+                          ? ` — ${scheduleLastSummary.replace('Scheduled automation run: ', '')}`
+                          : ''
+                      }.`
+                    : ' No run yet.'
+                }`
+              : 'Off — rules only run when you press Execute. Turn on to chase records and deadlines automatically.'}
+          </p>
+        </div>
+        <button
+          type="button"
+          disabled={scheduleBusy}
+          onClick={() => {
+            if (scheduleEnabled) void setSchedule(false);
+            else setScheduleConfirmOpen(true);
+          }}
+          className={`text-sm font-medium px-4 py-2 rounded-lg cursor-pointer ${
+            scheduleEnabled
+              ? 'border border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-200'
+              : 'bg-emerald-600 text-white hover:bg-emerald-700'
+          }`}
+        >
+          {scheduleBusy ? 'Saving…' : scheduleEnabled ? 'Turn off' : 'Turn on daily runs'}
+        </button>
+      </section>
+
+      {scheduleConfirmOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
+          <div className="w-full max-w-sm rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 shadow-2xl p-5 space-y-3">
+            <h3 className="text-base font-semibold text-slate-900 dark:text-slate-100">
+              Start sending automatically?
+            </h3>
+            <p className="text-sm text-slate-600 dark:text-slate-300">
+              Your enabled rules will run every 24 hours and can email clients without anyone
+              pressing a button (chases, document-request re-sends). A 3-day cooldown stops the same
+              client being contacted about the same thing repeatedly. This change is recorded in the
+              audit log.
+            </p>
+            <div className="flex justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => setScheduleConfirmOpen(false)}
+                className="btn-secondary text-sm cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                disabled={scheduleBusy}
+                onClick={() => void setSchedule(true)}
+                className="btn-primary text-sm cursor-pointer"
+              >
+                {scheduleBusy ? 'Saving…' : 'Enable daily runs'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* UK pack library */}
       <section>

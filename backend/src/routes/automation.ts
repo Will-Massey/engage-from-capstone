@@ -168,6 +168,80 @@ router.get(
   })
 );
 
+/** GET /api/automation/schedule — opt-in state + last scheduled run */
+router.get(
+  '/schedule',
+  authenticate,
+  asyncHandler(async (req, res) => {
+    const tenant = await prisma.tenant.findUnique({
+      where: { id: req.tenantId! },
+      select: { settings: true },
+    });
+    let enabled = false;
+    try {
+      enabled = JSON.parse(tenant?.settings || '{}').automationSchedule === 'daily';
+    } catch {
+      /* malformed settings read as off */
+    }
+    const lastRun = await prisma.activityLog.findFirst({
+      where: { tenantId: req.tenantId!, action: 'AUTOMATION_SCHEDULED_RUN' },
+      orderBy: { createdAt: 'desc' },
+      select: { createdAt: true, description: true },
+    });
+    res.json({
+      success: true,
+      data: {
+        enabled,
+        lastRunAt: lastRun?.createdAt || null,
+        lastRunSummary: lastRun?.description || null,
+      },
+    });
+  })
+);
+
+/**
+ * PUT /api/automation/schedule — opt in/out of daily scheduled runs.
+ * Client-facing actions fire automatically once enabled, so the change is
+ * audited (AUTOMATION_SCHEDULE_CHANGED) and gated to senior roles.
+ */
+router.put(
+  '/schedule',
+  authenticate,
+  authorize('ADMIN', 'PARTNER', 'MD'),
+  asyncHandler(async (req, res) => {
+    const body = z.object({ enabled: z.boolean() }).parse(req.body);
+    const tenant = await prisma.tenant.findUnique({
+      where: { id: req.tenantId! },
+      select: { settings: true },
+    });
+    let settings: Record<string, unknown> = {};
+    try {
+      settings = JSON.parse(tenant?.settings || '{}');
+    } catch {
+      settings = {};
+    }
+    const before = settings.automationSchedule === 'daily';
+    if (body.enabled) settings.automationSchedule = 'daily';
+    else delete settings.automationSchedule;
+    await prisma.tenant.update({
+      where: { id: req.tenantId! },
+      data: { settings: JSON.stringify(settings) },
+    });
+    await prisma.activityLog.create({
+      data: {
+        action: 'AUTOMATION_SCHEDULE_CHANGED',
+        entityType: 'Tenant',
+        entityId: req.tenantId!,
+        description: `Scheduled automations ${body.enabled ? 'ENABLED (daily)' : 'disabled'} (was ${before ? 'on' : 'off'})`,
+        metadata: JSON.stringify({ enabled: body.enabled, before }),
+        tenantId: req.tenantId!,
+        userId: req.user?.id,
+      },
+    });
+    res.json({ success: true, data: { enabled: body.enabled } });
+  })
+);
+
 /** POST /api/automation/rules/run — dry-run or execute server rules */
 router.post(
   '/rules/run',
