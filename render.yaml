@@ -102,6 +102,12 @@ services:
       # syncs never delete it (the JWT_REFRESH_SECRET lesson, 2026-07-10).
       - key: ACCOUNTFLOW_MESH_INBOUND_SECRET
         sync: false
+      # Env fallback for outbound mesh (tenant Connect UI values win when set) —
+      # lets a tenant enable live mode without pasting the AF API key.
+      - key: ACCOUNTFLOW_API_KEY
+        sync: false
+      - key: ACCOUNTFLOW_BASE_URL
+        sync: false
       - key: COMPANIES_HOUSE_API_KEY
         sync: false
       - key: XAI_API_KEY
