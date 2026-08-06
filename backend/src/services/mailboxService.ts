@@ -27,6 +27,15 @@ import type { MailProviderClient, ProviderMessage } from './mail/types.js';
 
 // ==================== Shared DTO ====================
 
+export type MailAttachmentDto = {
+  id: string;
+  externalId: string;
+  name: string;
+  contentType: string;
+  sizeBytes: number;
+  isInline: boolean;
+};
+
 export type MailMessageDto = {
   id: string;
   provider: string;
@@ -44,6 +53,7 @@ export type MailMessageDto = {
   clientName: string | null;
   conversationId: string | null;
   externalId: string;
+  attachments: MailAttachmentDto[];
 };
 
 type MailMessageRow = {
@@ -63,6 +73,7 @@ type MailMessageRow = {
   hasAttachments: boolean;
   receivedAt: Date;
   clientId: string | null;
+  attachments?: MailAttachmentDto[];
 };
 
 function toDto(row: MailMessageRow, clientNames: Map<string, string>): MailMessageDto {
@@ -83,6 +94,14 @@ function toDto(row: MailMessageRow, clientNames: Map<string, string>): MailMessa
     clientName: row.clientId ? clientNames.get(row.clientId) || null : null,
     conversationId: row.conversationId,
     externalId: row.externalId,
+    attachments: (row.attachments || []).map((a) => ({
+      id: a.id,
+      externalId: a.externalId,
+      name: a.name,
+      contentType: a.contentType,
+      sizeBytes: a.sizeBytes,
+      isInline: a.isInline,
+    })),
   };
 }
 
@@ -255,10 +274,32 @@ async function upsertProviderMessage(
 
   if (existing) {
     await prisma.mailMessage.update({ where: { id: existing.id }, data });
+    // Reconcile idempotently: drop and rewrite the attachment set for this
+    // message so a re-sync never accumulates duplicate rows.
+    await prisma.mailAttachment.deleteMany({ where: { messageId: existing.id } });
+    await createAttachmentRows(existing.id, pm.attachments);
     return 'updated';
   }
-  await prisma.mailMessage.create({ data: { ...data, tenantId } });
+  const created = await prisma.mailMessage.create({ data: { ...data, tenantId } });
+  await createAttachmentRows(created.id, pm.attachments);
   return 'created';
+}
+
+async function createAttachmentRows(
+  messageId: string,
+  attachments: ProviderMessage['attachments']
+): Promise<void> {
+  if (!attachments?.length) return;
+  await prisma.mailAttachment.createMany({
+    data: attachments.map((a) => ({
+      messageId,
+      externalId: a.externalId,
+      name: a.name,
+      contentType: a.contentType,
+      sizeBytes: a.sizeBytes,
+      isInline: a.isInline,
+    })),
+  });
 }
 
 export async function syncMailbox(tenantId: string): Promise<{
@@ -387,6 +428,7 @@ export async function listMailboxMessages(
     where,
     orderBy: [{ receivedAt: 'desc' }, { id: 'desc' }],
     take: limit + 1,
+    include: { attachments: true },
     ...(opts.cursor ? { cursor: { id: opts.cursor }, skip: 1 } : {}),
   });
 
@@ -414,6 +456,7 @@ export async function getThread(tenantId: string, messageId: string): Promise<Ma
   const rows = await prisma.mailMessage.findMany({
     where: { tenantId, conversationId: anchor.conversationId },
     orderBy: { receivedAt: 'asc' },
+    include: { attachments: true },
   });
   const clientNames = await attachClientNames(rows, tenantId);
   return rows.map((r) => toDto(r, clientNames));
@@ -672,7 +715,10 @@ export type MessageContext = {
 };
 
 export async function getMessageContext(tenantId: string, messageId: string): Promise<MessageContext> {
-  const row = await prisma.mailMessage.findFirst({ where: { id: messageId, tenantId } });
+  const row = await prisma.mailMessage.findFirst({
+    where: { id: messageId, tenantId },
+    include: { attachments: true },
+  });
   if (!row) return { message: null, client: null, jobs: [], pendingForms: [] };
 
   let clientId = row.clientId;

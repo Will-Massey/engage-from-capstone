@@ -16,6 +16,7 @@ const prismaMock = {
     count: jest.fn(),
   },
   mailboxSyncState: { findUnique: jest.fn(), upsert: jest.fn() },
+  mailAttachment: { deleteMany: jest.fn(), createMany: jest.fn() },
 };
 
 jest.mock('../../config/database.js', () => ({ prisma: prismaMock }));
@@ -43,6 +44,7 @@ jest.mock('../tenantMailer.js', () => ({
 import {
   syncMailbox,
   listMailboxMessages,
+  getThread,
   getMailboxUnreadCount,
   sendMailboxMessage,
   seedDevInboundIfEmpty,
@@ -79,6 +81,8 @@ beforeEach(() => {
   prismaMock.client.findMany.mockResolvedValue([]);
   prismaMock.mailboxSyncState.findUnique.mockResolvedValue(null);
   prismaMock.mailboxSyncState.upsert.mockResolvedValue({});
+  prismaMock.mailAttachment.deleteMany.mockResolvedValue({ count: 0 });
+  prismaMock.mailAttachment.createMany.mockResolvedValue({ count: 0 });
 });
 
 afterAll(() => {
@@ -195,6 +199,96 @@ describe('syncMailbox — provider connected', () => {
       expect.objectContaining({ data: expect.objectContaining({ clientId: 'c1' }) })
     );
   });
+
+  it('persists MailAttachment rows on first sync, and reconciles (not duplicates) on re-sync', async () => {
+    loadTenantEmailContextMock.mockResolvedValue({
+      tenantId: 't1',
+      tenantName: 'Firm',
+      email: { provider: 'gmail', gmail: { user: 'firm@gmail.com', refreshToken: 'r1' } },
+    });
+    const providerMessage = {
+      externalId: 'gm-att-1',
+      conversationId: 'thread-att',
+      direction: 'INBOUND',
+      from: 'client@acme.com',
+      to: 'firm@gmail.com',
+      subject: 'Invoice attached',
+      bodyText: 'See attached',
+      isRead: false,
+      hasAttachments: true,
+      receivedAt: new Date('2026-08-01T10:00:00Z'),
+      attachments: [
+        {
+          externalId: 'att-1',
+          name: 'invoice.pdf',
+          contentType: 'application/pdf',
+          sizeBytes: 1234,
+          isInline: false,
+        },
+      ],
+    };
+    const syncInbox = jest.fn().mockResolvedValue({ messages: [providerMessage], deltaLink: null });
+    const syncSent = jest.fn().mockResolvedValue({ messages: [], deltaLink: null });
+    createGmailMailClientMock.mockResolvedValue({ syncInbox, syncSent });
+
+    // First sync: message is new → created, attachments created (no prior delete needed)
+    prismaMock.mailMessage.findUnique.mockResolvedValueOnce(null);
+    prismaMock.client.findFirst.mockResolvedValue(null);
+    prismaMock.mailMessage.create.mockResolvedValue({ id: 'msg-att-1' });
+
+    await syncMailbox('t1');
+
+    expect(prismaMock.mailAttachment.deleteMany).not.toHaveBeenCalled();
+    expect(prismaMock.mailAttachment.createMany).toHaveBeenCalledTimes(1);
+    expect(prismaMock.mailAttachment.createMany).toHaveBeenCalledWith({
+      data: [
+        {
+          messageId: 'msg-att-1',
+          externalId: 'att-1',
+          name: 'invoice.pdf',
+          contentType: 'application/pdf',
+          sizeBytes: 1234,
+          isInline: false,
+        },
+      ],
+    });
+
+    // Re-sync: message already exists → update path must reconcile, not duplicate
+    jest.clearAllMocks();
+    prismaMock.client.findMany.mockResolvedValue([]);
+    prismaMock.mailboxSyncState.findUnique.mockResolvedValue(null);
+    prismaMock.mailboxSyncState.upsert.mockResolvedValue({});
+    prismaMock.mailAttachment.deleteMany.mockResolvedValue({ count: 1 });
+    prismaMock.mailAttachment.createMany.mockResolvedValue({ count: 1 });
+    loadTenantEmailContextMock.mockResolvedValue({
+      tenantId: 't1',
+      tenantName: 'Firm',
+      email: { provider: 'gmail', gmail: { user: 'firm@gmail.com', refreshToken: 'r1' } },
+    });
+    createGmailMailClientMock.mockResolvedValue({ syncInbox, syncSent });
+    prismaMock.mailMessage.findUnique.mockResolvedValueOnce({ id: 'msg-att-1', clientId: null });
+    prismaMock.mailMessage.update.mockResolvedValue({});
+
+    await syncMailbox('t1');
+
+    expect(prismaMock.mailAttachment.deleteMany).toHaveBeenCalledWith({
+      where: { messageId: 'msg-att-1' },
+    });
+    // exactly one createMany call with exactly one row — not accumulated across syncs
+    expect(prismaMock.mailAttachment.createMany).toHaveBeenCalledTimes(1);
+    expect(prismaMock.mailAttachment.createMany).toHaveBeenCalledWith({
+      data: [
+        {
+          messageId: 'msg-att-1',
+          externalId: 'att-1',
+          name: 'invoice.pdf',
+          contentType: 'application/pdf',
+          sizeBytes: 1234,
+          isInline: false,
+        },
+      ],
+    });
+  });
 });
 
 describe('syncMailbox — no provider connected', () => {
@@ -291,6 +385,69 @@ describe('listMailboxMessages', () => {
 
     expect(prismaMock.mailMessage.findMany).toHaveBeenCalledWith(
       expect.objectContaining({ cursor: { id: 'm1' }, skip: 1 })
+    );
+  });
+
+  it('includes attachments on each message DTO', async () => {
+    const row = mailMessageRow({
+      id: 'm1',
+      hasAttachments: true,
+      attachments: [
+        {
+          id: 'a1',
+          externalId: 'att-1',
+          name: 'invoice.pdf',
+          contentType: 'application/pdf',
+          sizeBytes: 1234,
+          isInline: false,
+        },
+      ],
+    });
+    prismaMock.mailMessage.findMany.mockResolvedValue([row]);
+
+    const page = await listMailboxMessages('t1', { limit: 5 });
+
+    expect(page.messages[0].attachments).toEqual([
+      {
+        id: 'a1',
+        externalId: 'att-1',
+        name: 'invoice.pdf',
+        contentType: 'application/pdf',
+        sizeBytes: 1234,
+        isInline: false,
+      },
+    ]);
+    expect(prismaMock.mailMessage.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({ include: { attachments: true } })
+    );
+  });
+});
+
+describe('getThread', () => {
+  it('includes attachments on each message DTO in the thread', async () => {
+    prismaMock.mailMessage.findFirst.mockResolvedValueOnce({ conversationId: 'conv-1' });
+    const row = mailMessageRow({
+      id: 'm1',
+      conversationId: 'conv-1',
+      attachments: [
+        {
+          id: 'a1',
+          externalId: 'att-1',
+          name: 'x.pdf',
+          contentType: 'application/pdf',
+          sizeBytes: 10,
+          isInline: false,
+        },
+      ],
+    });
+    prismaMock.mailMessage.findMany.mockResolvedValue([row]);
+
+    const thread = await getThread('t1', 'm1');
+
+    expect(thread).toHaveLength(1);
+    expect(thread[0].attachments).toHaveLength(1);
+    expect(prismaMock.mailMessage.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({ include: { attachments: true } })
     );
   });
 });
