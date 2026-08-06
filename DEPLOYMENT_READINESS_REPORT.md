@@ -176,7 +176,7 @@ Impact: Proposals missing cover page
 
 ### Phase 2: Deployment (2 hours)
 
-1. Create Railway project
+1. Create Render project
 2. Set up Neon database
 3. Configure environment variables
 4. Deploy backend
@@ -256,7 +256,7 @@ Impact: Proposals missing cover page
 ## 📞 Support Resources
 
 - **Prisma Docs:** https://www.prisma.io/docs
-- **Railway Docs:** https://docs.railway.app
+- **Render Docs:** https://docs.render.com
 - **Neon Docs:** https://neon.tech/docs
 - **React Query:** https://tanstack.com/query/latest
 

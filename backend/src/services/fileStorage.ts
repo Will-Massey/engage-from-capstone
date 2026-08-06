@@ -189,6 +189,11 @@ export async function saveAmlDocument(
   };
 }
 
+/** Read a stored AML document's raw bytes (R2 or local disk). */
+export async function readAmlDocument(relativePath: string): Promise<Buffer> {
+  return readBytes(relativePath);
+}
+
 export async function deleteAmlDocument(relativePath: string): Promise<void> {
   try {
     await deleteBytes(relativePath);
@@ -204,5 +209,6 @@ export default {
   deleteSignature,
   getFullPath,
   saveAmlDocument,
+  readAmlDocument,
   deleteAmlDocument,
 };

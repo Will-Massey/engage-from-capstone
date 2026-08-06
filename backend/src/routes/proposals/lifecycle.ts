@@ -2,6 +2,8 @@ import { Router } from 'express';
 import { z } from 'zod';
 import { ApprovalStatus, ProposalStatus } from '@prisma/client';
 import { prisma } from '../../config/database.js';
+import { proposalMoneyForApi } from '../../utils/proposalServiceSnapshot.js';
+import { penceToPounds } from '../../utils/proposalPricing.js';
 import { authenticate, authorize } from '../../middleware/auth.js';
 import { requireActiveSubscription } from '../../middleware/subscription.js';
 import { asyncHandler, ApiError } from '../../middleware/errorHandler.js';
@@ -134,7 +136,7 @@ router.post(
     const totalAmount = new Intl.NumberFormat('en-GB', {
       style: 'currency',
       currency: 'GBP',
-    }).format(proposal.total);
+    }).format(penceToPounds(proposal.totalPence));
 
     const emailResult = await tenantMailer.sendProposalEmail(
       req.tenantId!,
@@ -226,7 +228,7 @@ router.post(
 
     res.json({
       success: true,
-      data: updatedProposal,
+      data: { ...updatedProposal, ...proposalMoneyForApi(updatedProposal) },
       message: 'Proposal sent successfully',
     });
   })
@@ -325,9 +327,13 @@ router.post(
       include: { client: true, services: true },
     });
 
+    if (!updatedProposal) {
+      throw new ApiError('NOT_FOUND', 'Proposal not found', 404);
+    }
+
     res.json({
       success: true,
-      data: updatedProposal,
+      data: { ...updatedProposal, ...proposalMoneyForApi(updatedProposal) },
     });
   })
 );
@@ -381,8 +387,65 @@ router.post(
 
     res.json({
       success: true,
-      data: updatedProposal,
+      data: { ...updatedProposal, ...proposalMoneyForApi(updatedProposal) },
       message: 'Proposal withdrawn successfully',
+    });
+  })
+);
+
+/**
+ * POST /api/proposals/:id/archive
+ * Archive a proposal (test/superseded records). The sanctioned alternative to
+ * deletion when signatures exist: signature rows are preserved, the record
+ * leaves active pipelines, any live share link is revoked.
+ */
+router.post(
+  '/:id/archive',
+  authenticate,
+  authorize('ADMIN', 'PARTNER', 'MD', 'MANAGER'),
+  requireActiveSubscription,
+  asyncHandler(async (req, res) => {
+    const { id } = req.params;
+
+    const proposal = await prisma.proposal.findFirst({
+      where: { id, tenantId: req.tenantId },
+      include: { client: true },
+    });
+
+    if (!proposal) {
+      throw new ApiError('NOT_FOUND', 'Proposal not found', 404);
+    }
+
+    if (proposal.status === 'ARCHIVED') {
+      throw new ApiError('INVALID_STATUS', 'Proposal is already archived', 400);
+    }
+
+    if (proposal.shareToken || proposal.publicAccessEnabled) {
+      await revokeShareableLink(id);
+    }
+
+    const updatedProposal = await prisma.proposal.update({
+      where: { id },
+      data: { status: 'ARCHIVED', archivedAt: new Date() },
+    });
+
+    await prisma.activityLog.create({
+      data: {
+        tenantId: req.tenantId,
+        userId: req.user!.id,
+        action: 'PROPOSAL_ARCHIVED',
+        entityType: 'PROPOSAL',
+        entityId: proposal.id,
+        description: `Archived proposal "${proposal.title}" for ${proposal.client.name}`,
+        ipAddress: req.ip,
+        userAgent: req.headers['user-agent'],
+      },
+    });
+
+    res.json({
+      success: true,
+      data: { ...updatedProposal, ...proposalMoneyForApi(updatedProposal) },
+      message: 'Proposal archived successfully',
     });
   })
 );
@@ -460,7 +523,7 @@ router.post(
 
     res.json({
       success: true,
-      data: updatedProposal,
+      data: { ...updatedProposal, ...proposalMoneyForApi(updatedProposal) },
       message: 'Proposal marked as lost',
     });
   })

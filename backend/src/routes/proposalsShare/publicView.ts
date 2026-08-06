@@ -12,6 +12,7 @@ import {
   trackProposalView,
 } from '../../services/proposalSharingService.js';
 import logger from '../../config/logger.js';
+import { penceToPounds } from '../../utils/proposalPricing.js';
 import {
   askPublicProposalQuestion,
   getPublicSigningSummary,
@@ -78,17 +79,16 @@ router.get(
       signaturesReceived > 0 &&
       signaturesReceived < requiredSigners;
 
+    const headerMoney = {
+      subtotal: penceToPounds(proposal.subtotalPence),
+      vatAmount: penceToPounds(proposal.vatAmountPence),
+      total: penceToPounds(proposal.totalPence),
+    };
+
     const pricingTiers = hasPricingTiers(customFields)
       ? customFields.pricingTiers!.map((tier) => ({
           ...tier,
-          ...calculateTierTotals(
-            {
-              subtotal: proposal.subtotal,
-              vatAmount: proposal.vatAmount,
-              total: proposal.total,
-            },
-            tier
-          ),
+          ...calculateTierTotals(headerMoney, tier),
         }))
       : undefined;
 
@@ -97,19 +97,8 @@ router.get(
       : undefined;
     const displayTotals =
       selectedTier && proposal.status !== 'ACCEPTED'
-        ? calculateTierTotals(
-            {
-              subtotal: proposal.subtotal,
-              vatAmount: proposal.vatAmount,
-              total: proposal.total,
-            },
-            selectedTier
-          )
-        : {
-            subtotal: proposal.subtotal,
-            vatAmount: proposal.vatAmount,
-            total: proposal.total,
-          };
+        ? calculateTierTotals(headerMoney, selectedTier)
+        : headerMoney;
 
     // Return proposal data (without sensitive fields)
     res.json({
@@ -120,9 +109,9 @@ router.get(
         title: proposal.title,
         status: proposal.status,
         validUntil: proposal.validUntil,
-        subtotal: proposal.subtotal,
-        vatAmount: proposal.vatAmount,
-        total: proposal.total,
+        subtotal: headerMoney.subtotal,
+        vatAmount: headerMoney.vatAmount,
+        total: headerMoney.total,
         paymentStatus: proposal.paymentStatus,
         paymentTerms: proposal.paymentTerms,
         coverLetter: proposal.coverLetter,
@@ -166,9 +155,9 @@ router.get(
           name: s.name,
           description: s.description,
           quantity: s.quantity,
-          unitPrice: s.unitPrice,
-          displayPrice: s.displayPrice,
-          lineTotal: s.lineTotal,
+          unitPrice: penceToPounds(s.unitPricePence),
+          displayPrice: penceToPounds(s.displayPricePence),
+          lineTotal: penceToPounds(s.lineTotalPence),
           billingFrequency: s.billingFrequency,
           frequency: s.frequency,
           isOptional: s.isOptional,

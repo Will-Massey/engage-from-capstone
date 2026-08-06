@@ -115,6 +115,131 @@ const incomeSourceSchema = z.object({
 });
 
 /**
+ * POST /api/clients/import
+ * Bulk import clients (Engager switcher CSV path). Skips duplicate emails.
+ * Max 200 rows per request.
+ */
+router.post(
+  '/import',
+  authenticate,
+  authorize('ADMIN', 'PARTNER', 'MANAGER', 'SENIOR'),
+  asyncHandler(async (req, res) => {
+    const body = z
+      .object({
+        rows: z
+          .array(
+            z.object({
+              name: z.string().min(1).max(200),
+              contactEmail: z.string().email().max(200),
+              contactName: z.string().max(120).optional().nullable(),
+              contactPhone: z.string().max(40).optional().nullable(),
+              companyNumber: z.string().max(20).optional().nullable(),
+              companyType: z.string().max(40).optional().nullable(),
+              notes: z.string().max(2000).optional().nullable(),
+            })
+          )
+          .min(1)
+          .max(200),
+        /** If true, treat existing emails as update of name/phone only */
+        updateExisting: z.boolean().optional().default(false),
+      })
+      .parse(req.body);
+
+    const tenantId = req.tenantId!;
+    const created: string[] = [];
+    const updated: string[] = [];
+    const skipped: Array<{ email: string; reason: string }> = [];
+
+    const mapType = (raw?: string | null): CompanyType => {
+      const t = (raw || '').toUpperCase().replace(/\s+/g, '_');
+      if (t.includes('SOLE') || t === 'ST') return CompanyType.SOLE_TRADER;
+      if (t.includes('PARTNER') && !t.includes('LLP')) return CompanyType.PARTNERSHIP;
+      if (t === 'LLP') return CompanyType.LLP;
+      if (t.includes('CHARITY')) return CompanyType.CHARITY;
+      if (t.includes('NON') || t.includes('NPO')) return CompanyType.NON_PROFIT;
+      if (t.includes('LIMITED') || t === 'LTD' || t === 'LIMITED_COMPANY')
+        return CompanyType.LIMITED_COMPANY;
+      return CompanyType.LIMITED_COMPANY;
+    };
+
+    for (const row of body.rows) {
+      const email = row.contactEmail.trim().toLowerCase();
+      const existing = await prisma.client.findFirst({
+        where: { tenantId, contactEmail: { equals: email, mode: 'insensitive' } },
+      });
+
+      if (existing) {
+        if (body.updateExisting) {
+          await prisma.client.update({
+            where: { id: existing.id },
+            data: {
+              name: row.name.trim(),
+              contactName: row.contactName?.trim() || existing.contactName,
+              contactPhone: row.contactPhone?.trim() || existing.contactPhone,
+              companyNumber: row.companyNumber?.trim() || existing.companyNumber,
+              notes: row.notes
+                ? [existing.notes, row.notes].filter(Boolean).join('\n')
+                : existing.notes,
+            },
+          });
+          updated.push(existing.id);
+        } else {
+          skipped.push({ email, reason: 'duplicate_email' });
+        }
+        continue;
+      }
+
+      try {
+        const client = await prisma.client.create({
+          data: {
+            name: row.name.trim(),
+            contactEmail: email,
+            contactName: row.contactName?.trim() || null,
+            contactPhone: row.contactPhone?.trim() || null,
+            companyNumber: row.companyNumber?.trim() || null,
+            companyType: mapType(row.companyType),
+            notes: row.notes?.trim() || null,
+            clientRelationship: ClientRelationship.EXISTING,
+            tenantId,
+            tags: 'imported,switcher',
+          } as any,
+        });
+        created.push(client.id);
+      } catch (e: any) {
+        skipped.push({ email, reason: e?.message || 'create_failed' });
+      }
+    }
+
+    await prisma.activityLog.create({
+      data: {
+        tenantId,
+        userId: req.user!.id,
+        action: 'CLIENTS_IMPORTED',
+        entityType: 'CLIENT',
+        description: `Imported clients: ${created.length} created, ${updated.length} updated, ${skipped.length} skipped`,
+        metadata: JSON.stringify({
+          created: created.length,
+          updated: updated.length,
+          skipped: skipped.length,
+        }),
+      },
+    });
+
+    res.status(201).json({
+      success: true,
+      data: {
+        created: created.length,
+        updated: updated.length,
+        skipped: skipped.length,
+        skippedRows: skipped.slice(0, 50),
+        createdIds: created.slice(0, 50),
+      },
+      message: `Import complete: ${created.length} new, ${updated.length} updated, ${skipped.length} skipped`,
+    });
+  })
+);
+
+/**
  * GET /api/clients
  * List clients for tenant
  */
@@ -171,7 +296,7 @@ router.get(
         where,
         include: {
           _count: {
-            select: { proposals: true },
+            select: { proposals: true, jobs: true },
           },
         },
         skip,
@@ -216,7 +341,7 @@ router.get(
             reference: true,
             title: true,
             status: true,
-            total: true,
+            totalPence: true,
             createdAt: true,
           },
           orderBy: { createdAt: 'desc' },
@@ -870,6 +995,359 @@ router.get(
         format: isValid ? 'Valid company number' : 'Invalid format',
       },
     });
+  })
+);
+
+/**
+ * GET /api/clients/:id/comms-timeline
+ * Read-only email + SMS + dunning activity for client (W2.5 path).
+ */
+router.get(
+  '/:id/comms-timeline',
+  authenticate,
+  asyncHandler(async (req, res) => {
+    const tenantId = req.tenantId!;
+    const clientId = req.params.id;
+    const client = await prisma.client.findFirst({
+      where: { id: clientId, tenantId },
+      select: { id: true, name: true, contactEmail: true, contactPhone: true },
+    });
+    if (!client) throw new ApiError('NOT_FOUND', 'Client not found', 404);
+
+    const [emails, smsLogs, dunningLogs] = await Promise.all([
+      prisma.emailLog.findMany({
+        where: { tenantId, clientId },
+        orderBy: { createdAt: 'desc' },
+        take: 50,
+        select: {
+          id: true,
+          messageType: true,
+          status: true,
+          to: true,
+          subject: true,
+          sentAt: true,
+          createdAt: true,
+          proposalId: true,
+          error: true,
+        },
+      }),
+      prisma.activityLog.findMany({
+        where: {
+          tenantId,
+          action: { in: ['SMS_SENT', 'SMS_DRAFT'] },
+          OR: [{ entityId: clientId }, { metadata: { contains: clientId } }],
+        },
+        orderBy: { createdAt: 'desc' },
+        take: 30,
+        select: {
+          id: true,
+          action: true,
+          description: true,
+          metadata: true,
+          createdAt: true,
+        },
+      }),
+      prisma.activityLog.findMany({
+        where: {
+          tenantId,
+          action: {
+            in: ['RECURRING_PAYMENT_FAILED', 'DUNNING_RETRY', 'DUNNING_PORTAL_OPENED'],
+          },
+        },
+        orderBy: { createdAt: 'desc' },
+        take: 40,
+        select: {
+          id: true,
+          action: true,
+          description: true,
+          proposalId: true,
+          createdAt: true,
+          metadata: true,
+        },
+      }),
+    ]);
+
+    // Filter dunning to this client's proposals
+    const proposalIds = await prisma.proposal.findMany({
+      where: { tenantId, clientId },
+      select: { id: true },
+    });
+    const pset = new Set(proposalIds.map((p) => p.id));
+    const dunning = dunningLogs.filter((d) => d.proposalId && pset.has(d.proposalId));
+
+    type Event = {
+      id: string;
+      channel: 'email' | 'sms' | 'dunning';
+      at: string;
+      title: string;
+      detail: string;
+      status?: string;
+    };
+
+    const events: Event[] = [];
+    for (const e of emails) {
+      events.push({
+        id: e.id,
+        channel: 'email',
+        at: (e.sentAt || e.createdAt).toISOString(),
+        title: e.subject,
+        detail: `${e.messageType} → ${e.to}`,
+        status: e.status,
+      });
+    }
+    for (const s of smsLogs) {
+      events.push({
+        id: s.id,
+        channel: 'sms',
+        at: s.createdAt.toISOString(),
+        title: s.action === 'SMS_SENT' ? 'SMS sent' : 'SMS draft',
+        detail: s.description || '',
+        status: s.action,
+      });
+    }
+    for (const d of dunning) {
+      events.push({
+        id: d.id,
+        channel: 'dunning',
+        at: d.createdAt.toISOString(),
+        title: d.action.replace(/_/g, ' '),
+        detail: d.description || '',
+        status: d.action,
+      });
+    }
+    events.sort((a, b) => new Date(b.at).getTime() - new Date(a.at).getTime());
+
+    const twilioReady = Boolean(
+      process.env.TWILIO_ACCOUNT_SID &&
+      process.env.TWILIO_AUTH_TOKEN &&
+      process.env.TWILIO_FROM_NUMBER
+    );
+
+    res.json({
+      success: true,
+      data: {
+        client: {
+          id: client.id,
+          name: client.name,
+          contactEmail: client.contactEmail,
+          contactPhone: client.contactPhone,
+        },
+        smsConfigured: twilioReady,
+        events: events.slice(0, 80),
+      },
+    });
+  })
+);
+
+/**
+ * POST /api/clients/:id/sms — send (or draft) SMS via Twilio when configured
+ */
+router.post(
+  '/:id/sms',
+  authenticate,
+  asyncHandler(async (req, res) => {
+    const tenantId = req.tenantId!;
+    const body = z
+      .object({
+        message: z.string().min(1).max(1600),
+        send: z.boolean().optional().default(true),
+      })
+      .parse(req.body);
+
+    const client = await prisma.client.findFirst({
+      where: { id: req.params.id, tenantId },
+      select: { id: true, name: true, contactPhone: true },
+    });
+    if (!client) throw new ApiError('NOT_FOUND', 'Client not found', 404);
+    if (!client.contactPhone) {
+      throw new ApiError('NO_PHONE', 'Client has no phone number on file', 400);
+    }
+
+    let sent = false;
+    if (body.send) {
+      const { sendTwilioSms } = await import('../utils/twilioSms.js');
+      sent = await sendTwilioSms(client.contactPhone, body.message);
+    }
+
+    await prisma.activityLog.create({
+      data: {
+        tenantId,
+        action: sent ? 'SMS_SENT' : 'SMS_DRAFT',
+        entityType: 'Client',
+        entityId: client.id,
+        description: sent
+          ? `SMS to ${client.contactPhone}: ${body.message.slice(0, 120)}`
+          : `SMS draft for ${client.name}: ${body.message.slice(0, 120)}`,
+        metadata: JSON.stringify({
+          clientId: client.id,
+          phone: client.contactPhone,
+          sent,
+          fullMessage: body.message,
+        }),
+        userId: req.user?.id,
+      },
+    });
+
+    res.json({
+      success: true,
+      data: {
+        sent,
+        phone: client.contactPhone,
+        message: body.message,
+      },
+      message: sent ? 'SMS sent' : 'SMS saved as draft (Twilio not configured or send skipped)',
+    });
+  })
+);
+
+/**
+ * Portal OS — staff: list / create tasks & messages for a client (ActivityLog-backed).
+ */
+router.get(
+  '/:id/portal-os',
+  authenticate,
+  asyncHandler(async (req, res) => {
+    const tenantId = req.tenantId!;
+    const clientId = req.params.id;
+    const client = await prisma.client.findFirst({
+      where: { id: clientId, tenantId },
+      select: {
+        id: true,
+        name: true,
+        portalEnabled: true,
+        portalToken: true,
+        portalTokenExpiry: true,
+      },
+    });
+    if (!client) throw new ApiError('NOT_FOUND', 'Client not found', 404);
+
+    const { listPortalTasks, listPortalMessages } = await import('../services/portalOsService.js');
+    const [tasks, messages, files] = await Promise.all([
+      listPortalTasks(tenantId, clientId),
+      listPortalMessages(tenantId, clientId),
+      prisma.portalFile.findMany({
+        where: { tenantId, clientId },
+        orderBy: { createdAt: 'desc' },
+        take: 50,
+        select: {
+          id: true,
+          name: true,
+          mimeType: true,
+          sizeBytes: true,
+          uploadedBy: true,
+          createdAt: true,
+          jobId: true,
+        },
+      }),
+    ]);
+
+    const tokenValid =
+      Boolean(client.portalToken) &&
+      client.portalEnabled &&
+      !!client.portalTokenExpiry &&
+      client.portalTokenExpiry > new Date();
+
+    res.json({
+      success: true,
+      data: {
+        client: {
+          id: client.id,
+          name: client.name,
+          portalEnabled: client.portalEnabled,
+          hasPortalToken: Boolean(client.portalToken),
+          portalTokenExpiry: client.portalTokenExpiry,
+          portalActive: tokenValid,
+        },
+        tasks,
+        messages,
+        files,
+      },
+    });
+  })
+);
+
+router.post(
+  '/:id/portal-os/tasks',
+  authenticate,
+  asyncHandler(async (req, res) => {
+    const tenantId = req.tenantId!;
+    const clientId = req.params.id;
+    const schema = z.object({
+      title: z.string().min(1).max(500),
+      dueAt: z.string().datetime().optional().nullable(),
+    });
+    const body = schema.parse(req.body);
+    const client = await prisma.client.findFirst({
+      where: { id: clientId, tenantId },
+      select: { id: true },
+    });
+    if (!client) throw new ApiError('NOT_FOUND', 'Client not found', 404);
+
+    const { createPortalTask } = await import('../services/portalOsService.js');
+    const user = req.user as { firstName?: string; lastName?: string; id?: string } | undefined;
+    const authorName = user
+      ? [user.firstName, user.lastName].filter(Boolean).join(' ') || 'Staff'
+      : 'Staff';
+    const task = await createPortalTask({
+      tenantId,
+      clientId,
+      title: body.title,
+      dueAt: body.dueAt || null,
+      from: 'staff',
+      authorName,
+      userId: user?.id || null,
+    });
+    res.status(201).json({ success: true, data: task });
+  })
+);
+
+router.patch(
+  '/:id/portal-os/tasks/:taskId',
+  authenticate,
+  asyncHandler(async (req, res) => {
+    const tenantId = req.tenantId!;
+    const clientId = req.params.id;
+    const taskId = req.params.taskId;
+    const body = z.object({ done: z.boolean() }).parse(req.body);
+    const { setPortalTaskDone } = await import('../services/portalOsService.js');
+    const task = await setPortalTaskDone({
+      tenantId,
+      clientId,
+      taskId,
+      done: body.done,
+    });
+    if (!task) throw new ApiError('NOT_FOUND', 'Task not found', 404);
+    res.json({ success: true, data: task });
+  })
+);
+
+router.post(
+  '/:id/portal-os/messages',
+  authenticate,
+  asyncHandler(async (req, res) => {
+    const tenantId = req.tenantId!;
+    const clientId = req.params.id;
+    const body = z.object({ body: z.string().min(1).max(4000) }).parse(req.body);
+    const client = await prisma.client.findFirst({
+      where: { id: clientId, tenantId },
+      select: { id: true },
+    });
+    if (!client) throw new ApiError('NOT_FOUND', 'Client not found', 404);
+
+    const { createPortalMessage } = await import('../services/portalOsService.js');
+    const user = req.user as { firstName?: string; lastName?: string; id?: string } | undefined;
+    const authorName = user
+      ? [user.firstName, user.lastName].filter(Boolean).join(' ') || 'Staff'
+      : 'Staff';
+    const message = await createPortalMessage({
+      tenantId,
+      clientId,
+      body: body.body,
+      from: 'staff',
+      authorName,
+      userId: user?.id || null,
+    });
+    res.status(201).json({ success: true, data: message });
   })
 );
 

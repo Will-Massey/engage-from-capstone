@@ -69,6 +69,20 @@ describe('subscriptionService', () => {
     jest.useRealTimers();
   });
 
+  it('allows a complimentary tenant even after its trial has expired', () => {
+    jest.useFakeTimers();
+    jest.setSystemTime(new Date('2027-01-01T00:00:00Z')); // long past any trial window
+
+    const result = evaluateTenantBilling({
+      ...baseTenant,
+      subscriptionStatus: 'complimentary',
+      stripeSubscriptionId: null,
+    });
+    expect(result.allowed).toBe(true);
+
+    jest.useRealTimers();
+  });
+
   it('still blocks a Stripe subscriber whose payment is past_due', () => {
     const result = evaluateTenantBilling({
       ...baseTenant,

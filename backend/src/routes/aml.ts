@@ -19,9 +19,24 @@ import {
   processAmlWebhook,
 } from '../services/amlService.js';
 import { getAmlUsage } from '../services/aml/amlUsageService.js';
+import { prisma } from '../config/database.js';
+import { readAmlDocument } from '../services/fileStorage.js';
+import { resolveAmlDocumentPath, type AmlDocumentType } from '../services/aml/amlDocuments.js';
 import logger from '../config/logger.js';
 
 const router = Router();
+
+const AML_DOCUMENT_TYPES = new Set<AmlDocumentType>(['photo_id', 'proof_of_address']);
+
+/** ASCII-safe filename for Content-Disposition (non-Latin-1 chars 500 the header). */
+function asciiFilename(name: string, fallback: string): string {
+  const cleaned = name
+    .normalize('NFKD')
+    .replace(/[^\x20-\x7E]/g, '')
+    .replace(/["\\]/g, '')
+    .trim();
+  return cleaned || fallback;
+}
 
 const checkSchema = z.object({
   clientId: z.string().uuid(),
@@ -104,6 +119,66 @@ router.get(
       logger.error('AML status lookup failed', err);
       throw new ApiError('AML_STATUS_FAILED', 'Failed to load AML status', 500);
     }
+  })
+);
+
+/**
+ * GET /api/aml/documents/:clientId/:type
+ * Stream a client-uploaded AML document (photo_id | proof_of_address) for staff
+ * review. Tenant-scoped, role-gated; the storage path is resolved server-side
+ * from Client.amlSubmissionData (never user input). Each view is audit-logged.
+ */
+router.get(
+  '/documents/:clientId/:type',
+  authenticate,
+  authorize('ADMIN', 'PARTNER', 'MANAGER'),
+  asyncHandler(async (req, res) => {
+    const { clientId, type } = req.params;
+
+    if (!AML_DOCUMENT_TYPES.has(type as AmlDocumentType)) {
+      throw new ApiError('INVALID_DOCUMENT_TYPE', 'Unknown AML document type', 400);
+    }
+
+    const client = await prisma.client.findFirst({
+      where: { id: clientId, tenantId: req.tenantId! },
+      select: { id: true, amlSubmissionData: true },
+    });
+    if (!client) {
+      throw new ApiError('CLIENT_NOT_FOUND', 'Client not found', 404);
+    }
+
+    const doc = resolveAmlDocumentPath(client.amlSubmissionData, type as AmlDocumentType);
+    if (!doc) {
+      throw new ApiError('DOCUMENT_NOT_FOUND', 'No such AML document for this client', 404);
+    }
+
+    let bytes: Buffer;
+    try {
+      bytes = await readAmlDocument(doc.relativePath);
+    } catch (err) {
+      logger.error('AML document read failed', err);
+      throw new ApiError('DOCUMENT_READ_FAILED', 'Could not read the stored document', 502);
+    }
+
+    await prisma.activityLog.create({
+      data: {
+        tenantId: req.tenantId!,
+        userId: req.user!.id,
+        action: 'CLIENT_AML_DOCUMENT_VIEWED',
+        entityType: 'CLIENT',
+        entityId: client.id,
+        description: `Viewed AML ${type === 'photo_id' ? 'photo ID' : 'proof of address'} document`,
+        ipAddress: req.ip,
+        userAgent: req.headers['user-agent'],
+      },
+    });
+
+    res.setHeader('Content-Type', doc.mimeType);
+    res.setHeader(
+      'Content-Disposition',
+      `inline; filename="${asciiFilename(doc.fileName, `${type}.pdf`)}"`
+    );
+    res.send(bytes);
   })
 );
 

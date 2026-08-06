@@ -141,9 +141,9 @@ describe('Proposal isolation smoke', () => {
     });
 
     expect(refreshedA?.services[0]?.name).toBe('Snapshot A');
-    expect(refreshedA?.services[0]?.displayPrice).toBe(111);
+    expect(refreshedA?.services[0]?.displayPricePence).toBe(11100);
     expect(refreshedB?.services[0]?.name).toBe('Snapshot B updated');
-    expect(refreshedB?.services[0]?.displayPrice).toBe(999);
+    expect(refreshedB?.services[0]?.displayPricePence).toBe(99900);
 
     await prisma.proposal.deleteMany({ where: { id: { in: [idA, idB] } } });
   });

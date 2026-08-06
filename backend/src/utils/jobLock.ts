@@ -14,6 +14,7 @@ export const JOB_LOCKS = {
   disputeReconciliation: 4105,
   regulatoryScan: 4106,
   claraAgenticDrafting: 4107,
+  automationRules: 4108,
 } as const;
 
 /**

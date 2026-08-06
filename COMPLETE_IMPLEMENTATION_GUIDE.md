@@ -333,7 +333,7 @@ SENTRY_DSN=https://...
    - Create Sentry project
    - Add SENTRY_DSN
 
-5. **Deploy to Railway**
+5. **Deploy to Render**
    - Push to main branch
    - CI/CD will auto-deploy
 

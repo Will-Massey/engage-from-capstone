@@ -4,6 +4,7 @@
 
 import { prisma } from '../config/database.js';
 import logger from '../config/logger.js';
+import { penceToPounds } from '../utils/proposalPricing.js';
 import {
   getTenantXeroSettings,
   saveTenantXeroSettings,
@@ -55,9 +56,9 @@ function buildProposalPayload(proposal: {
   reference: string;
   title: string;
   acceptedAt: Date | null;
-  total: number;
-  subtotal: number;
-  vatAmount: number;
+  totalPence: number;
+  subtotalPence: number;
+  vatAmountPence: number;
   paymentFrequency: string;
   client: {
     name: string;
@@ -67,19 +68,20 @@ function buildProposalPayload(proposal: {
   };
   services: Array<{
     name: string;
-    displayPrice: number;
+    displayPricePence: number;
     billingFrequency: string;
-    lineTotal: number;
-    vatAmount: number;
+    lineTotalPence: number;
+    vatAmountPence: number;
   }>;
 }) {
+  // Xero payload stays in pounds — derived from the stored pence.
   return {
     reference: proposal.reference,
     title: proposal.title,
     acceptedAt: proposal.acceptedAt,
-    total: proposal.total,
-    subtotal: proposal.subtotal,
-    vatAmount: proposal.vatAmount,
+    total: penceToPounds(proposal.totalPence),
+    subtotal: penceToPounds(proposal.subtotalPence),
+    vatAmount: penceToPounds(proposal.vatAmountPence),
     paymentFrequency: proposal.paymentFrequency,
     client: {
       name: proposal.client.name,
@@ -89,10 +91,10 @@ function buildProposalPayload(proposal: {
     },
     services: proposal.services.map((s) => ({
       name: s.name,
-      displayPrice: s.displayPrice,
+      displayPrice: penceToPounds(s.displayPricePence),
       billingFrequency: s.billingFrequency,
-      lineTotal: s.lineTotal,
-      vatAmount: s.vatAmount,
+      lineTotal: penceToPounds(s.lineTotalPence),
+      vatAmount: penceToPounds(s.vatAmountPence),
     })),
   };
 }

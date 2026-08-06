@@ -8,6 +8,7 @@ import { prisma } from '../config/database.js';
 import { getApiUrl, getFrontendUrl, tenantAppUrl } from '../config/urls.js';
 import logger from '../config/logger.js';
 import { saveSignaturePng, readSignature } from './fileStorage.js';
+import { penceToPounds, poundsToPence } from '../utils/proposalPricing.js';
 import { calculateRenewalDate } from '../jobs/renewalReminders.js';
 import {
   parseProposalCustomFields,
@@ -31,26 +32,45 @@ export async function createShareableLink(
   tenantSubdomain: string
 ): Promise<{ token: string; shareUrl: string; expiresAt: Date }> {
   try {
-    const token = generateShareToken();
-    const expiresAt = new Date();
-    expiresAt.setDate(expiresAt.getDate() + expiryDays);
-
-    await prisma.proposal.update({
+    // Reuse a still-valid link rather than minting a new token — regenerating
+    // would invalidate a link already copied/sent to a client. Only create a
+    // fresh token when none exists, it's disabled, or it has expired.
+    const existing = await prisma.proposal.findUnique({
       where: { id: proposalId },
-      data: {
-        shareToken: token,
-        shareTokenExpiry: expiresAt,
-        publicAccessEnabled: true,
-      },
+      select: { shareToken: true, shareTokenExpiry: true, publicAccessEnabled: true },
     });
+
+    let token: string;
+    let expiresAt: Date;
+    const reusable =
+      existing?.shareToken &&
+      existing.publicAccessEnabled &&
+      existing.shareTokenExpiry &&
+      existing.shareTokenExpiry > new Date();
+
+    if (reusable) {
+      token = existing!.shareToken!;
+      expiresAt = existing!.shareTokenExpiry!;
+    } else {
+      token = generateShareToken();
+      expiresAt = new Date();
+      expiresAt.setDate(expiresAt.getDate() + expiryDays);
+      await prisma.proposal.update({
+        where: { id: proposalId },
+        data: {
+          shareToken: token,
+          shareTokenExpiry: expiresAt,
+          publicAccessEnabled: true,
+        },
+      });
+      logger.info(`Created shareable link for proposal ${proposalId}`);
+    }
 
     const baseUrl = (process.env.PUBLIC_PROPOSAL_URL || tenantAppUrl(tenantSubdomain)).replace(
       /\/$/,
       ''
     );
     const shareUrl = `${baseUrl}/proposals/view/${token}`;
-
-    logger.info(`Created shareable link for proposal ${proposalId}`);
 
     return { token, shareUrl, expiresAt };
   } catch (error) {
@@ -267,9 +287,9 @@ export async function recordElectronicSignature(
         contractStartDate: true,
         clientId: true,
         customFields: true,
-        subtotal: true,
-        vatAmount: true,
-        total: true,
+        subtotalPence: true,
+        vatAmountPence: true,
+        totalPence: true,
         status: true,
         _count: { select: { signatures: true } },
       },
@@ -391,9 +411,9 @@ export async function recordElectronicSignature(
       selectedTier &&
       calculateTierTotals(
         {
-          subtotal: proposalMeta.subtotal,
-          vatAmount: proposalMeta.vatAmount,
-          total: proposalMeta.total,
+          subtotal: penceToPounds(proposalMeta.subtotalPence),
+          vatAmount: penceToPounds(proposalMeta.vatAmountPence),
+          total: penceToPounds(proposalMeta.totalPence),
         },
         selectedTier
       );
@@ -419,9 +439,9 @@ export async function recordElectronicSignature(
         customFields: serializeProposalCustomFields(finalCustomFields),
         ...(tierTotals
           ? {
-              subtotal: tierTotals.subtotal,
-              vatAmount: tierTotals.vatAmount,
-              total: tierTotals.total,
+              subtotalPence: poundsToPence(tierTotals.subtotal),
+              vatAmountPence: poundsToPence(tierTotals.vatAmount),
+              totalPence: poundsToPence(tierTotals.total),
             }
           : {}),
       },
@@ -451,6 +471,14 @@ export async function recordElectronicSignature(
       await generateAndStoreOnboardingChecklist(data.proposalId, data.tenantId);
     } catch (e) {
       logger.warn('Failed to generate post-sign onboarding checklist', e);
+    }
+
+    // Engage Practice: spawn delivery Job (idempotent; one per proposal)
+    try {
+      const { spawnJobForProposal } = await import('./jobSpawnService.js');
+      await spawnJobForProposal(data.proposalId, { actorId: data.userId || null });
+    } catch (e) {
+      logger.warn('Failed to spawn practice job on proposal acceptance', e);
     }
 
     await prisma.activityLog.create({
@@ -790,18 +818,38 @@ export async function createClientPortalLink(
   expiryDays: number = 90,
   frontendOrigin?: string
 ): Promise<{ token: string; portalUrl: string; expiresAt: Date }> {
-  const token = generatePortalToken();
-  const expiresAt = new Date();
-  expiresAt.setDate(expiresAt.getDate() + expiryDays);
-
-  await prisma.client.update({
+  // Reuse a still-valid portal token so Copy/Open from staff UI does not
+  // invalidate a link already sent to the client.
+  const existing = await prisma.client.findUnique({
     where: { id: clientId },
-    data: {
-      portalToken: token,
-      portalTokenExpiry: expiresAt,
-      portalEnabled: true,
-    },
+    select: { portalToken: true, portalTokenExpiry: true, portalEnabled: true },
   });
+
+  let token: string;
+  let expiresAt: Date;
+  const reusable =
+    existing?.portalToken &&
+    existing.portalEnabled &&
+    existing.portalTokenExpiry &&
+    existing.portalTokenExpiry > new Date();
+
+  if (reusable) {
+    token = existing!.portalToken!;
+    expiresAt = existing!.portalTokenExpiry!;
+  } else {
+    token = generatePortalToken();
+    expiresAt = new Date();
+    expiresAt.setDate(expiresAt.getDate() + expiryDays);
+    await prisma.client.update({
+      where: { id: clientId },
+      data: {
+        portalToken: token,
+        portalTokenExpiry: expiresAt,
+        portalEnabled: true,
+      },
+    });
+    logger.info(`Created client portal link for client ${clientId}`);
+  }
 
   // The app is served under a base path (/engage). A bare browser origin
   // (https://capstonesoftware.co.uk) omits it, and the edge worker hard-404s any
@@ -878,10 +926,10 @@ export async function getClientProposalsForPortal(clientId: string) {
         reference: true,
         title: true,
         status: true,
-        total: true,
-        subtotal: true,
-        vatAmount: true,
-        discountAmount: true,
+        totalPence: true,
+        subtotalPence: true,
+        vatAmountPence: true,
+        discountAmountPence: true,
         validUntil: true,
         sentAt: true,
         viewedAt: true,
@@ -897,11 +945,11 @@ export async function getClientProposalsForPortal(clientId: string) {
             name: true,
             description: true,
             quantity: true,
-            unitPrice: true,
-            lineTotal: true,
+            unitPricePence: true,
+            lineTotalPence: true,
             vatRate: true,
-            vatAmount: true,
-            grossTotal: true,
+            vatAmountPence: true,
+            grossTotalPence: true,
             billingFrequency: true,
             priceDisplayMode: true,
           },

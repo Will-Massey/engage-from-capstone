@@ -9,15 +9,14 @@ import {
   isCsrfTokenRegisteredAsync,
   registerCsrfToken,
 } from '../utils/csrfStore.js';
+import { env } from '../config/env.js';
 
-const JWT_SECRET = process.env.JWT_SECRET;
-const JWT_REFRESH_SECRET = process.env.JWT_REFRESH_SECRET || JWT_SECRET;
+// Read the validated env (JWT_SECRET is guaranteed present, min 32 chars) so
+// these are typed `string`, not `string | undefined` from a raw process.env read.
+const JWT_SECRET = env.JWT_SECRET;
+const JWT_REFRESH_SECRET = env.JWT_REFRESH_SECRET || JWT_SECRET;
 
-if (!JWT_SECRET) {
-  throw new Error('JWT_SECRET environment variable is required');
-}
-
-if (process.env.NODE_ENV === 'production' && !process.env.JWT_REFRESH_SECRET) {
+if (env.NODE_ENV === 'production' && !env.JWT_REFRESH_SECRET) {
   throw new Error('JWT_REFRESH_SECRET environment variable is required in production');
 }
 
@@ -355,6 +354,7 @@ export const csrfProtection = async (
     '/webhooks/sendgrid', // SendGrid delivery events
     '/webhooks/cloudflare-email', // Cloudflare delivery events
     '/aml/webhook', // AML partner results webhook
+    '/integrations/accountflow/inbound', // Capstone Tandem reverse (X-API-Key / X-Mesh-Secret)
     '/admin/seed-services', // One-click admin seed endpoint
     '/automation/migrate-service-pricing', // Data migration endpoint (protected by secret key)
     '/setup', // ops setup (migrate-pricing, seed-tenant-library, clear-login-lockout)

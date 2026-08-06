@@ -1,138 +1,59 @@
-# Deploy to Railway + Neon
+# Deploy Engage — Neon + Render
 
-## 1. Setup Neon PostgreSQL
+**Production stack:** Neon Postgres + Render (backend + frontend) + Cloudflare Worker proxy.
 
-1. Go to https://neon.tech and sign up
-2. Create a new project
-3. Create a database named `uk_proposals`
-4. Copy the connection string (looks like):
-   ```
-   postgresql://username:password@ep-xxx.us-east-1.aws.neon.tech/uk_proposals?sslmode=require
-   ```
+**Live app:** https://capstonesoftware.co.uk/engage
 
-## 2. Deploy Backend to Railway
+## 1. Database (Neon)
 
-### Option A: Using Railway CLI
+1. Create or use the Engage Neon project (Postgres).
+2. Copy the connection string into Render as `DATABASE_URL` (pooled URL for the app if you use Neon pooling).
+3. Migrations run on deploy / boot via `prisma migrate deploy` (see CI and Render start command).
 
-```bash
-# Install Railway CLI
-npm install -g @railway/cli
+Never point practice/local seed scripts at production Neon.
 
-# Login
-railway login
+## 2. Backend (Render)
 
-# Initialize project
-cd C:\Users\willi\Desktop\uk-proposal-platform
-railway init
+Service: `engage-backend` (example host: `engage-backend-e1ue.onrender.com`)
 
-# Add PostgreSQL variable
-railway variables set DATABASE_URL="your-neon-connection-string"
-railway variables set JWT_SECRET="your-super-secret-jwt-key-min-32-chars-long"
-railway variables set NODE_ENV="production"
-railway variables set FRONTEND_URL="https://your-frontend-url.vercel.app"
+Required env (minimum):
 
-# Deploy
-railway up
-```
+- `DATABASE_URL` — Neon
+- `JWT_SECRET` / `JWT_REFRESH_SECRET` — ≥32 chars
+- `NODE_ENV=production`
+- `FRONTEND_URL=https://capstonesoftware.co.uk/engage`
+- Stripe / SMTP / encryption secrets as configured in Render
 
-### Option B: Using Railway Dashboard
+Health: `GET /health` and `GET /ping`
 
-1. Go to https://railway.app
-2. Create New Project → Deploy from GitHub repo
-3. Select your repository
-4. Add environment variables in Railway Dashboard:
-   - `DATABASE_URL` = Your Neon connection string
-   - `JWT_SECRET` = A secure random string (32+ chars)
-   - `NODE_ENV` = `production`
-   - `FRONTEND_URL` = Your frontend URL (or `*` for now)
+Deploy: merge to `master` (CI **Deploy to Render**) or trigger deploy from the Render dashboard.
 
-5. Deploy!
+## 3. Frontend (Render)
 
-## 3. Deploy Frontend to Vercel
+Static site / web service built with:
 
-```bash
-# Install Vercel CLI
-npm install -g vercel
+- `VITE_APP_BASE=/engage/` (or as set for the worker path)
+- `VITE_API_URL=/api` (same-origin via Cloudflare → backend)
 
-# Deploy
-cd frontend
-vercel
+Public URL path: `https://capstonesoftware.co.uk/engage`
 
-# Set environment variable for API URL
-vercel env add VITE_API_URL
-# Enter: https://your-railway-app-url.up.railway.app
-```
+## 4. Edge (Cloudflare)
 
-Or use Vercel Dashboard:
+Worker `workers/engage-proxy` routes `capstonesoftware.co.uk/engage*` to Render.
 
-1. Go to https://vercel.com
-2. Import GitHub repository
-3. Set root directory to `frontend`
-4. Add environment variable:
-   - `VITE_API_URL` = Your Railway backend URL
+If `/engage/api/*` returns HTML, re-deploy the worker (`wrangler deploy`).
 
-## 4. Update CORS
+## 5. Checklist after deploy
 
-After deployment, update `FRONTEND_URL` in Railway to match your Vercel URL.
+- [ ] `curl -sf https://capstonesoftware.co.uk/engage/ping` → JSON ok
+- [ ] `curl -sf https://engage-backend-e1ue.onrender.com/health` → healthy
+- [ ] Login page loads: https://capstonesoftware.co.uk/engage/login
+- [ ] Migrations applied (no pending in Render logs)
 
-## Quick Deploy Script (Windows)
+## 6. Rollback
 
-Run this PowerShell script:
+1. Render dashboard → previous deploy for backend and frontend
+2. Neon point-in-time / branch restore if a bad migration landed (see `docs/ROLLBACK_RUNBOOK.md`)
+3. Pre-cutover git tag if code-only rollback: `backup/caroline-pre-practice-cutover-20260802`
 
-```powershell
-# Deploy to Railway
-$env:DATABASE_URL = "your-neon-url"
-$env:JWT_SECRET = "your-jwt-secret"
-railway up
-
-# Deploy frontend to Vercel
-cd frontend
-vercel --prod
-```
-
-## Environment Variables Checklist
-
-### Backend (Railway)
-
-- [ ] `DATABASE_URL` - Neon PostgreSQL connection string
-- [ ] `JWT_SECRET` - Secure random string (min 32 chars)
-- [ ] `NODE_ENV` - `production`
-- [ ] `FRONTEND_URL` - Vercel frontend URL
-- [ ] `PORT` - `3001` (Railway sets this automatically)
-
-### Frontend (Vercel)
-
-- [ ] `VITE_API_URL` - Railway backend URL + `/api`
-
-## Post-Deployment
-
-1. Run migrations on Railway:
-
-   ```bash
-   railway run npx prisma migrate deploy
-   ```
-
-2. Seed the database:
-
-   ```bash
-   railway run npx prisma db seed
-   ```
-
-3. Visit your app!
-
-## Troubleshooting
-
-### Database Connection Issues
-
-- Make sure Neon allows connections from Railway IPs
-- Check that `sslmode=require` is in the DATABASE_URL
-
-### CORS Errors
-
-- Update `FRONTEND_URL` in Railway to exactly match your Vercel domain
-- Include `https://` prefix
-
-### Build Failures
-
-- Check Railway logs for specific errors
-- Make sure `npx prisma generate` runs before build
+See also: `docs/agent-handover.md`, `RENDER_API_SETUP.md`, `.github/workflows/ci-cd.yml`.

@@ -1,6 +1,8 @@
 import { z } from 'zod';
 import { ApprovalStatus, ProposalStatus, PricingFrequency, UserRole } from '@prisma/client';
 import { prisma } from '../../config/database.js';
+import { ApiError } from '../../middleware/errorHandler.js';
+import { getProposalSettings } from '../../utils/tenantProposalSettings.js';
 import { formatUserRole } from '../../utils/proposalDisplay.js';
 
 // generateReference helper function
@@ -33,6 +35,58 @@ export function canSendProposal(role: UserRole, approvalStatus: ApprovalStatus):
     return true;
   }
   return approvalStatus === 'APPROVED';
+}
+
+/**
+ * Approval + AML gates that must pass before a DRAFT proposal can be sent —
+ * shared by the email-send path and the copy-link-marks-sent path so both
+ * enforce identical rules (a link copy is a send, not a backdoor around them).
+ * Throws the same ApiErrors as the /send handler. Subscription/trial is
+ * enforced separately via assertTenantCanSendProposals.
+ */
+export function assertProposalSendable(
+  proposal: {
+    approvalStatus: ApprovalStatus;
+    client: { amlStatus: string | null };
+    tenant: { settings: string | null };
+  },
+  userRole: UserRole,
+  opts: { overrideAml?: boolean } = {}
+): void {
+  const overrideApproval = canOverrideApproval(userRole);
+
+  if (proposal.approvalStatus === 'PENDING' && !overrideApproval) {
+    throw new ApiError(
+      'APPROVAL_PENDING',
+      'This proposal is awaiting partner approval and cannot be sent yet',
+      403
+    );
+  }
+  if (proposal.approvalStatus === 'REJECTED' && !overrideApproval) {
+    throw new ApiError(
+      'APPROVAL_REJECTED',
+      'This proposal was rejected. Revise and resubmit for partner approval before sending',
+      403
+    );
+  }
+  if (!canSendProposal(userRole, proposal.approvalStatus)) {
+    throw new ApiError(
+      'APPROVAL_REQUIRED',
+      'Partner approval is required before this proposal can be sent',
+      403
+    );
+  }
+
+  const settings = getProposalSettings(proposal.tenant.settings);
+  const amlBlocked = settings.blockSendUntilAmlCleared && proposal.client.amlStatus !== 'CLEAR';
+  const amlOverrideUsed = amlBlocked && opts.overrideAml === true && overrideApproval;
+  if (amlBlocked && !amlOverrideUsed) {
+    throw new ApiError(
+      'AML_NOT_CLEARED',
+      `AML clearance is required before sending. The client's AML status is ${proposal.client.amlStatus}.`,
+      403
+    );
+  }
 }
 
 export async function resolveSenderPosition(

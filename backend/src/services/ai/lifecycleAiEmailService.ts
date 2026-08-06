@@ -10,6 +10,7 @@ import { AI_COPILOT } from '../../config/aiCopilot.js';
 import { chatCompletion, isAiConfigured, parseJsonResponse } from './aiClient.js';
 import { logAiUsage } from './proposalAiService.js';
 import { getFrontendUrl } from '../../config/urls.js';
+import { penceToPounds } from '../../utils/proposalPricing.js';
 
 const UK_SYSTEM =
   AI_COPILOT.systemPersona +
@@ -136,7 +137,7 @@ Practice: ${proposal.tenant.name}
 Sender: ${senderName} (${proposal.createdBy?.role || 'Partner'})
 Client: ${proposal.client.name} (${proposal.client.contactName || proposal.client.name})
 Proposal: ${proposal.title} (${proposal.reference})
-Total: ${formatGbp(proposal.total)}
+Total: ${formatGbp(penceToPounds(proposal.totalPence))}
 Status: ${proposal.status}
 Valid until: ${proposal.validUntil.toISOString().slice(0, 10)} (${daysUntilExpiry} days remaining)
 Days since sent: ${daysSinceSent ?? 'unknown'}
@@ -187,7 +188,7 @@ export async function generateAcceptanceClientEmail(
   const servicesSummary = proposal.services
     .map(
       (s) =>
-        `• ${s.name}: ${formatGbp(s.displayPrice || s.unitPrice)} per ${String(s.billingFrequency).toLowerCase().replace('_', ' ')}`
+        `• ${s.name}: ${formatGbp(penceToPounds(s.displayPricePence || s.unitPricePence))} per ${String(s.billingFrequency).toLowerCase().replace('_', ' ')}`
     )
     .join('\n');
 
@@ -202,7 +203,7 @@ Sender: ${senderName}
 Client: ${proposal.client.name}
 Proposal: ${proposal.title} (${proposal.reference})
 Accepted: ${proposal.acceptedAt?.toISOString().slice(0, 10) || 'today'}
-Total agreed: ${formatGbp(proposal.total)}
+Total agreed: ${formatGbp(penceToPounds(proposal.totalPence))}
 Services agreed:
 ${servicesSummary}
 
@@ -245,14 +246,17 @@ export async function generateRenewalEmail(
   const multiplier = 1 + upliftPercent / 100;
   const renewedFees = original.services
     .map((s) => {
-      const price = Math.round((s.displayPrice || s.unitPrice) * multiplier * 100) / 100;
+      const price =
+        Math.round(penceToPounds(s.displayPricePence || s.unitPricePence) * multiplier * 100) / 100;
       return `• ${s.name}: ${formatGbp(price)} per ${String(s.billingFrequency).toLowerCase().replace('_', ' ')}`;
     })
     .join('\n');
-  const priorTotal = formatGbp(original.total);
+  const priorTotal = formatGbp(penceToPounds(original.totalPence));
   const newTotal = formatGbp(
     original.services.reduce(
-      (sum, s) => sum + Math.round((s.displayPrice || s.unitPrice) * multiplier * 100) / 100,
+      (sum, s) =>
+        sum +
+        Math.round(penceToPounds(s.displayPricePence || s.unitPricePence) * multiplier * 100) / 100,
       0
     )
   );
@@ -305,7 +309,12 @@ export async function generateTouchpointEmail(
         where: { status: 'ACCEPTED' },
         orderBy: { acceptedAt: 'desc' },
         take: 1,
-        select: { title: true, reference: true, total: true, services: { select: { name: true } } },
+        select: {
+          title: true,
+          reference: true,
+          totalPence: true,
+          services: { select: { name: true } },
+        },
       },
     },
   });

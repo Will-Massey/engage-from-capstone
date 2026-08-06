@@ -42,6 +42,7 @@ export default function DetailHeader() {
     canWithdrawProposal,
     canMarkAsLost,
     canDeleteProposal,
+    canArchiveProposal,
     canManageProposal,
     canEditCoverLetter,
     downloadPDF,
@@ -56,6 +57,8 @@ export default function DetailHeader() {
     openSendFlow,
     setShowWithdrawModal,
     withdrawLoading,
+    setShowArchiveModal,
+    archiveLoading,
     setShowMarkLostModal,
     markLostLoading,
     setShowDeleteModal,
@@ -88,7 +91,8 @@ export default function DetailHeader() {
   const [showMoreMenu, setShowMoreMenu] = useState(false);
   const moreMenuRef = useRef<HTMLDivElement>(null);
   const hasDangerActions =
-    canManageProposal && (canWithdrawProposal || canMarkAsLost || canDeleteProposal);
+    canManageProposal &&
+    (canWithdrawProposal || canMarkAsLost || canDeleteProposal || canArchiveProposal);
   useEffect(() => {
     if (!showMoreMenu) return;
     const onDocClick = (e: MouseEvent) => {
@@ -125,7 +129,9 @@ export default function DetailHeader() {
           <div className="flex items-start gap-2 text-sm text-slate-700 dark:text-slate-200">
             <ArchiveBoxIcon className="h-5 w-5 shrink-0 mt-0.5" />
             <span>
-              This signed proposal was archived when a renewal quotation was created.
+              {proposal.supersededById
+                ? 'This signed proposal was archived when a renewal quotation was created.'
+                : 'This proposal is archived — it keeps its records but is out of your active pipeline.'}
               {proposal.supersededById && (
                 <>
                   {' '}
@@ -367,6 +373,23 @@ export default function DetailHeader() {
                     >
                       <XMarkIcon className="h-4 w-4 shrink-0" />
                       Mark as lost
+                    </button>
+                  )}
+
+                  {canArchiveProposal && canManageProposal && (
+                    <button
+                      type="button"
+                      role="menuitem"
+                      data-testid="archive-proposal-action"
+                      onClick={() => {
+                        setShowMoreMenu(false);
+                        setShowArchiveModal(true);
+                      }}
+                      disabled={archiveLoading}
+                      className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700/40 disabled:opacity-50"
+                    >
+                      <ArchiveBoxIcon className="h-4 w-4 shrink-0" />
+                      Archive proposal
                     </button>
                   )}
 

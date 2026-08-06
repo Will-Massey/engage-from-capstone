@@ -60,7 +60,9 @@ router.get(
     }
 
     const hasSubscription =
-      tenant.subscriptionStatus === 'active' || Boolean(tenant.stripeSubscriptionId);
+      tenant.subscriptionStatus === 'active' ||
+      tenant.subscriptionStatus === 'complimentary' ||
+      Boolean(tenant.stripeSubscriptionId);
 
     res.json({
       success: true,

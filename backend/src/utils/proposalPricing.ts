@@ -57,20 +57,14 @@ export function resolveBillingFrequency(
 export interface BuiltProposalService {
   name: string;
   description?: string | null;
-  displayPrice: number;
   billingFrequency: string;
   priceDisplayMode: string;
-  annualEquivalent: number;
   quantity: number;
-  lineTotal: number;
-  unitPrice: number;
   discountPercent: number;
   frequency: string;
   vatRate: number;
-  vatAmount: number;
-  grossTotal: number;
-  // Int-pence mirrors (Stage 1, docs/money-int-pence-migration.md) —
-  // authoritative at the payment boundary.
+  // Money is integer pence only (docs/money-int-pence-migration.md, Stage 2)
+  // — this shape persists directly; pounds are derived at the API boundary.
   displayPricePence: number;
   unitPricePence: number;
   annualEquivalentPence: number;
@@ -84,6 +78,14 @@ export interface BuiltProposalService {
 /** Pounds (2dp) → integer pence. The single conversion point at persistence. */
 export function poundsToPence(pounds: number): number {
   return Math.round(pounds * 100);
+}
+
+/**
+ * Integer pence → pounds (2dp). The single conversion point at read — the
+ * wire format stays pounds (docs/money-int-pence-migration.md, Stage 2).
+ */
+export function penceToPounds(pence: number | null | undefined): number {
+  return (pence ?? 0) / 100;
 }
 
 export function buildProposalServiceRecord(
@@ -120,23 +122,16 @@ export function buildProposalServiceRecord(
   // exactly on what we store. (Stage 0 of the Int-pence migration — see
   // docs/money-int-pence-migration.md.)
   const netTotal = roundMoney(line.netTotal);
-  const grossTotal = roundMoney(netTotal + line.vatAmount);
 
   return {
     name: snapshotName || template?.name || 'Service',
     description: snapshotDescription !== undefined ? snapshotDescription : template?.description,
-    displayPrice: roundMoney(line.displayPrice),
     billingFrequency,
     priceDisplayMode: billingFrequencyToDisplayMode(billingFrequency),
-    annualEquivalent: roundMoney(line.annualEquivalent),
     quantity: line.quantity,
-    lineTotal: netTotal,
-    unitPrice: roundMoney(line.displayPrice),
     discountPercent,
     frequency: billingFrequency,
     vatRate,
-    vatAmount: line.vatAmount,
-    grossTotal,
     displayPricePence: poundsToPence(roundMoney(line.displayPrice)),
     unitPricePence: poundsToPence(roundMoney(line.displayPrice)),
     annualEquivalentPence: poundsToPence(roundMoney(line.annualEquivalent)),
@@ -151,15 +146,9 @@ export function buildProposalServiceRecord(
 export function calculateHeaderTotals(services: BuiltProposalService[]) {
   // Header pence are exact integer sums of line pence — never re-derived
   // from rounded pounds, so header pence === Σ line pence by construction.
-  const subtotalPence = services.reduce((sum, s) => sum + s.lineTotalPence, 0);
-  const vatAmountPence = services.reduce((sum, s) => sum + s.vatAmountPence, 0);
-  const totalPence = services.reduce((sum, s) => sum + s.grossTotalPence, 0);
   return {
-    subtotal: roundMoney(services.reduce((sum, s) => sum + s.lineTotal, 0)),
-    vatAmount: roundMoney(services.reduce((sum, s) => sum + s.vatAmount, 0)),
-    total: roundMoney(services.reduce((sum, s) => sum + s.grossTotal, 0)),
-    subtotalPence,
-    vatAmountPence,
-    totalPence,
+    subtotalPence: services.reduce((sum, s) => sum + s.lineTotalPence, 0),
+    vatAmountPence: services.reduce((sum, s) => sum + s.vatAmountPence, 0),
+    totalPence: services.reduce((sum, s) => sum + s.grossTotalPence, 0),
   };
 }

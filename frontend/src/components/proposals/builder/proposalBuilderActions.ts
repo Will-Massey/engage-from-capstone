@@ -1,4 +1,9 @@
-import { calculateLineItem, type BillingFrequency } from '@shared/pricingEngine';
+import {
+  calculateLineItem,
+  monthlyEquivalentFor,
+  roundMoney,
+  type BillingFrequency,
+} from '@shared/pricingEngine';
 import { parseFrequencyOptions } from '../../../utils/billingCadence';
 import { buildCustomFieldsPayload, type PricingTier } from '../../../utils/proposalCustomFields';
 import type { CreateProposalPayload } from '../../../types/proposals';
@@ -63,6 +68,54 @@ export function buildSelectedServiceLine(
     grossTotal: line.grossTotal,
     allowedCadences: parseFrequencyOptions(service.frequencyOptions),
     oneOffDueDate: frequency === 'ONE_TIME' ? '' : undefined,
+  };
+}
+
+/**
+ * Derive a one-off catch-up fee line from a recurring line: months-behind ×
+ * the line's monthly equivalent, due today. Pure — the result is an ordinary
+ * ONE_TIME line, so money, PDF, e-sign, and Stripe treat it like any one-off.
+ */
+export function buildCatchUpLine(
+  source: SelectedService,
+  opts: { months: number; discountPercent?: number; includeVat: boolean; todayIso: string }
+): SelectedService | null {
+  if (source.billingCycle === 'ONE_TIME') return null;
+  const months = Math.max(1, Math.min(24, Math.round(opts.months)));
+  const discountPercent = Math.max(0, Math.min(100, opts.discountPercent ?? 0));
+  const monthly = monthlyEquivalentFor(
+    source.displayPrice * source.quantity,
+    source.billingCycle as BillingFrequency
+  );
+  const basePrice = roundMoney(monthly * months);
+  if (basePrice <= 0) return null;
+
+  const line = calculateLineItem({
+    basePrice,
+    billingFrequency: 'ONE_TIME',
+    quantity: 1,
+    discountPercent,
+    vatRate: opts.includeVat ? source.vatRate : 0,
+  });
+
+  const monthsLabel = `${months} month${months === 1 ? '' : 's'}`;
+  return {
+    ...source,
+    id: newSelectedLineId(),
+    name: `Catch-up — ${source.name} (${monthsLabel})`,
+    description: `One-off catch-up bringing ${monthsLabel} of ${source.name} up to date before the ongoing service begins.`,
+    quantity: 1,
+    discountPercent,
+    displayPrice: basePrice,
+    billingCycle: 'ONE_TIME',
+    priceAmount: basePrice,
+    annualEquivalent: line.annualEquivalent,
+    lineTotal: line.netTotal,
+    vatRate: source.vatRate,
+    vatAmount: line.vatAmount,
+    grossTotal: line.grossTotal,
+    allowedCadences: ['ONE_TIME'],
+    oneOffDueDate: opts.todayIso,
   };
 }
 

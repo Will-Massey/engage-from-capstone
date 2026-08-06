@@ -30,6 +30,7 @@ import {
 import {
   buildProposalServiceRecord,
   calculateHeaderTotals,
+  penceToPounds,
   type BuiltProposalService,
 } from '../utils/proposalPricing.js';
 import {
@@ -273,7 +274,10 @@ async function generateSignalCoverLetter(
     }
 
     const serviceLines = services
-      .map((s) => `- ${s.name}: £${s.displayPrice.toFixed(2)} (${s.billingFrequency})`)
+      .map(
+        (s) =>
+          `- ${s.name}: £${penceToPounds(s.displayPricePence).toFixed(2)} (${s.billingFrequency})`
+      )
       .join('\n');
     const completion = await chatCompletion(
       [
@@ -334,11 +338,7 @@ async function draftProposalForSignal(
       approvalStatus: 'PENDING',
       submittedForApprovalAt: now,
       validUntil: addDays(now, proposalSettings.defaultExpiryDays),
-      subtotal: totals.subtotal,
-      discountAmount: 0,
       vatRate: 20,
-      vatAmount: totals.vatAmount,
-      total: totals.total,
       subtotalPence: totals.subtotalPence,
       discountAmountPence: 0,
       vatAmountPence: totals.vatAmountPence,

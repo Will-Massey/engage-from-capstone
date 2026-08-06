@@ -6,6 +6,7 @@ import { prisma } from '../../config/database.js';
 import logger from '../../config/logger.js';
 import { AI_COPILOT } from '../../config/aiCopilot.js';
 import { chatCompletion, isAiConfigured } from './aiClient.js';
+import { penceToPounds } from '../../utils/proposalPricing.js';
 
 const UNKNOWN_ANSWER = "I don't have that in the proposal.";
 
@@ -31,9 +32,9 @@ function lineBillingFrequency(service: ProposalServiceLine): string {
 }
 
 function lineGrossTotal(service: ProposalServiceLine): number {
-  if (service.grossTotal > 0) return service.grossTotal;
-  const net = service.lineTotal ?? service.unitPrice * service.quantity;
-  return net + (service.vatAmount ?? 0);
+  if ((service.grossTotalPence ?? 0) > 0) return penceToPounds(service.grossTotalPence);
+  const netPence = service.lineTotalPence ?? service.unitPricePence * service.quantity;
+  return penceToPounds(netPence + (service.vatAmountPence ?? 0));
 }
 
 export type SigningCostBreakdown = {
@@ -57,7 +58,7 @@ export function computeSigningCostSummary(proposal: PublicProposalRecord): Signi
     const freq = lineBillingFrequency(service);
     const bucket = byFrequency.get(freq) ?? { gross: 0, vat: 0 };
     bucket.gross += lineGrossTotal(service);
-    bucket.vat += service.vatAmount ?? 0;
+    bucket.vat += penceToPounds(service.vatAmountPence);
     byFrequency.set(freq, bucket);
   }
 
@@ -108,8 +109,8 @@ export function computeSigningCostSummary(proposal: PublicProposalRecord): Signi
     if (paymentFrequency === 'ONE_TIME') {
       return {
         dueToday: {
-          amount: proposal.total,
-          vatAmount: proposal.vatAmount,
+          amount: penceToPounds(proposal.totalPence),
+          vatAmount: penceToPounds(proposal.vatAmountPence),
           label: 'Due today (one-off fees)',
         },
         recurring: null,
@@ -121,8 +122,8 @@ export function computeSigningCostSummary(proposal: PublicProposalRecord): Signi
         dueToday: null,
         recurring: {
           label: 'Annual recurring fee',
-          amount: proposal.total,
-          vatAmount: proposal.vatAmount,
+          amount: penceToPounds(proposal.totalPence),
+          vatAmount: penceToPounds(proposal.vatAmountPence),
           periodPhrase: 'per year',
           frequency: 'ANNUALLY',
         },
@@ -133,8 +134,8 @@ export function computeSigningCostSummary(proposal: PublicProposalRecord): Signi
       dueToday: null,
       recurring: {
         label: 'Monthly recurring fee',
-        amount: proposal.total,
-        vatAmount: proposal.vatAmount,
+        amount: penceToPounds(proposal.totalPence),
+        vatAmount: penceToPounds(proposal.vatAmountPence),
         periodPhrase: 'per month',
         frequency: 'MONTHLY',
       },
@@ -157,9 +158,9 @@ export function buildPublicProposalContext(proposal: PublicProposalRecord) {
     title: proposal.title,
     status: proposal.status,
     validUntil: proposal.validUntil.toISOString().slice(0, 10),
-    subtotal: proposal.subtotal,
-    vatAmount: proposal.vatAmount,
-    total: proposal.total,
+    subtotal: penceToPounds(proposal.subtotalPence),
+    vatAmount: penceToPounds(proposal.vatAmountPence),
+    total: penceToPounds(proposal.totalPence),
     paymentFrequency: proposal.paymentFrequency,
     costSummary,
     paymentTerms: proposal.paymentTerms,
@@ -177,9 +178,9 @@ export function buildPublicProposalContext(proposal: PublicProposalRecord) {
       name: s.name,
       description: s.description || null,
       quantity: s.quantity,
-      unitPrice: s.unitPrice,
-      lineTotal: s.lineTotal,
-      grossTotal: s.grossTotal,
+      unitPrice: penceToPounds(s.unitPricePence),
+      lineTotal: penceToPounds(s.lineTotalPence),
+      grossTotal: penceToPounds(s.grossTotalPence),
       billingFrequency: s.billingFrequency || s.frequency,
       isOptional: s.isOptional,
       oneOffDueDate: s.oneOffDueDate ? new Date(s.oneOffDueDate).toISOString().slice(0, 10) : null,

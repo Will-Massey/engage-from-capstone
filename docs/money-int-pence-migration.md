@@ -1,6 +1,15 @@
 # Float → Int-pence money migration (P3) — design
 
-**Status: DESIGN — not yet implemented. Review before any schema change ships.**
+**Status: COMPLETE.** Stage 1 shipped 2026-07-10 (PR #50, migration
+`20260710130000_money_int_pence_stage1`). Stage 2 shipped 2026-07-17
+(migration `20260717150000_money_int_pence_stage2_drop_float`): pence columns
+are `NOT NULL` and authoritative, the Float columns are dropped, every read
+converts at the API boundary via `penceToPounds`, and the wire format stays
+pounds (frontend untouched). Prod was verified drift-free (30 proposals / 72
+service lines, zero NULL pence, zero pence-vs-float drift) and both tables
+were snapshotted to JSON before the drop. The signing `documentHash` now
+hashes the pence snapshot — stamped at sign time only, never recomputed, so
+historical signature hashes are unaffected.
 
 ## Problem
 

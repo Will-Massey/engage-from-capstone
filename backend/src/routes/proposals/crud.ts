@@ -6,8 +6,15 @@ import { asyncHandler, ApiError } from '../../middleware/errorHandler.js';
 import { enforceTierLimit } from '../../middleware/tierLimits.js';
 import logger from '../../config/logger.js';
 import { getProposalViewStats } from '../../services/proposalSharingService.js';
-import { buildProposalServiceRecord, calculateHeaderTotals } from '../../utils/proposalPricing.js';
-import { serializeProposalServicesForApi } from '../../utils/proposalServiceSnapshot.js';
+import {
+  buildProposalServiceRecord,
+  calculateHeaderTotals,
+  penceToPounds,
+} from '../../utils/proposalPricing.js';
+import {
+  serializeProposalServicesForApi,
+  proposalMoneyForApi,
+} from '../../utils/proposalServiceSnapshot.js';
 import {
   mergeProposalCustomFields,
   parseProposalCustomFields,
@@ -93,6 +100,7 @@ router.get(
       success: true,
       data: {
         ...proposal,
+        ...proposalMoneyForApi(proposal),
         services: serializeProposalServicesForApi(proposal.services as any),
         viewCount: viewStats?.totalViews ?? 0,
         lastViewedAt: viewStats?.lastViewedAt ?? null,
@@ -142,8 +150,10 @@ router.post(
       throw new ApiError('CLIENT_NOT_FOUND', 'Client not found', 404);
     }
 
-    // Fetch service templates for frequency and name info (tenant-scoped)
-    const requestedIds = data.services.map((s: any) => s.serviceId);
+    // Fetch service templates for frequency and name info (tenant-scoped).
+    // Compare unique ids — a proposal may carry two lines from one catalogue
+    // service (e.g. a recurring line plus its one-off catch-up fee).
+    const requestedIds = [...new Set<string>(data.services.map((s: any) => s.serviceId))];
     const serviceTemplates = await prisma.serviceTemplate.findMany({
       where: {
         id: { in: requestedIds },
@@ -170,14 +180,8 @@ router.post(
     });
     const proposalSettings = getProposalSettings(tenantRecord?.settings);
 
-    const {
-      subtotal,
-      vatAmount: totalVat,
-      total: grandTotal,
-      subtotalPence,
-      vatAmountPence,
-      totalPence,
-    } = calculateHeaderTotals(servicesWithClearPricing);
+    const { subtotalPence, vatAmountPence, totalPence } =
+      calculateHeaderTotals(servicesWithClearPricing);
 
     // Generate reference
     const reference = generateReference('PROP');
@@ -205,15 +209,11 @@ router.post(
         status: 'DRAFT',
         validUntil,
         contractStartDate,
-        subtotal,
         discountType: data.discountType,
         discountValue: data.discountValue,
-        discountAmount: 0, // Line-level discounts are already applied
         vatRate: 20, // Default VAT rate
-        vatAmount: totalVat,
-        total: grandTotal,
         subtotalPence,
-        discountAmountPence: 0,
+        discountAmountPence: 0, // Line-level discounts are already applied
         vatAmountPence,
         totalPence,
         paymentTerms:
@@ -266,6 +266,7 @@ router.post(
       success: true,
       data: {
         ...proposal,
+        ...proposalMoneyForApi(proposal),
         services: serializeProposalServicesForApi(proposal.services as any),
       },
     });
@@ -416,7 +417,9 @@ router.put(
 
     // Update services if provided
     if (data.services) {
-      const serviceTemplateIds = data.services.map((s) => s.serviceId);
+      // Unique ids — duplicate lines from one catalogue service are legal
+      // (recurring line + its catch-up fee).
+      const serviceTemplateIds = [...new Set(data.services.map((s) => s.serviceId))];
       const serviceTemplates = await prisma.serviceTemplate.findMany({
         where: {
           id: { in: serviceTemplateIds },
@@ -450,7 +453,9 @@ router.put(
             displayPrice:
               svc.displayPrice !== undefined
                 ? svc.displayPrice
-                : (prior?.displayPrice ?? prior?.unitPrice),
+                : prior
+                  ? penceToPounds(prior.displayPricePence ?? prior.unitPricePence)
+                  : undefined,
             billingFrequency: svc.billingFrequency ?? prior?.billingFrequency ?? prior?.frequency,
             vatRate: svc.vatRate ?? prior?.vatRate,
           },
@@ -475,9 +480,6 @@ router.put(
         prisma.proposal.update({
           where: { id },
           data: {
-            subtotal: totals.subtotal,
-            vatAmount: totals.vatAmount,
-            total: totals.total,
             subtotalPence: totals.subtotalPence,
             vatAmountPence: totals.vatAmountPence,
             totalPence: totals.totalPence,
@@ -521,6 +523,7 @@ router.put(
       data: refreshed
         ? {
             ...refreshed,
+            ...proposalMoneyForApi(refreshed),
             services: serializeProposalServicesForApi(refreshed.services as any),
           }
         : proposal,

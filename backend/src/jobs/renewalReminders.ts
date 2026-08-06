@@ -7,6 +7,7 @@ import { prisma } from '../config/database.js';
 import { tenantMailer } from '../services/tenantMailer.js';
 import logger from '../config/logger.js';
 import { getProposalSettings } from '../utils/tenantProposalSettings.js';
+import { penceToPounds } from '../utils/proposalPricing.js';
 
 const DEFAULT_REMINDER_DAYS = 30;
 
@@ -160,7 +161,7 @@ async function findRenewalsDue(): Promise<
     title: string;
     renewalDate: Date;
     acceptedAt: Date;
-    total: number;
+    totalPence: number;
     client: { name: string };
     createdBy: { email: string | null };
     tenant: { id: string; name: string };
@@ -247,7 +248,7 @@ async function sendRenewalReminder(
       proposalReference: proposal.reference,
       renewalDate: proposal.renewalDate,
       originalAcceptedAt: proposal.acceptedAt,
-      totalAmount: `£${proposal.total.toFixed(2)}`,
+      totalAmount: `£${penceToPounds(proposal.totalPence).toFixed(2)}`,
       daysUntilRenewal: proposal.reminderDays ?? DEFAULT_REMINDER_DAYS,
       tenantName: proposal.tenant.name,
     });

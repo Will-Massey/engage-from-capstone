@@ -30,6 +30,12 @@ import regulatoryRoutes from '../routes/regulatory.js';
 import claraRoutes from '../routes/clara.js';
 import quickbooksRoutes from '../routes/quickbooks.js';
 import statusRoutes from '../routes/status.js';
+import notificationsRoutes from '../routes/notifications.js';
+import documentRequestsRoutes from '../routes/documentRequests.js';
+import jobsRoutes from '../routes/jobs.js';
+import practiceLettersRoutes from '../routes/practiceLetters.js';
+import commsRoutes from '../routes/comms.js';
+import formsRoutes from '../routes/forms.js';
 
 // Import middleware
 import { extractTenant } from '../middleware/tenant.js';
@@ -41,11 +47,15 @@ export function mountApiRoutes(app: express.Express): void {
   app.use('/api/onboarding', onboardingRoutes);
   app.use('/api/aml', amlRoutes); // authenticate sets req.tenantId; /webhook is public + secret-gated
   app.use('/api/proposals', extractTenant, proposalRoutes);
+  app.use('/api/jobs', extractTenant, jobsRoutes);
+  app.use('/api/practice-letters', extractTenant, practiceLettersRoutes);
   app.use('/api/clients', extractTenant, clientRoutes);
   app.use('/api/services', extractTenant, serviceRoutes);
   app.use('/api/services/v2', extractTenant, enhancedServiceRoutes);
   app.use('/api/tenants', tenantRoutes);
   app.use('/api/email', extractTenant, emailRoutes);
+  app.use('/api/comms', extractTenant, commsRoutes);
+  app.use('/api/forms', extractTenant, formsRoutes);
   app.use('/api/payments', extractTenant, paymentRoutes);
   app.use('/api/billing', extractTenant, billingRoutes);
   app.use('/api/payout', extractTenant, payoutRoutes);
@@ -65,6 +75,8 @@ export function mountApiRoutes(app: express.Express): void {
   // pages call /api/xero/* and /api/quickbooks/* directly (404 until now).
   app.use('/api/xero', extractTenant, xeroRoutes);
   app.use('/api/quickbooks', extractTenant, quickbooksRoutes);
+  app.use('/api/notifications', extractTenant, notificationsRoutes);
+  app.use('/api/document-requests', extractTenant, documentRequestsRoutes);
 
   // W4.5 — Public status page API (no auth)
   app.use('/api/status', statusRoutes);

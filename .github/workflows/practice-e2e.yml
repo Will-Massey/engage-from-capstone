@@ -1,0 +1,35 @@
+# Practice OS surface smoke — jobs, GTM, automations (chromium only).
+name: Practice OS E2E
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - 'frontend/src/pages/jobs/**'
+      - 'frontend/src/pages/gtm/**'
+      - 'frontend/src/pages/automations/**'
+      - 'frontend/src/pages/clients/**'
+      - 'frontend/src/styles/metal.css'
+      - 'frontend/src/components/jobs/**'
+      - 'frontend/src/components/analytics/**'
+      - 'backend/src/routes/jobs.ts'
+      - 'backend/src/routes/clients.ts'
+      - 'backend/src/routes/clara.ts'
+      - 'backend/src/routes/payments.ts'
+      - 'e2e-tests/specs/practice*.ts'
+      - '.github/workflows/practice-e2e.yml'
+
+concurrency:
+  group: practice-e2e-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  practice-smoke:
+    name: Practice specs (chromium)
+    uses: ./.github/workflows/playwright-e2e.yml
+    with:
+      test_filter: >-
+        specs/practice-jobs-letters.spec.ts
+        specs/practice-w3-surfaces.spec.ts
+      skip_build_smoke: true
+    secrets: inherit

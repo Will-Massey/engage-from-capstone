@@ -1,7 +1,7 @@
 # 🚀 DEPLOYMENT DAY TODO - Engage by Capstone
 
 **Date:** March 5, 2026  
-**Goal:** Deploy to Railway/Neon with all critical fixes  
+**Goal:** Deploy to Render/Neon with all critical fixes  
 **Status:** 🔴 CRITICAL FIXES REQUIRED BEFORE DEPLOY
 
 ---
@@ -86,7 +86,7 @@
 ### 7. Fix CORS for Production (30 min)
 
 - [ ] **Update CORS Configuration**
-  - Add Railway frontend URL
+  - Add Render frontend URL
   - Add custom domain if configured
   - Keep development origins for testing
 
@@ -152,9 +152,9 @@
 - [ ] Database migrations applied
 - [ ] Security audit fixes complete
 
-### Railway Setup (1 hour)
+### Render Setup (1 hour)
 
-- [ ] Create new Railway project
+- [ ] Create new Render project
 - [ ] Add PostgreSQL database
 - [ ] Deploy backend service
 - [ ] Deploy frontend service
@@ -221,13 +221,13 @@
 ✅ Settings save correctly  
 ✅ No console errors  
 ✅ Responsive on mobile/desktop  
-✅ Deployed to Railway/Neon
+✅ Deployed to Render/Neon
 
 ---
 
 ## 📞 EMERGENCY CONTACTS
 
-- **Railway Dashboard:** https://railway.app/dashboard
+- **Render dashboard:** https://render.com/dashboard
 - **Neon Console:** https://console.neon.tech
 - **Vercel (if using):** https://vercel.com/dashboard
 

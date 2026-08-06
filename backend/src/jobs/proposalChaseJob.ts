@@ -12,6 +12,7 @@ import {
 } from '../services/ai/lifecycleAiEmailService.js';
 import { getProposalSettings } from '../utils/tenantProposalSettings.js';
 import { getFrontendUrl } from '../config/urls.js';
+import { penceToPounds } from '../utils/proposalPricing.js';
 
 export const PROPOSAL_CHASE_SENT_ACTION = 'PROPOSAL_CHASE_SENT';
 
@@ -46,7 +47,7 @@ function getFallbackChaseEmail(
   const totalAmount = new Intl.NumberFormat('en-GB', {
     style: 'currency',
     currency: 'GBP',
-  }).format(proposal.total);
+  }).format(penceToPounds(proposal.totalPence));
 
   return {
     subject: `Reminder: ${proposal.title} from ${proposal.tenant.name}`,
@@ -124,7 +125,7 @@ async function loadChaseCandidates() {
       createdById: true,
       reference: true,
       title: true,
-      total: true,
+      totalPence: true,
       sentAt: true,
       shareToken: true,
       emailHistory: true,

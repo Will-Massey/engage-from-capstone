@@ -23,8 +23,9 @@
   --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.06), 0 4px 6px -4px rgba(0, 0, 0, 0.06);
   --shadow-glass: 0 8px 32px 0 rgba(31, 38, 135, 0.06);
 
-  --accent-primary: #6366f1;
-  --accent-secondary: #8b5cf6;
+  /* Engage Practice: mint ops accent (Engager-like calm + Capstone mint) */
+  --accent-primary: #10b981;
+  --accent-secondary: #34d399;
 }
 
 /* Dark theme */
@@ -46,8 +47,8 @@
   --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.4), 0 4px 6px -4px rgba(0, 0, 0, 0.4);
   --shadow-glass: 0 8px 32px 0 rgba(0, 0, 0, 0.4);
 
-  --accent-primary: #818cf8;
-  --accent-secondary: #a78bfa;
+  --accent-primary: #34d399;
+  --accent-secondary: #6ee7b7;
 }
 
 /* Base styles */
@@ -76,7 +77,7 @@ body {
 
 /* Selection styling */
 ::selection {
-  background: rgba(99, 102, 241, 0.3);
+  background: rgba(16, 185, 129, 0.28);
   color: inherit;
 }
 
@@ -91,20 +92,20 @@ body {
 }
 
 ::-webkit-scrollbar-thumb {
-  background: rgba(99, 102, 241, 0.3);
+  background: rgba(16, 185, 129, 0.28);
   border-radius: 4px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: rgba(99, 102, 241, 0.5);
+  background: rgba(16, 185, 129, 0.45);
 }
 
 .dark ::-webkit-scrollbar-thumb {
-  background: rgba(99, 102, 241, 0.2);
+  background: rgba(52, 211, 153, 0.22);
 }
 
 .dark ::-webkit-scrollbar-thumb:hover {
-  background: rgba(99, 102, 241, 0.4);
+  background: rgba(52, 211, 153, 0.4);
 }
 
 /* Glass morphism utilities - use standard CSS without @apply */

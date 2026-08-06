@@ -17,9 +17,10 @@ import {
   parseJsonResponse,
   tokenMetaFromUsage,
 } from './aiClient.js';
-import { VALID_BILLING_FREQUENCIES } from '../../utils/proposalPricing.js';
+import { VALID_BILLING_FREQUENCIES, penceToPounds } from '../../utils/proposalPricing.js';
 import { AI_COPILOT } from '../../config/aiCopilot.js';
 import { getVoiceOfPracticePromptContext } from '../voiceOfPracticeService.js';
+import { dedupeLeadingGreetings } from '@uk-proposal-platform/shared';
 
 export const UK_SYSTEM =
   AI_COPILOT.systemPersona +
@@ -256,7 +257,10 @@ ${voiceContext}Use plain paragraphs (no markdown headers). 3-5 short paragraphs.
     tone: params.tone,
     ...tokenMetaFromUsage(aiUsage),
   });
-  return { content: raw, requiresApproval: true };
+  return {
+    content: dedupeLeadingGreetings(raw, [client.contactName || '', client.name]),
+    requiresApproval: true,
+  };
 }
 
 /** Streaming version of cover letter for live preview in builder. */
@@ -332,7 +336,7 @@ export async function generateAiFollowUp(
 Tone: ${tone}
 Proposal: ${proposal.title} (${proposal.reference})
 Client: ${proposal.client.name}
-Total: £${proposal.total.toFixed(2)}
+Total: £${penceToPounds(proposal.totalPence).toFixed(2)}
 Status: ${proposal.status}
 Valid until: ${proposal.validUntil.toISOString().slice(0, 10)}
 Views: ${viewCount}${lastView ? `, last viewed ${lastView.toISOString().slice(0, 10)}` : ''}
@@ -382,7 +386,7 @@ export async function assembleAiEngagementLetter(
   const feesSummary = proposal.services
     .map(
       (s) =>
-        `• ${s.name}: £${(s.displayPrice || s.unitPrice).toFixed(2)} per ${String(s.billingFrequency).toLowerCase().replace('_', ' ')}`
+        `• ${s.name}: £${penceToPounds(s.displayPricePence || s.unitPricePence).toFixed(2)} per ${String(s.billingFrequency).toLowerCase().replace('_', ' ')}`
     )
     .join('\n');
 
@@ -450,7 +454,7 @@ export async function* assembleAiEngagementLetterStream(
   const feesSummary = proposal.services
     .map(
       (s) =>
-        `• ${s.name}: £${(s.displayPrice || s.unitPrice).toFixed(2)} per ${String(s.billingFrequency).toLowerCase().replace('_', ' ')}`
+        `• ${s.name}: £${penceToPounds(s.displayPricePence || s.unitPricePence).toFixed(2)} per ${String(s.billingFrequency).toLowerCase().replace('_', ' ')}`
     )
     .join('\n');
 
@@ -717,7 +721,7 @@ export async function getProposalHealth(
 Signals: ${JSON.stringify(signals)}
 Client: ${proposal.client.name}
 Reference: ${proposal.reference}
-Total: £${proposal.total}`,
+Total: £${penceToPounds(proposal.totalPence)}`,
         },
       ],
       { jsonMode: true, temperature: 0.3 }
@@ -773,7 +777,10 @@ export async function generateRenewalDraft(
     serviceId: s.serviceTemplateId,
     name: s.name,
     billingFrequency: s.billingFrequency,
-    displayPrice: Math.max(0, Math.round((s.displayPrice || s.unitPrice) * multiplier * 100) / 100),
+    displayPrice: Math.max(
+      0,
+      Math.round(penceToPounds(s.displayPricePence || s.unitPricePence) * multiplier * 100) / 100
+    ),
     quantity: s.quantity,
     discountPercent: s.discountPercent,
   }));
@@ -1105,7 +1112,7 @@ ${JSON.stringify(
     client: t.proposal.client.name,
     status: t.proposal.status,
     reason: t.reason,
-    total: t.proposal.total,
+    total: penceToPounds(t.proposal.totalPence),
   }))
 )}`,
         },

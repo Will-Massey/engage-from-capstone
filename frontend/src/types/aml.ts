@@ -27,6 +27,16 @@ export interface AmlPartnerConfig {
   creditsafeConfigured: boolean;
 }
 
+export type AmlDocumentType = 'photo_id' | 'proof_of_address';
+
+export interface AmlDocumentMeta {
+  type: AmlDocumentType;
+  fileName: string;
+  mimeType: string;
+  sizeBytes: number;
+  uploadedAt: string | null;
+}
+
 export interface AmlClientStatus {
   clientId: string;
   amlStatus: AmlStatus;
@@ -39,6 +49,7 @@ export interface AmlClientStatus {
   mode: 'live' | 'demo';
   lastCheckMessage: string | null;
   partnerConfigured: boolean;
+  documents: AmlDocumentMeta[];
   config: AmlPartnerConfig;
 }
 

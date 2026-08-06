@@ -62,7 +62,7 @@ const shareProposal = (over: Record<string, unknown> = {}) => ({
   clientId: 'client-1',
   status: 'SENT',
   validUntil: null,
-  total: 100,
+  totalPence: 10000,
   ...over,
 });
 

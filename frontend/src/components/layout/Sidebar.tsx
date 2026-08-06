@@ -2,7 +2,7 @@ import { useLocation } from 'react-router-dom';
 import { XMarkIcon, ArrowRightOnRectangleIcon } from '@heroicons/react/24/outline';
 import { useAuthStore } from '../../stores/authStore';
 import { appPath } from '../../utils/appBase';
-import { DEFAULT_LOGO_URL } from '../../utils/brandLogo';
+import { BrandLogo } from '../ui/BrandLogo';
 import SidebarNavItems from './SidebarNavItems';
 
 interface SidebarProps {
@@ -11,14 +11,14 @@ interface SidebarProps {
 }
 
 const SidebarPanel = ({
-  logoUrl,
+  tenantLogo,
   tenantName,
   pathname,
   onClose,
   onLogout,
   showClose,
 }: {
-  logoUrl: string;
+  tenantLogo?: string | null;
   tenantName: string;
   pathname: string;
   onClose?: () => void;
@@ -26,8 +26,13 @@ const SidebarPanel = ({
   showClose?: boolean;
 }) => (
   <div className="flex flex-col h-full">
-    <div className="flex items-center h-16 px-4 sm:px-6 border-b border-slate-200/80 dark:border-slate-700/80 shrink-0">
-      <img src={logoUrl} alt={tenantName} className="h-8 sm:h-10 w-auto" />
+    <div className="flex items-center h-[4.75rem] px-3 sm:px-4 border-b border-slate-200/80 dark:border-slate-700/80 shrink-0 gap-2">
+      <BrandLogo
+        tenantLogo={tenantLogo}
+        alt={tenantName}
+        className="h-10 sm:h-11 w-auto max-w-[10rem] object-contain object-left"
+        frameClassName="max-w-full"
+      />
       {showClose && onClose && (
         <button
           type="button"
@@ -59,7 +64,7 @@ const UserFooter = ({ onLogout }: { onLogout: () => void }) => {
       <div className="flex items-center gap-3 min-w-0">
         <div
           className="w-10 h-10 rounded-full flex items-center justify-center text-white font-medium shrink-0"
-          style={{ background: 'linear-gradient(135deg, #2563EB 0%, #3B82F6 100%)' }}
+          style={{ background: 'linear-gradient(135deg, #059669 0%, #34d399 100%)' }}
         >
           {user?.firstName?.charAt(0)}
           {user?.lastName?.charAt(0)}
@@ -90,7 +95,6 @@ const UserFooter = ({ onLogout }: { onLogout: () => void }) => {
 const Sidebar = ({ isOpen, onClose }: SidebarProps) => {
   const { tenant, clearAuth } = useAuthStore();
   const { pathname } = useLocation();
-  const logoUrl = tenant?.logo || DEFAULT_LOGO_URL;
   const tenantName = tenant?.name || 'Engage by Capstone';
 
   const handleLogout = () => {
@@ -109,7 +113,7 @@ const Sidebar = ({ isOpen, onClose }: SidebarProps) => {
         }`}
       >
         <SidebarPanel
-          logoUrl={logoUrl}
+          tenantLogo={tenant?.logo}
           tenantName={tenantName}
           pathname={pathname}
           onClose={onClose}
@@ -122,7 +126,7 @@ const Sidebar = ({ isOpen, onClose }: SidebarProps) => {
         className={`hidden lg:fixed lg:inset-y-0 lg:left-0 lg:z-40 lg:flex lg:w-72 xl:w-80 lg:flex-col border-r ${shellClass}`}
       >
         <SidebarPanel
-          logoUrl={logoUrl}
+          tenantLogo={tenant?.logo}
           tenantName={tenantName}
           pathname={pathname}
           onLogout={handleLogout}

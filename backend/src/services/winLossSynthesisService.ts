@@ -2,6 +2,7 @@
  * Monthly win/loss synthesis per tenant — practice insights from proposal outcomes.
  */
 import { prisma } from '../config/database.js';
+import { penceToPounds } from '../utils/proposalPricing.js';
 
 export interface WinLossSynthesis {
   period: { from: string; to: string };
@@ -46,7 +47,7 @@ export async function synthesiseWinLoss(
   const winRate = decided > 0 ? Math.round((won.length / decided) * 100) : 0;
 
   const avg = (items: typeof proposals) =>
-    items.length ? items.reduce((s, p) => s + (p.total || 0), 0) / items.length : 0;
+    items.length ? items.reduce((s, p) => s + penceToPounds(p.totalPence), 0) / items.length : 0;
 
   const serviceCounts = new Map<string, number>();
   for (const p of won) {

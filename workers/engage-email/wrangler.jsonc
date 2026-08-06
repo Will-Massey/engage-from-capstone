@@ -1,0 +1,11 @@
+{
+  "name": "capstone-engage-email",
+  "main": "src/index.js",
+  "compatibility_date": "2026-07-01",
+  "account_id": "19ad15686e6bd22ab2896661ac1976f1",
+  "workers_dev": true,
+  "observability": {
+    "enabled": true,
+  },
+  "send_email": [{ "name": "EMAIL" }],
+}

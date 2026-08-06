@@ -2,6 +2,7 @@
  * Central AI context assembly — tenant-scoped client, catalog, proposals, and CH data.
  */
 import { prisma } from '../../config/database.js';
+import { penceToPounds } from '../../utils/proposalPricing.js';
 import { ApiError } from '../../middleware/errorHandler.js';
 import { createCompaniesHouseService } from '../companiesHouse.js';
 import { mapDetailsToAiContext } from '../companiesHouseEnrichment.js';
@@ -222,14 +223,14 @@ export async function buildAiContext(
       reference: row.reference,
       title: row.title,
       status: row.status,
-      total: row.total,
+      total: penceToPounds(row.totalPence),
       validUntil: row.validUntil.toISOString().slice(0, 10),
       coverLetter: row.coverLetter,
       sentAt: row.sentAt?.toISOString() ?? null,
       services: row.services.map((s) => ({
         name: s.name,
         billingFrequency: s.billingFrequency,
-        displayPrice: s.displayPrice || s.unitPrice,
+        displayPrice: penceToPounds(s.displayPricePence || s.unitPricePence),
         description: s.description,
       })),
     };
@@ -294,7 +295,12 @@ export async function buildAiContext(
       where: { tenantId, clientId: resolvedClientId },
       include: {
         services: {
-          select: { name: true, billingFrequency: true, displayPrice: true, unitPrice: true },
+          select: {
+            name: true,
+            billingFrequency: true,
+            displayPricePence: true,
+            unitPricePence: true,
+          },
         },
       },
       orderBy: { updatedAt: 'desc' },
@@ -305,14 +311,14 @@ export async function buildAiContext(
       reference: p.reference,
       title: p.title,
       status: p.status,
-      total: p.total,
+      total: penceToPounds(p.totalPence),
       validUntil: p.validUntil.toISOString().slice(0, 10),
       sentAt: p.sentAt?.toISOString() ?? null,
       acceptedAt: p.acceptedAt?.toISOString() ?? null,
       services: p.services.map((s) => ({
         name: s.name,
         billingFrequency: s.billingFrequency,
-        displayPrice: s.displayPrice || s.unitPrice,
+        displayPrice: penceToPounds(s.displayPricePence || s.unitPricePence),
       })),
     }));
   }

@@ -91,3 +91,7 @@ scripts/.revolut-business-screen.png
 backend/.env.testdb
 backend/dev-preload.mjs
 .claude/worktrees/
+
+# Local practice uploads
+backend/.data/
+

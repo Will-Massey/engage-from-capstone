@@ -6,7 +6,6 @@ describe('parseSubdomainFromHost', () => {
     expect(parseSubdomainFromHost('localhost:3001')).toBeNull();
     expect(parseSubdomainFromHost('127.0.0.1')).toBeNull();
     expect(parseSubdomainFromHost('engage-backend-e1ue.onrender.com')).toBeNull();
-    expect(parseSubdomainFromHost('app.up.railway.app')).toBeNull();
   });
 
   it('extracts subdomain from custom domains', () => {

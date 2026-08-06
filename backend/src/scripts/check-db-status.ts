@@ -6,7 +6,7 @@ async function checkDatabaseStatus() {
 
   try {
     // Test basic connection
-    const result = await prisma.$queryRaw`SELECT NOW()`;
+    const result = (await prisma.$queryRaw`SELECT NOW()`) as Array<{ now: Date }>;
     logger.info('✅ Database connection: OK');
     logger.info(`   Server time: ${result[0].now}`);
 
@@ -15,7 +15,7 @@ async function checkDatabaseStatus() {
       const testProposal = await prisma.proposalService.findFirst({
         select: {
           id: true,
-          displayPrice: true,
+          displayPricePence: true,
           billingFrequency: true,
           vatRate: true,
         },
@@ -24,7 +24,7 @@ async function checkDatabaseStatus() {
       if (testProposal) {
         logger.info('✅ New pricing fields exist in database');
         logger.info(
-          `   Sample: displayPrice=${testProposal.displayPrice}, billingFrequency=${testProposal.billingFrequency}`
+          `   Sample: displayPricePence=${testProposal.displayPricePence}, billingFrequency=${testProposal.billingFrequency}`
         );
       } else {
         logger.info('⚠️  No proposal services found (empty table)');

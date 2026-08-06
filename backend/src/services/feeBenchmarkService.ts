@@ -7,6 +7,7 @@
 import { ServiceCategory } from '@prisma/client';
 import { monthlyEquivalentFor } from '@uk-proposal-platform/shared';
 import { prisma } from '../config/database.js';
+import { penceToPounds } from '../utils/proposalPricing.js';
 import { getTurnoverBand, type TurnoverBand } from './regulatoryFitService.js';
 import { getProposalSettings } from '../utils/tenantProposalSettings.js';
 
@@ -165,10 +166,10 @@ export async function getFeeBenchmarks(query?: FeeBenchmarkQuery): Promise<FeeBe
         status: { in: ['ACCEPTED', 'SENT', 'VIEWED'] },
         tenantId: { in: [...optedInTenantIds] },
       },
-      displayPrice: { gt: 0 },
+      displayPricePence: { gt: 0 },
     },
     select: {
-      displayPrice: true,
+      displayPricePence: true,
       billingFrequency: true,
       proposal: {
         select: {
@@ -195,7 +196,7 @@ export async function getFeeBenchmarks(query?: FeeBenchmarkQuery): Promise<FeeBe
     const category = row.serviceTemplate?.category;
     if (!category) continue;
 
-    const monthly = toMonthlyEquivalent(row.displayPrice, row.billingFrequency);
+    const monthly = toMonthlyEquivalent(penceToPounds(row.displayPricePence), row.billingFrequency);
     if (!Number.isFinite(monthly) || monthly <= 0) continue;
 
     const bucket = buckets.get(category) || {

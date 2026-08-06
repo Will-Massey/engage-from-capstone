@@ -12,6 +12,7 @@ import {
 } from './aiClient.js';
 import { buildAiContext } from './aiContextBuilder.js';
 import { logAiUsage } from './proposalAiService.js';
+import { dedupeLeadingGreetings, startsWithSalutation } from '@uk-proposal-platform/shared';
 
 const UK_SYSTEM =
   AI_COPILOT.systemPersona +
@@ -244,7 +245,19 @@ Return JSON only:
     nextSteps?: string[];
   }>(raw);
 
-  const bodyParagraphsHtml = parsed.bodyParagraphs
+  // The model sometimes opens with its own salutation (or two). Collapse any
+  // duplicates and only add our "Dear X," when the body doesn't already greet —
+  // otherwise the client is greeted twice.
+  const greetingNames = [payload.contactName || '', payload.clientName];
+  const bodyParagraphs = dedupeLeadingGreetings(
+    (parsed.bodyParagraphs || '').trim(),
+    greetingNames
+  );
+  const greetingLine = startsWithSalutation(bodyParagraphs, greetingNames)
+    ? null
+    : `Dear ${payload.contactName || payload.clientName},`;
+
+  const bodyParagraphsHtml = bodyParagraphs
     .split(/\n\n+/)
     .map((p) => p.trim())
     .filter(Boolean)
@@ -255,12 +268,11 @@ Return JSON only:
     ? `<p><strong>Next steps:</strong></p><ul>${parsed.nextSteps.map((s) => `<li>${escapeHtml(s)}</li>`).join('')}</ul>`
     : '';
 
-  const bodyHtml = `${bodyParagraphsHtml}\n${servicesToHtmlTable(payload.services)}\n${nextStepsHtml}`;
+  const bodyHtml = `${greetingLine ? `<p>${escapeHtml(greetingLine)}</p>\n` : ''}${bodyParagraphsHtml}\n${servicesToHtmlTable(payload.services)}\n${nextStepsHtml}`;
 
   const textBody = [
-    `Dear ${payload.contactName || payload.clientName},`,
-    '',
-    parsed.bodyParagraphs,
+    ...(greetingLine ? [greetingLine, ''] : []),
+    bodyParagraphs,
     '',
     'SERVICES',
     '========',
@@ -396,8 +408,15 @@ Output ONLY the body paragraphs, separated by blank lines. No JSON, no subject.`
     yield { bodyChunk: chunk };
   }
 
-  // Now build the final HTML / text like before
-  const bodyParagraphsHtml = bodyParagraphs
+  // Now build the final HTML / text like before. Collapse duplicate model
+  // salutations and only add "Dear X," when the body doesn't already greet.
+  const greetingNames = [payload.contactName || '', payload.clientName];
+  const dedupedBody = dedupeLeadingGreetings(bodyParagraphs.trim(), greetingNames);
+  const greetingLine = startsWithSalutation(dedupedBody, greetingNames)
+    ? null
+    : `Dear ${payload.contactName || payload.clientName},`;
+
+  const bodyParagraphsHtml = dedupedBody
     .split(/\n\n+/)
     .map((p) => p.trim())
     .filter(Boolean)
@@ -407,12 +426,11 @@ Output ONLY the body paragraphs, separated by blank lines. No JSON, no subject.`
   // We need nextSteps too for completeness — do a cheap follow-up or parse from body if present.
   // For min tokens, we'll skip structured nextSteps in streaming or do a tiny call.
   // Simple: just use paragraphs.
-  const bodyHtml = `${bodyParagraphsHtml}\n${servicesToHtmlTable(payload.services)}`;
+  const bodyHtml = `${greetingLine ? `<p>${escapeHtml(greetingLine)}</p>\n` : ''}${bodyParagraphsHtml}\n${servicesToHtmlTable(payload.services)}`;
 
   const textBody = [
-    `Dear ${payload.contactName || payload.clientName},`,
-    '',
-    bodyParagraphs,
+    ...(greetingLine ? [greetingLine, ''] : []),
+    dedupedBody,
     '',
     'SERVICES',
     '========',

@@ -71,8 +71,9 @@ test.describe('Layout UAT — sendit v4.0 UI fixes', () => {
     await expect(panel).toBeVisible();
     const boxMobile = await panel.boundingBox();
     expect(boxMobile).not.toBeNull();
-    expect(boxMobile!.width).toBeLessThanOrEqual(390);
-    expect(boxMobile!.height).toBeLessThanOrEqual(844);
+    // Subpixel rounding: Chromium often reports ~390.4 for a 390 CSS-px viewport
+    expect(boxMobile!.width).toBeLessThanOrEqual(392);
+    expect(boxMobile!.height).toBeLessThanOrEqual(846);
 
     await expectNoErrorToasts(page);
   });

@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { z } from 'zod';
 import { ApprovalStatus, ProposalStatus } from '@prisma/client';
 import { prisma } from '../../config/database.js';
+import { proposalMoneyForApi } from '../../utils/proposalServiceSnapshot.js';
 import { authenticate, authorize } from '../../middleware/auth.js';
 import { asyncHandler, ApiError } from '../../middleware/errorHandler.js';
 import logger from '../../config/logger.js';
@@ -91,7 +92,7 @@ router.get(
 
     res.json({
       success: true,
-      data: proposals,
+      data: proposals.map((p) => ({ ...p, ...proposalMoneyForApi(p) })),
       meta: {
         page: parseInt(page as string),
         limit: take,
@@ -154,7 +155,7 @@ router.get(
 
     res.json({
       success: true,
-      data: proposals,
+      data: proposals.map((p) => ({ ...p, ...proposalMoneyForApi(p) })),
       meta: {
         page: parseInt(page as string),
         limit: take,
@@ -327,7 +328,7 @@ router.get(
     const monthlyRevenue = (await prisma.$queryRaw`
       SELECT
         DATE_TRUNC('month', "createdAt") as month,
-        SUM(total) as revenue,
+        SUM("totalPence") / 100.0 as revenue,
         COUNT(*) as count
       FROM "Proposal"
       WHERE "tenantId" = ${tenantId}

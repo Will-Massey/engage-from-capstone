@@ -22,24 +22,27 @@ export function hashProposalDocument(proposal: {
   terms?: string | null;
   services: Array<{
     name: string;
-    displayPrice?: number | null;
+    displayPricePence: number;
     billingFrequency?: string | null;
     quantity?: number | null;
-    lineTotal?: number | null;
-    grossTotal?: number | null;
+    lineTotalPence: number;
+    grossTotalPence: number;
   }>;
 }): string {
+  // Hashes the stored pence snapshot (Stage 2). Hashes are stamped at sign
+  // time and never recomputed against history, so this change only affects
+  // signatures made after the pence cutover.
   return hashContent({
     id: proposal.id,
     reference: proposal.reference,
     title: proposal.title,
     services: proposal.services.map((s) => ({
       name: s.name,
-      displayPrice: s.displayPrice,
+      displayPricePence: s.displayPricePence,
       billingFrequency: s.billingFrequency,
       quantity: s.quantity,
-      lineTotal: s.lineTotal,
-      grossTotal: s.grossTotal,
+      lineTotalPence: s.lineTotalPence,
+      grossTotalPence: s.grossTotalPence,
     })),
   });
 }

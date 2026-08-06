@@ -79,7 +79,7 @@ export async function createPostSignMandate(
     include: {
       client: true,
       services: {
-        select: { name: true, billingFrequency: true, grossTotal: true, grossTotalPence: true },
+        select: { name: true, billingFrequency: true, grossTotalPence: true },
       },
       tenant: {
         select: {
@@ -153,11 +153,7 @@ export async function createPostSignMandate(
   // subscription (recurring lines bill on the interval; one-off lines join the
   // first invoice). Mixed intervals or a discounted/drifting total fall back to
   // the one-off checkout so the client is charged exactly the displayed total.
-  const plan = planRecurringCheckout(
-    proposal.services ?? [],
-    proposal.total ?? 0,
-    proposal.totalPence
-  );
+  const plan = planRecurringCheckout(proposal.services ?? [], proposal.totalPence);
   let checkout: { sessionId: string; checkoutUrl: string };
   if (plan) {
     checkout = await createRecurringCheckout({
@@ -183,8 +179,7 @@ export async function createPostSignMandate(
       tenantId: proposal.tenantId,
       reference: proposal.reference,
       title: proposal.title,
-      // Stored pence are authoritative; float-derived only for pre-backfill rows.
-      grossPence: proposal.totalPence ?? Math.round((proposal.total ?? 0) * 100),
+      grossPence: proposal.totalPence,
       connectedAccountId,
       platformFeeBps,
       customerEmail,
@@ -273,7 +268,6 @@ export async function getPublicPaymentConfig(
     where: { id: proposalId },
     select: {
       status: true,
-      total: true,
       totalPence: true,
       paymentStatus: true,
       paymentMandateId: true,
@@ -288,10 +282,10 @@ export async function getPublicPaymentConfig(
   const paymentRequired =
     proposal?.status === 'ACCEPTED' &&
     collectPaymentAtSign &&
-    (proposal.total ?? 0) > 0 &&
+    (proposal.totalPence ?? 0) > 0 &&
     !PAYMENT_COMPLETE_STATUSES.includes(proposal.paymentStatus || '');
 
-  const grossPence = proposal?.totalPence ?? Math.round((proposal?.total ?? 0) * 100);
+  const grossPence = proposal?.totalPence ?? 0;
   const platformFeeBps = resolvePlatformFeeBps(
     tenant?.subscriptionTier,
     payoutSettings?.platformFeeBpsOverride
@@ -342,6 +336,7 @@ async function logPaymentActivity(
 /**
  * Stripe billing portal URL for a recurring proposal's client (card update,
  * invoice history). Null when the proposal has no live subscription.
+ * Prefer public share view as return URL; fall back to app proposals list.
  */
 export async function createProposalBillingPortal(proposalId: string): Promise<string | null> {
   const proposal = await prisma.proposal.findUnique({
@@ -349,13 +344,14 @@ export async function createProposalBillingPortal(proposalId: string): Promise<s
     select: {
       stripeSubscriptionId: true,
       shareToken: true,
+      id: true,
       tenant: { select: { subdomain: true } },
     },
   });
-  if (!proposal?.stripeSubscriptionId || !proposal.shareToken) return null;
+  if (!proposal?.stripeSubscriptionId) return null;
   const base = getFrontendBaseUrl(proposal.tenant.subdomain);
-  return createBillingPortalSession(
-    proposal.stripeSubscriptionId,
-    `${base}/proposals/view/${proposal.shareToken}`
-  );
+  const returnUrl = proposal.shareToken
+    ? `${base}/proposals/view/${proposal.shareToken}`
+    : `${base}/proposals/${proposal.id}`;
+  return createBillingPortalSession(proposal.stripeSubscriptionId, returnUrl);
 }

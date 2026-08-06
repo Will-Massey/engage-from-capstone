@@ -14,7 +14,8 @@ export type TierLimitResource = 'users' | 'clients' | 'proposals';
 // Only genuinely-paid statuses. 'trialing' is a TRIAL state, not paid — it must
 // go through the trial-expiry check, otherwise a trialing tenant would be
 // treated as a permanent paid subscriber and never expire.
-const PAID_STATUSES = new Set(['active', 'ACTIVE']);
+// 'complimentary' = comped tenant (design partners); ops-set only.
+const PAID_STATUSES = new Set(['active', 'ACTIVE', 'complimentary', 'COMPLIMENTARY']);
 const TRIAL_STATUSES = new Set(['trial', 'trialing']);
 
 function resolveTierKey(tier: string | null | undefined): SubscriptionTierKey {

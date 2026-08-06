@@ -28,7 +28,6 @@ import {
   ArchiveBoxIcon,
 } from '@heroicons/react/24/outline';
 import { apiClient } from '../../../utils/api';
-import { appPath } from '../../../utils/appBase';
 import toast from 'react-hot-toast';
 import { copyTextToClipboard } from '../../../utils/clipboard';
 import { useAuthStore, type Tenant } from '../../../stores/authStore';
@@ -188,6 +187,10 @@ export interface ProposalDetailContextValue {
   setShowWithdrawModal: Dispatch<SetStateAction<boolean>>;
   withdrawLoading: boolean;
   handleWithdrawProposal: () => Promise<void>;
+  showArchiveModal: boolean;
+  setShowArchiveModal: Dispatch<SetStateAction<boolean>>;
+  archiveLoading: boolean;
+  handleArchiveProposal: () => Promise<void>;
   showDeleteModal: boolean;
   setShowDeleteModal: Dispatch<SetStateAction<boolean>>;
   deleteLoading: boolean;
@@ -218,6 +221,7 @@ export interface ProposalDetailContextValue {
   canWithdrawProposal: boolean;
   canMarkAsLost: boolean;
   canDeleteProposal: boolean;
+  canArchiveProposal: boolean;
   canManageProposal: boolean;
   clientOpenCount: number;
   canEditCoverLetter: boolean;
@@ -271,6 +275,8 @@ export function ProposalDetailProvider({ children }: ProposalDetailProviderProps
   const [showSendEmailPreview, setShowSendEmailPreview] = useState(false);
   const [showRejectModal, setShowRejectModal] = useState(false);
   const [showWithdrawModal, setShowWithdrawModal] = useState(false);
+  const [showArchiveModal, setShowArchiveModal] = useState(false);
+  const [archiveLoading, setArchiveLoading] = useState(false);
   const [rejectionReason, setRejectionReason] = useState('');
   const [approvalActionLoading, setApprovalActionLoading] = useState(false);
   const [withdrawLoading, setWithdrawLoading] = useState(false);
@@ -421,23 +427,23 @@ export function ProposalDetailProvider({ children }: ProposalDetailProviderProps
     textBody: string;
     htmlBody?: string;
   }) => {
+    // Dismiss only our loading toast — toast.dismiss() with no id wipes the
+    // API interceptor's error toast too, leaving a failed send looking silent.
+    const toastId = toast.loading('Sending proposal…');
     try {
-      toast.loading('Sending proposal…');
       await apiClient.sendProposal(id!, approved);
-      toast.dismiss();
+      toast.dismiss(toastId);
       toast.success('Proposal sent successfully');
       loadProposal();
       loadAuditTrail();
     } catch (error: any) {
-      toast.dismiss();
+      toast.dismiss(toastId);
       const message =
-        error?.response?.data?.error?.message || error?.response?.data?.message || error?.message;
-      if (message?.toLowerCase().includes('email')) {
-        toast.error(
-          message.includes('transport') || message.includes('configured')
-            ? 'Email is not configured on the server — contact your administrator'
-            : message
-        );
+        error?.message || error?.response?.data?.error?.message || error?.response?.data?.message;
+      // The interceptor already toasts the server message; add the friendlier
+      // wording only for the email-transport config case.
+      if (message?.includes('transport') || message?.includes('configured')) {
+        toast.error('Email is not configured on the server — contact your administrator');
       }
     }
   };
@@ -509,6 +515,22 @@ export function ProposalDetailProvider({ children }: ProposalDetailProviderProps
       // handled by API interceptor
     } finally {
       setWithdrawLoading(false);
+    }
+  };
+
+  const handleArchiveProposal = async () => {
+    if (!id) return;
+    try {
+      setArchiveLoading(true);
+      await apiClient.archiveProposal(id);
+      toast.success('Proposal archived — it keeps its records but leaves your active pipeline');
+      setShowArchiveModal(false);
+      loadProposal();
+      loadAuditTrail();
+    } catch {
+      // handled by API interceptor
+    } finally {
+      setArchiveLoading(false);
     }
   };
 
@@ -627,38 +649,36 @@ export function ProposalDetailProvider({ children }: ProposalDetailProviderProps
 
   const handleCopyClientLink = async () => {
     if (!id || !proposal) return;
+    const wasDraft = proposal.status === 'DRAFT';
     try {
-      if (proposal.shareToken) {
-        const link = `${window.location.origin}${appPath(`/proposals/view/${proposal.shareToken}`)}`;
-        const ok = await copyTextToClipboard(link);
-        if (ok) {
-          toast.success('Client link copied to clipboard');
-        } else {
-          toast.error('Could not copy automatically. Copy this link manually: ' + link, {
-            duration: 8000,
-          });
-        }
-        return;
-      }
       setCopyingLink(true);
+      // Always go through the server: it reuses the existing link (so re-copying
+      // never invalidates one already sent) and, for a DRAFT, marks the proposal
+      // SENT — under the same approval / AML / subscription guards as emailing it.
       const response = (await apiClient.post(`/proposals/${id}/share`, {
         expiryDays: 30,
       })) as any;
       if (response.success && response.data?.shareUrl) {
         const ok = await copyTextToClipboard(response.data.shareUrl);
         if (ok) {
-          toast.success('Client link copied to clipboard');
+          toast.success(
+            wasDraft
+              ? 'Client link copied — proposal marked as sent'
+              : 'Client link copied to clipboard'
+          );
         } else {
-          toast.error('Link created but not copied. Copy manually: ' + response.data.shareUrl, {
+          toast.error('Link ready but not copied. Copy manually: ' + response.data.shareUrl, {
             duration: 10000,
           });
         }
         loadProposal();
+        loadAuditTrail();
       } else {
         toast.error('Failed to generate share link');
       }
     } catch {
-      toast.error('Failed to copy client link');
+      // The API interceptor already surfaces server errors here — e.g. awaiting
+      // partner approval, trial expired, or AML not cleared — so don't mask them.
     } finally {
       setCopyingLink(false);
     }
@@ -850,6 +870,7 @@ export function ProposalDetailProvider({ children }: ProposalDetailProviderProps
     proposal.status
   );
   const canDeleteProposal = proposal.status !== 'ACCEPTED' && proposal.status !== 'ARCHIVED';
+  const canArchiveProposal = proposal.status !== 'ARCHIVED';
   const deleteManageRoles = new Set(['ADMIN', 'PARTNER', 'MD', 'MANAGER']);
   const canManageProposal = userRole ? deleteManageRoles.has(userRole) : false;
   const clientOpenCount = typeof proposal.viewCount === 'number' ? proposal.viewCount : 0;
@@ -926,6 +947,10 @@ export function ProposalDetailProvider({ children }: ProposalDetailProviderProps
     setShowWithdrawModal,
     withdrawLoading,
     handleWithdrawProposal,
+    showArchiveModal,
+    setShowArchiveModal,
+    archiveLoading,
+    handleArchiveProposal,
     showDeleteModal,
     setShowDeleteModal,
     deleteLoading,
@@ -952,6 +977,7 @@ export function ProposalDetailProvider({ children }: ProposalDetailProviderProps
     canWithdrawProposal,
     canMarkAsLost,
     canDeleteProposal,
+    canArchiveProposal,
     canManageProposal,
     clientOpenCount,
     canEditCoverLetter,

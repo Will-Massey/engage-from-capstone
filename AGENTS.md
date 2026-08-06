@@ -39,7 +39,7 @@
 | **Package Manager**  | **npm** (`package-lock.json`) — use `npm ci` in CI and on servers for reproducible installs                                     |
 | **CI/CD**            | GitHub Actions (`ci-cd.yml`, `e2e-scheduled.yml`, `security.yml`, deploy workflows)                                             |
 | **Containerization** | Docker + Docker Compose                                                                                                         |
-| **Deployment**       | Render (primary, free tier). Railway (backend) + Vercel (frontend) as secondary/staging-production path                         |
+| **Deployment**       | Neon Postgres + Render (backend/frontend) + Cloudflare Worker (`/engage` on capstonesoftware.co.uk)                             |
 
 ---
 
@@ -114,7 +114,6 @@ engage/
 ├── docker-compose.yml        # Local development stack
 ├── docker-compose.prod.yml   # Production-like stack
 ├── render.yaml               # Render Blueprint (primary deployment)
-├── railway.toml              # Railway deployment config
 ├── Dockerfile                # Root backend Dockerfile
 ├── Dockerfile.backend.optimized
 ├── Dockerfile.frontend.optimized
@@ -354,7 +353,7 @@ Services (dev compose):
 
 **Render deployment specifics:**
 
-- `tenant.ts` extracts tenant from subdomain for custom domains, and falls back to `demo` for localhost, Railway, and Render
+- `tenant.ts` extracts tenant from subdomain for custom domains, and falls back to `demo` for localhost and Render platform hosts
 - **Public seed / admin keys:** use env vars (`PUBLIC_SEED_KEY`, `ADMIN_SECRET_KEY`, etc.); see `backend/.env.example` — no hardcoded keys in source
 
 ### Frontend
@@ -516,7 +515,7 @@ The `.github/workflows/ci-cd.yml` **test** job spins up PostgreSQL 15 and Redis 
 - **Header:** State-changing requests must include `X-CSRF-Token`
 - **Auto-retry:** Frontend automatically retries on CSRF failure
 - **Exemptions:** `GET`, `HEAD`, `OPTIONS`, plus public paths (`/auth`, `/payments/webhook`, `/oauth/callback`, `/proposals/view`, admin/automation setup paths)
-- **Production note:** CSRF cookie uses `sameSite: 'none'` in production for cross-domain deployments (e.g., Vercel frontend + Render/Railway backend)
+- **Production note:** CSRF cookie uses `sameSite: 'none'` when frontend and API are on different origins; same-origin `/engage` + worker proxy prefers first-party cookies
 
 ### Rate Limiting
 
@@ -539,11 +538,11 @@ The `.github/workflows/ci-cd.yml` **test** job spins up PostgreSQL 15 and Redis 
 
 ### Git branches & what they trigger
 
-| Branch / action         | Typical outcome                                                                                                                                                                                                                                              |
-| ----------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| **`main`**              | **Staging path** in `ci-cd.yml` (Railway backend staging + Vercel staging) when that workflow's deploy jobs run; **`deploy-render.yml`** also runs on push to **`main` or `master`** and triggers **Render** backend then frontend deploy via the Render API |
-| **`develop`**           | **Development** deploy job in `ci-cd.yml` (Railway dev + Vercel dev), when enabled                                                                                                                                                                           |
-| **`workflow_dispatch`** | **Production** deploy in `ci-cd.yml` is **manual only** (includes DB backup, migrations, Slack)                                                                                                                                                              |
+| Branch / action         | Typical outcome                                                                                                                         |
+| ----------------------- | --------------------------------------------------------------------------------------------------------------------------------------- |
+| **`master` / `main`**   | **Production path:** `ci-cd.yml` runs lint → tests → E2E → **Deploy to Render** (backend then frontend). Neon is the Postgres provider. |
+| **`develop`**           | Development only. Use local Docker / Neon branch; production deploys from `master` via Render.                                          |
+| **`workflow_dispatch`** | Manual CI runs / deploy as defined in workflows                                                                                         |
 
 **Render auto-deploy:** If each Render service is connected to the same GitHub repo, pushing the linked branch can start a deploy **without** the GitHub Action — check the service's **Auto-Deploy** branch in the Render dashboard.
 
@@ -571,9 +570,7 @@ A unified pipeline using **npm** and **Docker Buildx**:
 2. **Test Suite** — PostgreSQL 15 + Redis 7; Prisma generate/migrate; **`cd backend && npm test -- --coverage`**; frontend vitest run; coverage upload reads **`backend/coverage/lcov.info`**
 3. **E2E Tests** — Runs after lint + unit tests; calls **`playwright-e2e.yml`** (builds shared/backend/frontend, seeds UK services, starts backend + `vite preview`, Playwright Chromium)
 4. **Build & Push Images** — Runs only after **lint, test, and E2E** succeed on **push**; logs into GHCR and pushes `backend` / `frontend` images with Git SHA tags
-5. **Deploy Dev** (`develop` branch) — Backend to Railway (`engage-backend-dev`); frontend to Vercel (dev)
-6. **Deploy Staging** (`main` branch) — Backend to Railway (`engage-backend-staging`); runs migrations; frontend to Vercel (staging); health checks
-7. **Deploy Production** (manual `workflow_dispatch` only) — Backs up DB with `pg_dump`; deploys backend to Railway (`engage-backend-prod`); runs migrations; deploys frontend to Vercel with `--prod`; health checks; notifies Slack
+5. **Deploy to Render** (after lint/test/E2E on `master`/`main`) — triggers Render API deploy for backend then frontend; health check `engage-backend-e1ue.onrender.com/health`
 
 #### `e2e-scheduled.yml`
 
@@ -607,10 +604,11 @@ Runs on schedule (daily 2 AM), PRs, and pushes to `main`/`develop`:
 - **`scripts/deploy.sh`:** Manual bash script to trigger Render deploys via API
 - **`nginx.conf`:** Config for serving the frontend SPA with gzip, security headers, long-term asset caching, and API proxying
 
-### Railway + Vercel (Secondary / Staging-Production)
+### Neon + Render (production)
 
-- **`railway.toml`:** Points to root `Dockerfile`, healthcheck `/ping`, custom domain `engage.capstonesoftware.co.uk`
-- **`DEPLOYMENT_GUIDE.md`:** Documents the preferred production path with Neon PostgreSQL (Frankfurt), Railway backend, Vercel frontend
+- **Database:** Neon Postgres (`DATABASE_URL` on Render)
+- **App:** Render backend + frontend; public URL `https://capstonesoftware.co.uk/engage` via Cloudflare worker
+- **`DEPLOY.md`:** Deploy checklist for Neon + Render
 
 ### Docker
 
@@ -664,7 +662,7 @@ Three Dockerfiles exist:
 
 9. **UserRole mismatch:** Prisma schema includes `ADMIN`; the `shared` package does not. Be careful which source you import `UserRole` from.
 
-10. **Render tenant resolution:** `backend/src/middleware/tenant.ts` handles subdomain extraction for custom domains while still defaulting to `demo` for localhost, Railway, and Render.
+10. **Render tenant resolution:** `backend/src/middleware/tenant.ts` handles subdomain extraction for custom domains while still defaulting to `demo` for localhost and Render hosts.
 
 11. **Token persistence:** `authStore.ts` comment says "Token kept in memory only, not persisted" but `partialize` includes `token`, so it IS persisted to localStorage. Do not rely on it being memory-only.
 
@@ -741,7 +739,8 @@ Three Dockerfiles exist:
 ### Emergency Rollback
 
 - Production deploys create database backups automatically via CI
-- Rollback to previous Docker image tag in Railway dashboard
+- Rollback previous deploy in the **Render** dashboard (backend + frontend)
+- Neon PITR / branch restore if a migration corrupted data (see `docs/ROLLBACK_RUNBOOK.md`)
 - Database migrations are forward-only; plan accordingly
 
 ---

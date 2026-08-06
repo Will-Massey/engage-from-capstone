@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { z } from 'zod';
 import { authenticate, authorize } from '../../middleware/auth.js';
 import { asyncHandler } from '../../middleware/errorHandler.js';
+import { proposalMoneyForApi } from '../../utils/proposalServiceSnapshot.js';
 import { UpliftRules } from '../../services/renewalProposalService.js';
 
 const router = Router();
@@ -44,7 +45,7 @@ router.post(
 
     res.status(201).json({
       success: true,
-      data: renewalProposal,
+      data: { ...renewalProposal, ...proposalMoneyForApi(renewalProposal) },
       message: 'Renewal proposal created successfully',
     });
   })

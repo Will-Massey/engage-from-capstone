@@ -215,6 +215,12 @@ export class EmailService {
   }
 
   private async getOutlookAccessToken(): Promise<string> {
+    const { clientId, clientSecret, refreshToken } = this.config.outlook ?? {};
+    if (!clientId || !clientSecret || !refreshToken) {
+      throw new Error(
+        'Outlook email is not fully configured (clientId, clientSecret and refreshToken are all required)'
+      );
+    }
     try {
       // Use Microsoft Graph token endpoint
       const response = await fetch('https://login.microsoftonline.com/common/oauth2/v2.0/token', {
@@ -223,9 +229,9 @@ export class EmailService {
           'Content-Type': 'application/x-www-form-urlencoded',
         },
         body: new URLSearchParams({
-          client_id: this.config.outlook!.clientId,
-          client_secret: this.config.outlook!.clientSecret,
-          refresh_token: this.config.outlook!.refreshToken,
+          client_id: clientId,
+          client_secret: clientSecret,
+          refresh_token: refreshToken,
           grant_type: 'refresh_token',
           scope: 'https://outlook.office365.com/SMTP.Send offline_access',
         }),
@@ -338,7 +344,7 @@ export class EmailService {
       serviceCount: params.serviceCount,
     });
 
-    const attachments = [];
+    const attachments: Array<{ filename: string; content: Buffer; contentType: string }> = [];
     if (params.attachment) {
       attachments.push({
         filename: `Proposal_${params.proposalReference}.pdf`,
@@ -432,7 +438,13 @@ export class EmailService {
 
     return oauth2Client.generateAuthUrl({
       access_type: 'offline',
-      scope: ['https://mail.google.com/', 'https://www.googleapis.com/auth/gmail.send'],
+      // Full mailbox: read (two-way inbox) + send
+      scope: [
+        'https://mail.google.com/',
+        'https://www.googleapis.com/auth/gmail.modify',
+        'https://www.googleapis.com/auth/gmail.send',
+        'https://www.googleapis.com/auth/userinfo.email',
+      ],
       prompt: 'consent',
       ...(state ? { state } : {}),
     });
@@ -468,7 +480,8 @@ export class EmailService {
     tenantId?: string,
     state?: string
   ): string {
-    const scopes = ['offline_access', 'https://outlook.office365.com/SMTP.Send', 'User.Read'];
+    // Graph Mail.Read + Mail.Send for two-way mailbox (not SMTP.Send alone)
+    const scopes = ['offline_access', 'User.Read', 'Mail.Read', 'Mail.Send', 'Mail.ReadWrite'];
 
     const tenant = tenantId || 'common';
 

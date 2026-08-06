@@ -1,9 +1,27 @@
 import { useEffect, useState } from 'react';
-import { ShieldCheckIcon, ArrowPathIcon } from '@heroicons/react/24/outline';
+import {
+  ShieldCheckIcon,
+  ArrowPathIcon,
+  DocumentTextIcon,
+  EyeIcon,
+  ArrowDownTrayIcon,
+} from '@heroicons/react/24/outline';
 import toast from 'react-hot-toast';
 import { apiClient } from '../../utils/api';
-import type { AmlUsageSummary } from '../../types/aml';
+import type { AmlDocumentMeta, AmlUsageSummary } from '../../types/aml';
 import { AML_STATUS_COLOURS, AML_STATUS_LABELS, formatAmlCheckPrice } from '../../utils/amlBadge';
+
+const DOC_LABELS: Record<string, string> = {
+  photo_id: 'Photo ID',
+  proof_of_address: 'Proof of address',
+};
+
+function formatBytes(bytes: number): string {
+  if (!bytes) return '';
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${Math.round(bytes / 1024)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
 
 interface AmlPartnerPanelProps {
   clientId: string;
@@ -20,6 +38,7 @@ type AmlStatusData = {
   provider: string | null;
   mode: 'live' | 'demo';
   lastCheckMessage: string | null;
+  documents?: AmlDocumentMeta[];
   config?: {
     mode: 'live' | 'demo';
     smartsearchConfigured: boolean;
@@ -90,9 +109,35 @@ export default function AmlPartnerPanel({
     }
   };
 
+  const [docBusy, setDocBusy] = useState<string | null>(null);
+
+  const openDocument = async (doc: AmlDocumentMeta, download: boolean) => {
+    setDocBusy(`${doc.type}:${download ? 'dl' : 'view'}`);
+    try {
+      const blob = await apiClient.getAmlDocument(clientId, doc.type);
+      const url = URL.createObjectURL(blob);
+      if (download) {
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = doc.fileName || `${doc.type}`;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+      } else {
+        window.open(url, '_blank', 'noopener,noreferrer');
+      }
+      setTimeout(() => URL.revokeObjectURL(url), 60_000);
+    } catch (e: any) {
+      toast.error(e?.message || 'Could not open the document');
+    } finally {
+      setDocBusy(null);
+    }
+  };
+
   const mode = status?.mode ?? status?.config?.mode ?? 'demo';
   const provider = status?.provider;
   const amlStatus = status?.amlStatus ?? 'NOT_STARTED';
+  const documents = status?.documents ?? [];
 
   return (
     <div className="glass-tile p-5 space-y-3" data-testid="aml-partner-panel">
@@ -171,6 +216,52 @@ export default function AmlPartnerPanel({
                 : ''}
             </p>
           )}
+        </div>
+      )}
+
+      {documents.length > 0 && (
+        <div
+          className="rounded-lg border border-slate-200/80 dark:border-slate-700/80 divide-y divide-slate-200/80 dark:divide-slate-700/80"
+          data-testid="aml-documents"
+        >
+          {documents.map((doc) => (
+            <div key={doc.type} className="flex items-center gap-3 px-3 py-2.5">
+              <DocumentTextIcon className="h-5 w-5 text-slate-400 shrink-0" />
+              <div className="min-w-0 flex-1">
+                <p className="text-sm font-medium text-slate-800 dark:text-slate-200">
+                  {DOC_LABELS[doc.type] ?? doc.type}
+                </p>
+                <p className="text-xs text-slate-500 dark:text-slate-400 truncate">
+                  {doc.fileName}
+                  {formatBytes(doc.sizeBytes) ? ` · ${formatBytes(doc.sizeBytes)}` : ''}
+                  {doc.uploadedAt
+                    ? ` · ${new Date(doc.uploadedAt).toLocaleDateString('en-GB')}`
+                    : ''}
+                </p>
+              </div>
+              <div className="flex items-center gap-1.5 shrink-0">
+                <button
+                  type="button"
+                  onClick={() => openDocument(doc, false)}
+                  disabled={docBusy === `${doc.type}:view`}
+                  className="btn-secondary text-xs inline-flex items-center gap-1.5"
+                  title="View document"
+                >
+                  <EyeIcon className="h-4 w-4" />
+                  View
+                </button>
+                <button
+                  type="button"
+                  onClick={() => openDocument(doc, true)}
+                  disabled={docBusy === `${doc.type}:dl`}
+                  className="btn-secondary text-xs inline-flex items-center gap-1.5"
+                  title="Download document"
+                >
+                  <ArrowDownTrayIcon className="h-4 w-4" />
+                </button>
+              </div>
+            </div>
+          ))}
         </div>
       )}
 
