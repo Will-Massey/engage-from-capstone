@@ -292,6 +292,193 @@ describe('syncMailbox — provider connected', () => {
   });
 });
 
+describe('syncMailbox — F2: reconciles a locally-created OUTBOUND send instead of duplicating', () => {
+  it('updates the localsend: row externalId/conversationId/internetMessageId when the sentitems delta brings the real message back, instead of creating a duplicate', async () => {
+    loadTenantEmailContextMock.mockResolvedValue({
+      tenantId: 't1',
+      tenantName: 'Firm',
+      email: { provider: 'outlook', outlook: { user: 'firm@outlook.com', refreshToken: 'r1' } },
+    });
+    const syncInbox = jest.fn().mockResolvedValue({ messages: [], deltaLink: null });
+    const syncSent = jest.fn().mockResolvedValue({
+      messages: [
+        {
+          externalId: 'graph-real-1',
+          conversationId: 'conv-real',
+          internetMessageId: '<real@firm.com>',
+          direction: 'OUTBOUND',
+          from: 'firm@outlook.com',
+          to: 'Client <client@acme.com>',
+          subject: 'Re: Hi',
+          bodyText: 'Reply body',
+          isRead: true,
+          hasAttachments: false,
+          receivedAt: new Date('2026-08-06T10:05:00Z'),
+        },
+      ],
+      deltaLink: null,
+    });
+    createGraphMailClientMock.mockResolvedValue({ syncInbox, syncSent });
+
+    // No row exists yet under the real provider externalId...
+    prismaMock.mailMessage.findUnique.mockResolvedValueOnce(null);
+    // ...but the row the app wrote at send-time (localsend: prefix, same
+    // conversation, close receivedAt, same counterparty) is found instead.
+    prismaMock.mailMessage.findMany.mockResolvedValueOnce([
+      {
+        id: 'local-out-1',
+        conversationId: 'conv-real',
+        subject: 'Re: Hi',
+        toAddresses: 'client@acme.com',
+      },
+    ]);
+    prismaMock.mailMessage.update.mockResolvedValue({});
+
+    const result = await syncMailbox('t1');
+
+    expect(result.imported).toBe(0);
+    expect(result.updated).toBe(1);
+    expect(prismaMock.mailMessage.create).not.toHaveBeenCalled();
+    expect(prismaMock.mailMessage.update).toHaveBeenCalledWith({
+      where: { id: 'local-out-1' },
+      data: {
+        externalId: 'graph-real-1',
+        conversationId: 'conv-real',
+        internetMessageId: '<real@firm.com>',
+      },
+    });
+  });
+
+  it('creates a new row when no locally-created send matches (different subject and conversation)', async () => {
+    loadTenantEmailContextMock.mockResolvedValue({
+      tenantId: 't1',
+      tenantName: 'Firm',
+      email: { provider: 'outlook', outlook: { user: 'firm@outlook.com', refreshToken: 'r1' } },
+    });
+    const syncInbox = jest.fn().mockResolvedValue({ messages: [], deltaLink: null });
+    const syncSent = jest.fn().mockResolvedValue({
+      messages: [
+        {
+          externalId: 'graph-real-2',
+          conversationId: 'conv-real-2',
+          direction: 'OUTBOUND',
+          from: 'firm@outlook.com',
+          to: 'someone-else@acme.com',
+          subject: 'Unrelated',
+          bodyText: 'Body',
+          isRead: true,
+          hasAttachments: false,
+          receivedAt: new Date('2026-08-06T10:05:00Z'),
+        },
+      ],
+      deltaLink: null,
+    });
+    createGraphMailClientMock.mockResolvedValue({ syncInbox, syncSent });
+
+    prismaMock.mailMessage.findUnique.mockResolvedValueOnce(null);
+    prismaMock.mailMessage.findMany.mockResolvedValueOnce([
+      {
+        id: 'local-out-1',
+        conversationId: 'conv-real',
+        subject: 'Re: Hi',
+        toAddresses: 'client@acme.com',
+      },
+    ]);
+    prismaMock.client.findFirst.mockResolvedValue(null);
+    prismaMock.mailMessage.create.mockResolvedValue({});
+
+    const result = await syncMailbox('t1');
+
+    expect(result.imported).toBe(1);
+    expect(result.updated).toBe(0);
+    expect(prismaMock.mailMessage.update).not.toHaveBeenCalled();
+  });
+});
+
+describe('syncMailbox — F3: delta invalidation recovery', () => {
+  it('nulls inboxDeltaLink/sentDeltaLink and records "delta reset" when the provider signals 410 (Graph resyncRequired)', async () => {
+    loadTenantEmailContextMock.mockResolvedValue({
+      tenantId: 't1',
+      tenantName: 'Firm',
+      email: { provider: 'outlook', outlook: { user: 'firm@outlook.com', refreshToken: 'r1' } },
+    });
+    const deltaError = Object.assign(new Error('Graph delta fetch failed: 410 Gone'), { statusCode: 410 });
+    const syncInbox = jest.fn().mockRejectedValue(deltaError);
+    const syncSent = jest.fn().mockResolvedValue({ messages: [], deltaLink: 'old-sent-link' });
+    createGraphMailClientMock.mockResolvedValue({ syncInbox, syncSent });
+    prismaMock.mailboxSyncState.findUnique.mockResolvedValue({
+      inboxDeltaLink: 'stale-inbox-link',
+      sentDeltaLink: 'stale-sent-link',
+    });
+
+    const result = await syncMailbox('t1');
+
+    expect(result.ok).toBe(false);
+    expect(prismaMock.mailboxSyncState.upsert).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { tenantId: 't1' },
+        update: expect.objectContaining({
+          inboxDeltaLink: null,
+          sentDeltaLink: null,
+          lastSyncOk: false,
+          lastSyncError: expect.stringContaining('delta reset'),
+        }),
+      })
+    );
+  });
+
+  it('nulls deltaLinks and records "delta reset" for a Gmail stale-historyId 404 too', async () => {
+    loadTenantEmailContextMock.mockResolvedValue({
+      tenantId: 't1',
+      tenantName: 'Firm',
+      email: { provider: 'gmail', gmail: { user: 'firm@gmail.com', refreshToken: 'r1' } },
+    });
+    const historyError = Object.assign(new Error('Gmail history sync failed'), { statusCode: 404 });
+    const syncInbox = jest.fn().mockRejectedValue(historyError);
+    const syncSent = jest.fn().mockResolvedValue({ messages: [], deltaLink: 'history:999' });
+    createGmailMailClientMock.mockResolvedValue({ syncInbox, syncSent });
+    prismaMock.mailboxSyncState.findUnique.mockResolvedValue({
+      inboxDeltaLink: 'history:100',
+      sentDeltaLink: 'history:100',
+    });
+
+    const result = await syncMailbox('t1');
+
+    expect(result.ok).toBe(false);
+    expect(prismaMock.mailboxSyncState.upsert).toHaveBeenCalledWith(
+      expect.objectContaining({
+        update: expect.objectContaining({
+          inboxDeltaLink: null,
+          sentDeltaLink: null,
+          lastSyncError: expect.stringContaining('delta reset'),
+        }),
+      })
+    );
+  });
+
+  it('does not reset deltaLinks for a plain (non-410/404) sync failure', async () => {
+    loadTenantEmailContextMock.mockResolvedValue({
+      tenantId: 't1',
+      tenantName: 'Firm',
+      email: { provider: 'gmail', gmail: { user: 'firm@gmail.com', refreshToken: 'r1' } },
+    });
+    const syncInbox = jest.fn().mockRejectedValue(new Error('network reset'));
+    const syncSent = jest.fn().mockResolvedValue({ messages: [], deltaLink: 'history:999' });
+    createGmailMailClientMock.mockResolvedValue({ syncInbox, syncSent });
+    prismaMock.mailboxSyncState.findUnique.mockResolvedValue({
+      inboxDeltaLink: 'history:100',
+      sentDeltaLink: 'history:100',
+    });
+
+    await syncMailbox('t1');
+
+    const upsertCall = prismaMock.mailboxSyncState.upsert.mock.calls[0][0];
+    expect(upsertCall.update.inboxDeltaLink).toBeUndefined();
+    expect(upsertCall.update.sentDeltaLink).toBeUndefined();
+    expect(upsertCall.update.lastSyncError).toBe('network reset');
+  });
+});
+
 describe('syncMailbox — no provider connected', () => {
   it('returns NOT_CONNECTED and does not attempt any provider sync', async () => {
     loadTenantEmailContextMock.mockResolvedValue({
@@ -592,7 +779,7 @@ describe('sendMailboxMessage — provider connected, with reply threading', () =
     );
     prismaMock.client.findMany.mockResolvedValue([{ id: 'c1', name: 'Acme Ltd' }]);
 
-    const dto = await sendMailboxMessage('t1', 'user-1', {
+    const result = await sendMailboxMessage('t1', 'user-1', {
       to: 'client@acme.com',
       subject: 'Re: Hi',
       body: 'Reply body',
@@ -614,11 +801,43 @@ describe('sendMailboxMessage — provider connected, with reply threading', () =
         }),
       })
     );
-    // Graph returned externalId: null → service must generate a local uuid instead of storing null
+    // Graph returned externalId: null → service must generate a local uuid instead of storing null,
+    // tagged with the localsend: prefix so a later sentitems sync can reconcile it (F2).
     const createdData = prismaMock.mailMessage.create.mock.calls[0][0].data;
     expect(createdData.externalId).toEqual(expect.any(String));
-    expect(createdData.externalId.length).toBeGreaterThan(0);
-    expect(dto.id).toBe('out-1');
+    expect(createdData.externalId).toMatch(/^localsend:/);
+    expect(result.dto.id).toBe('out-1');
+    expect(result.sent).toBe(true);
+    expect(result.error).toBeUndefined();
+  });
+});
+
+describe('sendMailboxMessage — F1: honest send status', () => {
+  it('surfaces sent:false and the provider error when the provider send throws, while still recording local history', async () => {
+    prismaMock.mailMessage.findFirst.mockResolvedValueOnce(null); // no replyToMessageId
+    loadTenantEmailContextMock.mockResolvedValue({
+      tenantId: 't1',
+      tenantName: 'Firm',
+      email: { provider: 'outlook', fromEmail: 'firm@outlook.com', outlook: { user: 'firm@outlook.com', refreshToken: 'r1' } },
+    });
+    const send = jest.fn().mockRejectedValue(new Error('Graph sendMail failed: 503 Service Unavailable'));
+    createGraphMailClientMock.mockResolvedValue({ send });
+    prismaMock.client.findFirst.mockResolvedValue(null);
+    prismaMock.mailMessage.create.mockResolvedValue(
+      mailMessageRow({ id: 'out-fail-1', direction: 'OUTBOUND' })
+    );
+    prismaMock.client.findMany.mockResolvedValue([]);
+
+    const result = await sendMailboxMessage('t1', 'user-1', {
+      to: 'client@acme.com',
+      subject: 'Hello',
+      body: 'New thread',
+    });
+
+    expect(result.sent).toBe(false);
+    expect(result.error).toBe('Graph sendMail failed: 503 Service Unavailable');
+    expect(result.dto.id).toBe('out-fail-1');
+    expect(prismaMock.mailMessage.create).toHaveBeenCalledTimes(1);
   });
 });
 
@@ -634,7 +853,7 @@ describe('sendMailboxMessage — no provider connected (fallback)', () => {
     prismaMock.mailMessage.create.mockResolvedValue(mailMessageRow({ id: 'out-2', direction: 'OUTBOUND' }));
     prismaMock.client.findMany.mockResolvedValue([]);
 
-    const dto = await sendMailboxMessage('t1', null, {
+    const result = await sendMailboxMessage('t1', null, {
       to: 'client@acme.com',
       subject: 'Hello',
       body: 'New thread',
@@ -648,27 +867,30 @@ describe('sendMailboxMessage — no provider connected (fallback)', () => {
         data: expect.objectContaining({ provider: 'SMTP', direction: 'OUTBOUND' }),
       })
     );
-    expect(dto.id).toBe('out-2');
+    expect(result.dto.id).toBe('out-2');
+    expect(result.sent).toBe(true);
     // brand-new local send (no reply) → conversationId is a fresh local:<uuid>
     const createdData = prismaMock.mailMessage.create.mock.calls[0][0].data;
     expect(createdData.conversationId).toMatch(/^local:/);
   });
 
-  it('still inserts the OUTBOUND row even when tenantMailerSend fails', async () => {
+  it('still inserts the OUTBOUND row even when tenantMailerSend fails, and surfaces sent:false', async () => {
     loadTenantEmailContextMock.mockResolvedValue({ tenantId: 't1', tenantName: 'Firm', email: {} });
     prismaMock.client.findFirst.mockResolvedValue(null);
     tenantMailerSendMock.mockResolvedValue({ success: false, error: 'suppressed' });
     prismaMock.mailMessage.create.mockResolvedValue(mailMessageRow({ id: 'out-3', direction: 'OUTBOUND' }));
     prismaMock.client.findMany.mockResolvedValue([]);
 
-    const dto = await sendMailboxMessage('t1', null, {
+    const result = await sendMailboxMessage('t1', null, {
       to: 'client@acme.com',
       subject: 'Hello',
       body: 'New thread',
     });
 
     expect(prismaMock.mailMessage.create).toHaveBeenCalledTimes(1);
-    expect(dto.id).toBe('out-3');
+    expect(result.dto.id).toBe('out-3');
+    expect(result.sent).toBe(false);
+    expect(result.error).toBe('suppressed');
   });
 });
 

@@ -34,6 +34,8 @@ const SELECT_FIELDS = [
 ].join(',');
 const EXPAND_ATTACHMENTS = 'attachments($select=id,name,contentType,size,isInline)';
 const EARLY_EXPIRY_MARGIN_MS = 60_000;
+/** F4: cap the unbounded first sync — delta links carry this filter forward on later requests. */
+const FIRST_SYNC_WINDOW_DAYS = 90;
 
 interface TokenCacheEntry {
   accessToken: string;
@@ -190,22 +192,37 @@ interface GraphDeltaResponse {
   '@odata.deltaLink'?: string;
 }
 
+/**
+ * F4: an initial (null-deltaLink) sync has no bound — a mailbox with years of
+ * history would import all of it. Scope the FIRST delta request to the last
+ * 90 days; Graph carries the filter forward on the deltaLink it returns, so
+ * later incremental requests don't need to repeat it.
+ */
+function buildInitialDeltaUrl(folder: 'inbox' | 'sentitems'): string {
+  const since = new Date(Date.now() - FIRST_SYNC_WINDOW_DAYS * 24 * 60 * 60 * 1000).toISOString();
+  const filter = encodeURIComponent(`receivedDateTime ge ${since}`);
+  return `${GRAPH_BASE}/me/mailFolders/${folder}/messages/delta?$select=${SELECT_FIELDS}&$expand=${EXPAND_ATTACHMENTS}&$filter=${filter}`;
+}
+
 async function fetchDeltaPage(
   folder: 'inbox' | 'sentitems',
   deltaLink: string | null,
   direction: 'INBOUND' | 'OUTBOUND',
   token: string
 ): Promise<DeltaPage> {
-  let url =
-    deltaLink ||
-    `${GRAPH_BASE}/me/mailFolders/${folder}/messages/delta?$select=${SELECT_FIELDS}&$expand=${EXPAND_ATTACHMENTS}`;
+  let url = deltaLink || buildInitialDeltaUrl(folder);
   const messages: ProviderMessage[] = [];
   let finalDeltaLink: string | null = null;
 
   while (url) {
     const res = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
     if (!res.ok) {
-      throw new Error(`Graph delta fetch failed: ${res.status} ${res.statusText}`);
+      // F3: surface the HTTP status so syncMailbox can detect a 410
+      // (resyncRequired) and reset the stored delta cursor instead of
+      // retrying the same dead token forever.
+      const err = new Error(`Graph delta fetch failed: ${res.status} ${res.statusText}`);
+      (err as Error & { statusCode?: number }).statusCode = res.status;
+      throw err;
     }
     const data = (await res.json()) as GraphDeltaResponse;
     for (const m of data.value || []) {

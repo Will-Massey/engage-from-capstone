@@ -301,13 +301,14 @@ export default function FirmInbox() {
     const cc = extractEmailAddress(replyCc) || undefined;
     setSending(true);
     try {
-      await apiClient.post('/comms/mailbox/send', {
+      const res = (await apiClient.post('/comms/mailbox/send', {
         to,
         cc,
         subject: selectedMail.subject,
         body: replyBody.trim(),
         replyToMessageId: selectedMail.id,
-      });
+      })) as any;
+      if (res?.data?.sent === false) setSyncMsg(res?.message || 'Send deferred');
       setReplyBody('');
       setReplyCc('');
       await Promise.all([fetchMessages(), refreshThread(selectedMail.id)]);
@@ -327,12 +328,13 @@ export default function FirmInbox() {
     const cc = extractEmailAddress(compose.cc) || undefined;
     setSending(true);
     try {
-      await apiClient.post('/comms/mailbox/send', {
+      const res = (await apiClient.post('/comms/mailbox/send', {
         to,
         cc,
         subject: compose.subject.trim(),
         body: compose.body.trim(),
-      });
+      })) as any;
+      if (res?.data?.sent === false) setSyncMsg(res?.message || 'Send deferred');
       setCompose({ to: '', cc: '', subject: '', body: '' });
       setComposeOpen(false);
       await fetchMessages();

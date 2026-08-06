@@ -9,6 +9,10 @@ import type { DeltaPage, MailProviderClient, ProviderMessage, SendSpec } from '.
 
 const GOOGLE_TOKEN_URL = 'https://oauth2.googleapis.com/token';
 const EARLY_EXPIRY_MARGIN_MS = 60_000;
+/** F4: cap the unbounded first sync — newest messages from the last 90 days only. */
+const FULL_SYNC_QUERY = 'newer_than:90d';
+const FULL_SYNC_MAX_MESSAGES = 200;
+const FULL_SYNC_PAGE_SIZE = 100;
 
 interface TokenCacheEntry {
   accessToken: string;
@@ -174,20 +178,39 @@ async function fullSync(
     const list = await gmail.users.messages.list({
       userId: 'me',
       labelIds: [label],
-      maxResults: 100,
+      q: FULL_SYNC_QUERY,
+      maxResults: FULL_SYNC_PAGE_SIZE,
       pageToken,
     });
-    for (const m of list.data.messages || []) {
+    // Gmail's default list order is newest-first, so capping here keeps the
+    // most recent messages rather than an arbitrary slice.
+    const remaining = FULL_SYNC_MAX_MESSAGES - messages.length;
+    const page = (list.data.messages || []).slice(0, remaining);
+    for (const m of page) {
       if (!m.id) continue;
       const full = await gmail.users.messages.get({ userId: 'me', id: m.id, format: 'full' });
       messages.push(mapGmailMessage(full.data, direction));
     }
-    pageToken = list.data.nextPageToken || undefined;
+    pageToken = messages.length < FULL_SYNC_MAX_MESSAGES ? list.data.nextPageToken || undefined : undefined;
   } while (pageToken);
 
   const profile = await gmail.users.getProfile({ userId: 'me' });
   const historyId = profile.data.historyId;
   return { messages, deltaLink: historyId ? `history:${historyId}` : null };
+}
+
+/**
+ * F3: a stale startHistoryId (older than Gmail's retention window) 404s.
+ * googleapis surfaces the HTTP status as `.code`; normalise it onto a
+ * `statusCode` field so syncMailbox can detect it the same way it detects
+ * Graph's 410, and reset the stored delta cursor instead of retrying forever.
+ */
+function withStatusCode(e: any): Error & { statusCode?: number } {
+  const raw = e?.code ?? e?.response?.status ?? e?.status;
+  const statusCode = typeof raw === 'string' ? parseInt(raw, 10) : raw;
+  const err = new Error(e?.message || 'Gmail history sync failed') as Error & { statusCode?: number };
+  if (typeof statusCode === 'number' && Number.isFinite(statusCode)) err.statusCode = statusCode;
+  return err;
 }
 
 async function incrementalSync(
@@ -202,13 +225,18 @@ async function incrementalSync(
   let pageToken: string | undefined;
 
   do {
-    const res = await gmail.users.history.list({
-      userId: 'me',
-      startHistoryId,
-      historyTypes: ['messageAdded'],
-      labelId: label,
-      pageToken,
-    });
+    let res;
+    try {
+      res = await gmail.users.history.list({
+        userId: 'me',
+        startHistoryId,
+        historyTypes: ['messageAdded'],
+        labelId: label,
+        pageToken,
+      });
+    } catch (e: any) {
+      throw withStatusCode(e);
+    }
     for (const entry of res.data.history || []) {
       for (const added of entry.messagesAdded || []) {
         const id = added.message?.id;

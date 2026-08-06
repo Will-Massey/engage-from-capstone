@@ -331,6 +331,44 @@ describe('createGraphMailClient syncInbox', () => {
     expect(page.messages.map((m) => m.externalId)).toEqual(['msg-1', 'msg-2']);
     expect(page.deltaLink).toBe('https://graph/delta?final');
   });
+
+  it('F4: scopes the first (null-deltaLink) request to the last 90 days via $filter', async () => {
+    loadTenantEmailContextMock.mockResolvedValue(ctxWithOutlook());
+    fetchMock
+      .mockResolvedValueOnce(tokenResponse())
+      .mockResolvedValueOnce(jsonResponse({ value: [], '@odata.deltaLink': 'https://x/delta' }));
+
+    const client = await createGraphMailClient('tenant-1');
+    await client!.syncInbox(null);
+
+    const url = decodeURIComponent(String(fetchMock.mock.calls[1][0]));
+    expect(url).toMatch(/\$filter=receivedDateTime ge \d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}/);
+  });
+
+  it('F4: does not append $filter when resuming from a stored deltaLink', async () => {
+    loadTenantEmailContextMock.mockResolvedValue(ctxWithOutlook());
+    fetchMock
+      .mockResolvedValueOnce(tokenResponse())
+      .mockResolvedValueOnce(jsonResponse({ value: [], '@odata.deltaLink': 'https://x/delta' }));
+
+    const client = await createGraphMailClient('tenant-1');
+    await client!.syncInbox('https://graph.microsoft.com/v1.0/me/mailFolders/inbox/messages/delta?$deltatoken=prev');
+
+    expect(fetchMock.mock.calls[1][0]).toBe(
+      'https://graph.microsoft.com/v1.0/me/mailFolders/inbox/messages/delta?$deltatoken=prev'
+    );
+  });
+
+  it('F3: throws an error carrying the HTTP status code on a non-2xx delta response (e.g. 410 resyncRequired)', async () => {
+    loadTenantEmailContextMock.mockResolvedValue(ctxWithOutlook());
+    fetchMock
+      .mockResolvedValueOnce(tokenResponse())
+      .mockResolvedValueOnce(jsonResponse({ error: { code: 'ResyncRequired' } }, false, 410));
+
+    const client = await createGraphMailClient('tenant-1');
+
+    await expect(client!.syncInbox(null)).rejects.toMatchObject({ statusCode: 410 });
+  });
 });
 
 describe('createGraphMailClient syncSent', () => {

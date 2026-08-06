@@ -413,8 +413,12 @@ router.post(
   authorize(...MAILBOX_WRITE_ROLES),
   asyncHandler(async (req, res) => {
     const body = sendMailboxSchema.parse(req.body);
-    const message = await sendMailboxMessage(req.tenantId!, req.user?.id, body);
-    res.json({ success: true, data: message, message: 'Message sent' });
+    const { dto, sent, error } = await sendMailboxMessage(req.tenantId!, req.user?.id, body);
+    res.json({
+      success: true,
+      data: { ...dto, sent },
+      message: sent ? 'Message sent' : `Send deferred: ${error}`,
+    });
   })
 );
 

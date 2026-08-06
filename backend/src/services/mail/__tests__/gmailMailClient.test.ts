@@ -216,6 +216,52 @@ describe('createGmailMailClient syncInbox', () => {
     expect(page.messages[0].isRead).toBe(false);
     expect(page.deltaLink).toBe('history:2000');
   });
+
+  it('F4: full sync queries newer_than:90d and caps maxResults per page', async () => {
+    loadTenantEmailContextMock.mockResolvedValue(ctxWithGmail());
+    fetchMock.mockResolvedValue(tokenResponse());
+    const gmail = makeFakeGmail();
+    gmail.users.messages.list.mockResolvedValue({ data: { messages: [] } });
+
+    const client = await createGmailMailClient('tenant-1', { gmail: asGmail(gmail) });
+    await client!.syncInbox(null);
+
+    expect(gmail.users.messages.list).toHaveBeenCalledWith(
+      expect.objectContaining({ q: 'newer_than:90d', maxResults: 100 })
+    );
+  });
+
+  it('F4: caps the total messages fetched on a first sync at 200, stopping before the next page', async () => {
+    loadTenantEmailContextMock.mockResolvedValue(ctxWithGmail());
+    fetchMock.mockResolvedValue(tokenResponse());
+    const gmail = makeFakeGmail();
+    gmail.users.messages.list
+      .mockResolvedValueOnce({
+        data: { messages: Array.from({ length: 100 }, (_, i) => ({ id: `p1-${i}` })), nextPageToken: 'p2' },
+      })
+      .mockResolvedValueOnce({
+        data: { messages: Array.from({ length: 100 }, (_, i) => ({ id: `p2-${i}` })), nextPageToken: 'p3' },
+      });
+    gmail.users.messages.get.mockResolvedValue({ data: { id: 'x', payload: { headers: [] } } });
+
+    const client = await createGmailMailClient('tenant-1', { gmail: asGmail(gmail) });
+    const page = await client!.syncInbox(null);
+
+    expect(page.messages).toHaveLength(200);
+    // stops after the 200-message cap is reached — never requests page 3
+    expect(gmail.users.messages.list).toHaveBeenCalledTimes(2);
+  });
+
+  it('F3: throws an error carrying the HTTP status code when the history cursor is stale (404)', async () => {
+    loadTenantEmailContextMock.mockResolvedValue(ctxWithGmail());
+    fetchMock.mockResolvedValue(tokenResponse());
+    const gmail = makeFakeGmail();
+    gmail.users.history.list.mockRejectedValue(Object.assign(new Error('Not Found'), { code: 404 }));
+
+    const client = await createGmailMailClient('tenant-1', { gmail: asGmail(gmail) });
+
+    await expect(client!.syncInbox('history:1000')).rejects.toMatchObject({ statusCode: 404 });
+  });
 });
 
 describe('createGmailMailClient syncSent', () => {

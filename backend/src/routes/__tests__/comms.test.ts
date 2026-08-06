@@ -271,7 +271,7 @@ describe('GET /api/comms/mailbox/messages/:id/attachments/:attachmentId', () => 
 
 describe('POST /api/comms/mailbox/send', () => {
   it('validates the body via zod and forwards cc + replyToMessageId', async () => {
-    sendMailboxMessage.mockResolvedValue(mailMessageDto({ direction: 'outbound' }));
+    sendMailboxMessage.mockResolvedValue({ dto: mailMessageDto({ direction: 'outbound' }), sent: true });
 
     const res = await request(app()).post('/api/comms/mailbox/send').send({
       to: 'client@acme.com',
@@ -297,6 +297,39 @@ describe('POST /api/comms/mailbox/send', () => {
     const res = await request(app()).post('/api/comms/mailbox/send').send({ to: 'not-an-email' });
     expect(res.status).toBe(400);
     expect(sendMailboxMessage).not.toHaveBeenCalled();
+  });
+
+  it('F1: reports success with "Message sent" and sent:true when the provider send succeeds', async () => {
+    sendMailboxMessage.mockResolvedValue({ dto: mailMessageDto({ direction: 'outbound' }), sent: true });
+
+    const res = await request(app()).post('/api/comms/mailbox/send').send({
+      to: 'client@acme.com',
+      subject: 'Hi',
+      body: 'Body',
+    });
+
+    expect(res.status).toBe(200);
+    expect(res.body.message).toBe('Message sent');
+    expect(res.body.data.sent).toBe(true);
+  });
+
+  it('F1: does NOT report success when the provider send failed — surfaces sent:false and the deferred message', async () => {
+    sendMailboxMessage.mockResolvedValue({
+      dto: mailMessageDto({ direction: 'outbound' }),
+      sent: false,
+      error: 'Graph sendMail failed: 503 Service Unavailable',
+    });
+
+    const res = await request(app()).post('/api/comms/mailbox/send').send({
+      to: 'client@acme.com',
+      subject: 'Hi',
+      body: 'Body',
+    });
+
+    expect(res.status).toBe(200);
+    expect(res.body.success).toBe(true);
+    expect(res.body.data.sent).toBe(false);
+    expect(res.body.message).toBe('Send deferred: Graph sendMail failed: 503 Service Unavailable');
   });
 });
 

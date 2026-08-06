@@ -230,6 +230,55 @@ export async function seedDevInboundIfEmpty(tenantId: string): Promise<number> {
   return n;
 }
 
+/**
+ * Marks OUTBOUND rows created locally before the provider confirmed a real
+ * externalId (e.g. Graph reply/sendMail return 202 with no body). Lets the
+ * next sentitems sync recognise "this is the row I already wrote" instead of
+ * creating a duplicate — see findLocalSendMatch.
+ */
+const LOCAL_SEND_PREFIX = 'localsend:';
+
+/** Match window for reconciling a locally-created send with its provider echo. */
+const LOCAL_SEND_MATCH_WINDOW_MS = 10 * 60 * 1000;
+
+/**
+ * F2: Graph reply/sendMail return no externalId, so the send path stores the
+ * OUTBOUND row under a `localsend:`-prefixed local uuid. The next sentitems
+ * delta then brings the same message back with its real externalId — without
+ * this lookup, upsertProviderMessage would treat that as a brand-new message
+ * and create a duplicate row in the same conversation. Match on (same
+ * conversationId when the provider message carries one, OR same subject) AND
+ * a close receivedAt AND the same counterparty address.
+ */
+async function findLocalSendMatch(
+  tenantId: string,
+  provider: EmailProvider,
+  pm: ProviderMessage
+): Promise<{ id: string } | null> {
+  const candidates = await prisma.mailMessage.findMany({
+    where: {
+      tenantId,
+      provider,
+      direction: 'OUTBOUND',
+      externalId: { startsWith: LOCAL_SEND_PREFIX },
+      receivedAt: {
+        gte: new Date(pm.receivedAt.getTime() - LOCAL_SEND_MATCH_WINDOW_MS),
+        lte: new Date(pm.receivedAt.getTime() + LOCAL_SEND_MATCH_WINDOW_MS),
+      },
+    },
+    select: { id: true, conversationId: true, subject: true, toAddresses: true },
+  });
+
+  const pmTo = extractFirstEmail(pm.to);
+  const match = candidates.find((c) => {
+    const conversationMatches = !!pm.conversationId && c.conversationId === pm.conversationId;
+    const subjectMatches = c.subject === pm.subject;
+    if (!conversationMatches && !subjectMatches) return false;
+    return extractFirstEmail(c.toAddresses) === pmTo;
+  });
+  return match ? { id: match.id } : null;
+}
+
 async function upsertProviderMessage(
   tenantId: string,
   provider: EmailProvider,
@@ -239,6 +288,21 @@ async function upsertProviderMessage(
     where: { tenantId_provider_externalId: { tenantId, provider, externalId: pm.externalId } },
     select: { id: true, clientId: true },
   });
+
+  if (!existing && pm.direction === 'OUTBOUND') {
+    const localMatch = await findLocalSendMatch(tenantId, provider, pm);
+    if (localMatch) {
+      await prisma.mailMessage.update({
+        where: { id: localMatch.id },
+        data: {
+          externalId: pm.externalId,
+          conversationId: pm.conversationId || pm.externalId,
+          internetMessageId: pm.internetMessageId || null,
+        },
+      });
+      return 'updated';
+    }
+  }
 
   let clientId = existing?.clientId ?? null;
   if (!clientId) {
@@ -353,11 +417,28 @@ export async function syncMailbox(tenantId: string): Promise<{
   } catch (e: any) {
     const errorMsg = e?.message || 'Sync failed';
     logger.warn(`Mailbox sync failed for tenant ${tenantId}: ${errorMsg}`);
+
+    // F3: Graph delta tokens 410 (resyncRequired) and Gmail stale historyIds
+    // 404 — both mean the stored delta cursor is dead and every future tick
+    // will throw the same way forever unless we drop it. Null the delta
+    // links so the next tick does a fresh full sync instead of self-wedging.
+    const statusCode = e?.statusCode;
+    const isDeltaInvalidation = statusCode === 410 || statusCode === 404;
+    const lastSyncError = isDeltaInvalidation ? `delta reset: ${errorMsg}` : errorMsg;
+    const deltaResetFields = isDeltaInvalidation ? { inboxDeltaLink: null, sentDeltaLink: null } : {};
+
     await prisma.mailboxSyncState
       .upsert({
         where: { tenantId },
-        create: { tenantId, provider, lastSyncAt: new Date(), lastSyncOk: false, lastSyncError: errorMsg },
-        update: { lastSyncAt: new Date(), lastSyncOk: false, lastSyncError: errorMsg },
+        create: {
+          tenantId,
+          provider,
+          lastSyncAt: new Date(),
+          lastSyncOk: false,
+          lastSyncError,
+          ...deltaResetFields,
+        },
+        update: { lastSyncAt: new Date(), lastSyncOk: false, lastSyncError, ...deltaResetFields },
       })
       .catch(() => {});
     return { imported, updated, ok: false, error: errorMsg };
@@ -497,7 +578,10 @@ async function sendMailboxMessageInternal(
         replyToExternalId: repliedTo?.externalId,
         inReplyToInternetMessageId: repliedTo?.internetMessageId || undefined,
       });
-      externalId = result.externalId || randomUUID();
+      // No externalId in the response (e.g. Graph 202 with no body) means we
+      // don't yet know the provider's real id — tag the placeholder so the
+      // next sentitems sync can reconcile it instead of duplicating (F2).
+      externalId = result.externalId || `${LOCAL_SEND_PREFIX}${randomUUID()}`;
     } catch (e: any) {
       sent = false;
       error = e?.message || 'Send failed';
@@ -554,13 +638,17 @@ async function sendMailboxMessageInternal(
   return { dto: toDto(row, clientNames), sent, error };
 }
 
+/**
+ * Surfaces `sent`/`error` alongside the DTO (not just the DTO) so the route
+ * can tell the caller a send was deferred rather than silently reporting
+ * success — see comms.ts POST /mailbox/send.
+ */
 export async function sendMailboxMessage(
   tenantId: string,
   userId: string | null | undefined,
   spec: SendMailboxSpec
-): Promise<MailMessageDto> {
-  const { dto } = await sendMailboxMessageInternal(tenantId, userId, spec);
-  return dto;
+): Promise<{ dto: MailMessageDto; sent: boolean; error?: string }> {
+  return sendMailboxMessageInternal(tenantId, userId, spec);
 }
 
 // ==================== markMailboxRead ====================
