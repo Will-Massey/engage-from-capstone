@@ -214,6 +214,15 @@ describe('GET /api/comms/mailbox/messages — pagination', () => {
     await request(app()).get('/api/comms/mailbox/messages');
     expect(listMailboxMessages).toHaveBeenCalledWith('t1', expect.objectContaining({ limit: 50 }));
   });
+
+  it('returns 400 (not 500) when the cursor is garbage or stale', async () => {
+    listMailboxMessages.mockRejectedValue(new Error('INVALID_CURSOR'));
+
+    const res = await request(app()).get('/api/comms/mailbox/messages?cursor=not-a-real-id');
+
+    expect(res.status).toBe(400);
+    expect(res.body.success).toBe(false);
+  });
 });
 
 describe('GET /api/comms/mailbox/messages/:id/thread', () => {

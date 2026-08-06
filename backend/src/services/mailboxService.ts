@@ -397,13 +397,25 @@ export async function listMailboxMessages(
     ];
   }
 
-  const rows = await prisma.mailMessage.findMany({
-    where,
-    orderBy: [{ receivedAt: 'desc' }, { id: 'desc' }],
-    take: limit + 1,
-    include: { attachments: true },
-    ...(opts.cursor ? { cursor: { id: opts.cursor }, skip: 1 } : {}),
-  });
+  let rows;
+  try {
+    rows = await prisma.mailMessage.findMany({
+      where,
+      orderBy: [{ receivedAt: 'desc' }, { id: 'desc' }],
+      take: limit + 1,
+      include: { attachments: true },
+      ...(opts.cursor ? { cursor: { id: opts.cursor }, skip: 1 } : {}),
+    });
+  } catch (e: any) {
+    // Prisma throws P2025 ("record required but not found") when the cursor
+    // row doesn't exist (garbage id, or it belonged to another tenant) —
+    // that's a client input error, not a server fault. Any other error
+    // still propagates as-is.
+    if (opts.cursor && e?.code === 'P2025') {
+      throw new Error('INVALID_CURSOR');
+    }
+    throw e;
+  }
 
   const hasMore = rows.length > limit;
   const page = hasMore ? rows.slice(0, limit) : rows;

@@ -16,7 +16,7 @@ const prismaMock = {
     count: jest.fn(),
   },
   mailboxSyncState: { findUnique: jest.fn(), upsert: jest.fn() },
-  mailAttachment: { deleteMany: jest.fn(), createMany: jest.fn() },
+  mailAttachment: { deleteMany: jest.fn(), createMany: jest.fn(), findFirst: jest.fn() },
 };
 
 jest.mock('../../config/database.js', () => ({ prisma: prismaMock }));
@@ -49,6 +49,7 @@ import {
   sendMailboxMessage,
   seedDevInboundIfEmpty,
   getMailboxConnection,
+  fetchMailAttachment,
 } from '../mailboxService.js';
 
 const ORIGINAL_NODE_ENV = process.env.NODE_ENV;
@@ -420,6 +421,106 @@ describe('listMailboxMessages', () => {
     expect(prismaMock.mailMessage.findMany).toHaveBeenCalledWith(
       expect.objectContaining({ include: { attachments: true } })
     );
+  });
+
+  it('rejects with INVALID_CURSOR (not the raw Prisma error) when the cursor row does not exist', async () => {
+    const p2025 = Object.assign(
+      new Error(
+        'An operation failed because it depends on one or more records that were required but not found.'
+      ),
+      { code: 'P2025', clientVersion: '5.0.0' }
+    );
+    prismaMock.mailMessage.findMany.mockRejectedValue(p2025);
+
+    await expect(
+      listMailboxMessages('t1', { limit: 5, cursor: 'garbage-or-stale-id' })
+    ).rejects.toThrow('INVALID_CURSOR');
+  });
+
+  it('lets a P2025 with no cursor in play propagate unchanged (not misclassified as a cursor error)', async () => {
+    const p2025 = Object.assign(new Error('unrelated not-found'), { code: 'P2025' });
+    prismaMock.mailMessage.findMany.mockRejectedValue(p2025);
+
+    await expect(listMailboxMessages('t1', { limit: 5 })).rejects.toThrow('unrelated not-found');
+  });
+
+  it('propagates non-cursor errors as-is', async () => {
+    prismaMock.mailMessage.findMany.mockRejectedValue(new Error('connection reset'));
+
+    await expect(
+      listMailboxMessages('t1', { limit: 5, cursor: 'm1' })
+    ).rejects.toThrow('connection reset');
+  });
+});
+
+describe('fetchMailAttachment', () => {
+  it('resolves the message + attachment and fetches bytes from the provider by externalId', async () => {
+    prismaMock.mailMessage.findFirst.mockResolvedValue({ id: 'm1', externalId: 'ext-msg-1' });
+    prismaMock.mailAttachment.findFirst.mockResolvedValue({
+      externalId: 'ext-att-1',
+      name: 'invoice.pdf',
+      contentType: 'application/pdf',
+    });
+    loadTenantEmailContextMock.mockResolvedValue({
+      tenantId: 't1',
+      tenantName: 'Firm',
+      email: { provider: 'gmail', gmail: { user: 'firm@gmail.com', refreshToken: 'r1' } },
+    });
+    const fetchAttachment = jest.fn().mockResolvedValue({
+      name: 'invoice.pdf',
+      contentType: 'application/pdf',
+      content: Buffer.from('bytes'),
+    });
+    createGmailMailClientMock.mockResolvedValue({ fetchAttachment });
+
+    const result = await fetchMailAttachment('t1', 'm1', 'a1');
+
+    expect(prismaMock.mailMessage.findFirst).toHaveBeenCalledWith(
+      expect.objectContaining({ where: { id: 'm1', tenantId: 't1' } })
+    );
+    expect(prismaMock.mailAttachment.findFirst).toHaveBeenCalledWith(
+      expect.objectContaining({ where: { id: 'a1', messageId: 'm1' } })
+    );
+    expect(fetchAttachment).toHaveBeenCalledWith('ext-msg-1', 'ext-att-1');
+    expect(result).toEqual({
+      name: 'invoice.pdf',
+      contentType: 'application/pdf',
+      content: Buffer.from('bytes'),
+    });
+  });
+
+  it('returns null when the message belongs to another tenant (or does not exist)', async () => {
+    prismaMock.mailMessage.findFirst.mockResolvedValue(null);
+
+    const result = await fetchMailAttachment('t1', 'cross-tenant-m1', 'a1');
+
+    expect(result).toBeNull();
+    expect(prismaMock.mailAttachment.findFirst).not.toHaveBeenCalled();
+  });
+
+  it('returns null when the attachmentId does not belong to the message', async () => {
+    prismaMock.mailMessage.findFirst.mockResolvedValue({ id: 'm1', externalId: 'ext-msg-1' });
+    prismaMock.mailAttachment.findFirst.mockResolvedValue(null);
+
+    const result = await fetchMailAttachment('t1', 'm1', 'unknown-attachment');
+
+    expect(result).toBeNull();
+  });
+
+  it('returns null when no mail provider is connected for the tenant', async () => {
+    prismaMock.mailMessage.findFirst.mockResolvedValue({ id: 'm1', externalId: 'ext-msg-1' });
+    prismaMock.mailAttachment.findFirst.mockResolvedValue({
+      externalId: 'ext-att-1',
+      name: 'invoice.pdf',
+      contentType: 'application/pdf',
+    });
+    loadTenantEmailContextMock.mockResolvedValue({ tenantId: 't1', tenantName: 'Firm', email: {} });
+
+    const result = await fetchMailAttachment('t1', 'm1', 'a1');
+
+    expect(result).toBeNull();
+    expect(createGmailMailClientMock).not.toHaveBeenCalled();
+    expect(createGraphMailClientMock).not.toHaveBeenCalled();
   });
 });
 

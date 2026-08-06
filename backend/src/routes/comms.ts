@@ -314,13 +314,22 @@ router.get(
     const limit = Math.min(Number.isFinite(limitRaw) && limitRaw > 0 ? limitRaw : 50, 100);
     const cursor = req.query.cursor ? String(req.query.cursor) : undefined;
 
-    const { messages, nextCursor } = await listMailboxMessages(req.tenantId!, {
-      q: q || undefined,
-      unread: unread || undefined,
-      clientId,
-      limit,
-      cursor,
-    });
+    let result: Awaited<ReturnType<typeof listMailboxMessages>>;
+    try {
+      result = await listMailboxMessages(req.tenantId!, {
+        q: q || undefined,
+        unread: unread || undefined,
+        clientId,
+        limit,
+        cursor,
+      });
+    } catch (e: any) {
+      if (e?.message === 'INVALID_CURSOR') {
+        throw new ApiError('VALIDATION_ERROR', 'Invalid cursor', 400);
+      }
+      throw e;
+    }
+    const { messages, nextCursor } = result;
     const connection = await getMailboxConnection(req.tenantId!);
     res.json({
       success: true,
