@@ -113,4 +113,15 @@ describe('POST /api/webhooks/graph-mail', () => {
     expect(res.status).toBe(202);
     expect(syncMailboxMock).not.toHaveBeenCalled();
   });
+
+  it('still responds 202 and does not sync when the clientState lookup itself throws (DB hiccup)', async () => {
+    mailboxSyncStateFindFirst.mockRejectedValue(new Error('connection terminated'));
+
+    const res = await request(app())
+      .post('/api/webhooks/graph-mail')
+      .send({ value: [{ subscriptionId: 'sub-1', clientState: 'good-client-state' }] });
+
+    expect(res.status).toBe(202);
+    expect(syncMailboxMock).not.toHaveBeenCalled();
+  });
 });
