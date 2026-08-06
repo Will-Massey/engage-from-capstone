@@ -1275,19 +1275,37 @@ const ClientDetail = () => {
                           : ''}
                       </p>
                     </div>
-                    {f.jobId && (
-                      <Link
-                        to={`/jobs/${f.jobId}`}
-                        className="text-xs text-primary-600 hover:underline shrink-0"
+                    <div className="flex items-center gap-3 shrink-0">
+                      <a
+                        href={`/api/jobs/files/${f.id}/download`}
+                        className="text-xs font-medium text-primary-600 hover:underline"
                       >
-                        View job
-                      </Link>
-                    )}
+                        Download
+                      </a>
+                      {f.jobId && (
+                        <Link
+                          to={`/jobs/${f.jobId}`}
+                          className="text-xs text-primary-600 hover:underline"
+                        >
+                          View job
+                        </Link>
+                      )}
+                    </div>
                   </li>
                 ))}
               </ul>
             )}
           </div>
+
+          {client && (
+            <AmlPartnerPanel
+              clientId={client.id}
+              clientName={client.name}
+              amlSubmittedAt={client.amlSubmittedAt}
+              amlCompletedAt={client.amlCompletedAt}
+              onUpdated={() => void refreshPortalOs()}
+            />
+          )}
 
           <DocumentRequestDialog
             open={docRequestDialogOpen}
