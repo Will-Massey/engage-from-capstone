@@ -9,7 +9,9 @@ export const TYPED_SIGNATURE_FONT_LOAD = '48px "Dancing Script"';
 
 export interface TypedSignatureContext {
   font: string;
-  fillStyle: string;
+  // Union matches CanvasRenderingContext2D so a real 2D context satisfies
+  // this interface structurally; the renderer only ever assigns strings.
+  fillStyle: string | CanvasGradient | CanvasPattern;
   textAlign: string;
   textBaseline: string;
   clearRect(x: number, y: number, w: number, h: number): void;
