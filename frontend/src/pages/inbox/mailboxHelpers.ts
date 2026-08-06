@@ -23,6 +23,22 @@ export function formatAttachmentSize(bytes: number): string {
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
 
+const EMAIL_PATTERN = /[^\s<>",]+@[^\s<>",]+\.[^\s<>",]+/;
+
+/**
+ * Extracts a bare email address from a flattened display-form string, e.g.
+ * "Emma Wilson Design Studio <emma@ewdesign.co.uk>" — the mailbox DTO's
+ * from/to/cc fields are display strings, not bare addresses, and POSTing
+ * one straight to /mailbox/send's `z.string().email()` 400s. Also accepts a
+ * bare address as-is. Returns '' when nothing parseable so the caller can
+ * disable send instead of firing a doomed request.
+ */
+export function extractEmailAddress(display: string | null | undefined): string {
+  if (!display) return '';
+  const match = display.match(EMAIL_PATTERN);
+  return match ? match[0].trim() : '';
+}
+
 export type MailboxSyncHealth = {
   lastSyncAt: string | null;
   lastSyncOk: boolean | null;

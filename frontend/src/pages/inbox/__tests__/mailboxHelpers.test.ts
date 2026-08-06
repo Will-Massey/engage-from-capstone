@@ -10,7 +10,8 @@ vi.mock('dompurify', () => ({
   default: { sanitize: (html: string, opts: unknown) => sanitizeMock(html, opts) },
 }));
 
-const { sanitizeMailHtml, formatAttachmentSize, formatSyncHealth } = await import('../mailboxHelpers');
+const { sanitizeMailHtml, formatAttachmentSize, formatSyncHealth, extractEmailAddress } =
+  await import('../mailboxHelpers');
 
 describe('sanitizeMailHtml', () => {
   it('returns empty string for null/undefined/empty input without calling DOMPurify', () => {
@@ -54,6 +55,37 @@ describe('formatAttachmentSize', () => {
 
   it('formats megabytes with one decimal', () => {
     expect(formatAttachmentSize(1.5 * 1024 * 1024)).toBe('1.5 MB');
+  });
+});
+
+describe('extractEmailAddress', () => {
+  it('extracts the address from "Name <email>" display form', () => {
+    expect(extractEmailAddress('Emma Wilson Design Studio <emma@ewdesign.co.uk>')).toBe(
+      'emma@ewdesign.co.uk'
+    );
+  });
+
+  it('accepts a bare address as-is', () => {
+    expect(extractEmailAddress('emma@ewdesign.co.uk')).toBe('emma@ewdesign.co.uk');
+  });
+
+  it('trims surrounding whitespace', () => {
+    expect(extractEmailAddress('  emma@ewdesign.co.uk  ')).toBe('emma@ewdesign.co.uk');
+    expect(extractEmailAddress('  Emma Wilson  <emma@ewdesign.co.uk>  ')).toBe(
+      'emma@ewdesign.co.uk'
+    );
+  });
+
+  it('returns "" for junk / unparseable input', () => {
+    expect(extractEmailAddress('Not an email address')).toBe('');
+    expect(extractEmailAddress('')).toBe('');
+    expect(extractEmailAddress(null)).toBe('');
+    expect(extractEmailAddress(undefined)).toBe('');
+    expect(extractEmailAddress('   ')).toBe('');
+  });
+
+  it('picks the first address out of a comma-separated list', () => {
+    expect(extractEmailAddress('a@b.com, c@d.com')).toBe('a@b.com');
   });
 });
 

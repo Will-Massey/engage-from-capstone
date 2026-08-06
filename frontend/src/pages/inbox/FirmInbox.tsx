@@ -17,7 +17,12 @@ import { apiClient } from '../../utils/api';
 import { StatusChip } from '../../components/ui/StatusChip';
 import { MetalCard } from '../../components/ui/MetalTile';
 import { format } from 'date-fns';
-import { sanitizeMailHtml, formatAttachmentSize, formatSyncHealth } from './mailboxHelpers';
+import {
+  sanitizeMailHtml,
+  formatAttachmentSize,
+  formatSyncHealth,
+  extractEmailAddress,
+} from './mailboxHelpers';
 
 type Channel = 'mailbox' | 'all' | 'email' | 'sms' | 'portal';
 
@@ -282,11 +287,23 @@ export default function FirmInbox() {
 
   async function handleReply() {
     if (!selectedMail || !replyBody.trim()) return;
+    // The DTO's from/to fields are flattened display strings (e.g. "Emma
+    // Wilson Design Studio <emma@ewdesign.co.uk>"), not bare addresses —
+    // /mailbox/send's z.string().email() 400s on those, so replies never
+    // sent. Extract the bare address before posting.
+    const to = extractEmailAddress(
+      selectedMail.direction === 'inbound' ? selectedMail.from : selectedMail.to
+    );
+    if (!to) {
+      setError('Could not find a valid reply address on this message');
+      return;
+    }
+    const cc = extractEmailAddress(replyCc) || undefined;
     setSending(true);
     try {
       await apiClient.post('/comms/mailbox/send', {
-        to: selectedMail.direction === 'inbound' ? selectedMail.from : selectedMail.to,
-        cc: replyCc.trim() || undefined,
+        to,
+        cc,
         subject: selectedMail.subject,
         body: replyBody.trim(),
         replyToMessageId: selectedMail.id,
@@ -302,12 +319,17 @@ export default function FirmInbox() {
   }
 
   async function handleCompose() {
-    if (!compose.to.trim() || !compose.subject.trim() || !compose.body.trim()) return;
+    // compose.to is free-typed, so it can carry the same "Name <email>" trap
+    // if a user pastes a display-form address — run it through the same
+    // extractor as the reply path rather than trusting it's already bare.
+    const to = extractEmailAddress(compose.to);
+    if (!to || !compose.subject.trim() || !compose.body.trim()) return;
+    const cc = extractEmailAddress(compose.cc) || undefined;
     setSending(true);
     try {
       await apiClient.post('/comms/mailbox/send', {
-        to: compose.to.trim(),
-        cc: compose.cc.trim() || undefined,
+        to,
+        cc,
         subject: compose.subject.trim(),
         body: compose.body.trim(),
       });
@@ -404,6 +426,16 @@ export default function FirmInbox() {
   }, [channel]);
 
   const healthInfo = useMemo(() => formatSyncHealth(connection?.health), [connection]);
+  const replyToAddress = useMemo(
+    () =>
+      selectedMail
+        ? extractEmailAddress(
+            selectedMail.direction === 'inbound' ? selectedMail.from : selectedMail.to
+          )
+        : '',
+    [selectedMail]
+  );
+  const composeToAddress = useMemo(() => extractEmailAddress(compose.to), [compose.to]);
 
   return (
     <div className="space-y-5">
@@ -678,7 +710,8 @@ export default function FirmInbox() {
                     <button
                       type="button"
                       className="btn-primary text-sm"
-                      disabled={sending}
+                      disabled={sending || !composeToAddress}
+                      title={!composeToAddress ? 'Enter a valid To address' : undefined}
                       onClick={() => void handleCompose()}
                     >
                       {sending ? 'Sending…' : 'Send'}
@@ -937,7 +970,8 @@ export default function FirmInbox() {
                   <button
                     type="button"
                     className="btn-primary text-sm"
-                    disabled={sending || !replyBody.trim()}
+                    disabled={sending || !replyBody.trim() || !replyToAddress}
+                    title={!replyToAddress ? 'No valid reply address found on this message' : undefined}
                     onClick={() => void handleReply()}
                   >
                     {sending ? 'Sending…' : 'Send reply'}
