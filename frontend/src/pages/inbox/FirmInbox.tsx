@@ -185,16 +185,23 @@ export default function FirmInbox() {
     }
   }, []);
 
+  // Guards against out-of-order thread fetches: if the user clicks message A
+  // then quickly message B, A's fetch may resolve after B's. Each call marks
+  // itself the "latest" request; a resolving fetch only commits state if it's
+  // still the latest by the time it lands, so a slow A can never clobber B.
+  const activeThreadRequestRef = useRef<string | null>(null);
   const refreshThread = useCallback(async (id: string) => {
+    activeThreadRequestRef.current = id;
     setThreadLoading(true);
     try {
       const res = (await apiClient.get(`/comms/mailbox/messages/${id}/thread`)) as any;
+      if (activeThreadRequestRef.current !== id) return; // superseded by a newer selection
       const data = res?.data ?? res;
       setThreadMessages(data?.messages || []);
     } catch {
       /* keep whatever thread state we already had */
     } finally {
-      setThreadLoading(false);
+      if (activeThreadRequestRef.current === id) setThreadLoading(false);
     }
   }, []);
 
