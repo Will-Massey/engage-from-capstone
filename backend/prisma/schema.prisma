@@ -212,6 +212,77 @@ enum EmailDeliveryStatus {
   SUPPRESSED
 }
 
+enum MailDirection {
+  INBOUND
+  OUTBOUND
+}
+
+model MailMessage {
+  id                String        @id @default(uuid())
+  provider          EmailProvider
+  externalId        String        // Graph message id / Gmail message id / local uuid
+  conversationId    String?       // Graph conversationId / Gmail threadId
+  internetMessageId String?       // RFC 5322 Message-ID
+  direction         MailDirection
+  fromAddress       String
+  toAddresses       String        // comma-separated
+  ccAddresses       String?
+  subject           String
+  bodyText          String        @default("")
+  bodyHtml          String?
+  snippet           String?
+  isRead            Boolean       @default(false)
+  hasAttachments    Boolean       @default(false)
+  receivedAt        DateTime      // provider receipt time (outbound: sent time)
+  createdAt         DateTime      @default(now())
+  updatedAt         DateTime      @updatedAt
+
+  tenantId String
+  tenant   Tenant  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  clientId String?
+  client   Client? @relation(fields: [clientId], references: [id], onDelete: SetNull)
+  jobId    String?
+  job      Job?    @relation(fields: [jobId], references: [id], onDelete: SetNull)
+
+  attachments MailAttachment[]
+
+  @@unique([tenantId, provider, externalId])
+  @@index([tenantId, receivedAt(sort: Desc)])
+  @@index([tenantId, conversationId])
+  @@index([tenantId, isRead])
+  @@index([clientId])
+}
+
+model MailAttachment {
+  id          String  @id @default(uuid())
+  externalId  String  // provider attachment id
+  name        String
+  contentType String
+  sizeBytes   Int
+  isInline    Boolean @default(false)
+
+  messageId String
+  message   MailMessage @relation(fields: [messageId], references: [id], onDelete: Cascade)
+
+  @@index([messageId])
+}
+
+model MailboxSyncState {
+  id                 String    @id @default(uuid())
+  provider           EmailProvider
+  inboxDeltaLink     String?   // Graph delta link / Gmail historyId
+  sentDeltaLink      String?
+  lastSyncAt         DateTime?
+  lastSyncOk         Boolean?
+  lastSyncError      String?
+  subscriptionId     String?   // Graph webhook subscription
+  subscriptionExpiry DateTime?
+  clientState        String?   // Graph webhook validation token
+
+  tenantId String @unique
+  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+}
+
 // ==================== TENANT MODELS ====================
 
 model FirmGroup {
@@ -286,6 +357,8 @@ model Tenant {
   portalFiles           PortalFile[]
   practiceLetters       PracticeLetter[]
   documentRequests      DocumentRequest[]
+  mailMessages          MailMessage[]
+  mailboxSyncState      MailboxSyncState?
 
   @@index([subdomain])
   @@index([isActive])
@@ -480,6 +553,7 @@ model Client {
   portalFiles PortalFile[]
   practiceLetters PracticeLetter[]
   documentRequests DocumentRequest[]
+  mailMessages    MailMessage[]
 
   @@unique([tenantId, contactEmail])
   @@index([tenantId])
@@ -1231,6 +1305,7 @@ model Job {
   activities  JobActivity[]
   practiceLetters PracticeLetter[]
   documentRequests DocumentRequest[]
+  mailMessages    MailMessage[]
 
   @@unique([tenantId, reference])
   @@index([tenantId])
