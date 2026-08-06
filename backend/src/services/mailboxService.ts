@@ -7,12 +7,6 @@
  * Compose/reply sends via the provider client when connected, falling back to
  * tenantMailerSend (platform email) when not — either way an OUTBOUND
  * MailMessage row is always written for two-way history.
- *
- * A handful of exports also carry a *legacy* call shape (old positional args
- * / old field names) purely so `backend/src/routes/comms.ts` — which Task 5
- * rewrites — keeps compiling and working against the old ActivityLog-era
- * contract until then. Those shims are called out below; new code should use
- * the brief-binding shapes only.
  */
 
 import { randomUUID } from 'crypto';
@@ -307,8 +301,6 @@ export async function syncMailbox(tenantId: string): Promise<{
   updated: number;
   ok: boolean;
   error?: string;
-  /** extra, non-binding field kept for the pre-Task-5 comms.ts `.message` read */
-  message: string;
 }> {
   const ctx = await loadTenantEmailContext(tenantId);
   const normalized = normalizeMailProvider(ctx?.email.provider);
@@ -316,16 +308,7 @@ export async function syncMailbox(tenantId: string): Promise<{
 
   if (!providerClient) {
     const seeded = await seedDevInboundIfEmpty(tenantId);
-    return {
-      imported: seeded,
-      updated: 0,
-      ok: false,
-      error: 'NOT_CONNECTED',
-      message:
-        seeded > 0
-          ? `Local mailbox ready — ${seeded} client threads seeded (connect Gmail/M365 in Settings for live two-way sync)`
-          : 'Mailbox not connected — connect Gmail or Microsoft 365 in Settings for live sync.',
-    };
+    return { imported: seeded, updated: 0, ok: false, error: 'NOT_CONNECTED' };
   }
 
   const provider = normalized as EmailProvider;
@@ -366,7 +349,7 @@ export async function syncMailbox(tenantId: string): Promise<{
       },
     });
 
-    return { imported, updated, ok: true, message: `Synced ${imported} new, ${updated} updated` };
+    return { imported, updated, ok: true };
   } catch (e: any) {
     const errorMsg = e?.message || 'Sync failed';
     logger.warn(`Mailbox sync failed for tenant ${tenantId}: ${errorMsg}`);
@@ -377,7 +360,7 @@ export async function syncMailbox(tenantId: string): Promise<{
         update: { lastSyncAt: new Date(), lastSyncOk: false, lastSyncError: errorMsg },
       })
       .catch(() => {});
-    return { imported, updated, ok: false, error: errorMsg, message: `Sync failed: ${errorMsg}` };
+    return { imported, updated, ok: false, error: errorMsg };
   }
 }
 
@@ -389,19 +372,9 @@ export type MailboxListOpts = {
   clientId?: string;
   limit?: number;
   cursor?: string;
-  /** @deprecated legacy alias for `unread` — kept for pre-Task-5 comms.ts compatibility */
-  unreadOnly?: boolean;
 };
 
-/**
- * The real return value is a plain array carrying two extra properties
- * (`messages`, `nextCursor`) so it satisfies both:
- *  - the brief-binding shape `{ messages, nextCursor }` Task 5 will consume
- *  - the legacy `MailMessageDto[]` shape comms.ts/clara.ts already consume
- *    (`.filter`, `.find`, `.length`, etc.) without touching those files.
- * Drop this shim once comms.ts is rewritten in Task 5.
- */
-export type MailboxMessagesResult = MailMessageDto[] & {
+export type MailboxMessagesResult = {
   messages: MailMessageDto[];
   nextCursor: string | null;
 };
@@ -411,7 +384,7 @@ export async function listMailboxMessages(
   opts: MailboxListOpts = {}
 ): Promise<MailboxMessagesResult> {
   const limit = Math.min(Math.max(opts.limit || 50, 1), 150);
-  const unread = opts.unread ?? opts.unreadOnly;
+  const unread = opts.unread;
 
   const where: Record<string, unknown> = { tenantId };
   if (unread) where.isRead = false;
@@ -438,10 +411,7 @@ export async function listMailboxMessages(
   const messages = page.map((r) => toDto(r, clientNames));
   const nextCursor = hasMore ? page[page.length - 1].id : null;
 
-  const result = messages as MailboxMessagesResult;
-  result.messages = messages;
-  result.nextCursor = nextCursor;
-  return result;
+  return { messages, nextCursor };
 }
 
 // ==================== getThread ====================
@@ -470,16 +440,6 @@ export interface SendMailboxSpec {
   subject: string;
   body: string;
   replyToMessageId?: string;
-}
-
-interface LegacySendParams {
-  tenantId: string;
-  userId?: string | null;
-  to: string;
-  subject: string;
-  body: string;
-  clientId?: string | null;
-  inReplyToId?: string | null;
 }
 
 async function sendMailboxMessageInternal(
@@ -572,35 +532,22 @@ async function sendMailboxMessageInternal(
     },
   });
 
+  if (!sent && error) {
+    logger.warn(
+      `Mailbox send failed for tenant ${tenantId}, local history still recorded: ${error}`
+    );
+  }
+
   const clientNames = clientId ? await attachClientNames([row], tenantId) : new Map<string, string>();
   return { dto: toDto(row, clientNames), sent, error };
 }
 
-export function sendMailboxMessage(
+export async function sendMailboxMessage(
   tenantId: string,
   userId: string | null | undefined,
   spec: SendMailboxSpec
-): Promise<MailMessageDto>;
-export function sendMailboxMessage(
-  params: LegacySendParams
-): Promise<{ id: string; sent: boolean; error?: string }>;
-export async function sendMailboxMessage(a: any, b?: any, c?: any): Promise<any> {
-  if (typeof a === 'object' && a !== null) {
-    const params = a as LegacySendParams;
-    const { dto, sent, error } = await sendMailboxMessageInternal(
-      params.tenantId,
-      params.userId ?? null,
-      {
-        to: params.to,
-        subject: params.subject,
-        body: params.body,
-        replyToMessageId: params.inReplyToId || undefined,
-      },
-      params.clientId ?? null
-    );
-    return { id: dto.id, sent, error };
-  }
-  const { dto } = await sendMailboxMessageInternal(a as string, b, c as SendMailboxSpec);
+): Promise<MailMessageDto> {
+  const { dto } = await sendMailboxMessageInternal(tenantId, userId, spec);
   return dto;
 }
 
@@ -625,22 +572,12 @@ async function markMailboxReadCore(tenantId: string, messageId: string, read: bo
   }
 }
 
-export function markMailboxRead(tenantId: string, messageId: string): Promise<boolean>;
-export function markMailboxRead(tenantId: string, messageId: string, read: boolean): Promise<void>;
+/** Throws `MESSAGE_NOT_FOUND` when the message doesn't exist in this tenant. */
 export async function markMailboxRead(
   tenantId: string,
   messageId: string,
-  read?: boolean
-): Promise<boolean | void> {
-  if (read === undefined) {
-    try {
-      await markMailboxReadCore(tenantId, messageId, true);
-      return true;
-    } catch (e: any) {
-      if (e?.message === 'MESSAGE_NOT_FOUND') return false;
-      throw e;
-    }
-  }
+  read = true
+): Promise<void> {
   return markMailboxReadCore(tenantId, messageId, read);
 }
 
@@ -680,23 +617,11 @@ export async function linkMessageClient(
   await linkMessageClientInternal(tenantId, messageId, clientId);
 }
 
-/** @deprecated legacy shape kept for pre-Task-5 comms.ts compatibility — use linkMessageClient. */
-export async function linkMailboxMessageToClient(params: {
-  tenantId: string;
-  messageId: string;
-  clientId: string;
-}): Promise<{ updated: number; clientName: string | null }> {
-  return linkMessageClientInternal(params.tenantId, params.messageId, params.clientId);
-}
-
 // ==================== getMailboxUnreadCount ====================
 
 export async function getMailboxUnreadCount(tenantId: string): Promise<number> {
   return prisma.mailMessage.count({ where: { tenantId, direction: 'INBOUND', isRead: false } });
 }
-
-/** @deprecated legacy name kept for pre-Task-5 comms.ts compatibility — use getMailboxUnreadCount. */
-export const countUnreadMailbox = getMailboxUnreadCount;
 
 // ==================== getMessageContext ====================
 
@@ -760,4 +685,39 @@ export async function getMessageContext(tenantId: string, messageId: string): Pr
     : [];
 
   return { message, client, jobs, pendingForms };
+}
+
+// ==================== fetchMailAttachment ====================
+
+/**
+ * Resolves a MailAttachment row for (tenantId, messageId, attachmentId) and
+ * fetches its bytes from the tenant's connected provider. Routes never touch
+ * provider clients directly. Returns null when the message/attachment don't
+ * exist, belong to another tenant, or no provider is connected — the caller
+ * (route) turns that into a 404.
+ */
+export async function fetchMailAttachment(
+  tenantId: string,
+  messageId: string,
+  attachmentId: string
+): Promise<{ name: string; contentType: string; content: Buffer } | null> {
+  const message = await prisma.mailMessage.findFirst({
+    where: { id: messageId, tenantId },
+    select: { id: true, externalId: true },
+  });
+  if (!message) return null;
+
+  const attachment = await prisma.mailAttachment.findFirst({
+    where: { id: attachmentId, messageId: message.id },
+    select: { externalId: true, name: true, contentType: true },
+  });
+  if (!attachment) return null;
+
+  const ctx = await loadTenantEmailContext(tenantId);
+  const normalized = normalizeMailProvider(ctx?.email.provider);
+  const providerClient = await buildProviderClient(tenantId, normalized);
+  if (!providerClient) return null;
+
+  const result = await providerClient.fetchAttachment(message.externalId, attachment.externalId);
+  return { name: attachment.name, contentType: attachment.contentType, content: result.content };
 }

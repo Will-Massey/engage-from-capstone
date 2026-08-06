@@ -1,24 +1,42 @@
 /**
  * Firm-wide communications inbox — EmailLog + portal messages + SMS activity.
- * Two-way mailbox: sync / compose / threads via mailboxService.
+ * Two-way mailbox: sync / compose / threads / attachments via mailboxService.
  */
 
 import { Router } from 'express';
 import { z } from 'zod';
-import { authenticate } from '../middleware/auth.js';
+import { authenticate, authorize } from '../middleware/auth.js';
 import { asyncHandler, ApiError } from '../middleware/errorHandler.js';
 import { prisma } from '../config/database.js';
 import {
   getMailboxConnection,
   listMailboxMessages,
+  getThread,
   syncMailbox,
   sendMailboxMessage,
   markMailboxRead,
-  linkMailboxMessageToClient,
-  countUnreadMailbox,
+  linkMessageClient,
+  getMailboxUnreadCount,
+  getMessageContext,
+  fetchMailAttachment,
 } from '../services/mailboxService.js';
 
 const router = Router();
+
+/** Full six-role set — every practice role can read the mailbox. */
+const MAILBOX_READ_ROLES = ['ADMIN', 'PARTNER', 'MD', 'MANAGER', 'SENIOR', 'JUNIOR'] as const;
+/** Mutating mailbox actions (sync, send, read-state, link-client, create-task, assign-form) exclude JUNIOR. */
+const MAILBOX_WRITE_ROLES = ['ADMIN', 'PARTNER', 'MD', 'MANAGER', 'SENIOR'] as const;
+
+/** ASCII-safe filename for Content-Disposition (non-Latin-1 chars 500 the header). */
+function asciiFilename(name: string, fallback: string): string {
+  const cleaned = name
+    .normalize('NFKD')
+    .replace(/[^\x20-\x7E]/g, '')
+    .replace(/["\\]/g, '')
+    .trim();
+  return cleaned || fallback;
+}
 
 export type InboxItem = {
   id: string;
@@ -41,6 +59,7 @@ export type InboxItem = {
 router.get(
   '/inbox',
   authenticate,
+  authorize(...MAILBOX_READ_ROLES),
   asyncHandler(async (req, res) => {
     const tenantId = req.tenantId!;
     const limit = Math.min(parseInt(String(req.query.limit || '80'), 10) || 80, 150);
@@ -249,6 +268,7 @@ router.get(
 router.get(
   '/stats',
   authenticate,
+  authorize(...MAILBOX_READ_ROLES),
   asyncHandler(async (req, res) => {
     const tenantId = req.tenantId!;
     const dayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
@@ -261,7 +281,7 @@ router.get(
           createdAt: { gte: dayAgo },
         },
       }),
-      countUnreadMailbox(tenantId),
+      getMailboxUnreadCount(tenantId),
     ]);
     res.json({
       success: true,
@@ -275,6 +295,7 @@ router.get(
 router.get(
   '/mailbox/connection',
   authenticate,
+  authorize(...MAILBOX_READ_ROLES),
   asyncHandler(async (req, res) => {
     const connection = await getMailboxConnection(req.tenantId!);
     res.json({ success: true, data: connection });
@@ -284,16 +305,28 @@ router.get(
 router.get(
   '/mailbox/messages',
   authenticate,
+  authorize(...MAILBOX_READ_ROLES),
   asyncHandler(async (req, res) => {
     const q = String(req.query.q || '').trim();
-    const limit = Math.min(parseInt(String(req.query.limit || '80'), 10) || 80, 150);
-    const unreadOnly = req.query.unread === '1' || req.query.unread === 'true';
-    const messages = await listMailboxMessages(req.tenantId!, { limit, q, unreadOnly });
+    const unread = req.query.unread === 'true' || req.query.unread === '1';
+    const clientId = req.query.clientId ? String(req.query.clientId) : undefined;
+    const limitRaw = parseInt(String(req.query.limit || '50'), 10);
+    const limit = Math.min(Number.isFinite(limitRaw) && limitRaw > 0 ? limitRaw : 50, 100);
+    const cursor = req.query.cursor ? String(req.query.cursor) : undefined;
+
+    const { messages, nextCursor } = await listMailboxMessages(req.tenantId!, {
+      q: q || undefined,
+      unread: unread || undefined,
+      clientId,
+      limit,
+      cursor,
+    });
     const connection = await getMailboxConnection(req.tenantId!);
     res.json({
       success: true,
       data: {
         messages,
+        nextCursor,
         connection,
         unread: messages.filter((m) => m.direction === 'inbound' && !m.read).length,
       },
@@ -301,59 +334,101 @@ router.get(
   })
 );
 
+/**
+ * GET /api/comms/mailbox/messages/:id/thread
+ * Full conversation for a message, oldest first.
+ */
+router.get(
+  '/mailbox/messages/:id/thread',
+  authenticate,
+  authorize(...MAILBOX_READ_ROLES),
+  asyncHandler(async (req, res) => {
+    const messages = await getThread(req.tenantId!, req.params.id);
+    if (!messages.length) throw new ApiError('NOT_FOUND', 'Message not found', 404);
+    res.json({ success: true, data: { messages } });
+  })
+);
+
+/**
+ * GET /api/comms/mailbox/messages/:id/attachments/:attachmentId
+ * Stream a mailbox attachment from the provider. Tenant-scoped; 404s when
+ * the message/attachment don't exist or belong to another tenant.
+ */
+router.get(
+  '/mailbox/messages/:id/attachments/:attachmentId',
+  authenticate,
+  authorize(...MAILBOX_READ_ROLES),
+  asyncHandler(async (req, res) => {
+    const attachment = await fetchMailAttachment(
+      req.tenantId!,
+      req.params.id,
+      req.params.attachmentId
+    );
+    if (!attachment) throw new ApiError('NOT_FOUND', 'Attachment not found', 404);
+
+    res.setHeader('Content-Type', attachment.contentType);
+    res.setHeader(
+      'Content-Disposition',
+      `attachment; filename="${asciiFilename(attachment.name, 'attachment')}"`
+    );
+    res.send(attachment.content);
+  })
+);
+
 router.post(
   '/mailbox/sync',
   authenticate,
+  authorize(...MAILBOX_WRITE_ROLES),
   asyncHandler(async (req, res) => {
     const result = await syncMailbox(req.tenantId!);
-    res.json({ success: true, data: result, message: result.message });
+    let message: string;
+    if (result.error === 'NOT_CONNECTED') {
+      message =
+        result.imported > 0
+          ? `Local mailbox ready — ${result.imported} client threads seeded (connect Gmail/M365 in Settings for live two-way sync)`
+          : 'Mailbox not connected — connect Gmail or Microsoft 365 in Settings for live sync.';
+    } else if (result.ok) {
+      message = `Synced ${result.imported} new, ${result.updated} updated`;
+    } else {
+      message = `Sync failed: ${result.error}`;
+    }
+    res.json({ success: true, data: result, message });
   })
 );
+
+const sendMailboxSchema = z.object({
+  to: z.string().email(),
+  cc: z.string().email().optional(),
+  subject: z.string().min(1),
+  body: z.string().min(1),
+  replyToMessageId: z.string().uuid().optional(),
+});
 
 router.post(
   '/mailbox/send',
   authenticate,
+  authorize(...MAILBOX_WRITE_ROLES),
   asyncHandler(async (req, res) => {
-    const schema = z.object({
-      to: z.string().email().or(z.string().min(3).max(320)),
-      subject: z.string().min(1).max(500),
-      body: z.string().min(1).max(20000),
-      clientId: z.string().uuid().optional().nullable(),
-      inReplyToId: z.string().uuid().optional().nullable(),
-    });
-    const body = schema.parse(req.body);
-    const result = await sendMailboxMessage({
-      tenantId: req.tenantId!,
-      userId: req.user?.id,
-      to: body.to,
-      subject: body.subject,
-      body: body.body,
-      clientId: body.clientId,
-      inReplyToId: body.inReplyToId,
-    });
-    if (!result.sent && result.error) {
-      // Still created local history — return 200 with warning
-      res.json({
-        success: true,
-        data: result,
-        message: `Saved to mailbox (send deferred: ${result.error})`,
-      });
-      return;
-    }
-    res.json({
-      success: true,
-      data: result,
-      message: result.sent ? 'Message sent' : 'Message saved',
-    });
+    const body = sendMailboxSchema.parse(req.body);
+    const message = await sendMailboxMessage(req.tenantId!, req.user?.id, body);
+    res.json({ success: true, data: message, message: 'Message sent' });
   })
 );
+
+const readStateSchema = z.object({ read: z.boolean().optional() });
 
 router.post(
   '/mailbox/messages/:id/read',
   authenticate,
+  authorize(...MAILBOX_WRITE_ROLES),
   asyncHandler(async (req, res) => {
-    const ok = await markMailboxRead(req.tenantId!, req.params.id);
-    if (!ok) throw new ApiError('NOT_FOUND', 'Message not found', 404);
+    const body = readStateSchema.parse(req.body || {});
+    try {
+      await markMailboxRead(req.tenantId!, req.params.id, body.read ?? true);
+    } catch (e: any) {
+      if (e?.message === 'MESSAGE_NOT_FOUND') throw new ApiError('NOT_FOUND', 'Message not found', 404);
+      throw e;
+    }
     res.json({ success: true });
   })
 );
@@ -365,20 +440,13 @@ router.post(
 router.post(
   '/mailbox/messages/:id/link-client',
   authenticate,
+  authorize(...MAILBOX_WRITE_ROLES),
   asyncHandler(async (req, res) => {
     const schema = z.object({ clientId: z.string().uuid() });
     const body = schema.parse(req.body);
     try {
-      const result = await linkMailboxMessageToClient({
-        tenantId: req.tenantId!,
-        messageId: req.params.id,
-        clientId: body.clientId,
-      });
-      res.json({
-        success: true,
-        data: result,
-        message: `Linked ${result.updated} message(s) to ${result.clientName}`,
-      });
+      await linkMessageClient(req.tenantId!, req.params.id, body.clientId);
+      res.json({ success: true, message: 'Linked message thread to client' });
     } catch (e: any) {
       if (e?.message === 'CLIENT_NOT_FOUND') {
         throw new ApiError('NOT_FOUND', 'Client not found', 404);
@@ -395,8 +463,9 @@ router.post(
 router.get(
   '/mailbox/unread-count',
   authenticate,
+  authorize(...MAILBOX_READ_ROLES),
   asyncHandler(async (req, res) => {
-    const unread = await countUnreadMailbox(req.tenantId!);
+    const unread = await getMailboxUnreadCount(req.tenantId!);
     res.json({ success: true, data: { unread } });
   })
 );
@@ -408,79 +477,11 @@ router.get(
 router.get(
   '/mailbox/messages/:id/context',
   authenticate,
+  authorize(...MAILBOX_READ_ROLES),
   asyncHandler(async (req, res) => {
-    const tenantId = req.tenantId!;
-    const messages = await listMailboxMessages(tenantId, { limit: 150 });
-    const msg = messages.find((m) => m.id === req.params.id);
-    if (!msg) throw new ApiError('NOT_FOUND', 'Message not found', 404);
-
-    let clientId = msg.clientId;
-    if (!clientId) {
-      // try match from from/to email
-      const addr = (msg.direction === 'inbound' ? msg.from : msg.to)
-        .toLowerCase()
-        .replace(/.*<|>.*/g, '')
-        .trim();
-      if (addr.includes('@')) {
-        const c = await prisma.client.findFirst({
-          where: {
-            tenantId,
-            contactEmail: { equals: addr, mode: 'insensitive' },
-          },
-          select: { id: true },
-        });
-        clientId = c?.id || null;
-      }
-    }
-
-    const client = clientId
-      ? await prisma.client.findFirst({
-          where: { id: clientId, tenantId },
-          select: {
-            id: true,
-            name: true,
-            contactName: true,
-            contactEmail: true,
-            portalToken: true,
-            portalEnabled: true,
-          },
-        })
-      : null;
-
-    const jobs = clientId
-      ? await prisma.job.findMany({
-          where: {
-            tenantId,
-            clientId,
-            isActive: true,
-            boardColumn: { not: 'COMPLETE' },
-          },
-          select: {
-            id: true,
-            reference: true,
-            title: true,
-            boardColumn: true,
-            dueAt: true,
-          },
-          take: 8,
-          orderBy: { updatedAt: 'desc' },
-        })
-      : [];
-
-    const { listAssignments } = await import('../services/practiceFormsService.js');
-    const forms = clientId
-      ? (await listAssignments(tenantId, { clientId })).filter((f) => f.status === 'pending')
-      : [];
-
-    res.json({
-      success: true,
-      data: {
-        message: msg,
-        client,
-        jobs,
-        pendingForms: forms,
-      },
-    });
+    const context = await getMessageContext(req.tenantId!, req.params.id);
+    if (!context.message) throw new ApiError('NOT_FOUND', 'Message not found', 404);
+    res.json({ success: true, data: context });
   })
 );
 
@@ -491,6 +492,7 @@ router.get(
 router.post(
   '/mailbox/messages/:id/create-task',
   authenticate,
+  authorize(...MAILBOX_WRITE_ROLES),
   asyncHandler(async (req, res) => {
     const tenantId = req.tenantId!;
     const schema = z.object({
@@ -498,8 +500,10 @@ router.post(
       clientId: z.string().uuid().optional().nullable(),
     });
     const body = schema.parse(req.body || {});
-    const messages = await listMailboxMessages(tenantId, { limit: 150 });
-    const msg = messages.find((m) => m.id === req.params.id);
+    const msg = await prisma.mailMessage.findFirst({
+      where: { id: req.params.id, tenantId },
+      select: { id: true, subject: true, clientId: true },
+    });
     if (!msg) throw new ApiError('NOT_FOUND', 'Message not found', 404);
 
     const clientId = body.clientId || msg.clientId;
@@ -555,6 +559,7 @@ router.post(
 router.post(
   '/mailbox/messages/:id/assign-form',
   authenticate,
+  authorize(...MAILBOX_WRITE_ROLES),
   asyncHandler(async (req, res) => {
     const tenantId = req.tenantId!;
     const schema = z.object({
@@ -563,8 +568,10 @@ router.post(
       dueInDays: z.number().int().min(1).max(90).optional().default(7),
     });
     const body = schema.parse(req.body);
-    const messages = await listMailboxMessages(tenantId, { limit: 150 });
-    const msg = messages.find((m) => m.id === req.params.id);
+    const msg = await prisma.mailMessage.findFirst({
+      where: { id: req.params.id, tenantId },
+      select: { id: true, clientId: true },
+    });
     if (!msg) throw new ApiError('NOT_FOUND', 'Message not found', 404);
     const clientId = body.clientId || msg.clientId;
     if (!clientId) {
