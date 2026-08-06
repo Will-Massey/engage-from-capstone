@@ -40,9 +40,11 @@ Also shipped same day (commercial-readiness continuation):
 - **#104 scheduled automations + document-request auto-chase** — DEPLOYED + smoked (`/api/automation/schedule` 401-gated). Daily runs are OPT-IN per tenant (Automations page toggle + confirm dialog, audited); 3d cooldown ledger per (rule, entity); `document_request.stale → resend_document_request` closes the records-chasing loop. **A tenant must enable the toggle AND have the DOCS pack (or a matching rule) for auto-chase to fire.**
 - Prod smokes all green: portal overhaul live (`/api/document-requests` 401-gated), catch-up affordance in the deployed ProposalBuilder chunk
 
+Also shipped 2026-08-06: **#105** (Documents-hub field fixes: client search, AML docs on Documents tab, download links, deep links) and **prod mesh fully wired** — 5 env vars set + Blueprint-guarded via Render API, prod AF API key minted (practice 6 Fortis), both gates verified live (AF ping 200 / Engage inbound 401-vs-200).
+
 ## Next up
 
-1. Prod mesh via deliberate Connect UI + `ALLOW_LIVE` — **William gates**: set `ACCOUNTFLOW_MESH_INBOUND_SECRET` value in Render dashboard (both sides share the AF API key), create prod AF API key, then Connect UI
+1. **Flip live mesh** — Engage (Fortis tenant) → Integrations → Connect AccountFlow → mode live + allowLive (+ autoHandoff); no key pasting (env fallback). Everything beneath is verified.
 2. Optional open PRs: #90 marketing root, #80 OAuth TTL (both green, William's call)
 3. Remaining scorecard gaps: two-way mailbox depth (M365/Gmail sync), Credas AML (awaits William's partner email), Capacitor iOS after desktop solid
 4. Caroline flow to watch: first real document request end-to-end (email → portal checklist → upload → auto-complete)
