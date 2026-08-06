@@ -1,31 +1,6 @@
 /** Pure helpers for the public proposal signing flow (ProposalView). */
 
-export type SigningStep =
-  | 'review'
-  | 'terms'
-  | 'engagement'
-  | 'identity'
-  | 'sign'
-  | 'payment'
-  | 'confirmation';
-
-export interface PublicSigningProposalInput {
-  engagementLetter?: string | null;
-}
-
-export function buildSigningSteps(
-  proposal: PublicSigningProposalInput
-): { id: SigningStep; label: string }[] {
-  const steps: { id: SigningStep; label: string }[] = [
-    { id: 'review', label: 'Review' },
-    { id: 'terms', label: 'Terms' },
-  ];
-  if (proposal.engagementLetter?.trim()) {
-    steps.push({ id: 'engagement', label: 'Engagement' });
-  }
-  steps.push({ id: 'identity', label: 'Identity' }, { id: 'sign', label: 'Sign' });
-  return steps;
-}
+export type SigningStep = 'sign' | 'payment' | 'confirmation';
 
 export function splitCoverLetterParagraphs(...parts: Array<string | undefined>): string[] {
   const text = parts.filter(Boolean).join('\n\n');
@@ -39,31 +14,13 @@ export function isProposalExpired(validUntil: string, now: Date = new Date()): b
   return new Date(validUntil) < now;
 }
 
-export function getNextSigningStep(
-  current: SigningStep,
-  steps: { id: SigningStep; label: string }[]
-): SigningStep | null {
-  const idx = steps.findIndex((s) => s.id === current);
-  if (idx < 0 || idx >= steps.length - 1) return null;
-  return steps[idx + 1].id;
-}
-
-export function getPreviousSigningStep(
-  current: SigningStep,
-  steps: { id: SigningStep; label: string }[]
-): SigningStep | 'exit' {
-  if (current === 'review') return 'exit';
-  const idx = steps.findIndex((s) => s.id === current);
-  if (idx <= 0) return 'exit';
-  return steps[idx - 1].id;
-}
-
 export interface SignatureFormInput {
   signatureData: string;
   signerName: string;
   signerRole: string;
   signerEmail: string;
-  authorisedToSign: boolean;
+  /** Single combined tick: documents read + authorised to sign. */
+  consentAccepted: boolean;
 }
 
 export function collectSignatureValidationErrors(form: SignatureFormInput): string[] {
@@ -72,15 +29,25 @@ export function collectSignatureValidationErrors(form: SignatureFormInput): stri
   if (!form.signerName.trim()) errors.push('Please provide your name');
   if (!form.signerRole.trim()) errors.push('Please provide your role');
   if (!form.signerEmail.trim()) errors.push('Please provide your email');
-  if (!form.authorisedToSign) {
-    errors.push('Please confirm you are authorised to sign on behalf of the client');
+  if (!form.consentAccepted) {
+    errors.push('Please confirm you have read the documents and are authorised to sign');
   }
   return errors;
 }
 
-export function buildSignatureConsentText(clientName?: string): string {
+/**
+ * The consent sentence shown next to the single checkbox AND stored on the
+ * signature record as consentText — it must name every accepted document.
+ */
+export function buildCombinedConsentText(
+  clientName: string | undefined,
+  hasEngagementLetter: boolean
+): string {
   const subject = clientName?.trim() || 'the client';
-  return `I confirm I am authorised to sign on behalf of ${subject} and agree to the terms of this proposal.`;
+  const documents = hasEngagementLetter
+    ? 'the terms and conditions and the engagement letter'
+    : 'the terms and conditions';
+  return `I have read and agree to ${documents}, and I confirm I am authorised to sign on behalf of ${subject}.`;
 }
 
 export interface DeviceInfoSnapshot {
@@ -92,6 +59,8 @@ export interface DeviceInfoSnapshot {
   language: string;
   hardwareConcurrency?: number | 'unknown';
   touch: boolean;
+  /** How the signature image was produced. Defaults to 'drawn'. */
+  signatureMethod?: 'drawn' | 'typed';
 }
 
 export function buildSignatureDeviceInfo(snapshot: DeviceInfoSnapshot): string {
@@ -103,6 +72,7 @@ export function buildSignatureDeviceInfo(snapshot: DeviceInfoSnapshot): string {
     language: snapshot.language,
     cores: snapshot.hardwareConcurrency ?? 'unknown',
     touch: snapshot.touch,
+    method: snapshot.signatureMethod ?? 'drawn',
   });
 }
 
@@ -120,8 +90,6 @@ export function readBrowserDeviceInfo(): DeviceInfoSnapshot {
 }
 
 export interface PublicSignPayloadInput extends SignatureFormInput {
-  termsAccepted: boolean;
-  engagementLetterAccepted: boolean;
   hasEngagementLetter: boolean;
   clientName?: string;
   deviceInfo: string;
@@ -134,13 +102,11 @@ export function buildPublicSignPayload(input: PublicSignPayloadInput) {
     signedByRole: input.signerRole.trim(),
     signerEmail: input.signerEmail.trim(),
     signatureData: input.signatureData,
-    agreementAccepted: input.termsAccepted,
-    engagementLetterAccepted: input.hasEngagementLetter
-      ? input.engagementLetterAccepted
-      : undefined,
-    authorisedToSign: input.authorisedToSign,
+    agreementAccepted: input.consentAccepted,
+    engagementLetterAccepted: input.hasEngagementLetter ? input.consentAccepted : undefined,
+    authorisedToSign: input.consentAccepted,
     deviceInfo: input.deviceInfo,
-    consentText: buildSignatureConsentText(input.clientName),
+    consentText: buildCombinedConsentText(input.clientName, input.hasEngagementLetter),
     ...(input.selectedTierId ? { selectedTierId: input.selectedTierId } : {}),
   };
 }
