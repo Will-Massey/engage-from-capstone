@@ -144,7 +144,7 @@ async function matchClientByEmail(
 }
 
 /** settings.email.provider may be stored lower/mixed-case — normalise to the two-way-capable set. */
-function normalizeMailProvider(raw: string | undefined | null): 'GMAIL' | 'OUTLOOK' | 'MICROSOFT365' | null {
+export function normalizeMailProvider(raw: string | undefined | null): 'GMAIL' | 'OUTLOOK' | 'MICROSOFT365' | null {
   const p = (raw || '').toLowerCase();
   if (p === 'gmail') return 'GMAIL';
   if (p === 'outlook') return 'OUTLOOK';

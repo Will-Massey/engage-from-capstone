@@ -1,13 +1,39 @@
 /**
  * Task 2 — graphMailClient: Graph HTTP mocked via global fetch.
+ * Task 4 adds ensureGraphSubscription — same file, DB mocked for its
+ * subscription-state persistence only (the rest of the client stays pure).
  */
 
 jest.mock('../../tenantEmailSettings.js', () => ({
   loadTenantEmailContext: jest.fn(),
 }));
 
+const mailboxSyncStateFindUnique = jest.fn();
+const mailboxSyncStateUpsert = jest.fn();
+jest.mock('../../../config/database.js', () => ({
+  prisma: {
+    mailboxSyncState: {
+      findUnique: (...args: unknown[]) => mailboxSyncStateFindUnique(...args),
+      upsert: (...args: unknown[]) => mailboxSyncStateUpsert(...args),
+    },
+  },
+}));
+
+jest.mock('../../../config/urls.js', () => ({
+  getApiUrl: () => 'https://api.test.example',
+}));
+
+jest.mock('crypto', () => ({
+  ...jest.requireActual('crypto'),
+  randomUUID: () => 'generated-client-state-uuid',
+}));
+
 import { loadTenantEmailContext } from '../../tenantEmailSettings.js';
-import { createGraphMailClient, clearMailTokenCache } from '../graphMailClient.js';
+import {
+  createGraphMailClient,
+  clearMailTokenCache,
+  ensureGraphSubscription,
+} from '../graphMailClient.js';
 
 const loadTenantEmailContextMock = loadTenantEmailContext as jest.Mock;
 const fetchMock = jest.fn();
@@ -45,6 +71,8 @@ beforeEach(() => {
   jest.clearAllMocks();
   clearMailTokenCache();
   global.fetch = fetchMock as unknown as typeof fetch;
+  mailboxSyncStateFindUnique.mockResolvedValue(null);
+  mailboxSyncStateUpsert.mockResolvedValue({});
 });
 
 describe('createGraphMailClient factory', () => {
@@ -408,5 +436,129 @@ describe('createGraphMailClient fetchAttachment', () => {
     expect(attachment.name).toBe('invoice.pdf');
     expect(attachment.contentType).toBe('application/pdf');
     expect(attachment.content).toEqual(Buffer.from('pdf-bytes'));
+  });
+});
+
+describe('ensureGraphSubscription', () => {
+  it('returns ok:false without touching the DB when the tenant has no Graph credentials', async () => {
+    loadTenantEmailContextMock.mockResolvedValue(ctxWithOutlook(null));
+
+    const result = await ensureGraphSubscription('tenant-1');
+
+    expect(result.ok).toBe(false);
+    expect(mailboxSyncStateFindUnique).not.toHaveBeenCalled();
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it('creates a new subscription and persists id/expiry/clientState when none exists yet', async () => {
+    loadTenantEmailContextMock.mockResolvedValue(ctxWithOutlook());
+    mailboxSyncStateFindUnique.mockResolvedValue(null);
+    fetchMock
+      .mockResolvedValueOnce(tokenResponse())
+      .mockResolvedValueOnce(
+        jsonResponse({ id: 'sub-1', expirationDateTime: '2026-08-10T00:00:00Z' })
+      );
+
+    const result = await ensureGraphSubscription('tenant-1');
+
+    expect(result.ok).toBe(true);
+    const [url, init] = fetchMock.mock.calls[1];
+    expect(url).toBe('https://graph.microsoft.com/v1.0/subscriptions');
+    expect(init.method).toBe('POST');
+    const payload = JSON.parse(init.body);
+    expect(payload.resource).toBe("me/mailFolders('inbox')/messages");
+    expect(payload.changeType).toBe('created,updated');
+    expect(payload.notificationUrl).toBe('https://api.test.example/api/webhooks/graph-mail');
+    expect(payload.clientState).toBe('generated-client-state-uuid');
+
+    expect(mailboxSyncStateUpsert).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { tenantId: 'tenant-1' },
+        create: expect.objectContaining({
+          tenantId: 'tenant-1',
+          subscriptionId: 'sub-1',
+          clientState: 'generated-client-state-uuid',
+        }),
+        update: expect.objectContaining({
+          subscriptionId: 'sub-1',
+          clientState: 'generated-client-state-uuid',
+        }),
+      })
+    );
+  });
+
+  it('renews an existing subscription via PATCH, preserving the stored clientState', async () => {
+    loadTenantEmailContextMock.mockResolvedValue(ctxWithOutlook());
+    mailboxSyncStateFindUnique.mockResolvedValue({
+      subscriptionId: 'sub-existing',
+      clientState: 'existing-client-state',
+    });
+    fetchMock
+      .mockResolvedValueOnce(tokenResponse())
+      .mockResolvedValueOnce(
+        jsonResponse({ id: 'sub-existing', expirationDateTime: '2026-08-10T00:00:00Z' })
+      );
+
+    const result = await ensureGraphSubscription('tenant-1');
+
+    expect(result.ok).toBe(true);
+    const [url, init] = fetchMock.mock.calls[1];
+    expect(url).toBe('https://graph.microsoft.com/v1.0/subscriptions/sub-existing');
+    expect(init.method).toBe('PATCH');
+    expect(fetchMock).toHaveBeenCalledTimes(2); // no fallback create call
+
+    expect(mailboxSyncStateUpsert).toHaveBeenCalledWith(
+      expect.objectContaining({
+        update: expect.objectContaining({
+          subscriptionId: 'sub-existing',
+          clientState: 'existing-client-state',
+        }),
+      })
+    );
+  });
+
+  it('falls back to creating a fresh subscription when renewal fails (e.g. the subscription expired server-side)', async () => {
+    loadTenantEmailContextMock.mockResolvedValue(ctxWithOutlook());
+    mailboxSyncStateFindUnique.mockResolvedValue({
+      subscriptionId: 'sub-gone',
+      clientState: 'existing-client-state',
+    });
+    fetchMock
+      .mockResolvedValueOnce(tokenResponse())
+      .mockResolvedValueOnce(jsonResponse({}, false, 404))
+      .mockResolvedValueOnce(
+        jsonResponse({ id: 'sub-new', expirationDateTime: '2026-08-10T00:00:00Z' })
+      );
+
+    const result = await ensureGraphSubscription('tenant-1');
+
+    expect(result.ok).toBe(true);
+    expect(fetchMock).toHaveBeenCalledTimes(3);
+    expect(fetchMock.mock.calls[1][0]).toBe('https://graph.microsoft.com/v1.0/subscriptions/sub-gone');
+    expect(fetchMock.mock.calls[2][0]).toBe('https://graph.microsoft.com/v1.0/subscriptions');
+    expect(fetchMock.mock.calls[2][1].method).toBe('POST');
+
+    expect(mailboxSyncStateUpsert).toHaveBeenCalledWith(
+      expect.objectContaining({
+        update: expect.objectContaining({
+          subscriptionId: 'sub-new',
+          clientState: 'generated-client-state-uuid', // regenerated on create
+        }),
+      })
+    );
+  });
+
+  it('returns ok:false and never throws when the Graph API call fails outright', async () => {
+    loadTenantEmailContextMock.mockResolvedValue(ctxWithOutlook());
+    mailboxSyncStateFindUnique.mockResolvedValue(null);
+    fetchMock
+      .mockResolvedValueOnce(tokenResponse())
+      .mockResolvedValueOnce(jsonResponse({}, false, 500));
+
+    const result = await ensureGraphSubscription('tenant-1');
+
+    expect(result.ok).toBe(false);
+    expect(result.error).toBeTruthy();
+    expect(mailboxSyncStateUpsert).not.toHaveBeenCalled();
   });
 });

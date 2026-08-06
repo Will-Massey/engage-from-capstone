@@ -1,8 +1,15 @@
 /**
  * Microsoft Graph provider client — pure HTTP adapter over global fetch.
- * No DB access. Returns the provider-neutral shapes from ./types.js.
+ * Returns the provider-neutral shapes from ./types.js. The one exception is
+ * ensureGraphSubscription, which persists webhook subscription state
+ * (subscriptionId/expiry/clientState) to MailboxSyncState — that lifecycle
+ * needs a DB row to renew against, so it lives here to reuse the token cache.
  */
 
+import { randomUUID } from 'crypto';
+import { prisma } from '../../config/database.js';
+import logger from '../../config/logger.js';
+import { getApiUrl } from '../../config/urls.js';
 import { loadTenantEmailContext } from '../tenantEmailSettings.js';
 import type { DeltaPage, MailProviderClient, ProviderMessage, SendSpec } from './types.js';
 
@@ -328,4 +335,131 @@ export async function createGraphMailClient(tenantId: string): Promise<MailProvi
       return fetchAttachmentViaGraph(messageExternalId, attachmentExternalId, await token());
     },
   };
+}
+
+// ==================== Webhook subscription lifecycle ====================
+
+const SUBSCRIPTION_RESOURCE = "me/mailFolders('inbox')/messages";
+const SUBSCRIPTION_CHANGE_TYPE = 'created,updated';
+// Graph's hard cap for a mail resource subscription is 4230 minutes (~2.94 days).
+const SUBSCRIPTION_MAX_MINUTES = 4230;
+
+interface GraphSubscriptionResponse {
+  id: string;
+  expirationDateTime: string;
+}
+
+function subscriptionExpiryIso(): string {
+  return new Date(Date.now() + SUBSCRIPTION_MAX_MINUTES * 60_000).toISOString();
+}
+
+async function createSubscription(
+  notificationUrl: string,
+  clientState: string,
+  token: string
+): Promise<GraphSubscriptionResponse> {
+  const res = await fetch(`${GRAPH_BASE}/subscriptions`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      changeType: SUBSCRIPTION_CHANGE_TYPE,
+      notificationUrl,
+      resource: SUBSCRIPTION_RESOURCE,
+      expirationDateTime: subscriptionExpiryIso(),
+      clientState,
+    }),
+  });
+  if (!res.ok) {
+    throw new Error(`Graph subscription create failed: ${res.status} ${res.statusText}`);
+  }
+  return (await res.json()) as GraphSubscriptionResponse;
+}
+
+async function renewSubscription(
+  subscriptionId: string,
+  token: string
+): Promise<GraphSubscriptionResponse> {
+  const res = await fetch(`${GRAPH_BASE}/subscriptions/${subscriptionId}`, {
+    method: 'PATCH',
+    headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ expirationDateTime: subscriptionExpiryIso() }),
+  });
+  if (!res.ok) {
+    throw new Error(`Graph subscription renew failed: ${res.status} ${res.statusText}`);
+  }
+  return (await res.json()) as GraphSubscriptionResponse;
+}
+
+/** settings.email.provider may be lower/mixed-case — MailboxSyncState.provider needs the enum value. */
+function normalizeOutlookProvider(raw: string | undefined | null): 'OUTLOOK' | 'MICROSOFT365' {
+  const p = (raw || '').toLowerCase();
+  return p === 'microsoft365' || p === 'microsoft_365' || p === 'ms365' ? 'MICROSOFT365' : 'OUTLOOK';
+}
+
+/**
+ * Create or renew the Graph webhook subscription for a tenant's inbox and
+ * persist id/expiry/clientState to MailboxSyncState. Renewal (PATCH) is tried
+ * first when a subscriptionId is already stored; if that fails (e.g. the
+ * subscription expired server-side and Graph 404s it) a fresh subscription is
+ * created instead. Never throws — webhooks are an accelerator, polling
+ * remains the sync guarantee, so failures are logged and swallowed.
+ */
+export async function ensureGraphSubscription(
+  tenantId: string
+): Promise<{ ok: boolean; error?: string }> {
+  try {
+    const ctx = await loadTenantEmailContext(tenantId);
+    const outlook = ctx?.email.outlook;
+    if (!outlook?.clientId || !outlook?.clientSecret || !outlook?.refreshToken) {
+      return { ok: false, error: 'NOT_CONNECTED' };
+    }
+
+    const creds: GraphCreds = {
+      clientId: outlook.clientId,
+      clientSecret: outlook.clientSecret,
+      refreshToken: outlook.refreshToken,
+    };
+    const token = await getAccessToken(tenantId, creds);
+    const notificationUrl = `${getApiUrl()}/api/webhooks/graph-mail`;
+
+    const syncState = await prisma.mailboxSyncState.findUnique({ where: { tenantId } });
+
+    let subscription: GraphSubscriptionResponse | null = null;
+    let clientState = syncState?.clientState ?? null;
+
+    if (syncState?.subscriptionId) {
+      try {
+        subscription = await renewSubscription(syncState.subscriptionId, token);
+      } catch {
+        subscription = null; // fall through to create below
+      }
+    }
+
+    if (!subscription) {
+      clientState = randomUUID();
+      subscription = await createSubscription(notificationUrl, clientState, token);
+    }
+
+    await prisma.mailboxSyncState.upsert({
+      where: { tenantId },
+      create: {
+        tenantId,
+        provider: normalizeOutlookProvider(ctx?.email.provider),
+        subscriptionId: subscription.id,
+        subscriptionExpiry: new Date(subscription.expirationDateTime),
+        clientState,
+      },
+      update: {
+        subscriptionId: subscription.id,
+        subscriptionExpiry: new Date(subscription.expirationDateTime),
+        clientState,
+      },
+    });
+
+    return { ok: true };
+  } catch (e: any) {
+    const message = e?.message || 'Graph subscription ensure failed';
+    logger.warn(`ensureGraphSubscription failed for tenant ${tenantId}: ${message}`);
+    return { ok: false, error: message };
+  }
 }
