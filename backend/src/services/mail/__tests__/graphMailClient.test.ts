@@ -203,7 +203,66 @@ describe('createGraphMailClient syncInbox', () => {
     ]) {
       expect(url).toContain(field);
     }
+    expect(decodeURIComponent(url)).toContain(
+      '$expand=attachments($select=id,name,contentType,size,isInline)'
+    );
     expect(fetchMock.mock.calls[1][1].headers.Authorization).toBe('Bearer access-token-1');
+  });
+
+  it('maps expanded attachments into ProviderMessage.attachments', async () => {
+    loadTenantEmailContextMock.mockResolvedValue(ctxWithOutlook());
+    fetchMock.mockResolvedValueOnce(tokenResponse()).mockResolvedValueOnce(
+      jsonResponse({
+        value: [
+          {
+            id: 'msg-1',
+            subject: 'Has attachment',
+            isRead: true,
+            hasAttachments: true,
+            attachments: [
+              {
+                id: 'att-1',
+                name: 'invoice.pdf',
+                contentType: 'application/pdf',
+                size: 1234,
+                isInline: false,
+              },
+              {
+                id: 'att-2',
+                name: 'logo.png',
+                contentType: 'image/png',
+                size: 56,
+                isInline: true,
+              },
+            ],
+          },
+        ],
+        '@odata.deltaLink': 'https://x/delta',
+      })
+    );
+
+    const client = await createGraphMailClient('tenant-1');
+    const page = await client!.syncInbox(null);
+
+    expect(page.messages[0].attachments).toEqual([
+      { externalId: 'att-1', name: 'invoice.pdf', contentType: 'application/pdf', sizeBytes: 1234, isInline: false },
+      { externalId: 'att-2', name: 'logo.png', contentType: 'image/png', sizeBytes: 56, isInline: true },
+    ]);
+  });
+
+  it('leaves attachments undefined when the message has none', async () => {
+    loadTenantEmailContextMock.mockResolvedValue(ctxWithOutlook());
+    fetchMock.mockResolvedValueOnce(tokenResponse()).mockResolvedValueOnce(
+      jsonResponse({
+        value: [{ id: 'msg-1', subject: 'No attachment', isRead: true, hasAttachments: false }],
+        '@odata.deltaLink': 'https://x/delta',
+      })
+    );
+
+    const client = await createGraphMailClient('tenant-1');
+    const page = await client!.syncInbox(null);
+
+    expect(page.messages[0].attachments).toBeUndefined();
   });
 
   it('resumes from a stored deltaLink instead of rebuilding the initial query', async () => {

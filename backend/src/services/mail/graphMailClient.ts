@@ -25,6 +25,7 @@ const SELECT_FIELDS = [
   'receivedDateTime',
   'sentDateTime',
 ].join(',');
+const EXPAND_ATTACHMENTS = 'attachments($select=id,name,contentType,size,isInline)';
 const EARLY_EXPIRY_MARGIN_MS = 60_000;
 
 interface TokenCacheEntry {
@@ -85,6 +86,14 @@ interface GraphRecipient {
   emailAddress?: GraphEmailAddress;
 }
 
+interface GraphAttachment {
+  id: string;
+  name?: string;
+  contentType?: string;
+  size?: number;
+  isInline?: boolean;
+}
+
 interface GraphMessage {
   id: string;
   conversationId?: string;
@@ -99,6 +108,7 @@ interface GraphMessage {
   hasAttachments?: boolean;
   receivedDateTime?: string;
   sentDateTime?: string;
+  attachments?: GraphAttachment[];
 }
 
 function formatAddress(r?: GraphRecipient): string {
@@ -139,6 +149,15 @@ function mapGraphMessage(msg: GraphMessage, direction: 'INBOUND' | 'OUTBOUND'): 
   const isHtml = contentType?.toLowerCase() === 'html';
 
   const cc = joinAddresses(msg.ccRecipients);
+  const attachments = msg.attachments?.length
+    ? msg.attachments.map((a) => ({
+        externalId: a.id,
+        name: a.name || '',
+        contentType: a.contentType || 'application/octet-stream',
+        sizeBytes: a.size || 0,
+        isInline: !!a.isInline,
+      }))
+    : undefined;
 
   return {
     externalId: msg.id,
@@ -154,6 +173,7 @@ function mapGraphMessage(msg: GraphMessage, direction: 'INBOUND' | 'OUTBOUND'): 
     isRead: !!msg.isRead,
     hasAttachments: !!msg.hasAttachments,
     receivedAt: new Date(msg.receivedDateTime || msg.sentDateTime || Date.now()),
+    attachments,
   };
 }
 
@@ -170,7 +190,8 @@ async function fetchDeltaPage(
   token: string
 ): Promise<DeltaPage> {
   let url =
-    deltaLink || `${GRAPH_BASE}/me/mailFolders/${folder}/messages/delta?$select=${SELECT_FIELDS}`;
+    deltaLink ||
+    `${GRAPH_BASE}/me/mailFolders/${folder}/messages/delta?$select=${SELECT_FIELDS}&$expand=${EXPAND_ATTACHMENTS}`;
   const messages: ProviderMessage[] = [];
   let finalDeltaLink: string | null = null;
 
