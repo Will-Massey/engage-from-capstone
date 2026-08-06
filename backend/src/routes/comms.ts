@@ -330,15 +330,9 @@ router.get(
       throw e;
     }
     const { messages, nextCursor } = result;
-    const connection = await getMailboxConnection(req.tenantId!);
     res.json({
       success: true,
-      data: {
-        messages,
-        nextCursor,
-        connection,
-        unread: messages.filter((m) => m.direction === 'inbound' && !m.read).length,
-      },
+      data: { messages, nextCursor },
     });
   })
 );

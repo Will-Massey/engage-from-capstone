@@ -1,0 +1,95 @@
+import { describe, it, expect, vi } from 'vitest';
+
+// happy-dom's DOM implementation doesn't support DOMPurify's traversal well
+// enough to exercise real sanitization in this test environment (it silently
+// stops stripping tags DOMPurify strips fine in an actual browser), so this
+// mocks the library to verify sanitizeMailHtml's own logic — the null-input
+// short-circuit and delegating to DOMPurify.sanitize with the right allowlist.
+const sanitizeMock = vi.fn((html: string, _opts?: unknown) => `sanitized:${html}`);
+vi.mock('dompurify', () => ({
+  default: { sanitize: (html: string, opts: unknown) => sanitizeMock(html, opts) },
+}));
+
+const { sanitizeMailHtml, formatAttachmentSize, formatSyncHealth } = await import('../mailboxHelpers');
+
+describe('sanitizeMailHtml', () => {
+  it('returns empty string for null/undefined/empty input without calling DOMPurify', () => {
+    expect(sanitizeMailHtml(null)).toBe('');
+    expect(sanitizeMailHtml(undefined)).toBe('');
+    expect(sanitizeMailHtml('')).toBe('');
+    expect(sanitizeMock).not.toHaveBeenCalled();
+  });
+
+  it('delegates to DOMPurify.sanitize with a safe formatting-only allowlist', () => {
+    const out = sanitizeMailHtml('<p>Hello <script>alert(1)</script></p>');
+    expect(out).toBe('sanitized:<p>Hello <script>alert(1)</script></p>');
+    expect(sanitizeMock).toHaveBeenCalledWith(
+      '<p>Hello <script>alert(1)</script></p>',
+      expect.objectContaining({
+        ALLOWED_TAGS: expect.arrayContaining(['p', 'strong', 'a', 'div']),
+        ALLOWED_ATTR: expect.arrayContaining(['href', 'class']),
+      })
+    );
+    // The allowlist must not include script/iframe/img — that's what keeps this safe.
+    const [, opts] = sanitizeMock.mock.calls[0] as [string, { ALLOWED_TAGS: string[] }];
+    expect(opts.ALLOWED_TAGS).not.toContain('script');
+    expect(opts.ALLOWED_TAGS).not.toContain('iframe');
+    expect(opts.ALLOWED_TAGS).not.toContain('img');
+  });
+});
+
+describe('formatAttachmentSize', () => {
+  it('returns empty string for falsy or negative input', () => {
+    expect(formatAttachmentSize(0)).toBe('');
+    expect(formatAttachmentSize(-5)).toBe('');
+  });
+
+  it('formats bytes', () => {
+    expect(formatAttachmentSize(512)).toBe('512 B');
+  });
+
+  it('formats kilobytes', () => {
+    expect(formatAttachmentSize(2048)).toBe('2 KB');
+  });
+
+  it('formats megabytes with one decimal', () => {
+    expect(formatAttachmentSize(1.5 * 1024 * 1024)).toBe('1.5 MB');
+  });
+});
+
+describe('formatSyncHealth', () => {
+  const now = new Date('2026-08-06T12:00:00.000Z');
+
+  it('reports "Not yet synced" when health is missing or never synced', () => {
+    expect(formatSyncHealth(null, now)).toEqual({ tone: 'neutral', message: 'Not yet synced' });
+    expect(
+      formatSyncHealth({ lastSyncAt: null, lastSyncOk: null, lastSyncError: null }, now)
+    ).toEqual({ tone: 'neutral', message: 'Not yet synced' });
+  });
+
+  it('reports a warning with the error when the last sync failed', () => {
+    const result = formatSyncHealth(
+      { lastSyncAt: '2026-08-06T11:00:00.000Z', lastSyncOk: false, lastSyncError: 'Token expired' },
+      now
+    );
+    expect(result.tone).toBe('warning');
+    expect(result.message).toBe('Sync failing: Token expired — reconnect in Settings → Email');
+  });
+
+  it('omits the colon when there is no error message', () => {
+    const result = formatSyncHealth(
+      { lastSyncAt: '2026-08-06T11:00:00.000Z', lastSyncOk: false, lastSyncError: null },
+      now
+    );
+    expect(result.message).toBe('Sync failing — reconnect in Settings → Email');
+  });
+
+  it('reports success with a relative time when the last sync worked', () => {
+    const result = formatSyncHealth(
+      { lastSyncAt: '2026-08-06T11:00:00.000Z', lastSyncOk: true, lastSyncError: null },
+      now
+    );
+    expect(result.tone).toBe('success');
+    expect(result.message).toBe('Last synced about 1 hour ago');
+  });
+});
