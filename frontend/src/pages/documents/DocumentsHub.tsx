@@ -72,10 +72,12 @@ export default function DocumentsHub() {
     if (!clientPickerOpen || clients.length) return;
     void (async () => {
       try {
+        // /api/clients returns data as a plain array (not { clients })
         const res = (await apiClient.get('/clients?limit=200')) as {
-          data?: { clients?: ClientRow[] };
+          data?: ClientRow[] | { clients?: ClientRow[] };
         };
-        setClients(res?.data?.clients || []);
+        const list = Array.isArray(res?.data) ? res.data : res?.data?.clients || [];
+        setClients(list);
       } catch {
         setClients([]);
       }
@@ -161,7 +163,7 @@ export default function DocumentsHub() {
                   {u.name}
                 </a>
                 <Link
-                  to={`/clients/${u.clientId}`}
+                  to={`/clients/${u.clientId}?tab=documents`}
                   className="text-xs text-slate-500 hover:underline truncate"
                 >
                   {u.clientName}

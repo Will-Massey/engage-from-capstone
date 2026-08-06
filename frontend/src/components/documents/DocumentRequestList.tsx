@@ -124,7 +124,7 @@ export default function DocumentRequestList({
                 {showClient && (
                   <>
                     <Link
-                      to={`/clients/${r.client.id}`}
+                      to={`/clients/${r.client.id}?tab=documents`}
                       className="text-emerald-700 dark:text-emerald-300 hover:underline"
                     >
                       {r.client.name}
