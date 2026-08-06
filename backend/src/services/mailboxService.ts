@@ -1,467 +1,187 @@
 /**
- * Two-way firm mailbox.
- * - Stores threads as ActivityLog (EMAIL_INBOUND / EMAIL_OUTBOUND)
- * - Syncs from Gmail API or Microsoft Graph when OAuth tokens exist
- * - Compose/reply via tenantMailer (outbound always works when email is configured)
+ * Two-way firm mailbox — MailMessage-backed storage + orchestration.
+ *
+ * Sync pulls inbox+sent deltas from the provider client (Graph or Gmail,
+ * selected from tenant.settings.email.provider), upserts MailMessage rows by
+ * (tenantId, provider, externalId), and auto-links clientId by email match.
+ * Compose/reply sends via the provider client when connected, falling back to
+ * tenantMailerSend (platform email) when not — either way an OUTBOUND
+ * MailMessage row is always written for two-way history.
+ *
+ * A handful of exports also carry a *legacy* call shape (old positional args
+ * / old field names) purely so `backend/src/routes/comms.ts` — which Task 5
+ * rewrites — keeps compiling and working against the old ActivityLog-era
+ * contract until then. Those shims are called out below; new code should use
+ * the brief-binding shapes only.
  */
 
-import { google } from 'googleapis';
+import { randomUUID } from 'crypto';
+import type { EmailProvider } from '@prisma/client';
 import { prisma } from '../config/database.js';
-import { decrypt } from '../utils/encryption.js';
 import logger from '../config/logger.js';
 import { tenantMailerSend } from './tenantMailer.js';
+import { loadTenantEmailContext } from './tenantEmailSettings.js';
+import { createGraphMailClient } from './mail/graphMailClient.js';
+import { createGmailMailClient } from './mail/gmailMailClient.js';
+import type { MailProviderClient, ProviderMessage } from './mail/types.js';
 
-export type MailboxMessage = {
+// ==================== Shared DTO ====================
+
+export type MailMessageDto = {
   id: string;
+  provider: string;
   direction: 'inbound' | 'outbound';
   from: string;
   to: string;
+  cc: string | null;
   subject: string;
   body: string;
+  bodyHtml: string | null;
   at: string;
   read: boolean;
+  hasAttachments: boolean;
   clientId: string | null;
   clientName: string | null;
-  externalId: string | null;
-  threadKey: string;
-  provider: string | null;
+  conversationId: string | null;
+  externalId: string;
 };
 
-export type MailboxConnection = {
-  connected: boolean;
-  provider: string | null;
-  user: string | null;
-  mode: 'oauth' | 'platform' | 'local';
-  canSync: boolean;
-  canSend: boolean;
+type MailMessageRow = {
+  id: string;
+  provider: EmailProvider;
+  externalId: string;
+  conversationId: string | null;
+  internetMessageId: string | null;
+  direction: 'INBOUND' | 'OUTBOUND';
+  fromAddress: string;
+  toAddresses: string;
+  ccAddresses: string | null;
+  subject: string;
+  bodyText: string;
+  bodyHtml: string | null;
+  isRead: boolean;
+  hasAttachments: boolean;
+  receivedAt: Date;
+  clientId: string | null;
 };
 
-function parseSettings(raw: string | null | undefined): Record<string, any> {
-  try {
-    return JSON.parse(raw || '{}');
-  } catch {
-    return {};
-  }
+function toDto(row: MailMessageRow, clientNames: Map<string, string>): MailMessageDto {
+  return {
+    id: row.id,
+    provider: row.provider,
+    direction: row.direction === 'INBOUND' ? 'inbound' : 'outbound',
+    from: row.fromAddress,
+    to: row.toAddresses,
+    cc: row.ccAddresses,
+    subject: row.subject,
+    body: row.bodyText,
+    bodyHtml: row.bodyHtml,
+    at: row.receivedAt.toISOString(),
+    read: row.isRead,
+    hasAttachments: row.hasAttachments,
+    clientId: row.clientId,
+    clientName: row.clientId ? clientNames.get(row.clientId) || null : null,
+    conversationId: row.conversationId,
+    externalId: row.externalId,
+  };
 }
 
-function parseMeta(raw: string | null | undefined): Record<string, any> {
-  try {
-    return JSON.parse(raw || '{}');
-  } catch {
-    return {};
-  }
+async function attachClientNames(
+  rows: { clientId: string | null }[],
+  tenantId: string
+): Promise<Map<string, string>> {
+  const ids = [...new Set(rows.map((r) => r.clientId).filter(Boolean) as string[])];
+  if (!ids.length) return new Map();
+  const clients = await prisma.client.findMany({
+    where: { tenantId, id: { in: ids } },
+    select: { id: true, name: true },
+  });
+  return new Map(clients.map((c) => [c.id, c.name]));
 }
 
-function threadKeyFor(from: string, to: string, subject: string): string {
-  const norm = subject
-    .replace(/^(re|fw|fwd):\s*/gi, '')
+function escapeHtml(text: string): string {
+  return text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
+
+function extractFirstEmail(raw: string): string | null {
+  const first = (raw || '').split(',')[0] || '';
+  const email = first
+    .replace(/.*<|>.*/g, '')
     .trim()
     .toLowerCase();
-  const parties = [from, to]
-    .map((s) => s.toLowerCase().trim())
-    .sort()
-    .join('|');
-  return `${parties}::${norm.slice(0, 120)}`;
-}
-
-export async function getMailboxConnection(tenantId: string): Promise<MailboxConnection> {
-  const tenant = await prisma.tenant.findUnique({
-    where: { id: tenantId },
-    select: { settings: true },
-  });
-  const settings = parseSettings(tenant?.settings);
-  const email = settings.email || {};
-  const provider = email.provider as string | undefined;
-
-  if (provider === 'gmail' && (email.gmail?.refreshToken || email.gmail?.user)) {
-    return {
-      connected: Boolean(email.gmail?.refreshToken),
-      provider: 'gmail',
-      user: email.gmail?.user || null,
-      mode: 'oauth',
-      canSync: Boolean(email.gmail?.refreshToken),
-      canSend: true,
-    };
-  }
-
-  if (
-    (provider === 'outlook' || provider === 'microsoft365') &&
-    (email.outlook?.refreshToken || email.microsoft365?.refreshToken)
-  ) {
-    const block = email.outlook || email.microsoft365 || {};
-    return {
-      connected: Boolean(block.refreshToken),
-      provider: provider || 'microsoft365',
-      user: block.user || null,
-      mode: 'oauth',
-      canSync: Boolean(block.refreshToken),
-      canSend: true,
-    };
-  }
-
-  if (provider === 'smtp' || email.smtp?.host) {
-    return {
-      connected: true,
-      provider: 'smtp',
-      user: email.fromEmail || email.smtp?.user || null,
-      mode: 'platform',
-      canSync: false,
-      canSend: true,
-    };
-  }
-
-  // Platform Cloudflare/SendGrid may still send
-  return {
-    connected: false,
-    provider: null,
-    user: null,
-    mode: 'local',
-    canSync: false,
-    canSend: true, // try platform send
-  };
+  return email.includes('@') ? email : null;
 }
 
 async function matchClientByEmail(
   tenantId: string,
   address: string
 ): Promise<{ id: string; name: string } | null> {
-  const email = address
-    .toLowerCase()
-    .replace(/.*<|>.*/g, '')
-    .trim();
-  if (!email.includes('@')) return null;
-  const client = await prisma.client.findFirst({
-    where: {
-      tenantId,
-      isActive: true,
-      contactEmail: { equals: email, mode: 'insensitive' },
-    },
+  const email = extractFirstEmail(address);
+  if (!email) return null;
+  return prisma.client.findFirst({
+    where: { tenantId, isActive: true, contactEmail: { equals: email, mode: 'insensitive' } },
     select: { id: true, name: true },
   });
-  return client;
 }
 
-async function upsertMailboxActivity(params: {
-  tenantId: string;
-  direction: 'inbound' | 'outbound';
-  from: string;
-  to: string;
-  subject: string;
-  body: string;
-  externalId?: string | null;
-  at?: Date;
-  provider?: string | null;
-  clientId?: string | null;
-  userId?: string | null;
-}): Promise<string> {
-  const action = params.direction === 'inbound' ? 'EMAIL_INBOUND' : 'EMAIL_OUTBOUND';
-
-  if (params.externalId) {
-    const existing = await prisma.activityLog.findFirst({
-      where: {
-        tenantId: params.tenantId,
-        action,
-        metadata: { contains: params.externalId },
-      },
-      select: { id: true },
-    });
-    if (existing) return existing.id;
-  }
-
-  let clientId = params.clientId || null;
-  let clientName: string | null = null;
-  const matchAddr = params.direction === 'inbound' ? params.from : params.to;
-  if (!clientId) {
-    const c = await matchClientByEmail(params.tenantId, matchAddr);
-    if (c) {
-      clientId = c.id;
-      clientName = c.name;
-    }
-  } else {
-    const c = await prisma.client.findFirst({
-      where: { id: clientId, tenantId: params.tenantId },
-      select: { name: true },
-    });
-    clientName = c?.name || null;
-  }
-
-  const threadKey = threadKeyFor(params.from, params.to, params.subject);
-  const row = await prisma.activityLog.create({
-    data: {
-      tenantId: params.tenantId,
-      action,
-      entityType: clientId ? 'CLIENT' : 'Mailbox',
-      entityId: clientId,
-      description: params.subject.slice(0, 500),
-      metadata: JSON.stringify({
-        direction: params.direction,
-        from: params.from,
-        to: params.to,
-        subject: params.subject,
-        body: params.body.slice(0, 20000),
-        externalId: params.externalId || null,
-        threadKey,
-        read: params.direction === 'outbound',
-        provider: params.provider || null,
-        clientName,
-      }),
-      userId: params.userId || null,
-      createdAt: params.at || new Date(),
-    },
-  });
-  return row.id;
+/** settings.email.provider may be stored lower/mixed-case — normalise to the two-way-capable set. */
+function normalizeMailProvider(raw: string | undefined | null): 'GMAIL' | 'OUTLOOK' | 'MICROSOFT365' | null {
+  const p = (raw || '').toLowerCase();
+  if (p === 'gmail') return 'GMAIL';
+  if (p === 'outlook') return 'OUTLOOK';
+  if (p === 'microsoft365' || p === 'microsoft_365' || p === 'ms365') return 'MICROSOFT365';
+  return null;
 }
 
-function rowToMessage(
-  row: {
-    id: string;
-    action: string;
-    description: string | null;
-    metadata: string;
-    createdAt: Date;
-    entityId: string | null;
-  },
-  clientNameMap: Map<string, string>
-): MailboxMessage {
-  const m = parseMeta(row.metadata);
-  const clientId = row.entityId;
-  return {
-    id: row.id,
-    direction:
-      m.direction === 'outbound' || row.action === 'EMAIL_OUTBOUND' ? 'outbound' : 'inbound',
-    from: String(m.from || ''),
-    to: String(m.to || ''),
-    subject: String(m.subject || row.description || ''),
-    body: String(m.body || ''),
-    at: row.createdAt.toISOString(),
-    read: m.read === true,
-    clientId,
-    clientName:
-      (typeof m.clientName === 'string' && m.clientName) ||
-      (clientId ? clientNameMap.get(clientId) || null : null),
-    externalId: m.externalId ? String(m.externalId) : null,
-    threadKey: String(
-      m.threadKey || threadKeyFor(String(m.from || ''), String(m.to || ''), String(m.subject || ''))
-    ),
-    provider: m.provider ? String(m.provider) : null,
-  };
-}
-
-export async function listMailboxMessages(
+async function buildProviderClient(
   tenantId: string,
-  opts: { limit?: number; q?: string; unreadOnly?: boolean } = {}
-): Promise<MailboxMessage[]> {
-  const limit = Math.min(opts.limit || 80, 150);
-  const rows = await prisma.activityLog.findMany({
-    where: {
-      tenantId,
-      action: { in: ['EMAIL_INBOUND', 'EMAIL_OUTBOUND'] },
+  provider: 'GMAIL' | 'OUTLOOK' | 'MICROSOFT365' | null
+): Promise<MailProviderClient | null> {
+  if (provider === 'GMAIL') return createGmailMailClient(tenantId);
+  if (provider === 'OUTLOOK' || provider === 'MICROSOFT365') return createGraphMailClient(tenantId);
+  return null;
+}
+
+// ==================== getMailboxConnection ====================
+
+export async function getMailboxConnection(tenantId: string): Promise<{
+  provider: string | null;
+  user: string | null;
+  health: { lastSyncAt: string | null; lastSyncOk: boolean | null; lastSyncError: string | null };
+}> {
+  const ctx = await loadTenantEmailContext(tenantId);
+  const email = ctx?.email || {};
+  const normalized = normalizeMailProvider(email.provider);
+
+  let provider: string | null = null;
+  let user: string | null = null;
+  if (normalized === 'GMAIL' && email.gmail?.refreshToken) {
+    provider = 'GMAIL';
+    user = email.gmail.user || null;
+  } else if ((normalized === 'OUTLOOK' || normalized === 'MICROSOFT365') && email.outlook?.refreshToken) {
+    provider = normalized;
+    user = email.outlook.user || null;
+  }
+
+  const syncState = await prisma.mailboxSyncState.findUnique({ where: { tenantId } });
+  return {
+    provider,
+    user,
+    health: {
+      lastSyncAt: syncState?.lastSyncAt ? syncState.lastSyncAt.toISOString() : null,
+      lastSyncOk: syncState?.lastSyncOk ?? null,
+      lastSyncError: syncState?.lastSyncError ?? null,
     },
-    orderBy: { createdAt: 'desc' },
-    take: limit,
-  });
-
-  const clientIds = [...new Set(rows.map((r) => r.entityId).filter(Boolean) as string[])];
-  const clients =
-    clientIds.length > 0
-      ? await prisma.client.findMany({
-          where: { tenantId, id: { in: clientIds } },
-          select: { id: true, name: true },
-        })
-      : [];
-  const cmap = new Map(clients.map((c) => [c.id, c.name]));
-
-  let messages = rows.map((r) => rowToMessage(r, cmap));
-  if (opts.unreadOnly) {
-    messages = messages.filter((m) => m.direction === 'inbound' && !m.read);
-  }
-  if (opts.q) {
-    const q = opts.q.toLowerCase();
-    messages = messages.filter(
-      (m) =>
-        m.subject.toLowerCase().includes(q) ||
-        m.body.toLowerCase().includes(q) ||
-        m.from.toLowerCase().includes(q) ||
-        m.to.toLowerCase().includes(q) ||
-        (m.clientName || '').toLowerCase().includes(q)
-    );
-  }
-  return messages;
-}
-
-async function getGmailAccess(tenantId: string): Promise<{
-  accessToken: string;
-  user: string;
-} | null> {
-  const tenant = await prisma.tenant.findUnique({
-    where: { id: tenantId },
-    select: { settings: true },
-  });
-  const email = parseSettings(tenant?.settings).email || {};
-  const g = email.gmail;
-  if (!g?.refreshToken) return null;
-
-  const clientId = g.clientId || process.env.GMAIL_CLIENT_ID || '';
-  const clientSecret = g.clientSecret
-    ? decrypt(g.clientSecret) || g.clientSecret
-    : process.env.GMAIL_CLIENT_SECRET || '';
-  const refreshToken = decrypt(g.refreshToken) || g.refreshToken;
-
-  const oauth2Client = new google.auth.OAuth2(clientId, clientSecret);
-  oauth2Client.setCredentials({ refresh_token: refreshToken });
-  const { credentials } = await oauth2Client.refreshAccessToken();
-  if (!credentials.access_token) return null;
-  return { accessToken: credentials.access_token, user: g.user || 'me' };
-}
-
-async function getMicrosoftAccess(tenantId: string): Promise<{
-  accessToken: string;
-  user: string;
-} | null> {
-  const tenant = await prisma.tenant.findUnique({
-    where: { id: tenantId },
-    select: { settings: true },
-  });
-  const email = parseSettings(tenant?.settings).email || {};
-  const block = email.outlook || email.microsoft365;
-  if (!block?.refreshToken) return null;
-
-  const clientId = block.clientId || process.env.MICROSOFT_CLIENT_ID || '';
-  const clientSecret = block.clientSecret
-    ? decrypt(block.clientSecret) || block.clientSecret
-    : process.env.MICROSOFT_CLIENT_SECRET || '';
-  const refreshToken = decrypt(block.refreshToken) || block.refreshToken;
-
-  const res = await fetch('https://login.microsoftonline.com/common/oauth2/v2.0/token', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-    body: new URLSearchParams({
-      client_id: clientId,
-      client_secret: clientSecret,
-      refresh_token: refreshToken,
-      grant_type: 'refresh_token',
-      scope:
-        'https://graph.microsoft.com/Mail.Read https://graph.microsoft.com/Mail.Send offline_access User.Read',
-    }),
-  });
-  if (!res.ok) {
-    logger.warn(`Microsoft token refresh failed: ${res.status}`);
-    return null;
-  }
-  const data = (await res.json()) as { access_token?: string };
-  if (!data.access_token) return null;
-  return { accessToken: data.access_token, user: block.user || '' };
-}
-
-async function syncGmail(tenantId: string): Promise<number> {
-  const auth = await getGmailAccess(tenantId);
-  if (!auth) return 0;
-
-  const oauth2Client = new google.auth.OAuth2();
-  oauth2Client.setCredentials({ access_token: auth.accessToken });
-  const gmail = google.gmail({ version: 'v1', auth: oauth2Client });
-
-  const list = await gmail.users.messages.list({
-    userId: 'me',
-    maxResults: 25,
-    q: 'in:inbox newer_than:30d',
-  });
-
-  let imported = 0;
-  for (const msg of list.data.messages || []) {
-    if (!msg.id) continue;
-    const full = await gmail.users.messages.get({
-      userId: 'me',
-      id: msg.id,
-      format: 'full',
-    });
-    const headers = full.data.payload?.headers || [];
-    const getH = (n: string) =>
-      headers.find((h) => h.name?.toLowerCase() === n.toLowerCase())?.value || '';
-    const subject = getH('Subject') || '(no subject)';
-    const from = getH('From') || '';
-    const to = getH('To') || auth.user;
-    let body = full.data.snippet || '';
-    const parts = full.data.payload?.parts || [];
-    const textPart = parts.find((p) => p.mimeType === 'text/plain');
-    if (textPart?.body?.data) {
-      body = Buffer.from(textPart.body.data, 'base64url').toString('utf8');
-    } else if (full.data.payload?.body?.data) {
-      body = Buffer.from(full.data.payload.body.data, 'base64url').toString('utf8');
-    }
-
-    const id = await upsertMailboxActivity({
-      tenantId,
-      direction: 'inbound',
-      from,
-      to,
-      subject,
-      body,
-      externalId: `gmail:${msg.id}`,
-      at: full.data.internalDate ? new Date(Number(full.data.internalDate)) : new Date(),
-      provider: 'gmail',
-    });
-    if (id) imported++;
-  }
-  return imported;
-}
-
-async function syncMicrosoft(tenantId: string): Promise<number> {
-  const auth = await getMicrosoftAccess(tenantId);
-  if (!auth) return 0;
-
-  const res = await fetch(
-    'https://graph.microsoft.com/v1.0/me/mailFolders/inbox/messages?$top=25&$select=id,subject,from,toRecipients,bodyPreview,body,receivedDateTime,isRead',
-    { headers: { Authorization: `Bearer ${auth.accessToken}` } }
-  );
-  if (!res.ok) {
-    logger.warn(`Graph mail list failed: ${res.status}`);
-    return 0;
-  }
-  const data = (await res.json()) as {
-    value?: Array<{
-      id: string;
-      subject?: string;
-      from?: { emailAddress?: { address?: string; name?: string } };
-      toRecipients?: Array<{ emailAddress?: { address?: string } }>;
-      bodyPreview?: string;
-      body?: { content?: string };
-      receivedDateTime?: string;
-    }>;
   };
-
-  let imported = 0;
-  for (const msg of data.value || []) {
-    const from =
-      msg.from?.emailAddress?.name && msg.from?.emailAddress?.address
-        ? `${msg.from.emailAddress.name} <${msg.from.emailAddress.address}>`
-        : msg.from?.emailAddress?.address || '';
-    const to =
-      msg.toRecipients
-        ?.map((t) => t.emailAddress?.address)
-        .filter(Boolean)
-        .join(', ') || auth.user;
-    await upsertMailboxActivity({
-      tenantId,
-      direction: 'inbound',
-      from,
-      to,
-      subject: msg.subject || '(no subject)',
-      body: msg.body?.content || msg.bodyPreview || '',
-      externalId: `ms:${msg.id}`,
-      at: msg.receivedDateTime ? new Date(msg.receivedDateTime) : new Date(),
-      provider: 'microsoft365',
-    });
-    imported++;
-  }
-  return imported;
 }
 
-/** Seed demo inbound messages from clients when no OAuth (so two-way UI is usable in practice clone). */
-async function seedLocalInboundIfEmpty(tenantId: string): Promise<number> {
-  const count = await prisma.activityLog.count({
-    where: { tenantId, action: { in: ['EMAIL_INBOUND', 'EMAIL_OUTBOUND'] } },
-  });
+// ==================== syncMailbox ====================
+
+/** Seed demo inbound messages from clients when no provider connected — dev only, never production. */
+export async function seedDevInboundIfEmpty(tenantId: string): Promise<number> {
+  if (process.env.NODE_ENV === 'production') return 0;
+
+  const count = await prisma.mailMessage.count({ where: { tenantId } });
   if (count > 0) return 0;
 
   const clients = await prisma.client.findMany({
@@ -474,83 +194,242 @@ async function seedLocalInboundIfEmpty(tenantId: string): Promise<number> {
 
   let n = 0;
   for (const c of clients.slice(0, 3)) {
-    await upsertMailboxActivity({
-      tenantId,
-      direction: 'inbound',
-      from: `${c.contactName || c.name} <${c.contactEmail}>`,
-      to: 'practice@engage.local',
-      subject: `Re: Records for ${c.name}`,
-      body: `Hi,\n\nJust checking you received everything for ${c.name}. Happy to upload more via the portal if needed.\n\nThanks,\n${c.contactName || c.name}`,
-      externalId: `local-seed:${c.id}:records`,
-      clientId: c.id,
-      provider: 'local',
+    await prisma.mailMessage.create({
+      data: {
+        tenantId,
+        provider: 'SMTP',
+        externalId: `local-seed:${c.id}:records`,
+        conversationId: `local:${randomUUID()}`,
+        direction: 'INBOUND',
+        fromAddress: `${c.contactName || c.name} <${c.contactEmail}>`,
+        toAddresses: 'practice@engage.local',
+        subject: `Re: Records for ${c.name}`,
+        bodyText: `Hi,\n\nJust checking you received everything for ${c.name}. Happy to upload more via the portal if needed.\n\nThanks,\n${c.contactName || c.name}`,
+        snippet: `Just checking you received everything for ${c.name}.`,
+        isRead: false,
+        hasAttachments: false,
+        receivedAt: new Date(),
+        clientId: c.id,
+      },
     });
     n++;
   }
   return n;
 }
 
-export async function syncMailbox(tenantId: string): Promise<{
-  imported: number;
-  provider: string | null;
-  mode: string;
-  message: string;
-}> {
-  const conn = await getMailboxConnection(tenantId);
+async function upsertProviderMessage(
+  tenantId: string,
+  provider: EmailProvider,
+  pm: ProviderMessage
+): Promise<'created' | 'updated'> {
+  const existing = await prisma.mailMessage.findUnique({
+    where: { tenantId_provider_externalId: { tenantId, provider, externalId: pm.externalId } },
+    select: { id: true, clientId: true },
+  });
 
-  if (conn.provider === 'gmail' && conn.canSync) {
-    try {
-      const imported = await syncGmail(tenantId);
-      return {
-        imported,
-        provider: 'gmail',
-        mode: 'oauth',
-        message: `Synced ${imported} messages from Gmail`,
-      };
-    } catch (e: any) {
-      logger.warn(`Gmail sync failed: ${e?.message}`);
-      return {
-        imported: 0,
-        provider: 'gmail',
-        mode: 'oauth',
-        message: `Gmail sync failed: ${e?.message || 'unknown error'}`,
-      };
-    }
+  let clientId = existing?.clientId ?? null;
+  if (!clientId) {
+    const matchAddr = pm.direction === 'INBOUND' ? pm.from : pm.to;
+    const match = await matchClientByEmail(tenantId, matchAddr);
+    clientId = match?.id ?? null;
   }
 
-  if ((conn.provider === 'microsoft365' || conn.provider === 'outlook') && conn.canSync) {
-    try {
-      const imported = await syncMicrosoft(tenantId);
-      return {
-        imported,
-        provider: conn.provider,
-        mode: 'oauth',
-        message: `Synced ${imported} messages from Microsoft 365`,
-      };
-    } catch (e: any) {
-      logger.warn(`MS sync failed: ${e?.message}`);
-      return {
-        imported: 0,
-        provider: conn.provider,
-        mode: 'oauth',
-        message: `Microsoft sync failed: ${e?.message || 'unknown error'}`,
-      };
-    }
-  }
-
-  const seeded = await seedLocalInboundIfEmpty(tenantId);
-  return {
-    imported: seeded,
-    provider: null,
-    mode: 'local',
-    message:
-      seeded > 0
-        ? `Local mailbox ready — ${seeded} client threads seeded (connect Gmail/M365 in Settings for live two-way sync)`
-        : 'Local mailbox — connect Gmail or Microsoft 365 in Settings for live sync. Compose still sends via platform email.',
+  const data = {
+    provider,
+    externalId: pm.externalId,
+    conversationId: pm.conversationId || pm.externalId,
+    internetMessageId: pm.internetMessageId || null,
+    direction: pm.direction,
+    fromAddress: pm.from,
+    toAddresses: pm.to,
+    ccAddresses: pm.cc || null,
+    subject: pm.subject,
+    bodyText: pm.bodyText,
+    bodyHtml: pm.bodyHtml || null,
+    snippet: pm.bodyText.slice(0, 280),
+    isRead: pm.isRead,
+    hasAttachments: pm.hasAttachments,
+    receivedAt: pm.receivedAt,
+    clientId,
   };
+
+  if (existing) {
+    await prisma.mailMessage.update({ where: { id: existing.id }, data });
+    return 'updated';
+  }
+  await prisma.mailMessage.create({ data: { ...data, tenantId } });
+  return 'created';
 }
 
-export async function sendMailboxMessage(params: {
+export async function syncMailbox(tenantId: string): Promise<{
+  imported: number;
+  updated: number;
+  ok: boolean;
+  error?: string;
+  /** extra, non-binding field kept for the pre-Task-5 comms.ts `.message` read */
+  message: string;
+}> {
+  const ctx = await loadTenantEmailContext(tenantId);
+  const normalized = normalizeMailProvider(ctx?.email.provider);
+  const providerClient = await buildProviderClient(tenantId, normalized);
+
+  if (!providerClient) {
+    const seeded = await seedDevInboundIfEmpty(tenantId);
+    return {
+      imported: seeded,
+      updated: 0,
+      ok: false,
+      error: 'NOT_CONNECTED',
+      message:
+        seeded > 0
+          ? `Local mailbox ready — ${seeded} client threads seeded (connect Gmail/M365 in Settings for live two-way sync)`
+          : 'Mailbox not connected — connect Gmail or Microsoft 365 in Settings for live sync.',
+    };
+  }
+
+  const provider = normalized as EmailProvider;
+  const syncState = await prisma.mailboxSyncState.findUnique({ where: { tenantId } });
+
+  let imported = 0;
+  let updated = 0;
+  try {
+    const [inboxPage, sentPage] = await Promise.all([
+      providerClient.syncInbox(syncState?.inboxDeltaLink ?? null),
+      providerClient.syncSent(syncState?.sentDeltaLink ?? null),
+    ]);
+
+    for (const pm of [...inboxPage.messages, ...sentPage.messages]) {
+      const result = await upsertProviderMessage(tenantId, provider, pm);
+      if (result === 'created') imported++;
+      else updated++;
+    }
+
+    await prisma.mailboxSyncState.upsert({
+      where: { tenantId },
+      create: {
+        tenantId,
+        provider,
+        inboxDeltaLink: inboxPage.deltaLink,
+        sentDeltaLink: sentPage.deltaLink,
+        lastSyncAt: new Date(),
+        lastSyncOk: true,
+        lastSyncError: null,
+      },
+      update: {
+        provider,
+        inboxDeltaLink: inboxPage.deltaLink,
+        sentDeltaLink: sentPage.deltaLink,
+        lastSyncAt: new Date(),
+        lastSyncOk: true,
+        lastSyncError: null,
+      },
+    });
+
+    return { imported, updated, ok: true, message: `Synced ${imported} new, ${updated} updated` };
+  } catch (e: any) {
+    const errorMsg = e?.message || 'Sync failed';
+    logger.warn(`Mailbox sync failed for tenant ${tenantId}: ${errorMsg}`);
+    await prisma.mailboxSyncState
+      .upsert({
+        where: { tenantId },
+        create: { tenantId, provider, lastSyncAt: new Date(), lastSyncOk: false, lastSyncError: errorMsg },
+        update: { lastSyncAt: new Date(), lastSyncOk: false, lastSyncError: errorMsg },
+      })
+      .catch(() => {});
+    return { imported, updated, ok: false, error: errorMsg, message: `Sync failed: ${errorMsg}` };
+  }
+}
+
+// ==================== listMailboxMessages ====================
+
+export type MailboxListOpts = {
+  q?: string;
+  unread?: boolean;
+  clientId?: string;
+  limit?: number;
+  cursor?: string;
+  /** @deprecated legacy alias for `unread` — kept for pre-Task-5 comms.ts compatibility */
+  unreadOnly?: boolean;
+};
+
+/**
+ * The real return value is a plain array carrying two extra properties
+ * (`messages`, `nextCursor`) so it satisfies both:
+ *  - the brief-binding shape `{ messages, nextCursor }` Task 5 will consume
+ *  - the legacy `MailMessageDto[]` shape comms.ts/clara.ts already consume
+ *    (`.filter`, `.find`, `.length`, etc.) without touching those files.
+ * Drop this shim once comms.ts is rewritten in Task 5.
+ */
+export type MailboxMessagesResult = MailMessageDto[] & {
+  messages: MailMessageDto[];
+  nextCursor: string | null;
+};
+
+export async function listMailboxMessages(
+  tenantId: string,
+  opts: MailboxListOpts = {}
+): Promise<MailboxMessagesResult> {
+  const limit = Math.min(Math.max(opts.limit || 50, 1), 150);
+  const unread = opts.unread ?? opts.unreadOnly;
+
+  const where: Record<string, unknown> = { tenantId };
+  if (unread) where.isRead = false;
+  if (opts.clientId) where.clientId = opts.clientId;
+  if (opts.q) {
+    where.OR = [
+      { subject: { contains: opts.q, mode: 'insensitive' } },
+      { fromAddress: { contains: opts.q, mode: 'insensitive' } },
+      { bodyText: { contains: opts.q, mode: 'insensitive' } },
+    ];
+  }
+
+  const rows = await prisma.mailMessage.findMany({
+    where,
+    orderBy: [{ receivedAt: 'desc' }, { id: 'desc' }],
+    take: limit + 1,
+    ...(opts.cursor ? { cursor: { id: opts.cursor }, skip: 1 } : {}),
+  });
+
+  const hasMore = rows.length > limit;
+  const page = hasMore ? rows.slice(0, limit) : rows;
+  const clientNames = await attachClientNames(page, tenantId);
+  const messages = page.map((r) => toDto(r, clientNames));
+  const nextCursor = hasMore ? page[page.length - 1].id : null;
+
+  const result = messages as MailboxMessagesResult;
+  result.messages = messages;
+  result.nextCursor = nextCursor;
+  return result;
+}
+
+// ==================== getThread ====================
+
+export async function getThread(tenantId: string, messageId: string): Promise<MailMessageDto[]> {
+  const anchor = await prisma.mailMessage.findFirst({
+    where: { id: messageId, tenantId },
+    select: { conversationId: true },
+  });
+  if (!anchor) return [];
+
+  const rows = await prisma.mailMessage.findMany({
+    where: { tenantId, conversationId: anchor.conversationId },
+    orderBy: { receivedAt: 'asc' },
+  });
+  const clientNames = await attachClientNames(rows, tenantId);
+  return rows.map((r) => toDto(r, clientNames));
+}
+
+// ==================== sendMailboxMessage ====================
+
+export interface SendMailboxSpec {
+  to: string;
+  cc?: string;
+  subject: string;
+  body: string;
+  replyToMessageId?: string;
+}
+
+interface LegacySendParams {
   tenantId: string;
   userId?: string | null;
   to: string;
@@ -558,163 +437,281 @@ export async function sendMailboxMessage(params: {
   body: string;
   clientId?: string | null;
   inReplyToId?: string | null;
-}): Promise<{ id: string; sent: boolean; error?: string }> {
-  let subject = params.subject;
-  let to = params.to;
-  let clientId = params.clientId || null;
+}
 
-  if (params.inReplyToId) {
-    const prev = await prisma.activityLog.findFirst({
-      where: {
-        id: params.inReplyToId,
-        tenantId: params.tenantId,
-        action: { in: ['EMAIL_INBOUND', 'EMAIL_OUTBOUND'] },
-      },
-    });
-    if (prev) {
-      const m = parseMeta(prev.metadata);
-      const replyTo = m.direction === 'inbound' ? m.from : m.to;
-      to = String(replyTo || to);
-      const base = String(m.subject || prev.description || subject);
-      subject = base.match(/^re:/i) ? base : `Re: ${base}`;
-      if (!clientId && prev.entityId) clientId = prev.entityId;
-    }
+async function sendMailboxMessageInternal(
+  tenantId: string,
+  userId: string | null | undefined,
+  spec: SendMailboxSpec,
+  clientIdOverride?: string | null
+): Promise<{ dto: MailMessageDto; sent: boolean; error?: string }> {
+  const repliedTo = spec.replyToMessageId
+    ? await prisma.mailMessage.findFirst({
+        where: { id: spec.replyToMessageId, tenantId },
+        select: { externalId: true, internetMessageId: true, conversationId: true, clientId: true },
+      })
+    : null;
+
+  const ctx = await loadTenantEmailContext(tenantId);
+  const email = ctx?.email || {};
+  const fromAddr = email.fromEmail || email.gmail?.user || email.outlook?.user || 'noreply@engage.local';
+  const normalized = normalizeMailProvider(email.provider);
+  const providerClient = await buildProviderClient(tenantId, normalized);
+
+  const conversationId = repliedTo?.conversationId || `local:${randomUUID()}`;
+
+  let clientId = clientIdOverride ?? repliedTo?.clientId ?? null;
+  if (!clientId) {
+    const match = await matchClientByEmail(tenantId, spec.to);
+    clientId = match?.id ?? null;
   }
 
-  // Resolve firm from address for outbound "from"
-  const tenant = await prisma.tenant.findUnique({
-    where: { id: params.tenantId },
-    select: { name: true, settings: true },
-  });
-  const emailCfg = parseSettings(tenant?.settings).email || {};
-  const fromAddr =
-    emailCfg.fromEmail || emailCfg.gmail?.user || emailCfg.outlook?.user || 'noreply@engage.local';
-
-  let sent = false;
+  let provider: EmailProvider;
+  let externalId: string;
+  let sent = true;
   let error: string | undefined;
-  try {
+
+  if (providerClient && normalized) {
+    provider = normalized;
+    try {
+      const result = await providerClient.send({
+        to: [spec.to],
+        cc: spec.cc ? [spec.cc] : undefined,
+        subject: spec.subject,
+        bodyText: spec.body,
+        replyToExternalId: repliedTo?.externalId,
+        inReplyToInternetMessageId: repliedTo?.internetMessageId || undefined,
+      });
+      externalId = result.externalId || randomUUID();
+    } catch (e: any) {
+      sent = false;
+      error = e?.message || 'Send failed';
+      externalId = randomUUID();
+    }
+  } else {
+    provider = 'SMTP';
+    externalId = randomUUID();
     const result = await tenantMailerSend({
-      tenantId: params.tenantId,
+      tenantId,
       messageType: 'OTHER',
       message: {
-        to,
-        subject,
-        text: params.body,
-        html: `<pre style="font-family:system-ui,sans-serif;white-space:pre-wrap">${params.body
-          .replace(/&/g, '&amp;')
-          .replace(/</g, '&lt;')
-          .replace(/>/g, '&gt;')}</pre>`,
+        to: spec.to,
+        cc: spec.cc,
+        subject: spec.subject,
+        text: spec.body,
+        html: `<pre style="font-family:system-ui,sans-serif;white-space:pre-wrap">${escapeHtml(spec.body)}</pre>`,
       },
       relatedIds: clientId ? { clientId } : undefined,
     });
     sent = result.success;
     if (!result.success) error = result.error || 'Send failed';
-  } catch (e: any) {
-    error = e?.message || 'Send failed';
-    // Still store as outbound draft-like for two-way history in local mode
   }
 
-  const id = await upsertMailboxActivity({
-    tenantId: params.tenantId,
-    direction: 'outbound',
-    from: fromAddr,
-    to,
-    subject,
-    body: params.body,
-    externalId: sent ? `out:${Date.now()}` : `out-local:${Date.now()}`,
-    clientId,
-    userId: params.userId,
-    provider: sent ? emailCfg.provider || 'platform' : 'local',
-  });
-
-  return { id, sent, error };
-}
-
-export async function markMailboxRead(tenantId: string, messageId: string): Promise<boolean> {
-  const row = await prisma.activityLog.findFirst({
-    where: {
-      id: messageId,
+  const row = await prisma.mailMessage.create({
+    data: {
       tenantId,
-      action: { in: ['EMAIL_INBOUND', 'EMAIL_OUTBOUND'] },
+      provider,
+      externalId,
+      conversationId,
+      internetMessageId: null,
+      direction: 'OUTBOUND',
+      fromAddress: fromAddr,
+      toAddresses: spec.to,
+      ccAddresses: spec.cc || null,
+      subject: spec.subject,
+      bodyText: spec.body,
+      bodyHtml: null,
+      snippet: spec.body.slice(0, 280),
+      isRead: true,
+      hasAttachments: false,
+      receivedAt: new Date(),
+      clientId,
     },
   });
-  if (!row) return false;
-  const m = parseMeta(row.metadata);
-  m.read = true;
-  await prisma.activityLog.update({
-    where: { id: row.id },
-    data: { metadata: JSON.stringify(m) },
-  });
-  return true;
+
+  const clientNames = clientId ? await attachClientNames([row], tenantId) : new Map<string, string>();
+  return { dto: toDto(row, clientNames), sent, error };
 }
 
-/**
- * Manually link a mailbox message (and same-thread siblings) to a client.
- * Used when auto-match by email fails.
- */
+export function sendMailboxMessage(
+  tenantId: string,
+  userId: string | null | undefined,
+  spec: SendMailboxSpec
+): Promise<MailMessageDto>;
+export function sendMailboxMessage(
+  params: LegacySendParams
+): Promise<{ id: string; sent: boolean; error?: string }>;
+export async function sendMailboxMessage(a: any, b?: any, c?: any): Promise<any> {
+  if (typeof a === 'object' && a !== null) {
+    const params = a as LegacySendParams;
+    const { dto, sent, error } = await sendMailboxMessageInternal(
+      params.tenantId,
+      params.userId ?? null,
+      {
+        to: params.to,
+        subject: params.subject,
+        body: params.body,
+        replyToMessageId: params.inReplyToId || undefined,
+      },
+      params.clientId ?? null
+    );
+    return { id: dto.id, sent, error };
+  }
+  const { dto } = await sendMailboxMessageInternal(a as string, b, c as SendMailboxSpec);
+  return dto;
+}
+
+// ==================== markMailboxRead ====================
+
+async function markMailboxReadCore(tenantId: string, messageId: string, read: boolean): Promise<void> {
+  const row = await prisma.mailMessage.findFirst({
+    where: { id: messageId, tenantId },
+    select: { id: true, provider: true, externalId: true },
+  });
+  if (!row) throw new Error('MESSAGE_NOT_FOUND');
+
+  await prisma.mailMessage.update({ where: { id: row.id }, data: { isRead: read } });
+
+  try {
+    const ctx = await loadTenantEmailContext(tenantId);
+    const normalized = normalizeMailProvider(ctx?.email.provider);
+    const providerClient = await buildProviderClient(tenantId, normalized);
+    if (providerClient) await providerClient.markRead(row.externalId, read);
+  } catch (e: any) {
+    logger.warn(`Mailbox markRead provider write-back failed for tenant ${tenantId}: ${e?.message}`);
+  }
+}
+
+export function markMailboxRead(tenantId: string, messageId: string): Promise<boolean>;
+export function markMailboxRead(tenantId: string, messageId: string, read: boolean): Promise<void>;
+export async function markMailboxRead(
+  tenantId: string,
+  messageId: string,
+  read?: boolean
+): Promise<boolean | void> {
+  if (read === undefined) {
+    try {
+      await markMailboxReadCore(tenantId, messageId, true);
+      return true;
+    } catch (e: any) {
+      if (e?.message === 'MESSAGE_NOT_FOUND') return false;
+      throw e;
+    }
+  }
+  return markMailboxReadCore(tenantId, messageId, read);
+}
+
+// ==================== linkMessageClient ====================
+
+async function linkMessageClientInternal(
+  tenantId: string,
+  messageId: string,
+  clientId: string
+): Promise<{ updated: number; clientName: string | null }> {
+  const client = await prisma.client.findFirst({
+    where: { id: clientId, tenantId },
+    select: { id: true, name: true },
+  });
+  if (!client) throw new Error('CLIENT_NOT_FOUND');
+
+  const msg = await prisma.mailMessage.findFirst({
+    where: { id: messageId, tenantId },
+    select: { id: true, conversationId: true },
+  });
+  if (!msg) throw new Error('MESSAGE_NOT_FOUND');
+
+  const result = await prisma.mailMessage.updateMany({
+    where: { tenantId, conversationId: msg.conversationId },
+    data: { clientId: client.id },
+  });
+
+  return { updated: result.count, clientName: client.name };
+}
+
+/** Sets clientId on ALL messages in the conversation. */
+export async function linkMessageClient(
+  tenantId: string,
+  messageId: string,
+  clientId: string
+): Promise<void> {
+  await linkMessageClientInternal(tenantId, messageId, clientId);
+}
+
+/** @deprecated legacy shape kept for pre-Task-5 comms.ts compatibility — use linkMessageClient. */
 export async function linkMailboxMessageToClient(params: {
   tenantId: string;
   messageId: string;
   clientId: string;
 }): Promise<{ updated: number; clientName: string | null }> {
-  const client = await prisma.client.findFirst({
-    where: { id: params.clientId, tenantId: params.tenantId },
-    select: { id: true, name: true },
-  });
-  if (!client) throw new Error('CLIENT_NOT_FOUND');
-
-  const row = await prisma.activityLog.findFirst({
-    where: {
-      id: params.messageId,
-      tenantId: params.tenantId,
-      action: { in: ['EMAIL_INBOUND', 'EMAIL_OUTBOUND'] },
-    },
-  });
-  if (!row) throw new Error('MESSAGE_NOT_FOUND');
-
-  const meta = parseMeta(row.metadata);
-  const threadKey = String(meta.threadKey || '');
-
-  // Update this message + other messages in the same thread (when threadKey present)
-  const candidates = await prisma.activityLog.findMany({
-    where: {
-      tenantId: params.tenantId,
-      action: { in: ['EMAIL_INBOUND', 'EMAIL_OUTBOUND'] },
-      OR: threadKey ? [{ id: row.id }, { metadata: { contains: threadKey } }] : [{ id: row.id }],
-    },
-    take: 80,
-  });
-
-  let updated = 0;
-  for (const r of candidates) {
-    const m = parseMeta(r.metadata);
-    if (threadKey && m.threadKey && m.threadKey !== threadKey && r.id !== row.id) continue;
-    m.clientId = client.id;
-    m.clientName = client.name;
-    await prisma.activityLog.update({
-      where: { id: r.id },
-      data: {
-        entityType: 'CLIENT',
-        entityId: client.id,
-        metadata: JSON.stringify(m),
-      },
-    });
-    updated += 1;
-  }
-
-  return { updated, clientName: client.name };
+  return linkMessageClientInternal(params.tenantId, params.messageId, params.clientId);
 }
 
-/** Count unread inbound messages (for nav badges). */
-export async function countUnreadMailbox(tenantId: string): Promise<number> {
-  const rows = await prisma.activityLog.findMany({
-    where: { tenantId, action: 'EMAIL_INBOUND' },
-    select: { metadata: true },
-    take: 300,
-    orderBy: { createdAt: 'desc' },
-  });
-  return rows.filter((r) => {
-    const m = parseMeta(r.metadata);
-    return m.read !== true;
-  }).length;
+// ==================== getMailboxUnreadCount ====================
+
+export async function getMailboxUnreadCount(tenantId: string): Promise<number> {
+  return prisma.mailMessage.count({ where: { tenantId, direction: 'INBOUND', isRead: false } });
+}
+
+/** @deprecated legacy name kept for pre-Task-5 comms.ts compatibility — use getMailboxUnreadCount. */
+export const countUnreadMailbox = getMailboxUnreadCount;
+
+// ==================== getMessageContext ====================
+
+export type MessageContext = {
+  message: MailMessageDto | null;
+  client: {
+    id: string;
+    name: string;
+    contactName: string | null;
+    contactEmail: string;
+    portalToken: string | null;
+    portalEnabled: boolean;
+  } | null;
+  jobs: { id: string; reference: string; title: string; boardColumn: string; dueAt: Date | null }[];
+  pendingForms: Awaited<ReturnType<typeof import('./practiceFormsService.js').listAssignments>>;
+};
+
+export async function getMessageContext(tenantId: string, messageId: string): Promise<MessageContext> {
+  const row = await prisma.mailMessage.findFirst({ where: { id: messageId, tenantId } });
+  if (!row) return { message: null, client: null, jobs: [], pendingForms: [] };
+
+  let clientId = row.clientId;
+  if (!clientId) {
+    const addr = row.direction === 'INBOUND' ? row.fromAddress : row.toAddresses;
+    const match = await matchClientByEmail(tenantId, addr);
+    clientId = match?.id ?? null;
+  }
+
+  const clientNames = clientId ? await attachClientNames([{ clientId }], tenantId) : new Map<string, string>();
+  const message = toDto(row, clientNames);
+
+  const client = clientId
+    ? await prisma.client.findFirst({
+        where: { id: clientId, tenantId },
+        select: {
+          id: true,
+          name: true,
+          contactName: true,
+          contactEmail: true,
+          portalToken: true,
+          portalEnabled: true,
+        },
+      })
+    : null;
+
+  const jobs = clientId
+    ? await prisma.job.findMany({
+        where: { tenantId, clientId, isActive: true, boardColumn: { not: 'COMPLETE' } },
+        select: { id: true, reference: true, title: true, boardColumn: true, dueAt: true },
+        take: 8,
+        orderBy: { updatedAt: 'desc' },
+      })
+    : [];
+
+  const { listAssignments } = await import('./practiceFormsService.js');
+  const pendingForms = clientId
+    ? (await listAssignments(tenantId, { clientId })).filter((f) => f.status === 'pending')
+    : [];
+
+  return { message, client, jobs, pendingForms };
 }
