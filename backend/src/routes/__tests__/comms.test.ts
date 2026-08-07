@@ -258,7 +258,7 @@ describe('GET /api/comms/mailbox/messages/:id/attachments/:attachmentId', () => 
     expect(res.status).toBe(200);
     expect(res.headers['content-type']).toContain('application/pdf');
     expect(res.headers['content-disposition']).toContain('attachment;');
-    expect(res.headers['content-disposition']).not.toMatch(/[^\x00-\x7F]/);
+    expect(res.headers['content-disposition']).not.toMatch(/[^\x20-\x7E]/);
     expect(fetchMailAttachment).toHaveBeenCalledWith('t1', 'm1', 'a1');
   });
 
