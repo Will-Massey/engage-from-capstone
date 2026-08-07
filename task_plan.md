@@ -45,8 +45,8 @@ Also shipped 2026-08-06: **#105** (Documents-hub field fixes: client search, AML
 ## Next up
 
 1. ~~**Flip live mesh**~~ — **DONE 2026-08-06 PM** via prod DB (William's call): Fortis tenant `accountFlowMesh` set to mode live + allowLive + autoHandoff. Trap caught: a hand-pasted junk tenant apiKey ("Caroline…") would have overridden the env fallback — cleared to null. No redeploy needed (settings read per-request). Watch the first real proposal accept → AF work spawn.
-2. Optional open PRs: #90 marketing root, #80 OAuth TTL (both green, William's call)
-3. Remaining scorecard gaps: ~~two-way mailbox depth (M365/Gmail sync)~~ — **BUILT** on branch `feat/mailbox-two-way` (provider clients, sync job, Graph webhook, Gmail env + docs — see `docs/MAILBOX_TWO_WAY.md`), PR pending; Credas AML (awaits William's partner email), Capacitor iOS after desktop solid
+2. ~~Optional open PRs~~ — **ALL MERGED 2026-08-07**: #90 marketing root (worker still needs a manual `wrangler deploy` to go live), #80 OAuth TTL, #106 one-screen signing, #107 two-way mailbox. PR queue is empty.
+3. Remaining scorecard gaps: ~~two-way mailbox depth (M365/Gmail sync)~~ — **SHIPPED to prod 2026-08-07** (#107: mail domain model + Graph/Gmail provider clients + delta sync job + Graph webhook + gated paginated API + FirmInbox rework; migration verified live, webhook handshake verified through the public URL). **Activation gates**: Gmail needs `GMAIL_CLIENT_ID`/`SECRET` from Google Cloud (William); first real M365 connect should be watched (first sync is bounded to 90 days / 200 messages). Architecture: `docs/MAILBOX_TWO_WAY.md`. Fast-follows: Graph reply ignores edited To/CC; webhook burst concurrency; provider-mismatch markRead warns; JUNIOR read-state 403. Then: Credas AML (awaits William's partner email), Capacitor iOS after desktop solid
 4. Caroline flow to watch: first real document request end-to-end (email → portal checklist → upload → auto-complete)
 
 ## Notes
