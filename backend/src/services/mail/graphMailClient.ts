@@ -236,6 +236,28 @@ async function fetchDeltaPage(
   return { messages, deltaLink: finalDeltaLink };
 }
 
+/**
+ * F1 fast-follow: best-effort cleanup of a reply draft left behind when the
+ * subsequent patch or send step fails. Never throws — its own failure must
+ * not mask or replace the real error the caller is already propagating.
+ */
+async function deleteOrphanedDraft(
+  draftId: string,
+  headers: Record<string, string>
+): Promise<void> {
+  try {
+    const res = await fetch(`${GRAPH_BASE}/me/messages/${draftId}`, {
+      method: 'DELETE',
+      headers,
+    });
+    if (!res.ok) {
+      logger.warn(`Graph orphaned reply draft cleanup failed: ${res.status} ${res.statusText}`);
+    }
+  } catch (e: any) {
+    logger.warn(`Graph orphaned reply draft cleanup threw: ${e?.message}`);
+  }
+}
+
 async function sendViaGraph(spec: SendSpec, token: string): Promise<{ externalId: string | null }> {
   const headers = { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' };
 
@@ -253,25 +275,34 @@ async function sendViaGraph(spec: SendSpec, token: string): Promise<{ externalId
     }
     const draft = (await createRes.json()) as { id: string };
 
-    const patchRes = await fetch(`${GRAPH_BASE}/me/messages/${draft.id}`, {
-      method: 'PATCH',
-      headers,
-      body: JSON.stringify({
-        toRecipients: spec.to.map((address) => ({ emailAddress: { address } })),
-        ccRecipients: (spec.cc || []).map((address) => ({ emailAddress: { address } })),
-        body: { contentType: 'Text', content: spec.bodyText },
-      }),
-    });
-    if (!patchRes.ok) {
-      throw new Error(`Graph reply patch failed: ${patchRes.status} ${patchRes.statusText}`);
-    }
+    // From here on the draft exists in the user's real Outlook Drafts
+    // folder — if patch or send fails, best-effort delete it before
+    // propagating the original error, so a transient failure (+ retry)
+    // doesn't litter their mailbox with orphaned drafts.
+    try {
+      const patchRes = await fetch(`${GRAPH_BASE}/me/messages/${draft.id}`, {
+        method: 'PATCH',
+        headers,
+        body: JSON.stringify({
+          toRecipients: spec.to.map((address) => ({ emailAddress: { address } })),
+          ccRecipients: (spec.cc || []).map((address) => ({ emailAddress: { address } })),
+          body: { contentType: 'Text', content: spec.bodyText },
+        }),
+      });
+      if (!patchRes.ok) {
+        throw new Error(`Graph reply patch failed: ${patchRes.status} ${patchRes.statusText}`);
+      }
 
-    const sendRes = await fetch(`${GRAPH_BASE}/me/messages/${draft.id}/send`, {
-      method: 'POST',
-      headers,
-    });
-    if (!sendRes.ok) {
-      throw new Error(`Graph reply send failed: ${sendRes.status} ${sendRes.statusText}`);
+      const sendRes = await fetch(`${GRAPH_BASE}/me/messages/${draft.id}/send`, {
+        method: 'POST',
+        headers,
+      });
+      if (!sendRes.ok) {
+        throw new Error(`Graph reply send failed: ${sendRes.status} ${sendRes.statusText}`);
+      }
+    } catch (e) {
+      await deleteOrphanedDraft(draft.id, headers);
+      throw e;
     }
 
     // The draft id is the real message id — improves send-echo reconciliation
