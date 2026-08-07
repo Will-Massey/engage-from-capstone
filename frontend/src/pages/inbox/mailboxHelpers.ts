@@ -6,7 +6,21 @@
 import DOMPurify from 'dompurify';
 import { formatDistance } from 'date-fns';
 
-const ALLOWED_TAGS = ['p', 'br', 'strong', 'em', 'b', 'i', 'u', 'ul', 'ol', 'li', 'a', 'span', 'div'];
+const ALLOWED_TAGS = [
+  'p',
+  'br',
+  'strong',
+  'em',
+  'b',
+  'i',
+  'u',
+  'ul',
+  'ol',
+  'li',
+  'a',
+  'span',
+  'div',
+];
 const ALLOWED_ATTR = ['href', 'target', 'rel', 'class'];
 
 /** Sanitise a message's HTML body for safe rendering. Empty/missing input -> ''. */

@@ -139,14 +139,17 @@ Commit: `feat(mailbox): mail domain model + sync state + legacy backfill`
 `types.ts` — the provider-neutral contract (consumed by Tasks 3–5):
 
 ```ts
-export interface MailAddress { address: string; name?: string }
+export interface MailAddress {
+  address: string;
+  name?: string;
+}
 export interface ProviderMessage {
   externalId: string;
   conversationId?: string;
   internetMessageId?: string;
   direction: 'INBOUND' | 'OUTBOUND';
-  from: string;                // "Name <a@b>" flattened
-  to: string;                  // comma-separated
+  from: string; // "Name <a@b>" flattened
+  to: string; // comma-separated
   cc?: string;
   subject: string;
   bodyText: string;
@@ -154,12 +157,24 @@ export interface ProviderMessage {
   isRead: boolean;
   hasAttachments: boolean;
   receivedAt: Date;
-  attachments?: { externalId: string; name: string; contentType: string; sizeBytes: number; isInline: boolean }[];
+  attachments?: {
+    externalId: string;
+    name: string;
+    contentType: string;
+    sizeBytes: number;
+    isInline: boolean;
+  }[];
 }
-export interface DeltaPage { messages: ProviderMessage[]; deltaLink: string | null }
+export interface DeltaPage {
+  messages: ProviderMessage[];
+  deltaLink: string | null;
+}
 export interface SendSpec {
-  to: string[]; cc?: string[]; subject: string; bodyText: string;
-  replyToExternalId?: string;  // provider message id being replied to
+  to: string[];
+  cc?: string[];
+  subject: string;
+  bodyText: string;
+  replyToExternalId?: string; // provider message id being replied to
   inReplyToInternetMessageId?: string;
 }
 export interface MailProviderClient {
@@ -167,7 +182,10 @@ export interface MailProviderClient {
   syncSent(deltaLink: string | null): Promise<DeltaPage>;
   send(spec: SendSpec): Promise<{ externalId: string | null }>;
   markRead(externalId: string, read: boolean): Promise<void>;
-  fetchAttachment(messageExternalId: string, attachmentExternalId: string): Promise<{ name: string; contentType: string; content: Buffer }>;
+  fetchAttachment(
+    messageExternalId: string,
+    attachmentExternalId: string
+  ): Promise<{ name: string; contentType: string; content: Buffer }>;
 }
 ```
 
@@ -270,4 +288,5 @@ Commit: `chore(mailbox): Gmail env declarations, scope alignment, architecture d
 - Push `feat/mailbox-two-way`, `gh pr create` titled "Two-way mailbox: real mail model, provider send, delta sync" with a body summarising stages A–D and the two William-gated activations (Gmail creds, prod webhook URL check). Note CI-minutes outage if still ongoing.
 
 ## Self-review notes
+
 - Recon gaps 1–18 → tasks: 1,2 (model, dedupe, indexes) T1/T3; 3 (account model) documented out-of-scope T7; 4–7 (sync) T2/T4; 8–11 (two-way correctness) T2/T3/T5/T6; 12–14 (tokens/scopes) T2/T7; 15–16 (roles/seed) T5/T3; 17 (inbound receipt) T4 webhook (+polling); 18 (client/job surfaces) partially via clientId links — full client-record mail tab out of scope, noted in T7 doc.

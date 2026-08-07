@@ -125,14 +125,20 @@ describe('createGraphMailClient token refresh', () => {
     loadTenantEmailContextMock.mockResolvedValue(ctxWithOutlook());
     fetchMock
       .mockResolvedValueOnce(tokenResponse('access-token-1', 3600))
-      .mockResolvedValueOnce(jsonResponse({ value: [], '@odata.deltaLink': 'https://graph/delta?a' }))
-      .mockResolvedValueOnce(jsonResponse({ value: [], '@odata.deltaLink': 'https://graph/delta?b' }));
+      .mockResolvedValueOnce(
+        jsonResponse({ value: [], '@odata.deltaLink': 'https://graph/delta?a' })
+      )
+      .mockResolvedValueOnce(
+        jsonResponse({ value: [], '@odata.deltaLink': 'https://graph/delta?b' })
+      );
 
     const client = await createGraphMailClient('tenant-1');
     await client!.syncInbox(null);
     await client!.syncSent(null);
 
-    const tokenCalls = fetchMock.mock.calls.filter(([url]) => String(url).includes('oauth2/v2.0/token'));
+    const tokenCalls = fetchMock.mock.calls.filter(([url]) =>
+      String(url).includes('oauth2/v2.0/token')
+    );
     expect(tokenCalls).toHaveLength(1);
     expect(fetchMock).toHaveBeenCalledTimes(3);
   });
@@ -141,15 +147,21 @@ describe('createGraphMailClient token refresh', () => {
     loadTenantEmailContextMock.mockResolvedValue(ctxWithOutlook());
     fetchMock
       .mockResolvedValueOnce(tokenResponse('access-token-1', 30)) // expires in 30s — inside the 60s margin
-      .mockResolvedValueOnce(jsonResponse({ value: [], '@odata.deltaLink': 'https://graph/delta?a' }))
+      .mockResolvedValueOnce(
+        jsonResponse({ value: [], '@odata.deltaLink': 'https://graph/delta?a' })
+      )
       .mockResolvedValueOnce(tokenResponse('access-token-2', 3600))
-      .mockResolvedValueOnce(jsonResponse({ value: [], '@odata.deltaLink': 'https://graph/delta?b' }));
+      .mockResolvedValueOnce(
+        jsonResponse({ value: [], '@odata.deltaLink': 'https://graph/delta?b' })
+      );
 
     const client = await createGraphMailClient('tenant-1');
     await client!.syncInbox(null);
     await client!.syncSent(null);
 
-    const tokenCalls = fetchMock.mock.calls.filter(([url]) => String(url).includes('oauth2/v2.0/token'));
+    const tokenCalls = fetchMock.mock.calls.filter(([url]) =>
+      String(url).includes('oauth2/v2.0/token')
+    );
     expect(tokenCalls).toHaveLength(2);
   });
 });
@@ -175,7 +187,8 @@ describe('createGraphMailClient syncInbox', () => {
             receivedDateTime: '2026-08-06T10:00:00Z',
           },
         ],
-        '@odata.deltaLink': 'https://graph.microsoft.com/v1.0/me/mailFolders/inbox/messages/delta?$deltatoken=xyz',
+        '@odata.deltaLink':
+          'https://graph.microsoft.com/v1.0/me/mailFolders/inbox/messages/delta?$deltatoken=xyz',
       })
     );
 
@@ -273,8 +286,20 @@ describe('createGraphMailClient syncInbox', () => {
     const page = await client!.syncInbox(null);
 
     expect(page.messages[0].attachments).toEqual([
-      { externalId: 'att-1', name: 'invoice.pdf', contentType: 'application/pdf', sizeBytes: 1234, isInline: false },
-      { externalId: 'att-2', name: 'logo.png', contentType: 'image/png', sizeBytes: 56, isInline: true },
+      {
+        externalId: 'att-1',
+        name: 'invoice.pdf',
+        contentType: 'application/pdf',
+        sizeBytes: 1234,
+        isInline: false,
+      },
+      {
+        externalId: 'att-2',
+        name: 'logo.png',
+        contentType: 'image/png',
+        sizeBytes: 56,
+        isInline: true,
+      },
     ]);
   });
 
@@ -297,10 +322,14 @@ describe('createGraphMailClient syncInbox', () => {
     loadTenantEmailContextMock.mockResolvedValue(ctxWithOutlook());
     fetchMock
       .mockResolvedValueOnce(tokenResponse())
-      .mockResolvedValueOnce(jsonResponse({ value: [], '@odata.deltaLink': 'https://graph/delta?next' }));
+      .mockResolvedValueOnce(
+        jsonResponse({ value: [], '@odata.deltaLink': 'https://graph/delta?next' })
+      );
 
     const client = await createGraphMailClient('tenant-1');
-    await client!.syncInbox('https://graph.microsoft.com/v1.0/me/mailFolders/inbox/messages/delta?$deltatoken=prev');
+    await client!.syncInbox(
+      'https://graph.microsoft.com/v1.0/me/mailFolders/inbox/messages/delta?$deltatoken=prev'
+    );
 
     expect(fetchMock.mock.calls[1][0]).toBe(
       'https://graph.microsoft.com/v1.0/me/mailFolders/inbox/messages/delta?$deltatoken=prev'
@@ -352,7 +381,9 @@ describe('createGraphMailClient syncInbox', () => {
       .mockResolvedValueOnce(jsonResponse({ value: [], '@odata.deltaLink': 'https://x/delta' }));
 
     const client = await createGraphMailClient('tenant-1');
-    await client!.syncInbox('https://graph.microsoft.com/v1.0/me/mailFolders/inbox/messages/delta?$deltatoken=prev');
+    await client!.syncInbox(
+      'https://graph.microsoft.com/v1.0/me/mailFolders/inbox/messages/delta?$deltatoken=prev'
+    );
 
     expect(fetchMock.mock.calls[1][0]).toBe(
       'https://graph.microsoft.com/v1.0/me/mailFolders/inbox/messages/delta?$deltatoken=prev'
@@ -376,7 +407,15 @@ describe('createGraphMailClient syncSent', () => {
     loadTenantEmailContextMock.mockResolvedValue(ctxWithOutlook());
     fetchMock.mockResolvedValueOnce(tokenResponse()).mockResolvedValueOnce(
       jsonResponse({
-        value: [{ id: 'sent-1', subject: 'Sent', isRead: true, hasAttachments: false, sentDateTime: '2026-08-06T09:00:00Z' }],
+        value: [
+          {
+            id: 'sent-1',
+            subject: 'Sent',
+            isRead: true,
+            hasAttachments: false,
+            sentDateTime: '2026-08-06T09:00:00Z',
+          },
+        ],
         '@odata.deltaLink': 'https://x/delta',
       })
     );
@@ -393,7 +432,9 @@ describe('createGraphMailClient syncSent', () => {
 describe('createGraphMailClient send', () => {
   it('POSTs sendMail for a fresh message', async () => {
     loadTenantEmailContextMock.mockResolvedValue(ctxWithOutlook());
-    fetchMock.mockResolvedValueOnce(tokenResponse()).mockResolvedValueOnce(jsonResponse({}, true, 202));
+    fetchMock
+      .mockResolvedValueOnce(tokenResponse())
+      .mockResolvedValueOnce(jsonResponse({}, true, 202));
 
     const client = await createGraphMailClient('tenant-1');
     const result = await client!.send({
@@ -416,7 +457,9 @@ describe('createGraphMailClient send', () => {
 
   it('POSTs to /messages/{id}/reply when replyToExternalId is set', async () => {
     loadTenantEmailContextMock.mockResolvedValue(ctxWithOutlook());
-    fetchMock.mockResolvedValueOnce(tokenResponse()).mockResolvedValueOnce(jsonResponse({}, true, 202));
+    fetchMock
+      .mockResolvedValueOnce(tokenResponse())
+      .mockResolvedValueOnce(jsonResponse({}, true, 202));
 
     const client = await createGraphMailClient('tenant-1');
     await client!.send({
@@ -437,7 +480,9 @@ describe('createGraphMailClient send', () => {
 describe('createGraphMailClient markRead', () => {
   it('PATCHes the message isRead flag', async () => {
     loadTenantEmailContextMock.mockResolvedValue(ctxWithOutlook());
-    fetchMock.mockResolvedValueOnce(tokenResponse()).mockResolvedValueOnce(jsonResponse({}, true, 200));
+    fetchMock
+      .mockResolvedValueOnce(tokenResponse())
+      .mockResolvedValueOnce(jsonResponse({}, true, 200));
 
     const client = await createGraphMailClient('tenant-1');
     await client!.markRead('msg-1', true);
@@ -572,7 +617,9 @@ describe('ensureGraphSubscription', () => {
 
     expect(result.ok).toBe(true);
     expect(fetchMock).toHaveBeenCalledTimes(3);
-    expect(fetchMock.mock.calls[1][0]).toBe('https://graph.microsoft.com/v1.0/subscriptions/sub-gone');
+    expect(fetchMock.mock.calls[1][0]).toBe(
+      'https://graph.microsoft.com/v1.0/subscriptions/sub-gone'
+    );
     expect(fetchMock.mock.calls[2][0]).toBe('https://graph.microsoft.com/v1.0/subscriptions');
     expect(fetchMock.mock.calls[2][1].method).toBe('POST');
 

@@ -127,10 +127,7 @@ function formatAddress(r?: GraphRecipient): string {
 }
 
 function joinAddresses(recipients?: GraphRecipient[]): string {
-  return (recipients || [])
-    .map(formatAddress)
-    .filter(Boolean)
-    .join(', ');
+  return (recipients || []).map(formatAddress).filter(Boolean).join(', ');
 }
 
 /** Simple regex-based HTML->text fallback — a full parser is out of scope. */
@@ -239,10 +236,7 @@ async function fetchDeltaPage(
   return { messages, deltaLink: finalDeltaLink };
 }
 
-async function sendViaGraph(
-  spec: SendSpec,
-  token: string
-): Promise<{ externalId: string | null }> {
+async function sendViaGraph(spec: SendSpec, token: string): Promise<{ externalId: string | null }> {
   const headers = { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' };
 
   if (spec.replyToExternalId) {
@@ -298,7 +292,9 @@ async function fetchAttachmentViaGraph(
     { headers: authHeaders }
   );
   if (!metaRes.ok) {
-    throw new Error(`Graph attachment metadata fetch failed: ${metaRes.status} ${metaRes.statusText}`);
+    throw new Error(
+      `Graph attachment metadata fetch failed: ${metaRes.status} ${metaRes.statusText}`
+    );
   }
   const meta = (await metaRes.json()) as { name?: string; contentType?: string };
 
@@ -410,7 +406,9 @@ async function renewSubscription(
 /** settings.email.provider may be lower/mixed-case — MailboxSyncState.provider needs the enum value. */
 function normalizeOutlookProvider(raw: string | undefined | null): 'OUTLOOK' | 'MICROSOFT365' {
   const p = (raw || '').toLowerCase();
-  return p === 'microsoft365' || p === 'microsoft_365' || p === 'ms365' ? 'MICROSOFT365' : 'OUTLOOK';
+  return p === 'microsoft365' || p === 'microsoft_365' || p === 'ms365'
+    ? 'MICROSOFT365'
+    : 'OUTLOOK';
 }
 
 /**

@@ -642,7 +642,10 @@ export default function FirmInbox() {
                                 />
                               )}
                               {m.hasAttachments && (
-                                <PaperClipIcon className="h-3.5 w-3.5 text-slate-400" aria-label="Has attachments" />
+                                <PaperClipIcon
+                                  className="h-3.5 w-3.5 text-slate-400"
+                                  aria-label="Has attachments"
+                                />
                               )}
                               <span className="ml-auto text-2xs tabular-nums text-slate-400">
                                 {format(new Date(m.at), 'dd MMM HH:mm')}
@@ -973,7 +976,9 @@ export default function FirmInbox() {
                     type="button"
                     className="btn-primary text-sm"
                     disabled={sending || !replyBody.trim() || !replyToAddress}
-                    title={!replyToAddress ? 'No valid reply address found on this message' : undefined}
+                    title={
+                      !replyToAddress ? 'No valid reply address found on this message' : undefined
+                    }
                     onClick={() => void handleReply()}
                   >
                     {sending ? 'Sending…' : 'Send reply'}

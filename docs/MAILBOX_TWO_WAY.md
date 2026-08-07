@@ -67,7 +67,7 @@ against `Client.contactEmail`, and exposes `syncMailbox`,
 ## Sync job + Graph webhook
 
 **Scheduled sync** (`backend/src/jobs/mailboxSyncJob.ts`, wired in
-`backend/src/app/jobs.ts` via `scheduleMailboxSync`) is the sync *guarantee*.
+`backend/src/app/jobs.ts` via `scheduleMailboxSync`) is the sync _guarantee_.
 It runs every `MAILBOX_SYNC_INTERVAL_MS` (default 600000ms / 10 minutes,
 first tick after 7 minutes), iterates every active tenant with a recognised
 `settings.email.provider` (`gmail`/`outlook`/`microsoft365`), and calls
@@ -77,7 +77,7 @@ webhook subscription when it's missing or within an hour of expiry.
 
 **Graph webhook** (`backend/src/routes/webhooks/graph-mail.ts`, mounted at
 `/api/webhooks/graph-mail`, CSRF-exempt like the Cloudflare email webhook) is
-the *accelerator*. Microsoft Graph mail subscriptions cap out at 4230 minutes
+the _accelerator_. Microsoft Graph mail subscriptions cap out at 4230 minutes
 (~2.94 days), so `ensureGraphSubscription` (in `graphMailClient.ts`) creates
 or renews a subscription against `me/mailFolders('inbox')/messages` with a
 random `clientState` UUID, persisted to `MailboxSyncState`. The webhook route
@@ -102,7 +102,7 @@ delta cursor).
 1. **Provider send** — if the tenant has a connected mailbox
    (`buildProviderClient` returns a client), send goes out through
    `providerClient.send()` (Graph `/me/sendMail` or `/me/messages/{id}/reply`,
-   or Gmail `users.messages.send`). This is a *real* send from the practice's
+   or Gmail `users.messages.send`). This is a _real_ send from the practice's
    actual mailbox.
 2. **`tenantMailerSend` fallback** — if no mailbox is connected, the message
    still needs to leave the building, so `sendMailboxMessageInternal` falls
@@ -123,8 +123,8 @@ refreshes Microsoft tokens with scope
 `https://outlook.office365.com/SMTP.Send offline_access` and sends through a
 nodemailer SMTP transport. It is **not** part of the two-way mailbox — it
 predates it. It still serves one purpose: providing the SMTP transport for
-`tenantMailer.ts` when a tenant has connected Outlook as their *sending*
-provider (as opposed to their two-way *mailbox* provider) via
+`tenantMailer.ts` when a tenant has connected Outlook as their _sending_
+provider (as opposed to their two-way _mailbox_ provider) via
 `tenantMailerSend`. The two modules read overlapping but distinct OAuth state
 (`emailService.ts`'s `createEmailService()` reads platform-wide
 `OUTLOOK_CLIENT_ID`/`OUTLOOK_REFRESH_TOKEN`-style env vars for a legacy
@@ -146,15 +146,15 @@ which (`oauthCallback.ts` / `routes/email.ts`) is part of the two-way mailbox.
 
 ## Environment variables
 
-| Variable | Where declared | Purpose |
-| --- | --- | --- |
-| `GMAIL_CLIENT_ID` | `render.yaml` (`sync: false`), `backend/.env.example` | Google Cloud OAuth client id for the platform-level "connect Gmail" flow (`oauthCallback.ts`, `routes/email.ts`). |
-| `GMAIL_CLIENT_SECRET` | `render.yaml` (`sync: false`), `backend/.env.example` | Matching OAuth client secret. Encrypted into `Tenant.settings.email.gmail.clientSecret` at connect time. |
-| `MICROSOFT_CLIENT_ID` | `render.yaml` (`sync: false`, pre-existing) | Azure AD app registration id for the Graph "connect Outlook/Microsoft 365" flow. |
-| `MICROSOFT_CLIENT_SECRET` | `render.yaml` (`sync: false`, pre-existing) | Matching app secret. |
-| `MICROSOFT_TENANT_ID` | `render.yaml` (`sync: false`, pre-existing) | Azure tenant id, if the app registration is single-tenant. |
-| `MAILBOX_SYNC_INTERVAL_MS` | `render.yaml` (literal `'600000'`), `backend/.env.example` | Scheduled sync interval, read in `backend/src/app/jobs.ts`. Declared with a visible default so a Blueprint sync can't silently drop it. |
-| `API_URL` | `render.yaml` (pre-existing, `https://capstonesoftware.co.uk/engage`) | Must be a public HTTPS URL — it's the base for the Graph webhook `notificationUrl` (`{API_URL}/api/webhooks/graph-mail`) and the OAuth redirect URIs (`{API_URL}/api/oauth/callback/{gmail,outlook,microsoft365}`). |
+| Variable                   | Where declared                                                        | Purpose                                                                                                                                                                                                             |
+| -------------------------- | --------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `GMAIL_CLIENT_ID`          | `render.yaml` (`sync: false`), `backend/.env.example`                 | Google Cloud OAuth client id for the platform-level "connect Gmail" flow (`oauthCallback.ts`, `routes/email.ts`).                                                                                                   |
+| `GMAIL_CLIENT_SECRET`      | `render.yaml` (`sync: false`), `backend/.env.example`                 | Matching OAuth client secret. Encrypted into `Tenant.settings.email.gmail.clientSecret` at connect time.                                                                                                            |
+| `MICROSOFT_CLIENT_ID`      | `render.yaml` (`sync: false`, pre-existing)                           | Azure AD app registration id for the Graph "connect Outlook/Microsoft 365" flow.                                                                                                                                    |
+| `MICROSOFT_CLIENT_SECRET`  | `render.yaml` (`sync: false`, pre-existing)                           | Matching app secret.                                                                                                                                                                                                |
+| `MICROSOFT_TENANT_ID`      | `render.yaml` (`sync: false`, pre-existing)                           | Azure tenant id, if the app registration is single-tenant.                                                                                                                                                          |
+| `MAILBOX_SYNC_INTERVAL_MS` | `render.yaml` (literal `'600000'`), `backend/.env.example`            | Scheduled sync interval, read in `backend/src/app/jobs.ts`. Declared with a visible default so a Blueprint sync can't silently drop it.                                                                             |
+| `API_URL`                  | `render.yaml` (pre-existing, `https://capstonesoftware.co.uk/engage`) | Must be a public HTTPS URL — it's the base for the Graph webhook `notificationUrl` (`{API_URL}/api/webhooks/graph-mail`) and the OAuth redirect URIs (`{API_URL}/api/oauth/callback/{gmail,outlook,microsoft365}`). |
 
 ## Graph webhook requirements
 
@@ -194,9 +194,9 @@ credentials go into the Render dashboard (not committed — `sync: false`).
    - `https://www.googleapis.com/auth/gmail.modify`
    - `https://www.googleapis.com/auth/gmail.send`
    - `https://www.googleapis.com/auth/userinfo.email`
-   Google will flag `https://mail.google.com/` as a restricted scope —
-   verification is required before the app can be used outside test mode with
-   real (non-test) Google accounts.
+     Google will flag `https://mail.google.com/` as a restricted scope —
+     verification is required before the app can be used outside test mode with
+     real (non-test) Google accounts.
 4. Copy the client id/secret into the Render dashboard as
    `GMAIL_CLIENT_ID` / `GMAIL_CLIENT_SECRET` on `engage-backend` (they're
    declared `sync: false` in `render.yaml` specifically so a Blueprint sync

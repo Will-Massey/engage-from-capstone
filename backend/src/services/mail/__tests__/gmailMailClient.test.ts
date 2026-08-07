@@ -178,7 +178,13 @@ describe('createGmailMailClient syncInbox', () => {
     expect(msg.isRead).toBe(true); // no UNREAD label
     expect(msg.hasAttachments).toBe(true);
     expect(msg.attachments).toEqual([
-      { externalId: 'att-1', name: 'invoice.pdf', contentType: 'application/pdf', sizeBytes: 1234, isInline: false },
+      {
+        externalId: 'att-1',
+        name: 'invoice.pdf',
+        contentType: 'application/pdf',
+        sizeBytes: 1234,
+        isInline: false,
+      },
     ]);
     expect(msg.receivedAt).toEqual(new Date(1754470800000));
     expect(page.deltaLink).toBe('history:1000');
@@ -237,10 +243,16 @@ describe('createGmailMailClient syncInbox', () => {
     const gmail = makeFakeGmail();
     gmail.users.messages.list
       .mockResolvedValueOnce({
-        data: { messages: Array.from({ length: 100 }, (_, i) => ({ id: `p1-${i}` })), nextPageToken: 'p2' },
+        data: {
+          messages: Array.from({ length: 100 }, (_, i) => ({ id: `p1-${i}` })),
+          nextPageToken: 'p2',
+        },
       })
       .mockResolvedValueOnce({
-        data: { messages: Array.from({ length: 100 }, (_, i) => ({ id: `p2-${i}` })), nextPageToken: 'p3' },
+        data: {
+          messages: Array.from({ length: 100 }, (_, i) => ({ id: `p2-${i}` })),
+          nextPageToken: 'p3',
+        },
       });
     gmail.users.messages.get.mockResolvedValue({ data: { id: 'x', payload: { headers: [] } } });
 
@@ -256,7 +268,9 @@ describe('createGmailMailClient syncInbox', () => {
     loadTenantEmailContextMock.mockResolvedValue(ctxWithGmail());
     fetchMock.mockResolvedValue(tokenResponse());
     const gmail = makeFakeGmail();
-    gmail.users.history.list.mockRejectedValue(Object.assign(new Error('Not Found'), { code: 404 }));
+    gmail.users.history.list.mockRejectedValue(
+      Object.assign(new Error('Not Found'), { code: 404 })
+    );
 
     const client = await createGmailMailClient('tenant-1', { gmail: asGmail(gmail) });
 
@@ -271,7 +285,11 @@ describe('createGmailMailClient syncSent', () => {
     const gmail = makeFakeGmail();
     gmail.users.messages.list.mockResolvedValue({ data: { messages: [{ id: 's-1' }] } });
     gmail.users.messages.get.mockResolvedValue({
-      data: { id: 's-1', labelIds: ['SENT'], payload: { headers: [{ name: 'Subject', value: 'Out' }] } },
+      data: {
+        id: 's-1',
+        labelIds: ['SENT'],
+        payload: { headers: [{ name: 'Subject', value: 'Out' }] },
+      },
     });
 
     const client = await createGmailMailClient('tenant-1', { gmail: asGmail(gmail) });
@@ -379,12 +397,18 @@ describe('createGmailMailClient fetchAttachment', () => {
         payload: {
           mimeType: 'multipart/mixed',
           parts: [
-            { filename: 'invoice.pdf', mimeType: 'application/pdf', body: { attachmentId: 'att-1', size: 9 } },
+            {
+              filename: 'invoice.pdf',
+              mimeType: 'application/pdf',
+              body: { attachmentId: 'att-1', size: 9 },
+            },
           ],
         },
       },
     });
-    gmail.users.messages.attachments = { get: jest.fn().mockResolvedValue({ data: { data: b64url('pdf-bytes') } }) };
+    gmail.users.messages.attachments = {
+      get: jest.fn().mockResolvedValue({ data: { data: b64url('pdf-bytes') } }),
+    };
 
     const client = await createGmailMailClient('tenant-1', { gmail: asGmail(gmail) });
     const attachment = await client!.fetchAttachment('m-1', 'att-1');

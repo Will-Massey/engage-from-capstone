@@ -138,7 +138,9 @@ async function matchClientByEmail(
 }
 
 /** settings.email.provider may be stored lower/mixed-case — normalise to the two-way-capable set. */
-export function normalizeMailProvider(raw: string | undefined | null): 'GMAIL' | 'OUTLOOK' | 'MICROSOFT365' | null {
+export function normalizeMailProvider(
+  raw: string | undefined | null
+): 'GMAIL' | 'OUTLOOK' | 'MICROSOFT365' | null {
   const p = (raw || '').toLowerCase();
   if (p === 'gmail') return 'GMAIL';
   if (p === 'outlook') return 'OUTLOOK';
@@ -171,7 +173,10 @@ export async function getMailboxConnection(tenantId: string): Promise<{
   if (normalized === 'GMAIL' && email.gmail?.refreshToken) {
     provider = 'GMAIL';
     user = email.gmail.user || null;
-  } else if ((normalized === 'OUTLOOK' || normalized === 'MICROSOFT365') && email.outlook?.refreshToken) {
+  } else if (
+    (normalized === 'OUTLOOK' || normalized === 'MICROSOFT365') &&
+    email.outlook?.refreshToken
+  ) {
     provider = normalized;
     user = email.outlook.user || null;
   }
@@ -425,7 +430,9 @@ export async function syncMailbox(tenantId: string): Promise<{
     const statusCode = e?.statusCode;
     const isDeltaInvalidation = statusCode === 410 || statusCode === 404;
     const lastSyncError = isDeltaInvalidation ? `delta reset: ${errorMsg}` : errorMsg;
-    const deltaResetFields = isDeltaInvalidation ? { inboxDeltaLink: null, sentDeltaLink: null } : {};
+    const deltaResetFields = isDeltaInvalidation
+      ? { inboxDeltaLink: null, sentDeltaLink: null }
+      : {};
 
     await prisma.mailboxSyncState
       .upsert({
@@ -550,7 +557,8 @@ async function sendMailboxMessageInternal(
 
   const ctx = await loadTenantEmailContext(tenantId);
   const email = ctx?.email || {};
-  const fromAddr = email.fromEmail || email.gmail?.user || email.outlook?.user || 'noreply@engage.local';
+  const fromAddr =
+    email.fromEmail || email.gmail?.user || email.outlook?.user || 'noreply@engage.local';
   const normalized = normalizeMailProvider(email.provider);
   const providerClient = await buildProviderClient(tenantId, normalized);
 
@@ -634,7 +642,9 @@ async function sendMailboxMessageInternal(
     );
   }
 
-  const clientNames = clientId ? await attachClientNames([row], tenantId) : new Map<string, string>();
+  const clientNames = clientId
+    ? await attachClientNames([row], tenantId)
+    : new Map<string, string>();
   return { dto: toDto(row, clientNames), sent, error };
 }
 
@@ -653,7 +663,11 @@ export async function sendMailboxMessage(
 
 // ==================== markMailboxRead ====================
 
-async function markMailboxReadCore(tenantId: string, messageId: string, read: boolean): Promise<void> {
+async function markMailboxReadCore(
+  tenantId: string,
+  messageId: string,
+  read: boolean
+): Promise<void> {
   const row = await prisma.mailMessage.findFirst({
     where: { id: messageId, tenantId },
     select: { id: true, provider: true, externalId: true },
@@ -668,7 +682,9 @@ async function markMailboxReadCore(tenantId: string, messageId: string, read: bo
     const providerClient = await buildProviderClient(tenantId, normalized);
     if (providerClient) await providerClient.markRead(row.externalId, read);
   } catch (e: any) {
-    logger.warn(`Mailbox markRead provider write-back failed for tenant ${tenantId}: ${e?.message}`);
+    logger.warn(
+      `Mailbox markRead provider write-back failed for tenant ${tenantId}: ${e?.message}`
+    );
   }
 }
 
@@ -739,7 +755,10 @@ export type MessageContext = {
   pendingForms: Awaited<ReturnType<typeof import('./practiceFormsService.js').listAssignments>>;
 };
 
-export async function getMessageContext(tenantId: string, messageId: string): Promise<MessageContext> {
+export async function getMessageContext(
+  tenantId: string,
+  messageId: string
+): Promise<MessageContext> {
   const row = await prisma.mailMessage.findFirst({
     where: { id: messageId, tenantId },
     include: { attachments: true },
@@ -753,7 +772,9 @@ export async function getMessageContext(tenantId: string, messageId: string): Pr
     clientId = match?.id ?? null;
   }
 
-  const clientNames = clientId ? await attachClientNames([{ clientId }], tenantId) : new Map<string, string>();
+  const clientNames = clientId
+    ? await attachClientNames([{ clientId }], tenantId)
+    : new Map<string, string>();
   const message = toDto(row, clientNames);
 
   const client = clientId

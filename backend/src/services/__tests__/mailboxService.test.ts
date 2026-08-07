@@ -402,7 +402,9 @@ describe('syncMailbox — F3: delta invalidation recovery', () => {
       tenantName: 'Firm',
       email: { provider: 'outlook', outlook: { user: 'firm@outlook.com', refreshToken: 'r1' } },
     });
-    const deltaError = Object.assign(new Error('Graph delta fetch failed: 410 Gone'), { statusCode: 410 });
+    const deltaError = Object.assign(new Error('Graph delta fetch failed: 410 Gone'), {
+      statusCode: 410,
+    });
     const syncInbox = jest.fn().mockRejectedValue(deltaError);
     const syncSent = jest.fn().mockResolvedValue({ messages: [], deltaLink: 'old-sent-link' });
     createGraphMailClientMock.mockResolvedValue({ syncInbox, syncSent });
@@ -634,9 +636,9 @@ describe('listMailboxMessages', () => {
   it('propagates non-cursor errors as-is', async () => {
     prismaMock.mailMessage.findMany.mockRejectedValue(new Error('connection reset'));
 
-    await expect(
-      listMailboxMessages('t1', { limit: 5, cursor: 'm1' })
-    ).rejects.toThrow('connection reset');
+    await expect(listMailboxMessages('t1', { limit: 5, cursor: 'm1' })).rejects.toThrow(
+      'connection reset'
+    );
   });
 });
 
@@ -764,7 +766,11 @@ describe('sendMailboxMessage — provider connected, with reply threading', () =
     loadTenantEmailContextMock.mockResolvedValue({
       tenantId: 't1',
       tenantName: 'Firm',
-      email: { provider: 'outlook', fromEmail: 'firm@outlook.com', outlook: { user: 'firm@outlook.com', refreshToken: 'r1' } },
+      email: {
+        provider: 'outlook',
+        fromEmail: 'firm@outlook.com',
+        outlook: { user: 'firm@outlook.com', refreshToken: 'r1' },
+      },
     });
     const send = jest.fn().mockResolvedValue({ externalId: null }); // Graph 202 → no body
     createGraphMailClientMock.mockResolvedValue({ send });
@@ -818,9 +824,15 @@ describe('sendMailboxMessage — F1: honest send status', () => {
     loadTenantEmailContextMock.mockResolvedValue({
       tenantId: 't1',
       tenantName: 'Firm',
-      email: { provider: 'outlook', fromEmail: 'firm@outlook.com', outlook: { user: 'firm@outlook.com', refreshToken: 'r1' } },
+      email: {
+        provider: 'outlook',
+        fromEmail: 'firm@outlook.com',
+        outlook: { user: 'firm@outlook.com', refreshToken: 'r1' },
+      },
     });
-    const send = jest.fn().mockRejectedValue(new Error('Graph sendMail failed: 503 Service Unavailable'));
+    const send = jest
+      .fn()
+      .mockRejectedValue(new Error('Graph sendMail failed: 503 Service Unavailable'));
     createGraphMailClientMock.mockResolvedValue({ send });
     prismaMock.client.findFirst.mockResolvedValue(null);
     prismaMock.mailMessage.create.mockResolvedValue(
@@ -850,7 +862,9 @@ describe('sendMailboxMessage — no provider connected (fallback)', () => {
     });
     prismaMock.client.findFirst.mockResolvedValue(null);
     tenantMailerSendMock.mockResolvedValue({ success: true, messageId: 'sg-1' });
-    prismaMock.mailMessage.create.mockResolvedValue(mailMessageRow({ id: 'out-2', direction: 'OUTBOUND' }));
+    prismaMock.mailMessage.create.mockResolvedValue(
+      mailMessageRow({ id: 'out-2', direction: 'OUTBOUND' })
+    );
     prismaMock.client.findMany.mockResolvedValue([]);
 
     const result = await sendMailboxMessage('t1', null, {
@@ -878,7 +892,9 @@ describe('sendMailboxMessage — no provider connected (fallback)', () => {
     loadTenantEmailContextMock.mockResolvedValue({ tenantId: 't1', tenantName: 'Firm', email: {} });
     prismaMock.client.findFirst.mockResolvedValue(null);
     tenantMailerSendMock.mockResolvedValue({ success: false, error: 'suppressed' });
-    prismaMock.mailMessage.create.mockResolvedValue(mailMessageRow({ id: 'out-3', direction: 'OUTBOUND' }));
+    prismaMock.mailMessage.create.mockResolvedValue(
+      mailMessageRow({ id: 'out-3', direction: 'OUTBOUND' })
+    );
     prismaMock.client.findMany.mockResolvedValue([]);
 
     const result = await sendMailboxMessage('t1', null, {

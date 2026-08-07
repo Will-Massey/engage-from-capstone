@@ -151,11 +151,10 @@ describe('role gates', () => {
     ['post', '/mailbox/messages/m1/assign-form', { templateId: 'tpl1' }],
   ];
 
-  it.each(MUTATING_ROUTES)('excludes JUNIOR from %s %s', async (method, path) => {
+  it.each(MUTATING_ROUTES)('excludes JUNIOR from %s %s', async (method, path, body) => {
     currentRole = 'JUNIOR';
-    const res = await (request(app()) as any)
-      [method](`/api/comms${path}`)
-      .send(MUTATING_ROUTES.find(([, p]) => p === path)?.[2] || {});
+    const agent = request(app()) as any;
+    const res = await agent[method](`/api/comms${path}`).send(body);
     expect(res.status).toBe(403);
   });
 

@@ -114,7 +114,9 @@ function extractBodyAndAttachments(payload?: gmail_v1.Schema$MessagePart): Extra
 
     if (part.filename && part.body?.attachmentId) {
       const isInline = (part.headers || []).some(
-        (h) => h.name?.toLowerCase() === 'content-disposition' && h.value?.toLowerCase().includes('inline')
+        (h) =>
+          h.name?.toLowerCase() === 'content-disposition' &&
+          h.value?.toLowerCase().includes('inline')
       );
       attachments.push({
         externalId: part.body.attachmentId,
@@ -191,7 +193,8 @@ async function fullSync(
       const full = await gmail.users.messages.get({ userId: 'me', id: m.id, format: 'full' });
       messages.push(mapGmailMessage(full.data, direction));
     }
-    pageToken = messages.length < FULL_SYNC_MAX_MESSAGES ? list.data.nextPageToken || undefined : undefined;
+    pageToken =
+      messages.length < FULL_SYNC_MAX_MESSAGES ? list.data.nextPageToken || undefined : undefined;
   } while (pageToken);
 
   const profile = await gmail.users.getProfile({ userId: 'me' });
@@ -208,7 +211,9 @@ async function fullSync(
 function withStatusCode(e: any): Error & { statusCode?: number } {
   const raw = e?.code ?? e?.response?.status ?? e?.status;
   const statusCode = typeof raw === 'string' ? parseInt(raw, 10) : raw;
-  const err = new Error(e?.message || 'Gmail history sync failed') as Error & { statusCode?: number };
+  const err = new Error(e?.message || 'Gmail history sync failed') as Error & {
+    statusCode?: number;
+  };
   if (typeof statusCode === 'number' && Number.isFinite(statusCode)) err.statusCode = statusCode;
   return err;
 }
@@ -308,7 +313,11 @@ async function sendViaGmail(
   return { externalId: res.data.id || null };
 }
 
-async function markReadViaGmail(gmail: gmail_v1.Gmail, externalId: string, read: boolean): Promise<void> {
+async function markReadViaGmail(
+  gmail: gmail_v1.Gmail,
+  externalId: string,
+  read: boolean
+): Promise<void> {
   await gmail.users.messages.modify({
     userId: 'me',
     id: externalId,
@@ -321,7 +330,11 @@ async function fetchAttachmentViaGmail(
   messageExternalId: string,
   attachmentExternalId: string
 ): Promise<{ name: string; contentType: string; content: Buffer }> {
-  const full = await gmail.users.messages.get({ userId: 'me', id: messageExternalId, format: 'full' });
+  const full = await gmail.users.messages.get({
+    userId: 'me',
+    id: messageExternalId,
+    format: 'full',
+  });
   const { attachments } = extractBodyAndAttachments(full.data.payload);
   const meta = attachments.find((a) => a.externalId === attachmentExternalId);
 
@@ -391,7 +404,9 @@ export async function createGmailMailClient(
       return withToken((gmail) => markReadViaGmail(gmail, externalId, read));
     },
     async fetchAttachment(messageExternalId, attachmentExternalId) {
-      return withToken((gmail) => fetchAttachmentViaGmail(gmail, messageExternalId, attachmentExternalId));
+      return withToken((gmail) =>
+        fetchAttachmentViaGmail(gmail, messageExternalId, attachmentExternalId)
+      );
     },
   };
 }

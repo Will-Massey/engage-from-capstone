@@ -61,7 +61,9 @@ describe('POST /api/webhooks/graph-mail', () => {
       .send({ value: [{ subscriptionId: 'sub-1', clientState: 'good-client-state' }] });
 
     expect(res.status).toBe(202);
-    expect(mailboxSyncStateFindFirst).toHaveBeenCalledWith({ where: { clientState: 'good-client-state' } });
+    expect(mailboxSyncStateFindFirst).toHaveBeenCalledWith({
+      where: { clientState: 'good-client-state' },
+    });
     expect(syncMailboxMock).toHaveBeenCalledWith('tenant-1');
     resolveSync();
   });
