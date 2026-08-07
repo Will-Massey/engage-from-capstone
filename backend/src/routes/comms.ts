@@ -433,7 +433,8 @@ router.post(
     try {
       await markMailboxRead(req.tenantId!, req.params.id, body.read ?? true);
     } catch (e: any) {
-      if (e?.message === 'MESSAGE_NOT_FOUND') throw new ApiError('NOT_FOUND', 'Message not found', 404);
+      if (e?.message === 'MESSAGE_NOT_FOUND')
+        throw new ApiError('NOT_FOUND', 'Message not found', 404);
       throw e;
     }
     res.json({ success: true });

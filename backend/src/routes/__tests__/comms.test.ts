@@ -42,8 +42,14 @@ const jobFindFirst = jest.fn();
 
 jest.mock('../../config/database.js', () => ({
   prisma: {
-    emailLog: { findMany: (...a: unknown[]) => emailLogFindMany(...a), count: (...a: unknown[]) => emailLogCount(...a) },
-    activityLog: { findMany: (...a: unknown[]) => activityLogFindMany(...a), count: (...a: unknown[]) => activityLogCount(...a) },
+    emailLog: {
+      findMany: (...a: unknown[]) => emailLogFindMany(...a),
+      count: (...a: unknown[]) => emailLogCount(...a),
+    },
+    activityLog: {
+      findMany: (...a: unknown[]) => activityLogFindMany(...a),
+      count: (...a: unknown[]) => activityLogCount(...a),
+    },
     client: { findMany: (...a: unknown[]) => clientFindMany(...a) },
     mailMessage: { findFirst: (...a: unknown[]) => mailMessageFindFirst(...a) },
     job: { findFirst: (...a: unknown[]) => jobFindFirst(...a) },
@@ -136,16 +142,20 @@ describe('role gates', () => {
     ['post', '/mailbox/sync', {}],
     ['post', '/mailbox/send', { to: 'a@b.com', subject: 'S', body: 'B' }],
     ['post', '/mailbox/messages/m1/read', {}],
-    ['post', '/mailbox/messages/m1/link-client', { clientId: '11111111-1111-1111-1111-111111111111' }],
+    [
+      'post',
+      '/mailbox/messages/m1/link-client',
+      { clientId: '11111111-1111-1111-1111-111111111111' },
+    ],
     ['post', '/mailbox/messages/m1/create-task', {}],
     ['post', '/mailbox/messages/m1/assign-form', { templateId: 'tpl1' }],
   ];
 
   it.each(MUTATING_ROUTES)('excludes JUNIOR from %s %s', async (method, path) => {
     currentRole = 'JUNIOR';
-    const res = await (request(app()) as any)[method](`/api/comms${path}`).send(
-      MUTATING_ROUTES.find(([, p]) => p === path)?.[2] || {}
-    );
+    const res = await (request(app()) as any)
+      [method](`/api/comms${path}`)
+      .send(MUTATING_ROUTES.find(([, p]) => p === path)?.[2] || {});
     expect(res.status).toBe(403);
   });
 
@@ -193,11 +203,17 @@ describe('GET /api/comms/mailbox/messages — pagination', () => {
   });
 
   it('round-trips the returned nextCursor as the next request cursor', async () => {
-    listMailboxMessages.mockResolvedValueOnce({ messages: [mailMessageDto({ id: 'm1' })], nextCursor: 'm1' });
+    listMailboxMessages.mockResolvedValueOnce({
+      messages: [mailMessageDto({ id: 'm1' })],
+      nextCursor: 'm1',
+    });
     const first = await request(app()).get('/api/comms/mailbox/messages?limit=1');
     expect(first.body.data.nextCursor).toBe('m1');
 
-    listMailboxMessages.mockResolvedValueOnce({ messages: [mailMessageDto({ id: 'm2' })], nextCursor: null });
+    listMailboxMessages.mockResolvedValueOnce({
+      messages: [mailMessageDto({ id: 'm2' })],
+      nextCursor: null,
+    });
     const second = await request(app()).get(
       `/api/comms/mailbox/messages?limit=1&cursor=${first.body.data.nextCursor}`
     );
@@ -271,7 +287,10 @@ describe('GET /api/comms/mailbox/messages/:id/attachments/:attachmentId', () => 
 
 describe('POST /api/comms/mailbox/send', () => {
   it('validates the body via zod and forwards cc + replyToMessageId', async () => {
-    sendMailboxMessage.mockResolvedValue({ dto: mailMessageDto({ direction: 'outbound' }), sent: true });
+    sendMailboxMessage.mockResolvedValue({
+      dto: mailMessageDto({ direction: 'outbound' }),
+      sent: true,
+    });
 
     const res = await request(app()).post('/api/comms/mailbox/send').send({
       to: 'client@acme.com',
@@ -300,7 +319,10 @@ describe('POST /api/comms/mailbox/send', () => {
   });
 
   it('F1: reports success with "Message sent" and sent:true when the provider send succeeds', async () => {
-    sendMailboxMessage.mockResolvedValue({ dto: mailMessageDto({ direction: 'outbound' }), sent: true });
+    sendMailboxMessage.mockResolvedValue({
+      dto: mailMessageDto({ direction: 'outbound' }),
+      sent: true,
+    });
 
     const res = await request(app()).post('/api/comms/mailbox/send').send({
       to: 'client@acme.com',
@@ -378,7 +400,14 @@ describe('GET /api/comms/mailbox/messages/:id/context', () => {
   it('returns the service context shape the frontend consumes', async () => {
     getMessageContext.mockResolvedValue({
       message: mailMessageDto(),
-      client: { id: 'c1', name: 'Acme Ltd', contactName: 'Ada', contactEmail: 'ada@acme.com', portalToken: null, portalEnabled: true },
+      client: {
+        id: 'c1',
+        name: 'Acme Ltd',
+        contactName: 'Ada',
+        contactEmail: 'ada@acme.com',
+        portalToken: null,
+        portalEnabled: true,
+      },
       jobs: [],
       pendingForms: [],
     });
@@ -390,7 +419,12 @@ describe('GET /api/comms/mailbox/messages/:id/context', () => {
   });
 
   it('404s when the message is not found', async () => {
-    getMessageContext.mockResolvedValue({ message: null, client: null, jobs: [], pendingForms: [] });
+    getMessageContext.mockResolvedValue({
+      message: null,
+      client: null,
+      jobs: [],
+      pendingForms: [],
+    });
     const res = await request(app()).get('/api/comms/mailbox/messages/missing/context');
     expect(res.status).toBe(404);
   });
@@ -399,7 +433,9 @@ describe('GET /api/comms/mailbox/messages/:id/context', () => {
 describe('POST /api/comms/mailbox/messages/:id/create-task', () => {
   it('404s when the message is not found (direct DB lookup, no 150-row scan)', async () => {
     mailMessageFindFirst.mockResolvedValue(null);
-    const res = await request(app()).post('/api/comms/mailbox/messages/missing/create-task').send({});
+    const res = await request(app())
+      .post('/api/comms/mailbox/messages/missing/create-task')
+      .send({});
     expect(res.status).toBe(404);
     expect(listMailboxMessages).not.toHaveBeenCalled();
   });
