@@ -10,6 +10,7 @@ import sendgridWebhookRoutes from '../routes/webhooks/sendgrid.js';
 import emailEventsWebhookRoutes from '../routes/webhooks/email-events.js';
 
 import cloudflareEmailWebhookRoutes from '../routes/webhooks/cloudflare-email.js';
+import graphMailWebhookRoutes from '../routes/webhooks/graph-mail.js';
 
 export function applyParsersAndWebhooks(app: express.Express): void {
   // Logging
@@ -50,4 +51,5 @@ export function applyParsersAndWebhooks(app: express.Express): void {
   app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
   app.use('/api/webhooks/cloudflare-email', cloudflareEmailWebhookRoutes);
+  app.use('/api/webhooks/graph-mail', graphMailWebhookRoutes);
 }

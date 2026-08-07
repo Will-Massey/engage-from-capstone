@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import {
   InboxIcon,
@@ -10,11 +10,19 @@ import {
   PaperAirplaneIcon,
   LinkIcon,
   ExclamationTriangleIcon,
+  PaperClipIcon,
+  ArrowDownTrayIcon,
 } from '@heroicons/react/24/outline';
 import { apiClient } from '../../utils/api';
 import { StatusChip } from '../../components/ui/StatusChip';
 import { MetalCard } from '../../components/ui/MetalTile';
 import { format } from 'date-fns';
+import {
+  sanitizeMailHtml,
+  formatAttachmentSize,
+  formatSyncHealth,
+  extractEmailAddress,
+} from './mailboxHelpers';
 
 type Channel = 'mailbox' | 'all' | 'email' | 'sms' | 'portal';
 
@@ -32,28 +40,39 @@ interface InboxItem {
   href: string | null;
 }
 
+interface MailAttachment {
+  id: string;
+  externalId: string;
+  name: string;
+  contentType: string;
+  sizeBytes: number;
+  isInline: boolean;
+}
+
 interface MailboxMessage {
   id: string;
+  provider: string;
   direction: 'inbound' | 'outbound';
   from: string;
   to: string;
+  cc: string | null;
   subject: string;
   body: string;
+  bodyHtml: string | null;
   at: string;
   read: boolean;
+  hasAttachments: boolean;
   clientId: string | null;
   clientName: string | null;
-  threadKey: string;
-  provider: string | null;
+  conversationId: string | null;
+  externalId: string;
+  attachments: MailAttachment[];
 }
 
 interface MailboxConnection {
-  connected: boolean;
   provider: string | null;
   user: string | null;
-  mode: string;
-  canSync: boolean;
-  canSend: boolean;
+  health: { lastSyncAt: string | null; lastSyncOk: boolean | null; lastSyncError: string | null };
 }
 
 const CHANNELS: { id: Channel; label: string }[] = [
@@ -85,13 +104,20 @@ export default function FirmInbox() {
 
   // Two-way mailbox
   const [messages, setMessages] = useState<MailboxMessage[]>([]);
+  const [nextCursor, setNextCursor] = useState<string | null>(null);
+  const [loadingMore, setLoadingMore] = useState(false);
   const [connection, setConnection] = useState<MailboxConnection | null>(null);
+  const [unreadCount, setUnreadCount] = useState(0);
   const [selectedMail, setSelectedMail] = useState<MailboxMessage | null>(null);
+  const [threadMessages, setThreadMessages] = useState<MailboxMessage[]>([]);
+  const [threadLoading, setThreadLoading] = useState(false);
   const [composeOpen, setComposeOpen] = useState(false);
   const [replyBody, setReplyBody] = useState('');
-  const [compose, setCompose] = useState({ to: '', subject: '', body: '' });
+  const [replyCc, setReplyCc] = useState('');
+  const [compose, setCompose] = useState({ to: '', cc: '', subject: '', body: '' });
   const [sending, setSending] = useState(false);
   const [syncing, setSyncing] = useState(false);
+  const [attachmentBusyId, setAttachmentBusyId] = useState<string | null>(null);
   const [mailContext, setMailContext] = useState<{
     client: {
       id: string;
@@ -114,29 +140,75 @@ export default function FirmInbox() {
   const [linkClientId, setLinkClientId] = useState('');
   const [unreadOnly, setUnreadOnly] = useState(false);
 
-  const loadMailbox = useCallback(async () => {
-    setLoading(true);
-    setError(null);
+  const fetchMessages = useCallback(
+    async (opts: { cursor?: string | null } = {}) => {
+      const append = Boolean(opts.cursor);
+      if (append) setLoadingMore(true);
+      else setLoading(true);
+      setError(null);
+      try {
+        const params = new URLSearchParams();
+        params.set('limit', '50');
+        if (q.trim()) params.set('q', q.trim());
+        if (unreadOnly) params.set('unread', '1');
+        if (opts.cursor) params.set('cursor', opts.cursor);
+        const res = (await apiClient.get(`/comms/mailbox/messages?${params}`)) as any;
+        const data = res?.data ?? res;
+        const page: MailboxMessage[] = data?.messages || [];
+        setMessages((prev) => (append ? [...prev, ...page] : page));
+        setNextCursor(data?.nextCursor ?? null);
+        if (!append) {
+          setSelectedMail((prev) => (prev ? page.find((m) => m.id === prev.id) || prev : null));
+        }
+      } catch (e: any) {
+        setError(e?.response?.data?.error?.message || e?.message || 'Failed to load mailbox');
+        if (!append) setMessages([]);
+      } finally {
+        if (append) setLoadingMore(false);
+        else setLoading(false);
+      }
+    },
+    [q, unreadOnly]
+  );
+
+  const loadConnection = useCallback(async () => {
     try {
-      const params = new URLSearchParams();
-      params.set('limit', '100');
-      if (q.trim()) params.set('q', q.trim());
-      if (unreadOnly) params.set('unread', '1');
-      const res = (await apiClient.get(`/comms/mailbox/messages?${params}`)) as any;
-      const data = res?.data ?? res;
-      setMessages(data?.messages || []);
-      setConnection(data?.connection || null);
-      setSelectedMail((prev) => {
-        if (!prev) return null;
-        return (data?.messages || []).find((m: MailboxMessage) => m.id === prev.id) || null;
-      });
-    } catch (e: any) {
-      setError(e?.response?.data?.error?.message || e?.message || 'Failed to load mailbox');
-      setMessages([]);
-    } finally {
-      setLoading(false);
+      const res = (await apiClient.get('/comms/mailbox/connection')) as any;
+      setConnection((res?.data ?? res) || null);
+    } catch {
+      setConnection(null);
     }
-  }, [q, unreadOnly]);
+  }, []);
+
+  const loadUnreadCount = useCallback(async () => {
+    try {
+      const res = (await apiClient.get('/comms/mailbox/unread-count')) as any;
+      const data = res?.data ?? res;
+      setUnreadCount(typeof data?.unread === 'number' ? data.unread : 0);
+    } catch {
+      /* badge is non-critical */
+    }
+  }, []);
+
+  // Guards against out-of-order thread fetches: if the user clicks message A
+  // then quickly message B, A's fetch may resolve after B's. Each call marks
+  // itself the "latest" request; a resolving fetch only commits state if it's
+  // still the latest by the time it lands, so a slow A can never clobber B.
+  const activeThreadRequestRef = useRef<string | null>(null);
+  const refreshThread = useCallback(async (id: string) => {
+    activeThreadRequestRef.current = id;
+    setThreadLoading(true);
+    try {
+      const res = (await apiClient.get(`/comms/mailbox/messages/${id}/thread`)) as any;
+      if (activeThreadRequestRef.current !== id) return; // superseded by a newer selection
+      const data = res?.data ?? res;
+      setThreadMessages(data?.messages || []);
+    } catch {
+      /* keep whatever thread state we already had */
+    } finally {
+      if (activeThreadRequestRef.current === id) setThreadLoading(false);
+    }
+  }, []);
 
   const loadActivity = useCallback(async () => {
     setLoading(true);
@@ -161,30 +233,43 @@ export default function FirmInbox() {
   useEffect(() => {
     const t = setTimeout(
       () => {
-        if (channel === 'mailbox') void loadMailbox();
+        if (channel === 'mailbox') void fetchMessages();
         else void loadActivity();
       },
       q ? 250 : 0
     );
     return () => clearTimeout(t);
-  }, [channel, q, loadMailbox, loadActivity]);
+  }, [channel, q, fetchMessages, loadActivity]);
 
-  // Auto-sync once when opening mailbox empty
   useEffect(() => {
-    if (channel !== 'mailbox' || loading) return;
-    if (messages.length === 0 && !syncMsg) {
-      void (async () => {
-        try {
-          const res = (await apiClient.post('/comms/mailbox/sync', {})) as any;
-          setSyncMsg(res?.message || res?.data?.message || 'Synced');
-          await loadMailbox();
-        } catch {
-          /* ignore first-load seed errors */
-        }
-      })();
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [channel]);
+    if (channel !== 'mailbox') return;
+    void loadConnection();
+    void loadUnreadCount();
+  }, [channel, loadConnection, loadUnreadCount]);
+
+  // Auto-sync once per mailbox visit when it opens empty. Failures are
+  // swallowed here (no toast loop) — the health banner picks up the
+  // resulting lastSyncOk/lastSyncError from the connection reload below.
+  const autoSyncedRef = useRef(false);
+  useEffect(() => {
+    if (channel !== 'mailbox' || loading || autoSyncedRef.current) return;
+    autoSyncedRef.current = true;
+    if (messages.length > 0) return;
+    void (async () => {
+      try {
+        await apiClient.post('/comms/mailbox/sync', {});
+      } catch {
+        /* surfaced via the health banner, not a toast */
+      } finally {
+        await Promise.all([fetchMessages(), loadConnection(), loadUnreadCount()]);
+      }
+    })();
+  }, [channel, loading, messages.length, fetchMessages, loadConnection, loadUnreadCount]);
+
+  function loadMore() {
+    if (!nextCursor || loadingMore) return;
+    void fetchMessages({ cursor: nextCursor });
+  }
 
   async function handleSync() {
     setSyncing(true);
@@ -192,27 +277,41 @@ export default function FirmInbox() {
     try {
       const res = (await apiClient.post('/comms/mailbox/sync', {})) as any;
       setSyncMsg(res?.message || res?.data?.message || 'Synced');
-      await loadMailbox();
     } catch (e: any) {
       setError(e?.response?.data?.error?.message || e?.message || 'Sync failed');
     } finally {
       setSyncing(false);
+      await Promise.all([fetchMessages(), loadConnection(), loadUnreadCount()]);
     }
   }
 
   async function handleReply() {
     if (!selectedMail || !replyBody.trim()) return;
+    // The DTO's from/to fields are flattened display strings (e.g. "Emma
+    // Wilson Design Studio <emma@ewdesign.co.uk>"), not bare addresses —
+    // /mailbox/send's z.string().email() 400s on those, so replies never
+    // sent. Extract the bare address before posting.
+    const to = extractEmailAddress(
+      selectedMail.direction === 'inbound' ? selectedMail.from : selectedMail.to
+    );
+    if (!to) {
+      setError('Could not find a valid reply address on this message');
+      return;
+    }
+    const cc = extractEmailAddress(replyCc) || undefined;
     setSending(true);
     try {
-      await apiClient.post('/comms/mailbox/send', {
-        to: selectedMail.direction === 'inbound' ? selectedMail.from : selectedMail.to,
+      const res = (await apiClient.post('/comms/mailbox/send', {
+        to,
+        cc,
         subject: selectedMail.subject,
         body: replyBody.trim(),
-        clientId: selectedMail.clientId,
-        inReplyToId: selectedMail.id,
-      });
+        replyToMessageId: selectedMail.id,
+      })) as any;
+      if (res?.data?.sent === false) setSyncMsg(res?.message || 'Send deferred');
       setReplyBody('');
-      await loadMailbox();
+      setReplyCc('');
+      await Promise.all([fetchMessages(), refreshThread(selectedMail.id)]);
     } catch (e: any) {
       setError(e?.response?.data?.error?.message || e?.message || 'Send failed');
     } finally {
@@ -221,21 +320,47 @@ export default function FirmInbox() {
   }
 
   async function handleCompose() {
-    if (!compose.to.trim() || !compose.subject.trim() || !compose.body.trim()) return;
+    // compose.to is free-typed, so it can carry the same "Name <email>" trap
+    // if a user pastes a display-form address — run it through the same
+    // extractor as the reply path rather than trusting it's already bare.
+    const to = extractEmailAddress(compose.to);
+    if (!to || !compose.subject.trim() || !compose.body.trim()) return;
+    const cc = extractEmailAddress(compose.cc) || undefined;
     setSending(true);
     try {
-      await apiClient.post('/comms/mailbox/send', {
-        to: compose.to.trim(),
+      const res = (await apiClient.post('/comms/mailbox/send', {
+        to,
+        cc,
         subject: compose.subject.trim(),
         body: compose.body.trim(),
-      });
-      setCompose({ to: '', subject: '', body: '' });
+      })) as any;
+      if (res?.data?.sent === false) setSyncMsg(res?.message || 'Send deferred');
+      setCompose({ to: '', cc: '', subject: '', body: '' });
       setComposeOpen(false);
-      await loadMailbox();
+      await fetchMessages();
     } catch (e: any) {
       setError(e?.response?.data?.error?.message || e?.message || 'Send failed');
     } finally {
       setSending(false);
+    }
+  }
+
+  async function downloadAttachment(messageId: string, attachment: MailAttachment) {
+    setAttachmentBusyId(attachment.id);
+    try {
+      const blob = await apiClient.downloadMailAttachment(messageId, attachment.id);
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = attachment.name || 'attachment';
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 60_000);
+    } catch (e: any) {
+      setError(e?.response?.data?.error?.message || e?.message || 'Could not download attachment');
+    } finally {
+      setAttachmentBusyId(null);
     }
   }
 
@@ -244,14 +369,18 @@ export default function FirmInbox() {
     setComposeOpen(false);
     setTriage(null);
     setMailContext(null);
+    setReplyCc('');
+    setThreadMessages([m]);
     if (m.direction === 'inbound' && !m.read) {
       try {
         await apiClient.post(`/comms/mailbox/messages/${m.id}/read`, {});
         setMessages((list) => list.map((x) => (x.id === m.id ? { ...x, read: true } : x)));
+        void loadUnreadCount();
       } catch {
         /* non-fatal */
       }
     }
+    void refreshThread(m.id);
     try {
       const res = (await apiClient.get(`/comms/mailbox/messages/${m.id}/context`)) as any;
       const data = res?.data ?? res;
@@ -298,14 +427,17 @@ export default function FirmInbox() {
     })();
   }, [channel]);
 
-  const threadMessages = useMemo(() => {
-    if (!selectedMail) return [];
-    return messages
-      .filter((m) => m.threadKey === selectedMail.threadKey)
-      .sort((a, b) => new Date(a.at).getTime() - new Date(b.at).getTime());
-  }, [messages, selectedMail]);
-
-  const unread = messages.filter((m) => m.direction === 'inbound' && !m.read).length;
+  const healthInfo = useMemo(() => formatSyncHealth(connection?.health), [connection]);
+  const replyToAddress = useMemo(
+    () =>
+      selectedMail
+        ? extractEmailAddress(
+            selectedMail.direction === 'inbound' ? selectedMail.from : selectedMail.to
+          )
+        : '',
+    [selectedMail]
+  );
+  const composeToAddress = useMemo(() => extractEmailAddress(compose.to), [compose.to]);
 
   return (
     <div className="space-y-5">
@@ -314,9 +446,9 @@ export default function FirmInbox() {
           <h1 className="flex items-center gap-2 text-xl font-bold tracking-tight text-slate-900 dark:text-slate-50">
             <InboxIcon className="h-6 w-6 text-emerald-500" aria-hidden />
             Inbox
-            {unread > 0 && channel === 'mailbox' && (
+            {unreadCount > 0 && channel === 'mailbox' && (
               <span className="rounded-full bg-rose-500 px-2 py-0.5 text-xs font-bold text-white">
-                {unread}
+                {unreadCount}
               </span>
             )}
           </h1>
@@ -368,26 +500,37 @@ export default function FirmInbox() {
         </div>
       </div>
 
-      {/* Connection strip */}
-      {channel === 'mailbox' && connection && (
+      {/* Connection health banner */}
+      {channel === 'mailbox' && (
         <div
+          data-testid="mailbox-health-banner"
           className={`flex flex-wrap items-center gap-2 rounded-xl border px-4 py-2.5 text-sm ${
-            connection.canSync
-              ? 'border-emerald-200 bg-emerald-50/80 text-emerald-900 dark:border-emerald-800 dark:bg-emerald-950/30 dark:text-emerald-100'
-              : 'border-amber-200 bg-amber-50/80 text-amber-950 dark:border-amber-800 dark:bg-amber-950/30 dark:text-amber-100'
+            !connection
+              ? 'border-slate-200 bg-slate-50/80 text-slate-600 dark:border-slate-700 dark:bg-slate-900/40 dark:text-slate-300'
+              : connection.provider && healthInfo.tone !== 'warning'
+                ? 'border-emerald-200 bg-emerald-50/80 text-emerald-900 dark:border-emerald-800 dark:bg-emerald-950/30 dark:text-emerald-100'
+                : 'border-amber-200 bg-amber-50/80 text-amber-950 dark:border-amber-800 dark:bg-amber-950/30 dark:text-amber-100'
           }`}
         >
-          {connection.canSync ? (
-            <StatusChip tone="success">
-              {connection.provider} · {connection.user || 'connected'}
-            </StatusChip>
-          ) : (
+          {!connection ? (
+            <span>Checking mailbox connection…</span>
+          ) : !connection.provider ? (
             <>
               <ExclamationTriangleIcon className="h-4 w-4 shrink-0" aria-hidden />
               <span>
                 Local / platform mode — connect <strong>Gmail</strong> or{' '}
                 <strong>Microsoft 365</strong> in Settings for live two-way sync.
               </span>
+            </>
+          ) : (
+            <>
+              {healthInfo.tone === 'warning' && (
+                <ExclamationTriangleIcon className="h-4 w-4 shrink-0" aria-hidden />
+              )}
+              <StatusChip tone={healthInfo.tone === 'warning' ? 'warning' : 'success'}>
+                {connection.provider} · {connection.user || 'connected'}
+              </StatusChip>
+              <span>{healthInfo.message}</span>
             </>
           )}
           {syncMsg && <span className="text-xs opacity-80 ml-auto">{syncMsg}</span>}
@@ -465,54 +608,75 @@ export default function FirmInbox() {
                 </p>
               </div>
             ) : (
-              <ul className="relative z-[1] max-h-[min(70vh,36rem)] divide-y divide-slate-100 overflow-y-auto dark:divide-slate-800">
-                {messages.map((m) => {
-                  const active = selectedMail?.id === m.id;
-                  return (
-                    <li key={m.id}>
-                      <button
-                        type="button"
-                        className={`flex w-full cursor-pointer items-start gap-3 px-4 py-3 text-left transition hover:bg-emerald-50/60 dark:hover:bg-emerald-950/20 ${
-                          active ? 'bg-emerald-50/80 dark:bg-emerald-950/30' : ''
-                        } ${!m.read && m.direction === 'inbound' ? 'font-semibold' : ''}`}
-                        onClick={() => void openMail(m)}
-                      >
-                        <span
-                          className={`mt-0.5 rounded-lg p-1.5 shadow-sm ${
-                            m.direction === 'inbound'
-                              ? 'bg-sky-50 text-sky-700 dark:bg-sky-950/40'
-                              : 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40'
-                          }`}
+              <>
+                <ul className="relative z-[1] max-h-[min(70vh,36rem)] divide-y divide-slate-100 overflow-y-auto dark:divide-slate-800">
+                  {messages.map((m) => {
+                    const active = selectedMail?.id === m.id;
+                    return (
+                      <li key={m.id}>
+                        <button
+                          type="button"
+                          className={`flex w-full cursor-pointer items-start gap-3 px-4 py-3 text-left transition hover:bg-emerald-50/60 dark:hover:bg-emerald-950/20 ${
+                            active ? 'bg-emerald-50/80 dark:bg-emerald-950/30' : ''
+                          } ${!m.read && m.direction === 'inbound' ? 'font-semibold' : ''}`}
+                          onClick={() => void openMail(m)}
                         >
-                          <EnvelopeIcon className="h-4 w-4" />
-                        </span>
-                        <span className="min-w-0 flex-1">
-                          <span className="flex flex-wrap items-center gap-2">
-                            <StatusChip tone={m.direction === 'inbound' ? 'info' : 'success'}>
-                              {m.direction}
-                            </StatusChip>
-                            {!m.read && m.direction === 'inbound' && (
-                              <span
-                                className="h-2 w-2 rounded-full bg-rose-500"
-                                aria-label="Unread"
-                              />
-                            )}
-                            <span className="ml-auto text-2xs tabular-nums text-slate-400">
-                              {format(new Date(m.at), 'dd MMM HH:mm')}
+                          <span
+                            className={`mt-0.5 rounded-lg p-1.5 shadow-sm ${
+                              m.direction === 'inbound'
+                                ? 'bg-sky-50 text-sky-700 dark:bg-sky-950/40'
+                                : 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40'
+                            }`}
+                          >
+                            <EnvelopeIcon className="h-4 w-4" />
+                          </span>
+                          <span className="min-w-0 flex-1">
+                            <span className="flex flex-wrap items-center gap-2">
+                              <StatusChip tone={m.direction === 'inbound' ? 'info' : 'success'}>
+                                {m.direction}
+                              </StatusChip>
+                              {!m.read && m.direction === 'inbound' && (
+                                <span
+                                  className="h-2 w-2 rounded-full bg-rose-500"
+                                  aria-label="Unread"
+                                />
+                              )}
+                              {m.hasAttachments && (
+                                <PaperClipIcon
+                                  className="h-3.5 w-3.5 text-slate-400"
+                                  aria-label="Has attachments"
+                                />
+                              )}
+                              <span className="ml-auto text-2xs tabular-nums text-slate-400">
+                                {format(new Date(m.at), 'dd MMM HH:mm')}
+                              </span>
+                            </span>
+                            <span className="mt-0.5 block truncate text-sm text-slate-900 dark:text-slate-50">
+                              {m.subject}
+                            </span>
+                            <span className="block truncate text-xs text-slate-500">
+                              {m.clientName || (m.direction === 'inbound' ? m.from : m.to)}
                             </span>
                           </span>
-                          <span className="mt-0.5 block truncate text-sm text-slate-900 dark:text-slate-50">
-                            {m.subject}
-                          </span>
-                          <span className="block truncate text-xs text-slate-500">
-                            {m.clientName || (m.direction === 'inbound' ? m.from : m.to)}
-                          </span>
-                        </span>
-                      </button>
-                    </li>
-                  );
-                })}
-              </ul>
+                        </button>
+                      </li>
+                    );
+                  })}
+                </ul>
+                {nextCursor && (
+                  <div className="relative z-[1] border-t border-slate-100 p-3 text-center dark:border-slate-800">
+                    <button
+                      type="button"
+                      data-testid="mailbox-load-more"
+                      className="btn-secondary text-sm"
+                      disabled={loadingMore}
+                      onClick={() => loadMore()}
+                    >
+                      {loadingMore ? 'Loading…' : 'Load more'}
+                    </button>
+                  </div>
+                )}
+              </>
             )}
           </div>
 
@@ -530,6 +694,13 @@ export default function FirmInbox() {
                   />
                   <input
                     className="input-field text-sm"
+                    placeholder="Cc (optional)"
+                    data-testid="mailbox-cc-input"
+                    value={compose.cc}
+                    onChange={(e) => setCompose((c) => ({ ...c, cc: e.target.value }))}
+                  />
+                  <input
+                    className="input-field text-sm"
                     placeholder="Subject"
                     value={compose.subject}
                     onChange={(e) => setCompose((c) => ({ ...c, subject: e.target.value }))}
@@ -544,7 +715,8 @@ export default function FirmInbox() {
                     <button
                       type="button"
                       className="btn-primary text-sm"
-                      disabled={sending}
+                      disabled={sending || !composeToAddress}
+                      title={!composeToAddress ? 'Enter a valid To address' : undefined}
                       onClick={() => void handleCompose()}
                     >
                       {sending ? 'Sending…' : 'Send'}
@@ -619,7 +791,7 @@ export default function FirmInbox() {
                               )) as any;
                               setSyncMsg(res?.message || 'Linked to client');
                               setLinkClientId('');
-                              await loadMailbox();
+                              await fetchMessages();
                               await openMail({ ...selectedMail, clientId: linkClientId });
                             } catch (e: any) {
                               setError(e?.message || 'Link failed');
@@ -708,23 +880,62 @@ export default function FirmInbox() {
                     </div>
                   )}
 
-                  <ul className="max-h-48 space-y-2 overflow-y-auto">
-                    {threadMessages.map((m) => (
-                      <li
-                        key={m.id}
-                        className={`rounded-lg px-3 py-2 text-sm ${
-                          m.direction === 'inbound'
-                            ? 'bg-sky-50 text-slate-800 dark:bg-sky-950/30 dark:text-slate-100'
-                            : 'bg-emerald-50 text-slate-800 dark:bg-emerald-950/30 dark:text-slate-100'
-                        }`}
-                      >
-                        <p className="text-2xs font-semibold uppercase tracking-wide text-slate-400">
-                          {m.direction === 'inbound' ? m.from : 'You → ' + m.to} ·{' '}
-                          {format(new Date(m.at), 'dd MMM HH:mm')}
-                        </p>
-                        <p className="mt-1 whitespace-pre-wrap">{m.body}</p>
+                  <ul className="max-h-64 space-y-2 overflow-y-auto">
+                    {threadLoading && threadMessages.length === 0 ? (
+                      <li className="px-2 py-4 text-center text-xs text-slate-400">
+                        Loading thread…
                       </li>
-                    ))}
+                    ) : (
+                      threadMessages.map((m) => (
+                        <li
+                          key={m.id}
+                          className={`rounded-lg px-3 py-2 text-sm ${
+                            m.direction === 'inbound'
+                              ? 'bg-sky-50 text-slate-800 dark:bg-sky-950/30 dark:text-slate-100'
+                              : 'bg-emerald-50 text-slate-800 dark:bg-emerald-950/30 dark:text-slate-100'
+                          }`}
+                        >
+                          <p className="text-2xs font-semibold uppercase tracking-wide text-slate-400">
+                            {m.direction === 'inbound' ? m.from : 'You → ' + m.to}
+                            {m.cc ? ` · Cc: ${m.cc}` : ''} ·{' '}
+                            {format(new Date(m.at), 'dd MMM HH:mm')}
+                          </p>
+                          {m.bodyHtml ? (
+                            <div
+                              className="prose-sm mt-1 max-w-none [&_a]:text-emerald-700 [&_a]:underline"
+                              dangerouslySetInnerHTML={{ __html: sanitizeMailHtml(m.bodyHtml) }}
+                            />
+                          ) : (
+                            <p className="mt-1 whitespace-pre-wrap">{m.body}</p>
+                          )}
+                          {m.hasAttachments && m.attachments.length > 0 && (
+                            <ul className="mt-2 space-y-1 border-t border-black/5 pt-2 dark:border-white/10">
+                              {m.attachments.map((att) => (
+                                <li key={att.id} className="flex items-center gap-2 text-xs">
+                                  <PaperClipIcon className="h-3.5 w-3.5 shrink-0 text-slate-400" />
+                                  <span className="min-w-0 flex-1 truncate">{att.name}</span>
+                                  {formatAttachmentSize(att.sizeBytes) && (
+                                    <span className="shrink-0 text-slate-400">
+                                      {formatAttachmentSize(att.sizeBytes)}
+                                    </span>
+                                  )}
+                                  <button
+                                    type="button"
+                                    data-testid={`mailbox-attachment-${att.id}`}
+                                    className="shrink-0 text-emerald-700 hover:underline disabled:opacity-50 dark:text-emerald-300"
+                                    disabled={attachmentBusyId === att.id}
+                                    title={`Download ${att.name}`}
+                                    onClick={() => void downloadAttachment(m.id, att)}
+                                  >
+                                    <ArrowDownTrayIcon className="h-3.5 w-3.5" />
+                                  </button>
+                                </li>
+                              ))}
+                            </ul>
+                          )}
+                        </li>
+                      ))
+                    )}
                   </ul>
 
                   <div className="flex flex-wrap gap-2">
@@ -748,6 +959,13 @@ export default function FirmInbox() {
                     </div>
                   )}
 
+                  <input
+                    className="input-field text-sm"
+                    placeholder="Cc (optional)"
+                    data-testid="mailbox-cc-input"
+                    value={replyCc}
+                    onChange={(e) => setReplyCc(e.target.value)}
+                  />
                   <textarea
                     className="input-field min-h-[5rem] text-sm"
                     placeholder="Write a reply…"
@@ -757,7 +975,10 @@ export default function FirmInbox() {
                   <button
                     type="button"
                     className="btn-primary text-sm"
-                    disabled={sending || !replyBody.trim()}
+                    disabled={sending || !replyBody.trim() || !replyToAddress}
+                    title={
+                      !replyToAddress ? 'No valid reply address found on this message' : undefined
+                    }
                     onClick={() => void handleReply()}
                   >
                     {sending ? 'Sending…' : 'Send reply'}

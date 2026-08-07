@@ -353,6 +353,7 @@ export const csrfProtection = async (
     '/onboarding', // AML self-service form (public, portal token)
     '/webhooks/sendgrid', // SendGrid delivery events
     '/webhooks/cloudflare-email', // Cloudflare delivery events
+    '/webhooks/graph-mail', // Microsoft Graph mailbox webhook (clientState-validated)
     '/aml/webhook', // AML partner results webhook
     '/integrations/accountflow/inbound', // Capstone Tandem reverse (X-API-Key / X-Mesh-Secret)
     '/admin/seed-services', // One-click admin seed endpoint

@@ -136,6 +136,16 @@ services:
         sync: false
       - key: MICROSOFT_TENANT_ID
         sync: false
+      # Google Cloud OAuth client for the two-way mailbox Gmail provider
+      # (docs/MAILBOX_TWO_WAY.md) — platform-level app credentials, William-gated.
+      - key: GMAIL_CLIENT_ID
+        sync: false
+      - key: GMAIL_CLIENT_SECRET
+        sync: false
+      # Two-way mailbox delta sync interval (backend/src/app/jobs.ts). Visible
+      # default so a Blueprint sync never silently drops it.
+      - key: MAILBOX_SYNC_INTERVAL_MS
+        value: '600000'
       - key: XERO_CLIENT_ID
         sync: false
       - key: XERO_CLIENT_SECRET

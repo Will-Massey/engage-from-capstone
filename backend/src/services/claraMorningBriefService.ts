@@ -45,7 +45,7 @@ export async function buildMorningBrief(
 
   const [board, mail, forms, unsignedCount, mentions, helpCount, overdueCount] = await Promise.all([
     prioritiseJobsBoard(tenantId, 5),
-    listMailboxMessages(tenantId, { limit: 40, unreadOnly: true }),
+    listMailboxMessages(tenantId, { limit: 40, unread: true }).then((r) => r.messages),
     listAssignments(tenantId, { status: 'pending' }),
     prisma.proposal.count({
       where: { tenantId, status: { in: ['SENT', 'VIEWED'] } },
