@@ -25,7 +25,7 @@ const router = Router();
 
 /** Full six-role set — every practice role can read the mailbox. */
 const MAILBOX_READ_ROLES = ['ADMIN', 'PARTNER', 'MD', 'MANAGER', 'SENIOR', 'JUNIOR'] as const;
-/** Mutating mailbox actions (sync, send, read-state, link-client, create-task, assign-form) exclude JUNIOR. */
+/** Mutating mailbox actions (sync, send, link-client, create-task, assign-form) exclude JUNIOR. */
 const MAILBOX_WRITE_ROLES = ['ADMIN', 'PARTNER', 'MD', 'MANAGER', 'SENIOR'] as const;
 
 /** ASCII-safe filename for Content-Disposition (non-Latin-1 chars 500 the header). */
@@ -424,10 +424,14 @@ router.post(
 
 const readStateSchema = z.object({ read: z.boolean().optional() });
 
+/** F4: marking a message read is a low-risk, non-outbound state change — the
+ * mailbox equivalent of "I looked at this" — so JUNIOR is allowed here even
+ * though every other mutating mailbox route excludes it. See
+ * docs/MAILBOX_TWO_WAY.md's role table for the full rationale. */
 router.post(
   '/mailbox/messages/:id/read',
   authenticate,
-  authorize(...MAILBOX_WRITE_ROLES),
+  authorize(...MAILBOX_READ_ROLES),
   asyncHandler(async (req, res) => {
     const body = readStateSchema.parse(req.body || {});
     try {

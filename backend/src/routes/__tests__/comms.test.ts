@@ -141,7 +141,8 @@ describe('role gates', () => {
   const MUTATING_ROUTES: [string, string, object][] = [
     ['post', '/mailbox/sync', {}],
     ['post', '/mailbox/send', { to: 'a@b.com', subject: 'S', body: 'B' }],
-    ['post', '/mailbox/messages/m1/read', {}],
+    // F4: read-state is deliberately excluded here — see the dedicated
+    // 'allows JUNIOR on read-state' test below.
     [
       'post',
       '/mailbox/messages/m1/link-client',
@@ -181,6 +182,31 @@ describe('role gates', () => {
     syncMailbox.mockResolvedValue({ imported: 0, updated: 0, ok: true });
     const res = await request(app()).post('/api/comms/mailbox/sync');
     expect(res.status).toBe(200);
+  });
+
+  describe('F4: JUNIOR read-state exception', () => {
+    it('allows JUNIOR to mark a message read', async () => {
+      currentRole = 'JUNIOR';
+      markMailboxRead.mockResolvedValue(undefined);
+      const res = await request(app()).post('/api/comms/mailbox/messages/m1/read').send({});
+      expect(res.status).toBe(200);
+    });
+
+    it('still 403s JUNIOR on send', async () => {
+      currentRole = 'JUNIOR';
+      const res = await request(app())
+        .post('/api/comms/mailbox/send')
+        .send({ to: 'a@b.com', subject: 'S', body: 'B' });
+      expect(res.status).toBe(403);
+    });
+
+    it('still 403s JUNIOR on link-client', async () => {
+      currentRole = 'JUNIOR';
+      const res = await request(app())
+        .post('/api/comms/mailbox/messages/m1/link-client')
+        .send({ clientId: '11111111-1111-1111-1111-111111111111' });
+      expect(res.status).toBe(403);
+    });
   });
 });
 

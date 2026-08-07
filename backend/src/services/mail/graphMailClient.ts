@@ -240,15 +240,43 @@ async function sendViaGraph(spec: SendSpec, token: string): Promise<{ externalId
   const headers = { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' };
 
   if (spec.replyToExternalId) {
-    const res = await fetch(`${GRAPH_BASE}/me/messages/${spec.replyToExternalId}/reply`, {
+    // F1: POST .../reply only accepts a `comment`, so it always addresses the
+    // reply to the original sender and silently ignores any edited To/CC.
+    // Use the draft flow instead so the typed recipients are honoured:
+    // createReply -> patch the draft's recipients/body -> send the draft.
+    const createRes = await fetch(
+      `${GRAPH_BASE}/me/messages/${spec.replyToExternalId}/createReply`,
+      { method: 'POST', headers, body: JSON.stringify({}) }
+    );
+    if (!createRes.ok) {
+      throw new Error(`Graph createReply failed: ${createRes.status} ${createRes.statusText}`);
+    }
+    const draft = (await createRes.json()) as { id: string };
+
+    const patchRes = await fetch(`${GRAPH_BASE}/me/messages/${draft.id}`, {
+      method: 'PATCH',
+      headers,
+      body: JSON.stringify({
+        toRecipients: spec.to.map((address) => ({ emailAddress: { address } })),
+        ccRecipients: (spec.cc || []).map((address) => ({ emailAddress: { address } })),
+        body: { contentType: 'Text', content: spec.bodyText },
+      }),
+    });
+    if (!patchRes.ok) {
+      throw new Error(`Graph reply patch failed: ${patchRes.status} ${patchRes.statusText}`);
+    }
+
+    const sendRes = await fetch(`${GRAPH_BASE}/me/messages/${draft.id}/send`, {
       method: 'POST',
       headers,
-      body: JSON.stringify({ comment: spec.bodyText }),
     });
-    if (!res.ok) {
-      throw new Error(`Graph reply failed: ${res.status} ${res.statusText}`);
+    if (!sendRes.ok) {
+      throw new Error(`Graph reply send failed: ${sendRes.status} ${sendRes.statusText}`);
     }
-    return { externalId: null };
+
+    // The draft id is the real message id — improves send-echo reconciliation
+    // in mailboxService (findLocalSendMatch no longer needs to fire).
+    return { externalId: draft.id };
   }
 
   const res = await fetch(`${GRAPH_BASE}/me/sendMail`, {

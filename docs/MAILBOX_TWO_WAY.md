@@ -101,8 +101,11 @@ delta cursor).
 
 1. **Provider send** — if the tenant has a connected mailbox
    (`buildProviderClient` returns a client), send goes out through
-   `providerClient.send()` (Graph `/me/sendMail` or `/me/messages/{id}/reply`,
-   or Gmail `users.messages.send`). This is a _real_ send from the practice's
+   `providerClient.send()` (Graph `/me/sendMail` for a fresh message, or for a
+   reply the draft flow — `/me/messages/{id}/createReply` →
+   `PATCH /me/messages/{draftId}` with the typed to/cc/body →
+   `/me/messages/{draftId}/send`, so edited recipients are honoured — or
+   Gmail `users.messages.send`). This is a _real_ send from the practice's
    actual mailbox.
 2. **`tenantMailerSend` fallback** — if no mailbox is connected, the message
    still needs to leave the building, so `sendMailboxMessageInternal` falls
@@ -143,6 +146,22 @@ again from `emailService.ts`'s `GMAIL_CLIENT_ID` read inside
 `createEmailService()`, which drives its own legacy env-configured
 `EmailService` instance. Same env vars, two different call sites, only one of
 which (`oauthCallback.ts` / `routes/email.ts`) is part of the two-way mailbox.
+
+## Roles
+
+`backend/src/routes/comms.ts` gates every mailbox route with one of two role
+sets:
+
+| Role set              | Roles                                       | Routes                                                                                                                 |
+| --------------------- | ------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------- |
+| `MAILBOX_READ_ROLES`  | ADMIN, PARTNER, MD, MANAGER, SENIOR, JUNIOR | `GET` routes (connection, messages, thread, attachments, unread-count, context), and `POST /mailbox/messages/:id/read` |
+| `MAILBOX_WRITE_ROLES` | ADMIN, PARTNER, MD, MANAGER, SENIOR         | `POST` sync, send, link-client, create-task, assign-form                                                               |
+
+**JUNIOR exception:** marking a message read (`POST
+/mailbox/messages/:id/read`) is on the read-role set even though it's a
+`POST` — it's a low-risk, non-outbound state change, the mailbox equivalent
+of "I looked at this," and shared-mailbox products treat it the same way.
+Every other mutating route keeps excluding JUNIOR.
 
 ## Environment variables
 
