@@ -17,7 +17,7 @@ describe('oauthState', () => {
     const state = createOAuthState({ tenantId: 't1', userId: 'u1', provider: 'quickbooks' });
 
     const realNow = Date.now;
-    jest.spyOn(Date, 'now').mockReturnValue(realNow() + 11 * 60 * 1000); // past the 10min ttl
+    jest.spyOn(Date, 'now').mockReturnValue(realNow() + 31 * 60 * 1000); // past the 30min ttl
     try {
       expect(verifyOAuthState(state)).toBeNull();
     } finally {

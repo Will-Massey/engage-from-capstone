@@ -18,10 +18,15 @@ export interface OAuthStatePayload {
   exp: number;
 }
 
+// OAuth consent round-trips involve a human (provider login, org select, Allow),
+// so a tight window forces the user to race the clock. 30 min comfortably covers
+// a real connect without meaningfully widening the CSRF-state attack surface.
+const OAUTH_STATE_TTL_MS = 30 * 60 * 1000;
+
 export function createOAuthState(payload: Omit<OAuthStatePayload, 'exp'>): string {
   const data: OAuthStatePayload = {
     ...payload,
-    exp: Date.now() + 10 * 60 * 1000,
+    exp: Date.now() + OAUTH_STATE_TTL_MS,
   };
   const json = JSON.stringify(data);
   const sig = crypto.createHmac('sha256', OAUTH_STATE_SECRET).update(json).digest('hex');
