@@ -125,6 +125,14 @@ function extractFirstEmail(raw: string): string | null {
   return email.includes('@') ? email : null;
 }
 
+/** F3: OUTLOOK and MICROSOFT365 both use the Graph client against the same
+ * mailbox — treat them as one family so a provider-label switch between the
+ * two doesn't look like a mismatch. Everything else compares as-is. */
+function providerFamily(p: string | null | undefined): string | null {
+  if (p === 'OUTLOOK' || p === 'MICROSOFT365') return 'GRAPH';
+  return p ?? null;
+}
+
 async function matchClientByEmail(
   tenantId: string,
   address: string
@@ -343,9 +351,30 @@ async function upsertProviderMessage(
     await createAttachmentRows(existing.id, pm.attachments);
     return 'updated';
   }
-  const created = await prisma.mailMessage.create({ data: { ...data, tenantId } });
-  await createAttachmentRows(created.id, pm.attachments);
-  return 'created';
+  try {
+    const created = await prisma.mailMessage.create({ data: { ...data, tenantId } });
+    await createAttachmentRows(created.id, pm.attachments);
+    return 'created';
+  } catch (e: any) {
+    // F2: webhook bursts can fire concurrent syncMailbox runs for the same
+    // tenant; both can reach this findUnique-then-create path for the same
+    // (tenantId, provider, externalId) before either commits, so the loser
+    // hits a unique-constraint collision here — not a real failure, the
+    // other run just won the race. Re-read and update instead of throwing.
+    if (e?.code === 'P2002') {
+      const winner = await prisma.mailMessage.findUnique({
+        where: { tenantId_provider_externalId: { tenantId, provider, externalId: pm.externalId } },
+        select: { id: true },
+      });
+      if (winner) {
+        await prisma.mailMessage.update({ where: { id: winner.id }, data });
+        await prisma.mailAttachment.deleteMany({ where: { messageId: winner.id } });
+        await createAttachmentRows(winner.id, pm.attachments);
+        return 'updated';
+      }
+    }
+    throw e;
+  }
 }
 
 async function createAttachmentRows(
@@ -365,12 +394,35 @@ async function createAttachmentRows(
   });
 }
 
-export async function syncMailbox(tenantId: string): Promise<{
+export type SyncMailboxResult = {
   imported: number;
   updated: number;
   ok: boolean;
   error?: string;
-}> {
+};
+
+/**
+ * F2: Graph can deliver several webhook notifications for one tenant within
+ * milliseconds, each firing syncMailbox(tenantId) fire-and-forget — without
+ * coalescing, concurrent runs for the same tenant interleave and can hit a
+ * P2002 on the upsert path, which used to get recorded as lastSyncOk: false
+ * even though nothing was actually wrong. If a sync for this tenant is
+ * already running, return its promise instead of starting a second one.
+ */
+const inFlightSyncs = new Map<string, Promise<SyncMailboxResult>>();
+
+export function syncMailbox(tenantId: string): Promise<SyncMailboxResult> {
+  const existing = inFlightSyncs.get(tenantId);
+  if (existing) return existing;
+
+  const run = syncMailboxInternal(tenantId).finally(() => {
+    inFlightSyncs.delete(tenantId);
+  });
+  inFlightSyncs.set(tenantId, run);
+  return run;
+}
+
+async function syncMailboxInternal(tenantId: string): Promise<SyncMailboxResult> {
   const ctx = await loadTenantEmailContext(tenantId);
   const normalized = normalizeMailProvider(ctx?.email.provider);
   const providerClient = await buildProviderClient(tenantId, normalized);
@@ -679,8 +731,15 @@ async function markMailboxReadCore(
   try {
     const ctx = await loadTenantEmailContext(tenantId);
     const normalized = normalizeMailProvider(ctx?.email.provider);
-    const providerClient = await buildProviderClient(tenantId, normalized);
-    if (providerClient) await providerClient.markRead(row.externalId, read);
+    // F3: a row's provider can be stale relative to the tenant's currently
+    // connected provider — backfilled legacy rows carry provider: 'SMTP', or
+    // the tenant switched providers since the message synced. Writing back
+    // to a provider that has no such message just logs a noisy 404 on every
+    // open; skip the call entirely (local row is already updated above).
+    if (providerFamily(row.provider) === providerFamily(normalized)) {
+      const providerClient = await buildProviderClient(tenantId, normalized);
+      if (providerClient) await providerClient.markRead(row.externalId, read);
+    }
   } catch (e: any) {
     logger.warn(
       `Mailbox markRead provider write-back failed for tenant ${tenantId}: ${e?.message}`

@@ -50,6 +50,7 @@ import {
   seedDevInboundIfEmpty,
   getMailboxConnection,
   fetchMailAttachment,
+  markMailboxRead,
 } from '../mailboxService.js';
 
 const ORIGINAL_NODE_ENV = process.env.NODE_ENV;
@@ -481,6 +482,101 @@ describe('syncMailbox — F3: delta invalidation recovery', () => {
   });
 });
 
+describe('syncMailbox — F2: coalesces concurrent calls for the same tenant', () => {
+  it('runs the provider sync once and resolves both concurrent callers with the same result', async () => {
+    loadTenantEmailContextMock.mockResolvedValue({
+      tenantId: 't1',
+      tenantName: 'Firm',
+      email: { provider: 'gmail', gmail: { user: 'firm@gmail.com', refreshToken: 'r1' } },
+    });
+    let resolveSyncInbox: (v: unknown) => void = () => {};
+    const syncInbox = jest.fn().mockReturnValue(
+      new Promise((resolve) => {
+        resolveSyncInbox = resolve;
+      })
+    );
+    const syncSent = jest.fn().mockResolvedValue({ messages: [], deltaLink: null });
+    createGmailMailClientMock.mockResolvedValue({ syncInbox, syncSent });
+
+    const first = syncMailbox('t1');
+    const second = syncMailbox('t1');
+
+    resolveSyncInbox({ messages: [], deltaLink: null });
+    const [firstResult, secondResult] = await Promise.all([first, second]);
+
+    expect(createGmailMailClientMock).toHaveBeenCalledTimes(1);
+    expect(syncInbox).toHaveBeenCalledTimes(1);
+    expect(firstResult).toEqual(secondResult);
+    expect(firstResult.ok).toBe(true);
+  });
+
+  it('starts a fresh sync for a later call once the in-flight one has settled', async () => {
+    loadTenantEmailContextMock.mockResolvedValue({
+      tenantId: 't1',
+      tenantName: 'Firm',
+      email: { provider: 'gmail', gmail: { user: 'firm@gmail.com', refreshToken: 'r1' } },
+    });
+    const syncInbox = jest.fn().mockResolvedValue({ messages: [], deltaLink: null });
+    const syncSent = jest.fn().mockResolvedValue({ messages: [], deltaLink: null });
+    createGmailMailClientMock.mockResolvedValue({ syncInbox, syncSent });
+
+    await syncMailbox('t1');
+    await syncMailbox('t1');
+
+    expect(createGmailMailClientMock).toHaveBeenCalledTimes(2);
+  });
+});
+
+describe('syncMailbox — F2: a P2002 during upsert is treated as benign, not a sync failure', () => {
+  it('re-reads and updates the row on a unique-constraint collision instead of throwing', async () => {
+    loadTenantEmailContextMock.mockResolvedValue({
+      tenantId: 't1',
+      tenantName: 'Firm',
+      email: { provider: 'outlook', outlook: { user: 'firm@outlook.com', refreshToken: 'r1' } },
+    });
+    const syncInbox = jest.fn().mockResolvedValue({
+      messages: [
+        {
+          externalId: 'graph-1',
+          conversationId: 'conv-1',
+          direction: 'INBOUND',
+          from: 'client@acme.com',
+          to: 'firm@outlook.com',
+          subject: 'Hi',
+          bodyText: 'Body',
+          isRead: false,
+          hasAttachments: false,
+          receivedAt: new Date('2026-08-06T10:00:00Z'),
+        },
+      ],
+      deltaLink: null,
+    });
+    const syncSent = jest.fn().mockResolvedValue({ messages: [], deltaLink: null });
+    createGraphMailClientMock.mockResolvedValue({ syncInbox, syncSent });
+
+    // No row yet under this externalId when we first check...
+    prismaMock.mailMessage.findUnique.mockResolvedValueOnce(null);
+    prismaMock.client.findFirst.mockResolvedValue(null);
+    // ...but another concurrent sync run wins the race and creates it first.
+    const p2002 = Object.assign(new Error('Unique constraint failed'), { code: 'P2002' });
+    prismaMock.mailMessage.create.mockRejectedValueOnce(p2002);
+    // Re-read after the collision finds the row the other run created.
+    prismaMock.mailMessage.findUnique.mockResolvedValueOnce({ id: 'won-the-race', clientId: null });
+    prismaMock.mailMessage.update.mockResolvedValue({});
+
+    const result = await syncMailbox('t1');
+
+    expect(result.ok).toBe(true);
+    expect(result.error).toBeUndefined();
+    expect(prismaMock.mailMessage.update).toHaveBeenCalledWith(
+      expect.objectContaining({ where: { id: 'won-the-race' } })
+    );
+    expect(prismaMock.mailboxSyncState.upsert).toHaveBeenCalledWith(
+      expect.objectContaining({ update: expect.objectContaining({ lastSyncOk: true }) })
+    );
+  });
+});
+
 describe('syncMailbox — no provider connected', () => {
   it('returns NOT_CONNECTED and does not attempt any provider sync', async () => {
     loadTenantEmailContextMock.mockResolvedValue({
@@ -907,6 +1003,114 @@ describe('sendMailboxMessage — no provider connected (fallback)', () => {
     expect(result.dto.id).toBe('out-3');
     expect(result.sent).toBe(false);
     expect(result.error).toBe('suppressed');
+  });
+});
+
+describe('markMailboxRead — F3: provider-aware write-back', () => {
+  beforeEach(() => {
+    // An earlier test queues a mockResolvedValueOnce that its own code path
+    // never consumes (guarded by an if it doesn't hit) — clearAllMocks()
+    // resets call history but not that queued once-value, so reset here to
+    // guarantee a clean slate before each test sets its own return value.
+    prismaMock.mailMessage.findFirst.mockReset();
+  });
+
+  it('SMTP-provider row under a Graph connection updates locally and never calls the provider', async () => {
+    prismaMock.mailMessage.findFirst.mockResolvedValue({
+      id: 'm1',
+      provider: 'SMTP',
+      externalId: 'local-seed:c1:records',
+    });
+    prismaMock.mailMessage.update.mockResolvedValue({});
+    loadTenantEmailContextMock.mockResolvedValue({
+      tenantId: 't1',
+      tenantName: 'Firm',
+      email: { provider: 'outlook', outlook: { user: 'firm@outlook.com', refreshToken: 'r1' } },
+    });
+
+    await markMailboxRead('t1', 'm1', true);
+
+    expect(prismaMock.mailMessage.update).toHaveBeenCalledWith({
+      where: { id: 'm1' },
+      data: { isRead: true },
+    });
+    expect(createGraphMailClientMock).not.toHaveBeenCalled();
+    expect(createGmailMailClientMock).not.toHaveBeenCalled();
+  });
+
+  it('a Gmail row left over after a switch to Graph updates locally and never calls the provider', async () => {
+    prismaMock.mailMessage.findFirst.mockResolvedValue({
+      id: 'm2',
+      provider: 'GMAIL',
+      externalId: 'gm-old-1',
+    });
+    prismaMock.mailMessage.update.mockResolvedValue({});
+    loadTenantEmailContextMock.mockResolvedValue({
+      tenantId: 't1',
+      tenantName: 'Firm',
+      email: {
+        provider: 'microsoft365',
+        outlook: { user: 'firm@outlook.com', refreshToken: 'r1' },
+      },
+    });
+
+    await markMailboxRead('t1', 'm2', true);
+
+    expect(prismaMock.mailMessage.update).toHaveBeenCalledWith({
+      where: { id: 'm2' },
+      data: { isRead: true },
+    });
+    expect(createGraphMailClientMock).not.toHaveBeenCalled();
+    expect(createGmailMailClientMock).not.toHaveBeenCalled();
+  });
+
+  it('a matching-provider row still writes back to the provider', async () => {
+    prismaMock.mailMessage.findFirst.mockResolvedValue({
+      id: 'm3',
+      provider: 'OUTLOOK',
+      externalId: 'graph-msg-1',
+    });
+    prismaMock.mailMessage.update.mockResolvedValue({});
+    loadTenantEmailContextMock.mockResolvedValue({
+      tenantId: 't1',
+      tenantName: 'Firm',
+      email: { provider: 'outlook', outlook: { user: 'firm@outlook.com', refreshToken: 'r1' } },
+    });
+    const markRead = jest.fn().mockResolvedValue(undefined);
+    createGraphMailClientMock.mockResolvedValue({ markRead });
+
+    await markMailboxRead('t1', 'm3', true);
+
+    expect(markRead).toHaveBeenCalledWith('graph-msg-1', true);
+  });
+
+  it('OUTLOOK/MICROSOFT365 are treated as the same provider family (no false mismatch)', async () => {
+    prismaMock.mailMessage.findFirst.mockResolvedValue({
+      id: 'm4',
+      provider: 'OUTLOOK',
+      externalId: 'graph-msg-2',
+    });
+    prismaMock.mailMessage.update.mockResolvedValue({});
+    loadTenantEmailContextMock.mockResolvedValue({
+      tenantId: 't1',
+      tenantName: 'Firm',
+      email: {
+        provider: 'microsoft365',
+        outlook: { user: 'firm@outlook.com', refreshToken: 'r1' },
+      },
+    });
+    const markRead = jest.fn().mockResolvedValue(undefined);
+    createGraphMailClientMock.mockResolvedValue({ markRead });
+
+    await markMailboxRead('t1', 'm4', true);
+
+    expect(markRead).toHaveBeenCalledWith('graph-msg-2', true);
+  });
+
+  it('throws MESSAGE_NOT_FOUND when the row does not exist in this tenant', async () => {
+    prismaMock.mailMessage.findFirst.mockResolvedValue(null);
+
+    await expect(markMailboxRead('t1', 'missing', true)).rejects.toThrow('MESSAGE_NOT_FOUND');
   });
 });
 

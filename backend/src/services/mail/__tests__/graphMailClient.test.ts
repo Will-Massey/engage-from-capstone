@@ -455,25 +455,137 @@ describe('createGraphMailClient send', () => {
     expect(result.externalId).toBeNull();
   });
 
-  it('POSTs to /messages/{id}/reply when replyToExternalId is set', async () => {
+  it('F1: replies via createReply -> patch -> send, in order, honouring the typed to/cc', async () => {
     loadTenantEmailContextMock.mockResolvedValue(ctxWithOutlook());
     fetchMock
       .mockResolvedValueOnce(tokenResponse())
-      .mockResolvedValueOnce(jsonResponse({}, true, 202));
+      .mockResolvedValueOnce(jsonResponse({ id: 'draft-1' }, true, 201)) // createReply
+      .mockResolvedValueOnce(jsonResponse({ id: 'draft-1' }, true, 200)) // patch
+      .mockResolvedValueOnce(jsonResponse({}, true, 202)); // send
 
     const client = await createGraphMailClient('tenant-1');
-    await client!.send({
+    const result = await client!.send({
       to: ['a@client.com'],
+      cc: ['b@client.com'],
       subject: 'Re: Hi',
       bodyText: 'Reply body',
       replyToExternalId: 'orig-msg-1',
     });
 
-    const [url, init] = fetchMock.mock.calls[1];
-    expect(url).toBe('https://graph.microsoft.com/v1.0/me/messages/orig-msg-1/reply');
-    expect(init.method).toBe('POST');
-    const payload = JSON.parse(init.body);
-    expect(payload.comment).toBe('Reply body');
+    const [createUrl, createInit] = fetchMock.mock.calls[1];
+    expect(createUrl).toBe('https://graph.microsoft.com/v1.0/me/messages/orig-msg-1/createReply');
+    expect(createInit.method).toBe('POST');
+
+    const [patchUrl, patchInit] = fetchMock.mock.calls[2];
+    expect(patchUrl).toBe('https://graph.microsoft.com/v1.0/me/messages/draft-1');
+    expect(patchInit.method).toBe('PATCH');
+    const patchPayload = JSON.parse(patchInit.body);
+    expect(patchPayload.toRecipients).toEqual([{ emailAddress: { address: 'a@client.com' } }]);
+    expect(patchPayload.ccRecipients).toEqual([{ emailAddress: { address: 'b@client.com' } }]);
+    expect(patchPayload.body).toEqual({ contentType: 'Text', content: 'Reply body' });
+
+    const [sendUrl, sendInit] = fetchMock.mock.calls[3];
+    expect(sendUrl).toBe('https://graph.microsoft.com/v1.0/me/messages/draft-1/send');
+    expect(sendInit.method).toBe('POST');
+
+    expect(result.externalId).toBe('draft-1');
+
+    // Happy path: the draft was sent, so it must not be deleted.
+    const deleteCalls = fetchMock.mock.calls.filter(([, init]) => init?.method === 'DELETE');
+    expect(deleteCalls).toHaveLength(0);
+  });
+
+  it('F1: propagates a failure from createReply without patching, sending, or deleting (no draft exists yet)', async () => {
+    loadTenantEmailContextMock.mockResolvedValue(ctxWithOutlook());
+    fetchMock
+      .mockResolvedValueOnce(tokenResponse())
+      .mockResolvedValueOnce(jsonResponse({ error: 'nope' }, false, 404));
+
+    const client = await createGraphMailClient('tenant-1');
+
+    await expect(
+      client!.send({
+        to: ['a@client.com'],
+        subject: 'Re: Hi',
+        bodyText: 'Reply body',
+        replyToExternalId: 'orig-msg-1',
+      })
+    ).rejects.toThrow();
+    expect(fetchMock).toHaveBeenCalledTimes(2); // token + createReply only
+  });
+
+  it('F1: cleans up the orphaned draft when the patch step fails, and propagates the patch error (not a delete error)', async () => {
+    loadTenantEmailContextMock.mockResolvedValue(ctxWithOutlook());
+    fetchMock
+      .mockResolvedValueOnce(tokenResponse())
+      .mockResolvedValueOnce(jsonResponse({ id: 'draft-1' }, true, 201)) // createReply
+      .mockResolvedValueOnce(jsonResponse({ error: 'bad request' }, false, 400)) // patch fails
+      .mockResolvedValueOnce(jsonResponse({}, true, 204)); // best-effort delete
+
+    const client = await createGraphMailClient('tenant-1');
+
+    await expect(
+      client!.send({
+        to: ['a@client.com'],
+        subject: 'Re: Hi',
+        bodyText: 'Reply body',
+        replyToExternalId: 'orig-msg-1',
+      })
+    ).rejects.toThrow(/Graph reply patch failed/);
+
+    expect(fetchMock).toHaveBeenCalledTimes(4); // token + createReply + patch + delete
+    const [deleteUrl, deleteInit] = fetchMock.mock.calls[3];
+    expect(deleteUrl).toBe('https://graph.microsoft.com/v1.0/me/messages/draft-1');
+    expect(deleteInit.method).toBe('DELETE');
+  });
+
+  it('F1: cleans up the orphaned draft when the send step fails, and propagates the send error (not a delete error)', async () => {
+    loadTenantEmailContextMock.mockResolvedValue(ctxWithOutlook());
+    fetchMock
+      .mockResolvedValueOnce(tokenResponse())
+      .mockResolvedValueOnce(jsonResponse({ id: 'draft-1' }, true, 201)) // createReply
+      .mockResolvedValueOnce(jsonResponse({ id: 'draft-1' }, true, 200)) // patch
+      .mockResolvedValueOnce(jsonResponse({ error: 'server error' }, false, 500)) // send fails
+      .mockResolvedValueOnce(jsonResponse({}, true, 204)); // best-effort delete
+
+    const client = await createGraphMailClient('tenant-1');
+
+    await expect(
+      client!.send({
+        to: ['a@client.com'],
+        subject: 'Re: Hi',
+        bodyText: 'Reply body',
+        replyToExternalId: 'orig-msg-1',
+      })
+    ).rejects.toThrow(/Graph reply send failed/);
+
+    expect(fetchMock).toHaveBeenCalledTimes(5); // token + createReply + patch + send + delete
+    const [deleteUrl, deleteInit] = fetchMock.mock.calls[4];
+    expect(deleteUrl).toBe('https://graph.microsoft.com/v1.0/me/messages/draft-1');
+    expect(deleteInit.method).toBe('DELETE');
+  });
+
+  it('F1: swallows a failure from the cleanup delete itself and still propagates the original send error', async () => {
+    loadTenantEmailContextMock.mockResolvedValue(ctxWithOutlook());
+    fetchMock
+      .mockResolvedValueOnce(tokenResponse())
+      .mockResolvedValueOnce(jsonResponse({ id: 'draft-1' }, true, 201)) // createReply
+      .mockResolvedValueOnce(jsonResponse({ id: 'draft-1' }, true, 200)) // patch
+      .mockResolvedValueOnce(jsonResponse({ error: 'server error' }, false, 500)) // send fails
+      .mockResolvedValueOnce(jsonResponse({ error: 'already gone' }, false, 404)); // delete ALSO fails
+
+    const client = await createGraphMailClient('tenant-1');
+
+    // The error that reaches the caller must be the original send failure,
+    // not anything about the delete cleanup failing.
+    await expect(
+      client!.send({
+        to: ['a@client.com'],
+        subject: 'Re: Hi',
+        bodyText: 'Reply body',
+        replyToExternalId: 'orig-msg-1',
+      })
+    ).rejects.toThrow(/Graph reply send failed/);
   });
 });
 
