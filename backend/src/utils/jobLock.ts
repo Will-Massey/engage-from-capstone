@@ -15,6 +15,7 @@ export const JOB_LOCKS = {
   regulatoryScan: 4106,
   claraAgenticDrafting: 4107,
   automationRules: 4108,
+  mailboxSync: 4109,
 } as const;
 
 /**

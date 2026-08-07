@@ -75,8 +75,8 @@ router.get(
         orderBy: { updatedAt: 'desc' },
       }),
       listAssignments(tenantId, { clientId }),
-      listMailboxMessages(tenantId, { limit: 20 }).then((msgs) =>
-        msgs.filter((m) => m.clientId === clientId).slice(0, 5)
+      listMailboxMessages(tenantId, { limit: 20 }).then((result) =>
+        result.messages.filter((m) => m.clientId === clientId).slice(0, 5)
       ),
     ]);
 

@@ -814,6 +814,12 @@ export const apiClient = {
   getAmlDocument: (clientId: string, type: 'photo_id' | 'proof_of_address') =>
     api.get(`/aml/documents/${clientId}/${type}`, { responseType: 'blob' }) as Promise<Blob>,
 
+  // Response interceptor already returns `response.data`; for blobs that value IS the Blob.
+  downloadMailAttachment: (messageId: string, attachmentId: string) =>
+    api.get(`/comms/mailbox/messages/${messageId}/attachments/${attachmentId}`, {
+      responseType: 'blob',
+    }) as Promise<Blob>,
+
   getRegulatoryCheck: (clientId: string) =>
     api.get(`/regulatory/check/${clientId}`) as Promise<ApiResponse<RegulatoryCheckResult>>,
 

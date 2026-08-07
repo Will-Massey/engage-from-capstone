@@ -87,25 +87,14 @@ test.describe('Mobile signing', () => {
       await stickyBar.getByRole('button', { name: /review & sign proposal/i }).click();
       await expect(stickyBar).toBeHidden();
 
-      await publicPage.click('button:has-text("Continue to terms")');
-      await publicPage.check('[data-testid="terms-checkbox"]');
-      await publicPage.click('button:has-text("Continue")');
-
-      // Engagement-letter step only renders when the proposal has one
-      const engagement = publicPage.locator('[data-testid="engagement-letter-checkbox"]');
-      if (await engagement.isVisible().catch(() => false)) {
-        await engagement.check();
-        await publicPage.click('button:has-text("Continue")');
-      }
-
+      // One-screen Sign card: identity + single consent tick, no wizard steps
       await publicPage.fill('[data-testid="signer-name-input"]', 'Mo Bile');
       await publicPage.fill('[data-testid="signer-role-input"]', 'Director');
       await publicPage.fill(
         '[data-testid="signer-email-input"]',
         'mobile-signature-test@example.com'
       );
-      await publicPage.check('[data-testid="authorised-checkbox"]');
-      await publicPage.click('button:has-text("Continue to sign")');
+      await publicPage.check('[data-testid="consent-checkbox"]');
 
       // Draw on the signature canvas. The pad handles both touch and mouse;
       // Playwright's touchscreen API only taps (no drag), so drive the drag
@@ -131,12 +120,13 @@ test.describe('Mobile signing', () => {
         await publicPage.mouse.up();
       }
 
-      // Exactly ONE visible confirm control: the page's own confirm button.
-      // The pad's internal "Confirm Signature" button is hidden on this page.
+      // Exactly ONE visible sign control: the page's own "Sign & accept".
+      // The pad's internal "Confirm Signature" button is hidden on this page,
+      // and drawing + consent enable the always-rendered button.
       const confirmButton = publicPage.getByTestId('confirm-signature-button');
       await expect(confirmButton).toBeVisible();
+      await expect(confirmButton).toBeEnabled();
       await expect(publicPage.locator('button:has-text("Confirm Signature")')).toHaveCount(0);
-      await expect(publicPage.getByRole('button', { name: /^confirm/i })).toHaveCount(1);
 
       const signResponsePromise = publicPage.waitForResponse(
         (resp) => resp.url().includes('/sign') && resp.request().method() === 'POST'

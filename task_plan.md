@@ -44,9 +44,9 @@ Also shipped 2026-08-06: **#105** (Documents-hub field fixes: client search, AML
 
 ## Next up
 
-1. **Flip live mesh** — Engage (Fortis tenant) → Integrations → Connect AccountFlow → mode live + allowLive (+ autoHandoff); no key pasting (env fallback). Everything beneath is verified.
+1. ~~**Flip live mesh**~~ — **DONE 2026-08-06 PM** via prod DB (William's call): Fortis tenant `accountFlowMesh` set to mode live + allowLive + autoHandoff. Trap caught: a hand-pasted junk tenant apiKey ("Caroline…") would have overridden the env fallback — cleared to null. No redeploy needed (settings read per-request). Watch the first real proposal accept → AF work spawn.
 2. Optional open PRs: #90 marketing root, #80 OAuth TTL (both green, William's call)
-3. Remaining scorecard gaps: two-way mailbox depth (M365/Gmail sync), Credas AML (awaits William's partner email), Capacitor iOS after desktop solid
+3. Remaining scorecard gaps: ~~two-way mailbox depth (M365/Gmail sync)~~ — **BUILT** on branch `feat/mailbox-two-way` (provider clients, sync job, Graph webhook, Gmail env + docs — see `docs/MAILBOX_TWO_WAY.md`), PR pending; Credas AML (awaits William's partner email), Capacitor iOS after desktop solid
 4. Caroline flow to watch: first real document request end-to-end (email → portal checklist → upload → auto-complete)
 
 ## Notes

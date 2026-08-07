@@ -1,30 +1,30 @@
 import { describe, expect, it } from 'vitest';
 import {
+  buildCombinedConsentText,
   buildPublicSignPayload,
-  buildSignatureConsentText,
   buildSignatureDeviceInfo,
-  buildSigningSteps,
   collectSignatureValidationErrors,
-  getNextSigningStep,
-  getPreviousSigningStep,
   isProposalExpired,
   splitCoverLetterParagraphs,
 } from '../publicSigning';
 
-describe('public signing page helpers', () => {
-  describe('buildSigningSteps', () => {
-    it('includes engagement step only when letter content exists', () => {
-      const without = buildSigningSteps({});
-      expect(without.map((s) => s.id)).toEqual(['review', 'terms', 'identity', 'sign']);
+describe('public signing page helpers (one-screen flow)', () => {
+  describe('buildCombinedConsentText', () => {
+    it('names terms only when there is no engagement letter', () => {
+      expect(buildCombinedConsentText('Acme Ltd', false)).toBe(
+        'I have read and agree to the terms and conditions, and I confirm I am authorised to sign on behalf of Acme Ltd.'
+      );
+    });
 
-      const withLetter = buildSigningSteps({ engagementLetter: '  Scope of work…  ' });
-      expect(withLetter.map((s) => s.id)).toEqual([
-        'review',
-        'terms',
-        'engagement',
-        'identity',
-        'sign',
-      ]);
+    it('names both documents when an engagement letter exists', () => {
+      expect(buildCombinedConsentText('Acme Ltd', true)).toBe(
+        'I have read and agree to the terms and conditions and the engagement letter, and I confirm I am authorised to sign on behalf of Acme Ltd.'
+      );
+    });
+
+    it('falls back to "the client" when no client name', () => {
+      expect(buildCombinedConsentText(undefined, false)).toContain('on behalf of the client.');
+      expect(buildCombinedConsentText('   ', true)).toContain('on behalf of the client.');
     });
   });
 
@@ -45,55 +45,36 @@ describe('public signing page helpers', () => {
     });
   });
 
-  describe('signing step navigation', () => {
-    const steps = buildSigningSteps({ engagementLetter: 'Letter' });
-
-    it('walks forward through the flow', () => {
-      expect(getNextSigningStep('review', steps)).toBe('terms');
-      expect(getNextSigningStep('sign', steps)).toBeNull();
-    });
-
-    it('walks backward and exits from review', () => {
-      expect(getPreviousSigningStep('review', steps)).toBe('exit');
-      expect(getPreviousSigningStep('identity', steps)).toBe('engagement');
-    });
-  });
-
   describe('collectSignatureValidationErrors', () => {
     const valid = {
       signatureData: 'data:image/png;base64,abc',
       signerName: 'Jane Client',
       signerRole: 'Director',
       signerEmail: 'jane@acme.test',
-      authorisedToSign: true,
+      consentAccepted: true,
     };
 
     it('returns no errors for a complete form', () => {
       expect(collectSignatureValidationErrors(valid)).toEqual([]);
     });
 
-    it('flags missing identity and authorisation fields', () => {
+    it('flags every missing field including the single consent tick', () => {
       const errors = collectSignatureValidationErrors({
         signatureData: '',
         signerName: ' ',
         signerRole: '',
         signerEmail: '',
-        authorisedToSign: false,
+        consentAccepted: false,
       });
-      expect(errors.length).toBeGreaterThanOrEqual(4);
-      expect(errors).toContain('Please confirm you are authorised to sign on behalf of the client');
-    });
-  });
-
-  describe('buildSignatureConsentText', () => {
-    it('names the client when provided', () => {
-      expect(buildSignatureConsentText('Acme Ltd')).toContain('Acme Ltd');
-      expect(buildSignatureConsentText()).toContain('the client');
+      expect(errors.length).toBe(5);
+      expect(errors).toContain(
+        'Please confirm you have read the documents and are authorised to sign'
+      );
     });
   });
 
   describe('buildSignatureDeviceInfo', () => {
-    it('serialises forensic device snapshot', () => {
+    it('serialises the forensic snapshot including signature method', () => {
       const json = buildSignatureDeviceInfo({
         platform: 'MacIntel',
         screenWidth: 1440,
@@ -103,30 +84,44 @@ describe('public signing page helpers', () => {
         language: 'en-GB',
         hardwareConcurrency: 8,
         touch: false,
+        signatureMethod: 'typed',
       });
       const parsed = JSON.parse(json);
       expect(parsed.screen).toBe('1440x900');
-      expect(parsed.cores).toBe(8);
-      expect(parsed.touch).toBe(false);
+      expect(parsed.method).toBe('typed');
+    });
+
+    it('defaults method to drawn when unspecified', () => {
+      const json = buildSignatureDeviceInfo({
+        platform: 'Win32',
+        screenWidth: 1920,
+        screenHeight: 1080,
+        colorDepth: 24,
+        timezone: 'Europe/London',
+        language: 'en-GB',
+        touch: true,
+      });
+      expect(JSON.parse(json).method).toBe('drawn');
     });
   });
 
   describe('buildPublicSignPayload', () => {
-    it('maps form state to the public sign API body', () => {
+    const base = {
+      signatureData: 'sig',
+      signerName: 'Jane Client',
+      signerRole: 'Director',
+      signerEmail: 'jane@acme.test',
+      consentAccepted: true,
+      clientName: 'Acme Ltd',
+      deviceInfo: '{"platform":"test"}',
+    };
+
+    it('derives all three accept flags from the single tick (with letter)', () => {
       const payload = buildPublicSignPayload({
-        signatureData: 'sig',
-        signerName: 'Jane Client',
-        signerRole: 'Director',
-        signerEmail: 'jane@acme.test',
-        authorisedToSign: true,
-        termsAccepted: true,
-        engagementLetterAccepted: true,
+        ...base,
         hasEngagementLetter: true,
-        clientName: 'Acme Ltd',
-        deviceInfo: '{"platform":"test"}',
         selectedTierId: 'silver',
       });
-
       expect(payload).toMatchObject({
         signedBy: 'Jane Client',
         signedByRole: 'Director',
@@ -137,23 +132,18 @@ describe('public signing page helpers', () => {
         authorisedToSign: true,
         selectedTierId: 'silver',
       });
-      expect(payload.consentText).toContain('Acme Ltd');
+      expect(payload.consentText).toBe(
+        'I have read and agree to the terms and conditions and the engagement letter, and I confirm I am authorised to sign on behalf of Acme Ltd.'
+      );
     });
 
-    it('omits engagement acceptance when no engagement letter', () => {
-      const payload = buildPublicSignPayload({
-        signatureData: 'sig',
-        signerName: 'Jane',
-        signerRole: 'Director',
-        signerEmail: 'jane@acme.test',
-        authorisedToSign: true,
-        termsAccepted: true,
-        engagementLetterAccepted: false,
-        hasEngagementLetter: false,
-        deviceInfo: '{}',
-      });
+    it('omits engagement acceptance and tier when absent', () => {
+      const payload = buildPublicSignPayload({ ...base, hasEngagementLetter: false });
       expect(payload.engagementLetterAccepted).toBeUndefined();
       expect(payload.selectedTierId).toBeUndefined();
+      expect(payload.consentText).toBe(
+        'I have read and agree to the terms and conditions, and I confirm I am authorised to sign on behalf of Acme Ltd.'
+      );
     });
   });
 });
