@@ -32,13 +32,14 @@ import {
 import { motion, AnimatePresence } from 'framer-motion';
 import { AI_COPILOT } from '../../config/aiCopilot';
 import {
+  buildCombinedConsentText,
   buildPublicSignPayload,
   buildSignatureDeviceInfo,
-  buildSigningSteps,
   collectSignatureValidationErrors,
   readBrowserDeviceInfo,
   type SigningStep,
 } from './publicSigning';
+import TypedSignatureInput from '../../components/signature/TypedSignatureInput';
 import { formatCoverLetter } from '@shared/coverLetter';
 
 interface ProposalData {
@@ -160,14 +161,16 @@ const PublicProposalView = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [termsAccepted, setTermsAccepted] = useState(false);
-  const [engagementLetterAccepted, setEngagementLetterAccepted] = useState(false);
+  const [consentAccepted, setConsentAccepted] = useState(false);
+  const [signatureTab, setSignatureTab] = useState<'draw' | 'typed'>('draw');
+  const [termsOpen, setTermsOpen] = useState(false);
+  const [engagementOpen, setEngagementOpen] = useState(false);
   const [paymentAuthAccepted, setPaymentAuthAccepted] = useState(false);
   const [signingStep, setSigningStep] = useState<SigningStep | null>(null);
   const [signatureData, setSignatureData] = useState<string>('');
   const [signerName, setSignerName] = useState('');
   const [signerRole, setSignerRole] = useState('');
   const [signerEmail, setSignerEmail] = useState('');
-  const [authorisedToSign, setAuthorisedToSign] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isDeclining, setIsDeclining] = useState(false);
   const [declineReasonCategory, setDeclineReasonCategory] = useState<DeclineReason | ''>('');
@@ -261,6 +264,9 @@ const PublicProposalView = () => {
           if (response.data.client?.contactEmail) {
             setSignerEmail(response.data.client.contactEmail);
           }
+          if (response.data.client?.contactName?.trim()) {
+            setSignerName(response.data.client.contactName.trim());
+          }
         } else {
           setError('Proposal not found or link expired');
         }
@@ -294,7 +300,7 @@ const PublicProposalView = () => {
     };
 
     const expired = proposal ? new Date(proposal.validUntil) < new Date() : false;
-    if (proposal && !isAccepted && !expired && signingStep && signingStep !== 'review') {
+    if (proposal && !isAccepted && !expired && signingStep) {
       loadSigningSummary();
     }
   }, [token, proposal, isAccepted, signingStep, signingSummary]);
@@ -335,30 +341,17 @@ const PublicProposalView = () => {
 
   const startSigningFlow = () => {
     setShowDecline(false);
-    setSigningStep('review');
-  };
-
-  const signingSteps = proposal ? buildSigningSteps(proposal) : [];
-
-  const goToNextStep = () => {
-    if (!signingStep || !proposal) return;
-    const idx = signingSteps.findIndex((s) => s.id === signingStep);
-    if (idx >= 0 && idx < signingSteps.length - 1) {
-      setSigningStep(signingSteps[idx + 1].id);
-    }
-  };
-
-  const goToPrevStep = () => {
-    if (!signingStep || signingStep === 'review') {
-      setSigningStep(null);
-      return;
-    }
-    const idx = signingSteps.findIndex((s) => s.id === signingStep);
-    if (idx > 0) setSigningStep(signingSteps[idx - 1].id);
+    setSigningStep('sign');
   };
 
   const handleSignatureSave = (signature: string) => {
     setSignatureData(signature);
+  };
+
+  // A drawn signature must not survive into the Type tab and vice versa.
+  const switchSignatureTab = (tab: 'draw' | 'typed') => {
+    setSignatureTab(tab);
+    setSignatureData('');
   };
 
   const handleSetupPayment = async () => {
@@ -427,7 +420,7 @@ const PublicProposalView = () => {
       signerName,
       signerRole,
       signerEmail,
-      authorisedToSign,
+      consentAccepted,
     });
     if (validationErrors.length > 0) {
       toast.error(validationErrors[0]);
@@ -447,12 +440,13 @@ const PublicProposalView = () => {
           signerName,
           signerRole,
           signerEmail,
-          authorisedToSign,
-          termsAccepted,
-          engagementLetterAccepted,
+          consentAccepted,
           hasEngagementLetter,
           clientName: proposal?.client?.name,
-          deviceInfo: buildSignatureDeviceInfo(readBrowserDeviceInfo()),
+          deviceInfo: buildSignatureDeviceInfo({
+            ...readBrowserDeviceInfo(),
+            signatureMethod: signatureTab === 'typed' ? 'typed' : 'drawn',
+          }),
           selectedTierId: tierToSubmit,
         })
       )) as any;
@@ -541,38 +535,6 @@ const PublicProposalView = () => {
     signingStep !== 'confirmation' &&
     (!isAccepted || signingStep === 'payment') &&
     !isExpired;
-  const currentStepIndex = signingStep ? signingSteps.findIndex((s) => s.id === signingStep) : -1;
-
-  const StepIndicator = () => (
-    <div className="mb-6" data-testid="signing-step-indicator">
-      <div className="flex items-center justify-between gap-1">
-        {signingSteps.map((step, i) => {
-          const active = currentStepIndex === i;
-          const done = currentStepIndex > i;
-          return (
-            <div key={step.id} className="flex-1 flex flex-col items-center gap-1">
-              <div
-                className={`h-2 w-full rounded-full transition-colors ${
-                  active
-                    ? 'bg-primary-600'
-                    : done
-                      ? 'bg-emerald-500'
-                      : 'bg-slate-200 dark:bg-slate-700'
-                }`}
-              />
-              <span
-                className={`text-[10px] sm:text-xs font-medium ${
-                  active ? 'text-primary-700 dark:text-primary-300' : 'text-slate-500'
-                }`}
-              >
-                {step.label}
-              </span>
-            </div>
-          );
-        })}
-      </div>
-    </div>
-  );
 
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-900 py-6 sm:py-8 px-4 sm:px-6 lg:px-8 pb-28 sm:pb-8 [padding-bottom:max(7rem,env(safe-area-inset-bottom))]">
@@ -940,7 +902,7 @@ const PublicProposalView = () => {
                   data-testid="additional-signatory-button"
                   onClick={() => {
                     setShowDecline(false);
-                    setSigningStep('identity');
+                    setSigningStep('sign');
                   }}
                   className="btn-primary mt-4 w-full sm:w-auto"
                 >
@@ -1188,122 +1150,85 @@ const PublicProposalView = () => {
 
           {inSigningFlow && (
             <div className="border-t pt-6 space-y-4" data-testid="signing-flow">
-              <StepIndicator />
-
-              {signingStep === 'review' && (
-                <div className="space-y-4">
-                  <h3 className="text-lg font-semibold text-slate-900 dark:text-white">
-                    Review your proposal
-                  </h3>
-                  <p className="text-sm text-slate-600 dark:text-slate-400">
-                    Total engagement value:{' '}
-                    <strong className="text-slate-900 dark:text-white">
-                      {formatCurrency(proposal.total)}
-                    </strong>{' '}
-                    · {proposal.services.length} service
-                    {proposal.services.length !== 1 ? 's' : ''}
-                  </p>
-                  <ul className="space-y-2 text-sm text-slate-700 dark:text-slate-300">
-                    {proposal.services.map((s) => (
-                      <li key={s.id} className="flex justify-between gap-2">
-                        <span>{s.name}</span>
-                        <span className="font-medium">
-                          {formatCurrency(s.lineTotal || s.total || 0)}
-                        </span>
-                      </li>
-                    ))}
-                  </ul>
-                  <button type="button" className="btn-primary w-full py-3" onClick={goToNextStep}>
-                    Continue to terms
-                  </button>
-                </div>
-              )}
-
-              {signingStep === 'terms' && (
-                <div className="space-y-4">
-                  <h3 className="text-lg font-semibold text-slate-900 dark:text-white">
-                    Terms &amp; conditions
-                  </h3>
-                  <div className="p-4 bg-slate-50 dark:bg-slate-900/50 rounded-lg max-h-48 overflow-y-auto">
-                    <pre className="text-sm text-slate-800 dark:text-slate-200 whitespace-pre-wrap font-sans">
-                      {proposal.terms || 'Standard terms and conditions apply.'}
-                    </pre>
+              {signingStep === 'sign' && (
+                <div className="space-y-5">
+                  <div>
+                    <h3 className="text-lg font-semibold text-slate-900 dark:text-white">
+                      Sign &amp; accept this proposal
+                    </h3>
+                    <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">
+                      Total engagement value:{' '}
+                      <strong className="text-slate-900 dark:text-white">
+                        {formatCurrency(displayTotals.total)}
+                      </strong>{' '}
+                      · {proposal.services.length} service
+                      {proposal.services.length !== 1 ? 's' : ''}
+                    </p>
                   </div>
-                  <label className="flex items-start gap-2 text-sm text-slate-800 dark:text-slate-200">
-                    <input
-                      data-testid="terms-checkbox"
-                      type="checkbox"
-                      checked={termsAccepted}
-                      onChange={(e) => setTermsAccepted(e.target.checked)}
-                      className="mt-1 h-4 w-4 rounded"
-                    />
-                    <span>I have read and agree to the terms and conditions.</span>
-                  </label>
-                  <div className="flex gap-3">
-                    <button type="button" className="btn-secondary flex-1" onClick={goToPrevStep}>
-                      Back
-                    </button>
-                    <button
-                      type="button"
-                      className="btn-primary flex-1"
-                      disabled={!termsAccepted}
-                      onClick={goToNextStep}
-                    >
-                      Continue
-                    </button>
-                  </div>
-                </div>
-              )}
 
-              {signingStep === 'engagement' && (
-                <div className="space-y-4">
-                  <h3 className="text-lg font-semibold text-slate-900 dark:text-white">
-                    Engagement letter
-                  </h3>
-                  <div className="p-4 bg-slate-50 dark:bg-slate-900/50 rounded-lg max-h-64 overflow-y-auto">
-                    <pre className="text-sm text-slate-800 dark:text-slate-200 whitespace-pre-wrap font-sans">
-                      {proposal.engagementLetter || 'No engagement letter attached.'}
-                    </pre>
-                  </div>
-                  <label className="flex items-start gap-2 text-sm text-slate-800 dark:text-slate-200">
-                    <input
-                      data-testid="engagement-letter-checkbox"
-                      type="checkbox"
-                      checked={engagementLetterAccepted}
-                      onChange={(e) => setEngagementLetterAccepted(e.target.checked)}
-                      className="mt-1 h-4 w-4 rounded"
-                    />
-                    <span>I have read and accept the engagement letter.</span>
-                  </label>
-                  <div className="flex gap-3">
-                    <button type="button" className="btn-secondary flex-1" onClick={goToPrevStep}>
-                      Back
-                    </button>
-                    <button
-                      type="button"
-                      className="btn-primary flex-1"
-                      disabled={!engagementLetterAccepted}
-                      onClick={goToNextStep}
-                    >
-                      Continue
-                    </button>
-                  </div>
-                </div>
-              )}
-
-              {signingStep === 'identity' && (
-                <div className="space-y-4">
-                  <h3 className="text-lg font-semibold text-slate-900 dark:text-white">
-                    Confirm your identity
-                  </h3>
                   {signingSummary && (
                     <p className="text-sm text-emerald-800 dark:text-emerald-200 bg-emerald-50 dark:bg-emerald-950/30 rounded-lg p-3">
                       {signingSummary}
                     </p>
                   )}
-                  <div className="grid grid-cols-1 gap-4">
+
+                  {/* Documents — collapsed by default, full text in-page */}
+                  <div className="space-y-2">
+                    <div className="rounded-xl border border-slate-200 dark:border-slate-600 overflow-hidden">
+                      <button
+                        type="button"
+                        data-testid="sign-doc-terms-toggle"
+                        onClick={() => setTermsOpen((v) => !v)}
+                        className="w-full flex items-center justify-between gap-3 px-4 py-3 text-left text-sm font-medium text-slate-900 dark:text-white min-h-[44px] hover:bg-slate-50 dark:hover:bg-slate-800/50"
+                      >
+                        <span>Terms &amp; conditions</span>
+                        {termsOpen ? (
+                          <ChevronUpIcon className="h-4 w-4 shrink-0 text-slate-400" />
+                        ) : (
+                          <ChevronDownIcon className="h-4 w-4 shrink-0 text-slate-400" />
+                        )}
+                      </button>
+                      {termsOpen && (
+                        <div className="px-4 pb-3 max-h-56 overflow-y-auto">
+                          <pre className="text-sm text-slate-800 dark:text-slate-200 whitespace-pre-wrap font-sans">
+                            {proposal.terms || 'Standard terms and conditions apply.'}
+                          </pre>
+                        </div>
+                      )}
+                    </div>
+
+                    {Boolean(proposal.engagementLetter?.trim()) && (
+                      <div className="rounded-xl border border-slate-200 dark:border-slate-600 overflow-hidden">
+                        <button
+                          type="button"
+                          data-testid="sign-doc-engagement-toggle"
+                          onClick={() => setEngagementOpen((v) => !v)}
+                          className="w-full flex items-center justify-between gap-3 px-4 py-3 text-left text-sm font-medium text-slate-900 dark:text-white min-h-[44px] hover:bg-slate-50 dark:hover:bg-slate-800/50"
+                        >
+                          <span>Engagement letter</span>
+                          {engagementOpen ? (
+                            <ChevronUpIcon className="h-4 w-4 shrink-0 text-slate-400" />
+                          ) : (
+                            <ChevronDownIcon className="h-4 w-4 shrink-0 text-slate-400" />
+                          )}
+                        </button>
+                        {engagementOpen && (
+                          <div className="px-4 pb-3 max-h-64 overflow-y-auto">
+                            <pre className="text-sm text-slate-800 dark:text-slate-200 whitespace-pre-wrap font-sans">
+                              {proposal.engagementLetter}
+                            </pre>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Identity — prefilled from the proposal's client contact */}
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                     <div>
-                      <label className="block text-sm font-medium text-slate-800">Full name</label>
+                      <label className="block text-sm font-medium text-slate-800 dark:text-slate-200">
+                        Full name
+                      </label>
                       <input
                         data-testid="signer-name-input"
                         type="text"
@@ -1314,7 +1239,7 @@ const PublicProposalView = () => {
                       />
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-slate-800">
+                      <label className="block text-sm font-medium text-slate-800 dark:text-slate-200">
                         Role / title
                       </label>
                       <input
@@ -1327,7 +1252,7 @@ const PublicProposalView = () => {
                       />
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-slate-800">
+                      <label className="block text-sm font-medium text-slate-800 dark:text-slate-200">
                         Email address
                       </label>
                       <input
@@ -1340,63 +1265,78 @@ const PublicProposalView = () => {
                       />
                     </div>
                   </div>
+
+                  {/* One combined consent tick — the rendered sentence IS the stored consentText */}
                   <label className="flex items-start gap-2 text-sm text-slate-800 dark:text-slate-200">
                     <input
-                      data-testid="authorised-checkbox"
+                      data-testid="consent-checkbox"
                       type="checkbox"
-                      checked={authorisedToSign}
-                      onChange={(e) => setAuthorisedToSign(e.target.checked)}
+                      checked={consentAccepted}
+                      onChange={(e) => setConsentAccepted(e.target.checked)}
                       className="mt-1 h-4 w-4 rounded"
                     />
                     <span>
-                      I confirm I am authorised to sign on behalf of{' '}
-                      <strong>{proposal.client.name}</strong>.
+                      {buildCombinedConsentText(
+                        proposal.client.name,
+                        Boolean(proposal.engagementLetter?.trim())
+                      )}
                     </span>
                   </label>
-                  <div className="flex gap-3">
-                    <button type="button" className="btn-secondary flex-1" onClick={goToPrevStep}>
-                      Back
-                    </button>
-                    <button
-                      type="button"
-                      className="btn-primary flex-1"
-                      disabled={!signerName || !signerRole || !signerEmail || !authorisedToSign}
-                      onClick={goToNextStep}
-                    >
-                      Continue to sign
-                    </button>
-                  </div>
-                </div>
-              )}
 
-              {signingStep === 'sign' && (
-                <div className="space-y-4">
-                  <h3 className="text-lg font-semibold text-slate-900 dark:text-white">
-                    Add your signature
-                  </h3>
-                  <SignaturePad
-                    onSave={handleSignatureSave}
-                    onClear={() => setSignatureData('')}
-                    fullWidth
-                    height={220}
-                    hideConfirm
-                  />
-                  {signatureData && (
-                    <div className="flex gap-3">
-                      <button type="button" className="btn-secondary flex-1" onClick={goToPrevStep}>
-                        Back
+                  {/* Signature — Draw / Type tabs */}
+                  <div>
+                    <div className="flex gap-1 rounded-lg bg-slate-100 dark:bg-slate-800 p-1 w-fit mb-3">
+                      <button
+                        type="button"
+                        data-testid="signature-tab-draw"
+                        onClick={() => switchSignatureTab('draw')}
+                        className={`px-4 py-1.5 text-sm font-medium rounded-md transition-colors ${
+                          signatureTab === 'draw'
+                            ? 'bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-sm'
+                            : 'text-slate-600 dark:text-slate-400'
+                        }`}
+                      >
+                        Draw
                       </button>
                       <button
-                        data-testid="confirm-signature-button"
                         type="button"
-                        className="btn-primary flex-1 py-3"
-                        disabled={isSubmitting}
-                        onClick={handleSubmitSignature}
+                        data-testid="signature-tab-type"
+                        onClick={() => switchSignatureTab('typed')}
+                        className={`px-4 py-1.5 text-sm font-medium rounded-md transition-colors ${
+                          signatureTab === 'typed'
+                            ? 'bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-sm'
+                            : 'text-slate-600 dark:text-slate-400'
+                        }`}
                       >
-                        {isSubmitting ? 'Submitting…' : 'Confirm acceptance'}
+                        Type
                       </button>
                     </div>
-                  )}
+                    {signatureTab === 'draw' ? (
+                      <SignaturePad
+                        onSave={handleSignatureSave}
+                        onClear={() => setSignatureData('')}
+                        fullWidth
+                        height={220}
+                        hideConfirm
+                      />
+                    ) : (
+                      <TypedSignatureInput
+                        onSave={handleSignatureSave}
+                        onClear={() => setSignatureData('')}
+                        height={160}
+                      />
+                    )}
+                  </div>
+
+                  <button
+                    data-testid="confirm-signature-button"
+                    type="button"
+                    className="btn-primary w-full py-3"
+                    disabled={isSubmitting || !signatureData || !consentAccepted}
+                    onClick={handleSubmitSignature}
+                  >
+                    {isSubmitting ? 'Submitting…' : 'Sign & accept'}
+                  </button>
                 </div>
               )}
 

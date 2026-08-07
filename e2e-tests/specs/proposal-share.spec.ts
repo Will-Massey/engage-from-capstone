@@ -149,24 +149,12 @@ test.describe('Electronic Signature', () => {
     await publicPage.waitForLoadState('networkidle');
     await expect(publicPage.locator(`text=${uniqueTitle}`)).toBeVisible();
 
-    // Signing is a wizard: review → terms → (engagement) → identity → sign
+    // One-screen Sign card: identity + single consent tick, no wizard steps
     await publicPage.click('[data-testid="accept-proposal-button"]'); // "Review & sign proposal"
-    await publicPage.click('button:has-text("Continue to terms")');
-    await publicPage.check('[data-testid="terms-checkbox"]');
-    await publicPage.click('button:has-text("Continue")');
-
-    // Engagement-letter step only renders when the proposal has one
-    const engagement = publicPage.locator('[data-testid="engagement-letter-checkbox"]');
-    if (await engagement.isVisible().catch(() => false)) {
-      await engagement.check();
-      await publicPage.click('button:has-text("Continue")');
-    }
-
     await publicPage.fill('[data-testid="signer-name-input"]', 'John Smith');
     await publicPage.fill('[data-testid="signer-role-input"]', 'Director');
     await publicPage.fill('[data-testid="signer-email-input"]', 'signature-test@example.com');
-    await publicPage.check('[data-testid="authorised-checkbox"]');
-    await publicPage.click('button:has-text("Continue to sign")');
+    await publicPage.check('[data-testid="consent-checkbox"]');
 
     const signResponsePromise = publicPage.waitForResponse(
       (resp: any) => resp.url().includes('/sign') && resp.request().method() === 'POST'

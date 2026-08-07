@@ -79,21 +79,11 @@ test.describe('Money path — sign and collect payment', () => {
     await expect(publicPage.locator(`text=${uniqueTitle}`)).toBeVisible();
 
     await publicPage.click('[data-testid="accept-proposal-button"]');
-    await publicPage.click('button:has-text("Continue to terms")');
-    await publicPage.check('[data-testid="terms-checkbox"]');
-    await publicPage.click('button:has-text("Continue")');
-
-    const engagement = publicPage.locator('[data-testid="engagement-letter-checkbox"]');
-    if (await engagement.isVisible().catch(() => false)) {
-      await engagement.check();
-      await publicPage.click('button:has-text("Continue")');
-    }
-
+    // One-screen Sign card: identity + single consent tick, no wizard steps
     await publicPage.fill('[data-testid="signer-name-input"]', 'Jane Money');
     await publicPage.fill('[data-testid="signer-role-input"]', 'Director');
     await publicPage.fill('[data-testid="signer-email-input"]', client.email);
-    await publicPage.check('[data-testid="authorised-checkbox"]');
-    await publicPage.click('button:has-text("Continue to sign")');
+    await publicPage.check('[data-testid="consent-checkbox"]');
 
     const canvas = publicPage.locator('[data-testid="signature-canvas"]');
     await canvas.scrollIntoViewIfNeeded();
