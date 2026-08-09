@@ -309,7 +309,19 @@ reply`, `Auto-reply`, `Auto reply`, `Autoreply`, `Out of office`,
 - a draft must not already exist for that `inboundMessageId` — enforced both
   as a pre-check and, as the real backstop, the table's unique constraint,
 - the tenant's AI token budget (`checkAiTokenBudget`, the same monthly
-  budget every other AI feature draws from) must not be exhausted.
+  budget every other AI feature draws from) must not be exhausted. Each
+  generation writes an `AI_FEATURE_USED` activity row carrying its token
+  usage, which is what that budget actually counts, so autoreply spend is
+  metered alongside every other AI feature rather than running free,
+- the message must be RECENT: anything whose `receivedAt` is older than
+  `AUTO_REPLY_MAX_MESSAGE_AGE_MS` (2 hours) is skipped, and one call will
+  generate for at most `AUTO_REPLY_MAX_BATCH_SIZE` (10) messages. This exists
+  because a newly created `MailMessage` row is not the same thing as a newly
+  arrived email. A first mailbox connect pulls a 90-day window
+  (`FIRST_SYNC_WINDOW_DAYS`) paginated to exhaustion, and switching provider
+  re-imports the same history under a different `(provider, externalId)` key,
+  so without this bound the AI would draft replies to months of
+  already-answered mail, and in `auto` mode actually send them.
 
 Header-based bot detection (`Auto-Submitted`, `Precedence: bulk`,
 `List-Unsubscribe`) was in the original design but was dropped as
