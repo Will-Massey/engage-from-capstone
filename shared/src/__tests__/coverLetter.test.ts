@@ -1,6 +1,33 @@
-import { formatCoverLetter } from '../coverLetter';
+import {
+  formatCoverLetter,
+  dedupeLeadingGreetings,
+  startsWithSalutation,
+  stripLeadingGreetings,
+} from '../coverLetter';
 
 describe('formatCoverLetter', () => {
+  it('keeps the letter\'s own salutation style — "Hi Jon" stays, duplicate "Dear Jon" dropped', () => {
+    const r = formatCoverLetter({
+      body: 'Hi Jon,\n\nDear Jon,\n\nThanks for meeting us last week.',
+      contactName: 'Jon Smith',
+      companyName: 'Smith Joinery Ltd',
+    });
+    expect(r.companyLine).toBe('Smith Joinery Ltd');
+    expect(r.greeting).toBe('Hi Jon,');
+    expect(r.paragraphs).toEqual(['Thanks for meeting us last week.']);
+  });
+
+  it('strips a salutation opening the summary so it cannot re-greet mid-letter', () => {
+    const r = formatCoverLetter({
+      body: 'Hi Jon,\n\nHere is our proposal.',
+      summary: 'Dear Jon,\n\nA summary of the services.',
+      contactName: 'Jon',
+      companyName: 'Acme Ltd',
+    });
+    expect(r.greeting).toBe('Hi Jon,');
+    expect(r.paragraphs).toEqual(['Here is our proposal.', 'A summary of the services.']);
+  });
+
   it('collapses a duplicated greeting to one and puts the company above it', () => {
     const body =
       'Dear Michelle Beesley,\n\nDear Michelle Beesley,\n\nI am Caroline Marks of Fortis Accountancy. I am writing to share our proposal.';
@@ -78,5 +105,57 @@ describe('formatCoverLetter', () => {
       companyName: 'Acme',
     });
     expect(r.paragraphs).toEqual(['Opening paragraph.', 'Yours sincerely,', 'Caroline Marks']);
+  });
+});
+
+describe('dedupeLeadingGreetings', () => {
+  it('collapses a double greeting to the first one', () => {
+    expect(dedupeLeadingGreetings('Hi Jon,\n\nDear Jon,\n\nBody paragraph.')).toBe(
+      'Hi Jon,\n\nBody paragraph.'
+    );
+  });
+
+  it('drops an inline duplicate salutation after a standalone greeting', () => {
+    expect(dedupeLeadingGreetings('Hi Jon,\n\nDear Jon, thanks for your time.')).toBe(
+      'Hi Jon,\n\nthanks for your time.'
+    );
+  });
+
+  it('leaves a single-greeting letter untouched', () => {
+    const text = 'Hi Jon,\n\nThanks for your time.';
+    expect(dedupeLeadingGreetings(text)).toBe(text);
+  });
+
+  it('leaves a letter with no greeting untouched', () => {
+    const text = 'Thank you for the opportunity.\n\nWe would be pleased to act.';
+    expect(dedupeLeadingGreetings(text)).toBe(text);
+  });
+});
+
+describe('startsWithSalutation', () => {
+  it('detects a standalone greeting', () => {
+    expect(startsWithSalutation('Hi Jon,\n\nThanks.')).toBe(true);
+  });
+
+  it('detects an inline greeting', () => {
+    expect(startsWithSalutation('Dear Jane, thank you for your time.')).toBe(true);
+  });
+
+  it('is false for a plain opening sentence', () => {
+    expect(startsWithSalutation('Thank you for the opportunity to work with you.')).toBe(false);
+  });
+});
+
+describe('stripLeadingGreetings', () => {
+  it('removes every leading salutation', () => {
+    expect(stripLeadingGreetings('Hi Jon,\n\nDear Jon,\n\nBody paragraph.')).toBe(
+      'Body paragraph.'
+    );
+  });
+
+  it('removes an inline salutation prefix', () => {
+    expect(stripLeadingGreetings('Dear Jane, thank you for your time.')).toBe(
+      'thank you for your time.'
+    );
   });
 });

@@ -8,6 +8,7 @@ import OnboardingTour from '../onboarding/OnboardingTour';
 import { useOnboarding } from '../onboarding/useOnboarding';
 import AiAssistant from '../ai/AiAssistant';
 import { LegalFooterLinks } from '../legal/LegalPageLayout';
+import NativeTabBar from './NativeTabBar';
 
 const DashboardLayout = () => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -71,10 +72,10 @@ const DashboardLayout = () => {
         {/* Main content area */}
         {/* pb-28 keeps the floating Clara launcher clear of the last row of content */}
         <main id="main-content" className="pt-20 pb-28 px-4 sm:px-6 lg:px-8">
-          <div className="max-w-7xl mx-auto space-y-8">
+          <div className="max-w-7xl mx-auto space-y-4 sm:space-y-5">
             <AppRouteHeader />
             <Outlet />
-            <footer className="pt-8 pb-2 border-t border-slate-200/60 dark:border-slate-700/60">
+            <footer className="pt-5 pb-2 border-t border-slate-200/50 dark:border-slate-700/50 text-slate-500">
               <LegalFooterLinks />
             </footer>
           </div>
@@ -86,6 +87,9 @@ const DashboardLayout = () => {
 
       {/* Global AI co-pilot */}
       <AiAssistant />
+
+      {/* Capacitor staff bottom tabs */}
+      <NativeTabBar />
     </div>
   );
 };

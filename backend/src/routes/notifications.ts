@@ -18,6 +18,8 @@ export const NOTIFICATION_ACTIONS = [
   'PROPOSAL_SUBMITTED_FOR_APPROVAL',
   'CLIENT_AML_SUBMITTED',
   'CLIENT_INFO_RECEIVED',
+  'DOCUMENT_REQUEST_ITEM_RECEIVED',
+  'DOCUMENT_REQUEST_COMPLETED',
   'AML_CHECK_COMPLETED',
   'PAYMENT_COMPLETED',
   'PROPOSAL_CHASE_SENT',
@@ -33,7 +35,11 @@ router.get(
     const items = await prisma.activityLog.findMany({
       where: {
         tenantId: req.tenantId,
-        action: { in: NOTIFICATION_ACTIONS },
+        OR: [
+          { action: { in: NOTIFICATION_ACTIONS } },
+          // @mentions are personal — only the mentioned user sees theirs
+          { action: 'JOB_MENTION', userId: req.user?.id },
+        ],
       },
       orderBy: { createdAt: 'desc' },
       take: 20,

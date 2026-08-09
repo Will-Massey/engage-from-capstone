@@ -13,7 +13,7 @@ const RESERVED_SUBDOMAINS = new Set([
   'engage-frontend',
 ]);
 
-const PLATFORM_HOST_SUFFIXES = ['.onrender.com', '.up.railway.app', '.vercel.app'];
+const PLATFORM_HOST_SUFFIXES = ['.onrender.com', '.vercel.app'];
 
 /**
  * Parse tenant subdomain from Host header (without port).

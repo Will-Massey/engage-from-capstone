@@ -22,11 +22,7 @@ app.use(
         fontSrc: ["'self'", 'https://fonts.gstatic.com'],
         scriptSrc: ["'self'", "'unsafe-eval'"],
         imgSrc: ["'self'", 'data:', 'https:', 'blob:'],
-        connectSrc: [
-          "'self'",
-          'https://engage-by-capstone-production.up.railway.app',
-          'https://*.up.railway.app',
-        ],
+        connectSrc: ["'self'", 'https://capstonesoftware.co.uk/engage', 'https://*.onrender.com'],
       },
     },
   })
@@ -35,16 +31,16 @@ app.use(
 
 ### 2. Wrong API URL ✅
 
-**Problem:** Frontend was calling `https://your-railway-app.up.railway.app`
+**Problem:** Frontend was calling `https://engage-backend-e1ue.onrender.com`
 
 **Solution:** Updated `frontend/.env.production`:
 
 ```bash
 # Before
-VITE_API_URL=https://your-railway-app.up.railway.app
+VITE_API_URL=https://engage-backend-e1ue.onrender.com
 
 # After
-VITE_API_URL=https://engage-by-capstone-production.up.railway.app
+VITE_API_URL=https://capstonesoftware.co.uk/engage
 ```
 
 ### 3. Missing Icons (Partial) ⚠️
@@ -73,7 +69,7 @@ VITE_API_URL=https://engage-by-capstone-production.up.railway.app
 
 ## Test the App
 
-1. Open: https://engage-by-capstone-production.up.railway.app
+1. Open: https://capstonesoftware.co.uk/engage
 2. Open browser dev tools (F12)
 3. Check Console - should have no CSP errors
 4. Check Network tab - API calls should go to correct URL

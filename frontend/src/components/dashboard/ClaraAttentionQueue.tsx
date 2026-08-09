@@ -61,7 +61,7 @@ export default function ClaraAttentionQueue() {
   if (loading) {
     return (
       <div
-        className="glass-tile p-6 border border-primary-200 dark:border-primary-900/50 animate-pulse"
+        className="card p-6 border border-emerald-200 dark:border-emerald-900/50 animate-pulse"
         aria-busy="true"
       >
         <div className="flex items-center gap-2 mb-4">
@@ -90,7 +90,7 @@ export default function ClaraAttentionQueue() {
     score >= 80 ? 'bg-red-500' : score >= 60 ? 'bg-amber-500' : 'bg-primary-500';
 
   return (
-    <div className="glass-tile p-6 border border-primary-200 dark:border-primary-900/50 bg-gradient-to-br from-white to-primary-50/30 dark:from-slate-900 dark:to-primary-950/20">
+    <div className="card p-6 border border-emerald-200/80 dark:border-emerald-900/40 bg-gradient-to-br from-white to-emerald-50/40 dark:from-slate-900 dark:to-emerald-950/20">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
         <div className="flex items-center gap-2">
           <div className="p-2 rounded-xl bg-primary-100 dark:bg-primary-900/40">

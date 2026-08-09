@@ -20,6 +20,7 @@ import {
 import { VALID_BILLING_FREQUENCIES, penceToPounds } from '../../utils/proposalPricing.js';
 import { AI_COPILOT } from '../../config/aiCopilot.js';
 import { getVoiceOfPracticePromptContext } from '../voiceOfPracticeService.js';
+import { dedupeLeadingGreetings } from '@uk-proposal-platform/shared';
 
 export const UK_SYSTEM =
   AI_COPILOT.systemPersona +
@@ -256,7 +257,10 @@ ${voiceContext}Use plain paragraphs (no markdown headers). 3-5 short paragraphs.
     tone: params.tone,
     ...tokenMetaFromUsage(aiUsage),
   });
-  return { content: raw, requiresApproval: true };
+  return {
+    content: dedupeLeadingGreetings(raw, [client.contactName || '', client.name]),
+    requiresApproval: true,
+  };
 }
 
 /** Streaming version of cover letter for live preview in builder. */

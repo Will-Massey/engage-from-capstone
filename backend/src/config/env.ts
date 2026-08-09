@@ -25,13 +25,14 @@ const boolFromString = z.preprocess((v) => {
 const envSchema = z
   .object({
     NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
-    PORT: z.string().default('3001'),
+    // Default 3101 so this clone never collides with production Engage on 3001
+    PORT: z.string().default('3101'),
     HOST: z.string().default('0.0.0.0'),
     DATABASE_URL: z.string().startsWith('postgresql://'),
     JWT_SECRET: z.string().min(32),
     JWT_EXPIRES_IN: z.string().default('7d'),
     BCRYPT_ROUNDS: z.string().default('12'),
-    CORS_ORIGIN: z.string().default('http://localhost:5173'),
+    CORS_ORIGIN: z.string().default('http://localhost:5273'),
     REDIS_URL: z.string().optional(),
     LOG_LEVEL: z.enum(['error', 'warn', 'info', 'debug']).default('info'),
     LOG_FORMAT: z.enum(['json', 'pretty']).default('pretty'),

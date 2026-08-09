@@ -212,27 +212,48 @@ export interface RecurringRevenueSummary {
   activeSubscriptions: number;
   paidLast30DaysPence: number;
   failedLast30Days: number;
+  /** Normalised monthly equivalent from accepted/live recurring services */
+  estimatedMrrPence: number;
+  /** Open delivery fees + unpaid accepted proposals (cash still to work/collect) */
+  cashUnderManagementPence: number;
+  /** Accepted proposals awaiting payment (dunning candidates) */
+  unpaidAcceptedCount: number;
+  unpaidAcceptedPence: number;
 }
 
 /**
  * Practice-facing recurring revenue snapshot, driven by the invoice webhook
  * activity log: live subscriptions, pence collected in the last 30 days, and
- * failed payments needing dunning attention.
+ * failed payments needing dunning attention — plus pipeline cash under management.
  */
 export async function getRecurringRevenueSummary(
   tenantId: string
 ): Promise<RecurringRevenueSummary> {
   const since = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
-  const [activeSubscriptions, paidEvents, failedLast30Days] = await Promise.all([
-    prisma.proposal.count({ where: { tenantId, stripeSubscriptionId: { not: null } } }),
-    prisma.activityLog.findMany({
-      where: { tenantId, action: 'RECURRING_PAYMENT', createdAt: { gte: since } },
-      select: { metadata: true },
-    }),
-    prisma.activityLog.count({
-      where: { tenantId, action: 'RECURRING_PAYMENT_FAILED', createdAt: { gte: since } },
-    }),
-  ]);
+  const [activeSubscriptions, paidEvents, failedLast30Days, openJobs, acceptedProposals] =
+    await Promise.all([
+      prisma.proposal.count({ where: { tenantId, stripeSubscriptionId: { not: null } } }),
+      prisma.activityLog.findMany({
+        where: { tenantId, action: 'RECURRING_PAYMENT', createdAt: { gte: since } },
+        select: { metadata: true },
+      }),
+      prisma.activityLog.count({
+        where: { tenantId, action: 'RECURRING_PAYMENT_FAILED', createdAt: { gte: since } },
+      }),
+      prisma.job.findMany({
+        where: { tenantId, isActive: true, boardColumn: { not: 'COMPLETE' } },
+        select: { proposedFeePence: true },
+      }),
+      prisma.proposal.findMany({
+        where: { tenantId, status: 'ACCEPTED' },
+        select: {
+          totalPence: true,
+          paymentStatus: true,
+          stripeSubscriptionId: true,
+          services: { select: { billingFrequency: true, grossTotalPence: true } },
+        },
+      }),
+    ]);
 
   let paidLast30DaysPence = 0;
   for (const event of paidEvents) {
@@ -244,5 +265,40 @@ export async function getRecurringRevenueSummary(
     }
   }
 
-  return { activeSubscriptions, paidLast30DaysPence, failedLast30Days };
+  let estimatedMrrPence = 0;
+  let unpaidAcceptedCount = 0;
+  let unpaidAcceptedPence = 0;
+  for (const p of acceptedProposals) {
+    const paid =
+      p.paymentStatus === 'PAID' ||
+      p.paymentStatus === 'COMPLETED' ||
+      p.paymentStatus === 'ACTIVE' ||
+      !!p.stripeSubscriptionId;
+    if (!paid) {
+      unpaidAcceptedCount += 1;
+      unpaidAcceptedPence += p.totalPence;
+    }
+    for (const s of p.services) {
+      if (s.billingFrequency === 'MONTHLY') estimatedMrrPence += s.grossTotalPence;
+      else if (s.billingFrequency === 'QUARTERLY')
+        estimatedMrrPence += Math.round(s.grossTotalPence / 3);
+      else if (s.billingFrequency === 'ANNUALLY')
+        estimatedMrrPence += Math.round(s.grossTotalPence / 12);
+      else if (s.billingFrequency === 'WEEKLY')
+        estimatedMrrPence += Math.round((s.grossTotalPence * 52) / 12);
+    }
+  }
+
+  const openJobFeePence = openJobs.reduce((s, j) => s + j.proposedFeePence, 0);
+  const cashUnderManagementPence = openJobFeePence + unpaidAcceptedPence;
+
+  return {
+    activeSubscriptions,
+    paidLast30DaysPence,
+    failedLast30Days,
+    estimatedMrrPence,
+    cashUnderManagementPence,
+    unpaidAcceptedCount,
+    unpaidAcceptedPence,
+  };
 }

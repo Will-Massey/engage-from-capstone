@@ -18,12 +18,15 @@ jest.mock('../../config/logger.js', () => ({
   default: { warn: jest.fn(), error: jest.fn(), info: jest.fn() },
 }));
 const proposalCount = jest.fn(async () => 0);
+const proposalFindMany = jest.fn(async (): Promise<unknown[]> => []);
+const jobFindMany = jest.fn(async (): Promise<{ proposedFeePence: number }[]> => []);
 const activityFindMany = jest.fn(async (): Promise<{ metadata: string | null }[]> => []);
 const activityCount = jest.fn(async () => 0);
 
 jest.mock('../../config/database.js', () => ({
   prisma: {
-    proposal: { count: proposalCount },
+    proposal: { count: proposalCount, findMany: proposalFindMany },
+    job: { findMany: jobFindMany },
     activityLog: { create: activityCreate, findMany: activityFindMany, count: activityCount },
   },
 }));
@@ -239,18 +242,46 @@ describe('getRecurringRevenueSummary', () => {
       { metadata: JSON.stringify({}) }, // missing amount is skipped
     ]);
     activityCount.mockResolvedValueOnce(2);
+    // open jobs + accepted proposals (cash under management / MRR)
+    jobFindMany.mockResolvedValueOnce([{ proposedFeePence: 50000 }, { proposedFeePence: 25000 }]);
+    proposalFindMany.mockResolvedValueOnce([
+      {
+        totalPence: 120000,
+        paymentStatus: 'PENDING',
+        stripeSubscriptionId: null,
+        services: [
+          { billingFrequency: 'MONTHLY', grossTotalPence: 10000 },
+          { billingFrequency: 'QUARTERLY', grossTotalPence: 3000 },
+        ],
+      },
+      {
+        totalPence: 60000,
+        paymentStatus: 'PAID',
+        stripeSubscriptionId: 'sub_1',
+        services: [{ billingFrequency: 'ANNUALLY', grossTotalPence: 12000 }],
+      },
+    ]);
 
     const summary = await getRecurringRevenueSummary('t1');
 
+    // unpaid accepted: first proposal only → 120000
+    // open jobs: 50000+25000=75000 → cash under management = 75000+120000=195000
+    // MRR: 10000 + 3000/3 + 12000/12 = 10000+1000+1000 = 12000
     expect(summary).toEqual({
       activeSubscriptions: 3,
       paidLast30DaysPence: 20500,
       failedLast30Days: 2,
+      estimatedMrrPence: 12000,
+      cashUnderManagementPence: 195000,
+      unpaidAcceptedCount: 1,
+      unpaidAcceptedPence: 120000,
     });
     expect(proposalCount).toHaveBeenCalledWith(
       expect.objectContaining({
         where: expect.objectContaining({ tenantId: 't1', stripeSubscriptionId: { not: null } }),
       })
     );
+    expect(jobFindMany).toHaveBeenCalled();
+    expect(proposalFindMany).toHaveBeenCalled();
   });
 });

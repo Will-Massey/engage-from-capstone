@@ -11,14 +11,20 @@ import {
   SparklesIcon,
   CalendarIcon,
   BellIcon,
+  BriefcaseIcon,
 } from '@heroicons/react/24/outline';
 import { apiClient } from '../utils/api';
 import { formatCurrency } from '../utils/formatters';
 import { useAuthStore } from '../stores/authStore';
 import QuickStart from '../components/dashboard/QuickStart';
+import PracticeDayRail from '../components/dashboard/PracticeDayRail';
+import ClaraMorningBrief from '../components/dashboard/ClaraMorningBrief';
+import MoneyLoopStrip from '../components/dashboard/MoneyLoopStrip';
 import ClaraAttentionQueue from '../components/dashboard/ClaraAttentionQueue';
 import FirstProposalWizard from '../components/onboarding/FirstProposalWizard';
 import { isFirstProposalWizardDismissed } from '../components/onboarding/firstProposalWizardStorage';
+import RecurringRevenueWidget from '../components/analytics/RecurringRevenueWidget';
+import DunningQueue from '../components/analytics/DunningQueue';
 
 const RevenueAndPieCharts = lazy(() =>
   import('./DashboardRecharts').then((m) => ({ default: m.RevenueAndPieCharts }))
@@ -104,6 +110,23 @@ const Dashboard = () => {
   const [sentProposalCount, setSentProposalCount] = useState<number | null>(null);
   const [showFirstProposalWizard, setShowFirstProposalWizard] = useState(false);
   const [searchParams, setSearchParams] = useSearchParams();
+  const [jobsPipeline, setJobsPipeline] = useState<{
+    openCount: number;
+    openFeePence: number;
+    overdueCount: number;
+    overdueFeePence: number;
+    estimatedMonthlyRecurringPence: number;
+  } | null>(null);
+  const [atRiskJobs, setAtRiskJobs] = useState<
+    Array<{
+      id: string;
+      title: string;
+      boardColumn: string;
+      dueAt: string | null;
+      proposedFeePence: number;
+      client: { name: string };
+    }>
+  >([]);
 
   useEffect(() => {
     loadDashboardData();
@@ -202,6 +225,58 @@ const Dashboard = () => {
       }
 
       try {
+        const pipe = (await timeout(
+          apiClient.get('/jobs/meta/pipeline') as Promise<any>,
+          8000
+        )) as any;
+        const d = pipe?.data?.data ?? pipe?.data;
+        if (d && typeof d.openCount === 'number') {
+          setJobsPipeline({
+            openCount: d.openCount,
+            openFeePence: d.openFeePence || 0,
+            overdueCount: d.overdueCount || 0,
+            overdueFeePence: d.overdueFeePence || 0,
+            estimatedMonthlyRecurringPence: d.estimatedMonthlyRecurringPence || 0,
+          });
+        }
+      } catch {
+        setJobsPipeline(null);
+      }
+
+      try {
+        const jobsRes = (await timeout(apiClient.get('/jobs') as Promise<any>, 8000)) as any;
+        const payload = jobsRes?.data?.data ?? jobsRes?.data;
+        const list: any[] = payload?.jobs || [];
+        const now = Date.now();
+        const week = 7 * 24 * 60 * 60 * 1000;
+        const risk = list
+          .filter((j) => j.boardColumn !== 'COMPLETE')
+          .filter((j) => {
+            if (j.boardColumn === 'HELP_NEEDED') return true;
+            if (!j.dueAt) return false;
+            const t = new Date(j.dueAt).getTime();
+            return t < now || t - now <= week;
+          })
+          .sort((a, b) => {
+            const ad = a.dueAt ? new Date(a.dueAt).getTime() : Number.MAX_SAFE_INTEGER;
+            const bd = b.dueAt ? new Date(b.dueAt).getTime() : Number.MAX_SAFE_INTEGER;
+            return ad - bd;
+          })
+          .slice(0, 6)
+          .map((j) => ({
+            id: j.id,
+            title: j.title,
+            boardColumn: j.boardColumn,
+            dueAt: j.dueAt,
+            proposedFeePence: j.proposedFeePence || 0,
+            client: { name: j.client?.name || 'Client' },
+          }));
+        setAtRiskJobs(risk);
+      } catch {
+        setAtRiskJobs([]);
+      }
+
+      try {
         const allProposals = (await timeout(
           apiClient.getProposals({ limit: 50, status: 'SENT' }) as Promise<any>,
           10000
@@ -290,25 +365,31 @@ const Dashboard = () => {
   const hasProposals = stats.totalProposals > 0;
 
   const kpiRow = (
-    <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+    <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
       {statsCards.map((stat) => (
-        <div key={stat.name} className="card p-5">
+        <div key={stat.name} className="card p-4 sm:p-5">
           <div className="flex items-center justify-between gap-2">
-            <p className="text-xs font-semibold uppercase tracking-wider text-ink-500 dark:text-slate-400">
+            <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-slate-500 dark:text-slate-400">
               {stat.name}
             </p>
-            <stat.icon className="h-4 w-4 shrink-0 text-ink-400 dark:text-slate-500" />
+            <stat.icon
+              className="h-4 w-4 shrink-0 text-slate-400 dark:text-slate-500"
+              aria-hidden
+            />
           </div>
           <p
-            className={`mt-3 text-3xl font-bold tabular-nums ${
+            className={`mt-2.5 text-2xl sm:text-3xl font-bold tabular-nums tracking-tight ${
               stat.money
                 ? 'text-emerald-600 dark:text-emerald-400'
-                : 'text-ink-900 dark:text-slate-100'
+                : 'text-slate-900 dark:text-slate-100'
             }`}
           >
             {stat.value}
           </p>
-          <p className="mt-1 text-xs text-ink-500 dark:text-slate-400 truncate" title={stat.change}>
+          <p
+            className="mt-1 text-xs text-slate-500 dark:text-slate-400 truncate"
+            title={stat.change}
+          >
             {stat.change}
           </p>
         </div>
@@ -318,8 +399,19 @@ const Dashboard = () => {
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600"></div>
+      <div className="space-y-5" aria-busy="true" aria-label="Loading dashboard">
+        <div className="skeleton h-10 w-64" />
+        <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-5">
+          {[1, 2, 3, 4, 5].map((i) => (
+            <div key={i} className="skeleton h-20" />
+          ))}
+        </div>
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+          {[1, 2, 3, 4].map((i) => (
+            <div key={i} className="skeleton h-28" />
+          ))}
+        </div>
+        <div className="skeleton h-48 w-full" />
       </div>
     );
   }
@@ -335,10 +427,13 @@ const Dashboard = () => {
         }}
       />
 
-      {/* Welcome Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+      {/* Welcome — quiet chrome; primary paths live in the day rail */}
+      <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-bold text-ink-900 tracking-tight">
+          <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-emerald-700/80 dark:text-emerald-400/90">
+            {tenant?.name || 'Practice'}
+          </p>
+          <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-50 tracking-tight">
             Good{' '}
             {new Date().getHours() < 12
               ? 'morning'
@@ -347,32 +442,195 @@ const Dashboard = () => {
                 : 'evening'}
             , {user?.firstName}
           </h1>
-          <p className="mt-1 text-sm text-ink-500">
-            Here's what's happening with {tenant?.name || 'your practice'} today
+          <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
+            Delivery, inbox, and wins — one home screen.
           </p>
         </div>
-        <div className="flex items-center space-x-3">
-          <select
-            value={dateRange}
-            onChange={(e) => setDateRange(e.target.value)}
-            className="input-field w-40"
-          >
-            <option value="7days">Last 7 days</option>
-            <option value="30days">Last 30 days</option>
-            <option value="90days">Last 90 days</option>
-            <option value="year">This year</option>
-          </select>
-          {hasProposals && (
-            <Link to="/proposals/wizard" className="btn-primary">
-              <SparklesIcon className="h-4 w-4 mr-2" />
-              Create proposal
-            </Link>
-          )}
-        </div>
+        <label className="sr-only" htmlFor="dash-range">
+          Analytics date range
+        </label>
+        <select
+          id="dash-range"
+          value={dateRange}
+          onChange={(e) => setDateRange(e.target.value)}
+          className="input-field w-full sm:w-40 text-sm"
+        >
+          <option value="7days">Last 7 days</option>
+          <option value="30days">Last 30 days</option>
+          <option value="90days">Last 90 days</option>
+          <option value="year">This year</option>
+        </select>
       </div>
 
-      {/* Established practices lead with the numbers; brand-new tenants get the guided card */}
-      {hasProposals ? kpiRow : <QuickStart />}
+      <PracticeDayRail
+        overdueJobs={jobsPipeline?.overdueCount ?? 0}
+        openJobs={jobsPipeline?.openCount ?? 0}
+      />
+
+      <ClaraMorningBrief />
+
+      <MoneyLoopStrip />
+
+      {/* New tenants get the guided win-work card first */}
+      {!hasProposals && <QuickStart />}
+      {hasProposals && kpiRow}
+
+      {/* Practice delivery + cash (Engage Practice) */}
+      {jobsPipeline && jobsPipeline.openCount > 0 && (
+        <div className="card space-y-4 overflow-hidden border-emerald-100 p-5 dark:border-emerald-900/40">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div className="flex items-center gap-2">
+              <div className="rounded-lg bg-gradient-to-br from-emerald-500 to-teal-500 p-2 shadow-sm">
+                <BriefcaseIcon className="h-5 w-5 text-white" />
+              </div>
+              <h2 className="text-sm font-semibold text-slate-900 dark:text-white">
+                Delivery pipeline
+              </h2>
+            </div>
+            <div className="flex items-center gap-3">
+              <Link
+                to="/jobs/workload"
+                className="text-sm font-medium text-slate-500 hover:text-emerald-600"
+              >
+                Workload
+              </Link>
+              <Link to="/jobs" className="text-sm font-medium text-emerald-600 hover:underline">
+                Open jobs board →
+              </Link>
+            </div>
+          </div>
+          {/* Visual load: overdue share of open */}
+          {jobsPipeline.openCount > 0 && (
+            <div>
+              <div className="mb-1 flex justify-between text-2xs font-medium text-slate-500">
+                <span>Overdue share of open work</span>
+                <span className="tabular-nums">
+                  {Math.round((jobsPipeline.overdueCount / jobsPipeline.openCount) * 100)}%
+                </span>
+              </div>
+              <div className="flex h-3 overflow-hidden rounded-full bg-emerald-100 shadow-inner dark:bg-emerald-950/40">
+                <div
+                  className="h-full bg-gradient-to-r from-rose-500 to-orange-400 transition-all"
+                  style={{
+                    width: `${Math.min(
+                      100,
+                      Math.round((jobsPipeline.overdueCount / jobsPipeline.openCount) * 100)
+                    )}%`,
+                  }}
+                />
+                <div
+                  className="h-full bg-gradient-to-r from-emerald-400 to-teal-500"
+                  style={{
+                    width: `${Math.max(
+                      0,
+                      100 - Math.round((jobsPipeline.overdueCount / jobsPipeline.openCount) * 100)
+                    )}%`,
+                  }}
+                />
+              </div>
+              <div className="mt-1 flex gap-3 text-2xs text-slate-500">
+                <span className="inline-flex items-center gap-1">
+                  <span className="h-2 w-2 rounded-full bg-rose-500" /> Overdue
+                </span>
+                <span className="inline-flex items-center gap-1">
+                  <span className="h-2 w-2 rounded-full bg-emerald-500" /> On track
+                </span>
+              </div>
+            </div>
+          )}
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 text-sm">
+            <div className="metal-tile metal-tile--sky px-3 py-2.5">
+              <p className="metal-kicker text-sky-700/80 dark:text-sky-300">Open jobs</p>
+              <p className="text-xl font-bold tabular-nums text-slate-900 dark:text-white">
+                {jobsPipeline.openCount}
+              </p>
+              <p className="text-xs text-slate-500">
+                {formatCurrency(jobsPipeline.openFeePence / 100)} fee
+              </p>
+            </div>
+            <div className="metal-tile metal-tile--rose px-3 py-2.5">
+              <p className="metal-kicker text-rose-700/80 dark:text-rose-300">Overdue</p>
+              <p className="text-xl font-bold tabular-nums text-rose-600">
+                {jobsPipeline.overdueCount}
+              </p>
+              <p className="text-xs text-slate-500">
+                {formatCurrency(jobsPipeline.overdueFeePence / 100)} fee
+              </p>
+            </div>
+            <div className="metal-tile metal-tile--mint px-3 py-2.5">
+              <p className="metal-kicker text-emerald-700/80 dark:text-emerald-300">Est. monthly</p>
+              <p className="text-xl font-bold tabular-nums text-emerald-700 dark:text-emerald-300">
+                {formatCurrency(jobsPipeline.estimatedMonthlyRecurringPence / 100)}
+              </p>
+              <p className="text-xs text-slate-500">from linked services</p>
+            </div>
+            <div className="flex items-end">
+              <Link
+                to="/jobs?filter=overdue"
+                className="btn-accent text-xs w-full justify-center shadow-md"
+              >
+                Focus overdue
+              </Link>
+            </div>
+          </div>
+
+          {atRiskJobs.length > 0 && (
+            <div>
+              <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-500">
+                Needs attention
+              </p>
+              <ul className="divide-y divide-slate-100 rounded-lg border border-slate-200 dark:divide-slate-700 dark:border-slate-700">
+                {atRiskJobs.map((j) => {
+                  const overdue = j.dueAt && new Date(j.dueAt).getTime() < Date.now();
+                  return (
+                    <li key={j.id}>
+                      <Link
+                        to={`/jobs/${j.id}`}
+                        className="flex flex-wrap items-center justify-between gap-2 px-3 py-2.5 text-sm hover:bg-slate-50 dark:hover:bg-slate-800/50"
+                      >
+                        <div className="min-w-0">
+                          <p className="font-medium text-slate-900 dark:text-white truncate">
+                            {j.client.name}
+                          </p>
+                          <p className="text-xs text-slate-500 truncate">{j.title}</p>
+                        </div>
+                        <div className="flex items-center gap-2 shrink-0">
+                          {j.dueAt && (
+                            <span
+                              className={`rounded-full px-2 py-0.5 text-2xs font-semibold ${
+                                overdue ? 'bg-red-50 text-red-700' : 'bg-amber-50 text-amber-800'
+                              }`}
+                            >
+                              {overdue ? 'Overdue' : 'Due soon'} ·{' '}
+                              {new Date(j.dueAt).toLocaleDateString('en-GB', {
+                                day: '2-digit',
+                                month: 'short',
+                              })}
+                            </span>
+                          )}
+                          {j.boardColumn === 'HELP_NEEDED' && (
+                            <span className="rounded-full bg-amber-50 px-2 py-0.5 text-2xs font-semibold text-amber-800">
+                              Help needed
+                            </span>
+                          )}
+                          <span className="tabular-nums text-xs font-medium text-slate-600">
+                            {formatCurrency((j.proposedFeePence || 0) / 100)}
+                          </span>
+                        </div>
+                      </Link>
+                    </li>
+                  );
+                })}
+              </ul>
+            </div>
+          )}
+        </div>
+      )}
+
+      <div className="grid gap-4 lg:grid-cols-1">
+        <RecurringRevenueWidget />
+        <DunningQueue />
+      </div>
 
       {sentProposalCount === 0 && (
         <div className="rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">

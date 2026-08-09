@@ -222,7 +222,8 @@ import type {
 export type { ApiResponse };
 
 // API base URL
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
+// Engage Practice default: isolated backend on 3101 (production Engage uses 3001)
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3101';
 
 /** Client-facing pages — no install prompts, no auth redirects, quieter errors */
 export function isPublicClientPage(): boolean {
@@ -684,6 +685,8 @@ export const apiClient = {
     api.post(url, data, config) as Promise<ApiResponse<T>>,
   put: <T = any>(url: string, data?: unknown, config?: AxiosRequestConfig) =>
     api.put(url, data, config) as Promise<ApiResponse<T>>,
+  patch: <T = any>(url: string, data?: unknown, config?: AxiosRequestConfig) =>
+    api.patch(url, data, config) as Promise<ApiResponse<T>>,
   delete: <T = any>(url: string, config?: AxiosRequestConfig) =>
     api.delete(url, config) as Promise<ApiResponse<T>>,
 
@@ -837,6 +840,12 @@ export const apiClient = {
   // Response interceptor already returns `response.data`; for blobs that value IS the Blob.
   getAmlDocument: (clientId: string, type: 'photo_id' | 'proof_of_address') =>
     api.get(`/aml/documents/${clientId}/${type}`, { responseType: 'blob' }) as Promise<Blob>,
+
+  // Response interceptor already returns `response.data`; for blobs that value IS the Blob.
+  downloadMailAttachment: (messageId: string, attachmentId: string) =>
+    api.get(`/comms/mailbox/messages/${messageId}/attachments/${attachmentId}`, {
+      responseType: 'blob',
+    }) as Promise<Blob>,
 
   getRegulatoryCheck: (clientId: string) =>
     api.get(`/regulatory/check/${clientId}`) as Promise<ApiResponse<RegulatoryCheckResult>>,

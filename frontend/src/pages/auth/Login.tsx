@@ -70,7 +70,7 @@ const Login = () => {
         await persistNativeTokens(response.data);
         setSession(response.data.user, response.data.user.tenant);
         rememberCsrfToken(response.data.csrfToken);
-        toast.success('Welcome to Engage!');
+        toast.success('Welcome to Engage Practice!');
         window.location.assign(appPath('/'));
         return;
       }
@@ -104,7 +104,7 @@ const Login = () => {
         await persistNativeTokens(response.data);
         setSession(response.data.user, response.data.user.tenant);
         rememberCsrfToken(response.data.csrfToken);
-        toast.success('Welcome to Engage!');
+        toast.success('Welcome to Engage Practice!');
         window.location.assign(appPath('/'));
         return;
       }

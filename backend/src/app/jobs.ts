@@ -13,6 +13,8 @@ import { runEmailAutomation } from '../jobs/emailAutomation.js';
 import { reconcileDisputes } from '../services/stripeDisputeService.js';
 import { runRegulatoryScan } from '../jobs/regulatoryScan.js';
 import { runClaraAgenticDrafting } from '../jobs/claraAgenticDrafting.js';
+import { runScheduledAutomations } from '../jobs/automationRunJob.js';
+import { runMailboxSyncJob } from '../jobs/mailboxSyncJob.js';
 
 // Run immediately on startup in production, or every 24 hours
 const RENEWAL_CHECK_INTERVAL = 24 * 60 * 60 * 1000; // 24 hours
@@ -151,4 +153,42 @@ export function scheduleClaraAgenticDrafting() {
   setInterval(tick, INTERVAL);
 
   logger.info('✅ Clara agentic drafting scheduled (every 24 hours)');
+}
+
+export function scheduleAutomationRules() {
+  logger.info('📅 Scheduling tenant automation rules (opt-in, daily)...');
+
+  const INTERVAL = 24 * 60 * 60 * 1000; // daily — opt-in tenants only, 3d cooldown per (rule, entity)
+
+  const tick = () =>
+    trackJobRun('automationRules', () =>
+      withJobLock(JOB_LOCKS.automationRules, 'automation rules', () => runScheduledAutomations())
+    ).catch((err) => {
+      logger.error('Scheduled automation run failed:', err);
+      captureException(err, { job: 'automationRules' });
+    });
+
+  setTimeout(tick, 360_000);
+  setInterval(tick, INTERVAL);
+
+  logger.info('✅ Automation rules scheduled (every 24 hours, opt-in tenants)');
+}
+
+export function scheduleMailboxSync() {
+  logger.info('📅 Scheduling two-way mailbox delta sync...');
+
+  const INTERVAL = Number(process.env.MAILBOX_SYNC_INTERVAL_MS) || 600_000; // 10 minutes
+
+  const tick = () =>
+    trackJobRun('mailboxSync', () =>
+      withJobLock(JOB_LOCKS.mailboxSync, 'mailbox sync', runMailboxSyncJob)
+    ).catch((err) => {
+      logger.error('Mailbox sync run failed:', err);
+      captureException(err, { job: 'mailboxSync' });
+    });
+
+  setTimeout(tick, 420_000);
+  setInterval(tick, INTERVAL);
+
+  logger.info(`✅ Mailbox sync scheduled (every ${Math.round(INTERVAL / 60000)} min)`);
 }

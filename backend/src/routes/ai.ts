@@ -28,6 +28,7 @@ import {
   type ProposalEmailDraftInput,
 } from '../services/ai/proposalAiEmailService.js';
 import { chatCompletion } from '../services/ai/aiClient.js';
+import { dedupeLeadingGreetings } from '@uk-proposal-platform/shared';
 import { autoFitProposal, generateClientBrief } from '../services/ai/clientFitService.js';
 import { generateFollowUpEmail } from '../services/ai/lifecycleAiEmailService.js';
 import { checkAiTokenBudget, getAiStatusMeta } from '../services/ai/aiClient.js';
@@ -635,7 +636,7 @@ Return ONLY the revised plain text cover letter (no extra commentary). Keep prof
       { temperature: 0.4, maxTokens: 600 }
     );
 
-    res.json({ success: true, data: { revisedBody: revised.trim() } });
+    res.json({ success: true, data: { revisedBody: dedupeLeadingGreetings(revised.trim()) } });
   })
 );
 

@@ -117,7 +117,17 @@ router.post(
         break;
       case 'account.updated': {
         const acct = event.data.object as { id?: string };
-        if (acct?.id) await syncTransfersStatus(acct.id);
+        if (acct?.id) {
+          try {
+            await syncTransfersStatus(acct.id);
+          } catch (err) {
+            // Stripe retries on 5xx — unknown/test account IDs must not fail the delivery
+            logger.warn('account.updated syncTransfersStatus failed (ack anyway)', {
+              accountId: acct.id,
+              err,
+            });
+          }
+        }
         break;
       }
       case 'charge.dispute.created':

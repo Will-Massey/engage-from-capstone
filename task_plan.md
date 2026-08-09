@@ -1,69 +1,64 @@
-# Build Plan: Engage by Capstone
-
-<!-- Token handoff file — update at every Render deploy checkpoint. Fresh sessions read THIS, not chat history. -->
+# Engage Build Plan (post-cutover)
 
 ## Goal
 
-Become the **premier UK accountancy proposal platform** — see `PREMIER_SERVICE_STRATEGY.md` and `PREMIER_SERVICE_TODO.md`.
+Exceed Engager on practice ops **while** defending proposal-cash + Clara. Production is live Practice OS on Neon + Render.
 
-## Current Phase
+## Production
 
-Phase: **Stripe Connect split payments** — `in_progress` (PR #44 open; Render Stripe **test** env wired 2026-07-09)
+| Item    | Value                                 |
+| ------- | ------------------------------------- |
+| App     | https://capstonesoftware.co.uk/engage |
+| Cutover | Done 2026-08-02                       |
 
-## Next Up
+## Current phase
 
-<!-- 3–5 bullets ONLY. Next fresh session starts here. Rewrite every checkpoint. -->
+**Post-cutover polish** — desktop practice OS solid; mesh live wiring next.
 
-1. **Merge PR #44** when CI green (prettier fix pushed) → auto-deploy Connect code + migration
-2. **Smoke:** partner login + `node scripts/stripe-connect-smoke.mjs` + Settings → Connect with Stripe (demo tenant)
-3. **Account:** Stripe test account `charges_enabled=false` — complete sandbox business profile if Connect onboard fails
-4. **Live mode later:** swap `sk_live`/`pk_live`, recreate webhooks on live, update `boardroom/deploy/.engage-stripe.env` + `scripts/wire-stripe-render.ps1`
+## Shipped (this wave)
 
-## Phases
+1. Sales board **#94**
+2. Capstone Tandem bi-di **#95**
+3. Mailbox + bulk forms **#96**
+4. Mesh inbound CSRF exempt **#97**
+5. Client Documents tab + portal link copy/open **#98**
+6. AF main: work status mirror → Engage HELP_NEEDED (`notifyEngageInbound`, `PATCH /work/:id/status`)
 
-### Phase 1–5: AI, UI, Clara surfaces
+## Shipped 2026-08-05 PM (tandem session engage-commercial-push)
 
-- **Status:** complete (see `AI_IMPLEMENTATION_PROGRESS.md`, deploy fdbc3e8)
+- **#99 MERGED** — cover-letter greeting round 2 (recovered from stash, 19 shared tests)
+- **#100 MERGED** — R2 storage for portal/job documents. Root cause of "portal not working": disk-only storage on Render's ephemeral filesystem deleted every client upload on each deploy. Legacy dead rows now 410 with a re-upload message.
+- **#101 MERGED** — document requests + Documents hub + portal checklist: request email (tenant-branded, carries auto-minted portal link) → client uploads per item → auto-complete → staff notifications; resend/cancel/manual override; duplicate-title 409
+- AF `ca9680b` — mesh migrations 102/103 now reach the prod boot runner; 001 fresh-install fix; db/migrations drift README
+- render.yaml declares `ACCOUNTFLOW_MESH_INBOUND_SECRET` (Blueprint-deletion guard)
+- Stripe re-check: still zero Engage payment events on platform account (webhook watch stands)
 
-### Phase 6: Premier Service — P0 Trust & Revenue
+Also shipped same day (commercial-readiness continuation):
 
-- Pricing integrity, e-sign forensics, billing go-live, production reliability
-- **Status:** complete (code — 91 Jest tests pass)
+- **#102 catch-up fees** — DEPLOYED + smoked (recurring line → derived ONE_TIME line at months × monthly equivalent; dup-serviceId validation fixed to unique sets)
+- **#103 @mention notifications** — DEPLOYED (JOB_MENTION now personal in the bell feed + escaped email ping per mention via jobMentionService; composer chips already existed)
+- **#104 scheduled automations + document-request auto-chase** — DEPLOYED + smoked (`/api/automation/schedule` 401-gated). Daily runs are OPT-IN per tenant (Automations page toggle + confirm dialog, audited); 3d cooldown ledger per (rule, entity); `document_request.stale → resend_document_request` closes the records-chasing loop. **A tenant must enable the toggle AND have the DOCS pack (or a matching rule) for auto-chase to fire.**
+- Prod smokes all green: portal overhaul live (`/api/document-requests` 401-gated), catch-up affordance in the deployed ProposalBuilder chunk
 
-### Phase 7: Premier Service — P1 Differentiators
+Also shipped 2026-08-06: **#105** (Documents-hub field fixes: client search, AML docs on Documents tab, download links, deep links) and **prod mesh fully wired** — 5 env vars set + Blueprint-guarded via Render API, prod AF API key minted (practice 6 Fortis), both gates verified live (AF ping 200 / Engage inbound 401-vs-200).
 
-- Clara wizard, MTD/regulatory fit, client journey, GTM copy
-- **Status:** complete (code)
+## Shipped 2026-08-09 (tandem session engage-forms-depth)
 
-### Phase 8: Premier Service — P2 Scale (partial)
+- **PR #111 (awaiting William's merge)** — the 08-06 CI cost-cuts finally committed: PR runs cancel-in-progress when superseded (master runs queue — never kills a mid-flight deploy), e2e runs only on master push/dispatch (stays the hard deploy gate), scheduled security/e2e/uptime crons off. Branch protection updated: e2e removed from PR-required contexts (lint + test remain).
+- **PR #112 (awaiting CI + William's merge)** — forms depth, the last buildable scorecard gap: template builder modal (new/edit/duplicate, field editor with auto-slugged stable ids), archive/restore lifecycle, response viewer resolves field labels + formats answers, backend dup-field-id 400 refine. 20 new tests incl. the settings-preservation guarantee.
+- Session-blocked: this session's permission layer can't merge to master — both PRs are one-click for William.
 
-- Dashboard analytics, templates, CSV import, command palette, email webhook stub
-- **Status:** partial — integrations + commercial expansion remain
+## Next up
 
-### Phase 9: Deploy & verify
-
-- Render, migration, live smoke, landing publish
-- **Status:** in_progress
-
-## Deploy Checkpoints
-
-| #   | Date (UTC) | Commit  | Branch | Render services                 | Status | Notes                                                                                                                                                                                                                   |
-| --- | ---------- | ------- | ------ | ------------------------------- | ------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 1   | 2026-06-30 | fdbc3e8 | master | engage-backend, engage-frontend | live   | UI dark/light + Clara surfaces                                                                                                                                                                                          |
-| 2   | 2026-07-03 | 6372c68 | master | engage-backend, engage-frontend | live   | sendit v3.5 — 7-day trial, backlog, schema/test fix, superadmin payment reporting; 123 tests pass; all endpoints 200                                                                                                    |
-| 3   | 2026-07-04 | 6338cf2 | master | engage-backend, engage-frontend | live   | sendit v4.0 — Revolut payout collection, tenant payout settings, legal terms, UI fixes; TS build fix in splits.ts                                                                                                       |
-| 4   | 2026-07-04 | 53f9d47 | master | engage-backend, engage-frontend | live   | Analytics routes + win-loss normalise, regulatory mount, /2fa-setup, e2e auth hardening; prod smoke 11/11                                                                                                               |
-| 5   | 2026-07-04 | 6686892 | master | engage-backend, engage-frontend | live   | sendit v4 — P1/P2 security hardening (items 7–35); JWT_REFRESH_SECRET wired; `/health` + login 200                                                                                                                      |
-| 6   | 2026-07-05 | ea0a593 | master | engage-backend, engage-frontend | live   | P0 security (audit 1–6): webhook auth, portal token, env boot, validUntil, E2E bypass. JWT_REFRESH_SECRET restored+rotated (was lost — deploys failing since 13:01 UTC). EMAIL/AML/E2E secrets wired. Payout smoke PASS |
-
-## Strategic docs (Jul 2026)
-
-| Doc                           | Purpose                              |
-| ----------------------------- | ------------------------------------ |
-| `PREMIER_SERVICE_STRATEGY.md` | Pricing research, SWOT, gap analysis |
-| `PREMIER_SERVICE_TODO.md`     | Canonical premier build list         |
+1. ~~**Flip live mesh**~~ — **DONE 2026-08-06 PM** via prod DB (William's call): Fortis tenant `accountFlowMesh` set to mode live + allowLive + autoHandoff. Trap caught: a hand-pasted junk tenant apiKey ("Caroline…") would have overridden the env fallback — cleared to null. No redeploy needed (settings read per-request). Watch the first real proposal accept → AF work spawn.
+2. ~~Optional open PRs~~ — **ALL MERGED 2026-08-07**: #90 marketing root (worker still needs a manual `wrangler deploy` to go live), #80 OAuth TTL, #106 one-screen signing, #107 two-way mailbox. PR queue is empty.
+3. Remaining scorecard gaps: ~~two-way mailbox depth (M365/Gmail sync)~~ — **SHIPPED to prod 2026-08-07** (#107: mail domain model + Graph/Gmail provider clients + delta sync job + Graph webhook + gated paginated API + FirmInbox rework; migration verified live, webhook handshake verified through the public URL). **Activation gates**: Gmail needs `GMAIL_CLIENT_ID`/`SECRET` from Google Cloud (William); first real M365 connect should be watched (first sync is bounded to 90 days / 200 messages). Architecture: `docs/MAILBOX_TWO_WAY.md`. Fast-follows: Graph reply ignores edited To/CC; webhook burst concurrency; provider-mismatch markRead warns; JUNIOR read-state 403. Then: Credas AML (awaits William's partner email), Capacitor iOS after desktop solid
+4. Caroline flow to watch: first real document request end-to-end (email → portal checklist → upload → auto-complete)
 
 ## Notes
 
-- `/sendit` = push + hooks + checkpoint + `sendit.resume`
-- Full todo detail lives in `PREMIER_SERVICE_TODO.md` — not duplicated here
+- Never restore practice seed over Neon prod
+- AF `ENGAGE_BASE_URL=https://capstonesoftware.co.uk/engage` (not engage. subdomain)
+- AF `ENGAGE_MESH_INBOUND_SECRET` must match Engage mesh key for reverse status
+- **Engage inbound secret is ENV-ONLY** (`ACCOUNTFLOW_MESH_INBOUND_SECRET` or `ACCOUNTFLOW_API_KEY` on the Engage backend) — the tenant-saved Connect UI key does NOT authorize inbound. For prod mesh (item 3), set the env var on Render or reverse mirror 401s.
+- **AF fresh-install migrations are broken** (found building the local loop): `db/migrations/001` creates audit_logs indexes before the table; `020` needs `campaigns` (created in `023`); `db/migrations/` is missing ~25 root files incl. `102`/`103` (mesh tables). Local dev AF DB was built by healing these by hand — container `accountflow-postgres-dev` on host port **5434** (never 5432), practice_id 2, admin `tandemadmin`.

@@ -26,7 +26,7 @@ export async function loginAsUser(
   password: string = TEST_USER.password
 ): Promise<void> {
   await page.goto('/login');
-  await page.waitForLoadState('networkidle');
+  await page.waitForLoadState('domcontentloaded');
 
   const emailInput = page.locator('input[name="email"]');
   const passwordInput = page.locator('input[name="password"]');
@@ -36,13 +36,14 @@ export async function loginAsUser(
   await passwordInput.fill(password);
   await expect(submitButton).toBeEnabled();
 
+  // Do not wait for networkidle — Practice OS keeps polling jobs/inbox/Clara.
+  // Match post-login paths including /jobs (practice home).
   await Promise.all([
-    page.waitForURL(/\/$|\/dashboard|\/proposals/, { timeout: 15000, waitUntil: 'networkidle' }),
+    page.waitForURL(/\/($|dashboard|proposals|jobs|clients|inbox)/, { timeout: 20000 }),
     submitButton.click(),
   ]);
 
   await page.locator('nav[aria-label="Main"]:visible').first().waitFor({ timeout: 15000 });
-  await page.waitForLoadState('networkidle');
 }
 
 /**
@@ -176,11 +177,12 @@ export async function createTestProposal(
 ): Promise<{ id: string; reference: string }> {
   await page.goto('/proposals/new');
 
-  // Step 1: Select client
+  // Step 1: Select client (seeded demos can leave duplicate name cards)
   await page.waitForSelector('[data-testid="client-card"]');
   const clientCard = page
     .locator('[data-testid="client-card"]')
-    .filter({ hasText: config.clientName });
+    .filter({ hasText: config.clientName })
+    .first();
   await expect(clientCard).toBeVisible();
   await clientCard.click();
   // The builder asks how to build (manual / template / Clara) after picking a

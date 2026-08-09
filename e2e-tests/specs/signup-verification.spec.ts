@@ -92,7 +92,7 @@ test.describe('Signup email verification', () => {
     await page.fill('input[name="email"]', email);
     await page.fill('input[name="password"]', password);
     await Promise.all([
-      page.waitForURL(/\/$|\/dashboard|\/proposals/, { timeout: 20_000 }),
+      page.waitForURL(/\/($|dashboard|proposals|jobs)/, { timeout: 20_000 }),
       page.click('button[type="submit"]'),
     ]);
     await page.locator('nav[aria-label="Main"]:visible').first().waitFor({ timeout: 20_000 });

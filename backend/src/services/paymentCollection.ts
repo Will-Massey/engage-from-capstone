@@ -336,6 +336,7 @@ async function logPaymentActivity(
 /**
  * Stripe billing portal URL for a recurring proposal's client (card update,
  * invoice history). Null when the proposal has no live subscription.
+ * Prefer public share view as return URL; fall back to app proposals list.
  */
 export async function createProposalBillingPortal(proposalId: string): Promise<string | null> {
   const proposal = await prisma.proposal.findUnique({
@@ -343,13 +344,14 @@ export async function createProposalBillingPortal(proposalId: string): Promise<s
     select: {
       stripeSubscriptionId: true,
       shareToken: true,
+      id: true,
       tenant: { select: { subdomain: true } },
     },
   });
-  if (!proposal?.stripeSubscriptionId || !proposal.shareToken) return null;
+  if (!proposal?.stripeSubscriptionId) return null;
   const base = getFrontendBaseUrl(proposal.tenant.subdomain);
-  return createBillingPortalSession(
-    proposal.stripeSubscriptionId,
-    `${base}/proposals/view/${proposal.shareToken}`
-  );
+  const returnUrl = proposal.shareToken
+    ? `${base}/proposals/view/${proposal.shareToken}`
+    : `${base}/proposals/${proposal.id}`;
+  return createBillingPortalSession(proposal.stripeSubscriptionId, returnUrl);
 }

@@ -34,7 +34,9 @@ const CSP = [
   "base-uri 'self'",
   "object-src 'none'",
   "frame-ancestors 'none'",
-  "script-src 'self' 'sha256-3aDszuIcW79BhSuAMQ1r/1XG8+STG20nI13wmXCOXxY=' https://js.stripe.com",
+  // Second hash: the marketing page's inline html.js bootstrap
+  // (document.documentElement.classList.add('js')) — regenerate if it changes.
+  "script-src 'self' 'sha256-3aDszuIcW79BhSuAMQ1r/1XG8+STG20nI13wmXCOXxY=' 'sha256-Du+OJKJSbdUgz5nrHeWWINvez6XKDDU/tyj/5c2uvwo=' https://js.stripe.com",
   "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
   "font-src 'self' https://fonts.gstatic.com data:",
   "img-src 'self' data: blob: https:",
@@ -63,6 +65,27 @@ function withSecurityHeaders(response) {
     statusText: response.statusText,
     headers,
   });
+}
+
+/**
+ * True when the request carries an Engage session cookie (accessToken or
+ * refreshToken, both httpOnly on path /). Logged-in users hitting the bare
+ * /engage/ root must reach the SPA dashboard, not the marketing page.
+ */
+export function hasSessionCookie(cookieHeader) {
+  return /(?:^|;\s*)(accessToken|refreshToken)=[^;]/.test(cookieHeader || '');
+}
+
+/**
+ * True when this request should be answered with the static marketing page:
+ * a GET/HEAD for exactly the /engage/ root with no session cookie.
+ */
+export function isMarketingRoot(pathname, method, cookieHeader) {
+  return (
+    pathname === `${PREFIX}/` &&
+    (method === 'GET' || method === 'HEAD') &&
+    !hasSessionCookie(cookieHeader)
+  );
 }
 
 function stripPrefix(pathname) {
@@ -155,7 +178,7 @@ async function serveCached(request, ctx, fetchUpstream, policy) {
 }
 
 export default {
-  async fetch(request, _env, ctx) {
+  async fetch(request, env, ctx) {
     const url = new URL(request.url);
     const { pathname } = url;
 
@@ -177,6 +200,35 @@ export default {
 
     if (pathname.startsWith(`${PREFIX}/api`)) {
       return proxyRequest(request, BACKEND_UPSTREAM, '/api');
+    }
+
+    // Marketing page assets (never under /engage/assets/ — that path is the SPA's).
+    if (pathname.startsWith(`${PREFIX}/site/`) && env.ASSETS) {
+      const assetResp = await env.ASSETS.fetch(request);
+      if (assetResp.ok) {
+        const headers = new Headers(assetResp.headers);
+        headers.set('Cache-Control', 'public, max-age=31536000, immutable');
+        for (const [key, value] of Object.entries(SECURITY_HEADERS)) {
+          headers.set(key, value);
+        }
+        return new Response(assetResp.body, { status: assetResp.status, headers });
+      }
+    }
+
+    // Anonymous visitors at the bare root get the marketing page; a session
+    // cookie means the SPA dashboard lives here, so fall through to the SPA.
+    // Deliberately NOT edge-cached: the response is cookie-dependent.
+    if (isMarketingRoot(pathname, request.method, request.headers.get('Cookie')) && env.ASSETS) {
+      const assetResp = await env.ASSETS.fetch(new URL(`${PREFIX}/index.html`, url.origin));
+      if (assetResp.ok) {
+        const headers = new Headers(assetResp.headers);
+        headers.set('Cache-Control', 'no-cache');
+        headers.set('X-Engage-Variant', 'marketing');
+        for (const [key, value] of Object.entries(SECURITY_HEADERS)) {
+          headers.set(key, value);
+        }
+        return new Response(assetResp.body, { status: assetResp.status, headers });
+      }
     }
 
     const assetPolicy = cachePolicyForPath(pathname);

@@ -51,6 +51,6 @@ app.get('*', (req, res, next) => {
 
 ## URLs
 
-- **Main App:** https://engage-by-capstone-production.up.railway.app
-- **Health:** https://engage-by-capstone-production.up.railway.app/health
-- **API Status:** https://engage-by-capstone-production.up.railway.app/api/status
+- **Main App:** https://capstonesoftware.co.uk/engage
+- **Health:** https://capstonesoftware.co.uk/engage/health
+- **API Status:** https://capstonesoftware.co.uk/engage/api/status

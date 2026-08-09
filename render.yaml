@@ -97,6 +97,17 @@ services:
         sync: false
       - key: R2_BUCKET
         sync: false
+      # Capstone Tandem mesh — AF→Engage inbound auth is ENV-ONLY (the tenant
+      # Connect UI key does not authorize inbound). Declared here so Blueprint
+      # syncs never delete it (the JWT_REFRESH_SECRET lesson, 2026-07-10).
+      - key: ACCOUNTFLOW_MESH_INBOUND_SECRET
+        sync: false
+      # Env fallback for outbound mesh (tenant Connect UI values win when set) —
+      # lets a tenant enable live mode without pasting the AF API key.
+      - key: ACCOUNTFLOW_API_KEY
+        sync: false
+      - key: ACCOUNTFLOW_BASE_URL
+        sync: false
       - key: COMPANIES_HOUSE_API_KEY
         sync: false
       - key: XAI_API_KEY
@@ -125,6 +136,16 @@ services:
         sync: false
       - key: MICROSOFT_TENANT_ID
         sync: false
+      # Google Cloud OAuth client for the two-way mailbox Gmail provider
+      # (docs/MAILBOX_TWO_WAY.md) — platform-level app credentials, William-gated.
+      - key: GMAIL_CLIENT_ID
+        sync: false
+      - key: GMAIL_CLIENT_SECRET
+        sync: false
+      # Two-way mailbox delta sync interval (backend/src/app/jobs.ts). Visible
+      # default so a Blueprint sync never silently drops it.
+      - key: MAILBOX_SYNC_INTERVAL_MS
+        value: '600000'
       - key: XERO_CLIENT_ID
         sync: false
       - key: XERO_CLIENT_SECRET

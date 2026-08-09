@@ -3,11 +3,11 @@
 # Deduplicates: no new issue while an open `uptime` issue exists; posts a
 # recovery comment and closes it when prod answers again.
 
+# COST: Do not re-enable */15 schedule — burns ~2.8k Actions minutes/month.
+# Use Cloudflare/UptimeRobot for monitoring; keep this manual-only.
 name: Uptime
 
 on:
-  schedule:
-    - cron: '*/15 * * * *'
   workflow_dispatch:
 
 permissions:

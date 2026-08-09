@@ -521,6 +521,7 @@ export default function ProposalWizard() {
           practiceName={tenant?.name || 'Your practice'}
           primaryColor={tenant?.primaryColor}
           clientName={selectedClient?.name || 'Client'}
+          clientContactName={selectedClient?.contactName}
           proposalTitle={proposalTitle || 'Draft proposal'}
           coverLetter={coverLetter}
           validUntil={validUntil}

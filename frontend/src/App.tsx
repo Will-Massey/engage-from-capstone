@@ -192,6 +192,109 @@ const AnimatedRoutes = () => {
             }
           />
 
+          {/* Jobs (practice delivery) */}
+          <Route
+            path="jobs"
+            element={
+              <AnimatedPage>
+                <PageSuspense>
+                  <Pages.JobsBoard />
+                </PageSuspense>
+              </AnimatedPage>
+            }
+          />
+          <Route
+            path="jobs/workload"
+            element={
+              <AnimatedPage>
+                <PageSuspense>
+                  <Pages.Workload />
+                </PageSuspense>
+              </AnimatedPage>
+            }
+          />
+          <Route
+            path="jobs/:id"
+            element={
+              <AnimatedPage>
+                <PageSuspense>
+                  <Pages.JobDetail />
+                </PageSuspense>
+              </AnimatedPage>
+            }
+          />
+
+          <Route
+            path="letters"
+            element={
+              <AnimatedPage>
+                <PageSuspense>
+                  <Pages.PracticeLetters />
+                </PageSuspense>
+              </AnimatedPage>
+            }
+          />
+          <Route
+            path="inbox"
+            element={
+              <AnimatedPage>
+                <PageSuspense>
+                  <Pages.FirmInbox />
+                </PageSuspense>
+              </AnimatedPage>
+            }
+          />
+          <Route
+            path="forms"
+            element={
+              <AnimatedPage>
+                <PageSuspense>
+                  <Pages.PracticeForms />
+                </PageSuspense>
+              </AnimatedPage>
+            }
+          />
+          <Route
+            path="documents"
+            element={
+              <AnimatedPage>
+                <PageSuspense>
+                  <Pages.DocumentsHub />
+                </PageSuspense>
+              </AnimatedPage>
+            }
+          />
+          <Route
+            path="automations"
+            element={
+              <AnimatedPage>
+                <PageSuspense>
+                  <Pages.PracticeAutomations />
+                </PageSuspense>
+              </AnimatedPage>
+            }
+          />
+          <Route
+            path="integrations"
+            element={
+              <AnimatedPage>
+                <PageSuspense>
+                  <Pages.IntegrationsHub />
+                </PageSuspense>
+              </AnimatedPage>
+            }
+          />
+          <Route
+            path="integrations/accountflow/sandbox"
+            element={
+              <AnimatedPage>
+                <PageSuspense>
+                  <Pages.AccountFlowSandbox />
+                </PageSuspense>
+              </AnimatedPage>
+            }
+          />
+
           {/* Proposals */}
           <Route
             path="proposals"
@@ -281,6 +384,16 @@ const AnimatedRoutes = () => {
               <AnimatedPage>
                 <PageSuspense>
                   <Pages.CreateClient />
+                </PageSuspense>
+              </AnimatedPage>
+            }
+          />
+          <Route
+            path="clients/import"
+            element={
+              <AnimatedPage>
+                <PageSuspense>
+                  <Pages.ClientImport />
                 </PageSuspense>
               </AnimatedPage>
             }
@@ -387,6 +500,26 @@ const AnimatedRoutes = () => {
               <AnimatedPage>
                 <PageSuspense>
                   <Pages.PartnerProgramme />
+                </PageSuspense>
+              </AnimatedPage>
+            }
+          />
+          <Route
+            path="switch-from-engager"
+            element={
+              <AnimatedPage>
+                <PageSuspense>
+                  <Pages.SwitchFromEngager />
+                </PageSuspense>
+              </AnimatedPage>
+            }
+          />
+          <Route
+            path="trust"
+            element={
+              <AnimatedPage>
+                <PageSuspense>
+                  <Pages.TrustPack />
                 </PageSuspense>
               </AnimatedPage>
             }
