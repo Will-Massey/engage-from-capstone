@@ -31,6 +31,28 @@ describe('buildAutoReplyMessages', () => {
     expect(system).toContain('holding reply');
   });
 
+  it('forbids estimates and ranges however hedged, not just the enumerated examples', () => {
+    const system = buildAutoReplyMessages(ctx())[0].content.toLowerCase();
+    expect(system).toContain('however hedged or qualified');
+    expect(system).toMatch(/\brange\b/);
+    expect(system).toMatch(/\bestimate\b/);
+    expect(system).toMatch(/\bapproximation\b/);
+  });
+
+  it('forbids repeating or quoting a client-specific figure already present in context', () => {
+    const system = buildAutoReplyMessages(ctx())[0].content.toLowerCase();
+    expect(system).toContain('this includes repeating or quoting a figure');
+    expect(system).toMatch(/thread, the client record, or the open-work lists/);
+  });
+
+  it('still permits general, non-client-specific published facts', () => {
+    const system = buildAutoReplyMessages(ctx())[0].content.toLowerCase();
+    expect(system).toContain(
+      'general published facts that are not specific to this client remain fine'
+    );
+    expect(system).toMatch(/vat registration threshold/);
+  });
+
   it('names the accounting domains it should be capable in', () => {
     const system = buildAutoReplyMessages(ctx())[0].content.toLowerCase();
     for (const topic of ['vat', 'mtd', 'cis', 'self assessment', 'payroll']) {
