@@ -212,9 +212,30 @@ router.put(
           portalTitle: z.string().max(120).optional(),
         })
         .optional(),
+      mailAutoReply: z
+        .object({
+          enabled: z.boolean(),
+          mode: z.enum(['draft', 'auto']),
+          businessHoursOnly: z.boolean().optional(),
+        })
+        .optional(),
     });
 
     const data = schema.parse(req.body);
+
+    // AI autoreply can auto-send email to clients once enabled in 'auto' mode,
+    // so — like the automationSchedule opt-in — only senior roles may change it,
+    // tighter than this route's general ADMIN/PARTNER/MANAGER gate.
+    if (data.mailAutoReply !== undefined) {
+      const role = req.user?.role;
+      if (!role || !['ADMIN', 'PARTNER', 'MD'].includes(role)) {
+        throw new ApiError(
+          'FORBIDDEN',
+          'Only ADMIN, PARTNER or MD can change AI mailbox autoreply settings',
+          403
+        );
+      }
+    }
 
     if (data.branding?.logo !== undefined) {
       const logoCheck = validateTenantLogoForStorage(data.branding.logo);
@@ -248,6 +269,9 @@ router.put(
       clara: data.clara
         ? { ...(currentSettings.clara || {}), ...data.clara }
         : currentSettings.clara,
+      mailAutoReply: data.mailAutoReply
+        ? { ...(currentSettings.mailAutoReply || {}), ...data.mailAutoReply }
+        : currentSettings.mailAutoReply,
       professionalBody: data.professionalBody || currentSettings.professionalBody,
       companyRegistration: data.companyRegistration || currentSettings.companyRegistration,
       phone: data.phone || currentSettings.phone,
@@ -299,6 +323,24 @@ router.put(
       where: { id: tenantId },
       data: updateData,
     });
+
+    if (data.mailAutoReply !== undefined) {
+      const before = currentSettings.mailAutoReply?.enabled === true;
+      await prisma.activityLog.create({
+        data: {
+          action: 'MAIL_AUTOREPLY_SETTINGS_CHANGED',
+          entityType: 'Tenant',
+          entityId: tenantId,
+          description: `AI mailbox autoreply ${data.mailAutoReply.enabled ? `ENABLED (${data.mailAutoReply.mode})` : 'disabled'} (was ${before ? 'on' : 'off'})`,
+          metadata: JSON.stringify({
+            before: currentSettings.mailAutoReply || null,
+            after: data.mailAutoReply,
+          }),
+          tenantId,
+          userId: req.user?.id,
+        },
+      });
+    }
 
     res.json({
       success: true,
