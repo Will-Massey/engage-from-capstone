@@ -620,7 +620,10 @@ export default function FirstProposalWizard({ open, onClose, onSent }: FirstProp
           </div>
 
           <div className="px-5 sm:px-6 py-4 border-b border-slate-100 dark:border-slate-800/80 overflow-x-auto">
-            <ol className="flex items-center gap-2 min-w-max">
+            {/* Wraps on phones rather than scrolling: at 402pt the five steps
+                are 726px wide, so the later ones sat off-screen behind the
+                modal edge and read as the page being cut off. */}
+            <ol className="flex flex-wrap items-center gap-2 sm:flex-nowrap sm:min-w-max">
               {WIZARD_STEPS.map((s, index) => (
                 <li key={s.id} className="flex items-center gap-2">
                   <div
@@ -638,7 +641,10 @@ export default function FirstProposalWizard({ open, onClose, onSent }: FirstProp
                     {s.name}
                   </div>
                   {index < WIZARD_STEPS.length - 1 && (
-                    <span className="w-6 h-px bg-slate-200 dark:bg-slate-700" aria-hidden />
+                    <span
+                      className="hidden sm:inline-block w-6 h-px bg-slate-200 dark:bg-slate-700"
+                      aria-hidden
+                    />
                   )}
                 </li>
               ))}
