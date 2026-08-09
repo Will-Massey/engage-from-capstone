@@ -10,6 +10,7 @@ const prismaMock = {
     update: jest.fn(),
     updateMany: jest.fn(),
   },
+  activityLog: { create: jest.fn() },
   client: { findFirst: jest.fn() },
   job: { findMany: jest.fn() },
   proposal: { findMany: jest.fn() },
@@ -24,6 +25,13 @@ jest.mock('../../ai/aiClient.js', () => ({
   chatCompletion: (...a: unknown[]) => chatCompletionMock(...a),
   checkAiTokenBudget: (...a: unknown[]) => checkAiTokenBudgetMock(...a),
   getAiModel: (...a: unknown[]) => getAiModelMock(...a),
+  tokenMetaFromUsage: (usage?: Record<string, number>) => {
+    const meta: Record<string, number> = {};
+    if (usage?.prompt_tokens != null) meta.prompt_tokens = usage.prompt_tokens;
+    if (usage?.completion_tokens != null) meta.completion_tokens = usage.completion_tokens;
+    if (usage?.total_tokens != null) meta.total_tokens = usage.total_tokens;
+    return meta;
+  },
 }));
 
 const sendMailboxMessageMock = jest.fn();
@@ -32,7 +40,14 @@ jest.mock('../../mailboxService.js', () => ({
   getThread: jest.fn().mockResolvedValue([]),
 }));
 
-import { processNewInboundMessages, approveDraft, dismissDraft } from '../index.js';
+import {
+  processNewInboundMessages,
+  approveDraft,
+  dismissDraft,
+  listPendingDrafts,
+  AUTO_REPLY_MAX_MESSAGE_AGE_MS,
+  AUTO_REPLY_MAX_BATCH_SIZE,
+} from '../index.js';
 
 const inbound = {
   id: 'm1',
@@ -77,6 +92,7 @@ beforeEach(() => {
     usage: {},
   });
   sendMailboxMessageMock.mockResolvedValue({ dto: { id: 'sent1' }, sent: true });
+  prismaMock.activityLog.create.mockResolvedValue({});
 });
 
 describe('processNewInboundMessages — gates', () => {
@@ -163,6 +179,58 @@ describe('processNewInboundMessages — gates', () => {
     expect(created.status).toBe('failed');
     expect(created.error).toContain('provider down');
   });
+
+  it('skips a message whose receivedAt is older than the recency window (first-sync / provider-switch backlog)', async () => {
+    prismaMock.mailMessage.findFirst.mockResolvedValue({
+      ...inbound,
+      receivedAt: new Date(Date.now() - AUTO_REPLY_MAX_MESSAGE_AGE_MS - 60_000),
+    });
+    await processNewInboundMessages('t1', ['m1']);
+    expect(chatCompletionMock).not.toHaveBeenCalled();
+    expect(prismaMock.mailAiReplyDraft.create).not.toHaveBeenCalled();
+  });
+
+  it('generates for a message within the recency window', async () => {
+    prismaMock.mailMessage.findFirst.mockResolvedValue({
+      ...inbound,
+      receivedAt: new Date(Date.now() - 60_000),
+    });
+    await processNewInboundMessages('t1', ['m1']);
+    expect(chatCompletionMock).toHaveBeenCalled();
+  });
+
+  it('caps a burst to AUTO_REPLY_MAX_BATCH_SIZE and does not process the rest', async () => {
+    const ids = Array.from({ length: AUTO_REPLY_MAX_BATCH_SIZE + 5 }, (_, i) => `m${i}`);
+    await processNewInboundMessages('t1', ids);
+    expect(prismaMock.mailMessage.findFirst).toHaveBeenCalledTimes(AUTO_REPLY_MAX_BATCH_SIZE);
+  });
+
+  it('logs an AI_FEATURE_USED activity row after a successful generation, carrying token usage', async () => {
+    chatCompletionMock.mockResolvedValue({
+      content: 'Thanks Ada — here is the position.',
+      usage: { prompt_tokens: 120, completion_tokens: 80, total_tokens: 200 },
+    });
+    await processNewInboundMessages('t1', ['m1']);
+    expect(prismaMock.activityLog.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          tenantId: 't1',
+          action: 'AI_FEATURE_USED',
+          entityType: 'AI',
+        }),
+      })
+    );
+    const meta = JSON.parse(prismaMock.activityLog.create.mock.calls[0][0].data.metadata);
+    expect(meta.total_tokens).toBe(200);
+  });
+
+  it('does not let a failure to log AI usage break draft creation', async () => {
+    prismaMock.activityLog.create.mockRejectedValue(new Error('log db down'));
+    await expect(processNewInboundMessages('t1', ['m1'])).resolves.toBeUndefined();
+    expect(prismaMock.mailAiReplyDraft.create).toHaveBeenCalled();
+    const data = prismaMock.mailAiReplyDraft.create.mock.calls[0][0].data;
+    expect(data.status).toBe('pending');
+  });
 });
 
 describe('processNewInboundMessages — auto mode', () => {
@@ -218,6 +286,46 @@ describe('processNewInboundMessages — auto mode', () => {
     await processNewInboundMessages('t1', ['m1']);
     jest.useRealTimers();
     expect(sendMailboxMessageMock).not.toHaveBeenCalled();
+  });
+
+  it('claims the draft pending -> sending before calling send', async () => {
+    await processNewInboundMessages('t1', ['m1']);
+    const claimCall = prismaMock.mailAiReplyDraft.updateMany.mock.calls.find(
+      (c: any) => c[0]?.data?.status === 'sending'
+    );
+    expect(claimCall).toBeDefined();
+    expect(claimCall[0].where).toEqual(
+      expect.objectContaining({ tenantId: 't1', status: 'pending' })
+    );
+    // The claim must happen before send is invoked.
+    const claimIndex = prismaMock.mailAiReplyDraft.updateMany.mock.invocationCallOrder[0];
+    const sendIndex = sendMailboxMessageMock.mock.invocationCallOrder[0];
+    expect(claimIndex).toBeLessThan(sendIndex);
+  });
+
+  it('does not attempt to send when another run already claimed the draft', async () => {
+    prismaMock.mailAiReplyDraft.updateMany.mockResolvedValue({ count: 0 });
+    await processNewInboundMessages('t1', ['m1']);
+    expect(sendMailboxMessageMock).not.toHaveBeenCalled();
+  });
+
+  it('a thrown send error lands the draft as failed, never pending, so a retry cannot double-send', async () => {
+    sendMailboxMessageMock.mockRejectedValue(new Error('write ECONNRESET'));
+    await expect(processNewInboundMessages('t1', ['m1'])).resolves.toBeUndefined();
+    const finalUpdate = prismaMock.mailAiReplyDraft.update.mock.calls.at(-1)[0];
+    expect(finalUpdate.data.status).toBe('failed');
+    expect(finalUpdate.data.status).not.toBe('pending');
+    expect(finalUpdate.data.error).toContain('write ECONNRESET');
+    // Only ever one draft row created for this message — no second draft
+    // attempted after the ambiguous failure.
+    expect(prismaMock.mailAiReplyDraft.create).toHaveBeenCalledTimes(1);
+  });
+
+  it('a returned { sent: false } is unambiguous and returns the draft to pending for a legitimate retry', async () => {
+    sendMailboxMessageMock.mockResolvedValue({ dto: null, sent: false, error: 'Send failed' });
+    await processNewInboundMessages('t1', ['m1']);
+    const finalUpdate = prismaMock.mailAiReplyDraft.update.mock.calls.at(-1)[0];
+    expect(finalUpdate.data.status).toBe('pending');
   });
 });
 
@@ -306,5 +414,55 @@ describe('dismissDraft', () => {
       code: 'DRAFT_ALREADY_DECIDED',
     });
     expect(prismaMock.mailAiReplyDraft.update).not.toHaveBeenCalled();
+  });
+
+  it('still works when the tenant has since turned the feature off', async () => {
+    prismaMock.tenant.findUnique.mockResolvedValue(settings({ enabled: false, mode: 'draft' }));
+    prismaMock.mailAiReplyDraft.findFirst.mockResolvedValue({
+      id: 'd1',
+      tenantId: 't1',
+      status: 'pending',
+    });
+    await expect(dismissDraft('t1', 'd1', 'u1')).resolves.toBeUndefined();
+    expect(prismaMock.mailAiReplyDraft.update).toHaveBeenCalledWith(
+      expect.objectContaining({ data: expect.objectContaining({ status: 'dismissed' }) })
+    );
+  });
+});
+
+describe('listPendingDrafts — off means off', () => {
+  it('returns pending drafts when the tenant has AI replies enabled', async () => {
+    prismaMock.tenant.findUnique.mockResolvedValue(settings({ enabled: true, mode: 'draft' }));
+    prismaMock.mailAiReplyDraft.findMany.mockResolvedValue([
+      {
+        id: 'd1',
+        conversationId: 'c1',
+        inboundMessageId: 'm1',
+        subject: 'Re: VAT question',
+        bodyText: 'body',
+        status: 'pending',
+        createdAt: new Date(),
+      },
+    ]);
+    const drafts = await listPendingDrafts('t1');
+    expect(drafts).toHaveLength(1);
+  });
+
+  it('returns no drafts when the tenant has turned AI replies off, without querying drafts', async () => {
+    prismaMock.tenant.findUnique.mockResolvedValue(settings({ enabled: false, mode: 'draft' }));
+    const drafts = await listPendingDrafts('t1');
+    expect(drafts).toEqual([]);
+    expect(prismaMock.mailAiReplyDraft.findMany).not.toHaveBeenCalled();
+  });
+});
+
+describe('approveDraft — off means off', () => {
+  it('refuses to send once the tenant has turned AI replies off', async () => {
+    prismaMock.tenant.findUnique.mockResolvedValue(settings({ enabled: false, mode: 'draft' }));
+    await expect(approveDraft('t1', 'd1', 'u1')).rejects.toMatchObject({
+      code: 'MAIL_AUTOREPLY_DISABLED',
+    });
+    expect(sendMailboxMessageMock).not.toHaveBeenCalled();
+    expect(prismaMock.mailAiReplyDraft.updateMany).not.toHaveBeenCalled();
   });
 });

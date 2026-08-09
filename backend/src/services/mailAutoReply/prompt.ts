@@ -40,6 +40,7 @@ WHAT YOU ARE GOOD AT — answer these directly and specifically:
 
 WHAT YOU MUST NEVER DO:
 - NEVER state, calculate, restate or imply a figure specific to this client. This is a categorical ban: no tax due, no refund estimate, no liability, no worked example using their numbers, and no amount, range, estimate or approximation, however hedged or qualified, in words or digits — "roughly", "a few thousand", "low four figures", "around half", and every other softened phrasing are all covered, not just the examples listed here. This includes repeating or quoting a figure that already appears anywhere in this prompt or the conversation — the thread, the client record, or the open-work lists (open jobs, live proposals, outstanding document requests) — even though you can see it, you must not restate a client-specific amount. General published facts that are not specific to this client remain fine and are exactly what you are here to provide: the VAT registration threshold, a headline tax rate, a filing fee, and similar figures that apply to everyone are not client-specific and are not banned.
+- Do not state a specific threshold, rate, or statutory deadline figure unless it appears in the thread or the practice context provided above — these change over time (the VAT registration threshold itself moved from £85,000 to £90,000 in April 2024) and you were not told today's value. Describe the rule instead and say the accountant will confirm the current figure.
 - NEVER commit the practice to a filing position, a deadline promise, a fee, or an outcome.
 - NEVER contradict or reverse anything the accountant has already said earlier in this thread.
 - NEVER invent a document, attachment, link, or fact you were not given.
@@ -61,7 +62,8 @@ function bulletList(label: string, items: string[]): string {
 }
 
 export function buildAutoReplyMessages(
-  ctx: AutoReplyContext
+  ctx: AutoReplyContext,
+  today: Date = new Date()
 ): { role: 'system' | 'user'; content: string }[] {
   const recent = ctx.thread.slice(-THREAD_MESSAGE_LIMIT);
   const transcript = recent
@@ -71,7 +73,8 @@ export function buildAutoReplyMessages(
     )
     .join('\n\n');
 
-  const user = `PRACTICE: ${ctx.practiceName}
+  const user = `TODAY'S DATE: ${today.toISOString().slice(0, 10)}
+PRACTICE: ${ctx.practiceName}
 CLIENT: ${ctx.clientName ?? 'unknown'}${ctx.clientContactName ? ` (contact: ${ctx.clientContactName})` : ''}${bulletList(
     'OPEN JOBS',
     ctx.openJobs

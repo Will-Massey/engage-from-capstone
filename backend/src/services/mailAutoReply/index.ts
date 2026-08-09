@@ -24,11 +24,23 @@ import {
   type AutoReplyContext,
   type AutoReplyThreadMessage,
 } from './prompt.js';
-import { chatCompletion, checkAiTokenBudget, getAiModel } from '../ai/aiClient.js';
+import {
+  chatCompletion,
+  checkAiTokenBudget,
+  getAiModel,
+  tokenMetaFromUsage,
+  type AiTokenUsage,
+} from '../ai/aiClient.js';
 import { sendMailboxMessage } from '../mailboxService.js';
 
 export const AI_REPLY_CONVERSATION_COOLDOWN_MS = 4 * 60 * 60 * 1000;
 export const AI_REPLY_TENANT_DAILY_CAP = 20;
+/** F5: a first sync or a provider switch can hand us months-old mail as
+ * "newly created" rows — this bounds generation to genuinely fresh messages. */
+export const AUTO_REPLY_MAX_MESSAGE_AGE_MS = 2 * 60 * 60 * 1000;
+/** F5: caps how many messages one processNewInboundMessages call will
+ * generate for, so a sync burst can never run away. */
+export const AUTO_REPLY_MAX_BATCH_SIZE = 10;
 
 const CONTEXT_LIST_LIMIT = 5;
 
@@ -144,6 +156,38 @@ async function findFailingGuard(
   return null;
 }
 
+/**
+ * Records AI spend against the tenant's shared token budget, so
+ * `checkAiTokenBudget` actually sees this feature's usage (mirrors
+ * `logAiUsage`'s row shape in proposalAiService.ts — action, entityType and
+ * metadata keys match exactly, so the accounting reads it the same way).
+ * Never allowed to break generation: a logging failure is swallowed.
+ */
+async function logAutoReplyAiUsage(
+  tenantId: string,
+  messageId: string,
+  usage: AiTokenUsage | undefined
+): Promise<void> {
+  try {
+    await prisma.activityLog.create({
+      data: {
+        tenantId,
+        userId: undefined,
+        action: 'AI_FEATURE_USED',
+        entityType: 'AI',
+        description: 'mail_autoreply',
+        metadata: JSON.stringify({ messageId, ...tokenMetaFromUsage(usage) }),
+      },
+    });
+  } catch (err: any) {
+    logger.warn('mailAutoReply: failed to log AI usage', {
+      tenantId,
+      messageId,
+      error: err?.message || String(err),
+    });
+  }
+}
+
 /** Processes a batch of inbound message ids. Never rejects. */
 export async function processNewInboundMessages(
   tenantId: string,
@@ -165,7 +209,17 @@ export async function processNewInboundMessages(
   }
   if (!settings.enabled) return;
 
-  for (const messageId of messageIds) {
+  let idsToProcess = messageIds;
+  if (messageIds.length > AUTO_REPLY_MAX_BATCH_SIZE) {
+    logger.warn('mailAutoReply: batch truncated to bound generation to a fixed cap', {
+      tenantId,
+      received: messageIds.length,
+      capped: AUTO_REPLY_MAX_BATCH_SIZE,
+    });
+    idsToProcess = messageIds.slice(0, AUTO_REPLY_MAX_BATCH_SIZE);
+  }
+
+  for (const messageId of idsToProcess) {
     try {
       await processOneMessage(tenantId, tenant?.name ?? undefined, settings, messageId);
     } catch (err: any) {
@@ -201,6 +255,10 @@ async function processOneMessage(
   if (!inbound) return;
   if (inbound.direction !== 'INBOUND' || !inbound.clientId) return;
   if (isAutomatedSender(inbound.fromAddress, inbound.subject)) return;
+  // F5: a first sync or a provider switch hands us a "newly created" row for
+  // mail that actually arrived long ago — a created-at row is not a
+  // recently-arrived email, so age it off the message's own receivedAt.
+  if (Date.now() - new Date(inbound.receivedAt).getTime() > AUTO_REPLY_MAX_MESSAGE_AGE_MS) return;
 
   const existing = await prisma.mailAiReplyDraft.findUnique({
     where: { inboundMessageId: messageId },
@@ -213,11 +271,11 @@ async function processOneMessage(
   const subject = replySubject(inbound.subject);
 
   let generatedBody: string;
-  let usage: unknown;
+  let usage: AiTokenUsage | undefined;
   let model: string;
   try {
     const ctx = await buildContext(tenantId, tenantName, inbound);
-    const messages = buildAutoReplyMessages(ctx);
+    const messages = buildAutoReplyMessages(ctx, new Date());
     const result = await chatCompletion(messages, { temperature: 0.4, maxTokens: 900 });
     generatedBody = (result.content || '').trim();
     usage = result.usage;
@@ -237,6 +295,11 @@ async function processOneMessage(
     });
     return;
   }
+
+  // F3: the AI call above already spent tokens regardless of what happens to
+  // the draft next (a lost P2002 race, a held auto-send guard, ...) — count
+  // it against the budget now, not conditionally on the draft landing.
+  await logAutoReplyAiUsage(tenantId, messageId, usage);
 
   // Always land a pending draft first — a human always has something to
   // review, whether or not auto-send goes on to fire.
@@ -284,26 +347,53 @@ async function processOneMessage(
     return;
   }
 
-  const sendResult = await sendMailboxMessage(tenantId, null, {
-    to: inbound.fromAddress,
-    subject,
-    body: generatedBody,
-    replyToMessageId: inbound.id,
+  // F1: claim the row before sending, mirroring approveDraft's atomic
+  // pending -> sending claim, so a crash or throw here can never be mistaken
+  // for "not sent" and re-drafted/re-sent by a later run.
+  const claim = await prisma.mailAiReplyDraft.updateMany({
+    where: { id: draft.id, tenantId, status: 'pending' },
+    data: { status: 'sending' },
   });
+  if (claim.count === 0) return;
 
-  if (sendResult.sent) {
-    await prisma.mailAiReplyDraft.update({
-      where: { id: draft.id },
-      data: {
-        status: 'sent',
-        sentMessageId: sendResult.dto.id,
-        decidedAt: new Date(),
-      },
+  try {
+    const sendResult = await sendMailboxMessage(tenantId, null, {
+      to: inbound.fromAddress,
+      subject,
+      body: generatedBody,
+      replyToMessageId: inbound.id,
     });
-  } else {
+
+    if (sendResult.sent) {
+      await prisma.mailAiReplyDraft.update({
+        where: { id: draft.id },
+        data: {
+          status: 'sent',
+          sentMessageId: sendResult.dto.id,
+          decidedAt: new Date(),
+        },
+      });
+    } else {
+      // Unambiguous failure — the provider never accepted it, so it is safe
+      // to return the draft to 'pending' for a legitimate retry.
+      await prisma.mailAiReplyDraft.update({
+        where: { id: draft.id },
+        data: {
+          status: 'pending',
+          generationMeta: JSON.stringify({ model, usage, sendError: sendResult.error }),
+        },
+      });
+    }
+  } catch (err: any) {
+    // Ambiguous failure — sendMailboxMessage's provider send can succeed and
+    // then still reject (its own local sent-message insert runs after the
+    // provider accepted it), so we cannot tell whether the client already
+    // got the email. Never put the draft back to 'pending' here — a retry
+    // could send a genuine duplicate. Land it as 'failed' for a human to
+    // inspect instead, same contract as approveDraft.
     await prisma.mailAiReplyDraft.update({
       where: { id: draft.id },
-      data: { generationMeta: JSON.stringify({ model, usage, sendError: sendResult.error }) },
+      data: { status: 'failed', error: err?.message || String(err) },
     });
   }
 }
@@ -328,10 +418,20 @@ function toDto(row: {
   };
 }
 
+/** F4: "off" must mean off — a stale browser tab must not be able to list or
+ * send drafts once a tenant has switched the feature off, e.g. because a
+ * draft said something wrong. */
+async function isMailAutoReplyEnabled(tenantId: string): Promise<boolean> {
+  const tenant = await prisma.tenant.findUnique({ where: { id: tenantId } });
+  return parseMailAutoReplySettings(tenant?.settings).enabled;
+}
+
 export async function listPendingDrafts(
   tenantId: string,
   conversationId?: string
 ): Promise<MailAiReplyDraftDto[]> {
+  if (!(await isMailAutoReplyEnabled(tenantId))) return [];
+
   const rows = await prisma.mailAiReplyDraft.findMany({
     where: {
       tenantId,
@@ -368,6 +468,16 @@ export async function approveDraft(
   userId: string,
   bodyOverride?: string
 ): Promise<{ sent: boolean; error?: string }> {
+  // F4: a stale browser tab must not be able to send after the tenant has
+  // flipped AI replies off.
+  if (!(await isMailAutoReplyEnabled(tenantId))) {
+    throw new ApiError(
+      'MAIL_AUTOREPLY_DISABLED',
+      'AI mailbox replies are turned off for this practice',
+      409
+    );
+  }
+
   const draft = await prisma.mailAiReplyDraft.findFirst({ where: { id: draftId, tenantId } });
   if (!draft) {
     throw new ApiError('DRAFT_NOT_FOUND', 'Draft not found', 404);

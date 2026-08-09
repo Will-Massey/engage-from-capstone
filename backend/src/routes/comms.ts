@@ -610,6 +610,8 @@ router.post(
 
 // ==================== AI MAILBOX AUTOREPLY ====================
 
+const aiDraftsQuerySchema = z.object({ conversationId: z.string().optional() });
+
 /**
  * GET /api/comms/mailbox/ai-drafts
  * Pending AI-generated reply drafts awaiting human approve/dismiss.
@@ -617,8 +619,9 @@ router.post(
 router.get(
   '/mailbox/ai-drafts',
   authenticate,
+  authorize(...MAILBOX_READ_ROLES),
   asyncHandler(async (req, res) => {
-    const conversationId = req.query.conversationId as string | undefined;
+    const { conversationId } = aiDraftsQuerySchema.parse(req.query);
     const drafts = await listPendingDrafts(req.tenantId!, conversationId);
     res.json({ success: true, data: { drafts } });
   })

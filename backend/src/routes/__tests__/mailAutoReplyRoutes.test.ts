@@ -99,6 +99,29 @@ describe('GET /api/comms/mailbox/ai-drafts', () => {
     expect(res.body.data.drafts).toBeDefined();
     expect(listPendingDraftsMock).toHaveBeenCalledWith('t1', undefined);
   });
+
+  it('passes through a plain string conversationId', async () => {
+    const res = await request(makeApp()).get('/api/comms/mailbox/ai-drafts?conversationId=c1');
+    expect(res.status).toBe(200);
+    expect(listPendingDraftsMock).toHaveBeenCalledWith('t1', 'c1');
+  });
+
+  it('rejects a non-string conversationId (object injection via the extended query parser)', async () => {
+    const res = await request(makeApp()).get(
+      '/api/comms/mailbox/ai-drafts?conversationId[contains]=x'
+    );
+    expect(res.status).toBe(400);
+    expect(listPendingDraftsMock).not.toHaveBeenCalled();
+  });
+
+  it('requires a recognised read role', async () => {
+    currentRole = 'JUNIOR';
+    const res = await request(makeApp()).get('/api/comms/mailbox/ai-drafts');
+    // JUNIOR is a full mailbox reader, so this still succeeds — the point is
+    // the route now runs through the same authorize() gate as every other
+    // read route rather than skipping it entirely.
+    expect(res.status).toBe(200);
+  });
 });
 
 describe('POST /api/comms/mailbox/ai-drafts/:id/approve', () => {

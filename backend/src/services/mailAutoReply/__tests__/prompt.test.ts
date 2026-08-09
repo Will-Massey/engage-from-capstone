@@ -101,4 +101,22 @@ describe('buildAutoReplyMessages', () => {
     const msgs = buildAutoReplyMessages(ctx({ clientName: null, clientContactName: null }));
     expect(msgs).toHaveLength(2);
   });
+
+  it("puts today's date into the user message", () => {
+    const user = buildAutoReplyMessages(ctx(), new Date('2026-08-09T12:00:00Z'))[1].content;
+    expect(user).toContain('2026-08-09');
+  });
+
+  it('defaults the date to now when no date is passed', () => {
+    const user = buildAutoReplyMessages(ctx())[1].content;
+    expect(user).toMatch(/TODAY'S DATE: \d{4}-\d{2}-\d{2}/);
+  });
+
+  it('instructs the model not to state a stale threshold, rate or deadline figure from memory', () => {
+    const system = buildAutoReplyMessages(ctx())[0].content.toLowerCase();
+    expect(system).toContain(
+      'do not state a specific threshold, rate, or statutory deadline figure'
+    );
+    expect(system).toContain('the accountant will confirm the current figure');
+  });
 });
