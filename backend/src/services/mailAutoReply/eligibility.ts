@@ -32,19 +32,13 @@ export function parseMailAutoReplySettings(settingsJson?: string | null): MailAu
   }
 }
 
-const AUTOMATED_LOCAL_PARTS = [
-  'no-reply',
-  'noreply',
-  'donotreply',
-  'do-not-reply',
-  'mailer-daemon',
-  'postmaster',
-  'bounce',
-];
+const AUTOMATED_LOCAL_PARTS = ['noreply', 'donotreply', 'mailerdaemon', 'postmaster', 'bounce'];
 
 const AUTOMATED_SUBJECT_PREFIXES = [
   'automatic reply',
   'auto-reply',
+  'auto reply',
+  'autoreply',
   'out of office',
   'undeliverable',
   'delivery status notification',
@@ -58,17 +52,13 @@ function bareAddress(input: string): string {
 
 export function isAutomatedSender(fromAddress: string, subject: string): boolean {
   const addr = bareAddress(fromAddress || '');
-  const local = addr.split('@')[0] || '';
-  if (AUTOMATED_LOCAL_PARTS.some((p) => local.includes(p))) return true;
+  const local = (addr.split('@')[0] || '').replace(/[^a-z0-9]/g, '');
+  if (AUTOMATED_LOCAL_PARTS.some((p) => local.startsWith(p))) return true;
 
   const subj = (subject || '').trim().toLowerCase();
   return AUTOMATED_SUBJECT_PREFIXES.some((p) => subj.startsWith(p));
 }
 
-/**
- * Mon–Fri 08:00–17:59 Europe/London. Uses the Intl timezone so BST/GMT is
- * handled without a date library.
- */
 /**
  * True when the text mentions a monetary amount.
  *
@@ -77,17 +67,38 @@ export function isAutomatedSender(fromAddress: string, subject: string): boolean
  * like the VAT registration threshold — buys a human read before it reaches a
  * client, so this predicate blocks AUTO-SEND only; the draft itself keeps the
  * useful content. Dates, years and small counts must not trip it.
+ *
+ * Strategy: strip out patterns that are definitely NOT money (times, dates,
+ * standalone years) first, then look for money signals in what remains — a
+ * currency symbol or word, grouped thousands, a 2-decimal-place number, or a
+ * bare integer of 100 or more. Small counts under 100 stay unflagged.
  */
 export function containsMoneyFigure(text: string): boolean {
   const body = text || '';
   if (/[£$€]\s?\d/.test(body)) return true;
   if (/\d[\d,]*(\.\d{2})?\s?(gbp|pounds?|pence)\b/i.test(body)) return true;
-  // A bare decimal amount (1247.50) or any grouped thousands figure (90,000).
-  if (/\b\d{1,3}(,\d{3})+(\.\d+)?\b/.test(body)) return true;
-  if (/\b\d+\.\d{2}\b/.test(body)) return true;
-  return false;
+
+  const normalised = body
+    // Times: hh:mm or hh.mm, hours 0-23, minutes 00-59.
+    .replace(/\b([01]?\d|2[0-3])[:.]([0-5]\d)\b/g, ' ')
+    // Dates: dd/mm/yyyy, dd.mm.yyyy, dd-mm-yyyy.
+    .replace(/\b\d{1,2}[/.-]\d{1,2}[/.-]\d{2,4}\b/g, ' ')
+    // Standalone 4-digit years, 1900-2100.
+    .replace(/\b(19\d{2}|20\d{2}|2100)\b/g, ' ');
+
+  // Grouped thousands (90,000) or a 2-decimal-place figure (1247.50).
+  if (/\b\d{1,3}(,\d{3})+(\.\d+)?\b/.test(normalised)) return true;
+  if (/\b\d+\.\d{2}\b/.test(normalised)) return true;
+
+  // A bare integer of 100 or more is treated as a possible amount.
+  const bareIntegers = normalised.match(/\b\d+\b/g) || [];
+  return bareIntegers.some((n) => Number(n) >= 100);
 }
 
+/**
+ * Mon–Fri 08:00–17:59 Europe/London. Uses the Intl timezone so BST/GMT is
+ * handled without a date library.
+ */
 export function isWithinBusinessHours(now: Date): boolean {
   const fmt = new Intl.DateTimeFormat('en-GB', {
     timeZone: 'Europe/London',
