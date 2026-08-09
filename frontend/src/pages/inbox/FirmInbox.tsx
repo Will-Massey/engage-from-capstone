@@ -12,6 +12,7 @@ import {
   ExclamationTriangleIcon,
   PaperClipIcon,
   ArrowDownTrayIcon,
+  SparklesIcon,
 } from '@heroicons/react/24/outline';
 import { apiClient } from '../../utils/api';
 import { StatusChip } from '../../components/ui/StatusChip';
@@ -23,6 +24,12 @@ import {
   formatSyncHealth,
   extractEmailAddress,
 } from './mailboxHelpers';
+import {
+  draftForConversation,
+  conversationIdsWithDrafts,
+  type AiReplyDraft,
+} from './aiReplyHelpers';
+import { AiReplyCard } from './AiReplyCard';
 
 type Channel = 'mailbox' | 'all' | 'email' | 'sms' | 'portal';
 
@@ -139,6 +146,9 @@ export default function FirmInbox() {
   const [clientsForLink, setClientsForLink] = useState<Array<{ id: string; name: string }>>([]);
   const [linkClientId, setLinkClientId] = useState('');
   const [unreadOnly, setUnreadOnly] = useState(false);
+  const [aiDrafts, setAiDrafts] = useState<AiReplyDraft[]>([]);
+  const [aiDraftBusy, setAiDraftBusy] = useState(false);
+  const [dismissedDraftIds, setDismissedDraftIds] = useState<Set<string>>(new Set());
 
   const fetchMessages = useCallback(
     async (opts: { cursor?: string | null } = {}) => {
@@ -187,6 +197,17 @@ export default function FirmInbox() {
       setUnreadCount(typeof data?.unread === 'number' ? data.unread : 0);
     } catch {
       /* badge is non-critical */
+    }
+  }, []);
+
+  const loadAiDrafts = useCallback(async () => {
+    try {
+      const res = (await apiClient.get('/comms/mailbox/ai-drafts')) as any;
+      const data = res?.data ?? res;
+      setAiDrafts(data?.drafts || []);
+      setDismissedDraftIds(new Set());
+    } catch {
+      /* suggestion card is non-critical */
     }
   }, []);
 
@@ -245,7 +266,8 @@ export default function FirmInbox() {
     if (channel !== 'mailbox') return;
     void loadConnection();
     void loadUnreadCount();
-  }, [channel, loadConnection, loadUnreadCount]);
+    void loadAiDrafts();
+  }, [channel, loadConnection, loadUnreadCount, loadAiDrafts]);
 
   // Auto-sync once per mailbox visit when it opens empty. Failures are
   // swallowed here (no toast loop) — the health banner picks up the
@@ -316,6 +338,44 @@ export default function FirmInbox() {
       setError(e?.response?.data?.error?.message || e?.message || 'Send failed');
     } finally {
       setSending(false);
+    }
+  }
+
+  async function handleApproveAiDraft(draftId: string) {
+    setAiDraftBusy(true);
+    try {
+      const res = (await apiClient.post(`/comms/mailbox/ai-drafts/${draftId}/approve`, {})) as any;
+      const data = res?.data ?? res;
+      if (data?.sent === false) setError(data?.error || 'Approved but the send failed');
+      else setSyncMsg('Suggested reply sent');
+      await Promise.all([
+        loadAiDrafts(),
+        fetchMessages(),
+        ...(selectedMail ? [refreshThread(selectedMail.id)] : []),
+      ]);
+    } catch (e: any) {
+      setError(e?.response?.data?.error?.message || e?.message || 'Approve failed');
+    } finally {
+      setAiDraftBusy(false);
+    }
+  }
+
+  function handleEditAiDraft(draft: AiReplyDraft) {
+    // Drop the suggested text into the existing composer and hide the card
+    // locally — nothing is sent until the human hits "Send reply" below.
+    setReplyBody(draft.bodyText);
+    setDismissedDraftIds((prev) => new Set(prev).add(draft.id));
+  }
+
+  async function handleDismissAiDraft(draftId: string) {
+    setAiDraftBusy(true);
+    try {
+      await apiClient.post(`/comms/mailbox/ai-drafts/${draftId}/dismiss`, {});
+      await loadAiDrafts();
+    } catch (e: any) {
+      setError(e?.response?.data?.error?.message || e?.message || 'Dismiss failed');
+    } finally {
+      setAiDraftBusy(false);
     }
   }
 
@@ -438,6 +498,11 @@ export default function FirmInbox() {
     [selectedMail]
   );
   const composeToAddress = useMemo(() => extractEmailAddress(compose.to), [compose.to]);
+  const conversationsWithAiDrafts = useMemo(() => conversationIdsWithDrafts(aiDrafts), [aiDrafts]);
+  const selectedAiDraft = useMemo(() => {
+    const found = draftForConversation(aiDrafts, selectedMail?.conversationId ?? null);
+    return found && !dismissedDraftIds.has(found.id) ? found : null;
+  }, [aiDrafts, selectedMail, dismissedDraftIds]);
 
   return (
     <div className="space-y-5">
@@ -647,6 +712,16 @@ export default function FirmInbox() {
                                   aria-label="Has attachments"
                                 />
                               )}
+                              {m.conversationId &&
+                                conversationsWithAiDrafts.has(m.conversationId) && (
+                                  <StatusChip
+                                    tone="violet"
+                                    title="AI has a suggested reply waiting"
+                                  >
+                                    <SparklesIcon className="h-3 w-3" aria-hidden />
+                                    Suggested
+                                  </StatusChip>
+                                )}
                               <span className="ml-auto text-2xs tabular-nums text-slate-400">
                                 {format(new Date(m.at), 'dd MMM HH:mm')}
                               </span>
@@ -957,6 +1032,16 @@ export default function FirmInbox() {
                         {triage.partnerNotes}
                       </p>
                     </div>
+                  )}
+
+                  {selectedAiDraft && (
+                    <AiReplyCard
+                      draft={selectedAiDraft}
+                      busy={aiDraftBusy}
+                      onApprove={(draftId) => void handleApproveAiDraft(draftId)}
+                      onEdit={handleEditAiDraft}
+                      onDismiss={(draftId) => void handleDismissAiDraft(draftId)}
+                    />
                   )}
 
                   <input
