@@ -59,7 +59,10 @@ const inbound = {
   bodyText: 'Do I need to register for VAT?',
   conversationId: 'c1',
   clientId: 'cl1',
-  receivedAt: new Date('2026-08-11T09:30:00Z'),
+  // Relative, never a fixed date: the recency gate (AUTO_REPLY_MAX_MESSAGE_AGE_MS)
+  // makes this load-bearing, and a hardcoded timestamp would silently age past
+  // the window and skip every test in this file on a wall-clock date.
+  receivedAt: new Date(Date.now() - 60_000),
 };
 
 function settings(mailAutoReply: unknown) {
@@ -203,6 +206,30 @@ describe('processNewInboundMessages — gates', () => {
     const ids = Array.from({ length: AUTO_REPLY_MAX_BATCH_SIZE + 5 }, (_, i) => `m${i}`);
     await processNewInboundMessages('t1', ids);
     expect(prismaMock.mailMessage.findFirst).toHaveBeenCalledTimes(AUTO_REPLY_MAX_BATCH_SIZE);
+  });
+
+  it('does not let a backlog of stale mail crowd a fresh message out of the batch window', async () => {
+    // A first connect hands over a 90-day window in arbitrary provider order.
+    // Stale messages are skipped before the AI is called, so they must not
+    // consume the cap and hide the one message that genuinely just arrived.
+    const staleIds = Array.from({ length: AUTO_REPLY_MAX_BATCH_SIZE + 20 }, (_, i) => `stale${i}`);
+    prismaMock.mailMessage.findFirst.mockImplementation(({ where }: any) =>
+      Promise.resolve({
+        ...inbound,
+        id: where.id,
+        receivedAt:
+          where.id === 'fresh1'
+            ? new Date(Date.now() - 60_000)
+            : new Date(Date.now() - 30 * 24 * 60 * 60 * 1000),
+      })
+    );
+
+    await processNewInboundMessages('t1', [...staleIds, 'fresh1']);
+
+    expect(chatCompletionMock).toHaveBeenCalledTimes(1);
+    expect(prismaMock.mailAiReplyDraft.create).toHaveBeenCalledWith(
+      expect.objectContaining({ data: expect.objectContaining({ inboundMessageId: 'fresh1' }) })
+    );
   });
 
   it('logs an AI_FEATURE_USED activity row after a successful generation, carrying token usage', async () => {

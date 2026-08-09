@@ -209,22 +209,33 @@ export async function processNewInboundMessages(
   }
   if (!settings.enabled) return;
 
-  let idsToProcess = messageIds;
-  if (messageIds.length > AUTO_REPLY_MAX_BATCH_SIZE) {
-    logger.warn('mailAutoReply: batch truncated to bound generation to a fixed cap', {
-      tenantId,
-      received: messageIds.length,
-      capped: AUTO_REPLY_MAX_BATCH_SIZE,
-    });
-    idsToProcess = messageIds.slice(0, AUTO_REPLY_MAX_BATCH_SIZE);
-  }
-
-  for (const messageId of idsToProcess) {
+  // The cap counts messages that actually reached the AI, not ids examined.
+  // Slicing the id list first would let a backlog of stale mail (a first
+  // connect hands over a 90-day window in arbitrary provider order) fill the
+  // window and crowd out the one genuinely fresh message in it. The skips
+  // ahead of generation are all cheap indexed reads.
+  let generated = 0;
+  for (const messageId of messageIds) {
+    if (generated >= AUTO_REPLY_MAX_BATCH_SIZE) {
+      logger.warn('mailAutoReply: batch capped, remaining messages skipped this run', {
+        tenantId,
+        received: messageIds.length,
+        capped: AUTO_REPLY_MAX_BATCH_SIZE,
+      });
+      break;
+    }
     try {
-      await processOneMessage(tenantId, tenant?.name ?? undefined, settings, messageId);
+      const consumed = await processOneMessage(
+        tenantId,
+        tenant?.name ?? undefined,
+        settings,
+        messageId
+      );
+      if (consumed) generated++;
     } catch (err: any) {
       // Should not happen — processOneMessage handles its own generation
       // failures — but guarantee the fire-and-forget contract regardless.
+      generated++;
       try {
         await prisma.mailAiReplyDraft.create({
           data: {
@@ -250,23 +261,25 @@ async function processOneMessage(
   tenantName: string | undefined,
   settings: { enabled: boolean; mode: 'draft' | 'auto'; businessHoursOnly: boolean },
   messageId: string
-): Promise<void> {
+  /** True when this message consumed a generation slot (the AI was called). */
+): Promise<boolean> {
   const inbound = await prisma.mailMessage.findFirst({ where: { id: messageId, tenantId } });
-  if (!inbound) return;
-  if (inbound.direction !== 'INBOUND' || !inbound.clientId) return;
-  if (isAutomatedSender(inbound.fromAddress, inbound.subject)) return;
+  if (!inbound) return false;
+  if (inbound.direction !== 'INBOUND' || !inbound.clientId) return false;
+  if (isAutomatedSender(inbound.fromAddress, inbound.subject)) return false;
   // F5: a first sync or a provider switch hands us a "newly created" row for
   // mail that actually arrived long ago — a created-at row is not a
   // recently-arrived email, so age it off the message's own receivedAt.
-  if (Date.now() - new Date(inbound.receivedAt).getTime() > AUTO_REPLY_MAX_MESSAGE_AGE_MS) return;
+  if (Date.now() - new Date(inbound.receivedAt).getTime() > AUTO_REPLY_MAX_MESSAGE_AGE_MS)
+    return false;
 
   const existing = await prisma.mailAiReplyDraft.findUnique({
     where: { inboundMessageId: messageId },
   });
-  if (existing) return;
+  if (existing) return false;
 
   const budget = await checkAiTokenBudget(tenantId);
-  if (!budget.withinBudget) return;
+  if (!budget.withinBudget) return false;
 
   const subject = replySubject(inbound.subject);
 
@@ -293,7 +306,7 @@ async function processOneMessage(
         error: err?.message || String(err),
       },
     });
-    return;
+    return true;
   }
 
   // F3: the AI call above already spent tokens regardless of what happens to
@@ -326,12 +339,12 @@ async function processOneMessage(
         tenantId,
         messageId,
       });
-      return;
+      return true;
     }
     throw err;
   }
 
-  if (settings.mode !== 'auto') return;
+  if (settings.mode !== 'auto') return true;
 
   const failingGuard = await findFailingGuard(
     tenantId,
@@ -344,7 +357,7 @@ async function processOneMessage(
       where: { id: draft.id },
       data: { generationMeta: JSON.stringify({ model, usage, heldBy: failingGuard }) },
     });
-    return;
+    return true;
   }
 
   // F1: claim the row before sending, mirroring approveDraft's atomic
@@ -354,7 +367,9 @@ async function processOneMessage(
     where: { id: draft.id, tenantId, status: 'pending' },
     data: { status: 'sending' },
   });
-  if (claim.count === 0) return;
+  // Lost the claim to a concurrent run — it owns the send. The AI call above
+  // still happened, so this message consumed a generation slot.
+  if (claim.count === 0) return true;
 
   try {
     const sendResult = await sendMailboxMessage(tenantId, null, {
@@ -396,6 +411,7 @@ async function processOneMessage(
       data: { status: 'failed', error: err?.message || String(err) },
     });
   }
+  return true;
 }
 
 function toDto(row: {
