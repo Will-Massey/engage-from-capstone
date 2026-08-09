@@ -682,7 +682,7 @@ const Settings = () => {
     try {
       const response = (await apiClient.updateTenantSettings({
         mailAutoReply: next,
-      } as any)) as any;
+      })) as any;
       if (response.success) {
         setMailAutoReplyForm(next);
         toast.success('AI mailbox reply settings saved');

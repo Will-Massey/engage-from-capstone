@@ -242,6 +242,18 @@ export interface UpdateTenantSettingsPayload {
   webhookUrl?: string;
   claraOnboarding?: ClaraOnboardingProfile;
   clara?: TenantClaraSettings;
+  mailAutoReply?: TenantMailAutoReplySettings;
+}
+
+/**
+ * AI replies to client email. Absent means off. `mode: 'auto'` sends without a
+ * human read and is a separate, confirm-gated opt-in; the server restricts this
+ * key to senior roles.
+ */
+export interface TenantMailAutoReplySettings {
+  enabled: boolean;
+  mode: 'draft' | 'auto';
+  businessHoursOnly?: boolean;
 }
 
 export interface UpdateTenantSettingsResult {
