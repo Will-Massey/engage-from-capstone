@@ -197,9 +197,10 @@ Applied in both modes unless noted.
 
 - tenant opt-in absent or `enabled: false`,
 - message is not `INBOUND`, or has no linked `clientId`,
-- sender is the practice's own connected address, or looks automated:
-  `Auto-Submitted`, `Precedence: bulk`, `List-Unsubscribe` headers, or a
-  `no-reply`/`noreply`/`mailer-daemon`/`postmaster` local part,
+- sender is the practice's own connected address, or looks automated — a
+  `no-reply`/`noreply`/`donotreply`/`mailer-daemon`/`postmaster`/`bounce` local
+  part, or an auto-responder subject (`Automatic reply:`, `Out of office`,
+  `Undeliverable:`),
 - a draft already exists for that `inboundMessageId` (unique constraint is the
   backstop; the check avoids the wasted call),
 - the tenant's AI token budget is exhausted.
@@ -249,6 +250,14 @@ changes.
 - A separate AI spend ceiling for mail; it shares the tenant AI budget.
 - Learning from edits (a future improvement: compare `bodyText` with what was
   actually sent to tune tone).
+- **RFC-header-based bot detection.** Neither provider client captures raw
+  headers and `MailMessage` has no column for them (verified in
+  `backend/src/services/mail/types.ts`), so `Auto-Submitted`,
+  `Precedence: bulk` and `List-Unsubscribe` cannot be read today. The
+  address/subject heuristics above plus the known-clients-only rule cover the
+  realistic cases — a newsletter does not match a `Client.contactEmail`.
+  Capturing headers would mean a schema change plus changes to both provider
+  clients; a separate ticket if bot traffic ever gets past the current gates.
 
 ## Rollout
 
