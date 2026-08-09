@@ -8,16 +8,21 @@ import {
   ArrowPathIcon,
 } from '@heroicons/react/24/outline';
 import { apiClient } from '../../utils/api';
+import { useAuthStore } from '../../stores/authStore';
 import { StatusChip } from '../../components/ui/StatusChip';
 import { MetalCard } from '../../components/ui/MetalTile';
+import TemplateEditor from './TemplateEditor';
+import {
+  duplicateAsDraft,
+  formatAnswer,
+  sanitizeDraftForSave,
+  type EditableField,
+  type TemplateDraft,
+} from './formTemplateHelpers';
 
-type FormField = {
-  id: string;
-  type: string;
-  label: string;
-  required?: boolean;
-  options?: string[];
-};
+type FormField = EditableField;
+
+const TEMPLATE_MANAGER_ROLES = ['ADMIN', 'PARTNER', 'MD', 'MANAGER'];
 
 type FormTemplate = {
   id: string;
@@ -59,6 +64,10 @@ export default function PracticeForms() {
   );
   const [dueInDays, setDueInDays] = useState(7);
   const [viewAssignment, setViewAssignment] = useState<FormAssignment | null>(null);
+  const [editorDraft, setEditorDraft] = useState<TemplateDraft | null>(null);
+  const [showArchived, setShowArchived] = useState(false);
+  const user = useAuthStore((s) => s.user);
+  const canManageTemplates = TEMPLATE_MANAGER_ROLES.includes(user?.role || '');
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -132,7 +141,43 @@ export default function PracticeForms() {
     setMsg('CSV exported');
   }
 
-  const selectedTemplate = templates.find((t) => t.id === selectedTemplateId);
+  const activeTemplates = templates.filter((t) => t.isActive !== false);
+  const archivedTemplates = templates.filter((t) => t.isActive === false);
+  const selectedTemplate = activeTemplates.find((t) => t.id === selectedTemplateId);
+
+  async function saveTemplate(draft: TemplateDraft) {
+    setBusy(true);
+    setMsg(null);
+    setError(null);
+    try {
+      const res = (await apiClient.post('/forms/templates', sanitizeDraftForSave(draft))) as any;
+      const saved = res?.data;
+      setEditorDraft(null);
+      setMsg(draft.id ? 'Template updated' : 'Template created');
+      if (saved?.id) setSelectedTemplateId(saved.id);
+      await load();
+    } catch (e: any) {
+      setError(e?.response?.data?.error?.message || e?.message || 'Save failed');
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function setTemplateActive(template: FormTemplate, isActive: boolean) {
+    setBusy(true);
+    setMsg(null);
+    setError(null);
+    try {
+      await apiClient.post('/forms/templates', { ...template, isActive });
+      setMsg(isActive ? 'Template restored' : 'Template archived');
+      if (!isActive && selectedTemplateId === template.id) setSelectedTemplateId('');
+      await load();
+    } catch (e: any) {
+      setError(e?.response?.data?.error?.message || e?.message || 'Update failed');
+    } finally {
+      setBusy(false);
+    }
+  }
 
   function toggleClient(id: string) {
     setSelectedClientIds((prev) => {
@@ -289,11 +334,29 @@ export default function PracticeForms() {
 
       {/* Template library */}
       <section>
-        <h2 className="text-sm font-semibold uppercase tracking-wide text-slate-500">
-          Form library
-        </h2>
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <h2 className="text-sm font-semibold uppercase tracking-wide text-slate-500">
+            Form library
+          </h2>
+          {canManageTemplates && (
+            <button
+              type="button"
+              className="btn-secondary btn-sm text-xs"
+              onClick={() =>
+                setEditorDraft({
+                  name: '',
+                  description: '',
+                  category: 'Custom',
+                  fields: [],
+                })
+              }
+            >
+              New template
+            </button>
+          )}
+        </div>
         <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-          {templates.map((t) => {
+          {activeTemplates.map((t) => {
             const active = t.id === selectedTemplateId;
             return (
               <button
@@ -329,9 +392,37 @@ export default function PracticeForms() {
         </div>
         {selectedTemplate && (
           <div className="mt-3 rounded-xl border border-slate-200 bg-white/80 p-4 text-sm dark:border-slate-700 dark:bg-slate-900/40">
-            <p className="font-semibold text-slate-800 dark:text-slate-100">
-              Preview · {selectedTemplate.name}
-            </p>
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <p className="font-semibold text-slate-800 dark:text-slate-100">
+                Preview · {selectedTemplate.name}
+              </p>
+              {canManageTemplates && (
+                <div className="flex gap-1">
+                  <button
+                    type="button"
+                    className="btn-ghost btn-sm !min-h-7 text-2xs"
+                    onClick={() => setEditorDraft({ ...selectedTemplate })}
+                  >
+                    Edit
+                  </button>
+                  <button
+                    type="button"
+                    className="btn-ghost btn-sm !min-h-7 text-2xs"
+                    onClick={() => setEditorDraft(duplicateAsDraft(selectedTemplate))}
+                  >
+                    Duplicate
+                  </button>
+                  <button
+                    type="button"
+                    className="btn-ghost btn-sm !min-h-7 text-2xs text-rose-500"
+                    disabled={busy}
+                    onClick={() => void setTemplateActive(selectedTemplate, false)}
+                  >
+                    Archive
+                  </button>
+                </div>
+              )}
+            </div>
             <ul className="mt-2 grid gap-1 sm:grid-cols-2">
               {selectedTemplate.fields.map((f) => (
                 <li key={f.id} className="text-xs text-slate-600 dark:text-slate-300">
@@ -341,6 +432,42 @@ export default function PracticeForms() {
                 </li>
               ))}
             </ul>
+          </div>
+        )}
+        {archivedTemplates.length > 0 && (
+          <div className="mt-3">
+            <button
+              type="button"
+              className="text-xs font-semibold text-slate-500 hover:text-slate-700 dark:hover:text-slate-300"
+              onClick={() => setShowArchived((v) => !v)}
+            >
+              {showArchived ? '▾' : '▸'} Archived ({archivedTemplates.length})
+            </button>
+            {showArchived && (
+              <ul className="mt-2 space-y-1">
+                {archivedTemplates.map((t) => (
+                  <li
+                    key={t.id}
+                    className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-slate-200/80 bg-white/60 px-3 py-1.5 text-sm dark:border-slate-700 dark:bg-slate-900/30"
+                  >
+                    <span className="min-w-0 truncate text-slate-600 dark:text-slate-300">
+                      {t.name}
+                      <span className="ml-2 text-xs text-slate-400">{t.category}</span>
+                    </span>
+                    {canManageTemplates && (
+                      <button
+                        type="button"
+                        className="btn-ghost btn-sm !min-h-7 text-2xs"
+                        disabled={busy}
+                        onClick={() => void setTemplateActive(t, true)}
+                      >
+                        Restore
+                      </button>
+                    )}
+                  </li>
+                ))}
+              </ul>
+            )}
           </div>
         )}
       </section>
@@ -551,19 +678,24 @@ export default function PracticeForms() {
             </p>
             <dl className="mt-4 space-y-2">
               {viewAssignment.answers && Object.keys(viewAssignment.answers).length > 0 ? (
-                Object.entries(viewAssignment.answers).map(([k, v]) => (
-                  <div
-                    key={k}
-                    className="rounded-lg border border-slate-200 px-3 py-2 dark:border-slate-700"
-                  >
-                    <dt className="text-xs font-semibold uppercase tracking-wide text-slate-400">
-                      {k}
-                    </dt>
-                    <dd className="mt-0.5 text-sm text-slate-800 dark:text-slate-100">
-                      {typeof v === 'boolean' ? (v ? 'Yes' : 'No') : String(v ?? '—')}
-                    </dd>
-                  </div>
-                ))
+                Object.entries(viewAssignment.answers).map(([k, v]) => {
+                  const field = templates
+                    .find((t) => t.id === viewAssignment.templateId)
+                    ?.fields.find((f) => f.id === k);
+                  return (
+                    <div
+                      key={k}
+                      className="rounded-lg border border-slate-200 px-3 py-2 dark:border-slate-700"
+                    >
+                      <dt className="text-xs font-semibold uppercase tracking-wide text-slate-400">
+                        {field?.label || k}
+                      </dt>
+                      <dd className="mt-0.5 text-sm text-slate-800 dark:text-slate-100">
+                        {formatAnswer(field, v)}
+                      </dd>
+                    </div>
+                  );
+                })
               ) : (
                 <p className="text-sm text-slate-500">No answers stored for this assignment.</p>
               )}
@@ -577,6 +709,15 @@ export default function PracticeForms() {
             </button>
           </div>
         </div>
+      )}
+
+      {editorDraft && (
+        <TemplateEditor
+          initialDraft={editorDraft}
+          busy={busy}
+          onSave={(draft) => void saveTemplate(draft)}
+          onCancel={() => setEditorDraft(null)}
+        />
       )}
     </div>
   );
