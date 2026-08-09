@@ -12,6 +12,7 @@
  */
 import { prisma } from '../../config/database.js';
 import { ApiError } from '../../middleware/errorHandler.js';
+import logger from '../../config/logger.js';
 import {
   parseMailAutoReplySettings,
   isAutomatedSender,
@@ -23,7 +24,7 @@ import {
   type AutoReplyContext,
   type AutoReplyThreadMessage,
 } from './prompt.js';
-import { chatCompletion, checkAiTokenBudget } from '../ai/aiClient.js';
+import { chatCompletion, checkAiTokenBudget, getAiModel } from '../ai/aiClient.js';
 import { sendMailboxMessage } from '../mailboxService.js';
 
 export const AI_REPLY_CONVERSATION_COOLDOWN_MS = 4 * 60 * 60 * 1000;
@@ -54,9 +55,14 @@ async function buildContext(
     id: string;
     conversationId: string | null;
     clientId: string | null;
+    direction: string;
+    fromAddress: string;
+    receivedAt: Date;
+    bodyText: string | null;
   }
 ): Promise<AutoReplyContext> {
   const clientId = inbound.clientId as string;
+  const conversationId = inbound.conversationId;
 
   const [client, jobs, proposals, documentRequests, threadRows] = await Promise.all([
     prisma.client.findFirst({ where: { id: clientId, tenantId } }),
@@ -72,11 +78,16 @@ async function buildContext(
       where: { tenantId, clientId, status: 'OPEN' },
       take: CONTEXT_LIST_LIMIT,
     }),
-    prisma.mailMessage.findMany({
-      where: { tenantId, conversationId: inbound.conversationId },
-      orderBy: { receivedAt: 'asc' },
-      take: 20,
-    }),
+    // A null conversationId must not be used as a query value — it would
+    // match every other message that also has no conversationId. Fall back
+    // to just the inbound message itself as the thread in that case.
+    conversationId
+      ? prisma.mailMessage.findMany({
+          where: { tenantId, conversationId },
+          orderBy: { receivedAt: 'asc' },
+          take: 20,
+        })
+      : Promise.resolve([inbound]),
   ]);
 
   const thread: AutoReplyThreadMessage[] = threadRows.map((m: any) => ({
@@ -138,13 +149,25 @@ export async function processNewInboundMessages(
   tenantId: string,
   messageIds: string[]
 ): Promise<void> {
-  const tenant = await prisma.tenant.findUnique({ where: { id: tenantId } });
-  const settings = parseMailAutoReplySettings(tenant?.settings);
+  let tenant: { name?: string | null; settings?: string | null } | null;
+  let settings: ReturnType<typeof parseMailAutoReplySettings>;
+  try {
+    tenant = await prisma.tenant.findUnique({ where: { id: tenantId } });
+    settings = parseMailAutoReplySettings(tenant?.settings);
+  } catch (err: any) {
+    // Pre-loop work is outside the per-message try/catch below — a transient
+    // DB error here must not reject this fire-and-forget entry point.
+    logger.error('mailAutoReply: failed to load tenant settings', {
+      tenantId,
+      error: err?.message || String(err),
+    });
+    return;
+  }
   if (!settings.enabled) return;
 
   for (const messageId of messageIds) {
     try {
-      await processOneMessage(tenantId, tenant?.name, settings, messageId);
+      await processOneMessage(tenantId, tenant?.name ?? undefined, settings, messageId);
     } catch (err: any) {
       // Should not happen — processOneMessage handles its own generation
       // failures — but guarantee the fire-and-forget contract regardless.
@@ -191,12 +214,14 @@ async function processOneMessage(
 
   let generatedBody: string;
   let usage: unknown;
+  let model: string;
   try {
     const ctx = await buildContext(tenantId, tenantName, inbound);
     const messages = buildAutoReplyMessages(ctx);
     const result = await chatCompletion(messages, { temperature: 0.4, maxTokens: 900 });
     generatedBody = (result.content || '').trim();
     usage = result.usage;
+    model = getAiModel();
   } catch (err: any) {
     await prisma.mailAiReplyDraft.create({
       data: {
@@ -215,18 +240,33 @@ async function processOneMessage(
 
   // Always land a pending draft first — a human always has something to
   // review, whether or not auto-send goes on to fire.
-  const draft = await prisma.mailAiReplyDraft.create({
-    data: {
-      tenantId,
-      inboundMessageId: messageId,
-      conversationId: inbound.conversationId || '',
-      clientId: inbound.clientId,
-      subject,
-      bodyText: generatedBody,
-      status: 'pending',
-      generationMeta: JSON.stringify({ usage }),
-    },
-  });
+  let draft;
+  try {
+    draft = await prisma.mailAiReplyDraft.create({
+      data: {
+        tenantId,
+        inboundMessageId: messageId,
+        conversationId: inbound.conversationId || '',
+        clientId: inbound.clientId,
+        subject,
+        bodyText: generatedBody,
+        status: 'pending',
+        generationMeta: JSON.stringify({ model, usage }),
+      },
+    });
+  } catch (err: any) {
+    if (err?.code === 'P2002') {
+      // Another overlapping run already drafted this message first — the AI
+      // spend already happened, but writing a 'failed' row here would be
+      // wrong (this run didn't fail, it lost a race). Log and move on.
+      logger.info('mailAutoReply: draft already created by a concurrent run', {
+        tenantId,
+        messageId,
+      });
+      return;
+    }
+    throw err;
+  }
 
   if (settings.mode !== 'auto') return;
 
@@ -239,7 +279,7 @@ async function processOneMessage(
   if (failingGuard) {
     await prisma.mailAiReplyDraft.update({
       where: { id: draft.id },
-      data: { generationMeta: JSON.stringify({ usage, heldBy: failingGuard }) },
+      data: { generationMeta: JSON.stringify({ model, usage, heldBy: failingGuard }) },
     });
     return;
   }
@@ -263,7 +303,7 @@ async function processOneMessage(
   } else {
     await prisma.mailAiReplyDraft.update({
       where: { id: draft.id },
-      data: { generationMeta: JSON.stringify({ usage, sendError: sendResult.error }) },
+      data: { generationMeta: JSON.stringify({ model, usage, sendError: sendResult.error }) },
     });
   }
 }
@@ -320,36 +360,60 @@ export async function approveDraft(
   userId: string,
   bodyOverride?: string
 ): Promise<{ sent: boolean; error?: string }> {
-  const draft = await loadOwnedPendingDraft(tenantId, draftId);
-  const body = bodyOverride ?? draft.bodyText;
-
-  const inbound = await prisma.mailMessage.findFirst({
-    where: { id: draft.inboundMessageId, tenantId },
-  });
-  if (!inbound) {
+  const draft = await prisma.mailAiReplyDraft.findFirst({ where: { id: draftId, tenantId } });
+  if (!draft) {
     throw new ApiError('DRAFT_NOT_FOUND', 'Draft not found', 404);
   }
 
-  const sendResult = await sendMailboxMessage(tenantId, userId, {
-    to: inbound.fromAddress,
-    subject: draft.subject,
-    body,
-    replyToMessageId: draft.inboundMessageId,
+  // Atomic claim: only the caller whose conditional update actually flips a
+  // row proceeds. Guards two near-simultaneous approvals that both pass a
+  // plain read-then-write pending check.
+  const claim = await prisma.mailAiReplyDraft.updateMany({
+    where: { id: draftId, tenantId, status: 'pending' },
+    data: { status: 'sending' },
   });
+  if (claim.count === 0) {
+    throw new ApiError('DRAFT_ALREADY_DECIDED', 'Draft has already been decided', 409);
+  }
 
-  await prisma.mailAiReplyDraft.update({
-    where: { id: draft.id },
-    data: {
-      status: sendResult.sent ? 'sent' : 'pending',
-      bodyText: body,
-      sentMessageId: sendResult.sent ? sendResult.dto.id : undefined,
-      decidedAt: sendResult.sent ? new Date() : undefined,
-      decidedByUserId: sendResult.sent ? userId : undefined,
-      error: sendResult.sent ? undefined : sendResult.error,
-    },
-  });
+  const body = bodyOverride ?? draft.bodyText;
 
-  return { sent: sendResult.sent, error: sendResult.error };
+  try {
+    const inbound = await prisma.mailMessage.findFirst({
+      where: { id: draft.inboundMessageId, tenantId },
+    });
+    if (!inbound) {
+      throw new ApiError('DRAFT_NOT_FOUND', 'Draft not found', 404);
+    }
+
+    const sendResult = await sendMailboxMessage(tenantId, userId, {
+      to: inbound.fromAddress,
+      subject: draft.subject,
+      body,
+      replyToMessageId: draft.inboundMessageId,
+    });
+
+    await prisma.mailAiReplyDraft.update({
+      where: { id: draft.id },
+      data: {
+        status: sendResult.sent ? 'sent' : 'pending',
+        bodyText: body,
+        sentMessageId: sendResult.sent ? sendResult.dto.id : undefined,
+        decidedAt: sendResult.sent ? new Date() : undefined,
+        decidedByUserId: sendResult.sent ? userId : undefined,
+        error: sendResult.sent ? undefined : sendResult.error,
+      },
+    });
+
+    return { sent: sendResult.sent, error: sendResult.error };
+  } catch (err) {
+    // Release the claim so the draft is not stuck in 'sending' forever.
+    await prisma.mailAiReplyDraft.update({
+      where: { id: draft.id },
+      data: { status: 'pending' },
+    });
+    throw err;
+  }
 }
 
 export async function dismissDraft(

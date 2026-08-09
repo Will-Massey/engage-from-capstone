@@ -8,6 +8,7 @@ const prismaMock = {
     count: jest.fn(),
     create: jest.fn(),
     update: jest.fn(),
+    updateMany: jest.fn(),
   },
   client: { findFirst: jest.fn() },
   job: { findMany: jest.fn() },
@@ -18,9 +19,11 @@ jest.mock('../../../config/database.js', () => ({ prisma: prismaMock }));
 
 const chatCompletionMock = jest.fn();
 const checkAiTokenBudgetMock = jest.fn();
+const getAiModelMock = jest.fn();
 jest.mock('../../ai/aiClient.js', () => ({
   chatCompletion: (...a: unknown[]) => chatCompletionMock(...a),
   checkAiTokenBudget: (...a: unknown[]) => checkAiTokenBudgetMock(...a),
+  getAiModel: (...a: unknown[]) => getAiModelMock(...a),
 }));
 
 const sendMailboxMessageMock = jest.fn();
@@ -29,7 +32,7 @@ jest.mock('../../mailboxService.js', () => ({
   getThread: jest.fn().mockResolvedValue([]),
 }));
 
-import { processNewInboundMessages } from '../index.js';
+import { processNewInboundMessages, approveDraft } from '../index.js';
 
 const inbound = {
   id: 'm1',
@@ -57,6 +60,8 @@ beforeEach(() => {
   prismaMock.mailAiReplyDraft.findFirst.mockResolvedValue(null);
   prismaMock.mailAiReplyDraft.count.mockResolvedValue(0);
   prismaMock.mailAiReplyDraft.create.mockImplementation(({ data }: any) => ({ id: 'd1', ...data }));
+  prismaMock.mailAiReplyDraft.update.mockImplementation(({ data }: any) => ({ id: 'd1', ...data }));
+  prismaMock.mailAiReplyDraft.updateMany.mockResolvedValue({ count: 1 });
   prismaMock.client.findFirst.mockResolvedValue({
     id: 'cl1',
     name: 'Acme Ltd',
@@ -66,6 +71,7 @@ beforeEach(() => {
   prismaMock.proposal.findMany.mockResolvedValue([]);
   prismaMock.documentRequest.findMany.mockResolvedValue([]);
   checkAiTokenBudgetMock.mockResolvedValue({ withinBudget: true });
+  getAiModelMock.mockReturnValue('grok-3-mini');
   chatCompletionMock.mockResolvedValue({
     content: 'Thanks Ada — here is the position.',
     usage: {},
@@ -77,8 +83,43 @@ describe('processNewInboundMessages — gates', () => {
   it('creates a pending draft and does not send in draft mode', async () => {
     await processNewInboundMessages('t1', ['m1']);
     expect(prismaMock.mailAiReplyDraft.create).toHaveBeenCalled();
-    expect(prismaMock.mailAiReplyDraft.create.mock.calls[0][0].data.status).toBe('pending');
+    const data = prismaMock.mailAiReplyDraft.create.mock.calls[0][0].data;
+    expect(data.status).toBe('pending');
     expect(sendMailboxMessageMock).not.toHaveBeenCalled();
+  });
+
+  it('stores the configured model alongside usage in generationMeta', async () => {
+    await processNewInboundMessages('t1', ['m1']);
+    const data = prismaMock.mailAiReplyDraft.create.mock.calls[0][0].data;
+    const meta = JSON.parse(data.generationMeta);
+    expect(meta.model).toBe('grok-3-mini');
+    expect(meta).toHaveProperty('usage');
+  });
+
+  it('resolves without throwing when the tenant lookup rejects, and makes no AI call', async () => {
+    prismaMock.tenant.findUnique.mockRejectedValue(new Error('connection pool exhausted'));
+    await expect(processNewInboundMessages('t1', ['m1'])).resolves.toBeUndefined();
+    expect(chatCompletionMock).not.toHaveBeenCalled();
+  });
+
+  it('treats a P2002 on draft create as a lost idempotency race and does not write a failed row', async () => {
+    prismaMock.mailAiReplyDraft.create.mockImplementation(() => {
+      const err: any = new Error('Unique constraint failed');
+      err.code = 'P2002';
+      throw err;
+    });
+    await expect(processNewInboundMessages('t1', ['m1'])).resolves.toBeUndefined();
+    expect(
+      prismaMock.mailAiReplyDraft.create.mock.calls.some(
+        (call: any) => call[0].data.status === 'failed'
+      )
+    ).toBe(false);
+  });
+
+  it('uses the inbound message itself as the thread when conversationId is null', async () => {
+    prismaMock.mailMessage.findFirst.mockResolvedValue({ ...inbound, conversationId: null });
+    await processNewInboundMessages('t1', ['m1']);
+    expect(prismaMock.mailMessage.findMany).not.toHaveBeenCalled();
   });
 
   it('does nothing when the tenant has not opted in', async () => {
@@ -176,6 +217,39 @@ describe('processNewInboundMessages — auto mode', () => {
     jest.useFakeTimers().setSystemTime(new Date('2026-08-09T10:00:00Z')); // Sunday
     await processNewInboundMessages('t1', ['m1']);
     jest.useRealTimers();
+    expect(sendMailboxMessageMock).not.toHaveBeenCalled();
+  });
+});
+
+describe('approveDraft — double-click guard', () => {
+  const pendingDraft = {
+    id: 'd1',
+    tenantId: 't1',
+    inboundMessageId: 'm1',
+    subject: 'Re: VAT question',
+    bodyText: 'Thanks Ada — here is the position.',
+    status: 'pending',
+  };
+
+  beforeEach(() => {
+    prismaMock.mailAiReplyDraft.findFirst.mockResolvedValue(pendingDraft);
+    prismaMock.mailMessage.findFirst.mockResolvedValue(inbound);
+  });
+
+  it('sends when the conditional claim wins', async () => {
+    prismaMock.mailAiReplyDraft.updateMany.mockResolvedValue({ count: 1 });
+    const result = await approveDraft('t1', 'd1', 'u1');
+    expect(result.sent).toBe(true);
+    expect(prismaMock.mailAiReplyDraft.updateMany).toHaveBeenCalledWith(
+      expect.objectContaining({ where: { id: 'd1', tenantId: 't1', status: 'pending' } })
+    );
+  });
+
+  it('rejects as already-decided when a concurrent approval already claimed the row', async () => {
+    prismaMock.mailAiReplyDraft.updateMany.mockResolvedValue({ count: 0 });
+    await expect(approveDraft('t1', 'd1', 'u1')).rejects.toMatchObject({
+      code: 'DRAFT_ALREADY_DECIDED',
+    });
     expect(sendMailboxMessageMock).not.toHaveBeenCalled();
   });
 });
