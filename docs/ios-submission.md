@@ -1,12 +1,16 @@
-# Engage for iOS — build and submission runbook
+# Engage Practice for iOS — build and submission runbook
 
-Engage ships to iOS as a Capacitor shell around the existing React SPA. There is
+Engage Practice ships to iOS as a Capacitor shell around the existing React SPA. There is
 no second codebase: `frontend/` is built with `CAPACITOR=true` and copied into
 `frontend/ios/App/App/public`. Anything true of the web app is true of the phone
 app unless this document says otherwise.
 
 - **Bundle ID:** `uk.co.capstonesoftware.engage`
-- **App name:** Engage · **Marketing version:** 1.0 · **Build:** 1
+- **App name:** Engage Practice — use this for the App Store Connect listing and
+  the home-screen name; it fits the home screen in full without truncating.
+  The bundle ID stays `….engage` because a bundle ID can never be changed once
+  registered, and it is never shown to users.
+- **Marketing version:** 1.0 · **Build:** 1
 - **Devices:** iPhone and iPad (`TARGETED_DEVICE_FAMILY = "1,2"`)
 - **Deployment target:** iOS 14.0
 - **Xcode used:** 26.4 · **CocoaPods:** 1.16.2
@@ -130,8 +134,8 @@ end to end.
 
 Suggested review notes:
 
-> Engage is a business tool for UK accountancy practices. Accounts are created
-> by a practice administrator on our website as part of a paid practice
+> Engage Practice is a business tool for UK accountancy practices. Accounts are
+> created by a practice administrator on our website as part of a paid practice
 > subscription; there is no consumer signup and nothing can be purchased inside
 > the app. The Subscription screen shows the practice's existing plan for
 > reference only.
