@@ -2,6 +2,7 @@ import { useState, useEffect, lazy, Suspense } from 'react';
 import { apiClient } from '../utils/api';
 import toast from 'react-hot-toast';
 import { CheckIcon } from '@heroicons/react/24/outline';
+import { isNativeApp } from '../lib/native';
 
 const StripePaymentForm = lazy(() => import('../components/payments/StripePaymentForm'));
 
@@ -17,6 +18,79 @@ interface PricingTier {
 }
 
 const TIER_ORDER = ['STARTER', 'PROFESSIONAL', 'ENTERPRISE'] as const;
+
+/**
+ * App Store Review Guideline 3.1.1.
+ *
+ * An Engage subscription is a digital service, so inside the iOS app it may not
+ * be sold by any mechanism other than in-app purchase — and 3.1.1 bars not just
+ * a card form but "buttons, external links, or other calls to action" pointing
+ * at an outside purchasing route. Linking out needs the External Purchase Link
+ * entitlement, which Capstone does not hold.
+ *
+ * Practices buy Engage on the web before their staff install the app, so the
+ * native build carries no purchase route at all: no tier storefront, no card
+ * form, and the Stripe SDK is never even loaded. What remains is a statement of
+ * the plan the practice already has, which is account status rather than a call
+ * to action. The review notes must describe the app this way, and they will be
+ * true — a mismatch between the notes and a live purchase surface is exactly
+ * what got The Forge rejected under 2.1(b).
+ */
+const NATIVE_PURCHASE_DISABLED = true;
+
+interface NativeSummaryProps {
+  subscription: { hasSubscription?: boolean; tier?: string; status?: string } | null;
+  tiers: Record<string, PricingTier>;
+}
+
+export const NativeSubscriptionSummary = ({ subscription, tiers }: NativeSummaryProps) => {
+  const tierKey = subscription?.tier;
+  const tier = tierKey ? tiers[tierKey] : undefined;
+
+  if (!subscription?.hasSubscription) {
+    return (
+      <div className="max-w-2xl mx-auto px-4 py-8">
+        <h1 className="text-2xl font-semibold text-gray-900">Your plan</h1>
+        <div className="mt-6 rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
+          <p className="text-gray-700">This practice does not have an active Engage plan yet.</p>
+          <p className="mt-3 text-sm text-gray-500">
+            Plans are held at practice level and arranged by your practice administrator.
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="max-w-2xl mx-auto px-4 py-8">
+      <h1 className="text-2xl font-semibold text-gray-900">Your plan</h1>
+
+      <div className="mt-6 rounded-xl border border-emerald-200 bg-white p-6 shadow-sm">
+        <div className="flex items-baseline justify-between gap-4">
+          <h2 className="text-xl font-semibold text-gray-900">{tier?.name || tierKey}</h2>
+          <span className="text-sm font-medium text-emerald-700">{subscription.status}</span>
+        </div>
+
+        {tier?.description && <p className="mt-1 text-sm text-gray-500">{tier.description}</p>}
+
+        {tier?.features?.length ? (
+          <ul className="mt-5 space-y-2 text-sm text-gray-600">
+            {tier.features.map((feature) => (
+              <li key={feature} className="flex items-start gap-2">
+                <CheckIcon className="h-4 w-4 text-emerald-500 mt-0.5 shrink-0" />
+                {feature}
+              </li>
+            ))}
+          </ul>
+        ) : null}
+
+        <p className="mt-6 border-t border-gray-100 pt-4 text-sm text-gray-500">
+          Your plan is managed by your practice administrator.
+        </p>
+      </div>
+    </div>
+  );
+};
 
 const Subscription = () => {
   const [provider, setProvider] = useState<'stripe' | null>(null);
@@ -45,6 +119,9 @@ const Subscription = () => {
       setTiers(response.data.tiers);
       const nextProvider = response.data.provider === 'stripe' ? 'stripe' : null;
       setProvider(nextProvider);
+
+      // Never initialise a payment SDK inside the native shell (3.1.1).
+      if (isNativeApp() && NATIVE_PURCHASE_DISABLED) return;
 
       if (nextProvider === 'stripe' && response.data.publishableKey?.startsWith('pk_')) {
         const [{ loadStripe }, { Elements }] = await Promise.all([
@@ -82,6 +159,11 @@ const Subscription = () => {
         </div>
       </div>
     );
+  }
+
+  // Native gets status only — no tier storefront, no card form, no link out.
+  if (isNativeApp() && NATIVE_PURCHASE_DISABLED) {
+    return <NativeSubscriptionSummary subscription={currentSubscription} tiers={tiers} />;
   }
 
   const activeTier = currentSubscription?.tier;

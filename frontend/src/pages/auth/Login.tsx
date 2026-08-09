@@ -7,6 +7,7 @@ import { EnvelopeIcon, EyeIcon, EyeSlashIcon, ShieldCheckIcon } from '@heroicons
 import { apiClient, clearCsrfCache, rememberCsrfToken } from '../../utils/api';
 import { appPath } from '../../utils/appBase';
 import { useAuthStore } from '../../stores/authStore';
+import { persistNativeTokens } from '../../lib/nativeSession';
 import toast from 'react-hot-toast';
 
 const loginSchema = z.object({
@@ -66,6 +67,7 @@ const Login = () => {
           return;
         }
 
+        await persistNativeTokens(response.data);
         setSession(response.data.user, response.data.user.tenant);
         rememberCsrfToken(response.data.csrfToken);
         toast.success('Welcome to Engage!');
@@ -99,6 +101,7 @@ const Login = () => {
       })) as any;
 
       if (response.success) {
+        await persistNativeTokens(response.data);
         setSession(response.data.user, response.data.user.tenant);
         rememberCsrfToken(response.data.csrfToken);
         toast.success('Welcome to Engage!');

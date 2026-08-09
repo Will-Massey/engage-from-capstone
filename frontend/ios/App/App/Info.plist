@@ -28,7 +28,7 @@
 	<string>Main</string>
 	<key>UIRequiredDeviceCapabilities</key>
 	<array>
-		<string>armv7</string>
+		<string>arm64</string>
 	</array>
 	<key>UISupportedInterfaceOrientations</key>
 	<array>
@@ -45,9 +45,16 @@
 	</array>
 	<key>UIViewControllerBasedStatusBarAppearance</key>
 	<true/>
+	<!-- Reached only through file pickers in the web layer: practice logo upload
+	     in Settings, and client identity documents in AML onboarding. -->
 	<key>NSCameraUsageDescription</key>
-	<string>Engage may use the camera to capture documents for proposals.</string>
+	<string>Engage uses the camera when you choose to photograph a document or your practice logo to upload.</string>
 	<key>NSPhotoLibraryUsageDescription</key>
-	<string>Engage may access photos to attach documents to proposals.</string>
+	<string>Engage accesses your photo library when you choose an image to upload, such as your practice logo or a client identity document.</string>
+	<!-- Engage uses only HTTPS and Apple-provided cryptography, which is exempt
+	     under category 5D992.c. Keeps the export-compliance prompt off every
+	     upload; the matching answers are in docs/ios-submission.md. -->
+	<key>ITSAppUsesNonExemptEncryption</key>
+	<false/>
 </dict>
 </plist>
