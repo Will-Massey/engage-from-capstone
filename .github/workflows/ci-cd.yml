@@ -27,10 +27,13 @@ on:
   workflow_dispatch:
 
 # Cost control: supersede in-flight CI when a newer commit lands on the same
-# ref (rapid master pushes were burning the free Actions minutes allowance).
+# ref (rapid pushes were burning the free Actions minutes allowance).
+# Cancel only PR runs — a master run can be mid-deploy (Neon backup, backend
+# then frontend), and a run-level cancel would kill it despite the deploy
+# job's own non-cancelling group. Master runs queue instead.
 concurrency:
   group: ci-cd-${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 # Default token scope: read-only. Jobs that need more (e.g. the
 # deploy-failure alert opening an issue) escalate at job level.
