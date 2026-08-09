@@ -30,7 +30,10 @@ export function AiReplyCard({ draft, busy, onApprove, onEdit, onDismiss }: Props
         <p className="text-xs text-slate-500">
           AI drafted this from the thread. Nothing sends until you approve or edit it.
         </p>
-        <div className="max-h-64 overflow-y-auto whitespace-pre-wrap rounded-lg border border-violet-100 bg-violet-50/50 p-3 text-sm text-slate-800 dark:border-violet-900 dark:bg-violet-950/20 dark:text-slate-100">
+        <div
+          tabIndex={0}
+          className="max-h-64 overflow-y-auto whitespace-pre-wrap rounded-lg border border-violet-100 bg-violet-50/50 p-3 text-sm text-slate-800 dark:border-violet-900 dark:bg-violet-950/20 dark:text-slate-100"
+        >
           {draft.bodyText}
         </div>
         <div className="flex flex-wrap gap-2">

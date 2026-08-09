@@ -23,3 +23,20 @@ export function draftForConversation(
 export function conversationIdsWithDrafts(drafts: AiReplyDraft[]): Set<string> {
   return new Set(drafts.filter((d) => d.status === 'pending').map((d) => d.conversationId));
 }
+
+/**
+ * An "Edit then send" click must only ever attach to the draft/conversation
+ * it was raised for. If the user switches to a different conversation (or
+ * the mail they were editing for no longer matches the one selected) before
+ * hitting send, the edit is abandoned rather than silently marking a
+ * different thread's draft as decided.
+ */
+export function editIsForSelectedConversation(
+  editingDraftId: string | null,
+  drafts: AiReplyDraft[],
+  selectedConversationId: string | null
+): boolean {
+  if (!editingDraftId || !selectedConversationId) return false;
+  const draft = drafts.find((d) => d.id === editingDraftId);
+  return draft?.conversationId === selectedConversationId;
+}

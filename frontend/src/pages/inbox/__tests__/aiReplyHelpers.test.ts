@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest';
 import {
   draftForConversation,
   conversationIdsWithDrafts,
+  editIsForSelectedConversation,
   type AiReplyDraft,
 } from '../aiReplyHelpers';
 
@@ -42,5 +43,27 @@ describe('conversationIdsWithDrafts', () => {
     ]);
     expect(set.has('c1')).toBe(true);
     expect(set.has('c2')).toBe(false);
+  });
+});
+
+describe('editIsForSelectedConversation', () => {
+  it('is true only when the editing draft belongs to the selected conversation', () => {
+    expect(editIsForSelectedConversation('d1', [draft()], 'c1')).toBe(true);
+  });
+
+  it('is false when nothing is being edited', () => {
+    expect(editIsForSelectedConversation(null, [draft()], 'c1')).toBe(false);
+  });
+
+  it('is false when no conversation is selected', () => {
+    expect(editIsForSelectedConversation('d1', [draft()], null)).toBe(false);
+  });
+
+  it('is false once the user switches to a different conversation', () => {
+    expect(editIsForSelectedConversation('d1', [draft()], 'c2')).toBe(false);
+  });
+
+  it('is false if the editing draft id no longer exists in the drafts list', () => {
+    expect(editIsForSelectedConversation('gone', [draft()], 'c1')).toBe(false);
   });
 });
