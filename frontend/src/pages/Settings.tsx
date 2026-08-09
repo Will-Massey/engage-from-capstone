@@ -1725,9 +1725,9 @@ const Settings = () => {
                     <p className="text-sm text-slate-500 dark:text-slate-300">
                       {mailAutoReplyForm.enabled
                         ? mailAutoReplyForm.mode === 'auto'
-                          ? 'Live — replies are sent to clients automatically, without anyone reading them first.'
-                          : 'Draft only — every reply waits for someone at the practice to approve it before it sends.'
-                        : 'Off — no AI replies are drafted or sent.'}
+                          ? 'Live. Replies are sent to clients automatically, without anyone reading them first.'
+                          : 'Draft only. Every reply waits for someone at the practice to approve it before it sends.'
+                        : 'Off. No AI replies are drafted or sent.'}
                     </p>
                   </div>
                   <div className="p-6 space-y-4">
