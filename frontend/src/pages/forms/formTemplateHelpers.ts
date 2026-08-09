@@ -97,7 +97,9 @@ export function sanitizeDraftForSave(draft: TemplateDraft): TemplateDraft {
     category: draft.category.trim() || 'Custom',
     fields: draft.fields.map((f) => {
       const options =
-        f.type === 'select' ? (f.options || []).map((o) => o.trim()).filter(Boolean) : undefined;
+        f.type === 'select'
+          ? [...new Set((f.options || []).map((o) => o.trim()).filter(Boolean))]
+          : undefined;
       const placeholder = f.placeholder?.trim() || undefined;
       return {
         id: f.id,

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { PlusIcon, TrashIcon, ArrowUpIcon, ArrowDownIcon } from '@heroicons/react/24/outline';
 import {
   FIELD_TYPES,
@@ -21,6 +21,14 @@ export default function TemplateEditor({ initialDraft, busy, onSave, onCancel }:
   const [draft, setDraft] = useState<TemplateDraft>(initialDraft);
   const [showProblems, setShowProblems] = useState(false);
   const problems = validateTemplateDraft(draft);
+
+  useEffect(() => {
+    function onKeyDown(e: KeyboardEvent) {
+      if (e.key === 'Escape') onCancel();
+    }
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [onCancel]);
 
   function patchField(index: number, patch: Partial<EditableField>) {
     setDraft((d) => ({
@@ -80,13 +88,17 @@ export default function TemplateEditor({ initialDraft, busy, onSave, onCancel }:
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
       role="dialog"
       aria-modal="true"
+      aria-labelledby="template-editor-title"
       onClick={onCancel}
     >
       <div
         className="max-h-[85vh] w-full max-w-2xl overflow-y-auto rounded-xl bg-white p-5 shadow-xl dark:bg-slate-900"
         onClick={(e) => e.stopPropagation()}
       >
-        <h3 className="text-lg font-semibold text-slate-900 dark:text-white">
+        <h3
+          id="template-editor-title"
+          className="text-lg font-semibold text-slate-900 dark:text-white"
+        >
           {draft.id ? 'Edit template' : 'New template'}
         </h3>
 
@@ -111,8 +123,9 @@ export default function TemplateEditor({ initialDraft, busy, onSave, onCancel }:
           </label>
           <label className="block text-xs text-slate-500">
             Description
-            <input
+            <textarea
               className="input-field mt-1 text-sm"
+              rows={2}
               value={draft.description}
               maxLength={500}
               onChange={(e) => setDraft((d) => ({ ...d, description: e.target.value }))}

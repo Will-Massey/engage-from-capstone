@@ -115,7 +115,7 @@ describe('sanitizeDraftForSave', () => {
         name: '  Pack  ',
         category: '  ',
         fields: [
-          { id: 's', type: 'select', label: ' Scheme ', options: [' FRS ', '', 'Standard'] },
+          { id: 's', type: 'select', label: ' Scheme ', options: [' FRS ', '', 'Standard', 'FRS'] },
           { id: 't', type: 'text', label: 'Notes', options: ['stray'], placeholder: '  ' },
         ],
       })
