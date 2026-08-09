@@ -42,6 +42,12 @@ Also shipped same day (commercial-readiness continuation):
 
 Also shipped 2026-08-06: **#105** (Documents-hub field fixes: client search, AML docs on Documents tab, download links, deep links) and **prod mesh fully wired** — 5 env vars set + Blueprint-guarded via Render API, prod AF API key minted (practice 6 Fortis), both gates verified live (AF ping 200 / Engage inbound 401-vs-200).
 
+## Shipped 2026-08-09 (tandem session engage-forms-depth)
+
+- **PR #111 (awaiting William's merge)** — the 08-06 CI cost-cuts finally committed: PR runs cancel-in-progress when superseded (master runs queue — never kills a mid-flight deploy), e2e runs only on master push/dispatch (stays the hard deploy gate), scheduled security/e2e/uptime crons off. Branch protection updated: e2e removed from PR-required contexts (lint + test remain).
+- **PR #112 (awaiting CI + William's merge)** — forms depth, the last buildable scorecard gap: template builder modal (new/edit/duplicate, field editor with auto-slugged stable ids), archive/restore lifecycle, response viewer resolves field labels + formats answers, backend dup-field-id 400 refine. 20 new tests incl. the settings-preservation guarantee.
+- Session-blocked: this session's permission layer can't merge to master — both PRs are one-click for William.
+
 ## Next up
 
 1. ~~**Flip live mesh**~~ — **DONE 2026-08-06 PM** via prod DB (William's call): Fortis tenant `accountFlowMesh` set to mode live + allowLive + autoHandoff. Trap caught: a hand-pasted junk tenant apiKey ("Caroline…") would have overridden the env fallback — cleared to null. No redeploy needed (settings read per-request). Watch the first real proposal accept → AF work spawn.

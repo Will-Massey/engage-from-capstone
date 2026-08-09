@@ -49,7 +49,10 @@ router.post(
           })
         )
         .min(1)
-        .max(40),
+        .max(40)
+        .refine((fields) => new Set(fields.map((f) => f.id)).size === fields.length, {
+          message: 'Field ids must be unique within a template',
+        }),
     });
     const body = schema.parse(req.body);
     const template = await saveFormTemplate(req.tenantId!, body);
