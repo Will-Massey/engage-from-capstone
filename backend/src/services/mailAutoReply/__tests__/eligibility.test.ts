@@ -77,6 +77,16 @@ describe('containsMoneyFigure', () => {
     'the fee is 450',
     '£1,247.50',
     'we invoiced 2500 last month',
+    // Regression: a year-shaped or time-shaped number is still money when a
+    // money-context word is present — the old implementation stripped these
+    // as dates/times/years before it ever looked at context and missed them.
+    'Your bill is 2024',
+    'we invoiced 1999 for the project',
+    'the fee is 12.30',
+    'balance owed 21.45',
+    // Accepted false positive: grouped thousands flags even for a non-money
+    // count, because the bias is toward flagging for human review.
+    'we found 12,500 transactions in your feed',
   ])('flags %s', (text) => {
     expect(containsMoneyFigure(text)).toBe(true);
   });
@@ -94,6 +104,7 @@ describe('containsMoneyFigure', () => {
     'see my email of 09/08/2026',
     'your 2026 return',
     'we spoke at 09:15',
+    'I have attached 2 documents for your records.',
   ])('does not flag %s', (text) => {
     expect(containsMoneyFigure(text)).toBe(false);
   });

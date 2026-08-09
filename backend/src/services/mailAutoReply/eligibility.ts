@@ -68,31 +68,96 @@ export function isAutomatedSender(fromAddress: string, subject: string): boolean
  * client, so this predicate blocks AUTO-SEND only; the draft itself keeps the
  * useful content. Dates, years and small counts must not trip it.
  *
- * Strategy: strip out patterns that are definitely NOT money (times, dates,
- * standalone years) first, then look for money signals in what remains — a
- * currency symbol or word, grouped thousands, a 2-decimal-place number, or a
- * bare integer of 100 or more. Small counts under 100 stay unflagged.
+ * "12.30" and "2024" are genuinely ambiguous in isolation — a clock time and
+ * a fee look identical, as do a year and a bill. No pattern can resolve that
+ * ambiguity from the number alone, so this does NOT strip or pre-remove
+ * date/time/year-shaped text and then scan what's left (that approach ate
+ * real amounts like "the fee is 12.30" and "Your bill is 2024"). Instead it
+ * classifies by CONTEXT — evidence that a number is money, found anywhere in
+ * the text:
+ *   1. a currency symbol/word sits with a number (£, $, €, gbp, pound(s),
+ *      pence, or a trailing "p" as in "50p");
+ *   2. grouped thousands (1,234 or 90,000) — flagged even for non-money
+ *      counts like "12,500 transactions", which is an acceptable false
+ *      positive given the bias toward flagging;
+ *   3. a money-context word (fee, bill, invoice, cost, owed, balance, due,
+ *      pay, total, price, quote, salary, turnover, ...) appears anywhere
+ *      alongside any number anywhere.
+ * A bare 2-decimal-place number on its own is deliberately NOT a signal —
+ * that's what wrongly caught clock times like "14.30".
  */
+const MONEY_CONTEXT_WORDS = [
+  'fee',
+  'fees',
+  'bill',
+  'billed',
+  'invoice',
+  'invoiced',
+  'charge',
+  'charged',
+  'cost',
+  'costs',
+  'owed',
+  'owing',
+  'balance',
+  'due',
+  'pay',
+  'payable',
+  'payment',
+  'paid',
+  'refund',
+  'rebate',
+  'liability',
+  'total',
+  'amount',
+  'price',
+  'quote',
+  'quoted',
+  'deposit',
+  'instalment',
+  'installment',
+  'salary',
+  'wage',
+  'wages',
+  'turnover',
+  'profit',
+  'loss',
+  'expense',
+  'expenses',
+  'worth',
+  'sum',
+];
+
+const MONEY_CONTEXT_WORD_RE = new RegExp(`\\b(${MONEY_CONTEXT_WORDS.join('|')})\\b`, 'i');
+
+/** Currency symbol directly against a digit: £1,247.50, $90, €12. */
+function hasCurrencySymbol(text: string): boolean {
+  return /[£$€]\s?\d/.test(text);
+}
+
+/** A number next to a currency word: "90,000 GBP", "12 pounds", "50p". */
+function hasCurrencyWord(text: string): boolean {
+  return /\b\d[\d,]*(\.\d+)?\s?(gbp|pounds?|pence)\b|\b\d[\d,]*(\.\d+)?p\b/i.test(text);
+}
+
+/** Grouped thousands: 1,234 or 90,000, with or without a decimal tail. */
+function hasGroupedThousands(text: string): boolean {
+  return /\b\d{1,3}(,\d{3})+(\.\d+)?\b/.test(text);
+}
+
+/** A money-context word (fee, bill, owed, ...) anywhere alongside any number. */
+function hasMoneyContextWordWithNumber(text: string): boolean {
+  return MONEY_CONTEXT_WORD_RE.test(text) && /\d/.test(text);
+}
+
 export function containsMoneyFigure(text: string): boolean {
   const body = text || '';
-  if (/[£$€]\s?\d/.test(body)) return true;
-  if (/\d[\d,]*(\.\d{2})?\s?(gbp|pounds?|pence)\b/i.test(body)) return true;
-
-  const normalised = body
-    // Times: hh:mm or hh.mm, hours 0-23, minutes 00-59.
-    .replace(/\b([01]?\d|2[0-3])[:.]([0-5]\d)\b/g, ' ')
-    // Dates: dd/mm/yyyy, dd.mm.yyyy, dd-mm-yyyy.
-    .replace(/\b\d{1,2}[/.-]\d{1,2}[/.-]\d{2,4}\b/g, ' ')
-    // Standalone 4-digit years, 1900-2100.
-    .replace(/\b(19\d{2}|20\d{2}|2100)\b/g, ' ');
-
-  // Grouped thousands (90,000) or a 2-decimal-place figure (1247.50).
-  if (/\b\d{1,3}(,\d{3})+(\.\d+)?\b/.test(normalised)) return true;
-  if (/\b\d+\.\d{2}\b/.test(normalised)) return true;
-
-  // A bare integer of 100 or more is treated as a possible amount.
-  const bareIntegers = normalised.match(/\b\d+\b/g) || [];
-  return bareIntegers.some((n) => Number(n) >= 100);
+  return (
+    hasCurrencySymbol(body) ||
+    hasCurrencyWord(body) ||
+    hasGroupedThousands(body) ||
+    hasMoneyContextWordWithNumber(body)
+  );
 }
 
 /**
