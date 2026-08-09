@@ -18,6 +18,7 @@ import { loadTenantEmailContext } from './tenantEmailSettings.js';
 import { createGraphMailClient } from './mail/graphMailClient.js';
 import { createGmailMailClient } from './mail/gmailMailClient.js';
 import type { MailProviderClient, ProviderMessage } from './mail/types.js';
+import { processNewInboundMessages } from './mailAutoReply/index.js';
 
 // ==================== Shared DTO ====================
 
@@ -292,11 +293,17 @@ async function findLocalSendMatch(
   return match ? { id: match.id } : null;
 }
 
+type UpsertOutcome = {
+  outcome: 'created' | 'updated';
+  id: string;
+  direction: 'INBOUND' | 'OUTBOUND';
+};
+
 async function upsertProviderMessage(
   tenantId: string,
   provider: EmailProvider,
   pm: ProviderMessage
-): Promise<'created' | 'updated'> {
+): Promise<UpsertOutcome> {
   const existing = await prisma.mailMessage.findUnique({
     where: { tenantId_provider_externalId: { tenantId, provider, externalId: pm.externalId } },
     select: { id: true, clientId: true },
@@ -313,7 +320,7 @@ async function upsertProviderMessage(
           internetMessageId: pm.internetMessageId || null,
         },
       });
-      return 'updated';
+      return { outcome: 'updated', id: localMatch.id, direction: pm.direction };
     }
   }
 
@@ -349,12 +356,12 @@ async function upsertProviderMessage(
     // message so a re-sync never accumulates duplicate rows.
     await prisma.mailAttachment.deleteMany({ where: { messageId: existing.id } });
     await createAttachmentRows(existing.id, pm.attachments);
-    return 'updated';
+    return { outcome: 'updated', id: existing.id, direction: pm.direction };
   }
   try {
     const created = await prisma.mailMessage.create({ data: { ...data, tenantId } });
     await createAttachmentRows(created.id, pm.attachments);
-    return 'created';
+    return { outcome: 'created', id: created.id, direction: pm.direction };
   } catch (e: any) {
     // F2: webhook bursts can fire concurrent syncMailbox runs for the same
     // tenant; both can reach this findUnique-then-create path for the same
@@ -370,7 +377,7 @@ async function upsertProviderMessage(
         await prisma.mailMessage.update({ where: { id: winner.id }, data });
         await prisma.mailAttachment.deleteMany({ where: { messageId: winner.id } });
         await createAttachmentRows(winner.id, pm.attachments);
-        return 'updated';
+        return { outcome: 'updated', id: winner.id, direction: pm.direction };
       }
     }
     throw e;
@@ -437,6 +444,7 @@ async function syncMailboxInternal(tenantId: string): Promise<SyncMailboxResult>
 
   let imported = 0;
   let updated = 0;
+  const createdInboundIds: string[] = [];
   try {
     const [inboxPage, sentPage] = await Promise.all([
       providerClient.syncInbox(syncState?.inboxDeltaLink ?? null),
@@ -445,8 +453,12 @@ async function syncMailboxInternal(tenantId: string): Promise<SyncMailboxResult>
 
     for (const pm of [...inboxPage.messages, ...sentPage.messages]) {
       const result = await upsertProviderMessage(tenantId, provider, pm);
-      if (result === 'created') imported++;
-      else updated++;
+      if (result.outcome === 'created') {
+        imported++;
+        if (result.direction === 'INBOUND') createdInboundIds.push(result.id);
+      } else {
+        updated++;
+      }
     }
 
     await prisma.mailboxSyncState.upsert({
@@ -469,6 +481,16 @@ async function syncMailboxInternal(tenantId: string): Promise<SyncMailboxResult>
         lastSyncError: null,
       },
     });
+
+    // AI autoreply is best-effort and must never fail a healthy sync: the
+    // tenant gate lives inside the service, so this call is a no-op for
+    // tenants that have not opted in. Fire-and-forget, same isolation as the
+    // sync job's per-tenant try/catch.
+    if (createdInboundIds.length > 0) {
+      void processNewInboundMessages(tenantId, createdInboundIds).catch((err) =>
+        logger.error('mail autoreply processing failed', { err, tenantId })
+      );
+    }
 
     return { imported, updated, ok: true };
   } catch (e: any) {
