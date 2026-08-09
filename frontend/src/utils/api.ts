@@ -2,6 +2,14 @@ import axios, { AxiosInstance, AxiosError, AxiosRequestConfig } from 'axios';
 import toast from 'react-hot-toast';
 import { useAuthStore } from '../stores/authStore';
 import { appPath, appRelativePath } from './appBase';
+import { isNativeApp } from '../lib/native';
+import {
+  clearNativeSession,
+  nativeAccessToken,
+  nativeRefreshToken,
+  saveNativeSession,
+  tokensFromAuthResponse,
+} from '../lib/nativeSession';
 import type { ApiResponse } from '@uk-proposal-platform/shared';
 import type { AuthMePayload, AuthUserListItem, LoginPayload, RegisterPayload } from '../types/auth';
 import type {
@@ -262,7 +270,9 @@ const api: AxiosInstance = axios.create({
     'Content-Type': 'application/json',
   },
   timeout: 30000,
-  withCredentials: true, // Required for cookies (httpOnly auth + CSRF)
+  // Cookies are the web auth mechanism. The native shell is cross-site to the
+  // API and gets no cookies at all — it uses bearer tokens (lib/nativeSession).
+  withCredentials: !isNativeApp(),
 });
 
 // Get CSRF token from cookie
@@ -436,11 +446,18 @@ export async function buildAuthedFetchHeaders(
 // Request interceptor
 api.interceptors.request.use(
   async (config) => {
-    const token = useAuthStore.getState().token;
+    const native = isNativeApp();
+    const token = useAuthStore.getState().token || (native ? nativeAccessToken() : null);
     const tenant = useAuthStore.getState().tenant;
 
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
+    }
+
+    // Declares the native contract to the backend, which pairs it with an
+    // Origin check before returning tokens in the body (utils/nativeClient.ts).
+    if (native) {
+      config.headers['X-Client'] = 'ios';
     }
 
     // Add tenant header if available
@@ -448,10 +465,14 @@ api.interceptors.request.use(
       config.headers['X-Tenant-Id'] = tenant.id;
     }
 
-    // Add CSRF token for state-changing requests (skip auth/public routes — backend exempts them)
+    // Add CSRF token for state-changing requests (skip auth/public routes — backend exempts them).
+    // Native holds no cookies, so there is no ambient credential for a forged
+    // request to ride on; the backend exempts bearer-authenticated native calls.
     const method = config.method?.toUpperCase() || '';
     const needsCsrf =
-      ['POST', 'PUT', 'DELETE', 'PATCH'].includes(method) && !isCsrfExemptRequest(config.url);
+      !native &&
+      ['POST', 'PUT', 'DELETE', 'PATCH'].includes(method) &&
+      !isCsrfExemptRequest(config.url);
 
     if (needsCsrf) {
       let csrfToken = await fetchCsrfToken();
@@ -572,8 +593,14 @@ api.interceptors.response.use(
           ) {
             originalRequest._retry = true;
             try {
-              const refreshResponse = (await api.post('/auth/refresh', {})) as any;
+              // Web sends nothing — the refresh cookie rides along. Native has
+              // no cookies, so it presents the stored refresh token in the body
+              // and stores the rotated pair the server returns.
+              const body = isNativeApp() ? { refreshToken: nativeRefreshToken() } : {};
+              const refreshResponse = (await api.post('/auth/refresh', body)) as any;
               if (refreshResponse?.success) {
+                const rotated = tokensFromAuthResponse(refreshResponse.data);
+                if (rotated) await saveNativeSession(rotated);
                 return api(originalRequest);
               }
             } catch {

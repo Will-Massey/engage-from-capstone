@@ -103,6 +103,10 @@ export const corsOptions = {
     'X-Tenant-Id',
     'X-Request-Id',
     'X-CSRF-Token',
+    // Sent by the Capacitor iOS shell (utils/nativeClient.ts). Omitting it makes
+    // the CORS preflight reject the header, so every API call from the app fails
+    // as a network error before it reaches a route.
+    'X-Client',
     'X-Test-Mode',
     'X-Test-Mode-Secret',
   ],

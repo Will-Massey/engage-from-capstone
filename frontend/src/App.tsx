@@ -4,6 +4,8 @@ import { AnimatePresence, motion } from 'framer-motion';
 import { useAuthStore } from './stores/authStore';
 import { apiClient, ensureCsrfReady, hydrateCsrfCache, rememberCsrfToken } from './utils/api';
 import { appRelativePath } from './utils/appBase';
+import { isNativeApp } from './lib/native';
+import { nativeSessionReady, retryOnTransientFailure } from './lib/nativeSession';
 
 // Layouts (kept eager — lightweight shells shared across routes)
 import DashboardLayout from './components/layout/DashboardLayout';
@@ -676,14 +678,26 @@ function App() {
         return;
       }
 
+      // Native restores from persisted bearer tokens, not cookies — the first
+      // request must not go out before they are loaded.
+      const native = isNativeApp();
+      if (native) await nativeSessionReady();
+
       hydrateCsrfCache();
       setLoading(true);
       try {
-        const response = (await apiClient.getMe()) as any;
+        // The API is a Render service that cold-starts. On the web a slow first
+        // response just delays the page, but on a phone the launch request is
+        // the session check — treating a timeout as a rejection would sign the
+        // user out (and wipe their stored refresh token) for a network blip.
+        // Retry transient failures; only a real auth rejection ends the session.
+        const response = (await (native
+          ? retryOnTransientFailure(() => apiClient.getMe())
+          : apiClient.getMe())) as any;
         if (response.success) {
           rememberCsrfToken(response.data.csrfToken);
           setSession(response.data.user, response.data.user.tenant);
-          await ensureCsrfReady();
+          if (!native) await ensureCsrfReady();
         } else {
           clearAuth();
         }

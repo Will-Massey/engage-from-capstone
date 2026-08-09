@@ -10,6 +10,7 @@ import {
   registerCsrfToken,
 } from '../utils/csrfStore.js';
 import { env } from '../config/env.js';
+import { isNativeBearerRequest } from '../utils/nativeClient.js';
 
 // Read the validated env (JWT_SECRET is guaranteed present, min 32 chars) so
 // these are typed `string`, not `string | undefined` from a raw process.env read.
@@ -329,6 +330,16 @@ export const csrfProtection = async (
 ): Promise<void> => {
   // Skip CSRF for GET, HEAD, OPTIONS requests (they should be safe)
   if (['GET', 'HEAD', 'OPTIONS'].includes(req.method)) {
+    next();
+    return;
+  }
+
+  // Native (Capacitor) clients authenticate with a bearer token and are issued
+  // no cookies at all. CSRF defends against ambient credentials being replayed
+  // by a foreign origin; an Authorization header is not ambient, so there is
+  // nothing for a forged cross-origin request to ride on. The gate is Origin-
+  // based and unreachable from a browser context — see utils/nativeClient.ts.
+  if (isNativeBearerRequest(req)) {
     next();
     return;
   }

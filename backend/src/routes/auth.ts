@@ -29,6 +29,7 @@ import { enforceTierLimit } from '../middleware/tierLimits.js';
 import { gdprService } from '../services/gdprService.js';
 import { createEmailService } from '../services/emailService.js';
 import { setAuthCookies, clearAuthCookies, issueCsrfToken } from '../utils/authCookies.js';
+import { isNativeClient } from '../utils/nativeClient.js';
 import { canAssignRole, canManageUser } from '../constants/roles.js';
 
 const router = Router();
@@ -54,6 +55,7 @@ type AuthUser = {
 };
 
 async function issueAuthSession(
+  req: import('express').Request,
   res: import('express').Response,
   user: AuthUser,
   options?: { rememberMe?: boolean }
@@ -68,11 +70,19 @@ async function issueAuthSession(
   });
 
   const refreshToken = await generateRefreshToken(user.id);
-  const { csrfToken } = setAuthCookies(res, accessToken, refreshToken, options);
+
+  // Native (Capacitor) clients cannot receive cookies — see utils/nativeClient.ts.
+  // They get the tokens in the body and no cookies at all: one auth mode per
+  // client, so there is never an ambient-credential path to confuse with bearer.
+  const native = isNativeClient(req);
+  const csrfToken = native
+    ? undefined
+    : setAuthCookies(res, accessToken, refreshToken, options).csrfToken;
 
   res.json({
     success: true,
     data: {
+      ...(native ? { accessToken, refreshToken } : {}),
       csrfToken,
       user: {
         id: user.id,
@@ -251,7 +261,7 @@ router.post(
       data: { lastLoginAt: new Date() },
     });
 
-    await issueAuthSession(res, user, { rememberMe: rememberMe === true });
+    await issueAuthSession(req, res, user, { rememberMe: rememberMe === true });
   })
 );
 
@@ -383,12 +393,17 @@ router.post(
       where: { id: tokenRecord.id },
     });
 
-    const { csrfToken } = setAuthCookies(res, accessToken, newRefreshToken);
+    // Native clients hold the rotated pair themselves; browsers get cookies.
+    const native = isNativeClient(req);
+    const csrfToken = native
+      ? undefined
+      : setAuthCookies(res, accessToken, newRefreshToken).csrfToken;
 
     res.json({
       success: true,
       data: {
         message: 'Session refreshed',
+        ...(native ? { accessToken, refreshToken: newRefreshToken } : {}),
         csrfToken,
       },
     });
@@ -1223,7 +1238,7 @@ router.post(
     });
 
     logger.info(`2FA login successful: ${user.email} (${user.id})`);
-    await issueAuthSession(res, user);
+    await issueAuthSession(req, res, user);
   })
 );
 

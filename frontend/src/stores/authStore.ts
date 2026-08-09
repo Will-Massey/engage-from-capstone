@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { clearAllProposalDrafts } from '../components/proposals/proposalBuilderDraft';
+import { clearNativeSession } from '../lib/nativeSession';
 import type { AuthTenant, AuthUser } from '../types/auth';
 
 export type User = AuthUser & { createdAt?: string };
@@ -51,6 +52,7 @@ export const useAuthStore = create<AuthState>()(
 
       clearAuth: () => {
         clearAllProposalDrafts();
+        void clearNativeSession();
         set({
           user: null,
           tenant: null,
@@ -62,6 +64,7 @@ export const useAuthStore = create<AuthState>()(
 
       logout: () => {
         clearAllProposalDrafts();
+        void clearNativeSession();
         set({
           user: null,
           tenant: null,
