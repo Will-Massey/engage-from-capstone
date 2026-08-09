@@ -1,6 +1,6 @@
 # Engage mobile shells (Capacitor) — W4.1
 
-**Status:** iOS project scaffolded under `frontend/ios/`; Android add when a Mac/Linux agent or local SDK is available.  
+**Status:** iOS project scaffolded under `frontend/ios/`; **Android platform committed under `frontend/android/` (2026-08-09)** — build APKs via the `Android debug APK` workflow (Actions tab; CI is the canonical Android build env, local boxes need no SDK). iOS ship steps: `docs/IOS_TANDEM_RUNBOOK.md`.  
 **Gate:** Cut iOS only after `docs/DESKTOP_WALKTHROUGH.md` is signed off.  
 **App id:** `uk.co.capstonesoftware.engage`  
 **Web dir:** `frontend/dist` (Capacitor build mode)
