@@ -1121,7 +1121,7 @@ export default function FirmInbox() {
                   {editingSelectedDraft && (
                     <p className="flex items-center gap-1.5 rounded-lg border border-violet-200 bg-violet-50/60 px-2.5 py-1.5 text-xs font-medium text-violet-800 dark:border-violet-900 dark:bg-violet-950/30 dark:text-violet-200">
                       <SparklesIcon className="h-3.5 w-3.5 shrink-0" aria-hidden />
-                      Sending the reviewed AI reply — this marks the suggested draft as sent.
+                      Sending the reviewed AI reply. This marks the suggested draft as sent.
                     </p>
                   )}
                   <input
