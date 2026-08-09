@@ -359,6 +359,8 @@ model Tenant {
   documentRequests      DocumentRequest[]
   mailMessages          MailMessage[]
   mailboxSyncState      MailboxSyncState?
+  jobTemplates          JobTemplate[]
+  jobRecurrences        JobRecurrence[]
 
   @@index([subdomain])
   @@index([isActive])
@@ -409,6 +411,7 @@ model User {
   timeEntries                TimeEntry[]
   jobActivities              JobActivity[]
   practiceLettersAuthored    PracticeLetter[]    @relation("PracticeLetterAuthor")
+  jobRecurrenceAssignments   JobRecurrence[]     @relation("JobRecurrenceAssignee")
 
   @@unique([email, tenantId])
   @@index([tenantId])
@@ -554,6 +557,7 @@ model Client {
   practiceLetters PracticeLetter[]
   documentRequests DocumentRequest[]
   mailMessages    MailMessage[]
+  jobRecurrences  JobRecurrence[]
 
   @@unique([tenantId, contactEmail])
   @@index([tenantId])
@@ -1287,6 +1291,11 @@ model Job {
   proposalId String?   @unique
   proposal   Proposal? @relation(fields: [proposalId], references: [id], onDelete: SetNull)
 
+  recurrenceId String?
+  recurrence   JobRecurrence? @relation("JobFromRecurrence", fields: [recurrenceId], references: [id], onDelete: SetNull)
+  /// Set only on recurrence-generated jobs; with recurrenceId this makes generation idempotent.
+  periodKey    String?
+
   assigneeId String?
   assignee   User?   @relation("JobAssignee", fields: [assigneeId], references: [id], onDelete: SetNull)
 
@@ -1308,6 +1317,7 @@ model Job {
   mailMessages    MailMessage[]
 
   @@unique([tenantId, reference])
+  @@unique([recurrenceId, periodKey])
   @@index([tenantId])
   @@index([tenantId, boardColumn])
   @@index([clientId])
@@ -1512,6 +1522,101 @@ model JobActivity {
 
   @@index([jobId])
   @@index([createdAt])
+}
+
+// ==================== JOB TEMPLATES & RECURRENCE ====================
+
+enum RecurrenceCadence {
+  MONTHLY
+  QUARTERLY
+  ANNUAL
+}
+
+/// What the recurrence's due date is derived from.
+enum RecurrenceAnchor {
+  CLIENT_YEAR_END        // Client.yearEnd (+ offset)
+  CLIENT_VAT_DUE         // Client.nextVatDueDate
+  CLIENT_ACCOUNTS_DUE    // Client.nextAccountsDueDate
+  CLIENT_CONFIRMATION_DUE// Client.nextConfirmationStatementDue
+  SELF_ASSESSMENT        // 31 Jan
+  FIXED_DAY_OF_PERIOD    // e.g. payroll: day N of each month
+}
+
+model JobTemplate {
+  id          String   @id @default(uuid())
+  name        String
+  description String?
+  /// Optional hint reused by proposal-spawned jobs; free text matching existing service categories.
+  serviceCategory String?
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  tenantId String
+  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  phases      JobTemplatePhase[]
+  recurrences JobRecurrence[]
+
+  @@unique([tenantId, name])
+  @@index([tenantId, isActive])
+}
+
+model JobTemplatePhase {
+  id        String @id @default(uuid())
+  name      String
+  sortOrder Int    @default(0)
+
+  templateId String
+  template   JobTemplate @relation(fields: [templateId], references: [id], onDelete: Cascade)
+
+  items JobTemplateChecklistItem[]
+
+  @@index([templateId])
+}
+
+model JobTemplateChecklistItem {
+  id        String @id @default(uuid())
+  label     String
+  sortOrder Int    @default(0)
+
+  phaseId String
+  phase   JobTemplatePhase @relation(fields: [phaseId], references: [id], onDelete: Cascade)
+
+  @@index([phaseId])
+}
+
+model JobRecurrence {
+  id        String            @id @default(uuid())
+  cadence   RecurrenceCadence
+  anchor    RecurrenceAnchor
+  /// Days BEFORE the computed due date that the job should be created.
+  leadDays  Int               @default(14)
+  /// For FIXED_DAY_OF_PERIOD: which day of the month. Ignored otherwise.
+  dayOfPeriod Int?
+  /// Deliberate opt-in. Nothing generates while false.
+  isActive  Boolean           @default(false)
+  /// Idempotency: the last period this recurrence generated for, e.g. "2026-Q3", "2026-08", "2026".
+  lastPeriodKey String?
+  lastRunAt DateTime?
+  nextDueAt DateTime?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  tenantId String
+  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  clientId String
+  client   Client @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  templateId String
+  template   JobTemplate @relation(fields: [templateId], references: [id], onDelete: Restrict)
+  assigneeId String?
+  assignee   User?  @relation("JobRecurrenceAssignee", fields: [assigneeId], references: [id], onDelete: SetNull)
+
+  jobs Job[] @relation("JobFromRecurrence")
+
+  @@index([tenantId, isActive])
+  @@index([clientId])
+  @@index([templateId])
 }
 
 // ==================== PRACTICE ADMIN LETTERS ====================
