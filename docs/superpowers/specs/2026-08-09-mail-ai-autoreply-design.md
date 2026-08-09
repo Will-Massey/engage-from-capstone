@@ -209,12 +209,25 @@ Applied in both modes unless noted.
 
 - at most **one AI-sent reply per conversation per 4 hours** — the bot-loop
   damper: two autoresponders cannot ping-pong,
+- at most **20 AI auto-sends per tenant per rolling 24 hours** — the
+  per-conversation damper bounds one thread but not an adversary opening many,
+  so this bounds the tenant-wide blast radius,
+- **the draft contains no currency figure.** The number-shy rule is enforced by
+  the prompt, but prompt-only is not enforcement: a deterministic
+  `containsMoneyFigure` check means any draft mentioning an amount is never
+  auto-sent. It stays pending for a human. General thresholds (the VAT
+  registration threshold, a tax rate) are legitimate content in a draft — they
+  simply buy a human read before a client sees them,
 - **UK business hours only** (Mon–Fri, 08:00–18:00 Europe/London) when
-  `businessHoursOnly` is true, with a 2–5 minute randomised delay so replies do
-  not arrive suspiciously instantly; outside hours the draft simply waits as a
+  `businessHoursOnly` is true; outside hours the draft simply waits as a
   pending draft,
 - if any guard fails, the draft stays `pending` for a human — auto mode
   degrades to draft mode rather than dropping the work.
+
+No artificial send delay. An earlier draft of this spec specified 2–5 minutes
+of jitter so replies did not arrive suspiciously instantly; it was dropped
+because a `setTimeout` inside a fire-and-forget path does not survive a
+container restart, which is real fragility bought for a cosmetic gain.
 
 **Failure handling:** generation errors mark the draft row `failed` with the
 error and never surface as a mailbox sync failure. The existing mailbox health

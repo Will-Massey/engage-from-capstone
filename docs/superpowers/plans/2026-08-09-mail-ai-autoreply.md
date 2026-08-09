@@ -153,6 +153,7 @@ git commit -m "feat(mail-autoreply): MailAiReplyDraft model + additive migration
   - `parseMailAutoReplySettings(settingsJson?: string | null): MailAutoReplySettings`
   - `isAutomatedSender(fromAddress: string, subject: string): boolean`
   - `isWithinBusinessHours(now: Date): boolean`
+  - `containsMoneyFigure(text: string): boolean`
 
 - [ ] **Step 1: Write the failing test**
 
@@ -163,6 +164,7 @@ import {
   parseMailAutoReplySettings,
   isAutomatedSender,
   isWithinBusinessHours,
+  containsMoneyFigure,
 } from '../eligibility.js';
 
 describe('parseMailAutoReplySettings', () => {
@@ -218,6 +220,24 @@ describe('isAutomatedSender', () => {
 
   it('does not flag a real client writing normally', () => {
     expect(isAutomatedSender('Ada Lovelace <ada@acme.co.uk>', 'VAT question')).toBe(false);
+  });
+});
+
+describe('containsMoneyFigure', () => {
+  it.each([
+    'Your VAT due is £1,247.50',
+    'about £90,000 in turnover',
+    'the threshold is 90,000 GBP',
+    'roughly 1247.50 to pay',
+  ])('flags %s', (text) => {
+    expect(containsMoneyFigure(text)).toBe(true);
+  });
+
+  it('does not flag prose with dates, years or small counts', () => {
+    expect(
+      containsMoneyFigure('Please send the records by 7 October 2026 for all 3 companies.')
+    ).toBe(false);
+    expect(containsMoneyFigure('You have 2 outstanding requests.')).toBe(false);
   });
 });
 
@@ -312,6 +332,25 @@ export function isAutomatedSender(fromAddress: string, subject: string): boolean
  * Mon–Fri 08:00–17:59 Europe/London. Uses the Intl timezone so BST/GMT is
  * handled without a date library.
  */
+/**
+ * True when the text mentions a monetary amount.
+ *
+ * The number-shy rule is instructed in the prompt, but a prompt is not
+ * enforcement. Any draft naming an amount — even a legitimate general figure
+ * like the VAT registration threshold — buys a human read before it reaches a
+ * client, so this predicate blocks AUTO-SEND only; the draft itself keeps the
+ * useful content. Dates, years and small counts must not trip it.
+ */
+export function containsMoneyFigure(text: string): boolean {
+  const body = text || '';
+  if (/[£$€]\s?\d/.test(body)) return true;
+  if (/\d[\d,]*(\.\d{2})?\s?(gbp|pounds?|pence)\b/i.test(body)) return true;
+  // A bare decimal amount (1247.50) or any grouped thousands figure (90,000).
+  if (/\b\d{1,3}(,\d{3})+(\.\d+)?\b/.test(body)) return true;
+  if (/\b\d+\.\d{2}\b/.test(body)) return true;
+  return false;
+}
+
 export function isWithinBusinessHours(now: Date): boolean {
   const fmt = new Intl.DateTimeFormat('en-GB', {
     timeZone: 'Europe/London',
@@ -599,6 +638,7 @@ const prismaMock = {
     findUnique: jest.fn(),
     findFirst: jest.fn(),
     findMany: jest.fn(),
+    count: jest.fn(),
     create: jest.fn(),
     update: jest.fn(),
   },
@@ -648,6 +688,7 @@ beforeEach(() => {
   prismaMock.mailMessage.findMany.mockResolvedValue([inbound]);
   prismaMock.mailAiReplyDraft.findUnique.mockResolvedValue(null);
   prismaMock.mailAiReplyDraft.findFirst.mockResolvedValue(null);
+  prismaMock.mailAiReplyDraft.count.mockResolvedValue(0);
   prismaMock.mailAiReplyDraft.create.mockImplementation(({ data }: any) => ({ id: 'd1', ...data }));
   prismaMock.client.findFirst.mockResolvedValue({
     id: 'cl1',
@@ -745,6 +786,22 @@ describe('processNewInboundMessages — auto mode', () => {
     expect(prismaMock.mailAiReplyDraft.create.mock.calls[0][0].data.status).toBe('pending');
   });
 
+  it('leaves the draft pending when the generated body names an amount', async () => {
+    chatCompletionMock.mockResolvedValue({
+      content: 'Your VAT due is £1,247.50, payable by 7 October.',
+      usage: {},
+    });
+    await processNewInboundMessages('t1', ['m1']);
+    expect(sendMailboxMessageMock).not.toHaveBeenCalled();
+    expect(prismaMock.mailAiReplyDraft.create.mock.calls[0][0].data.status).toBe('pending');
+  });
+
+  it('leaves the draft pending once the tenant daily cap is reached', async () => {
+    prismaMock.mailAiReplyDraft.count.mockResolvedValue(20);
+    await processNewInboundMessages('t1', ['m1']);
+    expect(sendMailboxMessageMock).not.toHaveBeenCalled();
+  });
+
   it('leaves the draft pending outside business hours when the setting is on', async () => {
     prismaMock.tenant.findUnique.mockResolvedValue(
       settings({ enabled: true, mode: 'auto', businessHoursOnly: true })
@@ -770,11 +827,17 @@ Create `backend/src/services/mailAutoReply/index.ts`. Key requirements, all cove
 - Context: client via `prisma.client.findFirst({ where: { id: clientId, tenantId } })`; open jobs / live proposals / outstanding document requests via tenant-scoped `findMany` (cap 5 each, map to display strings); thread via `prisma.mailMessage.findMany({ where: { tenantId, conversationId }, orderBy: { receivedAt: 'asc' }, take: 20 })` mapped to `AutoReplyThreadMessage`.
 - Generate: `chatCompletion(buildAutoReplyMessages(ctx), { temperature: 0.4, maxTokens: 900 })`. Wrap in try/catch — on error create the draft row with `status: 'failed'` and the error message, then continue to the next id. **The function must never reject.**
 - Create the draft with `status: 'pending'`, `subject` = `Re: ` + inbound subject (unless it already starts with `Re:`), `bodyText` = the model output trimmed, `generationMeta` = JSON of model + usage.
-- Auto mode only: cooldown check via `prisma.mailAiReplyDraft.findFirst({ where: { tenantId, conversationId, status: 'sent', decidedAt: { gte: new Date(Date.now() - AI_REPLY_CONVERSATION_COOLDOWN_MS) } } })`; business-hours check when `businessHoursOnly`; if either fails leave the row `pending` and move on. Otherwise `sendMailboxMessage(tenantId, null, { to: inbound.fromAddress, subject, body, replyToMessageId: inbound.id })` and, when `sent`, `update` the draft to `status: 'sent'`, `sentMessageId`, `decidedAt: new Date()`.
+- Auto mode only — four guards, checked in this order, any failure leaves the row `pending` and moves on:
+  1. **conversation cooldown**: `prisma.mailAiReplyDraft.findFirst({ where: { tenantId, conversationId, status: 'sent', decidedAt: { gte: new Date(Date.now() - AI_REPLY_CONVERSATION_COOLDOWN_MS) } } })` must be null.
+  2. **tenant daily cap**: `prisma.mailAiReplyDraft.count({ where: { tenantId, status: 'sent', decidedAt: { gte: new Date(Date.now() - 24 * 60 * 60 * 1000) } } })` must be `< AI_REPLY_TENANT_DAILY_CAP`. Bounds the blast radius when an adversary opens many conversations, which the per-conversation cooldown does not cover.
+  3. **no money figure**: `containsMoneyFigure(generatedBody)` must be false. A draft naming an amount always gets a human read.
+  4. **business hours**: `isWithinBusinessHours(new Date())` when `businessHoursOnly`.
+- When all four pass: `sendMailboxMessage(tenantId, null, { to: inbound.fromAddress, subject, body, replyToMessageId: inbound.id })` and, when `sent`, `update` the draft to `status: 'sent'`, `sentMessageId`, `decidedAt: new Date()`. There is **no artificial send delay** — a `setTimeout` in a fire-and-forget path does not survive a restart.
+- Record which guard held a draft back in `generationMeta` (e.g. `{ heldBy: 'money-figure' }`) so the UI and any future digest can explain it.
 - `approveDraft` re-checks tenant scope, uses `bodyOverride ?? bodyText`, calls the same send path with `userId`, marks `sent` + `decidedByUserId`. `dismissDraft` sets `status: 'dismissed'`, `decidedAt`, `decidedByUserId`. Both throw `ApiError('DRAFT_NOT_FOUND', …, 404)` when the row is missing or belongs to another tenant, and `ApiError('DRAFT_ALREADY_DECIDED', …, 409)` when `status !== 'pending'`.
 - `listPendingDrafts(tenantId, conversationId?)` returns the DTO shape above, newest first.
 
-Export `AI_REPLY_CONVERSATION_COOLDOWN_MS = 4 * 60 * 60 * 1000`.
+Export `AI_REPLY_CONVERSATION_COOLDOWN_MS = 4 * 60 * 60 * 1000` and `AI_REPLY_TENANT_DAILY_CAP = 20`.
 
 - [ ] **Step 4: Run test to verify it passes**
 
