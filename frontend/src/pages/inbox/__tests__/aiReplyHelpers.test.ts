@@ -3,6 +3,7 @@ import {
   draftForConversation,
   conversationIdsWithDrafts,
   editIsForSelectedConversation,
+  editingDraftStillPending,
   type AiReplyDraft,
 } from '../aiReplyHelpers';
 
@@ -65,5 +66,23 @@ describe('editIsForSelectedConversation', () => {
 
   it('is false if the editing draft id no longer exists in the drafts list', () => {
     expect(editIsForSelectedConversation('gone', [draft()], 'c1')).toBe(false);
+  });
+});
+
+describe('editingDraftStillPending', () => {
+  it('is true when the editing draft is still pending', () => {
+    expect(editingDraftStillPending('d1', [draft()])).toBe(true);
+  });
+
+  it('is false when the editing draft is no longer pending (decided elsewhere)', () => {
+    expect(editingDraftStillPending('d1', [draft({ status: 'sent' })])).toBe(false);
+  });
+
+  it('is false when the editing draft id is missing from the drafts list entirely', () => {
+    expect(editingDraftStillPending('gone', [draft()])).toBe(false);
+  });
+
+  it('is false when nothing is being edited', () => {
+    expect(editingDraftStillPending(null, [draft()])).toBe(false);
   });
 });

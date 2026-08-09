@@ -32,7 +32,7 @@ jest.mock('../../mailboxService.js', () => ({
   getThread: jest.fn().mockResolvedValue([]),
 }));
 
-import { processNewInboundMessages, approveDraft } from '../index.js';
+import { processNewInboundMessages, approveDraft, dismissDraft } from '../index.js';
 
 const inbound = {
   id: 'm1',
@@ -251,5 +251,60 @@ describe('approveDraft — double-click guard', () => {
       code: 'DRAFT_ALREADY_DECIDED',
     });
     expect(sendMailboxMessageMock).not.toHaveBeenCalled();
+  });
+
+  it('a thrown send error leaves the draft failed (not pending) with the error text stored, so no retry can auto-send it', async () => {
+    sendMailboxMessageMock.mockRejectedValue(new Error('write ECONNRESET'));
+    await expect(approveDraft('t1', 'd1', 'u1')).rejects.toThrow('write ECONNRESET');
+    const finalUpdate = prismaMock.mailAiReplyDraft.update.mock.calls.at(-1)[0];
+    expect(finalUpdate.data.status).toBe('failed');
+    expect(finalUpdate.data.status).not.toBe('pending');
+    expect(finalUpdate.data.error).toContain('write ECONNRESET');
+  });
+
+  it('a returned { sent: false } still leaves the draft pending for a legitimate retry', async () => {
+    sendMailboxMessageMock.mockResolvedValue({ dto: null, sent: false, error: 'Send failed' });
+    const result = await approveDraft('t1', 'd1', 'u1');
+    expect(result.sent).toBe(false);
+    const finalUpdate = prismaMock.mailAiReplyDraft.update.mock.calls.at(-1)[0];
+    expect(finalUpdate.data.status).toBe('pending');
+  });
+});
+
+describe('dismissDraft', () => {
+  it('succeeds on a failed draft', async () => {
+    prismaMock.mailAiReplyDraft.findFirst.mockResolvedValue({
+      id: 'd1',
+      tenantId: 't1',
+      status: 'failed',
+    });
+    await expect(dismissDraft('t1', 'd1', 'u1')).resolves.toBeUndefined();
+    expect(prismaMock.mailAiReplyDraft.update).toHaveBeenCalledWith(
+      expect.objectContaining({ data: expect.objectContaining({ status: 'dismissed' }) })
+    );
+  });
+
+  it('succeeds on a stranded sending draft', async () => {
+    prismaMock.mailAiReplyDraft.findFirst.mockResolvedValue({
+      id: 'd1',
+      tenantId: 't1',
+      status: 'sending',
+    });
+    await expect(dismissDraft('t1', 'd1', 'u1')).resolves.toBeUndefined();
+    expect(prismaMock.mailAiReplyDraft.update).toHaveBeenCalledWith(
+      expect.objectContaining({ data: expect.objectContaining({ status: 'dismissed' }) })
+    );
+  });
+
+  it('still 409s on a draft that already sent', async () => {
+    prismaMock.mailAiReplyDraft.findFirst.mockResolvedValue({
+      id: 'd1',
+      tenantId: 't1',
+      status: 'sent',
+    });
+    await expect(dismissDraft('t1', 'd1', 'u1')).rejects.toMatchObject({
+      code: 'DRAFT_ALREADY_DECIDED',
+    });
+    expect(prismaMock.mailAiReplyDraft.update).not.toHaveBeenCalled();
   });
 });

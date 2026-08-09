@@ -28,6 +28,7 @@ import {
   draftForConversation,
   conversationIdsWithDrafts,
   editIsForSelectedConversation,
+  editingDraftStillPending,
   type AiReplyDraft,
 } from './aiReplyHelpers';
 import { AiReplyCard } from './AiReplyCard';
@@ -205,13 +206,16 @@ export default function FirmInbox() {
     }
   }, []);
 
-  const loadAiDrafts = useCallback(async () => {
+  const loadAiDrafts = useCallback(async (): Promise<AiReplyDraft[] | null> => {
     try {
       const res = (await apiClient.get('/comms/mailbox/ai-drafts')) as any;
       const data = res?.data ?? res;
-      setAiDrafts(data?.drafts || []);
+      const drafts: AiReplyDraft[] = data?.drafts || [];
+      setAiDrafts(drafts);
+      return drafts;
     } catch {
       /* suggestion card is non-critical */
+      return null;
     }
   }, []);
 
@@ -338,7 +342,23 @@ export default function FirmInbox() {
         }
         await Promise.all([loadAiDrafts(), fetchMessages(), refreshThread(selectedMail.id)]);
       } catch (e: any) {
-        setError(e?.response?.data?.error?.message || e?.message || 'Send failed');
+        // The approve call itself failed — most commonly a colleague already
+        // decided this draft in a shared mailbox (409). Refetch the drafts
+        // rather than trusting the stale local copy: if this draft is no
+        // longer pending, the edit can never be safely resent through
+        // approve, so clear the editing state (and the composer text it was
+        // holding) now rather than letting the fall-through below silently
+        // send it via the plain /mailbox/send path later.
+        const freshDrafts = await loadAiDrafts();
+        const list = freshDrafts ?? aiDrafts;
+        if (!editingDraftStillPending(draftId, list)) {
+          setEditingDraftId(null);
+          setReplyBody('');
+          setReplyCc('');
+          setError('Someone else already handled this reply — your edit was not sent.');
+        } else {
+          setError(e?.response?.data?.error?.message || e?.message || 'Send failed');
+        }
       } finally {
         setSending(false);
       }

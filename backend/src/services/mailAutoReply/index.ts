@@ -343,12 +343,20 @@ export async function listPendingDrafts(
   return rows.map(toDto);
 }
 
-async function loadOwnedPendingDraft(tenantId: string, draftId: string) {
+/**
+ * A human must always be able to clear a draft that has not genuinely gone
+ * out — including 'sending', which can otherwise be stranded forever if the
+ * process dies between approveDraft's atomic claim and its follow-up update
+ * (that interim state is only ever cleared inside the same function call, so
+ * there is no other API path back out of it). Only a draft that truly sent
+ * stays undismissable.
+ */
+async function loadOwnedDismissableDraft(tenantId: string, draftId: string) {
   const draft = await prisma.mailAiReplyDraft.findFirst({ where: { id: draftId, tenantId } });
   if (!draft) {
     throw new ApiError('DRAFT_NOT_FOUND', 'Draft not found', 404);
   }
-  if (draft.status !== 'pending') {
+  if (draft.status === 'sent') {
     throw new ApiError('DRAFT_ALREADY_DECIDED', 'Draft has already been decided', 409);
   }
   return draft;
@@ -406,11 +414,16 @@ export async function approveDraft(
     });
 
     return { sent: sendResult.sent, error: sendResult.error };
-  } catch (err) {
-    // Release the claim so the draft is not stuck in 'sending' forever.
+  } catch (err: any) {
+    // A thrown error here is ambiguous: sendMailboxMessage's provider send
+    // can succeed and then still reject (e.g. the local sent-message insert
+    // fails afterwards), so we cannot tell whether the client already got
+    // the email. Never put the draft back to 'pending' in that case — a
+    // retry, human or auto, could send a genuine duplicate. Land it as
+    // 'failed' with the error preserved for a human to inspect instead.
     await prisma.mailAiReplyDraft.update({
       where: { id: draft.id },
-      data: { status: 'pending' },
+      data: { status: 'failed', error: err?.message || String(err) },
     });
     throw err;
   }
@@ -421,7 +434,7 @@ export async function dismissDraft(
   draftId: string,
   userId: string
 ): Promise<void> {
-  const draft = await loadOwnedPendingDraft(tenantId, draftId);
+  const draft = await loadOwnedDismissableDraft(tenantId, draftId);
   await prisma.mailAiReplyDraft.update({
     where: { id: draft.id },
     data: {

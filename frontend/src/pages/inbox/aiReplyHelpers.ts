@@ -40,3 +40,20 @@ export function editIsForSelectedConversation(
   const draft = drafts.find((d) => d.id === editingDraftId);
   return draft?.conversationId === selectedConversationId;
 }
+
+/**
+ * True only while the draft being edited is still pending — i.e. still safe
+ * to approve-with-edits. False once it's missing from the list or has moved
+ * to any decided status (approved/dismissed/sent/failed elsewhere, e.g. a
+ * colleague in a shared mailbox). Used after a failed approve attempt to
+ * decide whether the edit can still be retried or must be abandoned, rather
+ * than silently falling through to the plain send path with stale text.
+ */
+export function editingDraftStillPending(
+  editingDraftId: string | null,
+  drafts: AiReplyDraft[]
+): boolean {
+  if (!editingDraftId) return false;
+  const draft = drafts.find((d) => d.id === editingDraftId);
+  return draft?.status === 'pending';
+}
