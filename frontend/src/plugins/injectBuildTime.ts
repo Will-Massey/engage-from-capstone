@@ -1,12 +1,35 @@
 import type { Plugin } from 'vite';
 
 /**
+ * The API's origin — scheme and host only, never a path.
+ *
+ * A CSP source expression carrying a path is matched by the *exact* path unless
+ * it ends in "/", so `https://capstonesoftware.co.uk/engage` permits only that
+ * one URL and blocks `/engage/api/...` — every call the app actually makes.
+ *
+ * On the web this is invisible: the SPA is served from the same host, so
+ * `'self'` already covers the API. The Capacitor shell is served from
+ * `capacitor://localhost`, which makes the API cross-origin, so it must match a
+ * listed source. It did not, and WebKit blocked every request before it reached
+ * the network — surfacing in the app as an unexplained "Network error" on
+ * sign-in, while curl against the same endpoint succeeded.
+ */
+export function apiConnectSource(rawUrl: string | undefined): string {
+  const raw = rawUrl || 'https://capstonesoftware.co.uk/engage';
+  try {
+    return new URL(raw).origin;
+  } catch {
+    // Not absolute (e.g. a bare "/engage" proxy path) — same-origin, so 'self'
+    // already covers it and there is nothing to add.
+    return '';
+  }
+}
+
+/**
  * Injects the current ISO build timestamp into index.html meta[name="build-time"].
  */
 function productionCspMeta(): string {
-  const apiOrigin = (process.env.VITE_API_URL || 'https://capstonesoftware.co.uk/engage')
-    .replace(/\/api\/?$/, '')
-    .replace(/\/$/, '');
+  const apiOrigin = apiConnectSource(process.env.VITE_API_URL);
 
   const connectSrc = [
     "'self'",
@@ -14,7 +37,9 @@ function productionCspMeta(): string {
     'https://engage-backend-e1ue.onrender.com',
     'https://api.stripe.com',
     'https://checkout.stripe.com',
-  ].join(' ');
+  ]
+    .filter(Boolean)
+    .join(' ');
 
   const policy = [
     "default-src 'self'",
