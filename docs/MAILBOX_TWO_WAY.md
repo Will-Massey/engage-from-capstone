@@ -230,6 +230,188 @@ This step (Cloud project + OAuth client + consent screen + verification) is
 gated on William — it requires a Google Cloud account and (for production
 use beyond test users) Google's OAuth verification review.
 
+## AI autoreply
+
+An opt-in layer on top of the two-way mailbox: when a client email arrives
+from a known client, Engage can draft a reply in the practice's own voice
+using the thread, the client record, and their open work. It never discloses
+that it is AI-generated — in draft mode a human reads and approves it before
+anything sends, and in auto mode the practice has explicitly opted into
+unreviewed sends, the same way a human reply would carry no such disclosure.
+It is knowledgeable on UK accounts and bookkeeping — VAT (registration
+thresholds, the flat rate/cash/annual schemes), MTD for VAT and ITSA, CIS,
+self assessment and corporation tax deadlines, payroll/PAYE/RTI and
+auto-enrolment basics, and general bookkeeping practice — but it is
+number-shy by design: it never states, computes, or restates a figure
+specific to the client (no tax due, no refund estimate, no liability, no
+worked example), never commits the practice to a filing position, a
+deadline, or a fee, and never contradicts something the accountant already
+said in the thread. When the honest answer needs a client-specific figure it
+writes a holding reply instead — it shows the question was understood and
+names what the accountant will confirm, never a content-free
+acknowledgement. This mirrors the "AI never computes numbers" rule in
+Narrative and exists for the same reason: a wrong figure in a client's inbox
+is a professional-liability event.
+
+The service lives in `backend/src/services/mailAutoReply/` — `eligibility.ts`
+(pure predicates, no I/O), `prompt.ts` (the system prompt and context
+formatting), and `index.ts` (the orchestrator). It is invoked
+fire-and-forget from `syncMailboxInternal` after the sync's `MailMessage`
+writes are committed, over just the messages that loop returned as newly
+`'created'` inbound — so a re-sync of the same message never re-triggers
+generation, and a generation failure can never mark a healthy sync as
+failed.
+
+### Modes and opt-in
+
+Per-tenant state lives at `Tenant.settings.mailAutoReply` — the same
+established idiom as `automationSchedule` and `accountFlowMesh` — as
+`{ enabled, mode, businessHoursOnly }`. An absent key, malformed JSON, or an
+unrecognised `mode` all parse to off/draft (`parseMailAutoReplySettings` in
+`eligibility.ts`). The feature ships off for every tenant, including
+existing ones — nothing changes for a practice that hasn't opted in.
+
+There are two modes:
+
+- **`draft`** (the only mode reachable from a single opt-in): a pending
+  `MailAiReplyDraft` is created for every qualifying inbound message, and
+  surfaces in the `FirmInbox` thread view as a "Suggested reply" card. A
+  human must click **Approve & send** or **Edit then send** before the
+  client sees anything; **Dismiss** discards the draft without sending.
+- **`auto`**: everything `draft` does, plus — when all four send guards
+  below pass — the draft is sent automatically through the existing
+  `sendMailboxMessage` path, with no human in the loop.
+
+Changing `mailAutoReply` is gated tighter than the rest of tenant settings:
+`PUT /api/tenants/:id/settings` restricts that one key to `ADMIN`, `PARTNER`
+or `MD`, even though the route's general gate is broader, because enabling
+`auto` mode lets the system send email to clients unreviewed. Turning on
+`auto` mode specifically is a second, separate opt-in behind a confirm
+dialog that states plainly that clients will receive replies no one read
+first — modelled on the `automationSchedule` opt-in (PR #104), built the
+same deliberate way after the `chaseSequenceEnabled`-defaults-true lesson.
+Every settings change to this key is audit-logged
+(`MAIL_AUTOREPLY_SETTINGS_CHANGED`) with the before/after state.
+
+### Eligibility gates
+
+Checked in `processOneMessage` before any AI call is made; failing any of
+them means the message is silently skipped, not queued for later:
+
+- the tenant's `mailAutoReply.enabled` must be `true`,
+- the message must be `INBOUND` and linked to a `clientId` — unknown senders
+  and prospect enquiries are out of scope entirely,
+- the sender must not look automated: `isAutomatedSender` matches a
+  `noreply`/`donotreply`/`mailerdaemon`/`postmaster`/`bounce`-style local
+  part, or a subject starting with an autoresponder prefix (`Automatic
+reply`, `Auto-reply`, `Auto reply`, `Autoreply`, `Out of office`,
+  `Undeliverable`, `Delivery status notification`),
+- a draft must not already exist for that `inboundMessageId` — enforced both
+  as a pre-check and, as the real backstop, the table's unique constraint,
+- the tenant's AI token budget (`checkAiTokenBudget`, the same monthly
+  budget every other AI feature draws from) must not be exhausted.
+
+Header-based bot detection (`Auto-Submitted`, `Precedence: bulk`,
+`List-Unsubscribe`) was in the original design but was dropped as
+unimplementable: neither the Graph nor the Gmail client captures raw RFC
+headers, and `MailMessage` has no column to store them in. Automated
+senders are caught by the address and subject heuristics above instead,
+backstopped by the known-clients-only rule — a newsletter or marketing blast
+essentially never matches a `Client.contactEmail`.
+
+### Auto-send guards
+
+Checked in `findFailingGuard`, immediately before an `auto`-mode draft would
+send. Any one of them failing leaves the draft `pending` for a human —
+`auto` mode degrades to `draft` mode rather than dropping the work:
+
+- **conversation cooldown** — at most one AI-sent reply per conversation
+  every `AI_REPLY_CONVERSATION_COOLDOWN_MS` (4 hours), the damper against two
+  autoresponders ping-ponging each other,
+- **tenant daily cap** — at most `AI_REPLY_TENANT_DAILY_CAP` (20) AI
+  auto-sends per tenant per rolling 24 hours, bounding the tenant-wide blast
+  radius beyond what the per-conversation cooldown alone would catch,
+- **the money guard** — `containsMoneyFigure` runs a deterministic check
+  over the generated body and blocks auto-send (never draft creation)
+  whenever it finds a currency symbol next to a number, a currency word
+  (pounds, pence, GBP, a trailing "p"), grouped thousands (1,234), or a
+  money-context word (fee, bill, owed, invoice, and similar) anywhere
+  alongside any number. The number-shy rule is instructed in the prompt, but
+  a prompt is not enforcement — this is the deterministic backstop. General
+  published facts (the VAT registration threshold, a headline rate) are
+  legitimate content in a draft; naming one simply means the draft waits for
+  a human to read it before it reaches a client, the same as any other
+  figure would,
+- **UK business hours** — Mon-Fri, 08:00-18:00 Europe/London (via `Intl`,
+  so BST/GMT is handled without a date library), only enforced when
+  `businessHoursOnly` is true; outside those hours the draft just waits.
+
+There is no artificial send delay in auto mode — an earlier version of the
+design added a few minutes of jitter so a reply wouldn't arrive suspiciously
+instantly, but a `setTimeout` in a fire-and-forget path does not survive a
+container restart, and that fragility wasn't worth a cosmetic gain.
+
+### Data model and idempotency
+
+One additive table, `MailAiReplyDraft` (`backend/prisma/schema.prisma`,
+mapped to `mail_ai_reply_drafts`): `tenantId`, a **unique**
+`inboundMessageId`, `conversationId`, an optional `clientId`, `subject`,
+`bodyText`, `status` (`pending`/`sending`/`sent`/`dismissed`/`failed`),
+`sentMessageId`, `generationMeta` (JSON — model, token usage, and, when a
+send guard held it back, which guard), `error`, `createdAt`, `decidedAt`,
+`decidedByUserId`.
+
+The unique constraint on `inboundMessageId` is the idempotency guarantee: it
+is what stops one email being answered twice, surviving a re-sync, a
+webhook burst, or an overlapping sync job run. `MailMessage` stays a pure
+mirror of provider state; drafts live entirely Engage-side until a human (or
+auto mode) decides them. Approving a draft claims it with a conditional
+`updateMany` (`status = 'pending' → 'sending'`) before sending, so two
+near-simultaneous approvals of the same draft can't both go through.
+
+### AI spend
+
+Generation is a single `chatCompletion` call gated by the existing
+`checkAiTokenBudget`. It shares the tenant's monthly AI token budget with
+every other AI feature rather than adding a second spend ceiling — an
+exhausted budget silently skips generation for that message (an eligibility
+gate, not an error).
+
+### Endpoints
+
+All three routes live in `backend/src/routes/comms.ts`, tenant-scoped and
+requiring `authenticate`:
+
+| Route                                           | Role gate                                                                     | Purpose                                                       |
+| ----------------------------------------------- | ----------------------------------------------------------------------------- | ------------------------------------------------------------- |
+| `GET /api/comms/mailbox/ai-drafts`              | any authenticated mailbox reader (`MAILBOX_READ_ROLES` — includes JUNIOR)     | List pending drafts, optionally filtered by `conversationId`. |
+| `POST /api/comms/mailbox/ai-drafts/:id/approve` | `MAILBOX_WRITE_ROLES` (ADMIN, PARTNER, MD, MANAGER, SENIOR — excludes JUNIOR) | Send the draft, optionally with an edited `body`.             |
+| `POST /api/comms/mailbox/ai-drafts/:id/dismiss` | `MAILBOX_WRITE_ROLES` (excludes JUNIOR)                                       | Discard the draft without sending.                            |
+
+Note the settings write that turns the feature on is gated tighter
+(ADMIN/PARTNER/MD only) than approving or dismissing an individual draft
+once it exists (the broader mailbox-write role set, which also includes
+MANAGER and SENIOR) — enabling the feature is the higher-consequence action.
+
+### Inbox UI
+
+`FirmInbox` shows an `AiReplyCard` ("Suggested reply") above the reply
+composer whenever a pending draft exists for the thread, with the body in a
+scrollable preview and three actions: **Approve & send**, **Edit then
+send** (drops the body into the existing composer, pre-filled, for editing
+before it sends), and **Dismiss**. Nothing sends until one of those is
+clicked.
+
+### Out of scope
+
+Per-user mailboxes and outbound attachments were already out of scope for
+the mailbox itself (see above) and remain so here. Also out of scope by
+design, not omission: replies to unknown senders or prospect enquiries, any
+client-specific number/refund/filing position, a separate AI spend ceiling
+for mail, and learning from edits (comparing a draft's `bodyText` with what
+was actually sent, to tune tone over time) — a possible future improvement,
+not built.
+
 ## Attachments
 
 Attachment content is never persisted — `MailAttachment` stores only
