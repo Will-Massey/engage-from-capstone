@@ -103,6 +103,17 @@ under 5D992.c). Answer App Store Connect's export questions to match: uses
 encryption → **Yes**; exempt → **Yes** (standard encryption only). A mismatch
 between the plist and the ASC answers is its own rejection.
 
+**App icon** is the mark from the desktop lockup
+(`frontend/public/images/engage-logo.svg`) — the solid gradient hexagon users
+already recognise, not the outlined `engage-icon.svg` variant, which reads as a
+hollow ring at icon sizes. Three appearances ship: light (gradient mark on
+white), dark and tinted (both transparent, so the system supplies its own
+ground). Shipping only one appearance is not neutral — iOS 18+ improvises the
+others, and with a white-ground icon that produced a shrunken circle on a grey
+tile in dark mode. Regenerate with
+`scratchpad/compose_appearances.py`-style compositing if the brand mark changes;
+the light icon must stay free of an alpha channel.
+
 **Privacy manifest** ships at `frontend/ios/App/App/PrivacyInfo.xcprivacy` and
 is wired into the target's Resources build phase — confirm it is present inside
 the built `.app`, because a manifest that is not a target resource silently
