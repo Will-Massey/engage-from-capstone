@@ -13,10 +13,27 @@ on:
     paths-ignore:
       - '**.md'
       - 'docs/**'
+      - '**.mdx'
+      - '.claude/**'
+      - 'landing/**'
   pull_request:
     branches: [master]
+    paths-ignore:
+      - '**.md'
+      - 'docs/**'
+      - '**.mdx'
+      - '.claude/**'
+      - 'landing/**'
   workflow_dispatch:
 
+# Cost control: supersede in-flight CI when a newer commit lands on the same
+# ref (rapid pushes were burning the free Actions minutes allowance).
+# Cancel only PR runs — a master run can be mid-deploy (Neon backup, backend
+# then frontend), and a run-level cancel would kill it despite the deploy
+# job's own non-cancelling group. Master runs queue instead.
+concurrency:
+  group: ci-cd-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 # Default token scope: read-only. Jobs that need more (e.g. the
 # deploy-failure alert opening an issue) escalate at job level.
@@ -147,9 +164,12 @@ jobs:
           token: ${{ secrets.CODECOV_TOKEN }}
           fail_ci_if_error: false
 
+  # Playwright E2E is the most expensive job (~7–15 min). Run it only as the
+  # deploy gate on master / manual dispatch — not on every PR (lint+unit cover PRs).
   e2e:
     name: E2E Tests (Playwright)
     needs: [lint, test]
+    if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
     uses: ./.github/workflows/playwright-e2e.yml
     secrets: inherit
 
@@ -160,6 +180,7 @@ jobs:
   deploy:
     name: Deploy to Render
     runs-on: ubuntu-latest
+    # e2e is skipped on PRs; on master push it must succeed before deploy.
     needs: [lint, test, e2e]
     if: github.event_name != 'pull_request' && github.ref == 'refs/heads/master'
     concurrency:

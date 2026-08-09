@@ -4,11 +4,10 @@
 name: Security Scan
 
 on:
-  schedule:
-    # Run daily at 2 AM UTC
-    - cron: '0 2 * * *'
-  push:
-    branches: [main, master, develop]
+  # Daily schedule disabled — was 5 Ubuntu jobs every day (~150+ min/month).
+  # Re-enable weekly only if on GitHub Pro and minutes allow.
+  # schedule:
+  #   - cron: '0 2 * * 0'
   pull_request:
     branches: [main, master, develop]
   workflow_dispatch:

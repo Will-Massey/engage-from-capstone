@@ -1,9 +1,8 @@
-# Full-stack E2E on a cadence (main) without waiting for a push
+# Full-stack E2E on demand only (weekday schedule disabled — Playwright full
+# suite is expensive; master deploy CI already runs E2E before each ship).
 name: E2E Scheduled
 
 on:
-  schedule:
-    - cron: '0 6 * * 1-5'
   workflow_dispatch:
 
 concurrency:
