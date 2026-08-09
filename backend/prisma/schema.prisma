@@ -1557,3 +1557,24 @@ model PracticeLetter {
   @@index([type])
   @@index([status])
 }
+
+model MailAiReplyDraft {
+  id               String    @id @default(uuid())
+  tenantId         String
+  inboundMessageId String    @unique
+  conversationId   String
+  clientId         String?
+  subject          String
+  bodyText         String    @db.Text
+  status           String    @default("pending")
+  sentMessageId    String?
+  generationMeta   String?   @db.Text
+  error            String?
+  createdAt        DateTime  @default(now())
+  decidedAt        DateTime?
+  decidedByUserId  String?
+
+  @@index([tenantId, status])
+  @@index([tenantId, conversationId])
+  @@map("mail_ai_reply_drafts")
+}
