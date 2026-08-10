@@ -19,7 +19,7 @@ const AuthLayout = ({ children }: AuthLayoutProps) => {
         <div className="flex flex-col items-center">
           <BrandLogo
             tenantLogo={tenant?.logo}
-            alt={tenant?.name || 'Engage Practice by Capstone'}
+            alt={tenant?.name || 'Capstone Engage'}
             className="h-24 sm:h-28 w-auto max-w-[14rem] object-contain"
             frameClassName="px-1"
           />

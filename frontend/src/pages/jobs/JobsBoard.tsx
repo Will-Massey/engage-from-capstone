@@ -655,7 +655,7 @@ export default function JobsBoard() {
           <p className="font-medium text-slate-600 dark:text-slate-300">No jobs yet</p>
           <p className="max-w-md text-sm text-slate-500">
             When a client accepts a proposal, a job appears here with phases and checklists —
-            Engager-style delivery without leaving Engage Practice.
+            Engager-style delivery without leaving Capstone Engage.
           </p>
           <Link to="/proposals" className="btn-accent mt-2">
             Go to proposals
