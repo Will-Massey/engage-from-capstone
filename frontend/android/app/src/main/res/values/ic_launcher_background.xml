@@ -1,4 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <color name="ic_launcher_background">#FFFFFF</color>
+    <!-- Charcoal sampled from the Engage metal mark. The adaptive foreground is
+         inset into the safe zone with a transparent surround, so this colour is
+         what shows around it; white left a bright halo around a dark icon. -->
+    <color name="ic_launcher_background">#3B3F42</color>
 </resources>
