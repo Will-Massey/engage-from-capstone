@@ -190,34 +190,59 @@ jobs:
       name: production
       url: https://capstonesoftware.co.uk/engage
     steps:
-      - name: Pre-deploy Neon backup branch
-        # Point-in-time safety net: snapshot the prod DB as a Neon branch
-        # before the deploy (boot runs prisma migrate deploy). Skips with a
-        # warning until NEON_API_KEY/NEON_PROJECT_ID secrets are set; once
-        # configured, a failed backup blocks the deploy.
+      - name: Record pre-deploy rollback point
+        # Production data lives in the Render Postgres `engage-db`
+        # (dpg-d6qkjbma2pns73a2qoe0-a, database engage_production, PG 18) — NOT
+        # in Neon. This step used to snapshot a Neon project that turned out to
+        # be a stale July copy: it backed up nothing that matters and, worse, it
+        # passed, so every deploy looked protected when it was not.
+        #
+        # It deliberately does NOT pg_dump into a CI artifact. That would export
+        # UK accountancy client records into GitHub artifact storage, which is a
+        # data-protection problem rather than a backup; the runner's Postgres
+        # client is also older than the server and would refuse the dump anyway.
+        #
+        # What this does instead: capture the currently-live deploy so a bad
+        # release can be reverted immediately, and surface the database the
+        # release is about to migrate. Data-level restore is Render's own
+        # backup for engage-db — see docs/ROLLBACK_RUNBOOK.md.
         env:
-          NEON_API_KEY: ${{ secrets.NEON_API_KEY }}
-          NEON_PROJECT_ID: ${{ secrets.NEON_PROJECT_ID }}
+          RENDER_API_KEY: ${{ secrets.RENDER_API_KEY }}
+          SERVICE_ID: ${{ secrets.RENDER_BACKEND_SERVICE_ID }}
         run: |
-          if [ -z "$NEON_API_KEY" ] || [ -z "$NEON_PROJECT_ID" ]; then
-            echo "::warning::NEON_API_KEY/NEON_PROJECT_ID not set — skipping pre-deploy DB backup branch"
+          set -uo pipefail
+          # Never fail the release on this step: it records a rollback point, it
+          # is not a gate. A missing marker is worth a warning, not a blocked
+          # deploy — the failure mode this file already suffered once today.
+          LIVE=$(curl -sf "https://api.render.com/v1/services/$SERVICE_ID/deploys?limit=20" \
+            -H "Authorization: Bearer $RENDER_API_KEY" \
+            | jq -r '[.[].deploy | select(.status == "live")][0]' 2>/dev/null || echo "")
+
+          if [ -z "$LIVE" ] || [ "$LIVE" = "null" ]; then
+            echo "::warning::No currently-live deploy found — first deploy, or the API shape changed."
+            echo "ROLLBACK_DEPLOY_ID=" >> "$GITHUB_ENV"
             exit 0
           fi
-          NAME="pre-deploy-$(date -u +%Y%m%d-%H%M%S)-${GITHUB_SHA:0:7}"
-          curl -sf -X POST "https://console.neon.tech/api/v2/projects/$NEON_PROJECT_ID/branches" \
-            -H "Authorization: Bearer $NEON_API_KEY" \
-            -H "Content-Type: application/json" \
-            -d "{\"branch\": {\"name\": \"$NAME\"}}" > /dev/null
-          echo "Created Neon backup branch: $NAME"
-          # Prune: keep the 5 newest pre-deploy branches
-          curl -sf "https://console.neon.tech/api/v2/projects/$NEON_PROJECT_ID/branches" \
-            -H "Authorization: Bearer $NEON_API_KEY" \
-          | jq -r '[.branches[] | select(.name | startswith("pre-deploy-"))] | sort_by(.created_at) | reverse | .[5:] | .[].id' \
-          | while read -r BRANCH_ID; do
-              echo "Pruning old backup branch $BRANCH_ID"
-              curl -sf -X DELETE "https://console.neon.tech/api/v2/projects/$NEON_PROJECT_ID/branches/$BRANCH_ID" \
-                -H "Authorization: Bearer $NEON_API_KEY" > /dev/null || echo "::warning::Failed to prune $BRANCH_ID"
-            done
+
+          ID=$(jq -r '.id' <<<"$LIVE")
+          SHA=$(jq -r '.commit.id // "unknown"' <<<"$LIVE")
+          echo "ROLLBACK_DEPLOY_ID=$ID" >> "$GITHUB_ENV"
+
+          {
+            echo "### Pre-deploy rollback point"
+            echo ""
+            echo "| | |"
+            echo "|---|---|"
+            echo "| Roll back to deploy | \`$ID\` |"
+            echo "| Which is commit | \`${SHA:0:12}\` |"
+            echo "| Deploying commit | \`${GITHUB_SHA:0:12}\` |"
+            echo "| Database being migrated | \`engage_production\` on \`engage-db\` (Render) |"
+            echo ""
+            echo "Code rollback: Render dashboard → engage-backend → Deploys → Redeploy \`$ID\`."
+            echo "Data restore: Render dashboard → engage-db → Backups (Neon holds nothing current)."
+          } >> "$GITHUB_STEP_SUMMARY"
+
+          echo "Rollback point: deploy $ID (commit ${SHA:0:12})"
 
       - name: Deploy backend and wait until live
         env:

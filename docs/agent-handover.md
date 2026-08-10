@@ -19,12 +19,16 @@ in this repo — they are your roadmap and evidence base.
 - **Production topology:** Cloudflare Worker `engage-proxy` routes
   `capstonesoftware.co.uk/engage*` → Render (`engage-backend` web service
   `srv-d6qkjlua2pns73a2r1fg`, `engage-frontend` static
-  `srv-d6qkjbma2pns73a2qod0`) → Neon Postgres (project
-  `purple-scene-01932805`). All API traffic is SAME-ORIGIN through the worker.
+  `srv-d6qkjbma2pns73a2qod0`) → **Render Postgres** `engage-db`
+  (`dpg-d6qkjbma2pns73a2qoe0-a`, database `engage_production`, PG 18). All API
+  traffic is SAME-ORIGIN through the worker.
+  NOTE: the Neon project `purple-scene-01932805` is a stale legacy copy (last
+  migrated 5 July 2026) and is NOT production. Do not point `DATABASE_URL` at
+  it — its schema predates jobs/mailbox/forms entirely.
 - **Deploys:** `autoDeploy` is OFF on Render. The ONLY deploy path is the
   `Deploy to Render` job in `.github/workflows/ci-cd.yml`, which runs on
   master only after lint + typecheck + unit tests + full Playwright e2e are
-  green, takes a pre-deploy Neon backup branch, deploys backend then frontend
+  green, records a pre-deploy rollback point, deploys backend then frontend
   via the Render API, and health-checks. Branch protection on master requires
   the three CI checks. Render/Vercel/GHCR/Docker configs in the repo are
   vestigial — ignore them (a failing non-required "Vercel" PR check is noise).
