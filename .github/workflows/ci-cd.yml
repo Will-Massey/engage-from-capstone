@@ -7,23 +7,18 @@
 # =============================================================================
 name: CI/CD
 
+# NOTE: deliberately no paths-ignore. "Lint & Type Check" and "Test Suite" are
+# required by branch protection, and a workflow that never runs never reports
+# them — which left every docs-only PR permanently stuck at "Expected — waiting
+# for status to be reported". The jobs therefore always run and decide inside
+# whether there is any code to check (see the `changes` job). Skipping at the
+# job level would not work either: a skipped required check does not satisfy
+# branch protection.
 on:
   push:
     branches: [master]
-    paths-ignore:
-      - '**.md'
-      - 'docs/**'
-      - '**.mdx'
-      - '.claude/**'
-      - 'landing/**'
   pull_request:
     branches: [master]
-    paths-ignore:
-      - '**.md'
-      - 'docs/**'
-      - '**.mdx'
-      - '.claude/**'
-      - 'landing/**'
   workflow_dispatch:
 
 # Cost control: supersede in-flight CI when a newer commit lands on the same
@@ -48,17 +43,62 @@ jobs:
   # CI JOBS
   # ==========================================================================
 
+  # Decides whether this push/PR touches anything worth building. Docs-only
+  # changes still report the required contexts as green, but skip the work.
+  changes:
+    name: Detect changed paths
+    runs-on: ubuntu-latest
+    outputs:
+      code: ${{ steps.detect.outputs.code }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - id: detect
+        run: |
+          set -uo pipefail
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            BASE="${{ github.event.pull_request.base.sha }}"
+          else
+            BASE="${{ github.event.before }}"
+          fi
+
+          # Fail safe: anything we cannot diff (new branch, force push, manual
+          # dispatch) is treated as a code change and gets the full pipeline.
+          if [ -z "$BASE" ] || [ "$BASE" = "0000000000000000000000000000000000000000" ] \
+             || ! git cat-file -e "$BASE^{commit}" 2>/dev/null; then
+            echo "No usable base ref — running the full pipeline."
+            echo "code=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          FILES=$(git diff --name-only "$BASE" "${{ github.sha }}")
+          echo "Changed files:"; echo "$FILES"
+          CODE=$(echo "$FILES" | grep -vE '(\.mdx?$|^docs/|^\.claude/|^landing/)' || true)
+
+          if [ -n "$CODE" ]; then
+            echo "code=true" >> "$GITHUB_OUTPUT"
+            echo "Code changed — full pipeline."
+          else
+            echo "code=false" >> "$GITHUB_OUTPUT"
+            echo "Docs-only — required checks will report green without building."
+          fi
+
   lint:
     name: Lint & Type Check
     runs-on: ubuntu-latest
+    needs: changes
     steps:
       - uses: actions/checkout@v4
 
+        if: needs.changes.outputs.code == 'true'
       - uses: actions/setup-node@v4
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: 'npm'
 
+        if: needs.changes.outputs.code == 'true'
       - name: Install dependencies
         run: npm ci
 
@@ -66,25 +106,33 @@ jobs:
       # from shared/dist and @prisma/client from the generated client — build
       # them explicitly (a postinstall tsc used to do this, but running tsc
       # mid-install breaks Render's production npm ci).
+        if: needs.changes.outputs.code == 'true'
       - name: Build shared
         run: npm run build:shared
 
+        if: needs.changes.outputs.code == 'true'
       - name: Generate Prisma Client
         run: cd backend && npx prisma generate
 
+        if: needs.changes.outputs.code == 'true'
       - name: Lint
         run: npm run lint
 
+        if: needs.changes.outputs.code == 'true'
       - name: Type check
         run: npm run typecheck
 
+        if: needs.changes.outputs.code == 'true'
       - name: Format check
         run: npm run format:check
 
   test:
     name: Test Suite
     runs-on: ubuntu-latest
-    needs: lint
+    # `changes` must be in needs, not just `lint`: the step guards below read
+    # needs.changes.outputs.code, and an unreachable job reference resolves to
+    # empty — which would silently skip the entire suite while reporting green.
+    needs: [changes, lint]
     services:
       postgres:
         image: postgres:15-alpine
@@ -104,30 +152,37 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+        if: needs.changes.outputs.code == 'true'
       - uses: actions/setup-node@v4
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: 'npm'
 
+        if: needs.changes.outputs.code == 'true'
       - name: Install dependencies
         run: npm ci
 
+        if: needs.changes.outputs.code == 'true'
       - name: Build shared
         run: npm run build:shared
 
+        if: needs.changes.outputs.code == 'true'
       - name: Generate Prisma Client
         run: cd backend && npx prisma generate
 
+        if: needs.changes.outputs.code == 'true'
       - name: Run migrations
         run: cd backend && npx prisma migrate deploy
         env:
           DATABASE_URL: postgresql://test:test@localhost:5432/engage_test
 
+        if: needs.changes.outputs.code == 'true'
       - name: Seed test database
         run: cd backend && npx tsx prisma/seed-enhanced.ts
         env:
           DATABASE_URL: postgresql://test:test@localhost:5432/engage_test
 
+        if: needs.changes.outputs.code == 'true'
       - name: Run unit tests with coverage
         # Smoke suites import the full app; collecting coverage on all src/**/*.ts
         # alongside them OOMs on the default ~4GB heap. Run smoke separately below.
@@ -138,6 +193,7 @@ jobs:
           REDIS_URL: redis://localhost:6379
           NODE_OPTIONS: --max-old-space-size=6144
 
+        if: needs.changes.outputs.code == 'true'
       - name: Run smoke tests
         # Each smoke file boots the full Express app. Run one file per jest process
         # (not test:integration + testPathPattern — that still discovers all smoke
@@ -154,9 +210,11 @@ jobs:
           # often slow/offline; smoke only needs MemoryStore rate limiting.
           NODE_OPTIONS: --max-old-space-size=6144
 
+        if: needs.changes.outputs.code == 'true'
       - name: Frontend unit tests
         run: cd frontend && npx vitest run
 
+        if: needs.changes.outputs.code == 'true'
       - name: Upload coverage
         uses: codecov/codecov-action@v4
         with:
@@ -168,8 +226,10 @@ jobs:
   # deploy gate on master / manual dispatch — not on every PR (lint+unit cover PRs).
   e2e:
     name: E2E Tests (Playwright)
-    needs: [lint, test]
-    if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
+    needs: [changes, lint, test]
+    if: >-
+      needs.changes.outputs.code == 'true'
+      && (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
     uses: ./.github/workflows/playwright-e2e.yml
     secrets: inherit
 
@@ -181,8 +241,13 @@ jobs:
     name: Deploy to Render
     runs-on: ubuntu-latest
     # e2e is skipped on PRs; on master push it must succeed before deploy.
-    needs: [lint, test, e2e]
-    if: github.event_name != 'pull_request' && github.ref == 'refs/heads/master'
+    needs: [changes, lint, test, e2e]
+    # Docs-only commits must not ship a release. paths-ignore used to prevent
+    # this by stopping the whole workflow; the job now declines for itself.
+    if: >-
+      needs.changes.outputs.code == 'true'
+      && github.event_name != 'pull_request'
+      && github.ref == 'refs/heads/master'
     concurrency:
       group: production-deploy
       cancel-in-progress: false
