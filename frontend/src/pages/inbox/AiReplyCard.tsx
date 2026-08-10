@@ -1,6 +1,6 @@
 import { SparklesIcon } from '@heroicons/react/24/outline';
 import { StatusChip } from '../../components/ui/StatusChip';
-import type { AiReplyDraft } from './aiReplyHelpers';
+import { heldReasonLabel, type AiReplyDraft } from './aiReplyHelpers';
 
 type Props = {
   draft: AiReplyDraft;
@@ -16,6 +16,8 @@ type Props = {
  * (or edit then send) before anything leaves the mailbox.
  */
 export function AiReplyCard({ draft, busy, onApprove, onEdit, onDismiss }: Props) {
+  const heldReason = heldReasonLabel(draft.heldBy);
+
   return (
     <div className="metal-tile border border-violet-200 p-4 dark:border-violet-900">
       <span className="metal-specular" aria-hidden />
@@ -30,6 +32,11 @@ export function AiReplyCard({ draft, busy, onApprove, onEdit, onDismiss }: Props
         <p className="text-xs text-slate-500">
           AI drafted this from the thread. Nothing sends until you approve or edit it.
         </p>
+        {heldReason && (
+          <p className="rounded-lg border border-amber-200 bg-amber-50 px-2.5 py-1.5 text-xs font-medium text-amber-900 dark:border-amber-900 dark:bg-amber-950/30 dark:text-amber-200">
+            {heldReason}
+          </p>
+        )}
         <div
           tabIndex={0}
           className="max-h-64 overflow-y-auto whitespace-pre-wrap rounded-lg border border-violet-100 bg-violet-50/50 p-3 text-sm text-slate-800 dark:border-violet-900 dark:bg-violet-950/20 dark:text-slate-100"

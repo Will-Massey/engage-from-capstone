@@ -4,6 +4,7 @@ import {
   conversationIdsWithDrafts,
   editIsForSelectedConversation,
   editingDraftStillPending,
+  heldReasonLabel,
   type AiReplyDraft,
 } from '../aiReplyHelpers';
 
@@ -84,5 +85,23 @@ describe('editingDraftStillPending', () => {
 
   it('is false when nothing is being edited', () => {
     expect(editingDraftStillPending(null, [draft()])).toBe(false);
+  });
+});
+
+describe('heldReasonLabel', () => {
+  it('returns null when nothing held the draft (ordinary draft mode)', () => {
+    expect(heldReasonLabel(null)).toBeNull();
+    expect(heldReasonLabel(undefined)).toBeNull();
+  });
+
+  it('explains each guard in plain language', () => {
+    expect(heldReasonLabel('money-figure')).toMatch(/amount/i);
+    expect(heldReasonLabel('conversation-cooldown')).toMatch(/recently/i);
+    expect(heldReasonLabel('tenant-daily-cap')).toMatch(/daily limit/i);
+    expect(heldReasonLabel('business-hours')).toMatch(/hours/i);
+  });
+
+  it('falls back to a truthful line rather than hiding an unknown reason', () => {
+    expect(heldReasonLabel('some-future-guard')).toMatch(/stopped/i);
   });
 });

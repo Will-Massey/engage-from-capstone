@@ -1725,7 +1725,7 @@ const Settings = () => {
                     <p className="text-sm text-slate-500 dark:text-slate-300">
                       {mailAutoReplyForm.enabled
                         ? mailAutoReplyForm.mode === 'auto'
-                          ? 'Live. Replies are sent to clients automatically, without anyone reading them first.'
+                          ? 'Live. Simpler replies send to clients automatically. Anything mentioning an amount, a deadline figure or a payment still waits for you.'
                           : 'Draft only. Every reply waits for someone at the practice to approve it before it sends.'
                         : 'Off. No AI replies are drafted or sent.'}
                     </p>
@@ -1815,8 +1815,11 @@ const Settings = () => {
                     </h3>
                     <p className="text-sm text-slate-600 dark:text-slate-300">
                       Replies will be sent to your clients automatically, without anyone reading
-                      them first. They are drafted from the email thread and your client records. A
-                      reply that mentions a monetary amount is always held back for a human.
+                      them first. They are drafted from the email thread and your client records. In
+                      practice many replies still wait for you: anything mentioning an amount, a
+                      deadline figure or a payment is always held back, which covers most
+                      substantive answers. Expect this to send the simpler replies and to leave the
+                      rest in your inbox with the reason shown.
                     </p>
                     <div className="flex justify-end gap-2">
                       <button
