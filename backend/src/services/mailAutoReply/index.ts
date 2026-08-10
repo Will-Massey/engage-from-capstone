@@ -52,6 +52,13 @@ export type MailAiReplyDraftDto = {
   bodyText: string;
   status: string;
   createdAt: string;
+  /**
+   * Which auto-send guard held this draft back, when one did. In auto mode a
+   * held draft is indistinguishable from an ordinary draft without this, so
+   * the practice cannot tell that the system deliberately asked for a human.
+   * Null in draft mode, where every reply waits by design.
+   */
+  heldBy: string | null;
 };
 
 function replySubject(subject: string): string {
@@ -414,6 +421,17 @@ async function processOneMessage(
   return true;
 }
 
+/** Reads `heldBy` out of the stored generationMeta JSON, tolerating anything malformed. */
+function heldByOf(generationMeta: string | null | undefined): string | null {
+  if (!generationMeta) return null;
+  try {
+    const parsed = JSON.parse(generationMeta);
+    return typeof parsed?.heldBy === 'string' ? parsed.heldBy : null;
+  } catch {
+    return null;
+  }
+}
+
 function toDto(row: {
   id: string;
   conversationId: string;
@@ -422,6 +440,7 @@ function toDto(row: {
   bodyText: string;
   status: string;
   createdAt: Date;
+  generationMeta?: string | null;
 }): MailAiReplyDraftDto {
   return {
     id: row.id,
@@ -431,6 +450,7 @@ function toDto(row: {
     bodyText: row.bodyText,
     status: row.status,
     createdAt: new Date(row.createdAt).toISOString(),
+    heldBy: heldByOf(row.generationMeta),
   };
 }
 
