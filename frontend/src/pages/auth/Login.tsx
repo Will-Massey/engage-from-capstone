@@ -233,7 +233,9 @@ const Login = () => {
   return (
     <div>
       <h2 className="text-2xl font-bold text-slate-900 dark:text-white mb-2">Welcome back</h2>
-      <p className="text-slate-600 dark:text-slate-300 mb-6">Sign in to your Engage account</p>
+      <p className="text-slate-600 dark:text-slate-300 mb-6">
+        Sign in to your Engage Practice account
+      </p>
 
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
         <div>

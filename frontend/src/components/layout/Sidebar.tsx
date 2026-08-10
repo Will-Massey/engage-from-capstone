@@ -95,7 +95,7 @@ const UserFooter = ({ onLogout }: { onLogout: () => void }) => {
 const Sidebar = ({ isOpen, onClose }: SidebarProps) => {
   const { tenant, clearAuth } = useAuthStore();
   const { pathname } = useLocation();
-  const tenantName = tenant?.name || 'Engage by Capstone';
+  const tenantName = tenant?.name || 'Engage Practice by Capstone';
 
   const handleLogout = () => {
     clearAuth();

@@ -7,7 +7,7 @@ import { resolveBrandLogo } from '../../utils/brandLogo';
  */
 export function BrandLogo({
   tenantLogo,
-  alt = 'Engage by Capstone',
+  alt = 'Engage Practice by Capstone',
   className = 'h-10 w-auto max-w-[11rem] object-contain',
   framed = true,
   frameClassName = '',
