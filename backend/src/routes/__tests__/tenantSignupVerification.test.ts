@@ -150,3 +150,50 @@ describe('POST /api/tenants — public tenant signup', () => {
     expect(tenantMailerSend).not.toHaveBeenCalled();
   });
 });
+
+/**
+ * Tenant.settings is a String column (`settings String @default("{}")`), and
+ * every other write in the codebase serialises with JSON.stringify. Signup
+ * passed the validated object straight through, so any caller sending the
+ * settings block the API's own schema documents got a bare 500 and a rolled
+ * back transaction — the public acquisition funnel failing silently.
+ */
+describe('POST /api/tenants — settings serialisation', () => {
+  const SETTINGS = {
+    defaultCurrency: 'GBP',
+    vatRegistered: true,
+    professionalBody: 'ACCA' as const,
+  };
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+    (prisma.tenant.findUnique as jest.Mock).mockResolvedValue(null);
+    (prisma.user.findFirst as jest.Mock).mockResolvedValue(null);
+    txMock.tenant.create.mockResolvedValue(CREATED_TENANT);
+    txMock.user.create.mockResolvedValue(CREATED_USER);
+  });
+
+  it('serialises a supplied settings object to a JSON string', async () => {
+    const res = await request(buildApp())
+      .post('/api/tenants')
+      .send({ ...SIGNUP_PAYLOAD, settings: SETTINGS });
+
+    expect(res.status).toBe(201);
+    const settingsArg = txMock.tenant.create.mock.calls[0][0].data.settings;
+    expect(typeof settingsArg).toBe('string');
+    expect(JSON.parse(settingsArg)).toMatchObject({
+      defaultCurrency: 'GBP',
+      vatRegistered: true,
+      professionalBody: 'ACCA',
+    });
+  });
+
+  it('writes a string when settings are omitted, never an object or undefined', async () => {
+    const res = await request(buildApp()).post('/api/tenants').send(SIGNUP_PAYLOAD);
+
+    expect(res.status).toBe(201);
+    const settingsArg = txMock.tenant.create.mock.calls[0][0].data.settings;
+    expect(typeof settingsArg).toBe('string');
+    expect(JSON.parse(settingsArg)).toEqual({});
+  });
+});

@@ -132,7 +132,11 @@ router.post(
           subdomain: data.subdomain,
           name: data.name,
           primaryColor: data.primaryColor || '#0ea5e9',
-          settings: data.settings as any,
+          // Tenant.settings is a String column, so it must be serialised —
+          // passing the validated object through (as it did) made Prisma throw
+          // and rolled the whole signup back with a bare 500 for any caller
+          // sending the settings block this route's own schema documents.
+          settings: JSON.stringify(data.settings ?? {}),
           subscriptionStatus: 'trial',
           subscriptionTier: 'PROFESSIONAL',
           trialEndsAt,
