@@ -144,7 +144,7 @@ const Onboarding = () => {
           await persistClaraProfile(claraProfile);
         }
         toast.success(
-          `Welcome to Engage Practice! ${AI_COPILOT.name} will tailor proposals to your practice.`
+          `Welcome to Capstone Engage! ${AI_COPILOT.name} will tailor proposals to your practice.`
         );
         navigate('/');
       }

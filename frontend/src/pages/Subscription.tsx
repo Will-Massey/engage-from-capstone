@@ -53,7 +53,7 @@ export const NativeSubscriptionSummary = ({ subscription, tiers }: NativeSummary
         <h1 className="text-2xl font-semibold text-gray-900">Your plan</h1>
         <div className="mt-6 rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
           <p className="text-gray-700">
-            This practice does not have an active Engage Practice plan yet.
+            This practice does not have an active Capstone Engage plan yet.
           </p>
           <p className="mt-3 text-sm text-gray-500">
             Plans are held at practice level and arranged by your practice administrator.

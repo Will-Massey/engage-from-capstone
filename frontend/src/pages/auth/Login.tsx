@@ -70,7 +70,7 @@ const Login = () => {
         await persistNativeTokens(response.data);
         setSession(response.data.user, response.data.user.tenant);
         rememberCsrfToken(response.data.csrfToken);
-        toast.success('Welcome to Engage Practice!');
+        toast.success('Welcome to Capstone Engage!');
         window.location.assign(appPath('/'));
         return;
       }
@@ -104,7 +104,7 @@ const Login = () => {
         await persistNativeTokens(response.data);
         setSession(response.data.user, response.data.user.tenant);
         rememberCsrfToken(response.data.csrfToken);
-        toast.success('Welcome to Engage Practice!');
+        toast.success('Welcome to Capstone Engage!');
         window.location.assign(appPath('/'));
         return;
       }
@@ -234,7 +234,7 @@ const Login = () => {
     <div>
       <h2 className="text-2xl font-bold text-slate-900 dark:text-white mb-2">Welcome back</h2>
       <p className="text-slate-600 dark:text-slate-300 mb-6">
-        Sign in to your Engage Practice account
+        Sign in to your Capstone Engage account
       </p>
 
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">

@@ -222,7 +222,7 @@ import type {
 export type { ApiResponse };
 
 // API base URL
-// Engage Practice default: isolated backend on 3101 (production Engage uses 3001)
+// Capstone Engage default: isolated backend on 3101 (production Engage uses 3001)
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3101';
 
 /** Client-facing pages — no install prompts, no auth redirects, quieter errors */

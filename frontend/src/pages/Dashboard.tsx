@@ -475,7 +475,7 @@ const Dashboard = () => {
       {!hasProposals && <QuickStart />}
       {hasProposals && kpiRow}
 
-      {/* Practice delivery + cash (Engage Practice) */}
+      {/* Practice delivery + cash (Capstone Engage) */}
       {jobsPipeline && jobsPipeline.openCount > 0 && (
         <div className="card space-y-4 overflow-hidden border-emerald-100 p-5 dark:border-emerald-900/40">
           <div className="flex flex-wrap items-center justify-between gap-3">

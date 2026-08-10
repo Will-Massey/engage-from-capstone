@@ -7,9 +7,9 @@ import type { CapacitorConfig } from '@capacitor/cli';
  */
 const config: CapacitorConfig = {
   appId: 'uk.co.capstonesoftware.engage',
-  // Product name is "Engage Practice"; the bundle ID stays `….engage` because it
+  // Product name is "Capstone Engage"; the bundle ID stays `….engage` because it
   // is already registered and an app's bundle ID can never be changed.
-  appName: 'Engage Practice',
+  appName: 'Capstone Engage',
   webDir: 'dist',
   ios: {
     contentInset: 'automatic',
