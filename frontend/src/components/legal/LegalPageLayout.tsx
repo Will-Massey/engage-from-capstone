@@ -24,7 +24,7 @@ export default function LegalPageLayout({ title, lastUpdated, children }: LegalP
             to="/"
             className="text-sm font-semibold text-primary-600 hover:text-primary-700 dark:text-primary-400"
           >
-            Engage by Capstone
+            Engage Practice by Capstone
           </Link>
           <nav className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-slate-500 dark:text-slate-400">
             {legalLinks.map((link) => (
