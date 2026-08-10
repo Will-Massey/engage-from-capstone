@@ -67,11 +67,11 @@ Production data lives in the **Render Postgres** instance `engage-db`
 3. Resume the backend and verify: sign in, load the dashboard, and confirm
    recent records are present.
 
-**Before relying on this in an incident, confirm the retention actually
-available on the `basic_256mb` plan** — check the Backups tab shows recent
-restore points. If it does not, that is a gap to close _now_ rather than during
-an outage, by upgrading the plan or scheduling dumps to private storage (not
-GitHub artifacts, which would put client records in CI storage).
+**Retention: 7 days**, confirmed on the `basic_256mb` plan (10 Aug 2026). You
+can restore to any point inside that window, so recovery is not limited to
+whole-day snapshots. Anything older than 7 days is unrecoverable — a longer
+horizon means a plan upgrade or scheduled dumps to private storage (not GitHub
+artifacts, which would put client records in CI storage).
 
 ## 4. Verify after any rollback
 
