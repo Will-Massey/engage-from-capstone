@@ -92,38 +92,38 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-        if: needs.changes.outputs.code == 'true'
       - uses: actions/setup-node@v4
+        if: needs.changes.outputs.code == 'true'
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: 'npm'
 
-        if: needs.changes.outputs.code == 'true'
       - name: Install dependencies
+        if: needs.changes.outputs.code == 'true'
         run: npm ci
 
       # backend/frontend typecheck resolve @uk-proposal-platform/shared types
       # from shared/dist and @prisma/client from the generated client — build
       # them explicitly (a postinstall tsc used to do this, but running tsc
       # mid-install breaks Render's production npm ci).
-        if: needs.changes.outputs.code == 'true'
       - name: Build shared
+        if: needs.changes.outputs.code == 'true'
         run: npm run build:shared
 
-        if: needs.changes.outputs.code == 'true'
       - name: Generate Prisma Client
+        if: needs.changes.outputs.code == 'true'
         run: cd backend && npx prisma generate
 
-        if: needs.changes.outputs.code == 'true'
       - name: Lint
+        if: needs.changes.outputs.code == 'true'
         run: npm run lint
 
-        if: needs.changes.outputs.code == 'true'
       - name: Type check
+        if: needs.changes.outputs.code == 'true'
         run: npm run typecheck
 
-        if: needs.changes.outputs.code == 'true'
       - name: Format check
+        if: needs.changes.outputs.code == 'true'
         run: npm run format:check
 
   test:
@@ -152,38 +152,38 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-        if: needs.changes.outputs.code == 'true'
       - uses: actions/setup-node@v4
+        if: needs.changes.outputs.code == 'true'
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: 'npm'
 
-        if: needs.changes.outputs.code == 'true'
       - name: Install dependencies
+        if: needs.changes.outputs.code == 'true'
         run: npm ci
 
-        if: needs.changes.outputs.code == 'true'
       - name: Build shared
+        if: needs.changes.outputs.code == 'true'
         run: npm run build:shared
 
-        if: needs.changes.outputs.code == 'true'
       - name: Generate Prisma Client
+        if: needs.changes.outputs.code == 'true'
         run: cd backend && npx prisma generate
 
-        if: needs.changes.outputs.code == 'true'
       - name: Run migrations
+        if: needs.changes.outputs.code == 'true'
         run: cd backend && npx prisma migrate deploy
         env:
           DATABASE_URL: postgresql://test:test@localhost:5432/engage_test
 
-        if: needs.changes.outputs.code == 'true'
       - name: Seed test database
+        if: needs.changes.outputs.code == 'true'
         run: cd backend && npx tsx prisma/seed-enhanced.ts
         env:
           DATABASE_URL: postgresql://test:test@localhost:5432/engage_test
 
-        if: needs.changes.outputs.code == 'true'
       - name: Run unit tests with coverage
+        if: needs.changes.outputs.code == 'true'
         # Smoke suites import the full app; collecting coverage on all src/**/*.ts
         # alongside them OOMs on the default ~4GB heap. Run smoke separately below.
         # --forceExit: singleton cache + Prisma hold open sockets after the suite.
@@ -193,8 +193,8 @@ jobs:
           REDIS_URL: redis://localhost:6379
           NODE_OPTIONS: --max-old-space-size=6144
 
-        if: needs.changes.outputs.code == 'true'
       - name: Run smoke tests
+        if: needs.changes.outputs.code == 'true'
         # Each smoke file boots the full Express app. Run one file per jest process
         # (not test:integration + testPathPattern — that still discovers all smoke
         # files and OOM'd at 4GB). Cap heap at 6GB — 8192 exceeds the 7GB runner.
@@ -210,12 +210,12 @@ jobs:
           # often slow/offline; smoke only needs MemoryStore rate limiting.
           NODE_OPTIONS: --max-old-space-size=6144
 
-        if: needs.changes.outputs.code == 'true'
       - name: Frontend unit tests
+        if: needs.changes.outputs.code == 'true'
         run: cd frontend && npx vitest run
 
-        if: needs.changes.outputs.code == 'true'
       - name: Upload coverage
+        if: needs.changes.outputs.code == 'true'
         uses: codecov/codecov-action@v4
         with:
           files: ./backend/coverage/lcov.info
