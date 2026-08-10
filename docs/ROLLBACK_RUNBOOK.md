@@ -2,8 +2,9 @@
 
 How to get production back to a known-good state. Production topology:
 Cloudflare Worker `engage-proxy` (`capstonesoftware.co.uk/engage*`) → Render
-(`engage-backend-e1ue` web service + `engage-frontend-0g6u` static site) → Neon
-Postgres. Deploys are triggered **only** by the `deploy` job in
+(`engage-backend-e1ue` web service + `engage-frontend-0g6u` static site) →
+**Render Postgres** `engage-db` (`dpg-d6qkjbma2pns73a2qoe0-a`, database
+`engage_production`). Deploys are triggered **only** by the `deploy` job in
 `.github/workflows/ci-cd.yml` after lint + test + e2e pass on `master`
 (`autoDeploy` is off in `render.yaml`).
 
@@ -47,30 +48,30 @@ at boot (`start-prod.mjs` runs `prisma migrate deploy`). Migrations are written
 to be additive/idempotent, so old code on a newer schema is normally fine. If
 the migration itself is the problem, see §3.
 
-## 3. Database restore (Neon)
+## 3. Database restore
 
-Before every production deploy, CI creates a Neon branch named
-`pre-deploy-<UTC timestamp>-<short sha>` (the 5 newest are kept). Neon also has
-point-in-time restore within the project's history retention window, so you
-can restore to any moment, not just the snapshot.
+Production data lives in the **Render Postgres** instance `engage-db`
+(`dpg-d6qkjbma2pns73a2qoe0-a`, database `engage_production`, PG 18).
+
+> The Neon project `purple-scene-01932805` is **not** production. It is a stale
+> copy last migrated 5 July 2026, with none of the jobs/mailbox/forms tables.
+> CI used to snapshot it before every deploy, which meant deploys ran with no
+> real safety net while appearing protected. Restoring from it would silently
+> roll production back to July.
 
 1. **Stop writes first**: suspend the Render backend (dashboard → Settings →
    Suspend) so users don't write to a database you're about to replace.
-2. Neon console → project → **Branches** (or **Restore**):
-   - From snapshot: find the `pre-deploy-…` branch taken before the bad deploy.
-   - Point-in-time: pick the production branch and a timestamp just before the
-     incident.
-3. Use **Restore** on the production branch (Neon swaps its state to the chosen
-   source; the connection string stays the same, so no Render env change).
-   Neon keeps a backup branch of the pre-restore state — writes made after the
-   restore point live there if you need to salvage anything.
-4. If the restore was to undo a migration, also roll the app back (§2) to the
-   commit that matches the restored schema — otherwise boot re-applies the
-   migration.
-5. Resume the Render backend, then verify (§4).
+2. Render dashboard → **engage-db** → **Backups**, and restore the most recent
+   point before the incident. The connection string is unchanged by a restore,
+   so no `DATABASE_URL` edit is needed afterwards.
+3. Resume the backend and verify: sign in, load the dashboard, and confirm
+   recent records are present.
 
-CLI equivalent: `neonctl branches list --project-id <id>` /
-`neonctl branches restore <production-branch> <source>`.
+**Before relying on this in an incident, confirm the retention actually
+available on the `basic_256mb` plan** — check the Backups tab shows recent
+restore points. If it does not, that is a gap to close _now_ rather than during
+an outage, by upgrading the plan or scheduling dumps to private storage (not
+GitHub artifacts, which would put client records in CI storage).
 
 ## 4. Verify after any rollback
 
