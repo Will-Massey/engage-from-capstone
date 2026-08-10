@@ -20,6 +20,7 @@ import {
   getMessageContext,
   fetchMailAttachment,
 } from '../services/mailboxService.js';
+import { listPendingDrafts, approveDraft, dismissDraft } from '../services/mailAutoReply/index.js';
 
 const router = Router();
 
@@ -604,6 +605,55 @@ router.post(
         ? 'Form assigned from mailbox'
         : 'Client already has this form pending',
     });
+  })
+);
+
+// ==================== AI MAILBOX AUTOREPLY ====================
+
+const aiDraftsQuerySchema = z.object({ conversationId: z.string().optional() });
+
+/**
+ * GET /api/comms/mailbox/ai-drafts
+ * Pending AI-generated reply drafts awaiting human approve/dismiss.
+ */
+router.get(
+  '/mailbox/ai-drafts',
+  authenticate,
+  authorize(...MAILBOX_READ_ROLES),
+  asyncHandler(async (req, res) => {
+    const { conversationId } = aiDraftsQuerySchema.parse(req.query);
+    const drafts = await listPendingDrafts(req.tenantId!, conversationId);
+    res.json({ success: true, data: { drafts } });
+  })
+);
+
+/**
+ * POST /api/comms/mailbox/ai-drafts/:id/approve
+ * Send the draft (optionally with an edited body). Excludes JUNIOR — sends
+ * real email to clients, same gate as every other outbound mailbox mutation.
+ */
+router.post(
+  '/mailbox/ai-drafts/:id/approve',
+  authenticate,
+  authorize(...MAILBOX_WRITE_ROLES),
+  asyncHandler(async (req, res) => {
+    const body = z.object({ body: z.string().min(1).max(20000).optional() }).parse(req.body);
+    const result = await approveDraft(req.tenantId!, req.params.id, req.user!.id, body.body);
+    res.json({ success: true, data: result });
+  })
+);
+
+/**
+ * POST /api/comms/mailbox/ai-drafts/:id/dismiss
+ * Reject the draft without sending. Excludes JUNIOR, matching approve.
+ */
+router.post(
+  '/mailbox/ai-drafts/:id/dismiss',
+  authenticate,
+  authorize(...MAILBOX_WRITE_ROLES),
+  asyncHandler(async (req, res) => {
+    await dismissDraft(req.tenantId!, req.params.id, req.user!.id);
+    res.json({ success: true });
   })
 );
 

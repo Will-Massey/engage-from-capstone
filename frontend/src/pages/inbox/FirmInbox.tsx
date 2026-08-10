@@ -12,6 +12,7 @@ import {
   ExclamationTriangleIcon,
   PaperClipIcon,
   ArrowDownTrayIcon,
+  SparklesIcon,
 } from '@heroicons/react/24/outline';
 import { apiClient } from '../../utils/api';
 import { StatusChip } from '../../components/ui/StatusChip';
@@ -23,6 +24,14 @@ import {
   formatSyncHealth,
   extractEmailAddress,
 } from './mailboxHelpers';
+import {
+  draftForConversation,
+  conversationIdsWithDrafts,
+  editIsForSelectedConversation,
+  editingDraftStillPending,
+  type AiReplyDraft,
+} from './aiReplyHelpers';
+import { AiReplyCard } from './AiReplyCard';
 
 type Channel = 'mailbox' | 'all' | 'email' | 'sms' | 'portal';
 
@@ -139,6 +148,13 @@ export default function FirmInbox() {
   const [clientsForLink, setClientsForLink] = useState<Array<{ id: string; name: string }>>([]);
   const [linkClientId, setLinkClientId] = useState('');
   const [unreadOnly, setUnreadOnly] = useState(false);
+  const [aiDrafts, setAiDrafts] = useState<AiReplyDraft[]>([]);
+  const [aiDraftBusy, setAiDraftBusy] = useState(false);
+  // Which AI draft (if any) is currently loaded into the reply composer for
+  // editing. While set, the composer's send action routes through the
+  // approve endpoint instead of the plain send endpoint, so the draft is
+  // always marked decided and can never resurface as if untouched.
+  const [editingDraftId, setEditingDraftId] = useState<string | null>(null);
 
   const fetchMessages = useCallback(
     async (opts: { cursor?: string | null } = {}) => {
@@ -187,6 +203,19 @@ export default function FirmInbox() {
       setUnreadCount(typeof data?.unread === 'number' ? data.unread : 0);
     } catch {
       /* badge is non-critical */
+    }
+  }, []);
+
+  const loadAiDrafts = useCallback(async (): Promise<AiReplyDraft[] | null> => {
+    try {
+      const res = (await apiClient.get('/comms/mailbox/ai-drafts')) as any;
+      const data = res?.data ?? res;
+      const drafts: AiReplyDraft[] = data?.drafts || [];
+      setAiDrafts(drafts);
+      return drafts;
+    } catch {
+      /* suggestion card is non-critical */
+      return null;
     }
   }, []);
 
@@ -245,7 +274,8 @@ export default function FirmInbox() {
     if (channel !== 'mailbox') return;
     void loadConnection();
     void loadUnreadCount();
-  }, [channel, loadConnection, loadUnreadCount]);
+    void loadAiDrafts();
+  }, [channel, loadConnection, loadUnreadCount, loadAiDrafts]);
 
   // Auto-sync once per mailbox visit when it opens empty. Failures are
   // swallowed here (no toast loop) — the health banner picks up the
@@ -287,6 +317,54 @@ export default function FirmInbox() {
 
   async function handleReply() {
     if (!selectedMail || !replyBody.trim()) return;
+
+    // If the composer is holding an edited AI draft for this conversation,
+    // sending must go through the approve endpoint (with the edited text)
+    // so the draft row is marked decided — never the plain send endpoint,
+    // which never touches the draft and lets it resurface. The conversation
+    // check guards an abandoned edit from attaching itself to whatever
+    // thread happens to be selected when the user eventually hits send.
+    const draftId = editingDraftId;
+    if (draftId && editIsForSelectedConversation(draftId, aiDrafts, selectedMail.conversationId)) {
+      setSending(true);
+      try {
+        const res = (await apiClient.post(`/comms/mailbox/ai-drafts/${draftId}/approve`, {
+          body: replyBody.trim(),
+        })) as any;
+        const data = res?.data ?? res;
+        if (data?.sent === false) {
+          setError(data?.error || 'Approved but the send failed');
+        } else {
+          setSyncMsg('Reviewed reply sent');
+          setEditingDraftId(null);
+          setReplyBody('');
+          setReplyCc('');
+        }
+        await Promise.all([loadAiDrafts(), fetchMessages(), refreshThread(selectedMail.id)]);
+      } catch (e: any) {
+        // The approve call itself failed — most commonly a colleague already
+        // decided this draft in a shared mailbox (409). Refetch the drafts
+        // rather than trusting the stale local copy: if this draft is no
+        // longer pending, the edit can never be safely resent through
+        // approve, so clear the editing state (and the composer text it was
+        // holding) now rather than letting the fall-through below silently
+        // send it via the plain /mailbox/send path later.
+        const freshDrafts = await loadAiDrafts();
+        const list = freshDrafts ?? aiDrafts;
+        if (!editingDraftStillPending(draftId, list)) {
+          setEditingDraftId(null);
+          setReplyBody('');
+          setReplyCc('');
+          setError('Someone else already handled this reply — your edit was not sent.');
+        } else {
+          setError(e?.response?.data?.error?.message || e?.message || 'Send failed');
+        }
+      } finally {
+        setSending(false);
+      }
+      return;
+    }
+
     // The DTO's from/to fields are flattened display strings (e.g. "Emma
     // Wilson Design Studio <emma@ewdesign.co.uk>"), not bare addresses —
     // /mailbox/send's z.string().email() 400s on those, so replies never
@@ -316,6 +394,46 @@ export default function FirmInbox() {
       setError(e?.response?.data?.error?.message || e?.message || 'Send failed');
     } finally {
       setSending(false);
+    }
+  }
+
+  async function handleApproveAiDraft(draftId: string) {
+    setAiDraftBusy(true);
+    try {
+      const res = (await apiClient.post(`/comms/mailbox/ai-drafts/${draftId}/approve`, {})) as any;
+      const data = res?.data ?? res;
+      if (data?.sent === false) setError(data?.error || 'Approved but the send failed');
+      else setSyncMsg('Suggested reply sent');
+      await Promise.all([
+        loadAiDrafts(),
+        fetchMessages(),
+        ...(selectedMail ? [refreshThread(selectedMail.id)] : []),
+      ]);
+    } catch (e: any) {
+      setError(e?.response?.data?.error?.message || e?.message || 'Approve failed');
+    } finally {
+      setAiDraftBusy(false);
+    }
+  }
+
+  function handleEditAiDraft(draft: AiReplyDraft) {
+    // Drop the suggested text into the existing composer and remember which
+    // draft is being edited. Nothing is sent until the human hits "Send
+    // reply" below, which then routes through the approve endpoint (see
+    // handleReply) so the draft is always marked decided.
+    setReplyBody(draft.bodyText);
+    setEditingDraftId(draft.id);
+  }
+
+  async function handleDismissAiDraft(draftId: string) {
+    setAiDraftBusy(true);
+    try {
+      await apiClient.post(`/comms/mailbox/ai-drafts/${draftId}/dismiss`, {});
+      await loadAiDrafts();
+    } catch (e: any) {
+      setError(e?.response?.data?.error?.message || e?.message || 'Dismiss failed');
+    } finally {
+      setAiDraftBusy(false);
     }
   }
 
@@ -370,6 +488,13 @@ export default function FirmInbox() {
     setTriage(null);
     setMailContext(null);
     setReplyCc('');
+    // An in-progress AI-draft edit must never carry over to a different
+    // conversation — drop both the editing flag and the composer text it
+    // was holding so it can't be sent, unlabelled, against the wrong thread.
+    if (editingDraftId) {
+      setEditingDraftId(null);
+      setReplyBody('');
+    }
     setThreadMessages([m]);
     if (m.direction === 'inbound' && !m.read) {
       try {
@@ -438,6 +563,16 @@ export default function FirmInbox() {
     [selectedMail]
   );
   const composeToAddress = useMemo(() => extractEmailAddress(compose.to), [compose.to]);
+  const conversationsWithAiDrafts = useMemo(() => conversationIdsWithDrafts(aiDrafts), [aiDrafts]);
+  const selectedAiDraft = useMemo(() => {
+    const found = draftForConversation(aiDrafts, selectedMail?.conversationId ?? null);
+    return found && found.id !== editingDraftId ? found : null;
+  }, [aiDrafts, selectedMail, editingDraftId]);
+  const editingSelectedDraft = editIsForSelectedConversation(
+    editingDraftId,
+    aiDrafts,
+    selectedMail?.conversationId ?? null
+  );
 
   return (
     <div className="space-y-5">
@@ -483,6 +618,10 @@ export default function FirmInbox() {
                 onClick={() => {
                   setComposeOpen(true);
                   setSelectedMail(null);
+                  if (editingDraftId) {
+                    setEditingDraftId(null);
+                    setReplyBody('');
+                  }
                 }}
               >
                 <PaperAirplaneIcon className="h-4 w-4" />
@@ -647,6 +786,16 @@ export default function FirmInbox() {
                                   aria-label="Has attachments"
                                 />
                               )}
+                              {m.conversationId &&
+                                conversationsWithAiDrafts.has(m.conversationId) && (
+                                  <StatusChip
+                                    tone="violet"
+                                    title="AI has a suggested reply waiting"
+                                  >
+                                    <SparklesIcon className="h-3 w-3" aria-hidden />
+                                    Suggested
+                                  </StatusChip>
+                                )}
                               <span className="ml-auto text-2xs tabular-nums text-slate-400">
                                 {format(new Date(m.at), 'dd MMM HH:mm')}
                               </span>
@@ -959,6 +1108,22 @@ export default function FirmInbox() {
                     </div>
                   )}
 
+                  {selectedAiDraft && (
+                    <AiReplyCard
+                      draft={selectedAiDraft}
+                      busy={aiDraftBusy}
+                      onApprove={(draftId) => void handleApproveAiDraft(draftId)}
+                      onEdit={handleEditAiDraft}
+                      onDismiss={(draftId) => void handleDismissAiDraft(draftId)}
+                    />
+                  )}
+
+                  {editingSelectedDraft && (
+                    <p className="flex items-center gap-1.5 rounded-lg border border-violet-200 bg-violet-50/60 px-2.5 py-1.5 text-xs font-medium text-violet-800 dark:border-violet-900 dark:bg-violet-950/30 dark:text-violet-200">
+                      <SparklesIcon className="h-3.5 w-3.5 shrink-0" aria-hidden />
+                      Sending the reviewed AI reply. This marks the suggested draft as sent.
+                    </p>
+                  )}
                   <input
                     className="input-field text-sm"
                     placeholder="Cc (optional)"
@@ -981,7 +1146,11 @@ export default function FirmInbox() {
                     }
                     onClick={() => void handleReply()}
                   >
-                    {sending ? 'Sending…' : 'Send reply'}
+                    {sending
+                      ? 'Sending…'
+                      : editingSelectedDraft
+                        ? 'Send reviewed reply'
+                        : 'Send reply'}
                   </button>
                 </>
               )}

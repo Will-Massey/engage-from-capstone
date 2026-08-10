@@ -88,12 +88,18 @@ const tabs = [
 
 const VALID_TABS = tabs.map((t) => t.id);
 
+// AI mailbox autoreply can auto-send email to clients once in 'auto' mode, so it is gated to
+// the same senior roles the backend enforces (ADMIN, PARTNER, MD) — mirrors the pattern in
+// frontend/src/pages/proposals/proposalDetail/ProposalDetailContext.tsx.
+const MAIL_AUTOREPLY_ROLES = new Set(['ADMIN', 'PARTNER', 'MD']);
+
 const Settings = () => {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const tabFromUrl = searchParams.get('tab');
   const { user, tenant, setSession, updateUser } = useAuthStore();
   const { theme: currentTheme, setTheme: setCurrentTheme } = useThemeStore();
+  const canManageMailAutoReply = !!user && MAIL_AUTOREPLY_ROLES.has(user.role);
   const [activeTab, setActiveTab] = useState(() =>
     tabFromUrl && VALID_TABS.includes(tabFromUrl) ? tabFromUrl : 'profile'
   );
@@ -163,6 +169,15 @@ const Settings = () => {
     draftRenewals: true,
     renewalUpliftPercent: 0,
   });
+
+  // AI mailbox autoreply form state (opt-in, senior-role gated — default OFF/draft)
+  const [mailAutoReplyForm, setMailAutoReplyForm] = useState({
+    enabled: false,
+    mode: 'draft' as 'draft' | 'auto',
+    businessHoursOnly: true,
+  });
+  const [mailAutoReplySaving, setMailAutoReplySaving] = useState(false);
+  const [mailAutoReplyConfirmOpen, setMailAutoReplyConfirmOpen] = useState(false);
 
   // Password form state
   const [passwordForm, setPasswordForm] = useState({
@@ -574,6 +589,15 @@ const Settings = () => {
               typeof c.renewalUpliftPercent === 'number' ? c.renewalUpliftPercent : 0,
           }));
         }
+        if (data.mailAutoReply) {
+          const m = data.mailAutoReply as Record<string, unknown>;
+          setMailAutoReplyForm((prev) => ({
+            ...prev,
+            enabled: m.enabled === true,
+            mode: m.mode === 'auto' ? 'auto' : 'draft',
+            businessHoursOnly: m.businessHoursOnly !== false,
+          }));
+        }
         if (data.vat) {
           setVatForm((prev) => ({
             ...prev,
@@ -644,6 +668,33 @@ const Settings = () => {
       toast.error(error.message || 'Failed to save settings');
     } finally {
       setIsSaving(null);
+    }
+  };
+
+  // Saves the AI mailbox autoreply block immediately on toggle (no separate Save button) —
+  // mirrors the automation-schedule opt-in in PracticeAutomations.tsx. Returns whether the
+  // save succeeded so the auto-send confirm dialog only closes on success.
+  const saveMailAutoReply = async (
+    patch: Partial<{ enabled: boolean; mode: 'draft' | 'auto'; businessHoursOnly: boolean }>
+  ): Promise<boolean> => {
+    const next = { ...mailAutoReplyForm, ...patch };
+    setMailAutoReplySaving(true);
+    try {
+      const response = (await apiClient.updateTenantSettings({
+        mailAutoReply: next,
+      })) as any;
+      if (response.success) {
+        setMailAutoReplyForm(next);
+        toast.success('AI mailbox reply settings saved');
+        return true;
+      }
+      toast.error(response.error?.message || 'Failed to save settings');
+      return false;
+    } catch (error: any) {
+      toast.error(error.message || 'Failed to save settings');
+      return false;
+    } finally {
+      setMailAutoReplySaving(false);
     }
   };
 
@@ -1663,6 +1714,135 @@ const Settings = () => {
                   <EmailSettings />
                 </div>
               </div>
+
+              {/* AI replies to client email — opt-in, senior-role gated */}
+              {canManageMailAutoReply && (
+                <div className="glass-tile overflow-hidden">
+                  <div className="px-8 py-5 border-b border-slate-200 dark:border-slate-700 bg-white/40 dark:bg-slate-800/30">
+                    <h2 className="text-lg font-semibold text-slate-900 dark:text-white">
+                      AI replies to client email
+                    </h2>
+                    <p className="text-sm text-slate-500 dark:text-slate-300">
+                      {mailAutoReplyForm.enabled
+                        ? mailAutoReplyForm.mode === 'auto'
+                          ? 'Live. Replies are sent to clients automatically, without anyone reading them first.'
+                          : 'Draft only. Every reply waits for someone at the practice to approve it before it sends.'
+                        : 'Off. No AI replies are drafted or sent.'}
+                    </p>
+                  </div>
+                  <div className="p-6 space-y-4">
+                    <label className="flex items-start gap-3 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={mailAutoReplyForm.enabled}
+                        disabled={mailAutoReplySaving}
+                        onChange={(e) => {
+                          if (e.target.checked) {
+                            void saveMailAutoReply({
+                              enabled: true,
+                              mode: 'draft',
+                              businessHoursOnly: true,
+                            });
+                          } else {
+                            void saveMailAutoReply({ enabled: false });
+                          }
+                        }}
+                        className="mt-1 h-4 w-4 rounded border-slate-300 text-primary-600 focus:ring-primary-200"
+                      />
+                      <span>
+                        <span className="block text-sm font-semibold text-slate-700 dark:text-slate-100">
+                          Draft AI replies to client email
+                        </span>
+                        <span className="block text-xs text-slate-500 dark:text-slate-300 mt-1">
+                          Draft replies to client email for your approval. Nothing is sent until
+                          someone at the practice approves it.
+                        </span>
+                      </span>
+                    </label>
+
+                    {mailAutoReplyForm.enabled && (
+                      <>
+                        <label className="flex items-start gap-3 cursor-pointer">
+                          <input
+                            type="checkbox"
+                            checked={mailAutoReplyForm.mode === 'auto'}
+                            disabled={mailAutoReplySaving}
+                            onChange={(e) => {
+                              if (e.target.checked) {
+                                setMailAutoReplyConfirmOpen(true);
+                              } else {
+                                void saveMailAutoReply({ mode: 'draft' });
+                              }
+                            }}
+                            className="mt-1 h-4 w-4 rounded border-slate-300 text-primary-600 focus:ring-primary-200"
+                          />
+                          <span>
+                            <span className="block text-sm font-semibold text-slate-700 dark:text-slate-100">
+                              Send replies automatically, without review
+                            </span>
+                            <span className="block text-xs text-slate-500 dark:text-slate-300 mt-1">
+                              Clients receive AI-drafted replies straight away, with no one at the
+                              practice reading them first.
+                            </span>
+                          </span>
+                        </label>
+
+                        <label className="flex items-center gap-3 cursor-pointer">
+                          <input
+                            type="checkbox"
+                            checked={mailAutoReplyForm.businessHoursOnly}
+                            disabled={mailAutoReplySaving}
+                            onChange={(e) =>
+                              void saveMailAutoReply({ businessHoursOnly: e.target.checked })
+                            }
+                            className="h-4 w-4 rounded border-slate-300 text-primary-600 focus:ring-primary-200"
+                          />
+                          <span className="text-sm font-medium text-slate-700 dark:text-slate-100">
+                            Only send Monday to Friday, 8am to 6pm UK time
+                          </span>
+                        </label>
+                      </>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {mailAutoReplyConfirmOpen && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
+                  <div className="w-full max-w-sm rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 shadow-2xl p-5 space-y-3">
+                    <h3 className="text-base font-semibold text-slate-900 dark:text-slate-100">
+                      Send replies automatically?
+                    </h3>
+                    <p className="text-sm text-slate-600 dark:text-slate-300">
+                      Replies will be sent to your clients automatically, without anyone reading
+                      them first. They are drafted from the email thread and your client records. A
+                      reply that mentions a monetary amount is always held back for a human.
+                    </p>
+                    <div className="flex justify-end gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setMailAutoReplyConfirmOpen(false)}
+                        className="btn-secondary text-sm cursor-pointer"
+                      >
+                        Cancel
+                      </button>
+                      <button
+                        type="button"
+                        disabled={mailAutoReplySaving}
+                        onClick={() => {
+                          void (async () => {
+                            const ok = await saveMailAutoReply({ mode: 'auto' });
+                            if (ok) setMailAutoReplyConfirmOpen(false);
+                          })();
+                        }}
+                        className="btn-primary text-sm cursor-pointer"
+                      >
+                        {mailAutoReplySaving ? 'Saving…' : 'Enable automatic sending'}
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
 
               {/* Engagement clause library versioning */}
               <EngagementLibrarySettings />
