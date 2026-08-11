@@ -56,13 +56,20 @@ async function saveOAuthTokens(
 }
 
 /**
- * Land the mailbox OAuth round-trip on the Settings tab that actually mounts the
- * connect widget — a bare /settings opens on My account, where nothing is
- * listening and the success/error toast never fires. `provider` is always
- * included so the widget can tell its own callback apart from Xero's or
- * QuickBooks', which share these query params.
+ * Land the mailbox OAuth round-trip back on whichever page started it — the
+ * Settings > Communications tab, or /integrations, now the primary place to
+ * connect a mailbox. `returnTo` comes from the signed OAuth state, so it is
+ * never user-controlled at this point; it defaults to the original Settings
+ * destination when absent, which is what the frozen mobile snapshot (no
+ * `returnTo` concept, one `communications` tab rendering `<EmailSettings />`)
+ * still gets. `provider` is always included so the widget can tell its own
+ * callback apart from Xero's or QuickBooks', which share these query params.
  */
-const mailboxRedirect = (params: Record<string, string>) => {
+const mailboxRedirect = (params: Record<string, string>, returnTo?: string) => {
+  if (returnTo === 'integrations') {
+    const qs = new URLSearchParams(params);
+    return `${frontendUrl()}/integrations?${qs.toString()}`;
+  }
   const qs = new URLSearchParams({ tab: 'communications', ...params });
   return `${frontendUrl()}/settings?${qs.toString()}`;
 };
@@ -72,26 +79,29 @@ export async function handleOAuthProviderCallback(
   res: Response,
   provider: string
 ): Promise<void> {
+  const { code, error, state } = req.query;
+  // Verified as early as possible so every error branch below can still send
+  // the user back where they started, not just the success path.
+  const payload = state ? verifyOAuthState(String(state)) : null;
+  const redirect = (params: Record<string, string>) => mailboxRedirect(params, payload?.returnTo);
+
   if (!VALID_PROVIDERS.includes(provider as (typeof VALID_PROVIDERS)[number])) {
-    res.redirect(mailboxRedirect({ error: 'invalid_provider' }));
+    res.redirect(redirect({ error: 'invalid_provider' }));
     return;
   }
 
-  const { code, error, state } = req.query;
-
   if (error) {
-    res.redirect(mailboxRedirect({ provider, error: String(error) }));
+    res.redirect(redirect({ provider, error: String(error) }));
     return;
   }
 
   if (!code || !state) {
-    res.redirect(mailboxRedirect({ provider, error: 'no_code_received' }));
+    res.redirect(redirect({ provider, error: 'no_code_received' }));
     return;
   }
 
-  const payload = verifyOAuthState(String(state));
   if (!payload || payload.provider !== provider) {
-    res.redirect(mailboxRedirect({ provider, error: 'invalid_state' }));
+    res.redirect(redirect({ provider, error: 'invalid_state' }));
     return;
   }
 
@@ -128,9 +138,9 @@ export async function handleOAuthProviderCallback(
 
     await saveOAuthTokens(payload.tenantId, provider, tokens, user?.email);
 
-    res.redirect(mailboxRedirect({ oauth: 'success', provider }));
+    res.redirect(redirect({ oauth: 'success', provider }));
   } catch (err: any) {
     logger.error('OAuth callback exchange failed:', err);
-    res.redirect(mailboxRedirect({ provider, error: 'oauth_failed' }));
+    res.redirect(redirect({ provider, error: 'oauth_failed' }));
   }
 }

@@ -16,6 +16,10 @@ export interface OAuthStatePayload {
   userId: string;
   provider: string;
   exp: number;
+  /** Where to send the user back to after the round-trip. Optional — old
+   * callers (and the frozen mobile snapshot) never set this and get the
+   * pre-existing default redirect. */
+  returnTo?: string;
 }
 
 // OAuth consent round-trips involve a human (provider login, org select, Allow),

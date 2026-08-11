@@ -7,6 +7,8 @@ import {
   ExclamationCircleIcon,
   ArrowPathIcon,
 } from '@heroicons/react/24/outline';
+import { useAuthStore } from '../../stores/authStore';
+import { isApprover } from '../../constants/roles';
 
 type OAuthProvider = 'gmail' | 'outlook' | 'microsoft365';
 
@@ -43,6 +45,10 @@ const providerConfig = {
 };
 
 const OAuthConnect = ({ provider, onConnected }: OAuthConnectProps) => {
+  // Disconnect is authorize('ADMIN','PARTNER','MANAGER') on the backend
+  // (email.ts /auth/:provider/disconnect) — mirror it here so a SENIOR sees
+  // the connected status without a button that 403s.
+  const canManage = isApprover(useAuthStore((s) => s.user?.role));
   const [status, setStatus] = useState<OAuthStatus | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isConnecting, setIsConnecting] = useState(false);
@@ -77,16 +83,19 @@ const OAuthConnect = ({ provider, onConnected }: OAuthConnectProps) => {
     const error = urlParams.get('error');
 
     // Xero and QuickBooks land on the same pages with the same query params, so
-    // only claim a callback that names this mailbox provider.
-    if (error && urlProvider === provider) {
+    // only claim a callback that names this mailbox provider — except
+    // 'invalid_provider', the one mailbox error the backend can't attach a
+    // provider to (the :provider route param itself was invalid).
+    if (error && (urlProvider === provider || (!urlProvider && error === 'invalid_provider'))) {
       toast.error(`OAuth failed: ${error}`);
       window.history.replaceState({}, document.title, window.location.pathname);
       return;
     }
 
     if (oauth === 'success' && urlProvider === provider) {
-      toast.success(`${providerConfig[provider].name} connected successfully!`);
       setStatus({ isConnected: true, provider });
+      // onConnected owns the success toast — MailboxConnect's callback fires
+      // one with the mailbox's friendly label; firing another here duplicated it.
       onConnected();
       // Drop the oauth params, keep the page we're on. There has never been a
       // 'email' Settings tab and the id is meaningless on /integrations.
@@ -97,7 +106,15 @@ const OAuthConnect = ({ provider, onConnected }: OAuthConnectProps) => {
   const initiateOAuth = async () => {
     setIsConnecting(true);
     try {
-      const response = (await apiClient.get(`/email/auth/${provider}/url`)) as any;
+      // Tell the backend where to send the user back after the round-trip —
+      // /integrations is now the primary place to connect a mailbox, but this
+      // widget is also mounted on Settings > Communications.
+      const returnTo = window.location.pathname.startsWith('/integrations')
+        ? 'integrations'
+        : 'settings';
+      const response = (await apiClient.get(
+        `/email/auth/${provider}/url?returnTo=${returnTo}`
+      )) as any;
       if (response.success && response.data.url) {
         window.location.href = response.data.url;
       } else {
@@ -153,12 +170,14 @@ const OAuthConnect = ({ provider, onConnected }: OAuthConnectProps) => {
                 <span className="text-green-700">Connected</span>
                 {status.user && <span className="ml-2 text-gray-500">({status.user})</span>}
               </div>
-              <button
-                onClick={disconnect}
-                className="mt-3 text-sm text-red-600 hover:text-red-800 underline"
-              >
-                Disconnect
-              </button>
+              {canManage && (
+                <button
+                  onClick={disconnect}
+                  className="mt-3 text-sm text-red-600 hover:text-red-800 underline"
+                >
+                  Disconnect
+                </button>
+              )}
             </>
           ) : (
             <>

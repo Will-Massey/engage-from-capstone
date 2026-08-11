@@ -532,10 +532,17 @@ router.get(
       throw new ApiError('INVALID_PROVIDER', 'Invalid email provider', 400);
     }
 
+    // Where the frontend should land after the round-trip. Restricted to a
+    // known set (not an arbitrary URL) — old callers that never send this get
+    // undefined, which the callback resolves to its pre-existing default.
+    const { returnTo } = z
+      .object({ returnTo: z.enum(['integrations', 'settings']).optional() })
+      .parse(req.query);
+
     const tenantId = req.tenantId!;
     const userId = req.user!.id;
 
-    const state = createOAuthState({ tenantId, userId, provider });
+    const state = createOAuthState({ tenantId, userId, provider, returnTo });
     const redirectUri = oauthRedirectUri(provider);
 
     let url: string;
