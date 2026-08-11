@@ -8,7 +8,7 @@ import {
 } from '@heroicons/react/24/outline';
 
 /**
- * Hardened money-loop demo path for Home + partner walkthroughs.
+ * Quick-nav strip for the proposal -> job -> invoice -> cash path.
  */
 export default function MoneyLoopStrip() {
   const steps = [
@@ -63,7 +63,7 @@ export default function MoneyLoopStrip() {
             Win → sign → collect → deliver → renew
           </h2>
           <p className="text-xs text-slate-500">
-            Partner demo path — Engager stops at delivery; we close cash too.
+            Jump to any stage, from winning the work to getting paid.
           </p>
         </div>
         <Link to="/analytics" className="btn-ghost btn-sm">
