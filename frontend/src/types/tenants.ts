@@ -68,13 +68,6 @@ export interface TenantEmailSettings {
   outlook?: TenantOAuthMailboxSettings;
 }
 
-export interface TenantNotificationSettings {
-  proposalAccepted?: boolean;
-  proposalViewed?: boolean;
-  mtditsaDeadlines?: boolean;
-  weeklySummary?: boolean;
-}
-
 export interface TenantProposalSettings {
   defaultExpiryDays?: number;
   chaseSequenceDays?: number[];
@@ -192,7 +185,6 @@ export interface TenantSettingsRecord {
   vat?: TenantVatSettings;
   branding?: TenantBrandingSettings;
   email?: TenantEmailSettings;
-  notifications?: TenantNotificationSettings;
   proposals?: TenantProposalSettings;
   payments?: TenantPaymentSettings;
   professionalBody?: ProfessionalBody | string;
@@ -220,7 +212,6 @@ export interface UpdateTenantSettingsPayload {
   vat?: TenantVatSettings;
   branding?: TenantBrandingSettings;
   email?: TenantEmailSettings;
-  notifications?: TenantNotificationSettings;
   proposals?: TenantProposalSettings;
   payments?: TenantPaymentSettings;
   professionalBody?: ProfessionalBody | string;

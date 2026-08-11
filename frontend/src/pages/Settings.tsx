@@ -155,12 +155,6 @@ const Settings = () => {
       benchmarksOptIn: false,
       blockSendUntilAmlCleared: false,
     },
-    notifications: {
-      proposalAccepted: true,
-      proposalViewed: true,
-      mtditsaDeadlines: true,
-      weeklySummary: false,
-    },
   });
 
   // Clara autopilot form state (agentic drafting — default OFF)
@@ -553,12 +547,6 @@ const Settings = () => {
           primaryColor: data.branding?.primaryColor || prev.primaryColor,
           logo: data.branding?.logo || prev.logo,
         }));
-        if (data.notifications) {
-          setCommunicationsForm((prev) => ({
-            ...prev,
-            notifications: { ...prev.notifications, ...data.notifications },
-          }));
-        }
         if (data.proposals) {
           const p = data.proposals as Record<string, unknown>;
           setCommunicationsForm((prev) => ({
@@ -638,7 +626,6 @@ const Settings = () => {
     setIsSaving('communications');
     try {
       const response = (await apiClient.updateTenantSettings({
-        notifications: communicationsForm.notifications,
         proposals: communicationsForm.proposals,
       })) as any;
       if (response.success) {
@@ -2073,84 +2060,6 @@ const Settings = () => {
                       className="btn-primary"
                     >
                       {isSaving === 'communications' ? 'Saving...' : 'Save chase settings'}
-                    </button>
-                  </div>
-                </div>
-              </div>
-
-              {/* Notifications */}
-              <div className="glass-tile overflow-hidden">
-                <div className="px-8 py-5 border-b border-slate-200 dark:border-slate-700 bg-white/40 dark:bg-slate-800/30">
-                  <h2 className="text-lg font-semibold text-slate-900 dark:text-white">
-                    Notification Preferences
-                  </h2>
-                  <p className="text-sm text-slate-500 dark:text-slate-300">
-                    Choose when you receive email notifications
-                  </p>
-                </div>
-                <div className="p-6 space-y-4">
-                  {[
-                    {
-                      key: 'proposalAccepted',
-                      label: 'Proposal Accepted',
-                      description: 'When a client accepts a proposal',
-                    },
-                    {
-                      key: 'proposalViewed',
-                      label: 'Proposal Viewed',
-                      description: 'When a client views a shared proposal',
-                    },
-                    {
-                      key: 'mtditsaDeadlines',
-                      label: 'MTD ITSA Deadlines',
-                      description: 'Upcoming compliance deadlines',
-                    },
-                    {
-                      key: 'weeklySummary',
-                      label: 'Weekly Summary',
-                      description: 'Weekly activity digest every Monday',
-                    },
-                  ].map((item) => (
-                    <div key={item.key} className="flex items-start py-1.5">
-                      <input
-                        type="checkbox"
-                        id={item.key}
-                        checked={
-                          communicationsForm.notifications[
-                            item.key as keyof typeof communicationsForm.notifications
-                          ]
-                        }
-                        onChange={(e) =>
-                          setCommunicationsForm({
-                            ...communicationsForm,
-                            notifications: {
-                              ...communicationsForm.notifications,
-                              [item.key]: e.target.checked,
-                            },
-                          })
-                        }
-                        className="h-4 w-4 mt-1 text-primary-600 dark:text-primary-400 rounded border-slate-300 dark:border-slate-500 focus:ring-2 focus:ring-primary-200"
-                      />
-                      <div className="ml-3">
-                        <label
-                          htmlFor={item.key}
-                          className="text-sm font-semibold text-slate-700 dark:text-slate-100"
-                        >
-                          {item.label}
-                        </label>
-                        <p className="text-xs text-slate-500 dark:text-slate-300 mt-0.5">
-                          {item.description}
-                        </p>
-                      </div>
-                    </div>
-                  ))}
-                  <div className="pt-4 border-t border-slate-200 dark:border-slate-700">
-                    <button
-                      onClick={handleSaveCommunications}
-                      disabled={isSaving === 'communications'}
-                      className="btn-primary"
-                    >
-                      {isSaving === 'communications' ? 'Saving...' : 'Save notifications'}
                     </button>
                   </div>
                 </div>
