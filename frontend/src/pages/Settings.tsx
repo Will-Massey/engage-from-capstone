@@ -29,7 +29,7 @@ import {
   buildProposalDefaultsPayload,
   buildProposalTermsPayload,
 } from './settingsCommunicationsHelpers';
-import { isSettingsTabVisibleForRole } from './settingsTabAccess';
+import { isFirmGroupTabVisible, isSettingsTabVisibleForRole } from './settingsTabAccess';
 import EmailSettings from '../components/email/EmailSettings';
 import CoverLetterTemplatesManager from '../components/settings/CoverLetterTemplatesManager';
 import FirmGroupSettings from '../components/settings/FirmGroupSettings';
@@ -40,7 +40,8 @@ import ProposalTermsSettings from '../components/settings/ProposalTermsSettings'
 // Simplified tabs - combined related sections. 'profile' merges the personal
 // tabs (profile info, theme, password/2FA) so the sidebar reads practice-wide
 // vs personal instead of listing each individually. The old Integrations tab
-// was a full duplicate of the /integrations hub page and was deleted outright
+// was folded into the /integrations hub page, which now mounts the same
+// XeroConnect / QuickBooksConnect / WebhookSettings components
 // (see frontend/src/pages/integrations/IntegrationsHub.tsx).
 const tabs = [
   {
@@ -118,14 +119,15 @@ const Settings = () => {
   const { theme: currentTheme, setTheme: setCurrentTheme } = useThemeStore();
   const canManageMailAutoReply = !!user && MAIL_AUTOREPLY_ROLES.has(user.role);
   // Firm group is a multi-firm feature most single practices never use, so the
-  // tab only appears once we've confirmed the tenant is actually in one.
+  // tab stays hidden unless the tenant is already in a group or the user is one
+  // of the roles that can create one (otherwise there is no way in at all).
   const [firmGroupAssigned, setFirmGroupAssigned] = useState(false);
   const visibleTabs = useMemo(
     () =>
       tabs.filter(
         (tab) =>
           isSettingsTabVisibleForRole(tab.id, user?.role) &&
-          (tab.id !== 'firm-group' || firmGroupAssigned)
+          (tab.id !== 'firm-group' || isFirmGroupTabVisible(firmGroupAssigned, user?.role))
       ),
     [user?.role, firmGroupAssigned]
   );
@@ -299,13 +301,22 @@ const Settings = () => {
 
   useEffect(() => {
     if (tabFromUrl && VALID_TABS.includes(tabFromUrl) && tabFromUrl !== activeTab) {
-      setActiveTab(isSettingsTabVisibleForRole(tabFromUrl, user?.role) ? tabFromUrl : 'profile');
+      const allowed = isSettingsTabVisibleForRole(tabFromUrl, user?.role);
+      setActiveTab(allowed ? tabFromUrl : 'profile');
+      // Deep link to a tab this role can't use: drop ?tab= so the address bar
+      // stops claiming we're on a tab that isn't rendered.
+      if (!allowed) {
+        const params = new URLSearchParams(searchParams);
+        params.delete('tab');
+        setSearchParams(params, { replace: true });
+      }
     }
-  }, [tabFromUrl, activeTab, user?.role]);
+  }, [tabFromUrl, activeTab, user?.role, searchParams, setSearchParams]);
 
-  // The deleted Integrations tab's content lives entirely on the /integrations
-  // hub page now (Xero/QuickBooks connect, webhooks) — send old links/bookmarks
-  // there instead of dropping the user on an unrelated tab. Keep the other
+  // The Integrations tab's content now lives on the /integrations hub page,
+  // which mounts the same Xero/QuickBooks connect widgets and webhook settings
+  // — send old links/bookmarks there instead of dropping the user on an
+  // unrelated tab. Keep the other
   // query params (e.g. oauth=success&provider=xero from the OAuth callback
   // redirect) so XeroConnect/QuickBooksConnect on the hub page still see them.
   useEffect(() => {
@@ -319,12 +330,20 @@ const Settings = () => {
 
   // Clean up the URL for old ?tab=appearance / ?tab=security links once
   // resolved to their merged tab, so the address bar matches what's shown.
+  // Rewrite only the tab param — anything that arrived alongside it (oauth
+  // callback flags, for example) has to survive the rewrite.
   useEffect(() => {
     if (rawTabFromUrl && TAB_REDIRECTS[rawTabFromUrl]) {
       const resolved = TAB_REDIRECTS[rawTabFromUrl];
-      setSearchParams(resolved === 'profile' ? {} : { tab: resolved }, { replace: true });
+      const params = new URLSearchParams(searchParams);
+      if (resolved === 'profile') {
+        params.delete('tab');
+      } else {
+        params.set('tab', resolved);
+      }
+      setSearchParams(params, { replace: true });
     }
-  }, [rawTabFromUrl, setSearchParams]);
+  }, [rawTabFromUrl, searchParams, setSearchParams]);
 
   // Firm group is hidden from the tab list until we know the tenant is in one.
   useEffect(() => {
@@ -2761,7 +2780,7 @@ const Settings = () => {
                   </Link>
                   <p className="mt-3 text-xs text-slate-500 dark:text-slate-400">
                     Create, edit, and use templates from the Templates page in the left sidebar
-                    under Catalogue.
+                    under Proposals.
                   </p>
                 </div>
               </div>

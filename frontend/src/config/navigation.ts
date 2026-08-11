@@ -409,15 +409,12 @@ export function getPageMeta(pathname: string): {
     };
   }
   if (pathname === '/pricing-calculator') {
+    // Sits in the Proposals nav section alongside Services, Templates and
+    // Analytics — not underneath Services — so it breadcrumbs flat like they do.
     return {
       title: 'Fee calculator',
       description: 'Value-based fee suggestions from client turnover and complexity',
-      breadcrumbs: [
-        { label: 'Dashboard', href: '/' },
-        { label: 'Services', href: '/services' },
-        { label: 'Fee calculator' },
-      ],
-      backTo: { label: 'Back to services', href: '/services' },
+      breadcrumbs: [{ label: 'Dashboard', href: '/' }, { label: 'Fee calculator' }],
     };
   }
   if (pathname.startsWith('/services/')) {
