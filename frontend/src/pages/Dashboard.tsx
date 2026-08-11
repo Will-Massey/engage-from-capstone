@@ -23,7 +23,6 @@ import MoneyLoopStrip from '../components/dashboard/MoneyLoopStrip';
 import ClaraAttentionQueue from '../components/dashboard/ClaraAttentionQueue';
 import FirstProposalWizard from '../components/onboarding/FirstProposalWizard';
 import { isFirstProposalWizardDismissed } from '../components/onboarding/firstProposalWizardStorage';
-import RecurringRevenueWidget from '../components/analytics/RecurringRevenueWidget';
 import DunningQueue from '../components/analytics/DunningQueue';
 
 const RevenueAndPieCharts = lazy(() =>
@@ -628,7 +627,6 @@ const Dashboard = () => {
       )}
 
       <div className="grid gap-4 lg:grid-cols-1">
-        <RecurringRevenueWidget />
         <DunningQueue />
       </div>
 
