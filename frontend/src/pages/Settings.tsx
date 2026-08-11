@@ -2420,9 +2420,12 @@ const Settings = () => {
                       Receive Payments Through Engage
                     </h3>
                     <p className="mt-1 text-sm text-slate-500 dark:text-slate-300">
-                      Collect client fees via Stripe. We deduct a{' '}
+                      Optional. Collect client fees via Stripe and we deduct a{' '}
                       {(payoutForm.platformFeeBps / 100).toFixed(1)}% platform fee plus payment
-                      processing costs; the remainder goes to your connected Stripe account.
+                      processing costs; the remainder goes to your connected Stripe account. This
+                      fee is charged on the money you collect and is separate from your Engage
+                      subscription, which is unchanged either way. Leave this off and you pay for
+                      Engage only.
                     </p>
 
                     <div className="mt-4 flex flex-wrap items-center gap-3">
