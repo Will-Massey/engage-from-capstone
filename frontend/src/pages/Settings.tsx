@@ -30,6 +30,7 @@ import {
   buildProposalDefaultsPayload,
   buildProposalTermsPayload,
 } from './settingsCommunicationsHelpers';
+import { isSettingsTabVisibleForRole } from './settingsTabAccess';
 import EmailSettings from '../components/email/EmailSettings';
 import CoverLetterTemplatesManager from '../components/settings/CoverLetterTemplatesManager';
 import XeroConnect from '../components/integrations/XeroConnect';
@@ -105,8 +106,16 @@ const Settings = () => {
   const { user, tenant, setSession, updateUser } = useAuthStore();
   const { theme: currentTheme, setTheme: setCurrentTheme } = useThemeStore();
   const canManageMailAutoReply = !!user && MAIL_AUTOREPLY_ROLES.has(user.role);
+  const visibleTabs = useMemo(
+    () => tabs.filter((tab) => isSettingsTabVisibleForRole(tab.id, user?.role)),
+    [user?.role]
+  );
   const [activeTab, setActiveTab] = useState(() =>
-    tabFromUrl && VALID_TABS.includes(tabFromUrl) ? tabFromUrl : 'profile'
+    tabFromUrl &&
+    VALID_TABS.includes(tabFromUrl) &&
+    isSettingsTabVisibleForRole(tabFromUrl, user?.role)
+      ? tabFromUrl
+      : 'profile'
   );
   const [isLoading, setIsLoading] = useState(false);
   const [isSaving, setIsSaving] = useState<string | null>(null);
@@ -271,9 +280,9 @@ const Settings = () => {
 
   useEffect(() => {
     if (tabFromUrl && VALID_TABS.includes(tabFromUrl) && tabFromUrl !== activeTab) {
-      setActiveTab(tabFromUrl);
+      setActiveTab(isSettingsTabVisibleForRole(tabFromUrl, user?.role) ? tabFromUrl : 'profile');
     }
-  }, [tabFromUrl, activeTab]);
+  }, [tabFromUrl, activeTab, user?.role]);
 
   const selectTab = (id: string) => {
     setActiveTab(id);
@@ -1046,7 +1055,7 @@ const Settings = () => {
         {/* Sidebar - Modern card style */}
         <div className="lg:w-72 flex-shrink-0">
           <nav className="space-y-2 glass-tile p-3">
-            {tabs.map((tab) => (
+            {visibleTabs.map((tab) => (
               <button
                 key={tab.id}
                 onClick={() => selectTab(tab.id)}

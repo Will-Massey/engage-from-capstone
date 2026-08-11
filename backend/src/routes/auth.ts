@@ -653,12 +653,16 @@ router.get(
 
 /**
  * POST /api/auth/users
- * Create new user (admin/manager only)
+ * Create new user. MD is included alongside ADMIN/PARTNER/MANAGER so this
+ * matches GET /users (the Team list, which MD can already read) and MD's
+ * membership of FULL_ACCESS_ROLES (backend/src/constants/roles.ts) — without
+ * it, an MD could see the Team tab and a working Add User button but get a
+ * 403 on submit.
  */
 router.post(
   '/users',
   authenticate,
-  authorize('ADMIN', 'PARTNER', 'MANAGER'),
+  authorize('ADMIN', 'PARTNER', 'MD', 'MANAGER'),
   enforceTierLimit('users'),
   asyncHandler(async (req, res) => {
     const createUserSchema = z.object({
