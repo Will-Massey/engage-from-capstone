@@ -1,9 +1,16 @@
 /**
- * PUT /api/tenants/settings — `notifications` is no longer part of the
- * schema (backend never reads it to fire anything — see Settings.tsx UX
- * audit). It must be silently dropped from the request rather than
- * erroring, and any value already stored on the tenant must be left
- * untouched (no migration to strip it).
+ * PUT /api/tenants/settings — two things verified here:
+ *
+ * 1. `notifications` is no longer part of the schema (backend never reads it
+ *    to fire anything — see Settings.tsx UX audit). It must be silently
+ *    dropped from the request rather than erroring, and any value already
+ *    stored on the tenant must be left untouched (no migration to strip it).
+ *
+ * 2. Sending a partial `proposals` object (as each Settings.tsx "Save"
+ *    button now does, to stop cross-contaminating other sections) merges
+ *    onto the existing `proposals` object rather than replacing it — this is
+ *    the backend behaviour the frontend fix for the cross-contamination bug
+ *    depends on.
  */
 import express from 'express';
 import request from 'supertest';
@@ -105,5 +112,34 @@ describe('PUT /api/tenants/settings — notifications is dead', () => {
     expect(res.status).toBe(200);
     const persisted = JSON.parse(tenantUpdate.mock.calls[0][0].data.settings);
     expect(persisted.notifications).toEqual({ weeklySummary: true });
+  });
+});
+
+describe('PUT /api/tenants/settings — partial proposals merge', () => {
+  it('merges a partial proposals payload onto the existing object', async () => {
+    tenantFindUnique.mockResolvedValue({
+      settings: JSON.stringify({
+        proposals: {
+          defaultExpiryDays: 30,
+          defaultPaymentTermsDays: 7,
+          chaseSequenceEnabled: true,
+          chaseSequenceDays: [3, 7, 14],
+        },
+      }),
+    });
+
+    // Only the fields the "Save chase settings" button owns.
+    const res = await request(app())
+      .put('/api/tenants/settings')
+      .send({ proposals: { chaseSequenceEnabled: false, chaseSequenceDays: [5, 10] } });
+
+    expect(res.status).toBe(200);
+    const persisted = JSON.parse(tenantUpdate.mock.calls[0][0].data.settings);
+    expect(persisted.proposals).toEqual({
+      defaultExpiryDays: 30,
+      defaultPaymentTermsDays: 7,
+      chaseSequenceEnabled: false,
+      chaseSequenceDays: [5, 10],
+    });
   });
 });

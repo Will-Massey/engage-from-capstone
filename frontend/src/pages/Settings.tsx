@@ -25,6 +25,11 @@ import {
   PuzzlePieceIcon,
   RectangleStackIcon,
 } from '@heroicons/react/24/outline';
+import {
+  buildChaseSettingsPayload,
+  buildProposalDefaultsPayload,
+  buildProposalTermsPayload,
+} from './settingsCommunicationsHelpers';
 import EmailSettings from '../components/email/EmailSettings';
 import CoverLetterTemplatesManager from '../components/settings/CoverLetterTemplatesManager';
 import XeroConnect from '../components/integrations/XeroConnect';
@@ -622,12 +627,20 @@ const Settings = () => {
     }
   };
 
-  const handleSaveCommunications = async () => {
+  // Chase settings, proposal defaults, and proposal terms each have their own
+  // Save button but share this one form object — send only the fields the
+  // calling button owns so an abandoned edit in another section never gets
+  // silently persisted alongside it (see settingsCommunicationsHelpers.ts).
+  const handleSaveCommunications = async (section: 'chase' | 'proposalDefaults' | 'terms') => {
     setIsSaving('communications');
     try {
-      const response = (await apiClient.updateTenantSettings({
-        proposals: communicationsForm.proposals,
-      })) as any;
+      const payload =
+        section === 'chase'
+          ? buildChaseSettingsPayload(communicationsForm.proposals)
+          : section === 'proposalDefaults'
+            ? buildProposalDefaultsPayload(communicationsForm.proposals)
+            : buildProposalTermsPayload(communicationsForm.proposals);
+      const response = (await apiClient.updateTenantSettings(payload)) as any;
       if (response.success) {
         toast.success('Communication settings saved');
       } else {
@@ -2055,7 +2068,7 @@ const Settings = () => {
 
                   <div className="pt-4 border-t border-slate-200 dark:border-slate-700">
                     <button
-                      onClick={handleSaveCommunications}
+                      onClick={() => handleSaveCommunications('chase')}
                       disabled={isSaving === 'communications'}
                       className="btn-primary"
                     >
@@ -2505,7 +2518,7 @@ const Settings = () => {
 
                   <div className="pt-4 border-t border-slate-200 dark:border-slate-700 flex flex-wrap gap-3">
                     <button
-                      onClick={handleSaveCommunications}
+                      onClick={() => handleSaveCommunications('proposalDefaults')}
                       disabled={isSaving === 'communications'}
                       className="btn-primary"
                     >
@@ -2556,7 +2569,7 @@ const Settings = () => {
                     proposals: { ...communicationsForm.proposals, ...patch },
                   })
                 }
-                onSave={handleSaveCommunications}
+                onSave={() => handleSaveCommunications('terms')}
                 isSaving={isSaving === 'communications'}
               />
             </div>
