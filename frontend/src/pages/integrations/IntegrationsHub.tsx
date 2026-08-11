@@ -21,6 +21,10 @@ type MeshSettings = {
   lastPingMessage?: string | null;
 };
 
+// GET /integrations/hub also returns `xero` and `quickbooks` status blocks, kept
+// on the backend for the frozen mobile snapshot's old ConnBadge — but nothing in
+// this page reads them: XeroConnect and QuickBooksConnect below own their own
+// status via /xero/status and /quickbooks/status.
 type HubData = {
   accountFlow: {
     mode: string;
@@ -33,20 +37,6 @@ type HubData = {
     ssoEnabled?: boolean;
     hasApiKey?: boolean;
     settings?: MeshSettings;
-  };
-  xero: {
-    connected: boolean;
-    configured?: boolean;
-    oauthConfigured?: boolean;
-    xeroTenantName?: string;
-    docs?: string;
-  };
-  quickbooks: {
-    connected: boolean;
-    configured?: boolean;
-    oauthConfigured?: boolean;
-    companyName?: string;
-    docs?: string;
   };
 };
 

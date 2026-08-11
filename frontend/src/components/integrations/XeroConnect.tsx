@@ -9,6 +9,8 @@ import {
 } from '@heroicons/react/24/outline';
 import type { XeroSyncMode } from '../../types/integrations';
 import { XERO_SYNC_MODE_OPTIONS, buildXeroSettingsPayload } from '../../utils/accountingSync';
+import { useAuthStore } from '../../stores/authStore';
+import { isApprover } from '../../constants/roles';
 
 interface XeroStatus {
   connected: boolean;
@@ -25,6 +27,10 @@ interface XeroStatus {
 }
 
 const XeroConnect = () => {
+  // Connect/disconnect/import/settings are all authorize('ADMIN','PARTNER','MANAGER')
+  // on the backend (xero.ts) — mirror it here so a SENIOR sees the read-only
+  // status instead of buttons that 403.
+  const canManage = isApprover(useAuthStore((s) => s.user?.role));
   const [status, setStatus] = useState<XeroStatus | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isConnecting, setIsConnecting] = useState(false);
@@ -195,97 +201,106 @@ const XeroConnect = () => {
                   Last import: {new Date(status.lastImportAt).toLocaleString()}
                 </p>
               )}
-              <div className="mt-3 flex flex-wrap gap-3">
-                <button
-                  type="button"
-                  onClick={importClients}
-                  disabled={isImporting}
-                  className="inline-flex items-center px-3 py-1.5 text-sm font-medium text-white bg-sky-600 hover:bg-sky-700 rounded-lg disabled:opacity-50"
-                >
-                  {isImporting ? (
-                    <ArrowPathIcon className="h-4 w-4 mr-1 animate-spin" />
-                  ) : (
-                    <CloudArrowDownIcon className="h-4 w-4 mr-1" />
-                  )}
-                  Import clients from Xero
-                </button>
-                <button
-                  type="button"
-                  onClick={disconnect}
-                  className="text-sm text-red-600 hover:text-red-800 underline"
-                >
-                  Disconnect
-                </button>
-              </div>
+              {canManage ? (
+                <>
+                  <div className="mt-3 flex flex-wrap gap-3">
+                    <button
+                      type="button"
+                      onClick={importClients}
+                      disabled={isImporting}
+                      className="inline-flex items-center px-3 py-1.5 text-sm font-medium text-white bg-sky-600 hover:bg-sky-700 rounded-lg disabled:opacity-50"
+                    >
+                      {isImporting ? (
+                        <ArrowPathIcon className="h-4 w-4 mr-1 animate-spin" />
+                      ) : (
+                        <CloudArrowDownIcon className="h-4 w-4 mr-1" />
+                      )}
+                      Import clients from Xero
+                    </button>
+                    <button
+                      type="button"
+                      onClick={disconnect}
+                      className="text-sm text-red-600 hover:text-red-800 underline"
+                    >
+                      Disconnect
+                    </button>
+                  </div>
 
-              <div className="mt-4 pt-4 border-t border-sky-200 dark:border-sky-800 space-y-3">
-                <h5 className="text-sm font-medium text-slate-900 dark:text-white">
-                  Proposal sync
-                </h5>
+                  <div className="mt-4 pt-4 border-t border-sky-200 dark:border-sky-800 space-y-3">
+                    <h5 className="text-sm font-medium text-slate-900 dark:text-white">
+                      Proposal sync
+                    </h5>
 
-                <label className="flex items-start gap-2 text-sm">
-                  <input
-                    type="checkbox"
-                    checked={autoPush}
-                    onChange={(e) => setAutoPush(e.target.checked)}
-                    className="mt-0.5 rounded border-sky-300"
-                  />
-                  <span>
-                    Automatically push proposals to Xero when they are accepted
-                    <span className="block text-xs opacity-70">
-                      Pushes create draft artifacts only — nothing is sent to clients from Xero.
-                    </span>
-                  </span>
-                </label>
-
-                <div className="space-y-2">
-                  {XERO_SYNC_MODE_OPTIONS.map((option) => (
-                    <label key={option.value} className="flex items-start gap-2 text-sm">
+                    <label className="flex items-start gap-2 text-sm">
                       <input
-                        type="radio"
-                        name="xero-sync-mode"
-                        value={option.value}
-                        checked={syncMode === option.value}
-                        onChange={() => setSyncMode(option.value)}
-                        className="mt-0.5"
+                        type="checkbox"
+                        checked={autoPush}
+                        onChange={(e) => setAutoPush(e.target.checked)}
+                        className="mt-0.5 rounded border-sky-300"
                       />
                       <span>
-                        {option.label}
-                        <span className="block text-xs opacity-70">{option.description}</span>
+                        Automatically push proposals to Xero when they are accepted
+                        <span className="block text-xs opacity-70">
+                          Pushes create draft artifacts only — nothing is sent to clients from Xero.
+                        </span>
                       </span>
                     </label>
-                  ))}
-                </div>
 
-                {syncMode === 'paid_invoices' && (
-                  <label className="block text-sm">
-                    Payment account code (optional)
-                    <input
-                      type="text"
-                      value={paymentAccountCode}
-                      onChange={(e) => setPaymentAccountCode(e.target.value)}
-                      placeholder="e.g. 090"
-                      className="mt-1 block w-40 rounded border border-sky-300 dark:border-sky-700 bg-white dark:bg-slate-900 px-2 py-1 text-sm"
-                    />
-                    <span className="block mt-1 text-xs opacity-70">
-                      When set, synced invoices are marked paid against this Xero account (Stripe
-                      already collected the money). Leave blank to keep them awaiting payment.
-                    </span>
-                  </label>
-                )}
+                    <div className="space-y-2">
+                      {XERO_SYNC_MODE_OPTIONS.map((option) => (
+                        <label key={option.value} className="flex items-start gap-2 text-sm">
+                          <input
+                            type="radio"
+                            name="xero-sync-mode"
+                            value={option.value}
+                            checked={syncMode === option.value}
+                            onChange={() => setSyncMode(option.value)}
+                            className="mt-0.5"
+                          />
+                          <span>
+                            {option.label}
+                            <span className="block text-xs opacity-70">{option.description}</span>
+                          </span>
+                        </label>
+                      ))}
+                    </div>
 
-                <button
-                  type="button"
-                  onClick={saveSettings}
-                  disabled={isSavingSettings}
-                  className="inline-flex items-center px-3 py-1.5 text-sm font-medium text-white bg-sky-600 hover:bg-sky-700 rounded-lg disabled:opacity-50"
-                >
-                  {isSavingSettings && <ArrowPathIcon className="h-4 w-4 mr-1 animate-spin" />}
-                  Save sync settings
-                </button>
-              </div>
+                    {syncMode === 'paid_invoices' && (
+                      <label className="block text-sm">
+                        Payment account code (optional)
+                        <input
+                          type="text"
+                          value={paymentAccountCode}
+                          onChange={(e) => setPaymentAccountCode(e.target.value)}
+                          placeholder="e.g. 090"
+                          className="mt-1 block w-40 rounded border border-sky-300 dark:border-sky-700 bg-white dark:bg-slate-900 px-2 py-1 text-sm"
+                        />
+                        <span className="block mt-1 text-xs opacity-70">
+                          When set, synced invoices are marked paid against this Xero account
+                          (Stripe already collected the money). Leave blank to keep them awaiting
+                          payment.
+                        </span>
+                      </label>
+                    )}
+
+                    <button
+                      type="button"
+                      onClick={saveSettings}
+                      disabled={isSavingSettings}
+                      className="inline-flex items-center px-3 py-1.5 text-sm font-medium text-white bg-sky-600 hover:bg-sky-700 rounded-lg disabled:opacity-50"
+                    >
+                      {isSavingSettings && <ArrowPathIcon className="h-4 w-4 mr-1 animate-spin" />}
+                      Save sync settings
+                    </button>
+                  </div>
+                </>
+              ) : (
+                <p className="mt-3 text-xs opacity-70">
+                  Ask an admin, partner, or manager to manage this connection.
+                </p>
+              )}
             </>
-          ) : (
+          ) : canManage ? (
             <button
               type="button"
               onClick={connect}
@@ -304,6 +319,10 @@ const XeroConnect = () => {
                 </>
               )}
             </button>
+          ) : (
+            <p className="mt-3 text-xs opacity-70">
+              Ask an admin, partner, or manager to connect Xero.
+            </p>
           )}
         </div>
       </div>

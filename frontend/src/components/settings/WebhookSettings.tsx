@@ -2,6 +2,8 @@ import { useEffect, useState } from 'react';
 import { apiClient } from '../../utils/api';
 import toast from 'react-hot-toast';
 import { LinkIcon } from '@heroicons/react/24/outline';
+import { useAuthStore } from '../../stores/authStore';
+import { isApprover } from '../../constants/roles';
 
 export type WebhookFormat = 'default' | 'hubspot' | 'zapier' | 'senta' | 'karbon';
 
@@ -36,6 +38,10 @@ const FORMAT_OPTIONS: Array<{ value: WebhookFormat; label: string; hint: string 
 const VALID_FORMATS = new Set(FORMAT_OPTIONS.map((o) => o.value));
 
 export default function WebhookSettings() {
+  // Save and test-webhook are both authorize('ADMIN','PARTNER','MANAGER') on
+  // the backend (tenants/settings.ts) — mirror it here so a SENIOR sees the
+  // configured URL read-only instead of controls that 403.
+  const canManage = isApprover(useAuthStore((s) => s.user?.role));
   const [webhookUrl, setWebhookUrl] = useState('');
   const [webhookFormat, setWebhookFormat] = useState<WebhookFormat>('default');
   const [saving, setSaving] = useState(false);
@@ -114,6 +120,7 @@ export default function WebhookSettings() {
           type="url"
           value={webhookUrl}
           onChange={(e) => setWebhookUrl(e.target.value)}
+          readOnly={!canManage}
           placeholder="https://hooks.zapier.com/hooks/catch/…"
           className="input-field w-full mt-1"
         />
@@ -126,6 +133,7 @@ export default function WebhookSettings() {
         <select
           value={webhookFormat}
           onChange={(e) => setWebhookFormat(e.target.value as WebhookFormat)}
+          disabled={!canManage}
           className="input-field w-full max-w-md"
         >
           {FORMAT_OPTIONS.map((opt) => (
@@ -139,31 +147,37 @@ export default function WebhookSettings() {
         )}
       </div>
 
-      <div className="flex flex-wrap gap-2">
-        <button type="button" onClick={save} disabled={saving} className="btn-primary">
-          {saving ? 'Saving…' : 'Save webhook URL'}
-        </button>
-        <button
-          type="button"
-          disabled={testing || !webhookUrl.trim()}
-          className="btn-secondary"
-          onClick={async () => {
-            setTesting(true);
-            try {
-              const res = (await apiClient.testIntegrationWebhook(webhookFormat)) as any;
-              if (res.success) {
-                toast.success('Test event sent to your webhook');
+      {canManage ? (
+        <div className="flex flex-wrap gap-2">
+          <button type="button" onClick={save} disabled={saving} className="btn-primary">
+            {saving ? 'Saving…' : 'Save webhook URL'}
+          </button>
+          <button
+            type="button"
+            disabled={testing || !webhookUrl.trim()}
+            className="btn-secondary"
+            onClick={async () => {
+              setTesting(true);
+              try {
+                const res = (await apiClient.testIntegrationWebhook(webhookFormat)) as any;
+                if (res.success) {
+                  toast.success('Test event sent to your webhook');
+                }
+              } catch (e: any) {
+                toast.error(e?.message || 'Test webhook failed — save a URL first');
+              } finally {
+                setTesting(false);
               }
-            } catch (e: any) {
-              toast.error(e?.message || 'Test webhook failed — save a URL first');
-            } finally {
-              setTesting(false);
-            }
-          }}
-        >
-          {testing ? 'Sending…' : 'Send test event'}
-        </button>
-      </div>
+            }}
+          >
+            {testing ? 'Sending…' : 'Send test event'}
+          </button>
+        </div>
+      ) : (
+        <p className="text-xs text-slate-500 dark:text-slate-400">
+          Ask an admin, partner, or manager to change this webhook.
+        </p>
+      )}
     </div>
   );
 }

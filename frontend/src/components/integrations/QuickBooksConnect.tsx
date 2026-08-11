@@ -7,6 +7,8 @@ import {
   ArrowPathIcon,
   CloudArrowDownIcon,
 } from '@heroicons/react/24/outline';
+import { useAuthStore } from '../../stores/authStore';
+import { isApprover } from '../../constants/roles';
 
 interface QuickBooksStatus {
   connected: boolean;
@@ -19,6 +21,10 @@ interface QuickBooksStatus {
 }
 
 const QuickBooksConnect = () => {
+  // Connect/disconnect/import are all authorize('ADMIN','PARTNER','MANAGER')
+  // on the backend (quickbooks.ts) — mirror it here so a SENIOR sees the
+  // read-only status instead of buttons that 403.
+  const canManage = isApprover(useAuthStore((s) => s.user?.role));
   const [status, setStatus] = useState<QuickBooksStatus | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isConnecting, setIsConnecting] = useState(false);
@@ -151,34 +157,42 @@ const QuickBooksConnect = () => {
                   Last import: {new Date(status.lastImportAt).toLocaleString()}
                 </p>
               )}
-              <div className="mt-3 flex flex-wrap gap-3">
-                <button
-                  type="button"
-                  onClick={importClients}
-                  disabled={isImporting}
-                  className="inline-flex items-center px-3 py-1.5 text-sm font-medium text-white bg-green-700 hover:bg-green-800 rounded-lg disabled:opacity-50"
-                >
-                  {isImporting ? (
-                    <ArrowPathIcon className="h-4 w-4 mr-1 animate-spin" />
-                  ) : (
-                    <CloudArrowDownIcon className="h-4 w-4 mr-1" />
-                  )}
-                  Import clients from QuickBooks
-                </button>
-                <button
-                  type="button"
-                  onClick={disconnect}
-                  className="text-sm text-red-600 hover:text-red-800 underline"
-                >
-                  Disconnect
-                </button>
-              </div>
-              <p className="mt-3 text-xs opacity-70">
-                Recurring payments collected by Stripe are mirrored automatically as QuickBooks
-                invoices, so your books always match the money actually collected.
-              </p>
+              {canManage ? (
+                <>
+                  <div className="mt-3 flex flex-wrap gap-3">
+                    <button
+                      type="button"
+                      onClick={importClients}
+                      disabled={isImporting}
+                      className="inline-flex items-center px-3 py-1.5 text-sm font-medium text-white bg-green-700 hover:bg-green-800 rounded-lg disabled:opacity-50"
+                    >
+                      {isImporting ? (
+                        <ArrowPathIcon className="h-4 w-4 mr-1 animate-spin" />
+                      ) : (
+                        <CloudArrowDownIcon className="h-4 w-4 mr-1" />
+                      )}
+                      Import clients from QuickBooks
+                    </button>
+                    <button
+                      type="button"
+                      onClick={disconnect}
+                      className="text-sm text-red-600 hover:text-red-800 underline"
+                    >
+                      Disconnect
+                    </button>
+                  </div>
+                  <p className="mt-3 text-xs opacity-70">
+                    Recurring payments collected by Stripe are mirrored automatically as QuickBooks
+                    invoices, so your books always match the money actually collected.
+                  </p>
+                </>
+              ) : (
+                <p className="mt-3 text-xs opacity-70">
+                  Ask an admin, partner, or manager to manage this connection.
+                </p>
+              )}
             </>
-          ) : (
+          ) : canManage ? (
             <button
               type="button"
               onClick={connect}
@@ -197,6 +211,10 @@ const QuickBooksConnect = () => {
                 </>
               )}
             </button>
+          ) : (
+            <p className="mt-3 text-xs opacity-70">
+              Ask an admin, partner, or manager to connect QuickBooks.
+            </p>
           )}
         </div>
       </div>
