@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { apiClient } from '../../utils/api';
 import toast from 'react-hot-toast';
 import { CheckCircleIcon, ExclamationCircleIcon, CloudIcon } from '@heroicons/react/24/outline';
-import OAuthConnect from './OAuthConnect';
+import MailboxConnect from './MailboxConnect';
 
 type EmailProvider = 'smtp' | 'gmail' | 'outlook' | 'microsoft365';
 
@@ -123,7 +123,7 @@ const EmailSettings = () => {
               smtp: response.data.smtp || prev.smtp,
             }));
             setConnectionStatus('success');
-            setShowAdvanced(true);
+            setShowAdvanced(response.data.provider === 'smtp');
           } else if (response.data.replyToEmail || response.data.platform?.replyTo) {
             setConfig((prev) => ({
               ...prev,
@@ -145,7 +145,11 @@ const EmailSettings = () => {
   const handleSave = async () => {
     setIsSaving(true);
     try {
-      const response = (await apiClient.put('/email/config', config)) as any;
+      // Advanced settings are SMTP-only now; OAuth mailboxes connect via MailboxConnect above.
+      const response = (await apiClient.put('/email/config', {
+        ...config,
+        provider: 'smtp',
+      })) as any;
       if (response.success) {
         toast.success('Email settings saved');
         setConnectionStatus(response.data.connectionTest.success ? 'success' : 'error');
@@ -206,13 +210,6 @@ const EmailSettings = () => {
     }
   };
 
-  const providers = [
-    { value: 'smtp', label: 'SMTP Server', description: 'Generic email server' },
-    { value: 'gmail', label: 'Gmail / Google Workspace', description: 'OAuth2 authentication' },
-    { value: 'outlook', label: 'Outlook.com', description: 'Microsoft OAuth2' },
-    { value: 'microsoft365', label: 'Microsoft 365', description: 'Business Microsoft accounts' },
-  ];
-
   const usingPlatform = platform?.mode === 'platform' || !platform?.customReady;
   const canSend = platform?.platformReady || platform?.customReady;
 
@@ -226,7 +223,20 @@ const EmailSettings = () => {
 
   return (
     <div className="space-y-6">
+      {/* Connect the practice mailbox — the primary, intended path */}
       <div>
+        <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100">
+          Connect your mailbox
+        </h3>
+        <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
+          Connect your Microsoft 365 or Google mailbox so Engage can send and receive client email
+          in one place. Replies thread automatically to the right client, and AI can draft responses
+          for your review before anything sends.
+        </p>
+      </div>
+      <MailboxConnect />
+
+      <div className="border-t border-gray-200 dark:border-gray-700 pt-6">
         <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100">
           Email Configuration
         </h3>
@@ -408,30 +418,13 @@ const EmailSettings = () => {
       {showAdvanced && (
         <>
           <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-              Email Provider
-            </label>
-            <div className="mt-2 grid grid-cols-1 sm:grid-cols-2 gap-3">
-              {providers.map((provider) => (
-                <button
-                  key={provider.value}
-                  type="button"
-                  onClick={() =>
-                    setConfig({ ...config, provider: provider.value as EmailProvider })
-                  }
-                  className={`p-3 rounded-lg border-2 text-left transition-colors ${
-                    config.provider === provider.value
-                      ? 'border-primary-600 bg-primary-50 dark:bg-primary-900/20'
-                      : 'border-gray-200 dark:border-gray-700 hover:border-primary-300'
-                  }`}
-                >
-                  <span className="font-medium text-gray-900 dark:text-gray-100">
-                    {provider.label}
-                  </span>
-                  <p className="text-xs text-gray-500 dark:text-gray-400">{provider.description}</p>
-                </button>
-              ))}
-            </div>
+            <h4 className="font-medium text-gray-900 dark:text-gray-100">
+              Custom mail server (SMTP)
+            </h4>
+            <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+              For practices that run their own outgoing mail server instead of Microsoft 365 or
+              Google.
+            </p>
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -461,112 +454,96 @@ const EmailSettings = () => {
             </div>
           </div>
 
-          {config.provider === 'smtp' && (
-            <div className="space-y-4 p-4 bg-gray-50 dark:bg-gray-800/50 rounded-lg">
-              <h4 className="font-medium text-gray-900 dark:text-gray-100">SMTP Settings</h4>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                    Host
-                  </label>
-                  <input
-                    type="text"
-                    value={config.smtp?.host}
-                    onChange={(e) =>
-                      setConfig({
-                        ...config,
-                        smtp: { ...config.smtp!, host: e.target.value },
-                      })
-                    }
-                    placeholder="smtp.gmail.com"
-                    className="mt-1 input-field"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                    Port
-                  </label>
-                  <input
-                    type="number"
-                    value={config.smtp?.port}
-                    onChange={(e) =>
-                      setConfig({
-                        ...config,
-                        smtp: { ...config.smtp!, port: parseInt(e.target.value) },
-                      })
-                    }
-                    placeholder="587"
-                    className="mt-1 input-field"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                    Username
-                  </label>
-                  <input
-                    type="text"
-                    value={config.smtp?.user}
-                    onChange={(e) =>
-                      setConfig({
-                        ...config,
-                        smtp: { ...config.smtp!, user: e.target.value },
-                      })
-                    }
-                    placeholder="your-email@gmail.com"
-                    className="mt-1 input-field"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                    Password
-                  </label>
-                  <input
-                    type="password"
-                    value={config.smtp?.pass}
-                    onChange={(e) =>
-                      setConfig({
-                        ...config,
-                        smtp: { ...config.smtp!, pass: e.target.value },
-                      })
-                    }
-                    placeholder="••••••••"
-                    className="mt-1 input-field"
-                  />
-                </div>
-              </div>
-              <div className="flex items-center">
+          <div className="space-y-4 p-4 bg-gray-50 dark:bg-gray-800/50 rounded-lg">
+            <h4 className="font-medium text-gray-900 dark:text-gray-100">SMTP Settings</h4>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                  Host
+                </label>
                 <input
-                  type="checkbox"
-                  id="secure"
-                  checked={config.smtp?.secure}
+                  type="text"
+                  value={config.smtp?.host}
                   onChange={(e) =>
                     setConfig({
                       ...config,
-                      smtp: { ...config.smtp!, secure: e.target.checked },
+                      smtp: { ...config.smtp!, host: e.target.value },
                     })
                   }
-                  className="h-4 w-4 text-primary-600 rounded"
+                  placeholder="smtp.gmail.com"
+                  className="mt-1 input-field"
                 />
-                <label htmlFor="secure" className="ml-2 text-sm text-gray-700 dark:text-gray-300">
-                  Use secure connection (TLS/SSL)
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                  Port
                 </label>
+                <input
+                  type="number"
+                  value={config.smtp?.port}
+                  onChange={(e) =>
+                    setConfig({
+                      ...config,
+                      smtp: { ...config.smtp!, port: parseInt(e.target.value) },
+                    })
+                  }
+                  placeholder="587"
+                  className="mt-1 input-field"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                  Username
+                </label>
+                <input
+                  type="text"
+                  value={config.smtp?.user}
+                  onChange={(e) =>
+                    setConfig({
+                      ...config,
+                      smtp: { ...config.smtp!, user: e.target.value },
+                    })
+                  }
+                  placeholder="your-email@gmail.com"
+                  className="mt-1 input-field"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                  Password
+                </label>
+                <input
+                  type="password"
+                  value={config.smtp?.pass}
+                  onChange={(e) =>
+                    setConfig({
+                      ...config,
+                      smtp: { ...config.smtp!, pass: e.target.value },
+                    })
+                  }
+                  placeholder="••••••••"
+                  className="mt-1 input-field"
+                />
               </div>
             </div>
-          )}
-
-          {(config.provider === 'gmail' ||
-            config.provider === 'outlook' ||
-            config.provider === 'microsoft365') && (
-            <OAuthConnect
-              provider={config.provider}
-              onConnected={() => {
-                setConnectionStatus('success');
-                toast.success(
-                  `${config.provider === 'gmail' ? 'Gmail' : 'Microsoft 365'} connected successfully`
-                );
-              }}
-            />
-          )}
+            <div className="flex items-center">
+              <input
+                type="checkbox"
+                id="secure"
+                checked={config.smtp?.secure}
+                onChange={(e) =>
+                  setConfig({
+                    ...config,
+                    smtp: { ...config.smtp!, secure: e.target.checked },
+                  })
+                }
+                className="h-4 w-4 text-primary-600 rounded"
+              />
+              <label htmlFor="secure" className="ml-2 text-sm text-gray-700 dark:text-gray-300">
+                Use secure connection (TLS/SSL)
+              </label>
+            </div>
+          </div>
 
           {connectionStatus !== 'untested' && (
             <div
