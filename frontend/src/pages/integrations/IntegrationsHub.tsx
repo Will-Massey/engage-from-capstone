@@ -9,6 +9,8 @@ import {
 } from '@heroicons/react/24/outline';
 import { apiClient } from '../../utils/api';
 import { StatusChip } from '../../components/ui/StatusChip';
+import MailboxConnect from '../../components/email/MailboxConnect';
+import WebhookSettings from '../../components/settings/WebhookSettings';
 
 type MeshSettings = {
   mode: string;
@@ -167,8 +169,9 @@ export default function IntegrationsHub() {
             Practice integrations desk
           </h1>
           <p className="mt-1 max-w-2xl text-sm text-slate-500">
-            Connect AccountFlow (Capstone Tandem) for auto-handoff on accept, deep links, and SSO.
-            Xero and QuickBooks Online stay under Settings.
+            Connect Engage to the rest of your practice: your Microsoft 365 or Google mailbox,
+            AccountFlow (Capstone Tandem) for auto-handoff and SSO, Xero and QuickBooks Online for
+            client sync, and outbound webhooks for Zapier, Make, or your practice management tool.
           </p>
         </div>
       </header>
@@ -178,6 +181,21 @@ export default function IntegrationsHub() {
           {error}
         </div>
       )}
+
+      {/* Connect your mailbox — the most-wanted connection */}
+      <section className="metal-tile p-6 space-y-4">
+        <span className="metal-specular" aria-hidden />
+        <div className="relative z-[1] space-y-4">
+          <div>
+            <h2 className="text-lg font-semibold text-slate-900 dark:text-white">Email</h2>
+            <p className="mt-1 text-sm text-slate-500">
+              Connect your Microsoft 365 or Google mailbox so Engage can send and receive client
+              email in one place, with two-way sync and AI-drafted replies ready for your review.
+            </p>
+          </div>
+          <MailboxConnect />
+        </div>
+      </section>
 
       {/* Connect AccountFlow */}
       <section className="metal-tile p-6 space-y-4">
@@ -360,6 +378,23 @@ export default function IntegrationsHub() {
           </div>
         </article>
       </div>
+
+      {/* Automation webhooks */}
+      <section className="metal-tile p-6 space-y-4">
+        <span className="metal-specular" aria-hidden />
+        <div className="relative z-[1] space-y-4">
+          <div>
+            <h2 className="text-lg font-semibold text-slate-900 dark:text-white">
+              Automation webhooks
+            </h2>
+            <p className="mt-1 text-sm text-slate-500">
+              Send proposal events to Zapier, Make, HubSpot, Senta, or Karbon as proposals move
+              through your pipeline.
+            </p>
+          </div>
+          <WebhookSettings />
+        </div>
+      </section>
 
       <div className="metal-tile metal-tile--soft flex items-start gap-3 p-4">
         <ShieldCheckIcon className="h-5 w-5 shrink-0 text-amber-600" />
