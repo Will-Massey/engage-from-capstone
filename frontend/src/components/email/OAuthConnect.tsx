@@ -9,6 +9,7 @@ import {
 } from '@heroicons/react/24/outline';
 import { useAuthStore } from '../../stores/authStore';
 import { isApprover } from '../../constants/roles';
+import { resolveOAuthReturnTo } from './emailProvider';
 
 type OAuthProvider = 'gmail' | 'outlook' | 'microsoft365';
 
@@ -106,12 +107,7 @@ const OAuthConnect = ({ provider, onConnected }: OAuthConnectProps) => {
   const initiateOAuth = async () => {
     setIsConnecting(true);
     try {
-      // Tell the backend where to send the user back after the round-trip —
-      // /integrations is now the primary place to connect a mailbox, but this
-      // widget is also mounted on Settings > Communications.
-      const returnTo = window.location.pathname.startsWith('/integrations')
-        ? 'integrations'
-        : 'settings';
+      const returnTo = resolveOAuthReturnTo();
       const response = (await apiClient.get(
         `/email/auth/${provider}/url?returnTo=${returnTo}`
       )) as any;

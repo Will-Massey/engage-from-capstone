@@ -1,4 +1,19 @@
+import { appRelativePath } from '../../utils/appBase';
+
 export type EmailProvider = 'smtp' | 'gmail' | 'outlook' | 'microsoft365';
+
+/**
+ * Where the mailbox OAuth round-trip should return the user. The widget is
+ * mounted both on the Integrations hub and on Settings > Communications.
+ *
+ * Compares the app-relative path, not `window.location.pathname`. Production
+ * serves the app under VITE_APP_BASE (`/engage`), so the raw pathname reads
+ * `/engage/integrations` and a bare prefix test is false on every live page
+ * while passing locally and in CI, where the base is unset.
+ */
+export function resolveOAuthReturnTo(pathname?: string): 'integrations' | 'settings' {
+  return appRelativePath(pathname).startsWith('/integrations') ? 'integrations' : 'settings';
+}
 
 /** Providers that represent a connected OAuth mailbox (two-way Inbox sync). */
 export type MailboxProvider = 'microsoft365' | 'gmail' | 'outlook';

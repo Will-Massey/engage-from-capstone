@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import {
   isOAuthMailboxProvider,
   resolveEmailSaveProvider,
@@ -73,5 +73,45 @@ describe('toMailboxProvider', () => {
     expect(toMailboxProvider('smtp')).toBeNull();
     expect(toMailboxProvider(null)).toBeNull();
     expect(toMailboxProvider(undefined)).toBeNull();
+  });
+});
+
+describe('resolveOAuthReturnTo under the production base path', () => {
+  const originalBase = import.meta.env.VITE_APP_BASE;
+
+  beforeEach(() => {
+    vi.stubEnv('VITE_APP_BASE', '/engage');
+    // APP_BASENAME is read once at module load, and this file imports the
+    // module statically above, so without this the dynamic import below
+    // returns the already-evaluated copy and the stub has no effect.
+    vi.resetModules();
+  });
+
+  afterEach(() => {
+    vi.stubEnv('VITE_APP_BASE', originalBase);
+    vi.resetModules();
+  });
+
+  // Production serves the app under /engage, so window.location.pathname reads
+  // "/engage/integrations". Testing that raw pathname against "/integrations"
+  // is false on every live page while passing locally and in CI, where the
+  // base is unset — so the connect flow silently returned everyone to Settings.
+  it('sends a hub connect back to the hub even when served under /engage', async () => {
+    const { resolveOAuthReturnTo } = await import('../emailProvider');
+    expect(resolveOAuthReturnTo('/engage/integrations')).toBe('integrations');
+  });
+
+  it('sends a Settings connect back to Settings', async () => {
+    const { resolveOAuthReturnTo } = await import('../emailProvider');
+    expect(resolveOAuthReturnTo('/engage/settings')).toBe('settings');
+    expect(resolveOAuthReturnTo('/engage/settings?tab=communications')).toBe('settings');
+  });
+
+  it('still works when the app is served from the root, as it is locally', async () => {
+    vi.stubEnv('VITE_APP_BASE', '');
+    vi.resetModules();
+    const { resolveOAuthReturnTo } = await import('../emailProvider');
+    expect(resolveOAuthReturnTo('/integrations')).toBe('integrations');
+    expect(resolveOAuthReturnTo('/settings')).toBe('settings');
   });
 });
