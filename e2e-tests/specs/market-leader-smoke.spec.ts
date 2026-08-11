@@ -82,11 +82,14 @@ test.describe('Build smoke — market leader batch (845effcf)', () => {
     }
   });
 
-  test('Pricing calculator page is accessible', async ({ page }) => {
+  test('Fee calculator page is accessible', async ({ page }) => {
     await gotoApp(page, '/pricing-calculator');
     await expect(page).toHaveURL(/\/pricing-calculator/);
+    // Renamed from "Pricing calculator": it suggests fee bands from turnover and
+    // cannot change any prices, so the old name sent people here to edit fees.
+    // The route keeps its original path.
     await expect(
-      page.getByRole('heading', { name: 'Pricing calculator', exact: true }).first()
+      page.getByRole('heading', { name: 'Fee calculator', exact: true }).first()
     ).toBeVisible();
     await expect(
       page.getByRole('heading', { name: 'Value-based pricing calculator' })
