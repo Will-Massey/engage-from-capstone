@@ -22,7 +22,6 @@ import {
   SunIcon,
   MoonIcon,
   ComputerDesktopIcon,
-  PuzzlePieceIcon,
   RectangleStackIcon,
 } from '@heroicons/react/24/outline';
 import {
@@ -33,17 +32,23 @@ import {
 import { isSettingsTabVisibleForRole } from './settingsTabAccess';
 import EmailSettings from '../components/email/EmailSettings';
 import CoverLetterTemplatesManager from '../components/settings/CoverLetterTemplatesManager';
-import XeroConnect from '../components/integrations/XeroConnect';
-import QuickBooksConnect from '../components/integrations/QuickBooksConnect';
-import WebhookSettings from '../components/settings/WebhookSettings';
 import FirmGroupSettings from '../components/settings/FirmGroupSettings';
 import VoiceOfPracticeSettings from '../components/settings/VoiceOfPracticeSettings';
 import EngagementLibrarySettings from '../components/settings/EngagementLibrarySettings';
 import ProposalTermsSettings from '../components/settings/ProposalTermsSettings';
 
-// Simplified tabs - combined related sections
+// Simplified tabs - combined related sections. 'profile' merges the personal
+// tabs (profile info, theme, password/2FA) so the sidebar reads practice-wide
+// vs personal instead of listing each individually. The old Integrations tab
+// was a full duplicate of the /integrations hub page and was deleted outright
+// (see frontend/src/pages/integrations/IntegrationsHub.tsx).
 const tabs = [
-  { id: 'profile', name: 'My Profile', icon: UserCircleIcon, description: 'Personal information' },
+  {
+    id: 'profile',
+    name: 'My account',
+    icon: UserCircleIcon,
+    description: 'Profile, theme & password',
+  },
   {
     id: 'practice',
     name: 'Practice',
@@ -51,7 +56,6 @@ const tabs = [
     description: 'Company & legal details',
   },
   { id: 'branding', name: 'Branding', icon: PaintBrushIcon, description: 'Logo & colors' },
-  { id: 'appearance', name: 'Appearance', icon: SunIcon, description: 'Light / dark theme' },
   {
     id: 'communications',
     name: 'Communications',
@@ -59,30 +63,23 @@ const tabs = [
     description: 'Email & notifications',
   },
   {
-    id: 'templates',
-    name: 'Templates & terms',
-    icon: RectangleStackIcon,
-    description: 'Expiry, bundles, letters, T&Cs',
-  },
-  {
     id: 'billing',
     name: 'Billing & VAT',
     icon: CalculatorIcon,
     description: 'Tax & payment settings',
   },
+  {
+    id: 'templates',
+    name: 'Documents & terms',
+    icon: RectangleStackIcon,
+    description: 'Proposal defaults, letters & T&Cs',
+  },
   { id: 'team', name: 'Team', icon: UsersIcon, description: 'Users & permissions' },
-  { id: 'security', name: 'Security', icon: ShieldCheckIcon, description: 'Password & access' },
   {
     id: 'automation',
     name: 'Automation',
     icon: BellIcon,
     description: 'Client touchpoints & onboarding workflow',
-  },
-  {
-    id: 'integrations',
-    name: 'Integrations',
-    icon: PuzzlePieceIcon,
-    description: 'Xero, payments & connected apps',
   },
   {
     id: 'firm-group',
@@ -94,6 +91,14 @@ const tabs = [
 
 const VALID_TABS = tabs.map((t) => t.id);
 
+// Tabs removed by the Settings consolidation. Old links/bookmarks to these
+// ids land on the tab that absorbed their content instead of silently
+// falling back to the default tab with no explanation.
+const TAB_REDIRECTS: Record<string, string> = {
+  appearance: 'profile',
+  security: 'profile',
+};
+
 // AI mailbox autoreply can auto-send email to clients once in 'auto' mode, so it is gated to
 // the same senior roles the backend enforces (ADMIN, PARTNER, MD) — mirrors the pattern in
 // frontend/src/pages/proposals/proposalDetail/ProposalDetailContext.tsx.
@@ -102,13 +107,27 @@ const MAIL_AUTOREPLY_ROLES = new Set(['ADMIN', 'PARTNER', 'MD']);
 const Settings = () => {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
-  const tabFromUrl = searchParams.get('tab');
+  const rawTabFromUrl = searchParams.get('tab');
+  // Old tab ids (appearance, security) resolve to the tab that absorbed their
+  // content; 'integrations' has no equivalent here and is handled separately
+  // below by navigating to the /integrations hub page instead.
+  const tabFromUrl = rawTabFromUrl
+    ? (TAB_REDIRECTS[rawTabFromUrl] ?? rawTabFromUrl)
+    : rawTabFromUrl;
   const { user, tenant, setSession, updateUser } = useAuthStore();
   const { theme: currentTheme, setTheme: setCurrentTheme } = useThemeStore();
   const canManageMailAutoReply = !!user && MAIL_AUTOREPLY_ROLES.has(user.role);
+  // Firm group is a multi-firm feature most single practices never use, so the
+  // tab only appears once we've confirmed the tenant is actually in one.
+  const [firmGroupAssigned, setFirmGroupAssigned] = useState(false);
   const visibleTabs = useMemo(
-    () => tabs.filter((tab) => isSettingsTabVisibleForRole(tab.id, user?.role)),
-    [user?.role]
+    () =>
+      tabs.filter(
+        (tab) =>
+          isSettingsTabVisibleForRole(tab.id, user?.role) &&
+          (tab.id !== 'firm-group' || firmGroupAssigned)
+      ),
+    [user?.role, firmGroupAssigned]
   );
   const [activeTab, setActiveTab] = useState(() =>
     tabFromUrl &&
@@ -283,6 +302,41 @@ const Settings = () => {
       setActiveTab(isSettingsTabVisibleForRole(tabFromUrl, user?.role) ? tabFromUrl : 'profile');
     }
   }, [tabFromUrl, activeTab, user?.role]);
+
+  // The deleted Integrations tab's content lives entirely on the /integrations
+  // hub page now (Xero/QuickBooks connect, webhooks) — send old links/bookmarks
+  // there instead of dropping the user on an unrelated tab. Keep the other
+  // query params (e.g. oauth=success&provider=xero from the OAuth callback
+  // redirect) so XeroConnect/QuickBooksConnect on the hub page still see them.
+  useEffect(() => {
+    if (rawTabFromUrl === 'integrations') {
+      const params = new URLSearchParams(searchParams);
+      params.delete('tab');
+      const qs = params.toString();
+      navigate(`/integrations${qs ? `?${qs}` : ''}`, { replace: true });
+    }
+  }, [rawTabFromUrl, navigate, searchParams]);
+
+  // Clean up the URL for old ?tab=appearance / ?tab=security links once
+  // resolved to their merged tab, so the address bar matches what's shown.
+  useEffect(() => {
+    if (rawTabFromUrl && TAB_REDIRECTS[rawTabFromUrl]) {
+      const resolved = TAB_REDIRECTS[rawTabFromUrl];
+      setSearchParams(resolved === 'profile' ? {} : { tab: resolved }, { replace: true });
+    }
+  }, [rawTabFromUrl, setSearchParams]);
+
+  // Firm group is hidden from the tab list until we know the tenant is in one.
+  useEffect(() => {
+    apiClient
+      .getFirmGroup()
+      .then((res: any) => {
+        if (res?.success) setFirmGroupAssigned(!!res.data?.assigned);
+      })
+      .catch(() => {
+        // Tab just stays hidden if this fails
+      });
+  }, []);
 
   const selectTab = (id: string) => {
     setActiveTab(id);
@@ -1099,121 +1153,402 @@ const Settings = () => {
 
         {/* Content */}
         <div className="flex-1 space-y-8">
-          {/* PROFILE TAB */}
+          {/* MY ACCOUNT TAB - personal settings: profile info, theme, password & 2FA.
+              Merged from the old Profile + Appearance + Security tabs — all three are
+              personal (per-user), not practice-wide, and none of them save through
+              PUT /tenants/settings, so this merge doesn't touch role gating. */}
           {activeTab === 'profile' && (
-            <div className="glass-tile overflow-hidden">
-              <div className="px-8 py-5 border-b border-slate-200 dark:border-slate-700 bg-white/40 dark:bg-slate-800/30">
-                <h2 className="text-lg font-semibold text-slate-900 dark:text-white">My Profile</h2>
-                <p className="text-sm text-slate-500 dark:text-slate-300">
-                  Update your personal information
-                </p>
-              </div>
-              <div className="p-8 space-y-8">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                  <div>
-                    <label className="block text-sm font-semibold text-slate-700 dark:text-slate-100">
-                      First Name
-                    </label>
-                    <input
-                      type="text"
-                      value={profileForm.firstName}
-                      onChange={(e) =>
-                        setProfileForm({ ...profileForm, firstName: e.target.value })
-                      }
-                      className="mt-1 input-field w-full"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-semibold text-slate-700 dark:text-slate-100">
-                      Last Name
-                    </label>
-                    <input
-                      type="text"
-                      value={profileForm.lastName}
-                      onChange={(e) => setProfileForm({ ...profileForm, lastName: e.target.value })}
-                      className="mt-1 input-field w-full"
-                    />
-                  </div>
+            <div className="space-y-6">
+              <div className="glass-tile overflow-hidden">
+                <div className="px-8 py-5 border-b border-slate-200 dark:border-slate-700 bg-white/40 dark:bg-slate-800/30">
+                  <h2 className="text-lg font-semibold text-slate-900 dark:text-white">
+                    My Profile
+                  </h2>
+                  <p className="text-sm text-slate-500 dark:text-slate-300">
+                    Update your personal information
+                  </p>
                 </div>
-                <div>
-                  <label className="block text-sm font-semibold text-slate-700 dark:text-slate-100">
-                    Email
-                  </label>
-                  <input
-                    type="email"
-                    value={profileForm.email}
-                    onChange={(e) => setProfileForm({ ...profileForm, email: e.target.value })}
-                    className="mt-1 input-field w-full"
-                  />
-                </div>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                  <div>
-                    <label className="block text-sm font-semibold text-slate-700 dark:text-slate-100">
-                      Phone
-                    </label>
-                    <input
-                      type="tel"
-                      value={profileForm.phone}
-                      onChange={(e) => setProfileForm({ ...profileForm, phone: e.target.value })}
-                      className="mt-1 input-field w-full"
-                      placeholder="Your contact number"
-                    />
+                <div className="p-8 space-y-8">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                    <div>
+                      <label className="block text-sm font-semibold text-slate-700 dark:text-slate-100">
+                        First Name
+                      </label>
+                      <input
+                        type="text"
+                        value={profileForm.firstName}
+                        onChange={(e) =>
+                          setProfileForm({ ...profileForm, firstName: e.target.value })
+                        }
+                        className="mt-1 input-field w-full"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-semibold text-slate-700 dark:text-slate-100">
+                        Last Name
+                      </label>
+                      <input
+                        type="text"
+                        value={profileForm.lastName}
+                        onChange={(e) =>
+                          setProfileForm({ ...profileForm, lastName: e.target.value })
+                        }
+                        className="mt-1 input-field w-full"
+                      />
+                    </div>
                   </div>
                   <div>
                     <label className="block text-sm font-semibold text-slate-700 dark:text-slate-100">
-                      Job role (shown on proposals)
+                      Email
                     </label>
-                    <select
-                      value={
-                        JOB_TITLE_PRESETS.includes(
-                          profileForm.jobTitle as (typeof JOB_TITLE_PRESETS)[number]
-                        )
-                          ? profileForm.jobTitle
-                          : profileForm.jobTitle
-                            ? '__custom__'
-                            : ''
-                      }
-                      onChange={(e) => {
-                        const v = e.target.value;
-                        if (v === '__custom__') return;
-                        if (v) applyJobTitlePreset(v);
-                        else setProfileForm({ ...profileForm, jobTitle: '' });
-                      }}
-                      className="mt-1 input-field w-full"
-                    >
-                      <option value="">Select a job role…</option>
-                      {JOB_TITLE_PRESETS.map((preset) => (
-                        <option key={preset} value={preset}>
-                          {preset}
-                        </option>
-                      ))}
-                      <option value="__custom__">Custom title…</option>
-                    </select>
                     <input
-                      type="text"
-                      value={profileForm.jobTitle}
-                      onChange={(e) => setProfileForm({ ...profileForm, jobTitle: e.target.value })}
-                      className="mt-2 input-field w-full"
-                      placeholder="Or type a custom job title"
+                      type="email"
+                      value={profileForm.email}
+                      onChange={(e) => setProfileForm({ ...profileForm, email: e.target.value })}
+                      className="mt-1 input-field w-full"
                     />
+                  </div>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                    <div>
+                      <label className="block text-sm font-semibold text-slate-700 dark:text-slate-100">
+                        Phone
+                      </label>
+                      <input
+                        type="tel"
+                        value={profileForm.phone}
+                        onChange={(e) => setProfileForm({ ...profileForm, phone: e.target.value })}
+                        className="mt-1 input-field w-full"
+                        placeholder="Your contact number"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-semibold text-slate-700 dark:text-slate-100">
+                        Job role (shown on proposals)
+                      </label>
+                      <select
+                        value={
+                          JOB_TITLE_PRESETS.includes(
+                            profileForm.jobTitle as (typeof JOB_TITLE_PRESETS)[number]
+                          )
+                            ? profileForm.jobTitle
+                            : profileForm.jobTitle
+                              ? '__custom__'
+                              : ''
+                        }
+                        onChange={(e) => {
+                          const v = e.target.value;
+                          if (v === '__custom__') return;
+                          if (v) applyJobTitlePreset(v);
+                          else setProfileForm({ ...profileForm, jobTitle: '' });
+                        }}
+                        className="mt-1 input-field w-full"
+                      >
+                        <option value="">Select a job role…</option>
+                        {JOB_TITLE_PRESETS.map((preset) => (
+                          <option key={preset} value={preset}>
+                            {preset}
+                          </option>
+                        ))}
+                        <option value="__custom__">Custom title…</option>
+                      </select>
+                      <input
+                        type="text"
+                        value={profileForm.jobTitle}
+                        onChange={(e) =>
+                          setProfileForm({ ...profileForm, jobTitle: e.target.value })
+                        }
+                        className="mt-2 input-field w-full"
+                        placeholder="Or type a custom job title"
+                      />
+                      <button
+                        type="button"
+                        onClick={handleSaveProfile}
+                        disabled={isSaving === 'profile'}
+                        className="mt-3 btn-primary text-sm"
+                      >
+                        {isSaving === 'profile' ? 'Saving…' : 'Save job role'}
+                      </button>
+                    </div>
+                  </div>
+                  <div className="pt-4 border-t border-slate-200 dark:border-slate-700">
                     <button
-                      type="button"
                       onClick={handleSaveProfile}
                       disabled={isSaving === 'profile'}
-                      className="mt-3 btn-primary text-sm"
+                      className="btn-primary"
                     >
-                      {isSaving === 'profile' ? 'Saving…' : 'Save job role'}
+                      {isSaving === 'profile' ? 'Saving...' : 'Save Profile'}
                     </button>
                   </div>
                 </div>
-                <div className="pt-4 border-t border-slate-200 dark:border-slate-700">
-                  <button
-                    onClick={handleSaveProfile}
-                    disabled={isSaving === 'profile'}
-                    className="btn-primary"
-                  >
-                    {isSaving === 'profile' ? 'Saving...' : 'Save Profile'}
-                  </button>
+              </div>
+
+              {/* Theme (personal, light/dark preference) */}
+              <div className="glass-tile p-6">
+                <div className="flex items-center gap-3 mb-4">
+                  <SunIcon className="h-6 w-6 text-primary-600 dark:text-primary-400" />
+                  <div>
+                    <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-100">
+                      Theme
+                    </h2>
+                    <p className="text-sm text-slate-500 dark:text-slate-300">
+                      Choose how Engage looks for you
+                    </p>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                  {[
+                    { value: 'light', label: 'Light', icon: SunIcon, desc: 'Always light' },
+                    { value: 'dark', label: 'Dark', icon: MoonIcon, desc: 'Always dark' },
+                    {
+                      value: 'system',
+                      label: 'System',
+                      icon: ComputerDesktopIcon,
+                      desc: 'Match your device',
+                    },
+                  ].map((option) => {
+                    const Icon = option.icon;
+                    const isActive = currentTheme === option.value;
+                    return (
+                      <button
+                        key={option.value}
+                        onClick={() => setCurrentTheme(option.value as any)}
+                        className={`flex flex-col items-center p-5 rounded-2xl border transition-all ${
+                          isActive
+                            ? 'border-primary-500 bg-primary-50/80 dark:bg-primary-900/30 ring-2 ring-primary-200 dark:ring-primary-700 shadow-sm'
+                            : 'border-slate-200 dark:border-slate-600 bg-white/70 dark:bg-slate-800/70 hover:bg-slate-50 dark:hover:bg-slate-700/70 hover:border-primary-200 dark:hover:border-slate-500'
+                        }`}
+                      >
+                        <Icon className="h-8 w-8 mb-2 text-primary-500 dark:text-primary-300" />
+                        <div className="font-semibold text-slate-900 dark:text-white">
+                          {option.label}
+                        </div>
+                        <div className="text-xs text-slate-500 dark:text-slate-300 mt-0.5">
+                          {option.desc}
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+
+                <div className="mt-4 text-xs text-slate-500 dark:text-slate-300">
+                  Your preference is saved and will be remembered across sessions.
+                </div>
+              </div>
+
+              {/* Clara & AI budget visibility (polish + transparency) */}
+              <div className="glass-tile p-8">
+                <div className="flex items-center gap-3 mb-5">
+                  <SparklesIcon className="h-6 w-6 text-primary-600 dark:text-primary-400" />
+                  <div>
+                    <h2 className="text-lg font-semibold text-slate-900 dark:text-white">
+                      Clara &amp; AI
+                    </h2>
+                    <p className="text-sm text-slate-500 dark:text-slate-300">
+                      Monthly usage and budget for Clara AI features
+                    </p>
+                  </div>
+                </div>
+
+                {aiBudgetLoading ? (
+                  <div className="text-sm text-slate-500 dark:text-slate-300">
+                    Loading Clara budget…
+                  </div>
+                ) : aiBudgetError || !aiBudget ? (
+                  <div className="text-sm text-amber-600 dark:text-amber-400">
+                    {aiBudgetError || 'AI budget data unavailable.'}
+                  </div>
+                ) : (
+                  <div>
+                    <div className="text-sm text-slate-700 dark:text-slate-200 mb-2">
+                      Clara budget this month:{' '}
+                      {aiBudget.usedThisMonth?.toLocaleString?.() ?? aiBudget.usedThisMonth} /{' '}
+                      {aiBudget.budgetMonthly?.toLocaleString?.() ?? aiBudget.budgetMonthly} tokens
+                      used (remaining {aiBudget.remaining?.toLocaleString?.() ?? aiBudget.remaining}
+                      ). Calls: {aiBudget.aiCallsThisMonth ?? '—'}
+                      {typeof aiBudget.callsWithLoggedTokens === 'number' && (
+                        <span className="block text-xs text-slate-500 dark:text-slate-400 mt-1">
+                          {aiBudget.callsWithLoggedTokens} with logged provider tokens
+                          {aiBudget.callsEstimated > 0
+                            ? ` · ${aiBudget.callsEstimated} estimated from older activity`
+                            : ''}
+                        </span>
+                      )}
+                    </div>
+
+                    {/* Tailwind progress bar, perfect dark mode + pale light */}
+                    {(() => {
+                      const used = Number(aiBudget.usedThisMonth) || 0;
+                      const total = Number(aiBudget.budgetMonthly) || 1;
+                      const pct = Math.max(0, Math.min(100, Math.round((used / total) * 100)));
+                      return (
+                        <div
+                          className="w-full bg-slate-200 dark:bg-slate-700 rounded-full h-2.5 overflow-hidden"
+                          role="progressbar"
+                          aria-valuenow={pct}
+                          aria-valuemin={0}
+                          aria-valuemax={100}
+                        >
+                          <div
+                            className="h-2.5 rounded-full transition-all bg-primary-600 dark:bg-primary-500"
+                            style={{ width: `${pct}%` }}
+                          />
+                        </div>
+                      );
+                    })()}
+
+                    <p className="mt-2 text-xs text-slate-500 dark:text-slate-300">
+                      Budget resets monthly. Usage is based on provider token counts where
+                      available.
+                    </p>
+                  </div>
+                )}
+              </div>
+
+              {/* Security (personal, password & 2FA) */}
+              <div className="glass-tile overflow-hidden">
+                <div className="px-8 py-5 border-b border-slate-200 dark:border-slate-700 bg-white/40 dark:bg-slate-800/30">
+                  <h2 className="text-lg font-semibold text-slate-900 dark:text-white">Security</h2>
+                  <p className="text-sm text-slate-500 dark:text-slate-300">
+                    Manage your password and account security
+                  </p>
+                </div>
+                <div className="p-8 space-y-8">
+                  <div>
+                    <h3 className="text-sm font-medium text-slate-900 mb-4">Change Password</h3>
+                    <div className="space-y-4 max-w-md">
+                      <div>
+                        <label className="block text-sm font-semibold text-slate-700 dark:text-slate-100">
+                          Current Password
+                        </label>
+                        <input
+                          type="password"
+                          value={passwordForm.currentPassword}
+                          onChange={(e) =>
+                            setPasswordForm({ ...passwordForm, currentPassword: e.target.value })
+                          }
+                          className="mt-1 input-field w-full"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-semibold text-slate-700 dark:text-slate-100">
+                          New Password
+                        </label>
+                        <input
+                          type="password"
+                          value={passwordForm.newPassword}
+                          onChange={(e) =>
+                            setPasswordForm({ ...passwordForm, newPassword: e.target.value })
+                          }
+                          className="mt-1 input-field w-full"
+                        />
+                        {/* Password Requirements */}
+                        <div className="mt-2 space-y-1">
+                          <p className="text-xs text-slate-500 dark:text-slate-300 font-medium">
+                            Password requirements:
+                          </p>
+                          {[
+                            {
+                              test: passwordForm.newPassword.length >= 12,
+                              label: 'At least 12 characters',
+                            },
+                            {
+                              test: /[A-Z]/.test(passwordForm.newPassword),
+                              label: 'One uppercase letter',
+                            },
+                            {
+                              test: /[a-z]/.test(passwordForm.newPassword),
+                              label: 'One lowercase letter',
+                            },
+                            { test: /[0-9]/.test(passwordForm.newPassword), label: 'One number' },
+                            {
+                              test: /[^A-Za-z0-9]/.test(passwordForm.newPassword),
+                              label: 'One special character',
+                            },
+                          ].map((req, i) => (
+                            <div key={i} className="flex items-center text-xs">
+                              <span
+                                className={`mr-2 ${req.test ? 'text-green-500' : 'text-slate-400 dark:text-slate-500'}`}
+                              >
+                                {req.test ? '✓' : '○'}
+                              </span>
+                              <span
+                                className={
+                                  req.test ? 'text-green-700' : 'text-slate-500 dark:text-slate-300'
+                                }
+                              >
+                                {req.label}
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                      <div>
+                        <label className="block text-sm font-semibold text-slate-700 dark:text-slate-100">
+                          Confirm New Password
+                        </label>
+                        <input
+                          type="password"
+                          value={passwordForm.confirmPassword}
+                          onChange={(e) =>
+                            setPasswordForm({ ...passwordForm, confirmPassword: e.target.value })
+                          }
+                          className="mt-1 input-field w-full"
+                        />
+                      </div>
+                      <button
+                        onClick={handleChangePassword}
+                        disabled={isSaving === 'security'}
+                        className="btn-primary"
+                      >
+                        {isSaving === 'security' ? 'Changing...' : 'Change Password'}
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="pt-6 border-t border-slate-200 dark:border-slate-700">
+                    <h3 className="text-sm font-medium text-slate-900 dark:text-white mb-2">
+                      Two-Factor Authentication
+                    </h3>
+                    <p className="text-sm text-slate-500 dark:text-slate-300 mb-4">
+                      {user?.twoFactorEnabled
+                        ? 'Your account is protected with an authenticator app.'
+                        : 'Add an extra layer of security using an authenticator app.'}
+                    </p>
+                    {user?.twoFactorEnabled ? (
+                      <div className="space-y-3">
+                        <span className="inline-flex items-center text-sm text-green-600">
+                          <ShieldCheckIcon className="w-4 h-4 mr-1" />
+                          2FA is enabled
+                        </span>
+                        <div className="flex flex-col sm:flex-row gap-2 max-w-md">
+                          <input
+                            type="password"
+                            value={disable2FAPassword}
+                            onChange={(e) => setDisable2FAPassword(e.target.value)}
+                            placeholder="Password to disable 2FA"
+                            className="input-field flex-1"
+                          />
+                          <button
+                            type="button"
+                            className="btn-secondary"
+                            onClick={handleDisable2FA}
+                            disabled={isDisabling2FA || !disable2FAPassword}
+                          >
+                            {isDisabling2FA ? 'Disabling...' : 'Disable 2FA'}
+                          </button>
+                        </div>
+                      </div>
+                    ) : (
+                      <button
+                        type="button"
+                        className="btn-secondary"
+                        onClick={() => navigate('/2fa-setup')}
+                      >
+                        Enable 2FA
+                      </button>
+                    )}
+                  </div>
                 </div>
               </div>
             </div>
@@ -1575,133 +1910,6 @@ const Settings = () => {
                     {isSaving === 'branding' ? 'Saving...' : 'Save Branding'}
                   </button>
                 </div>
-              </div>
-            </div>
-          )}
-
-          {/* APPEARANCE TAB */}
-          {activeTab === 'appearance' && (
-            <div className="space-y-6">
-              <div className="glass-tile p-6">
-                <div className="flex items-center gap-3 mb-4">
-                  <SunIcon className="h-6 w-6 text-primary-600 dark:text-primary-400" />
-                  <div>
-                    <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-100">
-                      Theme
-                    </h2>
-                    <p className="text-sm text-slate-500 dark:text-slate-300">
-                      Choose how Engage looks for you
-                    </p>
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                  {[
-                    { value: 'light', label: 'Light', icon: SunIcon, desc: 'Always light' },
-                    { value: 'dark', label: 'Dark', icon: MoonIcon, desc: 'Always dark' },
-                    {
-                      value: 'system',
-                      label: 'System',
-                      icon: ComputerDesktopIcon,
-                      desc: 'Match your device',
-                    },
-                  ].map((option) => {
-                    const Icon = option.icon;
-                    const isActive = currentTheme === option.value;
-                    return (
-                      <button
-                        key={option.value}
-                        onClick={() => setCurrentTheme(option.value as any)}
-                        className={`flex flex-col items-center p-5 rounded-2xl border transition-all ${
-                          isActive
-                            ? 'border-primary-500 bg-primary-50/80 dark:bg-primary-900/30 ring-2 ring-primary-200 dark:ring-primary-700 shadow-sm'
-                            : 'border-slate-200 dark:border-slate-600 bg-white/70 dark:bg-slate-800/70 hover:bg-slate-50 dark:hover:bg-slate-700/70 hover:border-primary-200 dark:hover:border-slate-500'
-                        }`}
-                      >
-                        <Icon className="h-8 w-8 mb-2 text-primary-500 dark:text-primary-300" />
-                        <div className="font-semibold text-slate-900 dark:text-white">
-                          {option.label}
-                        </div>
-                        <div className="text-xs text-slate-500 dark:text-slate-300 mt-0.5">
-                          {option.desc}
-                        </div>
-                      </button>
-                    );
-                  })}
-                </div>
-
-                <div className="mt-4 text-xs text-slate-500 dark:text-slate-300">
-                  Your preference is saved and will be remembered across sessions.
-                </div>
-              </div>
-
-              {/* Clara & AI budget visibility (polish + transparency) */}
-              <div className="glass-tile p-8">
-                <div className="flex items-center gap-3 mb-5">
-                  <SparklesIcon className="h-6 w-6 text-primary-600 dark:text-primary-400" />
-                  <div>
-                    <h2 className="text-lg font-semibold text-slate-900 dark:text-white">
-                      Clara &amp; AI
-                    </h2>
-                    <p className="text-sm text-slate-500 dark:text-slate-300">
-                      Monthly usage and budget for Clara AI features
-                    </p>
-                  </div>
-                </div>
-
-                {aiBudgetLoading ? (
-                  <div className="text-sm text-slate-500 dark:text-slate-300">
-                    Loading Clara budget…
-                  </div>
-                ) : aiBudgetError || !aiBudget ? (
-                  <div className="text-sm text-amber-600 dark:text-amber-400">
-                    {aiBudgetError || 'AI budget data unavailable.'}
-                  </div>
-                ) : (
-                  <div>
-                    <div className="text-sm text-slate-700 dark:text-slate-200 mb-2">
-                      Clara budget this month:{' '}
-                      {aiBudget.usedThisMonth?.toLocaleString?.() ?? aiBudget.usedThisMonth} /{' '}
-                      {aiBudget.budgetMonthly?.toLocaleString?.() ?? aiBudget.budgetMonthly} tokens
-                      used (remaining {aiBudget.remaining?.toLocaleString?.() ?? aiBudget.remaining}
-                      ). Calls: {aiBudget.aiCallsThisMonth ?? '—'}
-                      {typeof aiBudget.callsWithLoggedTokens === 'number' && (
-                        <span className="block text-xs text-slate-500 dark:text-slate-400 mt-1">
-                          {aiBudget.callsWithLoggedTokens} with logged provider tokens
-                          {aiBudget.callsEstimated > 0
-                            ? ` · ${aiBudget.callsEstimated} estimated from older activity`
-                            : ''}
-                        </span>
-                      )}
-                    </div>
-
-                    {/* Tailwind progress bar, perfect dark mode + pale light */}
-                    {(() => {
-                      const used = Number(aiBudget.usedThisMonth) || 0;
-                      const total = Number(aiBudget.budgetMonthly) || 1;
-                      const pct = Math.max(0, Math.min(100, Math.round((used / total) * 100)));
-                      return (
-                        <div
-                          className="w-full bg-slate-200 dark:bg-slate-700 rounded-full h-2.5 overflow-hidden"
-                          role="progressbar"
-                          aria-valuenow={pct}
-                          aria-valuemin={0}
-                          aria-valuemax={100}
-                        >
-                          <div
-                            className="h-2.5 rounded-full transition-all bg-primary-600 dark:bg-primary-500"
-                            style={{ width: `${pct}%` }}
-                          />
-                        </div>
-                      );
-                    })()}
-
-                    <p className="mt-2 text-xs text-slate-500 dark:text-slate-300">
-                      Budget resets monthly. Usage is based on provider token counts where
-                      available.
-                    </p>
-                  </div>
-                )}
               </div>
             </div>
           )}
@@ -2667,159 +2875,10 @@ const Settings = () => {
             </div>
           )}
 
-          {/* SECURITY TAB */}
-          {activeTab === 'security' && (
-            <div className="glass-tile overflow-hidden">
-              <div className="px-8 py-5 border-b border-slate-200 dark:border-slate-700 bg-white/40 dark:bg-slate-800/30">
-                <h2 className="text-lg font-semibold text-slate-900 dark:text-white">Security</h2>
-                <p className="text-sm text-slate-500 dark:text-slate-300">
-                  Manage your password and account security
-                </p>
-              </div>
-              <div className="p-8 space-y-8">
-                <div>
-                  <h3 className="text-sm font-medium text-slate-900 mb-4">Change Password</h3>
-                  <div className="space-y-4 max-w-md">
-                    <div>
-                      <label className="block text-sm font-semibold text-slate-700 dark:text-slate-100">
-                        Current Password
-                      </label>
-                      <input
-                        type="password"
-                        value={passwordForm.currentPassword}
-                        onChange={(e) =>
-                          setPasswordForm({ ...passwordForm, currentPassword: e.target.value })
-                        }
-                        className="mt-1 input-field w-full"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-semibold text-slate-700 dark:text-slate-100">
-                        New Password
-                      </label>
-                      <input
-                        type="password"
-                        value={passwordForm.newPassword}
-                        onChange={(e) =>
-                          setPasswordForm({ ...passwordForm, newPassword: e.target.value })
-                        }
-                        className="mt-1 input-field w-full"
-                      />
-                      {/* Password Requirements */}
-                      <div className="mt-2 space-y-1">
-                        <p className="text-xs text-slate-500 dark:text-slate-300 font-medium">
-                          Password requirements:
-                        </p>
-                        {[
-                          {
-                            test: passwordForm.newPassword.length >= 12,
-                            label: 'At least 12 characters',
-                          },
-                          {
-                            test: /[A-Z]/.test(passwordForm.newPassword),
-                            label: 'One uppercase letter',
-                          },
-                          {
-                            test: /[a-z]/.test(passwordForm.newPassword),
-                            label: 'One lowercase letter',
-                          },
-                          { test: /[0-9]/.test(passwordForm.newPassword), label: 'One number' },
-                          {
-                            test: /[^A-Za-z0-9]/.test(passwordForm.newPassword),
-                            label: 'One special character',
-                          },
-                        ].map((req, i) => (
-                          <div key={i} className="flex items-center text-xs">
-                            <span
-                              className={`mr-2 ${req.test ? 'text-green-500' : 'text-slate-400 dark:text-slate-500'}`}
-                            >
-                              {req.test ? '✓' : '○'}
-                            </span>
-                            <span
-                              className={
-                                req.test ? 'text-green-700' : 'text-slate-500 dark:text-slate-300'
-                              }
-                            >
-                              {req.label}
-                            </span>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                    <div>
-                      <label className="block text-sm font-semibold text-slate-700 dark:text-slate-100">
-                        Confirm New Password
-                      </label>
-                      <input
-                        type="password"
-                        value={passwordForm.confirmPassword}
-                        onChange={(e) =>
-                          setPasswordForm({ ...passwordForm, confirmPassword: e.target.value })
-                        }
-                        className="mt-1 input-field w-full"
-                      />
-                    </div>
-                    <button
-                      onClick={handleChangePassword}
-                      disabled={isSaving === 'security'}
-                      className="btn-primary"
-                    >
-                      {isSaving === 'security' ? 'Changing...' : 'Change Password'}
-                    </button>
-                  </div>
-                </div>
-
-                <div className="pt-6 border-t border-slate-200 dark:border-slate-700">
-                  <h3 className="text-sm font-medium text-slate-900 dark:text-white mb-2">
-                    Two-Factor Authentication
-                  </h3>
-                  <p className="text-sm text-slate-500 dark:text-slate-300 mb-4">
-                    {user?.twoFactorEnabled
-                      ? 'Your account is protected with an authenticator app.'
-                      : 'Add an extra layer of security using an authenticator app.'}
-                  </p>
-                  {user?.twoFactorEnabled ? (
-                    <div className="space-y-3">
-                      <span className="inline-flex items-center text-sm text-green-600">
-                        <ShieldCheckIcon className="w-4 h-4 mr-1" />
-                        2FA is enabled
-                      </span>
-                      <div className="flex flex-col sm:flex-row gap-2 max-w-md">
-                        <input
-                          type="password"
-                          value={disable2FAPassword}
-                          onChange={(e) => setDisable2FAPassword(e.target.value)}
-                          placeholder="Password to disable 2FA"
-                          className="input-field flex-1"
-                        />
-                        <button
-                          type="button"
-                          className="btn-secondary"
-                          onClick={handleDisable2FA}
-                          disabled={isDisabling2FA || !disable2FAPassword}
-                        >
-                          {isDisabling2FA ? 'Disabling...' : 'Disable 2FA'}
-                        </button>
-                      </div>
-                    </div>
-                  ) : (
-                    <button
-                      type="button"
-                      className="btn-secondary"
-                      onClick={() => navigate('/2fa-setup')}
-                    >
-                      Enable 2FA
-                    </button>
-                  )}
-                </div>
-              </div>
-            </div>
-          )}
-
           {/* AUTOMATION / TOUCHPOINTS TAB */}
           {activeTab === 'automation' && <AutomationTab />}
 
-          {/* INTEGRATIONS TAB */}
+          {/* FIRM GROUP TAB - only shown once the tenant is confirmed to be in one */}
           {activeTab === 'firm-group' && (
             <div className="glass-tile overflow-hidden">
               <div className="px-8 py-5 border-b border-slate-200 dark:border-slate-700 bg-white/40 dark:bg-slate-800/30">
@@ -2830,59 +2889,6 @@ const Settings = () => {
               </div>
               <div className="p-6">
                 <FirmGroupSettings />
-              </div>
-            </div>
-          )}
-
-          {activeTab === 'integrations' && (
-            <div className="space-y-6">
-              <div className="glass-tile overflow-hidden">
-                <div className="px-8 py-5 border-b border-slate-200 dark:border-slate-700 bg-white/40 dark:bg-slate-800/30">
-                  <h2 className="text-lg font-semibold text-slate-900 dark:text-white">
-                    Accounting integrations
-                  </h2>
-                  <p className="text-sm text-slate-500 dark:text-slate-300">
-                    Connect Xero to sync clients and push accepted proposal summaries
-                  </p>
-                </div>
-                <div className="p-6 space-y-4">
-                  <XeroConnect />
-                  <QuickBooksConnect />
-                </div>
-              </div>
-
-              <div className="glass-tile overflow-hidden">
-                <div className="px-8 py-5 border-b border-slate-200 dark:border-slate-700 bg-white/40 dark:bg-slate-800/30">
-                  <h2 className="text-lg font-semibold text-slate-900 dark:text-white">
-                    Zapier &amp; HubSpot events (W4.2)
-                  </h2>
-                  <p className="text-sm text-slate-500 dark:text-slate-300">
-                    Proposal lifecycle webhooks for automation platforms
-                  </p>
-                </div>
-                <div className="p-6">
-                  <WebhookSettings />
-                </div>
-              </div>
-
-              <div className="glass-tile overflow-hidden">
-                <div className="px-8 py-5 border-b border-slate-200 dark:border-slate-700 bg-white/40 dark:bg-slate-800/30">
-                  <h2 className="text-lg font-semibold text-slate-900 dark:text-white">
-                    What&apos;s implemented (W1.1–W1.2)
-                  </h2>
-                </div>
-                <div className="p-6 text-sm text-slate-600 dark:text-slate-300 space-y-2">
-                  <p>
-                    <span className="font-medium text-green-700 dark:text-green-400">Live:</span>{' '}
-                    OAuth connect, client import (dedupe by email/name), contact notes on accepted
-                    proposals.
-                  </p>
-                  <p>
-                    <span className="font-medium text-amber-700 dark:text-amber-400">Stub:</span>{' '}
-                    Repeating invoice / mandate draft — returned in API response only until revenue
-                    account mapping (full W1.2).
-                  </p>
-                </div>
               </div>
             </div>
           )}

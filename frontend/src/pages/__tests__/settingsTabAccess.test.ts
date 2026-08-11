@@ -32,11 +32,16 @@ describe('isSettingsTabVisibleForRole', () => {
     expect(isSettingsTabVisibleForRole('team', 'JUNIOR')).toBe(false);
   });
 
-  it('leaves self-service tabs visible to every role', () => {
+  it('leaves the My account tab (profile + theme + password/2FA) visible to every role', () => {
     for (const role of ['ADMIN', 'PARTNER', 'MD', 'MANAGER', 'SENIOR', 'JUNIOR']) {
       expect(isSettingsTabVisibleForRole('profile', role)).toBe(true);
-      expect(isSettingsTabVisibleForRole('appearance', role)).toBe(true);
-      expect(isSettingsTabVisibleForRole('security', role)).toBe(true);
+    }
+  });
+
+  it('leaves the Automation and Firm group tabs visible to every role', () => {
+    for (const role of ['ADMIN', 'PARTNER', 'MD', 'MANAGER', 'SENIOR', 'JUNIOR']) {
+      expect(isSettingsTabVisibleForRole('automation', role)).toBe(true);
+      expect(isSettingsTabVisibleForRole('firm-group', role)).toBe(true);
     }
   });
 
@@ -47,28 +52,30 @@ describe('isSettingsTabVisibleForRole', () => {
 });
 
 describe('visibleSettingsTabIds', () => {
+  // Post-consolidation tab set (task-11): profile absorbed appearance and
+  // security, and the duplicated Integrations tab was deleted outright — see
+  // frontend/src/pages/Settings.tsx and frontend/src/pages/integrations/IntegrationsHub.tsx.
+  const CONSOLIDATED_TABS = [
+    'profile',
+    'practice',
+    'branding',
+    'communications',
+    'billing',
+    'templates',
+    'team',
+    'automation',
+    'firm-group',
+  ];
+
   it('filters the full tab list down for a JUNIOR user', () => {
-    const all = [
+    expect(visibleSettingsTabIds(CONSOLIDATED_TABS, 'JUNIOR')).toEqual([
       'profile',
-      'practice',
-      'branding',
-      'appearance',
-      'communications',
-      'templates',
-      'billing',
-      'team',
-      'security',
       'automation',
-      'integrations',
-      'firm-group',
-    ];
-    expect(visibleSettingsTabIds(all, 'JUNIOR')).toEqual([
-      'profile',
-      'appearance',
-      'security',
-      'automation',
-      'integrations',
       'firm-group',
     ]);
+  });
+
+  it('shows every tab to an ADMIN user', () => {
+    expect(visibleSettingsTabIds(CONSOLIDATED_TABS, 'ADMIN')).toEqual(CONSOLIDATED_TABS);
   });
 });

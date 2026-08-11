@@ -1,7 +1,7 @@
 import type { TenantProposalSettings, UpdateTenantSettingsPayload } from '../types/tenants';
 
 /**
- * The Communications and Templates & terms tabs share one form object
+ * The Communications and Documents & terms tabs share one form object
  * (`communicationsForm.proposals`) across three independently-labelled save
  * buttons — chase settings, proposal defaults, and proposal terms — but the
  * backend PUT merges by top-level key (`proposals` replaces the whole
