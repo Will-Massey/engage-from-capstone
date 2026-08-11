@@ -51,8 +51,10 @@ test.describe('UAT smoke — public legal & status pages', () => {
 
 test.describe('UAT smoke — Caroline checklist (automated)', () => {
   test('Xero integration settings page loads', async ({ page }) => {
+    // Settings' old Integrations tab was a full duplicate of this hub page and
+    // was deleted; a bookmarked ?tab=integrations link now redirects here.
     await gotoApp(page, '/settings?tab=integrations');
-    await expect(page).toHaveURL(/tab=integrations/);
+    await expect(page).toHaveURL(/\/integrations/);
     await expect(page.getByText(/xero/i).first()).toBeVisible({ timeout: 30_000 });
     await expect(
       page.getByRole('button', { name: /connect xero|reconnect xero|import clients/i }).first()

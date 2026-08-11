@@ -116,7 +116,10 @@ test.describe('Xero mock connect', () => {
     expect(status.body.data.connected).toBe(true);
     expect(status.body.data.xeroTenantName).toMatch(/e2e demo organisation/i);
 
+    // Settings' old Integrations tab was deleted (full duplicate of this hub
+    // page); a bookmarked ?tab=integrations link now redirects here.
     await gotoApp(page, '/settings?tab=integrations');
+    await expect(page).toHaveURL(/\/integrations/);
     await expect(page.getByText('Connected', { exact: true })).toBeVisible({ timeout: 30_000 });
     await expect(page.getByText(/E2E Demo Organisation/i)).toBeVisible();
     await expectNoErrorToasts(page);

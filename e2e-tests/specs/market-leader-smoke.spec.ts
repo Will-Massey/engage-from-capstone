@@ -57,8 +57,10 @@ test.describe('Build smoke — market leader batch (845effcf)', () => {
   });
 
   test('MFA settings page loads with 2FA setup UI', async ({ page }) => {
+    // Security was merged into the My account tab; a bookmarked ?tab=security
+    // link redirects there and the query param is cleaned up.
     await gotoApp(page, '/settings?tab=security');
-    await expect(page).toHaveURL(/tab=security/);
+    await expect(page).toHaveURL(/\/settings/);
     await expect(page.getByText(/two-factor authentication/i).first()).toBeVisible();
 
     const enableBtn = page.getByRole('button', { name: /enable 2fa/i });
