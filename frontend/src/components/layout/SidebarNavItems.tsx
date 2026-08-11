@@ -11,7 +11,7 @@ import { useAiAssistantStore } from '../../stores/aiAssistantStore';
 import { useAuthStore } from '../../stores/authStore';
 import { apiClient } from '../../utils/api';
 import { AI_COPILOT } from '../../config/aiCopilot';
-import { isApprover } from '../../constants/roles';
+import { canViewNavItem, isApprover } from '../../constants/roles';
 
 interface SidebarNavItemsProps {
   pathname: string;
@@ -156,30 +156,35 @@ const SidebarNavItems = ({ pathname, onNavigate }: SidebarNavItemsProps) => {
         />
       </button>
 
-      {NAV_SECTIONS.map((section) => (
-        <div key={section.id}>
-          <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-400 dark:text-slate-500 px-3 mb-1.5">
-            {section.label}
-          </p>
-          <div className="space-y-0.5 px-0.5">
-            {section.items.map((item) => (
-              <NavItemLink
-                key={item.href}
-                item={item}
-                pathname={pathname}
-                onNavigate={onNavigate}
-                badge={
-                  item.href === '/proposals'
-                    ? approvalQueueCount
-                    : item.href === '/jobs'
-                      ? jobsOverdueCount
-                      : undefined
-                }
-              />
-            ))}
+      {NAV_SECTIONS.map((section) => {
+        const visibleItems = section.items.filter((item) => canViewNavItem(user?.role, item.roles));
+        if (visibleItems.length === 0) return null;
+
+        return (
+          <div key={section.id}>
+            <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-400 dark:text-slate-500 px-3 mb-1.5">
+              {section.label}
+            </p>
+            <div className="space-y-0.5 px-0.5">
+              {visibleItems.map((item) => (
+                <NavItemLink
+                  key={item.href}
+                  item={item}
+                  pathname={pathname}
+                  onNavigate={onNavigate}
+                  badge={
+                    item.href === '/proposals'
+                      ? approvalQueueCount
+                      : item.href === '/jobs'
+                        ? jobsOverdueCount
+                        : undefined
+                  }
+                />
+              ))}
+            </div>
           </div>
-        </div>
-      ))}
+        );
+      })}
     </div>
   );
 };

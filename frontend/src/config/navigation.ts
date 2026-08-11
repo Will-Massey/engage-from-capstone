@@ -12,12 +12,12 @@ import {
   DocumentDuplicateIcon,
   BoltIcon,
   ArrowsRightLeftIcon,
-  ScaleIcon,
-  ShieldCheckIcon,
   InboxIcon,
   ClipboardDocumentListIcon,
   FolderOpenIcon,
+  CreditCardIcon,
 } from '@heroicons/react/24/outline';
+import { STAFF_NAV_ROLES } from '../constants/roles';
 
 export type NavIcon = ComponentType<SVGProps<SVGSVGElement>>;
 
@@ -28,6 +28,8 @@ export interface NavItem {
   description?: string;
   /** Highlight when pathname starts with href (e.g. /proposals/abc) */
   matchPrefix?: boolean;
+  /** Roles allowed to see this item in the sidebar. Omit = visible to everyone. */
+  roles?: string[];
 }
 
 export interface NavSection {
@@ -39,10 +41,12 @@ export interface NavSection {
 /**
  * Nav IA (path simplification):
  * 1) Today — daily delivery loop (fewest clicks)
- * 2) Win work — proposals
+ * 2) Proposals — win work, catalogue, and the analytics behind them
  * 3) Run practice — secondary ops
- * 4) Catalogue / Insights / Account
- * Grow (GTM) is demoted so it never competes with delivery.
+ * 4) Account — settings and billing
+ * Pre-sales pages (switch-from-engager, trust pack) stay routable but live in
+ * the command palette, not the sidebar — practices that already bought don't
+ * need permanent shelf space for prospect-facing collateral.
  */
 export const NAV_SECTIONS: NavSection[] = [
   {
@@ -81,8 +85,8 @@ export const NAV_SECTIONS: NavSection[] = [
     ],
   },
   {
-    id: 'win',
-    label: 'Win work',
+    id: 'proposals',
+    label: 'Proposals',
     items: [
       {
         name: 'Proposals',
@@ -90,6 +94,36 @@ export const NAV_SECTIONS: NavSection[] = [
         icon: DocumentTextIcon,
         description: 'Create and send engagement letters',
         matchPrefix: true,
+      },
+      {
+        name: 'Services',
+        href: '/services',
+        icon: WrenchScrewdriverIcon,
+        description: 'Fees and service templates',
+        matchPrefix: true,
+      },
+      {
+        name: 'Templates',
+        href: '/templates',
+        icon: RectangleStackIcon,
+        description: 'Pre-made proposal bundles',
+        matchPrefix: true,
+      },
+      {
+        name: 'Fee calculator',
+        href: '/pricing-calculator',
+        icon: CalculatorIcon,
+        description: 'Turnover → fee band suggestion (does not set prices)',
+        matchPrefix: false,
+        roles: STAFF_NAV_ROLES,
+      },
+      {
+        name: 'Analytics',
+        href: '/analytics',
+        icon: ChartPieIcon,
+        description: 'Proposal performance, revenue, conversion trends',
+        matchPrefix: true,
+        roles: STAFF_NAV_ROLES,
       },
     ],
   },
@@ -124,6 +158,7 @@ export const NAV_SECTIONS: NavSection[] = [
         icon: BoltIcon,
         description: 'Chase packs, proposal follow-ups, schedules',
         matchPrefix: true,
+        roles: STAFF_NAV_ROLES,
       },
       {
         name: 'Integrations',
@@ -131,65 +166,23 @@ export const NAV_SECTIONS: NavSection[] = [
         icon: ArrowsRightLeftIcon,
         description: 'Xero, QuickBooks, AccountFlow mesh',
         matchPrefix: true,
-      },
-    ],
-  },
-  {
-    id: 'catalogue',
-    label: 'Catalogue',
-    items: [
-      {
-        name: 'Services',
-        href: '/services',
-        icon: WrenchScrewdriverIcon,
-        description: 'Fees and service templates',
-        matchPrefix: true,
-      },
-      {
-        name: 'Templates',
-        href: '/templates',
-        icon: RectangleStackIcon,
-        description: 'Pre-made proposal bundles',
-        matchPrefix: true,
-      },
-      {
-        name: 'Pricing',
-        href: '/pricing-calculator',
-        icon: CalculatorIcon,
-        description: 'Turnover → fee bands',
-        matchPrefix: false,
-      },
-    ],
-  },
-  {
-    id: 'insights',
-    label: 'Insights',
-    items: [{ name: 'Analytics', href: '/analytics', icon: ChartPieIcon, matchPrefix: true }],
-  },
-  {
-    id: 'gtm',
-    label: 'Partner demo',
-    items: [
-      {
-        name: 'Switch from Engager',
-        href: '/switch-from-engager',
-        icon: ScaleIcon,
-        description: 'Battle card · ROI · demo script',
-        matchPrefix: false,
-      },
-      {
-        name: 'Trust pack',
-        href: '/trust',
-        icon: ShieldCheckIcon,
-        description: 'CE prep · UK residency · diligence',
-        matchPrefix: false,
+        roles: STAFF_NAV_ROLES,
       },
     ],
   },
   {
     id: 'account',
     label: 'Account',
-    items: [{ name: 'Settings', href: '/settings', icon: CogIcon, matchPrefix: true }],
+    items: [
+      { name: 'Settings', href: '/settings', icon: CogIcon, matchPrefix: true },
+      {
+        name: 'Subscription',
+        href: '/subscription',
+        icon: CreditCardIcon,
+        description: 'Platform plan and billing',
+        matchPrefix: false,
+      },
+    ],
   },
 ];
 
@@ -417,12 +410,12 @@ export function getPageMeta(pathname: string): {
   }
   if (pathname === '/pricing-calculator') {
     return {
-      title: 'Pricing calculator',
+      title: 'Fee calculator',
       description: 'Value-based fee suggestions from client turnover and complexity',
       breadcrumbs: [
         { label: 'Dashboard', href: '/' },
         { label: 'Services', href: '/services' },
-        { label: 'Pricing calculator' },
+        { label: 'Fee calculator' },
       ],
       backTo: { label: 'Back to services', href: '/services' },
     };
