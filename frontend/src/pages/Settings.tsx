@@ -122,6 +122,11 @@ const Settings = () => {
   // tab stays hidden unless the tenant is already in a group or the user is one
   // of the roles that can create one (otherwise there is no way in at all).
   const [firmGroupAssigned, setFirmGroupAssigned] = useState(false);
+  // Whether the firm-group assignment fetch below has resolved. The correction
+  // effect further down must not act on the pre-fetch default (assigned:
+  // false) — a MANAGER deep-linking into an *assigned* practice would get
+  // bounced off the tab before the real answer arrives.
+  const [firmGroupLoaded, setFirmGroupLoaded] = useState(false);
   const visibleTabs = useMemo(
     () =>
       tabs.filter(
@@ -354,8 +359,24 @@ const Settings = () => {
       })
       .catch(() => {
         // Tab just stays hidden if this fails
-      });
+      })
+      .finally(() => setFirmGroupLoaded(true));
   }, []);
+
+  // isSettingsTabVisibleForRole (used by the deep-link effect above) doesn't
+  // know about firm-group's assignment-dependent visibility, and the
+  // assignment answer isn't available until the fetch above resolves anyway.
+  // Once it has, re-validate a firm-group deep link the same way visibleTabs
+  // does — otherwise a role that can't create a group renders the panel with
+  // no tab highlighted on an unassigned practice.
+  useEffect(() => {
+    if (activeTab !== 'firm-group' || !firmGroupLoaded) return;
+    if (isFirmGroupTabVisible(firmGroupAssigned, user?.role)) return;
+    setActiveTab('profile');
+    const params = new URLSearchParams(searchParams);
+    params.delete('tab');
+    setSearchParams(params, { replace: true });
+  }, [activeTab, firmGroupLoaded, firmGroupAssigned, user?.role, searchParams, setSearchParams]);
 
   const selectTab = (id: string) => {
     setActiveTab(id);
