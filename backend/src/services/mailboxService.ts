@@ -20,6 +20,27 @@ import { createGmailMailClient } from './mail/gmailMailClient.js';
 import type { MailProviderClient, ProviderMessage } from './mail/types.js';
 import { processNewInboundMessages } from './mailAutoReply/index.js';
 
+const SNIPPET_MAX_CHARS = 280;
+
+/**
+ * Truncate a body to the snippet length on a CODE POINT boundary.
+ *
+ * `String.prototype.slice` cuts UTF-16 code units, so a cut landing inside a
+ * surrogate pair (any emoji, and plenty of CJK/maths symbols) leaves an
+ * unpaired high surrogate. Prisma's query engine cannot parse that value
+ * ("unexpected end of hex escape"), and because the throw propagates out of the
+ * per-message upsert it aborts the ENTIRE sync — one emoji at the 280th
+ * character wedges the whole mailbox. That is exactly how the first real
+ * Microsoft 365 sync failed in production on 2026-08-11.
+ */
+function toSnippet(body: string): string {
+  if (body.length <= SNIPPET_MAX_CHARS) return body;
+  const cut = body.slice(0, SNIPPET_MAX_CHARS);
+  const lastUnit = cut.charCodeAt(SNIPPET_MAX_CHARS - 1);
+  const endsOnHighSurrogate = lastUnit >= 0xd800 && lastUnit <= 0xdbff;
+  return endsOnHighSurrogate ? cut.slice(0, -1) : cut;
+}
+
 // ==================== Shared DTO ====================
 
 export type MailAttachmentDto = {
@@ -343,7 +364,7 @@ async function upsertProviderMessage(
     subject: pm.subject,
     bodyText: pm.bodyText,
     bodyHtml: pm.bodyHtml || null,
-    snippet: pm.bodyText.slice(0, 280),
+    snippet: toSnippet(pm.bodyText),
     isRead: pm.isRead,
     hasAttachments: pm.hasAttachments,
     receivedAt: pm.receivedAt,
@@ -702,7 +723,7 @@ async function sendMailboxMessageInternal(
       subject: spec.subject,
       bodyText: spec.body,
       bodyHtml: null,
-      snippet: spec.body.slice(0, 280),
+      snippet: toSnippet(spec.body),
       isRead: true,
       hasAttachments: false,
       receivedAt: new Date(),

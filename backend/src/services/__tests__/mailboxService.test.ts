@@ -293,6 +293,70 @@ describe('syncMailbox — provider connected', () => {
   });
 });
 
+/**
+ * Regression: the first real Microsoft 365 sync in production died with
+ *   Invalid `prisma.mailMessage.create()` invocation:
+ *   unexpected end of hex escape at line 1 column 40429
+ * Cause was ours, not the provider's. `bodyText.slice(0, 280)` cuts on UTF-16
+ * code units, so a boundary landing inside a surrogate pair (any emoji) leaves
+ * an unpaired high surrogate. Prisma's Rust engine cannot parse that, and the
+ * throw aborts the WHOLE sync, not just the offending message — one emoji in
+ * one email wedged the entire mailbox.
+ */
+const UNPAIRED_SURROGATE = /[\uD800-\uDBFF](?![\uDC00-\uDFFF])|(?<![\uD800-\uDBFF])[\uDC00-\uDFFF]/;
+
+describe('syncMailbox — snippet truncation must never split a surrogate pair', () => {
+  it('writes a well-formed snippet when the 280-char boundary lands inside an emoji', async () => {
+    // Well-formed body. The 280th UTF-16 unit falls in the middle of the emoji.
+    const body = `${'a'.repeat(279)}\u{1F600} and then some more text after it`;
+    expect(UNPAIRED_SURROGATE.test(body)).toBe(false); // provider data is clean
+
+    loadTenantEmailContextMock.mockResolvedValue({
+      tenantId: 't1',
+      tenantName: 'Firm',
+      email: { provider: 'gmail', gmail: { user: 'firm@gmail.com', refreshToken: 'r1' } },
+    });
+    const syncInbox = jest.fn().mockResolvedValue({
+      messages: [
+        {
+          externalId: 'gm-emoji-1',
+          conversationId: 'thread-emoji',
+          direction: 'INBOUND',
+          from: 'client@acme.com',
+          to: 'firm@gmail.com',
+          subject: 'Emoji at the cut point',
+          bodyText: body,
+          isRead: false,
+          hasAttachments: false,
+          receivedAt: new Date('2026-08-11T10:00:00Z'),
+        },
+      ],
+      deltaLink: 'history:200',
+    });
+    createGmailMailClientMock.mockResolvedValue({
+      syncInbox,
+      syncSent: jest.fn().mockResolvedValue({ messages: [], deltaLink: 'history:200' }),
+    });
+    prismaMock.mailMessage.findUnique.mockResolvedValueOnce(null);
+    prismaMock.client.findFirst.mockResolvedValue(null);
+    prismaMock.mailMessage.create.mockResolvedValue({});
+
+    const result = await syncMailbox('t1');
+
+    expect(result.ok).toBe(true);
+    expect(result.imported).toBe(1);
+
+    const { snippet } = prismaMock.mailMessage.create.mock.calls[0][0].data as {
+      snippet: string;
+    };
+    // The actual invariant Prisma requires: no unpaired surrogate reaches the DB.
+    expect(UNPAIRED_SURROGATE.test(snippet)).toBe(false);
+    // And it is still a real truncation, not the whole body.
+    expect(snippet.length).toBeLessThanOrEqual(280);
+    expect(snippet.startsWith('aaa')).toBe(true);
+  });
+});
+
 describe('syncMailbox — F2: reconciles a locally-created OUTBOUND send instead of duplicating', () => {
   it('updates the localsend: row externalId/conversationId/internetMessageId when the sentitems delta brings the real message back, instead of creating a duplicate', async () => {
     loadTenantEmailContextMock.mockResolvedValue({
