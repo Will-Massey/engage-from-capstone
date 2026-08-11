@@ -49,14 +49,14 @@ const QuickBooksConnect = () => {
 
     if (error && provider === 'quickbooks') {
       toast.error(`QuickBooks connection failed: ${error}`);
-      window.history.replaceState({}, document.title, '/settings?tab=integrations');
+      window.history.replaceState({}, document.title, '/integrations');
       return;
     }
 
     if (oauth === 'success' && provider === 'quickbooks') {
       toast.success('QuickBooks connected successfully!');
       loadStatus();
-      window.history.replaceState({}, document.title, '/settings?tab=integrations');
+      window.history.replaceState({}, document.title, '/integrations');
     }
   }, [loadStatus]);
 

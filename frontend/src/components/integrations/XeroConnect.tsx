@@ -66,14 +66,14 @@ const XeroConnect = () => {
 
     if (error) {
       toast.error(`Xero connection failed: ${error}`);
-      window.history.replaceState({}, document.title, '/settings?tab=integrations');
+      window.history.replaceState({}, document.title, '/integrations');
       return;
     }
 
     if (oauth === 'success' && provider === 'xero') {
       toast.success('Xero connected successfully!');
       loadStatus();
-      window.history.replaceState({}, document.title, '/settings?tab=integrations');
+      window.history.replaceState({}, document.title, '/integrations');
     }
   }, [loadStatus]);
 
