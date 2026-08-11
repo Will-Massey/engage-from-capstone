@@ -3,7 +3,7 @@
  */
 
 import { prisma } from '../config/database.js';
-import { encrypt, decrypt, decryptObject, encryptObject } from '../utils/encryption.js';
+import { encrypt, decrypt, decryptObject } from '../utils/encryption.js';
 import type { EmailConfig, EmailProvider as NodemailerProvider } from './emailService.js';
 
 export interface TenantEmailSettings {
@@ -77,6 +77,38 @@ export function decryptTenantEmailSettings(raw: TenantEmailSettings): TenantEmai
   return copy;
 }
 
+/** Keys encryptObject treats as secrets; kept in step with it deliberately. */
+const SECRET_KEYS = new Set(['clientSecret', 'refreshToken', 'accessToken', 'pass', 'password']);
+
+/**
+ * Merge one OAuth provider block, encrypting only the values that arrived in
+ * this request.
+ *
+ * Anything already in `existing` was encrypted when it was stored, so running
+ * encrypt() over it again yields E(E(secret)). A single decrypt on read then
+ * returns the inner ciphertext rather than the token, and because
+ * getMailboxConnection() only tests the field for truthiness the practice goes
+ * on being shown as connected while every refresh silently fails.
+ *
+ * The previous code re-encrypted the whole merged block on every save, so any
+ * save touching this route — including one that sent no OAuth fields at all,
+ * such as the SMTP panel — corrupted a connected mailbox. Provenance is the
+ * reliable signal here: inspecting the value's shape cannot distinguish
+ * ciphertext from a secret that merely looks like one.
+ */
+function mergeProviderSecrets<T extends Record<string, string>>(
+  existing: T | undefined,
+  incoming: T | undefined
+): T | undefined {
+  if (!incoming) return existing;
+
+  const merged: Record<string, string> = { ...existing };
+  for (const [key, value] of Object.entries(incoming)) {
+    merged[key] = SECRET_KEYS.has(key) && value ? encrypt(value) : value;
+  }
+  return merged as T;
+}
+
 export function encryptTenantEmailSettingsForSave(
   incoming: TenantEmailSettings,
   existing?: TenantEmailSettings
@@ -85,8 +117,8 @@ export function encryptTenantEmailSettingsForSave(
     ...existing,
     ...incoming,
     smtp: incoming.smtp ? { ...existing?.smtp, ...incoming.smtp } : existing?.smtp,
-    gmail: incoming.gmail ? { ...existing?.gmail, ...incoming.gmail } : existing?.gmail,
-    outlook: incoming.outlook ? { ...existing?.outlook, ...incoming.outlook } : existing?.outlook,
+    // gmail and outlook are merged below, where request-supplied secrets can be
+    // told apart from ones already encrypted at rest.
   };
 
   if (merged.smtp?.pass) {
@@ -98,16 +130,8 @@ export function encryptTenantEmailSettingsForSave(
       merged.smtp.pass = existing.smtp.pass;
     }
   }
-  if (merged.gmail) {
-    merged.gmail = encryptObject(
-      merged.gmail as Record<string, string>
-    ) as TenantEmailSettings['gmail'];
-  }
-  if (merged.outlook) {
-    merged.outlook = encryptObject(
-      merged.outlook as Record<string, string>
-    ) as TenantEmailSettings['outlook'];
-  }
+  merged.gmail = mergeProviderSecrets(existing?.gmail, incoming.gmail);
+  merged.outlook = mergeProviderSecrets(existing?.outlook, incoming.outlook);
 
   return merged;
 }

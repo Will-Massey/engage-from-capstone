@@ -7,6 +7,9 @@ import {
   ExclamationCircleIcon,
   ArrowPathIcon,
 } from '@heroicons/react/24/outline';
+import { useAuthStore } from '../../stores/authStore';
+import { isApprover } from '../../constants/roles';
+import { resolveOAuthReturnTo } from './emailProvider';
 
 type OAuthProvider = 'gmail' | 'outlook' | 'microsoft365';
 
@@ -43,21 +46,25 @@ const providerConfig = {
 };
 
 const OAuthConnect = ({ provider, onConnected }: OAuthConnectProps) => {
+  // Disconnect is authorize('ADMIN','PARTNER','MANAGER') on the backend
+  // (email.ts /auth/:provider/disconnect) — mirror it here so a SENIOR sees
+  // the connected status without a button that 403s.
+  const canManage = isApprover(useAuthStore((s) => s.user?.role));
   const [status, setStatus] = useState<OAuthStatus | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isConnecting, setIsConnecting] = useState(false);
 
   const config = providerConfig[provider];
 
+  // onConnected fires on an actual connection event only — calling it from the
+  // mount-time status check gave every already-connected practice a phantom
+  // "connected" toast on each page load.
   useEffect(() => {
     const checkStatus = async () => {
       try {
         const response = (await apiClient.get(`/email/auth/${provider}/status`)) as any;
         if (response.success) {
           setStatus(response.data);
-          if (response.data.isConnected) {
-            onConnected();
-          }
         }
       } catch (error) {
         // Status check failed, assume not connected
@@ -67,7 +74,7 @@ const OAuthConnect = ({ provider, onConnected }: OAuthConnectProps) => {
     };
 
     checkStatus();
-  }, [provider, onConnected]);
+  }, [provider]);
 
   // Check for OAuth callback (server exchanges code — frontend only sees success flag)
   useEffect(() => {
@@ -76,24 +83,34 @@ const OAuthConnect = ({ provider, onConnected }: OAuthConnectProps) => {
     const urlProvider = urlParams.get('provider');
     const error = urlParams.get('error');
 
-    if (error) {
+    // Xero and QuickBooks land on the same pages with the same query params, so
+    // only claim a callback that names this mailbox provider — except
+    // 'invalid_provider', the one mailbox error the backend can't attach a
+    // provider to (the :provider route param itself was invalid).
+    if (error && (urlProvider === provider || (!urlProvider && error === 'invalid_provider'))) {
       toast.error(`OAuth failed: ${error}`);
       window.history.replaceState({}, document.title, window.location.pathname);
       return;
     }
 
     if (oauth === 'success' && urlProvider === provider) {
-      toast.success(`${providerConfig[provider].name} connected successfully!`);
       setStatus({ isConnected: true, provider });
+      // onConnected owns the success toast — MailboxConnect's callback fires
+      // one with the mailbox's friendly label; firing another here duplicated it.
       onConnected();
-      window.history.replaceState({}, document.title, `${window.location.pathname}?tab=email`);
+      // Drop the oauth params, keep the page we're on. There has never been a
+      // 'email' Settings tab and the id is meaningless on /integrations.
+      window.history.replaceState({}, document.title, window.location.pathname);
     }
   }, [provider, onConnected]);
 
   const initiateOAuth = async () => {
     setIsConnecting(true);
     try {
-      const response = (await apiClient.get(`/email/auth/${provider}/url`)) as any;
+      const returnTo = resolveOAuthReturnTo();
+      const response = (await apiClient.get(
+        `/email/auth/${provider}/url?returnTo=${returnTo}`
+      )) as any;
       if (response.success && response.data.url) {
         window.location.href = response.data.url;
       } else {
@@ -149,12 +166,14 @@ const OAuthConnect = ({ provider, onConnected }: OAuthConnectProps) => {
                 <span className="text-green-700">Connected</span>
                 {status.user && <span className="ml-2 text-gray-500">({status.user})</span>}
               </div>
-              <button
-                onClick={disconnect}
-                className="mt-3 text-sm text-red-600 hover:text-red-800 underline"
-              >
-                Disconnect
-              </button>
+              {canManage && (
+                <button
+                  onClick={disconnect}
+                  className="mt-3 text-sm text-red-600 hover:text-red-800 underline"
+                >
+                  Disconnect
+                </button>
+              )}
             </>
           ) : (
             <>

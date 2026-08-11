@@ -51,11 +51,15 @@ test.describe('UAT smoke — public legal & status pages', () => {
 
 test.describe('UAT smoke — Caroline checklist (automated)', () => {
   test('Xero integration settings page loads', async ({ page }) => {
+    // Settings' old Integrations tab was folded into this hub page, which mounts
+    // the same Xero connect widget; a bookmarked ?tab=integrations link redirects
+    // here. Scope to the Xero card — QuickBooks has an "Import clients" button too.
     await gotoApp(page, '/settings?tab=integrations');
-    await expect(page).toHaveURL(/tab=integrations/);
-    await expect(page.getByText(/xero/i).first()).toBeVisible({ timeout: 30_000 });
+    await expect(page).toHaveURL(/\/integrations/);
+    const xeroCard = page.getByTestId('xero-integration');
+    await expect(xeroCard.getByText(/xero/i).first()).toBeVisible({ timeout: 30_000 });
     await expect(
-      page.getByRole('button', { name: /connect xero|reconnect xero|import clients/i }).first()
+      xeroCard.getByRole('button', { name: /connect xero|reconnect xero|import clients/i }).first()
     ).toBeVisible();
     await expectNoErrorToasts(page);
   });

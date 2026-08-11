@@ -36,6 +36,7 @@ import jobsRoutes from '../routes/jobs.js';
 import practiceLettersRoutes from '../routes/practiceLetters.js';
 import commsRoutes from '../routes/comms.js';
 import formsRoutes from '../routes/forms.js';
+import pricingRoutes from '../routes/pricing.js';
 
 // Import middleware
 import { extractTenant } from '../middleware/tenant.js';
@@ -51,6 +52,7 @@ export function mountApiRoutes(app: express.Express): void {
   app.use('/api/practice-letters', extractTenant, practiceLettersRoutes);
   app.use('/api/clients', extractTenant, clientRoutes);
   app.use('/api/services', extractTenant, serviceRoutes);
+  app.use('/api/pricing', extractTenant, pricingRoutes);
   app.use('/api/services/v2', extractTenant, enhancedServiceRoutes);
   app.use('/api/tenants', tenantRoutes);
   app.use('/api/email', extractTenant, emailRoutes);

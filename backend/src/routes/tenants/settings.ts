@@ -133,14 +133,6 @@ router.put(
             .optional(),
         })
         .optional(),
-      notifications: z
-        .object({
-          proposalAccepted: z.boolean().optional(),
-          proposalViewed: z.boolean().optional(),
-          mtditsaDeadlines: z.boolean().optional(),
-          weeklySummary: z.boolean().optional(),
-        })
-        .optional(),
       proposals: z
         .object({
           defaultExpiryDays: z.number().int().min(1).max(365).optional(),
@@ -259,7 +251,6 @@ router.put(
       vat: data.vat || currentSettings.vat,
       branding: data.branding || currentSettings.branding,
       email: data.email || currentSettings.email,
-      notifications: data.notifications ?? currentSettings.notifications,
       proposals: data.proposals
         ? { ...(currentSettings.proposals || {}), ...data.proposals }
         : currentSettings.proposals,

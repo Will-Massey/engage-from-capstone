@@ -12,3 +12,12 @@ export function hasFullAccess(role?: string | null): boolean {
 export function isApprover(role?: string | null): boolean {
   return !!role && APPROVER_ROLES.has(role);
 }
+
+/** Roles that see operational/analytical sidebar items — hidden from JUNIOR to keep their nav focused on delivery. */
+export const STAFF_NAV_ROLES = ['ADMIN', 'PARTNER', 'MD', 'MANAGER', 'SENIOR'];
+
+/** Whether `role` can see a nav item. No `allowedRoles` list means visible to everyone. */
+export function canViewNavItem(role: string | null | undefined, allowedRoles?: string[]): boolean {
+  if (!allowedRoles) return true;
+  return !!role && allowedRoles.includes(role);
+}

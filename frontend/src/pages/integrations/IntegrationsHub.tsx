@@ -1,14 +1,12 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import {
-  ArrowsRightLeftIcon,
-  BuildingLibraryIcon,
-  ShieldCheckIcon,
-  CheckCircleIcon,
-  XCircleIcon,
-} from '@heroicons/react/24/outline';
+import { ArrowsRightLeftIcon, ShieldCheckIcon } from '@heroicons/react/24/outline';
 import { apiClient } from '../../utils/api';
 import { StatusChip } from '../../components/ui/StatusChip';
+import MailboxConnect from '../../components/email/MailboxConnect';
+import WebhookSettings from '../../components/settings/WebhookSettings';
+import XeroConnect from '../../components/integrations/XeroConnect';
+import QuickBooksConnect from '../../components/integrations/QuickBooksConnect';
 
 type MeshSettings = {
   mode: string;
@@ -23,6 +21,10 @@ type MeshSettings = {
   lastPingMessage?: string | null;
 };
 
+// GET /integrations/hub also returns `xero` and `quickbooks` status blocks, kept
+// on the backend for the frozen mobile snapshot's old ConnBadge — but nothing in
+// this page reads them: XeroConnect and QuickBooksConnect below own their own
+// status via /xero/status and /quickbooks/status.
 type HubData = {
   accountFlow: {
     mode: string;
@@ -36,33 +38,7 @@ type HubData = {
     hasApiKey?: boolean;
     settings?: MeshSettings;
   };
-  xero: {
-    connected: boolean;
-    configured?: boolean;
-    oauthConfigured?: boolean;
-    xeroTenantName?: string;
-    docs?: string;
-  };
-  quickbooks: {
-    connected: boolean;
-    configured?: boolean;
-    oauthConfigured?: boolean;
-    companyName?: string;
-    docs?: string;
-  };
 };
-
-function ConnBadge({ ok }: { ok: boolean }) {
-  return ok ? (
-    <span className="inline-flex items-center gap-1 text-emerald-700 dark:text-emerald-300">
-      <CheckCircleIcon className="h-4 w-4" /> Connected
-    </span>
-  ) : (
-    <span className="inline-flex items-center gap-1 text-slate-400">
-      <XCircleIcon className="h-4 w-4" /> Not connected
-    </span>
-  );
-}
 
 export default function IntegrationsHub() {
   const [hub, setHub] = useState<HubData | null>(null);
@@ -167,8 +143,9 @@ export default function IntegrationsHub() {
             Practice integrations desk
           </h1>
           <p className="mt-1 max-w-2xl text-sm text-slate-500">
-            Connect AccountFlow (Capstone Tandem) for auto-handoff on accept, deep links, and SSO.
-            Xero and QuickBooks Online stay under Settings.
+            Connect Engage to the rest of your practice: your Microsoft 365 or Google mailbox,
+            AccountFlow (Capstone Tandem) for auto-handoff and SSO, Xero and QuickBooks Online for
+            client sync, and outbound webhooks for Zapier, Make, or your practice management tool.
           </p>
         </div>
       </header>
@@ -178,6 +155,21 @@ export default function IntegrationsHub() {
           {error}
         </div>
       )}
+
+      {/* Connect your mailbox — the most-wanted connection */}
+      <section className="metal-tile p-6 space-y-4">
+        <span className="metal-specular" aria-hidden />
+        <div className="relative z-[1] space-y-4">
+          <div>
+            <h2 className="text-lg font-semibold text-slate-900 dark:text-white">Email</h2>
+            <p className="mt-1 text-sm text-slate-500">
+              Connect your Microsoft 365 or Google mailbox so Engage can send and receive client
+              email in one place, with two-way sync and AI-drafted replies ready for your review.
+            </p>
+          </div>
+          <MailboxConnect />
+        </div>
+      </section>
 
       {/* Connect AccountFlow */}
       <section className="metal-tile p-6 space-y-4">
@@ -311,55 +303,53 @@ export default function IntegrationsHub() {
         </div>
       </section>
 
-      <div className="grid gap-4 md:grid-cols-2">
-        <article className="metal-tile metal-tile--sky p-5">
-          <span className="metal-specular" aria-hidden />
-          <div className="relative z-[1] space-y-2">
-            <BuildingLibraryIcon className="h-7 w-7 text-sky-600" />
-            <h2 className="font-semibold text-slate-900 dark:text-white">Xero</h2>
-            {hub ? (
-              <>
-                <ConnBadge ok={!!hub.xero.connected} />
-                <p className="text-xs text-slate-500">
-                  OAuth app:{' '}
-                  {hub.xero.oauthConfigured || hub.xero.configured ? 'configured' : 'not set'}
-                  {hub.xero.xeroTenantName ? ` · ${hub.xero.xeroTenantName}` : ''}
-                </p>
-                <Link to="/settings" className="btn-secondary mt-2 inline-flex text-xs">
-                  Settings
-                </Link>
-              </>
-            ) : (
-              <p className="text-sm text-slate-400">Loading…</p>
-            )}
+      {/* Accounting ledgers — the real connect/disconnect/import flow lives here,
+          not behind a link. These widgets own their own status and OAuth params. */}
+      <section className="metal-tile p-6 space-y-4" data-testid="xero-integration">
+        <span className="metal-specular" aria-hidden />
+        <div className="relative z-[1] space-y-4">
+          <div>
+            <h2 className="text-lg font-semibold text-slate-900 dark:text-white">Xero</h2>
+            <p className="mt-1 text-sm text-slate-500">
+              Connect your Xero organisation to import clients and sync accepted proposals.
+            </p>
           </div>
-        </article>
+          <XeroConnect />
+        </div>
+      </section>
 
-        <article className="metal-tile metal-tile--violet p-5">
-          <span className="metal-specular" aria-hidden />
-          <div className="relative z-[1] space-y-2">
-            <BuildingLibraryIcon className="h-7 w-7 text-violet-600" />
-            <h2 className="font-semibold text-slate-900 dark:text-white">QuickBooks Online</h2>
-            {hub ? (
-              <>
-                <ConnBadge ok={!!hub.quickbooks.connected} />
-                <p className="text-xs text-slate-500">
-                  OAuth app:{' '}
-                  {hub.quickbooks.oauthConfigured || hub.quickbooks.configured
-                    ? 'configured'
-                    : 'not set'}
-                  {hub.quickbooks.companyName ? ` · ${hub.quickbooks.companyName}` : ''}
-                </p>
-                <Link to="/settings" className="btn-secondary mt-2 inline-flex text-xs">
-                  Settings
-                </Link>
-              </>
-            ) : (
-              <p className="text-sm text-slate-400">Loading…</p>
-            )}
+      <section className="metal-tile p-6 space-y-4" data-testid="quickbooks-integration">
+        <span className="metal-specular" aria-hidden />
+        <div className="relative z-[1] space-y-4">
+          <div>
+            <h2 className="text-lg font-semibold text-slate-900 dark:text-white">
+              QuickBooks Online
+            </h2>
+            <p className="mt-1 text-sm text-slate-500">
+              Connect QuickBooks Online to import customers and mirror collected payments as
+              invoices.
+            </p>
           </div>
-        </article>
-      </div>
+          <QuickBooksConnect />
+        </div>
+      </section>
+
+      {/* Automation webhooks */}
+      <section className="metal-tile p-6 space-y-4">
+        <span className="metal-specular" aria-hidden />
+        <div className="relative z-[1] space-y-4">
+          <div>
+            <h2 className="text-lg font-semibold text-slate-900 dark:text-white">
+              Automation webhooks
+            </h2>
+            <p className="mt-1 text-sm text-slate-500">
+              Send proposal events to Zapier, Make, HubSpot, Senta, or Karbon as proposals move
+              through your pipeline.
+            </p>
+          </div>
+          <WebhookSettings />
+        </div>
+      </section>
 
       <div className="metal-tile metal-tile--soft flex items-start gap-3 p-4">
         <ShieldCheckIcon className="h-5 w-5 shrink-0 text-amber-600" />

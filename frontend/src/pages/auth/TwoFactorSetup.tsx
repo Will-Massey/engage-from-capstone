@@ -31,7 +31,7 @@ export const TwoFactorSetup: React.FC = () => {
   useEffect(() => {
     const initSetup = async () => {
       if (user?.twoFactorEnabled) {
-        navigate('/settings?tab=security');
+        navigate('/settings?tab=profile');
         return;
       }
 
@@ -45,7 +45,7 @@ export const TwoFactorSetup: React.FC = () => {
         }
       } catch (error: any) {
         toast.error(error.response?.data?.error?.message || 'Failed to start 2FA setup');
-        navigate('/settings?tab=security');
+        navigate('/settings?tab=profile');
       } finally {
         setIsLoading(false);
       }
@@ -114,7 +114,7 @@ export const TwoFactorSetup: React.FC = () => {
               Your account is now protected with two-factor authentication.
             </p>
           </div>
-          <Button onClick={() => navigate('/settings?tab=security')} className="w-full">
+          <Button onClick={() => navigate('/settings?tab=profile')} className="w-full">
             Back to Security Settings
           </Button>
         </div>
@@ -223,7 +223,7 @@ export const TwoFactorSetup: React.FC = () => {
 
         <div className="text-center">
           <Link
-            to="/settings?tab=security"
+            to="/settings?tab=profile"
             className="inline-flex items-center text-sm text-slate-600 hover:text-slate-900"
           >
             <ArrowLeftIcon className="w-4 h-4 mr-1" />

@@ -57,8 +57,10 @@ test.describe('Build smoke — market leader batch (845effcf)', () => {
   });
 
   test('MFA settings page loads with 2FA setup UI', async ({ page }) => {
+    // Security was merged into the My account tab; a bookmarked ?tab=security
+    // link redirects there and the query param is cleaned up.
     await gotoApp(page, '/settings?tab=security');
-    await expect(page).toHaveURL(/tab=security/);
+    await expect(page).toHaveURL(/\/settings/);
     await expect(page.getByText(/two-factor authentication/i).first()).toBeVisible();
 
     const enableBtn = page.getByRole('button', { name: /enable 2fa/i });
@@ -80,11 +82,14 @@ test.describe('Build smoke — market leader batch (845effcf)', () => {
     }
   });
 
-  test('Pricing calculator page is accessible', async ({ page }) => {
+  test('Fee calculator page is accessible', async ({ page }) => {
     await gotoApp(page, '/pricing-calculator');
     await expect(page).toHaveURL(/\/pricing-calculator/);
+    // Renamed from "Pricing calculator": it suggests fee bands from turnover and
+    // cannot change any prices, so the old name sent people here to edit fees.
+    // The route keeps its original path.
     await expect(
-      page.getByRole('heading', { name: 'Pricing calculator', exact: true }).first()
+      page.getByRole('heading', { name: 'Fee calculator', exact: true }).first()
     ).toBeVisible();
     await expect(
       page.getByRole('heading', { name: 'Value-based pricing calculator' })

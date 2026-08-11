@@ -41,9 +41,12 @@ test.describe('Proposal Pricing Frequency', () => {
   test('annual service shows full-year amount in selection (not blended into monthly)', async ({
     page,
   }) => {
+    // Unique per run: a fixed name and email collides with the client the
+    // previous run created, so the test could only pass once per database.
+    const stamp = Date.now();
     const client = await createTestClient(page, {
-      name: 'Test Annual Client',
-      email: 'test-annual@example.com',
+      name: `Test Annual Client ${stamp}`,
+      email: `test-annual-${stamp}@example.com`,
     });
 
     await page.goto('/proposals/new');
@@ -296,9 +299,11 @@ test.describe('Pricing parity', () => {
   });
 
   test('create → save → detail view shows same monthly cost band', async ({ page }) => {
+    // Unique per run, for the same reason as above.
+    const stamp = Date.now();
     const client = await createTestClient(page, {
-      name: 'Parity Test Client',
-      email: 'parity-test@example.com',
+      name: `Parity Test Client ${stamp}`,
+      email: `parity-test-${stamp}@example.com`,
     });
 
     await page.goto('/proposals/new');

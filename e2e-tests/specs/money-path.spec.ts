@@ -158,9 +158,12 @@ test.describe('Money path — decline and share revocation', () => {
   });
 
   test('client declines a shared proposal via public link', async ({ page, context }) => {
+    // The email was already stamped; the name needs it too, or every past run's
+    // client matches the builder's name filter and .first() picks the wrong one.
+    const clientStamp = Date.now();
     const client = await createTestClient(page, {
-      name: 'Decline Path Client',
-      email: `decline-${Date.now()}@example.com`,
+      name: `Decline Path Client ${clientStamp}`,
+      email: `decline-${clientStamp}@example.com`,
     });
     const uniqueTitle = `Decline Proposal ${Date.now()}`;
     const proposal = await createTestProposal(page, {
@@ -180,11 +183,19 @@ test.describe('Money path — decline and share revocation', () => {
 
     await publicPage.locator('[data-testid="decline-proposal-button"]').first().click();
     await publicPage.locator('[data-testid="decline-reason-price"]').click();
-    await publicPage.click('[data-testid="confirm-decline-button"]');
 
-    await expect(publicPage.getByText(/declined|thank you/i).first()).toBeVisible({
-      timeout: 15_000,
-    });
+    // Wait on the decline request itself. The old gate was a
+    // getByText(/declined|thank you/i), but this page already carries several
+    // "thank you" strings (accepted, payment received, all done), so it could
+    // match text that was there before the click and let the status assertion
+    // below run before the decline had been persisted — reading VIEWED.
+    const declineResponse = publicPage.waitForResponse(
+      (resp) => resp.url().includes('/decline') && resp.request().method() === 'POST',
+      { timeout: 30_000 }
+    );
+    await publicPage.click('[data-testid="confirm-decline-button"]');
+    const declined = await declineResponse;
+    expect(declined.ok()).toBeTruthy();
 
     const detail = await apiGet(page.request, `/proposals/${proposal.id}`);
     await expectOkApi('proposal after decline', detail);
