@@ -15,6 +15,22 @@ const MAILBOX_PROVIDERS: {
 ];
 
 /**
+ * A mailbox OAuth callback landing on this page names its provider in the URL
+ * (?oauth=success&provider=gmail, or an error with the same shape) — read it
+ * synchronously so the picker (and the OAuthConnect it mounts) is on the right
+ * provider from the first render, not only once GET /email/config resolves.
+ * Without this, a failed config fetch left the picker on the Microsoft 365
+ * default forever: OAuthConnect's callback effect never saw a matching
+ * provider prop, so the success/error toast never fired and the oauth params
+ * were never cleared from the URL.
+ */
+const providerFromCallbackUrl = (): MailboxProvider | null => {
+  const params = new URLSearchParams(window.location.search);
+  if (params.get('oauth') !== 'success' && !params.get('error')) return null;
+  return toMailboxProvider(params.get('provider'));
+};
+
+/**
  * Provider picker + OAuth connect widget for the practice mailbox (Microsoft 365,
  * Google, or Outlook.com). Shared between Settings > Email and the Integrations hub
  * so there is a single place that owns the connect/disconnect flow.
@@ -24,8 +40,12 @@ const MAILBOX_PROVIDERS: {
  * invited them to rebind the wrong mailbox.
  */
 const MailboxConnect = () => {
-  const [provider, setProvider] = useState<MailboxProvider>('microsoft365');
-  const userPicked = useRef(false);
+  const callbackProvider = providerFromCallbackUrl();
+  const [provider, setProvider] = useState<MailboxProvider>(callbackProvider || 'microsoft365');
+  // A provider named in the callback URL is as good as a user pick — it's the
+  // mailbox they just finished connecting (or tried to), so the async fetch
+  // below must not override it.
+  const userPicked = useRef(!!callbackProvider);
   const label = MAILBOX_PROVIDERS.find((p) => p.value === provider)?.label || provider;
 
   // Mount-only: seeds the initial selection from the connected mailbox, it does
