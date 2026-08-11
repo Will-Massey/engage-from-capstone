@@ -7,9 +7,11 @@ import { NativeSubscriptionSummary } from '../Subscription';
 
 const TIERS = {
   PROFESSIONAL: {
-    name: 'Professional',
+    // Key stays PROFESSIONAL (persisted in Tenant.subscriptionTier); the
+    // customer-facing name and price are Practice / £59 ex-VAT.
+    name: 'Practice',
     description: 'For growing practices',
-    price: 99,
+    price: 59,
     maxUsers: 10,
     maxClients: 500,
     maxProposals: 'Unlimited',
@@ -36,7 +38,7 @@ describe('Subscription surface on iOS', () => {
   );
 
   it('shows the plan the practice already holds', () => {
-    expect(active).toContain('Professional');
+    expect(active).toContain('Practice');
     expect(active).toContain('active');
     expect(active).toContain('Unlimited proposals');
   });

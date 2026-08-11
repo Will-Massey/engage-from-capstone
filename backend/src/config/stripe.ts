@@ -67,36 +67,41 @@ const ENTERPRISE_LIMITS = {
 
 // Subscription tiers configuration with prices
 export const SUBSCRIPTION_TIERS = {
+  // Tier KEYS stay STARTER/PROFESSIONAL: they are persisted in
+  // Tenant.subscriptionTier and drive resolvePlatformFeeBps and resolveTierKey.
+  // Only the customer-facing name and price changed (Solo £29 / Practice £59,
+  // both ex-VAT, set 2026-07-06 after live-market research and applied
+  // 2026-08-11 — the earlier record claimed this was already in the code).
   STARTER: {
-    name: 'Starter',
+    name: 'Solo',
     description: 'Perfect for small practices',
-    price: 49,
+    price: 29,
     billingInterval: 'monthly' as const,
     priceId: STRIPE_PRICE_IDS.STARTER,
     ...STARTER_LIMITS,
   },
   STARTER_ANNUAL: {
-    name: 'Starter',
+    name: 'Solo',
     description: 'Perfect for small practices — billed annually (−15%)',
-    price: monthlyToAnnualEquivalent(49), // £41.65/mo equivalent
-    annualTotal: annualTotal(monthlyToAnnualEquivalent(49)), // £499.80/year
+    price: monthlyToAnnualEquivalent(29), // £24.65/mo equivalent
+    annualTotal: annualTotal(monthlyToAnnualEquivalent(29)), // £295.80/year
     billingInterval: 'annual' as const,
     priceId: STRIPE_PRICE_IDS.STARTER_ANNUAL,
     ...STARTER_LIMITS,
   },
   PROFESSIONAL: {
-    name: 'Professional',
+    name: 'Practice',
     description: 'For growing practices',
-    price: 99,
+    price: 59,
     billingInterval: 'monthly' as const,
     priceId: STRIPE_PRICE_IDS.PROFESSIONAL,
     ...PROFESSIONAL_LIMITS,
   },
   PROFESSIONAL_ANNUAL: {
-    name: 'Professional',
+    name: 'Practice',
     description: 'For growing practices — billed annually (−15%)',
-    price: monthlyToAnnualEquivalent(99), // £84.15/mo equivalent
-    annualTotal: annualTotal(monthlyToAnnualEquivalent(99)), // £1,009.80/year
+    price: monthlyToAnnualEquivalent(59), // £50.15/mo equivalent
+    annualTotal: annualTotal(monthlyToAnnualEquivalent(59)), // £601.80/year
     billingInterval: 'annual' as const,
     priceId: STRIPE_PRICE_IDS.PROFESSIONAL_ANNUAL,
     ...PROFESSIONAL_LIMITS,
