@@ -49,15 +49,15 @@ const OAuthConnect = ({ provider, onConnected }: OAuthConnectProps) => {
 
   const config = providerConfig[provider];
 
+  // onConnected fires on an actual connection event only — calling it from the
+  // mount-time status check gave every already-connected practice a phantom
+  // "connected" toast on each page load.
   useEffect(() => {
     const checkStatus = async () => {
       try {
         const response = (await apiClient.get(`/email/auth/${provider}/status`)) as any;
         if (response.success) {
           setStatus(response.data);
-          if (response.data.isConnected) {
-            onConnected();
-          }
         }
       } catch (error) {
         // Status check failed, assume not connected
@@ -67,7 +67,7 @@ const OAuthConnect = ({ provider, onConnected }: OAuthConnectProps) => {
     };
 
     checkStatus();
-  }, [provider, onConnected]);
+  }, [provider]);
 
   // Check for OAuth callback (server exchanges code — frontend only sees success flag)
   useEffect(() => {
@@ -76,7 +76,9 @@ const OAuthConnect = ({ provider, onConnected }: OAuthConnectProps) => {
     const urlProvider = urlParams.get('provider');
     const error = urlParams.get('error');
 
-    if (error) {
+    // Xero and QuickBooks land on the same pages with the same query params, so
+    // only claim a callback that names this mailbox provider.
+    if (error && urlProvider === provider) {
       toast.error(`OAuth failed: ${error}`);
       window.history.replaceState({}, document.title, window.location.pathname);
       return;
@@ -86,7 +88,9 @@ const OAuthConnect = ({ provider, onConnected }: OAuthConnectProps) => {
       toast.success(`${providerConfig[provider].name} connected successfully!`);
       setStatus({ isConnected: true, provider });
       onConnected();
-      window.history.replaceState({}, document.title, `${window.location.pathname}?tab=email`);
+      // Drop the oauth params, keep the page we're on. There has never been a
+      // 'email' Settings tab and the id is meaningless on /integrations.
+      window.history.replaceState({}, document.title, window.location.pathname);
     }
   }, [provider, onConnected]);
 

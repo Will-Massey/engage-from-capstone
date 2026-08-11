@@ -3,8 +3,11 @@ import { apiClient } from '../../utils/api';
 import toast from 'react-hot-toast';
 import { CheckCircleIcon, ExclamationCircleIcon, CloudIcon } from '@heroicons/react/24/outline';
 import MailboxConnect from './MailboxConnect';
-
-type EmailProvider = 'smtp' | 'gmail' | 'outlook' | 'microsoft365';
+import {
+  isOAuthMailboxProvider,
+  resolveEmailSaveProvider,
+  type EmailProvider,
+} from './emailProvider';
 
 interface EmailConfig {
   provider: EmailProvider;
@@ -145,10 +148,13 @@ const EmailSettings = () => {
   const handleSave = async () => {
     setIsSaving(true);
     try {
-      // Advanced settings are SMTP-only now; OAuth mailboxes connect via MailboxConnect above.
+      // Advanced settings are SMTP-only now; OAuth mailboxes connect via
+      // MailboxConnect above. Never assert 'smtp' unless there is actually a
+      // mail server configured — that field is what keeps a connected mailbox
+      // alive server-side.
       const response = (await apiClient.put('/email/config', {
         ...config,
-        provider: 'smtp',
+        provider: resolveEmailSaveProvider(config.provider, config.smtp?.host),
       })) as any;
       if (response.success) {
         toast.success('Email settings saved');
@@ -426,6 +432,13 @@ const EmailSettings = () => {
               Google.
             </p>
           </div>
+
+          {isOAuthMailboxProvider(config.provider) && (
+            <div className="p-3 rounded-lg bg-amber-50 text-amber-800 text-sm dark:bg-amber-900/20 dark:text-amber-300">
+              Your mailbox is connected. Filling in a mail server here switches outgoing email to
+              SMTP and stops two-way Inbox sync — leave the host blank to keep the connection.
+            </div>
+          )}
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
