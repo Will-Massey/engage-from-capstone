@@ -64,7 +64,9 @@ const XeroConnect = () => {
     const provider = urlParams.get('provider');
     const error = urlParams.get('error');
 
-    if (error) {
+    // The mailbox and QuickBooks callbacks land here too and name themselves;
+    // Xero's own error redirect carries no provider, so accept that case only.
+    if (error && (!provider || provider === 'xero')) {
       toast.error(`Xero connection failed: ${error}`);
       window.history.replaceState({}, document.title, '/integrations');
       return;

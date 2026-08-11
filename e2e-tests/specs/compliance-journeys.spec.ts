@@ -116,12 +116,14 @@ test.describe('Xero mock connect', () => {
     expect(status.body.data.connected).toBe(true);
     expect(status.body.data.xeroTenantName).toMatch(/e2e demo organisation/i);
 
-    // Settings' old Integrations tab was deleted (full duplicate of this hub
-    // page); a bookmarked ?tab=integrations link now redirects here.
+    // Settings' old Integrations tab was folded into this hub page, which mounts
+    // the Xero connect widget; a bookmarked ?tab=integrations link redirects here.
+    // Scope to the Xero card — the mailbox widget renders "Connected" too.
     await gotoApp(page, '/settings?tab=integrations');
     await expect(page).toHaveURL(/\/integrations/);
-    await expect(page.getByText('Connected', { exact: true })).toBeVisible({ timeout: 30_000 });
-    await expect(page.getByText(/E2E Demo Organisation/i)).toBeVisible();
+    const xeroCard = page.getByTestId('xero-integration');
+    await expect(xeroCard.getByText('Connected', { exact: true })).toBeVisible({ timeout: 30_000 });
+    await expect(xeroCard.getByText(/E2E Demo Organisation/i)).toBeVisible();
     await expectNoErrorToasts(page);
   });
 });
