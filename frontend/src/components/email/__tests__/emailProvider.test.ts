@@ -12,21 +12,37 @@ describe('resolveEmailSaveProvider', () => {
   // "Show advanced" and hit Save lost two-way Inbox sync with its OAuth
   // credentials still stored but unused.
   it('keeps a connected OAuth mailbox when no mail server is configured', () => {
-    expect(resolveEmailSaveProvider('microsoft365', '')).toBe('microsoft365');
-    expect(resolveEmailSaveProvider('microsoft365', undefined)).toBe('microsoft365');
-    expect(resolveEmailSaveProvider('gmail', '   ')).toBe('gmail');
-    expect(resolveEmailSaveProvider('outlook', null)).toBe('outlook');
+    expect(resolveEmailSaveProvider('microsoft365', '', false)).toBe('microsoft365');
+    expect(resolveEmailSaveProvider('microsoft365', undefined, false)).toBe('microsoft365');
+    expect(resolveEmailSaveProvider('gmail', '   ', false)).toBe('gmail');
+    expect(resolveEmailSaveProvider('outlook', null, false)).toBe('outlook');
   });
 
-  it('switches to SMTP only when the practice actually gave us a mail server', () => {
-    expect(resolveEmailSaveProvider('microsoft365', 'smtp.office365.com')).toBe('smtp');
-    expect(resolveEmailSaveProvider('smtp', 'mail.yourpractice.co.uk')).toBe('smtp');
+  it('switches to SMTP when the practice types a new mail server', () => {
+    expect(resolveEmailSaveProvider('microsoft365', 'smtp.office365.com', true)).toBe('smtp');
+    expect(resolveEmailSaveProvider('smtp', 'mail.yourpractice.co.uk', true)).toBe('smtp');
+  });
+
+  // Regression: the first fix keyed off "smtpHost is truthy", but that field is
+  // pre-populated from GET /email/config. A practice that ran SMTP before
+  // connecting Microsoft 365/Google still has a stored host it never typed —
+  // saving the advanced panel must not read that leftover value as intent to
+  // switch away from the mailbox they just connected.
+  it('keeps a connected OAuth mailbox when the host is a leftover, untouched value', () => {
+    expect(resolveEmailSaveProvider('microsoft365', 'old-smtp.yourpractice.co.uk', false)).toBe(
+      'microsoft365'
+    );
+    expect(resolveEmailSaveProvider('gmail', 'smtp.gmail.com', false)).toBe('gmail');
   });
 
   it('falls back to SMTP when nothing is connected yet', () => {
-    expect(resolveEmailSaveProvider(null, '')).toBe('smtp');
-    expect(resolveEmailSaveProvider(undefined, undefined)).toBe('smtp');
-    expect(resolveEmailSaveProvider('smtp', '')).toBe('smtp');
+    expect(resolveEmailSaveProvider(null, '', false)).toBe('smtp');
+    expect(resolveEmailSaveProvider(undefined, undefined, false)).toBe('smtp');
+    expect(resolveEmailSaveProvider('smtp', '', false)).toBe('smtp');
+  });
+
+  it('stays on SMTP once already using it, dirty or not', () => {
+    expect(resolveEmailSaveProvider('smtp', 'mail.yourpractice.co.uk', false)).toBe('smtp');
   });
 });
 

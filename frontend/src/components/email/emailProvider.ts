@@ -25,13 +25,20 @@ export function toMailboxProvider(raw: string | null | undefined): MailboxProvid
  * Inbox sync, with its OAuth credentials still stored but unused.
  *
  * So: only claim SMTP when the practice has actually given us a mail server to
- * talk to. Otherwise round-trip whatever provider the server reported.
+ * talk to. The naive follow-up fix — "smtpHost is truthy" — is still wrong: the
+ * host field is pre-populated from GET /email/config, so a practice that ran
+ * SMTP before connecting Microsoft 365/Google still has a stored host it never
+ * typed. `isHostDirty` distinguishes "the user changed this field" from "the
+ * server handed it back unchanged" — only a dirty, non-empty host is intent to
+ * switch. Otherwise round-trip whatever provider the server reported.
  */
 export function resolveEmailSaveProvider(
   currentProvider: string | null | undefined,
-  smtpHost: string | null | undefined
+  smtpHost: string | null | undefined,
+  isHostDirty: boolean
 ): EmailProvider {
-  if (smtpHost && smtpHost.trim()) return 'smtp';
+  if (currentProvider === 'smtp') return 'smtp';
+  if (isHostDirty && smtpHost && smtpHost.trim()) return 'smtp';
   if (currentProvider) return currentProvider as EmailProvider;
   return 'smtp';
 }

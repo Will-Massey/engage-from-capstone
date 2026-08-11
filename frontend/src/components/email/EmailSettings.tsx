@@ -98,6 +98,10 @@ const EmailSettings = () => {
     'untested'
   );
   const [showAdvanced, setShowAdvanced] = useState(false);
+  // What the server actually returned for smtp.host — used to tell "the user
+  // typed a new host" apart from "this field was pre-populated from a leftover
+  // stored value". Only the former is intent to switch off a connected mailbox.
+  const [savedSmtpHost, setSavedSmtpHost] = useState('');
 
   const loadLogs = async () => {
     try {
@@ -125,6 +129,7 @@ const EmailSettings = () => {
               replyToEmail: response.data.replyToEmail || response.data.platform?.replyTo || '',
               smtp: response.data.smtp || prev.smtp,
             }));
+            setSavedSmtpHost(response.data.smtp?.host || '');
             setConnectionStatus('success');
             setShowAdvanced(response.data.provider === 'smtp');
           } else if (response.data.replyToEmail || response.data.platform?.replyTo) {
@@ -149,12 +154,13 @@ const EmailSettings = () => {
     setIsSaving(true);
     try {
       // Advanced settings are SMTP-only now; OAuth mailboxes connect via
-      // MailboxConnect above. Never assert 'smtp' unless there is actually a
-      // mail server configured — that field is what keeps a connected mailbox
-      // alive server-side.
+      // MailboxConnect above. Never assert 'smtp' unless the practice actually
+      // typed a mail server in this session — a leftover host pre-filled from
+      // the server doesn't count as intent to switch off a connected mailbox.
+      const isHostDirty = (config.smtp?.host || '').trim() !== savedSmtpHost.trim();
       const response = (await apiClient.put('/email/config', {
         ...config,
-        provider: resolveEmailSaveProvider(config.provider, config.smtp?.host),
+        provider: resolveEmailSaveProvider(config.provider, config.smtp?.host, isHostDirty),
       })) as any;
       if (response.success) {
         toast.success('Email settings saved');
@@ -435,8 +441,9 @@ const EmailSettings = () => {
 
           {isOAuthMailboxProvider(config.provider) && (
             <div className="p-3 rounded-lg bg-amber-50 text-amber-800 text-sm dark:bg-amber-900/20 dark:text-amber-300">
-              Your mailbox is connected. Filling in a mail server here switches outgoing email to
-              SMTP and stops two-way Inbox sync — leave the host blank to keep the connection.
+              Your mailbox is connected. Entering a new mail server here and saving switches
+              outgoing email to SMTP and stops two-way Inbox sync — leave the host as-is (or blank)
+              to keep the connection.
             </div>
           )}
 
