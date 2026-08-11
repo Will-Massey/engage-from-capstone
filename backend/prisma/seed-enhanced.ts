@@ -29,6 +29,13 @@ async function main() {
     data: {
       subdomain: 'demo',
       name: 'Smith & Associates Accounting',
+      // An unset tier resolves to Starter, which caps a tenant at 50 clients.
+      // The e2e suite creates roughly ten clients per run and never removes
+      // them, so on Starter it exhausts the cap after about four runs and then
+      // every client-creating spec fails with a 402 that surfaces much later
+      // as "client card not found". Professional (500) keeps the demo tenant
+      // usable; the limit itself is untouched and still enforced.
+      subscriptionTier: 'PROFESSIONAL',
       primaryColor: '#0ea5e9',
       secondaryColor: '#38bdf8',
       settings: JSON.stringify({

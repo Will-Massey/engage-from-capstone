@@ -109,9 +109,14 @@ test.describe('Electronic Signature', () => {
   test('client can accept and sign a shared proposal', async ({ page, context }) => {
     // The /sign endpoint generates the signed PDF + audit evidence — slow
     test.slow();
+    // Unique per run: a fixed name and email creates the client on the first
+    // run and then collides with it on every run after, so the test could only
+    // ever pass once against a given database. The proposal title below was
+    // already stamped for exactly this reason.
+    const stamp = Date.now();
     const client = await createTestClient(page, {
-      name: 'Signature Test Client',
-      email: 'signature-test@example.com',
+      name: `Signature Test Client ${stamp}`,
+      email: `signature-test-${stamp}@example.com`,
     });
     const uniqueTitle = `Signature Proposal ${Date.now()}`;
     const proposal = await createTestProposal(page, {

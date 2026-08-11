@@ -87,8 +87,16 @@ export async function createTestClient(
 
   await page.click('button:has-text("Create Client")');
 
-  // Wait for creation — verify by URL redirect to clients list or client detail
-  await expect(page).toHaveURL(/\/clients/);
+  // The wizard itself lives at /clients/new, which matches /\/clients/ — so the
+  // old assertion passed instantly whether or not the client was created, and
+  // the run failed much later with a baffling "client card not found" in the
+  // proposal builder. Require actually leaving the form, so a server refusal
+  // (notably 402 once the tenant reaches its plan's client limit, which a
+  // repeatedly-run suite will hit) is reported here, at its cause.
+  await expect(page, `client "${clientData.name}" was not created`).not.toHaveURL(
+    /\/clients\/new/,
+    { timeout: 15_000 }
+  );
 
   return {
     id: `test-${testId}`,

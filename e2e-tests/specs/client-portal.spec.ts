@@ -27,9 +27,13 @@ test.describe('Client Portal', () => {
   });
 
   test('can generate a client portal link from proposal detail', async ({ page }) => {
+    // Unique per run: a fixed name and email collides with the client the
+    // previous run created, so the test could only ever pass once against a
+    // given database.
+    const stamp = Date.now();
     const client = await createTestClient(page, {
-      name: 'Portal Test Client',
-      email: 'portal-test@example.com',
+      name: `Portal Test Client ${stamp}`,
+      email: `portal-test-${stamp}@example.com`,
     });
 
     const proposal = await createTestProposal(page, {
@@ -52,9 +56,11 @@ test.describe('Client Portal', () => {
   });
 
   test('client portal shows proposals for the client', async ({ page, context }) => {
+    // Unique per run, for the same reason as above.
+    const stamp = Date.now();
     const client = await createTestClient(page, {
-      name: 'Portal View Client',
-      email: 'portal-view@example.com',
+      name: `Portal View Client ${stamp}`,
+      email: `portal-view-${stamp}@example.com`,
     });
 
     // Create and send a proposal

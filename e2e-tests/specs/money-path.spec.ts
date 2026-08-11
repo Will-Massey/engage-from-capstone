@@ -158,9 +158,12 @@ test.describe('Money path — decline and share revocation', () => {
   });
 
   test('client declines a shared proposal via public link', async ({ page, context }) => {
+    // The email was already stamped; the name needs it too, or every past run's
+    // client matches the builder's name filter and .first() picks the wrong one.
+    const clientStamp = Date.now();
     const client = await createTestClient(page, {
-      name: 'Decline Path Client',
-      email: `decline-${Date.now()}@example.com`,
+      name: `Decline Path Client ${clientStamp}`,
+      email: `decline-${clientStamp}@example.com`,
     });
     const uniqueTitle = `Decline Proposal ${Date.now()}`;
     const proposal = await createTestProposal(page, {
