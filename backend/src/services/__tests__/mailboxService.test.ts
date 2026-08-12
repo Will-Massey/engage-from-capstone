@@ -357,6 +357,80 @@ describe('syncMailbox — snippet truncation must never split a surrogate pair',
   });
 });
 
+/**
+ * Regression: one unstorable message used to stall the mailbox permanently.
+ *
+ * The per-message upsert had no try/catch, so a throw escaped to the outer
+ * handler — which records lastSyncOk: false AND discards the delta links. Losing
+ * the delta link is what made it permanent: the next run re-fetched the same
+ * page, hit the same message, and failed identically, forever. That is how one
+ * emoji held up a 119-message mailbox on 2026-08-11.
+ *
+ * A message we cannot store must not cost us the messages we can, nor the
+ * progress we already made. It must still be VISIBLE — the run is reported as
+ * not-ok with a counted reason — but it must not block.
+ */
+describe('syncMailbox — a message that cannot be stored must not stall the mailbox', () => {
+  function twoMessages() {
+    const mk = (id: string) => ({
+      externalId: id,
+      conversationId: `c-${id}`,
+      direction: 'INBOUND' as const,
+      from: 'client@acme.com',
+      to: 'firm@gmail.com',
+      subject: id,
+      bodyText: 'body',
+      isRead: false,
+      hasAttachments: false,
+      receivedAt: new Date('2026-08-11T10:00:00Z'),
+    });
+    return [mk('bad-1'), mk('good-1')];
+  }
+
+  beforeEach(() => {
+    loadTenantEmailContextMock.mockResolvedValue({
+      tenantId: 't1',
+      tenantName: 'Firm',
+      email: { provider: 'gmail', gmail: { user: 'firm@gmail.com', refreshToken: 'r1' } },
+    });
+    createGmailMailClientMock.mockResolvedValue({
+      syncInbox: jest.fn().mockResolvedValue({ messages: twoMessages(), deltaLink: 'history:300' }),
+      syncSent: jest.fn().mockResolvedValue({ messages: [], deltaLink: 'sent:300' }),
+    });
+    prismaMock.mailMessage.findUnique.mockResolvedValue(null);
+    prismaMock.client.findFirst.mockResolvedValue(null);
+    // The first message is unstorable; the second is fine.
+    prismaMock.mailMessage.create
+      .mockRejectedValueOnce(new Error('unexpected end of hex escape at line 1 column 40429'))
+      .mockResolvedValue({});
+  });
+
+  it('still imports the messages it can store', async () => {
+    const result = await syncMailbox('t1');
+    expect(result.imported).toBe(1);
+    expect(prismaMock.mailMessage.create).toHaveBeenCalledTimes(2);
+  });
+
+  it('SAVES the delta links, so the next run moves past the bad message', async () => {
+    await syncMailbox('t1');
+
+    const call = prismaMock.mailboxSyncState.upsert.mock.calls[0][0];
+    expect(call.update.inboxDeltaLink).toBe('history:300');
+    expect(call.update.sentDeltaLink).toBe('sent:300');
+  });
+
+  it('still reports the failure rather than hiding it', async () => {
+    const result = await syncMailbox('t1');
+
+    expect(result.ok).toBe(false);
+    expect(result.skipped).toBe(1);
+
+    const call = prismaMock.mailboxSyncState.upsert.mock.calls[0][0];
+    expect(call.update.lastSyncOk).toBe(false);
+    expect(String(call.update.lastSyncError)).toMatch(/1 message/i);
+  });
+});
+
 describe('syncMailbox — F2: reconciles a locally-created OUTBOUND send instead of duplicating', () => {
   it('updates the localsend: row externalId/conversationId/internetMessageId when the sentitems delta brings the real message back, instead of creating a duplicate', async () => {
     loadTenantEmailContextMock.mockResolvedValue({

@@ -425,6 +425,8 @@ async function createAttachmentRows(
 export type SyncMailboxResult = {
   imported: number;
   updated: number;
+  /** Messages the provider returned that we could not store. See the loop. */
+  skipped?: number;
   ok: boolean;
   error?: string;
 };
@@ -465,6 +467,8 @@ async function syncMailboxInternal(tenantId: string): Promise<SyncMailboxResult>
 
   let imported = 0;
   let updated = 0;
+  let skipped = 0;
+  let firstSkipError: string | null = null;
   const createdInboundIds: string[] = [];
   try {
     const [inboxPage, sentPage] = await Promise.all([
@@ -472,15 +476,43 @@ async function syncMailboxInternal(tenantId: string): Promise<SyncMailboxResult>
       providerClient.syncSent(syncState?.sentDeltaLink ?? null),
     ]);
 
+    // One message we cannot store must not cost us the rest of the page, nor
+    // the delta progress. Before this, a throw here escaped to the outer
+    // handler, which discards the delta links — so the next run re-fetched the
+    // same page, hit the same message and failed identically, forever. That is
+    // how a single emoji held up a 119-message mailbox on 2026-08-11.
+    //
+    // Skipping is NOT swallowing: the run is still reported not-ok with a
+    // counted reason, so the health banner keeps telling the practice something
+    // is wrong. It just no longer blocks every other message behind it.
     for (const pm of [...inboxPage.messages, ...sentPage.messages]) {
-      const result = await upsertProviderMessage(tenantId, provider, pm);
-      if (result.outcome === 'created') {
-        imported++;
-        if (result.direction === 'INBOUND') createdInboundIds.push(result.id);
-      } else {
-        updated++;
+      try {
+        const result = await upsertProviderMessage(tenantId, provider, pm);
+        if (result.outcome === 'created') {
+          imported++;
+          if (result.direction === 'INBOUND') createdInboundIds.push(result.id);
+        } else {
+          updated++;
+        }
+      } catch (err: any) {
+        skipped++;
+        if (!firstSkipError) firstSkipError = err?.message || 'unknown error';
+        logger.error('Mailbox message could not be stored, skipping', {
+          tenantId,
+          provider,
+          externalId: pm.externalId,
+          receivedAt: pm.receivedAt,
+          error: err?.message,
+        });
       }
     }
+
+    // Delta links are saved either way — that is the whole point: progress must
+    // survive a message we could not store. Health still reflects the skips.
+    const syncOk = skipped === 0;
+    const syncError = syncOk
+      ? null
+      : `${skipped} message${skipped === 1 ? '' : 's'} could not be stored: ${firstSkipError}`;
 
     await prisma.mailboxSyncState.upsert({
       where: { tenantId },
@@ -490,16 +522,16 @@ async function syncMailboxInternal(tenantId: string): Promise<SyncMailboxResult>
         inboxDeltaLink: inboxPage.deltaLink,
         sentDeltaLink: sentPage.deltaLink,
         lastSyncAt: new Date(),
-        lastSyncOk: true,
-        lastSyncError: null,
+        lastSyncOk: syncOk,
+        lastSyncError: syncError,
       },
       update: {
         provider,
         inboxDeltaLink: inboxPage.deltaLink,
         sentDeltaLink: sentPage.deltaLink,
         lastSyncAt: new Date(),
-        lastSyncOk: true,
-        lastSyncError: null,
+        lastSyncOk: syncOk,
+        lastSyncError: syncError,
       },
     });
 
@@ -513,7 +545,13 @@ async function syncMailboxInternal(tenantId: string): Promise<SyncMailboxResult>
       );
     }
 
-    return { imported, updated, ok: true };
+    return {
+      imported,
+      updated,
+      skipped,
+      ok: skipped === 0,
+      ...(skipped > 0 ? { error: syncError ?? undefined } : {}),
+    };
   } catch (e: any) {
     const errorMsg = e?.message || 'Sync failed';
     logger.warn(`Mailbox sync failed for tenant ${tenantId}: ${errorMsg}`);
