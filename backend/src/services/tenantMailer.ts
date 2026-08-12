@@ -68,7 +68,12 @@ async function getCustomEmailService(config: EmailConfig): Promise<EmailService>
   });
 
   if (!emailServiceCache.has(key)) {
-    emailServiceCache.set(key, EmailService.createReady(config));
+    const pending = EmailService.createReady(config);
+    // Evict on failure: caching the promise caches a rejection too, so without
+    // this one transient token refresh failure pinned the tenant to the
+    // platform fallback until the next restart, however brief the real cause.
+    pending.catch(() => emailServiceCache.delete(key));
+    emailServiceCache.set(key, pending);
   }
 
   return emailServiceCache.get(key)!;
@@ -223,7 +228,19 @@ export async function tenantMailerSend(
     : 'CLOUDFLARE';
 
   if (useCustom && customConfig) {
-    result = await sendWithCustom(customConfig, message, replyTo);
+    try {
+      result = await sendWithCustom(customConfig, message, replyTo);
+    } catch (e) {
+      // The OAuth transports mint their access token while the transport is
+      // being constructed, so a revoked consent or a scope the grant never
+      // covered throws before anything is sent. Without this catch the throw
+      // escaped tenantMailerSend, the fallback below never ran and the
+      // EmailLog row stayed QUEUED — one connected mailbox could take a
+      // tenant's entire outbound email offline.
+      const error = e instanceof Error ? e.message : String(e);
+      logger.error(`Custom email transport threw for tenant ${tenantId}: ${error}`);
+      result = { success: false, error };
+    }
     if (!result.success && isSendGridConfigured()) {
       logger.warn(`Custom email failed for tenant ${tenantId}, falling back to platform email`);
       result = await sendWithPlatform(
