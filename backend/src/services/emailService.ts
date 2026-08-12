@@ -181,37 +181,18 @@ export class EmailService {
     }
   }
 
+  /**
+   * Microsoft 365 sends over Graph, not SMTP.
+   *
+   * The mailbox connect consents to Graph scopes, so an SMTP token exchange
+   * asks for a resource the grant never covered; and smtp.office365.com is
+   * disabled by default in modern tenants regardless. There is no transport to
+   * build here — sendViaGraph mints a token per send.
+   */
   private async initializeOutlook(): Promise<void> {
     if (!this.config.outlook) {
       throw new Error('Outlook configuration required');
     }
-
-    // Microsoft Graph OAuth2 configuration
-    const oauth2Client = new google.auth.OAuth2(
-      this.config.outlook.clientId,
-      this.config.outlook.clientSecret,
-      'https://login.microsoftonline.com/common/oauth2/nativeclient'
-    );
-
-    oauth2Client.setCredentials({
-      refresh_token: this.config.outlook.refreshToken,
-    });
-
-    this.oauth2Client = oauth2Client;
-
-    // For Outlook/Microsoft 365, we use SMTP with OAuth2
-    const accessToken = await this.getOutlookAccessToken();
-
-    this.transporter = nodemailer.createTransport({
-      host: 'smtp.office365.com',
-      port: 587,
-      secure: false,
-      auth: {
-        type: 'OAuth2',
-        user: this.config.outlook.user,
-        accessToken,
-      },
-    });
   }
 
   private async getOutlookAccessToken(): Promise<string> {
@@ -233,7 +214,7 @@ export class EmailService {
           client_secret: clientSecret,
           refresh_token: refreshToken,
           grant_type: 'refresh_token',
-          scope: 'https://outlook.office365.com/SMTP.Send offline_access',
+          scope: 'https://graph.microsoft.com/Mail.Send offline_access',
         }),
       });
 
@@ -249,18 +230,76 @@ export class EmailService {
     }
   }
 
+  /**
+   * Send through Microsoft Graph using the mailbox grant we already hold.
+   * Attachments ride inline as fileAttachment, which Graph accepts up to a ~4MB
+   * request; anything larger fails the send and tenantMailerSend falls back to
+   * the platform transport.
+   */
+  private async sendViaGraph(
+    message: EmailMessage
+  ): Promise<{ success: boolean; messageId?: string; error?: string }> {
+    const token = await this.getOutlookAccessToken();
+    const toList = (value?: string | string[]) =>
+      (Array.isArray(value) ? value : value ? [value] : []).map((address) => ({
+        emailAddress: { address },
+      }));
+
+    const attachments = (message.attachments || []).map((a) => ({
+      '@odata.type': '#microsoft.graph.fileAttachment',
+      name: a.filename,
+      contentType: a.contentType || 'application/octet-stream',
+      contentBytes: Buffer.isBuffer(a.content)
+        ? a.content.toString('base64')
+        : Buffer.from(a.content).toString('base64'),
+    }));
+
+    const graphMessage: Record<string, unknown> = {
+      subject: message.subject,
+      body: message.html
+        ? { contentType: 'HTML', content: message.html }
+        : { contentType: 'Text', content: message.text || '' },
+      toRecipients: toList(message.to),
+      ccRecipients: toList(message.cc),
+      bccRecipients: toList(message.bcc),
+    };
+    if (message.replyTo) {
+      graphMessage.replyTo = toList(message.replyTo);
+    }
+    if (attachments.length) {
+      graphMessage.attachments = attachments;
+    }
+
+    const res = await fetch('https://graph.microsoft.com/v1.0/me/sendMail', {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ message: graphMessage }),
+    });
+
+    if (!res.ok) {
+      throw new Error(`Graph sendMail failed: ${res.status} ${res.statusText}`);
+    }
+
+    // Graph 202s with an empty body; there is no message id to report.
+    return { success: true };
+  }
+
   async sendEmail(
     message: EmailMessage
   ): Promise<{ success: boolean; messageId?: string; error?: string }> {
     try {
       await this.ensureReady();
 
+      if (this.config.provider === 'outlook' || this.config.provider === 'microsoft365') {
+        return await this.sendViaGraph(message);
+      }
+
       if (!this.transporter) {
         throw new Error('Email transporter not initialized');
       }
 
       // Refresh token if needed for OAuth providers
-      if (this.config.provider === 'gmail' || this.config.provider === 'outlook') {
+      if (this.config.provider === 'gmail') {
         await this.refreshAccessToken();
       }
 
@@ -295,10 +334,10 @@ export class EmailService {
     try {
       let accessToken: string;
 
+      // Outlook/Microsoft 365 no longer reach here — they send over Graph and
+      // mint their own token per send, with no transporter auth to update.
       if (this.config.provider === 'gmail') {
         accessToken = await this.getGmailAccessToken();
-      } else if (this.config.provider === 'outlook') {
-        accessToken = await this.getOutlookAccessToken();
       } else {
         return;
       }
