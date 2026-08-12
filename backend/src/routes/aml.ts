@@ -207,6 +207,91 @@ router.get(
 );
 
 /**
+ * POST /api/aml/manual-clear
+ *
+ * Record AML as completed on the practice's own evidence.
+ *
+ * Without this the only route to CLEAR is a provider webhook, and no provider
+ * is live (Credas commercials are unclosed). A client therefore entered
+ * AML_PENDING when its proposal was accepted and stayed there permanently —
+ * eight of Fortis's clients as of 2026-08-12 — which also blocks sending
+ * whenever blockSendUntilAmlCleared is on.
+ *
+ * Manual clearance is a compliance assertion, so the basis is required and the
+ * acting user is recorded. It mirrors the webhook's transition exactly.
+ */
+const manualClearSchema = z.object({
+  clientId: z.string().uuid(),
+  basis: z.enum(['DOCUMENTS_VERIFIED', 'EXTERNAL_CHECK', 'EXISTING_CLIENT', 'OTHER']),
+  note: z.string().trim().max(1000).optional(),
+  completedAt: z.string().datetime().optional(),
+});
+
+router.post(
+  '/manual-clear',
+  authenticate,
+  authorize('ADMIN', 'PARTNER', 'MANAGER'),
+  asyncHandler(async (req, res) => {
+    const body = manualClearSchema.parse(req.body ?? {});
+
+    if (body.basis === 'OTHER' && !body.note) {
+      throw new ApiError('NOTE_REQUIRED', 'Describe the basis when selecting Other', 400);
+    }
+
+    const client = await prisma.client.findFirst({
+      where: { id: body.clientId, tenantId: req.tenantId! },
+      select: { id: true, name: true, amlStatus: true, lifecycleStage: true },
+    });
+
+    if (!client) {
+      throw new ApiError('CLIENT_NOT_FOUND', 'Client not found', 404);
+    }
+
+    if (client.amlStatus === 'CLEAR') {
+      throw new ApiError('ALREADY_CLEAR', 'This client is already recorded as AML clear', 400);
+    }
+
+    const completedAt = body.completedAt ? new Date(body.completedAt) : new Date();
+
+    const updated = await prisma.client.update({
+      where: { id: client.id },
+      data: {
+        amlStatus: 'CLEAR',
+        amlCheckedAt: completedAt,
+        amlCompletedAt: completedAt,
+        lifecycleStage:
+          client.lifecycleStage === 'AML_PENDING' ? 'AML_COMPLETE' : client.lifecycleStage,
+      },
+      select: { id: true, amlStatus: true, lifecycleStage: true, amlCompletedAt: true },
+    });
+
+    await prisma.activityLog.create({
+      data: {
+        tenantId: req.tenantId!,
+        userId: req.user!.id,
+        action: 'AML_MANUALLY_CLEARED',
+        entityType: 'CLIENT',
+        entityId: client.id,
+        description: `AML recorded as complete for ${client.name} on the practice's own evidence (${body.basis})`,
+        metadata: JSON.stringify({
+          basis: body.basis,
+          note: body.note ?? null,
+          completedAt: completedAt.toISOString(),
+          previousAmlStatus: client.amlStatus,
+          source: 'manual',
+        }),
+        ipAddress: req.ip,
+        userAgent: req.headers['user-agent'],
+      },
+    });
+
+    logger.info(`AML manually cleared for client ${client.id} by user ${req.user!.id}`);
+
+    res.json({ success: true, data: updated, message: 'AML recorded as complete' });
+  })
+);
+
+/**
  * POST /api/aml/webhook
  * Public endpoint — optionally secured via AML_WEBHOOK_SECRET header.
  */

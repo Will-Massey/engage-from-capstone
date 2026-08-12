@@ -761,6 +761,10 @@ export const apiClient = {
   markProposalUnpaid: (id: string) =>
     api.post(`/proposals/${id}/mark-unpaid`, {}) as Promise<ApiResponse<ProposalRecord>>,
 
+  /** Record AML as complete on the practice's own evidence. */
+  amlManualClear: (payload: { clientId: string; basis: string; note?: string }) =>
+    api.post('/aml/manual-clear', payload) as Promise<ApiResponse<unknown>>,
+
   getNotifications: () =>
     api.get('/notifications') as Promise<ApiResponse<import('./notifications').NotificationItem[]>>,
 

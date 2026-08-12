@@ -110,6 +110,30 @@ export default function AmlPartnerPanel({
   };
 
   const [docBusy, setDocBusy] = useState<string | null>(null);
+  // No AML provider is live, so a provider webhook can never clear a client.
+  const [clearing, setClearing] = useState(false);
+  const [basis, setBasis] = useState('DOCUMENTS_VERIFIED');
+  const [clearNote, setClearNote] = useState('');
+
+  const markComplete = async () => {
+    setRunning(true);
+    try {
+      await apiClient.amlManualClear({
+        clientId,
+        basis,
+        note: clearNote.trim() || undefined,
+      });
+      toast.success('AML recorded as complete');
+      setClearing(false);
+      setClearNote('');
+      await loadStatus();
+      onUpdated?.();
+    } catch (e: any) {
+      toast.error(e?.response?.data?.error?.message || e.message || 'Could not record AML');
+    } finally {
+      setRunning(false);
+    }
+  };
 
   const openDocument = async (doc: AmlDocumentMeta, download: boolean) => {
     setDocBusy(`${doc.type}:${download ? 'dl' : 'view'}`);
@@ -275,12 +299,74 @@ export default function AmlPartnerPanel({
         </p>
       ) : null}
 
+      {status?.amlStatus !== 'CLEAR' && (
+        <div className="mb-3 rounded-xl border border-slate-200 p-3 dark:border-slate-700">
+          {!clearing ? (
+            <button
+              type="button"
+              onClick={() => setClearing(true)}
+              className="btn-primary text-sm"
+              data-testid="aml-mark-complete"
+            >
+              Mark AML as complete
+            </button>
+          ) : (
+            <div className="space-y-2">
+              <p className="text-sm font-semibold text-slate-900 dark:text-white">
+                Record AML as complete for {clientName}
+              </p>
+              <p className="text-xs text-slate-500 dark:text-slate-400">
+                Use this when you have satisfied your own AML obligations. It is recorded against
+                your name.
+              </p>
+              <select
+                className="input w-full text-sm"
+                value={basis}
+                onChange={(e) => setBasis(e.target.value)}
+              >
+                <option value="DOCUMENTS_VERIFIED">I have verified the ID documents</option>
+                <option value="EXTERNAL_CHECK">Checked with another provider</option>
+                <option value="EXISTING_CLIENT">Existing client, already onboarded</option>
+                <option value="OTHER">Other (describe below)</option>
+              </select>
+              <textarea
+                className="input w-full text-sm"
+                rows={2}
+                placeholder={
+                  basis === 'OTHER' ? 'Describe the basis (required)' : 'Note (optional)'
+                }
+                value={clearNote}
+                onChange={(e) => setClearNote(e.target.value)}
+              />
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  className="btn-primary text-sm"
+                  disabled={running || (basis === 'OTHER' && !clearNote.trim())}
+                  onClick={() => void markComplete()}
+                >
+                  {running ? 'Recording…' : 'Record as complete'}
+                </button>
+                <button
+                  type="button"
+                  className="btn-secondary text-sm"
+                  onClick={() => setClearing(false)}
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
       <div className="flex flex-wrap gap-2">
         <button
           type="button"
           onClick={() => runCheck('stub')}
           disabled={running}
-          className="btn-primary text-sm inline-flex items-center gap-2"
+          className="btn-secondary text-sm inline-flex items-center gap-2"
+          title="Demo only — no provider is connected, so this leaves the client pending"
         >
           {running ? <ArrowPathIcon className="h-4 w-4 animate-spin" /> : null}
           Run AML check (demo)
