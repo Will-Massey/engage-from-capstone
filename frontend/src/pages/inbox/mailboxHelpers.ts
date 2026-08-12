@@ -59,6 +59,23 @@ export type MailboxSyncHealth = {
   lastSyncError: string | null;
 };
 
+/**
+ * Does this sync error look like the practice's authorisation, rather than our
+ * own code failing? Only then is "reconnect" useful advice.
+ *
+ * The banner used to offer it for every failure. On 2026-08-11 the real fault
+ * was a Prisma write error in our sync path while the connection was perfectly
+ * healthy — telling the practice to reconnect would have wasted their time and
+ * taught them the banner is noise. Deliberately conservative: an unrecognised
+ * error offers no advice rather than the wrong advice.
+ */
+const AUTH_FAILURE_HINTS =
+  /(token|unauthor|invalid[_ ]grant|expire|credential|AADSTS|\b401\b|\b403\b|forbidden|re-?auth)/i;
+
+function looksLikeAuthFailure(error: string | null | undefined): boolean {
+  return !!error && AUTH_FAILURE_HINTS.test(error);
+}
+
 /** Copy + tone for the mailbox health banner when a provider is connected. */
 export function formatSyncHealth(
   health: MailboxSyncHealth | null | undefined,
@@ -69,7 +86,10 @@ export function formatSyncHealth(
   }
   if (health.lastSyncOk === false) {
     const reason = health.lastSyncError ? `: ${health.lastSyncError}` : '';
-    return { tone: 'warning', message: `Sync failing${reason} — reconnect in Settings → Email` };
+    const advice = looksLikeAuthFailure(health.lastSyncError)
+      ? ' — reconnect in Settings → Email'
+      : '';
+    return { tone: 'warning', message: `Sync failing${reason}${advice}` };
   }
   const when = health.lastSyncAt
     ? formatDistance(new Date(health.lastSyncAt), now, { addSuffix: true })

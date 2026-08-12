@@ -113,7 +113,45 @@ describe('formatSyncHealth', () => {
       { lastSyncAt: '2026-08-06T11:00:00.000Z', lastSyncOk: false, lastSyncError: null },
       now
     );
-    expect(result.message).toBe('Sync failing — reconnect in Settings → Email');
+    expect(result.message).toBe('Sync failing');
+  });
+
+  /**
+   * The banner used to tell every practice to reconnect, whatever the failure.
+   * On 2026-08-11 the real failure was a Prisma write error in our own sync
+   * code; the connection was perfectly healthy, and reconnecting would have
+   * wasted the practice's time and taught them to distrust the banner. Only
+   * offer the reconnect when the error actually looks like an auth problem.
+   */
+  it('offers reconnecting only when the failure looks like an auth problem', () => {
+    const authErrors = [
+      'Token expired',
+      'invalid_grant',
+      'AADSTS700082: refresh token expired',
+      'Unauthorized (401)',
+    ];
+    for (const err of authErrors) {
+      const result = formatSyncHealth(
+        { lastSyncAt: '2026-08-06T11:00:00.000Z', lastSyncOk: false, lastSyncError: err },
+        now
+      );
+      expect(result.message).toBe(`Sync failing: ${err} — reconnect in Settings → Email`);
+    }
+  });
+
+  it('does NOT tell the practice to reconnect when the fault is not authentication', () => {
+    const result = formatSyncHealth(
+      {
+        lastSyncAt: '2026-08-06T11:00:00.000Z',
+        lastSyncOk: false,
+        lastSyncError:
+          'Invalid `prisma.mailMessage.create()` invocation: unexpected end of hex escape',
+      },
+      now
+    );
+    expect(result.tone).toBe('warning');
+    expect(result.message).not.toContain('reconnect');
+    expect(result.message).toContain('hex escape');
   });
 
   it('reports success with a relative time when the last sync worked', () => {
