@@ -2550,6 +2550,24 @@ const Settings = () => {
                         </span>
                       </span>
                     </label>
+
+                    {/* Reachable when the setting was written outside this form
+                        (ops script, API). The toggle is disabled, so without
+                        this the practice sees "collect at sign" on, no payments
+                        arriving, and nothing explaining why. */}
+                    {paymentForm.collectPaymentAtSign && !payoutForm.enabled && (
+                      <div className="mt-3 rounded-xl border border-amber-300 bg-amber-50 p-3 dark:border-amber-500/40 dark:bg-amber-500/10">
+                        <p className="text-sm font-semibold text-amber-900 dark:text-amber-200">
+                          No payments are being collected
+                        </p>
+                        <p className="mt-1 text-xs text-amber-800 dark:text-amber-200/90">
+                          Collect payment after signing is switched on, but this practice has no
+                          connected Stripe account, so Engage cannot take money from clients.
+                          Accepted proposals will keep showing as unpaid. Either connect an account
+                          above, or record payments you collect yourself from the collection board.
+                        </p>
+                      </div>
+                    )}
                   </div>
                 </div>
 
