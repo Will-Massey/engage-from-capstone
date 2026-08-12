@@ -37,6 +37,11 @@ export default function DunningQueue() {
   const [loading, setLoading] = useState(true);
   const [busyId, setBusyId] = useState<string | null>(null);
   const [msg, setMsg] = useState<string | null>(null);
+  // Recording money collected outside Engage — most practices do not use Connect.
+  const [recordFor, setRecordFor] = useState<DunningItem | null>(null);
+  const [method, setMethod] = useState('BANK_TRANSFER');
+  const [reference, setReference] = useState('');
+  const [paidAt, setPaidAt] = useState(() => new Date().toISOString().slice(0, 10));
 
   const load = async () => {
     setLoading(true);
@@ -86,6 +91,27 @@ export default function DunningQueue() {
       await load();
     } catch (e: any) {
       setMsg(e?.response?.data?.error?.message || e.message || 'Retry failed');
+    } finally {
+      setBusyId(null);
+    }
+  }
+
+  async function recordPayment() {
+    if (!recordFor?.proposalId) return;
+    setBusyId(recordFor.proposalId);
+    setMsg(null);
+    try {
+      await apiClient.markProposalPaid(recordFor.proposalId, {
+        method,
+        reference: reference.trim() || undefined,
+        paidAt: paidAt ? new Date(`${paidAt}T00:00:00.000Z`).toISOString() : undefined,
+      });
+      setMsg(`Payment recorded for ${recordFor.clientName || 'client'}`);
+      setRecordFor(null);
+      setReference('');
+      await load();
+    } catch (e: any) {
+      setMsg(e?.response?.data?.error?.message || e.message || 'Could not record the payment');
     } finally {
       setBusyId(null);
     }
@@ -192,6 +218,19 @@ export default function DunningQueue() {
                     {busyId === item.proposalId ? '…' : 'Retry'}
                   </button>
                 )}
+                {item.proposalId && item.kind === 'unpaid_accepted' && (
+                  <button
+                    type="button"
+                    className="btn-accent text-xs py-1"
+                    disabled={busyId === item.proposalId}
+                    onClick={() => {
+                      setRecordFor(item);
+                      setMsg(null);
+                    }}
+                  >
+                    Record payment
+                  </button>
+                )}
                 {item.proposalId && (
                   <Link
                     to={`/proposals/${item.proposalId}?tab=audit`}
@@ -207,8 +246,85 @@ export default function DunningQueue() {
         <p className="mt-2 flex items-center gap-1 text-2xs text-slate-400">
           <ExclamationTriangleIcon className="h-3 w-3" />
           Retry charges the Stripe invoice when available; Portal lets the client update card.
+          Record payment is for money you collected yourself.
         </p>
       </div>
+
+      {recordFor && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4"
+          role="dialog"
+          aria-modal="true"
+          aria-label="Record a payment"
+        >
+          <div className="w-full max-w-md rounded-2xl bg-white p-5 shadow-xl dark:bg-slate-800">
+            <h3 className="text-base font-semibold text-slate-900 dark:text-white">
+              Record a payment
+            </h3>
+            <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
+              {recordFor.clientName} · {formatGbp(recordFor.amountPence)}
+            </p>
+            <p className="mt-2 text-xs text-slate-500 dark:text-slate-400">
+              This records money you collected outside Engage. It does not charge the client.
+            </p>
+
+            <label className="mt-4 block text-sm font-medium text-slate-700 dark:text-slate-200">
+              How was it paid?
+              <select
+                className="input mt-1 w-full"
+                value={method}
+                onChange={(e) => setMethod(e.target.value)}
+              >
+                <option value="BANK_TRANSFER">Bank transfer</option>
+                <option value="DIRECT_DEBIT">Direct debit</option>
+                <option value="CARD">Card</option>
+                <option value="CHEQUE">Cheque</option>
+                <option value="CASH">Cash</option>
+                <option value="OTHER">Other</option>
+              </select>
+            </label>
+
+            <label className="mt-3 block text-sm font-medium text-slate-700 dark:text-slate-200">
+              Date received
+              <input
+                type="date"
+                className="input mt-1 w-full"
+                value={paidAt}
+                onChange={(e) => setPaidAt(e.target.value)}
+              />
+            </label>
+
+            <label className="mt-3 block text-sm font-medium text-slate-700 dark:text-slate-200">
+              Reference <span className="font-normal text-slate-400">(optional)</span>
+              <input
+                type="text"
+                className="input mt-1 w-full"
+                placeholder="Bank reference or invoice number"
+                value={reference}
+                onChange={(e) => setReference(e.target.value)}
+              />
+            </label>
+
+            <div className="mt-5 flex justify-end gap-2">
+              <button
+                type="button"
+                className="btn-secondary text-sm"
+                onClick={() => setRecordFor(null)}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                className="btn-primary text-sm"
+                disabled={busyId === recordFor.proposalId}
+                onClick={() => void recordPayment()}
+              >
+                {busyId === recordFor.proposalId ? 'Recording…' : 'Record payment'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
