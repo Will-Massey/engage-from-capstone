@@ -178,11 +178,11 @@ const CommandPalette = ({ isOpen, onClose }: CommandPaletteProps) => {
       {
         id: 'action-new-proposal',
         title: 'Create New Proposal',
-        subtitle: 'Guided wizard — client to send in ~5 min',
+        subtitle: 'Build it yourself, use a template, or let Clara draft it',
         icon: PlusIcon,
         shortcut: 'C P',
         category: 'Actions',
-        action: () => navigate('/proposals/wizard'),
+        action: () => navigate('/proposals/new'),
       },
       {
         id: 'nav-inbox',
@@ -308,7 +308,7 @@ const CommandPalette = ({ isOpen, onClose }: CommandPaletteProps) => {
         navigate(String(params.path));
         onClose();
       } else if (action === 'create_proposal') {
-        navigate('/proposals/wizard');
+        navigate('/proposals/new');
         onClose();
       } else if (action === 'proposal_health' && params?.proposalId) {
         navigate(`/proposals/${params.proposalId}`);

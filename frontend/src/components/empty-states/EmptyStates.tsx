@@ -89,9 +89,9 @@ export const EmptyProposals = ({ onCreate }: { onCreate?: () => void }) => (
     icon="proposals"
     title="No proposals yet"
     description="Create your first proposal to start winning clients."
-    claraTip="Use the 5-minute wizard — Clara will suggest services, check MTD fit, and draft your send email."
+    claraTip="Build it yourself, start from a template, or let Clara suggest services and draft the send email."
     context="proposals"
-    action={{ label: 'Create proposal in 5 minutes', to: '/proposals/wizard', onClick: onCreate }}
+    action={{ label: 'New proposal', to: '/proposals/new', onClick: onCreate }}
   />
 );
 

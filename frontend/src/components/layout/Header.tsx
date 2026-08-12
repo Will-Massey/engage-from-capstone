@@ -48,9 +48,10 @@ const Header = ({ onMenuClick }: HeaderProps) => {
             <Bars3Icon className="w-6 h-6" />
           </button>
 
-          {/* One primary create path in the chrome — wizard is the short path */}
+          {/* Primary create path lands on the builder, which offers manual,
+              template or Clara. The wizard stays reachable where it is labelled. */}
           <div className="hidden sm:flex items-center gap-2 ml-1">
-            <Link to="/proposals/wizard" className="btn-primary btn-sm min-h-9">
+            <Link to="/proposals/new" className="btn-primary btn-sm min-h-9">
               <PlusIcon className="w-4 h-4" aria-hidden />
               New proposal
             </Link>

@@ -869,7 +869,7 @@ const Dashboard = () => {
                 <SparklesIcon className="mx-auto h-12 w-12 text-slate-300 dark:text-slate-600 mb-3" />
                 <p className="text-slate-600 dark:text-slate-400">No proposals yet.</p>
                 <Link
-                  to="/proposals/wizard"
+                  to="/proposals/new"
                   className="text-primary-600 font-medium hover:text-primary-700"
                 >
                   Create your first proposal
