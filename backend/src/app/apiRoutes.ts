@@ -36,6 +36,7 @@ import jobsRoutes from '../routes/jobs.js';
 import practiceLettersRoutes from '../routes/practiceLetters.js';
 import commsRoutes from '../routes/comms.js';
 import formsRoutes from '../routes/forms.js';
+import jobTemplatesRoutes from '../routes/jobTemplates.js';
 
 // Import middleware
 import { extractTenant } from '../middleware/tenant.js';
@@ -48,6 +49,7 @@ export function mountApiRoutes(app: express.Express): void {
   app.use('/api/aml', amlRoutes); // authenticate sets req.tenantId; /webhook is public + secret-gated
   app.use('/api/proposals', extractTenant, proposalRoutes);
   app.use('/api/jobs', extractTenant, jobsRoutes);
+  app.use('/api/job-templates', extractTenant, jobTemplatesRoutes);
   app.use('/api/practice-letters', extractTenant, practiceLettersRoutes);
   app.use('/api/clients', extractTenant, clientRoutes);
   app.use('/api/services', extractTenant, serviceRoutes);
