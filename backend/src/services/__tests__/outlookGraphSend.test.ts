@@ -89,7 +89,11 @@ describe('Microsoft mailbox send', () => {
 
     await sendOne({
       attachments: [
-        { filename: 'proposal.pdf', content: Buffer.from('%PDF-1.7'), contentType: 'application/pdf' },
+        {
+          filename: 'proposal.pdf',
+          content: Buffer.from('%PDF-1.7'),
+          contentType: 'application/pdf',
+        },
       ],
     });
 
