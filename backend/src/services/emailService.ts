@@ -456,7 +456,7 @@ export class EmailService {
     clientSecret: string,
     redirectUri: string,
     code: string
-  ): Promise<{ refreshToken: string; accessToken: string }> {
+  ): Promise<{ refreshToken: string; accessToken: string; user?: string }> {
     const oauth2Client = new google.auth.OAuth2(clientId, clientSecret, redirectUri);
 
     const { tokens } = await oauth2Client.getToken(code);
@@ -467,9 +467,24 @@ export class EmailService {
       );
     }
 
+    // The auth URL requests userinfo.email, so Google returns an id_token
+    // carrying the mailbox address. It was previously discarded, which left the
+    // caller with no address at all — see saveOAuthTokens for why guessing one
+    // is worse than having none.
+    let user: string | undefined;
+    try {
+      if (tokens.id_token) {
+        user = JSON.parse(Buffer.from(tokens.id_token.split('.')[1], 'base64').toString())
+          .email as string;
+      }
+    } catch {
+      user = undefined;
+    }
+
     return {
       refreshToken: tokens.refresh_token,
       accessToken: tokens.access_token || '',
+      user,
     };
   }
 
@@ -525,13 +540,43 @@ export class EmailService {
 
     const data = (await response.json()) as any;
 
+    // The mailbox address must come from the mailbox. The auth URL does not
+    // request `openid`, so Microsoft returns no id_token and the claim below is
+    // almost always absent — Graph /me is the reliable source, and User.Read is
+    // already in the requested scopes so it needs no extra consent. If both
+    // fail we return undefined: an unknown address is safe, a guessed one is
+    // not (see saveOAuthTokens).
+    const fromIdToken = data.id_token
+      ? JSON.parse(Buffer.from(data.id_token.split('.')[1], 'base64').toString()).email
+      : undefined;
+
     return {
       refreshToken: data.refresh_token,
       accessToken: data.access_token,
-      user: data.id_token
-        ? JSON.parse(Buffer.from(data.id_token.split('.')[1], 'base64').toString()).email
-        : undefined,
+      user: (await resolveGraphMailboxAddress(data.access_token)) || fromIdToken,
     };
+  }
+}
+
+/**
+ * Ask Graph which mailbox this token belongs to. `mail` is the SMTP address and
+ * is what we want; `userPrincipalName` is the sign-in name and is the right
+ * second choice. Never throws — a failed lookup means "unknown", not "broken
+ * connect", because the mailbox syncs perfectly well without a stored address.
+ */
+async function resolveGraphMailboxAddress(
+  accessToken: string | undefined
+): Promise<string | undefined> {
+  if (!accessToken) return undefined;
+  try {
+    const res = await fetch('https://graph.microsoft.com/v1.0/me?$select=mail,userPrincipalName', {
+      headers: { Authorization: `Bearer ${accessToken}` },
+    });
+    if (!res.ok) return undefined;
+    const me = (await res.json()) as { mail?: string; userPrincipalName?: string };
+    return me.mail || me.userPrincipalName || undefined;
+  } catch {
+    return undefined;
   }
 }
 

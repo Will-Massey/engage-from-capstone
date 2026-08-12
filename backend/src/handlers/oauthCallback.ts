@@ -17,11 +17,20 @@ const apiBaseUrl = () =>
 
 const VALID_PROVIDERS = ['microsoft365', 'outlook', 'gmail'] as const;
 
-async function saveOAuthTokens(
+/**
+ * `fallbackEmail` is deliberately NOT used as the mailbox address. It is the
+ * logged-in Engage user, which is a different thing from the mailbox they just
+ * authorised, and storing it makes `isCustomEmailConfigured` true with an
+ * address that may not exist in the mail tenant — which routes every tenant
+ * email through SMTP auth that then fails. Leaving the address unset keeps
+ * tenant email on the working platform path; the Graph/Gmail sync never needs
+ * it. Exported for tests.
+ */
+export async function saveOAuthTokens(
   tenantId: string,
   provider: string,
   tokens: { refreshToken: string; accessToken: string; user?: string },
-  fallbackEmail?: string
+  _fallbackEmail?: string
 ) {
   const tenant = await prisma.tenant.findUnique({
     where: { id: tenantId },
@@ -46,7 +55,7 @@ async function saveOAuthTokens(
         : process.env.MICROSOFT_CLIENT_SECRET || ''
     ),
     refreshToken: encrypt(tokens.refreshToken),
-    user: tokens.user || fallbackEmail,
+    user: tokens.user,
   };
 
   await prisma.tenant.update({
