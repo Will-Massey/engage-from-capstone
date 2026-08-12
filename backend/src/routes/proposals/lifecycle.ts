@@ -451,6 +451,177 @@ router.post(
 );
 
 /**
+ * Money a practice collected outside Engage.
+ *
+ * Most practices do not opt into Stripe Connect, so nothing would otherwise
+ * ever move an accepted proposal off "unpaid": paymentStatus is written only
+ * by the Stripe webhook paths. Provenance is recorded as paymentProvider
+ * 'manual' so a hand-entered record stays distinguishable from a real Stripe
+ * settlement forever, and so only manual records can be reversed.
+ */
+const MANUAL_PAYMENT_METHODS = [
+  'BANK_TRANSFER',
+  'DIRECT_DEBIT',
+  'CARD',
+  'CASH',
+  'CHEQUE',
+  'OTHER',
+] as const;
+
+const SETTLED_PAYMENT_STATUSES = ['PAID', 'COMPLETED', 'ACTIVE'];
+
+const markPaidSchema = z.object({
+  method: z.enum(MANUAL_PAYMENT_METHODS),
+  reference: z.string().trim().max(120).optional(),
+  note: z.string().trim().max(500).optional(),
+  paidAt: z.string().datetime().optional(),
+});
+
+/**
+ * POST /api/proposals/:id/mark-paid
+ * Record a payment collected outside Engage (bank transfer, cash, and so on).
+ */
+router.post(
+  '/:id/mark-paid',
+  authenticate,
+  authorize('ADMIN', 'PARTNER', 'MD', 'MANAGER'),
+  requireActiveSubscription,
+  asyncHandler(async (req, res) => {
+    const { id } = req.params;
+    const body = markPaidSchema.parse(req.body ?? {});
+
+    const proposal = await prisma.proposal.findFirst({
+      where: { id, tenantId: req.tenantId },
+      include: { client: true },
+    });
+
+    if (!proposal) {
+      throw new ApiError('NOT_FOUND', 'Proposal not found', 404);
+    }
+
+    if (proposal.status !== 'ACCEPTED') {
+      throw new ApiError(
+        'INVALID_STATUS',
+        'Only an accepted proposal can be recorded as paid',
+        400
+      );
+    }
+
+    // Never let a hand-entered record contradict Stripe.
+    if (proposal.stripeSubscriptionId) {
+      throw new ApiError(
+        'STRIPE_MANAGED',
+        'This proposal is billed by Stripe. Its payment status is maintained automatically.',
+        400
+      );
+    }
+
+    if (SETTLED_PAYMENT_STATUSES.includes(proposal.paymentStatus ?? '')) {
+      throw new ApiError('ALREADY_PAID', 'This proposal is already recorded as paid', 400);
+    }
+
+    const paidAt = body.paidAt ? new Date(body.paidAt) : new Date();
+
+    const updatedProposal = await prisma.proposal.update({
+      where: { id },
+      data: {
+        paymentStatus: 'PAID',
+        paymentProvider: 'manual',
+        paymentMethod: body.method,
+        paymentId: body.reference ?? null,
+        paidAt,
+      },
+    });
+
+    await prisma.activityLog.create({
+      data: {
+        tenantId: req.tenantId,
+        userId: req.user!.id,
+        action: 'PROPOSAL_PAYMENT_RECORDED',
+        entityType: 'PROPOSAL',
+        entityId: proposal.id,
+        description: `Recorded payment for "${proposal.title}" (${proposal.client.name}) via ${body.method}${
+          body.reference ? ` ref ${body.reference}` : ''
+        }`,
+        metadata: JSON.stringify({
+          method: body.method,
+          reference: body.reference ?? null,
+          note: body.note ?? null,
+          paidAt: paidAt.toISOString(),
+          source: 'manual',
+        }),
+        ipAddress: req.ip,
+        userAgent: req.headers['user-agent'],
+      },
+    });
+
+    res.json({
+      success: true,
+      data: { ...updatedProposal, ...proposalMoneyForApi(updatedProposal) },
+      message: 'Payment recorded',
+    });
+  })
+);
+
+/**
+ * POST /api/proposals/:id/mark-unpaid
+ * Reverse a manually recorded payment. Stripe-settled proposals are never
+ * reversible here — their status is owned by the webhook.
+ */
+router.post(
+  '/:id/mark-unpaid',
+  authenticate,
+  authorize('ADMIN', 'PARTNER', 'MD', 'MANAGER'),
+  requireActiveSubscription,
+  asyncHandler(async (req, res) => {
+    const { id } = req.params;
+
+    const proposal = await prisma.proposal.findFirst({
+      where: { id, tenantId: req.tenantId },
+      include: { client: true },
+    });
+
+    if (!proposal) {
+      throw new ApiError('NOT_FOUND', 'Proposal not found', 404);
+    }
+
+    if (proposal.paymentProvider !== 'manual') {
+      throw new ApiError('NOT_MANUAL', 'Only a manually recorded payment can be reversed', 400);
+    }
+
+    const updatedProposal = await prisma.proposal.update({
+      where: { id },
+      data: {
+        paymentStatus: null,
+        paymentProvider: null,
+        paymentMethod: null,
+        paymentId: null,
+        paidAt: null,
+      },
+    });
+
+    await prisma.activityLog.create({
+      data: {
+        tenantId: req.tenantId,
+        userId: req.user!.id,
+        action: 'PROPOSAL_PAYMENT_RECORD_REVERSED',
+        entityType: 'PROPOSAL',
+        entityId: proposal.id,
+        description: `Reversed the recorded payment for "${proposal.title}" (${proposal.client.name})`,
+        ipAddress: req.ip,
+        userAgent: req.headers['user-agent'],
+      },
+    });
+
+    res.json({
+      success: true,
+      data: { ...updatedProposal, ...proposalMoneyForApi(updatedProposal) },
+      message: 'Payment record reversed',
+    });
+  })
+);
+
+/**
  * POST /api/proposals/:id/mark-lost
  * Practice marks an open quotation as lost (feeds win/loss stats)
  */
