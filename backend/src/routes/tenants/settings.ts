@@ -215,6 +215,25 @@ router.put(
 
     const data = schema.parse(req.body);
 
+    // Collecting at signing needs somewhere for the money to land. The settings
+    // form already refuses the combination, but this route did not, so an ops
+    // script could leave a tenant advertising collection with no connected
+    // account — Engage then silently collects nothing and every accepted
+    // proposal reads unpaid (Fortis, 2026-08-12).
+    if (data.payments?.collectPaymentAtSign === true) {
+      const payout = await prisma.tenantPayoutSettings.findUnique({
+        where: { tenantId: req.tenantId! },
+        select: { enabled: true },
+      });
+      if (!payout?.enabled) {
+        throw new ApiError(
+          'PAYOUT_NOT_ENABLED',
+          'Payment collection at signing needs a connected Stripe account. Enable Receive Payments Through Engage first, or record payments manually.',
+          400
+        );
+      }
+    }
+
     // AI autoreply can auto-send email to clients once enabled in 'auto' mode,
     // so — like the automationSchedule opt-in — only senior roles may change it,
     // tighter than this route's general ADMIN/PARTNER/MANAGER gate.
