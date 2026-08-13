@@ -752,6 +752,19 @@ export const apiClient = {
   archiveProposal: (id: string) =>
     api.post(`/proposals/${id}/archive`, {}) as Promise<ApiResponse<ProposalRecord>>,
 
+  /** Record a payment the practice collected outside Engage. */
+  markProposalPaid: (
+    id: string,
+    payload: { method: string; reference?: string; note?: string; paidAt?: string }
+  ) => api.post(`/proposals/${id}/mark-paid`, payload) as Promise<ApiResponse<ProposalRecord>>,
+
+  markProposalUnpaid: (id: string) =>
+    api.post(`/proposals/${id}/mark-unpaid`, {}) as Promise<ApiResponse<ProposalRecord>>,
+
+  /** Record AML as complete on the practice's own evidence. */
+  amlManualClear: (payload: { clientId: string; basis: string; note?: string }) =>
+    api.post('/aml/manual-clear', payload) as Promise<ApiResponse<unknown>>,
+
   getNotifications: () =>
     api.get('/notifications') as Promise<ApiResponse<import('./notifications').NotificationItem[]>>,
 

@@ -675,6 +675,20 @@ export default function ProposalWizard() {
               </div>
             </div>
 
+            {/* The wizard cannot advance without a Clara result, so always offer
+                the way out. Carries the client through to the manual builder. */}
+            <button
+              type="button"
+              onClick={() =>
+                navigate(
+                  `/proposals/new?manual=1&clientId=${encodeURIComponent(selectedClient.id)}`
+                )
+              }
+              className="text-sm text-primary-600 dark:text-primary-400 font-medium hover:underline"
+            >
+              Skip {AI_COPILOT.name} and build this proposal myself
+            </button>
+
             {autoFitLoading && (
               <div className="text-center py-12 text-slate-500">
                 <SparklesIcon className="h-8 w-8 mx-auto mb-3 animate-pulse text-primary-500" />

@@ -84,6 +84,23 @@ router.put(
     }
 
     if (body.collectPaymentAtSign !== undefined) {
+      // Read the persisted flag rather than body.enabled: savePayoutSettings has
+      // already run, and enabling collection with no connected account means
+      // Engage collects nothing while telling the practice it will.
+      if (body.collectPaymentAtSign === true) {
+        const payout = await prisma.tenantPayoutSettings.findUnique({
+          where: { tenantId },
+          select: { enabled: true },
+        });
+        if (!payout?.enabled) {
+          throw new ApiError(
+            'PAYOUT_NOT_ENABLED',
+            'Payment collection at signing needs a connected Stripe account.',
+            400
+          );
+        }
+      }
+
       const tenant = await prisma.tenant.findUnique({
         where: { id: tenantId },
         select: { settings: true },

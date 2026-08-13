@@ -404,9 +404,9 @@ const Proposals = () => {
             Export CSV
           </button>
         )}
-        <Link to="/proposals/wizard" className="btn-primary">
+        <Link to="/proposals/new" className="btn-primary">
           <PlusIcon className="h-5 w-5 mr-2" />
-          Create proposal in 5 minutes
+          New proposal
         </Link>
       </div>
 
