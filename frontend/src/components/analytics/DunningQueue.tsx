@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { Link } from 'react-router-dom';
 import {
   CreditCardIcon,
@@ -250,81 +251,92 @@ export default function DunningQueue() {
         </p>
       </div>
 
-      {recordFor && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4"
-          role="dialog"
-          aria-modal="true"
-          aria-label="Record a payment"
-        >
-          <div className="w-full max-w-md rounded-2xl bg-white p-5 shadow-xl dark:bg-slate-800">
-            <h3 className="text-base font-semibold text-slate-900 dark:text-white">
-              Record a payment
-            </h3>
-            <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
-              {recordFor.clientName} · {formatGbp(recordFor.amountPence)}
-            </p>
-            <p className="mt-2 text-xs text-slate-500 dark:text-slate-400">
-              This records money you collected outside Engage. It does not charge the client.
-            </p>
+      {/* Portaled: as a direct child of .metal-tile this dialog loses
+          position: fixed to metal.css's child rule and renders in-flow at the
+          bottom of the tile, off-screen on long queues. */}
+      {recordFor &&
+        createPortal(
+          <div
+            className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/50 p-4"
+            role="dialog"
+            aria-modal="true"
+            aria-label="Record a payment"
+          >
+            <div className="w-full max-w-md rounded-2xl bg-white p-5 shadow-xl dark:bg-slate-800">
+              <h3 className="text-base font-semibold text-slate-900 dark:text-white">
+                Record a payment
+              </h3>
+              <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
+                {recordFor.clientName} · {formatGbp(recordFor.amountPence)}
+              </p>
+              <p className="mt-2 text-xs text-slate-500 dark:text-slate-400">
+                This records money you collected outside Engage. It does not charge the client.
+              </p>
 
-            <label className="mt-4 block text-sm font-medium text-slate-700 dark:text-slate-200">
-              How was it paid?
-              <select
-                className="input mt-1 w-full"
-                value={method}
-                onChange={(e) => setMethod(e.target.value)}
-              >
-                <option value="BANK_TRANSFER">Bank transfer</option>
-                <option value="DIRECT_DEBIT">Direct debit</option>
-                <option value="CARD">Card</option>
-                <option value="CHEQUE">Cheque</option>
-                <option value="CASH">Cash</option>
-                <option value="OTHER">Other</option>
-              </select>
-            </label>
+              <label className="mt-4 block text-sm font-medium text-slate-700 dark:text-slate-200">
+                How was it paid?
+                <select
+                  className="input mt-1 w-full"
+                  value={method}
+                  onChange={(e) => setMethod(e.target.value)}
+                >
+                  <option value="BANK_TRANSFER">Bank transfer</option>
+                  <option value="DIRECT_DEBIT">Direct debit</option>
+                  <option value="CARD">Card</option>
+                  <option value="CHEQUE">Cheque</option>
+                  <option value="CASH">Cash</option>
+                  <option value="OTHER">Other</option>
+                </select>
+              </label>
 
-            <label className="mt-3 block text-sm font-medium text-slate-700 dark:text-slate-200">
-              Date received
-              <input
-                type="date"
-                className="input mt-1 w-full"
-                value={paidAt}
-                onChange={(e) => setPaidAt(e.target.value)}
-              />
-            </label>
+              <label className="mt-3 block text-sm font-medium text-slate-700 dark:text-slate-200">
+                Date received
+                <input
+                  type="date"
+                  className="input mt-1 w-full"
+                  value={paidAt}
+                  onChange={(e) => setPaidAt(e.target.value)}
+                />
+              </label>
 
-            <label className="mt-3 block text-sm font-medium text-slate-700 dark:text-slate-200">
-              Reference <span className="font-normal text-slate-400">(optional)</span>
-              <input
-                type="text"
-                className="input mt-1 w-full"
-                placeholder="Bank reference or invoice number"
-                value={reference}
-                onChange={(e) => setReference(e.target.value)}
-              />
-            </label>
+              <label className="mt-3 block text-sm font-medium text-slate-700 dark:text-slate-200">
+                Reference <span className="font-normal text-slate-400">(optional)</span>
+                <input
+                  type="text"
+                  className="input mt-1 w-full"
+                  placeholder="Bank reference or invoice number"
+                  value={reference}
+                  onChange={(e) => setReference(e.target.value)}
+                />
+              </label>
 
-            <div className="mt-5 flex justify-end gap-2">
-              <button
-                type="button"
-                className="btn-secondary text-sm"
-                onClick={() => setRecordFor(null)}
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                className="btn-primary text-sm"
-                disabled={busyId === recordFor.proposalId}
-                onClick={() => void recordPayment()}
-              >
-                {busyId === recordFor.proposalId ? 'Recording…' : 'Record payment'}
-              </button>
+              {msg && (
+                <p className="mt-3 rounded-lg border border-rose-200 bg-rose-50 px-2 py-1.5 text-xs text-rose-800">
+                  {msg}
+                </p>
+              )}
+
+              <div className="mt-5 flex justify-end gap-2">
+                <button
+                  type="button"
+                  className="btn-secondary text-sm"
+                  onClick={() => setRecordFor(null)}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  className="btn-primary text-sm"
+                  disabled={busyId === recordFor.proposalId}
+                  onClick={() => void recordPayment()}
+                >
+                  {busyId === recordFor.proposalId ? 'Recording…' : 'Record payment'}
+                </button>
+              </div>
             </div>
-          </div>
-        </div>
-      )}
+          </div>,
+          document.body
+        )}
     </div>
   );
 }
