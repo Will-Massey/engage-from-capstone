@@ -3,8 +3,11 @@
  *
  * /engage/api/*   → engage-backend.onrender.com/api/*
  * /engage/ping    → engage-backend.onrender.com/ping
+ * /engage/mtd-repricing[/] → 301 /mtd-repricing/ (Pages lead magnet; query preserved)
+ * /engage/proposal-checklist[/] → 301 /proposal-checklist/
  * /engage/assets/*, /engage/images/* → engage-frontend (nested under /engage on Render)
  * /engage/*       → engage-frontend SPA (index.html for client routes)
+ *                 Do not splat every /engage/* slug — login/register stay on the app.
  *
  * Edge cache: hashed /engage/assets/* (immutable) + SPA index.html shell (60s).
  */
@@ -86,6 +89,26 @@ export function isMarketingRoot(pathname, method, cookieHeader) {
     (method === 'GET' || method === 'HEAD') &&
     !hasSessionCookie(cookieHeader)
   );
+}
+
+/**
+ * Lead magnets live on the apex Pages site, not under /engage.
+ * This worker owns /engage* before Pages _redirects run, so these two
+ * slugs must 301 here. Exact path + optional trailing slash only.
+ *
+ * @param {string} pathname
+ * @param {string} [search] including the leading '?' when present
+ * @returns {string | null} location path + query, or null if not a magnet
+ */
+const LEAD_MAGNETS = Object.freeze({
+  'mtd-repricing': '/mtd-repricing/',
+  'proposal-checklist': '/proposal-checklist/',
+});
+
+export function leadMagnetLocation(pathname, search = '') {
+  const match = /^\/engage\/(mtd-repricing|proposal-checklist)\/?$/.exec(pathname);
+  if (!match) return null;
+  return `${LEAD_MAGNETS[match[1]]}${search}`;
 }
 
 function stripPrefix(pathname) {
@@ -188,6 +211,11 @@ export default {
 
     if (pathname === PREFIX) {
       return Response.redirect(`${url.origin}${PREFIX}/`, 301);
+    }
+
+    const magnet = leadMagnetLocation(pathname, url.search);
+    if (magnet) {
+      return Response.redirect(`${url.origin}${magnet}`, 301);
     }
 
     if (pathname === `${PREFIX}/ping` || pathname === `${PREFIX}/health`) {

@@ -1,6 +1,9 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { hasSessionCookie, isMarketingRoot } from './index.js';
+import { readFileSync } from 'node:fs';
+import { dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
+import { hasSessionCookie, isMarketingRoot, leadMagnetLocation } from './index.js';
 
 test('hasSessionCookie detects accessToken', () => {
   assert.equal(hasSessionCookie('accessToken=abc123'), true);
@@ -27,4 +30,37 @@ test('isMarketingRoot: anonymous GET/HEAD on the bare root only', () => {
   assert.equal(isMarketingRoot('/engage/', 'POST', ''), false);
   assert.equal(isMarketingRoot('/engage/login', 'GET', ''), false);
   assert.equal(isMarketingRoot('/engage/proposals/1', 'GET', ''), false);
+});
+
+test('leadMagnetLocation: exact slugs 301 to the apex magnets, query preserved', () => {
+  assert.equal(leadMagnetLocation('/engage/mtd-repricing'), '/mtd-repricing/');
+  assert.equal(leadMagnetLocation('/engage/mtd-repricing/'), '/mtd-repricing/');
+  assert.equal(leadMagnetLocation('/engage/mtd-repricing/', '?utm=linkedin'), '/mtd-repricing/?utm=linkedin');
+  assert.equal(leadMagnetLocation('/engage/proposal-checklist'), '/proposal-checklist/');
+  assert.equal(leadMagnetLocation('/engage/proposal-checklist/'), '/proposal-checklist/');
+  assert.equal(
+    leadMagnetLocation('/engage/proposal-checklist', '?ref=email'),
+    '/proposal-checklist/?ref=email'
+  );
+});
+
+test('leadMagnetLocation: does not splat /engage/* — marketing and app routes stay', () => {
+  assert.equal(leadMagnetLocation('/engage/'), null);
+  assert.equal(leadMagnetLocation('/engage'), null);
+  assert.equal(leadMagnetLocation('/engage/register'), null);
+  assert.equal(leadMagnetLocation('/engage/login'), null);
+  assert.equal(leadMagnetLocation('/engage/mtd-repricing/extra'), null);
+  assert.equal(leadMagnetLocation('/engage/proposal-checklist/download'), null);
+  assert.equal(leadMagnetLocation('/engage/proposals/1'), null);
+});
+
+test('packaged marketing HTML past-tenses the first quarterly deadline', () => {
+  const html = readFileSync(
+    join(dirname(fileURLToPath(import.meta.url)), '../public/engage/index.html'),
+    'utf8'
+  );
+  assert.doesNotMatch(html, /first quarterly deadline is\s+7 August 2026/i);
+  assert.match(html, /first quarterly deadline was\s+7 August 2026/);
+  assert.match(html, /Solo £29/);
+  assert.match(html, /Practice £59/);
 });
