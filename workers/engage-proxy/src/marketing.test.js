@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { hasSessionCookie, isMarketingRoot, leadMagnetLocation } from './index.js';
+import worker, { hasSessionCookie, isMarketingRoot, leadMagnetLocation } from './index.js';
 
 test('hasSessionCookie detects accessToken', () => {
   assert.equal(hasSessionCookie('accessToken=abc123'), true);
@@ -42,6 +42,24 @@ test('leadMagnetLocation: exact slugs 301 to the apex magnets, query preserved',
     leadMagnetLocation('/engage/proposal-checklist', '?ref=email'),
     '/proposal-checklist/?ref=email'
   );
+});
+
+test('fetch 301s the two magnets with query preserved and leaves app routes alone', async () => {
+  const magnet = await worker.fetch(
+    new Request('https://capstonesoftware.co.uk/engage/mtd-repricing/?utm=linkedin'),
+    {},
+    {}
+  );
+  assert.equal(magnet.status, 301);
+  assert.equal(magnet.headers.get('Location'), 'https://capstonesoftware.co.uk/mtd-repricing/?utm=linkedin');
+
+  const checklist = await worker.fetch(
+    new Request('https://capstonesoftware.co.uk/engage/proposal-checklist'),
+    {},
+    {}
+  );
+  assert.equal(checklist.status, 301);
+  assert.equal(checklist.headers.get('Location'), 'https://capstonesoftware.co.uk/proposal-checklist/');
 });
 
 test('leadMagnetLocation: does not splat /engage/* — marketing and app routes stay', () => {
