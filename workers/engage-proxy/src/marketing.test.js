@@ -35,7 +35,10 @@ test('isMarketingRoot: anonymous GET/HEAD on the bare root only', () => {
 test('leadMagnetLocation: exact slugs 301 to the apex magnets, query preserved', () => {
   assert.equal(leadMagnetLocation('/engage/mtd-repricing'), '/mtd-repricing/');
   assert.equal(leadMagnetLocation('/engage/mtd-repricing/'), '/mtd-repricing/');
-  assert.equal(leadMagnetLocation('/engage/mtd-repricing/', '?utm=linkedin'), '/mtd-repricing/?utm=linkedin');
+  assert.equal(
+    leadMagnetLocation('/engage/mtd-repricing/', '?utm=linkedin'),
+    '/mtd-repricing/?utm=linkedin'
+  );
   assert.equal(leadMagnetLocation('/engage/proposal-checklist'), '/proposal-checklist/');
   assert.equal(leadMagnetLocation('/engage/proposal-checklist/'), '/proposal-checklist/');
   assert.equal(
@@ -51,7 +54,10 @@ test('fetch 301s the two magnets with query preserved and leaves app routes alon
     {}
   );
   assert.equal(magnet.status, 301);
-  assert.equal(magnet.headers.get('Location'), 'https://capstonesoftware.co.uk/mtd-repricing/?utm=linkedin');
+  assert.equal(
+    magnet.headers.get('Location'),
+    'https://capstonesoftware.co.uk/mtd-repricing/?utm=linkedin'
+  );
 
   const checklist = await worker.fetch(
     new Request('https://capstonesoftware.co.uk/engage/proposal-checklist'),
@@ -59,7 +65,10 @@ test('fetch 301s the two magnets with query preserved and leaves app routes alon
     {}
   );
   assert.equal(checklist.status, 301);
-  assert.equal(checklist.headers.get('Location'), 'https://capstonesoftware.co.uk/proposal-checklist/');
+  assert.equal(
+    checklist.headers.get('Location'),
+    'https://capstonesoftware.co.uk/proposal-checklist/'
+  );
 });
 
 test('leadMagnetLocation: does not splat /engage/* — marketing and app routes stay', () => {
