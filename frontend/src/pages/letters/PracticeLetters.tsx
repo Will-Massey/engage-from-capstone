@@ -5,8 +5,17 @@ import {
   ClipboardDocumentIcon,
   PrinterIcon,
 } from '@heroicons/react/24/outline';
+import toast from 'react-hot-toast';
 import { apiClient } from '../../utils/api';
 import { StatusChip } from '../../components/ui/StatusChip';
+import {
+  composeLetterBlocks,
+  LETTER_BLOCK_TYPES,
+  moveLetterBlock,
+  parseStoredLetterBlocks,
+  seedBlocksFromLetter,
+  type LetterBlock,
+} from './letterBlocks';
 
 type LetterType = 'DISENGAGEMENT' | 'PROFESSIONAL_CLEARANCE' | 'HMRC_64_8';
 
@@ -17,6 +26,7 @@ interface Letter {
   title: string;
   bodyHtml: string;
   createdAt: string;
+  metaJson?: string | null;
   client: { id: string; name: string };
 }
 
@@ -36,12 +46,7 @@ export default function PracticeLetters() {
   const [editing, setEditing] = useState(false);
   const [editHtml, setEditHtml] = useState('');
   const [designerMode, setDesignerMode] = useState(false);
-  const [blocks, setBlocks] = useState<
-    Array<{
-      type: 'header' | 'body' | 'services' | 'fees' | 'clauses' | 'signoff';
-      content: string;
-    }>
-  >([
+  const [blocks, setBlocks] = useState<LetterBlock[]>([
     { type: 'header', content: '' },
     { type: 'body', content: '' },
     { type: 'clauses', content: '' },
@@ -116,16 +121,10 @@ export default function PracticeLetters() {
   function startDesigner(letter: Letter) {
     setEditing(true);
     setDesignerMode(true);
-    // Seed blocks from plain text of letter
-    const tmp = document.createElement('div');
-    tmp.innerHTML = letter.bodyHtml || '';
-    const text = tmp.textContent || '';
-    setBlocks([
-      { type: 'header', content: letter.title || '' },
-      { type: 'body', content: text.slice(0, 1500) },
-      { type: 'clauses', content: form.reason || '' },
-      { type: 'signoff', content: 'Yours faithfully,' },
-    ]);
+    const stored = parseStoredLetterBlocks(letter.metaJson);
+    setBlocks(
+      stored ?? seedBlocksFromLetter(letter.title, letter.bodyHtml, form.reason)
+    );
   }
 
   async function saveLetter() {
@@ -139,6 +138,7 @@ export default function PracticeLetters() {
       const letter = res.data?.data ?? res.data;
       setSelected(letter);
       setEditing(false);
+      toast.success('Draft saved');
       await load();
     } catch (e: any) {
       setError(e?.response?.data?.error?.message || 'Save failed');
@@ -153,6 +153,7 @@ export default function PracticeLetters() {
     const text = tmp.textContent || tmp.innerText || '';
     try {
       await navigator.clipboard.writeText(text);
+      toast.success('Copied to clipboard');
       setError(null);
     } catch {
       setError('Could not copy to clipboard');
@@ -289,7 +290,11 @@ export default function PracticeLetters() {
                   <button
                     type="button"
                     className="flex w-full items-start justify-between gap-2 px-4 py-3 text-left hover:bg-slate-50 dark:hover:bg-slate-800"
-                    onClick={() => setSelected(l)}
+                    onClick={() => {
+                      setSelected(l);
+                      setEditing(false);
+                      setDesignerMode(false);
+                    }}
                   >
                     <div className="min-w-0">
                       <p className="truncate font-medium text-slate-900 dark:text-slate-50">
@@ -385,37 +390,101 @@ export default function PracticeLetters() {
                 </div>
               </div>
               {editing && designerMode ? (
-                <div className="space-y-3 rounded-lg border border-emerald-200/60 bg-emerald-50/30 p-3 dark:border-emerald-900 dark:bg-emerald-950/20">
+                <div
+                  className="space-y-3 rounded-lg border border-emerald-200/60 bg-emerald-50/30 p-3 dark:border-emerald-900 dark:bg-emerald-950/20"
+                  data-testid="letter-designer"
+                >
                   <p className="text-2xs font-semibold uppercase tracking-wide text-emerald-800 dark:text-emerald-300">
-                    Document designer v1 — blocks
+                    Document designer — reorder, label, preview
                   </p>
-                  {blocks.map((b, i) => (
-                    <label key={i} className="block text-xs text-slate-500">
-                      {b.type}
-                      <textarea
-                        className="input-field mt-1 min-h-[4rem] text-sm"
-                        value={b.content}
-                        onChange={(e) => {
-                          const next = [...blocks];
-                          next[i] = { ...b, content: e.target.value };
-                          setBlocks(next);
-                        }}
-                      />
-                    </label>
-                  ))}
-                  <div className="flex flex-wrap gap-1">
-                    {(['header', 'body', 'services', 'fees', 'clauses', 'signoff'] as const).map(
-                      (t) => (
-                        <button
-                          key={t}
-                          type="button"
-                          className="rounded-full border border-slate-200 px-2 py-0.5 text-2xs font-medium hover:border-emerald-400"
-                          onClick={() => setBlocks((bs) => [...bs, { type: t, content: '' }])}
+                  <div className="grid gap-3 lg:grid-cols-2">
+                    <div className="space-y-2">
+                      {blocks.map((b, i) => (
+                        <div
+                          key={`${b.type}-${i}`}
+                          className="rounded-lg border border-slate-200 bg-white p-2 dark:border-slate-700 dark:bg-slate-900"
                         >
-                          + {t}
-                        </button>
-                      )
-                    )}
+                          <div className="mb-1 flex flex-wrap items-center justify-between gap-2">
+                            <select
+                              className="input-field py-1 text-xs"
+                              value={b.type}
+                              onChange={(e) => {
+                                const next = [...blocks];
+                                next[i] = { ...b, type: e.target.value as LetterBlock['type'] };
+                                setBlocks(next);
+                              }}
+                            >
+                              {LETTER_BLOCK_TYPES.map((t) => (
+                                <option key={t} value={t}>
+                                  {t}
+                                </option>
+                              ))}
+                            </select>
+                            <div className="flex gap-1">
+                              <button
+                                type="button"
+                                className="btn-secondary px-1.5 py-0.5 text-2xs"
+                                disabled={i === 0}
+                                onClick={() => setBlocks((bs) => moveLetterBlock(bs, i, -1))}
+                              >
+                                Up
+                              </button>
+                              <button
+                                type="button"
+                                className="btn-secondary px-1.5 py-0.5 text-2xs"
+                                disabled={i === blocks.length - 1}
+                                onClick={() => setBlocks((bs) => moveLetterBlock(bs, i, 1))}
+                              >
+                                Down
+                              </button>
+                              <button
+                                type="button"
+                                className="btn-secondary px-1.5 py-0.5 text-2xs text-red-600"
+                                disabled={blocks.length <= 1}
+                                onClick={() =>
+                                  setBlocks((bs) => bs.filter((_, j) => j !== i))
+                                }
+                              >
+                                Remove
+                              </button>
+                            </div>
+                          </div>
+                          <textarea
+                            className="input-field min-h-[4.5rem] text-sm"
+                            value={b.content}
+                            onChange={(e) => {
+                              const next = [...blocks];
+                              next[i] = { ...b, content: e.target.value };
+                              setBlocks(next);
+                            }}
+                          />
+                        </div>
+                      ))}
+                      <div className="flex flex-wrap gap-1">
+                        {LETTER_BLOCK_TYPES.map((t) => (
+                          <button
+                            key={t}
+                            type="button"
+                            className="rounded-full border border-slate-200 px-2 py-0.5 text-2xs font-medium hover:border-emerald-400"
+                            onClick={() =>
+                              setBlocks((bs) => [...bs, { type: t, content: '' }])
+                            }
+                          >
+                            + {t}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                    <div>
+                      <p className="mb-1 text-2xs font-semibold uppercase tracking-wide text-slate-500">
+                        Live preview
+                      </p>
+                      <div
+                        className="prose prose-sm max-w-none rounded-lg border border-slate-200 bg-white p-4 dark:border-slate-700 dark:bg-slate-900 dark:prose-invert"
+                        data-testid="letter-designer-preview"
+                        dangerouslySetInnerHTML={{ __html: composeLetterBlocks(blocks) }}
+                      />
+                    </div>
                   </div>
                 </div>
               ) : editing ? (

@@ -8,6 +8,7 @@ import {
   letterTitle,
   type PracticeLetterType,
 } from '../services/practiceLetterService.js';
+import { composeLetterBlocks } from '../services/practiceLetterBlocks.js';
 
 const router = Router();
 
@@ -155,35 +156,6 @@ const patchLetterSchema = z.object({
     .optional(),
 });
 
-function blocksToHtml(blocks: Array<{ type: string; content: string }>): string {
-  const parts = blocks.map((b) => {
-    const c = b.content;
-    switch (b.type) {
-      case 'header':
-        return `<div class="letter-block letter-header"><p><strong>${escapeLite(c)}</strong></p></div>`;
-      case 'services':
-        return `<div class="letter-block letter-services"><p><strong>Services</strong></p><p>${escapeLite(c).replace(/\n/g, '<br/>')}</p></div>`;
-      case 'fees':
-        return `<div class="letter-block letter-fees"><p><strong>Fees</strong></p><p>${escapeLite(c).replace(/\n/g, '<br/>')}</p></div>`;
-      case 'clauses':
-        return `<div class="letter-block letter-clauses"><p><strong>Clauses</strong></p><p>${escapeLite(c).replace(/\n/g, '<br/>')}</p></div>`;
-      case 'signoff':
-        return `<div class="letter-block letter-signoff"><p>${escapeLite(c).replace(/\n/g, '<br/>')}</p></div>`;
-      default:
-        return `<div class="letter-block letter-body"><p>${escapeLite(c).replace(/\n/g, '<br/>')}</p></div>`;
-    }
-  });
-  return `<div class="practice-letter">${parts.join('\n')}</div>`;
-}
-
-function escapeLite(s: string): string {
-  return s
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;');
-}
-
 /** PATCH /api/practice-letters/:id — edit draft body / block designer */
 router.patch(
   '/:id',
@@ -201,7 +173,7 @@ router.patch(
     let bodyHtml = body.bodyHtml;
     let metaJson = existing.metaJson;
     if (body.blocks?.length) {
-      bodyHtml = blocksToHtml(body.blocks);
+      bodyHtml = composeLetterBlocks(body.blocks);
       try {
         const meta = JSON.parse(existing.metaJson || '{}');
         meta.blocks = body.blocks;

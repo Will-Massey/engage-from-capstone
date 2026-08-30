@@ -69,7 +69,7 @@ Also shipped 2026-08-06: **#105** (Documents-hub field fixes: client search, AML
 ## Next up
 
 1. Remaining scorecard / GTM: Credas AML (awaits William's partner email); Gmail `GMAIL_CLIENT_ID`/`SECRET`; first real M365 connect watch; Caroline document-request end-to-end.
-2. Product wave: W3.3 renewal window polish, W3.4 Clara board, W2.6 document designer.
+2. Product wave: W2.7 letter e-sign / 64-8 track; W2.6 deeper (proposal-fed services/fees); GTM switcher polish.
 
 ## Notes
 

@@ -136,7 +136,7 @@ W4  Mobile, trust, GTM, cutover    ──┘
 | W2.3 | **Clara inside automations** (“rewrite this chase in firm voice”)                         | built — drafts stored on the job     |
 | W2.4 | Bulk secure email + optional **SMS add-on** (Twilio)                                      | Parity +                             |
 | W2.5 | Read-only **email timeline** (M365/Gmail) linked to Client/Job                            | Path to two-way                      |
-| W2.6 | **Document designer v1** (blocks: header, services, fees, clauses, sign)                  | Letter craft                         |
+| W2.6 | **Document designer v1** (blocks: header, services, fees, clauses, sign)                  | built — reorder, live preview, persist |
 | W2.7 | Disengage / clearance **e-sign**; 64-8 **status track** + partner/API spike               | Admin exceed                         |
 | W2.8 | **Catch-up fees** first-class on proposal wizard                                          | Pricing parity                       |
 
@@ -185,7 +185,7 @@ W4  Mobile, trust, GTM, cutover    ──┘
 | Time profitability         | W1.7 + W3 metal P&L                                         |
 | Portal / mobile            | **W1.4 + W4.1**                                             |
 | Automations / bulk email   | **W2**                                                      |
-| Document designer          | **W2.6**                                                    |
+| Document designer          | **W2.6** (built — blocks + live preview)                    |
 | Live 64-8                  | **W2.7**                                                    |
 | TaxCalc distribution       | **W4.3–4.5** narrative + switcher (never depend on TaxCalc) |
 | Unlimited users sticker    | **W4.4** packaging                                          |
