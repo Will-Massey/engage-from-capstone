@@ -524,6 +524,16 @@ const AnimatedRoutes = () => {
               </AnimatedPage>
             }
           />
+          <Route
+            path="value-packaging"
+            element={
+              <AnimatedPage>
+                <PageSuspense>
+                  <Pages.ValuePackaging />
+                </PageSuspense>
+              </AnimatedPage>
+            }
+          />
         </Route>
 
         {/* Public status page (W4.5) */}

@@ -296,6 +296,9 @@ export default function SwitchFromEngager() {
               <Link to="/trust" className="btn-ghost text-sm">
                 Trust pack
               </Link>
+              <Link to="/value-packaging" className="btn-ghost text-sm">
+                Value packaging
+              </Link>
             </div>
           </div>
           <BrandLogo className="h-28 w-auto max-w-[12rem] object-contain self-start sm:self-center" />

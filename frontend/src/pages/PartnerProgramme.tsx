@@ -56,6 +56,9 @@ export default function PartnerProgramme() {
               <Link to="/trust" className="btn-secondary text-sm">
                 Trust pack
               </Link>
+              <Link to="/value-packaging" className="btn-secondary text-sm">
+                Value packaging
+              </Link>
               <Link to="/proposals/wizard" className="btn-ghost text-sm">
                 Demo: proposal wizard
               </Link>

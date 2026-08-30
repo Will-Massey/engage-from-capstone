@@ -69,7 +69,7 @@ Also shipped 2026-08-06: **#105** (Documents-hub field fixes: client search, AML
 ## Next up
 
 1. Remaining scorecard / GTM: Credas AML (awaits William's partner email); Gmail `GMAIL_CLIENT_ID`/`SECRET`; first real M365 connect watch; Caroline document-request end-to-end.
-2. Product wave: W4.4 value packaging vs £9/client.
+2. Product wave: W4.5 Xero/QBO finish (no fake TaxCalc); W4.7 one-pager polish if needed.
 
 ## Notes
 

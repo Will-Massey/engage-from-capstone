@@ -10,6 +10,7 @@ import {
   ArrowRightIcon,
   WrenchScrewdriverIcon,
   CreditCardIcon,
+  CurrencyPoundIcon,
   ClockIcon,
   SparklesIcon,
   BriefcaseIcon,
@@ -158,6 +159,14 @@ const CommandPalette = ({ isOpen, onClose }: CommandPaletteProps) => {
         icon: ShieldCheckIcon,
         category: 'Grow',
         action: () => navigate('/trust'),
+      },
+      {
+        id: 'nav-packaging',
+        title: 'Value packaging vs £9/client',
+        subtitle: 'Recommend Starter / Professional / Enterprise',
+        icon: CurrencyPoundIcon,
+        category: 'Grow',
+        action: () => navigate('/value-packaging'),
       },
       {
         id: 'nav-import-clients',

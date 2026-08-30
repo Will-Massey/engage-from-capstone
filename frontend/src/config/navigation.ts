@@ -303,6 +303,13 @@ export function getPageMeta(pathname: string): {
       breadcrumbs: [{ label: 'Dashboard', href: '/' }, { label: 'Trust' }],
     };
   }
+  if (pathname === '/value-packaging') {
+    return {
+      title: 'Value packaging',
+      description: 'Ladder vs £9/client — do not race to the bottom',
+      breadcrumbs: [{ label: 'Dashboard', href: '/' }, { label: 'Value packaging' }],
+    };
+  }
 
   if (pathname === '/jobs') {
     return {

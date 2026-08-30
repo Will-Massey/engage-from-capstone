@@ -55,6 +55,7 @@ export const Analytics = lazy(() => import('../pages/Analytics'));
 export const PartnerProgramme = lazy(() => import('../pages/PartnerProgramme'));
 export const SwitchFromEngager = lazy(() => import('../pages/gtm/SwitchFromEngager'));
 export const TrustPack = lazy(() => import('../pages/gtm/TrustPack'));
+export const ValuePackaging = lazy(() => import('../pages/gtm/ValuePackaging'));
 
 /** Legal (public) */
 export const TermsOfService = lazy(() => import('../pages/legal/TermsOfService'));
@@ -106,6 +107,7 @@ export const ROUTE_LAZY_PAGES: Record<string, LazyExoticComponent<ComponentType<
   PartnerProgramme,
   SwitchFromEngager,
   TrustPack,
+  ValuePackaging,
   NotFound,
   Status,
   PublicProposalView,
