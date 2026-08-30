@@ -9,6 +9,7 @@ import {
   type PracticeLetterType,
 } from '../services/practiceLetterService.js';
 import { composeLetterBlocks } from '../services/practiceLetterBlocks.js';
+import { formatProposalLetterSeed } from '../services/letterProposalSeed.js';
 import { getFrontendUrl } from '../config/urls.js';
 import {
   applyHmrc648Stage,
@@ -218,6 +219,38 @@ router.patch(
       },
     });
     res.json({ success: true, data: letter });
+  })
+);
+
+/** GET /api/practice-letters/:id/proposal-seed — last accepted proposal services/fees */
+router.get(
+  '/:id/proposal-seed',
+  authenticate,
+  asyncHandler(async (req, res) => {
+    const existing = await prisma.practiceLetter.findFirst({
+      where: { id: req.params.id, tenantId: req.tenantId! },
+      select: { id: true, clientId: true },
+    });
+    if (!existing) throw new ApiError('NOT_FOUND', 'Letter not found', 404);
+
+    const proposal = await prisma.proposal.findFirst({
+      where: { tenantId: req.tenantId!, clientId: existing.clientId, status: 'ACCEPTED' },
+      orderBy: { acceptedAt: 'desc' },
+      select: {
+        reference: true,
+        services: {
+          select: { name: true, billingFrequency: true, lineTotalPence: true },
+          orderBy: { sortOrder: 'asc' },
+        },
+      },
+    });
+    if (!proposal) {
+      return res.json({ success: true, data: null });
+    }
+    res.json({
+      success: true,
+      data: formatProposalLetterSeed(proposal.reference, proposal.services),
+    });
   })
 );
 

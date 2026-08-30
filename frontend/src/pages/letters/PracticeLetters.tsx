@@ -11,6 +11,7 @@ import { StatusChip } from '../../components/ui/StatusChip';
 import {
   composeLetterBlocks,
   LETTER_BLOCK_TYPES,
+  mergeProposalSeedIntoBlocks,
   moveLetterBlock,
   parseStoredLetterBlocks,
   seedBlocksFromLetter,
@@ -160,6 +161,26 @@ export default function PracticeLetters() {
       setError(null);
     } catch {
       setError('Could not copy to clipboard');
+    }
+  }
+
+  async function seedFromLastProposal() {
+    if (!selected) return;
+    try {
+      const res = await apiClient.get(`/practice-letters/${selected.id}/proposal-seed`);
+      const seed = res.data?.data ?? res.data;
+      if (!seed?.services && !seed?.fees) {
+        toast.error('No accepted proposal for this client yet');
+        return;
+      }
+      setBlocks((bs) => mergeProposalSeedIntoBlocks(bs, seed));
+      toast.success(
+        seed.proposalReference
+          ? `Added lines from ${seed.proposalReference}`
+          : 'Added services and fees'
+      );
+    } catch {
+      toast.error('Could not load the last proposal');
     }
   }
 
@@ -477,6 +498,13 @@ export default function PracticeLetters() {
                         </div>
                       ))}
                       <div className="flex flex-wrap gap-1">
+                        <button
+                          type="button"
+                          className="rounded-full border border-emerald-300 bg-emerald-50 px-2 py-0.5 text-2xs font-medium text-emerald-800 hover:border-emerald-500 dark:border-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-200"
+                          onClick={() => void seedFromLastProposal()}
+                        >
+                          + from last proposal
+                        </button>
                         {LETTER_BLOCK_TYPES.map((t) => (
                           <button
                             key={t}

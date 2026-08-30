@@ -83,6 +83,30 @@ export function seedBlocksFromLetter(title: string, bodyHtml: string, reason?: s
   ];
 }
 
+export function mergeProposalSeedIntoBlocks(
+  blocks: LetterBlock[],
+  seed: { services: string; fees: string }
+): LetterBlock[] {
+  const next = [...blocks];
+  const fill = (type: 'services' | 'fees', content: string) => {
+    const text = content.trim();
+    if (!text) return;
+    const idx = next.findIndex((b) => b.type === type);
+    if (idx === -1) {
+      const signoff = next.findIndex((b) => b.type === 'signoff');
+      const insertAt = signoff === -1 ? next.length : signoff;
+      next.splice(insertAt, 0, { type, content: text });
+      return;
+    }
+    if (!next[idx].content.trim()) {
+      next[idx] = { ...next[idx], content: text };
+    }
+  };
+  fill('services', seed.services);
+  fill('fees', seed.fees);
+  return next;
+}
+
 export function moveLetterBlock(blocks: LetterBlock[], index: number, delta: -1 | 1): LetterBlock[] {
   const next = index + delta;
   if (next < 0 || next >= blocks.length) return blocks;
