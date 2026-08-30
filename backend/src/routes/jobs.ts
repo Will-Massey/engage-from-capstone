@@ -14,7 +14,7 @@ import {
   listChasePacks,
   renderChaseTemplate,
 } from '../services/chasePackService.js';
-import { chatCompletion, isAiConfigured } from '../services/ai/aiClient.js';
+import { draftJobChase, parseChaseDraftMetadata } from '../services/claraChaseService.js';
 import { createEmailService } from '../services/emailService.js';
 import { sendMentionEmails } from '../services/jobMentionService.js';
 
@@ -1127,73 +1127,44 @@ router.post(
       p.checklistItems.filter((c) => !c.isDone).map((c) => `${p.name}: ${c.label}`)
     );
 
-    const contextBlock = [
-      `Practice: ${job.tenant.name}`,
-      `Client: ${job.client.name}`,
-      `Contact: ${job.client.contactName || 'n/a'} <${job.client.contactEmail}>`,
-      `Job: ${job.title} (${job.reference})`,
-      `Board column: ${job.boardColumn}`,
-      `Due: ${job.dueAt?.toISOString().slice(0, 10) || 'none'} (${job.deadlineKind})`,
-      `Open phases: ${openPhases.map((p) => p.name).join('; ') || 'none'}`,
-      `Open checklist: ${openChecks.slice(0, 12).join('; ') || 'none'}`,
-    ].join('\n');
+    const last = await prisma.jobActivity.findFirst({
+      where: { jobId: job.id },
+      orderBy: { createdAt: 'desc' },
+    });
+    const rewrite = req.body?.rewrite === true;
+    const previous = rewrite ? parseChaseDraftMetadata(last?.metadata) : null;
 
-    let subject = `Update on ${job.title} — ${job.client.name}`;
-    let bodyHtml = '';
-    let source: 'clara' | 'template' = 'template';
+    const draft = await draftJobChase({
+      tenantId: req.tenantId!,
+      practiceName: job.tenant.name,
+      job,
+      phaseName: openPhases[0]?.name,
+      openPhases: openPhases.map((p) => p.name),
+      openChecks,
+      previous,
+    });
 
-    if (isAiConfigured()) {
-      try {
-        const result = await chatCompletion(
-          [
-            {
-              role: 'system',
-              content:
-                'You are Clara, a UK accountancy practice co-pilot. Draft a concise professional client email in UK English. Return JSON only: {"subject":"...","bodyHtml":"<p>...</p>"}. Be warm, clear, and specific about next steps. No legal advice.',
-            },
-            {
-              role: 'user',
-              content: `Draft a chase / progress email for this delivery job:\n${contextBlock}`,
-            },
-          ],
-          { jsonMode: true, temperature: 0.4, maxTokens: 800 }
-        );
-        const parsed = JSON.parse(result.content) as { subject?: string; bodyHtml?: string };
-        if (parsed.subject) subject = parsed.subject;
-        if (parsed.bodyHtml) {
-          bodyHtml = parsed.bodyHtml;
-          source = 'clara';
-        }
-      } catch {
-        // fall through to template
-      }
-    }
-
-    if (!bodyHtml) {
-      const pack =
-        getChasePack(
-          job.boardColumn === 'REQUEST_RECORDS' ? 'RECORDS_REQUEST' : 'DEADLINE_APPROACHING'
-        ) || getChasePack('INFO_NUDGE')!;
-      const vars = {
-        contact_name: job.client.contactName || 'Client',
-        client_name: job.client.name,
-        job_title: job.title,
-        practice_name: job.tenant.name,
-        due_date: job.dueAt?.toLocaleDateString('en-GB') || null,
-        phase_name: openPhases[0]?.name || null,
-        board_column: boardColumnLabel(job.boardColumn),
-      };
-      subject = renderChaseTemplate(pack.subject, vars);
-      bodyHtml = renderChaseTemplate(pack.bodyHtml, vars);
-      source = 'template';
-    }
+    await prisma.jobActivity.create({
+      data: {
+        kind: 'NOTE',
+        message: `Clara drafted chase: ${draft.subject}`,
+        jobId: job.id,
+        actorId: req.user?.id,
+        metadata: JSON.stringify({
+          action: 'clara.draft-chase',
+          subject: draft.subject,
+          bodyHtml: draft.bodyHtml,
+          source: draft.source,
+        }),
+      },
+    });
 
     res.json({
       success: true,
       data: {
-        subject,
-        bodyHtml,
-        source,
+        subject: draft.subject,
+        bodyHtml: draft.bodyHtml,
+        source: draft.source,
         suggestedPackId:
           job.boardColumn === 'REQUEST_RECORDS' ? 'RECORDS_REQUEST' : 'DEADLINE_APPROACHING',
         openChecklist: openChecks.slice(0, 12),

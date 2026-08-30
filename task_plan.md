@@ -68,9 +68,8 @@ Also shipped 2026-08-06: **#105** (Documents-hub field fixes: client search, AML
 
 ## Next up
 
-1. **Automations builder (this session, 2026-08-19)** — When→Then chains grouped by trigger; add/toggle/delete/pack install auto-saves to the firm; leftover browser-only rules migrate once. Not committed yet.
-2. Remaining scorecard / GTM: Credas AML (awaits William's partner email); Gmail `GMAIL_CLIENT_ID`/`SECRET`; first real M365 connect watch; Caroline document-request end-to-end.
-3. Next product wave after automations polish: W3.7 formula pricing UX, or R4.4 Clara FAQ on the public sign page.
+1. Remaining scorecard / GTM: Credas AML (awaits William's partner email); Gmail `GMAIL_CLIENT_ID`/`SECRET`; first real M365 connect watch; Caroline document-request end-to-end.
+2. Product wave: W3.3 renewal window polish, W3.4 Clara board, W2.6 document designer.
 
 ## Notes
 

@@ -6,6 +6,11 @@
 import { prisma } from '../config/database.js';
 import { getChasePack, renderChaseTemplate, boardColumnLabel } from './chasePackService.js';
 import logger from '../config/logger.js';
+import {
+  draftJobChase,
+  draftProposalChase,
+  parseChaseDraftMetadata,
+} from './claraChaseService.js';
 
 export type AutomationRule = {
   id: string;
@@ -232,7 +237,12 @@ export async function runAutomationRules(
             sentAt: { lte: sevenDaysAgo },
           },
           take: 25,
-          select: { id: true, reference: true, title: true },
+          select: {
+            id: true,
+            reference: true,
+            title: true,
+            client: { select: { name: true, contactName: true } },
+          },
         });
         result.matched = proposals.length;
         for (const p of proposals) {
@@ -241,6 +251,20 @@ export async function runAutomationRules(
             continue;
           }
           if (!(await passesCooldown(result, rule.id, p.id, p.reference))) continue;
+          const lastLog = await prisma.activityLog.findFirst({
+            where: { tenantId, entityType: 'Proposal', entityId: p.id },
+            orderBy: { createdAt: 'desc' },
+          });
+          const previous = parseChaseDraftMetadata(lastLog?.metadata);
+          const draft =
+            rule.action === 'clara.rewrite' || rule.action.startsWith('chase.')
+              ? await draftProposalChase({
+                  tenantId,
+                  practiceName: tenant?.name || 'Practice',
+                  proposal: p,
+                  previous: rule.action === 'clara.rewrite' ? previous : null,
+                })
+              : null;
           if (cooldownDays) {
             await recordActed(
               tenantId,
@@ -255,8 +279,14 @@ export async function runAutomationRules(
               action: 'AUTOMATION_PROPOSAL_CHASE',
               entityType: 'Proposal',
               entityId: p.id,
-              description: `Automation (${rule.action}): unsigned 7d — ${p.reference}`,
-              metadata: JSON.stringify({ ruleId: rule.id, action: rule.action }),
+              description: draft
+                ? `Automation (${rule.action}): ${draft.subject}`
+                : `Automation (${rule.action}): unsigned 7d — ${p.reference}`,
+              metadata: JSON.stringify({
+                ruleId: rule.id,
+                action: rule.action,
+                ...(draft || {}),
+              }),
               tenantId,
             },
           });
@@ -396,12 +426,20 @@ async function applyAction(
         board_column: boardColumnLabel(job.boardColumn),
       };
       const subject = renderChaseTemplate(pack.subject, vars);
+      const bodyHtml = renderChaseTemplate(pack.bodyHtml, vars);
       await prisma.jobActivity.create({
         data: {
           kind: 'NOTE',
           message: `Automation drafted chase (${pack.name}): ${subject}`,
           jobId: job.id,
-          metadata: JSON.stringify({ automation: true, packId: pack.id, action }),
+          metadata: JSON.stringify({
+            automation: true,
+            packId: pack.id,
+            action,
+            subject,
+            bodyHtml,
+            source: 'template',
+          }),
         },
       });
     }
@@ -432,12 +470,30 @@ async function applyAction(
   }
 
   if (action === 'clara.rewrite') {
+    const last = await prisma.jobActivity.findFirst({
+      where: { jobId: job.id },
+      orderBy: { createdAt: 'desc' },
+    });
+    const previous = parseChaseDraftMetadata(last?.metadata);
+    const draft = await draftJobChase({
+      tenantId,
+      practiceName,
+      job,
+      phaseName,
+      previous,
+    });
     await prisma.jobActivity.create({
       data: {
         kind: 'NOTE',
-        message: 'Automation queued Clara rewrite for last chase draft (open job → Clara draft)',
+        message: `Clara drafted chase: ${draft.subject}`,
         jobId: job.id,
-        metadata: JSON.stringify({ automation: true, action: 'clara.rewrite' }),
+        metadata: JSON.stringify({
+          automation: true,
+          action: 'clara.rewrite',
+          subject: draft.subject,
+          bodyHtml: draft.bodyHtml,
+          source: draft.source,
+        }),
       },
     });
     return;

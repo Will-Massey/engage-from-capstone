@@ -133,7 +133,7 @@ W4  Mobile, trust, GTM, cutover    ──┘
 | ---- | ----------------------------------------------------------------------------------------- | ------------------------------------ |
 | W2.1 | **Visual automation builder** (trigger → condition → action) on touchpoints + jobs        | Same category as Engager, cleaner UX |
 | W2.2 | UK **automation pack library** (VAT due, SA chase, birthday, phase complete, MTD quarter) | Instant value                        |
-| W2.3 | **Clara inside automations** (“rewrite this chase in firm voice”)                         | Engager cannot                       |
+| W2.3 | **Clara inside automations** (“rewrite this chase in firm voice”)                         | built — drafts stored on the job     |
 | W2.4 | Bulk secure email + optional **SMS add-on** (Twilio)                                      | Parity +                             |
 | W2.5 | Read-only **email timeline** (M365/Gmail) linked to Client/Job                            | Path to two-way                      |
 | W2.6 | **Document designer v1** (blocks: header, services, fees, clauses, sign)                  | Letter craft                         |

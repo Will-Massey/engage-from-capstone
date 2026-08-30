@@ -76,7 +76,7 @@ const ACTIONS = [
   { id: 'chase.RECORDS_REMINDER', label: 'Draft records reminder' },
   { id: 'chase.DEADLINE_APPROACHING', label: 'Draft deadline approaching email' },
   { id: 'notify.assignee', label: 'Notify job assignee (in-app activity)' },
-  { id: 'clara.rewrite', label: 'Clara rewrite last chase draft' },
+  { id: 'clara.rewrite', label: 'Clara rewrite last chase (firm voice)' },
   { id: 'resend_document_request', label: 'Re-send the document request email' },
 ];
 
@@ -120,7 +120,8 @@ const UK_PACKS: Array<{
   {
     id: 'proposal-warm',
     name: 'Unsigned proposal warm-up',
-    description: 'After 7 days unsigned, draft a firm-voice chase (Clara rewrite optional).',
+    description:
+      'After 7 days unsigned, draft a chase then rewrite it in firm voice. Open the proposal or job to send.',
     badge: 'Sales',
     rules: [
       { trigger: 'proposal.unsigned_7d', action: 'chase.DEADLINE_APPROACHING' },

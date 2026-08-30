@@ -75,7 +75,29 @@ export default function JobDetail() {
   async function load() {
     try {
       const res = await apiClient.get(`/jobs/${id}`);
-      setJob(res.data?.data ?? res.data);
+      const data = res.data?.data ?? res.data;
+      setJob(data);
+      const stored = (data?.activities || [])
+        .map((a: { metadata?: string }) => {
+          try {
+            const m = JSON.parse(a.metadata || '{}') as {
+              subject?: string;
+              bodyHtml?: string;
+              source?: string;
+            };
+            return m.subject && m.bodyHtml ? m : null;
+          } catch {
+            return null;
+          }
+        })
+        .find(Boolean);
+      if (stored) {
+        setChasePreview({
+          subject: stored.subject,
+          bodyHtml: stored.bodyHtml,
+          source: stored.source,
+        });
+      }
     } catch (e: any) {
       setError(e?.response?.data?.error?.message || 'Failed to load job');
     }
@@ -216,7 +238,9 @@ export default function JobDetail() {
     setError(null);
     try {
       if (useClara) {
-        const res = await apiClient.post(`/jobs/${id}/clara/draft-chase`);
+        const res = await apiClient.post(`/jobs/${id}/clara/draft-chase`, {
+          rewrite: Boolean(chasePreview),
+        });
         const d = res.data?.data ?? res.data;
         setChasePreview({ subject: d.subject, bodyHtml: d.bodyHtml, source: d.source });
       } else {
@@ -761,7 +785,7 @@ export default function JobDetail() {
                 disabled={chaseBusy}
                 onClick={() => void draftChase(true)}
               >
-                Clara draft chase
+                {chasePreview ? 'Clara rewrite draft' : 'Clara draft chase'}
               </button>
             </div>
             {chasePreview && (
