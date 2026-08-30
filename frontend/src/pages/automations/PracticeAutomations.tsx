@@ -11,6 +11,14 @@ import {
 import { apiClient } from '../../utils/api';
 import { StatusChip } from '../../components/ui/StatusChip';
 import { MetalCard } from '../../components/ui/MetalTile';
+import {
+  clearLegacyLocalRules,
+  groupRulesByTrigger,
+  labelFor,
+  mergePackRules,
+  resolveLoadedRules,
+  type AutomationRuleRow,
+} from './automationRulesHelpers';
 
 interface ChasePack {
   id: string;
@@ -52,12 +60,7 @@ function asList(value: unknown): string {
   return String(value);
 }
 
-type LocalRule = {
-  id: string;
-  trigger: string;
-  action: string;
-  enabled: boolean;
-};
+type LocalRule = AutomationRuleRow;
 
 const TRIGGERS = [
   { id: 'job.overdue', label: 'Job becomes overdue' },
@@ -77,20 +80,7 @@ const ACTIONS = [
   { id: 'resend_document_request', label: 'Re-send the document request email' },
 ];
 
-const RULES_KEY = 'engage.practice.automationRules';
-
-function loadRules(): LocalRule[] {
-  try {
-    const raw = localStorage.getItem(RULES_KEY);
-    if (!raw) return [];
-    const parsed = JSON.parse(raw);
-    return Array.isArray(parsed) ? parsed : [];
-  } catch {
-    return [];
-  }
-}
-
-/** UK automation packs — install as local rules (W2.2) */
+/** UK automation packs — install as firm rules (W2.2) */
 const UK_PACKS: Array<{
   id: string;
   name: string;
@@ -166,7 +156,7 @@ export default function PracticeAutomations() {
   const [loading, setLoading] = useState(true);
   const [running, setRunning] = useState<string | null>(null);
   const [runMsg, setRunMsg] = useState<string | null>(null);
-  const [rules, setRules] = useState<LocalRule[]>(() => loadRules());
+  const [rules, setRules] = useState<LocalRule[]>([]);
   const [draftTrigger, setDraftTrigger] = useState(TRIGGERS[0].id);
   const [draftAction, setDraftAction] = useState(ACTIONS[0].id);
   const [packMsg, setPackMsg] = useState<string | null>(null);
@@ -217,66 +207,58 @@ export default function PracticeAutomations() {
     }
   }
 
-  function installPack(packId: string) {
-    const pack = UK_PACKS.find((p) => p.id === packId);
-    if (!pack) return;
-    const existing = new Set(rules.map((r) => `${r.trigger}|${r.action}`));
-    const additions: LocalRule[] = [];
-    for (const r of pack.rules) {
-      const key = `${r.trigger}|${r.action}`;
-      if (existing.has(key)) continue;
-      additions.push({
-        id: `pack_${pack.id}_${Date.now()}_${additions.length}`,
-        trigger: r.trigger,
-        action: r.action,
-        enabled: true,
-      });
-      existing.add(key);
-    }
-    if (additions.length === 0) {
-      setPackMsg(`${pack.name}: all rules already installed`);
-      return;
-    }
-    const next = [...rules, ...additions];
-    setRules(next);
-    setPackMsg(`Installed ${pack.name} (+${additions.length} rules) — saving to server…`);
-    void (async () => {
-      try {
-        await apiClient.put('/automation/rules', {
-          rules: next.map((r) => ({
-            id: r.id,
-            trigger: r.trigger,
-            action: r.action,
-            enabled: r.enabled,
-            source: pack.id,
-          })),
-        });
-        setServerSync('ok');
-        setPackMsg(`Installed ${pack.name} (+${additions.length} rules) · saved to server`);
-      } catch {
-        setServerSync('err');
-        setPackMsg(`Installed ${pack.name} locally — server save failed`);
-      }
-    })();
-  }
-
-  async function syncRulesToServer() {
+  async function persistRules(next: LocalRule[], source?: string) {
     setServerSync('saving');
-    setRunMsgRules(null);
     try {
       await apiClient.put('/automation/rules', {
-        rules: rules.map((r) => ({
+        rules: next.map((r) => ({
           id: r.id,
           trigger: r.trigger,
           action: r.action,
           enabled: r.enabled,
+          source: r.source || source,
         })),
       });
       setServerSync('ok');
+      clearLegacyLocalRules();
+      return true;
     } catch (e: any) {
       setServerSync('err');
-      setError(e?.response?.data?.error?.message || e.message || 'Failed to sync rules');
+      setError(e?.response?.data?.error?.message || e.message || 'Failed to save rules');
+      return false;
     }
+  }
+
+  function installPack(packId: string) {
+    const pack = UK_PACKS.find((p) => p.id === packId);
+    if (!pack) return;
+    const { next, added } = mergePackRules(rules, pack);
+    if (added === 0) {
+      setPackMsg(`${pack.name}: all rules already installed`);
+      return;
+    }
+    setRules(next);
+    setPackMsg(`Installing ${pack.name} (+${added} rules)…`);
+    void persistRules(next, pack.id).then((ok) => {
+      setPackMsg(
+        ok
+          ? `Installed ${pack.name} (+${added} rules) · saved to the firm`
+          : `Installed ${pack.name} in this session — firm save failed`
+      );
+    });
+  }
+
+  async function syncRulesToServer() {
+    setRunMsgRules(null);
+    await persistRules(rules);
+  }
+
+  function applyRules(updater: (prev: LocalRule[]) => LocalRule[]) {
+    setRules((prev) => {
+      const next = updater(prev);
+      void persistRules(next);
+      return next;
+    });
   }
 
   async function runServerRules(dryRun: boolean) {
@@ -284,15 +266,7 @@ export default function PracticeAutomations() {
     setRunMsgRules(null);
     setError(null);
     try {
-      // Ensure server has latest rules first
-      await apiClient.put('/automation/rules', {
-        rules: rules.map((r) => ({
-          id: r.id,
-          trigger: r.trigger,
-          action: r.action,
-          enabled: r.enabled,
-        })),
-      });
+      await persistRules(rules);
       const res = await apiClient.post('/automation/rules/run', { dryRun });
       const payload = (res as any)?.data ?? res;
       const msg =
@@ -324,14 +298,6 @@ export default function PracticeAutomations() {
   }
 
   useEffect(() => {
-    try {
-      localStorage.setItem(RULES_KEY, JSON.stringify(rules));
-    } catch {
-      /* ignore */
-    }
-  }, [rules]);
-
-  useEffect(() => {
     void loadSchedule();
   }, []);
 
@@ -342,20 +308,16 @@ export default function PracticeAutomations() {
           data?: AutomationSettings & { automationRules?: LocalRule[] };
           success?: boolean;
         };
-        // Interceptor unwraps axios body → { success, data }
         const data =
           res?.data ?? (res as unknown as AutomationSettings & { automationRules?: LocalRule[] });
         setSettings(data);
-        // Prefer server rules when present (source of truth after first sync)
-        if (Array.isArray(data?.automationRules) && data.automationRules.length > 0) {
-          setRules(
-            data.automationRules.map((r) => ({
-              id: r.id,
-              trigger: r.trigger,
-              action: r.action,
-              enabled: r.enabled !== false,
-            }))
-          );
+        const { rules: loaded, migratedFromLocal } = resolveLoadedRules(data?.automationRules);
+        setRules(loaded);
+        if (migratedFromLocal) {
+          const ok = await persistRules(loaded, 'legacy-local');
+          if (ok) {
+            setPackMsg('Moved browser-only rules onto the firm — they now run for everyone');
+          }
         }
         await loadRunHistory();
       } catch (e: any) {
@@ -499,7 +461,7 @@ export default function PracticeAutomations() {
               UK automation packs
             </h2>
             <p className="text-xs text-slate-400">
-              One-click install into the local builder — VAT, SA, MTD, proposal warm-up
+              One-click install onto the firm — VAT, SA, MTD, proposal warm-up
             </p>
           </div>
           {packMsg && <StatusChip tone="success">{packMsg}</StatusChip>}
@@ -541,8 +503,9 @@ export default function PracticeAutomations() {
           When this → then that
         </h2>
         <p className="mt-1 text-xs text-slate-500">
-          Rules sync to the firm (tenant settings). Dry-run previews matches; Execute drafts chase
-          notes and assignee notifications on live jobs.
+          Each trigger is a chain: when it fires, every action under it runs. Changes save to the
+          firm immediately. Dry-run previews matches; Execute drafts chase notes and assignee
+          notifications on live jobs.
         </p>
         <div className="mt-4 grid gap-3 sm:grid-cols-2">
           <label className="text-xs text-slate-500">
@@ -579,13 +542,14 @@ export default function PracticeAutomations() {
             type="button"
             className="btn-accent inline-flex items-center gap-1 text-sm"
             onClick={() =>
-              setRules((r) => [
+              applyRules((r) => [
                 ...r,
                 {
                   id: `rule_${Date.now()}`,
                   trigger: draftTrigger,
                   action: draftAction,
                   enabled: true,
+                  source: 'custom',
                 },
               ])
             }
@@ -602,8 +566,10 @@ export default function PracticeAutomations() {
             {serverSync === 'saving'
               ? 'Saving…'
               : serverSync === 'ok'
-                ? 'Saved to server'
-                : 'Save to server'}
+                ? 'Saved to the firm'
+                : serverSync === 'err'
+                  ? 'Retry save'
+                  : 'Save to the firm'}
           </button>
           <button
             type="button"
@@ -630,51 +596,63 @@ export default function PracticeAutomations() {
             {runDetail}
           </pre>
         )}
-        <ul className="mt-4 space-y-2">
-          {rules.map((rule) => (
-            <li
-              key={rule.id}
-              className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-slate-200/80 bg-white/70 px-3 py-2 text-sm dark:border-slate-600 dark:bg-slate-900/40"
+        <div className="mt-4 space-y-3">
+          {groupRulesByTrigger(rules, TRIGGERS).map((group) => (
+            <section
+              key={group.trigger}
+              className="rounded-xl border border-slate-200/80 bg-white/70 p-3 dark:border-slate-600 dark:bg-slate-900/40"
             >
-              <div className="min-w-0">
-                <p className="font-medium text-slate-800 dark:text-slate-100">
-                  When{' '}
-                  <span className="text-emerald-700 dark:text-emerald-300">
-                    {TRIGGERS.find((t) => t.id === rule.trigger)?.label || rule.trigger}
-                  </span>
-                </p>
-                <p className="text-xs text-slate-500">
-                  Then {ACTIONS.find((a) => a.id === rule.action)?.label || rule.action}
-                </p>
-              </div>
-              <div className="flex items-center gap-2">
-                <button
-                  type="button"
-                  onClick={() =>
-                    setRules((prev) =>
-                      prev.map((x) => (x.id === rule.id ? { ...x, enabled: !x.enabled } : x))
-                    )
-                  }
-                >
-                  <StatusChip tone={rule.enabled ? 'success' : 'neutral'}>
-                    {rule.enabled ? 'On' : 'Off'}
-                  </StatusChip>
-                </button>
-                <button
-                  type="button"
-                  className="rounded p-1 text-slate-400 hover:bg-rose-50 hover:text-rose-600"
-                  aria-label="Delete rule"
-                  onClick={() => setRules((r) => r.filter((x) => x.id !== rule.id))}
-                >
-                  <TrashIcon className="h-4 w-4" />
-                </button>
-              </div>
-            </li>
+              <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">When</p>
+              <p className="mt-0.5 text-sm font-medium text-emerald-800 dark:text-emerald-300">
+                {group.triggerLabel}
+              </p>
+              <ul className="mt-2 space-y-1.5">
+                {group.rules.map((rule, index) => (
+                  <li
+                    key={rule.id}
+                    className="flex flex-wrap items-center justify-between gap-2 rounded-lg bg-slate-50/80 px-3 py-2 text-sm dark:bg-slate-800/50"
+                  >
+                    <div className="min-w-0">
+                      <p className="text-2xs font-medium uppercase tracking-wide text-slate-400">
+                        Then{index > 0 ? ` (${index + 1})` : ''}
+                      </p>
+                      <p className="text-slate-700 dark:text-slate-200">
+                        {labelFor(ACTIONS, rule.action)}
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() =>
+                          applyRules((prev) =>
+                            prev.map((x) => (x.id === rule.id ? { ...x, enabled: !x.enabled } : x))
+                          )
+                        }
+                      >
+                        <StatusChip tone={rule.enabled ? 'success' : 'neutral'}>
+                          {rule.enabled ? 'On' : 'Off'}
+                        </StatusChip>
+                      </button>
+                      <button
+                        type="button"
+                        className="rounded p-1 text-slate-400 hover:bg-rose-50 hover:text-rose-600"
+                        aria-label="Delete rule"
+                        onClick={() => applyRules((r) => r.filter((x) => x.id !== rule.id))}
+                      >
+                        <TrashIcon className="h-4 w-4" />
+                      </button>
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            </section>
           ))}
           {rules.length === 0 && (
-            <li className="text-sm text-slate-500">No custom rules yet — add one above.</li>
+            <p className="text-sm text-slate-500">
+              No firm rules yet — install a UK pack or add a When → Then pair above.
+            </p>
           )}
-        </ul>
+        </div>
       </MetalCard>
 
       {/* Run history */}

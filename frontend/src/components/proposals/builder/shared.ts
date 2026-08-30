@@ -10,6 +10,7 @@ export interface Client {
   contactName?: string | null;
   /** Annual turnover (GBP) — picks the fee benchmark turnover band */
   turnover?: number | null;
+  employeeCount?: number | null;
 }
 
 export interface Service {
@@ -24,6 +25,16 @@ export interface Service {
   frequencyOptions?: string;
   isVatApplicable?: boolean;
   vatRate?: string | number;
+  pricingRules?: Array<{
+    name?: string;
+    conditionField: string;
+    conditionOperator: string;
+    conditionValue: unknown;
+    adjustmentType: string;
+    adjustmentValue: number;
+    isActive?: boolean;
+    priority?: number;
+  }>;
 }
 
 export interface SelectedService extends Service {

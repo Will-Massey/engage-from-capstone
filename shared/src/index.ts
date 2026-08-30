@@ -337,6 +337,13 @@ export const calculateVAT = (amount: number, vatRate: number = 20): number => {
 // ==================== PROPOSAL PRICING ENGINE V2 ====================
 
 export {
+  evaluatePricingRules,
+  type PricingClientContext,
+  type PricingRuleEvaluation,
+  type StoredPricingRule,
+} from './evaluatePricingRules.js';
+
+export {
   calculateLineItem,
   calculateProposalTotals,
   formatPricingCurrency,

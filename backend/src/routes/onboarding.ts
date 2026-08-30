@@ -188,7 +188,8 @@ router.post(
     // R2.2 — close the self-service loop: when a live partner is configured,
     // run the provider check automatically. A provider error must never fail
     // the client's submission; demo (stub) mode keeps manual initiation.
-    if (getAmlPartnerConfig().mode === 'live') {
+    const { AML_PARTNER_CHECKS_ENABLED } = await import('../config/amlPartnerChecks.js');
+    if (AML_PARTNER_CHECKS_ENABLED && getAmlPartnerConfig().mode === 'live') {
       try {
         const check = await initiateAmlCheck({
           tenantId: client.tenantId,

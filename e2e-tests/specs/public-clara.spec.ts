@@ -82,6 +82,24 @@ test.describe('Public Clara FAQ & Q&A', () => {
     await expect(firstItem).toBeHidden({ timeout: 5000 });
   });
 
+  test('FAQ is expanded on a mobile viewport and includes the payment question', async ({
+    page,
+    context,
+  }) => {
+    const shareUrl = await createSharedProposal(page, 'Clara FAQ Mobile');
+
+    const publicPage = await context.newPage();
+    await publicPage.setViewportSize({ width: 390, height: 844 });
+    await publicPage.goto(shareUrl);
+    await publicPage.waitForLoadState('networkidle');
+
+    const faqSection = publicPage.getByTestId('clara-faq-section');
+    await expect(faqSection).toBeVisible();
+    await expect(faqSection).toHaveAttribute('data-mobile-sign', 'true');
+    await expect(publicPage.getByTestId('faq-item-0')).toBeVisible();
+    await expect(publicPage.getByText('How do I pay after I accept?')).toBeVisible();
+  });
+
   test('Clara Q&A answers from the proposal (fallback without AI)', async ({ page, context }) => {
     // Clara live Q&A needs a configured AI provider (XAI_API_KEY). Mirror
     // ai-native.spec.ts: probe /ai/status (authenticated) and assert the

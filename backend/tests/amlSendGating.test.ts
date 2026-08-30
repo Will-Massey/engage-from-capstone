@@ -6,6 +6,11 @@
 import express from 'express';
 import request from 'supertest';
 
+jest.mock('../src/config/amlPartnerChecks.js', () => ({
+  AML_PARTNER_CHECKS_ENABLED: true,
+  AML_PARTNER_CHECKS_COMING_SOON: 'coming soon',
+}));
+
 let mockRole = 'PARTNER';
 
 jest.mock('../src/middleware/auth.js', () => {

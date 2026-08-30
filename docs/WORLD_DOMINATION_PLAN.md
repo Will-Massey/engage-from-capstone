@@ -154,7 +154,7 @@ W4  Mobile, trust, GTM, cutover    ──┘
 | W3.4 | Clara: **prioritise board** (“3 jobs at risk, draft chases”) | Co-pilot                |
 | W3.5 | Clara: **meeting notes → tasks** (optional)                  | Future depth            |
 | W3.6 | Fee benchmarks (R3) chips on pricing                         | Network moat            |
-| W3.7 | Formula pricing builder UX (parity with Engager formulas)    | Win-work 10             |
+| W3.7 | Formula pricing builder UX (parity with Engager formulas)    | built                    |
 
 **Exit:** Money **10**; AI **10**; overall product story unassailable in demo.
 

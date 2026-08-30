@@ -17,6 +17,11 @@ jest.mock('../src/middleware/auth.js', () => {
   };
 });
 
+jest.mock('../src/config/amlPartnerChecks.js', () => ({
+  AML_PARTNER_CHECKS_ENABLED: true,
+  AML_PARTNER_CHECKS_COMING_SOON: 'coming soon',
+}));
+
 jest.mock('../src/services/amlService.js', () => ({
   getAmlPartnerConfig: jest.fn(),
   getAmlStatusForClient: jest.fn(),

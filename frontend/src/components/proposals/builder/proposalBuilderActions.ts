@@ -4,6 +4,7 @@ import {
   roundMoney,
   type BillingFrequency,
 } from '@shared/pricingEngine';
+import { evaluatePricingRules } from '@shared/evaluatePricingRules';
 import { parseFrequencyOptions } from '../../../utils/billingCadence';
 import { buildCustomFieldsPayload, type PricingTier } from '../../../utils/proposalCustomFields';
 import type { CreateProposalPayload } from '../../../types/proposals';
@@ -69,6 +70,47 @@ export function buildSelectedServiceLine(
     allowedCadences: parseFrequencyOptions(service.frequencyOptions),
     oneOffDueDate: frequency === 'ONE_TIME' ? '' : undefined,
   };
+}
+
+export function applyCatalogueFormulasToLines(
+  lines: SelectedService[],
+  catalogue: Service[],
+  client: { turnover?: number | null; employeeCount?: number | null },
+  includeVat: boolean
+): { lines: SelectedService[]; appliedNames: string[] } {
+  const byId = new Map(catalogue.map((service) => [service.id, service]));
+  const appliedNames: string[] = [];
+
+  const next = lines.map((line) => {
+    const service = byId.get(line.templateId);
+    const rules = service?.pricingRules;
+    if (!service || !rules?.length) return line;
+
+    const result = evaluatePricingRules(service.priceAmount ?? line.priceAmount, client, rules);
+    if (result.applied.length === 0) return line;
+
+    appliedNames.push(...result.applied.map((name) => `${line.name}: ${name}`));
+    const calc = calculateLineItem({
+      basePrice: result.price,
+      billingFrequency: line.billingCycle as BillingFrequency,
+      quantity: line.quantity,
+      discountPercent: line.discountPercent,
+      vatRate: includeVat ? line.vatRate : 0,
+    });
+
+    return {
+      ...line,
+      displayPrice: result.price,
+      priceAmount: result.price,
+      lineTotal: calc.netTotal,
+      vatAmount: calc.vatAmount,
+      vatRate: includeVat ? line.vatRate : 0,
+      grossTotal: calc.grossTotal,
+      annualEquivalent: calc.annualEquivalent,
+    };
+  });
+
+  return { lines: next, appliedNames };
 }
 
 /**

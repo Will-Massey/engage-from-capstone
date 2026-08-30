@@ -84,7 +84,7 @@ const pricingRuleSchema = z.object({
   conditionField: z.string(),
   conditionOperator: z.enum(['EQ', 'GT', 'LT', 'GTE', 'LTE', 'IN']),
   conditionValue: z.any(),
-  adjustmentType: z.enum(['PERCENTAGE', 'FIXED']),
+  adjustmentType: z.enum(['PERCENTAGE', 'FIXED', 'PER_EMPLOYEE']),
   adjustmentValue: z.number(),
   priority: z.number().int().default(0),
 });
@@ -463,6 +463,26 @@ router.post(
       success: true,
       data: rule,
     });
+  })
+);
+
+/**
+ * DELETE /api/services/:id/pricing-rules/:ruleId
+ */
+router.delete(
+  '/:id/pricing-rules/:ruleId',
+  authenticate,
+  authorize('ADMIN', 'PARTNER', 'MANAGER'),
+  asyncHandler(async (req, res) => {
+    const { id, ruleId } = req.params;
+    const existing = await prisma.pricingRule.findFirst({
+      where: { id: ruleId, serviceId: id, tenantId: req.tenantId },
+    });
+    if (!existing) {
+      throw new ApiError('NOT_FOUND', 'Pricing rule not found', 404);
+    }
+    await prisma.pricingRule.delete({ where: { id: ruleId } });
+    res.json({ success: true, data: { id: ruleId } });
   })
 );
 

@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  applyCatalogueFormulasToLines,
   buildCatchUpLine,
   buildProposalSavePayload,
   buildSelectedServiceLine,
@@ -83,6 +84,44 @@ describe('ProposalBuilderContext actions', () => {
       expect(line.displayPrice).toBe(500);
       expect(line.billingCycle).toBe('ONE_TIME');
       expect(line.oneOffDueDate).toBe('');
+    });
+  });
+
+  describe('applyCatalogueFormulasToLines', () => {
+    const pricedService: Service = {
+      ...catalogueService,
+      pricingRules: [
+        {
+          name: 'Larger company +10%',
+          conditionField: 'turnover',
+          conditionOperator: 'GTE',
+          conditionValue: 250_000,
+          adjustmentType: 'PERCENTAGE',
+          adjustmentValue: 10,
+        },
+      ],
+    };
+
+    it('uplifts selected lines when the client matches a catalogue rule', () => {
+      const { lines, appliedNames } = applyCatalogueFormulasToLines(
+        [selectedLine()],
+        [pricedService],
+        { turnover: 300_000 },
+        true
+      );
+      expect(lines[0].displayPrice).toBe(94);
+      expect(appliedNames).toEqual(['Bookkeeping: Larger company +10%']);
+    });
+
+    it('leaves prices unchanged when the client field is missing', () => {
+      const { lines, appliedNames } = applyCatalogueFormulasToLines(
+        [selectedLine()],
+        [pricedService],
+        {},
+        true
+      );
+      expect(lines[0].displayPrice).toBe(85);
+      expect(appliedNames).toHaveLength(0);
     });
   });
 

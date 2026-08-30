@@ -37,6 +37,33 @@ export interface CreateServicePayload {
 
 export type UpdateServicePayload = Partial<CreateServicePayload>;
 
+export type PricingRuleOperator = 'EQ' | 'GT' | 'LT' | 'GTE' | 'LTE' | 'IN';
+export type PricingRuleAdjustment = 'PERCENTAGE' | 'FIXED' | 'PER_EMPLOYEE';
+
+export interface CreatePricingRulePayload {
+  name: string;
+  description?: string;
+  conditionField: string;
+  conditionOperator: PricingRuleOperator;
+  conditionValue: unknown;
+  adjustmentType: PricingRuleAdjustment;
+  adjustmentValue: number;
+  priority?: number;
+}
+
+export interface PricingRuleRecord {
+  id: string;
+  name: string;
+  description?: string | null;
+  conditionField: string;
+  conditionOperator: string;
+  conditionValue: unknown;
+  adjustmentType: string;
+  adjustmentValue: number;
+  priority?: number;
+  isActive?: boolean;
+}
+
 export interface ServiceListParams {
   category?: ServiceCategory | string;
   entityType?: string;
@@ -74,6 +101,7 @@ export interface ServiceRecord {
   isActive?: boolean;
   createdAt?: string;
   updatedAt?: string;
+  pricingRules?: PricingRuleRecord[];
 }
 
 export interface ServiceCategoryOption {

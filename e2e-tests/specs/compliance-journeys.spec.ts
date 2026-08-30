@@ -11,14 +11,10 @@ import {
   closeDisposableAccount,
   mintPortalToken,
   signupDisposableTenant,
-  submitAmlOnboarding,
 } from '../fixtures/compliance-helpers';
 
-test.describe('AML journey — client form, stub check, webhook clear', () => {
-  test('portal AML onboarding submits and partner stub check clears client', async ({
-    page,
-    request,
-  }) => {
+test.describe('AML journey — partner checks paused (Credas review)', () => {
+  test('public AML page is Coming soon and initiation returns 503', async ({ page, request }) => {
     test.slow();
 
     const clients = await apiGet(request, '/clients?limit=1');
@@ -28,37 +24,17 @@ test.describe('AML journey — client form, stub check, webhook clear', () => {
     const portalToken = await mintPortalToken(request, clientId!);
 
     await page.goto(`/onboarding/aml/${portalToken}`);
-    await expect(page.getByRole('heading', { name: /ID.*AML verification/i })).toBeVisible({
+    await expect(page.getByRole('heading', { name: /coming soon/i })).toBeVisible({
       timeout: 30_000,
     });
-
-    await submitAmlOnboarding(request, portalToken);
+    await expect(page.getByTestId('aml-onboarding-coming-soon')).toBeVisible();
 
     const check = await apiPost(request, '/aml/check', {
       clientId,
       provider: 'stub',
     });
-    expect(check.status).toBe(202);
-    expect(check.body?.success).toBe(true);
-    const providerRef = check.body?.data?.amlProviderRef as string;
-    expect(providerRef).toBeTruthy();
-
-    const webhook = await request.post(
-      `${process.env.API_URL || 'http://localhost:3001/api'}/aml/webhook`,
-      {
-        data: {
-          providerRef,
-          status: 'clear',
-          completedAt: new Date().toISOString(),
-        },
-        headers: { 'Content-Type': 'application/json', 'X-Test-Mode': 'e2e-build' },
-      }
-    );
-    expect(webhook.ok()).toBeTruthy();
-
-    const status = await apiGet(request, `/aml/status/${clientId}`);
-    await expectOkApi('aml status after clear', status);
-    expect(status.body.data.amlStatus).toBe('CLEAR');
+    expect(check.status).toBe(503);
+    expect(check.body?.error?.code).toBe('AML_COMING_SOON');
   });
 });
 

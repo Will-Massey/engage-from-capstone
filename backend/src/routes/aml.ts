@@ -23,6 +23,10 @@ import { prisma } from '../config/database.js';
 import { readAmlDocument } from '../services/fileStorage.js';
 import { resolveAmlDocumentPath, type AmlDocumentType } from '../services/aml/amlDocuments.js';
 import logger from '../config/logger.js';
+import {
+  AML_PARTNER_CHECKS_COMING_SOON,
+  AML_PARTNER_CHECKS_ENABLED,
+} from '../config/amlPartnerChecks.js';
 
 const router = Router();
 
@@ -65,6 +69,10 @@ router.post(
   authenticate,
   authorize('ADMIN', 'PARTNER', 'MANAGER'),
   asyncHandler(async (req, res) => {
+    if (!AML_PARTNER_CHECKS_ENABLED) {
+      throw new ApiError('AML_COMING_SOON', AML_PARTNER_CHECKS_COMING_SOON, 503);
+    }
+
     const parsed = checkSchema.parse(req.body ?? {});
 
     try {

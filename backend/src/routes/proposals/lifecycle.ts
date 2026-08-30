@@ -88,7 +88,11 @@ router.post(
     // overrideAml mirrors the approval override: partner-level roles only.
     const proposalSettings = getProposalSettings(proposal.tenant.settings);
     const clientAmlStatus = proposal.client.amlStatus;
-    const amlBlocked = proposalSettings.blockSendUntilAmlCleared && clientAmlStatus !== 'CLEAR';
+    const { AML_PARTNER_CHECKS_ENABLED } = await import('../../config/amlPartnerChecks.js');
+    const amlBlocked =
+      AML_PARTNER_CHECKS_ENABLED &&
+      proposalSettings.blockSendUntilAmlCleared &&
+      clientAmlStatus !== 'CLEAR';
     const amlOverrideUsed = amlBlocked && sendBody.overrideAml === true && overrideApproval;
 
     if (amlBlocked && !amlOverrideUsed) {

@@ -82,7 +82,7 @@ turnover clients," from ≥ N contributing firms.
 | R4.1 | Deep Xero/QBO sync — push **recurring invoices**, not just contact notes | built (auto-push + paid-invoice mirror + real QBO OAuth); creds-ready — see docs/XERO_QBO_GOLIVE.md |
 | R4.2 | Partner approval workflow (junior drafts → partner approves → send)      | pure app logic; unblocked                                                                           |
 | R4.3 | 100+ ICAEW/ACCA-aligned engagement templates                             | content; #1 onboarding-drop-off fix                                                                 |
-| R4.4 | Mobile signing polish + Clara FAQ on public sign page                    |                                                                                                     |
+| R4.4 | Mobile signing polish + Clara FAQ on public sign page                    | built — FAQ accordion, payment Q, no automated-AML promise, mobile expands FAQ                      |
 
 ## Phase R5 — Beyond parity (true differentiators)
 

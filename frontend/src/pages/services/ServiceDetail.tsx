@@ -17,6 +17,8 @@ import { apiClient } from '../../utils/api';
 import { useAuthStore } from '../../stores/authStore';
 import { formatServiceCategory } from '../../utils/serviceCategoryLabels';
 import toast from 'react-hot-toast';
+import ServicePricingFormulas from './ServicePricingFormulas';
+import type { PricingRuleRecord } from '../../types/services';
 
 interface Service {
   id: string;
@@ -41,6 +43,7 @@ interface Service {
   _count?: {
     proposalServices: number;
   };
+  pricingRules?: PricingRuleRecord[];
 }
 
 const categoryColors: Record<string, string> = {
@@ -232,6 +235,17 @@ const ServiceDetail = () => {
               </div>
             </div>
           </div>
+
+          <ServicePricingFormulas
+            serviceId={service.id}
+            rules={service.pricingRules ?? []}
+            onChanged={async () => {
+              const response = (await apiClient.getService(id!)) as any;
+              if (response.success) {
+                setService(response.data);
+              }
+            }}
+          />
 
           {/* Requirements & Deliverables */}
           {(service.requirements?.length || service.deliverables?.length) && (

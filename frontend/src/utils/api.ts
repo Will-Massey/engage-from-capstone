@@ -49,7 +49,9 @@ import type {
   UpdateClientPayload,
 } from '../types/clients';
 import type {
+  CreatePricingRulePayload,
   CreateServicePayload,
+  PricingRuleRecord,
   ServiceCategoryOption,
   ServiceListParams,
   ServiceRecord,
@@ -893,6 +895,20 @@ export const apiClient = {
 
   deleteService: (id: string) =>
     api.delete(`/services/${id}`) as Promise<ApiResponse<{ message?: string }>>,
+
+  createServicePricingRule: (serviceId: string, data: CreatePricingRulePayload) =>
+    api.post(`/services/${serviceId}/pricing-rules`, {
+      ...data,
+      conditionValue:
+        typeof data.conditionValue === 'string'
+          ? data.conditionValue
+          : JSON.stringify(data.conditionValue),
+    }) as Promise<ApiResponse<PricingRuleRecord>>,
+
+  deleteServicePricingRule: (serviceId: string, ruleId: string) =>
+    api.delete(`/services/${serviceId}/pricing-rules/${ruleId}`) as Promise<
+      ApiResponse<{ id: string }>
+    >,
 
   // Tenants
   createTenant: (data: CreateTenantPayload) =>

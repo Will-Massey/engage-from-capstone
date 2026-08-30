@@ -36,6 +36,7 @@ import FirmGroupSettings from '../components/settings/FirmGroupSettings';
 import VoiceOfPracticeSettings from '../components/settings/VoiceOfPracticeSettings';
 import EngagementLibrarySettings from '../components/settings/EngagementLibrarySettings';
 import ProposalTermsSettings from '../components/settings/ProposalTermsSettings';
+import ComingSoonCallout from '../components/ui/ComingSoonCallout';
 
 // Simplified tabs - combined related sections. 'profile' merges the personal
 // tabs (profile info, theme, password/2FA) so the sidebar reads practice-wide
@@ -2766,32 +2767,14 @@ const Settings = () => {
                   </div>
 
                   <div className="pt-4 border-t border-slate-200 dark:border-slate-700">
-                    <label className="flex items-start gap-3 cursor-pointer">
-                      <input
-                        type="checkbox"
-                        checked={communicationsForm.proposals.blockSendUntilAmlCleared}
-                        onChange={(e) =>
-                          setCommunicationsForm({
-                            ...communicationsForm,
-                            proposals: {
-                              ...communicationsForm.proposals,
-                              blockSendUntilAmlCleared: e.target.checked,
-                            },
-                          })
-                        }
-                        className="mt-1 h-4 w-4 rounded border-slate-300 text-primary-600 focus:ring-primary-200"
-                      />
-                      <span>
-                        <span className="block text-sm font-semibold text-slate-700 dark:text-slate-100">
-                          Require AML clearance before sending proposals
-                        </span>
-                        <span className="block text-xs text-slate-500 dark:text-slate-300 mt-1">
-                          Proposals cannot be emailed until the client&apos;s AML status is Clear.
-                          Partners and admins can override per proposal; overrides are recorded in
-                          the audit log.
-                        </span>
-                      </span>
-                    </label>
+                    <ComingSoonCallout
+                      title="Require AML clearance before sending"
+                      testId="aml-send-gate-coming-soon"
+                    >
+                      Partner AML checks are paused while we review Credas. You can still record
+                      your own checks on the client. This send-gate will return when a provider is
+                      live.
+                    </ComingSoonCallout>
                   </div>
 
                   <div className="pt-4 border-t border-slate-200 dark:border-slate-700 flex flex-wrap gap-3">

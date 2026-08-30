@@ -93,7 +93,6 @@ const ClientDetail = () => {
   }, [tabFromUrl]);
   const [showEditModal, setShowEditModal] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
-  const [isVerifyingId, setIsVerifyingId] = useState(false);
   const [showLoeOnlyModal, setShowLoeOnlyModal] = useState(false);
   const [clientJobs, setClientJobs] = useState<any[]>([]);
   const [jobsLoading, setJobsLoading] = useState(false);
@@ -367,25 +366,6 @@ const ClientDetail = () => {
     setShowEditModal(true);
   };
 
-  const handleRequestIdVerification = async () => {
-    if (!id) return;
-    try {
-      setIsVerifyingId(true);
-      const response = (await apiClient.verifyClientIdentity(id)) as any;
-      const link = response?.data?.verificationLink;
-      if (link) {
-        await navigator.clipboard.writeText(link);
-        toast.success('ID verification link copied to clipboard');
-      } else {
-        toast.success(response?.message || 'ID verification requested');
-      }
-    } catch {
-      // Error handled by API interceptor
-    } finally {
-      setIsVerifyingId(false);
-    }
-  };
-
   const handleUpdateClient = async () => {
     try {
       setIsSaving(true);
@@ -519,14 +499,6 @@ const ClientDetail = () => {
           >
             <ArrowTopRightOnSquareIcon className="h-4 w-4 mr-2" />
             Open portal
-          </button>
-          <button
-            onClick={handleRequestIdVerification}
-            disabled={isVerifyingId}
-            className="btn-secondary"
-          >
-            <UserIcon className="h-4 w-4 mr-2" />
-            {isVerifyingId ? 'Requesting…' : 'Request ID verification'}
           </button>
           <button onClick={openEditModal} className="btn-secondary">
             <PencilIcon className="h-4 w-4 mr-2" />

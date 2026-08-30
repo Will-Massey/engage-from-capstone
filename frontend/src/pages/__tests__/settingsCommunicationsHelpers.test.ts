@@ -45,7 +45,7 @@ describe('buildProposalDefaultsPayload', () => {
         renewalReminderDays: 21,
         cancellationNoticeDays: 60,
         benchmarksOptIn: true,
-        blockSendUntilAmlCleared: true,
+        blockSendUntilAmlCleared: false,
       },
     });
   });

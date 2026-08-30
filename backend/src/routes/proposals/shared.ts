@@ -3,6 +3,7 @@ import { ApprovalStatus, ProposalStatus, PricingFrequency, UserRole } from '@pri
 import { prisma } from '../../config/database.js';
 import { ApiError } from '../../middleware/errorHandler.js';
 import { getProposalSettings } from '../../utils/tenantProposalSettings.js';
+import { AML_PARTNER_CHECKS_ENABLED } from '../../config/amlPartnerChecks.js';
 import { formatUserRole } from '../../utils/proposalDisplay.js';
 
 // generateReference helper function
@@ -78,7 +79,10 @@ export function assertProposalSendable(
   }
 
   const settings = getProposalSettings(proposal.tenant.settings);
-  const amlBlocked = settings.blockSendUntilAmlCleared && proposal.client.amlStatus !== 'CLEAR';
+  const amlBlocked =
+    AML_PARTNER_CHECKS_ENABLED &&
+    settings.blockSendUntilAmlCleared &&
+    proposal.client.amlStatus !== 'CLEAR';
   const amlOverrideUsed = amlBlocked && opts.overrideAml === true && overrideApproval;
   if (amlBlocked && !amlOverrideUsed) {
     throw new ApiError(

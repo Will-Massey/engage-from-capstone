@@ -131,7 +131,12 @@ const SIGN_PAGE_FAQS: Array<{ question: string; answer: string }> = [
   {
     question: 'What happens after I accept?',
     answer:
-      'Your accountant is notified immediately. You will typically receive a welcome email, AML or ID verification requests, and onboarding steps for your engagement.',
+      'Your accountant is notified immediately. You will typically receive a welcome email and any onboarding steps they need from you. They will contact you if identity checks are required.',
+  },
+  {
+    question: 'How do I pay after I accept?',
+    answer:
+      'If this proposal includes payment setup, you will be asked to authorise payment after you sign. Your accountant will confirm when invoices start. Opening this page does not charge you.',
   },
   {
     question: 'Who can I contact for help?',
@@ -199,7 +204,11 @@ const PublicProposalView = () => {
 
   useEffect(() => {
     const mq = window.matchMedia('(max-width: 639px)');
-    const update = () => setIsMobileSign(mq.matches);
+    const update = () => {
+      const mobile = mq.matches;
+      setIsMobileSign(mobile);
+      if (mobile) setFaqExpanded(true);
+    };
     update();
     mq.addEventListener('change', update);
     return () => mq.removeEventListener('change', update);
@@ -941,7 +950,11 @@ const PublicProposalView = () => {
 
           {/* Static FAQs — UK English */}
           {!isAccepted && !isExpired && (
-            <div className="border-t pt-6" data-testid="clara-faq-section">
+            <div
+              className={`border-t pt-6 ${isMobileSign ? 'space-y-1' : ''}`}
+              data-testid="clara-faq-section"
+              data-mobile-sign={isMobileSign ? 'true' : 'false'}
+            >
               <button
                 type="button"
                 data-testid="faq-toggle"

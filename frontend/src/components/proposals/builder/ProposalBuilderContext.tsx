@@ -86,6 +86,7 @@ import {
   type Service,
 } from './shared';
 import {
+  applyCatalogueFormulasToLines,
   buildCatchUpLine,
   buildProposalSavePayload,
   buildSelectedServiceLine,
@@ -225,6 +226,7 @@ export interface ProposalBuilderContextValue {
   renderSelectedServiceRow: (service: SelectedService) => ReactElement;
   taxServiceLines: { id: string; name: string }[];
   applyContingentFeeToLine: (lineId: string, feeGbp: number, explanation: string) => void;
+  applyCatalogueFormulas: () => void;
   summary: PricingSummary;
   reviewMonthlyCostIncVat: number;
   includeVat: boolean;
@@ -1503,6 +1505,36 @@ export function ProposalBuilderProvider({ proposalId, children }: ProposalBuilde
     [selectedServices]
   );
 
+  const applyCatalogueFormulas = () => {
+    if (!selectedClient) {
+      toast.error('Select a client first');
+      return;
+    }
+    if (selectedServices.length === 0) {
+      toast.error('Add a service first');
+      return;
+    }
+    const { lines, appliedNames } = applyCatalogueFormulasToLines(
+      selectedServices,
+      services,
+      {
+        turnover: selectedClient.turnover,
+        employeeCount: selectedClient.employeeCount,
+      },
+      includeVat
+    );
+    if (appliedNames.length === 0) {
+      toast(
+        'No catalogue formulas applied — add rules on the service, or set the client\'s turnover or staff count.'
+      );
+      return;
+    }
+    setSelectedServices(lines);
+    toast.success(
+      `Applied ${appliedNames.length} formula${appliedNames.length === 1 ? '' : 's'}`
+    );
+  };
+
   const applyContingentFeeToLine = (lineId: string, feeGbp: number, _explanation: string) => {
     setSelectedServices((prev) =>
       prev.map((s) => {
@@ -2340,6 +2372,7 @@ export function ProposalBuilderProvider({ proposalId, children }: ProposalBuilde
     renderSelectedServiceRow,
     taxServiceLines,
     applyContingentFeeToLine,
+    applyCatalogueFormulas,
     summary,
     reviewMonthlyCostIncVat,
     includeVat,

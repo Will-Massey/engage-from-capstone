@@ -32,7 +32,8 @@ export function buildProposalDefaultsPayload(
       renewalReminderDays: proposals.renewalReminderDays,
       cancellationNoticeDays: proposals.cancellationNoticeDays,
       benchmarksOptIn: proposals.benchmarksOptIn,
-      blockSendUntilAmlCleared: proposals.blockSendUntilAmlCleared,
+      // Partner AML checks are paused (Credas review) — never persist a send-gate.
+      blockSendUntilAmlCleared: false,
     },
   };
 }
