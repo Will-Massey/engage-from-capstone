@@ -71,32 +71,41 @@ export default function JobDetail() {
   const [notesBusy, setNotesBusy] = useState(false);
   const [activityMsg, setActivityMsg] = useState('');
   const [activityBusy, setActivityBusy] = useState(false);
+  const [renewalNudge, setRenewalNudge] = useState<{
+    message: string;
+    proposalId?: string;
+  } | null>(null);
 
   async function load() {
     try {
       const res = await apiClient.get(`/jobs/${id}`);
       const data = res.data?.data ?? res.data;
       setJob(data);
-      const stored = (data?.activities || [])
-        .map((a: { metadata?: string }) => {
-          try {
-            const m = JSON.parse(a.metadata || '{}') as {
-              subject?: string;
-              bodyHtml?: string;
-              source?: string;
-            };
-            return m.subject && m.bodyHtml ? m : null;
-          } catch {
-            return null;
+      const activities = data?.activities || [];
+      let nextNudge: { message: string; proposalId?: string } | null = null;
+      let storedChase: { subject: string; bodyHtml: string; source?: string } | null = null;
+      for (const a of activities) {
+        try {
+          const m = JSON.parse(a.metadata || '{}') as {
+            renewalNudge?: boolean;
+            proposalId?: string;
+            subject?: string;
+            bodyHtml?: string;
+            source?: string;
+          };
+          if (!nextNudge && m.renewalNudge) {
+            nextNudge = { message: a.message, proposalId: m.proposalId };
           }
-        })
-        .find(Boolean);
-      if (stored) {
-        setChasePreview({
-          subject: stored.subject,
-          bodyHtml: stored.bodyHtml,
-          source: stored.source,
-        });
+          if (!storedChase && m.subject && m.bodyHtml) {
+            storedChase = { subject: m.subject, bodyHtml: m.bodyHtml, source: m.source };
+          }
+        } catch {
+          /* ignore malformed activity metadata */
+        }
+      }
+      setRenewalNudge(nextNudge);
+      if (storedChase) {
+        setChasePreview(storedChase);
       }
     } catch (e: any) {
       setError(e?.response?.data?.error?.message || 'Failed to load job');
@@ -259,16 +268,11 @@ export default function JobDetail() {
   async function moveColumn(boardColumn: string) {
     const res = (await apiClient.patch(`/jobs/${id}/column`, { boardColumn })) as any;
     const nudge = res?.renewalNudge ?? res?.data?.renewalNudge;
-    if (nudge?.message) {
-      setError(null);
-      // Surface renewal window as a soft success banner via chasePreview-style state
-      setChasePreview({
-        subject: 'Renewal window',
-        bodyHtml: `<p>${nudge.message}</p><p><a href="/proposals/renewals">Open bulk renewals →</a></p>`,
-        source: 'renewal',
-      });
-    }
+    setError(null);
     await load();
+    if (nudge?.message) {
+      setRenewalNudge({ message: nudge.message, proposalId: nudge.proposalId });
+    }
   }
 
   async function setAssignee(assigneeId: string) {
@@ -388,6 +392,34 @@ export default function JobDetail() {
       {error && (
         <div className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
           {error}
+        </div>
+      )}
+
+      {renewalNudge && (
+        <div
+          className="rounded-xl border border-emerald-200 bg-emerald-50/90 px-4 py-3 dark:border-emerald-800 dark:bg-emerald-950/40"
+          data-testid="renewal-window-banner"
+        >
+          <p className="text-sm font-semibold text-emerald-900 dark:text-emerald-100">
+            Renewal window
+          </p>
+          <p className="mt-1 text-sm text-emerald-800 dark:text-emerald-200">{renewalNudge.message}</p>
+          <div className="mt-2 flex flex-wrap gap-3">
+            <Link
+              to="/proposals/renewals"
+              className="text-sm font-medium text-emerald-800 underline hover:no-underline dark:text-emerald-200"
+            >
+              Open bulk renewals
+            </Link>
+            {renewalNudge.proposalId && (
+              <Link
+                to={`/proposals/${renewalNudge.proposalId}`}
+                className="text-sm font-medium text-emerald-800 underline hover:no-underline dark:text-emerald-200"
+              >
+                View original proposal
+              </Link>
+            )}
+          </div>
         </div>
       )}
 
