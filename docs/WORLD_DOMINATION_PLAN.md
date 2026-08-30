@@ -151,7 +151,7 @@ W4  Mobile, trust, GTM, cutover    ──┘
 | W3.1 | Recurring Stripe from monthly lines + **dunning**            | Money in-product        |
 | W3.2 | Practice **MRR / cash under management** metal dashboard     | Narrative Engager lacks |
 | W3.3 | Job complete → **renewal window** → bulk renew via Clara     | Lifecycle loop          |
-| W3.4 | Clara: **prioritise board** (“3 jobs at risk, draft chases”) | Co-pilot                |
+| W3.4 | Clara: **prioritise board** (“3 jobs at risk, draft chases”) | built — draft from board |
 | W3.5 | Clara: **meeting notes → tasks** (optional)                  | Future depth            |
 | W3.6 | Fee benchmarks (R3) chips on pricing                         | Network moat            |
 | W3.7 | Formula pricing builder UX (parity with Engager formulas)    | built                    |
