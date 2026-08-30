@@ -19,6 +19,7 @@ import { BrandLogo } from '../../components/ui/BrandLogo';
 import { MetalTile } from '../../components/ui/MetalTile';
 import { StatusChip } from '../../components/ui/StatusChip';
 import { PRIMARY_CREATE } from '../../config/navigation';
+import { calculateSwitcherRoi, formatGbp, formatSwitcherRoiSummary } from './switcherRoi';
 
 const COMPARISON: Array<{
   capability: string;
@@ -31,6 +32,18 @@ const COMPARISON: Array<{
     engager: 'Partial',
     engage: true,
     note: 'Stripe Connect / recurring at accept',
+  },
+  {
+    capability: 'Catch-up fees on the wizard',
+    engager: 'First-class',
+    engage: true,
+    note: 'Months behind × monthly equivalent',
+  },
+  {
+    capability: 'Practice letters + 64-8 track',
+    engager: true,
+    engage: true,
+    note: 'Designer · e-sign · HMRC pack track',
   },
   {
     capability: 'Clara AI (draft, chase, prioritise)',
@@ -128,6 +141,45 @@ const DEMO_STEPS = [
     href: '/automations',
     line: 'Install VAT/SA pack · dry-run · execute · show run history.',
   },
+  {
+    n: '07',
+    title: 'Import clients',
+    href: '/clients/import',
+    line: 'CSV from Engager — name + email minimum, then parallel run.',
+  },
+];
+
+const CUTOVER_STEPS = [
+  {
+    n: '1',
+    title: 'Import the book',
+    href: '/clients/import',
+    line: 'CSV switcher — name and email required. Update existing emails if you re-run.',
+  },
+  {
+    n: '2',
+    title: 'Match the catalogue',
+    href: '/services',
+    line: 'Fee names, formulas, and VAT. Catch-up stays a one-off on the wizard.',
+  },
+  {
+    n: '3',
+    title: 'Win one client',
+    href: PRIMARY_CREATE.href,
+    line: 'Proposal wizard → sign → collect. Prove the money loop before cutover.',
+  },
+  {
+    n: '4',
+    title: 'Admin letters',
+    href: '/letters',
+    line: 'Disengage / clearance e-sign and 64-8 pack track sit beside jobs.',
+  },
+  {
+    n: '5',
+    title: 'Parallel week',
+    href: '/automations',
+    line: 'Keep Engager live. Install UK packs. Cut over only when you say go.',
+  },
 ];
 
 const OBJECTIONS = [
@@ -195,38 +247,13 @@ export default function SwitchFromEngager() {
   const [engagerPerClient, setEngagerPerClient] = useState(9);
   const [engageMonthly, setEngageMonthly] = useState(149);
 
-  const roi = useMemo(() => {
-    const timeValue = hoursPerMonth * hourlyRate;
-    const engagerCost = clients * engagerPerClient;
-    const netVsEngager = engagerCost + timeValue - engageMonthly;
-    const paybackWeeks: string =
-      engageMonthly > 0 && timeValue > 0
-        ? String(Math.max(0.5, Number((engageMonthly / (timeValue / 4.33)).toFixed(1))))
-        : '—';
-    return {
-      timeValue,
-      engagerCost,
-      engageMonthly,
-      netVsEngager,
-      paybackWeeks,
-      annual: netVsEngager * 12,
-    };
-  }, [clients, hoursPerMonth, hourlyRate, engagerPerClient, engageMonthly]);
-
-  const fmt = (n: number) =>
-    new Intl.NumberFormat('en-GB', {
-      style: 'currency',
-      currency: 'GBP',
-      maximumFractionDigits: 0,
-    }).format(n);
-
-  const roiSummary = `Illustrative switch model (${clients} clients):
-• Time value: ${fmt(roi.timeValue)}/mo (${hoursPerMonth}h × £${hourlyRate})
-• Engager-class: ${fmt(roi.engagerCost)}/mo
-• Engage plan: ${fmt(roi.engageMonthly)}/mo
-• Net advantage: ${fmt(roi.netVsEngager)}/mo · ${fmt(roi.annual)}/yr
-• ~${roi.paybackWeeks} weeks to recover plan cost from time alone
-(Not a quote — adjust hours for your firm.)`;
+  const roiInput = useMemo(
+    () => ({ clients, hoursPerMonth, hourlyRate, engagerPerClient, engageMonthly }),
+    [clients, hoursPerMonth, hourlyRate, engagerPerClient, engageMonthly]
+  );
+  const roi = useMemo(() => calculateSwitcherRoi(roiInput), [roiInput]);
+  const roiSummary = useMemo(() => formatSwitcherRoiSummary(roiInput, roi), [roiInput, roi]);
+  const fmt = formatGbp
 
   return (
     <div className="mx-auto max-w-5xl space-y-8 pb-12">
@@ -262,6 +289,9 @@ export default function SwitchFromEngager() {
               </Link>
               <Link to="/forms" className="btn-secondary text-sm">
                 Bulk forms
+              </Link>
+              <Link to="/clients/import" className="btn-secondary text-sm">
+                Import clients
               </Link>
               <Link to="/trust" className="btn-ghost text-sm">
                 Trust pack
@@ -356,6 +386,33 @@ export default function SwitchFromEngager() {
                   </span>
                   <span className="mt-0.5 block text-xs text-slate-500 leading-snug">{s.line}</span>
                 </span>
+              </Link>
+            </li>
+          ))}
+        </ol>
+      </section>
+
+      <section data-testid="switcher-cutover">
+        <div className="mb-3">
+          <p className="metal-kicker">Cutover path</p>
+          <h2 className="text-base font-semibold text-slate-900 dark:text-white">
+            CSV in, then parallel run
+          </h2>
+          <p className="text-xs text-slate-500">
+            Import the book first. Do not switch off Engager until one live proposal has collected.
+          </p>
+        </div>
+        <ol className="grid gap-2 sm:grid-cols-2 lg:grid-cols-5">
+          {CUTOVER_STEPS.map((s) => (
+            <li key={s.n}>
+              <Link to={s.href} className="path-tile h-full flex-col items-start !p-3">
+                <span className="text-2xs font-bold tabular-nums text-emerald-700 dark:text-emerald-300">
+                  {s.n}
+                </span>
+                <span className="mt-1 block text-sm font-semibold text-slate-900 dark:text-white">
+                  {s.title}
+                </span>
+                <span className="mt-0.5 block text-xs leading-snug text-slate-500">{s.line}</span>
               </Link>
             </li>
           ))}

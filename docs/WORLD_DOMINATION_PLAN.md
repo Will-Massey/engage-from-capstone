@@ -166,7 +166,7 @@ W4  Mobile, trust, GTM, cutover    ──┘
 | ---- | -------------------------------------------------------------------------------------------------------------- |
 | W4.1 | Capacitor **staff jobs + client portal** apps                                                                  |
 | W4.2 | Cyber Essentials prep page + UK residency story                                                                |
-| W4.3 | **Switch from Engager** landing + ROI calculator + CSV import wizard                                           |
+| W4.3 | **Switch from Engager** landing + ROI calculator + CSV import wizard                                           | built — ROI + cutover path + tested CSV |
 | W4.4 | Pricing packaging vs £9/client (value packaging, not race to bottom)                                           |
 | W4.5 | Integrations: finish Xero/QBO push; optional Adfin/GoCardless; **do not fake TaxCalc** — position independence |
 | W4.6 | **Cutover** practice → production per `docs/CUTOVER_PREP.md`                                                   |

@@ -7,90 +7,11 @@ import {
 } from '@heroicons/react/24/outline';
 import { apiClient } from '../../utils/api';
 import toast from 'react-hot-toast';
-
-type ImportRow = {
-  name: string;
-  contactEmail: string;
-  contactName?: string;
-  contactPhone?: string;
-  companyNumber?: string;
-  companyType?: string;
-  notes?: string;
-};
-
-const SAMPLE_CSV = `name,contactEmail,contactName,contactPhone,companyNumber,companyType,notes
-Acme Trading Ltd,accounts@acme.example,Jane Smith,07700900000,12345678,LIMITED_COMPANY,Migrated from Engager
-Sole Trader Joe,joe@example.com,Joe Bloggs,,,SOLE_TRADER,
-`;
-
-function parseCsv(text: string): ImportRow[] {
-  const lines = text
-    .replace(/^\uFEFF/, '')
-    .split(/\r?\n/)
-    .map((l) => l.trim())
-    .filter(Boolean);
-  if (lines.length < 2) return [];
-
-  const split = (line: string): string[] => {
-    const cells: string[] = [];
-    let cur = '';
-    let inQ = false;
-    for (let i = 0; i < line.length; i++) {
-      const ch = line[i];
-      if (ch === '"') {
-        inQ = !inQ;
-        continue;
-      }
-      if (ch === ',' && !inQ) {
-        cells.push(cur.trim());
-        cur = '';
-        continue;
-      }
-      cur += ch;
-    }
-    cells.push(cur.trim());
-    return cells;
-  };
-
-  const headers = split(lines[0]).map((h) => h.toLowerCase().replace(/\s+/g, ''));
-  const idx = (names: string[]) => {
-    for (const n of names) {
-      const i = headers.indexOf(n);
-      if (i >= 0) return i;
-    }
-    return -1;
-  };
-
-  const iName = idx(['name', 'client', 'clientname', 'company']);
-  const iEmail = idx(['contactemail', 'email', 'clientemail']);
-  const iContact = idx(['contactname', 'contact', 'primarycontact']);
-  const iPhone = idx(['contactphone', 'phone', 'mobile', 'tel']);
-  const iCo = idx(['companynumber', 'companyno', 'crn', 'registrationnumber']);
-  const iType = idx(['companytype', 'type', 'entitytype']);
-  const iNotes = idx(['notes', 'note', 'comments']);
-
-  if (iName < 0 || iEmail < 0) {
-    throw new Error('CSV must include name and contactEmail (or email) columns');
-  }
-
-  const rows: ImportRow[] = [];
-  for (let r = 1; r < lines.length; r++) {
-    const cells = split(lines[r]);
-    const name = cells[iName] || '';
-    const contactEmail = cells[iEmail] || '';
-    if (!name || !contactEmail) continue;
-    rows.push({
-      name,
-      contactEmail,
-      contactName: iContact >= 0 ? cells[iContact] : undefined,
-      contactPhone: iPhone >= 0 ? cells[iPhone] : undefined,
-      companyNumber: iCo >= 0 ? cells[iCo] : undefined,
-      companyType: iType >= 0 ? cells[iType] : undefined,
-      notes: iNotes >= 0 ? cells[iNotes] : undefined,
-    });
-  }
-  return rows;
-}
+import {
+  parseClientImportCsv,
+  SAMPLE_CLIENT_CSV,
+  type ClientImportRow,
+} from './clientImportCsv';
 
 export default function ClientImport() {
   const [raw, setRaw] = useState('');
@@ -105,10 +26,10 @@ export default function ClientImport() {
   const [parseError, setParseError] = useState<string | null>(null);
 
   const preview = useMemo(() => {
-    if (!raw.trim()) return [] as ImportRow[];
+    if (!raw.trim()) return [] as ClientImportRow[];
     try {
       setParseError(null);
-      return parseCsv(raw).slice(0, 25);
+      return parseClientImportCsv(raw).slice(0, 25);
     } catch (e: any) {
       setParseError(e?.message || 'Parse error');
       return [];
@@ -117,7 +38,7 @@ export default function ClientImport() {
 
   const fullCount = useMemo(() => {
     try {
-      return raw.trim() ? parseCsv(raw).length : 0;
+      return raw.trim() ? parseClientImportCsv(raw).length : 0;
     } catch {
       return 0;
     }
@@ -127,7 +48,7 @@ export default function ClientImport() {
     setBusy(true);
     setResult(null);
     try {
-      const rows = parseCsv(raw);
+      const rows = parseClientImportCsv(raw);
       if (!rows.length) {
         toast.error('No valid rows to import');
         return;
@@ -147,7 +68,7 @@ export default function ClientImport() {
   }
 
   function loadSample() {
-    setRaw(SAMPLE_CSV.trim());
+    setRaw(SAMPLE_CLIENT_CSV.trim());
     setResult(null);
   }
 
