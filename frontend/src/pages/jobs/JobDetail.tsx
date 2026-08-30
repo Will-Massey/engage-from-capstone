@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
+import toast from 'react-hot-toast';
 import { CheckCircleIcon, ChevronDownIcon, ChevronRightIcon } from '@heroicons/react/24/outline';
 import { apiClient } from '../../utils/api';
 import {
@@ -75,6 +76,7 @@ export default function JobDetail() {
     message: string;
     proposalId?: string;
   } | null>(null);
+  const [notesResult, setNotesResult] = useState<string | null>(null);
 
   async function load() {
     try {
@@ -303,15 +305,17 @@ export default function JobDetail() {
       const res = (await apiClient.post(`/jobs/${id}/tasks/from-notes`, {
         notes: meetingNotes,
       })) as any;
+      const d = res?.data ?? res;
+      const n = d?.created ?? 0;
+      const source = d?.source as string | undefined;
       setMeetingNotes('');
       await load();
-      const n = res?.data?.created ?? res?.created;
       if (n) {
-        setChasePreview({
-          subject: 'Tasks from notes',
-          bodyHtml: `<p>Created ${n} task(s) from meeting notes.</p>`,
-          source: 'notes',
-        });
+        const via =
+          source === 'clara' ? 'Clara' : source === 'sentences' ? 'sentence split' : 'your bullets';
+        const msg = `Created ${n} task${n === 1 ? '' : 's'} from notes (${via}).`;
+        setNotesResult(msg);
+        toast.success(msg);
       }
     } catch (e: any) {
       setError(e?.response?.data?.error?.message || 'Could not create tasks from notes');
@@ -723,7 +727,7 @@ export default function JobDetail() {
             <div className="mb-3 space-y-2">
               <textarea
                 className="input-field min-h-[4.5rem] text-xs"
-                placeholder="Paste meeting notes (one bullet per line)…"
+                placeholder="Paste meeting notes — bullets or a short paragraph…"
                 value={meetingNotes}
                 onChange={(e) => setMeetingNotes(e.target.value)}
               />
@@ -735,6 +739,9 @@ export default function JobDetail() {
               >
                 {notesBusy ? 'Creating…' : 'Clara: notes → tasks'}
               </button>
+              {notesResult && (
+                <p className="text-2xs text-emerald-700 dark:text-emerald-300">{notesResult}</p>
+              )}
             </div>
             <div className="mb-3 flex gap-2">
               <input

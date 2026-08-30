@@ -15,6 +15,7 @@ import {
   renderChaseTemplate,
 } from '../services/chasePackService.js';
 import { draftJobChase, parseChaseDraftMetadata } from '../services/claraChaseService.js';
+import { extractTasksFromNotes } from '../services/meetingNotesService.js';
 import { createEmailService } from '../services/emailService.js';
 import { sendMentionEmails } from '../services/jobMentionService.js';
 
@@ -812,17 +813,8 @@ router.post(
       if (!phase) throw new ApiError('PHASE_NOT_FOUND', 'Phase not on this job', 400);
     }
 
-    const lines = body.notes
-      .split(/\r?\n/)
-      .map((l) =>
-        l
-          .replace(/^\s*[-*•–—]\s+/, '')
-          .replace(/^\s*\d+[.)]\s+/, '')
-          .replace(/^\s*\[ ?[xX ] ?\]\s+/, '')
-          .trim()
-      )
-      .filter((l) => l.length >= 2 && l.length <= 300)
-      .slice(0, 40);
+    const extracted = await extractTasksFromNotes(body.notes);
+    const lines = extracted.titles;
 
     if (!lines.length) {
       throw new ApiError('NO_TASKS', 'No task lines found in notes', 400);
@@ -860,13 +852,17 @@ router.post(
         message: `Created ${created.length} task(s) from meeting notes`,
         jobId: job.id,
         actorId: req.user?.id,
-        metadata: JSON.stringify({ fromNotes: true, count: created.length }),
+        metadata: JSON.stringify({
+          fromNotes: true,
+          count: created.length,
+          source: extracted.source,
+        }),
       },
     });
 
     res.status(201).json({
       success: true,
-      data: { created: created.length, tasks: created },
+      data: { created: created.length, tasks: created, source: extracted.source },
       message: `Created ${created.length} task(s) from notes`,
     });
   })
