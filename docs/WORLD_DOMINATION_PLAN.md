@@ -138,7 +138,7 @@ W4  Mobile, trust, GTM, cutover    ──┘
 | W2.5 | Read-only **email timeline** (M365/Gmail) linked to Client/Job                            | Path to two-way                      |
 | W2.6 | **Document designer v1** (blocks: header, services, fees, clauses, sign)                  | built — preview + seed from last proposal |
 | W2.7 | Disengage / clearance **e-sign**; 64-8 **status track** + partner/API spike               | built — public sign + manual 64-8 track |
-| W2.8 | **Catch-up fees** first-class on proposal wizard                                          | Pricing parity                       |
+| W2.8 | **Catch-up fees** first-class on proposal wizard                                          | built — Pricing step + first-proposal |
 
 **Exit:** Comms **≥9**; admin letters **≥9**.
 

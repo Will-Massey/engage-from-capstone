@@ -30,6 +30,11 @@ import ProposalEmailPreviewDialog, {
 } from '../ai/ProposalEmailPreviewDialog';
 import { showAiError } from '../ai/AiPanel';
 import { dismissFirstProposalWizard } from './firstProposalWizardStorage';
+import WizardCatchUpPanel from '../proposals/WizardCatchUpPanel';
+import {
+  collectWizardCatchUpLines,
+  type WizardCatchUpDraft,
+} from '../proposals/wizardCatchUp';
 
 const WIZARD_STEPS = [
   { id: 1, name: 'Pick client' },
@@ -138,6 +143,7 @@ export default function FirstProposalWizard({ open, onClose, onSent }: FirstProp
 
   const [catalogue, setCatalogue] = useState<CatalogService[]>([]);
   const [selectedLines, setSelectedLines] = useState<SelectedLine[]>([]);
+  const [catchUps, setCatchUps] = useState<Record<string, WizardCatchUpDraft>>({});
   const [serviceSearch, setServiceSearch] = useState('');
 
   const [aiConfigured, setAiConfigured] = useState(false);
@@ -166,6 +172,7 @@ export default function FirstProposalWizard({ open, onClose, onSent }: FirstProp
     setBuildMode('unset');
     setSelectedTemplateId(null);
     setSelectedLines([]);
+    setCatchUps({});
     setProposalTitle('');
     setCoverLetter('');
     setCoverLetterTone('PROFESSIONAL');
@@ -485,16 +492,28 @@ export default function FirstProposalWizard({ open, onClose, onSent }: FirstProp
       const payload = {
         clientId: selectedClient.id,
         title: proposalTitle.trim(),
-        services: selectedLines.map((l) => ({
-          serviceId: l.templateId,
-          name: l.name,
-          description: l.description ?? null,
-          displayPrice: l.displayPrice,
-          billingFrequency: l.billingCycle,
-          quantity: l.quantity,
-          discountPercent: l.discountPercent,
-          vatRate: l.vatRate,
-        })),
+        services: [
+          ...selectedLines.map((l) => ({
+            serviceId: l.templateId,
+            name: l.name,
+            description: l.description ?? null,
+            displayPrice: l.displayPrice,
+            billingFrequency: l.billingCycle,
+            quantity: l.quantity,
+            discountPercent: l.discountPercent,
+            vatRate: l.vatRate,
+          })),
+          ...collectWizardCatchUpLines(
+            selectedLines.map((l) => ({
+              serviceId: l.templateId,
+              name: l.name,
+              displayPrice: l.displayPrice,
+              billingFrequency: l.billingCycle,
+            })),
+            catchUps,
+            format(new Date(), 'yyyy-MM-dd')
+          ),
+        ],
         ...(validUntil ? { validUntil: `${validUntil}T12:00:00.000Z` } : {}),
         coverLetter: coverLetter.trim(),
       };
@@ -939,6 +958,19 @@ export default function FirstProposalWizard({ open, onClose, onSent }: FirstProp
                         </ul>
                       </div>
                     )}
+
+                    <WizardCatchUpPanel
+                      services={selectedLines.map((l) => ({
+                        serviceId: l.templateId,
+                        name: l.name,
+                        displayPrice: l.displayPrice,
+                        billingFrequency: l.billingCycle,
+                      }))}
+                      drafts={catchUps}
+                      onChange={(serviceId, draft) =>
+                        setCatchUps((prev) => ({ ...prev, [serviceId]: draft }))
+                      }
+                    />
                   </div>
                 )}
 

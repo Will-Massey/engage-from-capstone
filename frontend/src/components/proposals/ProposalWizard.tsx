@@ -20,12 +20,18 @@ import { AI_COPILOT } from '../../config/aiCopilot';
 import { showAiError } from '../ai/AiPanel';
 import type { AutoFitResult } from '../ai/AutoFitBanner';
 import WizardClientPreview from './WizardClientPreview';
+import WizardCatchUpPanel from './WizardCatchUpPanel';
+import {
+  collectWizardCatchUpLines,
+  previewCatchUpNet,
+  type WizardCatchUpDraft,
+} from './wizardCatchUp';
 import CreateClient from '../../pages/clients/CreateClient';
 
 const WIZARD_STEPS = [
   { id: 1, name: 'Client', description: 'Select or create a client' },
   { id: 2, name: 'Services', description: `${AI_COPILOT.name} auto-fit review` },
-  { id: 3, name: 'Pricing', description: 'Review fees and compliance' },
+  { id: 3, name: 'Pricing', description: 'Review fees, catch-up, and compliance' },
   { id: 4, name: 'Email', description: `${AI_COPILOT.name} send preview` },
   { id: 5, name: 'Send', description: 'Create and deliver' },
 ] as const;
@@ -100,6 +106,7 @@ export default function ProposalWizard() {
   const [validUntil, setValidUntil] = useState(format(addDays(new Date(), 30), 'yyyy-MM-dd'));
   const [pricingNotes, setPricingNotes] = useState('');
   const [wizardServices, setWizardServices] = useState<WizardService[]>([]);
+  const [catchUps, setCatchUps] = useState<Record<string, WizardCatchUpDraft>>({});
 
   const [regulatoryAlerts, setRegulatoryAlerts] = useState<RegulatoryAlert[]>([]);
   const [pricingFlags, setPricingFlags] = useState<PricingFlag[]>([]);
@@ -142,6 +149,29 @@ export default function ProposalWizard() {
     );
   }, [clients, clientSearch]);
 
+  const todayIso = format(new Date(), 'yyyy-MM-dd');
+  const catchUpLines = useMemo(
+    () => collectWizardCatchUpLines(wizardServices, catchUps, todayIso),
+    [wizardServices, catchUps, todayIso]
+  );
+  const previewServices = useMemo(
+    () => [
+      ...wizardServices,
+      ...catchUpLines.map((line) => {
+        const source = wizardServices.find((s) => s.serviceId === line.serviceId);
+        const net = source
+          ? previewCatchUpNet(source, catchUps[line.serviceId] || { months: 3, discountPercent: 0 })
+          : line.displayPrice;
+        return {
+          name: line.name,
+          displayPrice: net ?? line.displayPrice,
+          billingFrequency: 'ONE_TIME',
+        };
+      }),
+    ],
+    [wizardServices, catchUpLines, catchUps]
+  );
+
   const applyAcceptedSections = useCallback(
     (result: AutoFitResult, decisions: Record<FitSection, SectionDecision>) => {
       if (decisions.title === 'accepted' && result.suggestedTitle) {
@@ -157,6 +187,7 @@ export default function ProposalWizard() {
             rationale: s.rationale,
           }))
         );
+        setCatchUps({});
       }
       if (decisions.coverLetter === 'accepted') {
         if (result.coverLetterDraft) setCoverLetter(result.coverLetterDraft);
@@ -297,11 +328,21 @@ export default function ProposalWizard() {
       validUntil,
       practiceName: tenant?.name,
       senderName: `${user?.firstName || ''} ${user?.lastName || ''}`.trim() || undefined,
-      services: wizardServices.map((s) => ({
-        name: s.name,
-        billingFrequency: s.billingFrequency,
-        displayPrice: s.displayPrice,
-      })),
+      services: [
+        ...wizardServices.map((s) => ({
+          name: s.name,
+          billingFrequency: s.billingFrequency,
+          displayPrice: s.displayPrice,
+        })),
+        ...catchUpLines.map((s) => ({
+          name: s.name,
+          billingFrequency: s.billingFrequency,
+          displayPrice: previewCatchUpNet(
+            wizardServices.find((w) => w.serviceId === s.serviceId) || s,
+            catchUps[s.serviceId] || { months: 3, discountPercent: 0 }
+          ) ?? s.displayPrice,
+        })),
+      ],
     };
 
     try {
@@ -344,12 +385,15 @@ export default function ProposalWizard() {
       const res = (await apiClient.createProposal({
         clientId: selectedClient.id,
         title: proposalTitle,
-        services: wizardServices.map((s) => ({
-          serviceId: s.serviceId,
-          displayPrice: s.displayPrice,
-          billingFrequency: s.billingFrequency,
-          quantity: 1,
-        })),
+        services: [
+          ...wizardServices.map((s) => ({
+            serviceId: s.serviceId,
+            displayPrice: s.displayPrice,
+            billingFrequency: s.billingFrequency,
+            quantity: 1,
+          })),
+          ...catchUpLines,
+        ],
         validUntil: `${validUntil}T12:00:00.000Z`,
         coverLetter: coverLetter.trim() || undefined,
       })) as any;
@@ -525,7 +569,7 @@ export default function ProposalWizard() {
           proposalTitle={proposalTitle || 'Draft proposal'}
           coverLetter={coverLetter}
           validUntil={validUntil}
-          services={wizardServices}
+          services={previewServices}
           emailSubject={emailSubject}
           emailBody={emailBody}
           mode={previewMode}
@@ -747,7 +791,7 @@ export default function ProposalWizard() {
                 Review pricing
               </h2>
               <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">
-                Adjust fees and check regulatory fit before drafting the send email
+                Adjust fees, add catch-up if they are behind, then check regulatory fit
               </p>
             </div>
 
@@ -808,6 +852,14 @@ export default function ProposalWizard() {
                     </div>
                   ))}
                 </div>
+
+                <WizardCatchUpPanel
+                  services={wizardServices}
+                  drafts={catchUps}
+                  onChange={(serviceId, draft) =>
+                    setCatchUps((prev) => ({ ...prev, [serviceId]: draft }))
+                  }
+                />
 
                 <div>
                   <label className="block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1">
