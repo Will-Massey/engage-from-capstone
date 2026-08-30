@@ -165,7 +165,7 @@ W4  Mobile, trust, GTM, cutover    ──┘
 | ID   | Deliverable                                                                                                    |
 | ---- | -------------------------------------------------------------------------------------------------------------- |
 | W4.1 | Capacitor **staff jobs + client portal** apps                                                                  |
-| W4.2 | Cyber Essentials prep page + UK residency story                                                                |
+| W4.2 | Cyber Essentials prep page + UK residency story                                                                | built — 5 CE controls, no fake cert / UK-only |
 | W4.3 | **Switch from Engager** landing + ROI calculator + CSV import wizard                                           | built — ROI + cutover path + tested CSV |
 | W4.4 | Pricing packaging vs £9/client (value packaging, not race to bottom)                                           |
 | W4.5 | Integrations: finish Xero/QBO push; optional Adfin/GoCardless; **do not fake TaxCalc** — position independence |

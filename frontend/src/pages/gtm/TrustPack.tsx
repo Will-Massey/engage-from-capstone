@@ -2,7 +2,6 @@ import { Link } from 'react-router-dom';
 import {
   ShieldCheckIcon,
   MapPinIcon,
-  ServerIcon,
   DocumentCheckIcon,
   LockClosedIcon,
   ClockIcon,
@@ -13,57 +12,14 @@ import {
 import toast from 'react-hot-toast';
 import { BrandLogo } from '../../components/ui/BrandLogo';
 import { StatusChip } from '../../components/ui/StatusChip';
-
-const CE_PREP = [
-  {
-    title: 'Boundary firewalls & secure config',
-    status: 'In product',
-    detail: 'TLS termination on Render; no direct DB exposure; CORS and CSRF on API.',
-  },
-  {
-    title: 'Secure access control',
-    status: 'In product',
-    detail: 'JWT auth, RBAC, MFA/TOTP, tenant isolation on every data path.',
-  },
-  {
-    title: 'Malware protection',
-    status: 'Ops',
-    detail: 'Host AV / managed platform responsibility; document in firm ISMS at go-live.',
-  },
-  {
-    title: 'Patch management',
-    status: 'Pipeline',
-    detail: 'Dependabot / lockfiles; production deploys from reviewed master only.',
-  },
-  {
-    title: 'Secure configuration',
-    status: 'In product',
-    detail: 'Secrets in env; encryption helpers; production DDL disabled on admin routes.',
-  },
-];
-
-const RESIDENCY = [
-  {
-    icon: MapPinIcon,
-    title: 'UK commercial entity',
-    body: 'Capstone Software — UK company serving UK accountancy practices.',
-  },
-  {
-    icon: ServerIcon,
-    title: 'Hosting',
-    body: 'Application services on Render (document region choice at cutover). Postgres and object storage regions recorded in runbooks.',
-  },
-  {
-    icon: LockClosedIcon,
-    title: 'Data protection',
-    body: 'GDPR-aligned privacy policy, e-sign consent, AI disclosure, tenant-scoped data access.',
-  },
-  {
-    icon: DocumentCheckIcon,
-    title: 'Due diligence pack',
-    body: 'SOC 2 control map, public status page, signature forensic certificates for engagements.',
-  },
-];
+import {
+  buildDiligenceSummary,
+  CE_CONTROLS,
+  countCeRemaining,
+  RESIDENCY_FACTS,
+  SUB_PROCESSORS,
+  type CeStatus,
+} from './trustPackData';
 
 const LEGAL_LINKS = [
   { href: '/legal/privacy', label: 'Privacy policy' },
@@ -74,20 +30,7 @@ const LEGAL_LINKS = [
   { href: '/status', label: 'System status' },
 ];
 
-const DILIGENCE_BLURB = `Engage by Capstone — Trust & UK residency summary
-
-Entity: Capstone Software (UK), serving UK accountancy practices.
-Product: Engage — proposal → e-sign → collect → practice delivery (jobs, mailbox, forms, automations).
-Security: JWT + RBAC + MFA; tenant isolation; TLS; CSRF; encrypted secrets for OAuth.
-Evidence in product:
-• Forensic e-sign certificate (hash, IP, UA, consent) on proposal Audit tab
-• Public status page
-• Privacy, terms, AI disclosure, payment collection terms
-Cyber Essentials: prep map in product (not a certificate) — certification scheduled separately.
-AccountFlow mesh: mock-default in practice builds; production AF never contacted until explicit cutover.
-
-Contact: hello@capstonesoftware.co.uk
-Subject: Engage trust pack / due diligence`;
+const DILIGENCE_BLURB = buildDiligenceSummary();
 
 async function copyText(label: string, text: string) {
   try {
@@ -98,7 +41,7 @@ async function copyText(label: string, text: string) {
   }
 }
 
-function statusTone(status: string): 'success' | 'info' | 'warning' | 'neutral' {
+function statusTone(status: CeStatus): 'success' | 'info' | 'warning' | 'neutral' {
   if (status === 'In product') return 'success';
   if (status === 'Ops') return 'info';
   if (status === 'Pipeline') return 'warning';
@@ -110,6 +53,8 @@ function statusTone(status: string): 'success' | 'info' | 'warning' | 'neutral' 
  * "Trust & UK residency", "Cyber Essentials — prep map"
  */
 export default function TrustPack() {
+  const remaining = countCeRemaining();
+
   return (
     <div className="mx-auto max-w-4xl space-y-8 pb-12">
       <header className="metal-tile overflow-hidden p-6 sm:p-8">
@@ -124,8 +69,8 @@ export default function TrustPack() {
               Trust &amp; UK residency
             </h1>
             <p className="mt-2 max-w-xl text-sm leading-relaxed text-slate-600 dark:text-slate-300">
-              Enterprise and partner due diligence in one place — Cyber Essentials preparation,
-              residency narrative, and links to live control documentation.
+              Cyber Essentials preparation and a UK residency story you can show a partner — without
+              claiming a certificate or UK-only hosting we do not have.
             </p>
             <div className="mt-4 flex flex-wrap gap-2">
               <button
@@ -160,7 +105,6 @@ export default function TrustPack() {
         </div>
       </header>
 
-      {/* Partner one-liners */}
       <section className="grid gap-3 sm:grid-cols-3">
         <article className="metal-tile metal-tile--mint p-4">
           <span className="metal-specular" aria-hidden />
@@ -186,15 +130,15 @@ export default function TrustPack() {
           <span className="metal-specular" aria-hidden />
           <MapPinIcon className="relative z-[1] h-6 w-6 text-violet-600" />
           <p className="relative z-[1] mt-2 text-sm font-semibold text-slate-900 dark:text-white">
-            UK-first
+            UK controller
           </p>
           <p className="relative z-[1] mt-1 text-xs text-slate-500">
-            UK English, MTD awareness, UK commercial entity.
+            UK company and UK GDPR. Hosting is a documented sub-processor mix.
           </p>
         </article>
       </section>
 
-      <section>
+      <section data-testid="cyber-essentials-prep">
         <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
           <div className="flex items-center gap-2">
             <ShieldCheckIcon className="h-5 w-5 text-emerald-600" aria-hidden />
@@ -205,18 +149,26 @@ export default function TrustPack() {
           <StatusChip tone="warning">Not a certificate</StatusChip>
         </div>
         <p className="mb-4 text-sm text-slate-500">
-          Honest sales answer: product + ops checklist while formal CE certification is scheduled.
-          Never claim “we are CE certified” until the certificate exists.
+          The five NCSC / IASME technical controls. {remaining} still need ops or firm-ISMS
+          evidence. Never say we are CE certified until the certificate exists.
         </p>
         <div className="space-y-2">
-          {CE_PREP.map((row) => (
+          {CE_CONTROLS.map((row) => (
             <div
-              key={row.title}
+              key={row.id}
               className="metal-tile flex flex-col gap-2 p-4 sm:flex-row sm:items-start sm:justify-between"
             >
               <div className="relative z-[1] min-w-0">
-                <p className="font-medium text-slate-900 dark:text-white">{row.title}</p>
-                <p className="text-sm text-slate-500">{row.detail}</p>
+                <p className="font-medium text-slate-900 dark:text-white">
+                  {row.id} · {row.title}
+                </p>
+                <p className="mt-1 text-sm text-slate-600 dark:text-slate-300">{row.evidence}</p>
+                <p className="mt-1 text-xs text-slate-500">Still needed: {row.remaining}</p>
+                {row.href && (
+                  <Link to={row.href} className="mt-1 inline-block text-xs font-medium text-emerald-700 hover:underline dark:text-emerald-400">
+                    Open evidence
+                  </Link>
+                )}
               </div>
               <span className="relative z-[1] shrink-0">
                 <StatusChip tone={statusTone(row.status)}>{row.status}</StatusChip>
@@ -234,13 +186,47 @@ export default function TrustPack() {
           </h2>
         </div>
         <div className="grid gap-3 sm:grid-cols-2">
-          {RESIDENCY.map((r) => (
+          {RESIDENCY_FACTS.map((r) => (
             <article key={r.title} className="metal-tile metal-tile--soft p-4">
-              <r.icon className="h-6 w-6 text-slate-500" aria-hidden />
-              <h3 className="mt-2 font-semibold text-slate-900 dark:text-white">{r.title}</h3>
+              <h3 className="font-semibold text-slate-900 dark:text-white">{r.title}</h3>
               <p className="mt-1 text-sm text-slate-500">{r.body}</p>
+              {r.href && (
+                <Link
+                  to={r.href}
+                  className="mt-2 inline-block text-xs font-medium text-emerald-700 hover:underline dark:text-emerald-400"
+                >
+                  Read the policy
+                </Link>
+              )}
             </article>
           ))}
+        </div>
+      </section>
+
+      <section className="overflow-hidden rounded-xl border border-slate-200 dark:border-slate-700">
+        <div className="border-b border-slate-200 bg-slate-50 px-4 py-3 dark:border-slate-700 dark:bg-slate-900/50">
+          <p className="text-sm font-semibold text-slate-900 dark:text-white">Sub-processors</p>
+          <p className="text-xs text-slate-500">Named so a partner can diligence without a sales fog.</p>
+        </div>
+        <div className="overflow-x-auto">
+          <table className="min-w-full text-left text-sm">
+            <thead>
+              <tr className="border-b border-slate-100 dark:border-slate-800">
+                <th className="px-4 py-2 font-semibold text-slate-600">Provider</th>
+                <th className="px-4 py-2 font-semibold text-slate-600">Role</th>
+                <th className="px-4 py-2 font-semibold text-slate-600">Note</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+              {SUB_PROCESSORS.map((p) => (
+                <tr key={p.name}>
+                  <td className="px-4 py-2 font-medium text-slate-900 dark:text-slate-50">{p.name}</td>
+                  <td className="px-4 py-2 text-slate-600 dark:text-slate-300">{p.role}</td>
+                  <td className="px-4 py-2 text-slate-500">{p.note}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
       </section>
 
