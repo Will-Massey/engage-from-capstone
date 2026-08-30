@@ -9,6 +9,17 @@ import {
   type PracticeLetterType,
 } from '../services/practiceLetterService.js';
 import { composeLetterBlocks } from '../services/practiceLetterBlocks.js';
+import { getFrontendUrl } from '../config/urls.js';
+import {
+  applyHmrc648Stage,
+  applySignLink,
+  createLetterSignToken,
+  getHmrc648Track,
+  getLetterSign,
+  isValidHmrc648Stage,
+  parseLetterMeta,
+  seedHmrc648Track,
+} from '../services/practiceLetterTrack.js';
 
 const router = Router();
 
@@ -108,6 +119,7 @@ router.post(
           reason: body.reason,
           successorFirm: body.successorFirm,
           effectiveDate: body.effectiveDate,
+          ...(type === 'HMRC_64_8' ? { hmrc64_8: seedHmrc648Track() } : {}),
         }),
         tenantId,
         clientId: client.id,
@@ -130,11 +142,21 @@ router.patch(
     });
     if (!existing) throw new ApiError('NOT_FOUND', 'Letter not found', 404);
 
+    let metaJson = existing.metaJson;
+    if (status === 'SENT' && existing.type === 'HMRC_64_8') {
+      const meta = parseLetterMeta(existing.metaJson);
+      const track = getHmrc648Track(meta);
+      if (!track || track.stage === 'PACK_DRAFT') {
+        metaJson = JSON.stringify(applyHmrc648Stage(meta, 'SENT_TO_CLIENT'));
+      }
+    }
+
     const letter = await prisma.practiceLetter.update({
       where: { id: existing.id },
       data: {
         status,
         sentAt: status === 'SENT' ? new Date() : existing.sentAt,
+        ...(metaJson !== existing.metaJson ? { metaJson } : {}),
       },
     });
     res.json({ success: true, data: letter });
@@ -193,6 +215,66 @@ router.patch(
       include: {
         client: { select: { id: true, name: true } },
         createdBy: { select: { id: true, firstName: true, lastName: true } },
+      },
+    });
+    res.json({ success: true, data: letter });
+  })
+);
+
+/** POST /api/practice-letters/:id/sign-link — issue a one-time public e-sign URL */
+router.post(
+  '/:id/sign-link',
+  authenticate,
+  asyncHandler(async (req, res) => {
+    const existing = await prisma.practiceLetter.findFirst({
+      where: { id: req.params.id, tenantId: req.tenantId! },
+    });
+    if (!existing) throw new ApiError('NOT_FOUND', 'Letter not found', 404);
+    if (!['DISENGAGEMENT', 'PROFESSIONAL_CLEARANCE'].includes(existing.type)) {
+      throw new ApiError('NOT_SIGNABLE', 'Only disengagement and clearance letters can be e-signed', 400);
+    }
+    const meta = parseLetterMeta(existing.metaJson);
+    if (getLetterSign(meta)?.signedAt) {
+      throw new ApiError('ALREADY_SIGNED', 'This letter has already been signed', 400);
+    }
+    const { token, tokenHash } = createLetterSignToken(existing.id);
+    const next = applySignLink(meta, tokenHash);
+    await prisma.practiceLetter.update({
+      where: { id: existing.id },
+      data: { metaJson: JSON.stringify(next) },
+    });
+    const url = `${getFrontendUrl()}/letters/view/${token}`;
+    res.json({ success: true, data: { url, token } });
+  })
+);
+
+/** PATCH /api/practice-letters/:id/track — 64-8 status track */
+router.patch(
+  '/:id/track',
+  authenticate,
+  asyncHandler(async (req, res) => {
+    const body = z
+      .object({
+        stage: z.string().min(1),
+        note: z.string().max(500).optional(),
+      })
+      .parse(req.body);
+    if (!isValidHmrc648Stage(body.stage)) {
+      throw new ApiError('INVALID_STAGE', 'Unknown 64-8 stage', 400);
+    }
+    const existing = await prisma.practiceLetter.findFirst({
+      where: { id: req.params.id, tenantId: req.tenantId! },
+    });
+    if (!existing) throw new ApiError('NOT_FOUND', 'Letter not found', 404);
+    if (existing.type !== 'HMRC_64_8') {
+      throw new ApiError('NOT_64_8', 'Status track is only for HMRC 64-8 packs', 400);
+    }
+    const meta = applyHmrc648Stage(parseLetterMeta(existing.metaJson), body.stage, body.note);
+    const letter = await prisma.practiceLetter.update({
+      where: { id: existing.id },
+      data: { metaJson: JSON.stringify(meta) },
+      include: {
+        client: { select: { id: true, name: true } },
       },
     });
     res.json({ success: true, data: letter });

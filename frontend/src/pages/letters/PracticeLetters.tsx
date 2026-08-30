@@ -16,6 +16,8 @@ import {
   seedBlocksFromLetter,
   type LetterBlock,
 } from './letterBlocks';
+import LetterEsignPanel from './LetterEsignPanel';
+import Hmrc648Track from './Hmrc648Track';
 
 type LetterType = 'DISENGAGEMENT' | 'PROFESSIONAL_CLEARANCE' | 'HMRC_64_8';
 
@@ -105,10 +107,11 @@ export default function PracticeLetters() {
   }
 
   async function markSent(id: string) {
-    await apiClient.patch(`/practice-letters/${id}/status`, { status: 'SENT' });
+    const res = await apiClient.patch(`/practice-letters/${id}/status`, { status: 'SENT' });
+    const letter = res.data?.data ?? res.data;
     await load();
     if (selected?.id === id) {
-      setSelected({ ...selected, status: 'SENT' });
+      setSelected(letter ? { ...selected, ...letter, status: 'SENT' } : { ...selected, status: 'SENT' });
     }
   }
 
@@ -389,6 +392,19 @@ export default function PracticeLetters() {
                   )}
                 </div>
               </div>
+              {(selected.type === 'DISENGAGEMENT' ||
+                selected.type === 'PROFESSIONAL_CLEARANCE') && (
+                <LetterEsignPanel letterId={selected.id} metaJson={selected.metaJson} />
+              )}
+              {selected.type === 'HMRC_64_8' && (
+                <Hmrc648Track
+                  letterId={selected.id}
+                  metaJson={selected.metaJson}
+                  onUpdated={(letter) =>
+                    setSelected((s) => (s ? { ...s, ...letter } : s))
+                  }
+                />
+              )}
               {editing && designerMode ? (
                 <div
                   className="space-y-3 rounded-lg border border-emerald-200/60 bg-emerald-50/30 p-3 dark:border-emerald-900 dark:bg-emerald-950/20"

@@ -362,6 +362,7 @@ export const csrfProtection = async (
     '/proposals/view', // Public proposal viewing and signing
     '/proposals/portal', // Client portal (public access)
     '/onboarding', // AML self-service form (public, portal token)
+    '/public/practice-letters', // Practice letter e-sign (public, token in URL)
     '/webhooks/sendgrid', // SendGrid delivery events
     '/webhooks/cloudflare-email', // Cloudflare delivery events
     '/webhooks/graph-mail', // Microsoft Graph mailbox webhook (clientState-validated)

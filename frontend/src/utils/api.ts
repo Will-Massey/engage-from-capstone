@@ -234,6 +234,7 @@ export function isPublicClientPage(): boolean {
   return (
     path.startsWith('/portal/') ||
     path.startsWith('/proposals/view/') ||
+    path.startsWith('/letters/view/') ||
     path.startsWith('/onboarding/') ||
     path === '/status'
   );

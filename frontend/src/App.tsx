@@ -562,6 +562,18 @@ const AnimatedRoutes = () => {
           }
         />
 
+        {/* Practice letter e-sign (link possession = access) */}
+        <Route
+          path="/letters/view/:token"
+          element={
+            <AnimatedPage>
+              <PageSuspense>
+                <Pages.LetterSign />
+              </PageSuspense>
+            </AnimatedPage>
+          }
+        />
+
         {/* AML self-service form (portal token) */}
         <Route
           path="/onboarding/aml/:token"

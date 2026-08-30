@@ -4,6 +4,7 @@ import { lazy, type LazyExoticComponent, type ComponentType } from 'react';
 export const PublicProposalView = lazy(() => import('../pages/public/ProposalView'));
 export const ClientPortal = lazy(() => import('../pages/public/ClientPortal'));
 export const AmlOnboarding = lazy(() => import('../pages/public/AmlOnboarding'));
+export const LetterSign = lazy(() => import('../pages/public/LetterSign'));
 
 /** Auth */
 export const Login = lazy(() => import('../pages/auth/Login'));
@@ -110,6 +111,7 @@ export const ROUTE_LAZY_PAGES: Record<string, LazyExoticComponent<ComponentType<
   PublicProposalView,
   ClientPortal,
   AmlOnboarding,
+  LetterSign,
   TermsOfService,
   PaymentCollectionTerms,
   ClientPaymentAuthorisation,

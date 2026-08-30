@@ -137,7 +137,7 @@ W4  Mobile, trust, GTM, cutover    ──┘
 | W2.4 | Bulk secure email + optional **SMS add-on** (Twilio)                                      | Parity +                             |
 | W2.5 | Read-only **email timeline** (M365/Gmail) linked to Client/Job                            | Path to two-way                      |
 | W2.6 | **Document designer v1** (blocks: header, services, fees, clauses, sign)                  | built — reorder, live preview, persist |
-| W2.7 | Disengage / clearance **e-sign**; 64-8 **status track** + partner/API spike               | Admin exceed                         |
+| W2.7 | Disengage / clearance **e-sign**; 64-8 **status track** + partner/API spike               | built — public sign + manual 64-8 track |
 | W2.8 | **Catch-up fees** first-class on proposal wizard                                          | Pricing parity                       |
 
 **Exit:** Comms **≥9**; admin letters **≥9**.
@@ -186,7 +186,7 @@ W4  Mobile, trust, GTM, cutover    ──┘
 | Portal / mobile            | **W1.4 + W4.1**                                             |
 | Automations / bulk email   | **W2**                                                      |
 | Document designer          | **W2.6** (built — blocks + live preview)                    |
-| Live 64-8                  | **W2.7**                                                    |
+| Live 64-8                  | **W2.7** (track built; HMRC API still Coming soon)          |
 | TaxCalc distribution       | **W4.3–4.5** narrative + switcher (never depend on TaxCalc) |
 | Unlimited users sticker    | **W4.4** packaging                                          |
 
