@@ -407,7 +407,9 @@ export default function JobDetail() {
           <p className="text-sm font-semibold text-emerald-900 dark:text-emerald-100">
             Renewal window
           </p>
-          <p className="mt-1 text-sm text-emerald-800 dark:text-emerald-200">{renewalNudge.message}</p>
+          <p className="mt-1 text-sm text-emerald-800 dark:text-emerald-200">
+            {renewalNudge.message}
+          </p>
           <div className="mt-2 flex flex-wrap gap-3">
             <Link
               to="/proposals/renewals"

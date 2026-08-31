@@ -99,9 +99,10 @@ export function clearLegacyLocalRules(): void {
 }
 
 /** Prefer firm rules; fall back to leftover browser cache so nothing is lost. */
-export function resolveLoadedRules(
-  serverRules: AutomationRuleRow[] | undefined | null
-): { rules: AutomationRuleRow[]; migratedFromLocal: boolean } {
+export function resolveLoadedRules(serverRules: AutomationRuleRow[] | undefined | null): {
+  rules: AutomationRuleRow[];
+  migratedFromLocal: boolean;
+} {
   if (Array.isArray(serverRules) && serverRules.length > 0) {
     return { rules: serverRules, migratedFromLocal: false };
   }

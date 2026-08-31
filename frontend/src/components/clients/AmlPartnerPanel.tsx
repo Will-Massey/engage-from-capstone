@@ -146,8 +146,7 @@ export default function AmlPartnerPanel({
 
       <ComingSoonCallout title="Partner AML checks" testId="aml-coming-soon">
         SmartSearch and Creditsafe initiation is switched off while we weigh Credas. Keep using
-        documents and <span className="font-medium">Mark AML as complete</span> for your own
-        checks.
+        documents and <span className="font-medium">Mark AML as complete</span> for your own checks.
       </ComingSoonCallout>
 
       {status?.amlCheckedAt && (

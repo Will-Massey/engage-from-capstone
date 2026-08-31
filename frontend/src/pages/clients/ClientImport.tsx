@@ -7,11 +7,7 @@ import {
 } from '@heroicons/react/24/outline';
 import { apiClient } from '../../utils/api';
 import toast from 'react-hot-toast';
-import {
-  parseClientImportCsv,
-  SAMPLE_CLIENT_CSV,
-  type ClientImportRow,
-} from './clientImportCsv';
+import { parseClientImportCsv, SAMPLE_CLIENT_CSV, type ClientImportRow } from './clientImportCsv';
 
 export default function ClientImport() {
   const [raw, setRaw] = useState('');

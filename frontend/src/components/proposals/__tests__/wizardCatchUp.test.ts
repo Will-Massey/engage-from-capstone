@@ -17,9 +17,7 @@ describe('wizardCatchUp', () => {
   it('treats one-off lines as ineligible', () => {
     expect(isRecurringWizardFrequency('ONE_TIME')).toBe(false);
     expect(isRecurringWizardFrequency('MONTHLY')).toBe(true);
-    expect(
-      previewCatchUpBase({ ...bookkeeping, billingFrequency: 'ONE_TIME' }, 3)
-    ).toBeNull();
+    expect(previewCatchUpBase({ ...bookkeeping, billingFrequency: 'ONE_TIME' }, 3)).toBeNull();
   });
 
   it('prices months × monthly equivalent, then applies discount', () => {
@@ -32,7 +30,11 @@ describe('wizardCatchUp', () => {
 
   it('builds a ONE_TIME payload only when the draft is enabled', () => {
     expect(
-      buildWizardCatchUpPayload(bookkeeping, { enabled: false, months: 3, discountPercent: 0 }, '2026-08-30')
+      buildWizardCatchUpPayload(
+        bookkeeping,
+        { enabled: false, months: 3, discountPercent: 0 },
+        '2026-08-30'
+      )
     ).toBeNull();
     const line = buildWizardCatchUpPayload(
       bookkeeping,

@@ -62,7 +62,10 @@ export default function ServicePricingFormulas({
   };
 
   return (
-    <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-6" data-testid="service-pricing-formulas">
+    <div
+      className="bg-white rounded-xl border border-slate-200 shadow-sm p-6"
+      data-testid="service-pricing-formulas"
+    >
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
@@ -71,8 +74,8 @@ export default function ServicePricingFormulas({
         <div>
           <h2 className="text-lg font-semibold text-slate-900">Catalogue formulas</h2>
           <p className="text-sm text-slate-600 mt-1">
-            Adjust the catalogue price from client turnover or staff count. The proposal builder
-            can apply these with one click.
+            Adjust the catalogue price from client turnover or staff count. The proposal builder can
+            apply these with one click.
           </p>
         </div>
         <span className="text-sm text-primary-600">{open ? 'Hide' : 'Show'}</span>
@@ -81,7 +84,9 @@ export default function ServicePricingFormulas({
       {open && (
         <div className="mt-4 space-y-4">
           {rules.length === 0 ? (
-            <p className="text-sm text-slate-500">No formulas yet. Add a preset or write your own.</p>
+            <p className="text-sm text-slate-500">
+              No formulas yet. Add a preset or write your own.
+            </p>
           ) : (
             <ul className="divide-y divide-slate-100 rounded-lg border border-slate-200">
               {rules.map((rule) => (
@@ -167,7 +172,8 @@ export default function ServicePricingFormulas({
                 onChange={(e) =>
                   setDraft({
                     ...draft,
-                    conditionOperator: e.target.value as CreatePricingRulePayload['conditionOperator'],
+                    conditionOperator: e.target
+                      .value as CreatePricingRulePayload['conditionOperator'],
                   })
                 }
               >
@@ -213,7 +219,11 @@ export default function ServicePricingFormulas({
               </div>
             </label>
             <div className="sm:col-span-2">
-              <button type="submit" className="btn-primary text-sm inline-flex items-center gap-1.5" disabled={busy}>
+              <button
+                type="submit"
+                className="btn-primary text-sm inline-flex items-center gap-1.5"
+                disabled={busy}
+              >
                 <PlusIcon className="h-4 w-4" />
                 {busy ? 'Saving…' : 'Save formula'}
               </button>

@@ -38,9 +38,7 @@ describe('groupRulesByTrigger', () => {
 
 describe('mergePackRules', () => {
   it('skips trigger+action pairs that already exist', () => {
-    const existing = [
-      { id: 'a', trigger: 'job.overdue', action: 'chase.A', enabled: true },
-    ];
+    const existing = [{ id: 'a', trigger: 'job.overdue', action: 'chase.A', enabled: true }];
     const result = mergePackRules(
       existing,
       {

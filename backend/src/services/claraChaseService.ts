@@ -5,11 +5,7 @@
  */
 import { chatCompletion, isAiConfigured } from './ai/aiClient.js';
 import { getVoiceOfPracticePromptContext } from './voiceOfPracticeService.js';
-import {
-  boardColumnLabel,
-  getChasePack,
-  renderChaseTemplate,
-} from './chasePackService.js';
+import { boardColumnLabel, getChasePack, renderChaseTemplate } from './chasePackService.js';
 
 export type ChaseDraft = {
   subject: string;

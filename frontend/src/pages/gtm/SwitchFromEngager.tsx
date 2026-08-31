@@ -253,7 +253,7 @@ export default function SwitchFromEngager() {
   );
   const roi = useMemo(() => calculateSwitcherRoi(roiInput), [roiInput]);
   const roiSummary = useMemo(() => formatSwitcherRoiSummary(roiInput, roi), [roiInput, roi]);
-  const fmt = formatGbp
+  const fmt = formatGbp;
 
   return (
     <div className="mx-auto max-w-5xl space-y-8 pb-12">

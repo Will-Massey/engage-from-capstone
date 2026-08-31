@@ -6,11 +6,7 @@
 import { prisma } from '../config/database.js';
 import { getChasePack, renderChaseTemplate, boardColumnLabel } from './chasePackService.js';
 import logger from '../config/logger.js';
-import {
-  draftJobChase,
-  draftProposalChase,
-  parseChaseDraftMetadata,
-} from './claraChaseService.js';
+import { draftJobChase, draftProposalChase, parseChaseDraftMetadata } from './claraChaseService.js';
 
 export type AutomationRule = {
   id: string;

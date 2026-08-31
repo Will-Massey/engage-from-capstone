@@ -31,10 +31,7 @@ import ProposalEmailPreviewDialog, {
 import { showAiError } from '../ai/AiPanel';
 import { dismissFirstProposalWizard } from './firstProposalWizardStorage';
 import WizardCatchUpPanel from '../proposals/WizardCatchUpPanel';
-import {
-  collectWizardCatchUpLines,
-  type WizardCatchUpDraft,
-} from '../proposals/wizardCatchUp';
+import { collectWizardCatchUpLines, type WizardCatchUpDraft } from '../proposals/wizardCatchUp';
 
 const WIZARD_STEPS = [
   { id: 1, name: 'Pick client' },

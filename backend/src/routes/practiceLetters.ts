@@ -264,7 +264,11 @@ router.post(
     });
     if (!existing) throw new ApiError('NOT_FOUND', 'Letter not found', 404);
     if (!['DISENGAGEMENT', 'PROFESSIONAL_CLEARANCE'].includes(existing.type)) {
-      throw new ApiError('NOT_SIGNABLE', 'Only disengagement and clearance letters can be e-signed', 400);
+      throw new ApiError(
+        'NOT_SIGNABLE',
+        'Only disengagement and clearance letters can be e-signed',
+        400
+      );
     }
     const meta = parseLetterMeta(existing.metaJson);
     if (getLetterSign(meta)?.signedAt) {

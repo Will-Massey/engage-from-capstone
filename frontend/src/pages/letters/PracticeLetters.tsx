@@ -112,7 +112,9 @@ export default function PracticeLetters() {
     const letter = res.data?.data ?? res.data;
     await load();
     if (selected?.id === id) {
-      setSelected(letter ? { ...selected, ...letter, status: 'SENT' } : { ...selected, status: 'SENT' });
+      setSelected(
+        letter ? { ...selected, ...letter, status: 'SENT' } : { ...selected, status: 'SENT' }
+      );
     }
   }
 
@@ -126,9 +128,7 @@ export default function PracticeLetters() {
     setEditing(true);
     setDesignerMode(true);
     const stored = parseStoredLetterBlocks(letter.metaJson);
-    setBlocks(
-      stored ?? seedBlocksFromLetter(letter.title, letter.bodyHtml, form.reason)
-    );
+    setBlocks(stored ?? seedBlocksFromLetter(letter.title, letter.bodyHtml, form.reason));
   }
 
   async function saveLetter() {
@@ -421,9 +421,7 @@ export default function PracticeLetters() {
                 <Hmrc648Track
                   letterId={selected.id}
                   metaJson={selected.metaJson}
-                  onUpdated={(letter) =>
-                    setSelected((s) => (s ? { ...s, ...letter } : s))
-                  }
+                  onUpdated={(letter) => setSelected((s) => (s ? { ...s, ...letter } : s))}
                 />
               )}
               {editing && designerMode ? (
@@ -478,9 +476,7 @@ export default function PracticeLetters() {
                                 type="button"
                                 className="btn-secondary px-1.5 py-0.5 text-2xs text-red-600"
                                 disabled={blocks.length <= 1}
-                                onClick={() =>
-                                  setBlocks((bs) => bs.filter((_, j) => j !== i))
-                                }
+                                onClick={() => setBlocks((bs) => bs.filter((_, j) => j !== i))}
                               >
                                 Remove
                               </button>
@@ -510,9 +506,7 @@ export default function PracticeLetters() {
                             key={t}
                             type="button"
                             className="rounded-full border border-slate-200 px-2 py-0.5 text-2xs font-medium hover:border-emerald-400"
-                            onClick={() =>
-                              setBlocks((bs) => [...bs, { type: t, content: '' }])
-                            }
+                            onClick={() => setBlocks((bs) => [...bs, { type: t, content: '' }])}
                           >
                             + {t}
                           </button>

@@ -44,8 +44,7 @@ export default function Hmrc648Track({ letterId, metaJson, onUpdated }: Props) {
         <ol className="mt-2 grid gap-1 sm:grid-cols-5">
           {HMRC_64_8_STAGES.map((stage) => {
             const active = stage === current;
-            const reached =
-              HMRC_64_8_STAGES.indexOf(stage) <= HMRC_64_8_STAGES.indexOf(current);
+            const reached = HMRC_64_8_STAGES.indexOf(stage) <= HMRC_64_8_STAGES.indexOf(current);
             return (
               <li key={stage}>
                 <button
@@ -67,10 +66,7 @@ export default function Hmrc648Track({ letterId, metaJson, onUpdated }: Props) {
           })}
         </ol>
       </div>
-      <ComingSoonCallout
-        title="Live HMRC agent authorisation"
-        testId="hmrc-64-8-api-soon"
-      >
+      <ComingSoonCallout title="Live HMRC agent authorisation" testId="hmrc-64-8-api-soon">
         HMRC does not offer a public 64-8 or Agent Services API we can call. Track the pack here
         until a partner gateway exists — do not pretend a submission went through.
       </ComingSoonCallout>

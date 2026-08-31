@@ -37,10 +37,10 @@ describe('mergeProposalSeedIntoBlocks', () => {
   });
 
   it('does not overwrite filled blocks', () => {
-    const merged = mergeProposalSeedIntoBlocks(
-      [{ type: 'services', content: 'Already set' }],
-      { services: 'New', fees: '' }
-    );
+    const merged = mergeProposalSeedIntoBlocks([{ type: 'services', content: 'Already set' }], {
+      services: 'New',
+      fees: '',
+    });
     expect(merged[0].content).toBe('Already set');
   });
 });
