@@ -3,10 +3,21 @@ import { secureCompare } from './secureCompare.js';
 
 export const isProduction = process.env.NODE_ENV === 'production';
 
-export const allowPublicRegister = !isProduction || process.env.ALLOW_PUBLIC_REGISTER === 'true';
+/**
+ * House CTAs send visitors to /engage/register for the 7-day trial.
+ * Public self-serve is on unless the named env var is the string 'false'.
+ * Unset / empty / 'true' all allow signup so a missing Render flag cannot
+ * silently kill trial start. Set ALLOW_PUBLIC_REGISTER=false (or
+ * ALLOW_PUBLIC_TENANT_SIGNUP=false) to close the gate.
+ */
+function publicSignupEnabled(envVar: string): boolean {
+  return process.env[envVar] !== 'false';
+}
+
+export const allowPublicRegister = !isProduction || publicSignupEnabled('ALLOW_PUBLIC_REGISTER');
 
 export const allowPublicTenantSignup =
-  !isProduction || process.env.ALLOW_PUBLIC_TENANT_SIGNUP === 'true';
+  !isProduction || publicSignupEnabled('ALLOW_PUBLIC_TENANT_SIGNUP');
 
 export const rateLimitingEnabled = process.env.RATE_LIMIT_ENABLED !== 'false';
 
