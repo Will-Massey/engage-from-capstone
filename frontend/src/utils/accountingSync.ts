@@ -1,6 +1,10 @@
 /** Xero/QuickBooks sync settings helpers (R4.1) — pure logic for the Settings panels. */
 
-import type { UpdateXeroSettingsPayload, XeroSyncMode } from '../types/integrations';
+import type {
+  UpdateQuickBooksSettingsPayload,
+  UpdateXeroSettingsPayload,
+  XeroSyncMode,
+} from '../types/integrations';
 
 export interface XeroSyncModeOption {
   value: XeroSyncMode;
@@ -44,5 +48,13 @@ export function buildXeroSettingsPayload(form: {
       form.xeroSyncMode === 'paid_invoices'
         ? normalizeAccountCode(form.xeroPaymentAccountCode)
         : null,
+  };
+}
+
+export function buildQuickBooksSettingsPayload(form: {
+  paymentAccountId: string;
+}): UpdateQuickBooksSettingsPayload {
+  return {
+    paymentAccountId: normalizeAccountCode(form.paymentAccountId),
   };
 }

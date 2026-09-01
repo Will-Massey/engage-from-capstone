@@ -2427,6 +2427,10 @@ const Settings = () => {
                       goes to your connected Stripe account. This is separate from your Engage
                       subscription. Leave this off and you pay for Engage only.
                     </p>
+                    <p className="mt-2 text-sm text-slate-500 dark:text-slate-300">
+                      BACS Direct Debit is coming soon. Today collection is UK cards via Stripe
+                      only — we will not pretend a bank-debit rail is live.
+                    </p>
 
                     <div className="mt-4 flex flex-wrap items-center gap-3">
                       <span

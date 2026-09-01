@@ -9,6 +9,7 @@ import {
 } from '@heroicons/react/24/outline';
 import { useAuthStore } from '../../stores/authStore';
 import { isApprover } from '../../constants/roles';
+import { buildQuickBooksSettingsPayload } from '../../utils/accountingSync';
 
 interface QuickBooksStatus {
   connected: boolean;
@@ -18,6 +19,7 @@ interface QuickBooksStatus {
   connectedAt?: string;
   lastImportAt?: string;
   lastPushAt?: string;
+  paymentAccountId?: string;
 }
 
 const QuickBooksConnect = () => {
@@ -29,12 +31,15 @@ const QuickBooksConnect = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [isConnecting, setIsConnecting] = useState(false);
   const [isImporting, setIsImporting] = useState(false);
+  const [isSavingSettings, setIsSavingSettings] = useState(false);
+  const [paymentAccountId, setPaymentAccountId] = useState('');
 
   const loadStatus = useCallback(async () => {
     try {
       const response = (await apiClient.getQuickBooksStatus()) as any;
       if (response.success) {
         setStatus(response.data);
+        setPaymentAccountId(response.data?.paymentAccountId ?? '');
       }
     } catch {
       setStatus({ connected: false, configured: false });
@@ -91,6 +96,24 @@ const QuickBooksConnect = () => {
       }
     } catch {
       toast.error('Failed to disconnect QuickBooks');
+    }
+  };
+
+  const saveSettings = async () => {
+    setIsSavingSettings(true);
+    try {
+      const response = (await apiClient.updateQuickBooksSettings(
+        buildQuickBooksSettingsPayload({ paymentAccountId })
+      )) as any;
+      if (response.success) {
+        toast.success('QuickBooks sync settings saved');
+        setStatus((prev) => ({ ...(prev ?? { connected: true, configured: true }), ...response.data }));
+        setPaymentAccountId(response.data?.paymentAccountId ?? paymentAccountId);
+      }
+    } catch (error: any) {
+      toast.error(error.response?.data?.error?.message || 'Failed to save QuickBooks settings');
+    } finally {
+      setIsSavingSettings(false);
     }
   };
 
@@ -181,9 +204,38 @@ const QuickBooksConnect = () => {
                       Disconnect
                     </button>
                   </div>
+                  <div className="mt-4 pt-4 border-t border-green-200 dark:border-green-800 space-y-3">
+                    <h5 className="text-sm font-medium text-slate-900 dark:text-white">
+                      Payment account
+                    </h5>
+                    <label className="block text-sm">
+                      Deposit account ID (optional)
+                      <input
+                        type="text"
+                        value={paymentAccountId}
+                        onChange={(e) => setPaymentAccountId(e.target.value)}
+                        placeholder="e.g. 35"
+                        className="mt-1 block w-40 rounded border border-green-300 dark:border-green-700 bg-white dark:bg-slate-900 px-2 py-1 text-sm"
+                      />
+                      <span className="block mt-1 text-xs opacity-70">
+                        When set, Stripe collections are marked paid against this QuickBooks bank
+                        account. Leave blank to leave invoices awaiting payment.
+                      </span>
+                    </label>
+                    <button
+                      type="button"
+                      onClick={saveSettings}
+                      disabled={isSavingSettings}
+                      className="inline-flex items-center px-3 py-1.5 text-sm font-medium text-white bg-green-700 hover:bg-green-800 rounded-lg disabled:opacity-50"
+                    >
+                      {isSavingSettings && <ArrowPathIcon className="h-4 w-4 mr-1 animate-spin" />}
+                      Save sync settings
+                    </button>
+                  </div>
                   <p className="mt-3 text-xs opacity-70">
                     Recurring payments collected by Stripe are mirrored automatically as QuickBooks
-                    invoices, so your books always match the money actually collected.
+                    invoices, so your books always match the money actually collected. TaxCalc is
+                    not connected — Engage stays independent of it.
                   </p>
                 </>
               ) : (

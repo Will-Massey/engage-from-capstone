@@ -95,6 +95,10 @@ export interface QuickBooksStatusResult {
   sandbox: boolean;
 }
 
+export interface UpdateQuickBooksSettingsPayload {
+  paymentAccountId?: string | null;
+}
+
 export interface ImportQuickBooksClientsPayload {
   dryRun?: boolean;
 }

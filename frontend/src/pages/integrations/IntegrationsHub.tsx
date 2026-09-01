@@ -146,6 +146,7 @@ export default function IntegrationsHub() {
             Connect Engage to the rest of your practice: your Microsoft 365 or Google mailbox,
             AccountFlow (Capstone Tandem) for auto-handoff and SSO, Xero and QuickBooks Online for
             client sync, and outbound webhooks for Zapier, Make, or your practice management tool.
+            TaxCalc is not an Engage integration — we stay independent of it.
           </p>
         </div>
       </header>

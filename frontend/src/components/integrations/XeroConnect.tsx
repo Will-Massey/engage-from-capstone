@@ -43,7 +43,7 @@ const XeroConnect = () => {
   const applyStatus = (data: XeroStatus) => {
     setStatus(data);
     setAutoPush(data.autoPushOnAcceptance !== false);
-    setSyncMode(data.xeroSyncMode ?? 'repeating_draft');
+    setSyncMode(data.xeroSyncMode ?? 'paid_invoices');
     setPaymentAccountCode(data.xeroPaymentAccountCode ?? '');
   };
 

@@ -19,7 +19,7 @@ apps, set the env vars in Render, and both integrations go live.
    scopes per consent request):
 
    ```
-   openid profile email offline_access accounting.contacts accounting.transactions accounting.settings
+   openid profile email offline_access accounting.contacts accounting.invoices accounting.payments accounting.settings
    ```
 
 5. Copy the **Client id** and generate a **Client secret**.
@@ -89,8 +89,9 @@ transactions bill live), so QBO tenants get **paid-invoice sync only**:
 - Each Stripe recurring payment creates a QBO invoice (gross amounts,
   `GlobalTaxCalculation: NotApplicable`; the Stripe invoice id is in the
   private note). Idempotent via `QBO_INVOICE_SYNCED` activity records.
-- If a `paymentAccountId` is set (`POST /api/quickbooks/settings`), a Payment
-  is recorded against that deposit account; otherwise invoices are left unpaid.
+- If a `paymentAccountId` is set (Integrations → QuickBooks → Payment account,
+  or `POST /api/quickbooks/settings`), a Payment is recorded against that
+  deposit account; otherwise invoices are left unpaid.
 - `POST /api/quickbooks/import-clients` (supports `{"dryRun": true}`) imports
   customers as Engage clients, deduped by email/name, linked via a
   `qbo:<Id>` tag (mirrors the `xero:<contactID>` convention).

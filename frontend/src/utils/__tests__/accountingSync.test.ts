@@ -3,6 +3,7 @@ import {
   XERO_SYNC_MODE_OPTIONS,
   normalizeAccountCode,
   buildXeroSettingsPayload,
+  buildQuickBooksSettingsPayload,
 } from '../accountingSync';
 
 describe('XERO_SYNC_MODE_OPTIONS', () => {
@@ -66,5 +67,19 @@ describe('buildXeroSettingsPayload', () => {
       xeroPaymentAccountCode: '',
     });
     expect(payload.xeroPaymentAccountCode).toBeNull();
+  });
+});
+
+describe('buildQuickBooksSettingsPayload', () => {
+  it('trims the deposit account id', () => {
+    expect(buildQuickBooksSettingsPayload({ paymentAccountId: ' 35 ' })).toEqual({
+      paymentAccountId: '35',
+    });
+  });
+
+  it('sends null so an empty id clears the setting', () => {
+    expect(buildQuickBooksSettingsPayload({ paymentAccountId: '' })).toEqual({
+      paymentAccountId: null,
+    });
   });
 });

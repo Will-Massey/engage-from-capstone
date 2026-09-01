@@ -151,6 +151,7 @@ import type {
   OAuthConnectResult,
   QuickBooksProposalPushResult,
   QuickBooksStatusResult,
+  UpdateQuickBooksSettingsPayload,
   UpdateXeroSettingsPayload,
   XeroProposalPushResult,
   XeroStatusResult,
@@ -1109,6 +1110,9 @@ export const apiClient = {
     api.post(`/quickbooks/push-proposal/${proposalId}${force ? '?force=true' : ''}`, {}) as Promise<
       ApiResponse<QuickBooksProposalPushResult>
     >,
+
+  updateQuickBooksSettings: (payload: UpdateQuickBooksSettingsPayload) =>
+    api.post('/quickbooks/settings', payload) as Promise<ApiResponse<QuickBooksStatusResult>>,
 
   // W4.1 fee benchmarks (R3: optional turnover band + your-fee comparison)
   getFeeBenchmarks: (params?: FeeBenchmarksParams) =>
