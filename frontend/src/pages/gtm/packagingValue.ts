@@ -44,10 +44,10 @@ export const ENGAGE_TIERS: EngageTier[] = [
 export const FOUNDING_PROFESSIONAL_MONTHLY = 79;
 export const DEFAULT_ENGAGER_PER_CLIENT = 9;
 
-export function recommendEngageTier(opts: {
-  clients: number;
-  users: number;
-}): { tier: EngageTier; reasons: string[] } {
+export function recommendEngageTier(opts: { clients: number; users: number }): {
+  tier: EngageTier;
+  reasons: string[];
+} {
   const clients = Math.max(0, Math.round(Number(opts.clients) || 0));
   const users = Math.max(1, Math.round(Number(opts.users) || 1));
   const reasons: string[] = [];

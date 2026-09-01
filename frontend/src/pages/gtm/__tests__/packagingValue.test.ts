@@ -1,8 +1,4 @@
-import {
-  comparePackaging,
-  formatPackagingPitch,
-  recommendEngageTier,
-} from '../packagingValue';
+import { comparePackaging, formatPackagingPitch, recommendEngageTier } from '../packagingValue';
 
 describe('recommendEngageTier', () => {
   it('keeps a small book on Starter and a growing book on Professional', () => {

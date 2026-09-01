@@ -624,21 +624,21 @@ Three Dockerfiles exist:
 
 ### Required Environment Variables
 
-| Variable                                           | Description                  |
-| -------------------------------------------------- | ---------------------------- |
-| `DATABASE_URL`                                     | PostgreSQL connection string |
-| `JWT_SECRET`                                       | Min 32 characters            |
-| `JWT_EXPIRES_IN`                                   | e.g. `24h`                   |
-| `JWT_REFRESH_EXPIRES_IN`                           | e.g. `7d`                    |
-| `FRONTEND_URL`                                     | CORS origin                  |
-| `REDIS_URL`                                        | Optional but recommended     |
-| `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS` | Email delivery               |
-| `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`       | Subscription billing         |
-| `STRIPE_PUBLISHABLE_KEY`                           | Frontend Stripe integration  |
-| `REVOLUT_API_SECRET_KEY`, `REVOLUT_API_PUBLIC_KEY` | Client proposal payments     |
-| `REVOLUT_WEBHOOK_SECRET`                           | Revolut webhook verification |
+| Variable                                           | Description                                                    |
+| -------------------------------------------------- | -------------------------------------------------------------- |
+| `DATABASE_URL`                                     | PostgreSQL connection string                                   |
+| `JWT_SECRET`                                       | Min 32 characters                                              |
+| `JWT_EXPIRES_IN`                                   | e.g. `24h`                                                     |
+| `JWT_REFRESH_EXPIRES_IN`                           | e.g. `7d`                                                      |
+| `FRONTEND_URL`                                     | CORS origin                                                    |
+| `REDIS_URL`                                        | Optional but recommended                                       |
+| `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS` | Email delivery                                                 |
+| `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`       | Subscription billing                                           |
+| `STRIPE_PUBLISHABLE_KEY`                           | Frontend Stripe integration                                    |
+| `REVOLUT_API_SECRET_KEY`, `REVOLUT_API_PUBLIC_KEY` | Client proposal payments                                       |
+| `REVOLUT_WEBHOOK_SECRET`                           | Revolut webhook verification                                   |
 | `ENGAGE_PLATFORM_FEE_BPS`                          | Platform margin (default 25 = 0.25%; Stripe is passed through) |
-| `COMPANIES_HOUSE_API_KEY`                          | UK company lookup            |
+| `COMPANIES_HOUSE_API_KEY`                          | UK company lookup                                              |
 
 ---
 
