@@ -22,7 +22,7 @@ describe('createStripeProposalCheckout', () => {
       title: 'Accounts',
       grossPence: 10000,
       connectedAccountId: 'acct_1',
-      platformFeeBps: 250,
+      platformFeeBps: 25,
       customerEmail: 'c@x.com',
       successUrl: 'https://s',
       cancelUrl: 'https://c',
@@ -39,8 +39,9 @@ describe('createStripeProposalCheckout', () => {
     expect(arg.metadata).toEqual({ proposalId: 'p1', tenantId: 't1' });
     expect(r.sessionId).toBe('cs_1');
     expect(r.checkoutUrl).toContain('checkout.stripe.com');
-    // application fee = engageRevenuePence = platformFee(250) + processorMarkup(50) for 10000 @ 250bps
-    expect(r.applicationFeePence).toBe(300);
+    // Stripe 1.5% + 20p (£1.70) + 0.25% platform (£0.25)
+    expect(r.applicationFeePence).toBe(195);
+    expect(r.applicationFeePence).toBeGreaterThan(170);
   });
 
   it('throws when Stripe is not configured', async () => {
@@ -55,7 +56,7 @@ describe('createStripeProposalCheckout', () => {
         title: 'Accounts',
         grossPence: 10000,
         connectedAccountId: 'acct_1',
-        platformFeeBps: 250,
+        platformFeeBps: 25,
         customerEmail: 'c@x.com',
         successUrl: 'https://s',
         cancelUrl: 'https://c',

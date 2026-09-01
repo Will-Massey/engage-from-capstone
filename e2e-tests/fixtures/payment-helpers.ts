@@ -1,7 +1,7 @@
 import { type APIRequestContext } from '@playwright/test';
 import { API_BASE, apiPut, expectOkApi } from './build-helpers';
 
-export const PAYMENT_COLLECTION_TERMS_VERSION = 'ENGAGE-PCT-2026-001';
+export const PAYMENT_COLLECTION_TERMS_VERSION = 'ENGAGE-PCT-2026-002';
 
 /** Opt the demo tenant into post-sign Stripe collection (idempotent; uses e2e Connect stub). */
 export async function enablePayoutCollectionForE2e(request: APIRequestContext): Promise<void> {

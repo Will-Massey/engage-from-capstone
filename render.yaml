@@ -129,7 +129,11 @@ services:
       - key: STRIPE_CONNECT_ACCOUNT_WEBHOOK_SECRET
         sync: false
       - key: ENGAGE_PLATFORM_FEE_BPS
-        value: '250'
+        value: '25'
+      - key: ENGAGE_PROCESSOR_MARKUP_BPS
+        value: '0'
+      - key: ENGAGE_PROCESSOR_MARKUP_FIXED_PENCE
+        value: '0'
       - key: MICROSOFT_CLIENT_ID
         sync: false
       - key: MICROSOFT_CLIENT_SECRET

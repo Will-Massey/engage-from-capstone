@@ -1,17 +1,17 @@
 # Engage — Receive Payments Through Engage (Stripe Connect)
 
-**Last updated:** 9 July 2026
+**Last updated:** 30 August 2026
 
 ## Overview
 
-Accountants can opt in to collect client engagement fees through Engage. Payments are processed via **Stripe Checkout** with **destination charges**: Capstone is merchant of record, deducts platform and processing fees via `application_fee_amount`, and Stripe transfers the remainder to the practice's **Stripe Connect** recipient account.
+Accountants can opt in to collect client engagement fees through Engage. Payments are processed via **Stripe Checkout** with **destination charges**: Capstone is merchant of record, deducts Stripe's estimated card cost plus a 0.25% platform margin via `application_fee_amount`, and Stripe transfers the remainder to the practice's **Stripe Connect** recipient account.
 
 ## Practice setup
 
 1. **Settings → Billing → Receive Payments Through Engage**
 2. Click **Connect with Stripe** and complete hosted onboarding
 3. Wait until status shows **Connected** (`stripe_transfers` active)
-4. Accept [Payment Collection Terms](/legal/payment-collection-terms) (v`ENGAGE-PCT-2026-001`)
+4. Accept [Payment Collection Terms](/legal/payment-collection-terms) (v`ENGAGE-PCT-2026-002`)
 5. Enable collection and optionally **Collect payment after signing**
 6. Save
 
@@ -25,16 +25,17 @@ Accountants can opt in to collect client engagement fees through Engage. Payment
 
 ## Fees
 
-| Component         | Default                                      |
-| ----------------- | -------------------------------------------- |
-| Platform fee      | 2.5% (1.0% Enterprise)                       |
-| Processor cost    | Estimated Stripe UK card (~1.5% + 20p)       |
-| Processing markup | `ENGAGE_PROCESSOR_MARKUP_BPS` (default 0.5%) |
+| Component         | Default                                                                 |
+| ----------------- | ----------------------------------------------------------------------- |
+| Collection fee    | Stripe UK card pass-through (~1.5% + 20p) + 0.25% platform margin       |
+| Processor cost    | Charged to the practice via `application_fee_amount`                    |
+| Processing markup | `ENGAGE_PROCESSOR_MARKUP_BPS` / `_FIXED_PENCE` (default 0)              |
 
 Configure via environment:
 
-- `ENGAGE_PLATFORM_FEE_BPS`
-- `ENGAGE_PROCESSOR_MARKUP_BPS`
+- `ENGAGE_PLATFORM_FEE_BPS` (default 25)
+- `ENGAGE_PROCESSOR_MARKUP_BPS` (default 0)
+- `ENGAGE_PROCESSOR_MARKUP_FIXED_PENCE` (default 0)
 - `ENGAGE_STRIPE_PROCESSOR_BPS`
 - `ENGAGE_STRIPE_PROCESSOR_FIXED_PENCE`
 

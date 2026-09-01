@@ -286,7 +286,7 @@ const Settings = () => {
     allowCard: true,
   });
 
-  const PAYMENT_COLLECTION_TERMS_VERSION = 'ENGAGE-PCT-2026-001';
+  const PAYMENT_COLLECTION_TERMS_VERSION = 'ENGAGE-PCT-2026-002';
 
   const [payoutForm, setPayoutForm] = useState({
     enabled: false,
@@ -295,7 +295,7 @@ const Settings = () => {
     accountHolderName: '',
     stripeConnectedAccountId: null as string | null,
     stripeTransfersStatus: 'inactive' as string,
-    platformFeeBps: 250,
+    platformFeeBps: 25,
     verificationStatus: 'PENDING',
   });
   const [isStripeOnboarding, setIsStripeOnboarding] = useState(false);
@@ -429,7 +429,7 @@ const Settings = () => {
           accountHolderName: d.accountHolderName || '',
           stripeConnectedAccountId: d.stripeConnectedAccountId ?? null,
           stripeTransfersStatus: d.stripeTransfersStatus ?? 'inactive',
-          platformFeeBps: d.platformFeeBps ?? 250,
+          platformFeeBps: d.platformFeeBps ?? 25,
           verificationStatus: d.verificationStatus ?? 'PENDING',
           consentAccepted: d.consentVersion === PAYMENT_COLLECTION_TERMS_VERSION,
         }));
@@ -2421,12 +2421,11 @@ const Settings = () => {
                       Receive Payments Through Engage
                     </h3>
                     <p className="mt-1 text-sm text-slate-500 dark:text-slate-300">
-                      Optional. Collect client fees via Stripe and we deduct a{' '}
-                      {(payoutForm.platformFeeBps / 100).toFixed(1)}% platform fee plus payment
-                      processing costs; the remainder goes to your connected Stripe account. This
-                      fee is charged on the money you collect and is separate from your Engage
-                      subscription, which is unchanged either way. Leave this off and you pay for
-                      Engage only.
+                      Optional. Collect client fees via Stripe. We pass through Stripe&apos;s UK
+                      card cost (typically 1.5% + 20p) plus a{' '}
+                      {(payoutForm.platformFeeBps / 100).toFixed(2)}% platform fee. The remainder
+                      goes to your connected Stripe account. This is separate from your Engage
+                      subscription. Leave this off and you pay for Engage only.
                     </p>
 
                     <div className="mt-4 flex flex-wrap items-center gap-3">

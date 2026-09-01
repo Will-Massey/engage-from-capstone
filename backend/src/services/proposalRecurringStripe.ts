@@ -12,6 +12,7 @@ import { stripe } from '../config/stripe.js';
 import { prisma } from '../config/database.js';
 import logger from '../config/logger.js';
 import type { RecurringGroup } from '../lib/payments/recurringLines.js';
+import { collectionFeePercent } from '../lib/payments/splitCalculator.js';
 
 export interface RecurringCheckoutInput {
   proposalId: string;
@@ -33,7 +34,7 @@ export interface RecurringCheckoutResult {
   applicationFeePercent: number;
 }
 
-/** Basis points → Stripe application_fee_percent (250 bps → 2.5). */
+/** Basis points → Stripe application_fee_percent (120 bps → 1.2). */
 export function bpsToPercent(bps: number): number {
   return Math.round((bps / 100) * 100) / 100;
 }
@@ -43,7 +44,11 @@ export async function createRecurringCheckout(
 ): Promise<RecurringCheckoutResult> {
   if (!stripe) throw new Error('STRIPE_NOT_CONFIGURED');
 
-  const applicationFeePercent = bpsToPercent(input.platformFeeBps);
+  const recurringGrossPence = input.group.lines.reduce(
+    (sum, line) => sum + line.unitAmountPence * line.quantity,
+    0
+  );
+  const applicationFeePercent = collectionFeePercent(recurringGrossPence, input.platformFeeBps);
 
   // Playwright stub — no live Stripe when the connected account is the e2e
   // sentinel (mirrors createStripeProposalCheckout).

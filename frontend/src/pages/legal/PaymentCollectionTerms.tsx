@@ -2,13 +2,13 @@ import LegalPageLayout from '../../components/legal/LegalPageLayout';
 
 export default function PaymentCollectionTerms() {
   return (
-    <LegalPageLayout title="Payment Collection Terms" lastUpdated="4 July 2026">
+    <LegalPageLayout title="Payment Collection Terms" lastUpdated="30 August 2026">
       <section className="space-y-4">
         <h2 className="text-xl font-semibold text-slate-900 dark:text-white">1. Overview</h2>
         <p>
           These Payment Collection Terms (&ldquo;PCT&rdquo;) supplement the Engage Terms of Service
           and apply when your practice enables <strong>Receive Payments Through Engage</strong>.
-          Version <strong>ENGAGE-PCT-2026-001</strong>.
+          Version <strong>ENGAGE-PCT-2026-002</strong>.
         </p>
         <p>
           Capstone Software Ltd (&ldquo;Capstone&rdquo;, &ldquo;we&rdquo;) collects client payments
@@ -39,14 +39,15 @@ export default function PaymentCollectionTerms() {
       <section className="space-y-4">
         <h2 className="text-xl font-semibold text-slate-900 dark:text-white">3. Fees</h2>
         <p>
-          Unless otherwise agreed in writing, Engage deducts a platform fee (typically 2.5% of the
-          gross collection; 1.0% on Enterprise plans) plus payment processing costs and a processing
-          service margin before payout.
+          Unless otherwise agreed in writing, Engage deducts Stripe&apos;s UK card processing cost
+          (typically 1.5% + 20p) plus a 0.25% platform fee. Recurring subscriptions use the same
+          combined rate for that invoice size. Premium or international cards may cost Stripe more;
+          the amount shown in settings is the estimate for a standard UK card.
         </p>
         <p>
-          Example: on a £100.00 client payment, you may receive approximately £96.00 after fees,
-          depending on payment method and your subscription tier. Exact figures are shown in your
-          Engage settings and on client checkout screens.
+          Example: on a £100.00 standard UK card payment, you receive £98.05 after fees
+          (£1.70 processing + £0.25 platform). Exact figures are shown in your Engage settings
+          and on client checkout screens.
         </p>
       </section>
 

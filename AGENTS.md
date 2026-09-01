@@ -637,7 +637,7 @@ Three Dockerfiles exist:
 | `STRIPE_PUBLISHABLE_KEY`                           | Frontend Stripe integration  |
 | `REVOLUT_API_SECRET_KEY`, `REVOLUT_API_PUBLIC_KEY` | Client proposal payments     |
 | `REVOLUT_WEBHOOK_SECRET`                           | Revolut webhook verification |
-| `ENGAGE_PLATFORM_FEE_BPS`                          | Platform fee (default 250)   |
+| `ENGAGE_PLATFORM_FEE_BPS`                          | Platform margin (default 25 = 0.25%; Stripe is passed through) |
 | `COMPANIES_HOUSE_API_KEY`                          | UK company lookup            |
 
 ---

@@ -20,7 +20,7 @@ Engage is **feature-rich and differentiated on AI + UK compliance**, but **not y
 | **AI (Clara)**       | Streaming cover/engagement/send emails, auto-fit, CH brief, onboarding, analysis/tweaks, follow-ups — **production xAI configured** |
 | **UK moat**          | MTD ITSA assessment, engagement clause library, Companies House, VAT/frequency pricing                                              |
 | **Billing (SaaS)**   | Tiers defined: Starter £49 / Professional £99 / Enterprise £249 — Revolut + Stripe scaffold                                         |
-| **Platform fee**     | 2.5% on client proposal payments (configurable via `ENGAGE_PLATFORM_FEE_BPS`)                                                       |
+| **Platform fee**     | Stripe pass-through (~1.5% + 20p) + 0.25% margin (`ENGAGE_PLATFORM_FEE_BPS`)                                                        |
 | **Deploy**           | `engage.capstonesoftware.co.uk` — backend on Render; superadmin wiring in progress                                                  |
 | **Known weaknesses** | Pricing v1/v2 drift, signature storage ephemeral, forgot-password missing, proposal edit gaps, dashboard metrics partly mock        |
 
@@ -38,7 +38,7 @@ Engage is **feature-rich and differentiated on AI + UK compliance**, but **not y
 
 - **Trial:** Not codified as a fixed day count in tiers — recommend **14 days, no card** (match Ignition/TaxClarity family).
 - **Annual:** Not implemented — recommend **15% discount** (2 months free).
-- **Add-on revenue:** 2.5% platform fee on client payments collected through Engage.
+- **Add-on revenue:** 0.25% platform margin on client payments after Stripe pass-through.
 
 ### 2.2 Competitor landscape (UK accountancy proposals)
 

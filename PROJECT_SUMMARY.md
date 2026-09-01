@@ -149,7 +149,7 @@ EMAIL_FROM_ADDRESS=noreply@yourpractice.com
 REVOLUT_API_SECRET_KEY=your-revolut-secret
 REVOLUT_API_PUBLIC_KEY=your-revolut-public-key
 REVOLUT_WEBHOOK_SECRET=your-webhook-secret
-ENGAGE_PLATFORM_FEE_BPS=250
+ENGAGE_PLATFORM_FEE_BPS=25
 
 # OR Stripe (alternative)
 STRIPE_SECRET_KEY=sk_live_...

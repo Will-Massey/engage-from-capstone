@@ -1,5 +1,6 @@
 import { stripe } from '../config/stripe.js';
 import {
+  applicationFeePence,
   calculateSplit,
   estimateProcessorCost,
   estimateProcessorMarkup,
@@ -27,7 +28,7 @@ export interface StripeCheckoutResult {
 /**
  * Create a destination-charge Checkout Session for a post-sign proposal payment.
  * Engage is merchant of record; funds transfer to the practice's connected account
- * minus application_fee_amount (= platform fee + processor markup).
+ * minus application_fee_amount (Stripe pass-through + platform margin).
  */
 export async function createStripeProposalCheckout(
   input: StripeCheckoutInput
@@ -40,14 +41,14 @@ export async function createStripeProposalCheckout(
     processorFeePence,
     processorMarkupPence,
   });
-  const applicationFeePence = split.engageRevenuePence;
+  const applicationFeeAmount = applicationFeePence(split);
 
   // Playwright stub — no live Stripe when the connected account is the e2e sentinel.
   if (input.connectedAccountId === 'acct_e2e_stub') {
     return {
       sessionId: `cs_e2e_${input.proposalId}`,
       checkoutUrl: '',
-      applicationFeePence,
+      applicationFeePence: applicationFeeAmount,
     };
   }
 
@@ -67,7 +68,7 @@ export async function createStripeProposalCheckout(
       },
     ],
     payment_intent_data: {
-      application_fee_amount: applicationFeePence,
+      application_fee_amount: applicationFeeAmount,
       transfer_data: { destination: input.connectedAccountId },
       // Carry identifiers onto the PaymentIntent/charge so dispute + refund
       // webhooks (which reference the charge, not the session) can find the proposal.
@@ -78,5 +79,9 @@ export async function createStripeProposalCheckout(
     cancel_url: input.cancelUrl,
   });
 
-  return { sessionId: session.id, checkoutUrl: session.url ?? '', applicationFeePence };
+  return {
+    sessionId: session.id,
+    checkoutUrl: session.url ?? '',
+    applicationFeePence: applicationFeeAmount,
+  };
 }

@@ -30,7 +30,7 @@
 - [ ] `REVOLUT_API_SECRET_KEY` — Merchant API secret
 - [ ] `REVOLUT_API_PUBLIC_KEY` — Checkout public key
 - [ ] `REVOLUT_WEBHOOK_SECRET` — Webhook signing secret
-- [ ] `ENGAGE_PLATFORM_FEE_BPS` — Platform fee in basis points (default 250 = 2.5%)
+- [ ] `ENGAGE_PLATFORM_FEE_BPS` — Platform margin (default 25 = 0.25%; Stripe 1.5% + 20p is passed through)
 
 **Option 2: Stripe (For subscription billing)**
 

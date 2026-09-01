@@ -57,7 +57,7 @@ const group = {
 
 describe('bpsToPercent', () => {
   it('converts basis points to Stripe application_fee_percent', () => {
-    expect(bpsToPercent(250)).toBe(2.5);
+    expect(bpsToPercent(25)).toBe(0.25);
     expect(bpsToPercent(100)).toBe(1);
   });
 });
@@ -72,14 +72,14 @@ describe('createRecurringCheckout', () => {
       reference: 'PROP-1',
       group,
       connectedAccountId: 'acct_1',
-      platformFeeBps: 250,
+      platformFeeBps: 25,
       customerEmail: 'c@x.com',
       successUrl: 'https://s',
       cancelUrl: 'https://c',
     });
     const arg: any = sessionCreate.mock.calls[0][0];
     expect(arg.mode).toBe('subscription');
-    expect(arg.subscription_data.application_fee_percent).toBe(2.5);
+    expect(arg.subscription_data.application_fee_percent).toBe(1.91);
     expect(arg.subscription_data.transfer_data.destination).toBe('acct_1');
     expect(arg.subscription_data.metadata).toEqual({ proposalId: 'p1', tenantId: 't1' });
     expect(arg.line_items).toHaveLength(2);
@@ -88,7 +88,7 @@ describe('createRecurringCheckout', () => {
       interval_count: 1,
     });
     expect(arg.line_items[0].price_data.unit_amount).toBe(8500);
-    expect(r.applicationFeePercent).toBe(2.5);
+    expect(r.applicationFeePercent).toBe(1.91);
     expect(r.sessionId).toBe('cs_sub_1');
   });
 
@@ -101,7 +101,7 @@ describe('createRecurringCheckout', () => {
       reference: 'PROP-1',
       group,
       connectedAccountId: 'acct_e2e_stub',
-      platformFeeBps: 250,
+      platformFeeBps: 25,
       customerEmail: 'c@x.com',
       successUrl: 'https://s',
       cancelUrl: 'https://c',
@@ -119,7 +119,7 @@ describe('createRecurringCheckout', () => {
       group,
       oneOffLines: [{ name: 'Onboarding', unitAmountPence: 60000, quantity: 1 }],
       connectedAccountId: 'acct_1',
-      platformFeeBps: 250,
+      platformFeeBps: 25,
       customerEmail: 'c@x.com',
       successUrl: 'https://s',
       cancelUrl: 'https://c',

@@ -1,7 +1,11 @@
-/** Default platform fee in basis points when no tier/override applies. */
+/**
+ * Thin platform margin on collected fees. Stripe UK card cost is passed through
+ * separately — this must stay non-negative so we do not subsidise each charge.
+ * 25 = 0.25%.
+ */
 export function getPlatformFeeBps(): number {
-  const raw = Number(process.env.ENGAGE_PLATFORM_FEE_BPS ?? 250);
-  if (!Number.isFinite(raw) || raw < 0 || raw > 10000) return 250;
+  const raw = Number(process.env.ENGAGE_PLATFORM_FEE_BPS ?? 25);
+  if (!Number.isFinite(raw) || raw < 0 || raw > 10000) return 25;
   return Math.round(raw);
 }
 

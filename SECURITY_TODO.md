@@ -138,7 +138,7 @@ Engage has **strong foundations**: httpOnly cookie auth, CSRF on protected route
 | --- | ------------------------- | ----------------------------------------------------------------------------------------------- |
 | 61  | ICO / privacy page        | P3 backlog in `PREMIER_SERVICE_TODO.md` — AI disclosure                                         |
 | 62  | E-sign forensics          | Strong — document hash, consent text, IP geo; keep audit export path                            |
-| 63  | Payment collection legal  | Terms v`ENGAGE-PCT-2026-001`, client auth v`ENGAGE-CPA-2026-001` — ensure version pinned in API |
+| 63  | Payment collection legal  | Terms v`ENGAGE-PCT-2026-002`, client auth v`ENGAGE-CPA-2026-001` — ensure version pinned in API |
 | 64  | AML document retention    | Define retention period; secure deletion workflow                                               |
 | 65  | SOC2 audit export         | `GET /api/auth/me/audit-export` exists — verify scope and access control                        |
 | 66  | Trial / subscription data | Superadmin events for conversion — verify after Render sync                                     |
