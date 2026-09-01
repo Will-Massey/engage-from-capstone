@@ -4,10 +4,13 @@
  */
 
 import { Router } from 'express';
-import { z } from 'zod';
 import { authenticate } from '../middleware/auth.js';
 import { asyncHandler, ApiError } from '../middleware/errorHandler.js';
-import { createCompaniesHouseService } from '../services/companiesHouse.js';
+import {
+  companiesHouseSearchQuerySchema,
+  createCompaniesHouseService,
+  normalizeCompanyNumber,
+} from '../services/companiesHouse.js';
 import logger from '../config/logger.js';
 
 const router = Router();
@@ -20,12 +23,7 @@ router.get(
   '/search',
   authenticate,
   asyncHandler(async (req, res) => {
-    const schema = z.object({
-      q: z.string().min(1).max(100),
-      limit: z.string().regex(/^\d+$/).transform(Number).default('10'),
-    });
-
-    const { q, limit } = schema.parse(req.query);
+    const { q, limit } = companiesHouseSearchQuerySchema.parse(req.query);
 
     logger.info(`Companies House search for: ${q}, tenant: ${req.tenantId}`);
 
@@ -45,14 +43,16 @@ router.get(
 
       res.json({
         success: true,
-        data: results.map((company) => ({
-          companyNumber: company.company_number,
-          companyName: company.title || company.company_name, // Search returns 'title', details returns 'company_name'
-          companyStatus: company.company_status,
-          companyType: company.company_type,
-          dateOfCreation: company.date_of_creation,
-          address: company.registered_office_address || company.address,
-        })),
+        data: results
+          .map((company) => ({
+            companyNumber: company.company_number,
+            companyName: company.title || company.company_name || company.company_number,
+            companyStatus: company.company_status,
+            companyType: company.company_type,
+            dateOfCreation: company.date_of_creation,
+            address: company.registered_office_address || company.address,
+          }))
+          .filter((company) => company.companyNumber),
         query: q,
       });
     } catch (error: any) {
@@ -70,11 +70,10 @@ router.get(
   '/company/:number',
   authenticate,
   asyncHandler(async (req, res) => {
-    const schema = z.object({
-      number: z.string().regex(/^[A-Za-z0-9]{6,8}$/, 'Invalid company number format'),
-    });
-
-    const { number } = schema.parse(req.params);
+    const number = normalizeCompanyNumber(String(req.params.number || ''));
+    if (!number) {
+      throw new ApiError('VALIDATION_ERROR', 'Invalid company number format', 400);
+    }
 
     // Check if service is configured
     const chService = createCompaniesHouseService();
@@ -118,33 +117,23 @@ router.get(
         success: true,
         data: {
           configured: false,
+          connected: false,
           message: 'Companies House API key not configured',
         },
       });
       return;
     }
 
-    // Test with a well-known company (e.g., "TEST COMPANY")
-    try {
-      await chService.searchCompanies('TEST', 1);
-      res.json({
-        success: true,
-        data: {
-          configured: true,
-          connected: true,
-          message: 'Companies House API is connected and working',
-        },
-      });
-    } catch (error: any) {
-      res.json({
-        success: true,
-        data: {
-          configured: true,
-          connected: false,
-          message: error.message || 'Failed to connect to Companies House API',
-        },
-      });
-    }
+    // Do not probe /search here — every Create Client / Clara card used to burn
+    // a live CH request and a 429 or blip marked the whole lookup as "off".
+    res.json({
+      success: true,
+      data: {
+        configured: true,
+        connected: true,
+        message: 'Companies House API key is configured',
+      },
+    });
   })
 );
 

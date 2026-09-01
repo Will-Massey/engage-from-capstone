@@ -207,7 +207,7 @@ export default function ClientContextCard({
   useEffect(() => {
     apiClient
       .getCompaniesHouseStatus()
-      .then((res: any) => setChConfigured(!!res.data?.configured && !!res.data?.connected))
+      .then((res: any) => setChConfigured(!!res.data?.configured))
       .catch(() => setChConfigured(false));
   }, []);
 
