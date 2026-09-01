@@ -25,11 +25,11 @@ Accountants can opt in to collect client engagement fees through Engage. Payment
 
 ## Fees
 
-| Component         | Default                                                                 |
-| ----------------- | ----------------------------------------------------------------------- |
-| Collection fee    | Stripe UK card pass-through (~1.5% + 20p) + 0.25% platform margin       |
-| Processor cost    | Charged to the practice via `application_fee_amount`                    |
-| Processing markup | `ENGAGE_PROCESSOR_MARKUP_BPS` / `_FIXED_PENCE` (default 0)              |
+| Component         | Default                                                           |
+| ----------------- | ----------------------------------------------------------------- |
+| Collection fee    | Stripe UK card pass-through (~1.5% + 20p) + 0.25% platform margin |
+| Processor cost    | Charged to the practice via `application_fee_amount`              |
+| Processing markup | `ENGAGE_PROCESSOR_MARKUP_BPS` / `_FIXED_PENCE` (default 0)        |
 
 Configure via environment:
 
