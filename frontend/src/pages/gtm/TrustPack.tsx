@@ -165,7 +165,10 @@ export default function TrustPack() {
                 <p className="mt-1 text-sm text-slate-600 dark:text-slate-300">{row.evidence}</p>
                 <p className="mt-1 text-xs text-slate-500">Still needed: {row.remaining}</p>
                 {row.href && (
-                  <Link to={row.href} className="mt-1 inline-block text-xs font-medium text-emerald-700 hover:underline dark:text-emerald-400">
+                  <Link
+                    to={row.href}
+                    className="mt-1 inline-block text-xs font-medium text-emerald-700 hover:underline dark:text-emerald-400"
+                  >
                     Open evidence
                   </Link>
                 )}
@@ -206,7 +209,9 @@ export default function TrustPack() {
       <section className="overflow-hidden rounded-xl border border-slate-200 dark:border-slate-700">
         <div className="border-b border-slate-200 bg-slate-50 px-4 py-3 dark:border-slate-700 dark:bg-slate-900/50">
           <p className="text-sm font-semibold text-slate-900 dark:text-white">Sub-processors</p>
-          <p className="text-xs text-slate-500">Named so a partner can diligence without a sales fog.</p>
+          <p className="text-xs text-slate-500">
+            Named so a partner can diligence without a sales fog.
+          </p>
         </div>
         <div className="overflow-x-auto">
           <table className="min-w-full text-left text-sm">
@@ -220,7 +225,9 @@ export default function TrustPack() {
             <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
               {SUB_PROCESSORS.map((p) => (
                 <tr key={p.name}>
-                  <td className="px-4 py-2 font-medium text-slate-900 dark:text-slate-50">{p.name}</td>
+                  <td className="px-4 py-2 font-medium text-slate-900 dark:text-slate-50">
+                    {p.name}
+                  </td>
                   <td className="px-4 py-2 text-slate-600 dark:text-slate-300">{p.role}</td>
                   <td className="px-4 py-2 text-slate-500">{p.note}</td>
                 </tr>

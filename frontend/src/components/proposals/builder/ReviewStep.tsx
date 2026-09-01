@@ -101,8 +101,8 @@ export default function ReviewStep() {
               className="input-field w-full"
             />
             <p className="mt-1 text-xs text-slate-500 dark:text-slate-300">
-              Practice default: {defaultExpiryDays} days (change in Settings → Communications).
-              If this proposal has expired, pick a new date, save, then resend to the client.
+              Practice default: {defaultExpiryDays} days (change in Settings → Communications). If
+              this proposal has expired, pick a new date, save, then resend to the client.
             </p>
           </div>
         </div>

@@ -196,12 +196,8 @@ export default function ValuePackaging() {
                 </p>
                 <p className="text-xs text-slate-500">{formatGbp(tier.annual)} billed annually</p>
                 <ul className="mt-3 space-y-1 text-sm text-slate-600 dark:text-slate-300">
-                  <li>
-                    {tier.users == null ? 'Unlimited users' : `${tier.users} users`}
-                  </li>
-                  <li>
-                    {tier.clients == null ? 'Unlimited clients' : `${tier.clients} clients`}
-                  </li>
+                  <li>{tier.users == null ? 'Unlimited users' : `${tier.users} users`}</li>
+                  <li>{tier.clients == null ? 'Unlimited clients' : `${tier.clients} clients`}</li>
                   <li>
                     {tier.proposalsPerMonth == null
                       ? 'Unlimited proposals'
@@ -253,7 +249,10 @@ export default function ValuePackaging() {
         <p className="text-sm text-emerald-900 dark:text-emerald-100">
           Model hours reclaimed on the battle card if they still fixate on the unit price.
         </p>
-        <Link to="/switch-from-engager" className="btn-accent text-sm inline-flex items-center gap-1">
+        <Link
+          to="/switch-from-engager"
+          className="btn-accent text-sm inline-flex items-center gap-1"
+        >
           Open ROI <ArrowRightIcon className="h-4 w-4" />
         </Link>
       </div>

@@ -45,9 +45,9 @@ export default function PaymentCollectionTerms() {
           the amount shown in settings is the estimate for a standard UK card.
         </p>
         <p>
-          Example: on a £100.00 standard UK card payment, you receive £98.05 after fees
-          (£1.70 processing + £0.25 platform). Exact figures are shown in your Engage settings
-          and on client checkout screens.
+          Example: on a £100.00 standard UK card payment, you receive £98.05 after fees (£1.70
+          processing + £0.25 platform). Exact figures are shown in your Engage settings and on
+          client checkout screens.
         </p>
       </section>
 

@@ -88,23 +88,23 @@ export default function DetailHeader() {
     <>
       {(proposal.status === 'EXPIRED' || isDateExpired) &&
         !['ACCEPTED', 'DECLINED', 'WITHDRAWN', 'ARCHIVED', 'LOST'].includes(proposal.status) && (
-        <div className="rounded-xl border border-orange-200 dark:border-orange-800 bg-orange-50/80 dark:bg-orange-950/30 px-4 py-3 flex flex-wrap items-center justify-between gap-3">
-          <div className="flex items-start gap-2 text-sm text-orange-900 dark:text-orange-100">
-            <ClockIcon className="h-5 w-5 shrink-0 mt-0.5" />
-            <span>
-              {isDateExpired
-                ? 'This proposal has expired and the client cannot sign it. Extend the valid-until date, then send it again.'
-                : 'Validity has been extended. Send the proposal again so the client gets the new date.'}
-            </span>
+          <div className="rounded-xl border border-orange-200 dark:border-orange-800 bg-orange-50/80 dark:bg-orange-950/30 px-4 py-3 flex flex-wrap items-center justify-between gap-3">
+            <div className="flex items-start gap-2 text-sm text-orange-900 dark:text-orange-100">
+              <ClockIcon className="h-5 w-5 shrink-0 mt-0.5" />
+              <span>
+                {isDateExpired
+                  ? 'This proposal has expired and the client cannot sign it. Extend the valid-until date, then send it again.'
+                  : 'Validity has been extended. Send the proposal again so the client gets the new date.'}
+              </span>
+            </div>
+            {canEditCoverLetter && isDateExpired && (
+              <Link to={`/proposals/${id}/edit`} className="btn-secondary text-sm shrink-0">
+                <PencilIcon className="h-4 w-4 mr-1.5" />
+                Extend date
+              </Link>
+            )}
           </div>
-          {canEditCoverLetter && isDateExpired && (
-            <Link to={`/proposals/${id}/edit`} className="btn-secondary text-sm shrink-0">
-              <PencilIcon className="h-4 w-4 mr-1.5" />
-              Extend date
-            </Link>
-          )}
-        </div>
-      )}
+        )}
 
       {proposal.status === 'WITHDRAWN' && (
         <div className="rounded-xl border border-amber-200 dark:border-amber-800 bg-amber-50/80 dark:bg-amber-950/30 px-4 py-3 flex flex-wrap items-center justify-between gap-3">
