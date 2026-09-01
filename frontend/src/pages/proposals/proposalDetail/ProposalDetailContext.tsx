@@ -870,8 +870,7 @@ export function ProposalDetailProvider({ children }: ProposalDetailProviderProps
     proposal.status === 'DRAFT' && (canOverrideApproval || approvalStatus === 'APPROVED');
   const validUntilDate = proposal.validUntil ? new Date(proposal.validUntil) : null;
   const isDateExpired = !!validUntilDate && validUntilDate.getTime() <= Date.now();
-  const canResend =
-    ['SENT', 'VIEWED', 'EXPIRED'].includes(proposal.status) && !isDateExpired;
+  const canResend = ['SENT', 'VIEWED', 'EXPIRED'].includes(proposal.status) && !isDateExpired;
   const showClientLinkButton =
     !['DECLINED', 'WITHDRAWN', 'ARCHIVED', 'LOST'].includes(proposal.status) && !isDateExpired;
   const canWithdrawProposal = proposal.status === 'SENT' || proposal.status === 'VIEWED';

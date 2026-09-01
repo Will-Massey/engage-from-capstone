@@ -107,7 +107,10 @@ const QuickBooksConnect = () => {
       )) as any;
       if (response.success) {
         toast.success('QuickBooks sync settings saved');
-        setStatus((prev) => ({ ...(prev ?? { connected: true, configured: true }), ...response.data }));
+        setStatus((prev) => ({
+          ...(prev ?? { connected: true, configured: true }),
+          ...response.data,
+        }));
         setPaymentAccountId(response.data?.paymentAccountId ?? paymentAccountId);
       }
     } catch (error: any) {
