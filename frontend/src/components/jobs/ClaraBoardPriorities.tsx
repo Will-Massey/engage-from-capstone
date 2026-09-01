@@ -103,7 +103,10 @@ export default function ClaraBoardPriorities() {
   }
 
   return (
-    <div className="metal-tile metal-tile--mint overflow-hidden" data-testid="clara-board-priorities">
+    <div
+      className="metal-tile metal-tile--mint overflow-hidden"
+      data-testid="clara-board-priorities"
+    >
       <span className="metal-specular" aria-hidden />
       <span className="metal-glare" aria-hidden />
       <div className="relative z-[1] p-4">

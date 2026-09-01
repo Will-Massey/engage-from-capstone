@@ -91,9 +91,7 @@ export default function ServicesStep() {
       {selectedServices.length > 0 && (
         <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-slate-200 dark:border-slate-700 px-4 py-3">
           <div>
-            <p className="text-sm font-medium text-slate-900 dark:text-white">
-              Catalogue formulas
-            </p>
+            <p className="text-sm font-medium text-slate-900 dark:text-white">Catalogue formulas</p>
             <p className="text-xs text-slate-500 dark:text-slate-400">
               Recalculate selected fees from this client&apos;s turnover and staff count.
             </p>

@@ -1525,14 +1525,12 @@ export function ProposalBuilderProvider({ proposalId, children }: ProposalBuilde
     );
     if (appliedNames.length === 0) {
       toast(
-        'No catalogue formulas applied — add rules on the service, or set the client\'s turnover or staff count.'
+        "No catalogue formulas applied — add rules on the service, or set the client's turnover or staff count."
       );
       return;
     }
     setSelectedServices(lines);
-    toast.success(
-      `Applied ${appliedNames.length} formula${appliedNames.length === 1 ? '' : 's'}`
-    );
+    toast.success(`Applied ${appliedNames.length} formula${appliedNames.length === 1 ? '' : 's'}`);
   };
 
   const applyContingentFeeToLine = (lineId: string, feeGbp: number, _explanation: string) => {

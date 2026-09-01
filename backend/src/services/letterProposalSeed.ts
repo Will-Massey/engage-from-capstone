@@ -37,9 +37,7 @@ export function formatProposalLetterSeed(
       const amount =
         typeof line.lineTotalPence === 'number' ? formatPenceGbp(line.lineTotalPence) : '';
       const freq = FREQUENCY_LABEL[line.billingFrequency || ''] || '';
-      return [line.name.trim(), amount ? `${amount}${freq}` : '']
-        .filter(Boolean)
-        .join(': ');
+      return [line.name.trim(), amount ? `${amount}${freq}` : ''].filter(Boolean).join(': ');
     })
     .join('\n');
   return { proposalReference: reference, services, fees };

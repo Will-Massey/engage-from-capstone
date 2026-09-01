@@ -267,7 +267,8 @@ router.post(
 
 /**
  * POST /api/auth/register
- * Register a new user (requires partner/admin approval)
+ * Public self-serve user registration (7-day trial path; email verification required).
+ * Closed only when ALLOW_PUBLIC_REGISTER=false.
  */
 router.post(
   '/register',

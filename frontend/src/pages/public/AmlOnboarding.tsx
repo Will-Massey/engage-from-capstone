@@ -105,8 +105,8 @@ export default function AmlOnboarding() {
         >
           <p>
             {practiceName || 'Your accountant'} is reviewing identity-check providers. Please
-            contact them if they have asked you to verify your identity another way — this page
-            will not run an automated check.
+            contact them if they have asked you to verify your identity another way — this page will
+            not run an automated check.
           </p>
         </ComingSoonCallout>
       </div>

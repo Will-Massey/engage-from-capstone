@@ -6,11 +6,7 @@ jest.mock('../ai/aiClient.js', () => ({
 const isAiConfigured = jest.fn();
 const chatCompletion = jest.fn();
 
-import {
-  extractTasksFromNotes,
-  looksLikeProse,
-  splitNoteLines,
-} from '../meetingNotesService.js';
+import { extractTasksFromNotes, looksLikeProse, splitNoteLines } from '../meetingNotesService.js';
 
 beforeEach(() => {
   jest.clearAllMocks();
@@ -19,9 +15,12 @@ beforeEach(() => {
 
 describe('splitNoteLines', () => {
   it('strips bullets and numbered lists', () => {
-    expect(
-      splitNoteLines('- Bank pack\n* VAT folder\n1. Call Ada\n• Chase payroll')
-    ).toEqual(['Bank pack', 'VAT folder', 'Call Ada', 'Chase payroll']);
+    expect(splitNoteLines('- Bank pack\n* VAT folder\n1. Call Ada\n• Chase payroll')).toEqual([
+      'Bank pack',
+      'VAT folder',
+      'Call Ada',
+      'Chase payroll',
+    ]);
   });
 });
 

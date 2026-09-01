@@ -129,16 +129,16 @@ W4  Mobile, trust, GTM, cutover    ──┘
 
 ## W2 — Automation OS & admin depth
 
-| ID   | Deliverable                                                                               | Beats Engager by…                    |
-| ---- | ----------------------------------------------------------------------------------------- | ------------------------------------ |
-| W2.1 | **Visual automation builder** (trigger → condition → action) on touchpoints + jobs        | Same category as Engager, cleaner UX |
-| W2.2 | UK **automation pack library** (VAT due, SA chase, birthday, phase complete, MTD quarter) | Instant value                        |
-| W2.3 | **Clara inside automations** (“rewrite this chase in firm voice”)                         | built — drafts stored on the job     |
-| W2.4 | Bulk secure email + optional **SMS add-on** (Twilio)                                      | Parity +                             |
-| W2.5 | Read-only **email timeline** (M365/Gmail) linked to Client/Job                            | Path to two-way                      |
+| ID   | Deliverable                                                                               | Beats Engager by…                         |
+| ---- | ----------------------------------------------------------------------------------------- | ----------------------------------------- |
+| W2.1 | **Visual automation builder** (trigger → condition → action) on touchpoints + jobs        | Same category as Engager, cleaner UX      |
+| W2.2 | UK **automation pack library** (VAT due, SA chase, birthday, phase complete, MTD quarter) | Instant value                             |
+| W2.3 | **Clara inside automations** (“rewrite this chase in firm voice”)                         | built — drafts stored on the job          |
+| W2.4 | Bulk secure email + optional **SMS add-on** (Twilio)                                      | Parity +                                  |
+| W2.5 | Read-only **email timeline** (M365/Gmail) linked to Client/Job                            | Path to two-way                           |
 | W2.6 | **Document designer v1** (blocks: header, services, fees, clauses, sign)                  | built — preview + seed from last proposal |
-| W2.7 | Disengage / clearance **e-sign**; 64-8 **status track** + partner/API spike               | built — public sign + manual 64-8 track |
-| W2.8 | **Catch-up fees** first-class on proposal wizard                                          | built — Pricing step + first-proposal |
+| W2.7 | Disengage / clearance **e-sign**; 64-8 **status track** + partner/API spike               | built — public sign + manual 64-8 track   |
+| W2.8 | **Catch-up fees** first-class on proposal wizard                                          | built — Pricing step + first-proposal     |
 
 **Exit:** Comms **≥9**; admin letters **≥9**.
 
@@ -146,15 +146,15 @@ W4  Mobile, trust, GTM, cutover    ──┘
 
 ## W3 — Money finish + Clara agentic (category kill shot)
 
-| ID   | Deliverable                                                  | Beats Engager by…       |
-| ---- | ------------------------------------------------------------ | ----------------------- |
-| W3.1 | Recurring Stripe from monthly lines + **dunning**            | Money in-product        |
-| W3.2 | Practice **MRR / cash under management** metal dashboard     | Narrative Engager lacks |
+| ID   | Deliverable                                                  | Beats Engager by…          |
+| ---- | ------------------------------------------------------------ | -------------------------- |
+| W3.1 | Recurring Stripe from monthly lines + **dunning**            | Money in-product           |
+| W3.2 | Practice **MRR / cash under management** metal dashboard     | Narrative Engager lacks    |
 | W3.3 | Job complete → **renewal window** → bulk renew via Clara     | built — banner on complete |
-| W3.4 | Clara: **prioritise board** (“3 jobs at risk, draft chases”) | built — draft from board |
-| W3.5 | Clara: **meeting notes → tasks** (optional)                  | built — bullets + prose |
-| W3.6 | Fee benchmarks (R3) chips on pricing                         | Network moat            |
-| W3.7 | Formula pricing builder UX (parity with Engager formulas)    | built                    |
+| W3.4 | Clara: **prioritise board** (“3 jobs at risk, draft chases”) | built — draft from board   |
+| W3.5 | Clara: **meeting notes → tasks** (optional)                  | built — bullets + prose    |
+| W3.6 | Fee benchmarks (R3) chips on pricing                         | Network moat               |
+| W3.7 | Formula pricing builder UX (parity with Engager formulas)    | built                      |
 
 **Exit:** Money **10**; AI **10**; overall product story unassailable in demo.
 
@@ -163,7 +163,7 @@ W4  Mobile, trust, GTM, cutover    ──┘
 ## W4 — Platform, GTM, cutover (world domination logistics)
 
 | ID   | Deliverable                                                                                                    |
-| ---- | -------------------------------------------------------------------------------------------------------------- |
+| ---- | -------------------------------------------------------------------------------------------------------------- | --------------------------------------- |
 | W4.1 | Capacitor **staff jobs + client portal** apps                                                                  |
 | W4.2 | Cyber Essentials prep page + UK residency story                                                                | built — 5 CE controls, no fake cert / UK-only |
 | W4.3 | **Switch from Engager** landing + ROI calculator + CSV import wizard                                           | built — ROI + cutover path + tested CSV |

@@ -108,12 +108,18 @@ export function evaluatePricingRules(
     const actual = clientFieldValue(client, rule.conditionField);
     if (actual == null) continue;
     if (
-      !matches(actual, String(rule.conditionOperator || 'GTE'), parseConditionValue(rule.conditionValue))
+      !matches(
+        actual,
+        String(rule.conditionOperator || 'GTE'),
+        parseConditionValue(rule.conditionValue)
+      )
     ) {
       continue;
     }
     price = applyAdjustment(price, rule, client);
-    applied.push(rule.name || `${rule.conditionField} ${rule.conditionOperator} ${rule.conditionValue}`);
+    applied.push(
+      rule.name || `${rule.conditionField} ${rule.conditionOperator} ${rule.conditionValue}`
+    );
   }
 
   return { price: Math.max(0, price), applied };

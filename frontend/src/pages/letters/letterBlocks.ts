@@ -63,7 +63,11 @@ export function parseStoredLetterBlocks(metaJson?: string | null): LetterBlock[]
   }
 }
 
-export function seedBlocksFromLetter(title: string, bodyHtml: string, reason?: string): LetterBlock[] {
+export function seedBlocksFromLetter(
+  title: string,
+  bodyHtml: string,
+  reason?: string
+): LetterBlock[] {
   if (typeof document !== 'undefined') {
     const tmp = document.createElement('div');
     tmp.innerHTML = bodyHtml || '';
@@ -107,7 +111,11 @@ export function mergeProposalSeedIntoBlocks(
   return next;
 }
 
-export function moveLetterBlock(blocks: LetterBlock[], index: number, delta: -1 | 1): LetterBlock[] {
+export function moveLetterBlock(
+  blocks: LetterBlock[],
+  index: number,
+  delta: -1 | 1
+): LetterBlock[] {
   const next = index + delta;
   if (next < 0 || next >= blocks.length) return blocks;
   const copy = [...blocks];

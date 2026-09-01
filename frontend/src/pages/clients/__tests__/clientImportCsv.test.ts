@@ -22,9 +22,7 @@ describe('parseClientImportCsv', () => {
         notes: '',
       },
     ]);
-    expect(
-      parseClientImportCsv('Client,Email\n"Fortis, Ltd",hello@fortis.example')
-    ).toEqual([
+    expect(parseClientImportCsv('Client,Email\n"Fortis, Ltd",hello@fortis.example')).toEqual([
       {
         name: 'Fortis, Ltd',
         contactEmail: 'hello@fortis.example',

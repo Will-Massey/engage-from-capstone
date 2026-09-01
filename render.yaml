@@ -41,10 +41,12 @@ services:
         value: /engage
       - key: DEFAULT_TENANT_SUBDOMAIN
         value: demo
-      # Self-serve public signup gate — flip to 'true' in the dashboard when
-      # ready to open POST /api/tenants (see docs/SELF_SERVE_SIGNUP.md).
+      # Self-serve 7-day trial. Code also defaults these on unless set to 'false'
+      # (see docs/SELF_SERVE_SIGNUP.md). Set 'false' in the dashboard to close.
       - key: ALLOW_PUBLIC_TENANT_SIGNUP
-        sync: false
+        value: 'true'
+      - key: ALLOW_PUBLIC_REGISTER
+        value: 'true'
       - key: API_URL
         value: https://capstonesoftware.co.uk/engage
       - key: EMAIL_WORKER_URL

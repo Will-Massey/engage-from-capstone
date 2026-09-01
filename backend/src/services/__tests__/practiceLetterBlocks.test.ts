@@ -1,7 +1,4 @@
-import {
-  composeLetterBlocks,
-  parseStoredLetterBlocks,
-} from '../practiceLetterBlocks.js';
+import { composeLetterBlocks, parseStoredLetterBlocks } from '../practiceLetterBlocks.js';
 
 describe('composeLetterBlocks', () => {
   it('escapes HTML and labels services / fees / clauses', () => {

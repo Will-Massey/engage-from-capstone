@@ -20,6 +20,48 @@ afterAll(() => {
   process.env = ORIGINAL_ENV as NodeJS.ProcessEnv;
 });
 
+describe('public signup flags', () => {
+  it('allows public register and tenant signup outside production', () => {
+    const flags = loadFlags({
+      NODE_ENV: 'development',
+      ALLOW_PUBLIC_REGISTER: undefined,
+      ALLOW_PUBLIC_TENANT_SIGNUP: undefined,
+    });
+    expect(flags.allowPublicRegister).toBe(true);
+    expect(flags.allowPublicTenantSignup).toBe(true);
+  });
+
+  it('allows public register in production when the env var is unset', () => {
+    const flags = loadFlags({
+      NODE_ENV: 'production',
+      ALLOW_PUBLIC_REGISTER: undefined,
+      ALLOW_PUBLIC_TENANT_SIGNUP: undefined,
+    });
+    expect(flags.allowPublicRegister).toBe(true);
+    expect(flags.allowPublicTenantSignup).toBe(true);
+  });
+
+  it('allows public register in production when the env var is true', () => {
+    const flags = loadFlags({
+      NODE_ENV: 'production',
+      ALLOW_PUBLIC_REGISTER: 'true',
+      ALLOW_PUBLIC_TENANT_SIGNUP: 'true',
+    });
+    expect(flags.allowPublicRegister).toBe(true);
+    expect(flags.allowPublicTenantSignup).toBe(true);
+  });
+
+  it('disables public register only when the env var is the string false', () => {
+    const flags = loadFlags({
+      NODE_ENV: 'production',
+      ALLOW_PUBLIC_REGISTER: 'false',
+      ALLOW_PUBLIC_TENANT_SIGNUP: 'false',
+    });
+    expect(flags.allowPublicRegister).toBe(false);
+    expect(flags.allowPublicTenantSignup).toBe(false);
+  });
+});
+
 describe('isE2eTestRequest', () => {
   it('returns false without the X-Test-Mode header', () => {
     const flags = loadFlags({ NODE_ENV: 'development' });

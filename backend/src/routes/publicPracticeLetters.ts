@@ -18,7 +18,8 @@ const publicLetterSignLimiter = rateLimit({
   windowMs: 60 * 60 * 1000,
   max: 8,
   skip: () => !rateLimitingEnabled,
-  keyGenerator: (req) => `public-letter-sign:${req.params.token?.slice(0, 40) || 'none'}:${req.ip || 'unknown'}`,
+  keyGenerator: (req) =>
+    `public-letter-sign:${req.params.token?.slice(0, 40) || 'none'}:${req.ip || 'unknown'}`,
   message: {
     success: false,
     error: { code: 'RATE_LIMIT_EXCEEDED', message: 'Too many attempts. Please try again later.' },

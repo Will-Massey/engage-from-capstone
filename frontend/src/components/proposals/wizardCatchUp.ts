@@ -1,8 +1,4 @@
-import {
-  monthlyEquivalentFor,
-  roundMoney,
-  type BillingFrequency,
-} from '@shared/pricingEngine';
+import { monthlyEquivalentFor, roundMoney, type BillingFrequency } from '@shared/pricingEngine';
 
 export type WizardCatchUpDraft = {
   enabled: boolean;
@@ -97,6 +93,12 @@ export function collectWizardCatchUpLines(
   todayIso: string
 ): WizardCatchUpPayload[] {
   return services
-    .map((source) => buildWizardCatchUpPayload(source, drafts[source.serviceId] || DEFAULT_WIZARD_CATCH_UP, todayIso))
+    .map((source) =>
+      buildWizardCatchUpPayload(
+        source,
+        drafts[source.serviceId] || DEFAULT_WIZARD_CATCH_UP,
+        todayIso
+      )
+    )
     .filter((line): line is WizardCatchUpPayload => line != null);
 }

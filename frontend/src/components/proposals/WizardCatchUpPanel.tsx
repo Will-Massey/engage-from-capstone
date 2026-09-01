@@ -42,7 +42,9 @@ export default function WizardCatchUpPanel({ services, drafts, onChange }: Props
                 className="mt-0.5"
                 checked={draft.enabled}
                 data-testid={`catch-up-toggle-${service.serviceId}`}
-                onChange={(e) => onChange(service.serviceId, { ...draft, enabled: e.target.checked })}
+                onChange={(e) =>
+                  onChange(service.serviceId, { ...draft, enabled: e.target.checked })
+                }
               />
               <span>
                 <span className="font-medium">{service.name}</span>

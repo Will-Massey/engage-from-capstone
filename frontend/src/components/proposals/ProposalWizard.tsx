@@ -337,10 +337,11 @@ export default function ProposalWizard() {
         ...catchUpLines.map((s) => ({
           name: s.name,
           billingFrequency: s.billingFrequency,
-          displayPrice: previewCatchUpNet(
-            wizardServices.find((w) => w.serviceId === s.serviceId) || s,
-            catchUps[s.serviceId] || { months: 3, discountPercent: 0 }
-          ) ?? s.displayPrice,
+          displayPrice:
+            previewCatchUpNet(
+              wizardServices.find((w) => w.serviceId === s.serviceId) || s,
+              catchUps[s.serviceId] || { months: 3, discountPercent: 0 }
+            ) ?? s.displayPrice,
         })),
       ],
     };

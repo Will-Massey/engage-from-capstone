@@ -1,15 +1,19 @@
 # Self-serve public signup
 
 Public tenant signup (`POST /api/tenants`, the `/register` wizard) is gated in
-production behind email verification and an env flag.
+production behind email verification. House CTAs send visitors to
+`/engage/register` for the 7-day free trial (no card).
 
-## The flag
+## The flags
 
-`ALLOW_PUBLIC_TENANT_SIGNUP` — declared in `render.yaml` with `sync: false`.
-Set it to `true` in the Render dashboard to open signup; unset/anything else
-returns `403 SIGNUP_DISABLED`. Outside production (`NODE_ENV !== 'production'`)
-signup is always allowed. The legacy `POST /api/auth/register` has the same
-mechanism via `ALLOW_PUBLIC_REGISTER`.
+`ALLOW_PUBLIC_TENANT_SIGNUP` and `ALLOW_PUBLIC_REGISTER` are declared in
+`render.yaml` as `true`. In production, both default **on** unless the env var
+is the string `false` — a missing Render flag must not silently kill trial
+start. Set either to `false` in the dashboard to close that gate. Outside
+production (`NODE_ENV !== 'production'`) signup is always allowed.
+
+- `POST /api/tenants` → `403 SIGNUP_DISABLED` only when `ALLOW_PUBLIC_TENANT_SIGNUP=false`
+- `POST /api/auth/register` → `403 REGISTRATION_DISABLED` only when `ALLOW_PUBLIC_REGISTER=false`
 
 ## The flow
 
