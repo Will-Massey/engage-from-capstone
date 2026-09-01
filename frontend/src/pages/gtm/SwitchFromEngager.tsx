@@ -13,6 +13,7 @@ import {
   InboxIcon,
   DocumentTextIcon,
   BriefcaseIcon,
+  PrinterIcon,
 } from '@heroicons/react/24/outline';
 import toast from 'react-hot-toast';
 import { BrandLogo } from '../../components/ui/BrandLogo';
@@ -20,6 +21,9 @@ import { MetalTile } from '../../components/ui/MetalTile';
 import { StatusChip } from '../../components/ui/StatusChip';
 import { PRIMARY_CREATE } from '../../config/navigation';
 import { calculateSwitcherRoi, formatGbp, formatSwitcherRoiSummary } from './switcherRoi';
+import CompetitorOnePager from './CompetitorOnePager';
+import { formatCompetitorOnePager } from './competitorOnePager';
+import { ENGAGE_TIERS } from './packagingValue';
 
 const COMPARISON: Array<{
   capability: string;
@@ -59,8 +63,8 @@ const COMPARISON: Array<{
   {
     capability: 'Two-way firm mailbox',
     engager: true,
-    engage: true,
-    note: 'Gmail / M365 sync + compose / reply',
+    engage: 'M365 · Gmail coming',
+    note: 'Microsoft Graph send is live; Gmail app secrets are not on production yet',
   },
   {
     capability: 'Bulk client forms',
@@ -99,8 +103,8 @@ const COMPARISON: Array<{
   {
     capability: 'Price signal',
     engager: '£9/client/mo class',
-    engage: 'Value packaging',
-    note: 'Win on cycle time + cash collected',
+    engage: '£49 / £99 / £249',
+    note: 'Win on cycle time + cash collected — do not race to £8',
   },
 ];
 
@@ -127,7 +131,7 @@ const DEMO_STEPS = [
     n: '04',
     title: 'Mailbox',
     href: '/inbox',
-    line: 'Two-way thread · sync Gmail/M365 · reply without leaving Engage.',
+    line: 'Two-way thread · M365 when connected · Gmail coming. Reply without leaving Engage.',
   },
   {
     n: '05',
@@ -203,11 +207,15 @@ const OBJECTIONS = [
     q: 'What about mobile?',
     a: 'Capacitor iOS shell is staged after desktop sign-off. Staff tabs: Home · Jobs · Inbox · Clients · Proposals.',
   },
+  {
+    q: 'Can you take BACS / Direct Debit?',
+    a: 'Not yet. Collection today is UK cards via Stripe (pass-through + 0.25% platform). BACS is coming soon — do not sell a bank-debit rail.',
+  },
 ];
 
-const ELEVATOR = `Engage by Capstone is the only UK practice platform that wins the client, collects the fee, and runs the job — with Clara as co-pilot.
+const ELEVATOR = `Engage by Capstone wins the client, collects the fee on UK cards, and runs the job — with Clara as co-pilot (she drafts, she never sends).
 
-Engager is strong on practice management. Engage matches the board and then adds: proposal → e-sign → Stripe collect → jobs → two-way mailbox → bulk forms → automations — independent of TaxCalc.`;
+Engager is strong on the practice board. Engage matches that board, then adds Companies House → priced proposal → e-sign → Stripe collect → jobs → mailbox → forms — independent of TaxCalc. BACS is coming soon.`;
 
 function Cell({ value }: { value: string | boolean }) {
   if (value === true) {
@@ -245,7 +253,7 @@ export default function SwitchFromEngager() {
   const [hoursPerMonth, setHoursPerMonth] = useState(18);
   const [hourlyRate, setHourlyRate] = useState(85);
   const [engagerPerClient, setEngagerPerClient] = useState(9);
-  const [engageMonthly, setEngageMonthly] = useState(149);
+  const [engageMonthly, setEngageMonthly] = useState(ENGAGE_TIERS[1].monthly);
 
   const roiInput = useMemo(
     () => ({ clients, hoursPerMonth, hourlyRate, engagerPerClient, engageMonthly }),
@@ -256,7 +264,8 @@ export default function SwitchFromEngager() {
   const fmt = formatGbp;
 
   return (
-    <div className="mx-auto max-w-5xl space-y-8 pb-12">
+    <div className="gtm-print-root mx-auto max-w-5xl space-y-8 pb-12">
+      <div className="gtm-screen-kit space-y-8">
       <header className="metal-tile metal-tile--mint overflow-hidden p-6 sm:p-8">
         <span className="metal-specular" aria-hidden />
         <span className="metal-glare" aria-hidden />
@@ -299,6 +308,18 @@ export default function SwitchFromEngager() {
               <Link to="/value-packaging" className="btn-ghost text-sm">
                 Value packaging
               </Link>
+              <button
+                type="button"
+                className="btn-ghost text-sm"
+                onClick={() => void copyText('One-pager', formatCompetitorOnePager())}
+              >
+                <ClipboardDocumentIcon className="h-4 w-4" aria-hidden />
+                Copy one-pager
+              </button>
+              <button type="button" className="btn-ghost text-sm" onClick={() => window.print()}>
+                <PrinterIcon className="h-4 w-4" aria-hidden />
+                Print one-pager
+              </button>
             </div>
           </div>
           <BrandLogo className="h-28 w-auto max-w-[12rem] object-contain self-start sm:self-center" />
@@ -626,7 +647,7 @@ export default function SwitchFromEngager() {
               <li>Jobs board — Clara prioritise + bulk move</li>
               <li>Accept path — proposal → job spawn → portal forms</li>
               <li>Automations — install a UK pack, dry-run rules</li>
-              <li>Inbox — mailbox reply + client Comms timeline</li>
+              <li>Inbox — mailbox reply (M365 when connected) + client Comms timeline</li>
             </ol>
             <div className="mt-4 flex flex-wrap gap-2">
               <Link to="/" className="btn-ghost btn-sm">
@@ -696,6 +717,26 @@ export default function SwitchFromEngager() {
             Partner programme
           </Link>
         </div>
+      </div>
+      </div>
+
+      <div className="print:block">
+        <div className="mb-3 flex flex-wrap items-end justify-between gap-2 print:hidden">
+          <div>
+            <p className="metal-kicker">Competitor one-pager</p>
+            <h2 className="text-base font-semibold text-slate-900 dark:text-white">
+              Leave-behind for the partner
+            </h2>
+            <p className="text-xs text-slate-500">
+              One A4 page. Print from this screen — chrome stays off the paper.
+            </p>
+          </div>
+          <button type="button" className="btn-secondary btn-sm" onClick={() => window.print()}>
+            <PrinterIcon className="h-4 w-4" aria-hidden />
+            Print
+          </button>
+        </div>
+        <CompetitorOnePager />
       </div>
     </div>
   );

@@ -170,7 +170,7 @@ W4  Mobile, trust, GTM, cutover    ──┘
 | W4.4 | Pricing packaging vs £9/client (value packaging, not race to bottom)                                           | built — recommend ladder, no £8 race          |
 | W4.5 | Integrations: finish Xero/QBO push; optional Adfin/GoCardless; **do not fake TaxCalc** — position independence |
 | W4.6 | **Cutover** practice → production per `docs/CUTOVER_PREP.md`                                                   |
-| W4.7 | Sales enablement: battle card, demo script, competitor one-pager                                               |
+| W4.7 | Sales enablement: battle card, demo script, competitor one-pager                                               | built — print/copy leave-behind, honest fees + Clara + TaxCalc |
 
 **Exit:** GTM/mobile/trust **≥9**; production is the practice OS.
 

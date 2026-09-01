@@ -69,7 +69,7 @@ Also shipped 2026-08-06: **#105** (Documents-hub field fixes: client search, AML
 ## Next up
 
 1. Remaining scorecard / GTM: Credas AML (awaits William's partner email); Gmail `GMAIL_CLIENT_ID`/`SECRET`; first real M365 connect watch; Caroline document-request end-to-end.
-2. Product wave: W4.5 Xero/QBO — code finish (QBO payment-account settings + go-live scope doc). Live UAT still needs William's Xero/Intuit app credentials on Render. Do not fake TaxCalc. W4.7 one-pager polish if needed.
+2. Product wave: W4.5 Xero/QBO — code finish on Render. Live Xero UAT still needs William to Connect in Settings. QBO needs Intuit client id/secret. W4.7 one-pager polish — print/copy leave-behind on `/switch-from-engager`.
 
 ## Notes
 

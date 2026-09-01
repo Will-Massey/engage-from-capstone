@@ -544,3 +544,35 @@ html {
   background-position: center;
   background-repeat: no-repeat;
 }
+
+@media print {
+  @page {
+    size: A4;
+    margin: 12mm;
+  }
+
+  body:has(#competitor-one-pager) {
+    background: #fff !important;
+  }
+
+  body:has(#competitor-one-pager) aside,
+  body:has(#competitor-one-pager) .print-hide-chrome,
+  body:has(#competitor-one-pager) .gtm-screen-kit,
+  body:has(#competitor-one-pager) footer,
+  body:has(#competitor-one-pager) .fixed {
+    display: none !important;
+  }
+
+  body:has(#competitor-one-pager) #main-content,
+  body:has(#competitor-one-pager) .lg\:pl-72,
+  body:has(#competitor-one-pager) .xl\:pl-80 {
+    padding: 0 !important;
+    margin: 0 !important;
+  }
+
+  #competitor-one-pager {
+    box-shadow: none !important;
+    max-width: none !important;
+    break-inside: avoid;
+  }
+}
