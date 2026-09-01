@@ -6,7 +6,6 @@
 import { Router } from 'express';
 import { z } from 'zod';
 import { prisma } from '../../config/database.js';
-import { tenantAppUrl } from '../../config/urls.js';
 import { asyncHandler, ApiError } from '../../middleware/errorHandler.js';
 import { authenticate } from '../../middleware/auth.js';
 import { requireActiveSubscriptionOrTrial } from '../../middleware/tierLimits.js';
@@ -209,6 +208,14 @@ router.post(
       throw new ApiError('PROPOSAL_NOT_FOUND', 'Proposal not found', 404);
     }
 
+    if (proposal.validUntil && new Date() > proposal.validUntil) {
+      throw new ApiError(
+        'PROPOSAL_EXPIRED',
+        'This proposal has expired. Extend the valid-until date, then send it again.',
+        410
+      );
+    }
+
     const to = toOverride || proposal.client.contactEmail;
     if (!to) {
       throw new ApiError(
@@ -218,18 +225,12 @@ router.post(
       );
     }
 
-    // Create or get shareable link
-    let shareUrl: string;
-    if (!proposal.shareToken || !proposal.publicAccessEnabled) {
-      const result = await createShareableLink(id, 30, tenant.subdomain);
-      shareUrl = result.shareUrl;
-    } else {
-      const baseUrl = (process.env.PUBLIC_PROPOSAL_URL || tenantAppUrl(tenant.subdomain)).replace(
-        /\/$/,
-        ''
-      );
-      shareUrl = `${baseUrl}/proposals/view/${proposal.shareToken}`;
-    }
+    const daysUntilValid = proposal.validUntil
+      ? Math.ceil((new Date(proposal.validUntil).getTime() - Date.now()) / 86_400_000)
+      : 30;
+    const shareExpiryDays = Math.min(90, Math.max(30, daysUntilValid));
+    const share = await createShareableLink(id, shareExpiryDays, tenant.subdomain);
+    const shareUrl = share.shareUrl;
 
     // Generate PDF if needed
     let pdfAttachment: Buffer | undefined;
@@ -286,14 +287,16 @@ router.post(
       emailHistory: string;
       sentAt: Date;
       status?: 'SENT';
+      expiredAt?: null;
     } = {
       lastEmailedAt: new Date(),
       emailHistory: JSON.stringify(emailHistory),
       sentAt: new Date(),
     };
     // Resend must not downgrade ACCEPTED (or other terminal) proposals — only refresh email metadata.
-    if (!['ACCEPTED', 'DECLINED', 'LOST', 'WITHDRAWN'].includes(proposal.status)) {
+    if (!['ACCEPTED', 'DECLINED', 'LOST', 'WITHDRAWN', 'ARCHIVED'].includes(proposal.status)) {
       emailSentUpdate.status = 'SENT';
+      emailSentUpdate.expiredAt = null;
     }
 
     await prisma.proposal.update({

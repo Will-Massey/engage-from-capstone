@@ -217,6 +217,8 @@ export interface ProposalDetailContextValue {
   isApprover: boolean;
   canSubmitForApproval: boolean;
   canSendDraft: boolean;
+  canResend: boolean;
+  isDateExpired: boolean;
   showClientLinkButton: boolean;
   canWithdrawProposal: boolean;
   canMarkAsLost: boolean;
@@ -431,7 +433,11 @@ export function ProposalDetailProvider({ children }: ProposalDetailProviderProps
     // API interceptor's error toast too, leaving a failed send looking silent.
     const toastId = toast.loading('Sending proposal…');
     try {
-      await apiClient.sendProposal(id!, approved);
+      if (proposal.status === 'DRAFT') {
+        await apiClient.sendProposal(id!, approved);
+      } else {
+        await apiClient.post(`/proposals/${id}/email`, { includePdf: true });
+      }
       toast.dismiss(toastId);
       toast.success('Proposal sent successfully');
       loadProposal();
@@ -862,9 +868,12 @@ export function ProposalDetailProvider({ children }: ProposalDetailProviderProps
     (userRole ? SUBMITTER_ROLES.has(userRole) || isApprover : false);
   const canSendDraft =
     proposal.status === 'DRAFT' && (canOverrideApproval || approvalStatus === 'APPROVED');
-  const showClientLinkButton = !['DECLINED', 'EXPIRED', 'WITHDRAWN', 'ARCHIVED', 'LOST'].includes(
-    proposal.status
-  );
+  const validUntilDate = proposal.validUntil ? new Date(proposal.validUntil) : null;
+  const isDateExpired = !!validUntilDate && validUntilDate.getTime() <= Date.now();
+  const canResend =
+    ['SENT', 'VIEWED', 'EXPIRED'].includes(proposal.status) && !isDateExpired;
+  const showClientLinkButton =
+    !['DECLINED', 'WITHDRAWN', 'ARCHIVED', 'LOST'].includes(proposal.status) && !isDateExpired;
   const canWithdrawProposal = proposal.status === 'SENT' || proposal.status === 'VIEWED';
   const canMarkAsLost = ['DRAFT', 'SENT', 'VIEWED', 'EXPIRED', 'WITHDRAWN'].includes(
     proposal.status
@@ -973,6 +982,8 @@ export function ProposalDetailProvider({ children }: ProposalDetailProviderProps
     isApprover,
     canSubmitForApproval,
     canSendDraft,
+    canResend,
+    isDateExpired,
     showClientLinkButton,
     canWithdrawProposal,
     canMarkAsLost,

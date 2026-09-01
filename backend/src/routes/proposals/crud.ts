@@ -36,6 +36,7 @@ import {
   proposalApprovalInclude,
   updateProposalSchema,
 } from './shared.js';
+import { buildValidityRevivePatch } from '../../lib/proposals/reviveOnValidity.js';
 
 const router = Router();
 
@@ -360,7 +361,22 @@ router.put(
 
     if (data.validUntil !== undefined) {
       const parsed = parseProposalDateInput(data.validUntil);
-      if (parsed) updateData.validUntil = parsed;
+      if (parsed) {
+        updateData.validUntil = parsed;
+        const revive = buildValidityRevivePatch({
+          currentStatus: existingProposal.status,
+          viewedAt: existingProposal.viewedAt,
+          nextValidUntil: parsed,
+          shareToken: existingProposal.shareToken,
+          shareTokenExpiry: existingProposal.shareTokenExpiry,
+          publicAccessEnabled: existingProposal.publicAccessEnabled,
+        });
+        if (revive) {
+          if (revive.status) updateData.status = revive.status;
+          updateData.expiredAt = revive.expiredAt;
+          if (revive.shareTokenExpiry) updateData.shareTokenExpiry = revive.shareTokenExpiry;
+        }
+      }
     }
 
     if (data.contractStartDate !== undefined) {
