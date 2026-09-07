@@ -74,7 +74,10 @@ export default function CompetitorOnePager() {
             </thead>
             <tbody>
               {ONE_PAGER_ROWS.map((row) => (
-                <tr key={row.capability} className="border-b border-slate-100 dark:border-slate-800">
+                <tr
+                  key={row.capability}
+                  className="border-b border-slate-100 dark:border-slate-800"
+                >
                   <td className="py-2 pr-2 font-medium text-slate-800 dark:text-slate-200">
                     {row.capability}
                   </td>
@@ -105,8 +108,8 @@ export default function CompetitorOnePager() {
         </div>
       </div>
       <p className="border-t border-slate-200 px-6 py-2 text-[10px] leading-relaxed text-slate-500 dark:border-slate-800 sm:px-8">
-        Illustrative only — not a quote. Clara never sends. We do not claim Cyber Essentials certified
-        or UK-only hosting.
+        Illustrative only — not a quote. Clara never sends. We do not claim Cyber Essentials
+        certified or UK-only hosting.
       </p>
     </section>
   );

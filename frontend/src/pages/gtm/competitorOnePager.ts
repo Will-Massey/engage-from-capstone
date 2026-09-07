@@ -1,7 +1,6 @@
 import { ENGAGE_TIERS } from './packagingValue';
 
-export const ONE_PAGER_HEADLINE =
-  'Engager runs the job. Engage wins it, signs it, and collects.';
+export const ONE_PAGER_HEADLINE = 'Engager runs the job. Engage wins it, signs it, and collects.';
 
 export const ONE_PAGER_PROBLEM =
   'TaxCalc Engager is a strong practice board. Cash and AI sit in partner add-ons, and the story still points you at TaxCalc. Engage is the money loop plus Clara — independent of that stack.';
@@ -29,10 +28,18 @@ export const ONE_PAGER_ROWS: Array<{
   engage: string;
 }> = [
   { capability: 'Jobs board and portal', engager: 'Yes', engage: 'Yes' },
-  { capability: 'Proposal → e-sign → collect', engager: 'Partner add-ons', engage: 'In product (UK cards)' },
+  {
+    capability: 'Proposal → e-sign → collect',
+    engager: 'Partner add-ons',
+    engage: 'In product (UK cards)',
+  },
   { capability: 'Practice AI', engager: 'Chase / records', engage: 'Clara drafts only' },
   { capability: 'TaxCalc required', engager: 'Distribution story', engage: 'No' },
-  { capability: 'Trust claims', engager: 'Vendor pack', engage: 'No CE cert · not UK-only hosting' },
+  {
+    capability: 'Trust claims',
+    engager: 'Vendor pack',
+    engage: 'No CE cert · not UK-only hosting',
+  },
 ];
 
 export const ONE_PAGER_CTA = 'https://capstonesoftware.co.uk/engage';
@@ -44,9 +51,9 @@ export function formatEngageLadder(): string {
 /** Plain-text leave-behind for email or paste into a partner note. */
 export function formatCompetitorOnePager(): string {
   const diffs = ONE_PAGER_DIFFERENTIATORS.map((d) => `• ${d.title} — ${d.line}`).join('\n');
-  const rows = ONE_PAGER_ROWS.map((r) => `• ${r.capability}: Engager ${r.engager} · Engage ${r.engage}`).join(
-    '\n'
-  );
+  const rows = ONE_PAGER_ROWS.map(
+    (r) => `• ${r.capability}: Engager ${r.engager} · Engage ${r.engage}`
+  ).join('\n');
   return `${ONE_PAGER_HEADLINE}
 
 ${ONE_PAGER_PROBLEM}
