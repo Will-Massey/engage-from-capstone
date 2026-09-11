@@ -4,9 +4,55 @@
  * https://developer.company-information.service.gov.uk/
  */
 
+import { z } from 'zod';
 import logger from '../config/logger.js';
 
+/** Express query values can be string | string[] — coerce before search. */
+export const companiesHouseSearchQuerySchema = z.object({
+  q: z
+    .union([z.string(), z.array(z.string())])
+    .transform((value) => (Array.isArray(value) ? value[0] : value)?.trim() ?? '')
+    .pipe(z.string().min(1).max(160)),
+  limit: z.coerce.number().int().min(1).max(50).default(10),
+});
+
 const COMPANIES_HOUSE_API_URL = 'https://api.company-information.service.gov.uk';
+const CH_USER_AGENT =
+  'CapstoneEngage/1.0 (https://capstonesoftware.co.uk/engage; sales@capstonesoftware.co.uk)';
+
+/** Strip spaces/hyphens, uppercase, and pad a UK company number to CH's 8-char form. */
+export function normalizeCompanyNumber(raw: string | undefined | null): string | null {
+  if (!raw) return null;
+  const cleaned = String(raw).replace(/[\s-]/g, '').toUpperCase();
+  if (!cleaned) return null;
+
+  if (/^\d{1,8}$/.test(cleaned)) {
+    return cleaned.padStart(8, '0');
+  }
+
+  // Prefix forms: SC, NI, OC, SO, FC, IP, LP, SL, …
+  const prefixed = cleaned.match(/^([A-Z]{1,2})(\d{4,6})$/);
+  if (prefixed) {
+    return `${prefixed[1]}${prefixed[2].padStart(6, '0')}`;
+  }
+
+  return null;
+}
+
+export function looksLikeCompanyNumber(raw: string): boolean {
+  return normalizeCompanyNumber(raw) !== null && raw.replace(/[\s-]/g, '').length >= 6;
+}
+
+export function companyNumberFromSearchItem(item: {
+  company_number?: string;
+  links?: { self?: string };
+}): string {
+  const fromField = normalizeCompanyNumber(item.company_number);
+  if (fromField) return fromField;
+  const self = item.links?.self || '';
+  const match = self.match(/\/company\/([^/?#]+)/i);
+  return normalizeCompanyNumber(match?.[1] || '') || (item.company_number || '').trim();
+}
 
 export interface CompaniesHouseConfig {
   apiKey: string;
@@ -74,16 +120,33 @@ export class CompaniesHouseService {
   /**
    * Search for companies by name or number
    */
+  private authHeaders(): Record<string, string> {
+    return {
+      Authorization: `Basic ${Buffer.from(`${this.apiKey}:`).toString('base64')}`,
+      Accept: 'application/json',
+      'User-Agent': CH_USER_AGENT,
+    };
+  }
+
+  private async chFetch(url: string): Promise<Response> {
+    const response = await fetch(url, { headers: this.authHeaders() });
+    if (response.status === 429) {
+      throw new Error('Companies House rate limit reached — try again in a minute');
+    }
+    return response;
+  }
+
+  /**
+   * Search for companies by name or number.
+   * Number-shaped queries also hit the company profile endpoint — search can
+   * miss an exact registration number that the profile API knows.
+   */
   async searchCompanies(query: string, itemsPerPage: number = 10): Promise<CompanySearchResult[]> {
     try {
-      const url = `${COMPANIES_HOUSE_API_URL}/search/companies?q=${encodeURIComponent(query)}&items_per_page=${itemsPerPage}`;
+      const trimmed = (query || '').trim();
+      const url = `${COMPANIES_HOUSE_API_URL}/search/companies?q=${encodeURIComponent(trimmed)}&items_per_page=${itemsPerPage}`;
 
-      const response = await fetch(url, {
-        headers: {
-          Authorization: `Basic ${Buffer.from(this.apiKey + ':').toString('base64')}`,
-          'Content-Type': 'application/json',
-        },
-      });
+      const response = await this.chFetch(url);
 
       if (!response.ok) {
         if (response.status === 401) {
@@ -92,8 +155,35 @@ export class CompaniesHouseService {
         throw new Error(`Companies House API error: ${response.status} ${response.statusText}`);
       }
 
-      const data = (await response.json()) as any;
-      return data.items || [];
+      const data = (await response.json()) as { items?: CompanySearchResult[] };
+      const items = (data.items || []).map((item) => ({
+        ...item,
+        company_number: companyNumberFromSearchItem(item) || item.company_number,
+      }));
+
+      if (looksLikeCompanyNumber(trimmed)) {
+        const direct = await this.tryCompanyDetails(trimmed);
+        if (direct) {
+          const already = items.some(
+            (item) =>
+              normalizeCompanyNumber(item.company_number) ===
+              normalizeCompanyNumber(direct.company_number)
+          );
+          if (!already) {
+            items.unshift({
+              company_number: direct.company_number,
+              company_name: direct.company_name,
+              title: direct.company_name,
+              company_status: direct.company_status,
+              company_type: direct.company_type,
+              date_of_creation: direct.date_of_creation,
+              registered_office_address: direct.registered_office_address,
+            });
+          }
+        }
+      }
+
+      return items;
     } catch (error) {
       logger.error('Companies House search error:', error);
       throw error;
@@ -105,17 +195,12 @@ export class CompaniesHouseService {
    */
   async getCompanyDetails(companyNumber: string): Promise<CompanyDetails> {
     try {
-      // Clean company number (remove spaces)
-      const cleanNumber = companyNumber.replace(/\s/g, '').toUpperCase();
+      const cleanNumber =
+        normalizeCompanyNumber(companyNumber) || companyNumber.replace(/\s/g, '').toUpperCase();
 
-      const url = `${COMPANIES_HOUSE_API_URL}/company/${cleanNumber}`;
+      const url = `${COMPANIES_HOUSE_API_URL}/company/${encodeURIComponent(cleanNumber)}`;
 
-      const response = await fetch(url, {
-        headers: {
-          Authorization: `Basic ${Buffer.from(this.apiKey + ':').toString('base64')}`,
-          'Content-Type': 'application/json',
-        },
-      });
+      const response = await this.chFetch(url);
 
       if (!response.ok) {
         if (response.status === 404) {
@@ -131,6 +216,15 @@ export class CompaniesHouseService {
       return data as CompanyDetails;
     } catch (error) {
       logger.error('Companies House get details error:', error);
+      throw error;
+    }
+  }
+
+  private async tryCompanyDetails(companyNumber: string): Promise<CompanyDetails | null> {
+    try {
+      return await this.getCompanyDetails(companyNumber);
+    } catch (error: any) {
+      if (error?.message === 'Company not found') return null;
       throw error;
     }
   }

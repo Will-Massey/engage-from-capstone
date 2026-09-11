@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -135,13 +135,14 @@ const CreateClient = ({ onSuccess, onCancel }: CreateClientProps = {}) => {
   const [chShowResults, setChShowResults] = useState(false);
   const [chSelectedCompany, setChSelectedCompany] = useState<string | null>(null);
   const [chConfigured, setChConfigured] = useState<boolean | null>(null);
+  const chSearchBoxRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const checkStatus = async () => {
       try {
-        const response = (await apiClient.get('/companies-house/status')) as any;
+        const response = (await apiClient.getCompaniesHouseStatus()) as any;
         if (response.success) {
-          setChConfigured(!!response.data?.configured && !!response.data?.connected);
+          setChConfigured(!!response.data?.configured);
         }
       } catch {
         setChConfigured(false);
@@ -154,27 +155,27 @@ const CreateClient = ({ onSuccess, onCancel }: CreateClientProps = {}) => {
 
   const chErrorMessage = (error: unknown): string => {
     const err = error as {
-      response?: { data?: { error?: { message?: string; code?: string } } };
+      code?: string;
       message?: string;
+      response?: { data?: { error?: { message?: string; code?: string } } };
     };
-    const code = err.response?.data?.error?.code;
-    const message = err.response?.data?.error?.message;
+    const code = err.code || err.response?.data?.error?.code;
+    const message = err.message || err.response?.data?.error?.message;
     if (code === 'NOT_CONFIGURED') {
       return 'Companies House API key is not set on the server. Add COMPANIES_HOUSE_API_KEY to backend/.env.';
     }
-    if (message) return message;
+    if (message && message !== 'An error occurred') return message;
     return 'Failed to search Companies House';
   };
 
   // Search Companies House
   const searchCompaniesHouse = async () => {
-    if (!chSearchQuery.trim() || chSearchQuery.length < 2) return;
+    const query = chSearchQuery.trim();
+    if (query.length < 2) return;
 
     setChSearching(true);
     try {
-      const response = (await apiClient.get(
-        `/companies-house/search?q=${encodeURIComponent(chSearchQuery)}&limit=5`
-      )) as any;
+      const response = await apiClient.searchCompaniesHouse(query, 8);
       if (response.success) {
         setChSearchResults(response.data || []);
         setChShowResults(true);
@@ -193,18 +194,27 @@ const CreateClient = ({ onSuccess, onCancel }: CreateClientProps = {}) => {
   const selectCompany = async (companyNumber: string) => {
     setChSelectedCompany(companyNumber);
     try {
-      const response = (await apiClient.get(`/companies-house/company/${companyNumber}`)) as any;
+      const response = await apiClient.getCompaniesHouseCompany(companyNumber);
       if (response.success) {
-        const company = response.data.formatted; // Use formatted data from backend
+        const company = response.data.formatted;
+        const persist = { shouldValidate: true, shouldDirty: true, shouldTouch: true } as const;
 
-        // Auto-populate form fields
-        setValue('name', company.name);
-        setValue('companyNumber', company.companyNumber);
+        setValue('name', company.name, persist);
+        setValue('companyNumber', company.companyNumber, persist);
+        if (
+          company.companyType === 'LIMITED_COMPANY' ||
+          company.companyType === 'LLP' ||
+          company.companyType === 'PARTNERSHIP' ||
+          company.companyType === 'CHARITY' ||
+          company.companyType === 'SOLE_TRADER'
+        ) {
+          setValue('companyType', company.companyType, persist);
+        }
         if (company.address) {
-          setValue('addressLine1', company.address.line1 || '');
-          setValue('addressLine2', company.address.line2 || '');
-          setValue('city', company.address.city || '');
-          setValue('postcode', company.address.postcode || '');
+          setValue('addressLine1', company.address.line1 || '', persist);
+          setValue('addressLine2', company.address.line2 || '', persist);
+          setValue('city', company.address.city || '', persist);
+          setValue('postcode', company.address.postcode || '', persist);
         }
 
         toast.success('Company details loaded');
@@ -215,13 +225,15 @@ const CreateClient = ({ onSuccess, onCancel }: CreateClientProps = {}) => {
     }
   };
 
-  // Close search results when clicking outside
   useEffect(() => {
-    const handleClickOutside = () => setChShowResults(false);
-    if (chShowResults) {
-      document.addEventListener('click', handleClickOutside);
-      return () => document.removeEventListener('click', handleClickOutside);
-    }
+    if (!chShowResults) return;
+    const handlePointerDown = (event: MouseEvent) => {
+      if (!chSearchBoxRef.current?.contains(event.target as Node)) {
+        setChShowResults(false);
+      }
+    };
+    document.addEventListener('mousedown', handlePointerDown);
+    return () => document.removeEventListener('mousedown', handlePointerDown);
   }, [chShowResults]);
 
   const onSubmit = async (data: ClientForm) => {
@@ -442,7 +454,7 @@ const CreateClient = ({ onSuccess, onCancel }: CreateClientProps = {}) => {
                   Search Companies House
                 </label>
                 <p className="text-xs text-blue-700 mb-3">
-                  Search for a company to auto-fill details
+                  Search by company name or registration number to auto-fill details
                 </p>
                 {chConfigured === false && (
                   <p className="text-xs text-amber-800 bg-amber-50 border border-amber-200 rounded-md px-3 py-2 mb-3">
@@ -460,25 +472,21 @@ const CreateClient = ({ onSuccess, onCancel }: CreateClientProps = {}) => {
                     ).
                   </p>
                 )}
-                <div className="relative">
+                <div className="relative" ref={chSearchBoxRef}>
                   <div className="flex gap-2">
                     <input
                       type="text"
                       value={chSearchQuery}
                       onChange={(e) => setChSearchQuery(e.target.value)}
-                      onClick={(e) => e.stopPropagation()}
                       onKeyDown={(e) =>
                         e.key === 'Enter' && (e.preventDefault(), searchCompaniesHouse())
                       }
                       className="flex-1 input-field text-sm"
-                      placeholder="Enter company name..."
+                      placeholder="Name or company number, e.g. Tesco or 00445790"
                     />
                     <button
                       type="button"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        searchCompaniesHouse();
-                      }}
+                      onClick={() => searchCompaniesHouse()}
                       disabled={chSearching || chSearchQuery.length < 2}
                       className="btn-secondary text-sm px-4 disabled:opacity-50"
                     >
@@ -493,10 +501,7 @@ const CreateClient = ({ onSuccess, onCancel }: CreateClientProps = {}) => {
                         <button
                           key={result.companyNumber}
                           type="button"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            selectCompany(result.companyNumber);
-                          }}
+                          onClick={() => selectCompany(result.companyNumber)}
                           className="w-full text-left px-4 py-3 hover:bg-slate-50 border-b border-slate-100 last:border-0"
                         >
                           <div className="flex items-center justify-between">
