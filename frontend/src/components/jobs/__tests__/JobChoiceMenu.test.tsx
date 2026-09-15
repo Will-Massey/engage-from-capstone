@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { renderToStaticMarkup } from 'react-dom/server';
-import JobChoiceMenu, { shouldPersistChoice } from '../JobChoiceMenu';
+import JobChoiceMenu from '../JobChoiceMenu';
+import { shouldPersistChoice } from '../jobChoice';
 
 describe('shouldPersistChoice', () => {
   it('is false when the staff keep the current value', () => {

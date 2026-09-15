@@ -3,7 +3,8 @@ import { Link, useParams } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import { CheckCircleIcon, ChevronDownIcon, ChevronRightIcon } from '@heroicons/react/24/outline';
 import { apiClient } from '../../utils/api';
-import JobChoiceMenu, { shouldPersistChoice } from '../../components/jobs/JobChoiceMenu';
+import JobChoiceMenu from '../../components/jobs/JobChoiceMenu';
+import { shouldPersistChoice } from '../../components/jobs/jobChoice';
 import {
   StatusChip,
   MoneyPill,

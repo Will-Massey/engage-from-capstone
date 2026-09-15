@@ -1,14 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { ChevronDownIcon } from '@heroicons/react/24/outline';
-
-export function shouldPersistChoice(
-  current: string | null | undefined,
-  next: string | null | undefined
-): boolean {
-  return (current || '') !== (next || '');
-}
-
-export type JobChoiceOption = { value: string; label: string };
+import { shouldPersistChoice, type JobChoiceOption } from './jobChoice';
 
 /**
  * Optional job field (board column / assignee). Native &lt;select&gt; on Windows
