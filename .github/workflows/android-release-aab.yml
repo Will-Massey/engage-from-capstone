@@ -139,3 +139,5 @@ jobs:
           name: engage-release-aab
           path: frontend/android/app/build/outputs/bundle/release/app-release.aab
           if-no-files-found: error
+          # Release AAB: kept long enough to upload to Play, then rebuildable.
+          retention-days: 14

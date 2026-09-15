@@ -2,6 +2,22 @@
 
 <!-- Append-only session log. Latest deploy checkpoint is the resume entry point. -->
 
+## Session: 2026-09-15 — continue Engage (deep links + Caroline still local)
+
+Picked up from 11 Sep. Caroline job-choice menu still uncommitted (not on prod). Wired W4.1 client deep links: `handleNativeOpenUrl` + `NativeDeepLinkBridge` (React Router), `engage://` on Android + iOS. Parser was already written; `native.ts` had been pushing raw `/engage/…` pathnames which the Capacitor SPA cannot match.
+
+Not deployed. Gmail keys on Render still a separate gate.
+
+---
+
+## Session: 2026-09-11 — job detail trap (Caroline)
+
+Caroline could not leave a job: Board column / Assignee were native `<select>`s that open as a Windows picker you must complete. Replacing them with a dismissible menu (click-away / Escape / keep current value) plus a Close button. PATCH `/jobs/:id/column` no-ops when the column is unchanged so a re-pick does not write activity or fire mesh.
+
+Not deployed. Gmail keys still missing on Render (separate).
+
+---
+
 ## Session: 2026-07-04 — Render superadmin cleanup
 
 ### Checkpoint

@@ -3,6 +3,7 @@ import { Link, useParams } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import { CheckCircleIcon, ChevronDownIcon, ChevronRightIcon } from '@heroicons/react/24/outline';
 import { apiClient } from '../../utils/api';
+import JobChoiceMenu, { shouldPersistChoice } from '../../components/jobs/JobChoiceMenu';
 import {
   StatusChip,
   MoneyPill,
@@ -268,6 +269,7 @@ export default function JobDetail() {
   }
 
   async function moveColumn(boardColumn: string) {
+    if (!shouldPersistChoice(job?.boardColumn, boardColumn)) return;
     const res = (await apiClient.patch(`/jobs/${id}/column`, { boardColumn })) as any;
     const nudge = res?.renewalNudge ?? res?.data?.renewalNudge;
     setError(null);
@@ -278,8 +280,10 @@ export default function JobDetail() {
   }
 
   async function setAssignee(assigneeId: string) {
+    const next = assigneeId || null;
+    if (!shouldPersistChoice(job?.assigneeId, next)) return;
     await apiClient.patch(`/jobs/${id}`, {
-      assigneeId: assigneeId || null,
+      assigneeId: next,
     });
     await load();
   }
@@ -502,6 +506,9 @@ export default function JobDetail() {
             </div>
           </div>
           <div className="flex items-center gap-4">
+            <Link to="/jobs" className="btn-secondary shrink-0 text-sm" data-testid="job-close">
+              Close
+            </Link>
             <div className="text-center">
               <ProgressRing pct={phasePct} size={56} stroke={4} />
               <p className="mt-1 text-2xs text-slate-400">{phasePct}%</p>
@@ -578,38 +585,32 @@ export default function JobDetail() {
           />
         </div>
 
-        <div className="mt-4 flex flex-wrap gap-3 border-t border-slate-100 pt-4 dark:border-slate-700">
-          <label className="text-xs text-slate-500">
-            Board column
-            <select
-              className="input-field mt-1 min-w-[10rem]"
-              value={job.boardColumn}
-              onChange={(e) => void moveColumn(e.target.value)}
-            >
-              {columns.map((c) => (
-                <option key={c} value={c}>
-                  {boardColumnLabel(c)}
-                </option>
-              ))}
-            </select>
-          </label>
+        <div className="mt-4 flex flex-wrap items-end gap-3 border-t border-slate-100 pt-4 dark:border-slate-700">
+          <JobChoiceMenu
+            label="Board column"
+            testId="job-board-column"
+            value={job.boardColumn}
+            options={columns.map((c) => ({ value: c, label: boardColumnLabel(c) }))}
+            onChange={(next) => void moveColumn(next)}
+          />
           {staff.length > 0 && (
-            <label className="text-xs text-slate-500">
-              Assignee
-              <select
-                className="input-field mt-1 min-w-[10rem]"
-                value={job.assigneeId || ''}
-                onChange={(e) => void setAssignee(e.target.value)}
-              >
-                <option value="">Unassigned</option>
-                {staff.map((u) => (
-                  <option key={u.id} value={u.id}>
-                    {u.firstName} {u.lastName}
-                  </option>
-                ))}
-              </select>
-            </label>
+            <JobChoiceMenu
+              label="Assignee"
+              testId="job-assignee"
+              value={job.assigneeId || ''}
+              options={[
+                { value: '', label: 'Unassigned' },
+                ...staff.map((u) => ({
+                  value: u.id,
+                  label: `${u.firstName} ${u.lastName}`,
+                })),
+              ]}
+              onChange={(next) => void setAssignee(next)}
+            />
           )}
+          <p className="w-full text-2xs text-slate-400">
+            Optional. Click away or Close — you do not have to change column or assignee to leave.
+          </p>
         </div>
       </div>
 

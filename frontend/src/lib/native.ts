@@ -1,4 +1,5 @@
 import { Capacitor } from '@capacitor/core';
+import { handleNativeOpenUrl } from './nativeDeepLinks';
 
 /** True when running inside the Capacitor native shell (iOS/Android). */
 export function isNativeApp(): boolean {
@@ -53,19 +54,13 @@ export async function initNativeShell(): Promise<void> {
     }
   });
 
-  // App URL open (custom scheme / universal link) → SPA route
+  // Cold start (link opened the app) and warm open (already running).
+  // Parser strips production `/engage` and ignores staff URLs.
+  const launch = await App.getLaunchUrl().catch(() => undefined);
+  if (launch?.url) handleNativeOpenUrl(launch.url);
+
   App.addListener('appUrlOpen', ({ url }) => {
-    try {
-      const u = new URL(url);
-      const path = u.pathname + u.search + u.hash;
-      if (path && path !== '/') {
-        window.location.hash = '';
-        window.history.pushState({}, '', path.startsWith('/') ? path : `/${path}`);
-        window.dispatchEvent(new PopStateEvent('popstate'));
-      }
-    } catch {
-      /* ignore malformed */
-    }
+    handleNativeOpenUrl(url);
   });
 
   Keyboard.setAccessoryBarVisible({ isVisible: true }).catch(() => undefined);

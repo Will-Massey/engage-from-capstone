@@ -64,11 +64,17 @@ Run Vite with `--host` (already default in `npm run dev`).
 
 ## Portal deep links
 
-Use universal links / custom scheme later. For now open:
+Custom scheme `engage://` is registered on Android (`AndroidManifest`) and iOS (`CFBundleURLTypes`). Capacitor `appUrlOpen` / `getLaunchUrl` run through `parseNativeOpenUrl` so production `https://capstonesoftware.co.uk/engage/…` links still land on the SPA path (the native Vite build has no `/engage` basename).
 
-- Staff: `https://app…/` (or cap server url) after login
-- Client portal: `/portal/{token}`
-- Public sign: `/proposals/view/{token}`
+| Link                                                   | Opens                                               |
+| ------------------------------------------------------ | --------------------------------------------------- |
+| `engage://portal/{token}`                              | Client portal                                       |
+| `engage://proposals/view/{token}`                      | Public proposal sign                                |
+| `engage://letters/view/{token}`                        | Letter e-sign                                       |
+| `engage://onboarding/aml/{token}`                      | AML form                                            |
+| `https://capstonesoftware.co.uk/engage/portal/{token}` | Same portal path once the OS delivers it to the app |
+
+Staff URLs (`/jobs`, `/login`, …) are ignored so a stray https share does not hijack the tab shell. Universal / App Links (https host ownership) are not registered yet — until then, share `engage://…` or open the https URL in the in-app WebView.
 
 ## Practice vs production
 
