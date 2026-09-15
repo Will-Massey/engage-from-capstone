@@ -17,8 +17,8 @@ CREATE INDEX IF NOT EXISTS "mcp_api_keys_tenantId_revoked_at_idx" ON "mcp_api_ke
 
 ALTER TABLE "mcp_api_keys"
   ADD CONSTRAINT "mcp_api_keys_tenantId_fkey"
-  FOREIGN KEY ("tenantId") REFERENCES "tenants"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+  FOREIGN KEY ("tenantId") REFERENCES "Tenant"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 ALTER TABLE "mcp_api_keys"
   ADD CONSTRAINT "mcp_api_keys_created_by_user_id_fkey"
-  FOREIGN KEY ("created_by_user_id") REFERENCES "users"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+  FOREIGN KEY ("created_by_user_id") REFERENCES "User"("id") ON DELETE SET NULL ON UPDATE CASCADE;
