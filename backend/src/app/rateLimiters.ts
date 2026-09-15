@@ -130,6 +130,21 @@ const portalLimiter = rateLimit({
   legacyHeaders: false,
 });
 
+const mcpLimiter = rateLimit({
+  store: rateLimitStore(),
+  passOnStoreError: true,
+  windowMs: 15 * 60 * 1000,
+  max: 120,
+  skip: (req) => shouldSkipRateLimit(req.headers),
+  message: {
+    success: false,
+    error: {
+      code: 'RATE_LIMIT_EXCEEDED',
+      message: 'Too many MCP requests. Please wait a few minutes and try again.',
+    },
+  },
+});
+
 const amlSubmitLimiter = rateLimit({
   store: rateLimitStore(),
   // Fail open if the store errors (e.g. Redis unreachable) — losing rate
@@ -161,6 +176,7 @@ export function applyRouteRateLimiters(app: express.Express): void {
   app.use('/api/auth/2fa/verify', authLimiter);
   app.use('/api/auth/2fa/disable', authLimiter);
 
+  app.use('/api/mcp', mcpLimiter);
   app.use('/api/admin', privilegedLimiter);
   app.use('/api/seed-services-public', privilegedLimiter);
   app.use('/api/setup', privilegedLimiter);

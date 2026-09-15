@@ -68,7 +68,7 @@ Also shipped 2026-08-06: **#105** (Documents-hub field fixes: client search, AML
 
 ## Next up
 
-1. **Ship sitting local work** (not on master): Caroline job-detail trap (dismissible Board column / Close); Gmail OAuth scopes without `mail.google.com`; W4.1 `engage://` deep links wired through React Router. Needs commit + deploy so Fortis staff are unstuck.
+1. **MCP** — Integrations → Connect your AI. Generate a key, paste into Claude/Cursor. Live after this deploy.
 2. Remaining scorecard / GTM: Credas AML (awaits William's partner email); Gmail `GMAIL_CLIENT_ID`/`SECRET` on Render; first real M365 connect watch.
 3. Product wave: W4.5 live Xero UAT still needs William to Connect in Settings. QBO needs Intuit client id/secret. Universal/App Links for https portal URLs after `engage://` is in a store build.
 

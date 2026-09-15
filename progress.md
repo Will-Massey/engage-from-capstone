@@ -2,6 +2,14 @@
 
 <!-- Append-only session log. Latest deploy checkpoint is the resume entry point. -->
 
+## Session: 2026-09-15 — MCP for practice AI clients
+
+Remote MCP on `POST /api/mcp` (Bearer `eng_mcp_…`, hashed at rest, tenant-scoped). Settings panel on Integrations. Tools: practice summary, clients, jobs, proposals, add job note. CSRF-exempt protocol path; mint/revoke stays cookie+CSRF.
+
+Pushed after the job-trap/deep-link deploy (5805cef).
+
+---
+
 ## Session: 2026-09-15 — continue Engage (deep links + Caroline still local)
 
 Picked up from 11 Sep. Caroline job-choice menu still uncommitted (not on prod). Wired W4.1 client deep links: `handleNativeOpenUrl` + `NativeDeepLinkBridge` (React Router), `engage://` on Android + iOS. Parser was already written; `native.ts` had been pushing raw `/engage/…` pathnames which the Capacitor SPA cannot match.

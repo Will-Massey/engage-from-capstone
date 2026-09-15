@@ -4,6 +4,7 @@ import { ArrowsRightLeftIcon, ShieldCheckIcon } from '@heroicons/react/24/outlin
 import { apiClient } from '../../utils/api';
 import { StatusChip } from '../../components/ui/StatusChip';
 import MailboxConnect from '../../components/email/MailboxConnect';
+import McpConnect from '../../components/integrations/McpConnect';
 import WebhookSettings from '../../components/settings/WebhookSettings';
 import XeroConnect from '../../components/integrations/XeroConnect';
 import QuickBooksConnect from '../../components/integrations/QuickBooksConnect';
@@ -143,10 +144,11 @@ export default function IntegrationsHub() {
             Practice integrations desk
           </h1>
           <p className="mt-1 max-w-2xl text-sm text-slate-500">
-            Connect Engage to the rest of your practice: your Microsoft 365 or Google mailbox,
-            AccountFlow (Capstone Tandem) for auto-handoff and SSO, Xero and QuickBooks Online for
-            client sync, and outbound webhooks for Zapier, Make, or your practice management tool.
-            TaxCalc is not an Engage integration — we stay independent of it.
+            Connect Engage to the rest of your practice: your Microsoft 365 or Google mailbox, your
+            own AI tools over MCP, AccountFlow (Capstone Tandem) for auto-handoff and SSO, Xero and
+            QuickBooks Online for client sync, and outbound webhooks for Zapier, Make, or your
+            practice management tool. TaxCalc is not an Engage integration — we stay independent of
+            it.
           </p>
         </div>
       </header>
@@ -169,6 +171,13 @@ export default function IntegrationsHub() {
             </p>
           </div>
           <MailboxConnect />
+        </div>
+      </section>
+
+      <section className="metal-tile p-6 space-y-4" data-testid="mcp-integration">
+        <span className="metal-specular" aria-hidden />
+        <div className="relative z-[1]">
+          <McpConnect />
         </div>
       </section>
 
