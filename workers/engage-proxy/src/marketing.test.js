@@ -45,9 +45,15 @@ test('leadMagnetLocation: exact slugs 301 to the apex magnets, query preserved',
     leadMagnetLocation('/engage/proposal-checklist', '?ref=email'),
     '/proposal-checklist/?ref=email'
   );
+  assert.equal(leadMagnetLocation('/engage/per-seat-tax'), '/per-seat-tax/');
+  assert.equal(leadMagnetLocation('/engage/per-seat-tax/'), '/per-seat-tax/');
+  assert.equal(
+    leadMagnetLocation('/engage/per-seat-tax/', '?utm=linkedin'),
+    '/per-seat-tax/?utm=linkedin'
+  );
 });
 
-test('fetch 301s the two magnets with query preserved and leaves app routes alone', async () => {
+test('fetch 301s the three magnets with query preserved and leaves app routes alone', async () => {
   const magnet = await worker.fetch(
     new Request('https://capstonesoftware.co.uk/engage/mtd-repricing/?utm=linkedin'),
     {},
@@ -69,6 +75,25 @@ test('fetch 301s the two magnets with query preserved and leaves app routes alon
     checklist.headers.get('Location'),
     'https://capstonesoftware.co.uk/proposal-checklist/'
   );
+
+  const perSeat = await worker.fetch(
+    new Request('https://capstonesoftware.co.uk/engage/per-seat-tax/?utm=linkedin'),
+    {},
+    {}
+  );
+  assert.equal(perSeat.status, 301);
+  assert.equal(
+    perSeat.headers.get('Location'),
+    'https://capstonesoftware.co.uk/per-seat-tax/?utm=linkedin'
+  );
+
+  const perSeatBare = await worker.fetch(
+    new Request('https://capstonesoftware.co.uk/engage/per-seat-tax'),
+    {},
+    {}
+  );
+  assert.equal(perSeatBare.status, 301);
+  assert.equal(perSeatBare.headers.get('Location'), 'https://capstonesoftware.co.uk/per-seat-tax/');
 });
 
 test('leadMagnetLocation: does not splat /engage/* — marketing and app routes stay', () => {
@@ -78,7 +103,10 @@ test('leadMagnetLocation: does not splat /engage/* — marketing and app routes 
   assert.equal(leadMagnetLocation('/engage/login'), null);
   assert.equal(leadMagnetLocation('/engage/mtd-repricing/extra'), null);
   assert.equal(leadMagnetLocation('/engage/proposal-checklist/download'), null);
+  assert.equal(leadMagnetLocation('/engage/per-seat-tax/extra'), null);
   assert.equal(leadMagnetLocation('/engage/proposals/1'), null);
+  assert.equal(leadMagnetLocation('/engage/forge/'), null);
+  assert.equal(leadMagnetLocation('/engage/cat/'), null);
 });
 
 test('packaged marketing HTML past-tenses the first quarterly deadline', () => {
