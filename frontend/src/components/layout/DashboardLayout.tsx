@@ -49,7 +49,7 @@ const DashboardLayout = () => {
       <div className="lg:pl-72 xl:pl-80 min-w-0">
         {/* Header with glass effect — single instance, full dark support */}
         <div
-          className={`fixed top-0 right-0 left-0 lg:left-72 xl:left-80 z-30 transition-all duration-300 pt-[env(safe-area-inset-top)] ${
+          className={`print-hide-chrome fixed top-0 right-0 left-0 lg:left-72 xl:left-80 z-30 transition-all duration-300 pt-[env(safe-area-inset-top)] ${
             scrolled ? 'shadow-lg' : ''
           }`}
           style={{
@@ -73,7 +73,9 @@ const DashboardLayout = () => {
         {/* pb-28 keeps the floating Clara launcher clear of the last row of content */}
         <main id="main-content" className="pt-20 pb-28 px-4 sm:px-6 lg:px-8">
           <div className="max-w-7xl mx-auto space-y-4 sm:space-y-5">
-            <AppRouteHeader />
+            <div className="print-hide-chrome">
+              <AppRouteHeader />
+            </div>
             <Outlet />
             <footer className="pt-5 pb-2 border-t border-slate-200/50 dark:border-slate-700/50 text-slate-500">
               <LegalFooterLinks />

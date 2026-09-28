@@ -5,7 +5,7 @@
  */
 import { Router } from 'express';
 import { z } from 'zod';
-import { authenticate } from '../middleware/auth.js';
+import { authenticate, authorize } from '../middleware/auth.js';
 import { asyncHandler, ApiError } from '../middleware/errorHandler.js';
 import {
   getMeshStatus,
@@ -25,6 +25,14 @@ import {
   mergeAccountFlowMeshSettings,
 } from '../utils/tenantAccountFlowMesh.js';
 import { prisma } from '../config/database.js';
+import {
+  getActiveMcpKey,
+  mintMcpKey,
+  previewFromPrefix,
+  publicMcpUrl,
+  revokeMcpKeys,
+  MCP_MANAGE_ROLES,
+} from '../services/mcp/mcpKeys.js';
 import {
   getTenantXeroSettings,
   xeroStatusFromSettings,
@@ -361,8 +369,67 @@ router.get(
           connectPath: '/api/quickbooks/connect',
           settingsHint: 'Settings → Integrations → QuickBooks',
         },
+        mcp: {
+          endpoint: publicMcpUrl(),
+          configured: !!(await getActiveMcpKey(tenantId)),
+        },
       },
     });
+  })
+);
+
+router.get(
+  '/mcp',
+  asyncHandler(async (req, res) => {
+    const key = await getActiveMcpKey(req.tenantId!);
+    res.json({
+      success: true,
+      data: {
+        endpoint: publicMcpUrl(),
+        configured: !!key,
+        key: key
+          ? {
+              name: key.name,
+              preview: previewFromPrefix(key.prefix),
+              scopes: key.scopes,
+              createdAt: key.createdAt,
+              lastUsedAt: key.lastUsedAt,
+            }
+          : null,
+        canManage: MCP_MANAGE_ROLES.includes(req.user?.role as (typeof MCP_MANAGE_ROLES)[number]),
+      },
+    });
+  })
+);
+
+router.post(
+  '/mcp/keys',
+  authorize(...MCP_MANAGE_ROLES),
+  asyncHandler(async (req, res) => {
+    const name = typeof req.body?.name === 'string' ? req.body.name : undefined;
+    const minted = await mintMcpKey({
+      tenantId: req.tenantId!,
+      userId: req.user?.id,
+      name,
+    });
+    res.status(201).json({
+      success: true,
+      data: {
+        token: minted.token,
+        prefix: minted.prefix,
+        endpoint: publicMcpUrl(),
+        warning: 'Copy this token now. Engage cannot show it again.',
+      },
+    });
+  })
+);
+
+router.delete(
+  '/mcp/keys',
+  authorize(...MCP_MANAGE_ROLES),
+  asyncHandler(async (req, res) => {
+    const revoked = await revokeMcpKeys(req.tenantId!);
+    res.json({ success: true, data: { revoked } });
   })
 );
 

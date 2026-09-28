@@ -81,6 +81,10 @@ test.describe('Practice W3 — money, Clara, automations, workload', () => {
       page.getByRole('heading', { name: /switch from engager to engage/i })
     ).toBeVisible();
     await expect(page.getByText('ROI calculator', { exact: true })).toBeVisible();
+    await expect(page.getByTestId('competitor-one-pager')).toBeVisible();
+    await expect(
+      page.getByRole('heading', { name: /Engager runs the job\. Engage wins it/i })
+    ).toBeVisible();
     await page.goto('/trust');
     await page.waitForLoadState('networkidle');
     await expect(page.getByRole('heading', { name: /trust & uk residency/i })).toBeVisible();

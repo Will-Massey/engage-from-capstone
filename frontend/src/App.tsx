@@ -6,6 +6,7 @@ import { apiClient, ensureCsrfReady, hydrateCsrfCache, rememberCsrfToken } from 
 import { appRelativePath } from './utils/appBase';
 import { isNativeApp } from './lib/native';
 import { nativeSessionReady, retryOnTransientFailure } from './lib/nativeSession';
+import NativeDeepLinkBridge from './components/layout/NativeDeepLinkBridge';
 
 // Layouts (kept eager — lightweight shells shared across routes)
 import DashboardLayout from './components/layout/DashboardLayout';
@@ -761,6 +762,7 @@ function App() {
 
   return (
     <>
+      <NativeDeepLinkBridge />
       <AnimatedRoutes />
 
       {/* World-class features - only for authenticated users */}

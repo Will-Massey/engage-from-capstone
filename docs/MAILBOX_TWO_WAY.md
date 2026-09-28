@@ -209,13 +209,13 @@ credentials go into the Render dashboard (not committed — `sync: false`).
    (must match `oauthCallback.ts`'s `redirectUri` exactly).
 3. Configure the OAuth consent screen with these scopes (matches
    `EmailService.generateGmailAuthUrl` in `emailService.ts`):
-   - `https://mail.google.com/`
    - `https://www.googleapis.com/auth/gmail.modify`
    - `https://www.googleapis.com/auth/gmail.send`
    - `https://www.googleapis.com/auth/userinfo.email`
-     Google will flag `https://mail.google.com/` as a restricted scope —
-     verification is required before the app can be used outside test mode with
-     real (non-test) Google accounts.
+     Do **not** request `https://mail.google.com/` — that restricted scope
+     triggers paid CASA verification. `gmail.modify` + `gmail.send` cover
+     inbox sync and send. Stay on the OAuth **Testing** audience (add test
+     users) and do **not** enable Cloud billing or submit for verification.
 4. Copy the client id/secret into the Render dashboard as
    `GMAIL_CLIENT_ID` / `GMAIL_CLIENT_SECRET` on `engage-backend` (they're
    declared `sync: false` in `render.yaml` specifically so a Blueprint sync

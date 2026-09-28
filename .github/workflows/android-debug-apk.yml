@@ -81,3 +81,5 @@ jobs:
           name: engage-debug-apk
           path: frontend/android/app/build/outputs/apk/debug/app-debug.apk
           if-no-files-found: error
+          # Debug APKs are rebuildable on demand.
+          retention-days: 7

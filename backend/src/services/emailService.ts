@@ -477,9 +477,9 @@ export class EmailService {
 
     return oauth2Client.generateAuthUrl({
       access_type: 'offline',
-      // Full mailbox: read (two-way inbox) + send
+      // Inbox sync + send only. Do not request https://mail.google.com/ —
+      // that restricted scope triggers paid CASA verification.
       scope: [
-        'https://mail.google.com/',
         'https://www.googleapis.com/auth/gmail.modify',
         'https://www.googleapis.com/auth/gmail.send',
         'https://www.googleapis.com/auth/userinfo.email',

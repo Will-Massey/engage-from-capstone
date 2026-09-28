@@ -14,6 +14,7 @@ import { penceToPounds } from '../utils/proposalPricing.js';
 import { formatGeoLocationDisplay } from '../utils/signatureAudit.js';
 import { parseProposalCustomFields } from '../utils/proposalCustomFields.js';
 import { parseClientAddress, preparedForLines, senderPosition } from '../utils/proposalDisplay.js';
+import { guardPdfText } from '../utils/pdfText.js';
 import { TENANT_LOGO_MAX_BYTES } from '../utils/tenantLogoConstraints.js';
 
 interface ProposalData {
@@ -376,7 +377,7 @@ export class PDFGenerator {
   ): Promise<Buffer> {
     return new Promise((resolve, reject) => {
       try {
-        const doc = new PDFDocument({ margin: 50 });
+        const doc = guardPdfText(new PDFDocument({ margin: 50 }));
         const chunks: Buffer[] = [];
 
         doc.on('data', (chunk) => chunks.push(chunk));
@@ -402,7 +403,7 @@ export class PDFGenerator {
   private static createPDF(proposal: ProposalData, logoBuffer: Buffer | null): Promise<Buffer> {
     return new Promise((resolve, reject) => {
       try {
-        const doc = new PDFDocument({ margin: 50 });
+        const doc = guardPdfText(new PDFDocument({ margin: 50 }));
         const chunks: Buffer[] = [];
 
         doc.on('data', (chunk) => chunks.push(chunk));

@@ -12,6 +12,10 @@ const allowedOrigins = [
   'https://capstonesoftware.co.uk',
   'https://www.capstonesoftware.co.uk',
   'https://engage.capstonesoftware.co.uk',
+  'https://claude.ai',
+  'https://www.claude.ai',
+  'https://chatgpt.com',
+  'https://chat.openai.com',
   'https://engage-frontend-0g6u.onrender.com',
   'http://localhost:5173',
   'http://127.0.0.1:5173',
@@ -109,6 +113,7 @@ export const corsOptions = {
     'X-Client',
     'X-Test-Mode',
     'X-Test-Mode-Secret',
+    'Mcp-Protocol-Version',
   ],
 };
 

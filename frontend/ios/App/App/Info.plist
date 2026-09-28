@@ -56,5 +56,18 @@
 	     upload; the matching answers are in docs/ios-submission.md. -->
 	<key>ITSAppUsesNonExemptEncryption</key>
 	<false/>
+	<key>CFBundleURLTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleTypeRole</key>
+			<string>Editor</string>
+			<key>CFBundleURLName</key>
+			<string>uk.co.capstonesoftware.engage</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>engage</string>
+			</array>
+		</dict>
+	</array>
 </dict>
 </plist>

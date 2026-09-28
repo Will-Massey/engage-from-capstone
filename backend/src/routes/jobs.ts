@@ -506,24 +506,37 @@ router.patch(
     });
     if (!existing) throw new ApiError('JOB_NOT_FOUND', 'Job not found', 404);
 
+    const columnInclude = {
+      ...jobInclude,
+      proposal: {
+        select: {
+          id: true,
+          reference: true,
+          status: true,
+          renewalDate: true,
+          isRenewal: true,
+        },
+      },
+    };
+
+    // Re-selecting the current column is not a move — do not write activity
+    // or fire mesh/automations. Staff were trapped by a native picker that
+    // required a selection to dismiss.
+    if (existing.boardColumn === boardColumn) {
+      const job = await prisma.job.findFirst({
+        where: { id: existing.id },
+        include: columnInclude,
+      });
+      return res.json({ success: true, data: job });
+    }
+
     const job = await prisma.job.update({
       where: { id: existing.id },
       data: {
         boardColumn,
         completedAt: boardColumn === 'COMPLETE' ? new Date() : null,
       },
-      include: {
-        ...jobInclude,
-        proposal: {
-          select: {
-            id: true,
-            reference: true,
-            status: true,
-            renewalDate: true,
-            isRenewal: true,
-          },
-        },
-      },
+      include: columnInclude,
     });
 
     await prisma.jobActivity.create({

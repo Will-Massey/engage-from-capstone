@@ -359,6 +359,7 @@ model Tenant {
   documentRequests      DocumentRequest[]
   mailMessages          MailMessage[]
   mailboxSyncState      MailboxSyncState?
+  mcpApiKeys            McpApiKey[]
 
   @@index([subdomain])
   @@index([isActive])
@@ -409,6 +410,7 @@ model User {
   timeEntries                TimeEntry[]
   jobActivities              JobActivity[]
   practiceLettersAuthored    PracticeLetter[]    @relation("PracticeLetterAuthor")
+  mcpApiKeysCreated          McpApiKey[]
 
   @@unique([email, tenantId])
   @@index([tenantId])
@@ -761,6 +763,26 @@ model TenantPayoutSettings {
   updatedAt             DateTime  @updatedAt @map("updated_at")
 
   @@map("tenant_payout_settings")
+}
+
+/// Per-practice key for remote MCP (Claude, Cursor, ChatGPT, custom agents).
+/// The plaintext token is shown once at mint; only the SHA-256 hash is stored.
+model McpApiKey {
+  id              String    @id @default(uuid())
+  tenantId        String
+  tenant          Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  name            String    @default("Practice AI")
+  prefix          String
+  keyHash         String    @unique
+  scopes          String    @default("read,write_notes")
+  createdAt       DateTime  @default(now()) @map("created_at")
+  lastUsedAt      DateTime? @map("last_used_at")
+  revokedAt       DateTime? @map("revoked_at")
+  createdByUserId String?   @map("created_by_user_id")
+  createdBy       User?     @relation(fields: [createdByUserId], references: [id], onDelete: SetNull)
+
+  @@index([tenantId, revokedAt])
+  @@map("mcp_api_keys")
 }
 
 model ProposalService {
