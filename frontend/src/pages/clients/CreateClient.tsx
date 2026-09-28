@@ -2,7 +2,6 @@ import { useState, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { z } from 'zod';
 import {
   ArrowLeftIcon,
   BuildingOfficeIcon,
@@ -16,56 +15,13 @@ import { apiClient } from '../../utils/api';
 import { useAuthStore } from '../../stores/authStore';
 import { parseClientPrefill, parseNextAction } from '../../utils/clientPrefill';
 import toast from 'react-hot-toast';
-
-const clientSchema = z.object({
-  name: z.string().min(1, 'Client name is required'),
-  companyType: z.enum([
-    'LIMITED_COMPANY',
-    'SOLE_TRADER',
-    'PARTNERSHIP',
-    'LLP',
-    'CHARITY',
-    'NON_PROFIT',
-  ]),
-  contactEmail: z.string().min(1, 'Email is required').email('Please enter a valid email'),
-  contactPhone: z.string().optional(),
-  contactName: z.string().min(1, 'Main contact name is required'),
-  companyNumber: z.string().optional(),
-  utr: z.string().optional(),
-  vatRegistered: z.boolean().default(false),
-  industry: z.string().optional(),
-  // Handle empty number inputs (NaN from valueAsNumber)
-  employeeCount: z.preprocess(
-    (val) =>
-      val === '' || val === null || val === undefined || Number.isNaN(val)
-        ? undefined
-        : Number(val),
-    z.number().min(0).optional()
-  ),
-  turnover: z.preprocess(
-    (val) =>
-      val === '' || val === null || val === undefined || Number.isNaN(val)
-        ? undefined
-        : Number(val),
-    z.number().min(0).optional()
-  ),
-  mtditsaIncome: z.preprocess(
-    (val) =>
-      val === '' || val === null || val === undefined || Number.isNaN(val)
-        ? undefined
-        : Number(val),
-    z.number().min(0).optional()
-  ),
-  notes: z.string().optional(),
-  clientRelationship: z.enum(['NEW', 'EXISTING']).default('NEW'),
-  // Address - all optional
-  addressLine1: z.string().optional(),
-  addressLine2: z.string().optional(),
-  city: z.string().optional(),
-  postcode: z.string().optional(),
-});
-
-type ClientForm = z.infer<typeof clientSchema>;
+import {
+  clientSchema,
+  firstClientFormIssue,
+  resolveContactName,
+  STEP1_REQUIRED_FIELDS,
+  type ClientForm,
+} from './clientFormSchema';
 
 const companyTypes = [
   { id: 'LIMITED_COMPANY', label: 'Limited Company', icon: BuildingOfficeIcon },
@@ -99,9 +55,12 @@ const CreateClient = ({ onSuccess, onCancel }: CreateClientProps = {}) => {
     handleSubmit,
     watch,
     setValue,
-    formState: { errors, isValid },
+    trigger,
+    getValues,
+    formState: { errors },
   } = useForm<ClientForm>({
     resolver: zodResolver(clientSchema),
+    shouldUnregister: false,
     defaultValues: {
       companyType: prefill?.companyType ?? 'LIMITED_COMPANY',
       vatRegistered: false,
@@ -114,6 +73,26 @@ const CreateClient = ({ onSuccess, onCancel }: CreateClientProps = {}) => {
     },
     mode: 'onChange',
   });
+
+  const goToDetails = async () => {
+    const ok = await trigger([...STEP1_REQUIRED_FIELDS]);
+    if (ok) {
+      setStep(2);
+      return;
+    }
+    const parsed = clientSchema
+      .pick({ name: true, companyType: true, contactEmail: true })
+      .safeParse({
+        name: getValues('name'),
+        companyType: getValues('companyType'),
+        contactEmail: getValues('contactEmail'),
+      });
+    toast.error(
+      parsed.success
+        ? 'Please check the highlighted fields'
+        : parsed.error.issues[0]?.message || 'Please check the highlighted fields'
+    );
+  };
 
   // Form validation debug removed
 
@@ -245,7 +224,7 @@ const CreateClient = ({ onSuccess, onCancel }: CreateClientProps = {}) => {
         companyType: data.companyType,
         contactEmail: data.contactEmail || undefined,
         contactPhone: data.contactPhone,
-        contactName: data.contactName,
+        contactName: resolveContactName(data.name, data.contactName),
         companyNumber: data.companyNumber || undefined,
         utr: data.utr || undefined,
         vatRegistered: data.vatRegistered,
@@ -351,357 +330,358 @@ const CreateClient = ({ onSuccess, onCancel }: CreateClientProps = {}) => {
       </div>
 
       <form
-        onSubmit={handleSubmit(onSubmit, (errors) => {
-          // Validation errors displayed in form
-          toast.error('Please fill in all required fields');
+        noValidate
+        onSubmit={handleSubmit(onSubmit, (fieldErrors) => {
+          const issue = firstClientFormIssue(fieldErrors);
+          setStep(issue.step);
+          toast.error(issue.message);
         })}
         className="card p-6"
       >
-        {step === 1 && (
-          <div className="space-y-6 animate-fade-in">
-            {/* New vs existing — feeds Clara renewal vs onboarding tone */}
-            <div>
-              <label className="block text-sm font-medium text-slate-700 mb-2">
-                Client relationship with your practice
+        <div className={`space-y-6 animate-fade-in ${step === 1 ? '' : 'hidden'}`}>
+          {/* New vs existing — feeds Clara renewal vs onboarding tone */}
+          <div>
+            <label className="block text-sm font-medium text-slate-700 mb-2">
+              Client relationship with your practice
+            </label>
+            <p className="text-xs text-slate-500 mb-3">
+              Clara uses this to tailor proposals — onboarding language for new clients, renewal
+              framing for existing ones.
+            </p>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <label
+                className={`flex flex-col p-4 border-2 rounded-lg cursor-pointer transition-colors ${
+                  watchClientRelationship === 'NEW'
+                    ? 'border-blue-500 bg-blue-50'
+                    : 'border-slate-200 hover:border-slate-300'
+                }`}
+              >
+                <input
+                  type="radio"
+                  value="NEW"
+                  {...register('clientRelationship')}
+                  className="sr-only"
+                />
+                <span className="text-sm font-semibold text-slate-900">New client</span>
+                <span className="text-xs text-slate-500 mt-1">
+                  First engagement — winning them onto your books
+                </span>
               </label>
-              <p className="text-xs text-slate-500 mb-3">
-                Clara uses this to tailor proposals — onboarding language for new clients, renewal
-                framing for existing ones.
-              </p>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <label
-                  className={`flex flex-col p-4 border-2 rounded-lg cursor-pointer transition-colors ${
-                    watchClientRelationship === 'NEW'
-                      ? 'border-blue-500 bg-blue-50'
-                      : 'border-slate-200 hover:border-slate-300'
-                  }`}
-                >
-                  <input
-                    type="radio"
-                    value="NEW"
-                    {...register('clientRelationship')}
-                    className="sr-only"
-                  />
-                  <span className="text-sm font-semibold text-slate-900">New client</span>
-                  <span className="text-xs text-slate-500 mt-1">
-                    First engagement — winning them onto your books
-                  </span>
-                </label>
-                <label
-                  className={`flex flex-col p-4 border-2 rounded-lg cursor-pointer transition-colors ${
-                    watchClientRelationship === 'EXISTING'
-                      ? 'border-blue-500 bg-blue-50'
-                      : 'border-slate-200 hover:border-slate-300'
-                  }`}
-                >
-                  <input
-                    type="radio"
-                    value="EXISTING"
-                    {...register('clientRelationship')}
-                    className="sr-only"
-                  />
-                  <span className="text-sm font-semibold text-slate-900">Existing client</span>
-                  <span className="text-xs text-slate-500 mt-1">
-                    Already on your books — renewal, uplift, or extra services
-                  </span>
-                </label>
-              </div>
-            </div>
-
-            {/* Company Type */}
-            <div>
-              <label className="block text-sm font-medium text-slate-700 mb-3">Company Type</label>
-              <div className="grid grid-cols-2 gap-3">
-                {companyTypes.map((type) => (
-                  <label
-                    key={type.id}
-                    className={`relative flex flex-col items-center p-4 border-2 rounded-lg cursor-pointer transition-colors ${
-                      watchCompanyType === type.id
-                        ? 'border-blue-500 bg-blue-50'
-                        : 'border-slate-200 hover:border-slate-300'
-                    }`}
-                  >
-                    <input
-                      type="radio"
-                      value={type.id}
-                      {...register('companyType')}
-                      className="sr-only"
-                    />
-                    <type.icon className="h-8 w-8 text-slate-400 mb-2" />
-                    <span className="text-sm font-medium text-slate-900">{type.label}</span>
-                  </label>
-                ))}
-              </div>
-            </div>
-
-            {/* Companies House Search - Only for LIMITED_COMPANY and LLP */}
-            {(watchCompanyType === 'LIMITED_COMPANY' || watchCompanyType === 'LLP') && (
-              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                <label className="block text-sm font-medium text-blue-900 mb-2">
-                  <MagnifyingGlassIcon className="h-4 w-4 inline mr-1" />
-                  Search Companies House
-                </label>
-                <p className="text-xs text-blue-700 mb-3">
-                  Search for a company to auto-fill details
-                </p>
-                {chConfigured === false && (
-                  <p className="text-xs text-amber-800 bg-amber-50 border border-amber-200 rounded-md px-3 py-2 mb-3">
-                    Companies House lookup is not available — the server API key is missing or
-                    invalid. Set <code className="font-mono">COMPANIES_HOUSE_API_KEY</code> in{' '}
-                    <code className="font-mono">backend/.env</code> (free key from{' '}
-                    <a
-                      href="https://developer.company-information.service.gov.uk/"
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="underline"
-                    >
-                      Companies House Developer Hub
-                    </a>
-                    ).
-                  </p>
-                )}
-                <div className="relative">
-                  <div className="flex gap-2">
-                    <input
-                      type="text"
-                      value={chSearchQuery}
-                      onChange={(e) => setChSearchQuery(e.target.value)}
-                      onClick={(e) => e.stopPropagation()}
-                      onKeyDown={(e) =>
-                        e.key === 'Enter' && (e.preventDefault(), searchCompaniesHouse())
-                      }
-                      className="flex-1 input-field text-sm"
-                      placeholder="Enter company name..."
-                    />
-                    <button
-                      type="button"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        searchCompaniesHouse();
-                      }}
-                      disabled={chSearching || chSearchQuery.length < 2}
-                      className="btn-secondary text-sm px-4 disabled:opacity-50"
-                    >
-                      {chSearching ? 'Searching...' : 'Search'}
-                    </button>
-                  </div>
-
-                  {/* Search Results Dropdown */}
-                  {chShowResults && chSearchResults.length > 0 && (
-                    <div className="absolute z-10 w-full mt-1 bg-white border border-slate-200 rounded-md shadow-lg max-h-60 overflow-auto">
-                      {chSearchResults.map((result) => (
-                        <button
-                          key={result.companyNumber}
-                          type="button"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            selectCompany(result.companyNumber);
-                          }}
-                          className="w-full text-left px-4 py-3 hover:bg-slate-50 border-b border-slate-100 last:border-0"
-                        >
-                          <div className="flex items-center justify-between">
-                            <div>
-                              <p className="font-medium text-slate-900">{result.companyName}</p>
-                              <p className="text-sm text-slate-500">
-                                {result.companyNumber} • {result.companyStatus}
-                              </p>
-                            </div>
-                            {chSelectedCompany === result.companyNumber && (
-                              <CheckIcon className="h-5 w-5 text-green-500" />
-                            )}
-                          </div>
-                        </button>
-                      ))}
-                    </div>
-                  )}
-
-                  {chShowResults && chSearchResults.length === 0 && !chSearching && (
-                    <div className="absolute z-10 w-full mt-1 bg-white border border-slate-200 rounded-md shadow-lg p-4 text-center text-slate-500">
-                      No companies found
-                    </div>
-                  )}
-                </div>
-              </div>
-            )}
-
-            {/* Name */}
-            <div>
-              <label className="block text-sm font-medium text-slate-700">Client Name</label>
-              <input
-                {...register('name')}
-                className="mt-1 input-field"
-                placeholder="e.g., ABC Ltd or John Smith"
-              />
-              {errors.name && <p className="mt-1 text-sm text-red-600">{errors.name.message}</p>}
-            </div>
-
-            {/* Email */}
-            <div>
-              <label className="block text-sm font-medium text-slate-700">Email Address</label>
-              <input
-                {...register('contactEmail')}
-                type="email"
-                className="mt-1 input-field"
-                placeholder="client@example.com"
-              />
-              {errors.contactEmail && (
-                <p className="mt-1 text-sm text-red-600">{errors.contactEmail.message}</p>
-              )}
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-slate-700">Main contact name</label>
-              <input
-                {...register('contactName')}
-                name="contactName"
-                type="text"
-                className="mt-1 input-field"
-                placeholder="e.g. Jane Smith"
-                autoComplete="name"
-              />
-              {errors.contactName && (
-                <p className="mt-1 text-sm text-red-600">{errors.contactName.message}</p>
-              )}
-              <p className="mt-1 text-xs text-slate-500">
-                Used in proposals and correspondence. Can differ from the legal client name above.
-              </p>
-            </div>
-
-            {/* Phone */}
-            <div>
-              <label className="block text-sm font-medium text-slate-700">
-                Phone Number (optional)
+              <label
+                className={`flex flex-col p-4 border-2 rounded-lg cursor-pointer transition-colors ${
+                  watchClientRelationship === 'EXISTING'
+                    ? 'border-blue-500 bg-blue-50'
+                    : 'border-slate-200 hover:border-slate-300'
+                }`}
+              >
+                <input
+                  type="radio"
+                  value="EXISTING"
+                  {...register('clientRelationship')}
+                  className="sr-only"
+                />
+                <span className="text-sm font-semibold text-slate-900">Existing client</span>
+                <span className="text-xs text-slate-500 mt-1">
+                  Already on your books — renewal, uplift, or extra services
+                </span>
               </label>
-              <input
-                {...register('contactPhone')}
-                type="tel"
-                className="mt-1 input-field"
-                placeholder="+44 20 7946 0958"
-              />
-            </div>
-
-            <div className="flex justify-end">
-              <button type="button" onClick={() => setStep(2)} className="btn-primary">
-                Continue
-              </button>
             </div>
           </div>
-        )}
 
-        {step === 2 && (
-          <div className="space-y-6 animate-fade-in">
-            {/* Company Number */}
-            {(watchCompanyType === 'LIMITED_COMPANY' || watchCompanyType === 'LLP') && (
-              <div>
-                <label className="block text-sm font-medium text-slate-700">Company Number</label>
-                <input
-                  {...register('companyNumber')}
-                  className="mt-1 input-field"
-                  placeholder="12345678"
-                />
-              </div>
-            )}
-
-            {/* UTR */}
-            <div>
-              <label className="block text-sm font-medium text-slate-700">
-                Unique Taxpayer Reference (UTR)
-              </label>
-              <input
-                {...register('utr')}
-                className="mt-1 input-field"
-                placeholder="1234567890"
-                maxLength={10}
-              />
-              {errors.utr && <p className="mt-1 text-sm text-red-600">{errors.utr.message}</p>}
+          {/* Company Type */}
+          <div>
+            <label className="block text-sm font-medium text-slate-700 mb-3">Company Type</label>
+            <div className="grid grid-cols-2 gap-3">
+              {companyTypes.map((type) => (
+                <label
+                  key={type.id}
+                  className={`relative flex flex-col items-center p-4 border-2 rounded-lg cursor-pointer transition-colors ${
+                    watchCompanyType === type.id
+                      ? 'border-blue-500 bg-blue-50'
+                      : 'border-slate-200 hover:border-slate-300'
+                  }`}
+                >
+                  <input
+                    type="radio"
+                    value={type.id}
+                    {...register('companyType')}
+                    className="sr-only"
+                  />
+                  <type.icon className="h-8 w-8 text-slate-400 mb-2" />
+                  <span className="text-sm font-medium text-slate-900">{type.label}</span>
+                </label>
+              ))}
             </div>
+          </div>
 
-            {/* Turnover */}
-            <div>
-              <label className="block text-sm font-medium text-slate-700">
-                Estimated Annual Turnover/Income
+          {/* Companies House Search - Only for LIMITED_COMPANY and LLP */}
+          {(watchCompanyType === 'LIMITED_COMPANY' || watchCompanyType === 'LLP') && (
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+              <label className="block text-sm font-medium text-blue-900 mb-2">
+                <MagnifyingGlassIcon className="h-4 w-4 inline mr-1" />
+                Search Companies House
               </label>
-              <div className="mt-1 relative">
-                <span className="absolute inset-y-0 left-0 pl-3 flex items-center text-slate-500">
-                  £
-                </span>
-                <input
-                  {...register('mtditsaIncome')}
-                  type="text"
-                  inputMode="numeric"
-                  className="input-field pl-7"
-                  placeholder="50000"
-                />
-              </div>
-              {needsMtditsaWarning && (
-                <p className="mt-2 text-sm text-orange-600 bg-orange-50 p-2 rounded">
-                  ⚠️ This sole trader may need to comply with MTD ITSA from April 2026
+              <p className="text-xs text-blue-700 mb-3">
+                Search for a company to auto-fill details
+              </p>
+              {chConfigured === false && (
+                <p className="text-xs text-amber-800 bg-amber-50 border border-amber-200 rounded-md px-3 py-2 mb-3">
+                  Companies House lookup is not available — the server API key is missing or
+                  invalid. Set <code className="font-mono">COMPANIES_HOUSE_API_KEY</code> in{' '}
+                  <code className="font-mono">backend/.env</code> (free key from{' '}
+                  <a
+                    href="https://developer.company-information.service.gov.uk/"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="underline"
+                  >
+                    Companies House Developer Hub
+                  </a>
+                  ).
                 </p>
               )}
-              {!isMtditsaApplicable &&
-                Number.isFinite(watchMtditsaIncome) &&
-                watchMtditsaIncome > 0 && (
-                  <p className="mt-2 text-sm text-blue-600 bg-blue-50 p-2 rounded">
-                    ℹ️ MTD ITSA does not apply to{' '}
-                    {companyTypes.find((t) => t.id === watchCompanyType)?.label ||
-                      'this entity type'}
-                    . It only applies to Sole Traders and Partnerships.
-                  </p>
-                )}
-            </div>
+              <div className="relative">
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    value={chSearchQuery}
+                    onChange={(e) => setChSearchQuery(e.target.value)}
+                    onClick={(e) => e.stopPropagation()}
+                    onKeyDown={(e) =>
+                      e.key === 'Enter' && (e.preventDefault(), searchCompaniesHouse())
+                    }
+                    className="flex-1 input-field text-sm"
+                    placeholder="Enter company name..."
+                  />
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      searchCompaniesHouse();
+                    }}
+                    disabled={chSearching || chSearchQuery.length < 2}
+                    className="btn-secondary text-sm px-4 disabled:opacity-50"
+                  >
+                    {chSearching ? 'Searching...' : 'Search'}
+                  </button>
+                </div>
 
-            {/* Employee Count */}
+                {/* Search Results Dropdown */}
+                {chShowResults && chSearchResults.length > 0 && (
+                  <div className="absolute z-10 w-full mt-1 bg-white border border-slate-200 rounded-md shadow-lg max-h-60 overflow-auto">
+                    {chSearchResults.map((result) => (
+                      <button
+                        key={result.companyNumber}
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          selectCompany(result.companyNumber);
+                        }}
+                        className="w-full text-left px-4 py-3 hover:bg-slate-50 border-b border-slate-100 last:border-0"
+                      >
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <p className="font-medium text-slate-900">{result.companyName}</p>
+                            <p className="text-sm text-slate-500">
+                              {result.companyNumber} • {result.companyStatus}
+                            </p>
+                          </div>
+                          {chSelectedCompany === result.companyNumber && (
+                            <CheckIcon className="h-5 w-5 text-green-500" />
+                          )}
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                )}
+
+                {chShowResults && chSearchResults.length === 0 && !chSearching && (
+                  <div className="absolute z-10 w-full mt-1 bg-white border border-slate-200 rounded-md shadow-lg p-4 text-center text-slate-500">
+                    No companies found
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* Name */}
+          <div>
+            <label className="block text-sm font-medium text-slate-700">Client Name</label>
+            <input
+              {...register('name')}
+              className="mt-1 input-field"
+              placeholder="e.g., ABC Ltd or John Smith"
+            />
+            {errors.name && <p className="mt-1 text-sm text-red-600">{errors.name.message}</p>}
+          </div>
+
+          {/* Email */}
+          <div>
+            <label className="block text-sm font-medium text-slate-700">Email Address</label>
+            <input
+              {...register('contactEmail')}
+              type="email"
+              className="mt-1 input-field"
+              placeholder="client@example.com"
+            />
+            {errors.contactEmail && (
+              <p className="mt-1 text-sm text-red-600">{errors.contactEmail.message}</p>
+            )}
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-slate-700">
+              Main contact name (optional)
+            </label>
+            <input
+              {...register('contactName')}
+              name="contactName"
+              type="text"
+              className="mt-1 input-field"
+              placeholder="e.g. Jane Smith"
+              autoComplete="name"
+            />
+            {errors.contactName && (
+              <p className="mt-1 text-sm text-red-600">{errors.contactName.message}</p>
+            )}
+            <p className="mt-1 text-xs text-slate-500">
+              Used in proposals and correspondence. Defaults to the client name if left blank.
+            </p>
+          </div>
+
+          {/* Phone */}
+          <div>
+            <label className="block text-sm font-medium text-slate-700">
+              Phone Number (optional)
+            </label>
+            <input
+              {...register('contactPhone')}
+              type="tel"
+              className="mt-1 input-field"
+              placeholder="+44 20 7946 0958"
+            />
+          </div>
+
+          <div className="flex justify-end">
+            <button type="button" onClick={goToDetails} className="btn-primary">
+              Continue
+            </button>
+          </div>
+        </div>
+
+        <div className={`space-y-6 animate-fade-in ${step === 2 ? '' : 'hidden'}`}>
+          {/* Company Number */}
+          {(watchCompanyType === 'LIMITED_COMPANY' || watchCompanyType === 'LLP') && (
             <div>
               <label className="block text-sm font-medium text-slate-700">
-                Number of Employees
+                Company Number (optional)
               </label>
               <input
-                {...register('employeeCount')}
+                {...register('companyNumber')}
+                className="mt-1 input-field"
+                placeholder="12345678"
+              />
+            </div>
+          )}
+
+          {/* UTR */}
+          <div>
+            <label className="block text-sm font-medium text-slate-700">
+              Unique Taxpayer Reference (UTR) (optional)
+            </label>
+            <input
+              {...register('utr')}
+              className="mt-1 input-field"
+              placeholder="1234567890"
+              maxLength={10}
+            />
+            {errors.utr && <p className="mt-1 text-sm text-red-600">{errors.utr.message}</p>}
+          </div>
+
+          {/* Turnover */}
+          <div>
+            <label className="block text-sm font-medium text-slate-700">
+              Estimated Annual Turnover/Income (optional)
+            </label>
+            <div className="mt-1 relative">
+              <span className="absolute inset-y-0 left-0 pl-3 flex items-center text-slate-500">
+                £
+              </span>
+              <input
+                {...register('mtditsaIncome')}
                 type="text"
                 inputMode="numeric"
-                className="mt-1 input-field"
-                placeholder="0"
+                className="input-field pl-7"
+                placeholder="50000"
               />
             </div>
+            {needsMtditsaWarning && (
+              <p className="mt-2 text-sm text-orange-600 bg-orange-50 p-2 rounded">
+                ⚠️ This sole trader may need to comply with MTD ITSA from April 2026
+              </p>
+            )}
+            {!isMtditsaApplicable &&
+              Number.isFinite(watchMtditsaIncome) &&
+              watchMtditsaIncome > 0 && (
+                <p className="mt-2 text-sm text-blue-600 bg-blue-50 p-2 rounded">
+                  ℹ️ MTD ITSA does not apply to{' '}
+                  {companyTypes.find((t) => t.id === watchCompanyType)?.label || 'this entity type'}
+                  . It only applies to Sole Traders and Partnerships.
+                </p>
+              )}
+          </div>
 
-            {/* Address */}
-            <div>
-              <label className="block text-sm font-medium text-slate-700 mb-2">Address</label>
-              <div className="space-y-3">
+          {/* Employee Count */}
+          <div>
+            <label className="block text-sm font-medium text-slate-700">
+              Number of Employees (optional)
+            </label>
+            <input
+              {...register('employeeCount')}
+              type="text"
+              inputMode="numeric"
+              className="mt-1 input-field"
+              placeholder="0"
+            />
+          </div>
+
+          {/* Address */}
+          <div>
+            <label className="block text-sm font-medium text-slate-700 mb-2">
+              Address (optional)
+            </label>
+            <div className="space-y-3">
+              <input
+                {...register('addressLine1')}
+                className="input-field"
+                placeholder="Address line 1"
+              />
+              <input
+                {...register('addressLine2')}
+                className="input-field"
+                placeholder="Address line 2 (optional)"
+              />
+              <div className="grid grid-cols-2 gap-3">
+                <input {...register('city')} className="input-field" placeholder="City" />
                 <input
-                  {...register('addressLine1')}
-                  className="input-field"
-                  placeholder="Address line 1"
+                  {...register('postcode')}
+                  className={errors.postcode ? 'input-field-error' : 'input-field'}
+                  placeholder="Postcode"
                 />
-                <input
-                  {...register('addressLine2')}
-                  className="input-field"
-                  placeholder="Address line 2 (optional)"
-                />
-                <div className="grid grid-cols-2 gap-3">
-                  <input {...register('city')} className="input-field" placeholder="City" />
-                  <input
-                    {...register('postcode')}
-                    className={errors.postcode ? 'input-field-error' : 'input-field'}
-                    placeholder="Postcode"
-                  />
-                </div>
-                {errors.postcode && (
-                  <p className="text-sm text-red-600">{errors.postcode.message}</p>
-                )}
               </div>
-            </div>
-
-            <div className="flex justify-between">
-              <button type="button" onClick={() => setStep(1)} className="btn-secondary">
-                Back
-              </button>
-              <button type="submit" disabled={isLoading} className="btn-primary" onClick={() => {}}>
-                {isLoading ? 'Creating...' : 'Create Client'}
-              </button>
+              {errors.postcode && <p className="text-sm text-red-600">{errors.postcode.message}</p>}
             </div>
           </div>
-        )}
+
+          <div className="flex justify-between">
+            <button type="button" onClick={() => setStep(1)} className="btn-secondary">
+              Back
+            </button>
+            <button type="submit" disabled={isLoading} className="btn-primary">
+              {isLoading ? 'Creating...' : 'Create Client'}
+            </button>
+          </div>
+        </div>
       </form>
     </div>
   );
