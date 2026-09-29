@@ -203,9 +203,11 @@ router.post(
       data: sendUpdateData,
     });
 
+    // This route returns only after the client email succeeds, so the send method is emailed.
     await recordPracticeFirstWin(
       req.tenantId!,
       firstWinKindForProposal(proposal.customFields),
+      'emailed',
       sentAt
     );
 

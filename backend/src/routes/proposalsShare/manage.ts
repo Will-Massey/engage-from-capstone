@@ -95,6 +95,7 @@ router.post(
       await recordPracticeFirstWin(
         tenantId,
         firstWinKindForProposal(proposal.customFields),
+        'link_copied',
         sentAt
       );
 
@@ -312,7 +313,12 @@ router.post(
       data: emailSentUpdate,
     });
 
-    await recordPracticeFirstWin(tenantId, firstWinKindForProposal(proposal.customFields), sentAt);
+    await recordPracticeFirstWin(
+      tenantId,
+      firstWinKindForProposal(proposal.customFields),
+      'emailed',
+      sentAt
+    );
 
     // Log activity
     await prisma.activityLog.create({

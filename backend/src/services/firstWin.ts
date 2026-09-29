@@ -18,6 +18,15 @@ import {
 export const FIRST_WIN_KINDS = ['proposal', 'engagement_letter'] as const;
 export type FirstWinKind = (typeof FIRST_WIN_KINDS)[number];
 
+export const FIRST_WIN_METHODS = ['emailed', 'link_copied'] as const;
+export type FirstWinMethod = (typeof FIRST_WIN_METHODS)[number];
+
+export interface FirstWinRecord {
+  at: string;
+  kind: string;
+  method: FirstWinMethod | null;
+}
+
 export const ONBOARDING_STEPS = [
   'signed_up',
   'email_verified',
@@ -46,18 +55,20 @@ export function firstWinKindForProposal(customFields: string | null | undefined)
 export async function recordPracticeFirstWin(
   tenantId: string,
   kind: FirstWinKind,
+  method: FirstWinMethod,
   occurredAt: Date = new Date()
 ): Promise<void> {
   try {
     await prisma.tenant.updateMany({
       where: { id: tenantId, firstWinAt: null },
-      data: { firstWinAt: occurredAt, firstWinKind: kind },
+      data: { firstWinAt: occurredAt, firstWinKind: kind, firstWinMethod: method },
     });
   } catch (error) {
     try {
       logger.warn('practice first win was not recorded', {
         tenantId,
         kind,
+        method,
         error: error instanceof Error ? error.message : String(error),
       });
     } catch {
@@ -107,7 +118,7 @@ export interface FirstWinDailyReport {
     subdomain: string;
     signupEmail: string | null;
     signedUpAt: string;
-    firstWin: { at: string; kind: string } | null;
+    firstWin: FirstWinRecord | null;
     furthestOnboardingStep: { id: OnboardingStep; label: string } | null;
   }>;
   firstWinsRecordedOnDate: Array<{
@@ -116,7 +127,7 @@ export interface FirstWinDailyReport {
     subdomain: string;
     signupEmail: string | null;
     signedUpAt: string;
-    firstWin: { at: string; kind: string };
+    firstWin: FirstWinRecord;
   }>;
   summary: {
     signups: number;
@@ -133,6 +144,7 @@ type TenantReportRow = {
   createdAt: Date;
   firstWinAt: Date | null;
   firstWinKind: string | null;
+  firstWinMethod: string | null;
   users: Array<{ email: string; emailVerified: Date | null; createdAt: Date }>;
   _count?: { clients: number; proposals: number };
 };
@@ -142,9 +154,13 @@ function signupEmail(row: TenantReportRow): string | null {
   return first?.email ?? null;
 }
 
-function firstWinOf(row: TenantReportRow): { at: string; kind: string } | null {
+function firstWinOf(row: TenantReportRow): FirstWinRecord | null {
   if (!row.firstWinAt) return null;
-  return { at: row.firstWinAt.toISOString(), kind: row.firstWinKind || 'proposal' };
+  const method =
+    row.firstWinMethod === 'emailed' || row.firstWinMethod === 'link_copied'
+      ? row.firstWinMethod
+      : null;
+  return { at: row.firstWinAt.toISOString(), kind: row.firstWinKind || 'proposal', method };
 }
 
 /**
@@ -164,6 +180,7 @@ export async function buildFirstWinDailyReport(date: string): Promise<FirstWinDa
     createdAt: true,
     firstWinAt: true,
     firstWinKind: true,
+    firstWinMethod: true,
     users: {
       select: { email: true, emailVerified: true, createdAt: true },
     },
@@ -186,6 +203,7 @@ export async function buildFirstWinDailyReport(date: string): Promise<FirstWinDa
         createdAt: true,
         firstWinAt: true,
         firstWinKind: true,
+        firstWinMethod: true,
         users: { select: { email: true, emailVerified: true, createdAt: true } },
       },
     }),

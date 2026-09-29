@@ -120,7 +120,7 @@ describe('POST /api/proposals/:id/share marks DRAFT as sent', () => {
     expect(tenantUpdateMany).toHaveBeenCalledWith(
       expect.objectContaining({
         where: { id: 't1', firstWinAt: null },
-        data: expect.objectContaining({ firstWinKind: 'proposal' }),
+        data: expect.objectContaining({ firstWinKind: 'proposal', firstWinMethod: 'link_copied' }),
       })
     );
   });

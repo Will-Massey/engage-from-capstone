@@ -43,18 +43,18 @@ describe('recordPracticeFirstWin', () => {
 
   it('writes the timestamp only while firstWinAt is still empty', async () => {
     const at = new Date('2026-09-28T12:00:00.000Z');
-    await recordPracticeFirstWin('tenant-1', 'proposal', at);
+    await recordPracticeFirstWin('tenant-1', 'proposal', 'emailed', at);
 
     expect(updateMany).toHaveBeenCalledWith({
       where: { id: 'tenant-1', firstWinAt: null },
-      data: { firstWinAt: at, firstWinKind: 'proposal' },
+      data: { firstWinAt: at, firstWinKind: 'proposal', firstWinMethod: 'emailed' },
     });
   });
 
   it('does not throw when the write fails', async () => {
     updateMany.mockRejectedValue(new Error('db down'));
     await expect(
-      recordPracticeFirstWin('tenant-1', 'engagement_letter', new Date())
+      recordPracticeFirstWin('tenant-1', 'engagement_letter', 'link_copied', new Date())
     ).resolves.toBeUndefined();
   });
 });
@@ -105,6 +105,7 @@ describe('buildFirstWinDailyReport', () => {
             createdAt: signedUp,
             firstWinAt: wonAt,
             firstWinKind: 'proposal',
+            firstWinMethod: 'emailed',
             users: [
               {
                 email: 'owner@won.test',
@@ -121,6 +122,7 @@ describe('buildFirstWinDailyReport', () => {
             createdAt: new Date('2026-09-28T09:00:00.000Z'),
             firstWinAt: null,
             firstWinKind: null,
+            firstWinMethod: null,
             users: [
               {
                 email: 'owner@stuck.test',
@@ -140,6 +142,7 @@ describe('buildFirstWinDailyReport', () => {
           createdAt: new Date('2026-09-01T00:00:00.000Z'),
           firstWinAt: wonAt,
           firstWinKind: 'engagement_letter',
+          firstWinMethod: null,
           users: [
             {
               email: 'owner@earlier.test',
@@ -164,7 +167,7 @@ describe('buildFirstWinDailyReport', () => {
       tenantId: 'won',
       signupEmail: 'owner@won.test',
       signedUpAt: signedUp.toISOString(),
-      firstWin: { at: wonAt.toISOString(), kind: 'proposal' },
+      firstWin: { at: wonAt.toISOString(), kind: 'proposal', method: 'emailed' },
       furthestOnboardingStep: null,
     });
     expect(report.signups[1].furthestOnboardingStep).toEqual({
@@ -173,7 +176,7 @@ describe('buildFirstWinDailyReport', () => {
     });
     expect(report.firstWinsRecordedOnDate[0]).toMatchObject({
       tenantId: 'earlier',
-      firstWin: { at: wonAt.toISOString(), kind: 'engagement_letter' },
+      firstWin: { at: wonAt.toISOString(), kind: 'engagement_letter', method: null },
     });
     expect(findMany).toHaveBeenCalled();
   });

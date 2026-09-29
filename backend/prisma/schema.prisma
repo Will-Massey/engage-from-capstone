@@ -340,6 +340,8 @@ model Tenant {
   firstWinAt   DateTime?
   /// proposal | engagement_letter — which send set firstWinAt
   firstWinKind String?
+  /// emailed | link_copied. Null when a backfilled send has no email evidence.
+  firstWinMethod String?
 
   // Relations
   users                 User[]

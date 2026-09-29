@@ -789,7 +789,7 @@ async function stampEngagementLetterSent(tenantId: string, clientId: string): Pr
     where: { id: clientId },
     data: { engagementLetterSentAt: sentAt },
   });
-  await recordPracticeFirstWin(tenantId, 'engagement_letter', sentAt);
+  await recordPracticeFirstWin(tenantId, 'engagement_letter', 'emailed', sentAt);
 }
 
 function inferNextStep(stage: ClientLifecycleStage): string {
