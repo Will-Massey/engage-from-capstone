@@ -11,6 +11,7 @@ import { asyncHandler } from '../middleware/errorHandler.js';
 import { secureCompare } from '../utils/secureCompare.js';
 import { logOpsAccess } from '../utils/opsAudit.js';
 import logger from '../utils/logger.js';
+import { buildFirstWinDailyReport, utcDayBounds } from '../services/firstWin.js';
 
 const router = Router();
 const execFileAsync = promisify(execFile);
@@ -183,6 +184,34 @@ router.get(
         error: 'Database status check failed',
       });
     }
+  })
+);
+
+/**
+ * GET /api/admin/first-wins?date=YYYY-MM-DD
+ * Daily read for internal success reporting. Header: X-Admin-Key.
+ * Defaults to the current UTC day when date is omitted.
+ * Signups are practices created that day. firstWinsRecordedOnDate is every
+ * practice whose first sent proposal or engagement letter falls on that day.
+ */
+router.get(
+  '/first-wins',
+  checkAdminKey,
+  asyncHandler(async (req, res) => {
+    logOpsAccess(req, 'admin.first-wins');
+    const raw = req.query.date;
+    const date =
+      typeof raw === 'string' && raw.length > 0 ? raw : new Date().toISOString().slice(0, 10);
+    if (typeof raw !== 'undefined' && typeof raw !== 'string') {
+      res.status(400).json({ success: false, error: 'date must be YYYY-MM-DD (UTC)' });
+      return;
+    }
+    if (!utcDayBounds(date)) {
+      res.status(400).json({ success: false, error: 'date must be YYYY-MM-DD (UTC)' });
+      return;
+    }
+    const data = await buildFirstWinDailyReport(date);
+    res.json({ success: true, data });
   })
 );
 

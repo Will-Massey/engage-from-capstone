@@ -336,6 +336,11 @@ model Tenant {
   revolutCustomerId     String?  @map("revolut_customer_id")
   revolutOrderId        String?  @map("revolut_order_id")
 
+  /// UTC time the practice first sent a proposal or engagement letter to a client. Written once.
+  firstWinAt   DateTime?
+  /// proposal | engagement_letter — which send set firstWinAt
+  firstWinKind String?
+
   // Relations
   users                 User[]
   clients               Client[]
@@ -365,6 +370,8 @@ model Tenant {
   @@index([isActive])
   @@index([stripeCustomerId])
   @@index([firmGroupId])
+  @@index([createdAt])
+  @@index([firstWinAt])
 }
 
 // ==================== USER MODELS ====================

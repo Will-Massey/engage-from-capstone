@@ -28,6 +28,7 @@ jest.mock('../../../middleware/auth.js', () => ({
 const proposalFindFirst = jest.fn();
 const proposalUpdate = jest.fn();
 const activityLogCreate = jest.fn();
+const tenantUpdateMany = jest.fn();
 const createShareableLink = jest.fn();
 const assertTenantCanSendProposals = jest.fn();
 
@@ -35,6 +36,7 @@ jest.mock('../../../config/database.js', () => ({
   prisma: {
     proposal: { findFirst: proposalFindFirst, update: proposalUpdate },
     activityLog: { create: activityLogCreate },
+    tenant: { updateMany: (...args: unknown[]) => tenantUpdateMany(...args) },
   },
 }));
 
@@ -86,6 +88,7 @@ beforeEach(() => {
   proposalFindFirst.mockReset();
   proposalUpdate.mockReset().mockResolvedValue({});
   activityLogCreate.mockReset().mockResolvedValue({});
+  tenantUpdateMany.mockReset().mockResolvedValue({ count: 1 });
   createShareableLink.mockReset().mockResolvedValue({
     token: 'tok',
     shareUrl: 'https://x/proposals/view/tok',
@@ -112,6 +115,12 @@ describe('POST /api/proposals/:id/share marks DRAFT as sent', () => {
     expect(activityLogCreate).toHaveBeenCalledWith(
       expect.objectContaining({
         data: expect.objectContaining({ action: 'PROPOSAL_SENT', entityId: 'p1' }),
+      })
+    );
+    expect(tenantUpdateMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { id: 't1', firstWinAt: null },
+        data: expect.objectContaining({ firstWinKind: 'proposal' }),
       })
     );
   });
@@ -146,6 +155,7 @@ describe('POST /api/proposals/:id/share marks DRAFT as sent', () => {
 
     expect(res.status).toBe(200);
     expect(proposalUpdate).not.toHaveBeenCalled();
+    expect(tenantUpdateMany).not.toHaveBeenCalled();
     expect(assertTenantCanSendProposals).not.toHaveBeenCalled();
   });
 });
