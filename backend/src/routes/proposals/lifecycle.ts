@@ -13,6 +13,7 @@ import { revokeShareableLink } from '../../services/proposalSharingService.js';
 import { DECLINE_REASONS } from '../../constants/declineReasons.js';
 import { getProposalSettings } from '../../utils/tenantProposalSettings.js';
 import { canOverrideApproval, canSendProposal, resolveSenderPosition } from './shared.js';
+import { firstWinKindForProposal, recordPracticeFirstWin } from '../../services/firstWin.js';
 
 const router = Router();
 
@@ -176,6 +177,7 @@ router.post(
     }
 
     // Update status (partners/admins sending without prior approval are auto-approved)
+    const sentAt = new Date();
     const sendUpdateData: {
       status?: ProposalStatus;
       sentAt: Date;
@@ -183,7 +185,7 @@ router.post(
       approvedAt?: Date;
       approvedById?: string;
     } = {
-      sentAt: new Date(),
+      sentAt,
     };
 
     if (!['ACCEPTED', 'DECLINED', 'LOST', 'WITHDRAWN'].includes(proposal.status)) {
@@ -200,6 +202,14 @@ router.post(
       where: { id },
       data: sendUpdateData,
     });
+
+    // This route returns only after the client email succeeds, so the send method is emailed.
+    await recordPracticeFirstWin(
+      req.tenantId!,
+      firstWinKindForProposal(proposal.customFields),
+      'emailed',
+      sentAt
+    );
 
     // Log activity
     await prisma.activityLog.create({

@@ -5,6 +5,7 @@ export type OpsAuditAction =
   | 'admin.migrate'
   | 'admin.fix-schema'
   | 'admin.db-status'
+  | 'admin.first-wins'
   | 'setup.root'
   | 'setup.migrate-pricing'
   | 'setup.clear-login-lockout'

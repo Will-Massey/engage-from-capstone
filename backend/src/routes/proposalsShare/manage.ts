@@ -22,6 +22,7 @@ import { tenantMailer } from '../../services/tenantMailer.js';
 import PDFGenerator from '../../services/pdfGenerator.js';
 import { assertProposalSendable } from '../proposals/shared.js';
 import { assertTenantCanSendProposals } from '../../services/subscriptionService.js';
+import { firstWinKindForProposal, recordPracticeFirstWin } from '../../services/firstWin.js';
 
 const router = Router();
 
@@ -86,10 +87,17 @@ router.post(
       assertProposalSendable(proposal, req.user!.role);
       await assertTenantCanSendProposals(tenantId);
 
+      const sentAt = new Date();
       await prisma.proposal.update({
         where: { id },
-        data: { status: 'SENT', sentAt: new Date() },
+        data: { status: 'SENT', sentAt },
       });
+      await recordPracticeFirstWin(
+        tenantId,
+        firstWinKindForProposal(proposal.customFields),
+        'link_copied',
+        sentAt
+      );
 
       await prisma.activityLog.create({
         data: {
@@ -282,6 +290,7 @@ router.post(
       messageId: result.messageId,
     });
 
+    const sentAt = new Date();
     const emailSentUpdate: {
       lastEmailedAt: Date;
       emailHistory: string;
@@ -289,9 +298,9 @@ router.post(
       status?: 'SENT';
       expiredAt?: null;
     } = {
-      lastEmailedAt: new Date(),
+      lastEmailedAt: sentAt,
       emailHistory: JSON.stringify(emailHistory),
-      sentAt: new Date(),
+      sentAt,
     };
     // Resend must not downgrade ACCEPTED (or other terminal) proposals — only refresh email metadata.
     if (!['ACCEPTED', 'DECLINED', 'LOST', 'WITHDRAWN', 'ARCHIVED'].includes(proposal.status)) {
@@ -303,6 +312,13 @@ router.post(
       where: { id },
       data: emailSentUpdate,
     });
+
+    await recordPracticeFirstWin(
+      tenantId,
+      firstWinKindForProposal(proposal.customFields),
+      'emailed',
+      sentAt
+    );
 
     // Log activity
     await prisma.activityLog.create({

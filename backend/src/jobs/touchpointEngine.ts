@@ -25,6 +25,7 @@ import {
   renderTouchpointTemplate,
 } from '../templates/touchpoint.js';
 import { tryGenerateTouchpointEmail } from '../services/ai/lifecycleAiEmailService.js';
+import { recordPracticeFirstWin } from '../services/firstWin.js';
 
 import type {
   ClientLifecycleStage,
@@ -158,10 +159,7 @@ async function processDueTouchpoint(tp: Awaited<ReturnType<typeof findDueTouchpo
     });
 
     if (tp.stage === 'ENGAGEMENT_LETTER_SENT') {
-      await prisma.client.update({
-        where: { id: client.id },
-        data: { engagementLetterSentAt: new Date() },
-      });
+      await stampEngagementLetterSent(tp.tenantId, client.id);
     }
 
     await logActivity({
@@ -784,6 +782,16 @@ async function logActivity(data: {
   });
 }
 
+/** Engagement letter email reached the client. Counts as a practice first win when it is the first send. */
+async function stampEngagementLetterSent(tenantId: string, clientId: string): Promise<void> {
+  const sentAt = new Date();
+  await prisma.client.update({
+    where: { id: clientId },
+    data: { engagementLetterSentAt: sentAt },
+  });
+  await recordPracticeFirstWin(tenantId, 'engagement_letter', 'emailed', sentAt);
+}
+
 function inferNextStep(stage: ClientLifecycleStage): string {
   const map: Partial<Record<ClientLifecycleStage, string>> = {
     PROPOSAL_ACCEPTED: 'Complete AML verification',
@@ -819,10 +827,7 @@ export async function approveAndSendTouchpoint(
     });
 
     if (tp.stage === 'ENGAGEMENT_LETTER_SENT') {
-      await prisma.client.update({
-        where: { id: tp.clientId },
-        data: { engagementLetterSentAt: new Date() },
-      });
+      await stampEngagementLetterSent(tp.tenantId, tp.clientId);
     }
 
     const newStage = await maybeAdvanceLifecycle(tp.clientId, tp.stage);
