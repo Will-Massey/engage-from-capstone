@@ -343,6 +343,15 @@ model Tenant {
   /// emailed | link_copied. Null when a backfilled send has no email evidence.
   firstWinMethod String?
 
+  /// Optional signup answer. Codes: linkedin, google, professional_body, xero, another_accountant, other.
+  heardAbout      String?
+  heardAboutOther String?
+  /// First-touch marketing params from the landing URL. Not shown in the product.
+  utmSource       String?
+  utmMedium       String?
+  utmCampaign     String?
+  signupReferrer  String?
+
   // Relations
   users                 User[]
   clients               Client[]

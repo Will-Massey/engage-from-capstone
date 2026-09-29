@@ -7,6 +7,7 @@ import App from './App';
 import { initializeTheme } from './stores/themeStore';
 import ErrorBoundary from './components/ErrorBoundary';
 import { initNativeShell } from './lib/native';
+import { captureFirstTouchAttribution } from './utils/signupAttribution';
 // Build v5 - FORCE REBUILD - 2026-04-07T18:45:00Z - No Stripe
 import './index.css';
 
@@ -19,6 +20,9 @@ if ('serviceWorker' in navigator) {
 
 // Capacitor iOS shell (status bar, splash, safe-area class)
 void initNativeShell();
+
+// First landing URL (campaign params and referrer). Not shown on screen.
+captureFirstTouchAttribution();
 
 // Initialize theme before rendering
 try {
