@@ -37,7 +37,52 @@ export function externalReferrer(referrer: string, pageOrigin: string): string |
   }
 }
 
-/** Null means "do not write" — either nothing useful, or a first touch is already stored. */
+function isCapstoneHost(hostname: string): boolean {
+  const host = hostname.toLowerCase().replace(/\.$/, '');
+  return host === 'capstonesoftware.co.uk' || host === 'www.capstonesoftware.co.uk';
+}
+
+/** Campaign params from a URL search string. Values are stored as given, including chatgpt.com. */
+export function utmFromSearch(search: string): SignupAttribution {
+  const params = new URLSearchParams(search.startsWith('?') ? search.slice(1) : search);
+  const record: SignupAttribution = {};
+  const utmSource = clip(params.get('utm_source'), 200);
+  const utmMedium = clip(params.get('utm_medium'), 200);
+  const utmCampaign = clip(params.get('utm_campaign'), 200);
+  if (utmSource) record.utmSource = utmSource;
+  if (utmMedium) record.utmMedium = utmMedium;
+  if (utmCampaign) record.utmCampaign = utmCampaign;
+  return record;
+}
+
+/**
+ * A link on capstonesoftware.co.uk (the apex site or /engage/) can carry the
+ * campaign in the referrer when the next page URL does not. Same-site referrers
+ * are still not stored as the referrer field.
+ */
+function sameCapstoneSite(referrer: string, pageOrigin: string): boolean {
+  try {
+    const refHost = new URL(referrer).hostname;
+    const pageHost = new URL(pageOrigin).hostname;
+    return isCapstoneHost(refHost) && isCapstoneHost(pageHost);
+  } catch {
+    return false;
+  }
+}
+
+export function utmFromCapstoneReferrer(referrer: string): SignupAttribution {
+  const trimmed = clip(referrer, 500);
+  if (!trimmed) return {};
+  try {
+    const url = new URL(trimmed);
+    if (!isCapstoneHost(url.hostname)) return {};
+    return utmFromSearch(url.search);
+  } catch {
+    return {};
+  }
+}
+
+/** Null means do not write: either nothing useful, or a first touch is already stored. */
 export function nextFirstTouchRecord(
   existingRaw: string | null,
   search: string,
@@ -46,15 +91,18 @@ export function nextFirstTouchRecord(
 ): SignupAttribution | null {
   if (existingRaw && existingRaw.trim()) return null;
 
-  const params = new URLSearchParams(search.startsWith('?') ? search.slice(1) : search);
+  const fromPage = utmFromSearch(search);
+  const fromReferrer = utmFromCapstoneReferrer(referrer);
   const record: SignupAttribution = {};
-  const utmSource = clip(params.get('utm_source'), 200);
-  const utmMedium = clip(params.get('utm_medium'), 200);
-  const utmCampaign = clip(params.get('utm_campaign'), 200);
-  const ref = externalReferrer(referrer, pageOrigin);
+  const utmSource = fromPage.utmSource || fromReferrer.utmSource;
+  const utmMedium = fromPage.utmMedium || fromReferrer.utmMedium;
+  const utmCampaign = fromPage.utmCampaign || fromReferrer.utmCampaign;
   if (utmSource) record.utmSource = utmSource;
   if (utmMedium) record.utmMedium = utmMedium;
   if (utmCampaign) record.utmCampaign = utmCampaign;
+  const ref = sameCapstoneSite(referrer, pageOrigin)
+    ? undefined
+    : externalReferrer(referrer, pageOrigin);
   if (ref) record.referrer = ref;
 
   if (!record.utmSource && !record.utmMedium && !record.utmCampaign && !record.referrer) {

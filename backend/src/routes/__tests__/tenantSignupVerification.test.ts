@@ -145,9 +145,9 @@ describe('POST /api/tenants — public tenant signup', () => {
       .post('/api/tenants')
       .send({
         ...SIGNUP_PAYLOAD,
-        heardAbout: 'professional_body',
+        heardAbout: 'chatgpt',
         heardAboutOther: 'should be ignored unless Other',
-        utmSource: 'linkedin',
+        utmSource: 'chatgpt.com',
         utmMedium: 'social',
         utmCampaign: 'spring',
         signupReferrer: 'https://www.linkedin.com/feed',
@@ -155,9 +155,9 @@ describe('POST /api/tenants — public tenant signup', () => {
 
     expect(res.status).toBe(201);
     const tenantData = txMock.tenant.create.mock.calls[0][0].data;
-    expect(tenantData.heardAbout).toBe('professional_body');
+    expect(tenantData.heardAbout).toBe('chatgpt');
     expect(tenantData.heardAboutOther).toBeNull();
-    expect(tenantData.utmSource).toBe('linkedin');
+    expect(tenantData.utmSource).toBe('chatgpt.com');
     expect(tenantData.utmMedium).toBe('social');
     expect(tenantData.utmCampaign).toBe('spring');
     expect(tenantData.signupReferrer).toBe('https://www.linkedin.com/feed');

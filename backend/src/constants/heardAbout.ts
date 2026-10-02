@@ -1,11 +1,14 @@
 /** Optional practice-signup answers. Stored as the value, shown as the label. */
 
 export const HEARD_ABOUT_OPTIONS = [
+  { value: 'chatgpt', label: 'ChatGPT' },
+  { value: 'google_ai', label: 'Google AI answer' },
+  { value: 'perplexity', label: 'Perplexity' },
+  { value: 'claude', label: 'Claude' },
+  { value: 'copilot', label: 'Copilot' },
+  { value: 'google_search', label: 'Google search' },
   { value: 'linkedin', label: 'LinkedIn' },
-  { value: 'google', label: 'Google' },
-  { value: 'professional_body', label: 'AAT or another professional body' },
-  { value: 'xero', label: 'Xero app store or community' },
-  { value: 'another_accountant', label: 'Another accountant' },
+  { value: 'recommendation', label: 'Recommendation' },
   { value: 'other', label: 'Other' },
 ] as const;
 

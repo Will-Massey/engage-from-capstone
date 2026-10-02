@@ -14,6 +14,7 @@
  */
 
 import { cachePolicyForPath, spaIndexCacheKey, withCacheControl } from './cachePolicy.js';
+import { firstTouchSearch, rewriteEngageRegisterLinks } from './attributionLinks.js';
 
 const FRONTEND_UPSTREAM = 'https://engage-frontend-0g6u.onrender.com';
 const BACKEND_UPSTREAM = 'https://engage-backend-e1ue.onrender.com';
@@ -252,12 +253,18 @@ export default {
       const assetResp = await env.ASSETS.fetch(new URL(`${PREFIX}/index.html`, url.origin));
       if (assetResp.ok) {
         const headers = new Headers(assetResp.headers);
+        headers.delete('content-length');
+        headers.delete('content-encoding');
         headers.set('Cache-Control', 'no-cache');
         headers.set('X-Engage-Variant', 'marketing');
+        headers.set('Content-Type', 'text/html; charset=utf-8');
         for (const [key, value] of Object.entries(SECURITY_HEADERS)) {
           headers.set(key, value);
         }
-        return new Response(assetResp.body, { status: assetResp.status, headers });
+        const html = await assetResp.text();
+        const search = firstTouchSearch(url.search, request.headers.get('Referer'));
+        const body = rewriteEngageRegisterLinks(html, search);
+        return new Response(body, { status: assetResp.status, headers });
       }
     }
 
