@@ -9,6 +9,23 @@ import { getEngageSuperadmin } from '../../lib/superadmin.js';
 import { trialEndsAtFromNow } from '../../config/trial.js';
 import logger from '../../config/logger.js';
 import { scheduleTenantLibraryProvision } from '../../services/tenantLibraryProvisionService.js';
+import { isHeardAboutValue, type HeardAboutValue } from '../../constants/heardAbout.js';
+
+function clipOptional(value: unknown, max: number): string | undefined {
+  if (typeof value !== 'string') return undefined;
+  let cleaned = '';
+  for (const char of value) {
+    const code = char.charCodeAt(0);
+    if (code <= 31 || code === 127) continue;
+    cleaned += char;
+  }
+  cleaned = cleaned.trim().slice(0, max);
+  return cleaned || undefined;
+}
+
+function optionalHeardAbout(value: unknown): HeardAboutValue | undefined {
+  return typeof value === 'string' && isHeardAboutValue(value) ? value : undefined;
+}
 
 const router = Router();
 
@@ -24,6 +41,13 @@ const createTenantSchema = z.object({
   adminFirstName: z.string().min(1, 'Admin first name is required'),
   adminLastName: z.string().min(1, 'Admin last name is required'),
   adminPassword: z.string().min(8, 'Password must be at least 8 characters'),
+  // Optional. A missing or unrecognised answer must not stop signup.
+  heardAbout: z.preprocess(optionalHeardAbout, z.string().optional()),
+  heardAboutOther: z.preprocess((value) => clipOptional(value, 200), z.string().optional()),
+  utmSource: z.preprocess((value) => clipOptional(value, 200), z.string().optional()),
+  utmMedium: z.preprocess((value) => clipOptional(value, 200), z.string().optional()),
+  utmCampaign: z.preprocess((value) => clipOptional(value, 200), z.string().optional()),
+  signupReferrer: z.preprocess((value) => clipOptional(value, 500), z.string().optional()),
   primaryColor: z
     .string()
     .regex(/^#[0-9A-Fa-f]{6}$/)
@@ -140,6 +164,12 @@ router.post(
           subscriptionStatus: 'trial',
           subscriptionTier: 'PROFESSIONAL',
           trialEndsAt,
+          heardAbout: data.heardAbout ?? null,
+          heardAboutOther: data.heardAbout === 'other' ? (data.heardAboutOther ?? null) : null,
+          utmSource: data.utmSource ?? null,
+          utmMedium: data.utmMedium ?? null,
+          utmCampaign: data.utmCampaign ?? null,
+          signupReferrer: data.signupReferrer ?? null,
         },
       });
 

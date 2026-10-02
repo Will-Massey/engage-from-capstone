@@ -14,6 +14,7 @@ import {
   isLoeOnlyProposalFields,
   parseProposalCustomFields,
 } from '../utils/proposalCustomFields.js';
+import { heardAboutLabel } from '../constants/heardAbout.js';
 
 export const FIRST_WIN_KINDS = ['proposal', 'engagement_letter'] as const;
 export type FirstWinKind = (typeof FIRST_WIN_KINDS)[number];
@@ -109,26 +110,39 @@ export function utcDayBounds(date: string): { start: Date; end: Date } | null {
   return { start, end: new Date(start.getTime() + 24 * 60 * 60 * 1000) };
 }
 
+export interface SignupAttributionReport {
+  heardAbout: string | null;
+  heardAboutOther: string | null;
+  utmSource: string | null;
+  utmMedium: string | null;
+  utmCampaign: string | null;
+  referrer: string | null;
+}
+
 export interface FirstWinDailyReport {
   date: string;
   timezone: 'UTC';
-  signups: Array<{
-    tenantId: string;
-    practiceName: string;
-    subdomain: string;
-    signupEmail: string | null;
-    signedUpAt: string;
-    firstWin: FirstWinRecord | null;
-    furthestOnboardingStep: { id: OnboardingStep; label: string } | null;
-  }>;
-  firstWinsRecordedOnDate: Array<{
-    tenantId: string;
-    practiceName: string;
-    subdomain: string;
-    signupEmail: string | null;
-    signedUpAt: string;
-    firstWin: FirstWinRecord;
-  }>;
+  signups: Array<
+    {
+      tenantId: string;
+      practiceName: string;
+      subdomain: string;
+      signupEmail: string | null;
+      signedUpAt: string;
+      firstWin: FirstWinRecord | null;
+      furthestOnboardingStep: { id: OnboardingStep; label: string } | null;
+    } & SignupAttributionReport
+  >;
+  firstWinsRecordedOnDate: Array<
+    {
+      tenantId: string;
+      practiceName: string;
+      subdomain: string;
+      signupEmail: string | null;
+      signedUpAt: string;
+      firstWin: FirstWinRecord;
+    } & SignupAttributionReport
+  >;
   summary: {
     signups: number;
     signupsWithFirstWin: number;
@@ -145,9 +159,26 @@ type TenantReportRow = {
   firstWinAt: Date | null;
   firstWinKind: string | null;
   firstWinMethod: string | null;
+  heardAbout?: string | null;
+  heardAboutOther?: string | null;
+  utmSource?: string | null;
+  utmMedium?: string | null;
+  utmCampaign?: string | null;
+  signupReferrer?: string | null;
   users: Array<{ email: string; emailVerified: Date | null; createdAt: Date }>;
   _count?: { clients: number; proposals: number };
 };
+
+function attributionOf(row: TenantReportRow): SignupAttributionReport {
+  return {
+    heardAbout: heardAboutLabel(row.heardAbout),
+    heardAboutOther: row.heardAbout === 'other' ? (row.heardAboutOther ?? null) : null,
+    utmSource: row.utmSource ?? null,
+    utmMedium: row.utmMedium ?? null,
+    utmCampaign: row.utmCampaign ?? null,
+    referrer: row.signupReferrer ?? null,
+  };
+}
 
 function signupEmail(row: TenantReportRow): string | null {
   const first = [...row.users].sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime())[0];
@@ -181,6 +212,12 @@ export async function buildFirstWinDailyReport(date: string): Promise<FirstWinDa
     firstWinAt: true,
     firstWinKind: true,
     firstWinMethod: true,
+    heardAbout: true,
+    heardAboutOther: true,
+    utmSource: true,
+    utmMedium: true,
+    utmCampaign: true,
+    signupReferrer: true,
     users: {
       select: { email: true, emailVerified: true, createdAt: true },
     },
@@ -204,6 +241,12 @@ export async function buildFirstWinDailyReport(date: string): Promise<FirstWinDa
         firstWinAt: true,
         firstWinKind: true,
         firstWinMethod: true,
+        heardAbout: true,
+        heardAboutOther: true,
+        utmSource: true,
+        utmMedium: true,
+        utmCampaign: true,
+        signupReferrer: true,
         users: { select: { email: true, emailVerified: true, createdAt: true } },
       },
     }),
@@ -218,6 +261,7 @@ export async function buildFirstWinDailyReport(date: string): Promise<FirstWinDa
       subdomain: row.subdomain,
       signupEmail: signupEmail(row),
       signedUpAt: row.createdAt.toISOString(),
+      ...attributionOf(row),
       firstWin: win,
       furthestOnboardingStep: win
         ? null
@@ -239,6 +283,7 @@ export async function buildFirstWinDailyReport(date: string): Promise<FirstWinDa
         subdomain: row.subdomain,
         signupEmail: signupEmail(row),
         signedUpAt: row.createdAt.toISOString(),
+        ...attributionOf(row),
         firstWin: win,
       };
     })

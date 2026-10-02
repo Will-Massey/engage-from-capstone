@@ -140,6 +140,63 @@ describe('POST /api/tenants — public tenant signup', () => {
     expect(mail.message.html).toContain('New Practice Ltd');
   });
 
+  it('stores an optional hear-about answer and first-touch URL params', async () => {
+    const res = await request(buildApp())
+      .post('/api/tenants')
+      .send({
+        ...SIGNUP_PAYLOAD,
+        heardAbout: 'chatgpt',
+        heardAboutOther: 'should be ignored unless Other',
+        utmSource: 'chatgpt.com',
+        utmMedium: 'social',
+        utmCampaign: 'spring',
+        signupReferrer: 'https://www.linkedin.com/feed',
+      });
+
+    expect(res.status).toBe(201);
+    const tenantData = txMock.tenant.create.mock.calls[0][0].data;
+    expect(tenantData.heardAbout).toBe('chatgpt');
+    expect(tenantData.heardAboutOther).toBeNull();
+    expect(tenantData.utmSource).toBe('chatgpt.com');
+    expect(tenantData.utmMedium).toBe('social');
+    expect(tenantData.utmCampaign).toBe('spring');
+    expect(tenantData.signupReferrer).toBe('https://www.linkedin.com/feed');
+    expect(res.body.data).toEqual({
+      requiresVerification: true,
+      email: 'founder@newpractice.co.uk',
+    });
+  });
+
+  it('keeps Other free text and does not block signup when the answer is missing or unknown', async () => {
+    const other = await request(buildApp())
+      .post('/api/tenants')
+      .send({
+        ...SIGNUP_PAYLOAD,
+        subdomain: 'other-practice',
+        heardAbout: 'other',
+        heardAboutOther: '  A local networking breakfast  ',
+      });
+    expect(other.status).toBe(201);
+    expect(txMock.tenant.create.mock.calls[0][0].data.heardAbout).toBe('other');
+    expect(txMock.tenant.create.mock.calls[0][0].data.heardAboutOther).toBe(
+      'A local networking breakfast'
+    );
+
+    txMock.tenant.create.mockClear();
+    const unknown = await request(buildApp())
+      .post('/api/tenants')
+      .send({
+        ...SIGNUP_PAYLOAD,
+        subdomain: 'unknown-source',
+        heardAbout: 'a billboard',
+        utmSource: `  ${'x'.repeat(250)}  `,
+      });
+    expect(unknown.status).toBe(201);
+    const tenantData = txMock.tenant.create.mock.calls[0][0].data;
+    expect(tenantData.heardAbout).toBeNull();
+    expect(tenantData.utmSource).toHaveLength(200);
+  });
+
   it('still rejects taken subdomains before creating anything', async () => {
     (prisma.tenant.findUnique as jest.Mock).mockResolvedValue({ id: 'existing' });
 

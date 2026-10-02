@@ -124,6 +124,13 @@ export interface CreateTenantPayload {
   adminPassword: string;
   primaryColor?: string;
   settings?: TenantSignupSettings;
+  /** Optional. Omitted when the practice leaves the question blank. */
+  heardAbout?: string;
+  heardAboutOther?: string;
+  utmSource?: string;
+  utmMedium?: string;
+  utmCampaign?: string;
+  signupReferrer?: string;
 }
 
 export interface CreateTenantUser {

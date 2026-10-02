@@ -8,6 +8,7 @@ import { CheckIcon } from '@heroicons/react/24/solid';
 import { EnvelopeIcon, SparklesIcon } from '@heroicons/react/24/outline';
 import { apiClient } from '../../utils/api';
 import { useAuthStore } from '../../stores/authStore';
+import { readFirstTouchAttribution } from '../../utils/signupAttribution';
 import { AI_COPILOT } from '../../config/aiCopilot';
 import toast from 'react-hot-toast';
 
@@ -61,6 +62,18 @@ const MTD_OPTIONS = [
   { value: 'not_started', label: 'MTD planning not started yet' },
 ];
 
+const HEARD_ABOUT_OPTIONS = [
+  { value: 'chatgpt', label: 'ChatGPT' },
+  { value: 'google_ai', label: 'Google AI answer' },
+  { value: 'perplexity', label: 'Perplexity' },
+  { value: 'claude', label: 'Claude' },
+  { value: 'copilot', label: 'Copilot' },
+  { value: 'google_search', label: 'Google search' },
+  { value: 'linkedin', label: 'LinkedIn' },
+  { value: 'recommendation', label: 'Recommendation' },
+  { value: 'other', label: 'Other' },
+];
+
 async function persistClaraProfile(profile: ClaraOnboardingProfile) {
   localStorage.setItem(CLARA_ONBOARDING_KEY, JSON.stringify(profile));
   try {
@@ -83,6 +96,8 @@ const Onboarding = () => {
     clientTypes: [],
     mtdStatus: '',
   });
+  const [heardAbout, setHeardAbout] = useState('');
+  const [heardAboutOther, setHeardAboutOther] = useState('');
 
   const {
     register,
@@ -120,6 +135,7 @@ const Onboarding = () => {
   const onSubmit = async (data: OnboardingForm) => {
     setIsLoading(true);
     try {
+      const attribution = readFirstTouchAttribution();
       const response = (await apiClient.createTenant({
         subdomain: data.subdomain,
         name: data.name,
@@ -127,6 +143,14 @@ const Onboarding = () => {
         adminFirstName: data.adminFirstName,
         adminLastName: data.adminLastName,
         adminPassword: data.adminPassword,
+        ...(heardAbout ? { heardAbout } : {}),
+        ...(heardAbout === 'other' && heardAboutOther.trim()
+          ? { heardAboutOther: heardAboutOther.trim() }
+          : {}),
+        ...(attribution.utmSource ? { utmSource: attribution.utmSource } : {}),
+        ...(attribution.utmMedium ? { utmMedium: attribution.utmMedium } : {}),
+        ...(attribution.utmCampaign ? { utmCampaign: attribution.utmCampaign } : {}),
+        ...(attribution.referrer ? { signupReferrer: attribution.referrer } : {}),
       })) as any;
 
       if (response.success) {
@@ -453,6 +477,62 @@ const Onboarding = () => {
                 <p className="mt-1 text-sm text-red-600">{errors.adminPassword.message}</p>
               )}
             </div>
+
+            <fieldset>
+              <legend className="text-sm font-medium text-slate-800">
+                Where did you hear about us?{' '}
+                <span className="font-normal text-slate-500">(optional)</span>
+              </legend>
+              <div className="mt-2 space-y-2">
+                {HEARD_ABOUT_OPTIONS.map((option) => (
+                  <label
+                    key={option.value}
+                    className="flex items-center gap-3 rounded-lg border border-slate-200 px-3 py-2.5 text-sm text-slate-800 cursor-pointer"
+                  >
+                    <input
+                      type="radio"
+                      name="heardAbout"
+                      value={option.value}
+                      checked={heardAbout === option.value}
+                      onChange={() => setHeardAbout(option.value)}
+                      className="h-4 w-4 text-primary-600 border-slate-300"
+                    />
+                    {option.label}
+                  </label>
+                ))}
+              </div>
+              {heardAbout ? (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setHeardAbout('');
+                    setHeardAboutOther('');
+                  }}
+                  className="mt-2 text-sm text-slate-600 underline"
+                >
+                  Clear
+                </button>
+              ) : null}
+            </fieldset>
+
+            {heardAbout === 'other' ? (
+              <div>
+                <label
+                  htmlFor="heard-about-other"
+                  className="block text-sm font-medium text-slate-800"
+                >
+                  Where was that? <span className="font-normal text-slate-500">(optional)</span>
+                </label>
+                <input
+                  id="heard-about-other"
+                  value={heardAboutOther}
+                  onChange={(event) => setHeardAboutOther(event.target.value)}
+                  maxLength={200}
+                  className="mt-1 input-field"
+                  placeholder="Optional"
+                />
+              </div>
+            ) : null}
 
             <div className="flex space-x-3">
               <button type="button" onClick={prevStep} className="flex-1 btn-secondary py-2.5">

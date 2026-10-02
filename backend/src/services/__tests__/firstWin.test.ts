@@ -106,6 +106,12 @@ describe('buildFirstWinDailyReport', () => {
             firstWinAt: wonAt,
             firstWinKind: 'proposal',
             firstWinMethod: 'emailed',
+            heardAbout: 'linkedin',
+            heardAboutOther: null,
+            utmSource: 'linkedin',
+            utmMedium: 'social',
+            utmCampaign: 'spring',
+            signupReferrer: 'https://www.linkedin.com/',
             users: [
               {
                 email: 'owner@won.test',
@@ -169,6 +175,11 @@ describe('buildFirstWinDailyReport', () => {
       signedUpAt: signedUp.toISOString(),
       firstWin: { at: wonAt.toISOString(), kind: 'proposal', method: 'emailed' },
       furthestOnboardingStep: null,
+      heardAbout: 'LinkedIn',
+      utmSource: 'linkedin',
+      utmMedium: 'social',
+      utmCampaign: 'spring',
+      referrer: 'https://www.linkedin.com/',
     });
     expect(report.signups[1].furthestOnboardingStep).toEqual({
       id: 'client_added',
