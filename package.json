@@ -31,6 +31,8 @@
     "test:e2e:build": "cd e2e-tests && npm ci && npx playwright install chromium && npm run test:build",
     "ios:sync": "cd frontend && npm run cap:sync:ios",
     "ios:open": "cd frontend && npm run cap:open:ios",
+    "android:sync": "cd frontend && npm run cap:sync:android",
+    "android:open": "cd frontend && npm run cap:open:android",
     "verify": "npm run lint && npm run typecheck && npm run test && npm run build",
     "check:production": "node scripts/check-production.mjs"
   },

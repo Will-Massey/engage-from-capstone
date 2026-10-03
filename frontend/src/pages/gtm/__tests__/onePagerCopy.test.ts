@@ -3,7 +3,7 @@ import {
   formatCompetitorOnePager,
   formatEngageLadder,
   ONE_PAGER_HEADLINE,
-} from '../competitorOnePager';
+} from '../onePagerCopy';
 
 describe('formatCompetitorOnePager', () => {
   const text = formatCompetitorOnePager();

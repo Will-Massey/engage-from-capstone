@@ -7,7 +7,7 @@ import {
   ONE_PAGER_LOOP,
   ONE_PAGER_PROBLEM,
   ONE_PAGER_ROWS,
-} from './competitorOnePager';
+} from './onePagerCopy';
 
 /**
  * A4 leave-behind. On screen it sits as a paper sheet; print CSS hides the rest of the kit.

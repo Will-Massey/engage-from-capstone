@@ -1,9 +1,63 @@
 # Engage mobile shells (Capacitor) — W4.1
 
-**Status:** iOS project scaffolded under `frontend/ios/`; **Android platform committed under `frontend/android/` (2026-08-09)** — build APKs via the `Android debug APK` workflow (Actions tab; CI is the canonical Android build env, local boxes need no SDK). iOS ship steps: `docs/IOS_TANDEM_RUNBOOK.md`.  
-**Gate:** Cut iOS only after `docs/DESKTOP_WALKTHROUGH.md` is signed off.  
+**Status:** Real Xcode and Android Studio projects, not a PWA. iOS is `frontend/ios` (iPhone and iPad, `TARGETED_DEVICE_FAMILY = 1,2`). Android is `frontend/android` (phones and large screens, resizable activity).  
 **App id:** `uk.co.capstonesoftware.engage`  
-**Web dir:** `frontend/dist` (Capacitor build mode)
+**Display name:** Capstone Engage  
+**Web dir:** `frontend/dist` (Capacitor build mode, `npm run build:capacitor`)  
+**API:** baked in from `frontend/.env.capacitor` (`VITE_API_URL`). Production points at the Render API. Do not commit keystores or secrets.
+
+## Layout
+
+The same Engage SPA runs in the WebView. Sign-in, clients, proposals, jobs, and inbox are the staff product, not a separate mobile rewrite.
+
+| Screen                                 | Chrome                                                                                                |
+| -------------------------------------- | ----------------------------------------------------------------------------------------------------- |
+| iPhone, Android phone, landscape phone | Bottom tabs (Home, Jobs, Inbox, Clients, Proposals) and a drawer for the rest of the nav              |
+| iPad (portrait and landscape)          | Persistent sidebar. The tab bar is not stretched across the tablet                                    |
+| Android tablet / large screen          | Same adaptive sidebar when the window is at least 768×600 CSS pixels. Phones stay on the phone chrome |
+| Desktop web at 1024px and wider        | Existing sidebar                                                                                      |
+
+Thresholds live in `frontend/src/lib/layoutMode.ts` and the shell media queries in `frontend/src/index.css`. Proposal and job lists use cards until the window is wide enough for the table. Sign-in is a single column on a phone and a two-pane layout on iPad.
+
+iOS ship steps: `docs/IOS_TANDEM_RUNBOOK.md`. Play listing: `docs/PLAY_STORE_SUBMISSION.md`.
+
+## Run iOS (Xcode)
+
+From the repo root, after `npm ci`:
+
+```bash
+npm run ios:sync          # Vite capacitor build + cap sync ios
+cd frontend/ios/App && pod install
+npm run ios:open          # opens frontend/ios/App/App.xcworkspace
+```
+
+In Xcode, pick an iPhone or iPad simulator (or a device) and run the **App** scheme. The workspace is `frontend/ios/App/App.xcworkspace`. Minimum iOS is 15. Bundle id `uk.co.capstonesoftware.engage`.
+
+Command-line build (example, iPad simulator):
+
+```bash
+cd frontend/ios/App
+xcodebuild -workspace App.xcworkspace -scheme App \
+  -destination 'platform=iOS Simulator,name=iPad Pro 11-inch (M5)' \
+  -configuration Debug build
+```
+
+## Run Android (Android Studio)
+
+```bash
+npm run android:sync      # Vite capacitor build + cap sync android
+npm run android:open      # opens frontend/android
+```
+
+Or from `frontend/android`:
+
+```bash
+./gradlew assembleDebug
+```
+
+Install the debug APK on a phone or a tablet emulator. `minSdk` 23, `targetSdk` 35, application id `uk.co.capstonesoftware.engage`. Release signing reads a gitignored `frontend/android/keystore.properties` and is not required for a debug build.
+
+CI can also build the debug APK (`Android debug APK` workflow) and a signed AAB (`Android release AAB`, needs the four keystore secrets in `docs/PLAY_STORE_SUBMISSION.md`).
 
 ## Staff native tabs (current)
 
@@ -32,18 +86,7 @@ CORS already allows `capacitor://localhost` and `https://localhost` (see `backen
 | `npm run cap:open:ios`    | Open Xcode                       |
 | `npm run cap:run:ios`     | Sync + run on simulator/device   |
 
-## Add Android (when SDK present)
-
-```bash
-cd frontend
-npm i -D @capacitor/android
-npx cap add android
-npm run build:capacitor
-npx cap sync android
-npx cap open android
-```
-
-`capacitor.config.ts` already sets `androidScheme: 'https'`.
+Android is already added. `capacitor.config.ts` sets `androidScheme: 'https'`. Re-sync with `npm run android:sync` from the repo root.
 
 ## Live reload (device on LAN)
 

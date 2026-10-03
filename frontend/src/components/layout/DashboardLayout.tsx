@@ -34,10 +34,10 @@ const DashboardLayout = () => {
       >
         Skip to content
       </a>
-      {/* Mobile sidebar overlay */}
+      {/* Phone drawer overlay. Hidden once the persistent sidebar is showing. */}
       {sidebarOpen && (
         <div
-          className="fixed inset-0 z-40 bg-slate-900/60 backdrop-blur-sm lg:hidden transition-opacity duration-300"
+          className="shell-overlay fixed inset-0 z-40 bg-slate-900/60 backdrop-blur-sm lg:hidden transition-opacity duration-300"
           onClick={() => setSidebarOpen(false)}
         />
       )}
@@ -45,11 +45,11 @@ const DashboardLayout = () => {
       {/* Sidebar */}
       <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
 
-      {/* Main content */}
-      <div className="lg:pl-72 xl:pl-80 min-w-0">
+      {/* Main content. shell-main adds the tablet sidebar inset below the lg breakpoint. */}
+      <div className="shell-main lg:pl-72 xl:pl-80 min-w-0">
         {/* Header with glass effect — single instance, full dark support */}
         <div
-          className={`print-hide-chrome fixed top-0 right-0 left-0 lg:left-72 xl:left-80 z-30 transition-all duration-300 pt-[env(safe-area-inset-top)] ${
+          className={`shell-header print-hide-chrome fixed top-0 right-0 left-0 lg:left-72 xl:left-80 z-30 transition-all duration-300 pt-[env(safe-area-inset-top)] ${
             scrolled ? 'shadow-lg' : ''
           }`}
           style={{
