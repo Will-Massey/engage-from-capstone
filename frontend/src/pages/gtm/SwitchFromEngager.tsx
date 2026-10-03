@@ -22,7 +22,7 @@ import { StatusChip } from '../../components/ui/StatusChip';
 import { PRIMARY_CREATE } from '../../config/navigation';
 import { calculateSwitcherRoi, formatGbp, formatSwitcherRoiSummary } from './switcherRoi';
 import CompetitorOnePager from './CompetitorOnePager';
-import { formatCompetitorOnePager } from './competitorOnePager';
+import { formatCompetitorOnePager } from './onePagerCopy';
 import { ENGAGE_TIERS } from './packagingValue';
 
 const COMPARISON: Array<{

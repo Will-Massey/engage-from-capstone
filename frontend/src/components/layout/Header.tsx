@@ -42,7 +42,7 @@ const Header = ({ onMenuClick }: HeaderProps) => {
           <button
             type="button"
             onClick={onMenuClick}
-            className="inline-flex min-h-11 min-w-11 items-center justify-center -ml-1 text-slate-500 dark:text-slate-300 rounded-xl hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-100/80 dark:hover:bg-slate-800/80 lg:hidden transition-colors cursor-pointer"
+            className="shell-menu inline-flex min-h-11 min-w-11 items-center justify-center -ml-1 text-slate-500 dark:text-slate-300 rounded-xl hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-100/80 dark:hover:bg-slate-800/80 lg:hidden transition-colors cursor-pointer"
             aria-label="Open navigation menu"
           >
             <Bars3Icon className="w-6 h-6" />

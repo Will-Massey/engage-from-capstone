@@ -108,7 +108,7 @@ const Sidebar = ({ isOpen, onClose }: SidebarProps) => {
   return (
     <>
       <div
-        className={`print-hide-chrome fixed inset-y-0 left-0 z-50 w-72 xl:w-80 transform transition-transform duration-300 ease-in-out lg:hidden border-r shadow-xl ${shellClass} ${
+        className={`shell-drawer print-hide-chrome fixed inset-y-0 left-0 z-50 w-72 pt-[env(safe-area-inset-top)] xl:w-80 transform transition-transform duration-300 ease-in-out lg:hidden border-r shadow-xl ${shellClass} ${
           isOpen ? 'translate-x-0' : '-translate-x-full'
         }`}
       >
@@ -123,7 +123,7 @@ const Sidebar = ({ isOpen, onClose }: SidebarProps) => {
       </div>
 
       <aside
-        className={`print-hide-chrome hidden lg:fixed lg:inset-y-0 lg:left-0 lg:z-40 lg:flex lg:w-72 xl:w-80 lg:flex-col border-r ${shellClass}`}
+        className={`shell-sidebar print-hide-chrome hidden pt-[env(safe-area-inset-top)] lg:fixed lg:inset-y-0 lg:left-0 lg:z-40 lg:flex lg:w-72 xl:w-80 lg:flex-col border-r ${shellClass}`}
       >
         <SidebarPanel
           tenantLogo={tenant?.logo}
