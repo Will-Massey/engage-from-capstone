@@ -1,9 +1,5 @@
 import { ENGAGE_TIERS } from '../packagingValue';
-import {
-  formatCompetitorOnePager,
-  formatEngageLadder,
-  ONE_PAGER_HEADLINE,
-} from '../onePagerCopy';
+import { formatCompetitorOnePager, formatEngageLadder, ONE_PAGER_HEADLINE } from '../onePagerCopy';
 
 describe('formatCompetitorOnePager', () => {
   const text = formatCompetitorOnePager();
