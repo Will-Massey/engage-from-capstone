@@ -680,7 +680,58 @@ export default function JobsBoard() {
         </div>
       ) : viewMode === 'list' ? (
         <div className="card overflow-hidden">
-          <div className="overflow-x-auto">
+          <ul className="grid grid-cols-1 gap-3 p-3 lg:grid-cols-2 xl:hidden">
+            {listSorted.map((job) => {
+              const pct = phaseProgress(job);
+              const due = daysLabel(job.dueAt);
+              return (
+                <li
+                  key={job.id}
+                  className="rounded-xl border border-slate-200/80 bg-white p-4 dark:border-slate-700 dark:bg-slate-900"
+                >
+                  <Link to={`/jobs/${job.id}`} className="block min-w-0">
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        <p className="text-[11px] font-medium uppercase tracking-wide text-slate-400">
+                          {job.reference}
+                        </p>
+                        <p className="mt-0.5 truncate text-sm font-semibold text-slate-900 dark:text-slate-50">
+                          {job.client.name}
+                        </p>
+                        <p className="mt-1 line-clamp-2 text-xs text-slate-500">{job.title}</p>
+                      </div>
+                      <StatusChip tone={boardColumnTone(job.boardColumn)}>
+                        {boardColumnLabel(job.boardColumn)}
+                      </StatusChip>
+                    </div>
+                    <div className="mt-3 flex flex-wrap items-center gap-2 text-xs text-slate-500">
+                      <MoneyPill pence={job.proposedFeePence} />
+                      {due ? <StatusChip tone={due.tone}>{due.text}</StatusChip> : null}
+                      <span className="inline-flex items-center gap-1.5">
+                        <ProgressRing pct={pct} size={22} stroke={2.5} showLabel />
+                      </span>
+                    </div>
+                  </Link>
+                  <label className="mt-3 block text-xs font-medium text-slate-500">
+                    Move
+                    <select
+                      className="input-field mt-1 py-2 text-sm"
+                      value={job.boardColumn}
+                      disabled={movingId === job.id}
+                      onChange={(e) => void moveJob(job.id, e.target.value as BoardColumn)}
+                    >
+                      {COLUMN_ORDER.map((c) => (
+                        <option key={c} value={c}>
+                          {boardColumnLabel(c)}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                </li>
+              );
+            })}
+          </ul>
+          <div className="hidden overflow-x-auto xl:block">
             <table className="min-w-full text-left text-sm">
               <thead className="border-b border-slate-200 bg-slate-50/80 text-2xs font-semibold uppercase tracking-wide text-slate-500 dark:border-slate-700 dark:bg-slate-900/40">
                 <tr>

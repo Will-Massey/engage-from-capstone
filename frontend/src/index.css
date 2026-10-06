@@ -39,10 +39,8 @@
     }
   }
 
-  /* Capacitor native shell — room for bottom tab bar */
-  html.capacitor-native body {
-    padding-bottom: calc(3.5rem + env(safe-area-inset-bottom, 0px));
-  }
+  /* Capacitor native shell insets are finished after the utilities layer,
+     so the phone tab bar and the tablet sidebar do not fight each other. */
 
   /* Logo plate — soft frame so photo marks blend with pale UI */
   .brand-logo-plate {
@@ -86,8 +84,8 @@
 @layer components {
   /* Editorial inputs — solid surface, thin border, calm focus ring */
   .input-field {
-    @apply block w-full rounded-lg border border-slate-300 dark:border-slate-600
-           bg-white dark:bg-slate-800
+    @apply block w-full min-h-11 rounded-lg border border-slate-300 dark:border-slate-600
+           bg-white dark:bg-slate-800 px-3 py-2
            text-ink-900 dark:text-slate-100 placeholder-slate-400
            shadow-sm focus:border-primary-500 focus:ring-2 focus:ring-primary-500/25 focus:outline-none
            sm:text-sm transition-colors duration-150
@@ -95,8 +93,8 @@
   }
 
   .input-field-error {
-    @apply block w-full rounded-lg border border-danger-400 dark:border-danger-500
-           bg-white dark:bg-slate-800
+    @apply block w-full min-h-11 rounded-lg border border-danger-400 dark:border-danger-500
+           bg-white dark:bg-slate-800 px-3 py-2
            text-ink-900 dark:text-slate-100 placeholder-danger-400
            focus:border-danger-500 focus:ring-2 focus:ring-danger-500/25 focus:outline-none
            sm:text-sm transition-colors duration-150;
@@ -574,5 +572,92 @@ html {
     box-shadow: none !important;
     max-width: none !important;
     break-inside: avoid;
+  }
+}
+
+/*
+ * Adaptive shell. Unlayered so these beat Tailwind's `hidden` / `lg:flex`.
+ * Thresholds match `layoutMode()` in src/lib/layoutMode.ts.
+ *
+ * Compact (phones, including landscape): drawer + bottom tabs.
+ * Regular below 1024px and at least 600px tall: persistent sidebar.
+ *   That is iPad portrait and Android tablets in portrait.
+ * 1024px and wider: the existing lg sidebar (desktop and iPad landscape).
+ */
+@media (max-width: 1023.98px) {
+  html.capacitor-native body {
+    padding-bottom: calc(4.5rem + env(safe-area-inset-bottom, 0px));
+  }
+}
+
+@media (min-width: 768px) and (max-width: 1023.98px) and (min-height: 600px) {
+  html.capacitor-native body {
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
+
+  .shell-overlay,
+  .shell-drawer,
+  .shell-tabbar,
+  .shell-menu {
+    display: none !important;
+  }
+
+  .shell-sidebar {
+    display: flex !important;
+    position: fixed;
+    top: 0;
+    bottom: 0;
+    left: 0;
+    z-index: 40;
+    width: 16rem;
+    flex-direction: column;
+  }
+
+  .shell-main {
+    padding-left: 16rem;
+  }
+
+  .shell-header {
+    left: 16rem;
+  }
+}
+
+@media (min-width: 1024px) {
+  html.capacitor-native body {
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
+}
+
+/* Sign-in: phone stays a single column. iPad and other tall wide screens
+   put the practice mark beside the form instead of a floating phone card. */
+.auth-brand {
+  display: none;
+}
+
+@media (min-width: 768px) and (min-height: 600px) {
+  .auth-shell {
+    display: grid;
+    grid-template-columns: minmax(17rem, 1fr) minmax(22rem, 34rem);
+    align-items: stretch;
+    min-height: 100dvh;
+  }
+
+  .auth-brand {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    padding: 3rem 2.5rem;
+    background:
+      radial-gradient(ellipse 80% 50% at 0% 0%, rgba(16, 185, 129, 0.16), transparent),
+      linear-gradient(180deg, #f8fafc 0%, #ecfdf5 100%);
+    border-right: 1px solid rgba(15, 23, 42, 0.08);
+  }
+
+  .auth-phone-mark {
+    display: none;
+  }
+
+  .auth-form {
+    margin-top: 0;
   }
 }

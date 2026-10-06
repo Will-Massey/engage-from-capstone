@@ -37,7 +37,9 @@ const TABS = [
 ];
 
 /**
- * Bottom tab bar for Capacitor native shells (staff). Hidden on web.
+ * Bottom tab bar for the phone chrome. Hidden on the web, and hidden on
+ * iPad / large screens where the persistent sidebar replaces it — a tab bar
+ * stretched across an iPad is the phone UI at the wrong size.
  */
 export default function NativeTabBar() {
   const { pathname } = useLocation();
@@ -45,7 +47,7 @@ export default function NativeTabBar() {
 
   return (
     <nav
-      className="fixed inset-x-0 bottom-0 z-50 border-t border-slate-200/90 bg-white/95 pb-[env(safe-area-inset-bottom)] backdrop-blur-xl dark:border-slate-700 dark:bg-slate-900/95 lg:hidden"
+      className="shell-tabbar fixed inset-x-0 bottom-0 z-50 border-t border-slate-200/90 bg-white/95 pb-[env(safe-area-inset-bottom)] backdrop-blur-xl dark:border-slate-700 dark:bg-slate-900/95 lg:hidden"
       aria-label="Primary mobile"
     >
       <ul className="flex items-stretch justify-around px-1 pt-1">
