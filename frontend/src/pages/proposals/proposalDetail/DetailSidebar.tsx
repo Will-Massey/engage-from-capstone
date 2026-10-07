@@ -72,12 +72,21 @@ export default function DetailSidebar() {
               </span>
             </div>
           )}
-          {groupTotals.HOURLY?.total > 0 && (
+          {pricingBreakdown.hourlyIncVat > 0 && (
             <div className="flex justify-between items-baseline gap-3">
               <span className="min-w-0 text-slate-600 dark:text-slate-300">Hourly</span>
               <span className="shrink-0 whitespace-nowrap text-right font-semibold text-slate-900 dark:text-white tabular-nums">
-                {formatCurrency(groupTotals.HOURLY.total)}
+                {formatCurrency(pricingBreakdown.hourlyIncVat)}
                 <span className="text-xs font-normal text-slate-500 ml-1">quoted</span>
+              </span>
+            </div>
+          )}
+          {pricingBreakdown.hourlyEstimateIncVat > 0 && (
+            <div className="flex justify-between items-baseline gap-3">
+              <span className="min-w-0 text-slate-600 dark:text-slate-300">Hourly estimate</span>
+              <span className="shrink-0 whitespace-nowrap text-right font-semibold text-slate-900 dark:text-white tabular-nums">
+                {formatCurrency(pricingBreakdown.hourlyEstimateIncVat)}
+                <span className="text-xs font-normal text-slate-500 ml-1">est. /month</span>
               </span>
             </div>
           )}
@@ -92,7 +101,8 @@ export default function DetailSidebar() {
 
           {(pricingBreakdown.monthlyIncVat > 0 ||
             pricingBreakdown.oneOffIncVat > 0 ||
-            pricingBreakdown.hourlyIncVat > 0) && (
+            pricingBreakdown.hourlyIncVat > 0 ||
+            pricingBreakdown.hourlyEstimateIncVat > 0) && (
             <div className="border-t border-slate-200 dark:border-slate-600/50 pt-3 space-y-2">
               {pricingBreakdown.monthlyIncVat > 0 && (
                 <>
@@ -113,6 +123,13 @@ export default function DetailSidebar() {
                     </span>
                   </div>
                 </>
+              )}
+
+              {pricingBreakdown.hourlyEstimateIncVat > 0 && (
+                <p className="text-xs text-slate-500 dark:text-slate-400">
+                  The hourly estimate is not a fixed monthly fee. It is invoiced each month for the
+                  hours actually worked.
+                </p>
               )}
 
               {pricingBreakdown.hourlyIncVat > 0 && (
@@ -181,15 +198,20 @@ export default function DetailSidebar() {
           )}
 
           <p className="text-xs text-slate-500 dark:text-slate-400 text-center">
-            {pricingBreakdown.oneOffIncVat > 0 && pricingBreakdown.monthlyIncVat > 0
-              ? 'First payment includes one-time fees plus your first month of recurring services.'
-              : pricingBreakdown.hourlyIncVat > 0 && pricingBreakdown.monthlyIncVat > 0
-                ? 'First payment includes quoted hourly fees plus your first month of recurring services.'
-                : pricingBreakdown.hourlyIncVat > 0
-                  ? 'Hourly fees are the rate times the quoted hours, payable as agreed.'
-                  : pricingBreakdown.oneOffIncVat > 0
-                    ? 'One-time fees are payable as agreed in your engagement letter.'
-                    : 'Fees are shown at their actual billing frequency: hourly, weekly, monthly, quarterly, or annual.'}
+            {pricingBreakdown.hourlyEstimateIncVat > 0 &&
+            pricingBreakdown.monthlyIncVat === 0 &&
+            pricingBreakdown.hourlyIncVat === 0 &&
+            pricingBreakdown.oneOffIncVat === 0
+              ? 'The hourly figure is an estimate of a typical month. You are invoiced for the hours actually worked.'
+              : pricingBreakdown.oneOffIncVat > 0 && pricingBreakdown.monthlyIncVat > 0
+                ? 'First payment includes one-time fees plus your first month of recurring services.'
+                : pricingBreakdown.hourlyIncVat > 0 && pricingBreakdown.monthlyIncVat > 0
+                  ? 'First payment includes quoted hourly fees plus your first month of recurring services.'
+                  : pricingBreakdown.hourlyIncVat > 0
+                    ? 'Hourly fees are the rate times the quoted hours, payable as agreed.'
+                    : pricingBreakdown.oneOffIncVat > 0
+                      ? 'One-time fees are payable as agreed in your engagement letter.'
+                      : 'Fees are shown at their actual billing frequency: hourly, weekly, monthly, quarterly, or annual.'}
           </p>
         </div>
       </div>

@@ -7,6 +7,7 @@ import logger from '../../config/logger.js';
 import { AI_COPILOT } from '../../config/aiCopilot.js';
 import { chatCompletion, isAiConfigured } from './aiClient.js';
 import { penceToPounds } from '../../utils/proposalPricing.js';
+import { isMonthlyActualHourly } from '@uk-proposal-platform/shared';
 
 const UNKNOWN_ANSWER = "I don't have that in the proposal.";
 
@@ -47,6 +48,8 @@ export type SigningCostBreakdown = {
     frequency: string;
   } | null;
   primaryFrequency: string;
+  /** Estimate only. Not collected as a fixed fee at signing. */
+  variableHourly: { amount: number; vatAmount: number; label: string } | null;
 };
 
 /** Fee breakdown for signing summary — due today vs recurring, never annualised monthly totals. */
@@ -62,10 +65,25 @@ export function computeSigningCostSummary(proposal: PublicProposalRecord): Signi
     byFrequency.set(freq, bucket);
   }
 
+  let hourlyGross = 0;
+  let hourlyVat = 0;
+  let variableGross = 0;
+  let variableVat = 0;
+  for (const service of coreServices) {
+    if (lineBillingFrequency(service) !== 'HOURLY') continue;
+    const gross = lineGrossTotal(service);
+    const vat = penceToPounds(service.vatAmountPence);
+    const mode = (service as { hourlyBillingMode?: string | null }).hourlyBillingMode;
+    if (isMonthlyActualHourly('HOURLY', mode)) {
+      variableGross += gross;
+      variableVat += vat;
+    } else {
+      hourlyGross += gross;
+      hourlyVat += vat;
+    }
+  }
   const oneTimeGross = byFrequency.get('ONE_TIME')?.gross ?? 0;
   const oneTimeVat = byFrequency.get('ONE_TIME')?.vat ?? 0;
-  const hourlyGross = byFrequency.get('HOURLY')?.gross ?? 0;
-  const hourlyVat = byFrequency.get('HOURLY')?.vat ?? 0;
   const quotedGross = oneTimeGross + hourlyGross;
   const quotedVat = oneTimeVat + hourlyVat;
   const monthlyGross =
@@ -84,6 +102,14 @@ export function computeSigningCostSummary(proposal: PublicProposalRecord): Signi
         : 'Due today (one-off fees)';
   const dueToday =
     quotedGross > 0 ? { amount: quotedGross, vatAmount: quotedVat, label: dueTodayLabel } : null;
+  const variableHourly =
+    variableGross > 0
+      ? {
+          amount: variableGross,
+          vatAmount: variableVat,
+          label: 'Estimated monthly fee (hours worked)',
+        }
+      : null;
 
   let recurring: SigningCostBreakdown['recurring'] = null;
   if (monthlyGross > 0) {
@@ -113,6 +139,14 @@ export function computeSigningCostSummary(proposal: PublicProposalRecord): Signi
   }
 
   if (!dueToday && !recurring) {
+    if (variableHourly) {
+      return {
+        dueToday: null,
+        recurring: null,
+        variableHourly,
+        primaryFrequency: 'HOURLY',
+      };
+    }
     const paymentFrequency = String(proposal.paymentFrequency || 'MONTHLY').toUpperCase();
     if (paymentFrequency === 'ONE_TIME' || paymentFrequency === 'HOURLY') {
       return {
@@ -123,6 +157,7 @@ export function computeSigningCostSummary(proposal: PublicProposalRecord): Signi
             paymentFrequency === 'HOURLY' ? 'Due today (hourly fees)' : 'Due today (one-off fees)',
         },
         recurring: null,
+        variableHourly: null,
         primaryFrequency: paymentFrequency,
       };
     }
@@ -136,6 +171,7 @@ export function computeSigningCostSummary(proposal: PublicProposalRecord): Signi
           periodPhrase: 'per year',
           frequency: 'ANNUALLY',
         },
+        variableHourly: null,
         primaryFrequency: 'ANNUALLY',
       };
     }
@@ -148,6 +184,7 @@ export function computeSigningCostSummary(proposal: PublicProposalRecord): Signi
         periodPhrase: 'per month',
         frequency: 'MONTHLY',
       },
+      variableHourly: null,
       primaryFrequency: 'MONTHLY',
     };
   }
@@ -155,6 +192,7 @@ export function computeSigningCostSummary(proposal: PublicProposalRecord): Signi
   return {
     dueToday,
     recurring,
+    variableHourly,
     primaryFrequency: recurring?.frequency ?? 'ONE_TIME',
   };
 }
@@ -209,6 +247,11 @@ export function formatSigningCostPhrase(cost: SigningCostBreakdown): string {
       cost.recurring.periodPhrase === 'in total' ? '' : ` ${cost.recurring.periodPhrase}`;
     parts.push(
       `${cost.recurring.label}: £${cost.recurring.amount.toFixed(2)}${period} (including VAT of £${cost.recurring.vatAmount.toFixed(2)}).`
+    );
+  }
+  if (cost.variableHourly) {
+    parts.push(
+      `${cost.variableHourly.label}: £${cost.variableHourly.amount.toFixed(2)} (including VAT of £${cost.variableHourly.vatAmount.toFixed(2)}). This is an estimate. The client is invoiced each month for the hours actually worked.`
     );
   }
   return parts.join(' ');

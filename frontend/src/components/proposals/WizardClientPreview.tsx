@@ -5,6 +5,8 @@ interface PreviewService {
   name: string;
   displayPrice: number;
   billingFrequency: string;
+  quantity?: number;
+  hourlyBillingMode?: string;
 }
 
 interface WizardClientPreviewProps {
@@ -43,7 +45,11 @@ export default function WizardClientPreview({
   emailBody,
   mode = 'proposal',
 }: WizardClientPreviewProps) {
-  const total = services.reduce((sum, s) => sum + (s.displayPrice || 0), 0);
+  const lineAmount = (s: PreviewService) => {
+    const qty = s.quantity && s.quantity > 0 ? s.quantity : 1;
+    return s.billingFrequency === 'HOURLY' ? (s.displayPrice || 0) * qty : s.displayPrice || 0;
+  };
+  const total = services.reduce((sum, s) => sum + lineAmount(s), 0);
 
   return (
     <div className="h-full rounded-xl border border-slate-200/80 dark:border-slate-700/80 bg-white dark:bg-slate-900/80 overflow-hidden flex flex-col shadow-inner">
@@ -131,9 +137,13 @@ export default function WizardClientPreview({
                   >
                     <span className="text-slate-800 dark:text-slate-200">{s.name}</span>
                     <span className="text-slate-900 dark:text-white font-medium tabular-nums shrink-0">
-                      {formatCurrency(s.displayPrice)}
+                      {formatCurrency(lineAmount(s))}
                       <span className="text-[10px] text-slate-500 font-normal ml-1">
-                        {FREQ_LABELS[s.billingFrequency] || s.billingFrequency?.toLowerCase()}
+                        {s.billingFrequency === 'HOURLY' && s.hourlyBillingMode === 'MONTHLY_ACTUAL'
+                          ? 'estimated per month'
+                          : s.billingFrequency === 'HOURLY' && (s.quantity || 1) > 1
+                            ? `for ${s.quantity} hours`
+                            : FREQ_LABELS[s.billingFrequency] || s.billingFrequency?.toLowerCase()}
                       </span>
                     </span>
                   </div>

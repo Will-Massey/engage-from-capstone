@@ -74,6 +74,15 @@ export function convertPriceBetweenCadences(
   return roundMoney(periods ? annual / periods : price);
 }
 
+export const CADENCE_AMOUNT_NOT_CONVERTED =
+  'This amount was not converted. Please check it is right for the new frequency.';
+
+/** Hourly is a rate, so switching to or from it keeps the number as typed. */
+export function cadenceSwitchNeedsAmountCheck(from?: string | null, to?: string | null): boolean {
+  if (!from || !to || from === to) return false;
+  return from === 'HOURLY' || to === 'HOURLY';
+}
+
 export function cadencePeriodLabel(cadence: string): string {
   const opt = BILLING_CADENCE_OPTIONS.find((o) => o.value === cadence);
   return opt?.label || 'Monthly';

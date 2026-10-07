@@ -31,6 +31,8 @@ import { stripLeadingGreetings } from '@shared/coverLetter';
 import { toast } from 'react-hot-toast';
 import BillingCadenceSelector from '../BillingCadenceSelector';
 import {
+  CADENCE_AMOUNT_NOT_CONVERTED,
+  cadenceSwitchNeedsAmountCheck,
   convertPriceBetweenCadences,
   parseFrequencyOptions,
   type BillingCadence,
@@ -62,7 +64,9 @@ import { AI_COPILOT } from '../../../config/aiCopilot';
 import {
   annualEquivalentFor,
   calculateLineItem,
+  isMonthlyActualHourly,
   monthlyEquivalentFor,
+  normaliseHourlyBillingMode,
   vatAmountFor,
   type BillingFrequency,
 } from '@shared/pricingEngine';
@@ -125,6 +129,7 @@ function periodLabelSentenceCase(freq: string): string {
 
 /** Average monthly cash flow (inc VAT) for a recurring line; one-off → 0 */
 function recurringMonthlyEquivalentIncVat(s: SelectedService): number {
+  if (isMonthlyActualHourly(s.billingCycle, s.hourlyBillingMode)) return s.grossTotal;
   return monthlyEquivalentFor(s.grossTotal, s.billingCycle);
 }
 
@@ -364,6 +369,7 @@ export function ProposalBuilderProvider({ proposalId, children }: ProposalBuilde
   // Catch-up fee mini-form (per recurring line)
   const [catchUpForId, setCatchUpForId] = useState<string | null>(null);
   const [catchUpMonths, setCatchUpMonths] = useState(3);
+  const [catchUpHours, setCatchUpHours] = useState(1);
   const [catchUpDiscount, setCatchUpDiscount] = useState(0);
 
   // Edit form state
@@ -374,6 +380,8 @@ export function ProposalBuilderProvider({ proposalId, children }: ProposalBuilde
     vatRate: number;
     billingCycle: string;
     oneOffDueDate: string;
+    hourlyBillingMode: 'ONE_OFF' | 'MONTHLY_ACTUAL';
+    amountNeedsCheck: boolean;
   }>({
     displayPrice: 0,
     quantity: 1,
@@ -381,6 +389,8 @@ export function ProposalBuilderProvider({ proposalId, children }: ProposalBuilde
     vatRate: 20,
     billingCycle: 'MONTHLY',
     oneOffDueDate: '',
+    hourlyBillingMode: 'ONE_OFF',
+    amountNeedsCheck: false,
   });
 
   // Step 3: Review
@@ -965,6 +975,7 @@ export function ProposalBuilderProvider({ proposalId, children }: ProposalBuilde
         quantity,
         discountPercent: discount,
         vatRate: includeVat ? vatRate : 0,
+        hourlyBillingMode: editForm.hourlyBillingMode,
       });
 
       return {
@@ -974,6 +985,9 @@ export function ProposalBuilderProvider({ proposalId, children }: ProposalBuilde
         discountPercent: discount,
         vatRate,
         billingCycle: editForm.billingCycle,
+        hourlyBillingMode:
+          editForm.billingCycle === 'HOURLY' ? editForm.hourlyBillingMode : undefined,
+        amountNeedsCheck: editForm.amountNeedsCheck,
         lineTotal: line.netTotal,
         vatAmount: line.vatAmount,
         grossTotal: line.grossTotal,
@@ -1000,6 +1014,7 @@ export function ProposalBuilderProvider({ proposalId, children }: ProposalBuilde
         lineTotal: s.lineTotal,
         vatAmount: s.vatAmount,
         grossTotal: s.grossTotal,
+        hourlyBillingMode: s.hourlyBillingMode,
       }))
     );
   }, [selectedServices, editingService, getEditingPreview]);
@@ -1017,7 +1032,8 @@ export function ProposalBuilderProvider({ proposalId, children }: ProposalBuilde
     quantity: number,
     discountPercent: number,
     vatRate: number,
-    billingCycle: string
+    billingCycle: string,
+    hourlyBillingMode?: string | null
   ) => {
     const line = calculateLineItem({
       basePrice: price,
@@ -1025,6 +1041,7 @@ export function ProposalBuilderProvider({ proposalId, children }: ProposalBuilde
       quantity,
       discountPercent,
       vatRate: includeVat ? vatRate : 0,
+      hourlyBillingMode,
     });
     return {
       lineTotal: line.netTotal,
@@ -1039,17 +1056,33 @@ export function ProposalBuilderProvider({ proposalId, children }: ProposalBuilde
       prev.map((s) => {
         if (s.id !== id) return s;
         const newPrice = convertPriceBetweenCadences(s.displayPrice, s.billingCycle, newCadence);
-        const totals = recalcLine(newPrice, s.quantity, s.discountPercent, s.vatRate, newCadence);
+        const needsCheck = cadenceSwitchNeedsAmountCheck(s.billingCycle, newCadence);
+        const hourlyBillingMode =
+          newCadence === 'HOURLY' ? normaliseHourlyBillingMode(s.hourlyBillingMode) : undefined;
+        const totals = recalcLine(
+          newPrice,
+          s.quantity,
+          s.discountPercent,
+          s.vatRate,
+          newCadence,
+          hourlyBillingMode
+        );
         return {
           ...s,
           billingCycle: newCadence,
           displayPrice: newPrice,
           priceAmount: newPrice,
+          hourlyBillingMode,
+          amountNeedsCheck: needsCheck,
           ...totals,
           oneOffDueDate: newCadence === 'ONE_TIME' ? s.oneOffDueDate || '' : undefined,
         };
       })
     );
+    const current = selectedServices.find((s) => s.id === id);
+    if (current && cadenceSwitchNeedsAmountCheck(current.billingCycle, newCadence)) {
+      toast(CADENCE_AMOUNT_NOT_CONVERTED);
+    }
     if (editingService === id) {
       const svc = selectedServices.find((s) => s.id === id);
       if (svc) {
@@ -1062,6 +1095,9 @@ export function ProposalBuilderProvider({ proposalId, children }: ProposalBuilde
           ...f,
           billingCycle: newCadence,
           displayPrice: newPrice,
+          hourlyBillingMode:
+            newCadence === 'HOURLY' ? normaliseHourlyBillingMode(f.hourlyBillingMode) : 'ONE_OFF',
+          amountNeedsCheck: cadenceSwitchNeedsAmountCheck(svc.billingCycle, newCadence),
           oneOffDueDate: newCadence === 'ONE_TIME' ? f.oneOffDueDate : '',
         }));
       }
@@ -1074,12 +1110,13 @@ export function ProposalBuilderProvider({ proposalId, children }: ProposalBuilde
     if (!source) return;
     const line = buildCatchUpLine(source, {
       months: catchUpMonths,
+      hours: catchUpHours,
       discountPercent: catchUpDiscount,
       includeVat,
       todayIso,
     });
     if (!line) {
-      toast.error('Catch-up fees apply to recurring lines only');
+      toast.error('Catch-up needs a recurring fee or an hourly rate');
       return;
     }
     setSelectedServices((prev) => {
@@ -1437,6 +1474,8 @@ export function ProposalBuilderProvider({ proposalId, children }: ProposalBuilde
       vatRate: service.vatRate,
       billingCycle: service.billingCycle,
       oneOffDueDate: service.oneOffDueDate || '',
+      hourlyBillingMode: normaliseHourlyBillingMode(service.hourlyBillingMode),
+      amountNeedsCheck: Boolean(service.amountNeedsCheck),
     });
   };
 
@@ -1458,6 +1497,7 @@ export function ProposalBuilderProvider({ proposalId, children }: ProposalBuilde
           quantity,
           discountPercent: discount,
           vatRate: includeVat ? vatRate : 0,
+          hourlyBillingMode: editForm.hourlyBillingMode,
         });
 
         return {
@@ -1467,6 +1507,9 @@ export function ProposalBuilderProvider({ proposalId, children }: ProposalBuilde
           discountPercent: discount,
           vatRate,
           billingCycle: editForm.billingCycle,
+          hourlyBillingMode:
+            editForm.billingCycle === 'HOURLY' ? editForm.hourlyBillingMode : undefined,
+          amountNeedsCheck: price !== s.displayPrice ? false : editForm.amountNeedsCheck,
           lineTotal: line.netTotal,
           vatAmount: line.vatAmount,
           grossTotal: line.grossTotal,
@@ -1607,7 +1650,7 @@ export function ProposalBuilderProvider({ proposalId, children }: ProposalBuilde
     displayPrice: number,
     quantity: number,
     discountPercent: number,
-    snapshot?: { name?: string; description?: string | null }
+    snapshot?: { name?: string; description?: string | null; hourlyBillingMode?: string | null }
   ): SelectedService => {
     const annualEquivalent = calculateAnnualEquivalent(displayPrice, billingFrequency);
     const grossLine = displayPrice * quantity;
@@ -1644,6 +1687,10 @@ export function ProposalBuilderProvider({ proposalId, children }: ProposalBuilde
       grossTotal: lineTotal + vatAmount,
       allowedCadences,
       oneOffDueDate: billingFrequency === 'ONE_TIME' ? '' : undefined,
+      hourlyBillingMode:
+        billingFrequency === 'HOURLY'
+          ? normaliseHourlyBillingMode(snapshot?.hourlyBillingMode)
+          : undefined,
     };
   };
 
@@ -1701,7 +1748,11 @@ export function ProposalBuilderProvider({ proposalId, children }: ProposalBuilde
             item.displayPrice ?? catalogue.priceAmount,
             item.quantity ?? 1,
             item.discountPercent ?? 0,
-            { name: item.name, description: item.description }
+            {
+              name: item.name,
+              description: item.description,
+              hourlyBillingMode: item.hourlyBillingMode,
+            }
           )
         );
       }
@@ -1817,6 +1868,8 @@ export function ProposalBuilderProvider({ proposalId, children }: ProposalBuilde
             svc.serviceTemplate?.frequencyOptions || svc.frequencyOptions
           ),
           oneOffDueDate: svc.oneOffDueDate ? String(svc.oneOffDueDate).slice(0, 10) : undefined,
+          hourlyBillingMode:
+            freq === 'HOURLY' ? normaliseHourlyBillingMode(svc.hourlyBillingMode) : undefined,
         };
       });
       setSelectedServices(lines);
@@ -2037,6 +2090,7 @@ export function ProposalBuilderProvider({ proposalId, children }: ProposalBuilde
                   setEditForm({
                     ...editForm,
                     displayPrice: parseDecimalInput(next, editForm.displayPrice),
+                    amountNeedsCheck: false,
                   });
                 }}
                 className="w-full px-2 py-1 text-sm border rounded dark:bg-slate-800 dark:border-slate-600"
@@ -2046,7 +2100,11 @@ export function ProposalBuilderProvider({ proposalId, children }: ProposalBuilde
             {/* Quantity */}
             <div>
               <label className="block text-[10px] uppercase tracking-wide text-slate-500 dark:text-slate-300 mb-0.5">
-                {editForm.billingCycle === 'HOURLY' ? 'Hours' : 'Qty'}
+                {editForm.billingCycle === 'HOURLY'
+                  ? editForm.hourlyBillingMode === 'MONTHLY_ACTUAL'
+                    ? 'Est. hours'
+                    : 'Hours'
+                  : 'Qty'}
               </label>
               <input
                 type="number"
@@ -2109,16 +2167,58 @@ export function ProposalBuilderProvider({ proposalId, children }: ProposalBuilde
                     editForm.billingCycle,
                     cadence
                   );
+                  const needsCheck = cadenceSwitchNeedsAmountCheck(editForm.billingCycle, cadence);
+                  if (needsCheck) toast(CADENCE_AMOUNT_NOT_CONVERTED);
                   setEditForm({
                     ...editForm,
                     billingCycle: cadence,
                     displayPrice: newPrice,
+                    hourlyBillingMode:
+                      cadence === 'HOURLY'
+                        ? normaliseHourlyBillingMode(editForm.hourlyBillingMode)
+                        : 'ONE_OFF',
+                    amountNeedsCheck: needsCheck,
                     oneOffDueDate: cadence === 'ONE_TIME' ? editForm.oneOffDueDate : '',
                   });
                 }}
               />
             </div>
           </div>
+
+          {editForm.amountNeedsCheck && (
+            <p className="text-xs text-amber-800 dark:text-amber-200" role="status">
+              {CADENCE_AMOUNT_NOT_CONVERTED}
+            </p>
+          )}
+
+          {editForm.billingCycle === 'HOURLY' && (
+            <div>
+              <label className="block text-[10px] uppercase tracking-wide text-slate-500 dark:text-slate-300 mb-0.5">
+                How hourly is charged
+              </label>
+              <select
+                data-testid="edit-hourly-mode"
+                value={editForm.hourlyBillingMode}
+                onChange={(e) =>
+                  setEditForm({
+                    ...editForm,
+                    hourlyBillingMode:
+                      e.target.value === 'MONTHLY_ACTUAL' ? 'MONTHLY_ACTUAL' : 'ONE_OFF',
+                  })
+                }
+                className="w-full max-w-md px-2 py-1 text-sm border rounded dark:bg-slate-800 dark:border-slate-600"
+              >
+                <option value="ONE_OFF">One-off block of hours</option>
+                <option value="MONTHLY_ACTUAL">Each month, for hours worked (estimate)</option>
+              </select>
+              {editForm.hourlyBillingMode === 'MONTHLY_ACTUAL' && (
+                <p className="mt-1 text-xs text-slate-600 dark:text-slate-300">
+                  Estimate only. The client is invoiced each month for the hours actually worked.
+                  This is not a fixed monthly fee.
+                </p>
+              )}
+            </div>
+          )}
 
           {editForm.billingCycle === 'ONE_TIME' && (
             <div>
@@ -2149,7 +2249,9 @@ export function ProposalBuilderProvider({ proposalId, children }: ProposalBuilde
                 {editForm.billingCycle === 'ONE_TIME'
                   ? ' one-time'
                   : editForm.billingCycle === 'HOURLY'
-                    ? ` for ${editForm.quantity} hour${editForm.quantity === 1 ? '' : 's'}`
+                    ? editForm.hourlyBillingMode === 'MONTHLY_ACTUAL'
+                      ? ` estimate for ${editForm.quantity} hour${editForm.quantity === 1 ? '' : 's'} a month`
+                      : ` for ${editForm.quantity} hour${editForm.quantity === 1 ? '' : 's'}`
                     : `/${BILLING_FREQUENCY_LABELS[editForm.billingCycle] || 'month'}`}
               </span>
             </span>
@@ -2175,7 +2277,7 @@ export function ProposalBuilderProvider({ proposalId, children }: ProposalBuilde
             </h4>
             <p className="text-xs text-slate-500 dark:text-slate-300 dark:text-slate-300">
               {service.billingCycle === 'HOURLY'
-                ? `${service.quantity} hour${service.quantity === 1 ? '' : 's'} × ${formatCurrency(service.displayPrice)}`
+                ? `${isMonthlyActualHourly(service.billingCycle, service.hourlyBillingMode) ? 'Estimate: ' : ''}${service.quantity} hour${service.quantity === 1 ? '' : 's'} × ${formatCurrency(service.displayPrice)}`
                 : `${service.quantity} × ${formatCurrency(service.displayPrice)}`}
               {service.discountPercent > 0 && (
                 <span className="text-amber-600"> · −{service.discountPercent}%</span>
@@ -2248,7 +2350,48 @@ export function ProposalBuilderProvider({ proposalId, children }: ProposalBuilde
             allowedCadences={service.allowedCadences}
             onChange={(cadence) => changeServiceCadence(service.id, cadence)}
           />
+          {service.billingCycle === 'HOURLY' && (
+            <select
+              data-testid="hourly-mode-select"
+              value={normaliseHourlyBillingMode(service.hourlyBillingMode)}
+              onChange={(e) => {
+                const hourlyBillingMode =
+                  e.target.value === 'MONTHLY_ACTUAL' ? 'MONTHLY_ACTUAL' : 'ONE_OFF';
+                setSelectedServices((prev) =>
+                  prev.map((s) =>
+                    s.id === service.id
+                      ? {
+                          ...s,
+                          hourlyBillingMode,
+                          annualEquivalent: calculateLineItem({
+                            basePrice: s.displayPrice,
+                            billingFrequency: 'HOURLY',
+                            quantity: 1,
+                            vatRate: 0,
+                            hourlyBillingMode,
+                          }).annualEquivalent,
+                        }
+                      : s
+                  )
+                );
+              }}
+              className="px-2 py-1 text-xs border rounded dark:bg-slate-800 dark:border-slate-600"
+            >
+              <option value="ONE_OFF">One-off block of hours</option>
+              <option value="MONTHLY_ACTUAL">Each month, hours worked (estimate)</option>
+            </select>
+          )}
         </div>
+        {service.amountNeedsCheck && (
+          <p className="text-xs text-amber-800 dark:text-amber-200" role="status">
+            {CADENCE_AMOUNT_NOT_CONVERTED}
+          </p>
+        )}
+        {isMonthlyActualHourly(service.billingCycle, service.hourlyBillingMode) && (
+          <p className="text-xs text-slate-600 dark:text-slate-300">
+            Estimate only. Invoiced each month for the hours actually worked, not a fixed fee.
+          </p>
+        )}
 
         {service.billingCycle !== 'ONE_TIME' &&
           service.displayPrice * service.quantity > 0 &&
@@ -2256,17 +2399,29 @@ export function ProposalBuilderProvider({ proposalId, children }: ProposalBuilde
             <div className="flex flex-wrap items-end gap-2 pt-2 border-t border-slate-200/80 dark:border-slate-700/80">
               <div>
                 <label className="block text-[10px] uppercase tracking-wide text-slate-500 dark:text-slate-300 mb-0.5">
-                  Months behind
+                  {service.billingCycle === 'HOURLY' ? 'Hours' : 'Months behind'}
                 </label>
-                <input
-                  data-testid="catch-up-months"
-                  type="number"
-                  min={1}
-                  max={24}
-                  value={catchUpMonths}
-                  onChange={(e) => setCatchUpMonths(Number(e.target.value))}
-                  className="w-20 px-2 py-1 text-sm border rounded dark:bg-slate-800 dark:border-slate-600"
-                />
+                {service.billingCycle === 'HOURLY' ? (
+                  <input
+                    data-testid="catch-up-hours"
+                    type="number"
+                    min={1}
+                    max={999}
+                    value={catchUpHours}
+                    onChange={(e) => setCatchUpHours(Number(e.target.value))}
+                    className="w-20 px-2 py-1 text-sm border rounded dark:bg-slate-800 dark:border-slate-600"
+                  />
+                ) : (
+                  <input
+                    data-testid="catch-up-months"
+                    type="number"
+                    min={1}
+                    max={24}
+                    value={catchUpMonths}
+                    onChange={(e) => setCatchUpMonths(Number(e.target.value))}
+                    className="w-20 px-2 py-1 text-sm border rounded dark:bg-slate-800 dark:border-slate-600"
+                  />
+                )}
               </div>
               <div>
                 <label className="block text-[10px] uppercase tracking-wide text-slate-500 dark:text-slate-300 mb-0.5">
@@ -2287,12 +2442,15 @@ export function ProposalBuilderProvider({ proposalId, children }: ProposalBuilde
                 {formatCurrency(
                   buildCatchUpLine(service, {
                     months: catchUpMonths,
+                    hours: catchUpHours,
                     discountPercent: catchUpDiscount,
                     includeVat,
                     todayIso,
                   })?.grossTotal || 0
                 )}{' '}
-                one-time inc VAT
+                {service.billingCycle === 'HOURLY'
+                  ? 'for the quoted hours, inc VAT'
+                  : 'one-time inc VAT'}
               </span>
               <button
                 data-testid="catch-up-add"
@@ -2317,6 +2475,7 @@ export function ProposalBuilderProvider({ proposalId, children }: ProposalBuilde
               onClick={() => {
                 setCatchUpForId(service.id);
                 setCatchUpMonths(3);
+                setCatchUpHours(Math.max(1, Math.round(service.quantity || 1)));
                 setCatchUpDiscount(0);
               }}
               className="text-xs text-primary-600 dark:text-primary-400 hover:underline"

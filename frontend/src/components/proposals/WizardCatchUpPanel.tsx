@@ -1,7 +1,8 @@
 import { formatCurrency } from '../../utils/formatters';
 import {
   DEFAULT_WIZARD_CATCH_UP,
-  isRecurringWizardFrequency,
+  isCatchUpEligibleFrequency,
+  isHourlyCatchUpFrequency,
   previewCatchUpNet,
   type WizardCatchUpDraft,
   type WizardCatchUpSource,
@@ -14,8 +15,8 @@ type Props = {
 };
 
 export default function WizardCatchUpPanel({ services, drafts, onChange }: Props) {
-  const recurring = services.filter((s) => isRecurringWizardFrequency(s.billingFrequency));
-  if (recurring.length === 0) return null;
+  const eligible = services.filter((s) => isCatchUpEligibleFrequency(s.billingFrequency));
+  if (eligible.length === 0) return null;
 
   return (
     <div
@@ -28,8 +29,9 @@ export default function WizardCatchUpPanel({ services, drafts, onChange }: Props
           If the client is behind on their books, add a one-off before the ongoing fee starts.
         </p>
       </div>
-      {recurring.map((service) => {
+      {eligible.map((service) => {
         const draft = drafts[service.serviceId] || DEFAULT_WIZARD_CATCH_UP;
+        const hourly = isHourlyCatchUpFrequency(service.billingFrequency);
         const net = previewCatchUpNet(service, draft);
         return (
           <div
@@ -56,23 +58,43 @@ export default function WizardCatchUpPanel({ services, drafts, onChange }: Props
             </label>
             {draft.enabled && (
               <div className="mt-2 flex flex-wrap items-end gap-3">
-                <label className="text-xs text-slate-500">
-                  Months behind
-                  <input
-                    type="number"
-                    min={1}
-                    max={24}
-                    className="input-field mt-1 w-20"
-                    data-testid={`catch-up-months-${service.serviceId}`}
-                    value={draft.months}
-                    onChange={(e) =>
-                      onChange(service.serviceId, {
-                        ...draft,
-                        months: Number(e.target.value) || 1,
-                      })
-                    }
-                  />
-                </label>
+                {hourly ? (
+                  <label className="text-xs text-slate-500">
+                    Hours
+                    <input
+                      type="number"
+                      min={1}
+                      max={999}
+                      className="input-field mt-1 w-20"
+                      data-testid={`catch-up-hours-${service.serviceId}`}
+                      value={draft.hours ?? service.quantity ?? 1}
+                      onChange={(e) =>
+                        onChange(service.serviceId, {
+                          ...draft,
+                          hours: Number(e.target.value) || 1,
+                        })
+                      }
+                    />
+                  </label>
+                ) : (
+                  <label className="text-xs text-slate-500">
+                    Months behind
+                    <input
+                      type="number"
+                      min={1}
+                      max={24}
+                      className="input-field mt-1 w-20"
+                      data-testid={`catch-up-months-${service.serviceId}`}
+                      value={draft.months}
+                      onChange={(e) =>
+                        onChange(service.serviceId, {
+                          ...draft,
+                          months: Number(e.target.value) || 1,
+                        })
+                      }
+                    />
+                  </label>
+                )}
                 <label className="text-xs text-slate-500">
                   Discount %
                   <input
@@ -91,7 +113,7 @@ export default function WizardCatchUpPanel({ services, drafts, onChange }: Props
                 </label>
                 {net != null && (
                   <p className="text-sm font-medium tabular-nums text-emerald-800 dark:text-emerald-200">
-                    {formatCurrency(net)} one-off
+                    {formatCurrency(net)} {hourly ? 'for the quoted hours' : 'one-off'}
                   </p>
                 )}
               </div>

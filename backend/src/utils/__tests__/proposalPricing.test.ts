@@ -34,6 +34,40 @@ describe('proposalPricing', () => {
     expect(record.lineTotalPence).toBe(34000);
     expect(record.vatAmountPence).toBe(6800);
     expect(record.grossTotalPence).toBe(40800);
+    expect(record.hourlyBillingMode).toBeNull();
+  });
+
+  it('stores a one-off hourly block and a monthly hours estimate', () => {
+    const block = buildProposalServiceRecord(
+      {
+        serviceId: 'svc-h',
+        displayPrice: 75,
+        billingFrequency: 'HOURLY',
+        quantity: 4,
+        vatRate: 0,
+      },
+      { id: 'svc-h', name: 'Advisory', priceAmount: 75 },
+      parseOneOffDueDate
+    );
+    expect(block.hourlyBillingMode).toBe('ONE_OFF');
+    expect(block.lineTotalPence).toBe(30000);
+    expect(block.annualEquivalentPence).toBe(7500);
+
+    const estimate = buildProposalServiceRecord(
+      {
+        serviceId: 'svc-h',
+        displayPrice: 75,
+        billingFrequency: 'HOURLY',
+        quantity: 4,
+        vatRate: 0,
+        hourlyBillingMode: 'MONTHLY_ACTUAL',
+      },
+      { id: 'svc-h', name: 'Advisory', priceAmount: 75 },
+      parseOneOffDueDate
+    );
+    expect(estimate.hourlyBillingMode).toBe('MONTHLY_ACTUAL');
+    expect(estimate.lineTotalPence).toBe(30000);
+    expect(estimate.annualEquivalentPence).toBe(90000);
   });
 
   // Money invariants. Storage is integer pence only (Stage 2 of the pence

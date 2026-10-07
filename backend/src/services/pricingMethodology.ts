@@ -142,9 +142,22 @@ const FEE_BAND_TOLERANCE = 0.1; // ±10%
 
 // ─── Helpers ───────────────────────────────────────────────────────────────
 
-function annualFromBilling(basePrice: number, billingCycle: string): number {
+function annualFromBilling(basePrice: number, billingCycle: string, baseHours = 1): number {
+  if (billingCycle === 'HOURLY') {
+    const hours = baseHours > 0 ? baseHours : 1;
+    return annualEquivalentFor(basePrice, 'HOURLY', { hourly: 'quoted', quantity: hours });
+  }
   // One-offs count at face value in fee methodology (amortised, not excluded)
   return annualEquivalentFor(basePrice, billingCycle, { oneTime: 'amortised' });
+}
+
+/** Annual fee methodology for a catalogue price. Hourly uses rate times hours. */
+export function annualEquivalentForCatalogPrice(
+  basePrice: number,
+  billingCycle: string,
+  baseHours = 1
+): number {
+  return annualFromBilling(basePrice, billingCycle, baseHours);
 }
 
 function monthlyEquivalent(annual: number): number {
@@ -360,7 +373,9 @@ function calculateServiceFee(
   const feeLow = Math.round(Number((rounded * (1 - FEE_BAND_TOLERANCE)).toFixed(2)));
   const feeHigh = Math.round(Number((rounded * (1 + FEE_BAND_TOLERANCE)).toFixed(2)));
   const annualEquivalent =
-    service.annualEquivalent ?? annualFromBilling(service.basePrice, service.billingCycle);
+    service.billingCycle === 'HOURLY'
+      ? annualFromBilling(service.basePrice, 'HOURLY', service.baseHours)
+      : (service.annualEquivalent ?? annualFromBilling(service.basePrice, service.billingCycle));
   const adjustedAnnual = Math.round(
     annualEquivalent *
       (usesTurnoverMultiplier(service) ? turnoverMeta.multiplier : 1) *

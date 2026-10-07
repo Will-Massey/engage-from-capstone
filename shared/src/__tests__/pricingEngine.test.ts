@@ -52,10 +52,25 @@ describe('annualEquivalentFor', () => {
     expect(annualEquivalentFor(500, 'ONE_TIME', { oneTime: 'amortised' })).toBe(500);
   });
 
-  it('does not annualise an hourly rate', () => {
+  it('leaves a bare hourly rate out of monthly comparisons unless the quoted fee is requested', () => {
     expect(annualEquivalentFor(75, 'HOURLY')).toBe(0);
     expect(annualEquivalentFor(75, 'HOURLY', { oneTime: 'amortised' })).toBe(0);
     expect(monthlyEquivalentFor(75, 'HOURLY')).toBe(0);
+    expect(annualEquivalentFor(75, 'HOURLY', { hourly: 'quoted', quantity: 4 })).toBe(300);
+    expect(
+      annualEquivalentFor(75, 'HOURLY', {
+        hourly: 'quoted',
+        quantity: 4,
+        hourlyBillingMode: 'MONTHLY_ACTUAL',
+      })
+    ).toBe(3600);
+    expect(
+      monthlyEquivalentFor(75, 'HOURLY', {
+        hourly: 'quoted',
+        quantity: 4,
+        hourlyBillingMode: 'MONTHLY_ACTUAL',
+      })
+    ).toBe(300);
   });
 
   it('treats unknown frequencies as MONTHLY (engine historical default)', () => {
@@ -64,10 +79,14 @@ describe('annualEquivalentFor', () => {
   });
 
   it('matches calculateLineItem annualEquivalent for every frequency', () => {
-    for (const f of ['WEEKLY', 'MONTHLY', 'QUARTERLY', 'ANNUALLY', 'ONE_TIME', 'HOURLY'] as const) {
+    for (const f of ['WEEKLY', 'MONTHLY', 'QUARTERLY', 'ANNUALLY', 'ONE_TIME'] as const) {
       const line = calculateLineItem({ basePrice: 250, billingFrequency: f });
       expect(line.annualEquivalent).toBe(annualEquivalentFor(250, f));
     }
+    const hourly = calculateLineItem({ basePrice: 250, billingFrequency: 'HOURLY' });
+    expect(hourly.annualEquivalent).toBe(
+      annualEquivalentFor(250, 'HOURLY', { hourly: 'quoted', quantity: 1 })
+    );
   });
 });
 
@@ -84,7 +103,7 @@ describe('monthlyEquivalentFor', () => {
 });
 
 describe('hourly line pricing', () => {
-  it('prices rate times hours and keeps the fee out of the annual equivalent', () => {
+  it('prices a one-off block as rate times hours and counts that fee once a year', () => {
     const line = calculateLineItem({
       basePrice: 75,
       billingFrequency: 'HOURLY',
@@ -95,7 +114,8 @@ describe('hourly line pricing', () => {
     expect(line.netTotal).toBe(300);
     expect(line.vatAmount).toBe(60);
     expect(line.grossTotal).toBe(360);
-    expect(line.annualEquivalent).toBe(0);
+    expect(line.hourlyBillingMode).toBe('ONE_OFF');
+    expect(line.annualEquivalent).toBe(75);
     expect(line.priceDisplayMode).toBe('PER_HOUR');
     expect(line.priceLabel).toBe('£75/hour');
     expect(isQuotedBillingFrequency('HOURLY')).toBe(true);
@@ -111,6 +131,22 @@ describe('hourly line pricing', () => {
     expect(totals.hourly.total).toBe(360);
     expect(totals.hourly.items).toHaveLength(1);
     expect(totals.grandTotal).toBe(460);
-    expect(totals.totalAnnualEquivalent).toBe(1200);
+    expect(totals.totalAnnualEquivalent).toBe(1500);
+  });
+
+  it('annualises a monthly hourly estimate as estimated hours times 12', () => {
+    const line = calculateLineItem({
+      basePrice: 75,
+      billingFrequency: 'HOURLY',
+      quantity: 4,
+      vatRate: 0,
+      hourlyBillingMode: 'MONTHLY_ACTUAL',
+    });
+    expect(line.netTotal).toBe(300);
+    expect(line.hourlyBillingMode).toBe('MONTHLY_ACTUAL');
+    expect(line.annualEquivalent).toBe(900);
+    const totals = calculateProposalTotals([line]);
+    expect(totals.hourly.total).toBe(300);
+    expect(totals.totalAnnualEquivalent).toBe(3600);
   });
 });

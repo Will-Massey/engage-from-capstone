@@ -29,6 +29,7 @@ const serviceConfigItemSchema = z.object({
   displayPrice: z.number().min(0),
   quantity: z.number().min(0.01).default(1),
   discountPercent: z.number().min(0).max(100).default(0),
+  hourlyBillingMode: z.enum(['ONE_OFF', 'MONTHLY_ACTUAL']).optional(),
 });
 
 const createFromProposalSchema = z.object({
@@ -55,6 +56,7 @@ type ParsedServiceConfigItem = {
   displayPrice?: number;
   quantity?: number;
   discountPercent?: number;
+  hourlyBillingMode?: 'ONE_OFF' | 'MONTHLY_ACTUAL';
 };
 
 function normalizeServiceConfigItem(raw: unknown): ParsedServiceConfigItem | null {
@@ -78,6 +80,10 @@ function normalizeServiceConfigItem(raw: unknown): ParsedServiceConfigItem | nul
     displayPrice: typeof item.displayPrice === 'number' ? item.displayPrice : undefined,
     quantity: typeof item.quantity === 'number' ? item.quantity : undefined,
     discountPercent: typeof item.discountPercent === 'number' ? item.discountPercent : undefined,
+    hourlyBillingMode:
+      item.hourlyBillingMode === 'MONTHLY_ACTUAL' || item.hourlyBillingMode === 'ONE_OFF'
+        ? item.hourlyBillingMode
+        : undefined,
   };
 }
 

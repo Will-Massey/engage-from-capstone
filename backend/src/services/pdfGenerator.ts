@@ -71,6 +71,7 @@ interface ProposalData {
     grossTotal?: number;
     frequency: string;
     oneOffDueDate?: Date | string | null;
+    hourlyBillingMode?: string | null;
   }>;
   tenant: {
     name: string;
@@ -882,12 +883,34 @@ ${senderPosition(proposal.createdBy) ? `${senderPosition(proposal.createdBy)}, `
       y += 20;
     }
 
-    if (grouped.hourly.length > 0) {
-      const hourlyWithVat = grouped.hourly.reduce((sum, s) => sum + lineIncVat(s), 0);
+    const hourlyQuoted = grouped.hourly.filter(
+      (s) => String(s.hourlyBillingMode || '').toUpperCase() !== 'MONTHLY_ACTUAL'
+    );
+    const hourlyEstimate = grouped.hourly.filter(
+      (s) => String(s.hourlyBillingMode || '').toUpperCase() === 'MONTHLY_ACTUAL'
+    );
+
+    if (hourlyQuoted.length > 0) {
+      const hourlyWithVat = hourlyQuoted.reduce((sum, s) => sum + lineIncVat(s), 0);
       doc
-        .text('Hourly fees:', rightX, y)
+        .text('Hourly fees (quoted hours):', rightX, y)
         .text(this.formatCurrency(hourlyWithVat), 490, y, { align: 'right' });
       y += 20;
+    }
+
+    if (hourlyEstimate.length > 0) {
+      const estimateWithVat = hourlyEstimate.reduce((sum, s) => sum + lineIncVat(s), 0);
+      doc
+        .text('Hourly estimate:', rightX, y)
+        .text(this.formatCurrency(estimateWithVat) + ' /month', 490, y, { align: 'right' });
+      y += 14;
+      doc
+        .fontSize(8)
+        .text('Estimate only. Invoiced each month for the hours actually worked.', rightX, y, {
+          width: 200,
+        });
+      y += 24;
+      doc.fontSize(10);
     }
 
     if (grouped.oneTime.length > 0) {

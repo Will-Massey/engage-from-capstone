@@ -59,6 +59,19 @@ export function InvestmentSummaryBands({ summary }: { summary: PricingSummary })
           </span>
         </div>
       )}
+      {summary.hourlyEstimate.count > 0 && (
+        <div className="flex justify-between items-baseline">
+          <span className="text-sm font-medium text-slate-800 dark:text-slate-100">
+            Hourly estimate
+          </span>
+          <span className="text-lg font-semibold text-slate-900 dark:text-white tabular-nums">
+            {formatCurrency(summary.hourlyEstimate.total)}
+            <span className="text-xs font-normal text-slate-500 dark:text-slate-300 ml-1">
+              est. /month
+            </span>
+          </span>
+        </div>
+      )}
       {summary.oneTime.count > 0 && (
         <div className="flex justify-between items-baseline">
           <span className="text-sm font-medium text-slate-800 dark:text-slate-100">One-time</span>

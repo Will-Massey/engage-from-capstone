@@ -164,8 +164,11 @@ export default function ProposalWizard() {
           : line.displayPrice;
         return {
           name: line.name,
-          displayPrice: net ?? line.displayPrice,
-          billingFrequency: 'ONE_TIME',
+          displayPrice:
+            line.billingFrequency === 'HOURLY' ? line.displayPrice : (net ?? line.displayPrice),
+          quantity: line.quantity,
+          billingFrequency: line.billingFrequency,
+          hourlyBillingMode: line.hourlyBillingMode,
         };
       }),
     ],

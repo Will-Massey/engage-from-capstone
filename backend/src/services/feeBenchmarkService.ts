@@ -38,7 +38,19 @@ export const TURNOVER_BAND_LABELS: Record<TurnoverBand, string> = {
  * Normalise line fees to a monthly GBP equivalent for comparison.
  * One-offs are amortised over a year — a £600 one-off benchmarks like £50/mo.
  */
-export function toMonthlyEquivalent(displayPrice: number, billingFrequency: string): number {
+export function toMonthlyEquivalent(
+  displayPrice: number,
+  billingFrequency: string,
+  options?: { quantity?: number; hourlyBillingMode?: string | null }
+): number {
+  if (String(billingFrequency || '').toUpperCase() === 'HOURLY') {
+    return monthlyEquivalentFor(displayPrice, 'HOURLY', {
+      oneTime: 'amortised',
+      hourly: 'quoted',
+      quantity: options?.quantity ?? 1,
+      hourlyBillingMode: options?.hourlyBillingMode,
+    });
+  }
   return monthlyEquivalentFor(displayPrice, billingFrequency, { oneTime: 'amortised' });
 }
 
@@ -170,7 +182,9 @@ export async function getFeeBenchmarks(query?: FeeBenchmarkQuery): Promise<FeeBe
     },
     select: {
       displayPricePence: true,
+      quantity: true,
       billingFrequency: true,
+      hourlyBillingMode: true,
       proposal: {
         select: {
           tenantId: true,
@@ -196,7 +210,11 @@ export async function getFeeBenchmarks(query?: FeeBenchmarkQuery): Promise<FeeBe
     const category = row.serviceTemplate?.category;
     if (!category) continue;
 
-    const monthly = toMonthlyEquivalent(penceToPounds(row.displayPricePence), row.billingFrequency);
+    const monthly = toMonthlyEquivalent(
+      penceToPounds(row.displayPricePence),
+      row.billingFrequency,
+      { quantity: row.quantity, hourlyBillingMode: row.hourlyBillingMode }
+    );
     if (!Number.isFinite(monthly) || monthly <= 0) continue;
 
     const bucket = buckets.get(category) || {

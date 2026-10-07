@@ -227,7 +227,7 @@ export default function OverviewTab() {
                   </div>
                   <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
                     {serviceFreq === 'HOURLY'
-                      ? `${service.quantity || 1} hour${(service.quantity || 1) === 1 ? '' : 's'} at ${formatCurrency(service.displayPrice || service.unitPrice || 0)}/hour`
+                      ? `${String(service.hourlyBillingMode || '').toUpperCase() === 'MONTHLY_ACTUAL' ? 'Estimate: ' : ''}${service.quantity || 1} hour${(service.quantity || 1) === 1 ? '' : 's'} at ${formatCurrency(service.displayPrice || service.unitPrice || 0)}/hour${String(service.hourlyBillingMode || '').toUpperCase() === 'MONTHLY_ACTUAL' ? ' each month (hours worked)' : ''}`
                       : getBillingFrequencyLabel(serviceFreq as BillingFrequency)}
                   </p>
                   {service.description && (

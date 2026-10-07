@@ -92,6 +92,14 @@ enum PricingFrequency {
   ANNUALLY
 }
 
+/// How an hourly line is charged. ONE_OFF is a quoted block collected once.
+/// MONTHLY_ACTUAL is an estimate of hours each month; the client is invoiced
+/// later for the hours actually worked, not a fixed subscription amount.
+enum HourlyBillingMode {
+  ONE_OFF
+  MONTHLY_ACTUAL
+}
+
 // New: How to display prices clearly
 enum PriceDisplayMode {
   PER_MONTH      // £71/month
@@ -839,6 +847,11 @@ model ProposalService {
 
   /// When this one-off charge is due (only meaningful for ONE_TIME lines)
   oneOffDueDate DateTime?
+
+  /// Only meaningful when billingFrequency is HOURLY. Null means ONE_OFF
+  /// (a quoted block of hours, charged once). MONTHLY_ACTUAL means the
+  /// quantity is an estimate of hours each month.
+  hourlyBillingMode HourlyBillingMode?
 
   // Relations
   proposalId String

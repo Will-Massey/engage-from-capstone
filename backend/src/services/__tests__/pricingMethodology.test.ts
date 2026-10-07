@@ -1,6 +1,7 @@
 import {
   suggestFees,
   resolveCatalogServices,
+  annualEquivalentForCatalogPrice,
   type PricingMethodologyInput,
 } from '../pricingMethodology.js';
 
@@ -62,6 +63,11 @@ describe('pricingMethodology', () => {
       complexity: { ...ltd250kPayroll.complexity, hasRd: true },
     });
     expect(withRd.services.some((s) => s.catalogName === 'R&D Tax Credit Claim')).toBe(true);
+  });
+
+  it('counts a quoted hourly fee as rate times hours', () => {
+    expect(annualEquivalentForCatalogPrice(75, 'HOURLY', 4)).toBe(300);
+    expect(annualEquivalentForCatalogPrice(75, 'MONTHLY', 4)).toBe(900);
   });
 
   it('applies multi-site uplift', () => {

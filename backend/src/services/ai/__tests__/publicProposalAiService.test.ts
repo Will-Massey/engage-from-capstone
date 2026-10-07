@@ -20,6 +20,7 @@ function mockProposal(
       vatAmountPence: s.vatAmountPence ?? 2000,
       billingFrequency: s.billingFrequency ?? 'MONTHLY',
       frequency: s.frequency ?? 'MONTHLY',
+      hourlyBillingMode: s.hourlyBillingMode ?? null,
       isOptional: s.isOptional ?? false,
       oneOffDueDate: null,
       serviceTemplateId: null,
@@ -104,6 +105,25 @@ describe('computeSigningCostSummary', () => {
     expect(summary.dueToday?.amount).toBe(360);
     expect(summary.dueToday?.label).toMatch(/hourly/i);
     expect(summary.recurring).toBeNull();
+  });
+
+  it('shows a monthly hourly line as an estimate, not due today', () => {
+    const summary = computeSigningCostSummary(
+      mockProposal([
+        {
+          name: 'Support',
+          grossTotalPence: 36000,
+          vatAmountPence: 6000,
+          billingFrequency: 'HOURLY',
+          hourlyBillingMode: 'MONTHLY_ACTUAL',
+        },
+      ])
+    );
+    expect(summary.dueToday).toBeNull();
+    expect(summary.recurring).toBeNull();
+    expect(summary.variableHourly?.amount).toBe(360);
+    expect(summary.variableHourly?.label).toMatch(/estimate/i);
+    expect(formatSigningCostPhrase(summary)).toMatch(/hours actually worked/i);
   });
 
   it('uses due today only for one-off proposals', () => {

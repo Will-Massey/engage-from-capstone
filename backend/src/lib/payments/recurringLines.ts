@@ -10,6 +10,8 @@ export interface ServiceLine {
   displayPrice: number; // GBP, price as shown (per the billing cycle)
   billingFrequency: string; // BillingCycle
   quantity?: number;
+  /** HOURLY only. MONTHLY_ACTUAL is an estimate, not a fixed charge. */
+  hourlyBillingMode?: string | null;
 }
 
 export interface StripeInterval {
@@ -28,6 +30,17 @@ export interface SplitResult {
   recurringGroups: RecurringGroup[];
 }
 
+/** Monthly hourly is invoiced later for the hours worked. Never a fixed Stripe price. */
+export function isVariableMonthlyHourly(line: {
+  billingFrequency: string;
+  hourlyBillingMode?: string | null;
+}): boolean {
+  return (
+    String(line.billingFrequency || '').toUpperCase() === 'HOURLY' &&
+    String(line.hourlyBillingMode || '').toUpperCase() === 'MONTHLY_ACTUAL'
+  );
+}
+
 /** UK billing cycle → Stripe recurring interval, or null if not recurring. */
 export function stripeIntervalFor(cycle: string): StripeInterval | null {
   switch (cycle) {
@@ -39,7 +52,8 @@ export function stripeIntervalFor(cycle: string): StripeInterval | null {
       return { interval: 'month', interval_count: 3 };
     case 'ANNUALLY':
       return { interval: 'year', interval_count: 1 };
-    // FIXED_DATE, ONE_TIME, and HOURLY are collected once (hourly is rate × hours).
+    // FIXED_DATE, ONE_TIME, and a one-off hourly block are collected once.
+    // MONTHLY_ACTUAL hourly is not a Stripe interval either (see splitRecurring).
     default:
       return null;
   }
@@ -56,6 +70,9 @@ export function splitRecurring(services: ServiceLine[]): SplitResult {
 
   for (const svc of services) {
     const qty = svc.quantity && svc.quantity > 0 ? svc.quantity : 1;
+    if (isVariableMonthlyHourly(svc)) {
+      continue;
+    }
     const interval = stripeIntervalFor(svc.billingFrequency);
     if (!interval) {
       oneOffPence += toPence(svc.displayPrice) * qty;
@@ -95,15 +112,22 @@ export function planRecurringCheckout(
     billingFrequency: string;
     /** Stored Int-pence line gross — authoritative (Stage 2). */
     grossTotalPence: number;
+    hourlyBillingMode?: string | null;
   }[],
   /** Stored Int-pence header total — authoritative (Stage 2). */
   proposalTotalPence: number
 ): RecurringPlan | null {
-  const lines: ServiceLine[] = services.map((s) => ({
+  const variablePence = services
+    .filter((s) => isVariableMonthlyHourly(s))
+    .reduce((sum, s) => sum + s.grossTotalPence, 0);
+  const collectableTotal = proposalTotalPence - variablePence;
+  const collectable = services.filter((s) => !isVariableMonthlyHourly(s));
+  const lines: ServiceLine[] = collectable.map((s) => ({
     name: s.name,
     displayPrice: s.grossTotalPence / 100,
     billingFrequency: s.billingFrequency,
     quantity: 1,
+    hourlyBillingMode: s.hourlyBillingMode,
   }));
   if (!hasRecurringLines(lines)) return null;
 
@@ -113,7 +137,7 @@ export function planRecurringCheckout(
   const group = split.recurringGroups[0];
   const sumPence =
     split.oneOffPence + group.lines.reduce((acc, l) => acc + l.unitAmountPence * l.quantity, 0);
-  if (sumPence !== proposalTotalPence) return null;
+  if (sumPence !== collectableTotal) return null;
 
   const oneOffLines = lines
     .filter((l) => stripeIntervalFor(l.billingFrequency) === null)

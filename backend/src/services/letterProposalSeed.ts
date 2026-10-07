@@ -2,6 +2,7 @@ export type ProposalLetterLine = {
   name: string;
   billingFrequency?: string | null;
   lineTotalPence?: number | null;
+  hourlyBillingMode?: string | null;
 };
 
 export type ProposalLetterSeed = {
@@ -37,7 +38,11 @@ export function formatProposalLetterSeed(
     .map((line) => {
       const amount =
         typeof line.lineTotalPence === 'number' ? formatPenceGbp(line.lineTotalPence) : '';
-      const freq = FREQUENCY_LABEL[line.billingFrequency || ''] || '';
+      const freq =
+        String(line.billingFrequency || '').toUpperCase() === 'HOURLY' &&
+        String(line.hourlyBillingMode || '').toUpperCase() === 'MONTHLY_ACTUAL'
+          ? ' estimated per month (hours worked)'
+          : FREQUENCY_LABEL[line.billingFrequency || ''] || '';
       return [line.name.trim(), amount ? `${amount}${freq}` : ''].filter(Boolean).join(': ');
     })
     .join('\n');

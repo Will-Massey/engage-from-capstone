@@ -16,6 +16,15 @@ describe('proposalHasRecurringEngagement', () => {
     ).toBe(false);
   });
 
+  it('treats monthly hourly (hours worked) as a recurring engagement', () => {
+    expect(
+      proposalHasRecurringEngagement({
+        paymentFrequency: 'HOURLY',
+        services: [{ billingFrequency: 'HOURLY', hourlyBillingMode: 'MONTHLY_ACTUAL' }],
+      })
+    ).toBe(true);
+  });
+
   it('still treats a monthly line as recurring', () => {
     expect(
       proposalHasRecurringEngagement({

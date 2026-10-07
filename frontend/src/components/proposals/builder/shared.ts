@@ -54,6 +54,10 @@ export interface SelectedService extends Service {
   allowedCadences: BillingCadence[];
   /** YYYY-MM-DD when billing is ONE_TIME */
   oneOffDueDate?: string;
+  /** HOURLY only. Defaults to a one-off block of hours. */
+  hourlyBillingMode?: 'ONE_OFF' | 'MONTHLY_ACTUAL';
+  /** Set after a switch to or from Hourly, until the price is checked. */
+  amountNeedsCheck?: boolean;
 }
 
 export type PricingSummary = PricingSummaryBands;

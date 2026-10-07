@@ -11,7 +11,11 @@ import { isPayoutCollectionEnabled } from './payoutSettingsService.js';
 import { getOrCreateConnectedAccount, isCollectionReady } from './stripeConnectService.js';
 import { createStripeProposalCheckout } from './proposalPaymentStripe.js';
 import { createRecurringCheckout, createBillingPortalSession } from './proposalRecurringStripe.js';
-import { planRecurringCheckout, stripeIntervalFor } from '../lib/payments/recurringLines.js';
+import {
+  isVariableMonthlyHourly,
+  planRecurringCheckout,
+  stripeIntervalFor,
+} from '../lib/payments/recurringLines.js';
 import { buildFeePreview, resolvePlatformFeeBps } from '../lib/payments/splitCalculator.js';
 import { CLIENT_PAYMENT_AUTH_VERSION } from '../constants/paymentAgreements.js';
 
@@ -79,7 +83,12 @@ export async function createPostSignMandate(
     include: {
       client: true,
       services: {
-        select: { name: true, billingFrequency: true, grossTotalPence: true },
+        select: {
+          name: true,
+          billingFrequency: true,
+          grossTotalPence: true,
+          hourlyBillingMode: true,
+        },
       },
       tenant: {
         select: {
@@ -153,8 +162,18 @@ export async function createPostSignMandate(
   // subscription (recurring lines bill on the interval; one-off lines join the
   // first invoice). Mixed intervals or a discounted/drifting total fall back to
   // the one-off checkout so the client is charged exactly the displayed total.
-  const plan = planRecurringCheckout(proposal.services ?? [], proposal.totalPence);
+  const services = proposal.services ?? [];
+  const variablePence = services
+    .filter((s) => isVariableMonthlyHourly(s))
+    .reduce((sum, s) => sum + s.grossTotalPence, 0);
+  const collectablePence = proposal.totalPence - variablePence;
+  const plan = planRecurringCheckout(services, proposal.totalPence);
   let checkout: { sessionId: string; checkoutUrl: string };
+  if (variablePence > 0 && collectablePence <= 0) {
+    throw new Error(
+      'This proposal is billed each month for the hours worked. There is no fixed amount to collect now.'
+    );
+  }
   if (plan) {
     checkout = await createRecurringCheckout({
       proposalId: proposal.id,
@@ -179,7 +198,7 @@ export async function createPostSignMandate(
       tenantId: proposal.tenantId,
       reference: proposal.reference,
       title: proposal.title,
-      grossPence: proposal.totalPence,
+      grossPence: collectablePence,
       connectedAccountId,
       platformFeeBps,
       customerEmail,

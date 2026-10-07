@@ -72,8 +72,15 @@ describe('feeBenchmarkService', () => {
       expect(toMonthlyEquivalent(1200, 'ONE_TIME')).toBe(100);
     });
 
-    it('does not treat an hourly rate as a monthly fee', () => {
-      expect(toMonthlyEquivalent(75, 'HOURLY')).toBe(0);
+    it('counts a quoted hourly fee at full value, spread over the year', () => {
+      expect(toMonthlyEquivalent(75, 'HOURLY', { quantity: 4 })).toBe(25);
+      expect(toMonthlyEquivalent(75, 'HOURLY')).toBe(6.25);
+    });
+
+    it('treats recurring monthly hourly as the estimated month, not a twelfth of it', () => {
+      expect(
+        toMonthlyEquivalent(75, 'HOURLY', { quantity: 4, hourlyBillingMode: 'MONTHLY_ACTUAL' })
+      ).toBe(300);
     });
   });
 

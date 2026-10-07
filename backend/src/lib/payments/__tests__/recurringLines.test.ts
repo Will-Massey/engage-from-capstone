@@ -51,6 +51,38 @@ describe('splitRecurring', () => {
     ).toBe(false);
   });
 
+  it('leaves a monthly hourly estimate out of fixed Stripe amounts', () => {
+    const r = splitRecurring([
+      { name: 'Bookkeeping', displayPrice: 85, billingFrequency: 'MONTHLY' },
+      {
+        name: 'Advisory',
+        displayPrice: 75,
+        billingFrequency: 'HOURLY',
+        quantity: 4,
+        hourlyBillingMode: 'MONTHLY_ACTUAL',
+      },
+    ]);
+    expect(r.oneOffPence).toBe(0);
+    expect(r.recurringGroups).toHaveLength(1);
+    expect(r.recurringGroups[0].lines.map((l) => l.name)).toEqual(['Bookkeeping']);
+
+    const plan = planRecurringCheckout(
+      [
+        { name: 'Bookkeeping', billingFrequency: 'MONTHLY', grossTotalPence: 10200 },
+        {
+          name: 'Advisory',
+          billingFrequency: 'HOURLY',
+          hourlyBillingMode: 'MONTHLY_ACTUAL',
+          grossTotalPence: 36000,
+        },
+      ],
+      46200
+    );
+    expect(plan).not.toBeNull();
+    expect(plan!.group.lines).toHaveLength(1);
+    expect(plan!.oneOffLines).toHaveLength(0);
+  });
+
   it('multiplies by quantity for one-off lines', () => {
     const r = splitRecurring([
       { name: 'Setup', displayPrice: 50, billingFrequency: 'ONE_TIME', quantity: 3 },
