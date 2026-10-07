@@ -115,10 +115,10 @@ describe('pricingEngine_v2', () => {
     expect(totals.annually.items).toHaveLength(1);
     expect(totals.hourly.items).toHaveLength(1);
     expect(totals.hourly.items[0].priceDisplayMode).toBe('PER_HOUR');
-    expect(totals.hourly.items[0].annualEquivalent).toBe(0);
+    expect(totals.hourly.items[0].annualEquivalent).toBe(100);
     expect(totals.totalAnnualEquivalent).toBeCloseTo(
       lines
-        .filter((line) => !['ONE_TIME', 'HOURLY', 'WEEKLY'].includes(line.billingFrequency))
+        .filter((line) => !['ONE_TIME', 'WEEKLY'].includes(line.billingFrequency))
         .reduce((sum, line) => sum + line.annualEquivalent * line.quantity, 0),
       2
     );

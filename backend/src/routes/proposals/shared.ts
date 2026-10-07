@@ -150,6 +150,7 @@ export const createProposalSchema = z.object({
         displayPrice: z.number().min(0).optional(), // Custom price from frontend
         vatRate: z.number().min(0).max(100).optional(), // Per-line VAT rate
         oneOffDueDate: z.union([z.string(), z.null()]).optional(),
+        hourlyBillingMode: z.enum(['ONE_OFF', 'MONTHLY_ACTUAL']).optional(),
       })
     )
     .min(1, 'At least one service is required'),
@@ -182,10 +183,11 @@ export const updateProposalSchema = z.object({
         // v2 pricing fields
         vatRate: z.number().min(0).max(100).optional(),
         billingFrequency: z
-          .enum(['ONE_TIME', 'WEEKLY', 'MONTHLY', 'QUARTERLY', 'ANNUALLY'])
+          .enum(['ONE_TIME', 'WEEKLY', 'MONTHLY', 'QUARTERLY', 'ANNUALLY', 'HOURLY'])
           .optional(),
         displayPrice: z.number().min(0).optional(),
         oneOffDueDate: z.union([z.string(), z.null()]).optional(),
+        hourlyBillingMode: z.enum(['ONE_OFF', 'MONTHLY_ACTUAL']).optional(),
       })
     )
     .optional(),

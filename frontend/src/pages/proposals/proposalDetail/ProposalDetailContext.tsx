@@ -796,6 +796,9 @@ export function ProposalDetailProvider({ children }: ProposalDetailProviderProps
         hourlyExVat: 0,
         hourlyVat: 0,
         hourlyIncVat: 0,
+        hourlyEstimateExVat: 0,
+        hourlyEstimateVat: 0,
+        hourlyEstimateIncVat: 0,
       };
     }
 
@@ -810,6 +813,13 @@ export function ProposalDetailProvider({ children }: ProposalDetailProviderProps
           acc.oneOffExVat += lineTotal;
           acc.oneOffVat += vatAmt;
           acc.oneOffIncVat += gross;
+        } else if (
+          freq === 'HOURLY' &&
+          String(s.hourlyBillingMode || '').toUpperCase() === 'MONTHLY_ACTUAL'
+        ) {
+          acc.hourlyEstimateExVat += lineTotal;
+          acc.hourlyEstimateVat += vatAmt;
+          acc.hourlyEstimateIncVat += gross;
         } else if (freq === 'HOURLY') {
           acc.hourlyExVat += lineTotal;
           acc.hourlyVat += vatAmt;
@@ -831,6 +841,9 @@ export function ProposalDetailProvider({ children }: ProposalDetailProviderProps
         hourlyExVat: 0,
         hourlyVat: 0,
         hourlyIncVat: 0,
+        hourlyEstimateExVat: 0,
+        hourlyEstimateVat: 0,
+        hourlyEstimateIncVat: 0,
       }
     );
   }, [proposal]);

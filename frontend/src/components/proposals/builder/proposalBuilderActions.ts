@@ -1,6 +1,7 @@
 import {
   calculateLineItem,
   monthlyEquivalentFor,
+  normaliseHourlyBillingMode,
   roundMoney,
   type BillingFrequency,
 } from '@shared/pricingEngine';
@@ -69,6 +70,7 @@ export function buildSelectedServiceLine(
     grossTotal: line.grossTotal,
     allowedCadences: parseFrequencyOptions(service.frequencyOptions),
     oneOffDueDate: frequency === 'ONE_TIME' ? '' : undefined,
+    hourlyBillingMode: frequency === 'HOURLY' ? 'ONE_OFF' : undefined,
   };
 }
 
@@ -120,9 +122,48 @@ export function applyCatalogueFormulasToLines(
  */
 export function buildCatchUpLine(
   source: SelectedService,
-  opts: { months: number; discountPercent?: number; includeVat: boolean; todayIso: string }
+  opts: {
+    months: number;
+    hours?: number;
+    discountPercent?: number;
+    includeVat: boolean;
+    todayIso: string;
+  }
 ): SelectedService | null {
   if (source.billingCycle === 'ONE_TIME') return null;
+  if (source.billingCycle === 'HOURLY') {
+    const hours = Math.max(1, Math.min(999, Math.round(opts.hours ?? source.quantity ?? 1)));
+    const discountPercent = Math.max(0, Math.min(100, opts.discountPercent ?? 0));
+    const line = calculateLineItem({
+      basePrice: source.displayPrice,
+      billingFrequency: 'HOURLY',
+      quantity: hours,
+      discountPercent,
+      vatRate: opts.includeVat ? source.vatRate : 0,
+      hourlyBillingMode: 'ONE_OFF',
+    });
+    const hoursLabel = `${hours} hour${hours === 1 ? '' : 's'}`;
+    return {
+      ...source,
+      id: newSelectedLineId(),
+      name: `Catch-up: ${source.name} (${hoursLabel})`,
+      description: `One-off catch-up bringing ${source.name} up to date, billed as the hourly rate times ${hoursLabel}.`,
+      quantity: hours,
+      discountPercent,
+      displayPrice: source.displayPrice,
+      billingCycle: 'HOURLY',
+      hourlyBillingMode: 'ONE_OFF',
+      priceAmount: source.displayPrice,
+      annualEquivalent: line.annualEquivalent,
+      lineTotal: line.netTotal,
+      vatRate: source.vatRate,
+      vatAmount: line.vatAmount,
+      grossTotal: line.grossTotal,
+      allowedCadences: ['HOURLY'],
+      oneOffDueDate: undefined,
+      amountNeedsCheck: false,
+    };
+  }
   const months = Math.max(1, Math.min(24, Math.round(opts.months)));
   const discountPercent = Math.max(0, Math.min(100, opts.discountPercent ?? 0));
   const monthly = monthlyEquivalentFor(
@@ -226,6 +267,9 @@ export function buildProposalSavePayload(input: ProposalSaveInput): CreatePropos
       vatRate: input.includeVat ? s.vatRate : 0,
       ...(s.billingCycle === 'ONE_TIME' && s.oneOffDueDate?.trim()
         ? { oneOffDueDate: s.oneOffDueDate.trim() }
+        : {}),
+      ...(s.billingCycle === 'HOURLY'
+        ? { hourlyBillingMode: normaliseHourlyBillingMode(s.hourlyBillingMode) }
         : {}),
     }));
 

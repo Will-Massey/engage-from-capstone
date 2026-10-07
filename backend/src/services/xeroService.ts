@@ -23,7 +23,7 @@ import {
   CurrencyCode,
 } from 'xero-node';
 import logger from '../config/logger.js';
-import { isQuotedBillingFrequency } from '@uk-proposal-platform/shared';
+import { isMonthlyActualHourly, isQuotedBillingFrequency } from '@uk-proposal-platform/shared';
 import {
   getTenantXeroSettings,
   saveTenantXeroSettings,
@@ -259,6 +259,7 @@ type ProposalServiceLine = {
   billingFrequency: string;
   lineTotal: number;
   vatAmount?: number;
+  hourlyBillingMode?: string | null;
 };
 
 function mapBillingToSchedule(billingFrequency: string): {
@@ -281,8 +282,19 @@ function mapBillingToSchedule(billingFrequency: string): {
 }
 
 function groupRecurringServices(services: ProposalServiceLine[]) {
-  const recurring = services.filter((s) => !isQuotedBillingFrequency(s.billingFrequency));
-  const oneTime = services.filter((s) => isQuotedBillingFrequency(s.billingFrequency));
+  const variableHourly = services.filter((s) =>
+    isMonthlyActualHourly(s.billingFrequency, s.hourlyBillingMode)
+  );
+  const recurring = services.filter(
+    (s) =>
+      !isQuotedBillingFrequency(s.billingFrequency) &&
+      !isMonthlyActualHourly(s.billingFrequency, s.hourlyBillingMode)
+  );
+  const oneTime = services.filter(
+    (s) =>
+      isQuotedBillingFrequency(s.billingFrequency) &&
+      !isMonthlyActualHourly(s.billingFrequency, s.hourlyBillingMode)
+  );
 
   const groups = new Map<string, ProposalServiceLine[]>();
   for (const service of recurring) {
@@ -292,7 +304,7 @@ function groupRecurringServices(services: ProposalServiceLine[]) {
     groups.set(key, existing);
   }
 
-  return { groups, oneTime };
+  return { groups, oneTime, variableHourly };
 }
 
 export async function resolveOrCreateContact(
@@ -454,7 +466,7 @@ export async function pushAcceptedProposalToXero(
   };
 }> {
   const revenueAccount = session?.settings.defaultRevenueAccountCode || DEFAULT_REVENUE_ACCOUNT;
-  const { groups, oneTime } = groupRecurringServices(proposal.services);
+  const { groups, oneTime, variableHourly } = groupRecurringServices(proposal.services);
 
   if (!session) {
     const drafts = Array.from(groups.entries()).map(([freq, lines]) =>
@@ -536,7 +548,7 @@ export async function pushAcceptedProposalToXero(
     errors.push('Repeating invoices skipped — no Xero contact available.');
   } else if (groups.size === 0) {
     errors.push(
-      oneTime.length
+      oneTime.length || variableHourly.length
         ? 'No recurring service lines. One-off and hourly charges were not added to a repeating invoice.'
         : 'No service lines to invoice.'
     );
@@ -579,6 +591,12 @@ export async function pushAcceptedProposalToXero(
         logger.warn(`Xero repeating invoice failed (${billingFrequency})`, err);
       }
     }
+  }
+
+  if (variableHourly.length) {
+    errors.push(
+      `${variableHourly.length} hourly service line(s) are an estimate of hours worked each month. They were not added as a fixed repeating amount. Invoice the hours worked each month.`
+    );
   }
 
   if (oneTime.length) {

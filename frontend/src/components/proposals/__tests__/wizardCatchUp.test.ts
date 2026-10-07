@@ -1,9 +1,11 @@
 import {
   buildWizardCatchUpPayload,
   collectWizardCatchUpLines,
+  isCatchUpEligibleFrequency,
   isRecurringWizardFrequency,
   previewCatchUpBase,
   previewCatchUpNet,
+  previewHourlyCatchUp,
 } from '../wizardCatchUp';
 
 const bookkeeping = {
@@ -22,6 +24,29 @@ describe('wizardCatchUp', () => {
       previewCatchUpBase({ ...bookkeeping, billingFrequency: 'HOURLY', displayPrice: 75 }, 3)
     ).toBeNull();
     expect(previewCatchUpBase({ ...bookkeeping, billingFrequency: 'ONE_TIME' }, 3)).toBeNull();
+    expect(isCatchUpEligibleFrequency('HOURLY')).toBe(true);
+    expect(isCatchUpEligibleFrequency('ONE_TIME')).toBe(false);
+  });
+
+  it('bills an hourly catch-up as rate times hours, once', () => {
+    expect(previewHourlyCatchUp(75, 4)).toBe(300);
+    expect(
+      previewCatchUpNet(
+        { ...bookkeeping, billingFrequency: 'HOURLY', displayPrice: 75 },
+        { months: 3, hours: 4, discountPercent: 0 }
+      )
+    ).toBe(300);
+    const line = buildWizardCatchUpPayload(
+      { ...bookkeeping, billingFrequency: 'HOURLY', displayPrice: 75 },
+      { enabled: true, months: 3, hours: 4, discountPercent: 0 },
+      '2026-08-30'
+    );
+    expect(line?.billingFrequency).toBe('HOURLY');
+    expect(line?.hourlyBillingMode).toBe('ONE_OFF');
+    expect(line?.displayPrice).toBe(75);
+    expect(line?.quantity).toBe(4);
+    expect(line?.name).toContain('4 hours');
+    expect(line?.oneOffDueDate).toBeUndefined();
   });
 
   it('prices months × monthly equivalent, then applies discount', () => {

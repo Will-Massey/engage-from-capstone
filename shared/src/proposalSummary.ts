@@ -1,6 +1,7 @@
 import {
   calculateLineItem,
   calculateProposalTotals,
+  isMonthlyActualHourly,
   type BillingFrequency,
   type ServicePricingInput,
 } from './pricingEngine';
@@ -18,7 +19,10 @@ export interface PricingSummaryBands {
   quarterly: BandTotals;
   annually: BandTotals;
   oneTime: BandTotals;
+  /** Quoted block of hours, charged once. */
   hourly: BandTotals;
+  /** Estimate of hours each month. Not a fixed monthly fee. */
+  hourlyEstimate: BandTotals;
   contractTotalIncVat: number;
   totalSubtotalExVat: number;
   totalVat: number;
@@ -29,6 +33,7 @@ export interface ProposalLineForSummary {
   lineTotal: number;
   vatAmount: number;
   grossTotal: number;
+  hourlyBillingMode?: string | null;
 }
 
 const BAND_KEYS: Record<
@@ -76,13 +81,16 @@ export function calculateProposalSummaryBands(
     annually: emptyBand(),
     oneTime: emptyBand(),
     hourly: emptyBand(),
+    hourlyEstimate: emptyBand(),
     contractTotalIncVat: 0,
     totalSubtotalExVat: 0,
     totalVat: 0,
   };
 
   for (const line of lines) {
-    const key = BAND_KEYS[line.billingFrequency] ?? 'monthly';
+    const key = isMonthlyActualHourly(line.billingFrequency, line.hourlyBillingMode)
+      ? 'hourlyEstimate'
+      : (BAND_KEYS[line.billingFrequency] ?? 'monthly');
     bands[key].subtotal += line.lineTotal;
     bands[key].vat += line.vatAmount;
     bands[key].total += line.grossTotal;
@@ -95,21 +103,24 @@ export function calculateProposalSummaryBands(
     bands.quarterly.total +
     bands.annually.total +
     bands.oneTime.total +
-    bands.hourly.total;
+    bands.hourly.total +
+    bands.hourlyEstimate.total;
   bands.totalSubtotalExVat =
     bands.weekly.subtotal +
     bands.monthly.subtotal +
     bands.quarterly.subtotal +
     bands.annually.subtotal +
     bands.oneTime.subtotal +
-    bands.hourly.subtotal;
+    bands.hourly.subtotal +
+    bands.hourlyEstimate.subtotal;
   bands.totalVat =
     bands.weekly.vat +
     bands.monthly.vat +
     bands.quarterly.vat +
     bands.annually.vat +
     bands.oneTime.vat +
-    bands.hourly.vat;
+    bands.hourly.vat +
+    bands.hourlyEstimate.vat;
 
   return bands;
 }
@@ -120,11 +131,12 @@ export function calculateProposalSummaryFromInputs(
 ): PricingSummaryBands {
   const lineResults = inputs.map((input) => calculateLineItem(input));
   const apiTotals = calculateProposalTotals(lineResults);
-  const lines = lineResults.map((line) => ({
+  const lines = lineResults.map((line, index) => ({
     billingFrequency: line.billingFrequency,
     lineTotal: line.netTotal,
     vatAmount: line.vatAmount,
     grossTotal: line.grossTotal,
+    hourlyBillingMode: inputs[index]?.hourlyBillingMode,
   }));
   const summary = calculateProposalSummaryBands(lines);
   summary.contractTotalIncVat = apiTotals.grandTotal;

@@ -8,7 +8,7 @@ import { tenantMailer } from '../services/tenantMailer.js';
 import logger from '../config/logger.js';
 import { getProposalSettings } from '../utils/tenantProposalSettings.js';
 import { penceToPounds } from '../utils/proposalPricing.js';
-import { isQuotedBillingFrequency } from '@uk-proposal-platform/shared';
+import { isMonthlyActualHourly, isQuotedBillingFrequency } from '@uk-proposal-platform/shared';
 
 const DEFAULT_REMINDER_DAYS = 30;
 
@@ -22,8 +22,13 @@ const VALID_UNTIL_REMINDER_ACTION = 'PROPOSAL_VALID_UNTIL_REMINDER';
  */
 export function proposalHasRecurringEngagement(proposal: {
   paymentFrequency: string;
-  services: Array<{ billingFrequency: string }>;
+  services: Array<{ billingFrequency: string; hourlyBillingMode?: string | null }>;
 }): boolean {
+  if (
+    proposal.services.some((s) => isMonthlyActualHourly(s.billingFrequency, s.hourlyBillingMode))
+  ) {
+    return true;
+  }
   if (!isQuotedBillingFrequency(proposal.paymentFrequency)) {
     return true;
   }

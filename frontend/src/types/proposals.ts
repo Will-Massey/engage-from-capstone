@@ -17,6 +17,7 @@ export interface ProposalServiceLineInput {
   displayPrice?: number;
   vatRate?: number;
   oneOffDueDate?: string | null;
+  hourlyBillingMode?: 'ONE_OFF' | 'MONTHLY_ACTUAL';
 }
 
 export interface CreateProposalPayload {

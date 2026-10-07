@@ -2,6 +2,10 @@ import { useEffect, useMemo, useState } from 'react';
 import { XMarkIcon, PlusIcon, TrashIcon } from '@heroicons/react/24/outline';
 import { apiClient } from '../../utils/api';
 import { formatCurrency } from '../../utils/formatters';
+import {
+  CADENCE_AMOUNT_NOT_CONVERTED,
+  cadenceSwitchNeedsAmountCheck,
+} from '../../utils/billingCadence';
 import toast from 'react-hot-toast';
 
 export interface TemplateServiceLine {
@@ -11,6 +15,8 @@ export interface TemplateServiceLine {
   displayPrice: number;
   quantity: number;
   discountPercent: number;
+  hourlyBillingMode?: 'ONE_OFF' | 'MONTHLY_ACTUAL';
+  amountNeedsCheck?: boolean;
 }
 
 interface CatalogueService {
@@ -156,8 +162,9 @@ export default function ProposalTemplateEditor({
         case 'ANNUALLY':
           return sum + gross / 12;
         case 'ONE_TIME':
-        case 'HOURLY':
           return sum;
+        case 'HOURLY':
+          return l.hourlyBillingMode === 'MONTHLY_ACTUAL' ? sum + gross : sum;
         default:
           return sum + gross;
       }
@@ -189,6 +196,8 @@ export default function ProposalTemplateEditor({
           serviceId: l.serviceId,
           name: l.name,
           billingFrequency: l.billingFrequency,
+          hourlyBillingMode:
+            l.billingFrequency === 'HOURLY' ? l.hourlyBillingMode || 'ONE_OFF' : undefined,
           displayPrice: l.displayPrice,
           quantity: l.quantity,
           discountPercent: l.discountPercent,
@@ -335,6 +344,7 @@ export default function ProposalTemplateEditor({
                         onChange={(e) =>
                           updateLine(line.serviceId, {
                             displayPrice: parseFloat(e.target.value) || 0,
+                            amountNeedsCheck: false,
                           })
                         }
                         className="w-full px-2 py-1 text-sm rounded border border-slate-200 dark:border-slate-600 dark:bg-slate-800"
@@ -344,9 +354,20 @@ export default function ProposalTemplateEditor({
                       <label className="text-xs text-slate-500">Frequency</label>
                       <select
                         value={line.billingFrequency}
-                        onChange={(e) =>
-                          updateLine(line.serviceId, { billingFrequency: e.target.value })
-                        }
+                        onChange={(e) => {
+                          const next = e.target.value;
+                          const needsCheck = cadenceSwitchNeedsAmountCheck(
+                            line.billingFrequency,
+                            next
+                          );
+                          if (needsCheck) toast(CADENCE_AMOUNT_NOT_CONVERTED);
+                          updateLine(line.serviceId, {
+                            billingFrequency: next,
+                            amountNeedsCheck: needsCheck,
+                            hourlyBillingMode:
+                              next === 'HOURLY' ? line.hourlyBillingMode || 'ONE_OFF' : undefined,
+                          });
+                        }}
                         className="w-full px-2 py-1 text-sm rounded border border-slate-200 dark:border-slate-600 dark:bg-slate-800"
                       >
                         {FREQUENCY_OPTIONS.map((o) => (
@@ -372,6 +393,39 @@ export default function ProposalTemplateEditor({
                         className="w-full px-2 py-1 text-sm rounded border border-slate-200 dark:border-slate-600 dark:bg-slate-800"
                       />
                     </div>
+                    {line.billingFrequency === 'HOURLY' && (
+                      <div className="w-full basis-full text-xs text-slate-600 dark:text-slate-300">
+                        <label className="text-xs text-slate-500">Hourly charge</label>
+                        <select
+                          value={line.hourlyBillingMode || 'ONE_OFF'}
+                          onChange={(e) =>
+                            updateLine(line.serviceId, {
+                              hourlyBillingMode:
+                                e.target.value === 'MONTHLY_ACTUAL' ? 'MONTHLY_ACTUAL' : 'ONE_OFF',
+                            })
+                          }
+                          className="mt-1 w-full max-w-sm px-2 py-1 text-sm rounded border border-slate-200 dark:border-slate-600 dark:bg-slate-800"
+                        >
+                          <option value="ONE_OFF">One-off block of hours</option>
+                          <option value="MONTHLY_ACTUAL">
+                            Each month, hours worked (estimate)
+                          </option>
+                        </select>
+                        {line.hourlyBillingMode === 'MONTHLY_ACTUAL' && (
+                          <p className="mt-1">
+                            Estimate only. Invoiced each month for the hours actually worked.
+                          </p>
+                        )}
+                      </div>
+                    )}
+                    {line.amountNeedsCheck && (
+                      <p
+                        className="w-full basis-full text-xs text-amber-800 dark:text-amber-200"
+                        role="status"
+                      >
+                        {CADENCE_AMOUNT_NOT_CONVERTED}
+                      </p>
+                    )}
                     <button
                       type="button"
                       onClick={() => removeLine(line.serviceId)}

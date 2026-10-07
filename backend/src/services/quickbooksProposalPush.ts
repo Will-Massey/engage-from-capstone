@@ -9,7 +9,7 @@
  */
 
 import { prisma } from '../config/database.js';
-import { isQuotedBillingFrequency } from '@uk-proposal-platform/shared';
+import { isMonthlyActualHourly, isQuotedBillingFrequency } from '@uk-proposal-platform/shared';
 import logger from '../config/logger.js';
 import { getAuthenticatedQuickBooksSession, type QuickBooksSession } from './quickbooksService.js';
 import {
@@ -121,8 +121,20 @@ export async function pushProposalToQuickBooks(
     }
   }
 
-  const recurring = proposal.services.filter((s) => !isQuotedBillingFrequency(s.billingFrequency));
+  const variableHourly = proposal.services.filter((s) =>
+    isMonthlyActualHourly(s.billingFrequency, s.hourlyBillingMode)
+  );
+  const recurring = proposal.services.filter(
+    (s) =>
+      !isQuotedBillingFrequency(s.billingFrequency) &&
+      !isMonthlyActualHourly(s.billingFrequency, s.hourlyBillingMode)
+  );
   if (recurring.length === 0) {
+    if (variableHourly.length > 0) {
+      throw new Error(
+        'Hourly lines billed for hours worked each month are not pushed as a fixed QuickBooks invoice.'
+      );
+    }
     throw new Error('No recurring service lines to push to QuickBooks');
   }
 
@@ -141,7 +153,16 @@ export async function pushProposalToQuickBooks(
     })),
   });
 
-  const quoted = proposal.services.filter((s) => isQuotedBillingFrequency(s.billingFrequency));
+  const quoted = proposal.services.filter(
+    (s) =>
+      isQuotedBillingFrequency(s.billingFrequency) &&
+      !isMonthlyActualHourly(s.billingFrequency, s.hourlyBillingMode)
+  );
+  if (variableHourly.length > 0) {
+    warnings.push(
+      `${variableHourly.length} hourly service line(s) are an estimate of hours worked each month. They were not added as a fixed QuickBooks amount. Invoice the hours worked each month.`
+    );
+  }
   if (quoted.length > 0) {
     const hourly = quoted.filter((s) => s.billingFrequency === 'HOURLY').length;
     const oneOff = quoted.length - hourly;

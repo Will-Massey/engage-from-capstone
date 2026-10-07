@@ -322,6 +322,29 @@ describe('ProposalBuilderContext actions', () => {
       expect(line!.grossTotal).toBe(288);
     });
 
+    it('bills an hourly catch-up as the rate times hours, once', () => {
+      const hourly = selectedLine({
+        billingCycle: 'HOURLY',
+        displayPrice: 75,
+        quantity: 2,
+        name: 'Advisory',
+      });
+      const line = buildCatchUpLine(hourly, {
+        months: 3,
+        hours: 4,
+        includeVat: true,
+        todayIso: '2026-08-05',
+      });
+      expect(line).not.toBeNull();
+      expect(line!.billingCycle).toBe('HOURLY');
+      expect(line!.hourlyBillingMode).toBe('ONE_OFF');
+      expect(line!.displayPrice).toBe(75);
+      expect(line!.quantity).toBe(4);
+      expect(line!.lineTotal).toBe(300);
+      expect(line!.grossTotal).toBe(360);
+      expect(line!.name).toContain('4 hours');
+    });
+
     it('returns null for one-time source lines', () => {
       const oneOff = selectedLine({ billingCycle: 'ONE_TIME' });
       expect(

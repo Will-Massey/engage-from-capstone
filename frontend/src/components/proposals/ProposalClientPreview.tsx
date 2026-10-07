@@ -18,6 +18,7 @@ export interface PreviewPricingSummary {
   weekly: { total: number; count: number };
   oneTime: { total: number; count: number };
   hourly: { total: number; count: number };
+  hourlyEstimate?: { total: number; count: number };
   contractTotalIncVat: number;
 }
 
@@ -118,6 +119,17 @@ function InvestmentSummaryBands({ summary }: { summary: PreviewPricingSummary })
           <span className="text-base font-semibold text-slate-900 dark:text-white tabular-nums">
             {formatCurrency(summary.hourly.total)}
             <span className="text-xs font-normal text-slate-500 ml-1">quoted</span>
+          </span>
+        </div>
+      )}
+      {(summary.hourlyEstimate?.count ?? 0) > 0 && (
+        <div className="flex justify-between items-baseline">
+          <span className="text-sm font-medium text-slate-800 dark:text-slate-100">
+            Hourly estimate
+          </span>
+          <span className="text-base font-semibold text-slate-900 dark:text-white tabular-nums">
+            {formatCurrency(summary.hourlyEstimate?.total ?? 0)}
+            <span className="text-xs font-normal text-slate-500 ml-1">est. /month</span>
           </span>
         </div>
       )}

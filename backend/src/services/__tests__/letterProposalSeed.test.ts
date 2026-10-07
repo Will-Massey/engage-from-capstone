@@ -20,6 +20,19 @@ describe('formatProposalLetterSeed', () => {
     expect(seed.fees).not.toContain('/ hour');
   });
 
+  it('labels a monthly hourly line as an estimate of hours worked', () => {
+    const seed = formatProposalLetterSeed('ENG-10', [
+      {
+        name: 'Bookkeeping support',
+        billingFrequency: 'HOURLY',
+        hourlyBillingMode: 'MONTHLY_ACTUAL',
+        lineTotalPence: 30000,
+      },
+    ]);
+    expect(seed.fees).toContain('estimated per month (hours worked)');
+    expect(seed.fees).toContain('£300.00');
+  });
+
   it('skips blank names', () => {
     expect(formatProposalLetterSeed('X', [{ name: '  ' }])).toEqual({
       proposalReference: 'X',

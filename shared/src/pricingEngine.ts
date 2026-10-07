@@ -17,12 +17,35 @@ export type BillingFrequency =
 
 export type PriceDisplayMode = 'PER_MONTH' | 'PER_QUARTER' | 'PER_YEAR' | 'ONE_TIME' | 'PER_HOUR';
 
+export type HourlyBillingMode = 'ONE_OFF' | 'MONTHLY_ACTUAL';
+
+/** Missing or unknown modes are a one-off block of hours (today's behaviour). */
+export function normaliseHourlyBillingMode(mode: string | null | undefined): HourlyBillingMode {
+  return String(mode || '').toUpperCase() === 'MONTHLY_ACTUAL' ? 'MONTHLY_ACTUAL' : 'ONE_OFF';
+}
+
+/**
+ * Recurring monthly hourly: the quantity is an estimate of hours that month.
+ * The client pays later for the hours actually worked.
+ */
+export function isMonthlyActualHourly(
+  frequency: string | null | undefined,
+  mode?: string | null
+): boolean {
+  return (
+    String(frequency || '').toUpperCase() === 'HOURLY' &&
+    normaliseHourlyBillingMode(mode) === 'MONTHLY_ACTUAL'
+  );
+}
+
 export interface ServicePricingInput {
   basePrice: number;
   billingFrequency: BillingFrequency;
   quantity?: number;
   discountPercent?: number;
   vatRate?: number;
+  /** Only read when billingFrequency is HOURLY. Defaults to ONE_OFF. */
+  hourlyBillingMode?: string | null;
 }
 
 export interface LineItemResult {
@@ -31,6 +54,8 @@ export interface LineItemResult {
   priceDisplayMode: PriceDisplayMode;
   priceLabel: string;
   annualEquivalent: number;
+  /** Set on hourly lines. ONE_OFF is a quoted block. MONTHLY_ACTUAL is an estimate. */
+  hourlyBillingMode?: HourlyBillingMode;
   quantity: number;
   lineTotal: number;
   discountAmount: number;
@@ -80,6 +105,15 @@ export interface EquivalentOptions {
    * app disagreed on this, which is why it is explicit here.
    */
   oneTime?: 'excluded' | 'amortised';
+  /**
+   * How HOURLY amounts contribute:
+   * - 'excluded' (default): 0. A bare rate is not a monthly or annual fee.
+   * - 'quoted': count rate × hours at full value. MONTHLY_ACTUAL then × 12.
+   */
+  hourly?: 'excluded' | 'quoted';
+  /** Hours on the line. Used with hourly: 'quoted'. Defaults to 1. */
+  quantity?: number;
+  hourlyBillingMode?: string | null;
 }
 
 /**
@@ -111,9 +145,16 @@ export function annualEquivalentFor(
       return amount;
     case 'ONE_TIME':
       return options?.oneTime === 'amortised' ? amount : 0;
-    case 'HOURLY':
-      // Rate × hours on the line. Do not annualise (no ×52, ×12, or assumed working hours).
-      return 0;
+    case 'HOURLY': {
+      // A bare rate is not a calendar fee. Callers that want the quoted fee
+      // pass hourly: 'quoted' and the hours as quantity.
+      if (options?.hourly !== 'quoted') return 0;
+      const hours = options.quantity ?? 1;
+      const quoted = amount * (Number.isFinite(hours) && hours > 0 ? hours : 0);
+      return normaliseHourlyBillingMode(options.hourlyBillingMode) === 'MONTHLY_ACTUAL'
+        ? quoted * 12
+        : quoted;
+    }
     case 'MONTHLY':
     default:
       return amount * 12;
@@ -138,7 +179,16 @@ export function calculateLineItem(input: ServicePricingInput): LineItemResult {
   const vatAmount = vatAmountFor(netTotal, vatRate);
   const grossTotal = netTotal + vatAmount;
 
-  const annualEquivalent = annualEquivalentFor(basePrice, billingFrequency);
+  const hourlyBillingMode =
+    billingFrequency === 'HOURLY' ? normaliseHourlyBillingMode(input.hourlyBillingMode) : undefined;
+  const annualEquivalent =
+    billingFrequency === 'HOURLY'
+      ? annualEquivalentFor(basePrice, 'HOURLY', {
+          hourly: 'quoted',
+          quantity: 1,
+          hourlyBillingMode,
+        })
+      : annualEquivalentFor(basePrice, billingFrequency);
 
   let priceDisplayMode: PriceDisplayMode;
   switch (billingFrequency) {
@@ -188,6 +238,7 @@ export function calculateLineItem(input: ServicePricingInput): LineItemResult {
     priceDisplayMode,
     priceLabel,
     annualEquivalent,
+    hourlyBillingMode,
     quantity,
     lineTotal,
     discountAmount,
@@ -226,7 +277,8 @@ export function calculateProposalTotals(lineItems: LineItemResult[]): ProposalTo
   const totalAnnualEquivalent =
     monthly.items.reduce((sum, item) => sum + item.annualEquivalent * item.quantity, 0) +
     quarterly.items.reduce((sum, item) => sum + item.annualEquivalent * item.quantity, 0) +
-    annually.items.reduce((sum, item) => sum + item.annualEquivalent * item.quantity, 0);
+    annually.items.reduce((sum, item) => sum + item.annualEquivalent * item.quantity, 0) +
+    hourly.items.reduce((sum, item) => sum + item.annualEquivalent * item.quantity, 0);
 
   const counts: Record<BillingFrequency, number> = {
     MONTHLY: grouped.monthly.length,

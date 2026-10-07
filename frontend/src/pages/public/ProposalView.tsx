@@ -87,6 +87,7 @@ interface ProposalData {
     total?: number;
     frequency: string;
     billingFrequency?: string;
+    hourlyBillingMode?: string | null;
     oneOffDueDate?: string | null;
     isOptional: boolean;
   }>;
@@ -96,6 +97,7 @@ type QaMessage = { role: 'user' | 'assistant'; content: string };
 
 type SigningCostSummary = {
   dueToday: { amount: number; vatAmount: number; label: string } | null;
+  variableHourly?: { amount: number; vatAmount: number; label: string } | null;
   recurring: {
     label: string;
     amount: number;
@@ -803,7 +805,7 @@ const PublicProposalView = () => {
                     )}
                     <p className="text-sm text-slate-600 dark:text-slate-300 mt-1">
                       {(service.billingFrequency || service.frequency) === 'HOURLY'
-                        ? `${service.quantity} hour${service.quantity === 1 ? '' : 's'} × ${formatCurrency(service.unitPrice)} / hour`
+                        ? `${String(service.hourlyBillingMode || '').toUpperCase() === 'MONTHLY_ACTUAL' ? 'Estimate: ' : ''}${service.quantity} hour${service.quantity === 1 ? '' : 's'} × ${formatCurrency(service.unitPrice)} / hour${String(service.hourlyBillingMode || '').toUpperCase() === 'MONTHLY_ACTUAL' ? ' each month (hours worked)' : ''}`
                         : `${service.quantity} x ${formatCurrency(service.unitPrice)} / ${(service.billingFrequency || service.frequency).toLowerCase().replace(/_/g, ' ')}`}
                     </p>
                     {(service.billingFrequency || service.frequency) === 'ONE_TIME' &&
@@ -1481,7 +1483,9 @@ const PublicProposalView = () => {
                           {signingSummary}
                         </p>
                         {signingCostSummary &&
-                          (signingCostSummary.dueToday || signingCostSummary.recurring) && (
+                          (signingCostSummary.dueToday ||
+                            signingCostSummary.recurring ||
+                            signingCostSummary.variableHourly) && (
                             <ul className="mt-4 space-y-2 text-sm border-t border-slate-200 dark:border-slate-600 pt-3">
                               {signingCostSummary.dueToday && (
                                 <li className="flex justify-between gap-4 text-slate-800 dark:text-slate-100">
@@ -1507,11 +1511,26 @@ const PublicProposalView = () => {
                                   </span>
                                 </li>
                               )}
+                              {signingCostSummary.variableHourly && (
+                                <li className="flex justify-between gap-4 text-slate-800 dark:text-slate-100">
+                                  <span className="font-medium">
+                                    {signingCostSummary.variableHourly.label}
+                                  </span>
+                                  <span className="tabular-nums text-right">
+                                    {formatCurrency(signingCostSummary.variableHourly.amount)}
+                                    <span className="block text-xs font-normal text-slate-600 dark:text-slate-400">
+                                      estimate · hours worked
+                                    </span>
+                                  </span>
+                                </li>
+                              )}
                             </ul>
                           )}
                       </>
                     ) : signingCostSummary &&
-                      (signingCostSummary.dueToday || signingCostSummary.recurring) ? (
+                      (signingCostSummary.dueToday ||
+                        signingCostSummary.recurring ||
+                        signingCostSummary.variableHourly) ? (
                       <ul className="mt-2 space-y-2 text-sm">
                         {signingCostSummary.dueToday && (
                           <li className="text-slate-800 dark:text-slate-100">
@@ -1526,6 +1545,15 @@ const PublicProposalView = () => {
                             </span>
                             {formatCurrency(signingCostSummary.recurring.amount)}{' '}
                             {signingCostSummary.recurring.periodPhrase} (inc. VAT)
+                          </li>
+                        )}
+                        {signingCostSummary.variableHourly && (
+                          <li className="text-slate-800 dark:text-slate-100">
+                            <span className="font-medium">
+                              {signingCostSummary.variableHourly.label}:{' '}
+                            </span>
+                            {formatCurrency(signingCostSummary.variableHourly.amount)} estimate
+                            (inc. VAT). Invoiced each month for the hours actually worked.
                           </li>
                         )}
                       </ul>

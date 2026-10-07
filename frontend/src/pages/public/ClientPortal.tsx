@@ -44,6 +44,7 @@ interface PortalProposal {
     grossTotal: number;
     billingFrequency: string;
     priceDisplayMode: string;
+    hourlyBillingMode?: string | null;
   }>;
   canView: boolean;
 }
@@ -195,10 +196,19 @@ function ProposalCard({
     return freq === 'ONE_TIME' ? sum + gross : sum;
   }, 0);
 
-  const hourlyTotal = proposal.services.reduce((sum: number, s) => {
+  const hourlyQuoted = proposal.services.reduce((sum: number, s) => {
     const freq = s.billingFrequency || 'MONTHLY';
     const gross = s.grossTotal || 0;
-    return freq === 'HOURLY' ? sum + gross : sum;
+    if (freq !== 'HOURLY') return sum;
+    if (String(s.hourlyBillingMode || '').toUpperCase() === 'MONTHLY_ACTUAL') return sum;
+    return sum + gross;
+  }, 0);
+  const hourlyEstimate = proposal.services.reduce((sum: number, s) => {
+    const freq = s.billingFrequency || 'MONTHLY';
+    const gross = s.grossTotal || 0;
+    return freq === 'HOURLY' && String(s.hourlyBillingMode || '').toUpperCase() === 'MONTHLY_ACTUAL'
+      ? sum + gross
+      : sum;
   }, 0);
 
   const handleView = async () => {
@@ -238,9 +248,14 @@ function ProposalCard({
             + {formatCurrency(oneOffTotal)} one-off
           </span>
         )}
-        {hourlyTotal > 0 && (
+        {hourlyQuoted > 0 && (
           <span className="text-sm text-slate-500 dark:text-slate-400 ml-2">
-            + {formatCurrency(hourlyTotal)} hourly
+            + {formatCurrency(hourlyQuoted)} hourly
+          </span>
+        )}
+        {hourlyEstimate > 0 && (
+          <span className="text-sm text-slate-500 dark:text-slate-400 ml-2">
+            + {formatCurrency(hourlyEstimate)} hourly estimate
           </span>
         )}
       </div>

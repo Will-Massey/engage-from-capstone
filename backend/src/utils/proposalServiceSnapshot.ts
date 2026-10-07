@@ -25,6 +25,7 @@ export type ProposalServiceRow = {
   isOptional?: boolean;
   sortOrder?: number;
   oneOffDueDate?: Date | string | null;
+  hourlyBillingMode?: string | null;
   serviceTemplateId?: string | null;
   serviceTemplate?: { id: string; category?: string | null } | null;
 };

@@ -1989,8 +1989,8 @@ export function calculateAnnualCost(service: ServiceTemplate): number {
     case 'ANNUALLY':
       return service.basePrice;
     case 'HOURLY':
-      // No assumed hours per year. The line total is rate × quantity elsewhere.
-      return 0;
+      // Quoted fee at full value: rate times the catalogue hours. Not ×52 or ×12.
+      return service.basePrice * (service.baseHours > 0 ? service.baseHours : 1);
     case 'FIXED_DATE' as any:
       return service.basePrice;
     default:

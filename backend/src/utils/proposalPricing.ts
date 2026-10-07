@@ -8,7 +8,7 @@ import {
   billingFrequencyToDisplayMode,
   type BillingFrequency,
 } from '../services/pricingEngine_v2.js';
-import { roundMoney } from '@uk-proposal-platform/shared';
+import { normaliseHourlyBillingMode, roundMoney } from '@uk-proposal-platform/shared';
 
 export { VALID_BILLING_FREQUENCIES };
 export type { BillingFrequency };
@@ -26,6 +26,7 @@ export interface ProposalServiceInput {
   frequency?: string;
   vatRate?: number;
   oneOffDueDate?: string | null;
+  hourlyBillingMode?: string | null;
 }
 
 export interface ServiceTemplateInfo {
@@ -72,6 +73,7 @@ export interface BuiltProposalService {
   vatAmountPence: number;
   grossTotalPence: number;
   oneOffDueDate: Date | null;
+  hourlyBillingMode: 'ONE_OFF' | 'MONTHLY_ACTUAL' | null;
   serviceTemplateId: string | null;
 }
 
@@ -107,12 +109,16 @@ export function buildProposalServiceRecord(
   const discountPercent = svc.discountPercent || 0;
   const vatRate = svc.vatRate !== undefined ? svc.vatRate : 20;
 
+  const hourlyBillingMode =
+    billingFrequency === 'HOURLY' ? normaliseHourlyBillingMode(svc.hourlyBillingMode) : null;
+
   const line = calculateLineItem({
     basePrice: displayPrice,
     billingFrequency,
     quantity,
     discountPercent,
     vatRate,
+    hourlyBillingMode,
   });
 
   // Persisted money is always whole pence (2dp): quantities like 1.5 ×
@@ -139,6 +145,7 @@ export function buildProposalServiceRecord(
     vatAmountPence: poundsToPence(line.vatAmount),
     grossTotalPence: poundsToPence(netTotal) + poundsToPence(line.vatAmount),
     oneOffDueDate: parseOneOffDueDate(billingFrequency, svc.oneOffDueDate),
+    hourlyBillingMode,
     serviceTemplateId: template?.id ?? null,
   };
 }
