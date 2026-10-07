@@ -7,9 +7,15 @@
  * 3. VAT calculated per line on discounted net
  */
 
-export type BillingFrequency = 'ONE_TIME' | 'WEEKLY' | 'MONTHLY' | 'QUARTERLY' | 'ANNUALLY';
+export type BillingFrequency =
+  | 'ONE_TIME'
+  | 'HOURLY'
+  | 'WEEKLY'
+  | 'MONTHLY'
+  | 'QUARTERLY'
+  | 'ANNUALLY';
 
-export type PriceDisplayMode = 'PER_MONTH' | 'PER_QUARTER' | 'PER_YEAR' | 'ONE_TIME';
+export type PriceDisplayMode = 'PER_MONTH' | 'PER_QUARTER' | 'PER_YEAR' | 'ONE_TIME' | 'PER_HOUR';
 
 export interface ServicePricingInput {
   basePrice: number;
@@ -46,6 +52,8 @@ export interface ProposalTotals {
   annually: FrequencyBandTotals;
   oneTime: FrequencyBandTotals;
   weekly: FrequencyBandTotals;
+  /** Quoted hours (rate × quantity). Not a repeating calendar charge. */
+  hourly: FrequencyBandTotals;
   grandTotal: number;
   totalAnnualEquivalent: number;
   primaryBillingFrequency: BillingFrequency;
@@ -75,6 +83,16 @@ export interface EquivalentOptions {
 }
 
 /**
+ * Quoted amounts are collected once for the work described. They are not a
+ * Stripe or accounting repeating interval.
+ * HOURLY is a rate times a quantity of hours, not a calendar recurrence.
+ */
+export function isQuotedBillingFrequency(frequency: string | null | undefined): boolean {
+  const upper = String(frequency || '').toUpperCase();
+  return upper === 'ONE_TIME' || upper === 'ONE_OFF' || upper === 'HOURLY';
+}
+
+/**
  * Annualised value of a recurring amount. Unknown/blank frequencies are
  * treated as MONTHLY (matches the engine's historical default). Unrounded —
  * round at the display/persistence edge.
@@ -93,6 +111,9 @@ export function annualEquivalentFor(
       return amount;
     case 'ONE_TIME':
       return options?.oneTime === 'amortised' ? amount : 0;
+    case 'HOURLY':
+      // Rate × hours on the line. Do not annualise (no ×52, ×12, or assumed working hours).
+      return 0;
     case 'MONTHLY':
     default:
       return amount * 12;
@@ -134,6 +155,9 @@ export function calculateLineItem(input: ServicePricingInput): LineItemResult {
     case 'ONE_TIME':
       priceDisplayMode = 'ONE_TIME';
       break;
+    case 'HOURLY':
+      priceDisplayMode = 'PER_HOUR';
+      break;
     default:
       priceDisplayMode = 'PER_MONTH';
   }
@@ -152,6 +176,9 @@ export function calculateLineItem(input: ServicePricingInput): LineItemResult {
       break;
     case 'ONE_TIME':
       priceLabel = `${formattedPrice} one-time`;
+      break;
+    case 'PER_HOUR':
+      priceLabel = `${formattedPrice}/hour`;
       break;
   }
 
@@ -177,6 +204,7 @@ export function calculateProposalTotals(lineItems: LineItemResult[]): ProposalTo
     annually: lineItems.filter((item) => item.billingFrequency === 'ANNUALLY'),
     oneTime: lineItems.filter((item) => item.billingFrequency === 'ONE_TIME'),
     weekly: lineItems.filter((item) => item.billingFrequency === 'WEEKLY'),
+    hourly: lineItems.filter((item) => item.billingFrequency === 'HOURLY'),
   };
 
   const calculateGroup = (items: LineItemResult[]): FrequencyBandTotals => ({
@@ -191,9 +219,10 @@ export function calculateProposalTotals(lineItems: LineItemResult[]): ProposalTo
   const annually = calculateGroup(grouped.annually);
   const oneTime = calculateGroup(grouped.oneTime);
   const weekly = calculateGroup(grouped.weekly);
+  const hourly = calculateGroup(grouped.hourly);
 
   const grandTotal =
-    monthly.total + quarterly.total + annually.total + oneTime.total + weekly.total;
+    monthly.total + quarterly.total + annually.total + oneTime.total + weekly.total + hourly.total;
   const totalAnnualEquivalent =
     monthly.items.reduce((sum, item) => sum + item.annualEquivalent * item.quantity, 0) +
     quarterly.items.reduce((sum, item) => sum + item.annualEquivalent * item.quantity, 0) +
@@ -205,6 +234,7 @@ export function calculateProposalTotals(lineItems: LineItemResult[]): ProposalTo
     ANNUALLY: grouped.annually.length,
     ONE_TIME: grouped.oneTime.length,
     WEEKLY: grouped.weekly.length,
+    HOURLY: grouped.hourly.length,
   };
   const primaryBillingFrequency = Object.entries(counts).sort(
     (a, b) => b[1] - a[1]
@@ -216,6 +246,7 @@ export function calculateProposalTotals(lineItems: LineItemResult[]): ProposalTo
     annually,
     oneTime,
     weekly,
+    hourly,
     grandTotal,
     totalAnnualEquivalent,
     primaryBillingFrequency,
@@ -243,6 +274,8 @@ export function getBillingFrequencyLabel(frequency: BillingFrequency): string {
       return 'One-time';
     case 'WEEKLY':
       return 'Weekly';
+    case 'HOURLY':
+      return 'Hourly';
     default:
       return frequency;
   }
@@ -260,6 +293,8 @@ export function getBillingFrequencyShort(frequency: BillingFrequency): string {
       return '';
     case 'WEEKLY':
       return '/wk';
+    case 'HOURLY':
+      return '/hr';
     default:
       return '';
   }

@@ -29,6 +29,7 @@ const FREQUENCY_OPTIONS = [
   { value: 'ANNUALLY', label: 'Annually' },
   { value: 'ONE_TIME', label: 'One-time' },
   { value: 'WEEKLY', label: 'Weekly' },
+  { value: 'HOURLY', label: 'Hourly' },
 ];
 
 export interface ProposalTemplateEditorValues {
@@ -155,6 +156,7 @@ export default function ProposalTemplateEditor({
         case 'ANNUALLY':
           return sum + gross / 12;
         case 'ONE_TIME':
+        case 'HOURLY':
           return sum;
         default:
           return sum + gross;
@@ -355,7 +357,9 @@ export default function ProposalTemplateEditor({
                       </select>
                     </div>
                     <div className="w-16">
-                      <label className="text-xs text-slate-500">Qty</label>
+                      <label className="text-xs text-slate-500">
+                        {line.billingFrequency === 'HOURLY' ? 'Hours' : 'Qty'}
+                      </label>
                       <input
                         type="number"
                         min={1}

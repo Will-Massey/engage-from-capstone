@@ -23,6 +23,7 @@ interface WizardClientPreviewProps {
 
 const FREQ_LABELS: Record<string, string> = {
   WEEKLY: 'per week',
+  HOURLY: 'per hour',
   MONTHLY: 'per month',
   QUARTERLY: 'per quarter',
   ANNUALLY: 'per year',

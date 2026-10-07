@@ -113,7 +113,7 @@ export async function createTestService(
   config: {
     name: string;
     basePrice: number;
-    defaultFrequency: 'MONTHLY' | 'QUARTERLY' | 'ANNUALLY' | 'ONE_TIME';
+    defaultFrequency: 'MONTHLY' | 'QUARTERLY' | 'ANNUALLY' | 'ONE_TIME' | 'WEEKLY' | 'HOURLY';
     category?: string;
   }
 ): Promise<void> {
@@ -140,7 +140,7 @@ export async function ensureTestService(
   config: {
     name: string;
     basePrice: number;
-    defaultFrequency?: 'MONTHLY' | 'QUARTERLY' | 'ANNUALLY' | 'ONE_TIME';
+    defaultFrequency?: 'MONTHLY' | 'QUARTERLY' | 'ANNUALLY' | 'ONE_TIME' | 'WEEKLY' | 'HOURLY';
     category?: string;
   }
 ): Promise<void> {
@@ -253,6 +253,11 @@ export function calculateMonthlyPrice(basePrice: number, frequency: string): num
       return Math.round((basePrice / 3) * 100) / 100;
     case 'MONTHLY':
     case 'ONE_TIME':
+      return basePrice;
+    case 'WEEKLY':
+      return Math.round(basePrice * (52 / 12) * 100) / 100;
+    case 'HOURLY':
+      return 0;
     default:
       return basePrice;
   }

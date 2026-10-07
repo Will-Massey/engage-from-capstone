@@ -16,7 +16,11 @@ const bookkeeping = {
 describe('wizardCatchUp', () => {
   it('treats one-off lines as ineligible', () => {
     expect(isRecurringWizardFrequency('ONE_TIME')).toBe(false);
+    expect(isRecurringWizardFrequency('HOURLY')).toBe(false);
     expect(isRecurringWizardFrequency('MONTHLY')).toBe(true);
+    expect(
+      previewCatchUpBase({ ...bookkeeping, billingFrequency: 'HOURLY', displayPrice: 75 }, 3)
+    ).toBeNull();
     expect(previewCatchUpBase({ ...bookkeeping, billingFrequency: 'ONE_TIME' }, 3)).toBeNull();
   });
 

@@ -1,4 +1,9 @@
-import { monthlyEquivalentFor, roundMoney, type BillingFrequency } from '@shared/pricingEngine';
+import {
+  isQuotedBillingFrequency,
+  monthlyEquivalentFor,
+  roundMoney,
+  type BillingFrequency,
+} from '@shared/pricingEngine';
 
 export type WizardCatchUpDraft = {
   enabled: boolean;
@@ -20,7 +25,7 @@ export const DEFAULT_WIZARD_CATCH_UP: WizardCatchUpDraft = {
 };
 
 export function isRecurringWizardFrequency(freq?: string): boolean {
-  return Boolean(freq && freq !== 'ONE_TIME');
+  return Boolean(freq && !isQuotedBillingFrequency(freq));
 }
 
 export function clampCatchUpMonths(months: number): number {

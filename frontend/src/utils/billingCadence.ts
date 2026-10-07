@@ -7,6 +7,7 @@ import { annualEquivalentFor, roundMoney } from '@shared/pricingEngine';
 
 export const ALL_BILLING_CADENCES = [
   'WEEKLY',
+  'HOURLY',
   'MONTHLY',
   'QUARTERLY',
   'ANNUALLY',
@@ -21,6 +22,7 @@ export const BILLING_CADENCE_OPTIONS: {
   short: string;
 }[] = [
   { value: 'WEEKLY', label: 'Weekly', short: 'Wk' },
+  { value: 'HOURLY', label: 'Hourly', short: 'Hr' },
   { value: 'MONTHLY', label: 'Monthly', short: 'Mo' },
   { value: 'QUARTERLY', label: 'Quarterly', short: 'Qtr' },
   { value: 'ANNUALLY', label: 'Annual', short: 'Yr' },
@@ -58,7 +60,15 @@ export function convertPriceBetweenCadences(
   toCadence: string
 ): number {
   if (fromCadence === toCadence) return price;
-  if (toCadence === 'ONE_TIME' || fromCadence === 'ONE_TIME') return price;
+  // Hourly is a rate, not a period of the year. Keep the entered number.
+  if (
+    toCadence === 'ONE_TIME' ||
+    fromCadence === 'ONE_TIME' ||
+    toCadence === 'HOURLY' ||
+    fromCadence === 'HOURLY'
+  ) {
+    return price;
+  }
   const annual = annualEquivalentFor(price, fromCadence);
   const periods = PERIODS_PER_YEAR[toCadence];
   return roundMoney(periods ? annual / periods : price);

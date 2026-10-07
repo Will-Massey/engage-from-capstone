@@ -12,6 +12,14 @@ describe('formatProposalLetterSeed', () => {
     expect(seed.fees).toContain('Year-end accounts: £850.00 / year');
   });
 
+  it('labels an hourly line as hourly without turning the total into a per-hour rate', () => {
+    const seed = formatProposalLetterSeed('ENG-9', [
+      { name: 'Advisory', billingFrequency: 'HOURLY', lineTotalPence: 30000 },
+    ]);
+    expect(seed.fees).toContain('Advisory: £300.00 hourly');
+    expect(seed.fees).not.toContain('/ hour');
+  });
+
   it('skips blank names', () => {
     expect(formatProposalLetterSeed('X', [{ name: '  ' }])).toEqual({
       proposalReference: 'X',

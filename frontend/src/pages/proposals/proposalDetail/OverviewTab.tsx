@@ -16,6 +16,7 @@ import {
   BriefcaseIcon,
 } from '@heroicons/react/24/outline';
 import { format } from 'date-fns';
+import { getBillingFrequencyLabel, type BillingFrequency } from '@shared/pricingEngine';
 import { formatCurrency } from '../../../utils/formatters';
 import { generateDefaultCoverLetter } from '../../../data/defaultCoverLetter';
 import SignaturePad from '../../../components/SignaturePad';
@@ -224,6 +225,11 @@ export default function OverviewTab() {
                       </span>
                     )}
                   </div>
+                  <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                    {serviceFreq === 'HOURLY'
+                      ? `${service.quantity || 1} hour${(service.quantity || 1) === 1 ? '' : 's'} at ${formatCurrency(service.displayPrice || service.unitPrice || 0)}/hour`
+                      : getBillingFrequencyLabel(serviceFreq as BillingFrequency)}
+                  </p>
                   {service.description && (
                     <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">
                       {service.description}

@@ -75,6 +75,7 @@ async function testPricingFrequency() {
     { basePrice: 180, frequency: 'QUARTERLY', expectedMonthly: 60 },
     { basePrice: 150, frequency: 'MONTHLY', expectedMonthly: 150 },
     { basePrice: 500, frequency: 'ONE_TIME', expectedMonthly: 500 },
+    { basePrice: 75, frequency: 'HOURLY', expectedMonthly: 0 },
   ];
 
   for (const test of testCases) {
@@ -85,6 +86,9 @@ async function testPricingFrequency() {
         break;
       case 'QUARTERLY':
         monthlyPrice = test.basePrice / 3;
+        break;
+      case 'HOURLY':
+        monthlyPrice = 0;
         break;
       default:
         monthlyPrice = test.basePrice;
@@ -250,9 +254,14 @@ async function testServiceTemplates() {
     }
 
     for (const service of services) {
-      const hasFrequency = ['MONTHLY', 'QUARTERLY', 'ANNUALLY', 'ONE_TIME'].includes(
-        service.defaultFrequency
-      );
+      const hasFrequency = [
+        'MONTHLY',
+        'QUARTERLY',
+        'ANNUALLY',
+        'ONE_TIME',
+        'WEEKLY',
+        'HOURLY',
+      ].includes(service.defaultFrequency);
 
       recordTest(
         `Service "${service.name}" has valid frequency`,

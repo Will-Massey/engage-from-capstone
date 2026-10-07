@@ -59,6 +59,7 @@ const categoryColors: Record<string, string> = {
 
 const frequencyLabels: Record<string, string> = {
   ONE_TIME: 'One-time',
+  HOURLY: 'Hourly',
   WEEKLY: 'Weekly',
   MONTHLY: 'Monthly',
   QUARTERLY: 'Quarterly',
@@ -230,7 +231,10 @@ const ServiceDetail = () => {
               <div>
                 <span className="text-slate-600">Default Frequency:</span>
                 <span className="ml-2 font-medium text-slate-900">
-                  {frequencyLabels[service.defaultFrequency || 'MONTHLY']}
+                  {frequencyLabels[service.billingCycle || service.defaultFrequency || 'MONTHLY'] ||
+                    service.billingCycle ||
+                    service.defaultFrequency ||
+                    'Monthly'}
                 </span>
               </div>
             </div>

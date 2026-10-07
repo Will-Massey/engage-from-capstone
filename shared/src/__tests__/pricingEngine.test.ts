@@ -1,6 +1,8 @@
 import {
   annualEquivalentFor,
   calculateLineItem,
+  calculateProposalTotals,
+  isQuotedBillingFrequency,
   monthlyEquivalentFor,
   roundMoney,
   vatAmountFor,
@@ -50,13 +52,19 @@ describe('annualEquivalentFor', () => {
     expect(annualEquivalentFor(500, 'ONE_TIME', { oneTime: 'amortised' })).toBe(500);
   });
 
+  it('does not annualise an hourly rate', () => {
+    expect(annualEquivalentFor(75, 'HOURLY')).toBe(0);
+    expect(annualEquivalentFor(75, 'HOURLY', { oneTime: 'amortised' })).toBe(0);
+    expect(monthlyEquivalentFor(75, 'HOURLY')).toBe(0);
+  });
+
   it('treats unknown frequencies as MONTHLY (engine historical default)', () => {
     expect(annualEquivalentFor(100, 'FORTNIGHTLY')).toBe(1200);
     expect(annualEquivalentFor(100, '')).toBe(1200);
   });
 
   it('matches calculateLineItem annualEquivalent for every frequency', () => {
-    for (const f of ['WEEKLY', 'MONTHLY', 'QUARTERLY', 'ANNUALLY', 'ONE_TIME'] as const) {
+    for (const f of ['WEEKLY', 'MONTHLY', 'QUARTERLY', 'ANNUALLY', 'ONE_TIME', 'HOURLY'] as const) {
       const line = calculateLineItem({ basePrice: 250, billingFrequency: f });
       expect(line.annualEquivalent).toBe(annualEquivalentFor(250, f));
     }
@@ -71,5 +79,38 @@ describe('monthlyEquivalentFor', () => {
     expect(monthlyEquivalentFor(12, 'WEEKLY')).toBe(52);
     expect(monthlyEquivalentFor(600, 'ONE_TIME')).toBe(0);
     expect(monthlyEquivalentFor(600, 'ONE_TIME', { oneTime: 'amortised' })).toBe(50);
+    expect(monthlyEquivalentFor(75, 'HOURLY')).toBe(0);
+  });
+});
+
+describe('hourly line pricing', () => {
+  it('prices rate times hours and keeps the fee out of the annual equivalent', () => {
+    const line = calculateLineItem({
+      basePrice: 75,
+      billingFrequency: 'HOURLY',
+      quantity: 4,
+      vatRate: 20,
+    });
+    expect(line.lineTotal).toBe(300);
+    expect(line.netTotal).toBe(300);
+    expect(line.vatAmount).toBe(60);
+    expect(line.grossTotal).toBe(360);
+    expect(line.annualEquivalent).toBe(0);
+    expect(line.priceDisplayMode).toBe('PER_HOUR');
+    expect(line.priceLabel).toBe('£75/hour');
+    expect(isQuotedBillingFrequency('HOURLY')).toBe(true);
+    expect(isQuotedBillingFrequency('MONTHLY')).toBe(false);
+
+    const monthly = calculateLineItem({
+      basePrice: 100,
+      billingFrequency: 'MONTHLY',
+      quantity: 1,
+      vatRate: 0,
+    });
+    const totals = calculateProposalTotals([line, monthly]);
+    expect(totals.hourly.total).toBe(360);
+    expect(totals.hourly.items).toHaveLength(1);
+    expect(totals.grandTotal).toBe(460);
+    expect(totals.totalAnnualEquivalent).toBe(1200);
   });
 });

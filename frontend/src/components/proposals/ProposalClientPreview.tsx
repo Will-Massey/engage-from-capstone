@@ -17,6 +17,7 @@ export interface PreviewPricingSummary {
   quarterly: { total: number; count: number };
   weekly: { total: number; count: number };
   oneTime: { total: number; count: number };
+  hourly: { total: number; count: number };
   contractTotalIncVat: number;
 }
 
@@ -48,6 +49,7 @@ const WATERMARK_STYLE: CSSProperties = {
 
 const BILLING_LABELS: Record<string, string> = {
   WEEKLY: 'week',
+  HOURLY: 'hour',
   MONTHLY: 'month',
   QUARTERLY: 'quarter',
   ANNUALLY: 'year',
@@ -107,6 +109,15 @@ function InvestmentSummaryBands({ summary }: { summary: PreviewPricingSummary })
           <span className="text-base font-semibold text-slate-900 dark:text-white tabular-nums">
             {formatCurrency(summary.weekly.total)}
             <span className="text-xs font-normal text-slate-500 ml-1">/week</span>
+          </span>
+        </div>
+      )}
+      {summary.hourly.count > 0 && (
+        <div className="flex justify-between items-baseline">
+          <span className="text-sm font-medium text-slate-800 dark:text-slate-100">Hourly</span>
+          <span className="text-base font-semibold text-slate-900 dark:text-white tabular-nums">
+            {formatCurrency(summary.hourly.total)}
+            <span className="text-xs font-normal text-slate-500 ml-1">quoted</span>
           </span>
         </div>
       )}

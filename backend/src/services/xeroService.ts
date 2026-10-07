@@ -23,6 +23,7 @@ import {
   CurrencyCode,
 } from 'xero-node';
 import logger from '../config/logger.js';
+import { isQuotedBillingFrequency } from '@uk-proposal-platform/shared';
 import {
   getTenantXeroSettings,
   saveTenantXeroSettings,
@@ -271,6 +272,8 @@ function mapBillingToSchedule(billingFrequency: string): {
       return { unit: Schedule.UnitEnum.MONTHLY, period: 3 };
     case 'ANNUALLY':
       return { unit: Schedule.UnitEnum.MONTHLY, period: 12 };
+    case 'HOURLY':
+      throw new Error('Hourly fees are quoted, not a repeating invoice schedule');
     case 'MONTHLY':
     default:
       return { unit: Schedule.UnitEnum.MONTHLY, period: 1 };
@@ -278,8 +281,8 @@ function mapBillingToSchedule(billingFrequency: string): {
 }
 
 function groupRecurringServices(services: ProposalServiceLine[]) {
-  const recurring = services.filter((s) => s.billingFrequency !== 'ONE_TIME');
-  const oneTime = services.filter((s) => s.billingFrequency === 'ONE_TIME');
+  const recurring = services.filter((s) => !isQuotedBillingFrequency(s.billingFrequency));
+  const oneTime = services.filter((s) => isQuotedBillingFrequency(s.billingFrequency));
 
   const groups = new Map<string, ProposalServiceLine[]>();
   for (const service of recurring) {
@@ -534,7 +537,7 @@ export async function pushAcceptedProposalToXero(
   } else if (groups.size === 0) {
     errors.push(
       oneTime.length
-        ? 'No recurring service lines — one-off charges were not added to a repeating invoice.'
+        ? 'No recurring service lines. One-off and hourly charges were not added to a repeating invoice.'
         : 'No service lines to invoice.'
     );
   } else {
@@ -579,8 +582,13 @@ export async function pushAcceptedProposalToXero(
   }
 
   if (oneTime.length) {
+    const hourly = oneTime.filter((s) => s.billingFrequency === 'HOURLY').length;
+    const oneOff = oneTime.length - hourly;
+    const parts: string[] = [];
+    if (oneOff > 0) parts.push(`${oneOff} one-off`);
+    if (hourly > 0) parts.push(`${hourly} hourly`);
     errors.push(
-      `${oneTime.length} one-off service line(s) were not added to repeating invoices — raise these separately in Xero.`
+      `${parts.join(' and ')} service line(s) were not added to repeating invoices. Raise these separately in Xero.`
     );
   }
 

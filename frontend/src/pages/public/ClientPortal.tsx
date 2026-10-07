@@ -195,6 +195,12 @@ function ProposalCard({
     return freq === 'ONE_TIME' ? sum + gross : sum;
   }, 0);
 
+  const hourlyTotal = proposal.services.reduce((sum: number, s) => {
+    const freq = s.billingFrequency || 'MONTHLY';
+    const gross = s.grossTotal || 0;
+    return freq === 'HOURLY' ? sum + gross : sum;
+  }, 0);
+
   const handleView = async () => {
     if (!canView || isOpening) return;
     setIsOpening(true);
@@ -230,6 +236,11 @@ function ProposalCard({
         {oneOffTotal > 0 && (
           <span className="text-sm text-slate-500 dark:text-slate-400 ml-2">
             + {formatCurrency(oneOffTotal)} one-off
+          </span>
+        )}
+        {hourlyTotal > 0 && (
+          <span className="text-sm text-slate-500 dark:text-slate-400 ml-2">
+            + {formatCurrency(hourlyTotal)} hourly
           </span>
         )}
       </div>

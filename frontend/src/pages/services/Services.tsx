@@ -52,6 +52,7 @@ const categoryColors: Record<string, string> = {
 
 const frequencyLabels: Record<string, string> = {
   ONE_TIME: 'One-time',
+  HOURLY: 'Hourly',
   WEEKLY: 'Weekly',
   MONTHLY: 'Monthly',
   QUARTERLY: 'Quarterly',
@@ -190,6 +191,7 @@ const ServiceModal = ({
               className="mt-1 input-field w-full"
             >
               <option value="ONE_TIME">One-time</option>
+              <option value="HOURLY">Hourly</option>
               <option value="WEEKLY">Weekly</option>
               <option value="MONTHLY">Monthly</option>
               <option value="QUARTERLY">Quarterly</option>
@@ -489,7 +491,10 @@ const Services = () => {
             className="input-field w-44"
           >
             <option value="">All billing types</option>
+            <option value="HOURLY">Hourly</option>
+            <option value="WEEKLY">Weekly</option>
             <option value="MONTHLY">Monthly</option>
+            <option value="QUARTERLY">Quarterly</option>
             <option value="ANNUALLY">Annual</option>
             <option value="ONE_TIME">One-time</option>
           </select>
@@ -512,67 +517,71 @@ const Services = () => {
         <EmptyServices />
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {filteredServices.map((service) => (
-            <div
-              key={service.id}
-              className="glass-tile p-5 transition-colors hover:border-slate-300 dark:hover:border-slate-600"
-            >
-              <div className="flex items-start justify-between mb-3">
-                <span
-                  className={`px-2 py-1 text-xs font-medium rounded-full ${categoryColors[service.category] || 'bg-slate-100 text-slate-800'}`}
-                >
-                  {formatServiceCategory(service.category)}
-                </span>
-                <div className="flex items-center space-x-1">
-                  {service.isPopular && <StarIcon className="h-4 w-4 text-yellow-400" />}
+          {filteredServices.map((service) => {
+            const freq = service.billingCycle || service.defaultFrequency || 'MONTHLY';
+            const freqSuffix =
+              freq === 'HOURLY' ? 'hour' : frequencyLabels[freq]?.toLowerCase() || 'monthly';
+            return (
+              <div
+                key={service.id}
+                className="glass-tile p-5 transition-colors hover:border-slate-300 dark:hover:border-slate-600"
+              >
+                <div className="flex items-start justify-between mb-3">
+                  <span
+                    className={`px-2 py-1 text-xs font-medium rounded-full ${categoryColors[service.category] || 'bg-slate-100 text-slate-800'}`}
+                  >
+                    {formatServiceCategory(service.category)}
+                  </span>
+                  <div className="flex items-center space-x-1">
+                    {service.isPopular && <StarIcon className="h-4 w-4 text-yellow-400" />}
+                  </div>
                 </div>
-              </div>
 
-              <h3 className="font-semibold text-slate-900 dark:text-white mb-2">{service.name}</h3>
-              <p className="text-sm text-slate-600 dark:text-slate-300 line-clamp-2 mb-4">
-                {service.description}
-              </p>
+                <h3 className="font-semibold text-slate-900 dark:text-white mb-2">
+                  {service.name}
+                </h3>
+                <p className="text-sm text-slate-600 dark:text-slate-300 line-clamp-2 mb-4">
+                  {service.description}
+                </p>
 
-              <div className="flex items-center justify-between pt-4 border-t border-slate-100 dark:border-slate-700">
-                <div>
-                  <span className="text-2xl font-bold text-slate-900 dark:text-white">
-                    <span className="tabular-nums">
-                      {formatCurrency(service.priceAmount || service.basePrice || 0)}
+                <div className="flex items-center justify-between pt-4 border-t border-slate-100 dark:border-slate-700">
+                  <div>
+                    <span className="text-2xl font-bold text-slate-900 dark:text-white">
+                      <span className="tabular-nums">
+                        {formatCurrency(service.priceAmount || service.basePrice || 0)}
+                      </span>
                     </span>
-                  </span>
-                  <span className="text-xs text-slate-600 dark:text-slate-300 ml-1">
-                    /
-                    {frequencyLabels[
-                      service.billingCycle || service.defaultFrequency || 'MONTHLY'
-                    ]?.toLowerCase() || 'monthly'}
-                  </span>
-                </div>
-                <div className="flex items-center space-x-1">
-                  <button
-                    onClick={() => handleDuplicateService(service)}
-                    className="p-1 text-slate-400 hover:text-blue-600 dark:hover:text-blue-400"
-                    title="Duplicate"
-                  >
-                    <DocumentDuplicateIcon className="h-5 w-5" />
-                  </button>
-                  <button
-                    onClick={() => openEditModal(service)}
-                    className="p-1 text-slate-400 hover:text-primary-600 dark:hover:text-primary-400"
-                    title="Edit"
-                  >
-                    <PencilIcon className="h-5 w-5" />
-                  </button>
-                  <button
-                    onClick={() => handleDeleteService(service.id)}
-                    className="p-1 text-slate-400 hover:text-red-600 dark:hover:text-red-400"
-                    title="Delete"
-                  >
-                    <TrashIcon className="h-5 w-5" />
-                  </button>
+                    <span className="text-xs text-slate-600 dark:text-slate-300 ml-1">
+                      /{freqSuffix}
+                    </span>
+                  </div>
+                  <div className="flex items-center space-x-1">
+                    <button
+                      onClick={() => handleDuplicateService(service)}
+                      className="p-1 text-slate-400 hover:text-blue-600 dark:hover:text-blue-400"
+                      title="Duplicate"
+                    >
+                      <DocumentDuplicateIcon className="h-5 w-5" />
+                    </button>
+                    <button
+                      onClick={() => openEditModal(service)}
+                      className="p-1 text-slate-400 hover:text-primary-600 dark:hover:text-primary-400"
+                      title="Edit"
+                    >
+                      <PencilIcon className="h-5 w-5" />
+                    </button>
+                    <button
+                      onClick={() => handleDeleteService(service.id)}
+                      className="p-1 text-slate-400 hover:text-red-600 dark:hover:text-red-400"
+                      title="Delete"
+                    >
+                      <TrashIcon className="h-5 w-5" />
+                    </button>
+                  </div>
                 </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
 

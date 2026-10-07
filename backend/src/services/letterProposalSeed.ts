@@ -16,6 +16,7 @@ const FREQUENCY_LABEL: Record<string, string> = {
   ANNUAL: ' / year',
   YEARLY: ' / year',
   ONE_TIME: ' one-off',
+  HOURLY: ' hourly',
   WEEKLY: ' / week',
 };
 

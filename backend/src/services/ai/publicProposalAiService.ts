@@ -64,6 +64,10 @@ export function computeSigningCostSummary(proposal: PublicProposalRecord): Signi
 
   const oneTimeGross = byFrequency.get('ONE_TIME')?.gross ?? 0;
   const oneTimeVat = byFrequency.get('ONE_TIME')?.vat ?? 0;
+  const hourlyGross = byFrequency.get('HOURLY')?.gross ?? 0;
+  const hourlyVat = byFrequency.get('HOURLY')?.vat ?? 0;
+  const quotedGross = oneTimeGross + hourlyGross;
+  const quotedVat = oneTimeVat + hourlyVat;
   const monthlyGross =
     (byFrequency.get('MONTHLY')?.gross ?? 0) + (byFrequency.get('WEEKLY')?.gross ?? 0);
   const monthlyVat = (byFrequency.get('MONTHLY')?.vat ?? 0) + (byFrequency.get('WEEKLY')?.vat ?? 0);
@@ -72,10 +76,14 @@ export function computeSigningCostSummary(proposal: PublicProposalRecord): Signi
   const annualGross = byFrequency.get('ANNUALLY')?.gross ?? 0;
   const annualVat = byFrequency.get('ANNUALLY')?.vat ?? 0;
 
+  const dueTodayLabel =
+    hourlyGross > 0 && oneTimeGross > 0
+      ? 'Due today (one-off and hourly fees)'
+      : hourlyGross > 0
+        ? 'Due today (hourly fees)'
+        : 'Due today (one-off fees)';
   const dueToday =
-    oneTimeGross > 0
-      ? { amount: oneTimeGross, vatAmount: oneTimeVat, label: 'Due today (one-off fees)' }
-      : null;
+    quotedGross > 0 ? { amount: quotedGross, vatAmount: quotedVat, label: dueTodayLabel } : null;
 
   let recurring: SigningCostBreakdown['recurring'] = null;
   if (monthlyGross > 0) {
@@ -106,15 +114,16 @@ export function computeSigningCostSummary(proposal: PublicProposalRecord): Signi
 
   if (!dueToday && !recurring) {
     const paymentFrequency = String(proposal.paymentFrequency || 'MONTHLY').toUpperCase();
-    if (paymentFrequency === 'ONE_TIME') {
+    if (paymentFrequency === 'ONE_TIME' || paymentFrequency === 'HOURLY') {
       return {
         dueToday: {
           amount: penceToPounds(proposal.totalPence),
           vatAmount: penceToPounds(proposal.vatAmountPence),
-          label: 'Due today (one-off fees)',
+          label:
+            paymentFrequency === 'HOURLY' ? 'Due today (hourly fees)' : 'Due today (one-off fees)',
         },
         recurring: null,
-        primaryFrequency: 'ONE_TIME',
+        primaryFrequency: paymentFrequency,
       };
     }
     if (paymentFrequency === 'ANNUALLY') {

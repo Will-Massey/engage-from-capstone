@@ -18,6 +18,7 @@
  */
 
 import { prisma } from '../config/database.js';
+import { isQuotedBillingFrequency } from '@uk-proposal-platform/shared';
 import logger from '../config/logger.js';
 import { getTenantXeroSettings, isXeroOAuthConfigured } from './tenantXeroSettings.js';
 import {
@@ -74,7 +75,7 @@ export function planPaidInvoiceLines(
 ): PaidInvoiceLinePlan {
   const groups = new Map<string, PaidInvoiceServiceLine[]>();
   for (const service of services) {
-    if (service.billingFrequency === 'ONE_TIME') continue;
+    if (isQuotedBillingFrequency(service.billingFrequency)) continue;
     const key = service.billingFrequency || 'MONTHLY';
     const existing = groups.get(key) || [];
     existing.push(service);
