@@ -72,12 +72,15 @@ describe('feeBenchmarkService', () => {
       expect(toMonthlyEquivalent(1200, 'ONE_TIME')).toBe(100);
     });
 
-    it('counts a quoted hourly fee at full value, spread over the year', () => {
-      expect(toMonthlyEquivalent(75, 'HOURLY', { quantity: 4 })).toBe(25);
-      expect(toMonthlyEquivalent(75, 'HOURLY')).toBe(6.25);
+    it('counts a one-off hourly block at the full quoted fee', () => {
+      expect(toMonthlyEquivalent(75, 'HOURLY', { quantity: 4 })).toBe(300);
+      expect(toMonthlyEquivalent(75, 'HOURLY', { quantity: 4, hourlyBillingMode: 'ONE_OFF' })).toBe(
+        300
+      );
+      expect(toMonthlyEquivalent(75, 'HOURLY')).toBe(75);
     });
 
-    it('treats recurring monthly hourly as the estimated month, not a twelfth of it', () => {
+    it('treats recurring monthly hourly as the estimated hours for a month', () => {
       expect(
         toMonthlyEquivalent(75, 'HOURLY', { quantity: 4, hourlyBillingMode: 'MONTHLY_ACTUAL' })
       ).toBe(300);
