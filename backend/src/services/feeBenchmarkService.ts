@@ -5,7 +5,11 @@
  */
 
 import { ServiceCategory } from '@prisma/client';
-import { monthlyEquivalentFor } from '@uk-proposal-platform/shared';
+import {
+  annualEquivalentFor,
+  isMonthlyActualHourly,
+  monthlyEquivalentFor,
+} from '@uk-proposal-platform/shared';
 import { prisma } from '../config/database.js';
 import { penceToPounds } from '../utils/proposalPricing.js';
 import { getTurnoverBand, type TurnoverBand } from './regulatoryFitService.js';
@@ -35,8 +39,10 @@ export const TURNOVER_BAND_LABELS: Record<TurnoverBand, string> = {
 };
 
 /**
- * Normalise line fees to a monthly GBP equivalent for comparison.
- * One-offs are amortised over a year — a £600 one-off benchmarks like £50/mo.
+ * Normalise line fees for comparison.
+ * Calendar one-offs are amortised over a year: a £600 one-off benchmarks like £50 a month.
+ * A one-off hourly block benchmarks at the full quoted fee (rate times hours).
+ * Recurring monthly hourly benchmarks at the estimated hours for a typical month.
  */
 export function toMonthlyEquivalent(
   displayPrice: number,
@@ -44,11 +50,17 @@ export function toMonthlyEquivalent(
   options?: { quantity?: number; hourlyBillingMode?: string | null }
 ): number {
   if (String(billingFrequency || '').toUpperCase() === 'HOURLY') {
-    return monthlyEquivalentFor(displayPrice, 'HOURLY', {
-      oneTime: 'amortised',
+    const quantity = options?.quantity ?? 1;
+    if (isMonthlyActualHourly('HOURLY', options?.hourlyBillingMode)) {
+      return monthlyEquivalentFor(displayPrice, 'HOURLY', {
+        hourly: 'quoted',
+        quantity,
+        hourlyBillingMode: options?.hourlyBillingMode,
+      });
+    }
+    return annualEquivalentFor(displayPrice, 'HOURLY', {
       hourly: 'quoted',
-      quantity: options?.quantity ?? 1,
-      hourlyBillingMode: options?.hourlyBillingMode,
+      quantity,
     });
   }
   return monthlyEquivalentFor(displayPrice, billingFrequency, { oneTime: 'amortised' });
