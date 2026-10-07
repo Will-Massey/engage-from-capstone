@@ -12,8 +12,9 @@ describe('stripeIntervalFor', () => {
     expect(stripeIntervalFor('ANNUALLY')).toEqual({ interval: 'year', interval_count: 1 });
     expect(stripeIntervalFor('WEEKLY')).toEqual({ interval: 'week', interval_count: 1 });
   });
-  it('treats ONE_TIME and FIXED_DATE as non-recurring', () => {
+  it('treats ONE_TIME, HOURLY and FIXED_DATE as non-recurring', () => {
     expect(stripeIntervalFor('ONE_TIME')).toBeNull();
+    expect(stripeIntervalFor('HOURLY')).toBeNull();
     expect(stripeIntervalFor('FIXED_DATE')).toBeNull();
   });
 });
@@ -37,6 +38,17 @@ describe('splitRecurring', () => {
     });
     expect(byKey['year:1'].lines).toHaveLength(1);
     expect(byKey['year:1'].lines[0].unitAmountPence).toBe(30000);
+  });
+
+  it('treats hourly as a quoted amount: rate times hours, not a subscription', () => {
+    const r = splitRecurring([
+      { name: 'Advisory', displayPrice: 75, billingFrequency: 'HOURLY', quantity: 4 },
+    ]);
+    expect(r.oneOffPence).toBe(30000);
+    expect(r.recurringGroups).toHaveLength(0);
+    expect(
+      hasRecurringLines([{ name: 'Advisory', displayPrice: 75, billingFrequency: 'HOURLY' }])
+    ).toBe(false);
   });
 
   it('multiplies by quantity for one-off lines', () => {

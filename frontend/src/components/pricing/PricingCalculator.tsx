@@ -95,6 +95,7 @@ function billingLabel(cycle: string): string {
     QUARTERLY: 'quarter',
     ANNUALLY: 'year',
     ONE_TIME: 'one-off',
+    HOURLY: 'hour',
     WEEKLY: 'week',
   };
   return map[cycle] || cycle.toLowerCase();

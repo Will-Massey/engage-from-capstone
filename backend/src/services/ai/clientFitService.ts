@@ -240,7 +240,7 @@ export async function autoFitProposal(
 {
   "suggestedTitle": "max 8 words",
   "services": [
-    { "serviceId": "<uuid from catalog>", "billingFrequency": "MONTHLY|QUARTERLY|ANNUALLY|WEEKLY|ONE_TIME", "rationale": "one sentence" }
+    { "serviceId": "<uuid from catalog>", "billingFrequency": "MONTHLY|QUARTERLY|ANNUALLY|WEEKLY|HOURLY|ONE_TIME", "rationale": "one sentence" }
   ],
   "coverLetterTone": "PROFESSIONAL|FRIENDLY|MODERN",
   "coverLetterDraft": "3-4 plain text paragraphs",

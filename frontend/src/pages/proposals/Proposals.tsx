@@ -893,7 +893,9 @@ const Proposals = () => {
                               {formatCurrency(proposal.total ?? 0)}
                             </div>
                             <div className="text-xs text-slate-500 dark:text-slate-400">
-                              {proposal.paymentFrequency?.toLowerCase()}
+                              {proposal.paymentFrequency === 'HOURLY'
+                                ? 'Hourly'
+                                : proposal.paymentFrequency?.toLowerCase()}
                             </div>
                           </td>
                           <td className="px-4 py-4 whitespace-nowrap">

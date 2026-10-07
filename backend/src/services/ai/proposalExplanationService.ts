@@ -28,6 +28,7 @@ const BILLING_SHORT: Record<string, string> = {
   QUARTERLY: 'qtr',
   ANNUALLY: 'yr',
   WEEKLY: 'wk',
+  HOURLY: 'hr',
   ONE_TIME: 'once',
 };
 

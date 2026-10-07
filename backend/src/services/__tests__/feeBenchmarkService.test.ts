@@ -71,6 +71,10 @@ describe('feeBenchmarkService', () => {
     it('amortises one-time fees over a year', () => {
       expect(toMonthlyEquivalent(1200, 'ONE_TIME')).toBe(100);
     });
+
+    it('does not treat an hourly rate as a monthly fee', () => {
+      expect(toMonthlyEquivalent(75, 'HOURLY')).toBe(0);
+    });
   });
 
   describe('opt-in filtering', () => {

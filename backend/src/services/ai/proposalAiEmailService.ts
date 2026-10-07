@@ -51,6 +51,7 @@ function escapeHtml(text: string): string {
 
 function formatBilling(freq?: string): string {
   if (!freq) return 'monthly';
+  if (freq.toUpperCase() === 'HOURLY') return 'per hour';
   return freq.toLowerCase().replace(/_/g, ' ');
 }
 

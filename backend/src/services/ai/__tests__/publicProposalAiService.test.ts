@@ -90,6 +90,22 @@ describe('computeSigningCostSummary', () => {
     expect(summary.recurring?.periodPhrase).toBe('per year');
   });
 
+  it('treats hourly fees as due today, not a monthly subscription', () => {
+    const summary = computeSigningCostSummary(
+      mockProposal([
+        {
+          name: 'Advisory',
+          grossTotalPence: 36000,
+          vatAmountPence: 6000,
+          billingFrequency: 'HOURLY',
+        },
+      ])
+    );
+    expect(summary.dueToday?.amount).toBe(360);
+    expect(summary.dueToday?.label).toMatch(/hourly/i);
+    expect(summary.recurring).toBeNull();
+  });
+
   it('uses due today only for one-off proposals', () => {
     const summary = computeSigningCostSummary(
       mockProposal([

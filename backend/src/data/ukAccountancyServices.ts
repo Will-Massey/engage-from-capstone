@@ -9,6 +9,7 @@ export const billingCycles = [
   { value: 'QUARTERLY', label: 'Quarterly', description: '4 payments per year' },
   { value: 'ANNUALLY', label: 'Annually', description: 'Single annual payment' },
   { value: 'ONE_TIME', label: 'One-time', description: 'Single project or setup fee' },
+  { value: 'HOURLY', label: 'Hourly', description: 'Rate times a quantity of hours' },
   { value: 'WEEKLY', label: 'Weekly', description: '52 weekly payments' },
   { value: 'FIXED_DATE', label: 'Fixed Date', description: 'Bill on specific date(s)' },
 ] as const;
@@ -29,7 +30,7 @@ export interface ServiceTemplate {
   basePrice: number;
   baseHours: number;
   pricingModel: 'FIXED' | 'HOURLY' | 'TIERED';
-  billingCycle: 'WEEKLY' | 'MONTHLY' | 'QUARTERLY' | 'ANNUALLY' | 'ONE_TIME';
+  billingCycle: 'WEEKLY' | 'HOURLY' | 'MONTHLY' | 'QUARTERLY' | 'ANNUALLY' | 'ONE_TIME';
   isVatApplicable: boolean;
   vatRate: 'STANDARD_20' | 'REDUCED_5' | 'ZERO' | 'EXEMPT';
   annualEquivalent?: number;
@@ -1987,6 +1988,9 @@ export function calculateAnnualCost(service: ServiceTemplate): number {
       return service.basePrice * 4;
     case 'ANNUALLY':
       return service.basePrice;
+    case 'HOURLY':
+      // No assumed hours per year. The line total is rate × quantity elsewhere.
+      return 0;
     case 'FIXED_DATE' as any:
       return service.basePrice;
     default:

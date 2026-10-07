@@ -180,6 +180,7 @@ const BILLING_LABELS: Record<string, string> = {
   ANNUALLY: 'year',
   ONE_TIME: 'one-time',
   WEEKLY: 'week',
+  HOURLY: 'hour',
 };
 
 export class PDFGenerator {
@@ -828,6 +829,7 @@ ${senderPosition(proposal.createdBy) ? `${senderPosition(proposal.createdBy)}, `
       quarterly: proposal.services.filter((s) => getEffectiveFrequency(s) === 'QUARTERLY'),
       annually: proposal.services.filter((s) => getEffectiveFrequency(s) === 'ANNUALLY'),
       oneTime: proposal.services.filter((s) => getEffectiveFrequency(s) === 'ONE_TIME'),
+      hourly: proposal.services.filter((s) => getEffectiveFrequency(s) === 'HOURLY'),
     };
 
     const lineIncVat = (s: (typeof proposal.services)[0]) => {
@@ -877,6 +879,14 @@ ${senderPosition(proposal.createdBy) ? `${senderPosition(proposal.createdBy)}, `
       doc
         .text('Annual Total:', rightX, y)
         .text(this.formatCurrency(annualWithVat) + '/year', 490, y, { align: 'right' });
+      y += 20;
+    }
+
+    if (grouped.hourly.length > 0) {
+      const hourlyWithVat = grouped.hourly.reduce((sum, s) => sum + lineIncVat(s), 0);
+      doc
+        .text('Hourly fees:', rightX, y)
+        .text(this.formatCurrency(hourlyWithVat), 490, y, { align: 'right' });
       y += 20;
     }
 

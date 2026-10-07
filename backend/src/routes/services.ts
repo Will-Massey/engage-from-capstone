@@ -1,6 +1,13 @@
 import { Router } from 'express';
 import { z } from 'zod';
-import { ServiceCategory, PricingModel, PricingFrequency, CompanyType } from '@prisma/client';
+import {
+  ServiceCategory,
+  PricingModel,
+  PricingFrequency,
+  CompanyType,
+  PriceDisplayMode,
+} from '@prisma/client';
+import { billingFrequencyToDisplayMode, type BillingFrequency } from '@uk-proposal-platform/shared';
 import { prisma } from '../config/database.js';
 import { authenticate, authorize } from '../middleware/auth.js';
 import { asyncHandler, ApiError } from '../middleware/errorHandler.js';
@@ -50,10 +57,23 @@ function mapFrequencyToBillingCycle(
   return frequency as import('@prisma/client').BillingCycle;
 }
 
+function withDefaultFrequency(
+  options: PricingFrequency[],
+  defaultFrequency: PricingFrequency | undefined
+): PricingFrequency[] {
+  if (!defaultFrequency || options.includes(defaultFrequency)) return options;
+  return [...options, defaultFrequency];
+}
+
+function displayModeFor(cycle: string): PriceDisplayMode {
+  return billingFrequencyToDisplayMode(cycle as BillingFrequency) as PriceDisplayMode;
+}
+
 function buildServiceWriteData(data: z.infer<typeof createServiceSchema>, tenantId: string) {
   const billingCycle =
     mapFrequencyToBillingCycle(data.billingCycle as PricingFrequency | undefined) ??
     mapFrequencyToBillingCycle(data.defaultFrequency);
+  const cycle = billingCycle ?? 'MONTHLY';
 
   return {
     category: data.category,
@@ -65,9 +85,12 @@ function buildServiceWriteData(data: z.infer<typeof createServiceSchema>, tenant
     priceAmount: data.priceAmount ?? data.basePrice,
     baseHours: data.baseHours,
     pricingModel: data.pricingModel,
-    billingCycle: billingCycle ?? 'MONTHLY',
+    billingCycle: cycle,
+    priceDisplayMode: displayModeFor(cycle),
     defaultFrequency: data.defaultFrequency,
-    frequencyOptions: (data.frequencyOptions ?? []).join(','),
+    frequencyOptions: withDefaultFrequency(data.frequencyOptions ?? [], data.defaultFrequency).join(
+      ','
+    ),
     applicableEntityTypes: (data.applicableEntityTypes ?? []).join(','),
     complexityFactors: JSON.stringify(data.complexityFactors ?? []),
     requirements: JSON.stringify(data.requirements ?? []),
@@ -336,9 +359,24 @@ router.put(
       updateData.priceAmount = data.basePrice;
     }
     if (data.billingCycle !== undefined || data.defaultFrequency !== undefined) {
-      updateData.billingCycle =
+      const cycle =
         mapFrequencyToBillingCycle(data.billingCycle as PricingFrequency | undefined) ??
         mapFrequencyToBillingCycle(data.defaultFrequency);
+      if (cycle) {
+        updateData.billingCycle = cycle;
+        updateData.priceDisplayMode = displayModeFor(cycle);
+      }
+    }
+    if (data.defaultFrequency) {
+      const existingOptions = String(existingService.frequencyOptions || '')
+        .split(',')
+        .map((part) => part.trim())
+        .filter(Boolean) as PricingFrequency[];
+      const next = withDefaultFrequency(
+        data.frequencyOptions ?? existingOptions,
+        data.defaultFrequency
+      );
+      updateData.frequencyOptions = next.join(',');
     }
 
     const service = await prisma.serviceTemplate.update({

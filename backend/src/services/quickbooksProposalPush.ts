@@ -9,6 +9,7 @@
  */
 
 import { prisma } from '../config/database.js';
+import { isQuotedBillingFrequency } from '@uk-proposal-platform/shared';
 import logger from '../config/logger.js';
 import { getAuthenticatedQuickBooksSession, type QuickBooksSession } from './quickbooksService.js';
 import {
@@ -120,7 +121,7 @@ export async function pushProposalToQuickBooks(
     }
   }
 
-  const recurring = proposal.services.filter((s) => s.billingFrequency !== 'ONE_TIME');
+  const recurring = proposal.services.filter((s) => !isQuotedBillingFrequency(s.billingFrequency));
   if (recurring.length === 0) {
     throw new Error('No recurring service lines to push to QuickBooks');
   }
@@ -140,10 +141,15 @@ export async function pushProposalToQuickBooks(
     })),
   });
 
-  const oneTime = proposal.services.length - recurring.length;
-  if (oneTime > 0) {
+  const quoted = proposal.services.filter((s) => isQuotedBillingFrequency(s.billingFrequency));
+  if (quoted.length > 0) {
+    const hourly = quoted.filter((s) => s.billingFrequency === 'HOURLY').length;
+    const oneOff = quoted.length - hourly;
+    const parts: string[] = [];
+    if (oneOff > 0) parts.push(`${oneOff} one-off`);
+    if (hourly > 0) parts.push(`${hourly} hourly`);
     warnings.push(
-      `${oneTime} one-off service line(s) were not included — raise these separately in QuickBooks.`
+      `${parts.join(' and ')} service line(s) were not included. Raise these separately in QuickBooks.`
     );
   }
 

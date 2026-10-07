@@ -12,6 +12,12 @@ import { logAiUsage } from './proposalAiService.js';
 import { getFrontendUrl } from '../../config/urls.js';
 import { penceToPounds } from '../../utils/proposalPricing.js';
 
+function billingPeriodPhrase(frequency: string | null | undefined): string {
+  const raw = String(frequency || 'MONTHLY');
+  if (raw.toUpperCase() === 'HOURLY') return 'hour';
+  return raw.toLowerCase().replace(/_/g, ' ');
+}
+
 const UK_SYSTEM =
   AI_COPILOT.systemPersona +
   ' Use UK English spelling (organisation, specialised, favour). ' +
@@ -188,7 +194,7 @@ export async function generateAcceptanceClientEmail(
   const servicesSummary = proposal.services
     .map(
       (s) =>
-        `• ${s.name}: ${formatGbp(penceToPounds(s.displayPricePence || s.unitPricePence))} per ${String(s.billingFrequency).toLowerCase().replace('_', ' ')}`
+        `• ${s.name}: ${formatGbp(penceToPounds(s.displayPricePence || s.unitPricePence))} per ${billingPeriodPhrase(s.billingFrequency)}`
     )
     .join('\n');
 
@@ -248,7 +254,7 @@ export async function generateRenewalEmail(
     .map((s) => {
       const price =
         Math.round(penceToPounds(s.displayPricePence || s.unitPricePence) * multiplier * 100) / 100;
-      return `• ${s.name}: ${formatGbp(price)} per ${String(s.billingFrequency).toLowerCase().replace('_', ' ')}`;
+      return `• ${s.name}: ${formatGbp(price)} per ${billingPeriodPhrase(s.billingFrequency)}`;
     })
     .join('\n');
   const priorTotal = formatGbp(penceToPounds(original.totalPence));

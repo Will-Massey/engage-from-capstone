@@ -17,6 +17,7 @@ enum BillingCycle {
   QUARTERLY
   ANNUALLY
   ONE_TIME
+  HOURLY
 }
 
 enum VATRate {
@@ -84,6 +85,7 @@ enum DeclineReason {
 
 enum PricingFrequency {
   ONE_TIME
+  HOURLY
   WEEKLY
   MONTHLY
   QUARTERLY

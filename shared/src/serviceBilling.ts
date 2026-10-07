@@ -2,6 +2,7 @@ import type { BillingFrequency } from './pricingEngine';
 
 export const VALID_BILLING_FREQUENCIES: readonly BillingFrequency[] = [
   'ONE_TIME',
+  'HOURLY',
   'WEEKLY',
   'MONTHLY',
   'QUARTERLY',
@@ -56,9 +57,24 @@ export function resolveCatalogBillingCycle(service: CatalogServiceBillingFields)
     return 'ONE_TIME';
   }
 
+  if (billing === 'HOURLY' || defaultFreq === 'HOURLY') {
+    return 'HOURLY';
+  }
+
   const options = parseFrequencyOptions(service.frequencyOptions);
   if (options.length === 1 && options[0] === 'ONE_TIME') {
     return 'ONE_TIME';
+  }
+  if (options.length === 1 && options[0] === 'HOURLY') {
+    return 'HOURLY';
+  }
+
+  if (
+    service.priceDisplayMode === 'PER_HOUR' &&
+    (!defaultFreq || defaultFreq === 'MONTHLY') &&
+    (!billing || billing === 'MONTHLY')
+  ) {
+    return 'HOURLY';
   }
 
   if (defaultFreq && defaultFreq !== 'MONTHLY') {
@@ -76,6 +92,8 @@ export function billingFrequencyToDisplayMode(billingFrequency: BillingFrequency
       return 'PER_YEAR';
     case 'ONE_TIME':
       return 'ONE_TIME';
+    case 'HOURLY':
+      return 'PER_HOUR';
     case 'WEEKLY':
     case 'MONTHLY':
     default:

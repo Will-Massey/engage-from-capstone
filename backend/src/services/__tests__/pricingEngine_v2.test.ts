@@ -3,6 +3,7 @@ import type { BillingFrequency } from '@shared/pricingEngine';
 
 const BILLING_CYCLES: BillingFrequency[] = [
   'ONE_TIME',
+  'HOURLY',
   'WEEKLY',
   'MONTHLY',
   'QUARTERLY',
@@ -112,5 +113,14 @@ describe('pricingEngine_v2', () => {
     expect(totals.monthly.items).toHaveLength(1);
     expect(totals.quarterly.items).toHaveLength(1);
     expect(totals.annually.items).toHaveLength(1);
+    expect(totals.hourly.items).toHaveLength(1);
+    expect(totals.hourly.items[0].priceDisplayMode).toBe('PER_HOUR');
+    expect(totals.hourly.items[0].annualEquivalent).toBe(0);
+    expect(totals.totalAnnualEquivalent).toBeCloseTo(
+      lines
+        .filter((line) => !['ONE_TIME', 'HOURLY', 'WEEKLY'].includes(line.billingFrequency))
+        .reduce((sum, line) => sum + line.annualEquivalent * line.quantity, 0),
+      2
+    );
   });
 });

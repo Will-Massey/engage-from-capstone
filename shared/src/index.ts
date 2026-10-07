@@ -75,6 +75,7 @@ export enum MTDITSAStatus {
 
 export enum PricingFrequency {
   ONE_TIME = 'ONE_TIME',
+  HOURLY = 'HOURLY',
   WEEKLY = 'WEEKLY',
   MONTHLY = 'MONTHLY',
   QUARTERLY = 'QUARTERLY',
@@ -353,6 +354,7 @@ export {
   vatAmountFor,
   annualEquivalentFor,
   monthlyEquivalentFor,
+  isQuotedBillingFrequency,
   DEFAULT_VAT_RATE,
   type BillingFrequency,
   type EquivalentOptions,

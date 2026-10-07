@@ -168,6 +168,23 @@ describe('planPaidInvoiceLines', () => {
     const plan = planPaidInvoiceLines(services, 30000, 'Full service');
     expect(plan.matchedLines).toBe(false);
   });
+
+  it('does not treat an hourly quote as a repeating invoice group', () => {
+    const plan = planPaidInvoiceLines(
+      [
+        {
+          name: 'Advisory',
+          billingFrequency: 'HOURLY',
+          lineTotalPence: 30000,
+          vatAmountPence: 6000,
+          grossTotalPence: 36000,
+        },
+      ],
+      36000,
+      'Advisory'
+    );
+    expect(plan.matchedLines).toBe(false);
+  });
 });
 
 describe('syncPaidStripeInvoice — Xero', () => {

@@ -66,6 +66,18 @@ describe('proposal summary bands', () => {
 
     expect(summary.quarterly).toMatchObject({ subtotal: 270, vat: 54, total: 324, count: 1 });
     expect(summary.weekly).toMatchObject({ subtotal: 40, vat: 8, total: 48, count: 1 });
+
+    const withHourly = calculateProposalSummaryBands([
+      {
+        billingFrequency: 'HOURLY',
+        lineTotal: 300,
+        vatAmount: 60,
+        grossTotal: 360,
+      },
+    ]);
+    expect(withHourly.hourly).toMatchObject({ subtotal: 300, vat: 60, total: 360, count: 1 });
+    expect(withHourly.contractTotalIncVat).toBe(360);
+    expect(withHourly.monthly.total).toBe(0);
     expect(summary.contractTotalIncVat).toBe(372);
     expect(summary.monthly.count).toBe(0);
   });

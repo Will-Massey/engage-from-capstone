@@ -8,6 +8,7 @@ import { tenantMailer } from '../services/tenantMailer.js';
 import logger from '../config/logger.js';
 import { getProposalSettings } from '../utils/tenantProposalSettings.js';
 import { penceToPounds } from '../utils/proposalPricing.js';
+import { isQuotedBillingFrequency } from '@uk-proposal-platform/shared';
 
 const DEFAULT_REMINDER_DAYS = 30;
 
@@ -15,20 +16,21 @@ const DEFAULT_REMINDER_DAYS = 30;
 const VALID_UNTIL_REMINDER_ACTION = 'PROPOSAL_VALID_UNTIL_REMINDER';
 
 /**
- * True when the proposal is not purely one-off (payment + every line ONE_TIME).
- * One-off-only proposals skip the valid-until expiry reminder.
+ * True when the proposal is not purely quoted (one-off or hourly).
+ * Quoted-only proposals skip the valid-until expiry reminder.
+ * Hourly is a rate times hours, not a repeating engagement.
  */
 export function proposalHasRecurringEngagement(proposal: {
   paymentFrequency: string;
   services: Array<{ billingFrequency: string }>;
 }): boolean {
-  if (proposal.paymentFrequency !== 'ONE_TIME') {
+  if (!isQuotedBillingFrequency(proposal.paymentFrequency)) {
     return true;
   }
   if (!proposal.services.length) {
     return true;
   }
-  return proposal.services.some((s) => s.billingFrequency !== 'ONE_TIME');
+  return proposal.services.some((s) => !isQuotedBillingFrequency(s.billingFrequency));
 }
 
 function reminderWindow(reminderDays: number) {

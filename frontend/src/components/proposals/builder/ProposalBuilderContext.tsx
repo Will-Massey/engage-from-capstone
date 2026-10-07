@@ -97,6 +97,7 @@ import {
 
 const BILLING_FREQUENCY_LABELS: Record<string, string> = {
   WEEKLY: 'week',
+  HOURLY: 'hour',
   MONTHLY: 'month',
   QUARTERLY: 'quarter',
   ANNUALLY: 'year',
@@ -115,6 +116,8 @@ function periodLabelSentenceCase(freq: string): string {
       return 'Annual';
     case 'ONE_TIME':
       return 'One-time';
+    case 'HOURLY':
+      return 'Hourly';
     default:
       return 'Monthly';
   }
@@ -2043,7 +2046,7 @@ export function ProposalBuilderProvider({ proposalId, children }: ProposalBuilde
             {/* Quantity */}
             <div>
               <label className="block text-[10px] uppercase tracking-wide text-slate-500 dark:text-slate-300 mb-0.5">
-                Qty
+                {editForm.billingCycle === 'HOURLY' ? 'Hours' : 'Qty'}
               </label>
               <input
                 type="number"
@@ -2145,7 +2148,9 @@ export function ProposalBuilderProvider({ proposalId, children }: ProposalBuilde
               <span className="text-xs text-slate-500 dark:text-slate-300 font-normal ml-1">
                 {editForm.billingCycle === 'ONE_TIME'
                   ? ' one-time'
-                  : `/${BILLING_FREQUENCY_LABELS[editForm.billingCycle] || 'month'}`}
+                  : editForm.billingCycle === 'HOURLY'
+                    ? ` for ${editForm.quantity} hour${editForm.quantity === 1 ? '' : 's'}`
+                    : `/${BILLING_FREQUENCY_LABELS[editForm.billingCycle] || 'month'}`}
               </span>
             </span>
           </div>
@@ -2169,7 +2174,9 @@ export function ProposalBuilderProvider({ proposalId, children }: ProposalBuilde
               {service.name}
             </h4>
             <p className="text-xs text-slate-500 dark:text-slate-300 dark:text-slate-300">
-              {service.quantity} × {formatCurrency(service.displayPrice)}
+              {service.billingCycle === 'HOURLY'
+                ? `${service.quantity} hour${service.quantity === 1 ? '' : 's'} × ${formatCurrency(service.displayPrice)}`
+                : `${service.quantity} × ${formatCurrency(service.displayPrice)}`}
               {service.discountPercent > 0 && (
                 <span className="text-amber-600"> · −{service.discountPercent}%</span>
               )}

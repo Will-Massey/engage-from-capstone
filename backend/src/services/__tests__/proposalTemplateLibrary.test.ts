@@ -29,7 +29,15 @@ const SERVICE_CATEGORIES = [
   'TECHNICAL',
   'SPECIALIZED',
 ];
-const BILLING_CYCLES = ['FIXED_DATE', 'WEEKLY', 'MONTHLY', 'QUARTERLY', 'ANNUALLY', 'ONE_TIME'];
+const BILLING_CYCLES = [
+  'FIXED_DATE',
+  'WEEKLY',
+  'HOURLY',
+  'MONTHLY',
+  'QUARTERLY',
+  'ANNUALLY',
+  'ONE_TIME',
+];
 const VAT_RATES = ['ZERO', 'REDUCED_5', 'STANDARD_20', 'EXEMPT'];
 const PRICING_MODELS = ['FIXED', 'HOURLY', 'TIERED'];
 
@@ -123,6 +131,7 @@ describe('UK service catalogue (ukAccountancyServices)', () => {
       QUARTERLY: 4,
       ANNUALLY: 1,
       ONE_TIME: 1,
+      HOURLY: 0,
       FIXED_DATE: 1,
     };
     for (const svc of allServices) {

@@ -163,7 +163,7 @@ export async function suggestProposalServices(
         content: `Suggest services for a UK accountancy proposal. Return JSON only:
 {
   "suggestions": [
-    { "serviceId": "<uuid from catalog>", "billingFrequency": "MONTHLY|QUARTERLY|ANNUALLY|WEEKLY|ONE_TIME", "rationale": "one sentence" }
+    { "serviceId": "<uuid from catalog>", "billingFrequency": "MONTHLY|QUARTERLY|ANNUALLY|WEEKLY|HOURLY|ONE_TIME", "rationale": "one sentence" }
   ],
   "contractStartNote": "optional note on when engagement should start",
   "validUntilDays": 30,

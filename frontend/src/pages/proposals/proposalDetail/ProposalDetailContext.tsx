@@ -96,6 +96,7 @@ const statusConfig: Record<string, { color: string; bg: string; icon: any; label
 
 const frequencyLabels: Record<string, string> = {
   ONE_TIME: 'One-time',
+  HOURLY: 'Hourly',
   WEEKLY: 'Weekly',
   MONTHLY: 'Monthly',
   QUARTERLY: 'Quarterly',
@@ -792,6 +793,9 @@ export function ProposalDetailProvider({ children }: ProposalDetailProviderProps
         oneOffExVat: 0,
         oneOffVat: 0,
         oneOffIncVat: 0,
+        hourlyExVat: 0,
+        hourlyVat: 0,
+        hourlyIncVat: 0,
       };
     }
 
@@ -806,6 +810,10 @@ export function ProposalDetailProvider({ children }: ProposalDetailProviderProps
           acc.oneOffExVat += lineTotal;
           acc.oneOffVat += vatAmt;
           acc.oneOffIncVat += gross;
+        } else if (freq === 'HOURLY') {
+          acc.hourlyExVat += lineTotal;
+          acc.hourlyVat += vatAmt;
+          acc.hourlyIncVat += gross;
         } else {
           acc.monthlyExVat += monthlyEquivalentFor(lineTotal, freq);
           acc.monthlyVat += monthlyEquivalentFor(vatAmt, freq);
@@ -820,6 +828,9 @@ export function ProposalDetailProvider({ children }: ProposalDetailProviderProps
         oneOffExVat: 0,
         oneOffVat: 0,
         oneOffIncVat: 0,
+        hourlyExVat: 0,
+        hourlyVat: 0,
+        hourlyIncVat: 0,
       }
     );
   }, [proposal]);

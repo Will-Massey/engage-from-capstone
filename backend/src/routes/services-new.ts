@@ -15,6 +15,7 @@ import {
   serviceCategories,
 } from '../data/ukAccountancyServices.js';
 import { ensureTenantUkServiceCatalogue } from '../services/catalogueSeedService.js';
+import { billingCycleSchema } from '../utils/billingCycleSchema.js';
 
 const router = Router();
 
@@ -183,7 +184,7 @@ router.put(
   authorize('ADMIN', 'PARTNER', 'MANAGER'),
   asyncHandler(async (req, res) => {
     const schema = z.object({
-      billingCycle: z.enum(['FIXED_DATE', 'WEEKLY', 'MONTHLY', 'QUARTERLY', 'ANNUALLY']),
+      billingCycle: billingCycleSchema,
       vatRate: z.enum(['ZERO', 'REDUCED_5', 'STANDARD_20', 'EXEMPT']),
       isVatApplicable: z.boolean(),
       fixedBillingDate: z.string().datetime().optional(),

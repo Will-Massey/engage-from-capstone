@@ -18,6 +18,7 @@ export interface PricingSummaryBands {
   quarterly: BandTotals;
   annually: BandTotals;
   oneTime: BandTotals;
+  hourly: BandTotals;
   contractTotalIncVat: number;
   totalSubtotalExVat: number;
   totalVat: number;
@@ -32,13 +33,17 @@ export interface ProposalLineForSummary {
 
 const BAND_KEYS: Record<
   BillingFrequency,
-  keyof Pick<PricingSummaryBands, 'weekly' | 'monthly' | 'quarterly' | 'annually' | 'oneTime'>
+  keyof Pick<
+    PricingSummaryBands,
+    'weekly' | 'monthly' | 'quarterly' | 'annually' | 'oneTime' | 'hourly'
+  >
 > = {
   WEEKLY: 'weekly',
   MONTHLY: 'monthly',
   QUARTERLY: 'quarterly',
   ANNUALLY: 'annually',
   ONE_TIME: 'oneTime',
+  HOURLY: 'hourly',
 };
 
 function emptyBand(): BandTotals {
@@ -70,6 +75,7 @@ export function calculateProposalSummaryBands(
     quarterly: emptyBand(),
     annually: emptyBand(),
     oneTime: emptyBand(),
+    hourly: emptyBand(),
     contractTotalIncVat: 0,
     totalSubtotalExVat: 0,
     totalVat: 0,
@@ -88,19 +94,22 @@ export function calculateProposalSummaryBands(
     bands.monthly.total +
     bands.quarterly.total +
     bands.annually.total +
-    bands.oneTime.total;
+    bands.oneTime.total +
+    bands.hourly.total;
   bands.totalSubtotalExVat =
     bands.weekly.subtotal +
     bands.monthly.subtotal +
     bands.quarterly.subtotal +
     bands.annually.subtotal +
-    bands.oneTime.subtotal;
+    bands.oneTime.subtotal +
+    bands.hourly.subtotal;
   bands.totalVat =
     bands.weekly.vat +
     bands.monthly.vat +
     bands.quarterly.vat +
     bands.annually.vat +
-    bands.oneTime.vat;
+    bands.oneTime.vat +
+    bands.hourly.vat;
 
   return bands;
 }

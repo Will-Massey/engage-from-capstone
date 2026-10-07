@@ -39,7 +39,7 @@ export function stripeIntervalFor(cycle: string): StripeInterval | null {
       return { interval: 'month', interval_count: 3 };
     case 'ANNUALLY':
       return { interval: 'year', interval_count: 1 };
-    // FIXED_DATE and ONE_TIME are treated as one-off.
+    // FIXED_DATE, ONE_TIME, and HOURLY are collected once (hourly is rate × hours).
     default:
       return null;
   }

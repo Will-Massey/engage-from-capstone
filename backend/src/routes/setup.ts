@@ -170,6 +170,7 @@ router.post(
           let priceDisplayMode: any = 'PER_MONTH';
           if (billingCycle === 'ANNUALLY') priceDisplayMode = 'PER_YEAR';
           else if (billingCycle === 'QUARTERLY') priceDisplayMode = 'PER_QUARTER';
+          else if (billingCycle === 'HOURLY') priceDisplayMode = 'PER_HOUR';
 
           await prisma.serviceTemplate.update({
             where: { id: service.id },

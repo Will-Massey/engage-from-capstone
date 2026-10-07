@@ -802,10 +802,9 @@ const PublicProposalView = () => {
                       </p>
                     )}
                     <p className="text-sm text-slate-600 dark:text-slate-300 mt-1">
-                      {service.quantity} x {formatCurrency(service.unitPrice)} /{' '}
-                      {(service.billingFrequency || service.frequency)
-                        .toLowerCase()
-                        .replace(/_/g, ' ')}
+                      {(service.billingFrequency || service.frequency) === 'HOURLY'
+                        ? `${service.quantity} hour${service.quantity === 1 ? '' : 's'} × ${formatCurrency(service.unitPrice)} / hour`
+                        : `${service.quantity} x ${formatCurrency(service.unitPrice)} / ${(service.billingFrequency || service.frequency).toLowerCase().replace(/_/g, ' ')}`}
                     </p>
                     {(service.billingFrequency || service.frequency) === 'ONE_TIME' &&
                       service.oneOffDueDate && (

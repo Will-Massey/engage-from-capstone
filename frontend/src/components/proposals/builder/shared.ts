@@ -18,7 +18,7 @@ export interface Service {
   name: string;
   description?: string;
   priceAmount: number;
-  priceDisplayMode: 'PER_MONTH' | 'PER_QUARTER' | 'PER_YEAR' | 'ONE_TIME';
+  priceDisplayMode: 'PER_MONTH' | 'PER_QUARTER' | 'PER_YEAR' | 'ONE_TIME' | 'PER_HOUR';
   billingCycle: string;
   defaultFrequency?: string;
   category: string;
