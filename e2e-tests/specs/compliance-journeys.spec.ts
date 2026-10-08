@@ -11,28 +11,92 @@ import {
   closeDisposableAccount,
   mintPortalToken,
   signupDisposableTenant,
+  TINY_PNG_DATA_URL,
 } from '../fixtures/compliance-helpers';
 
-test.describe('AML journey — partner checks paused (Credas review)', () => {
-  test('public AML page is Coming soon and initiation returns 503', async ({ page, request }) => {
+test.describe('AML journey: client ID / AML upload is live (partner checks paused)', () => {
+  test('client uploads ID + proof of address from the portal-token link; practice sees and clears', async ({
+    page,
+    request,
+  }) => {
     test.slow();
 
-    const clients = await apiGet(request, '/clients?limit=1');
-    const clientId = clients.body?.data?.[0]?.id as string | undefined;
-    test.skip(!clientId, 'No clients in demo tenant');
+    // A fresh client so the journey never depends on seed AML state.
+    const created = await apiPost(request, '/clients', {
+      name: `E2E AML Upload ${Date.now()}`,
+      companyType: 'SOLE_TRADER',
+      contactEmail: `aml-upload-${Date.now()}@example.com`,
+      contactName: 'Jane Compliance',
+    });
+    expect(created.status).toBeLessThan(300);
+    const clientId = (created.body?.data?.id ?? created.body?.data?.client?.id) as string;
+    expect(clientId).toBeTruthy();
 
-    const portalToken = await mintPortalToken(request, clientId!);
+    // Same token + URL shape the welcome email sends as {{aml_portal_link}}.
+    const portalToken = await mintPortalToken(request, clientId);
 
     await page.goto(`/onboarding/aml/${portalToken}`);
-    await expect(page.getByRole('heading', { name: /coming soon/i })).toBeVisible({
+    await expect(page.getByRole('heading', { name: /ID.*AML verification/i })).toBeVisible({
       timeout: 30_000,
     });
-    await expect(page.getByTestId('aml-onboarding-coming-soon')).toBeVisible();
+    await expect(page.getByTestId('aml-onboarding-coming-soon')).toHaveCount(0);
+    await expect(page.getByTestId('aml-onboarding-form')).toBeVisible();
 
-    const check = await apiPost(request, '/aml/check', {
+    const png = Buffer.from(TINY_PNG_DATA_URL.split(',')[1], 'base64');
+    const fileInputs = page.locator('input[type="file"]');
+    await fileInputs
+      .nth(0)
+      .setInputFiles({ name: 'passport.png', mimeType: 'image/png', buffer: png });
+    await expect(page.getByText('passport.png')).toBeVisible();
+    // The first input unmounts once a file is chosen, so the remaining one is proof of address.
+    await page
+      .locator('input[type="file"]')
+      .first()
+      .setInputFiles({ name: 'utility-bill.png', mimeType: 'image/png', buffer: png });
+    await expect(page.getByText('utility-bill.png')).toBeVisible();
+
+    await page.locator('input[type="date"]').fill('1985-06-15');
+    await page.getByPlaceholder('Include postcode').fill('1 Test Street, London, SW1A 1AA');
+    await page.getByPlaceholder(/Trading income/).fill('Salary and business income');
+    await page.getByText(/I confirm the information provided is accurate/).click();
+    await page.getByRole('button', { name: /Submit securely/i }).click();
+
+    await expect(page.getByTestId('aml-onboarding-status')).toBeVisible({ timeout: 30_000 });
+    await expect(page.getByTestId('aml-onboarding-status')).toHaveAttribute(
+      'data-aml-step',
+      'uploaded'
+    );
+
+    // Practice side: status moved to PENDING and both documents are listed + downloadable.
+    const status = await apiGet(request, `/aml/status/${clientId}`);
+    await expectOkApi('aml status after upload', status);
+    expect(status.body.data.amlStatus).toBe('PENDING');
+    const docTypes = (status.body.data.documents ?? []).map((d: { type: string }) => d.type);
+    expect(docTypes.sort()).toEqual(['photo_id', 'proof_of_address']);
+
+    // Re-opening the same link shows status rather than coming soon or a blank form.
+    await page.goto(`/onboarding/aml/${portalToken}`);
+    await expect(page.getByTestId('aml-onboarding-status')).toHaveAttribute(
+      'data-aml-step',
+      'uploaded',
+      { timeout: 30_000 }
+    );
+
+    const cleared = await apiPost(request, '/aml/manual-clear', {
       clientId,
-      provider: 'stub',
+      basis: 'DOCUMENTS_VERIFIED',
     });
+    expect(cleared.status).toBe(200);
+
+    await page.goto(`/onboarding/aml/${portalToken}`);
+    await expect(page.getByTestId('aml-onboarding-status')).toHaveAttribute(
+      'data-aml-step',
+      'verified',
+      { timeout: 30_000 }
+    );
+
+    // Partner (third-party) checks remain paused while Credas is reviewed.
+    const check = await apiPost(request, '/aml/check', { clientId, provider: 'stub' });
     expect(check.status).toBe(503);
     expect(check.body?.error?.code).toBe('AML_COMING_SOON');
   });
