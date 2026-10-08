@@ -4,12 +4,15 @@ import {
   DocumentTextIcon,
   EyeIcon,
   ArrowDownTrayIcon,
+  LinkIcon,
 } from '@heroicons/react/24/outline';
 import toast from 'react-hot-toast';
 import { apiClient } from '../../utils/api';
 import type { AmlDocumentMeta } from '../../types/aml';
 import { AML_STATUS_COLOURS, AML_STATUS_LABELS } from '../../utils/amlBadge';
 import ComingSoonCallout from '../ui/ComingSoonCallout';
+import { amlUploadUrlFromPortalUrl } from '../../utils/amlUploadLink';
+import { copyTextToClipboard } from '../../utils/clipboard';
 
 const DOC_LABELS: Record<string, string> = {
   photo_id: 'Photo ID',
@@ -53,6 +56,33 @@ export default function AmlPartnerPanel({
   const [clearing, setClearing] = useState(false);
   const [basis, setBasis] = useState('DOCUMENTS_VERIFIED');
   const [clearNote, setClearNote] = useState('');
+  const [linkBusy, setLinkBusy] = useState(false);
+
+  /** Copy the client's ID / AML upload link (reuses a still-valid portal token). */
+  const copyUploadLink = async () => {
+    setLinkBusy(true);
+    try {
+      const res = (await apiClient.post(`/proposals/portal/${clientId}`, {
+        expiryDays: 90,
+        frontendOrigin: window.location.origin,
+      })) as any;
+      const url = amlUploadUrlFromPortalUrl(res?.data?.portalUrl);
+      if (!res?.success || !url) {
+        toast.error('Could not create the upload link');
+        return;
+      }
+      const ok = await copyTextToClipboard(url);
+      if (ok) {
+        toast.success('ID and AML upload link copied');
+      } else {
+        toast.error('Copy manually: ' + url, { duration: 10000 });
+      }
+    } catch (e: any) {
+      toast.error(e?.message || 'Could not create the upload link');
+    } finally {
+      setLinkBusy(false);
+    }
+  };
 
   const loadStatus = async () => {
     try {
@@ -213,10 +243,29 @@ export default function AmlPartnerPanel({
           AML complete — {new Date(amlCompletedAt).toLocaleDateString('en-GB')}.
         </p>
       ) : amlSubmittedAt ? (
-        <p className="text-sm text-amber-700 dark:text-amber-300">
-          Client submitted ID details — review before marking complete.
+        <p className="text-sm text-amber-700 dark:text-amber-300" data-testid="aml-review-needed">
+          Client uploaded ID and AML documents on{' '}
+          {new Date(amlSubmittedAt).toLocaleDateString('en-GB')}. Review them, then mark AML as
+          complete.
         </p>
-      ) : null}
+      ) : (
+        <p className="text-sm text-slate-600 dark:text-slate-400" data-testid="aml-awaiting-upload">
+          Waiting for the client to upload their ID and proof of address.
+        </p>
+      )}
+
+      {!amlCompletedAt && (
+        <button
+          type="button"
+          onClick={() => void copyUploadLink()}
+          disabled={linkBusy}
+          className="btn-secondary text-sm inline-flex items-center gap-2"
+          data-testid="aml-copy-upload-link"
+        >
+          <LinkIcon className="h-4 w-4" />
+          {linkBusy ? 'Creating link…' : 'Copy ID and AML upload link'}
+        </button>
+      )}
 
       {status?.amlStatus !== 'CLEAR' && (
         <div className="mb-3 rounded-xl border border-slate-200 p-3 dark:border-slate-700">
