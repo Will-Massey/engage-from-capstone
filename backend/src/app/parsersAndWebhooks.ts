@@ -12,6 +12,9 @@ import emailEventsWebhookRoutes from '../routes/webhooks/email-events.js';
 import cloudflareEmailWebhookRoutes from '../routes/webhooks/cloudflare-email.js';
 import graphMailWebhookRoutes from '../routes/webhooks/graph-mail.js';
 
+export const AML_ONBOARDING_PATH = '/api/onboarding/aml';
+export const AML_ONBOARDING_JSON_LIMIT = '30mb';
+
 export function applyParsersAndWebhooks(app: express.Express): void {
   // Logging
   app.use(
@@ -46,6 +49,13 @@ export function applyParsersAndWebhooks(app: express.Express): void {
   );
 
   app.use('/api/webhooks/email-events', emailEventsWebhookRoutes);
+
+  // Client ID / AML self-service upload: two documents of up to 10 MB each,
+  // sent base64 in JSON (~1.37x), so this one public route needs a larger
+  // body than the global 10 MB. Per-file size and type are enforced in
+  // services/fileStorage.ts (saveAmlDocument). body-parser skips re-parsing,
+  // so the global parser below leaves this request alone.
+  app.use(AML_ONBOARDING_PATH, express.json({ limit: AML_ONBOARDING_JSON_LIMIT }));
 
   app.use(express.json({ limit: '10mb' }));
   app.use(express.urlencoded({ extended: true, limit: '10mb' }));

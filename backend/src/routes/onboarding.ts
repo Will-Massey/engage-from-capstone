@@ -88,6 +88,7 @@ router.get(
           logo: client.tenant.logo,
         },
         lifecycleStage: client.lifecycleStage,
+        amlStatus: client.amlStatus,
         amlSubmittedAt: client.amlSubmittedAt,
         amlCompletedAt: client.amlCompletedAt,
         existingSubmission: sanitiseSubmissionForClient(existing),
@@ -163,6 +164,9 @@ router.post(
       data: {
         amlSubmissionData: JSON.stringify(payload),
         amlSubmittedAt: submittedAt,
+        // Uploaded (or re-uploaded after REFER / FAILED) and awaiting the
+        // practice's review. CLEAR is never downgraded.
+        ...(client.amlStatus !== 'CLEAR' ? { amlStatus: 'PENDING' as const } : {}),
         lifecycleStage:
           client.lifecycleStage === 'PROPOSAL_ACCEPTED' ? 'AML_PENDING' : client.lifecycleStage,
       },
@@ -206,6 +210,7 @@ router.post(
       data: {
         message: 'Thank you — your practice will review your details shortly.',
         amlSubmittedAt: submittedAt.toISOString(),
+        amlStatus: client.amlStatus === 'CLEAR' ? client.amlStatus : 'PENDING',
       },
     });
   })
