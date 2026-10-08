@@ -80,9 +80,16 @@ export default function ClientStep() {
       </div>
 
       {(() => {
-        const filteredClients = clients.filter((c) =>
-          c.name.toLowerCase().includes(clientSearch.toLowerCase())
-        );
+        const q = clientSearch.trim().toLowerCase();
+        const filteredClients = clients.filter((c) => {
+          if (!q) return true;
+          return (
+            c.name.toLowerCase().includes(q) ||
+            (c.contactEmail || '').toLowerCase().includes(q) ||
+            (c.companyNumber || '').toLowerCase().includes(q) ||
+            (c.companyType || '').toLowerCase().replace(/_/g, ' ').includes(q)
+          );
+        });
         if (filteredClients.length === 0) {
           return clients.length === 0 ? (
             <div className="card p-10 text-center max-w-md mx-auto">
@@ -138,12 +145,11 @@ export default function ClientStep() {
                     {client.contactName.trim()}
                   </p>
                 )}
-                <p className="text-sm text-slate-500 dark:text-slate-300 dark:text-slate-300">
-                  {client.companyType}
+                <p className="text-sm text-slate-500 dark:text-slate-300">
+                  {client.companyType?.replace(/_/g, ' ')}
+                  {client.companyNumber ? ` · No. ${client.companyNumber}` : ''}
                 </p>
-                <p className="text-sm text-slate-400 dark:text-slate-500 dark:text-slate-300">
-                  {client.contactEmail}
-                </p>
+                <p className="text-sm text-slate-400 dark:text-slate-500">{client.contactEmail}</p>
               </div>
             ))}
           </div>

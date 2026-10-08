@@ -139,6 +139,15 @@ export async function createPostSignMandate(
     throw new Error('Client email is required for payment setup');
   }
 
+  const { resolveStripeCustomerForCheckout } = await import('./stripeClientCustomer.js');
+  const stripeCustomer = await resolveStripeCustomerForCheckout({
+    clientId: proposal.client.id,
+    tenantId: proposal.tenantId,
+    contactEmail: customerEmail,
+    clientName: proposal.client.name,
+    companyNumber: proposal.client.companyNumber,
+  });
+
   await prisma.proposal.update({
     where: { id: proposalId },
     data: {
@@ -183,7 +192,9 @@ export async function createPostSignMandate(
       oneOffLines: plan.oneOffLines,
       connectedAccountId,
       platformFeeBps,
-      customerEmail,
+      customerEmail: stripeCustomer.customerEmail,
+      customerId: stripeCustomer.customerId,
+      clientId: proposal.client.id,
       successUrl,
       cancelUrl,
     });
@@ -201,7 +212,9 @@ export async function createPostSignMandate(
       grossPence: collectablePence,
       connectedAccountId,
       platformFeeBps,
-      customerEmail,
+      customerEmail: stripeCustomer.customerEmail,
+      customerId: stripeCustomer.customerId,
+      clientId: proposal.client.id,
       successUrl,
       cancelUrl,
     });

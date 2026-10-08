@@ -136,6 +136,7 @@ router.get(
           name: proposal.client.name,
           contactName: proposal.client.contactName,
           companyType: proposal.client.companyType,
+          companyNumber: proposal.client.companyNumber,
           contactEmail: proposal.client.contactEmail,
         },
         createdBy: proposal.createdBy

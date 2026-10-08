@@ -5,7 +5,7 @@
  * GET  /status              — connection status
  * GET  /connect             — OAuth consent URL
  * POST /disconnect          — revoke + clear tokens
- * POST /import-clients      — pull Xero contacts → Engage clients (dedupe email/name)
+ * POST /import-clients      — pull Xero contacts → Engage clients (dedupe by entity)
  * POST /push-accepted/:id   — accepted proposal → Xero (legacy alias)
  * POST /push-proposal/:id   — accepted proposal → Xero contact + repeating invoices
  */
@@ -28,11 +28,11 @@ import {
   buildXeroConsentUrl,
   fetchAllXeroContacts,
   getAuthenticatedXeroSession,
-  normalizeClientName,
   revokeXeroConnection,
   getXeroPublicConfig,
 } from '../services/xeroService.js';
 import { pushProposalToXero } from '../services/xeroProposalPush.js';
+import { findSameEntity, type ExistingClientIdentity } from '../services/clientIdentity.js';
 import logger from '../config/logger.js';
 import { isE2eTestRequest } from '../utils/securityFlags.js';
 
@@ -195,18 +195,16 @@ router.post(
 
     const existing = await prisma.client.findMany({
       where: { tenantId, isActive: true },
-      select: { id: true, name: true, contactEmail: true, tags: true },
+      select: { id: true, name: true, contactEmail: true, companyNumber: true, tags: true },
     });
 
-    const byEmail = new Map<string, (typeof existing)[0]>();
-    const byName = new Map<string, (typeof existing)[0]>();
-
-    for (const c of existing) {
-      if (c.contactEmail) {
-        byEmail.set(c.contactEmail.toLowerCase().trim(), c);
-      }
-      byName.set(normalizeClientName(c.name), c);
-    }
+    const known: ExistingClientIdentity[] = existing.map((client) => ({
+      id: client.id,
+      name: client.name,
+      contactEmail: client.contactEmail,
+      companyNumber: client.companyNumber,
+      tags: client.tags,
+    }));
 
     const created: Array<{ name: string; contactEmail: string; xeroContactId?: string }> = [];
     const skipped: Array<{ name: string; reason: string; existingClientId?: string }> = [];
@@ -222,20 +220,15 @@ router.post(
         continue;
       }
 
-      if (email && byEmail.has(email)) {
+      const same = findSameEntity(known, {
+        name,
+        externalTag: xeroContactId ? `xero:${xeroContactId}` : null,
+      });
+      if (same) {
         skipped.push({
           name: name || email,
-          reason: 'duplicate_email',
-          existingClientId: byEmail.get(email)!.id,
-        });
-        continue;
-      }
-
-      if (name && byName.has(normalizeClientName(name))) {
-        skipped.push({
-          name,
-          reason: 'duplicate_name',
-          existingClientId: byName.get(normalizeClientName(name))!.id,
+          reason: same.reason,
+          existingClientId: same.client.id,
         });
         continue;
       }
@@ -244,6 +237,12 @@ router.post(
         created.push({
           name: name || email,
           contactEmail: email || `${xeroContactId}@import.local`,
+        });
+        known.push({
+          id: `dry-${xeroContactId || name}`,
+          name: name || email,
+          contactEmail: email,
+          tags: xeroContactId ? `xero:${xeroContactId}` : '',
         });
         continue;
       }
@@ -268,8 +267,12 @@ router.post(
           xeroContactId,
         });
 
-        if (email) byEmail.set(email, client);
-        byName.set(normalizeClientName(client.name), client);
+        known.push({
+          id: client.id,
+          name: client.name,
+          contactEmail: client.contactEmail,
+          tags: client.tags,
+        });
       } catch (err: unknown) {
         errors.push({
           name: name || email,

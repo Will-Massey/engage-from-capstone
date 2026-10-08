@@ -6,6 +6,7 @@ import {
   type LifecycleEmailTone,
 } from '../services/ai/lifecycleAiEmailService.js';
 import { getFrontendUrl } from '../config/urls.js';
+import { proposalSubjectLine } from '@uk-proposal-platform/shared';
 
 /**
  * Email Automation Job
@@ -122,6 +123,13 @@ function getEmailTemplate(
   ).join(' ');
   const senderPosition = proposal.createdBy.role;
   const practiceName = proposal.tenant.name;
+  const entitySubject = proposalSubjectLine({
+    kind: 'reminder',
+    clientName: proposal.client?.name || clientName,
+    companyNumber: proposal.client?.companyNumber,
+    reference: proposalRef,
+    title: proposalTitle,
+  });
 
   const frontendUrl = getFrontendUrl();
   const viewLink = `${frontendUrl}/proposals/view/${proposal.shareToken || proposal.id}`;
@@ -134,7 +142,7 @@ function getEmailTemplate(
   switch (template) {
     case 'gentle':
       return {
-        subject: `Following up on your proposal from ${practiceName}`,
+        subject: entitySubject,
         body: `
 Dear ${clientName},
 
@@ -157,7 +165,7 @@ ${practiceName}
 
     case 'urgent':
       return {
-        subject: `Reminder: Your proposal from ${practiceName}`,
+        subject: entitySubject,
         body: `
 Dear ${clientName},
 
@@ -182,7 +190,7 @@ ${practiceName}
 
     case 'final':
       return {
-        subject: `Final reminder: Your proposal expires soon`,
+        subject: entitySubject,
         body: `
 Dear ${clientName},
 
@@ -207,7 +215,7 @@ P.S. If you've decided to go in a different direction, I'd appreciate any feedba
 
     default:
       return {
-        subject: `Following up on your proposal`,
+        subject: entitySubject,
         body: `Please review your proposal at ${viewLink}`,
       };
   }

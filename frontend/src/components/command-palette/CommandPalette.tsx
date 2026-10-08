@@ -275,7 +275,21 @@ const CommandPalette = ({ isOpen, onClose }: CommandPaletteProps) => {
           dynamic.push({
             id: `proposal-${p.id}`,
             title: p.title || p.reference,
-            subtitle: `${p.client?.name || 'Client'} · ${p.status} · £${(p.total || 0).toLocaleString()}`,
+            subtitle: [
+              p.reference,
+              p.client?.name || 'Client',
+              p.client?.companyNumber ? `No. ${p.client.companyNumber}` : '',
+              p.status,
+              p.createdAt
+                ? new Date(p.createdAt).toLocaleDateString('en-GB', {
+                    day: 'numeric',
+                    month: 'short',
+                    year: 'numeric',
+                  })
+                : '',
+            ]
+              .filter(Boolean)
+              .join(' · '),
             icon: DocumentTextIcon,
             category: 'Proposals',
             action: () => navigate(`/proposals/${p.id}`),
@@ -286,7 +300,13 @@ const CommandPalette = ({ isOpen, onClose }: CommandPaletteProps) => {
           dynamic.push({
             id: `client-${c.id}`,
             title: c.name,
-            subtitle: c.contactEmail || c.companyType?.replace(/_/g, ' '),
+            subtitle: [
+              c.companyType?.replace(/_/g, ' '),
+              c.companyNumber ? `No. ${c.companyNumber}` : '',
+              c.contactEmail,
+            ]
+              .filter(Boolean)
+              .join(' · '),
             icon: UsersIcon,
             category: 'Clients',
             action: () => navigate(`/clients/${c.id}`),

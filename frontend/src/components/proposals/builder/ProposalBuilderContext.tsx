@@ -1835,6 +1835,7 @@ export function ProposalBuilderProvider({ proposalId, children }: ProposalBuilde
           companyType: p.client.companyType,
           contactEmail: p.client.contactEmail,
           contactName: p.client.contactName,
+          companyNumber: p.client.companyNumber,
         });
       }
       const lines: SelectedService[] = (p.services || []).map((svc: any, i: number) => {

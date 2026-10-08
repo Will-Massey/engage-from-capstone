@@ -394,7 +394,7 @@ export class EmailService {
 
     return this.sendEmail({
       to: params.to,
-      subject: `Proposal: ${params.proposalTitle} - ${params.proposalReference}`,
+      subject: `Proposal: ${params.clientName} - ${params.proposalReference} - ${params.proposalTitle}`,
       html: emailTemplate.html,
       text: emailTemplate.text,
       attachments,

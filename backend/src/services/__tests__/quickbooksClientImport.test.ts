@@ -61,15 +61,15 @@ beforeEach(() => {
 });
 
 describe('importQuickBooksClients', () => {
-  it('creates new clients with the qbo:<Id> tag and dedupes by email and normalised name', async () => {
+  it('creates a second company that shares an email, and dedupes the same legal name', async () => {
     const result = await importQuickBooksClients('t1', false);
 
     expect(result.qboCustomersFetched).toBe(6);
-    expect(result.created).toBe(2);
-    expect(result.skipped).toBe(4);
+    expect(result.created).toBe(3);
+    expect(result.skipped).toBe(3);
     expect(result.errors).toBe(0);
 
-    expect(clientCreate).toHaveBeenCalledTimes(2);
+    expect(clientCreate).toHaveBeenCalledTimes(3);
     expect(clientCreate).toHaveBeenCalledWith(
       expect.objectContaining({
         data: expect.objectContaining({
@@ -82,12 +82,15 @@ describe('importQuickBooksClients', () => {
     );
 
     const reasons = result.skippedCustomers.map((s) => s.reason).sort();
-    expect(reasons).toEqual([
-      'duplicate_email',
-      'duplicate_name',
-      'inactive_customer',
-      'missing_name_and_email',
-    ]);
+    expect(reasons).toEqual(['duplicate_name', 'inactive_customer', 'missing_name_and_email']);
+    expect(clientCreate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          name: 'Existing By Email',
+          contactEmail: 'known@x.io',
+        }),
+      })
+    );
 
     // lastImportAt stamped on a real (non-dry) run
     expect(saveTenantQuickBooksSettings).toHaveBeenCalledWith(
@@ -100,7 +103,7 @@ describe('importQuickBooksClients', () => {
     const result = await importQuickBooksClients('t1', true);
 
     expect(result.dryRun).toBe(true);
-    expect(result.created).toBe(2);
+    expect(result.created).toBe(3);
     expect(clientCreate).not.toHaveBeenCalled();
     expect(saveTenantQuickBooksSettings).not.toHaveBeenCalled();
   });
@@ -112,7 +115,7 @@ describe('importQuickBooksClients', () => {
 
     const result = await importQuickBooksClients('t1', false);
     expect(result.errors).toBe(1);
-    expect(result.created).toBe(1);
+    expect(result.created).toBe(2);
     expect(result.importErrors[0].error).toContain('unique constraint');
   });
 });

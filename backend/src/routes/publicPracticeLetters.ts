@@ -34,7 +34,7 @@ async function loadLetterBySignToken(token: string) {
   const letter = await prisma.practiceLetter.findUnique({
     where: { id: letterId },
     include: {
-      client: { select: { name: true } },
+      client: { select: { name: true, companyNumber: true, companyType: true } },
       tenant: { select: { name: true } },
     },
   });
@@ -58,6 +58,8 @@ router.get(
         type: letter.type,
         bodyHtml: letter.bodyHtml,
         clientName: letter.client.name,
+        companyNumber: letter.client.companyNumber,
+        companyType: letter.client.companyType,
         practiceName: letter.tenant.name,
         signed: Boolean(sign.signedAt),
         signedBy: sign.signedBy || null,

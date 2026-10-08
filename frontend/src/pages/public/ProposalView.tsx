@@ -65,6 +65,7 @@ interface ProposalData {
     name: string;
     contactName?: string;
     companyType: string;
+    companyNumber?: string | null;
     contactEmail?: string;
   };
   createdBy?: {
@@ -692,7 +693,9 @@ const PublicProposalView = () => {
             <h2 className="text-xl font-semibold text-slate-900 dark:text-white">
               {proposal.title}
             </h2>
-            <p className="text-sm text-slate-600 mt-1">Reference: {proposal.reference}</p>
+            <p className="text-sm text-slate-600 mt-1">
+              Reference: {proposal.reference} · Status: {proposal.status}
+            </p>
             <p className="text-sm text-slate-600">Valid until: {formatDate(proposal.validUntil)}</p>
           </div>
 
@@ -718,6 +721,7 @@ const PublicProposalView = () => {
               </p>
               <p className="text-sm text-slate-600 capitalize">
                 {proposal.client.companyType.replace(/_/g, ' ')}
+                {proposal.client.companyNumber ? ` · No. ${proposal.client.companyNumber}` : ''}
               </p>
             </div>
             {proposal.createdBy && (

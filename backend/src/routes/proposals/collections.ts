@@ -49,6 +49,9 @@ router.get(
         { title: { contains: search as string, mode: 'insensitive' } },
         { reference: { contains: search as string, mode: 'insensitive' } },
         { client: { name: { contains: search as string, mode: 'insensitive' } } },
+        { client: { companyNumber: { contains: search as string, mode: 'insensitive' } } },
+        { client: { companyType: { contains: search as string, mode: 'insensitive' } } },
+        { client: { contactEmail: { contains: search as string, mode: 'insensitive' } } },
       ];
     }
 
@@ -62,6 +65,7 @@ router.get(
               id: true,
               name: true,
               companyType: true,
+              companyNumber: true,
               contactEmail: true,
             },
           },
@@ -131,6 +135,7 @@ router.get(
               id: true,
               name: true,
               companyType: true,
+              companyNumber: true,
               contactEmail: true,
             },
           },

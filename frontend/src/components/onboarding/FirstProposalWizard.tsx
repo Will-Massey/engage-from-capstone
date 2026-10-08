@@ -712,7 +712,9 @@ export default function FirstProposalWizard({ open, onClose, onSent }: FirstProp
                               {client.name}
                             </p>
                             <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-                              {client.companyType} · {client.contactEmail}
+                              {client.companyType?.replace(/_/g, ' ')}
+                              {client.companyNumber ? ` · No. ${client.companyNumber}` : ''} ·{' '}
+                              {client.contactEmail}
                             </p>
                           </button>
                         ))}

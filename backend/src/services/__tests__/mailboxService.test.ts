@@ -184,12 +184,12 @@ describe('syncMailbox — provider connected', () => {
     createGmailMailClientMock.mockResolvedValue({ syncInbox, syncSent });
 
     prismaMock.mailMessage.findUnique.mockResolvedValue(null);
-    prismaMock.client.findFirst.mockResolvedValue({ id: 'c1', name: 'Acme Ltd' });
+    prismaMock.client.findMany.mockResolvedValue([{ id: 'c1', name: 'Acme Ltd' }]);
     prismaMock.mailMessage.create.mockResolvedValue({});
 
     await syncMailbox('t1');
 
-    expect(prismaMock.client.findFirst).toHaveBeenCalledWith(
+    expect(prismaMock.client.findMany).toHaveBeenCalledWith(
       expect.objectContaining({
         where: expect.objectContaining({
           tenantId: 't1',
@@ -199,6 +199,47 @@ describe('syncMailbox — provider connected', () => {
     );
     expect(prismaMock.mailMessage.create).toHaveBeenCalledWith(
       expect.objectContaining({ data: expect.objectContaining({ clientId: 'c1' }) })
+    );
+  });
+
+  it('does not auto-link when several clients share the address', async () => {
+    loadTenantEmailContextMock.mockResolvedValue({
+      tenantId: 't1',
+      tenantName: 'Firm',
+      email: { provider: 'gmail', gmail: { user: 'firm@gmail.com', refreshToken: 'r1' } },
+    });
+    const syncInbox = jest.fn().mockResolvedValue({
+      messages: [
+        {
+          externalId: 'gm-shared',
+          conversationId: 'thread-shared',
+          direction: 'INBOUND',
+          from: 'Michaela <michaela@example.com>',
+          to: 'firm@gmail.com',
+          subject: 'Accounts',
+          bodyText: 'Which company?',
+          isRead: false,
+          hasAttachments: false,
+          receivedAt: new Date('2026-08-02T11:00:00Z'),
+        },
+      ],
+      deltaLink: null,
+    });
+    createGmailMailClientMock.mockResolvedValue({
+      syncInbox,
+      syncSent: jest.fn().mockResolvedValue({ messages: [], deltaLink: null }),
+    });
+    prismaMock.mailMessage.findUnique.mockResolvedValue(null);
+    prismaMock.client.findMany.mockResolvedValue([
+      { id: 'trading', name: 'Michaela Trading Ltd' },
+      { id: 'holdings', name: 'Michaela Holdings Ltd' },
+    ]);
+    prismaMock.mailMessage.create.mockResolvedValue({});
+
+    await syncMailbox('t1');
+
+    expect(prismaMock.mailMessage.create).toHaveBeenCalledWith(
+      expect.objectContaining({ data: expect.objectContaining({ clientId: null }) })
     );
   });
 

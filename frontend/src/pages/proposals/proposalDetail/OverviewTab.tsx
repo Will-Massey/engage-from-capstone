@@ -198,8 +198,16 @@ export default function OverviewTab() {
             {proposal.client?.companyType && (
               <p className="text-xs text-slate-500 dark:text-slate-500 mt-0.5">
                 {proposal.client.companyType.replace(/_/g, ' ')}
+                {proposal.client?.companyNumber ? ` · No. ${proposal.client.companyNumber}` : ''}
               </p>
             )}
+            <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+              {proposal.reference}
+              {proposal.createdAt
+                ? ` · ${format(new Date(proposal.createdAt), 'dd MMM yyyy')}`
+                : ''}{' '}
+              · {proposal.status}
+            </p>
           </div>
         </div>
       </div>

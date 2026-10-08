@@ -5,6 +5,7 @@ import {
   estimateProcessorCost,
   estimateProcessorMarkup,
 } from '../lib/payments/splitCalculator.js';
+import { stripeCheckoutCustomerFields } from './stripeClientCustomer.js';
 
 export interface StripeCheckoutInput {
   proposalId: string;
@@ -14,7 +15,10 @@ export interface StripeCheckoutInput {
   grossPence: number;
   connectedAccountId: string;
   platformFeeBps: number;
-  customerEmail: string;
+  customerEmail?: string;
+  /** Set when this entity must not share a Stripe customer looked up by email. */
+  customerId?: string;
+  clientId?: string;
   successUrl: string;
   cancelUrl: string;
 }
@@ -54,9 +58,18 @@ export async function createStripeProposalCheckout(
 
   if (!stripe) throw new Error('STRIPE_NOT_CONFIGURED');
 
+  const metadata = {
+    proposalId: input.proposalId,
+    tenantId: input.tenantId,
+    ...(input.clientId ? { clientId: input.clientId } : {}),
+  };
+
   const session = await stripe.checkout.sessions.create({
     mode: 'payment',
-    customer_email: input.customerEmail,
+    ...stripeCheckoutCustomerFields({
+      customerId: input.customerId,
+      customerEmail: input.customerEmail,
+    }),
     line_items: [
       {
         quantity: 1,
@@ -72,9 +85,9 @@ export async function createStripeProposalCheckout(
       transfer_data: { destination: input.connectedAccountId },
       // Carry identifiers onto the PaymentIntent/charge so dispute + refund
       // webhooks (which reference the charge, not the session) can find the proposal.
-      metadata: { proposalId: input.proposalId, tenantId: input.tenantId },
+      metadata,
     },
-    metadata: { proposalId: input.proposalId, tenantId: input.tenantId },
+    metadata,
     success_url: input.successUrl,
     cancel_url: input.cancelUrl,
   });

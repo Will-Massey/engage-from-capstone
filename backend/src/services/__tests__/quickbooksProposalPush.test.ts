@@ -30,8 +30,18 @@ jest.mock('../../services/quickbooksService.js', () => ({
 
 const createCustomer = jest.fn(async (..._args: unknown[]) => ({ Id: 'cust-new' }));
 const createInvoice = jest.fn(async (..._args: unknown[]) => ({ Id: 'qbo-inv-9' }));
-const findCustomerByEmail = jest.fn(async (..._args: unknown[]) => null);
-const findCustomerByName = jest.fn(async (..._args: unknown[]) => null);
+const findCustomerByEmail = jest.fn(
+  async (
+    ..._args: unknown[]
+  ): Promise<{
+    Id?: string;
+    DisplayName?: string;
+    PrimaryEmailAddr?: { Address?: string };
+  } | null> => null
+);
+const findCustomerByName = jest.fn(
+  async (..._args: unknown[]): Promise<{ Id?: string; DisplayName?: string } | null> => null
+);
 jest.mock('../../services/quickbooksApi.js', () => ({
   createCustomer: (...args: unknown[]) => createCustomer(...args),
   createInvoice: (...args: unknown[]) => createInvoice(...args),
@@ -141,6 +151,28 @@ describe('pushProposalToQuickBooks', () => {
       displayName: 'Acme',
       email: 'a@acme.io',
     });
+  });
+
+  it('does not attach a QuickBooks customer that only shares the email', async () => {
+    proposalFindFirst.mockResolvedValue({
+      ...dbProposal,
+      client: { name: 'Michaela Holdings Ltd', contactEmail: 'michaela@example.com', tags: '' },
+    });
+    findCustomerByEmail.mockResolvedValueOnce({
+      Id: 'cust-other',
+      DisplayName: 'Michaela Trading Ltd',
+      PrimaryEmailAddr: { Address: 'michaela@example.com' },
+    });
+    findCustomerByName.mockResolvedValueOnce(null);
+
+    await pushProposalToQuickBooks('t1', 'p1');
+
+    expect(createCustomer).toHaveBeenCalledWith(expect.anything(), {
+      displayName: 'Michaela Holdings Ltd',
+      email: 'michaela@example.com',
+    });
+    const invoiceArgs = createInvoice.mock.calls[0][1] as { customerId: string };
+    expect(invoiceArgs.customerId).not.toBe('cust-other');
   });
 
   it('skips when a QBO_PROPOSAL_PUSHED record exists, unless forced', async () => {

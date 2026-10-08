@@ -226,6 +226,7 @@ const Clients = () => {
                     </div>
                     <p className="text-xs text-slate-500">
                       {client.companyType?.replace(/_/g, ' ')}
+                      {client.companyNumber ? ` · No. ${client.companyNumber}` : ''}
                     </p>
                   </div>
                 </div>

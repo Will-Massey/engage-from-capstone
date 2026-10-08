@@ -13,6 +13,7 @@ import {
 import { getProposalSettings } from '../utils/tenantProposalSettings.js';
 import { getFrontendUrl } from '../config/urls.js';
 import { penceToPounds } from '../utils/proposalPricing.js';
+import { proposalSubjectLine } from '@uk-proposal-platform/shared';
 
 export const PROPOSAL_CHASE_SENT_ACTION = 'PROPOSAL_CHASE_SENT';
 
@@ -50,7 +51,13 @@ function getFallbackChaseEmail(
   }).format(penceToPounds(proposal.totalPence));
 
   return {
-    subject: `Reminder: ${proposal.title} from ${proposal.tenant.name}`,
+    subject: proposalSubjectLine({
+      kind: 'reminder',
+      clientName: proposal.client.name,
+      companyNumber: proposal.client.companyNumber,
+      reference: proposal.reference,
+      title: proposal.title,
+    }),
     body: `Dear ${clientName},
 
 I hope you are well. I wanted to follow up on the proposal "${proposal.title}" (reference ${proposal.reference}) that we sent ${chaseDay} day${chaseDay === 1 ? '' : 's'} ago.
@@ -129,7 +136,9 @@ async function loadChaseCandidates() {
       sentAt: true,
       shareToken: true,
       emailHistory: true,
-      client: { select: { name: true, contactName: true, contactEmail: true } },
+      client: {
+        select: { name: true, contactName: true, contactEmail: true, companyNumber: true },
+      },
       tenant: { select: { id: true, name: true, settings: true } },
       services: { select: { name: true } },
       createdBy: {

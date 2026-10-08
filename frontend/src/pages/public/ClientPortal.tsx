@@ -92,6 +92,8 @@ interface PortalData {
     name: string;
     contactName: string;
     contactEmail: string;
+    companyType?: string | null;
+    companyNumber?: string | null;
   };
   practice: {
     name: string;
@@ -266,6 +268,11 @@ function ProposalCard({
             {proposal.services.length} service{proposal.services.length !== 1 ? 's' : ''}
           </p>
           <p>Valid until {formatDate(proposal.validUntil)}</p>
+          <p>
+            {proposal.sentAt
+              ? `Sent ${formatDate(proposal.sentAt)}`
+              : `Created ${formatDate(proposal.createdAt)}`}
+          </p>
         </div>
 
         {canView && isActionable && (
@@ -569,6 +576,14 @@ export default function ClientPortal() {
             </div>
             <div className="text-right">
               <p className="text-sm font-medium text-slate-900 dark:text-white">{client.name}</p>
+              <p className="text-xs text-slate-500 dark:text-slate-400">
+                {[
+                  client.companyType?.replace(/_/g, ' '),
+                  client.companyNumber ? `No. ${client.companyNumber}` : '',
+                ]
+                  .filter(Boolean)
+                  .join(' · ')}
+              </p>
               {client.contactName && (
                 <p className="text-xs text-slate-500 dark:text-slate-400">{client.contactName}</p>
               )}

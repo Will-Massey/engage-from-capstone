@@ -255,6 +255,7 @@ router.post(
       {
         to,
         clientName: proposal.client.name,
+        companyNumber: proposal.client.companyNumber,
         proposalTitle: proposal.title,
         proposalReference: proposal.reference,
         viewLink: shareUrl,
@@ -286,7 +287,11 @@ router.post(
       sentAt: new Date().toISOString(),
       to,
       cc,
-      subject: subject || `Proposal: ${proposal.title}`,
+      subject:
+        subject ||
+        `Proposal: ${proposal.client.name}${
+          proposal.client.companyNumber ? ` (${proposal.client.companyNumber})` : ''
+        } - ${proposal.reference} - ${proposal.title}`,
       messageId: result.messageId,
     });
 

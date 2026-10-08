@@ -191,7 +191,14 @@ export default function DetailHeader() {
             )}
           </div>
           <p className="mt-1 text-sm text-slate-600 dark:text-slate-400">
-            {proposal.reference} • Created {format(new Date(proposal.createdAt), 'dd MMM yyyy')}
+            {proposal.reference} · {proposal.client?.name || 'Client'}
+            {proposal.client?.companyNumber ? ` · No. ${proposal.client.companyNumber}` : ''}
+            {proposal.client?.companyType
+              ? ` · ${proposal.client.companyType.replace(/_/g, ' ')}`
+              : ''}
+          </p>
+          <p className="text-sm text-slate-500 dark:text-slate-400">
+            Created {format(new Date(proposal.createdAt), 'dd MMM yyyy')}
           </p>
           {approvalStatus === 'PENDING' && proposal.submittedForApprovalAt && (
             <p className="mt-1 text-xs text-amber-700 dark:text-amber-300">
