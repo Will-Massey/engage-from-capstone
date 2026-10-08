@@ -106,7 +106,12 @@ export function chooseStripeCustomerStrategy(input: {
   return { mode: 'dedicated' };
 }
 
-/** Accounting contact match. Email alone never selects a different legal name. */
+/**
+ * Accounting contact match.
+ * A stored id or the same legal name wins. Email alone never selects a
+ * contact that already has a different legal name. One email hit with no
+ * name is the contact an existing quote already used.
+ */
 export function pickAccountingContactId(input: {
   clientName: string;
   email?: string | null;
@@ -125,10 +130,20 @@ export function pickAccountingContactId(input: {
   const email = input.email?.trim().toLowerCase();
   if (!email || !wanted) return undefined;
 
-  const emailHit = (input.emailMatches || []).find((contact) => {
-    const sameEmail = (contact.email || '').trim().toLowerCase() === email;
-    const sameName = contact.name && normalizeEntityName(contact.name) === wanted;
-    return sameEmail && sameName;
-  });
-  return emailHit?.id;
+  const emailHits = (input.emailMatches || []).filter(
+    (contact) => (contact.email || '').trim().toLowerCase() === email && contact.id
+  );
+
+  const sameName = emailHits.find(
+    (contact) => contact.name && normalizeEntityName(contact.name) === wanted
+  );
+  if (sameName) return sameName.id;
+
+  // One contact on this email, with no name stored, is the existing record
+  // Engage already used. A named contact for a different company is not.
+  if (emailHits.length === 1 && !emailHits[0].name?.trim()) {
+    return emailHits[0].id;
+  }
+
+  return undefined;
 }

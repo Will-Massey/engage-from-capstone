@@ -83,6 +83,14 @@ describe('same email, several entities', () => {
 
     expect(
       pickAccountingContactId({
+        clientName: 'Acme Ltd',
+        email: 'finance@acme.co.uk',
+        emailMatches: [{ id: 'c-1', email: 'finance@acme.co.uk' }],
+      })
+    ).toBe('c-1');
+
+    expect(
+      pickAccountingContactId({
         clientName: 'Michaela Holdings Ltd',
         email: michaela,
         nameMatches: [{ id: 'xero-holdings', name: 'Michaela Holdings Ltd' }],
