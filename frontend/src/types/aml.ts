@@ -124,6 +124,7 @@ export interface AmlOnboardingContext {
   client: { name: string; contactName: string | null };
   practice: { name: string; primaryColor: string | null; logo: string | null };
   lifecycleStage: ClientLifecycleStage;
+  amlStatus?: string;
   amlSubmittedAt: string | null;
   amlCompletedAt: string | null;
   existingSubmission: AmlOnboardingExistingSubmission | null;
@@ -153,4 +154,5 @@ export interface SubmitAmlOnboardingPayload {
 export interface SubmitAmlOnboardingResult {
   message: string;
   amlSubmittedAt: string;
+  amlStatus?: string;
 }
