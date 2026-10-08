@@ -3,10 +3,12 @@
  * PDF attachment is for the client's records; the portal is the primary action.
  */
 
+import { distinguishEmailSubject, proposalSubjectLine } from '@uk-proposal-platform/shared';
 import { generateProposalEmailTemplate, type ProposalEmailData } from './proposalEmail.js';
 
 export interface ProposalSendComposeParams {
   clientName: string;
+  companyNumber?: string | null;
   proposalTitle: string;
   proposalReference: string;
   viewLink: string;
@@ -145,9 +147,19 @@ export function composeProposalSendEmail(params: ProposalSendComposeParams): {
   html: string;
   text: string;
 } {
-  const subject =
-    params.aiSubject?.trim() ||
-    `Proposal for ${params.clientName}: ${params.proposalTitle} (${params.proposalReference})`;
+  const fallbackSubject = proposalSubjectLine({
+    kind: 'proposal',
+    clientName: params.clientName,
+    companyNumber: params.companyNumber,
+    reference: params.proposalReference,
+    title: params.proposalTitle,
+  });
+  const subject = distinguishEmailSubject(
+    params.aiSubject,
+    fallbackSubject,
+    params.proposalReference,
+    params.companyNumber
+  );
 
   const portal = buildSigningPortalSection(params.viewLink, params.clientName);
 

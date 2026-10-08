@@ -13,6 +13,7 @@ import { prisma } from '../config/database.js';
 import logger from '../config/logger.js';
 import type { RecurringGroup } from '../lib/payments/recurringLines.js';
 import { collectionFeePercent } from '../lib/payments/splitCalculator.js';
+import { stripeCheckoutCustomerFields } from './stripeClientCustomer.js';
 
 export interface RecurringCheckoutInput {
   proposalId: string;
@@ -23,7 +24,9 @@ export interface RecurringCheckoutInput {
   oneOffLines?: { name: string; unitAmountPence: number; quantity: number }[];
   connectedAccountId: string;
   platformFeeBps: number;
-  customerEmail: string;
+  customerEmail?: string;
+  customerId?: string;
+  clientId?: string;
   successUrl: string;
   cancelUrl: string;
 }
@@ -84,16 +87,25 @@ export async function createRecurringCheckout(
     });
   }
 
+  const metadata = {
+    proposalId: input.proposalId,
+    tenantId: input.tenantId,
+    ...(input.clientId ? { clientId: input.clientId } : {}),
+  };
+
   const session = await stripe.checkout.sessions.create({
     mode: 'subscription',
-    customer_email: input.customerEmail,
+    ...stripeCheckoutCustomerFields({
+      customerId: input.customerId,
+      customerEmail: input.customerEmail,
+    }),
     line_items: lineItems,
     subscription_data: {
       application_fee_percent: applicationFeePercent,
       transfer_data: { destination: input.connectedAccountId },
-      metadata: { proposalId: input.proposalId, tenantId: input.tenantId },
+      metadata,
     },
-    metadata: { proposalId: input.proposalId, tenantId: input.tenantId },
+    metadata,
     success_url: input.successUrl,
     cancel_url: input.cancelUrl,
   });

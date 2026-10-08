@@ -8,6 +8,7 @@ import { escapeHtml } from '../utils/escapeHtml.js';
 
 export interface AcceptanceNotificationData {
   clientName: string;
+  companyNumber?: string | null;
   proposalTitle: string;
   proposalReference: string;
   acceptedAt: Date;
@@ -33,7 +34,10 @@ export function generateAcceptanceNotification(data: AcceptanceNotificationData)
     minute: '2-digit',
   });
 
-  const subject = `🎉 It's a win! ${data.clientName} just signed ${data.proposalReference}`;
+  const who = data.companyNumber?.trim()
+    ? `${data.clientName} (${data.companyNumber.trim()})`
+    : data.clientName;
+  const subject = `It's a win! ${who} just signed ${data.proposalReference}`;
 
   const html = `
 <!DOCTYPE html>

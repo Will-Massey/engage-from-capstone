@@ -252,6 +252,18 @@ const CreateClient = ({ onSuccess, onCancel }: CreateClientProps = {}) => {
       toast.dismiss();
       if (response.success) {
         toast.success('Client created successfully');
+        if (response.meta?.sharedContactEmail) {
+          const others = (response.meta.otherEntities || [])
+            .map((entity: { name?: string }) => entity.name)
+            .filter(Boolean)
+            .join(', ');
+          toast(
+            others
+              ? `This email is also used by ${others}. The legal name tells them apart.`
+              : 'This email is already used by another client. The legal name tells them apart.',
+            { icon: 'ℹ️' }
+          );
+        }
         if (onSuccess) {
           onSuccess(response.data);
         } else if (nextAction === 'proposal') {
@@ -511,12 +523,16 @@ const CreateClient = ({ onSuccess, onCancel }: CreateClientProps = {}) => {
 
           {/* Name */}
           <div>
-            <label className="block text-sm font-medium text-slate-700">Client Name</label>
+            <label className="block text-sm font-medium text-slate-700">Legal name</label>
             <input
               {...register('name')}
               className="mt-1 input-field"
               placeholder="e.g., ABC Ltd or John Smith"
             />
+            <p className="mt-1 text-xs text-slate-500">
+              Company or entity legal name. This is what tells quotes apart when they share an
+              email.
+            </p>
             {errors.name && <p className="mt-1 text-sm text-red-600">{errors.name.message}</p>}
           </div>
 
@@ -529,6 +545,9 @@ const CreateClient = ({ onSuccess, onCancel }: CreateClientProps = {}) => {
               className="mt-1 input-field"
               placeholder="client@example.com"
             />
+            <p className="mt-1 text-xs text-slate-500">
+              The same email can be used for more than one company.
+            </p>
             {errors.contactEmail && (
               <p className="mt-1 text-sm text-red-600">{errors.contactEmail.message}</p>
             )}

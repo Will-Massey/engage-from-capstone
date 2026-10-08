@@ -46,7 +46,13 @@ type FormAssignment = {
   answers?: Record<string, unknown>;
 };
 
-type ClientRow = { id: string; name: string; contactEmail?: string };
+type ClientRow = {
+  id: string;
+  name: string;
+  contactEmail?: string;
+  companyNumber?: string | null;
+  companyType?: string | null;
+};
 
 export default function PracticeForms() {
   const [templates, setTemplates] = useState<FormTemplate[]>([]);
@@ -100,7 +106,11 @@ export default function PracticeForms() {
     const q = clientSearch.toLowerCase().trim();
     if (!q) return clients;
     return clients.filter(
-      (c) => c.name.toLowerCase().includes(q) || (c.contactEmail || '').toLowerCase().includes(q)
+      (c) =>
+        c.name.toLowerCase().includes(q) ||
+        (c.contactEmail || '').toLowerCase().includes(q) ||
+        (c.companyNumber || '').toLowerCase().includes(q) ||
+        (c.companyType || '').toLowerCase().replace(/_/g, ' ').includes(q)
     );
   }, [clients, clientSearch]);
 
@@ -517,7 +527,10 @@ export default function PracticeForms() {
                     <span className="min-w-0 truncate font-medium text-slate-800 dark:text-slate-100">
                       {c.name}
                     </span>
-                    <span className="truncate text-xs text-slate-400">{c.contactEmail}</span>
+                    <span className="truncate text-xs text-slate-400">
+                      {c.companyNumber ? `No. ${c.companyNumber} · ` : ''}
+                      {c.contactEmail}
+                    </span>
                   </label>
                 </li>
               ))}

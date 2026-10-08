@@ -669,7 +669,8 @@ export default function ProposalWizard() {
                       >
                         <p className="font-medium text-slate-900 dark:text-white">{c.name}</p>
                         <p className="text-xs text-slate-500 mt-1">
-                          {c.companyType?.replace(/_/g, ' ')} • {c.contactEmail}
+                          {c.companyType?.replace(/_/g, ' ')}
+                          {c.companyNumber ? ` · No. ${c.companyNumber}` : ''} · {c.contactEmail}
                         </p>
                         {c.mtditsaStatus && c.mtditsaStatus !== 'NOT_REQUIRED' && (
                           <span className="inline-block mt-2 text-[10px] px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-200">

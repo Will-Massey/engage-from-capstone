@@ -551,10 +551,14 @@ model Client {
   tenantId String
   tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
 
-  // Client portal
+  // Client portal (token is per entity, never looked up by email)
   portalToken      String? @unique
   portalTokenExpiry DateTime?
   portalEnabled    Boolean @default(false)
+
+  /// Stripe customer on the platform account for this entity's proposal payments.
+  /// Nullable. Set only when a checkout must not reuse another entity's customer.
+  stripeCustomerId String? @unique
 
   // Client Lifecycle & Touchpoints (automated onboarding workflow)
   lifecycleStage     ClientLifecycleStage @default(PROSPECT)
@@ -585,7 +589,7 @@ model Client {
   documentRequests DocumentRequest[]
   mailMessages    MailMessage[]
 
-  @@unique([tenantId, contactEmail])
+  @@index([tenantId, contactEmail])
   @@index([tenantId])
   @@index([companyType])
   @@index([mtditsaStatus])

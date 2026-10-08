@@ -12,6 +12,7 @@ import { asyncHandler, ApiError } from '../middleware/errorHandler.js';
 import { enforceTierLimit } from '../middleware/tierLimits.js';
 import { MTDITSAService } from '../services/mtditsa.js';
 import logger from '../config/logger.js';
+import { findSameEntity, type ExistingClientIdentity } from '../services/clientIdentity.js';
 // Validation helper functions
 const validateUKPostcode = (postcode: string): boolean => {
   const postcodeRegex = /^[A-Z]{1,2}[0-9][A-Z0-9]?\s?[0-9][A-Z]{2}$/i;
@@ -116,7 +117,8 @@ const incomeSourceSchema = z.object({
 
 /**
  * POST /api/clients/import
- * Bulk import clients (Engager switcher CSV path). Skips duplicate emails.
+ * Bulk import clients (Engager switcher CSV path). Skips the same legal entity.
+ * A repeated contact email is a new client when the name or company number differs.
  * Max 200 rows per request.
  */
 router.post(
@@ -162,29 +164,38 @@ router.post(
       return CompanyType.LIMITED_COMPANY;
     };
 
+    const knownRows = await prisma.client.findMany({
+      where: { tenantId },
+      select: { id: true, name: true, contactEmail: true, companyNumber: true, tags: true },
+    });
+    const known: ExistingClientIdentity[] = knownRows.map((client) => ({
+      id: client.id,
+      name: client.name,
+      contactEmail: client.contactEmail,
+      companyNumber: client.companyNumber,
+      tags: client.tags,
+    }));
+
     for (const row of body.rows) {
       const email = row.contactEmail.trim().toLowerCase();
-      const existing = await prisma.client.findFirst({
-        where: { tenantId, contactEmail: { equals: email, mode: 'insensitive' } },
-      });
+      const companyNumber = row.companyNumber?.trim() || null;
+      const same = findSameEntity(known, { name: row.name, companyNumber });
 
-      if (existing) {
+      if (same) {
         if (body.updateExisting) {
           await prisma.client.update({
-            where: { id: existing.id },
+            where: { id: same.client.id },
             data: {
               name: row.name.trim(),
-              contactName: row.contactName?.trim() || existing.contactName,
-              contactPhone: row.contactPhone?.trim() || existing.contactPhone,
-              companyNumber: row.companyNumber?.trim() || existing.companyNumber,
-              notes: row.notes
-                ? [existing.notes, row.notes].filter(Boolean).join('\n')
-                : existing.notes,
+              contactName: row.contactName?.trim() || undefined,
+              contactPhone: row.contactPhone?.trim() || undefined,
+              companyNumber: companyNumber || undefined,
+              notes: row.notes?.trim() || undefined,
             },
           });
-          updated.push(existing.id);
+          updated.push(same.client.id);
         } else {
-          skipped.push({ email, reason: 'duplicate_email' });
+          skipped.push({ email, reason: same.reason });
         }
         continue;
       }
@@ -205,6 +216,13 @@ router.post(
           } as any,
         });
         created.push(client.id);
+        known.push({
+          id: client.id,
+          name: client.name,
+          contactEmail: client.contactEmail,
+          companyNumber: client.companyNumber,
+          tags: client.tags,
+        });
       } catch (e: any) {
         skipped.push({ email, reason: e?.message || 'create_failed' });
       }
@@ -586,18 +604,8 @@ router.post(
       `Creating client for tenant: ${req.tenantId}, user: ${req.user?.id}, email: ${data.contactEmail}`
     );
 
-    // Check for duplicate email
-    const existingClient = await prisma.client.findFirst({
-      where: {
-        tenantId: req.tenantId,
-        contactEmail: data.contactEmail,
-      },
-    });
-
-    if (existingClient) {
-      logger.warn(`Duplicate client email: ${data.contactEmail} for tenant: ${req.tenantId}`);
-      throw new ApiError('DUPLICATE_EMAIL', 'A client with this email already exists', 409);
-    }
+    // Contact email is not unique. Several companies can share one inbox.
+    // The legal name (and company number, when there is one) tells them apart.
 
     // Calculate MTD ITSA status if income provided AND client is a sole trader or partnership
     // MTD ITSA only applies to self-employed individuals (sole traders) and some partnerships
@@ -641,9 +649,19 @@ router.post(
       },
     });
 
+    const otherEntities = await prisma.client.findMany({
+      where: {
+        tenantId: req.tenantId,
+        id: { not: client.id },
+        contactEmail: { equals: client.contactEmail, mode: 'insensitive' },
+      },
+      select: { id: true, name: true, companyNumber: true, companyType: true },
+    });
+
     res.status(201).json({
       success: true,
       data: formatClientForResponse(client),
+      meta: otherEntities.length ? { sharedContactEmail: true, otherEntities } : undefined,
     });
   })
 );
@@ -670,21 +688,6 @@ router.put(
 
     if (!existingClient) {
       throw new ApiError('NOT_FOUND', 'Client not found', 404);
-    }
-
-    // Check email uniqueness if changing
-    if (data.contactEmail && data.contactEmail !== existingClient.contactEmail) {
-      const duplicateEmail = await prisma.client.findFirst({
-        where: {
-          tenantId: req.tenantId,
-          contactEmail: data.contactEmail,
-          id: { not: id },
-        },
-      });
-
-      if (duplicateEmail) {
-        throw new ApiError('DUPLICATE_EMAIL', 'A client with this email already exists', 409);
-      }
     }
 
     // Recalculate MTD ITSA status if income changed AND client is applicable type

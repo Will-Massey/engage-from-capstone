@@ -376,6 +376,14 @@ export {
 } from './serviceBilling';
 
 export {
+  distinguishEmailSubject,
+  formatCompanyTypeLabel,
+  formatEntityLabel,
+  proposalSubjectLine,
+  type EntityIdentity,
+} from './entityIdentity';
+
+export {
   buildProposalLinesForSummary,
   calculateProposalSummaryBands,
   calculateProposalSummaryFromInputs,

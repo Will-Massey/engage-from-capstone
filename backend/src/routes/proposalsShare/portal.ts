@@ -184,6 +184,8 @@ router.get(
           name: client.name,
           contactName: client.contactName,
           contactEmail: client.contactEmail,
+          companyType: client.companyType,
+          companyNumber: client.companyNumber,
         },
         practice: {
           name: client.tenant.name,

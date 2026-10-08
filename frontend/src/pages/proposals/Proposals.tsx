@@ -23,6 +23,7 @@ import {
 import { apiClient } from '../../utils/api';
 import { appPath } from '../../utils/appBase';
 import { formatCurrency } from '../../utils/formatters';
+import { formatEntityLabel } from '@shared/entityIdentity';
 import { useAuthStore } from '../../stores/authStore';
 import { format, formatDistanceToNow } from 'date-fns';
 import toast from 'react-hot-toast';
@@ -423,7 +424,7 @@ const Proposals = () => {
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="search-input w-full"
-                placeholder="Search proposals, clients, or references..."
+                placeholder="Search legal name, company number, reference, or status..."
               />
             </div>
           </form>
@@ -557,8 +558,17 @@ const Proposals = () => {
                               {p.title}
                             </div>
                             <div className="mt-1 truncate text-xs text-slate-500">
-                              {p.client?.name || '—'}
+                              {formatEntityLabel({
+                                name: p.client?.name,
+                                companyNumber: p.client?.companyNumber,
+                                companyType: p.client?.companyType,
+                              })}
                             </div>
+                            {p.createdAt && (
+                              <div className="mt-0.5 text-[11px] text-slate-400">
+                                {format(new Date(p.createdAt), 'dd MMM yyyy')}
+                              </div>
+                            )}
                             <div className="mt-2 flex items-center justify-between gap-2">
                               <span className="text-sm font-semibold tabular-nums text-slate-800 dark:text-slate-100">
                                 {formatCurrency(p.total ?? 0)}
@@ -637,7 +647,18 @@ const Proposals = () => {
                             </p>
                             <p className="mt-1 truncate text-xs text-slate-500">
                               {proposal.client?.name || 'No client'}
+                              {proposal.client?.companyNumber
+                                ? ` · No. ${proposal.client.companyNumber}`
+                                : ''}
+                              {proposal.client?.companyType
+                                ? ` · ${proposal.client.companyType.replace(/_/g, ' ')}`
+                                : ''}
                             </p>
+                            {proposal.createdAt && (
+                              <p className="mt-0.5 text-[11px] text-slate-400">
+                                {format(new Date(proposal.createdAt), 'dd MMM yyyy')}
+                              </p>
+                            )}
                           </div>
                           <span
                             className={`shrink-0 rounded-full px-2.5 py-0.5 text-xs font-medium ${
@@ -761,6 +782,9 @@ const Proposals = () => {
                               </Link>
                               <p className="text-xs text-slate-500 dark:text-slate-400">
                                 {proposal.reference}
+                                {proposal.createdAt
+                                  ? ` · ${format(new Date(proposal.createdAt), 'dd MMM yyyy')}`
+                                  : ''}
                               </p>
                               {proposal.status !== 'DRAFT' && (
                                 <div className="flex flex-wrap gap-1 mt-1.5">
@@ -801,6 +825,9 @@ const Proposals = () => {
                             </div>
                             <div className="text-xs text-slate-500 dark:text-slate-400">
                               {proposal.client?.companyType?.replace(/_/g, ' ')}
+                              {proposal.client?.companyNumber
+                                ? ` · No. ${proposal.client.companyNumber}`
+                                : ''}
                             </div>
                           </td>
                           <td className="px-3 py-4 whitespace-nowrap">

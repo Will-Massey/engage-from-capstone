@@ -959,7 +959,9 @@ const Dashboard = () => {
                           {client.name}
                         </p>
                         <p className="text-xs text-slate-500 dark:text-slate-400">
-                          {client.companyType?.replace(/_/g, ' ')} • {client.contactEmail}
+                          {client.companyType?.replace(/_/g, ' ')}
+                          {client.companyNumber ? ` · No. ${client.companyNumber}` : ''} ·{' '}
+                          {client.contactEmail}
                         </p>
                       </div>
                     </div>

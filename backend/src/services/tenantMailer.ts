@@ -317,6 +317,7 @@ export async function sendProposalEmailForTenant(
   params: {
     to: string;
     clientName: string;
+    companyNumber?: string | null;
     proposalTitle: string;
     proposalReference: string;
     viewLink: string;
@@ -340,6 +341,7 @@ export async function sendProposalEmailForTenant(
 
   const { html, text, subject } = composeProposalSendEmail({
     clientName: params.clientName,
+    companyNumber: params.companyNumber,
     tenantName: params.tenantName,
     proposalReference: params.proposalReference,
     proposalTitle: params.proposalTitle,

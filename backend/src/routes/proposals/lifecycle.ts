@@ -148,6 +148,7 @@ router.post(
       {
         to: proposal.client.contactEmail,
         clientName: proposal.client.name,
+        companyNumber: proposal.client.companyNumber,
         proposalTitle: proposal.title,
         proposalReference: proposal.reference,
         viewLink,

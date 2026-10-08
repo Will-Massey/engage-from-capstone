@@ -15,6 +15,8 @@ type PublicLetter = {
   type: string;
   bodyHtml: string;
   clientName: string;
+  companyNumber?: string | null;
+  companyType?: string | null;
   practiceName: string;
   signed: boolean;
   signedBy: string | null;
@@ -120,7 +122,11 @@ export default function LetterSign() {
           <h1 className="mt-1 text-2xl font-bold text-slate-900 dark:text-slate-50">
             {letter.title}
           </h1>
-          <p className="text-sm text-slate-500">{letter.clientName}</p>
+          <p className="text-sm text-slate-500">
+            {letter.clientName}
+            {letter.companyType ? ` · ${letter.companyType.replace(/_/g, ' ')}` : ''}
+            {letter.companyNumber ? ` · No. ${letter.companyNumber}` : ''}
+          </p>
         </div>
 
         <div

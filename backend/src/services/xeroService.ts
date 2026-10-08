@@ -3,7 +3,7 @@
  *
  * - OAuth2 connect via xero-node
  * - Token refresh + encrypted storage on Tenant.settings.xero
- * - Contact import from Xero → Engage clients (dedupe by email/name)
+ * - Contact import from Xero → Engage clients (dedupe by entity, not email)
  * - Push accepted proposal → Xero contact note + repeating invoices
  * - Stub mode when XERO_* env not set or tenant not connected
  */
@@ -24,6 +24,7 @@ import {
 } from 'xero-node';
 import logger from '../config/logger.js';
 import { isMonthlyActualHourly, isQuotedBillingFrequency } from '@uk-proposal-platform/shared';
+import { pickAccountingContactId } from './clientIdentity.js';
 import {
   getTenantXeroSettings,
   saveTenantXeroSettings,
@@ -337,7 +338,10 @@ export async function resolveOrCreateContact(
 
   let contactId: string | undefined;
 
-  if (email) {
+  const emailMatches: Array<{ id: string; name?: string | null; email?: string | null }> = [];
+  const nameMatches: Array<{ id: string; name?: string | null }> = [];
+
+  if (!contactId && email) {
     const byEmail = await xeroClient.accountingApi.getContacts(
       xeroTenantId,
       undefined,
@@ -350,10 +354,14 @@ export async function resolveOrCreateContact(
       email,
       10
     );
-    const match = (byEmail.body.contacts || []).find(
-      (c) => c.emailAddress?.toLowerCase() === email
-    );
-    if (match?.contactID) contactId = match.contactID;
+    for (const contact of byEmail.body.contacts || []) {
+      if (!contact.contactID) continue;
+      emailMatches.push({
+        id: contact.contactID,
+        name: contact.name,
+        email: contact.emailAddress,
+      });
+    }
   }
 
   if (!contactId && name) {
@@ -369,11 +377,19 @@ export async function resolveOrCreateContact(
       name,
       10
     );
-    const normalized = normalizeClientName(name);
-    const match = (byName.body.contacts || []).find(
-      (c) => c.name && normalizeClientName(c.name) === normalized
-    );
-    if (match?.contactID) contactId = match.contactID;
+    for (const contact of byName.body.contacts || []) {
+      if (!contact.contactID) continue;
+      nameMatches.push({ id: contact.contactID, name: contact.name });
+    }
+  }
+
+  if (!contactId) {
+    contactId = pickAccountingContactId({
+      clientName: name,
+      email,
+      emailMatches,
+      nameMatches,
+    });
   }
 
   if (!contactId) {

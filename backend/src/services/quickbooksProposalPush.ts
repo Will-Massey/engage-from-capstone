@@ -22,6 +22,7 @@ import {
   getTenantQuickBooksSettings,
   saveTenantQuickBooksSettings,
 } from './tenantQuickbooksSettings.js';
+import { normalizeEntityName, pickAccountingContactId } from './clientIdentity.js';
 
 export const QBO_PROPOSAL_PUSHED_ACTION = 'QBO_PROPOSAL_PUSHED';
 
@@ -44,13 +45,28 @@ export async function resolveOrCreateQboCustomer(
   const email = client.contactEmail?.trim().toLowerCase();
   const name = client.name?.trim();
 
-  if (email) {
-    const byEmail = await findCustomerByEmail(session, email);
-    if (byEmail?.Id) return byEmail.Id;
-  }
-  if (name) {
-    const byName = await findCustomerByName(session, name);
-    if (byName?.Id) return byName.Id;
+  const byName = name ? await findCustomerByName(session, name) : null;
+  const byEmail = email ? await findCustomerByEmail(session, email) : null;
+
+  const matched = pickAccountingContactId({
+    clientName: name || '',
+    email,
+    nameMatches: byName?.Id ? [{ id: byName.Id, name: byName.DisplayName || name }] : [],
+    emailMatches: byEmail?.Id
+      ? [{ id: byEmail.Id, name: byEmail.DisplayName, email: byEmail.PrimaryEmailAddr?.Address }]
+      : [],
+  });
+  if (matched) return matched;
+
+  // A QuickBooks customer that only shares the email belongs to a different entity.
+  if (
+    byEmail?.Id &&
+    byEmail.DisplayName &&
+    normalizeEntityName(byEmail.DisplayName) !== normalizeEntityName(name)
+  ) {
+    logger.info(
+      `QuickBooks customer ${byEmail.Id} shares ${email} but is ${byEmail.DisplayName}; creating ${name}`
+    );
   }
 
   const created = await createCustomer(session, {

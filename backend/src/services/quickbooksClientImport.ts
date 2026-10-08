@@ -1,12 +1,13 @@
 /**
  * Import QuickBooks customers → Engage clients (R4.1).
- * Mirrors the Xero import route: email/name dedupe, dryRun preview, and a
- * `qbo:<Id>` tag linking the client back to the QBO customer.
+ * Mirrors the Xero import route: entity dedupe (legal name or qbo id), dryRun
+ * preview, and a `qbo:<Id>` tag linking the client back to the QBO customer.
+ * A shared email does not block a second company.
  */
 
 import { CompanyType } from '@prisma/client';
 import { prisma } from '../config/database.js';
-import { normalizeClientName } from './xeroService.js';
+import { findSameEntity, type ExistingClientIdentity } from './clientIdentity.js';
 import { getAuthenticatedQuickBooksSession } from './quickbooksService.js';
 import { queryCustomers } from './quickbooksApi.js';
 import {
@@ -34,18 +35,16 @@ export async function importQuickBooksClients(
 
   const existing = await prisma.client.findMany({
     where: { tenantId, isActive: true },
-    select: { id: true, name: true, contactEmail: true, tags: true },
+    select: { id: true, name: true, contactEmail: true, companyNumber: true, tags: true },
   });
 
-  const byEmail = new Map<string, (typeof existing)[0]>();
-  const byName = new Map<string, (typeof existing)[0]>();
-
-  for (const c of existing) {
-    if (c.contactEmail) {
-      byEmail.set(c.contactEmail.toLowerCase().trim(), c);
-    }
-    byName.set(normalizeClientName(c.name), c);
-  }
+  const known: ExistingClientIdentity[] = existing.map((client) => ({
+    id: client.id,
+    name: client.name,
+    contactEmail: client.contactEmail,
+    companyNumber: client.companyNumber,
+    tags: client.tags,
+  }));
 
   const created: QuickBooksClientImportResult['createdClients'] = [];
   const skipped: QuickBooksClientImportResult['skippedCustomers'] = [];
@@ -66,20 +65,15 @@ export async function importQuickBooksClients(
       continue;
     }
 
-    if (email && byEmail.has(email)) {
+    const same = findSameEntity(known, {
+      name,
+      externalTag: qboCustomerId ? `qbo:${qboCustomerId}` : null,
+    });
+    if (same) {
       skipped.push({
         name: name || email,
-        reason: 'duplicate_email',
-        existingClientId: byEmail.get(email)!.id,
-      });
-      continue;
-    }
-
-    if (name && byName.has(normalizeClientName(name))) {
-      skipped.push({
-        name,
-        reason: 'duplicate_name',
-        existingClientId: byName.get(normalizeClientName(name))!.id,
+        reason: same.reason,
+        existingClientId: same.client.id,
       });
       continue;
     }
@@ -88,6 +82,12 @@ export async function importQuickBooksClients(
       created.push({
         name: name || email,
         contactEmail: email || `${qboCustomerId}@import.local`,
+      });
+      known.push({
+        id: `dry-${qboCustomerId || name}`,
+        name: name || email,
+        contactEmail: email,
+        tags: qboCustomerId ? `qbo:${qboCustomerId}` : '',
       });
       continue;
     }
@@ -112,8 +112,12 @@ export async function importQuickBooksClients(
         qboCustomerId,
       });
 
-      if (email) byEmail.set(email, client);
-      byName.set(normalizeClientName(client.name), client);
+      known.push({
+        id: client.id,
+        name: client.name,
+        contactEmail: client.contactEmail,
+        tags: client.tags,
+      });
     } catch (err: unknown) {
       errors.push({
         name: name || email,

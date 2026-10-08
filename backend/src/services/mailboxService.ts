@@ -19,6 +19,7 @@ import { createGraphMailClient } from './mail/graphMailClient.js';
 import { createGmailMailClient } from './mail/gmailMailClient.js';
 import type { MailProviderClient, ProviderMessage } from './mail/types.js';
 import { processNewInboundMessages } from './mailAutoReply/index.js';
+import { selectUniqueClientMatch } from './clientIdentity.js';
 
 const SNIPPET_MAX_CHARS = 280;
 
@@ -161,10 +162,15 @@ async function matchClientByEmail(
 ): Promise<{ id: string; name: string } | null> {
   const email = extractFirstEmail(address);
   if (!email) return null;
-  return prisma.client.findFirst({
+  const matches = await prisma.client.findMany({
     where: { tenantId, isActive: true, contactEmail: { equals: email, mode: 'insensitive' } },
     select: { id: true, name: true },
+    orderBy: { createdAt: 'asc' },
+    take: 2,
   });
+  // One match keeps the existing quote's mail on that client. Several matches
+  // stay unlinked so a shared inbox cannot attach to the wrong company.
+  return selectUniqueClientMatch(matches);
 }
 
 /** settings.email.provider may be stored lower/mixed-case — normalise to the two-way-capable set. */
