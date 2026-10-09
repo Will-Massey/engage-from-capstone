@@ -29,6 +29,7 @@ import { format, formatDistanceToNow } from 'date-fns';
 import toast from 'react-hot-toast';
 import { EmptyProposals } from '../../components/empty-states/EmptyStates';
 import { SkeletonCard } from '../../components/skeleton/SkeletonCard';
+import { describeQuoteSendHistory } from '../clients/quoteSendHistory';
 
 // Prevent tree-shaking
 const _iconRefs = [DocumentTextIcon, CheckCircleIcon, ClockIcon];
@@ -659,6 +660,16 @@ const Proposals = () => {
                                 {format(new Date(proposal.createdAt), 'dd MMM yyyy')}
                               </p>
                             )}
+                            <ul className="mt-2 space-y-0.5">
+                              {describeQuoteSendHistory(proposal).lines.map((line, index) => (
+                                <li
+                                  key={index}
+                                  className="text-xs text-slate-600 dark:text-slate-300"
+                                >
+                                  {line}
+                                </li>
+                              ))}
+                            </ul>
                           </div>
                           <span
                             className={`shrink-0 rounded-full px-2.5 py-0.5 text-xs font-medium ${
@@ -694,7 +705,7 @@ const Proposals = () => {
                             type="button"
                             onClick={() => sendProposalEmail(proposal)}
                             className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-lg text-slate-500 hover:bg-slate-100 hover:text-blue-600 dark:hover:bg-slate-800"
-                            title="Send email"
+                            title={proposal.status === 'DRAFT' ? 'Send email' : 'Send again'}
                           >
                             <EnvelopeIcon className="h-5 w-5" />
                           </button>
@@ -782,10 +793,21 @@ const Proposals = () => {
                               </Link>
                               <p className="text-xs text-slate-500 dark:text-slate-400">
                                 {proposal.reference}
+                                {proposal.client?.name ? ` · ${proposal.client.name}` : ''}
                                 {proposal.createdAt
                                   ? ` · ${format(new Date(proposal.createdAt), 'dd MMM yyyy')}`
                                   : ''}
                               </p>
+                              <ul className="mt-1.5 max-w-xs space-y-0.5 whitespace-normal">
+                                {describeQuoteSendHistory(proposal).lines.map((line, index) => (
+                                  <li
+                                    key={index}
+                                    className="text-[11px] leading-snug text-slate-600 dark:text-slate-300"
+                                  >
+                                    {line}
+                                  </li>
+                                ))}
+                              </ul>
                               {proposal.status !== 'DRAFT' && (
                                 <div className="flex flex-wrap gap-1 mt-1.5">
                                   {proposal.acceptedAt && (
@@ -970,7 +992,9 @@ const Proposals = () => {
                                   <button
                                     onClick={() => sendProposalEmail(proposal)}
                                     className="p-1 text-slate-500 hover:text-blue-600"
-                                    title="Send Email"
+                                    title={
+                                      proposal.status === 'DRAFT' ? 'Send email' : 'Send again'
+                                    }
                                   >
                                     <EnvelopeIcon className="h-5 w-5" />
                                   </button>

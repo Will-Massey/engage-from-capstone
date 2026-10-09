@@ -25,6 +25,7 @@ import toast from 'react-hot-toast';
 import { format, formatDistanceToNow } from 'date-fns';
 import { DECLINE_REASON_LABELS, type DeclineReason } from '../../../constants/declineReasons';
 import { useProposalDetail } from './ProposalDetailContext';
+import { describeQuoteSendHistory } from '../../clients/quoteSendHistory';
 
 export default function DetailHeader() {
   const {
@@ -200,6 +201,13 @@ export default function DetailHeader() {
           <p className="text-sm text-slate-500 dark:text-slate-400">
             Created {format(new Date(proposal.createdAt), 'dd MMM yyyy')}
           </p>
+          <ul className="mt-2 max-w-xl space-y-0.5">
+            {describeQuoteSendHistory(proposal).lines.map((line, index) => (
+              <li key={index} className="text-sm text-slate-700 dark:text-slate-200">
+                {line}
+              </li>
+            ))}
+          </ul>
           {approvalStatus === 'PENDING' && proposal.submittedForApprovalAt && (
             <p className="mt-1 text-xs text-amber-700 dark:text-amber-300">
               Submitted{' '}
