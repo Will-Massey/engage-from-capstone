@@ -100,18 +100,77 @@ test('marketing page keeps utm_source=chatgpt.com on register links', async () =
   );
 });
 
-test('packaged marketing HTML forwards utm_source=chatgpt.com onto every register link', () => {
-  const html = readFileSync(
-    join(dirname(fileURLToPath(import.meta.url)), '../public/engage/index.html'),
-    'utf8'
+const PACKAGED_HTML = readFileSync(
+  join(dirname(fileURLToPath(import.meta.url)), '../public/engage/index.html'),
+  'utf8'
+);
+
+const REGISTER_CONTENTS = [
+  'engage-nav',
+  'engage-hero',
+  'engage-pricing-card',
+  'engage-pricing-card',
+  'engage-footer',
+];
+
+function registerHrefs(html) {
+  return [
+    ...html.matchAll(/href="(https:\/\/capstonesoftware\.co\.uk\/engage\/register[^"]*)"/g),
+  ].map((match) => match[1]);
+}
+
+function packagedAssets(html) {
+  return {
+    ASSETS: {
+      fetch: async (request) => {
+        const href = request instanceof URL ? request.href : String(request.url ?? request);
+        if (href.endsWith('/engage/index.html')) {
+          return new Response(html, {
+            status: 200,
+            headers: { 'content-type': 'text/html; charset=utf-8' },
+          });
+        }
+        return new Response('missing', { status: 404 });
+      },
+    },
+  };
+}
+
+test('chatgpt.com visitor gets utm_source=chatgpt.com on all five register links', async () => {
+  const response = await worker.fetch(
+    new Request('https://capstonesoftware.co.uk/engage/?utm_source=chatgpt.com'),
+    packagedAssets(PACKAGED_HTML),
+    { waitUntil() {} }
   );
-  const bare = html.match(/href="https:\/\/capstonesoftware\.co\.uk\/engage\/register"/g) || [];
-  assert.ok(bare.length >= 1);
-  const rewritten = rewriteEngageRegisterLinks(html, '?utm_source=chatgpt.com');
-  const forwarded =
-    rewritten.match(
-      /href="https:\/\/capstonesoftware\.co\.uk\/engage\/register\?utm_source=chatgpt\.com"/g
-    ) || [];
-  assert.equal(forwarded.length, bare.length);
-  assert.equal(rewritten.includes('href="https://capstonesoftware.co.uk/engage/register"'), false);
+  assert.equal(response.status, 200);
+  const hrefs = registerHrefs(await response.text());
+  assert.equal(hrefs.length, 5);
+  hrefs.forEach((href, index) => {
+    const params = new URL(href).searchParams;
+    assert.equal(params.get('utm_source'), 'chatgpt.com');
+    assert.equal(params.get('utm_medium'), 'website');
+    assert.equal(params.get('utm_campaign'), 'engage');
+    assert.equal(params.get('utm_content'), REGISTER_CONTENTS[index]);
+  });
+});
+
+test('a visit with no utm params leaves the default register links', async () => {
+  const response = await worker.fetch(
+    new Request('https://capstonesoftware.co.uk/engage/'),
+    packagedAssets(PACKAGED_HTML),
+    { waitUntil() {} }
+  );
+  assert.deepEqual(registerHrefs(await response.text()), registerHrefs(PACKAGED_HTML));
+  for (const href of registerHrefs(PACKAGED_HTML)) {
+    const params = new URL(href).searchParams;
+    assert.equal(params.get('utm_source'), 'capstonesoftware');
+    assert.equal(params.get('utm_medium'), 'website');
+    assert.equal(params.get('utm_campaign'), 'engage');
+  }
+});
+
+test('rewriteEngageRegisterLinks leaves a LinkedIn source untouched', () => {
+  const html =
+    '<a href="https://capstonesoftware.co.uk/engage/register?utm_source=linkedin&utm_content=engage-nav">Go</a>';
+  assert.equal(rewriteEngageRegisterLinks(html, '?utm_source=chatgpt.com'), html);
 });

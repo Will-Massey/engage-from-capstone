@@ -4,11 +4,23 @@
  * include the query the visitor arrived with, and links from the apex site
  * often leave the campaign on the previous URL. Copy utm_source, utm_medium
  * and utm_campaign onto /engage/register. Values are kept as given
- * (utm_source=chatgpt.com stays chatgpt.com). A later visit must not replace
- * params already present on a link.
+ * (utm_source=chatgpt.com stays chatgpt.com).
+ *
+ * The page default triple (utm_source=capstonesoftware, utm_medium=website,
+ * utm_campaign=engage) is fillable: an incoming first-touch value overwrites
+ * that default. Any other value already on the link is kept
+ * (utm_source=linkedin stays linkedin). utm_content and other params that
+ * are not first-touch keys stay on the link.
  */
 
 const UTM_KEYS = ['utm_source', 'utm_medium', 'utm_campaign'];
+
+/** Tags the packaged marketing page puts on every register link. */
+const PAGE_DEFAULTS = {
+  utm_source: 'capstonesoftware',
+  utm_medium: 'website',
+  utm_campaign: 'engage',
+};
 
 function clip(value) {
   if (!value) return '';
@@ -87,7 +99,10 @@ export function rewriteEngageRegisterLinks(html, attributionSearch) {
         if (!UTM_KEYS.includes(key) && !params.has(key)) params.append(key, value);
       }
       for (const key of UTM_KEYS) {
-        if (!params.get(key) && incoming.get(key)) params.set(key, incoming.get(key));
+        const incomingValue = incoming.get(key);
+        if (!incomingValue) continue;
+        const existing = params.get(key);
+        if (!existing || existing === PAGE_DEFAULTS[key]) params.set(key, incomingValue);
       }
       const serialised = params.toString();
       return `href="${base}${serialised ? `?${serialised}` : ''}"`;
