@@ -109,13 +109,14 @@ test('leadMagnetLocation: does not splat /engage/* — marketing and app routes 
   assert.equal(leadMagnetLocation('/engage/cat/'), null);
 });
 
-test('packaged marketing HTML past-tenses the first quarterly deadline', () => {
+test('packaged marketing HTML states MTD ITSA is live and names April 2027', () => {
   const html = readFileSync(
     join(dirname(fileURLToPath(import.meta.url)), '../public/engage/index.html'),
     'utf8'
   );
-  assert.doesNotMatch(html, /first quarterly deadline is\s+7 August 2026/i);
-  assert.match(html, /first quarterly deadline was\s+7 August 2026/);
+  assert.match(html, /MTD ITSA is live/);
+  assert.match(html, /April 2027/);
+  assert.doesNotMatch(html, /7 August 2026/);
   assert.match(html, /Solo £29/);
   assert.match(html, /Practice £59/);
 });
