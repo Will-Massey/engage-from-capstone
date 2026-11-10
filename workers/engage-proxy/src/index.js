@@ -6,6 +6,11 @@
  * /engage/mtd-repricing[/] → 301 /mtd-repricing/ (Pages lead magnet; query preserved)
  * /engage/proposal-checklist[/] → 301 /proposal-checklist/
  * /engage/per-seat-tax[/] → 301 /per-seat-tax/
+ * /engage/guides and /engage/guides/* (GET, HEAD)
+ *                 → capstone-site Pages. Fetch the pages.dev hostname: the apex
+ *                   route is this worker, so an apex fetch would call it again.
+ *                   A 404 falls through to the SPA. Redirects stay on the host
+ *                   the visitor used (www stays www).
  * /engage/assets/*, /engage/images/* → engage-frontend (nested under /engage on Render)
  * /engage/*       → engage-frontend SPA (index.html for client routes)
  *                 Do not splat every /engage/* slug — login/register stay on the app.
@@ -18,7 +23,21 @@ import { firstTouchSearch, rewriteEngageRegisterLinks } from './attributionLinks
 
 const FRONTEND_UPSTREAM = 'https://engage-frontend-0g6u.onrender.com';
 const BACKEND_UPSTREAM = 'https://engage-backend-e1ue.onrender.com';
+/** capstone-site Pages. The apex hostname routes /engage* back into this worker. */
+const PAGES_UPSTREAM = 'https://capstone-site-1i5.pages.dev';
 const PREFIX = '/engage';
+
+/**
+ * Hosts a Pages redirect may name. Rewrite these onto the host the visitor
+ * used so a www request is not sent to the apex or to pages.dev.
+ */
+const GUIDE_REDIRECT_HOSTS = new Set([
+  'capstone-site-1i5.pages.dev',
+  'capstonesoftware.co.uk',
+  'www.capstonesoftware.co.uk',
+]);
+
+const REDIRECT_STATUSES = new Set([301, 302, 303, 307, 308]);
 
 /**
  * Security headers for the public SPA + its assets. The React app is otherwise
@@ -114,6 +133,43 @@ export function leadMagnetLocation(pathname, search = '') {
   return `${LEAD_MAGNETS[match[1]]}${search}`;
 }
 
+/**
+ * True for GET/HEAD of the guides index or a page under it.
+ * /engage/guideship and other prefixes stay on the app.
+ *
+ * @param {string} pathname
+ * @param {string} method
+ */
+export function isGuideRequest(pathname, method) {
+  if (method !== 'GET' && method !== 'HEAD') return false;
+  return pathname === `${PREFIX}/guides` || pathname.startsWith(`${PREFIX}/guides/`);
+}
+
+/**
+ * Keep a Pages redirect on the host the visitor used.
+ * Relative locations already resolve against that host; absolute locations
+ * that point at pages.dev, the apex, or www are rewritten onto it.
+ * Locations on any other host are returned unchanged.
+ *
+ * @param {string | null} location
+ * @param {string} requestUrl
+ * @returns {string | null}
+ */
+export function rewriteGuideRedirect(location, requestUrl) {
+  if (!location) return location;
+  let target;
+  try {
+    target = new URL(location, requestUrl);
+  } catch {
+    return location;
+  }
+  if (!GUIDE_REDIRECT_HOSTS.has(target.hostname)) return location;
+  const incoming = new URL(requestUrl);
+  target.protocol = incoming.protocol;
+  target.host = incoming.host;
+  return target.toString();
+}
+
 function stripPrefix(pathname) {
   if (pathname === PREFIX || pathname === `${PREFIX}/`) return '/';
   if (pathname.startsWith(`${PREFIX}/`)) return pathname.slice(PREFIX.length) || '/';
@@ -153,6 +209,53 @@ async function proxyRequest(request, upstreamBase, upstreamPath) {
   const response = await fetch(target.toString(), init);
   const out = new Headers(response.headers);
   out.delete('content-encoding');
+
+  return new Response(response.body, {
+    status: response.status,
+    statusText: response.statusText,
+    headers: out,
+  });
+}
+
+/**
+ * GET/HEAD /engage/guides* from capstone-site Pages.
+ * Returns null when Pages has no such page (404) so the caller can fall
+ * through to the SPA. The guide ships its own inline module scripts, so this
+ * response is streamed through with Pages' headers and without the Engage CSP.
+ *
+ * @param {Request} request
+ * @returns {Promise<Response | null>}
+ */
+async function fetchGuide(request) {
+  const incoming = new URL(request.url);
+  const target = new URL(PAGES_UPSTREAM);
+  target.pathname = incoming.pathname;
+  target.search = incoming.search;
+
+  const headers = new Headers(request.headers);
+  headers.set('Host', target.host);
+  headers.delete('cookie');
+  headers.delete('authorization');
+
+  const response = await fetch(target.toString(), {
+    method: request.method,
+    headers,
+    redirect: 'manual',
+    cache: 'no-store',
+  });
+
+  if (response.status === 404) {
+    await response.body?.cancel();
+    return null;
+  }
+
+  const out = new Headers(response.headers);
+  out.delete('content-encoding');
+  out.delete('content-length');
+  if (REDIRECT_STATUSES.has(response.status)) {
+    const location = out.get('Location');
+    if (location) out.set('Location', rewriteGuideRedirect(location, request.url));
+  }
 
   return new Response(response.body, {
     status: response.status,
@@ -280,7 +383,14 @@ export default {
       return withSecurityHeaders(await proxyRequest(request, FRONTEND_UPSTREAM, pathname));
     }
 
-    // SPA fallback — nested /engage/index.html on Cloudflare Pages
+    // Published guides live on capstone-site. Try Pages before the SPA shell.
+    // A 404 means there is no such page yet, so keep the existing behaviour.
+    if (isGuideRequest(pathname, request.method)) {
+      const guide = await fetchGuide(request);
+      if (guide) return guide;
+    }
+
+    // SPA fallback — nested /engage/index.html on Render
     if (request.method === 'GET' || request.method === 'HEAD') {
       const spaPolicy = cachePolicyForPath(pathname, { spaFallback: true });
       if (spaPolicy.edge && request.method === 'GET') {
