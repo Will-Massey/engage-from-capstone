@@ -21,6 +21,12 @@ function appWithCors() {
 
 const NATIVE_ORIGINS = ['capacitor://localhost', 'https://localhost'];
 
+// Origins other than the canonical capacitor://localhost that a WebView can
+// send. Each one 500'd the preflight in production (no Allow-Origin), which
+// WKWebView surfaces as a network error on the sign-in button. `null` is the
+// opaque-origin serialisation (WebKit bug 226760).
+const DEVICE_ORIGINS = ['null', 'Capacitor://localhost', 'capacitor://localhost/'];
+
 describe('CORS for the Capacitor iOS shell', () => {
   it.each(NATIVE_ORIGINS)('allows X-Client on preflight from %s', async (origin) => {
     const res = await request(appWithCors())
@@ -45,6 +51,21 @@ describe('CORS for the Capacitor iOS shell', () => {
 
     expect(res.status).toBe(200);
     expect(res.headers['access-control-allow-origin']).toBe(origin);
+  });
+
+  it.each(DEVICE_ORIGINS)('allows preflight from the device origin %s', async (origin) => {
+    const res = await request(appWithCors())
+      .options('/api/auth/me')
+      .set('Origin', origin)
+      .set('Access-Control-Request-Method', 'POST')
+      .set('Access-Control-Request-Headers', 'x-client,content-type');
+
+    expect(res.status).toBeLessThan(300);
+    // Must echo the request's own Origin bytes. A browser compares them
+    // exactly, and the opaque origin is only satisfied by the string "null".
+    expect(res.headers['access-control-allow-origin']).toBe(origin);
+    const allowed = (res.headers['access-control-allow-headers'] || '').toLowerCase();
+    expect(allowed).toContain('x-client');
   });
 
   it('still rejects an unrelated origin', async () => {

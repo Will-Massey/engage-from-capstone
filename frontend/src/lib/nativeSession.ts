@@ -31,6 +31,27 @@ export interface NativeTokens {
 let memory: NativeTokens | null = null;
 
 /**
+ * Serialise reads and writes of the token store.
+ *
+ * The login screen calls `clearAuth()` on mount, and that clear is async
+ * (it has to load the Preferences plugin before it can delete). Sign-in then
+ * writes the new pair. If the clear's `remove` lands after the write, the
+ * session just issued is deleted and the next launch is back at the login
+ * screen — the request itself succeeded. One queue keeps a wipe that started
+ * first from finishing last.
+ */
+let tokenStoreTail: Promise<void> = Promise.resolve();
+
+function enqueueTokenStore<T>(task: () => Promise<T>): Promise<T> {
+  const run = tokenStoreTail.then(task, task);
+  tokenStoreTail = run.then(
+    () => undefined,
+    () => undefined
+  );
+  return run;
+}
+
+/**
  * Load the Preferences plugin, wrapped in a plain object.
  *
  * The wrapper is load-bearing. A Capacitor plugin is a Proxy that answers every
@@ -71,50 +92,59 @@ export function nativeSessionReady(): Promise<NativeTokens | null> {
 }
 
 /** Load persisted tokens into memory. Call once during app bootstrap. */
-export async function hydrateNativeSession(): Promise<NativeTokens | null> {
-  if (!isNativeApp()) return null;
-  try {
-    const { plugin: Preferences } = await preferences();
-    const [{ value: accessToken }, { value: refreshToken }] = await Promise.all([
-      Preferences.get({ key: ACCESS_KEY }),
-      Preferences.get({ key: REFRESH_KEY }),
-    ]);
-    memory = accessToken && refreshToken ? { accessToken, refreshToken } : null;
-    return memory;
-  } catch {
-    memory = null;
-    return null;
-  }
+export function hydrateNativeSession(): Promise<NativeTokens | null> {
+  if (!isNativeApp()) return Promise.resolve(null);
+  return enqueueTokenStore(async () => {
+    try {
+      const { plugin: Preferences } = await preferences();
+      const [{ value: accessToken }, { value: refreshToken }] = await Promise.all([
+        Preferences.get({ key: ACCESS_KEY }),
+        Preferences.get({ key: REFRESH_KEY }),
+      ]);
+      memory = accessToken && refreshToken ? { accessToken, refreshToken } : null;
+      return memory;
+    } catch {
+      memory = null;
+      return null;
+    }
+  });
 }
 
 /** Persist a freshly issued token pair (login, 2FA login, or refresh rotation). */
-export async function saveNativeSession(tokens: NativeTokens): Promise<void> {
-  if (!isNativeApp()) return;
-  memory = tokens;
-  try {
-    const { plugin: Preferences } = await preferences();
-    await Promise.all([
-      Preferences.set({ key: ACCESS_KEY, value: tokens.accessToken }),
-      Preferences.set({ key: REFRESH_KEY, value: tokens.refreshToken }),
-    ]);
-  } catch {
-    // Memory copy still serves this session; the user re-authenticates next launch.
-  }
+export function saveNativeSession(tokens: NativeTokens): Promise<void> {
+  if (!isNativeApp()) return Promise.resolve();
+  return enqueueTokenStore(async () => {
+    memory = tokens;
+    try {
+      const { plugin: Preferences } = await preferences();
+      await Promise.all([
+        Preferences.set({ key: ACCESS_KEY, value: tokens.accessToken }),
+        Preferences.set({ key: REFRESH_KEY, value: tokens.refreshToken }),
+      ]);
+    } catch {
+      // Memory copy still serves this session; the user re-authenticates next launch.
+    }
+  });
 }
 
 /** Drop the native session (logout, or a refresh token the server rejected). */
-export async function clearNativeSession(): Promise<void> {
-  memory = null;
-  if (!isNativeApp()) return;
-  try {
-    const { plugin: Preferences } = await preferences();
-    await Promise.all([
-      Preferences.remove({ key: ACCESS_KEY }),
-      Preferences.remove({ key: REFRESH_KEY }),
-    ]);
-  } catch {
-    // ignore — memory is already cleared
+export function clearNativeSession(): Promise<void> {
+  if (!isNativeApp()) {
+    memory = null;
+    return Promise.resolve();
   }
+  return enqueueTokenStore(async () => {
+    memory = null;
+    try {
+      const { plugin: Preferences } = await preferences();
+      await Promise.all([
+        Preferences.remove({ key: ACCESS_KEY }),
+        Preferences.remove({ key: REFRESH_KEY }),
+      ]);
+    } catch {
+      // ignore — memory is already cleared
+    }
+  });
 }
 
 /**
@@ -171,7 +201,8 @@ export async function retryOnTransientFailure<T>(
   throw lastError;
 }
 
-/** Test seam — reset the in-memory mirror. */
+/** Test seam — reset the in-memory mirror and any queued store work. */
 export function __resetNativeSessionMemory(): void {
   memory = null;
+  tokenStoreTail = Promise.resolve();
 }

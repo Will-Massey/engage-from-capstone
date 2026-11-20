@@ -20,6 +20,23 @@ describe('nativeClient', () => {
       }
     });
 
+    // An opaque custom-scheme document sends the literal "null" (WebKit
+    // 226760), and a capitalised scheme or trailing slash also missed the
+    // allowlist. The login response then carried cookies the WebView will
+    // never store and no bearer tokens. A missing Origin stays rejected.
+    it('accepts the opaque and non-canonical origins a device actually sends', () => {
+      process.env.NODE_ENV = 'production';
+      for (const origin of ['null', 'Capacitor://localhost', 'capacitor://localhost/']) {
+        expect(isNativeClient(req({ origin, 'x-client': 'ios' }))).toBe(true);
+      }
+    });
+
+    it('does not treat an opaque origin as native without the client header', () => {
+      process.env.NODE_ENV = 'production';
+      expect(isNativeClient(req({ origin: 'null' }))).toBe(false);
+      expect(isNativeClient(req({ origin: 'null', 'x-client': 'web' }))).toBe(false);
+    });
+
     it('is case- and whitespace-insensitive on the client header', () => {
       expect(isNativeClient(req({ origin: 'https://localhost', 'x-client': ' iOS ' }))).toBe(true);
     });

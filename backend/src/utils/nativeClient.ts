@@ -21,6 +21,14 @@ import type { Request } from 'express';
  *
  * `X-Client: ios` is required as an explicit second signal so the native
  * contract is opt-in rather than implied by an origin alone.
+ *
+ * The literal Origin `null` is the serialisation of an opaque origin, which is
+ * what WKWebView sends for a custom-scheme document on OS versions where that
+ * origin is not a tuple (WebKit bug 226760). Script on the real site cannot
+ * choose that value: its requests carry `https://capstonesoftware.co.uk`. An
+ * opaque iframe that does send `null` is a different site, so the production
+ * SameSite=Lax session cookies are not attached, and the refresh-token-in-body
+ * escalation this gate exists to prevent does not apply.
  */
 
 /**
@@ -36,10 +44,38 @@ const NATIVE_ORIGINS = new Set(['capacitor://localhost', 'ionic://localhost', 'h
 /** Dev-only: `ionic serve` / simulator over plain http. */
 const NATIVE_ORIGINS_DEV = new Set(['http://localhost']);
 
-function isNativeOrigin(origin: string | undefined): boolean {
+/**
+ * Compare an Origin header to the Capacitor allowlist.
+ *
+ * WKWebView is not consistent about the bytes it sends. A custom-scheme
+ * document is an opaque origin in the URL standard, and WebKit has shipped
+ * that as the literal header `null` (bug 226760, and it has regressed on
+ * later OS betas). The same allowlist also missed a capitalised scheme and a
+ * trailing slash. None of those match an exact `capacitor://localhost` check,
+ * so the preflight 500s and sign-in dies as a network error while curl with
+ * the canonical origin succeeds.
+ *
+ * A missing Origin is not the same thing as the string "null" and stays rejected.
+ */
+export function canonicalNativeOrigin(origin: string): string {
+  return origin.trim().replace(/\/+$/, '').toLowerCase();
+}
+
+/**
+ * True for a Capacitor WebView origin, including the opaque `null` origin
+ * WKWebView sends when the custom scheme has no tuple origin.
+ *
+ * This does not by itself authorise the native token contract — callers that
+ * hand tokens back still require `X-Client: ios` (see `isNativeClient`).
+ */
+export function isNativeWebViewOrigin(origin: string | undefined): boolean {
   if (!origin) return false;
-  if (NATIVE_ORIGINS.has(origin)) return true;
-  return process.env.NODE_ENV !== 'production' && NATIVE_ORIGINS_DEV.has(origin);
+  const canonical = canonicalNativeOrigin(origin);
+  // The opaque-origin serialisation. Lowercasing is safe: the spec value is
+  // exactly `null`, and `NULL` is not a browser origin we need to refuse.
+  if (canonical === 'null') return true;
+  if (NATIVE_ORIGINS.has(canonical)) return true;
+  return process.env.NODE_ENV !== 'production' && NATIVE_ORIGINS_DEV.has(canonical);
 }
 
 /**
@@ -49,7 +85,12 @@ function isNativeOrigin(origin: string | undefined): boolean {
 export function isNativeClient(req: Request): boolean {
   const client = req.headers['x-client'];
   const declaresNative = typeof client === 'string' && client.trim().toLowerCase() === 'ios';
-  return declaresNative && isNativeOrigin(req.headers.origin);
+  return declaresNative && isNativeWebViewOrigin(headerOrigin(req.headers.origin));
+}
+
+function headerOrigin(origin: string | string[] | undefined): string | undefined {
+  if (Array.isArray(origin)) return origin[0];
+  return origin;
 }
 
 /**
