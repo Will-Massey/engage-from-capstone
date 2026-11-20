@@ -187,31 +187,72 @@ router.get(
   })
 );
 
+const FIRST_WINS_DATE_ERROR = 'date must be a valid YYYY-MM-DD date (UTC)';
+
 /**
- * GET /api/admin/first-wins?date=YYYY-MM-DD
- * Daily read for internal success reporting. Header: X-Admin-Key.
- * Defaults to the current UTC day when date is omitted.
+ * Query keys are caller-controlled. Only echo names that cannot carry a
+ * secret or break the JSON error string.
+ */
+function quoteFirstWinsQueryKey(key: string): string | null {
+  if (!/^[A-Za-z_][A-Za-z0-9_-]{0,39}$/.test(key)) return null;
+  return `"${key}"`;
+}
+
+function unknownFirstWinsQueryError(keys: string[]): string {
+  const listed = keys.map(quoteFirstWinsQueryKey).filter((key): key is string => key != null);
+  const allowed =
+    'This report accepts date=YYYY-MM-DD (UTC) only. Omit date to use the current UTC day.';
+  if (listed.length === 0 || listed.length !== keys.length) {
+    return `Unknown query parameter. ${allowed}`;
+  }
+  const noun = listed.length === 1 ? 'parameter' : 'parameters';
+  return `Unknown query ${noun} ${listed.join(', ')}. ${allowed}`;
+}
+
+/**
+ * GET /api/admin/first-wins
+ * Daily read for internal success reporting.
+ *
+ * Header: X-Admin-Key
+ * Query: optional date=YYYY-MM-DD (UTC). Documented default: when date is
+ * omitted, the current UTC day is used and returned as `date` (also data.date).
+ * Any other query parameter, a repeated or empty date, or a value that is not
+ * a real UTC calendar day is 400.
+ *
  * Signups are practices created that day. firstWinsRecordedOnDate is every
  * practice whose first sent proposal or engagement letter falls on that day.
+ *
+ * 200: { success: true, date: "YYYY-MM-DD", data: FirstWinDailyReport }
+ * 400: { success: false, error: string }
  */
 router.get(
   '/first-wins',
   checkAdminKey,
   asyncHandler(async (req, res) => {
     logOpsAccess(req, 'admin.first-wins');
+
+    const unknown = Object.keys(req.query)
+      .filter((key) => key !== 'date')
+      .sort();
+    if (unknown.length > 0) {
+      res.status(400).json({ success: false, error: unknownFirstWinsQueryError(unknown) });
+      return;
+    }
+
     const raw = req.query.date;
-    const date =
-      typeof raw === 'string' && raw.length > 0 ? raw : new Date().toISOString().slice(0, 10);
-    if (typeof raw !== 'undefined' && typeof raw !== 'string') {
-      res.status(400).json({ success: false, error: 'date must be YYYY-MM-DD (UTC)' });
+    let date: string;
+    if (raw === undefined) {
+      date = new Date().toISOString().slice(0, 10);
+    } else if (typeof raw !== 'string' || !utcDayBounds(raw)) {
+      res.status(400).json({ success: false, error: FIRST_WINS_DATE_ERROR });
       return;
+    } else {
+      date = raw;
     }
-    if (!utcDayBounds(date)) {
-      res.status(400).json({ success: false, error: 'date must be YYYY-MM-DD (UTC)' });
-      return;
-    }
-    const data = await buildFirstWinDailyReport(date);
-    res.json({ success: true, data });
+
+    const report = await buildFirstWinDailyReport(date);
+    const data = { ...report, date };
+    res.json({ success: true, date, data });
   })
 );
 
