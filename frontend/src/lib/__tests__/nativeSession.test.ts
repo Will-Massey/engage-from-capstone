@@ -66,6 +66,46 @@ describe('native token persistence', () => {
     expect(store.size).toBe(0);
   });
 
+  // The login screen wipes the store on mount, and that wipe is async. A
+  // sign-in that saves while the wipe's remove is still in flight used to
+  // lose the session: the request succeeded, then the late remove deleted
+  // the pair, and the next screen was the login form again.
+  it('does not let an in-flight login-screen wipe erase a session saved after it', async () => {
+    const { Preferences } = await import('@capacitor/preferences');
+    const originalRemove = Preferences.remove.bind(Preferences);
+    let releaseRemove: () => void = () => undefined;
+    const removeGate = new Promise<void>((resolve) => {
+      releaseRemove = resolve;
+    });
+    let markRemoveEntered: () => void = () => undefined;
+    const removeEntered = new Promise<void>((resolve) => {
+      markRemoveEntered = resolve;
+    });
+    Preferences.remove = async (args) => {
+      markRemoveEntered();
+      await removeGate;
+      return originalRemove(args);
+    };
+
+    try {
+      const clearing = clearNativeSession();
+      await removeEntered;
+      // The wipe is inside Preferences.remove. Saving now must win even though
+      // that remove has not finished.
+      const saving = saveNativeSession(TOKENS);
+      await new Promise((resolve) => setTimeout(resolve, 20));
+      releaseRemove();
+      await Promise.all([clearing, saving]);
+
+      expect(nativeAccessToken()).toBe('access-1');
+      expect(store.get('engage_native_access_token')).toBe('access-1');
+      expect(store.get('engage_native_refresh_token')).toBe('refresh-1');
+    } finally {
+      releaseRemove();
+      Preferences.remove = originalRemove;
+    }
+  });
+
   it('stores nothing on web, where cookies hold the session', async () => {
     isNativeApp.mockReturnValue(false);
     await saveNativeSession(TOKENS);

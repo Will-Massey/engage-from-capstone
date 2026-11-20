@@ -1,5 +1,6 @@
 import express from 'express';
 import cors from 'cors';
+import { isNativeWebViewOrigin } from '../utils/nativeClient.js';
 
 // CORS configuration - allow multiple origins
 const corsExtraOrigins = (process.env.CORS_EXTRA_ORIGINS || '')
@@ -55,13 +56,13 @@ export const corsOptions = {
       return callback(null, true);
     }
 
-    // Capacitor iOS / Android WebView origins
-    if (
-      origin === 'capacitor://localhost' ||
-      origin === 'https://localhost' ||
-      origin === 'http://localhost' ||
-      origin === 'ionic://localhost'
-    ) {
+    // Capacitor WebView origins. Includes the opaque origin WKWebView serialises
+    // as the header "null", and scheme/slash variants of capacitor://localhost.
+    // An exact-string miss here 500s the preflight (no Allow-Origin), and the
+    // app reports that as a network error on sign-in.
+    // http://localhost stays allowed in production for the Android shell; the
+    // native token contract still refuses it there (utils/nativeClient.ts).
+    if (isNativeWebViewOrigin(origin) || origin === 'http://localhost') {
       return callback(null, true);
     }
 
