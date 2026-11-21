@@ -42,7 +42,7 @@ services:
       - engage-network
 
   backend:
-    image: node:20-alpine
+    image: node:22.23.4-alpine
     container_name: engage-backend-dev
     working_dir: /app
     restart: unless-stopped
@@ -74,7 +74,7 @@ services:
       - engage-network
 
   frontend:
-    image: node:20-alpine
+    image: node:22.23.4-alpine
     container_name: engage-frontend-dev
     working_dir: /app
     restart: unless-stopped
