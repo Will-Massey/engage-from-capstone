@@ -19,7 +19,10 @@ on:
 jobs:
   playwright:
     name: E2E Tests (Playwright)
-    runs-on: ubuntu-latest
+    # ubuntu-latest is 26.04, and Playwright ships no Chromium build for
+    # ubuntu26.04-x64 (run 44727615199, and 42805592840 on 10 Nov 2026). Pin
+    # this job so E2E can still gate Deploy to Render.
+    runs-on: ubuntu-24.04
     services:
       postgres:
         image: postgres:15-alpine
