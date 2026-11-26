@@ -16,12 +16,14 @@ export const VOICE_TOOL_NAMES = [
   'engage_list_clients',
   'engage_list_proposals',
   'engage_get_proposal',
+  'engage_get_proposal_history',
   'engage_list_services',
   'propose_create_draft',
   'propose_add_line',
   'propose_update_line',
   'propose_remove_line',
   'propose_update_notes',
+  'propose_update_details',
   'propose_revert_to_draft',
   'propose_revision_draft',
   'confirm_pending_change',
@@ -49,6 +51,8 @@ export function voiceInstructions(userName: string, practiceName: string): strin
     'You never send a proposal, email a client, ask for a signature, accept, decline, archive, withdraw, mark lost, mark paid, or delete.',
     'You never remove a signature or change a signed, accepted, archived, lost, declined, or withdrawn proposal.',
     'You may prepare a new draft copied from one of those. The original stays as it is.',
+    'You can read a proposal history: status, views, who signed and when, and earlier drafts. You never repeat a signature image.',
+    'On a draft, you may prepare a change to the title, the valid until date, or the payment terms. That still waits for a yes.',
     'When you want to change something, call the matching propose function. That does not save.',
     'Then read the change back in one clear sentence, including the before and after, and wait.',
     'Call confirm_pending_change only after the person has clearly said yes to that exact read-back.',
@@ -83,6 +87,16 @@ export function voiceSessionTools(): Array<Record<string, unknown>> {
       required: ['proposal_id'],
       additionalProperties: false,
     }),
+    fn(
+      'engage_get_proposal_history',
+      'Read the history of one proposal: status, sent and viewed times, view count, signer names and dates, revision drafts, and recent activity. No signature image.',
+      {
+        type: 'object',
+        properties: { proposal_id: { type: 'string' } },
+        required: ['proposal_id'],
+        additionalProperties: false,
+      }
+    ),
     fn('engage_list_services', 'List catalogue services and prices.', {
       type: 'object',
       properties: { query: { type: 'string' } },
@@ -148,6 +162,21 @@ export function voiceSessionTools(): Array<Record<string, unknown>> {
       required: ['proposal_id', 'notes'],
       additionalProperties: false,
     }),
+    fn(
+      'propose_update_details',
+      'Prepare a change to the title, valid until date, or payment terms on a draft. Does not save until confirmed.',
+      {
+        type: 'object',
+        properties: {
+          proposal_id: { type: 'string' },
+          title: { type: 'string' },
+          valid_until: { type: 'string' },
+          payment_terms: { type: 'string' },
+        },
+        required: ['proposal_id'],
+        additionalProperties: false,
+      }
+    ),
     fn(
       'propose_revert_to_draft',
       'Prepare returning a sent or viewed proposal to draft. The client link stops if this is confirmed. Does not save until confirmed.',

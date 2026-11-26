@@ -166,12 +166,14 @@ describe('connector tool list', () => {
       'engage_list_clients',
       'engage_list_proposals',
       'engage_get_proposal',
+      'engage_get_proposal_history',
       'engage_list_services',
       'engage_create_draft_proposal',
       'engage_add_draft_line',
       'engage_update_draft_line',
       'engage_remove_draft_line',
       'engage_update_draft_notes',
+      'engage_update_draft_details',
       'engage_revert_to_draft',
       'engage_create_revision_draft',
     ]);
@@ -183,8 +185,31 @@ describe('connector tool list', () => {
       'engage_list_clients',
       'engage_list_proposals',
       'engage_get_proposal',
+      'engage_get_proposal_history',
       'engage_list_services',
     ]);
+    const history = listGrokToolsForProtocol().find(
+      (tool) => tool.name === 'engage_get_proposal_history'
+    );
+    const details = listGrokToolsForProtocol().find(
+      (tool) => tool.name === 'engage_update_draft_details'
+    );
+    expect(history?.annotations.readOnlyHint).toBe(true);
+    expect(details?.annotations.readOnlyHint).toBe(false);
+    expect(details?.annotations.destructiveHint).toBe(false);
+    for (const word of [
+      'send',
+      'email',
+      'esign',
+      'accept',
+      'decline',
+      'delete',
+      'archive',
+      'withdraw',
+      'paid',
+    ]) {
+      expect(names.some((name) => name.toLowerCase().includes(word))).toBe(false);
+    }
   });
 });
 

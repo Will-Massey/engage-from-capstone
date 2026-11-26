@@ -29,14 +29,20 @@ The transport matches the MCP Streamable HTTP profile Engage already runs: state
 | `engage_list_clients`          | no         |
 | `engage_list_proposals`        | no         |
 | `engage_get_proposal`          | no         |
+| `engage_get_proposal_history`  | no         |
 | `engage_list_services`         | no         |
 | `engage_create_draft_proposal` | draft only |
 | `engage_add_draft_line`        | draft only |
 | `engage_update_draft_line`     | draft only |
 | `engage_remove_draft_line`     | draft only |
 | `engage_update_draft_notes`    | draft only |
+| `engage_update_draft_details`  | draft only |
 
 `engage_get_proposal` returns the commercial proposal: client, notes, cover letter, summary, terms, every line with its id, fee, quantity, billing frequency, hourly mode, VAT, and totals. It does not return signature images, share tokens, or payment secrets.
+
+`engage_get_proposal_history` is read only. It returns status, sent and viewed times, a view count, signer names and dates, revision links through `originalProposalId` (there is no separate revisions table), recent activity, and `can_bot_change` with the reason from the same write rules, without locking the row. It does not return signature images, IP addresses, or document hashes.
+
+`engage_update_draft_details` changes the title, the valid until date, or the payment terms on a draft only. It uses the same locked check as the other draft edits, so a signature, an acceptance, a payment, or any status other than `DRAFT` is refused. On the voice page it is prepared as `propose_update_details` and saved only after confirm.
 
 Create always stores `status = DRAFT`. No tool accepts a status field. If a caller passes `status`, the tool refuses. If the proposal is anything other than `DRAFT` (`SENT`, `VIEWED`, `ACCEPTED`, `DECLINED`, `EXPIRED`, `WITHDRAWN`, `ARCHIVED`, `LOST`), every edit refuses with: "This proposal is STATUS. The assistant can only change a draft. Caroline sends it from Engage herself."
 

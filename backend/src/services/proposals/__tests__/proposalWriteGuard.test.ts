@@ -1,6 +1,7 @@
 import { ApiError } from '../../../middleware/errorHandler.js';
 import {
   assertBotMayMutateProposal,
+  readBotChangeDecision,
   refusalForLockedProposal,
   type LockedProposalRow,
 } from '../proposalWriteGuard.js';
@@ -106,6 +107,24 @@ describe('proposal write guard', () => {
 
   it('refuses a content edit once the locked row is no longer a draft', () => {
     expect(refusalForLockedProposal(row({ status: 'SENT' }), 0, 0, 'draft_edit')).toMatch(/SENT/);
+  });
+
+  it('explains the same decision without locking the row', async () => {
+    const db = {
+      proposal: { findFirst: jest.fn(async () => row({ status: 'VIEWED' })) },
+      proposalSignature: { count: jest.fn(async () => 0) },
+      paymentSplit: { count: jest.fn(async () => 0) },
+    };
+    const decision = await readBotChangeDecision(db as never, {
+      proposalId: 'p1',
+      tenantId: 't1',
+    });
+    expect(decision?.canBotChange).toBe(false);
+    expect(decision?.reason).toMatch(/VIEWED/);
+    expect(JSON.stringify(db.proposal.findFirst.mock.calls)).not.toMatch(/FOR UPDATE/);
+    expect(db.proposal.findFirst).toHaveBeenCalledWith(
+      expect.objectContaining({ where: { id: 'p1', tenantId: 't1' } })
+    );
   });
 });
 
