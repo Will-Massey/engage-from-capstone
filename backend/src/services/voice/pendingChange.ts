@@ -1,6 +1,8 @@
 import { prisma } from '../../config/database.js';
 import { ApiError } from '../../middleware/errorHandler.js';
+import { parseDraftDetailsPatch } from '../grok/grokDetails.js';
 import { callGrokTool, type GrokToolContext } from '../grok/grokTools.js';
+import { readBotChangeDecision } from '../proposals/proposalWriteGuard.js';
 import { PENDING_CHANGE_MS } from './xaiConfig.js';
 
 export type VoiceActor = {
@@ -16,6 +18,7 @@ const PROPOSE_TO_TOOL: Record<string, string> = {
   propose_update_line: 'engage_update_draft_line',
   propose_remove_line: 'engage_remove_draft_line',
   propose_update_notes: 'engage_update_draft_notes',
+  propose_update_details: 'engage_update_draft_details',
   propose_revert_to_draft: 'engage_revert_to_draft',
   propose_revision_draft: 'engage_create_revision_draft',
 };
@@ -24,11 +27,21 @@ const READ_TOOLS = new Set([
   'engage_list_clients',
   'engage_list_proposals',
   'engage_get_proposal',
+  'engage_get_proposal_history',
   'engage_list_services',
 ]);
 
 function str(raw: unknown): string {
   return typeof raw === 'string' ? raw.trim() : '';
+}
+
+function ukDate(value: Date): string {
+  return value.toLocaleDateString('en-GB', {
+    day: 'numeric',
+    month: 'short',
+    year: 'numeric',
+    timeZone: 'UTC',
+  });
 }
 
 function voiceContext(actor: VoiceActor): GrokToolContext {
@@ -91,6 +104,78 @@ export async function previewVoiceChange(
 }> {
   const tool = PROPOSE_TO_TOOL[name];
   if (!tool) throw new ApiError('UNKNOWN_TOOL', 'That action is not available.', 400);
+  if (name === 'propose_update_details') {
+    let patch;
+    try {
+      patch = parseDraftDetailsPatch(args);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Those details are not valid.';
+      throw new ApiError('VALIDATION_ERROR', message, 400);
+    }
+    const decision = await readBotChangeDecision(prisma as never, {
+      proposalId: patch.proposalId,
+      tenantId: actor.tenantId,
+    });
+    if (!decision) throw new ApiError('NOT_FOUND', 'Proposal not found in this practice.', 404);
+    if (!decision.canBotChange) {
+      throw new ApiError(
+        'PROPOSAL_LOCKED',
+        decision.reason ?? 'This proposal cannot be changed.',
+        409
+      );
+    }
+    const proposal = await prisma.proposal.findFirst({
+      where: { id: patch.proposalId, tenantId: actor.tenantId },
+      select: {
+        id: true,
+        reference: true,
+        title: true,
+        validUntil: true,
+        paymentTerms: true,
+      },
+    });
+    if (!proposal) throw new ApiError('NOT_FOUND', 'Proposal not found in this practice.', 404);
+    const before = {
+      reference: proposal.reference,
+      title: proposal.title,
+      valid_until: proposal.validUntil.toISOString(),
+      payment_terms: proposal.paymentTerms,
+    };
+    const after = {
+      ...before,
+      ...(patch.title !== undefined ? { title: patch.title } : {}),
+      ...(patch.validUntil ? { valid_until: patch.validUntil.toISOString() } : {}),
+      ...(patch.paymentTerms ? { payment_terms: patch.paymentTerms } : {}),
+    };
+    const changes: string[] = [];
+    if (patch.title !== undefined) {
+      changes.push(`title from "${proposal.title}" to "${patch.title}"`);
+    }
+    if (patch.validUntil) {
+      changes.push(
+        `valid until from ${ukDate(proposal.validUntil)} to ${ukDate(patch.validUntil)}`
+      );
+    }
+    if (patch.paymentTerms) {
+      changes.push(`payment terms from "${proposal.paymentTerms}" to "${patch.paymentTerms}"`);
+    }
+    return {
+      tool,
+      proposalId: proposal.id,
+      summary: `Change draft ${proposal.reference}: ${changes.join(', ')}.`,
+      before,
+      after,
+      payload: {
+        name: tool,
+        arguments: {
+          proposal_id: proposal.id,
+          ...(patch.title !== undefined ? { title: patch.title } : {}),
+          ...(patch.validUntil ? { valid_until: patch.validUntil.toISOString() } : {}),
+          ...(patch.paymentTerms ? { payment_terms: patch.paymentTerms } : {}),
+        },
+      },
+    };
+  }
   if (name === 'propose_update_notes') {
     const proposal = await proposalBrief(actor.tenantId, str(args.proposal_id));
     const notes = typeof args.notes === 'string' ? args.notes : '';

@@ -188,3 +188,67 @@ export async function lockProposalRow(
   }
   return row;
 }
+
+const LOCKED_PROPOSAL_SELECT = {
+  id: true,
+  status: true,
+  signature: true,
+  acceptedAt: true,
+  acceptedBy: true,
+  acceptedByIp: true,
+  signatoryPosition: true,
+  termsAccepted: true,
+  termsAcceptedAt: true,
+  acceptanceNotifiedAt: true,
+  engagementLetterAccepted: true,
+  engagementLetterAcceptedAt: true,
+  paymentId: true,
+  paymentMandateId: true,
+  paymentProvider: true,
+  paymentStatus: true,
+  paymentUrl: true,
+  paymentMethod: true,
+  paidAt: true,
+  paymentFailureReason: true,
+  stripeSubscriptionId: true,
+  paymentAuthAccepted: true,
+  paymentAuthAcceptedAt: true,
+  paymentAuthVersion: true,
+} as const;
+
+type ReadGuardClient = {
+  proposal: {
+    findFirst: (args: {
+      where: { id: string; tenantId: string };
+      select: typeof LOCKED_PROPOSAL_SELECT;
+    }) => Promise<LockedProposalRow | null>;
+  };
+  proposalSignature: GuardClient['proposalSignature'];
+  paymentSplit: GuardClient['paymentSplit'];
+};
+
+/** Same rules as a write, without locking the row. Used when only explaining the decision. */
+export function botChangeDecision(
+  row: LockedProposalRow,
+  signatureCount: number,
+  paymentSplitCount: number
+): { canBotChange: boolean; reason: string | null } {
+  const reason = refusalForLockedProposal(row, signatureCount, paymentSplitCount, 'draft_edit');
+  return { canBotChange: reason === null, reason };
+}
+
+export async function readBotChangeDecision(
+  db: ReadGuardClient,
+  input: { proposalId: string; tenantId: string }
+): Promise<{ canBotChange: boolean; reason: string | null } | null> {
+  const row = await db.proposal.findFirst({
+    where: { id: input.proposalId, tenantId: input.tenantId },
+    select: LOCKED_PROPOSAL_SELECT,
+  });
+  if (!row) return null;
+  const [signatureCount, paymentSplitCount] = await Promise.all([
+    db.proposalSignature.count({ where: { proposalId: input.proposalId } }),
+    db.paymentSplit.count({ where: { proposalId: input.proposalId } }),
+  ]);
+  return botChangeDecision(row, signatureCount, paymentSplitCount);
+}

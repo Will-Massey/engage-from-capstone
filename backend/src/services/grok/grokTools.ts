@@ -10,6 +10,8 @@ import {
   updateDraftLine,
   updateDraftNotes,
 } from './grokDraft.js';
+import { updateDraftDetails } from './grokDetails.js';
+import { getProposalHistory } from './grokHistory.js';
 import { createRevisionDraft } from './grokRevision.js';
 import { revertSentProposal } from './grokRevert.js';
 import type { GrokActor } from './grokAudit.js';
@@ -261,6 +263,18 @@ export const GROK_TOOLS: GrokToolDef[] = [
     },
   },
   {
+    name: 'engage_get_proposal_history',
+    description:
+      'Read the history of one proposal: status, when it was sent and viewed, how many times it was viewed, who signed and when, revision drafts, and recent activity. Does not include signature images, IP addresses, or document hashes.',
+    inputSchema: {
+      type: 'object',
+      properties: { proposal_id: { type: 'string' } },
+      required: ['proposal_id'],
+      additionalProperties: false,
+    },
+    handler: (args, ctx) => getProposalHistory(ctx, str(args.proposal_id)),
+  },
+  {
     name: 'engage_list_services',
     description:
       'List this practice catalogue and the price stored on each service. A new draft line uses that price unless you pass display_price_gbp.',
@@ -427,6 +441,27 @@ export const GROK_TOOLS: GrokToolDef[] = [
       additionalProperties: false,
     },
     handler: (args, ctx) => updateDraftNotes(ctx, args),
+  },
+  {
+    name: 'engage_update_draft_details',
+    description:
+      'On a DRAFT with no signature, change the title, the valid until date, or the payment terms. Refuses anything that is not a draft, and anything that has a signature, an acceptance, or a payment.',
+    write: true,
+    inputSchema: {
+      type: 'object',
+      properties: {
+        proposal_id: { type: 'string' },
+        title: { type: 'string' },
+        valid_until: { type: 'string', description: 'YYYY-MM-DD or an ISO date. Today or later.' },
+        payment_terms: {
+          type: 'string',
+          description: 'A number of days from 1 to 90, such as 14 days.',
+        },
+      },
+      required: ['proposal_id'],
+      additionalProperties: false,
+    },
+    handler: (args, ctx) => updateDraftDetails(ctx, args),
   },
   {
     name: 'engage_revert_to_draft',

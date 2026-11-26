@@ -34,7 +34,7 @@ function pickProtocolVersion(requested: unknown): string {
 function instructions(ctx: GrokToolContext): string {
   return (
     `You are connected to ${ctx.tenantName} on Engage as ${ctx.userName}. ` +
-    'You may list clients, list the service catalogue and its prices, list proposals, read one proposal, and create or adjust a draft. ' +
+    'You may list clients, list the service catalogue and its prices, list proposals, read one proposal and its history, and create or adjust a draft, including its title, valid until date, and payment terms. ' +
     'You must not send a proposal, email a client, ask for a signature, or move a proposal off draft. ' +
     'Caroline sends proposals from Engage herself. ' +
     'If a proposal is not a draft, say so and stop. ' +

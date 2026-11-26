@@ -71,6 +71,13 @@ describe('voice session tools', () => {
     const update = voiceSessionUpdate('Caroline Marks', 'Marks and Co');
     expect(JSON.stringify(update)).not.toMatch(/"type":"mcp"/);
     expect(forbiddenVoiceTools()).toEqual([]);
+    const names = voiceSessionTools().map((tool) => String(tool.name));
+    expect(names).toContain('engage_get_proposal_history');
+    expect(names).toContain('propose_update_details');
+    expect(names).not.toContain('engage_update_draft_details');
+    for (const name of ['engage_get_proposal_history', 'propose_update_details']) {
+      expect(name).not.toMatch(/send|email|sign|accept|decline|delete|archive|withdraw|paid/i);
+    }
     const confirm = voiceSessionTools().find((tool) => tool.name === 'confirm_pending_change');
     expect(confirm?.parameters).toMatchObject({
       required: ['pending_change_id'],
