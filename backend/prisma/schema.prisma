@@ -386,6 +386,7 @@ model Tenant {
   mailMessages          MailMessage[]
   mailboxSyncState      MailboxSyncState?
   mcpApiKeys            McpApiKey[]
+  grokConnectorTokens   GrokConnectorToken[]
 
   @@index([subdomain])
   @@index([isActive])
@@ -439,6 +440,7 @@ model User {
   jobActivities              JobActivity[]
   practiceLettersAuthored    PracticeLetter[]    @relation("PracticeLetterAuthor")
   mcpApiKeysCreated          McpApiKey[]
+  grokConnectorTokens        GrokConnectorToken[]
 
   @@unique([email, tenantId])
   @@index([tenantId])
@@ -815,6 +817,49 @@ model McpApiKey {
 
   @@index([tenantId, revokedAt])
   @@map("mcp_api_keys")
+}
+
+/// Bearer token for one Engage user (Caroline's Grok bot). Plaintext is shown
+/// once at mint. Only the SHA-256 hash is stored. Revoke by setting revokedAt.
+model GrokConnectorToken {
+  id         String    @id @default(uuid())
+  userId     String
+  user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tenantId   String
+  tenant     Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  name       String    @default("Grok Bot")
+  prefix     String
+  keyHash    String    @unique
+  scopes     String    @default("read,draft_proposals")
+  createdAt  DateTime  @default(now()) @map("created_at")
+  lastUsedAt DateTime? @map("last_used_at")
+  revokedAt  DateTime? @map("revoked_at")
+
+  audits GrokConnectorAudit[]
+
+  @@index([userId, revokedAt])
+  @@index([tenantId, revokedAt])
+  @@map("grok_connector_tokens")
+}
+
+/// One row per change the Grok connector makes. Reads are not recorded here.
+model GrokConnectorAudit {
+  id         String             @id @default(uuid())
+  tokenId    String
+  token      GrokConnectorToken @relation(fields: [tokenId], references: [id], onDelete: Cascade)
+  userId     String
+  tenantId   String
+  proposalId String?
+  tool       String
+  summary    String
+  changes    String             @default("{}")
+  createdAt  DateTime           @default(now()) @map("created_at")
+
+  @@index([tokenId])
+  @@index([userId, createdAt])
+  @@index([proposalId])
+  @@index([tenantId, createdAt])
+  @@map("grok_connector_audits")
 }
 
 model ProposalService {
