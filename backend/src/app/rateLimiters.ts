@@ -145,6 +145,24 @@ const mcpLimiter = rateLimit({
   },
 });
 
+/** Draft connector. 60 calls per 15 minutes per IP. Reads and writes share the budget. */
+export const grokMcpLimiter = rateLimit({
+  store: rateLimitStore(),
+  passOnStoreError: true,
+  windowMs: 15 * 60 * 1000,
+  max: 60,
+  skip: (req) => shouldSkipRateLimit(req.headers),
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: {
+    success: false,
+    error: {
+      code: 'RATE_LIMIT_EXCEEDED',
+      message: 'Too many connector requests. Wait a few minutes and try again.',
+    },
+  },
+});
+
 const amlSubmitLimiter = rateLimit({
   store: rateLimitStore(),
   // Fail open if the store errors (e.g. Redis unreachable) — losing rate
@@ -177,6 +195,7 @@ export function applyRouteRateLimiters(app: express.Express): void {
   app.use('/api/auth/2fa/disable', authLimiter);
 
   app.use('/api/mcp', mcpLimiter);
+  app.use('/api/grok/mcp', grokMcpLimiter);
   app.use('/api/admin', privilegedLimiter);
   app.use('/api/seed-services-public', privilegedLimiter);
   app.use('/api/setup', privilegedLimiter);

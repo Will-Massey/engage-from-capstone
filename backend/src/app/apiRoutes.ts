@@ -25,6 +25,7 @@ import automationRoutes from '../routes/automation.js';
 import uploadsRoutes from '../routes/uploads.js';
 import integrationsRoutes from '../routes/integrations.js';
 import mcpRoutes from '../routes/mcp.js';
+import grokMcpRoutes from '../routes/grokMcp.js';
 import xeroRoutes from '../routes/xero.js';
 import amlRoutes from '../routes/aml.js';
 import regulatoryRoutes from '../routes/regulatory.js';
@@ -76,6 +77,7 @@ export function mountApiRoutes(app: express.Express): void {
   app.use('/api/uploads', extractTenant, uploadsRoutes);
   app.use('/api/ai', extractTenant, aiRoutes);
   app.use('/api/mcp', mcpRoutes);
+  app.use('/api/grok/mcp', grokMcpRoutes);
   app.use('/api/integrations', extractTenant, integrationsRoutes);
   // xeroRoutes/quickbooksRoutes were imported but never mounted — the settings
   // pages call /api/xero/* and /api/quickbooks/* directly (404 until now).

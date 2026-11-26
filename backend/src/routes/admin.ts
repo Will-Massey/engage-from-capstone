@@ -12,6 +12,7 @@ import { secureCompare } from '../utils/secureCompare.js';
 import { logOpsAccess } from '../utils/opsAudit.js';
 import logger from '../utils/logger.js';
 import { buildFirstWinDailyReport, utcDayBounds } from '../services/firstWin.js';
+import grokConnectorAdmin from './adminGrokConnector.js';
 
 const router = Router();
 const execFileAsync = promisify(execFile);
@@ -214,5 +215,7 @@ router.get(
     res.json({ success: true, data });
   })
 );
+
+router.use('/grok-connector', checkAdminKey, grokConnectorAdmin);
 
 export default router;

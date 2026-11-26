@@ -369,6 +369,7 @@ export const csrfProtection = async (
     '/aml/webhook', // AML partner results webhook
     '/integrations/accountflow/inbound', // Capstone Tandem reverse (X-API-Key / X-Mesh-Secret)
     '/mcp', // Remote MCP for practice AI clients (Bearer token, no cookies)
+    '/grok/mcp', // Grok bot connector (Bearer token, no cookies)
     '/admin/seed-services', // One-click admin seed endpoint
     '/automation/migrate-service-pricing', // Data migration endpoint (protected by secret key)
     '/setup', // ops setup (migrate-pricing, seed-tenant-library, clear-login-lockout)
