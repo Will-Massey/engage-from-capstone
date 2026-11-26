@@ -387,6 +387,8 @@ model Tenant {
   mailboxSyncState      MailboxSyncState?
   mcpApiKeys            McpApiKey[]
   grokConnectorTokens   GrokConnectorToken[]
+  xaiUsages             XaiUsage[]
+  voicePendingChanges   VoicePendingChange[]
 
   @@index([subdomain])
   @@index([isActive])
@@ -419,6 +421,9 @@ model User {
   twoFactorSecret  String? // Encrypted TOTP secret
   deletedAt        DateTime?
 
+  /// Engage voice assistant. Off for every user until an admin switches it on.
+  voiceAssistantEnabled Boolean @default(false) @map("voice_assistant_enabled")
+
   // Tenant relation
   tenantId String
   tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
@@ -441,6 +446,8 @@ model User {
   practiceLettersAuthored    PracticeLetter[]    @relation("PracticeLetterAuthor")
   mcpApiKeysCreated          McpApiKey[]
   grokConnectorTokens        GrokConnectorToken[]
+  xaiUsages                  XaiUsage[]
+  voicePendingChanges        VoicePendingChange[]
 
   @@unique([email, tenantId])
   @@index([tenantId])
@@ -860,6 +867,56 @@ model GrokConnectorAudit {
   @@index([proposalId])
   @@index([tenantId, createdAt])
   @@map("grok_connector_audits")
+}
+
+/// One xAI realtime voice session for one user. The API key is never stored.
+/// Token columns stay null unless a realtime event actually includes them.
+/// estimatedCostUsd is an estimate from ENGAGE_XAI_USD_PER_MINUTE (default 0.08).
+model XaiUsage {
+  id                   String    @id @default(uuid())
+  userId               String
+  user                 User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tenantId             String
+  tenant               Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  startedAt            DateTime  @default(now()) @map("started_at")
+  endedAt              DateTime? @map("ended_at")
+  lastHeartbeatAt      DateTime? @map("last_heartbeat_at")
+  seconds              Int       @default(0)
+  billableAudioSeconds Float?    @map("billable_audio_seconds")
+  inputTokens          Int?      @map("input_tokens")
+  outputTokens         Int?      @map("output_tokens")
+  totalTokens          Int?      @map("total_tokens")
+  rateUsdPerMinute     Float?    @map("rate_usd_per_minute")
+  estimatedCostUsd     Float?    @map("estimated_cost_usd")
+  createdAt            DateTime  @default(now()) @map("created_at")
+
+  @@index([userId, startedAt])
+  @@index([tenantId, startedAt])
+  @@map("xai_usages")
+}
+
+/// A voice change waiting for Caroline to confirm. Expires after 2 minutes.
+/// Nothing is written to the proposal until confirm, in the same transaction as the guard.
+model VoicePendingChange {
+  id          String    @id @default(uuid())
+  userId      String
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tenantId    String
+  tenant      Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  tool        String
+  proposalId  String?
+  summary     String
+  beforeJson  String    @default("{}") @map("before_json")
+  afterJson   String    @default("{}") @map("after_json")
+  payload     String    @default("{}")
+  status      String    @default("PENDING")
+  expiresAt   DateTime  @map("expires_at")
+  confirmedAt DateTime? @map("confirmed_at")
+  createdAt   DateTime  @default(now()) @map("created_at")
+
+  @@index([userId, status, expiresAt])
+  @@index([tenantId, createdAt])
+  @@map("voice_pending_changes")
 }
 
 model ProposalService {

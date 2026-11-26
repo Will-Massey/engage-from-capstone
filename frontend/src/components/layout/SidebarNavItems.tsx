@@ -72,6 +72,26 @@ const SidebarNavItems = ({ pathname, onNavigate }: SidebarNavItemsProps) => {
   const user = useAuthStore((s) => s.user);
   const [approvalQueueCount, setApprovalQueueCount] = useState(0);
   const [jobsOverdueCount, setJobsOverdueCount] = useState(0);
+  const [voiceOn, setVoiceOn] = useState(false);
+
+  useEffect(() => {
+    if (!user?.id) {
+      setVoiceOn(false);
+      return;
+    }
+    let cancelled = false;
+    apiClient
+      .get<{ enabled: boolean }>('/voice/access')
+      .then((res) => {
+        if (!cancelled) setVoiceOn(Boolean(res.data?.enabled));
+      })
+      .catch(() => {
+        if (!cancelled) setVoiceOn(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [user?.id]);
 
   useEffect(() => {
     if (!isApprover(user?.role)) {
@@ -157,7 +177,11 @@ const SidebarNavItems = ({ pathname, onNavigate }: SidebarNavItemsProps) => {
       </button>
 
       {NAV_SECTIONS.map((section) => {
-        const visibleItems = section.items.filter((item) => canViewNavItem(user?.role, item.roles));
+        const visibleItems = section.items.filter((item) => {
+          if (!canViewNavItem(user?.role, item.roles)) return false;
+          if (item.voiceOnly && !voiceOn) return false;
+          return true;
+        });
         if (visibleItems.length === 0) return null;
 
         return (

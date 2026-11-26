@@ -9,11 +9,14 @@ jest.mock('../../../config/database.js', () => {
       update: jest.fn(),
     },
     proposalService: { create: jest.fn(), update: jest.fn(), delete: jest.fn() },
+    proposalSignature: { count: jest.fn() },
+    paymentSplit: { count: jest.fn() },
     serviceTemplate: { count: jest.fn(), findMany: jest.fn(), findFirst: jest.fn() },
     tenant: { findUnique: jest.fn() },
     grokConnectorAudit: { create: jest.fn() },
     activityLog: { create: jest.fn() },
     $transaction: jest.fn(),
+    $queryRaw: jest.fn(),
   };
   prisma.$transaction.mockImplementation(async (fn: (tx: typeof prisma) => Promise<unknown>) =>
     fn(prisma)
@@ -124,6 +127,36 @@ beforeEach(() => {
   prisma.$transaction.mockImplementation(async (fn: (tx: typeof prisma) => Promise<unknown>) =>
     fn(prisma)
   );
+  prisma.$queryRaw.mockResolvedValue([
+    {
+      id: 'p1',
+      status: 'DRAFT',
+      signature: null,
+      acceptedAt: null,
+      acceptedBy: null,
+      acceptedByIp: null,
+      signatoryPosition: null,
+      termsAccepted: false,
+      termsAcceptedAt: null,
+      acceptanceNotifiedAt: null,
+      engagementLetterAccepted: false,
+      engagementLetterAcceptedAt: null,
+      paymentId: null,
+      paymentMandateId: null,
+      paymentProvider: null,
+      paymentStatus: null,
+      paymentUrl: null,
+      paymentMethod: null,
+      paidAt: null,
+      paymentFailureReason: null,
+      stripeSubscriptionId: null,
+      paymentAuthAccepted: false,
+      paymentAuthAcceptedAt: null,
+      paymentAuthVersion: null,
+    },
+  ]);
+  prisma.proposalSignature.count.mockResolvedValue(0);
+  prisma.paymentSplit.count.mockResolvedValue(0);
 });
 
 describe('connector tool list', () => {
@@ -139,6 +172,8 @@ describe('connector tool list', () => {
       'engage_update_draft_line',
       'engage_remove_draft_line',
       'engage_update_draft_notes',
+      'engage_revert_to_draft',
+      'engage_create_revision_draft',
     ]);
     for (const name of names) {
       expect(name).not.toMatch(/send|email|sign|accept/i);

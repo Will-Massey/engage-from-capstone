@@ -15,6 +15,7 @@ import {
 import { generateReference, parseOneOffDueDate } from '../../routes/proposals/shared.js';
 import { resolveProposalTerms } from '../proposalTermsService.js';
 import { writeGrokAudit, type GrokActor } from './grokAudit.js';
+import { assertBotMayMutateProposal } from '../proposals/proposalWriteGuard.js';
 
 const FREQUENCIES = ['ONE_TIME', 'HOURLY', 'WEEKLY', 'MONTHLY', 'QUARTERLY', 'ANNUALLY'] as const;
 type Frequency = (typeof FREQUENCIES)[number];
@@ -500,6 +501,11 @@ export async function addDraftLine(ctx: GrokActor, args: Record<string, unknown>
   const totals = calculateHeaderTotals([...proposal.services.map(storedAsBuilt), record]);
 
   await prisma.$transaction(async (tx) => {
+    await assertBotMayMutateProposal(tx as never, {
+      proposalId: proposal.id,
+      tenantId: ctx.tenantId,
+      purpose: 'draft_edit',
+    });
     const line = await tx.proposalService.create({
       data: { ...record, sortOrder, proposalId: proposal.id } as any,
       select: { id: true },
@@ -657,6 +663,11 @@ export async function updateDraftLine(ctx: GrokActor, args: Record<string, unkno
   };
 
   await prisma.$transaction(async (tx) => {
+    await assertBotMayMutateProposal(tx as never, {
+      proposalId: proposal.id,
+      tenantId: ctx.tenantId,
+      purpose: 'draft_edit',
+    });
     await tx.proposalService.update({
       where: { id: line.id },
       data: record as any,
@@ -693,6 +704,11 @@ export async function removeDraftLine(ctx: GrokActor, args: Record<string, unkno
   const totals = calculateHeaderTotals(remaining);
 
   await prisma.$transaction(async (tx) => {
+    await assertBotMayMutateProposal(tx as never, {
+      proposalId: proposal.id,
+      tenantId: ctx.tenantId,
+      purpose: 'draft_edit',
+    });
     await tx.proposalService.delete({ where: { id: line.id } });
     await tx.proposal.update({
       where: { id: proposal.id },
@@ -735,6 +751,11 @@ export async function updateDraftNotes(ctx: GrokActor, args: Record<string, unkn
     throw new Error('notes is required. Pass an empty string to clear them.');
   const notes = notesOrThrow(args.notes);
   await prisma.$transaction(async (tx) => {
+    await assertBotMayMutateProposal(tx as never, {
+      proposalId: proposal.id,
+      tenantId: ctx.tenantId,
+      purpose: 'draft_edit',
+    });
     await tx.proposal.update({
       where: { id: proposal.id },
       data: { notes },

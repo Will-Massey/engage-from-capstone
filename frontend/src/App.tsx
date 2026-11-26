@@ -486,6 +486,26 @@ const AnimatedRoutes = () => {
             }
           />
           <Route
+            path="assistant"
+            element={
+              <AnimatedPage>
+                <PageSuspense>
+                  <Pages.Assistant />
+                </PageSuspense>
+              </AnimatedPage>
+            }
+          />
+          <Route
+            path="assistant/usage"
+            element={
+              <AnimatedPage>
+                <PageSuspense>
+                  <Pages.VoiceUsage />
+                </PageSuspense>
+              </AnimatedPage>
+            }
+          />
+          <Route
             path="analytics"
             element={
               <AnimatedPage>

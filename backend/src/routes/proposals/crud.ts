@@ -37,6 +37,7 @@ import {
   updateProposalSchema,
 } from './shared.js';
 import { buildValidityRevivePatch } from '../../lib/proposals/reviveOnValidity.js';
+import { assertStaffContentUpdate } from '../../services/proposals/staffProposalUpdate.js';
 
 const router = Router();
 
@@ -345,7 +346,33 @@ router.put(
       throw new ApiError('INVALID_STATUS', 'Cannot modify an accepted proposal', 400);
     }
 
-    // Update proposal
+    const signatureCount = await prisma.proposalSignature.count({
+      where: { proposalId: id },
+    });
+    const contentKeys = [
+      'title',
+      'services',
+      'validUntil',
+      'contractStartDate',
+      'paymentTerms',
+      'coverLetter',
+      'proposalSummary',
+      'engagementLetter',
+      'terms',
+      'notes',
+      'discountType',
+      'discountValue',
+      'customFields',
+    ] as const;
+    assertStaffContentUpdate({
+      currentStatus: existingProposal.status,
+      requestedStatus: data.status,
+      signatureCount,
+      legacySignature: existingProposal.signature,
+      changesContent: contentKeys.some((key) => data[key] !== undefined),
+    });
+
+    // Status is not applied here. Lifecycle routes own status changes.
     const updateData: any = {
       title: data.title,
       paymentTerms: data.paymentTerms,
@@ -354,7 +381,6 @@ router.put(
       engagementLetter: data.engagementLetter,
       terms: data.terms,
       notes: data.notes,
-      status: data.status,
       discountType: data.discountType,
       discountValue: data.discountValue,
     };

@@ -324,9 +324,19 @@ const Proposals = () => {
     setProposals((list) =>
       list.map((p) => (p.id === proposalId ? { ...p, status: nextStatus } : p))
     );
+    if (!(nextStatus === 'DRAFT' && (prev.status === 'SENT' || prev.status === 'VIEWED'))) {
+      setProposals((list) =>
+        list.map((p) => (p.id === proposalId ? { ...p, status: prev.status } : p))
+      );
+      toast.error(
+        'Status is not set from this board. Open the proposal to send, withdraw, or archive it. A sent proposal can be returned to draft from here, which stops the client link.'
+      );
+      setMovingId(null);
+      return;
+    }
     try {
-      await apiClient.updateProposal(proposalId, { status: nextStatus } as any);
-      toast.success(`Moved to ${statusLabels[nextStatus] || nextStatus}`);
+      await apiClient.post(`/proposals/${proposalId}/revert-to-draft`, {});
+      toast.success('Returned to draft. The client link has stopped.');
     } catch (error: any) {
       setProposals((list) =>
         list.map((p) => (p.id === proposalId ? { ...p, status: prev.status } : p))

@@ -65,10 +65,10 @@ router.post(
       throw new ApiError('PROPOSAL_NOT_FOUND', 'Proposal not found or link expired', 404);
     }
 
-    if (proposal.status === 'ACCEPTED') {
+    if (proposal.status !== 'SENT' && proposal.status !== 'VIEWED') {
       throw new ApiError(
-        'PROPOSAL_ALREADY_ACCEPTED',
-        'This proposal has already been accepted',
+        'INVALID_STATUS',
+        'This proposal can only be signed while it is sent or viewed',
         400
       );
     }

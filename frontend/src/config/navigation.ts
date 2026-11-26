@@ -7,6 +7,7 @@ import {
   CalculatorIcon,
   RectangleStackIcon,
   ChartPieIcon,
+  MicrophoneIcon,
   CogIcon,
   BriefcaseIcon,
   DocumentDuplicateIcon,
@@ -30,6 +31,8 @@ export interface NavItem {
   matchPrefix?: boolean;
   /** Roles allowed to see this item in the sidebar. Omit = visible to everyone. */
   roles?: string[];
+  /** Hidden until this user's voice assistant flag is on. */
+  voiceOnly?: boolean;
 }
 
 export interface NavSection {
@@ -125,6 +128,14 @@ export const NAV_SECTIONS: NavSection[] = [
         matchPrefix: true,
         roles: STAFF_NAV_ROLES,
       },
+      {
+        name: 'Assistant',
+        href: '/assistant',
+        icon: MicrophoneIcon,
+        description: 'Talk through a draft. Nothing is saved until you confirm.',
+        matchPrefix: false,
+        voiceOnly: true,
+      },
     ],
   },
   {
@@ -176,6 +187,14 @@ export const NAV_SECTIONS: NavSection[] = [
     items: [
       { name: 'Settings', href: '/settings', icon: CogIcon, matchPrefix: true },
       {
+        name: 'Voice usage',
+        href: '/assistant/usage',
+        icon: ChartPieIcon,
+        description: 'Minutes and estimated voice cost by person',
+        matchPrefix: false,
+        roles: ['ADMIN', 'MD'],
+      },
+      {
         name: 'Subscription',
         href: '/subscription',
         icon: CreditCardIcon,
@@ -220,6 +239,20 @@ export function getPageMeta(pathname: string): {
     return { title: 'Dashboard', breadcrumbs: [{ label: 'Dashboard' }] };
   }
 
+  if (pathname === '/assistant') {
+    return {
+      title: 'Assistant',
+      description: 'Talk through a draft. Confirm each change before it is saved.',
+      breadcrumbs: [{ label: 'Dashboard', href: '/' }, { label: 'Assistant' }],
+    };
+  }
+  if (pathname === '/assistant/usage') {
+    return {
+      title: 'Voice usage',
+      description: 'Minutes and estimated cost. The figure is an estimate.',
+      breadcrumbs: [{ label: 'Dashboard', href: '/' }, { label: 'Voice usage' }],
+    };
+  }
   if (pathname === '/proposals') {
     return {
       title: 'Proposals',

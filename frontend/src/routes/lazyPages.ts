@@ -52,6 +52,8 @@ export const PricingCalculatorPage = lazy(() => import('../pages/pricing/Pricing
 export const Settings = lazy(() => import('../pages/Settings'));
 export const Subscription = lazy(() => import('../pages/Subscription'));
 export const Analytics = lazy(() => import('../pages/Analytics'));
+export const Assistant = lazy(() => import('../pages/assistant/Assistant'));
+export const VoiceUsage = lazy(() => import('../pages/assistant/VoiceUsage'));
 export const PartnerProgramme = lazy(() => import('../pages/PartnerProgramme'));
 export const SwitchFromEngager = lazy(() => import('../pages/gtm/SwitchFromEngager'));
 export const TrustPack = lazy(() => import('../pages/gtm/TrustPack'));
@@ -104,6 +106,8 @@ export const ROUTE_LAZY_PAGES: Record<string, LazyExoticComponent<ComponentType<
   Settings,
   Subscription,
   Analytics,
+  Assistant,
+  VoiceUsage,
   PartnerProgramme,
   SwitchFromEngager,
   TrustPack,

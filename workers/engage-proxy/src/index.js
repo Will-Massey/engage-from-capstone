@@ -64,7 +64,7 @@ const CSP = [
   "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
   "font-src 'self' https://fonts.gstatic.com data:",
   "img-src 'self' data: blob: https:",
-  "connect-src 'self' https://api.stripe.com",
+  "connect-src 'self' https://api.stripe.com https://api.x.ai wss://api.x.ai",
   "frame-src 'self' https://js.stripe.com https://hooks.stripe.com https://checkout.stripe.com",
   "form-action 'self'",
   'upgrade-insecure-requests',
