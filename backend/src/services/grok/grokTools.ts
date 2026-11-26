@@ -10,6 +10,8 @@ import {
   updateDraftLine,
   updateDraftNotes,
 } from './grokDraft.js';
+import { createRevisionDraft } from './grokRevision.js';
+import { revertSentProposal } from './grokRevert.js';
 import type { GrokActor } from './grokAudit.js';
 
 export type GrokToolContext = GrokActor & {
@@ -425,6 +427,36 @@ export const GROK_TOOLS: GrokToolDef[] = [
       additionalProperties: false,
     },
     handler: (args, ctx) => updateDraftNotes(ctx, args),
+  },
+  {
+    name: 'engage_revert_to_draft',
+    description:
+      'Return a SENT or VIEWED proposal to draft and stop the client link in the same step. Refuses a proposal with a signature, an acceptance, a payment, or a status of ACCEPTED, ARCHIVED, LOST, DECLINED, or WITHDRAWN.',
+    write: true,
+    inputSchema: {
+      type: 'object',
+      properties: {
+        proposal_id: { type: 'string' },
+      },
+      required: ['proposal_id'],
+      additionalProperties: false,
+    },
+    handler: (args, ctx) => revertSentProposal(ctx, args),
+  },
+  {
+    name: 'engage_create_revision_draft',
+    description:
+      'Create a new draft copied from a proposal, including one that is signed or accepted. The original proposal is not changed.',
+    write: true,
+    inputSchema: {
+      type: 'object',
+      properties: {
+        proposal_id: { type: 'string' },
+      },
+      required: ['proposal_id'],
+      additionalProperties: false,
+    },
+    handler: (args, ctx) => createRevisionDraft(ctx, str(args.proposal_id)),
   },
 ];
 

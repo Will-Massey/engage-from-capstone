@@ -37,6 +37,8 @@ function productionCspMeta(): string {
     'https://engage-backend-e1ue.onrender.com',
     'https://api.stripe.com',
     'https://checkout.stripe.com',
+    'https://api.x.ai',
+    'wss://api.x.ai',
   ]
     .filter(Boolean)
     .join(' ');

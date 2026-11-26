@@ -123,6 +123,50 @@ describe('payment-skip notification email escaping (M2)', () => {
   });
 });
 
+describe('public signing status', () => {
+  const body = {
+    signedBy: 'Ada Lovelace',
+    signedByRole: 'Director',
+    signerEmail: 'ada@acme.test',
+    signatureData: 'a'.repeat(120),
+    agreementAccepted: true,
+    authorisedToSign: true,
+  };
+
+  it.each(['DRAFT', 'ACCEPTED', 'DECLINED', 'EXPIRED', 'WITHDRAWN', 'ARCHIVED', 'LOST'])(
+    'refuses to sign a %s proposal',
+    async (status) => {
+      (getProposalByShareToken as jest.Mock).mockResolvedValue(shareProposal({ status }));
+      const res = await request(app).post(`/view/token-sign-${status}/sign`).send(body);
+      expect(res.status).toBe(400);
+      expect(res.body.error.code).toBe('INVALID_STATUS');
+      const { recordElectronicSignature } = jest.requireMock(
+        '../src/services/proposalSharingService.js'
+      ) as { recordElectronicSignature: jest.Mock };
+      expect(recordElectronicSignature).not.toHaveBeenCalled();
+    }
+  );
+
+  it.each(['SENT', 'VIEWED'])('allows the signing flow to start for %s', async (status) => {
+    const { recordElectronicSignature } = jest.requireMock(
+      '../src/services/proposalSharingService.js'
+    ) as { recordElectronicSignature: jest.Mock };
+    recordElectronicSignature.mockResolvedValue({ success: true, fullyAccepted: false });
+    (getProposalByShareToken as jest.Mock).mockResolvedValue(shareProposal({ status }));
+    (prisma.proposal.findUnique as jest.Mock).mockResolvedValue({
+      id: 'prop-1',
+      reference: 'PROP-0001',
+      title: 'Annual Accounts',
+      terms: 'Terms',
+      engagementLetter: null,
+      services: [],
+    });
+    const res = await request(app).post(`/view/token-sign-ok-${status}/sign`).send(body);
+    expect(res.status).toBe(200);
+    expect(recordElectronicSignature).toHaveBeenCalled();
+  });
+});
+
 describe('payment setup error responses (L3)', () => {
   it('returns a generic message instead of the internal error', async () => {
     (getProposalByShareToken as jest.Mock).mockResolvedValue(shareProposal({ status: 'ACCEPTED' }));

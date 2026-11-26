@@ -14,6 +14,7 @@ import { DECLINE_REASONS } from '../../constants/declineReasons.js';
 import { getProposalSettings } from '../../utils/tenantProposalSettings.js';
 import { canOverrideApproval, canSendProposal, resolveSenderPosition } from './shared.js';
 import { firstWinKindForProposal, recordPracticeFirstWin } from '../../services/firstWin.js';
+import { revertProposalToDraft } from '../../services/proposals/revertToDraft.js';
 
 const router = Router();
 
@@ -404,6 +405,51 @@ router.post(
       success: true,
       data: { ...updatedProposal, ...proposalMoneyForApi(updatedProposal) },
       message: 'Proposal withdrawn successfully',
+    });
+  })
+);
+
+/**
+ * POST /api/proposals/:id/revert-to-draft
+ * Return a sent or viewed proposal to draft and revoke the client link
+ * in the same transaction. Refuses a signature, acceptance, or payment.
+ */
+router.post(
+  '/:id/revert-to-draft',
+  authenticate,
+  authorize('ADMIN', 'PARTNER', 'MD', 'MANAGER', 'SENIOR'),
+  requireActiveSubscription,
+  asyncHandler(async (req, res) => {
+    const { id } = req.params;
+    const proposal = await prisma.proposal.findFirst({
+      where: { id, tenantId: req.tenantId },
+      include: { client: true },
+    });
+    if (!proposal) {
+      throw new ApiError('NOT_FOUND', 'Proposal not found', 404);
+    }
+
+    const updated = await prisma.$transaction(async (tx) => {
+      await revertProposalToDraft(tx as never, { proposalId: id, tenantId: req.tenantId! });
+      await tx.activityLog.create({
+        data: {
+          tenantId: req.tenantId!,
+          userId: req.user!.id,
+          action: 'PROPOSAL_REVERTED_TO_DRAFT',
+          entityType: 'PROPOSAL',
+          entityId: proposal.id,
+          description: `Returned proposal "${proposal.title}" to draft and stopped the client link`,
+          ipAddress: req.ip,
+          userAgent: req.headers['user-agent'],
+        },
+      });
+      return tx.proposal.findFirst({ where: { id } });
+    });
+
+    res.json({
+      success: true,
+      data: updated,
+      message: 'Proposal returned to draft. The client link has stopped.',
     });
   })
 );

@@ -23,30 +23,32 @@ export async function writeGrokAudit(
     changes: Record<string, unknown>;
   }
 ): Promise<void> {
-  await tx.grokConnectorAudit.create({
-    data: {
-      tokenId: input.ctx.tokenId,
-      userId: input.ctx.userId,
-      tenantId: input.ctx.tenantId,
-      proposalId: input.proposalId,
-      tool: input.tool,
-      summary: input.summary,
-      changes: JSON.stringify(input.changes),
-    },
-  });
+  if (input.ctx.tokenId) {
+    await tx.grokConnectorAudit.create({
+      data: {
+        tokenId: input.ctx.tokenId,
+        userId: input.ctx.userId,
+        tenantId: input.ctx.tenantId,
+        proposalId: input.proposalId,
+        tool: input.tool,
+        summary: input.summary,
+        changes: JSON.stringify(input.changes),
+      },
+    });
+  }
   await tx.activityLog.create({
     data: {
       tenantId: input.ctx.tenantId,
       userId: input.ctx.userId,
       proposalId: input.proposalId,
-      action: 'GROK_CONNECTOR',
+      action: input.ctx.tokenId ? 'GROK_CONNECTOR' : 'VOICE_ASSISTANT',
       entityType: 'PROPOSAL',
       entityId: input.proposalId,
       description: input.summary,
       metadata: JSON.stringify({
-        source: 'grok_connector',
+        source: input.ctx.tokenId ? 'grok_connector' : 'voice_assistant',
         tool: input.tool,
-        tokenId: input.ctx.tokenId,
+        ...(input.ctx.tokenId ? { tokenId: input.ctx.tokenId } : {}),
       }),
     },
   });
